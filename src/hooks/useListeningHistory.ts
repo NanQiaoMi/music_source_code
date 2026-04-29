@@ -36,8 +36,8 @@ export interface ArtistStats {
 
 const STORAGE_KEY = "listening_history";
 const ARTIST_STATS_KEY = "artist_stats";
-const MAX_HISTORY_ITEMS = 500; // Limit history to prevent QuotaExceededError
-const MAX_ARTIST_STATS = 100;
+const MAX_HISTORY_ITEMS = 150; // Reduced from 500 to prevent QuotaExceededError
+const MAX_ARTIST_STATS = 50;  // Reduced from 100
 
 export const useListeningHistory = () => {
   const currentSong = useAudioStore(state => state.currentSong);
@@ -74,18 +74,19 @@ export const useListeningHistory = () => {
       }
     } catch (error) {
       if (error instanceof Error && error.name === "QuotaExceededError") {
-        console.warn("Storage quota exceeded, clearing oldest history entries...");
-        // Emergency prune: keep only half
+        console.warn("Storage quota exceeded, aggressively pruning listening history...");
+        // Emergency prune: keep only 50 most recent items
         const entries = Object.entries(history);
         const prunedHistory = Object.fromEntries(
           entries
             .sort(([, a], [, b]) => b.lastPlayedAt - a.lastPlayedAt)
-            .slice(0, Math.floor(MAX_HISTORY_ITEMS / 2))
+            .slice(0, 50)
         );
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(prunedHistory));
         } catch (e) {
-          console.error("Critical storage failure:", e);
+          console.error("Critical storage failure, clearing history entirely:", e);
+          localStorage.removeItem(STORAGE_KEY);
         }
       } else {
         console.error("Failed to save listening history:", error);

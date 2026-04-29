@@ -55,7 +55,9 @@ export const useRecommendationStore = create<RecommendationState>()(
             ];
           }
 
-          return { playHistory: updatedHistory };
+          const prunedHistory = updatedHistory.slice(-200);
+
+          return { playHistory: prunedHistory };
         });
       },
 
@@ -106,6 +108,37 @@ export const useRecommendationStore = create<RecommendationState>()(
     }),
     {
       name: "recommendation-storage",
+      storage: {
+        getItem: (name) => {
+          try {
+            const value = localStorage.getItem(name);
+            return value ? JSON.parse(value) : null;
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, JSON.stringify(value));
+          } catch (error) {
+            if (error instanceof Error && error.name === "QuotaExceededError") {
+              console.warn("Recommendation store quota exceeded, clearing play history...");
+              try {
+                const state = JSON.parse(JSON.stringify(value));
+                if (state.state) {
+                  // Aggressively clear history as it's not critical
+                  state.state.playHistory = [];
+                  state.state.recommendations = [];
+                }
+                localStorage.setItem(name, JSON.stringify(state));
+              } catch (e) {
+                console.error("Failed to save even empty recommendation store:", e);
+              }
+            }
+          }
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      },
     }
   )
 );

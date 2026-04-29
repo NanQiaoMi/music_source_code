@@ -377,6 +377,8 @@ export function VisualizationView() {
       };
     }
     return { transform: 'translateZ(0)' };
+
+
   };
 
   const effectsList: { id: VisualizationEffect; name: string }[] = [

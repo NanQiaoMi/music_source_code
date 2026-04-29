@@ -354,6 +354,9 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
                 },
               ];
 
+          // Keep only the last 90 days of daily data
+          const prunedDailyData = newDailyData.slice(-90);
+
           const newHourlyDist = { ...stats.hourlyDistribution };
           newHourlyDist[hour] = (newHourlyDist[hour] || 0) + 1;
 
@@ -368,7 +371,7 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
               ...stats,
               totalPlayCount: stats.totalPlayCount + 1,
               totalListenTime: stats.totalListenTime + duration,
-              dailyPlayData: newDailyData,
+              dailyPlayData: prunedDailyData,
               hourlyDistribution: newHourlyDist,
               dayOfWeekDistribution: newDayOfWeekDist,
               audioQualityDistribution: newQualityDist,
@@ -437,11 +440,21 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
         const topSongs = Array.from(songPlayCounts.entries())
           .map(([songId, playCount]) => {
             const song = songs.find((s) => s.id === songId);
-            return song ? { song, playCount } : null;
+            return song ? { 
+              song: {
+                id: song.id,
+                title: song.title,
+                artist: song.artist,
+                album: song.album,
+                duration: song.duration,
+                cover: song.cover?.startsWith("data:") ? "" : song.cover,
+              } as Song, 
+              playCount 
+            } : null;
           })
           .filter((item): item is { song: Song; playCount: number } => item !== null)
           .sort((a, b) => b.playCount - a.playCount)
-          .slice(0, 10);
+          .slice(0, 5); // Reduced from 10 to 5
 
         const favoriteArtist = topArtists[0]?.artist || null;
         const favoriteAlbum = topAlbums[0]?.album || null;
@@ -633,6 +646,51 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
         currentPeriod: state.currentPeriod,
         lastCalculated: state.lastCalculated,
       }),
+      storage: {
+        getItem: (name) => {
+          try {
+            const value = localStorage.getItem(name);
+            return value ? JSON.parse(value) : null;
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, JSON.stringify(value));
+          } catch (error) {
+            if (error instanceof Error && error.name === "QuotaExceededError") {
+              console.warn("Stats achievements store quota exceeded, pruning daily data...");
+              try {
+                const state = JSON.parse(JSON.stringify(value));
+                if (state.state && state.state.listeningStats) {
+                  // Aggressively prune to last 30 days
+                  if (Array.isArray(state.state.listeningStats.dailyPlayData)) {
+                    state.state.listeningStats.dailyPlayData = 
+                      state.state.listeningStats.dailyPlayData.slice(-30);
+                  }
+                  // Clear active toasts as they are temporary
+                  state.state.activeToasts = [];
+                }
+                localStorage.setItem(name, JSON.stringify(state));
+              } catch (e) {
+                console.error("Failed to save even pruned stats store:", e);
+                // Last resort: clear all daily data
+                try {
+                  const state = JSON.parse(JSON.stringify(value));
+                  if (state.state && state.state.listeningStats) {
+                    state.state.listeningStats.dailyPlayData = [];
+                  }
+                  localStorage.setItem(name, JSON.stringify(state));
+                } catch (finalError) {
+                  console.error("Critical storage failure in stats store:", finalError);
+                }
+              }
+            }
+          }
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      },
     }
   )
 );

@@ -134,10 +134,11 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
 
             {currentEffect === "auroraWave" && (
               <div className="space-y-4">
-                <SettingSlider label="波浪层数" value={effectSettings.auroraWave.waveCount} min={2} max={10} step={1} onChange={(v) => updateEffectSettings("auroraWave", { waveCount: v })} />
                 <SettingSlider label="流动速度" value={effectSettings.auroraWave.speed} min={0.1} max={3.0} step={0.1} onChange={(v) => updateEffectSettings("auroraWave", { speed: v })} />
                 <SettingSlider label="色彩强度" value={effectSettings.auroraWave.colorIntensity} min={0.2} max={2.0} step={0.1} onChange={(v) => updateEffectSettings("auroraWave", { colorIntensity: v })} />
-                <SettingSlider label="波浪振幅" value={effectSettings.auroraWave.amplitude} min={0.2} max={3.0} step={0.1} onChange={(v) => updateEffectSettings("auroraWave", { amplitude: v })} />
+                <SettingSlider label="核心复杂度" value={effectSettings.auroraWave.coreComplexity} min={0.1} max={3.0} step={0.1} onChange={(v) => updateEffectSettings("auroraWave", { coreComplexity: v })} />
+                <SettingSlider label="镜头光晕" value={effectSettings.auroraWave.flareAmount} min={0.0} max={3.0} step={0.1} onChange={(v) => updateEffectSettings("auroraWave", { flareAmount: v })} />
+                <SettingSlider label="界面细节" value={effectSettings.auroraWave.hudDetail} min={0.0} max={2.0} step={0.1} onChange={(v) => updateEffectSettings("auroraWave", { hudDetail: v })} />
               </div>
             )}
             {currentEffect === "spectrumRing" && (
@@ -159,7 +160,9 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                 <SettingSlider label="光环层数" value={effectSettings.spectrumRing.ringCount} min={1} max={5} step={1} onChange={(v) => updateEffectSettings("spectrumRing", { ringCount: v })} />
                 <SettingSlider label="旋转速度" value={effectSettings.spectrumRing.rotationSpeed} min={0.1} max={3.0} step={0.1} onChange={(v) => updateEffectSettings("spectrumRing", { rotationSpeed: v })} />
                 <SettingSlider label="频率条宽" value={effectSettings.spectrumRing.barWidth} min={1.0} max={8.0} step={0.5} onChange={(v) => updateEffectSettings("spectrumRing", { barWidth: v })} />
-                <SettingSlider label="发光强度" value={effectSettings.spectrumRing.glowIntensity} min={0.2} max={2.0} step={0.1} onChange={(v) => updateEffectSettings("spectrumRing", { glowIntensity: v })} />
+                <SettingSlider label="镜头光晕" value={effectSettings.spectrumRing.flareAmount} min={0.0} max={3.0} step={0.1} onChange={(v) => updateEffectSettings("spectrumRing", { flareAmount: v })} />
+                <SettingSlider label="色差强度" value={effectSettings.spectrumRing.chromaticIntensity} min={0.0} max={3.0} step={0.1} onChange={(v) => updateEffectSettings("spectrumRing", { chromaticIntensity: v })} />
+                <SettingSlider label="界面细节" value={effectSettings.spectrumRing.hudDetail} min={0.0} max={2.0} step={0.1} onChange={(v) => updateEffectSettings("spectrumRing", { hudDetail: v })} />
                 <div className="space-y-2">
                   <label className="text-sm text-white/80">配色方案</label>
                   <div className="flex gap-2">
@@ -179,6 +182,8 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                 <SettingSlider label="星云强度" value={effectSettings.nebulaField.nebulaIntensity} min={0.2} max={2.0} step={0.1} onChange={(v) => updateEffectSettings("nebulaField", { nebulaIntensity: v })} />
                 <SettingSlider label="漂移速度" value={effectSettings.nebulaField.speed} min={0.1} max={3.0} step={0.1} onChange={(v) => updateEffectSettings("nebulaField", { speed: v })} />
                 <SettingSlider label="深度感" value={effectSettings.nebulaField.depth} min={0.5} max={3.0} step={0.1} onChange={(v) => updateEffectSettings("nebulaField", { depth: v })} />
+                <SettingSlider label="镜头光晕" value={effectSettings.nebulaField.flareAmount} min={0.0} max={3.0} step={0.1} onChange={(v) => updateEffectSettings("nebulaField", { flareAmount: v })} />
+                <SettingSlider label="界面细节" value={effectSettings.nebulaField.hudDetail} min={0.0} max={2.0} step={0.1} onChange={(v) => updateEffectSettings("nebulaField", { hudDetail: v })} />
               </div>
             )}
 

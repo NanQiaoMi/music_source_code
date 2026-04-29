@@ -1,201 +1,221 @@
 import { EffectContext } from "./types";
 
 /**
- * AURORA MIRAGE (V25 - ZENITH OVERDRIVE EDITION)
- * Reference: Cyber Matrix (Scanning) + Quantum Space (Heartbeat) + Gravity Field (Lensing).
- * Features: Shimmering God Rays, Volumetric Micro-Dust, Cinematic Light Leaks, 
- * Parallax Background Schematics, and Pulse-Reactive Neural Tendrils.
+ * AURORA PHANTOM (V125 - TRIPLE GEOMETRY EDITION)
+ * Features: Three Distinct Central Geometric Shapes (Circle, Square, Triangle), 
+ * Luminous Background, High-Intensity Beams, Spring-Damper Core Physics, 
+ * and Liquid Silk Filaments.
  */
 export const drawAuroraWave = ({ ctx, width, height, data, params, time, theme, refs }: EffectContext) => {
-  const effectParams = params || { speed: 1, intensity: 1 };
-  const t = time * 0.001 * (effectParams.speed || 1);
+  const effectParams = params || { speed: 1, colorIntensity: 1, coreComplexity: 1, flareAmount: 1, hudDetail: 1 };
+  const t = time * 0.0007 * (effectParams.speed || 1); 
   const cx = width / 2, cy = height / 2;
   
-  // --- 1. DEEP DATA ANALYTICS ---
-  const rawBass = data && data[0] ? (data[0] + data[1] + data[2] + data[3]) / 4 / 255 : 0;
-  const rawMid = data && data[8] ? (data[8] + data[10] + data[12]) / 3 / 255 : 0;
-  const rawTreble = data && data[24] ? (data[24] + data[28] + data[32]) / 3 / 255 : 0;
+  // --- 1. SIGNAL ANALYTICS & SPRING PHYSICS ---
+  const getSafeVal = (idx: number) => (data && data[idx] !== undefined) ? data[idx] / 255 : 0;
+  const rawBass = (getSafeVal(0) + getSafeVal(1) + getSafeVal(2) + getSafeVal(3)) / 4;
+  const rawTreble = (getSafeVal(24) + getSafeVal(28) + getSafeVal(32)) / 3;
 
-  refs.smoothBass.current = (refs.smoothBass.current || 0) * 0.8 + rawBass * 0.2;
-  refs.smoothMid.current = (refs.smoothMid.current || 0) * 0.82 + rawMid * 0.18;
-  refs.smoothTreble.current = (refs.smoothTreble.current || 0) * 0.85 + rawTreble * 0.15;
+  refs.smoothBass.current = (refs.smoothBass.current || 0) * 0.88 + rawBass * 0.12;
+  refs.smoothTreble.current = (refs.smoothTreble.current || 0) * 0.92 + rawTreble * 0.08;
   
   const bass = refs.smoothBass.current;
-  const energy = (bass + refs.smoothMid.current + refs.smoothTreble.current) / 3;
-  
-  const isPeak = bass > 0.94;
-  const auroraHue = theme.primary;
-  const breath = Math.sin(t * 0.4) * 0.5 + 0.5;
+  const treble = refs.smoothTreble.current;
+  const energy = (bass + treble) / 2;
+  const isPeak = bass > 0.92;
+  const breath = Math.sin(t * 0.25) * 0.5 + 0.5;
 
-  // --- 2. CINEMATIC CAMERA (High Inertia Drift) ---
-  const zoom = 1.05 + bass * 0.18 + breath * 0.05;
-  const driftX = Math.sin(t * 0.08) * 140 + Math.cos(t * 0.22) * 60;
-  const driftY = Math.cos(t * 0.07) * 100 + Math.sin(t * 0.15) * 40;
-  
+  const auroraHue = theme.primary;
+  const accentHue = theme.accent;
+  const colorInt = (effectParams.colorIntensity || 1.0) * 1.2;
+
+  // --- 2. CINEMATIC CAMERA ---
+  const zoom = 1.05 + bass * 0.15 + breath * 0.03;
+  const driftX = Math.sin(t * 0.08) * 100 + Math.sin(t * 0.18) * 30 + Math.cos(t * 0.32) * 15;
+  const driftY = Math.cos(t * 0.07) * 80 + Math.cos(t * 0.22) * 25 + Math.sin(t * 0.35) * 10;
+  const roll = Math.sin(t * 0.04) * 0.025 + Math.cos(t * 0.11) * 0.012;
+
   ctx.save();
   ctx.translate(cx + driftX, cy + driftY);
+  ctx.rotate(roll);
   ctx.scale(zoom, zoom);
   ctx.translate(-cx, -cy);
 
-  // --- 3. THE VOID & LIGHT LEAKS ---
-  ctx.fillStyle = "#010002";
+  // --- 3. DYNAMIC BACKGROUND & VOLUMETRIC ATMOS ---
+  const bgHue = (auroraHue + energy * 15) % 360;
+  const bgL = 2 + energy * 8; 
+  ctx.fillStyle = `hsla(${bgHue}, 80%, ${bgL}%, 1)`;
   ctx.fillRect(-width, -height, width * 3, height * 3);
 
-  // Cinematic Light Leaks (Large faint colored drifts)
-  const drawLightLeaks = () => {
+  // A. Volumetric Liquid Mist
+  const drawMist = () => {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
-    for (let i = 0; i < 3; i++) {
-      const lx = cx + Math.sin(t * 0.1 + i) * 600;
-      const ly = cy + Math.cos(t * 0.12 + i * 2) * 400;
-      const lr = 600 + i * 300;
-      const lGrd = ctx.createRadialGradient(lx, ly, 0, lx, ly, lr);
-      const h = (auroraHue + i * 30 + t * 5) % 360;
-      lGrd.addColorStop(0, `hsla(${h}, 100%, 50%, ${0.03 * (0.5 + energy * 0.5)})`);
-      lGrd.addColorStop(1, "transparent");
-      ctx.fillStyle = lGrd;
-      ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2); ctx.fill();
+    const mistGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, width * 1.5);
+    mistGrd.addColorStop(0, `hsla(${auroraHue}, 100%, 18%, ${0.15 * (0.5 + energy * 0.5) * colorInt})`);
+    mistGrd.addColorStop(0.6, `hsla(${accentHue}, 100%, 6%, ${0.1 * breath * colorInt})`);
+    mistGrd.addColorStop(1, "transparent");
+    ctx.fillStyle = mistGrd;
+    ctx.fillRect(-width, -height, width * 3, height * 3);
+    ctx.restore();
+  };
+  drawMist();
+
+  // B. Scattered Background Beams
+  const drawScatteredBeams = () => {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.globalCompositeOperation = "screen";
+    const beamCount = 42;
+    const beamLen = Math.max(width, height) * 1.8;
+    for (let i = 0; i < beamCount; i++) {
+      const angle = (i / beamCount) * Math.PI * 2 + t * 0.035;
+      const bGrd = ctx.createRadialGradient(0, 0, 100, 0, 0, beamLen);
+      const bAlpha = (0.05 + energy * 0.3) * (Math.sin(t * 1.3 + i) * 0.5 + 0.5) * colorInt;
+      const bWidth = 0.015 + energy * 0.05;
+      bGrd.addColorStop(0, `hsla(${auroraHue}, 100%, 75%, ${bAlpha})`);
+      bGrd.addColorStop(1, "transparent");
+      ctx.fillStyle = bGrd;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, beamLen, angle - bWidth, angle + bWidth); ctx.fill();
     }
     ctx.restore();
   };
-  drawLightLeaks();
+  drawScatteredBeams();
 
-  // --- 4. COMPOSITE BACKGROUND SCHEMATICS (Parallax) ---
-  const drawParallaxPatterns = () => {
+  // --- 4. THE CORE ---
+  const drawCore = () => {
     ctx.save();
+    ctx.translate(cx, cy);
     ctx.globalCompositeOperation = "screen";
-    
-    // Far Layer: Hex Grid
-    ctx.strokeStyle = `hsla(${auroraHue}, 100%, 70%, ${0.02 + energy * 0.05})`;
-    ctx.lineWidth = 0.5;
-    const hSize = 120;
-    for (let x = -width; x < width * 2; x += hSize * 1.5) {
-      for (let y = -height; y < height * 2; y += hSize * Math.sqrt(3)) {
-        const px = x + (y % (hSize * Math.sqrt(3) * 2) === 0 ? 0 : hSize * 0.75);
-        const py = y;
-        ctx.beginPath();
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * Math.PI * 2;
-          ctx.lineTo(px + Math.cos(a) * hSize * 0.5, py + Math.sin(a) * hSize * 0.5);
-        }
-        ctx.closePath(); ctx.stroke();
+
+    // A. Liquid Silk Filaments
+    const layerCount = 3;
+    for (let l = 0; l < layerCount; l++) {
+      ctx.save();
+      ctx.rotate(t * (0.08 + l * 0.03) + l * Math.PI / 3);
+      ctx.beginPath();
+      const filamentAlpha = (0.12 + bass * 0.15) * (1 - l * 0.2) * colorInt;
+      const rBase = 190 + l * 45 + bass * 20;
+      for (let i = 0; i <= 360; i += 3) {
+        const rad = (i * Math.PI) / 180;
+        const hue = (auroraHue + Math.sin(rad * 2 + t) * 20) % 360;
+        ctx.strokeStyle = `hsla(${hue}, 100%, 90%, ${filamentAlpha})`;
+        ctx.lineWidth = 0.45;
+        const wave = Math.sin(rad * 3 + t * 1.1) * (12 + treble * 25) + 
+                     Math.sin(rad * 6 - t * 0.7) * 10 + 
+                     Math.cos(rad * 4 + t * 0.4) * 8;
+        const px = Math.cos(rad) * (rBase + wave);
+        const py = Math.sin(rad) * (rBase + wave);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       }
+      ctx.stroke(); ctx.restore();
     }
 
-    // Mid Layer: Blueprint Arcs
-    ctx.strokeStyle = `hsla(${auroraHue}, 100%, 70%, 0.05)`;
-    ctx.lineWidth = 1;
-    ctx.translate(cx, cy);
-    ctx.rotate(t * 0.03);
-    for (let i = 0; i < 5; i++) {
-      const r = 300 + i * 150;
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 0.3); ctx.stroke();
-      ctx.beginPath(); ctx.arc(0, 0, r + 10, Math.PI * 0.7, Math.PI * 0.85); ctx.stroke();
+    // B. The Prism Core (Hexagon Layers)
+    const prismSize = (95 + bass * 40 + breath * 8);
+    for (let i = 0; i < 2; i++) {
+      ctx.save();
+      ctx.rotate(t * (0.25 + i * 0.1) + (i * Math.PI / 3));
+      ctx.strokeStyle = `hsla(${auroraHue}, 100%, 98%, ${0.55 - i * 0.15})`;
+      ctx.lineWidth = 1.8 - i * 0.3;
+      ctx.beginPath();
+      for (let j = 0; j < 6; j++) {
+        const a = (j / 6) * Math.PI * 2;
+        const px = Math.cos(a) * prismSize, py = Math.sin(a) * prismSize;
+        if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath(); ctx.stroke();
+      ctx.restore();
     }
-    ctx.restore();
-  };
-  drawParallaxPatterns();
 
-  // --- 5. ZENITH VOLUMETRIC RAYS ---
-  const drawZenithRays = () => {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.globalCompositeOperation = "screen";
-    const rayCount = 6;
-    for (let i = 0; i < rayCount; i++) {
-      const angle = (i / rayCount) * Math.PI * 2 + t * 0.15;
-      const rayGrd = ctx.createLinearGradient(0, 0, Math.cos(angle) * 800, Math.sin(angle) * 800);
-      const alpha = (0.1 + refs.smoothTreble.current * 0.2) * (0.8 + Math.sin(t * 5 + i) * 0.2);
-      rayGrd.addColorStop(0, `hsla(${auroraHue}, 100%, 80%, ${alpha})`);
-      rayGrd.addColorStop(0.7, "transparent");
-      ctx.strokeStyle = rayGrd;
-      ctx.lineWidth = 150 + bass * 300;
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(angle) * 800, Math.sin(angle) * 800); ctx.stroke();
-    }
-    ctx.restore();
-  };
-  drawZenithRays();
+    // E. Triple Inner Shapes (三个不同图形在中心 - Requested)
+    const shapeConfig = [
+      { sides: 0, scale: 0.25, rot: 1.8 }, // Inner Circle
+      { sides: 4, scale: 0.5, rot: -1.2 },  // Middle Square
+      { sides: 3, scale: 0.75, rot: 0.6 }   // Outer Triangle
+    ];
+    shapeConfig.forEach((s, i) => {
+      ctx.save();
+      ctx.rotate(t * s.rot + i);
+      ctx.strokeStyle = `hsla(${auroraHue}, 100%, 95%, ${0.75 - i * 0.2})`;
+      ctx.lineWidth = 1.2;
+      const r = prismSize * s.scale;
+      ctx.beginPath();
+      if (s.sides === 0) {
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+      } else {
+        for (let j = 0; j <= s.sides; j++) {
+          const a = (j / s.sides) * Math.PI * 2 - Math.PI / 2;
+          const px = Math.cos(a) * r, py = Math.sin(a) * r;
+          if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+      ctx.restore();
+    });
 
-  // --- 6. NEURAL SINGULARITY CORE ---
-  const drawZenithCore = () => {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.globalCompositeOperation = "screen";
-    
-    const corePulse = (1.0 + bass * 0.6 + breath * 0.2) * 110;
-    
-    // Core Glow
-    const grd = ctx.createRadialGradient(0, 0, 80, 0, 0, corePulse * 1.5);
-    grd.addColorStop(0, `hsla(${auroraHue}, 100%, 80%, 0.9)`);
-    grd.addColorStop(0.5, `hsla(${auroraHue + 20}, 100%, 60%, 0.4)`);
+    // C. Soft Core Bloom
+    const bloomSize = prismSize * 2.2;
+    const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, bloomSize);
+    grd.addColorStop(0, `hsla(${auroraHue}, 100%, 98%, 0.85)`);
+    grd.addColorStop(0.3, `hsla(${auroraHue}, 100%, 85%, 0.35)`);
     grd.addColorStop(1, "transparent");
     ctx.fillStyle = grd;
-    ctx.beginPath(); ctx.arc(0, 0, corePulse * 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, bloomSize, 0, Math.PI * 2); ctx.fill();
 
-    // 128-Spike Precision Spectrum
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 128; i++) {
-      const angle = (i / 128) * Math.PI * 2;
-      const sVal = data ? data[i % 64] / 255 : 0;
-      const inner = 110;
-      const outer = inner + 5 + sVal * 180 * energy;
-      ctx.strokeStyle = `hsla(${auroraHue}, 100%, 95%, ${0.5 * (0.2 + sVal * 0.8)})`;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
-      ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
-      ctx.stroke();
+    // D. Fine Spectrum
+    const bars = 128;
+    const step = (Math.PI * 2) / bars;
+    for (let i = 0; i < bars; i++) {
+      const angle = i * step + t * 0.15;
+      const val = getSafeVal(i % 64);
+      const h = val * 180 * (1 + bass * 0.35);
+      if (h < 5) continue;
+      const rIn = prismSize + 12;
+      const x1 = Math.cos(angle) * rIn, y1 = Math.sin(angle) * rIn;
+      const x2 = Math.cos(angle) * (rIn + h), y2 = Math.sin(angle) * (rIn + h);
+      const bGrd = ctx.createLinearGradient(x1, y1, x2, y2);
+      bGrd.addColorStop(0, `hsla(${auroraHue}, 100%, 95%, 0.9)`);
+      bGrd.addColorStop(1, "transparent");
+      ctx.strokeStyle = bGrd;
+      ctx.lineWidth = 2 * (1 + val * 2.5);
+      ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     }
     ctx.restore();
   };
-  drawZenithCore();
+  drawCore();
 
-  // --- 7. TRANSCENDENCE HUD 5.0 (Designer Grade) ---
-  ctx.restore(); // Back from camera
-  ctx.save();
-  ctx.globalCompositeOperation = "screen";
-  
-  const hCol = `hsla(${auroraHue}, 100%, 95%, ${0.6 + Math.sin(t * 15) * 0.2})`;
-  ctx.fillStyle = hCol;
-  ctx.strokeStyle = hCol;
-  ctx.font = '900 12px "JetBrains Mono", monospace';
-  ctx.textAlign = "center";
-  const m = 70;
-
-  // Primary System HUD
-  ctx.fillText("ZENITH_SINGULARITY_RELIANCE_V25", cx, cy - 320);
-  
-  // Rotating Focus Ring with Precision Ticks
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(t * 0.1);
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(0, 0, 260 + bass * 50, 0, Math.PI * 0.1); ctx.stroke();
-  for (let i = 0; i < 4; i++) {
-    ctx.rotate(Math.PI / 2);
-    ctx.strokeRect(250 + bass * 50, -5, 10, 10);
+  // --- 5. OPTICAL SUITE ---
+  const fInt = (bass * 0.4 + treble * 0.4) * breath * effectParams.flareAmount;
+  if (fInt > 0.04) {
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    const fGrd = ctx.createLinearGradient(0, cy, width, cy);
+    fGrd.addColorStop(0, "transparent");
+    fGrd.addColorStop(0.5, `hsla(${auroraHue}, 100%, 95%, ${fInt * 0.45})`);
+    fGrd.addColorStop(1, "transparent");
+    ctx.fillStyle = fGrd;
+    ctx.fillRect(-width, cy - 1.5, width * 3, 3);
+    ctx.restore();
   }
-  ctx.restore();
 
-  // Detailed Metrics (Bottom)
-  ctx.font = '700 8px monospace';
-  ctx.fillText(`CORE_PRESSURE: ${Math.floor(100 + energy * 900)} Pa // SIGNAL_LENS: ${breath.toFixed(4)}`, cx, cy + 320);
-  ctx.fillText(`ID: 0x${Math.floor(t * 10000).toString(16).toUpperCase()} // NEURAL_FLOW: ACTIVE`, cx, cy + 335);
-
-  ctx.restore();
-
-  // Final Film Grade
-  ctx.save();
-  ctx.globalAlpha = 0.04;
-  for (let i = 0; i < 150; i++) {
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(Math.random() * width, Math.random() * height, 1, 1);
+  // --- 6. POST-PROCESSING ---
+  if (isPeak) {
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    const intensity = (bass - 0.92) * 10;
+    ctx.globalAlpha = 0.25 * intensity;
+    ctx.drawImage(ctx.canvas, 5 * intensity, 0);
+    ctx.globalAlpha = 0.15 * intensity;
+    ctx.drawImage(ctx.canvas, -5 * intensity, 0);
+    ctx.restore();
   }
-  ctx.restore();
 
-  const vig = ctx.createRadialGradient(cx, cy, 0, cx, cy, width * 1.5);
+  const vig = ctx.createRadialGradient(cx, cy, 0, cx, cy, width * 1.6);
   vig.addColorStop(0, "transparent");
   vig.addColorStop(0.8, "transparent");
-  vig.addColorStop(1, "rgba(0, 0, 0, 0.98)");
+  vig.addColorStop(1, "rgba(0, 0, 0, 1.0)");
   ctx.fillStyle = vig;
   ctx.fillRect(0, 0, width, height);
 };

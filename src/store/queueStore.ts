@@ -147,16 +147,25 @@ export const useQueueStore = create<QueueState>()(
             localStorage.setItem(name, JSON.stringify(value));
           } catch (error) {
             if (error instanceof Error && error.name === "QuotaExceededError") {
-              console.warn("Queue store quota exceeded, clearing older history...");
-              // Emergency: try to save only the most recent 10 history items
+              console.warn("Queue store quota exceeded, aggressively clearing history...");
               try {
                 const state = JSON.parse(JSON.stringify(value));
                 if (state.state && state.state.history) {
-                  state.state.history = state.state.history.slice(0, 10);
+                  // Try reducing to 5 items first
+                  state.state.history = state.state.history.slice(0, 5);
                 }
                 localStorage.setItem(name, JSON.stringify(state));
               } catch (e) {
-                console.error("Failed to save even reduced queue store:", e);
+                console.warn("Failed to save even with 5 history items, clearing all history.");
+                try {
+                  const state = JSON.parse(JSON.stringify(value));
+                  if (state.state) {
+                    state.state.history = [];
+                  }
+                  localStorage.setItem(name, JSON.stringify(state));
+                } catch (finalError) {
+                  console.error("Critical storage failure in queue store:", finalError);
+                }
               }
             } else {
               console.warn("Failed to save queue store:", error);

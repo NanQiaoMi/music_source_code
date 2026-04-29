@@ -31,9 +31,9 @@ interface VisualizationState {
     spatialMesh: { blurIntensity: number; speed: number; colorIntensity: number; };
     cyberpunkParticles: { particleCount: number; particleSize: number; speed: number; glowIntensity: number; };
     organicFluid: { complexity: number; speed: number; colorShift: number; };
-    auroraWave: { waveCount: number; speed: number; colorIntensity: number; amplitude: number; };
-    spectrumRing: { ringCount: number; rotationSpeed: number; barWidth: number; colorMode: number; glowIntensity: number; haloStyle: number; };
-    nebulaField: { starCount: number; nebulaIntensity: number; speed: number; depth: number; };
+    auroraWave: { speed: number; colorIntensity: number; coreComplexity: number; flareAmount: number; hudDetail: number; };
+    spectrumRing: { ringCount: number; rotationSpeed: number; barWidth: number; colorMode: number; glowIntensity: number; haloStyle: number; flareAmount: number; chromaticIntensity: number; hudDetail: number; };
+    nebulaField: { starCount: number; nebulaIntensity: number; speed: number; depth: number; flareAmount: number; hudDetail: number; };
     vinylGroove: { spinSpeed: number; grooveIntensity: number; glowAmount: number; opticalComplexity: number; chromaticIntensity: number; };
     cyberMatrix: { speed: number; density: number; };
     gravitationalField: { speed: number; sensitivity: number; coreIntensity: number; };
@@ -55,9 +55,9 @@ const defaultEffectSettings = {
   spatialMesh: { blurIntensity: 120, speed: 1.0, colorIntensity: 0.8 },
   cyberpunkParticles: { particleCount: 500, particleSize: 2.0, speed: 1.5, glowIntensity: 1.0 },
   organicFluid: { complexity: 1.0, speed: 1.0, colorShift: 0.5 },
-  auroraWave: { waveCount: 5, speed: 0.8, colorIntensity: 1.0, amplitude: 1.0 },
-  spectrumRing: { ringCount: 3, rotationSpeed: 0.5, barWidth: 3.0, colorMode: 0, glowIntensity: 1.0, haloStyle: 0 },
-  nebulaField: { starCount: 800, nebulaIntensity: 1.0, speed: 0.5, depth: 1.0 },
+  auroraWave: { speed: 1.0, colorIntensity: 1.0, coreComplexity: 1.0, flareAmount: 1.0, hudDetail: 1.0 },
+  spectrumRing: { ringCount: 3, rotationSpeed: 0.5, barWidth: 3.0, colorMode: 0, glowIntensity: 1.0, haloStyle: 0, flareAmount: 1.0, chromaticIntensity: 1.0, hudDetail: 1.0 },
+  nebulaField: { starCount: 800, nebulaIntensity: 1.0, speed: 0.5, depth: 1.0, flareAmount: 1.0, hudDetail: 1.0 },
   vinylGroove: { spinSpeed: 1.0, grooveIntensity: 1.0, glowAmount: 1.0, opticalComplexity: 1.0, chromaticIntensity: 1.0 },
   cyberMatrix: { speed: 1.0, density: 1.0 },
   gravitationalField: { speed: 1.0, sensitivity: 1.0, coreIntensity: 1.0 },
