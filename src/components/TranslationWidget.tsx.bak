@@ -1,0 +1,317 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { FileText, Languages, History, Trash2, Settings } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { TranslationService, TranslationLanguage } from "@/ai/lyrics/TranslationService";
+
+interface TranslationWidgetProps {
+  className?: string;
+}
+
+export const TranslationWidget: React.FC<TranslationWidgetProps> = ({ className = "" }) => {
+  const [sourceText, setSourceText] = useState("");
+  const [targetText, setTargetText] = useState("");
+  const [sourceLanguage, setSourceLanguage] = useState<TranslationLanguage>("zh");
+  const [targetLanguage, setTargetLanguage] = useState<TranslationLanguage>("en");
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translationHistory, setTranslationHistory] = useState<any[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [supportedLanguages] = useState({
+    languages: [
+      { code: "zh", name: "中文" },
+      { code: "en", name: "English" },
+      { code: "ja", name: "日本語" },
+      { code: "ko", name: "한국어" },
+      { code: "fr", name: "Français" },
+      { code: "de", name: "Deutsch" },
+      { code: "es", name: "Español" },
+    ],
+    models: [
+      { id: "opus-mt-en-zh", name: "OPUS-MT 英中", pairs: ["en→zh"] },
+      { id: "opus-mt-zh-en", name: "OPUS-MT 中英", pairs: ["zh→en"] },
+      { id: "nllb-200", name: "NLLB-200", pairs: ["200+ languages"] },
+    ],
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [loadProgress, setLoadProgress] = useState(0);
+  
+  const translationService = TranslationService.getInstance();
+
+  useEffect(() => {
+    loadTranslationHistory();
+  }, []);
+
+  const loadTranslationHistory = () => {
+    try {
+      const saved = localStorage.getItem("translation-history");
+      if (saved) {
+        setTranslationHistory(JSON.parse(saved));
+      }
+    } catch (err) {
+      console.error("Failed to load translation history:", err);
+    }
+  };
+
+  const saveTranslationToHistory = (original: string, translated: string, sourceLang: string, targetLang: string) => {
+    const newItem = {
+      id: Date.now().toString(),
+      original_text: original,
+      translated_text: translated,
+      source_language: sourceLang,
+      target_language: targetLang,
+      model_used: "transformers.js",
+      timestamp: Date.now(),
+    };
+    
+    const newHistory = [newItem, ...translationHistory].slice(0, 50);
+    setTranslationHistory(newHistory);
+    localStorage.setItem("translation-history", JSON.stringify(newHistory));
+  };
+
+  const handleTranslate = async () => {
+    if (!sourceText.trim()) return;
+
+    setIsTranslating(true);
+    setError(null);
+
+    try {
+      if (!translationService.getIsLoaded()) {
+        await translationService.loadModel(sourceLanguage, targetLanguage, async (progress) => {
+          setLoadProgress(progress);
+        });
+      }
+
+      const result = await translationService.translateText(
+        sourceText,
+        sourceLanguage,
+        targetLanguage,
+        async (progress) => {
+          setLoadProgress(progress);
+        }
+      );
+
+      if (result.success) {
+        setTargetText(result.translatedText || "");
+        saveTranslationToHistory(
+          sourceText,
+          result.translatedText || "",
+          sourceLanguage,
+          targetLanguage
+        );
+      } else {
+        setError(result.error || "Translation failed");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Translation failed");
+    } finally {
+      setIsTranslating(false);
+      setLoadProgress(0);
+    }
+  };
+
+  const handleClearHistory = () => {
+    setTranslationHistory([]);
+    localStorage.removeItem("translation-history");
+  };
+
+  const handleHistoryItemClick = (item: any) => {
+    setSourceText(item.original_text);
+    setTargetText(item.translated_text);
+    setSourceLanguage(item.source_language as TranslationLanguage);
+    setTargetLanguage(item.target_language as TranslationLanguage);
+    setShowHistory(false);
+  };
+
+  const handleSwapLanguages = () => {
+    const tempLang = sourceLanguage;
+    setSourceLanguage(targetLanguage);
+    setTargetLanguage(tempLang);
+    
+    const tempText = sourceText;
+    setSourceText(targetText);
+    setTargetText(tempText);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      handleTranslate();
+    }
+  };
+
+  return (
+    <div className={`bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 ${className}`}>
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+          翻译
+        </h3>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all"
+            title="翻译历史"
+          >
+            <History className="w-5 h-5" />
+          </button>
+          <button
+            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all"
+            title="设置"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {showHistory ? (
+          <motion.div
+            key="history"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-3"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-sm font-medium text-white/80">翻译历史</h4>
+              <button
+                onClick={handleClearHistory}
+                className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-all"
+                title="清空历史"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              </div>
+
+            {translationHistory.length === 0 ? (
+              <div className="text-center py-8 text-white/50">
+                暂无翻译历史
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {translationHistory.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleHistoryItemClick(item)}
+                    className="w-full text-left p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-all text-sm"
+                  >
+                    <div className="text-white/90 mb-1 line-clamp-2">
+                      {item.original_text}
+                    </div>
+                    <div className="text-white/60 line-clamp-2">
+                      {item.translated_text}
+                    </div>
+                    <div className="flex gap-2 mt-2 text-xs text-white/40">
+                      <span>{item.source_language} → {item.target_language}</span>
+                      <span>{item.model_used}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="translation"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-4"
+          >
+            {isTranslating && loadProgress > 0 && (
+              <div className="bg-white/5 rounded-lg p-4">
+                <div className="text-sm text-white/60 mb-2">加载/翻译中... {loadProgress}%</div>
+                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${loadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-4 items-center">
+              <select
+                value={sourceLanguage}
+                onChange={(e) => setSourceLanguage(e.target.value as TranslationLanguage)}
+                className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="auto">自动检测</option>
+                {supportedLanguages.languages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={handleSwapLanguages}
+                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all"
+              >
+                <Languages className="w-5 h-5" />
+              </button>
+
+              <select
+                value={targetLanguage}
+                onChange={(e) => setTargetLanguage(e.target.value as TranslationLanguage)}
+                className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                {supportedLanguages.languages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <textarea
+                  value={sourceText}
+                  onChange={(e) => setSourceText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="输入要翻译的文本..."
+                  className="w-full h-40 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <div className="w-full h-40 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white overflow-y-auto">
+                  {isTranslating ? (
+                    <div className="flex items-center justify-center h-full text-white/60">
+                      翻译中...
+                    </div>
+                  ) : targetText ? (
+                    targetText
+                  ) : (
+                    <span className="text-white/40">翻译结果将显示在这里</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleTranslate}
+              disabled={isTranslating || !sourceText.trim()}
+              className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-all flex items-center justify-center gap-2"
+            >
+              {isTranslating ? (
+                <>翻译中...</>
+              ) : (
+                <>翻译 (Ctrl+Enter)</>
+              )}
+            </button>
+
+            {error && (
+              <div className="p-3 rounded-lg bg-red-500/20 text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default TranslationWidget;

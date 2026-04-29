@@ -1,0 +1,99 @@
+{
+  "name": "vibe-music-player",
+  "version": "1.0.0",
+  "description": "A beautiful music player with advanced audio effects",
+  "author": "Vibe Music Team",
+  "private": true,
+  "main": "electron/main/index.js",
+  "scripts": {
+    "dev": "npm run clean && node scripts/clean-port.js && next dev --webpack -p 3025",
+    "dev:electron": "concurrently \"npm run dev\" \"wait-on http://localhost:3025 && cross-env NODE_ENV=development electron .\"",
+    "dev:full": "node scripts/start-full.js",
+    "start:full": "node scripts/start-full.js",
+    "build": "npm run clean && next build --webpack",
+    "build:electron": "npm run build && electron-builder",
+    "build:electron:win": "npm run build && electron-builder --win",
+    "build:electron:mac": "npm run build && electron-builder --mac",
+    "build:electron:linux": "npm run build && electron-builder --linux",
+    "start": "next start -p 3024",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 100",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
+    "clean": "npx rimraf .next",
+    "clean:all": "npx rimraf .next && npx rimraf node_modules/.cache",
+    "clean:full": "npx rimraf .next && npx rimraf node_modules/.cache && npx rimraf node_modules",
+    "rebuild": "npm run clean:all && npm run build",
+    "reset": "npm run clean:full && npm install && npm run build",
+    "clean:port": "node scripts/clean-port.js",
+    "backend": "cd backend && python -m uvicorn main:app --reload --port 8000",
+    "test:backend": "cd backend && python test_backend.py"
+  },
+  "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "@mediapipe/camera_utils": "^0.3.1675466862",
+    "@mediapipe/hands": "^0.4.1675469240",
+    "@mediapipe/tasks-vision": "^0.10.34",
+    "@xenova/transformers": "^2.17.2",
+    "framer-motion": "^12.38.0",
+    "html-to-image": "^1.11.13",
+    "jsmediatags": "^3.9.7",
+    "lucide-react": "^1.9.0",
+    "next": "^16.2.4",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "three": "^0.183.2",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.183.1",
+    "autoprefixer": "^10.4.18",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.1.0",
+    "electron-builder": "^26.8.1",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^16.2.4",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "postcss": "^8.4.38",
+    "prettier": "^3.2.5",
+    "rimraf": "^6.1.3",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.4.3",
+    "wait-on": "^9.0.4"
+  },
+  "build": {
+    "appId": "com.vibe.musicplayer",
+    "productName": "Vibe Music Player",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      ".next/**/*",
+      "electron/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "signAndEditExecutable": false
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
+  }
+}

@@ -1,0 +1,47 @@
+# FastAPI Web Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# AI Frameworks
+torch>=2.1.0
+modelscope>=1.14.0
+transformers>=4.36.0
+
+# ModelScope Required Dependencies
+addict>=2.4.0
+datasets>=4.0.0
+simplejson>=3.20.0
+sortedcontainers>=2.4.0
+jieba>=0.42.0
+funcy>=2.0.0
+
+# Protobuf and build tools
+protobuf>=4.21.0
+setuptools>=60.0.0
+
+# FunASR and KantTS (for Paraformer and SamBERT)
+funasr>=1.3.0
+kantts>=0.1.0
+sentencepiece>=0.2.0
+sacremoses>=0.0.41
+
+# Utilities
+python-multipart>=0.0.6
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Audio Processing
+numpy>=1.24.0
+soundfile>=0.12.0
+librosa>=0.10.0
+pydub>=0.25.0
+
+# Image Processing
+pillow>=10.0.0
+opencv-python>=4.8.0
+
+# Visualization
+matplotlib>=3.8.0
+
+# Optional: For WebSocket and async
+websockets>=12.0

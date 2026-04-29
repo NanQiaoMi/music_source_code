@@ -1,0 +1,189 @@
+  @tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  inset: 0;
+}
+
+/* Theme Variables - Dark Mode (Default) */
+:root {
+  --theme-bg-primary: #000000;
+  --theme-bg-secondary: #121212;
+  --theme-bg-tertiary: #1c1c1e;
+  --theme-bg-elevated: #2c2c2e;
+  
+  --theme-text-primary: #ffffff;
+  --theme-text-secondary: rgba(255, 255, 255, 0.6);
+  --theme-text-tertiary: rgba(255, 255, 255, 0.3);
+  
+  --theme-glass-bg: rgba(28, 28, 30, 0.7);
+  --theme-glass-border: rgba(255, 255, 255, 0.1);
+  
+  --theme-accent-pink: #fa2d48;
+  --theme-accent-red: #ff375f;
+  --theme-accent-orange: #ff9f0a;
+  --theme-accent-yellow: #ffd60a;
+  --theme-accent-green: #30d158;
+  --theme-accent-teal: #64d2ff;
+  --theme-accent-blue: #0a84ff;
+  --theme-accent-indigo: #5e5ce6;
+  --theme-accent-purple: #bf5af2;
+  
+  --theme-border: rgba(255, 255, 255, 0.1);
+  --theme-separator: rgba(255, 255, 255, 0.15);
+  
+  --theme-radius-sm: 6px;
+  --theme-radius-md: 8px;
+  --theme-radius-lg: 12px;
+  --theme-radius-xl: 16px;
+  --theme-radius-full: 9999px;
+}
+
+/* Light Mode Variables */
+:root.light {
+  --theme-bg-primary: #f5f5f7;
+  --theme-bg-secondary: #ffffff;
+  --theme-bg-tertiary: #f2f2f7;
+  --theme-bg-elevated: #ffffff;
+  
+  --theme-text-primary: #1c1c1e;
+  --theme-text-secondary: rgba(28, 28, 30, 0.6);
+  --theme-text-tertiary: rgba(28, 28, 30, 0.3);
+  
+  --theme-glass-bg: rgba(255, 255, 255, 0.7);
+  --theme-glass-border: rgba(0, 0, 0, 0.1);
+  
+  --theme-border: rgba(0, 0, 0, 0.1);
+  --theme-separator: rgba(0, 0, 0, 0.1);
+}
+
+@layer utilities {
+  .backdrop-blur-custom {
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  .glass-shadow {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  }
+  
+  .light .glass-shadow {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  }
+
+  .text-shadow {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+  
+  .light .text-shadow {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  
+  .theme-gradient {
+    background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+  }
+  
+  .light .theme-gradient {
+    background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0) 100%);
+  }
+  
+  .theme-press {
+    transform: scale(0.96);
+    transition: transform 0.1s ease;
+  }
+  
+  /* Glass morphism effect */
+  .glass-card {
+    background: var(--theme-glass-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--theme-glass-border);
+  }
+  
+  /* Light mode specific glass effect */
+  .light .glass-card {
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Custom scrollbar for panels */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  /* Firefox scrollbar */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
+  }
+
+  /* Hidden scrollbar utility */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Range input styling */
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    border: 2px solid rgba(255,255,255,0.9);
+    transition: transform 0.15s ease;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+}
+
+/* Smooth spin animation */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

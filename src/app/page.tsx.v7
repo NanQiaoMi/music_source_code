@@ -1,0 +1,102 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
+import { LibraryHome } from '@/components-v7/library/LibraryHome';
+import { PlayerPageV7 } from '@/components-v7/player/PlayerPageV7';
+import { FullscreenLyrics } from '@/components-v7/lyrics/FullscreenLyrics';
+import { VisualizationPageV7 } from '@/components-v7/visualization/VisualizationPageV7';
+import { MiniPlayer } from '@/components-v7/player/MiniPlayer';
+import { ImmersiveBackground } from '@/components-v7/player/ImmersiveBackground';
+import { I18nProvider } from '@/components-v7/ui/I18nProvider';
+import { useUIStore } from '@/store/uiStore';
+import { usePlaylistStore } from '@/store/playlistStore';
+import { useDynamicTheme } from '@/hooks/useDynamicTheme';
+import { Home, Music, Mic2, Sparkles } from 'lucide-react';
+
+export default function HomeV7() {
+  const { t } = useTranslation();
+  const { currentView, setCurrentView } = useUIStore();
+  const { initializePlaylist, songs } = usePlaylistStore();
+  const [mounted, setMounted] = useState(false);
+
+  useDynamicTheme();
+
+  useEffect(() => {
+    setMounted(true);
+    initializePlaylist();
+  }, [initializePlaylist]);
+
+  if (!mounted) {
+    return null;
+  }
+
+  const views = [
+    { id: 'library', icon: <Home className="w-5 h-5" />, label: t('ui.library') },
+    { id: 'player', icon: <Music className="w-5 h-5" />, label: t('ui.player') },
+    { id: 'lyrics', icon: <Mic2 className="w-5 h-5" />, label: t('ui.lyrics') },
+    { id: 'visualization', icon: <Sparkles className="w-5 h-5" />, label: t('ui.visualization') },
+  ];
+
+  const renderView = () => {
+    switch (currentView) {
+      case 'library':
+        return <LibraryHome />;
+      case 'player':
+        return <PlayerPageV7 />;
+      case 'lyrics':
+        return <FullscreenLyrics />;
+      case 'visualization':
+        return <VisualizationPageV7 />;
+      default:
+        return <LibraryHome />;
+    }
+  };
+
+  return (
+    <I18nProvider>
+      <main className="relative w-full h-full overflow-hidden bg-black fixed inset-0">
+        <ImmersiveBackground />
+
+        <div className="relative z-10 w-full h-full">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentView}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              {renderView()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <div className="fixed bottom-0 left-0 right-0 z-20">
+          <div className="flex items-center justify-center gap-4 pb-4 px-4">
+            {views.map((view) => (
+              <motion.button
+                key={view.id}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setCurrentView(view.id as any)}
+                className={`flex flex-col items-center gap-1 p-3 rounded-2xl transition-all ${
+                  currentView === view.id
+                    ? 'bg-white/20 text-white'
+                    : 'text-white/50 hover:bg-white/10'
+                }`}
+              >
+                {view.icon}
+                <span className="text-xs font-medium">{view.label}</span>
+              </motion.button>
+            ))}
+          </div>
+        </div>
+
+        {currentView === 'library' && <MiniPlayer />}
+      </main>
+    </I18nProvider>
+  );
+}

@@ -1,0 +1,345 @@
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
+import { Languages, RefreshCw, History, Trash2, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { motion } from "framer-motion";
+import { apiClient } from "@/ai/core/apiClient";
+
+interface Language {
+  code: string;
+  name: string;
+}
+
+interface TranslationHistoryItem {
+  original_text: string;
+  translated_text: string;
+  source_language: string;
+  target_language: string;
+  model_used: string;
+  timestamp: number;
+}
+
+export const TranslationPanel: React.FC = () => {
+  const [sourceText, setSourceText] = useState("");
+  const [targetText, setTargetText] = useState("");
+  const [sourceLanguage, setSourceLanguage] = useState("auto");
+  const [targetLanguage, setTargetLanguage] = useState("en");
+  const [selectedModel, setSelectedModel] = useState("opus-mt-en-zh");
+  const [enableRealtime, setEnableRealtime] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [history, setHistory] = useState<TranslationHistoryItem[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [languages, setLanguages] = useState<Language[]>([]);
+  
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const models = [
+    { id: "opus-mt-en-zh", name: "OPUS-MT 英中", pairs: ["en→zh"] },
+    { id: "opus-mt-zh-en", name: "OPUS-MT 中英", pairs: ["zh→en"] },
+    { id: "nllb-200", name: "NLLB-200", pairs: ["200+ languages"] },
+  ];
+
+  useEffect(() => {
+    const loadLanguages = async () => {
+      try {
+        const data = await apiClient.getSupportedLanguages();
+        setLanguages(data.languages);
+      } catch (err) {
+        console.error("Failed to load languages:", err);
+        setLanguages([
+          { code: "auto", name: "自动检测" },
+          { code: "zh", name: "中文" },
+          { code: "en", name: "English" },
+          { code: "ja", name: "日本語" },
+          { code: "ko", name: "한국어" },
+        ]);
+      }
+    };
+    loadLanguages();
+  }, []);
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const data = await apiClient.getTranslationHistory();
+        setHistory(data);
+      } catch (err) {
+        console.error("Failed to load history:", err);
+      }
+    };
+    loadHistory();
+  }, []);
+
+  useEffect(() => {
+    if (enableRealtime && sourceText.trim()) {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        handleTranslate();
+      }, 500);
+    }
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [sourceText, enableRealtime]);
+
+  const handleTranslate = async () => {
+    if (!sourceText.trim()) return;
+
+    setIsTranslating(true);
+    setError(null);
+
+    try {
+      const response = await apiClient.translateText(
+        sourceText,
+        sourceLanguage,
+        targetLanguage,
+        selectedModel
+      );
+
+      if (response.success && response.translated_text) {
+        setTargetText(response.translated_text);
+        
+        const newHistory = await apiClient.getTranslationHistory();
+        setHistory(newHistory);
+      } else {
+        setError(response.error_message || "翻译失败");
+      }
+    } catch (err) {
+      setError("网络错误，请确保后端服务已启动");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    try {
+      await apiClient.clearTranslationHistory();
+      setHistory([]);
+    } catch (err) {
+      console.error("Failed to clear history:", err);
+    }
+  };
+
+  const handleSwapLanguages = () => {
+    const tempLang = sourceLanguage;
+    setSourceLanguage(targetLanguage);
+    setTargetLanguage(tempLang);
+    const tempText = sourceText;
+    setSourceText(targetText);
+    setTargetText(tempText);
+  };
+
+  const formatTimestamp = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleString("zh-CN");
+  };
+
+  return (
+    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+            <Languages className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-white">文本翻译</h3>
+            <p className="text-sm text-white/60">OPUS-MT + NLLB-200 模型</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowHistory(!showHistory)}
+          className={`p-2 rounded-lg transition-all ${
+            showHistory
+              ? "bg-purple-500/20 border border-purple-400"
+              : "bg-white/5 hover:bg-white/10 border border-white/10"
+          }`}
+        >
+          <History className="w-5 h-5 text-white/80" />
+        </button>
+      </div>
+
+      <div className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-white/80 mb-2">
+            选择模型
+          </label>
+          <div className="grid grid-cols-3 gap-3">
+            {models.map((model) => (
+              <button
+                key={model.id}
+                onClick={() => setSelectedModel(model.id)}
+                className={`p-3 rounded-xl border-2 transition-all ${
+                  selectedModel === model.id
+                    ? "border-purple-400 bg-purple-500/20"
+                    : "border-white/10 bg-white/5 hover:border-white/20"
+                }`}
+              >
+                <div className="text-white font-medium text-sm">{model.name}</div>
+                <div className="text-white/50 text-xs mt-1">{model.pairs.join(", ")}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {showHistory ? (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-white font-medium">翻译历史</h4>
+              {history.length > 0 && (
+                <button
+                  onClick={handleClearHistory}
+                  className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  清空历史
+                </button>
+              )}
+            </div>
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {history.length === 0 ? (
+                <div className="p-6 text-center text-white/50">
+                  暂无翻译历史
+                </div>
+              ) : (
+                history.map((item, index) => (
+                  <div
+                    key={index}
+                    className="p-3 rounded-lg bg-white/5 border border-white/10"
+                  >
+                    <div className="flex items-center justify-between text-xs text-white/50 mb-2">
+                      <span>{item.source_language} → {item.target_language}</span>
+                      <span>{formatTimestamp(item.timestamp)}</span>
+                    </div>
+                    <div className="text-white mb-1">{item.original_text}</div>
+                    <div className="text-white/70">{item.translated_text}</div>
+                    <div className="text-xs text-white/40 mt-1">
+                      使用模型: {item.model_used}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-white/80">
+                    源文本
+                  </label>
+                  <select
+                    value={sourceLanguage}
+                    onChange={(e) => setSourceLanguage(e.target.value)}
+                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-1 text-sm text-white"
+                  >
+                    {languages.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <textarea
+                  value={sourceText}
+                  onChange={(e) => setSourceText(e.target.value)}
+                  placeholder="输入要翻译的文本..."
+                  className="w-full h-32 p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 resize-none focus:outline-none focus:border-purple-400/50"
+                />
+              </div>
+
+              <div className="flex justify-center">
+                <button
+                  onClick={handleSwapLanguages}
+                  className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-all"
+                >
+                  <RefreshCw className="w-5 h-5 text-white/70" />
+                </button>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-white/80">
+                    翻译结果
+                  </label>
+                  <select
+                    value={targetLanguage}
+                    onChange={(e) => setTargetLanguage(e.target.value)}
+                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-1 text-sm text-white"
+                  >
+                    {languages
+                      .filter((l) => l.code !== "auto")
+                      .map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <textarea
+                  value={targetText}
+                  readOnly
+                  placeholder="翻译结果将显示在这里..."
+                  className="w-full h-32 p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={enableRealtime}
+                  onChange={(e) => setEnableRealtime(e.target.checked)}
+                  className="w-4 h-4 rounded bg-white/10 border-white/20"
+                />
+                <span className="text-sm text-white/70">实时翻译</span>
+              </label>
+              <button
+                onClick={handleTranslate}
+                disabled={!sourceText.trim() || isTranslating}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-all"
+              >
+                {isTranslating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    翻译中...
+                  </>
+                ) : (
+                  <>
+                    <Languages className="w-4 h-4" />
+                    开始翻译
+                  </>
+                )}
+              </button>
+            </div>
+
+            {error && (
+              <div className="p-4 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                <span className="text-red-300">{error}</span>
+              </div>
+            )}
+
+            {targetText && !isTranslating && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-3 p-4 rounded-xl bg-green-500/10 border border-green-500/20"
+              >
+                <CheckCircle className="w-5 h-5 text-green-400" />
+                <span className="text-green-300">翻译完成</span>
+              </motion.div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default TranslationPanel;
