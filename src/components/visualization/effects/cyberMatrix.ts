@@ -83,22 +83,23 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
     ctx.globalCompositeOperation = "screen";
     for(let i=0; i<5; i++) {
       const r = size * (0.8 + i * 0.4 + bass * 0.5);
-      const rot = t * (i % 2 === 0 ? 1 : -1) * (0.3 + i * 0.2);
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = `hsla(${i % 2 === 0 ? matrixHue : secondaryHue}, 100%, 80%, ${0.3 / (i + 1)})`;
-      drawPolygon(x, y, r, 6, rot);
+      const rot = t * (i % 2 === 0 ? 1 : -1) * (0.2 + i * 0.15) + (isPeak ? Math.random() * 0.1 : 0);
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = `hsla(${i % 2 === 0 ? matrixHue : secondaryHue}, 100%, 80%, ${0.35 / (i + 1)})`;
+      drawPolygon(x, y, r, 4, rot); // Changed to 4 sides (Square)
       ctx.stroke();
       if (i < 2) {
-        ctx.fillStyle = `hsla(${matrixHue}, 100%, 70%, ${0.05 / (i + 1)})`;
+        ctx.fillStyle = `hsla(${matrixHue}, 100%, 70%, ${0.08 / (i + 1)})`;
+        drawPolygon(x, y, r, 4, rot);
         ctx.fill();
       }
     }
-    const heartSize = size * (0.6 + bass * 0.4);
-    const hGrd = ctx.createRadialGradient(x, y, 0, x, y, heartSize * 1.5);
-    hGrd.addColorStop(0, `hsla(${matrixHue}, 100%, 90%, 0.6)`);
+    const heartSize = size * (0.5 + bass * 0.5);
+    const hGrd = ctx.createRadialGradient(x, y, 0, x, y, heartSize * 1.8);
+    hGrd.addColorStop(0, `hsla(${matrixHue}, 100%, 95%, 0.8)`);
     hGrd.addColorStop(1, "transparent");
     ctx.fillStyle = hGrd;
-    drawPolygon(x, y, heartSize, 6, t);
+    drawPolygon(x, y, heartSize, 4, t * 1.5); // Changed to 4 sides
     ctx.fill();
     ctx.restore();
   };
@@ -113,8 +114,8 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
   for (let l = 0; l < 4; l++) {
     const z = [0.4, 0.8, 1.3, 2.5][l];
     const alpha = [0.12, 0.28, 0.85, 0.35][l];
-    const fSize = Math.floor(20 * z * (1 + bass * 0.15));
-    ctx.font = `900 ${fSize}px "Orbitron", "BigShoulders", monospace`;
+    const fSize = Math.floor(18 * z * (1 + bass * 0.15));
+    ctx.font = `bold ${fSize}px "Consolas", "Courier New", "Orbitron", monospace`;
     ctx.textAlign = "center";
     for (let i = 0; i < cols; i++) {
       if (i % 4 !== l) continue;
@@ -163,59 +164,82 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
   const drawMatrixHUD = () => {
     ctx.save();
     // Safety Margin: Increased to prevent clipping during vibration
-    const m = 110; 
-    ctx.font = '900 12px "Orbitron", "BigShoulders", monospace';
+    const m = 80; 
+    ctx.font = 'bold 12px "Consolas", "Courier New", "Orbitron", monospace';
     
     // Top-Left: System Readout
     ctx.textAlign = "left";
     ctx.fillStyle = `hsla(${matrixHue}, 100%, 80%, 0.8)`;
-    ctx.fillText(`MATRIX_KERNEL_V1.4 // SYNC: ${isPeak ? "ACTIVE_PEAK" : "STABLE"}`, m, m);
-    ctx.fillStyle = `hsla(${matrixHue}, 100%, 70%, 0.4)`;
-    ctx.font = 'bold 9px "Orbitron", monospace';
-    ctx.fillText(`NEURAL_LINK: ${Math.floor(85 + bass * 15)}% ESTABLISHED`, m, m + 16);
+    const glitch = isPeak && Math.random() > 0.8 ? (Math.random() - 0.5) * 4 : 0;
+    
+    // Draw with subtle chromatic aberration on peaks
+    if (isPeak) {
+      ctx.fillStyle = "rgba(255, 0, 80, 0.5)";
+      ctx.fillText(`[ KERNEL_SYNC_V2.0 ] >> OVR_DRIVE`, m + 2 + glitch, m);
+      ctx.fillStyle = "rgba(0, 255, 255, 0.5)";
+      ctx.fillText(`[ KERNEL_SYNC_V2.0 ] >> OVR_DRIVE`, m - 2 + glitch, m);
+    }
+    ctx.fillStyle = `hsla(${matrixHue}, 100%, 85%, 0.9)`;
+    ctx.fillText(`[ KERNEL_SYNC_V2.0 ] >> ${isPeak ? "OVR_DRIVE" : "STABLE_IDLE"}`, m + glitch, m);
+    ctx.fillStyle = `hsla(${matrixHue}, 100%, 70%, 0.5)`;
+    ctx.font = 'bold 10px "Consolas", monospace';
+    ctx.fillText(`SYSTEM_INTEGRITY: [${Math.floor(92 + bass * 8)}%] OK`, m, m + 18);
 
     // Top-Right: Coordinate Tracker
     ctx.textAlign = "right";
-    ctx.fillStyle = `hsla(${secondaryHue}, 100%, 80%, 0.7)`;
-    ctx.font = '900 11px "Orbitron", monospace';
-    const locX = (driftX * 0.1).toFixed(2);
-    const locY = (driftY * 0.1).toFixed(2);
-    ctx.fillText(`LOC_X: ${locX} | LOC_Y: ${locY}`, width - m, m);
-    ctx.font = 'bold 8px "Orbitron", monospace';
-    ctx.fillText(`Z_DEPTH: ${(globalScale * 100).toFixed(1)}%`, width - m, m + 14);
+    ctx.font = 'bold 11px "Consolas", monospace';
+    const locX = (driftX * 0.1).toFixed(3);
+    const locY = (driftY * 0.1).toFixed(3);
+    ctx.fillText(`X:${locX} Y:${locY}`, width - m, m);
+    ctx.font = 'bold 9px "Consolas", monospace';
+    ctx.fillText(`Z_AXIS: ${(globalScale * 100).toFixed(2)}`, width - m, m + 18);
 
     // Bottom: Decryption Progress Bar
     const barW = 280;
     const barH = 3;
     const progress = (t * 0.05) % 1;
     ctx.save();
-    ctx.translate(width/2 - barW/2, height - m);
-    ctx.strokeStyle = `hsla(${matrixHue}, 100%, 75%, 0.3)`;
+    ctx.translate(width/2 - barW/2, height - m - 20);
+    ctx.strokeStyle = `hsla(${matrixHue}, 100%, 75%, 0.4)`;
+    ctx.lineWidth = 1;
     ctx.strokeRect(0, 0, barW, barH);
-    ctx.fillStyle = `hsla(${matrixHue}, 100%, 85%, ${0.6 + bass * 0.4})`;
-    ctx.fillRect(0, 0, barW * progress, barH);
+    ctx.fillStyle = `hsla(${matrixHue}, 100%, 85%, ${0.7 + bass * 0.3})`;
+    ctx.fillRect(2, 2, (barW - 4) * progress, barH - 4);
     ctx.textAlign = "center";
-    ctx.font = '900 9px "Orbitron", monospace';
-    ctx.fillText(`DECRYPTING_DATA_STREAM... ${Math.floor(progress * 100)}%`, barW/2, -12);
+    ctx.font = 'bold 10px "Consolas", monospace';
+    ctx.fillText(`PROCESSING_BUFFER_STREAM [ ${Math.floor(progress * 100)}% ]`, barW/2, -14);
+    
+    // Pulse effect for progress bar
+    if (isPeak) {
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = `hsla(${matrixHue}, 100%, 70%, 0.8)`;
+      ctx.strokeRect(-2, -2, barW + 4, barH + 4);
+      ctx.shadowBlur = 0;
+    }
     ctx.restore();
 
     // Main HUD Panel (Tucked Inward)
     ctx.save();
-    ctx.translate(width - m - 180, cy - 110);
-    ctx.strokeStyle = `hsla(${matrixHue}, 100%, 80%, 0.2)`;
-    ctx.strokeRect(0, 0, 180, 220);
-    ctx.fillStyle = `hsla(${matrixHue}, 100%, 90%, 0.5)`;
-    ctx.font = '900 11px "Orbitron", monospace';
+    ctx.translate(width - m - 200, cy - 110);
+    ctx.strokeStyle = `hsla(${matrixHue}, 100%, 80%, 0.25)`;
+    ctx.strokeRect(0, 0, 200, 240);
+    
+    // Title with blinking cursor
+    ctx.fillStyle = `hsla(${matrixHue}, 100%, 95%, 0.85)`;
+    ctx.font = 'bold 13px "Consolas", monospace';
     ctx.textAlign = "left";
-    ctx.fillText("MATRIX_FLUX_OS", 10, 20);
+    const cursor = Math.floor(t * 2) % 2 === 0 ? "_" : " ";
+    ctx.fillText(`>> DATA_STACK_LOG${cursor}`, 12, 24);
     for(let i=0; i<6; i++) {
-      const hex = Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase();
-      ctx.fillStyle = `hsla(${secondaryHue}, 100%, 70%, 0.3)`;
-      ctx.font = 'bold 8px "Orbitron", monospace';
-      ctx.fillText(`0x${hex} [SEQ_${i}]`, 10, 45 + i * 14);
-      const v = (data[i * 12] || 0) / 255 * 140;
-      ctx.fillStyle = `hsla(${matrixHue}, 100%, 75%, 0.2)`;
-      ctx.fillRect(10, 140 + i * 10, v, 2);
+      const hex = Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase().padStart(6, '0');
+      ctx.fillStyle = `hsla(${secondaryHue}, 100%, 70%, 0.4)`;
+      ctx.font = 'bold 9px "Consolas", monospace';
+      ctx.fillText(`0x${hex} [0x00${i}F]`, 12, 50 + i * 16);
+      const v = (data[i * 10] || 0) / 255 * 160;
+      ctx.fillStyle = `hsla(${matrixHue}, 100%, 75%, 0.3)`;
+      ctx.fillRect(12, 160 + i * 12, v, 2);
+      ctx.fillStyle = `hsla(${matrixHue}, 100%, 75%, 0.1)`;
+      ctx.fillRect(12, 160 + i * 12, 160, 2);
     }
     ctx.restore();
 

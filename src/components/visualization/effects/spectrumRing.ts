@@ -1,203 +1,210 @@
 import { EffectContext } from "./types";
 
 /**
- * SPECTRUM SINGULARITY (V50 - CINEMATIC MASTERPIECE)
- * The definitive reconstruction. Focus: Breathing, Optical Bloom, Technical Layers.
+ * SPECTRUM SINGULARITY (V210 - THE RED BASTION)
+ * Aesthetics: Soviet Brutalism, Ghost of the Revolution, Crystal Tech.
+ * Tone: Divine Oppression, Ideological, Cinematic, Masterpiece.
  */
 export const drawSpectrumRing = ({ ctx, width, height, data, params, time, refs, theme }: EffectContext) => {
-  const effectParams = params || { rotationSpeed: 0.35, hudDetail: 1.0 };
+  // --- 0. DIMENSIONS ---
+  const sw = width || 1920;
+  const sh = height || 1080;
+  const cx = sw / 2;
+  const cy = sh / 2;
+  const t = (time || 0) * 0.00018; 
 
-  // --- 0. DIMENSIONS & INITIALIZATION ---
-  const safeWidth = (typeof width === 'number' && isFinite(width) && width > 0) ? width : 1920;
-  const safeHeight = (typeof height === 'number' && isFinite(height) && height > 0) ? height : 1080;
-  const cx = safeWidth / 2;
-  const cy = safeHeight / 2;
-  const t = (typeof time === 'number' && isFinite(time) ? time : 0) * 0.001 * (effectParams.rotationSpeed || 1);
-
-  // --- 1. SIGNAL ANALYTICS ---
+  // --- 1. SIGNAL PROCESSING ---
   const getVal = (i: number) => (data && data[i] !== undefined) ? data[i] / 255 : 0;
-  
-  // Organic smoothing (Breathing)
   refs.smoothBass.current = (refs.smoothBass.current || 0) * 0.85 + (getVal(0) + getVal(2)) / 2 * 0.15;
-  refs.smoothMid.current = (refs.smoothMid.current || 0) * 0.88 + (getVal(10) + getVal(15)) / 2 * 0.12;
-  refs.smoothTreble.current = (refs.smoothTreble.current || 0) * 0.9 + (getVal(30) + getVal(40)) / 2 * 0.1;
-
   const bass = refs.smoothBass.current;
-  const mid = refs.smoothMid.current;
-  const treble = refs.smoothTreble.current;
-  const energy = (bass + mid + treble) / 3;
+  const energy = bass * 0.8 + getVal(20) * 0.2;
 
-  const ringHue = (typeof theme?.primary === 'number' && isFinite(theme.primary)) ? theme.primary : 194;
-  const atmosHue = 275; 
-
-  // --- 2. THE VOID (BACKGROUND) ---
+  // --- 2. GLOBAL BREATHING & LENS SWEEP ---
   ctx.save();
-  ctx.fillStyle = "#010007"; 
-  ctx.fillRect(0, 0, safeWidth, safeHeight);
+  const bScale = 1 + bass * 0.06;
+  ctx.translate(cx, cy);
+  ctx.scale(bScale, bScale);
+  ctx.translate(-cx, -cy);
 
-  // Volumetric Fog Pulse
+  // --- 3. DYNAMIC BACKGROUND: RED SHIFT & GHOST TOTEM ---
+  ctx.save();
+  // Background shifts from Black to Deep Charred Red
+  const bgRed = bass * 0.2;
+  ctx.fillStyle = `oklch(${10 + bgRed * 10}% ${bgRed * 0.15} 25)`; 
+  ctx.fillRect(0, 0, sw, sh);
+
+  // The Ghost Hammer & Sickle (Ideological Totem)
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.globalAlpha = 0.02 + bass * 0.08;
+  ctx.fillStyle = `oklch(55% 0.3 25)`;
+  ctx.rotate(-t * 0.1);
+  // Hammer Abstraction
+  ctx.fillRect(-200, -50, 400, 100);
+  ctx.fillRect(-50, -200, 100, 400);
+  // Sickle Abstraction (Arc)
+  ctx.beginPath();
+  ctx.arc(0, 0, 300, 0, Math.PI, true);
+  ctx.lineWidth = 60;
+  ctx.strokeStyle = `oklch(55% 0.3 25)`;
+  ctx.stroke();
+  ctx.restore();
+
+  // --- 4. BASTION AURORA (SCATTERED VOLUMETRIC RAYS) ---
   ctx.globalCompositeOperation = "screen";
-  for(let i=0; i<2; i++) {
-    const r = safeWidth * (0.6 + i * 0.2);
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    g.addColorStop(0, `hsla(${atmosHue}, 100%, 5%, ${0.2 * (0.5 + bass * 0.5)})`);
-    g.addColorStop(1, "transparent");
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  const rayCount = 16;
+  for (let i = 0; i < rayCount; i++) {
+    const rAng = t * 2.5 + i * (Math.PI * 2 / rayCount) + Math.cos(t + i) * 0.3;
+    const length = sw * 0.9;
+    const rWidth = 60 + bass * 180;
+    
+    const grd = ctx.createLinearGradient(cx, cy, cx + Math.cos(rAng) * length, cy + Math.sin(rAng) * length);
+    grd.addColorStop(0, `oklch(55% 0.35 25 / ${0.1 + bass * 0.3})`); 
+    grd.addColorStop(0.6, `oklch(75% 0.15 80 / ${0.05 + bass * 0.15})`); 
+    grd.addColorStop(1, "transparent");
+    
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(rAng - 0.06 - bass * 0.1) * length, cy + Math.sin(rAng - 0.06 - bass * 0.1) * length);
+    ctx.lineTo(cx + Math.cos(rAng + 0.06 + bass * 0.1) * length, cy + Math.sin(rAng + 0.06 + bass * 0.1) * length);
+    ctx.closePath();
+    ctx.fill();
   }
   ctx.restore();
 
-  // --- 3. 3D PULSING GRID ---
-  const drawPulsingGrid = () => {
+  // --- 5. THE CRYSTAL TURBINE (CENTRAL SCULPTURE) ---
+  const bladeCount = 56;
+  const baseR = sh * 0.16;
+  
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(t * 0.35);
+
+  // Inner Rotating Gear Ring (Complexity Layer)
+  ctx.save();
+  ctx.rotate(-t * 1.2);
+  ctx.strokeStyle = `oklch(30% 0.02 20 / 0.5)`;
+  ctx.lineWidth = 15;
+  ctx.setLineDash([10, 20]);
+  ctx.beginPath(); ctx.arc(0, 0, baseR - 20, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  for (let i = 0; i < bladeCount; i++) {
+    const val = getVal(i * 1.5 % 128);
+    const ang = (i / bladeCount) * Math.PI * 2;
+    
+    ctx.save();
+    ctx.rotate(ang);
+    
+    // Diamond-Cut Lens Blade Geometry
+    const bW = 3 + val * 8;
+    const bH = 20 + val * 130 * (0.8 + bass * 0.6);
+    
+    // Core Material Gradient
+    ctx.globalCompositeOperation = "screen";
+    const g = ctx.createLinearGradient(baseR, 0, baseR + bH, 0);
+    g.addColorStop(0, `oklch(75% 0.15 80)`); // Imperial Gold Core
+    g.addColorStop(1, `oklch(60% 0.35 25)`); // Revolutionary Red Crystal
+    
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(baseR, -bW);
+    ctx.lineTo(baseR + bH, -bW * 0.2);
+    ctx.lineTo(baseR + bH, bW * 0.2);
+    ctx.lineTo(baseR, bW);
+    ctx.fill();
+
+    // High-Contrast Edge Highlight
+    ctx.strokeStyle = `rgba(255, 255, 255, ${val * 0.6})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(baseR + 2, -bW); ctx.lineTo(baseR + bH, -bW * 0.2); ctx.stroke();
+    
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // --- 6. RED STAR REACTOR HEART ---
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-t * 0.7);
+  
+  // Core Glow Depth
+  const cG = ctx.createRadialGradient(0, 0, 0, 0, 0, baseR * 0.8);
+  cG.addColorStop(0, `oklch(60% 0.35 25 / ${0.5 + bass * 0.5})`);
+  cG.addColorStop(1, "transparent");
+  ctx.fillStyle = cG;
+  ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.fill();
+
+  // Sharp Geometric Soviet Star (Core)
+  ctx.strokeStyle = `oklch(90% 0.1 80)`; // Gold Highlight Star
+  ctx.lineWidth = 4;
+  ctx.globalCompositeOperation = "screen";
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const rO = baseR * 0.38 * (1 + bass * 0.2);
+    const rI = baseR * 0.14;
+    const a1 = (i * Math.PI * 2 / 5) - Math.PI / 2;
+    const a2 = a1 + (Math.PI / 5);
+    ctx.lineTo(Math.cos(a1) * rO, Math.sin(a1) * rO);
+    ctx.lineTo(Math.cos(a2) * rI, Math.sin(a2) * rI);
+  }
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+
+  // --- 7. THE IRON CURTAIN (FRAMING WITH STEAM) ---
+  const beamH = sh * 0.12;
+  ctx.save();
+  ctx.fillStyle = `oklch(15% 0.02 20)`; // Leaden Iron
+  ctx.fillRect(0, 0, sw, beamH);
+  ctx.fillRect(0, sh - beamH, sw, beamH);
+  
+  // Steam Release Interactions
+  if (bass > 0.85) {
+    ctx.globalAlpha = (bass - 0.85) * 0.6;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
+    ctx.fillRect(0, beamH, sw, 30);
+    ctx.fillRect(0, sh - beamH - 30, sw, 20);
+  }
+  ctx.restore();
+
+  // --- 8. ANAMORPHIC RED FLARE ---
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.globalCompositeOperation = "screen";
+  const fW = sw * 1.2;
+  const fG = ctx.createLinearGradient(-fW/2, 0, fW/2, 0);
+  fG.addColorStop(0, "transparent");
+  fG.addColorStop(0.5, `oklch(60% 0.35 25 / ${0.3 + bass * 0.5})`);
+  fG.addColorStop(1, "transparent");
+  ctx.fillStyle = fG;
+  ctx.fillRect(-fW/2, -4, fW, 8);
+  ctx.restore();
+
+  // --- 9. REVOLUTIONARY METEORS (PARTICLES) ---
+  if (refs.particles.current) {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
-    const hY = cy + 180;
-    const gridAlpha = 0.01 + bass * 0.08;
-    ctx.strokeStyle = `hsla(${ringHue}, 100%, 60%, ${gridAlpha})`;
-    ctx.lineWidth = 0.5;
-
-    // Pulse wave traveling down the grid
-    const pulseOffset = (t * 2) % 1;
-    
-    for (let i = 0; i <= 15; i++) {
-      const prog = i / 15;
-      const y = hY + Math.pow(prog, 3.5) * (safeHeight - hY);
-      const rowAlpha = gridAlpha * (1 - prog); // Horizon fade
-      ctx.strokeStyle = `hsla(${ringHue}, 100%, 60%, ${rowAlpha})`;
-      if (isFinite(y)) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(safeWidth, y); ctx.stroke(); }
-    }
-    
-    const vCount = 12;
-    for (let i = -vCount; i <= vCount; i++) {
-      const xB = cx + i * 700;
-      if (isFinite(xB)) { ctx.beginPath(); ctx.moveTo(cx + i * 20, hY); ctx.lineTo(xB, safeHeight); ctx.stroke(); }
-    }
+    refs.particles.current.forEach((p, idx) => {
+      p.x += p.vx * 0.6; p.y += p.vy * 0.6 - 1.5;
+      p.life *= 0.93;
+      // Long tail effect
+      ctx.strokeStyle = `oklch(65% 0.3 25 / ${p.life})`;
+      ctx.lineWidth = p.s * p.life;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 2, p.y - p.vy * 2); ctx.stroke();
+      if (p.life < 0.01) refs.particles.current.splice(idx, 1);
+    });
     ctx.restore();
-  };
-  drawPulsingGrid();
-
-  // --- 4. ORGANIC BREATHING CORE ---
-  // The core radius now "breathes" with bass
-  const baseR = (safeHeight * 0.13) * (1 + bass * 0.06); 
-  
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(t * 0.1); 
-
-  // Secondary Technical Rings (Refractive)
-  const drawTechRing = (r: number, speed: number, dash: number[]) => {
-    ctx.save();
-    ctx.rotate(t * speed);
-    ctx.setLineDash(dash);
-    ctx.strokeStyle = `hsla(${ringHue}, 100%, 75%, 0.15)`;
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
-    ctx.restore();
-  };
-  drawTechRing(baseR + 20, 0.5, [10, 20]);
-  drawTechRing(baseR + 40, -0.3, [2, 5]);
-
-  // --- 5. SOFT-BLOOM NEEDLE SPECTRUM ---
-  const bars = 512;
-  const step = (Math.PI * 2) / bars;
-  
-  for (let i = 0; i < bars; i++) {
-    const val = getVal(i % 128);
-    const h = 2 + val * 400 * (0.7 + treble * 0.5);
-    if (h < 2) continue;
-    
-    const angle = i * step;
-    const x1 = Math.cos(angle) * baseR;
-    const y1 = Math.sin(angle) * baseR;
-    const x2 = Math.cos(angle) * (baseR + h);
-    const y2 = Math.sin(angle) * (baseR + h);
-
-    if (isFinite(x1) && isFinite(x2)) {
-      // Glow Pass
-      ctx.globalCompositeOperation = "screen";
-      ctx.strokeStyle = `hsla(${ringHue}, 100%, 60%, 0.1)`;
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-      
-      // Sharp Pass
-      const g = ctx.createLinearGradient(x1, y1, x2, y2);
-      g.addColorStop(0, `hsla(${ringHue}, 100%, 90%, 0.9)`);
-      g.addColorStop(0.2, "white");
-      g.addColorStop(1, "transparent");
-      ctx.strokeStyle = g;
-      ctx.lineWidth = 0.8;
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    }
   }
 
-  // --- 6. FLOATING BITS (DEBRIS) ---
-  if (!refs.particles.current || refs.particles.current.length < 40) {
-    refs.particles.current = Array.from({ length: 40 }, () => ({
-      a: Math.random() * Math.PI * 2,
-      r: baseR + Math.random() * 200,
-      s: 1 + Math.random() * 3,
-      v: 0.002 + Math.random() * 0.01
-    }));
-  }
-  refs.particles.current.forEach(p => {
-    p.a += p.v * (1 + energy * 2);
-    const x = Math.cos(p.a) * p.r;
-    const y = Math.sin(p.a) * p.r;
-    ctx.fillStyle = `hsla(${ringHue}, 100%, 80%, ${0.1 + energy * 0.4})`;
-    ctx.fillRect(x, y, p.s, p.s);
-  });
-  ctx.restore();
+  ctx.restore(); // End Global Scale
 
-  // --- 7. ANAMORPHIC CROSS FLARE ---
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.globalCompositeOperation = "screen";
-  const flareIntensity = 0.1 + bass * 0.2;
-  const flareW = safeWidth * 0.7;
-  const flareH = safeHeight * 0.4;
-  
-  const gH = ctx.createLinearGradient(-flareW/2, 0, flareW/2, 0);
-  gH.addColorStop(0, "transparent"); gH.addColorStop(0.5, `hsla(${ringHue}, 100%, 80%, ${flareIntensity})`); gH.addColorStop(1, "transparent");
-  ctx.fillStyle = gH; ctx.fillRect(-flareW/2, -1, flareW, 2);
-
-  const gV = ctx.createLinearGradient(0, -flareH/2, 0, flareH/2);
-  gV.addColorStop(0, "transparent"); gV.addColorStop(0.5, `hsla(${ringHue}, 100%, 80%, ${flareIntensity * 0.5})`); gV.addColorStop(1, "transparent");
-  ctx.fillStyle = gV; ctx.fillRect(-0.5, -flareH/2, 1, flareH);
-  ctx.restore();
-
-  // --- 8. TECHNICAL HUD INTEGRATION ---
-  const hA = 0.6 + Math.sin(t * 8) * 0.1;
-  ctx.fillStyle = `hsla(${ringHue}, 100%, 95%, ${hA})`;
-  ctx.font = '900 16px "JetBrains Mono", monospace';
-  ctx.textAlign = "center";
-  ctx.fillText("QUANTUM_SINGULARITY_V5.0", cx, cy - baseR - 110);
-
-  // Stats Cluster
-  ctx.font = '700 8px "JetBrains Mono", monospace';
-  const ty = cy + baseR + 120;
-  ctx.fillText(`SYSTEM_STATUS: [NOMINAL] // SINGULARITY_STABILITY: 99.982%`, cx, ty);
-  ctx.fillText(`>> ENERGY_OUTPUT: ${(energy * 1.5).toFixed(4)} Pj // SYNC_LOCK: ${((0.8+bass*0.2)*100).toFixed(1)}%`, cx, ty + 12);
-  
-  // Orbiting HUD Marker
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(t * 0.2);
-  ctx.textAlign = "left";
-  ctx.fillText("● LINK_STABLE", baseR + 100, 0);
-  ctx.restore();
-
-  // --- 9. CINEMATIC POST-PROCESSING ---
-  // Vignette + Noise texture
-  const vg = ctx.createRadialGradient(cx, cy, baseR * 1.5, cx, cy, safeWidth * 1.1);
+  // --- 10. FINAL POST: CINEMATIC VIGNETTE & GRAIN ---
+  const vg = ctx.createRadialGradient(cx, cy, baseR * 1.1, cx, cy, sw);
   vg.addColorStop(0, "transparent");
-  vg.addColorStop(1, "rgba(0, 0, 4, 0.98)");
+  vg.addColorStop(1, `rgba(0,0,0,0.98)`);
   ctx.fillStyle = vg;
-  ctx.fillRect(0, 0, safeWidth, safeHeight);
-
-  ctx.globalCompositeOperation = "overlay";
-  for (let i = 0; i < safeHeight; i += 4) {
-    const n = Math.random() * 0.04;
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.03 + n})`;
-    ctx.fillRect(0, i, safeWidth, 2);
-  }
+  ctx.fillRect(0, 0, sw, sh);
 };
