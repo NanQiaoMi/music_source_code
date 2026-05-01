@@ -87,31 +87,6 @@ export const drawOrganicFluid = ({ ctx, width, height, data, params, time, refs,
   });
   ctx.restore();
 
-  // --- 4. VOLUMETRIC SHAFTS (Optimized Count) ---
-  ctx.save();
-  ctx.globalCompositeOperation = "screen";
-  const flareIntensity = (bass * 0.2 + treble * 0.5) * (0.5 + breath * 0.5);
-  if (flareIntensity > 0.25) {
-    const fGrd = ctx.createLinearGradient(0, cy, width, cy);
-    fGrd.addColorStop(0, "transparent");
-    fGrd.addColorStop(0.5, `hsla(${primaryHue}, 100%, 88%, ${flareIntensity * 0.4})`);
-    fGrd.addColorStop(1, "transparent");
-    ctx.fillStyle = fGrd; ctx.fillRect(0, cy - 1, width, 2);
-  }
-
-  const shaftCount = 8; // Reduced
-  for (let i = 0; i < shaftCount; i++) {
-    const angle = t * 0.07 + (i / shaftCount) * Math.PI * 2;
-    const sLen = width * (1.1 + bass * 0.3);
-    const grad = ctx.createLinearGradient(cx, cy, cx + Math.cos(angle) * sLen, cy + Math.sin(angle) * sLen);
-    const sA = (0.08 + bass * 0.12) * (0.6 + breath * 0.4);
-    grad.addColorStop(0, `hsla(${primaryHue}, 100%, 80%, ${sA})`);
-    grad.addColorStop(1, "transparent");
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, sLen, angle-0.04, angle+0.04);
-    ctx.fillStyle = grad; ctx.fill();
-  }
-  ctx.restore();
-
   // --- 5. PARALLAX NEBULA ---
   ctx.globalCompositeOperation = "screen";
   for (let i = 0; i < 2; i++) { // Reduced layers

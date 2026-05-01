@@ -205,17 +205,6 @@ export const drawNebulaField = ({ ctx, width, height, data, params, time, refs, 
     ctx.restore();
   }
 
-  // --- F. CINEMATIC OPTICAL SHIMMER ---
-  const shimmerCount = 16;
-  for (let i = 0; i < shimmerCount; i++) {
-    const sAngle = t * 0.08 + i * (Math.PI * 2 / shimmerCount);
-    const sLen = Math.max(width, height) * 0.6 * (1 + bass * 0.4);
-    const sGrd = ctx.createLinearGradient(0, 0, sLen, 0);
-    sGrd.addColorStop(0, `hsla(${mainHue}, 100%, 95%, ${0.04 * bass})`);
-    sGrd.addColorStop(1, "transparent");
-    ctx.save(); ctx.rotate(sAngle); ctx.fillStyle = sGrd; ctx.fillRect(0, -0.5, sLen, 1); ctx.restore();
-  }
-
   // D. Neural Orbit Particles
   const drawNeuralParticles = () => {
     ctx.save();
