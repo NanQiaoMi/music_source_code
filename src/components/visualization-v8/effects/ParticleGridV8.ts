@@ -201,7 +201,7 @@ export const ParticleGridV8Effect: EffectPlugin = {
     console.log(`ParticleGridV8 resized to ${width}x${height}`);
   },
   
-  destroy: () => {
+  destroy: (ctx) => {
     particles = [];
     console.log("ParticleGridV8 effect destroyed");
   }

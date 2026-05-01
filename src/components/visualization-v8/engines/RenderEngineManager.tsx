@@ -191,6 +191,9 @@ export function RenderEngineManager({
         };
         effectRef.current.destroy(cleanupCtx);
       }
+      // Reset private context for the new effect
+      privateContextRef.current = {};
+      
       const dimensions = setupCanvas();
       if (dimensions) {
         const initCtx: RenderContext = {

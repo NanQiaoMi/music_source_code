@@ -28,49 +28,78 @@ export const drawSpectrumRing = ({ ctx, width, height, data, params, time, refs,
 
   // --- 3. DYNAMIC BACKGROUND: RED SHIFT & GHOST TOTEM ---
   ctx.save();
-  // Background shifts from Black to Deep Charred Red
-  const bgRed = bass * 0.2;
-  ctx.fillStyle = `oklch(${10 + bgRed * 10}% ${bgRed * 0.15} 25)`; 
+  // Background shifts from Pitch Black to a Deep Charred Reactor Glow
+  const bgRed = bass * 0.35;
+  const bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(sw, sh) * 0.8);
+  bgGrad.addColorStop(0, `oklch(${12 + bgRed * 25}% ${0.1 + bgRed * 0.2} 25)`); // Glowing core
+  bgGrad.addColorStop(1, `oklch(2% 0.02 20)`); // Pitch black/charcoal oppressive edges
+  ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, sw, sh);
 
-  // The Ghost Hammer & Sickle (Ideological Totem)
+  // --- 4. BASTION AURORA (MASSIVE VOLUMETRIC GOD-RAYS) ---
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.globalAlpha = 0.02 + bass * 0.08;
-  ctx.fillStyle = `oklch(55% 0.3 25)`;
-  ctx.rotate(-t * 0.1);
-  // Hammer Abstraction
-  ctx.fillRect(-200, -50, 400, 100);
-  ctx.fillRect(-50, -200, 100, 400);
-  // Sickle Abstraction (Arc)
-  ctx.beginPath();
-  ctx.arc(0, 0, 300, 0, Math.PI, true);
-  ctx.lineWidth = 60;
-  ctx.strokeStyle = `oklch(55% 0.3 25)`;
-  ctx.stroke();
-  ctx.restore();
-
-  // --- 4. BASTION AURORA (SCATTERED VOLUMETRIC RAYS) ---
   ctx.globalCompositeOperation = "screen";
-  const rayCount = 16;
+  const rayCount = 24; // Increased density for a heavy, foggy atmosphere
   for (let i = 0; i < rayCount; i++) {
-    const rAng = t * 2.5 + i * (Math.PI * 2 / rayCount) + Math.cos(t + i) * 0.3;
-    const length = sw * 0.9;
-    const rWidth = 60 + bass * 180;
+    // Complex interplay of rotating searchlights
+    const direction = i % 2 === 0 ? 1 : -1;
+    const speed = 0.4 + (i % 3) * 0.3;
+    const rAng = t * speed * direction + i * (Math.PI * 2 / rayCount) + Math.sin(t * 0.5 + i) * 0.2;
     
-    const grd = ctx.createLinearGradient(cx, cy, cx + Math.cos(rAng) * length, cy + Math.sin(rAng) * length);
-    grd.addColorStop(0, `oklch(55% 0.35 25 / ${0.1 + bass * 0.3})`); 
-    grd.addColorStop(0.6, `oklch(75% 0.15 80 / ${0.05 + bass * 0.15})`); 
-    grd.addColorStop(1, "transparent");
+    const length = sw * 1.2; // Reach far beyond the screen
+    // Massive volumetric spread that heavily reacts to bass, simulating air displacement
+    const spread = 0.08 + (i % 4) * 0.04 + bass * 0.25; 
+    
+    // Radial gradient gives the illusion of thick atmospheric scattering
+    const grd = ctx.createRadialGradient(cx, cy, sh * 0.15, cx, cy, length * 0.8);
+    // Reduced alpha so the rays don't completely wash out the background
+    const alpha = (i % 2 === 0 ? 0.08 : 0.04) * (1 + bass * 1.2);
+    
+    grd.addColorStop(0, `oklch(65% 0.35 25 / ${alpha})`); // Oppressive Crimson Origin
+    grd.addColorStop(0.4, `oklch(85% 0.2 75 / ${alpha * 0.6})`); // Piercing Gold Mid
+    grd.addColorStop(1, "transparent"); // Fades into the dark void
     
     ctx.fillStyle = grd;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(rAng - 0.06 - bass * 0.1) * length, cy + Math.sin(rAng - 0.06 - bass * 0.1) * length);
-    ctx.lineTo(cx + Math.cos(rAng + 0.06 + bass * 0.1) * length, cy + Math.sin(rAng + 0.06 + bass * 0.1) * length);
+    // Draw wide expanding trapezoidal rays
+    ctx.lineTo(cx + Math.cos(rAng - spread) * length, cy + Math.sin(rAng - spread) * length);
+    ctx.lineTo(cx + Math.cos(rAng + spread) * length, cy + Math.sin(rAng + spread) * length);
     ctx.closePath();
     ctx.fill();
   }
+  ctx.restore();
+
+  // --- 4.5 SOVIET CONSTRUCTIVIST ELEMENTS (GEOMETRY & TYPOGRAPHY) ---
+  ctx.save();
+  ctx.translate(cx, cy);
+  
+  // Faint heavy industrial geometry (Constructivist diagonal lines)
+  ctx.globalAlpha = 0.05 + bass * 0.05;
+  ctx.fillStyle = `oklch(40% 0.3 25)`;
+  ctx.save();
+  ctx.rotate(-Math.PI / 4); // Standard constructivist diagonal
+  ctx.fillRect(-sw, -sh * 0.35, sw * 2, 50); // Heavy bar
+  ctx.fillRect(-sw, -sh * 0.35 - 80, sw * 2, 20); // Sub bar
+  ctx.fillRect(-sw, sh * 0.35, sw * 2, 50); // Bottom heavy bar
+  ctx.restore();
+
+  // Cyrillic Typography Slogans
+  ctx.globalAlpha = 0.06 + bass * 0.1;
+  ctx.fillStyle = `oklch(60% 0.3 25)`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  
+  // Top giant slogan: "GLORY TO LABOR"
+  ctx.font = "900 140px 'Arial Black', Impact, sans-serif";
+  ctx.fillText("СЛАВА ТРУДУ", 0, -sh * 0.38);
+  
+  // Bottom industrial stamps
+  ctx.font = "900 60px 'Arial Black', Impact, sans-serif";
+  ctx.letterSpacing = "20px";
+  ctx.fillText("ГОСТ-1917", 0, sh * 0.4);
+  ctx.letterSpacing = "0px";
+  
   ctx.restore();
 
   // --- 5. THE CRYSTAL TURBINE (CENTRAL SCULPTURE) ---
@@ -137,14 +166,15 @@ export const drawSpectrumRing = ({ ctx, width, height, data, params, time, refs,
   ctx.fillStyle = cG;
   ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.fill();
 
-  // Sharp Geometric Soviet Star (Core)
+  // Sharp Geometric Soviet Star (Core) - INCREASED SIZE
   ctx.strokeStyle = `oklch(90% 0.1 80)`; // Gold Highlight Star
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 5; // Thicker lines
   ctx.globalCompositeOperation = "screen";
   ctx.beginPath();
   for (let i = 0; i < 5; i++) {
-    const rO = baseR * 0.38 * (1 + bass * 0.2);
-    const rI = baseR * 0.14;
+    // Scaled up the star so it punches out of the core haze
+    const rO = baseR * 0.65 * (1 + bass * 0.3);
+    const rI = baseR * 0.25;
     const a1 = (i * Math.PI * 2 / 5) - Math.PI / 2;
     const a2 = a1 + (Math.PI / 5);
     ctx.lineTo(Math.cos(a1) * rO, Math.sin(a1) * rO);
@@ -154,20 +184,248 @@ export const drawSpectrumRing = ({ ctx, width, height, data, params, time, refs,
   ctx.stroke();
   ctx.restore();
 
-  // --- 7. THE IRON CURTAIN (FRAMING WITH STEAM) ---
-  const beamH = sh * 0.12;
+  // --- 7. THE GHOST TOTEM (FULL SOVIET STATE EMBLEM) ---
   ctx.save();
-  ctx.fillStyle = `oklch(15% 0.02 20)`; // Leaden Iron
-  ctx.fillRect(0, 0, sw, beamH);
-  ctx.fillRect(0, sh - beamH, sw, beamH);
+  ctx.translate(cx, cy);
   
-  // Steam Release Interactions
-  if (bass > 0.85) {
-    ctx.globalAlpha = (bass - 0.85) * 0.6;
-    ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
-    ctx.fillRect(0, beamH, sw, 30);
-    ctx.fillRect(0, sh - beamH - 30, sw, 20);
+  // REMOVED ALPHA TRANSPARENCY: The emblem is now 100% opaque, 
+  // making the #A20000 color incredibly deep, solid, and striking.
+  ctx.globalAlpha = 1.0; 
+  
+  // Gentle, oppressive rotation
+  ctx.rotate(Math.PI / 12 - t * 0.04);
+
+  // Scale the whole emblem to fit perfectly
+  const emSize = Math.min(sw, sh) * 0.35; 
+  const emScale = 1 + bass * 0.05;
+  ctx.scale(emScale, emScale);
+
+  // 7.1 THE INDUSTRIAL COGWHEEL (Outer Ring)
+  ctx.save();
+  ctx.lineWidth = 18;
+  ctx.lineJoin = "miter";
+  // Heavy industrial steel with a red backlit glow
+  ctx.strokeStyle = `rgba(15, 15, 15, 0.95)`; 
+  ctx.shadowColor = `#A20000`;
+  ctx.shadowBlur = 15;
+  ctx.beginPath();
+  const gearR = emSize * 0.7;
+  for (let i = 0; i < 24; i++) {
+    const a1 = (i * Math.PI * 2) / 24;
+    const a2 = ((i + 0.5) * Math.PI * 2) / 24;
+    ctx.arc(0, 0, gearR, a1, a2);
+    ctx.lineTo(Math.cos(a2) * (gearR + 25), Math.sin(a2) * (gearR + 25));
+    const a3 = ((i + 1) * Math.PI * 2) / 24;
+    ctx.arc(0, 0, gearR + 25, a2, a3);
+    ctx.lineTo(Math.cos(a3) * gearR, Math.sin(a3) * gearR);
   }
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+
+  // 7.15 THE RISING SUN & GLOBE (CLASSIC USSR EMBLEM BACKGROUND)
+  ctx.save();
+  ctx.translate(0, emSize * 0.2); 
+  // Golden Sun Core
+  ctx.beginPath();
+  ctx.arc(0, 0, emSize * 0.3, Math.PI, Math.PI * 2);
+  ctx.fillStyle = `oklch(80% 0.18 75 / 0.95)`; // Solid Bright Gold
+  ctx.fill();
+  
+  // Sharp Golden Sun Rays
+  ctx.fillStyle = `oklch(80% 0.18 75 / 0.6)`;
+  for(let i=1; i<20; i++) {
+    const ang = Math.PI + i * (Math.PI / 20);
+    const rayLength = emSize * (0.6 + (i % 2 === 0 ? 0.4 : 0)); 
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(ang - 0.02) * rayLength, Math.sin(ang - 0.02) * rayLength);
+    ctx.lineTo(Math.cos(ang + 0.02) * rayLength, Math.sin(ang + 0.02) * rayLength);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // The World Globe (Grid of Longitudes and Latitudes)
+  ctx.save();
+  ctx.translate(0, -emSize * 0.15);
+  ctx.beginPath();
+  ctx.arc(0, 0, emSize * 0.45, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(10, 20, 30, 0.9)`; // Deep ocean
+  ctx.fill();
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = `rgba(255, 215, 0, 0.35)`; // Golden grid lines
+  ctx.stroke(); 
+  for (let i = 1; i <= 4; i++) { 
+    ctx.beginPath(); ctx.ellipse(0, 0, emSize * 0.45 * (i / 5), emSize * 0.45, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, 0, emSize * 0.45, emSize * 0.45 * (i / 5), 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+
+  // 7.18 INDUSTRIAL FACTORY SILHOUETTES (NEW SOVIET ELEMENT)
+  // Factories and chimneys at the bottom of the globe, rising up into the scene
+  ctx.save();
+  ctx.translate(0, emSize * 0.25); // Lower part of the emblem
+  ctx.fillStyle = `oklch(15% 0.05 20)`; // Pitch black iron silhouette
+  ctx.beginPath();
+  // Left side factories
+  ctx.moveTo(-emSize * 0.4, 0);
+  ctx.lineTo(-emSize * 0.35, -emSize * 0.1); 
+  ctx.lineTo(-emSize * 0.25, -emSize * 0.1);
+  ctx.lineTo(-emSize * 0.25, 0);
+  // Heavy Chimney 1
+  ctx.lineTo(-emSize * 0.2, 0);
+  ctx.lineTo(-emSize * 0.18, -emSize * 0.25);
+  ctx.lineTo(-emSize * 0.15, -emSize * 0.25);
+  ctx.lineTo(-emSize * 0.13, 0);
+  // Center Blocks
+  ctx.lineTo(emSize * 0.1, 0);
+  // Heavy Chimney 2
+  ctx.lineTo(emSize * 0.15, 0);
+  ctx.lineTo(emSize * 0.17, -emSize * 0.3);
+  ctx.lineTo(emSize * 0.22, -emSize * 0.3);
+  ctx.lineTo(emSize * 0.24, 0);
+  // Right side factories
+  ctx.lineTo(emSize * 0.3, 0);
+  ctx.lineTo(emSize * 0.35, -emSize * 0.15);
+  ctx.lineTo(emSize * 0.4, -emSize * 0.15);
+  ctx.lineTo(emSize * 0.45, 0);
+  ctx.fill();
+  ctx.restore();
+
+  // 7.2 THE WHEAT WREATH (GEOMETRIC USSR STYLE KERNELS)
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = `oklch(75% 0.18 75)`; // Bright Golden Bronze
+  ctx.fillStyle = `oklch(75% 0.18 75)`;
+  ctx.shadowColor = `rgba(255, 215, 0, 0.4)`;
+  ctx.shadowBlur = 12;
+  const wreathR = emSize * 0.85;
+  
+  // Base Stems
+  ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.arc(0, 0, wreathR, Math.PI * 0.65, Math.PI * 1.35, false); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, 0, wreathR, Math.PI * 1.65, Math.PI * 2.35, false); ctx.stroke();
+  
+  // Wheat Kernels and Awns
+  const drawKernel = (x: number, y: number, angle: number) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    // Diamond kernel
+    ctx.beginPath();
+    ctx.moveTo(0, -12); ctx.lineTo(6, 0); ctx.lineTo(0, 12); ctx.lineTo(-6, 0);
+    ctx.fill();
+    // Awn (wheat hair extending outwards)
+    ctx.beginPath();
+    ctx.moveTo(0, -12);
+    ctx.lineTo(15, -35);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  for(let i=0; i<16; i++) {
+    const angL = Math.PI * 0.65 + i * 0.045;
+    drawKernel(Math.cos(angL)*wreathR, Math.sin(angL)*wreathR, angL + Math.PI/4);
+    drawKernel(Math.cos(angL)*(wreathR-14), Math.sin(angL)*(wreathR-14), angL - Math.PI/4);
+    
+    const angR = Math.PI * 1.65 + i * 0.045;
+    drawKernel(Math.cos(angR)*wreathR, Math.sin(angR)*wreathR, angR - Math.PI/4);
+    drawKernel(Math.cos(angR)*(wreathR-14), Math.sin(angR)*(wreathR-14), angR + Math.PI/4);
+  }
+  ctx.restore();
+
+  // 7.25 RED RIBBONS WRAPPING THE WHEAT
+  ctx.save();
+  ctx.lineWidth = 32; // Thicker ribbons
+  ctx.strokeStyle = `#A20000`; // EXACT COLOR REQUESTED BY USER
+  ctx.shadowColor = "rgba(0,0,0,0.95)";
+  ctx.shadowBlur = 15;
+  ctx.shadowOffsetY = 4;
+  for (let i = 0; i < 7; i++) {
+    const angL = Math.PI * 0.72 + i * 0.1;
+    ctx.beginPath(); ctx.arc(0, 0, wreathR - 5, angL, angL + 0.045); ctx.stroke();
+    const angR = Math.PI * 1.72 + i * 0.1;
+    ctx.beginPath(); ctx.arc(0, 0, wreathR - 5, angR, angR + 0.045); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.arc(0, wreathR, 45, 0, Math.PI * 2); ctx.fillStyle = `#A20000`; ctx.fill();
+  ctx.restore();
+
+  // 7.3 THE TOP RED STAR
+  ctx.save();
+  ctx.translate(0, -emSize * 0.85);
+  ctx.beginPath();
+  const starR = emSize * 0.18;
+  for (let i = 0; i < 5; i++) {
+    const a1 = (i * Math.PI * 2 / 5) - Math.PI / 2;
+    const a2 = a1 + (Math.PI / 5);
+    ctx.lineTo(Math.cos(a1) * starR, Math.sin(a1) * starR);
+    ctx.lineTo(Math.cos(a2) * (starR * 0.4), Math.sin(a2) * (starR * 0.4));
+  }
+  ctx.closePath();
+  ctx.fillStyle = `#A20000`; // EXACT COLOR
+  ctx.fill();
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = `oklch(80% 0.2 70)`; // Golden rim
+  ctx.stroke();
+  ctx.restore();
+
+  // 7.35 CURVED SOVIET SLOGAN
+  ctx.save();
+  ctx.fillStyle = `#A20000`; // EXACT COLOR
+  ctx.shadowColor = "rgba(0,0,0,0.6)"; // Text shadow for readability
+  ctx.shadowBlur = 5;
+  const text = "ПРОЛЕТАРИИ ВСЕХ СТРАН, СОЕДИНЯЙТЕСЬ!"; // Workers of the world, unite!
+  ctx.font = `900 ${emSize * 0.12}px 'Arial Black', Impact, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  const textR = emSize * 1.05; 
+  const totalAngle = Math.PI * 1.2; 
+  const startAngle = -Math.PI / 2 - totalAngle / 2;
+  for (let i = 0; i < text.length; i++) {
+    ctx.save();
+    const charAngle = startAngle + (i / (text.length - 1)) * totalAngle;
+    ctx.rotate(charAngle + Math.PI / 2);
+    ctx.translate(0, -textR);
+    ctx.fillText(text[i], 0, 0);
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // 7.4 EXACT CCP EMBLEM (FROM PROVIDED SVG)
+  ctx.save();
+  const pathScale = emSize / 110; 
+  ctx.scale(pathScale, pathScale);
+  ctx.translate(-100, -110); 
+  
+  const emblemPath = new Path2D("M172 159 c6 7-8 21-15 15 l-83-86-14 14-20-20 32-31 33 6-18 18 m-22 62 -3 3 3 3 c4 4-2 10-6 6 l-3-3 c-5 10-9 14-15 20 -8 8-21-5-13-13 6-6 10-10 20-15 l-3-3 c-4-4 2-10 6-6 l3 3 8-8 h8 c8 12 30 28 57 7 23-18 24-69-26-98 50 4 82 77 41 113 -26 23-64 15-77-9");
+  
+  // Extreme deep contrast shadow to make the emblem pop off the globe
+  ctx.shadowColor = "rgba(0,0,0,0.9)";
+  ctx.shadowBlur = 25;
+  ctx.shadowOffsetY = 10;
+  
+  // EXACT #A20000 color requested by user, COMPLETELY NO STROKE
+  ctx.fillStyle = `#A20000`; 
+  ctx.fill(emblemPath);
+  ctx.restore();
+
+  ctx.restore(); // End Totem Group
+
+  // --- 7.5 CONSTRUCTIVIST CORNER CHEVRONS (NEW SOVIET ELEMENT) ---
+  ctx.save();
+  ctx.fillStyle = `#A20000`;
+  ctx.globalAlpha = 0.85;
+  const cSize = Math.min(sw, sh) * 0.15;
+  // Top Left Triangle
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(cSize, 0); ctx.lineTo(0, cSize); ctx.fill();
+  // Top Right Triangle
+  ctx.beginPath(); ctx.moveTo(sw, 0); ctx.lineTo(sw - cSize, 0); ctx.lineTo(sw, cSize); ctx.fill();
+  // Bottom Left Triangle
+  ctx.beginPath(); ctx.moveTo(0, sh); ctx.lineTo(cSize, sh); ctx.lineTo(0, sh - cSize); ctx.fill();
+  // Bottom Right Triangle
+  ctx.beginPath(); ctx.moveTo(sw, sh); ctx.lineTo(sw - cSize, sh); ctx.lineTo(sw, sh - cSize); ctx.fill();
   ctx.restore();
 
   // --- 8. ANAMORPHIC RED FLARE ---
@@ -183,7 +441,7 @@ export const drawSpectrumRing = ({ ctx, width, height, data, params, time, refs,
   ctx.fillRect(-fW/2, -4, fW, 8);
   ctx.restore();
 
-  // --- 9. REVOLUTIONARY METEORS (PARTICLES) ---
+  // --- 10. REVOLUTIONARY METEORS (PARTICLES) ---
   if (refs.particles.current) {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
@@ -201,10 +459,11 @@ export const drawSpectrumRing = ({ ctx, width, height, data, params, time, refs,
 
   ctx.restore(); // End Global Scale
 
-  // --- 10. FINAL POST: CINEMATIC VIGNETTE & GRAIN ---
-  const vg = ctx.createRadialGradient(cx, cy, baseR * 1.1, cx, cy, sw);
-  vg.addColorStop(0, "transparent");
-  vg.addColorStop(1, `rgba(0,0,0,0.98)`);
-  ctx.fillStyle = vg;
-  ctx.fillRect(0, 0, sw, sh);
+  // --- 11. FINAL POST: CINEMATIC VIGNETTE & GRAIN ---
+  // (User requested NO BLACK EDGES, removed vignette)
+  // const vg = ctx.createRadialGradient(cx, cy, baseR * 1.5, cx, cy, sw * 1.2);
+  // vg.addColorStop(0, "transparent");
+  // vg.addColorStop(1, `rgba(0,0,0,0.85)`); // Less aggressive darkness at the edges
+  // ctx.fillStyle = vg;
+  // ctx.fillRect(0, 0, sw, sh);
 };

@@ -181,8 +181,53 @@ export const AudioLiquidV8Effect: EffectPlugin = {
     (this as any).private.prevGrid = grid;
     (this as any).private.grid = newGrid;
 
-    context.fillStyle = "black";
-    context.fillRect(0, 0, width, height);
+    // --- Dynamic Background from Cover Colors ---
+    let r = 0, g = 0, b = 0;
+    let hasColor = false;
+    
+    try {
+      const { useUIStore } = require("@/store/uiStore");
+      const themeColors = useUIStore.getState().themeColors;
+      // Prefer dominant or vibrant for a brighter look, fallback to darkMuted
+      const targetHex = themeColors?.dominant || themeColors?.vibrant || themeColors?.darkMuted;
+      
+      if (targetHex) {
+        r = parseInt(targetHex.slice(1, 3), 16) || 0;
+        g = parseInt(targetHex.slice(3, 5), 16) || 0;
+        b = parseInt(targetHex.slice(5, 7), 16) || 0;
+        hasColor = true;
+      }
+    } catch (e) {}
+
+    if (hasColor) {
+      // 1. Clear with a deep shade of the cover color instead of pure black
+      // This ensures the edges are colored, not dead black.
+      context.fillStyle = `rgba(${Math.floor(r * 0.15)}, ${Math.floor(g * 0.15)}, ${Math.floor(b * 0.15)}, 1)`;
+      context.fillRect(0, 0, width, height);
+
+      // 2. Bright, expansive radial glow
+      const centerX = width / 2;
+      const centerY = height / 2;
+      // Make the radius huge so the color reaches all the way to the corners
+      const maxRadius = Math.max(width, height) * 1.2;
+      
+      const pulseIntensity = avgEnergy * params.audioIntensity;
+      
+      // Significantly boosted opacities for a vibrant look
+      const innerOpacity = Math.min(1.0, 0.7 + pulseIntensity * 0.3); 
+      const midOpacity = Math.min(1.0, 0.4 + pulseIntensity * 0.2);
+
+      const grad = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
+      grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${innerOpacity})`);
+      grad.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${midOpacity})`);
+      grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`); // Fades smoothly into the deep base color
+
+      context.fillStyle = grad;
+      context.fillRect(0, 0, width, height);
+    } else {
+      context.fillStyle = "black";
+      context.fillRect(0, 0, width, height);
+    }
 
     context.lineWidth = params.lineWidth;
     context.lineCap = "round";
@@ -230,7 +275,13 @@ export const AudioLiquidV8Effect: EffectPlugin = {
     (this as any).private.grid = [];
     (this as any).private.prevGrid = [];
   },
-  destroy() {}
+  destroy(ctx) {
+    if (ctx && ctx.private) {
+      ctx.private.grid = [];
+      ctx.private.prevGrid = [];
+      ctx.private.time = 0;
+    }
+  }
 };
 
 function getLiquidColor(scheme: string, height: number, maxHeight: number, time: number): number {

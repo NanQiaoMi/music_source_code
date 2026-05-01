@@ -158,7 +158,7 @@ export const SpectrumWaterfallV8Effect: EffectPlugin = {
     console.log(`SpectrumWaterfallV8 resized to ${width}x${height}`);
   },
   
-  destroy: () => {
+  destroy: (ctx) => {
     history = [];
     console.log("SpectrumWaterfallV8 effect destroyed");
   }

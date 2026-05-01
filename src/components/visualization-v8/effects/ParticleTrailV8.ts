@@ -207,5 +207,6 @@ export const ParticleTrailV8: EffectPlugin = {
   
   destroy() {
     (this as any).particles = [];
+    (this as any).time = 0;
   }
 };

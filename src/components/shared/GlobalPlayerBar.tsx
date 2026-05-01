@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { Volume2, VolumeX, Music2, Maximize2 } from "lucide-react";
+import { GlassRadarWidget } from "@/components/GlassRadarWidget";
 
 export const APPLE_SPRING_CONFIG = {
   type: "spring" as const,
@@ -49,7 +50,8 @@ export const GlobalPlayerBar: React.FC = () => {
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverX, setHoverX] = useState<number>(0);
 
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const progress = duration > 0 && !isNaN(currentTime) && !isNaN(duration) 
+    ? (currentTime / duration) * 100 : 0;
 
   const handleProgressClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -286,6 +288,10 @@ export const GlobalPlayerBar: React.FC = () => {
           >
             <Maximize2 className="w-4 h-4" />
           </button>
+
+          <div className="ml-2">
+            <GlassRadarWidget />
+          </div>
         </div>
       </div>
     </motion.div>

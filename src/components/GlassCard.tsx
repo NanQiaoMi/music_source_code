@@ -34,7 +34,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   hover = true,
   hoverScale = 1.02,
 }) => {
-  const Component = onClick ? motion.div : "div";
+  const Component = (onClick || hover) ? motion.div : "div";
   const motionProps = hover
     ? {
         whileHover: { scale: hoverScale },

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { ThemeColors, defaultColors } from "@/utils/colorExtractor";
 
-type ViewType = "home" | "player" | "visualization";
+type ViewType = "home" | "player" | "visualization" | "emotion";
 type ThemeMode = "light" | "dark" | "auto";
 
 export interface ToastMessage {

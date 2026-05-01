@@ -262,6 +262,10 @@ export class DSPProcessor {
   }
 
   private connectChain(): void {
+    if (this.processors.length === 0) {
+      this.inputNode.connect(this.outputNode);
+      return;
+    }
     this.inputNode.connect(this.processors[0]);
     this.connectProcessors();
     this.processors[this.processors.length - 1].connect(this.outputNode);

@@ -3,26 +3,21 @@ import { useAudioStore, AudioError } from "@/store/audioStore";
 import { getStoredMusic, createBlobUrlFromStoredMusic } from "@/services/localMusicStorage";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { getAudioEffectsManager } from "@/lib/audio/AudioEffectsManager";
+import { AudioEngine } from "@/lib/audio/AudioEngine";
+import { CrossfadeMixer } from "@/lib/audio/CrossfadeMixer";
+import { useEmotionStore } from "@/store/emotionStore";
 
 let audioInstance: HTMLAudioElement | null = null;
+let secondaryAudioInstance: HTMLAudioElement | null = null;
 let audioElementRef: { current: HTMLAudioElement | null } = { current: null };
+let secondaryElementRef: { current: HTMLAudioElement | null } = { current: null };
 let currentAudioUrlRef: { current: string | null } = { current: null };
 let isPlayingRef: { current: boolean } = { current: false };
 let currentSongIdRef: { current: string | null } = { current: null };
 let isInitialized = false;
 let eventListenersAdded = false;
-let audioContext: AudioContext | null = null;
-let sourceNode: MediaElementAudioSourceNode | null = null;
-let eqNodes: BiquadFilterNode[] = [];
-let gainNode: GainNode | null = null;
-let analyserNode: AnalyserNode | null = null;
 let playStartTime: number = 0;
 let playStartPosition: number = 0;
-
-const EQ_FREQUENCIES = [
-  20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600,
-  2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000,
-];
 
 export const useAudioPlayer = () => {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
@@ -44,63 +39,35 @@ export const useAudioPlayer = () => {
   const setError = useAudioStore(state => state.setError);
   const setBufferedRanges = useAudioStore(state => state.setBufferedRanges);
   const nextSong = useAudioStore(state => state.nextSong);
+  const isEmotionCurveMode = useAudioStore(state => state.isEmotionCurveMode);
+  const setDynamicCrossfadeDuration = useAudioStore(state => state.setDynamicCrossfadeDuration);
 
   const { recordPlay } = useStatsAchievementsStore();
 
   const initAudioContext = useCallback(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !audioRef.current) return;
 
-    if (!audioContext) {
-      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
+    const engine = AudioEngine.getInstance();
+    engine.init(audioRef.current);
 
-    if (audioRef.current && !sourceNode) {
-      sourceNode = audioContext.createMediaElementSource(audioRef.current);
-
-      eqNodes = [];
-      for (let i = 0; i < EQ_FREQUENCIES.length; i++) {
-        const filter = audioContext.createBiquadFilter();
-        filter.type =
-          i === 0 ? "lowshelf" : i === EQ_FREQUENCIES.length - 1 ? "highshelf" : "peaking";
-        filter.frequency.value = EQ_FREQUENCIES[i];
-        filter.Q.value = 1;
-        filter.gain.value = 0;
-        eqNodes.push(filter);
-      }
-
-      gainNode = audioContext.createGain();
-
-      analyserNode = audioContext.createAnalyser();
-      analyserNode.fftSize = 2048;
-      analyserNode.smoothingTimeConstant = 0.8;
-
-      sourceNode.connect(eqNodes[0]);
-      for (let i = 0; i < eqNodes.length - 1; i++) {
-        eqNodes[i].connect(eqNodes[i + 1]);
-      }
-      eqNodes[eqNodes.length - 1].connect(gainNode);
-      gainNode.connect(analyserNode);
-
+    const analyser = engine.getAnalyser();
+    const context = engine.getContext();
+    
+    if (analyser && context) {
       const effectsManager = getAudioEffectsManager();
       effectsManager.init().then(() => {
-        if (analyserNode && audioContext && audioContext.destination) {
-          effectsManager.connect(analyserNode, audioContext.destination, audioRef.current ?? undefined);
-        }
+        effectsManager.connect(analyser, context.destination, audioRef.current ?? undefined);
       });
     }
   }, []);
 
   const updateEQ = useCallback(() => {
-    if (!eqNodes.length || !isEQEnabled) {
-      eqNodes.forEach((filter) => {
-        filter.gain.value = 0;
-      });
+    const engine = AudioEngine.getInstance();
+    if (!isEQEnabled) {
+      engine.updateEQ(new Array(30).fill(0));
       return;
     }
-
-    eqNodes.forEach((filter, i) => {
-      filter.gain.value = eqBands[i] || 0;
-    });
+    engine.updateEQ(eqBands);
   }, [eqBands, isEQEnabled]);
 
   const recordListeningTime = useCallback(() => {
@@ -157,6 +124,7 @@ export const useAudioPlayer = () => {
 
       if (!audioRef.current) {
         audioInstance = new Audio();
+        audioInstance.crossOrigin = "anonymous"; // Important for AudioContext
         audioRef.current = audioInstance;
         setAudioElement(audioInstance);
       } else {
@@ -164,7 +132,13 @@ export const useAudioPlayer = () => {
       }
 
       if (typeof window !== "undefined") {
-        window.audioElementRef = audioRef;
+        (window as any).audioElementRef = audioRef;
+      }
+
+      if (!secondaryElementRef.current) {
+        secondaryAudioInstance = new Audio();
+        secondaryAudioInstance.crossOrigin = "anonymous";
+        secondaryElementRef.current = secondaryAudioInstance;
       }
     }
 
@@ -176,6 +150,12 @@ export const useAudioPlayer = () => {
 
       audio.addEventListener("timeupdate", () => {
         setCurrentTime(audio.currentTime);
+
+        // Pre-emptive crossfade check (e.g., 5s before end if in emotion curve mode)
+        if (isEmotionCurveMode && audio.duration > 0 && audio.currentTime > audio.duration - 5) {
+          // Trigger next song early for crossfade? 
+          // Actually, let's keep it simple and trigger on song change first.
+        }
       });
 
       audio.addEventListener("loadedmetadata", () => {
@@ -274,6 +254,7 @@ export const useAudioPlayer = () => {
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = isMuted ? 0 : volume;
+      AudioEngine.getInstance().setVolume(isMuted ? 0 : volume);
     }
   }, [volume, isMuted]);
 
@@ -323,21 +304,43 @@ export const useAudioPlayer = () => {
             }
           }
 
+          const previousSongId = currentSongIdRef.current;
           currentSongIdRef.current = songId;
           isPlayingRef.current = true;
 
-          try {
-            audioRef.current.src = audioUrl;
-            audioRef.current.load();
+          // DYNAMIC CROSSFADE LOGIC
+          if (isEmotionCurveMode && previousSongId && previousSongId !== songId && audioRef.current && secondaryElementRef.current) {
+            const mixer = CrossfadeMixer.getInstance();
+            const duration = mixer.calculateDynamicDuration(previousSongId, songId);
+            setDynamicCrossfadeDuration(duration);
+
+            const fromAudio = audioRef.current;
+            const toAudio = secondaryElementRef.current;
+            
+            toAudio.src = audioUrl;
+            // No await here, let the crossfade handle the async nature
+            mixer.crossfade(fromAudio, toAudio, duration);
+            
+            // IMMEDIATE SWAP to prevent navigation deadlocks
+            audioElementRef.current = toAudio;
+            secondaryElementRef.current = fromAudio;
+            setAudioElement(toAudio);
+            
             setIsPlaying(true);
-          } catch (e) {
-            console.error("Error loading audio:", e);
-            setIsLoading(false);
-            setError({
-              type: "load",
-              message: "音频加载失败",
-              timestamp: Date.now(),
-            });
+          } else {
+            try {
+              audioRef.current.src = audioUrl;
+              audioRef.current.load();
+              setIsPlaying(true);
+            } catch (e) {
+              console.error("Error loading audio:", e);
+              setIsLoading(false);
+              setError({
+                type: "load",
+                message: "音频加载失败",
+                timestamp: Date.now(),
+              });
+            }
           }
         } else {
           setIsLoading(false);
@@ -363,9 +366,8 @@ export const useAudioPlayer = () => {
       playStartTime = Date.now();
       playStartPosition = audioRef.current.currentTime;
 
-      if (audioContext?.state === "suspended") {
-        audioContext.resume();
-      }
+      const engine = AudioEngine.getInstance();
+      engine.resume();
       initAudioContext();
       updateEQ();
 
@@ -394,9 +396,9 @@ export const useAudioPlayer = () => {
     updateEQ();
   }, [eqBands, isEQEnabled, updateEQ]);
 
-  const handlePlayError = (error: Error) => {
-    // 忽略播放被暂停中断的错误（正常的竞态条件）
-    if (error.message.includes("interrupted by a call to pause")) {
+  const handlePlayError = (error: any) => {
+    // Silently ignore AbortError as it's expected during rapid track changes
+    if (error.name === "AbortError" || error.message?.includes("interrupted by a call to pause") || error.message?.includes("new load request")) {
       return;
     }
 
@@ -455,5 +457,5 @@ export const useAudioPlayer = () => {
   };
 };
 
-export const getAudioAnalyser = (): AnalyserNode | null => analyserNode;
-export const getAudioContext = (): AudioContext | null => audioContext;
+export const getAudioAnalyser = (): AnalyserNode | null => AudioEngine.getInstance().getAnalyser();
+export const getAudioContext = (): AudioContext | null => AudioEngine.getInstance().getContext();

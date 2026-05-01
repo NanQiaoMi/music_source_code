@@ -215,7 +215,12 @@ export const TunnelFlightV8Effect: EffectPlugin = {
   resize() {
     (this as any).private.segments = [];
   },
-  destroy() {}
+  destroy(ctx) {
+    if (ctx && ctx.private) {
+      ctx.private.segments = [];
+      ctx.private.time = 0;
+    }
+  }
 };
 
 function getColorHue(scheme: string, index: number, total: number, time: number): number {

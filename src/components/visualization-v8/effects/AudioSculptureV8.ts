@@ -271,7 +271,11 @@ export const AudioSculptureV8Effect: EffectPlugin = {
     context.shadowBlur = 0;
   },
   resize() {},
-  destroy() {}
+  destroy(ctx) {
+    if (ctx && ctx.private) {
+      ctx.private.time = 0;
+    }
+  }
 };
 
 function rotate3D(x: number, y: number, z: number, rotX: number, rotY: number) {

@@ -17,11 +17,14 @@ import { VirtualCursor } from "@/components/VirtualCursor";
 import { GlassToastContainer } from "@/components/GlassToast";
 import { AudioEqualizer } from "@/components/AudioEqualizer";
 import { VisualSettingsPanel } from "@/components/VisualSettings";
+import EmotionMatrixView from "@/components/emotion/EmotionMatrixView";
+import { GlassRadarWidget } from "@/components/GlassRadarWidget";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useGestureStore } from "@/store/gestureStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
+import { useEmotionStore } from "@/store/emotionStore";
 import { useDynamicTheme } from "@/hooks/useDynamicTheme";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import {
@@ -87,7 +90,7 @@ const APPLE_SPRING_CONFIG = {
 };
 
 export default function Home() {
-  const { currentView, isTransitioning } = useUIStore();
+  const { currentView, setCurrentView, isTransitioning } = useUIStore();
   const { initializePlaylist, songs } = usePlaylistStore();
   const { isEnabled: isGestureEnabled, toggleGestureEnabled } = useGestureStore();
   const [mounted, setMounted] = useState(false);
@@ -124,6 +127,7 @@ export default function Home() {
   const [showProfessionalTools, setShowProfessionalTools] = useState(false);
   const [showInstantMix, setShowInstantMix] = useState(false);
   const [showSmartRandom, setShowSmartRandom] = useState(false);
+  const [showEmotionMatrix, setShowEmotionMatrix] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["模式与设置", "音频处理工具", "智能分析工具"]));
   const professionalToolsRef = useRef<HTMLDivElement>(null);
 
@@ -168,6 +172,7 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     initializePlaylist();
+    useEmotionStore.getState().initializeEmotions();
   }, [initializePlaylist]);
 
   if (!mounted) {
@@ -404,10 +409,13 @@ export default function Home() {
               <InstantMixButton onClick={() => setShowInstantMix(true)} />
 
               <button
-                onClick={() => setShowSmartRandom(true)}
+                onClick={() => setShowEmotionMatrix(true)}
                 className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10 group"
-                style={{ color: "var(--theme-text-secondary)" }}
-                title="智能偏好矩阵"
+                style={{ 
+                  color: showEmotionMatrix ? "var(--theme-accent-pink)" : "var(--theme-text-secondary)",
+                  background: showEmotionMatrix ? "rgba(236, 72, 153, 0.1)" : "transparent"
+                }}
+                title="情绪资料库 (Emotion Matrix)"
               >
                 <motion.div
                   whileHover={{ rotate: 10, scale: 1.1 }}
@@ -786,6 +794,16 @@ export default function Home() {
         <Player3D />
       </motion.div>
 
+      {/* Emotion Matrix Modal */}
+      <AnimatePresence>
+        {showEmotionMatrix && (
+          <EmotionMatrixView 
+            isOpen={showEmotionMatrix} 
+            onClose={() => setShowEmotionMatrix(false)} 
+          />
+        )}
+      </AnimatePresence>
+
       {/* Visualization View - V8.0 更新 */}
       <VisualizationView />
 
@@ -904,6 +922,11 @@ export default function Home() {
 
       {/* Music Library Sync Provider */}
       <MusicLibrarySyncProvider />
+
+      {/* Floating Emotion Radar Widget */}
+      <div className="fixed bottom-8 right-8 z-[100]">
+        <GlassRadarWidget />
+      </div>
     </main>
   );
 }

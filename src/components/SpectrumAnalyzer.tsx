@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useSpectrumStore } from "@/store/spectrumStore";
 import { getAudioAnalyser, getAudioContext } from "@/hooks/useAudioPlayer";
+import { AudioEngine } from "@/lib/audio/AudioEngine";
 
 interface SpectrumAnalyzerProps {
   audioElement?: HTMLAudioElement | null;
@@ -16,6 +17,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number | null>(null);
+  const dataArrayRef = useRef<Uint8Array | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   const {
@@ -62,9 +64,16 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
       return;
     }
 
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    analyser.getByteFrequencyData(dataArray);
+    const engine = AudioEngine.getInstance();
+    const frequencyBinCount = engine.frequencyBinCount;
+    
+    // Use a persistent array to avoid allocations
+    if (!dataArrayRef.current || dataArrayRef.current.length !== frequencyBinCount) {
+      dataArrayRef.current = new Uint8Array(frequencyBinCount);
+    }
+    
+    const dataArray = dataArrayRef.current;
+    engine.getByteFrequencyData(dataArray);
 
     ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
@@ -77,8 +86,8 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
       ctx.stroke();
     }
 
-    const barWidth = width / Math.min(bufferLength, 128);
-    const numBars = Math.min(bufferLength, 128);
+    const barWidth = width / Math.min(frequencyBinCount, 128);
+    const numBars = Math.min(frequencyBinCount, 128);
 
     ctx.fillStyle = barColor;
 

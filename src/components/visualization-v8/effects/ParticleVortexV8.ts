@@ -215,7 +215,12 @@ export const ParticleVortexV8Effect: EffectPlugin = {
   resize() {
     (this as any).private.particles = [];
   },
-  destroy() {}
+  destroy(ctx) {
+    if (ctx && ctx.private) {
+      ctx.private.particles = [];
+      ctx.private.time = 0;
+    }
+  }
 };
 
 function getVortexColor(scheme: string, colorValue: number, vortexIndex: number, time: number): number {

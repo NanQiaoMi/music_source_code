@@ -183,7 +183,12 @@ export const FractalGeometryV8Effect: EffectPlugin = {
     context.restore();
   },
   resize() {},
-  destroy() {}
+  destroy(ctx) {
+    if (ctx && ctx.private) {
+      ctx.private.time = 0;
+      ctx.private.baseRotation = 0;
+    }
+  }
 };
 
 function drawSierpinskiTriangle(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, depth: number) {

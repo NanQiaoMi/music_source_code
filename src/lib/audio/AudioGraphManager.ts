@@ -1,3 +1,5 @@
+import { AudioEngine } from "./AudioEngine";
+
 export interface AudioNodeInfo {
   id: string;
   type: "source" | "gain" | "filter" | "compressor" | "analyser" | "panner" | "convolver" | "delay";
@@ -23,7 +25,8 @@ export class AudioGraphManager {
   async init(): Promise<void> {
     if (typeof window === "undefined") return;
 
-    this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
+    this.context = AudioEngine.getInstance().getContext();
+    if (!this.context) return;
 
     this.masterGain = this.context.createGain();
     this.analyser = this.context.createAnalyser();

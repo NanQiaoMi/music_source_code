@@ -261,5 +261,10 @@ export const SpringSystemV8Effect: EffectPlugin = {
   resize() {
     (this as any).private.particles = [];
   },
-  destroy() {}
+  destroy(ctx) {
+    if (ctx && ctx.private) {
+      ctx.private.particles = [];
+      ctx.private.time = 0;
+    }
+  }
 };

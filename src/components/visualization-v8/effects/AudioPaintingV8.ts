@@ -230,7 +230,12 @@ export const AudioPaintingV8Effect: EffectPlugin = {
     context.restore();
   },
   resize() {},
-  destroy() {}
+  destroy(ctx) {
+    if (ctx && ctx.private) {
+      ctx.private.brushes = [];
+      ctx.private.time = 0;
+    }
+  }
 };
 
 function getColor(scheme: string, index: number, total: number, time: number): string {

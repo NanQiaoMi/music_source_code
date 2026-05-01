@@ -62,24 +62,10 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose 
 
   const applyEQToAudio = useCallback(
     (gainValues: number[]) => {
-      if (!audioElement) return;
-
-      const audioContext = (audioElement as any).getAudioContext?.();
-      if (!audioContext) return;
-
-      const filters = (audioElement as any)._eqFilters;
-      if (filters && filters.length > 0) {
-        const useValues = gainValues.slice(0, filters.length);
-        useValues.forEach((gain, index) => {
-          if (filters[index]) {
-            filters[index].gain.value = gain;
-          }
-        });
-      }
-
+      AudioEngine.getInstance().updateEQ(gainValues);
       setEQBands(gainValues);
     },
-    [audioElement, setEQBands]
+    [setEQBands]
   );
 
   const handleBandChange = useCallback(

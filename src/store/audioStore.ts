@@ -100,6 +100,10 @@ interface AudioState {
   gaplessPlayback: boolean;
   preloadCount: number;
 
+  // Emotion Curve Mode
+  isEmotionCurveMode: boolean;
+  dynamicCrossfadeDuration: number;
+
   setIsPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
@@ -149,6 +153,8 @@ interface AudioState {
 
   setGaplessPlayback: (enabled: boolean) => void;
   setPreloadCount: (count: number) => void;
+  setIsEmotionCurveMode: (enabled: boolean) => void;
+  setDynamicCrossfadeDuration: (duration: number) => void;
   seekTo: (time: number) => void;
 }
 
@@ -249,6 +255,9 @@ export const useAudioStore = create<AudioState>()(
       gaplessPlayback: true,
       preloadCount: 2,
 
+      isEmotionCurveMode: false,
+      dynamicCrossfadeDuration: 3,
+
       setIsPlaying: (playing) => set({ isPlaying: playing }),
       setCurrentTime: (time) => set({ currentTime: Math.max(0, time) }),
       setDuration: (duration) => set({ duration: duration }),
@@ -345,6 +354,7 @@ export const useAudioStore = create<AudioState>()(
           error: null,
           queue: [song],
           currentIndex: 0,
+          isEmotionCurveMode: false,
         });
       },
 
@@ -365,6 +375,7 @@ export const useAudioStore = create<AudioState>()(
           isPlaying: true,
           isLoading: true,
           error: null,
+          isEmotionCurveMode: false,
         });
       },
 
@@ -419,6 +430,32 @@ export const useAudioStore = create<AudioState>()(
 
       setGaplessPlayback: (enabled) => set({ gaplessPlayback: enabled }),
       setPreloadCount: (count) => set({ preloadCount: Math.max(0, Math.min(5, count)) }),
+      setIsEmotionCurveMode: (enabled) => set({ isEmotionCurveMode: enabled }),
+      setDynamicCrossfadeDuration: (duration) =>
+        set({ dynamicCrossfadeDuration: Math.max(0, Math.min(20, duration)) }),
+      
+      appendSongsAndPlay: (songs) => {
+        if (!songs || songs.length === 0) return;
+        
+        const { queue } = get();
+        const startIndex = queue.length;
+        const newQueue = [...queue, ...songs];
+        
+        const queueStore = require("./queueStore").useQueueStore.getState();
+        queueStore.setQueue(newQueue);
+        queueStore.setCurrentIndex(startIndex);
+        queueStore.addToHistory(songs[0]);
+
+        set({
+          queue: newQueue,
+          currentIndex: startIndex,
+          currentSong: songs[0],
+          currentTime: 0,
+          isPlaying: true,
+          isLoading: true,
+          error: null
+        });
+      },
       seekTo: (time) => set({ currentTime: Math.max(0, time) }),
     }),
     {

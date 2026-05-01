@@ -198,7 +198,7 @@ export const AudioShapeV8Effect: EffectPlugin = {
     console.log(`AudioShapeV8 resized to ${width}x${height}`);
   },
   
-  destroy: () => {
+  destroy: (ctx) => {
     console.log("AudioShapeV8 effect destroyed");
   }
 };

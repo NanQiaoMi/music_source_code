@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { AudioEngine } from "@/lib/audio/AudioEngine";
 
 export interface BPMInfo {
   songId: string;
@@ -156,10 +157,13 @@ export const useCrossfadeStore = create<CrossfadeState>()(
 
       analyzeSongBPM: async (songId: string, audioBlob: Blob): Promise<BPMInfo> => {
         const arrayBuffer = await audioBlob.arrayBuffer();
-        const audioContext = new (
-          window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-        )();
+        const engine = AudioEngine.getInstance();
+        const audioContext = engine.getContext();
+        
+        if (!audioContext) {
+          throw new Error("Audio context not available");
+        }
+
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
         const channelData = audioBuffer.getChannelData(0);
@@ -227,8 +231,6 @@ export const useCrossfadeStore = create<CrossfadeState>()(
         const bestBPM = (60 * sampleRate) / downsampleFactor / hopSize / bestLag;
         const clampedBPM = Math.max(60, Math.min(200, bestBPM));
         const confidence = Math.min(1, bestCorrelation);
-
-        audioContext.close();
 
         const bpmInfo: BPMInfo = {
           songId,

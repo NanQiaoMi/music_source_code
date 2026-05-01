@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRecordingStore } from "@/store/recordingStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
+import { AudioEngine } from "@/lib/audio/AudioEngine";
 import { X, Circle, Square, Download, Trash2, Play, Video } from "lucide-react";
 
 interface RecordingPanelProps {
@@ -67,7 +68,10 @@ export function RecordingPanel({ isOpen, onClose, canvasRef }: RecordingPanelPro
     try {
       const stream = canvasRef.current.captureStream(30);
       
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const engine = AudioEngine.getInstance();
+      const audioContext = engine.getContext();
+      if (!audioContext) return;
+
       const destination = audioContext.createMediaStreamDestination();
       const mixedStream = new MediaStream([
         ...stream.getVideoTracks(),

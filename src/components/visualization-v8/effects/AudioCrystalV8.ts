@@ -139,7 +139,11 @@ export const AudioCrystalV8Effect: EffectPlugin = {
     context.restore();
   },
   resize() {},
-  destroy() {}
+  destroy(ctx) {
+    if (ctx && ctx.private) {
+      ctx.private.time = 0;
+    }
+  }
 };
 
 function getCrystalColors(scheme: string) {

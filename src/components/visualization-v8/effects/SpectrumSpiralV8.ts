@@ -230,5 +230,6 @@ export const SpectrumSpiralV8: EffectPlugin = {
   
   destroy() {
     (this as any).history = [];
+    (this as any).time = 0;
   }
 };

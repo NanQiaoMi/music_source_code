@@ -219,7 +219,13 @@ export const ParticleGravityV8Effect: EffectPlugin = {
     (this as any).private.particles = [];
     (this as any).private.attractors = [];
   },
-  destroy() {}
+  destroy(ctx) {
+    if (ctx && ctx.private) {
+      ctx.private.particles = [];
+      ctx.private.attractors = [];
+      ctx.private.time = 0;
+    }
+  }
 };
 
 function getGravityColor(scheme: string, colorValue: number, time: number): number {

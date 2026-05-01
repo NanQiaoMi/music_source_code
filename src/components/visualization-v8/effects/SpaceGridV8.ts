@@ -235,7 +235,11 @@ export const SpaceGridV8Effect: EffectPlugin = {
     context.globalAlpha = 1;
   },
   resize() {},
-  destroy() {}
+  destroy(ctx) {
+    if (ctx && ctx.private) {
+      ctx.private.time = 0;
+    }
+  }
 };
 
 function project3D(x: number, y: number, z: number, perspective: number) {

@@ -4,6 +4,8 @@ export interface ElectronAPI {
   updateLyrics: (lyrics: any) => Promise<void>;
   updateSongInfo: (songInfo: { title: string; artist: string }) => Promise<void>;
   setAlwaysOnTop: (alwaysOnTop: boolean) => Promise<void>;
+  saveEmotions: (data: Record<string, { x: number; y: number }>) => Promise<{ success: boolean; error?: string }>;
+  loadEmotions: () => Promise<Record<string, { x: number; y: number }>>;
   onTogglePlay: (callback: () => void) => void;
   onPrevSong: (callback: () => void) => void;
   onNextSong: (callback: () => void) => void;

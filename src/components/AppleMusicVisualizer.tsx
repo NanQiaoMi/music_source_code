@@ -3,6 +3,7 @@
 import React, { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
+import { AudioEngine } from "@/lib/audio/AudioEngine";
 
 export interface VisualizerConfig {
   enabled: boolean;
@@ -43,63 +44,56 @@ interface AppleMusicVisualizerProps {
 export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ config }) => {
   const { audioElement } = useAudioPlayer();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const prevDataRef = useRef<Uint8Array | null>(null);
+  const dataArrayRef = useRef<Uint8Array | null>(null);
+  const processedDataRef = useRef<Uint8Array | null>(null);
 
   useEffect(() => {
     if (!config.enabled) return;
-    if (!audioElement) return;
-
-    let audioContext = audioContextRef.current;
-    let analyser = analyserRef.current;
-    let source = sourceRef.current;
-
-    if (!audioContext) {
-      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      audioContextRef.current = audioContext;
-
-      analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      analyserRef.current = analyser;
-
-      source = audioContext.createMediaElementSource(audioElement);
-      source.connect(analyser);
-      analyser.connect(audioContext.destination);
-      sourceRef.current = source;
-    }
-
+    
+    const engine = AudioEngine.getInstance();
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    if (!analyser) return;
 
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
+    const bufferLength = engine.frequencyBinCount;
+    
+    // Persistent arrays to avoid allocations
+    if (!dataArrayRef.current || dataArrayRef.current.length !== bufferLength) {
+      dataArrayRef.current = new Uint8Array(bufferLength);
+    }
+    if (!processedDataRef.current || processedDataRef.current.length !== bufferLength) {
+      processedDataRef.current = new Uint8Array(bufferLength);
+    }
+    
+    const dataArray = dataArrayRef.current;
+    const processedData = processedDataRef.current;
 
     const draw = () => {
-      if (!analyser || !canvas) return;
+      if (!canvas) return;
+
+      engine.getByteFrequencyData(dataArray);
 
       const width = canvas.width;
       const height = canvas.height;
 
-      analyser.getByteFrequencyData(dataArray);
-
-      let processedData = new Uint8Array(bufferLength);
-      if (prevDataRef.current) {
+      if (prevDataRef.current && prevDataRef.current.length === bufferLength) {
         for (let i = 0; i < bufferLength; i++) {
           processedData[i] = Math.round(
             prevDataRef.current[i] * config.smoothing + dataArray[i] * (1 - config.smoothing)
           );
         }
       } else {
-        processedData = dataArray;
+        processedData.set(dataArray);
       }
-      prevDataRef.current = processedData;
+      
+      if (!prevDataRef.current || prevDataRef.current.length !== bufferLength) {
+        prevDataRef.current = new Uint8Array(bufferLength);
+      }
+      prevDataRef.current.set(processedData);
 
       ctx.clearRect(0, 0, width, height);
 
@@ -111,7 +105,8 @@ export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ conf
       const maxBarHeight = config.barHeight;
 
       for (let i = 0; i < barCount; i++) {
-        const dataIndex = Math.floor((i / barCount) * bufferLength);
+        // Use a subset of frequencies for the bars (lower half for better visuals)
+        const dataIndex = Math.floor((i / barCount) * (bufferLength / 2)); 
         const value = processedData[dataIndex] || 0;
         const barHeight = (value / 255) * maxBarHeight;
 
@@ -162,7 +157,7 @@ export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ conf
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [config, audioElement]);
+  }, [config]);
 
   const positionClass = React.useMemo(() => {
     switch (config.position) {

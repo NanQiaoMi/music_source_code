@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 let mainWindow = null;
 let desktopLyricsWindow = null;
@@ -181,6 +182,32 @@ ipcMain.handle('update-song-info', (event, songInfo) => {
 ipcMain.handle('set-always-on-top', (event, alwaysOnTop) => {
   if (mainWindow) {
     mainWindow.setAlwaysOnTop(alwaysOnTop);
+  }
+});
+
+// Emotion Data Persistence
+const EMOTIONS_FILE_PATH = path.join(app.getPath('userData'), '.vibe_emotions.json');
+
+ipcMain.handle('save-emotions', async (event, data) => {
+  try {
+    await fs.promises.writeFile(EMOTIONS_FILE_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving emotions:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('load-emotions', async () => {
+  try {
+    if (!fs.existsSync(EMOTIONS_FILE_PATH)) {
+      return {};
+    }
+    const content = await fs.promises.readFile(EMOTIONS_FILE_PATH, 'utf-8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Error loading emotions:', error);
+    return {};
   }
 });
 

@@ -185,7 +185,13 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
   resize() {
     (this as any).private.particles = [];
   },
-  destroy() {}
+  destroy(ctx) {
+    if (ctx && ctx.private) {
+      ctx.private.particles = [];
+      ctx.private.lastBassValue = 0;
+      ctx.private.time = 0;
+    }
+  }
 };
 
 function getExplosionColor(scheme: string, colorValue: number, time: number): number {

@@ -15,8 +15,8 @@ export type SmartPlaylistType =
 
 export interface SmartPlaylistRule {
   id: string;
-  field: "artist" | "album" | "genre" | "duration" | "playCount" | "addedTime" | "title";
-  operator: "contains" | "equals" | "greaterThan" | "lessThan" | "notContains" | "notEquals";
+  field: "artist" | "album" | "genre" | "duration" | "playCount" | "addedTime" | "title" | "emotion";
+  operator: "contains" | "equals" | "greaterThan" | "lessThan" | "notContains" | "notEquals" | "inQuadrant";
   value: string | number;
 }
 
@@ -127,6 +127,26 @@ const DEFAULT_SMART_PLAYLISTS: SmartPlaylist[] = [
     lastUpdated: 0,
     songCount: 0,
   },
+  {
+    id: "emotion-energetic",
+    name: "充满活力 (Q1)",
+    type: "custom",
+    description: "积极且能量充沛的音乐",
+    rules: [{ id: "r1", field: "emotion", operator: "inQuadrant", value: "Q1" }],
+    isEnabled: true,
+    lastUpdated: 0,
+    songCount: 0,
+  },
+  {
+    id: "emotion-calm",
+    name: "宁静随心 (Q4)",
+    type: "custom",
+    description: "轻松且平和的音乐",
+    rules: [{ id: "r2", field: "emotion", operator: "inQuadrant", value: "Q4" }],
+    isEnabled: true,
+    lastUpdated: 0,
+    songCount: 0,
+  },
 ];
 
 function evaluateRule(song: Song, rule: SmartPlaylistRule): boolean {
@@ -167,6 +187,21 @@ function evaluateRule(song: Song, rule: SmartPlaylistRule): boolean {
       if (operator === "lessThan") return duration < durationValue;
       if (operator === "equals") return duration === durationValue;
       if (operator === "notEquals") return duration !== durationValue;
+      break;
+    
+    case "emotion":
+      const { useEmotionStore } = require("./emotionStore");
+      const emotionMap = useEmotionStore.getState().emotionMap;
+      const emotion = emotionMap[song.id];
+      if (!emotion) return false;
+      
+      if (operator === "inQuadrant") {
+        const quadrant = String(value);
+        if (quadrant === "Q1") return emotion.x > 0 && emotion.y > 0;
+        if (quadrant === "Q2") return emotion.x < 0 && emotion.y > 0;
+        if (quadrant === "Q3") return emotion.x < 0 && emotion.y < 0;
+        if (quadrant === "Q4") return emotion.x > 0 && emotion.y < 0;
+      }
       break;
 
     default:

@@ -199,5 +199,10 @@ export const StarFieldV8Effect: EffectPlugin = {
   resize() {
     (this as any).private.stars = [];
   },
-  destroy() {}
+  destroy(ctx) {
+    if (ctx && ctx.private) {
+      ctx.private.stars = [];
+      ctx.private.time = 0;
+    }
+  }
 };

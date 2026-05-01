@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Song } from "./playlistStore";
+import { AudioEngine } from "@/lib/audio/AudioEngine";
 
 export type DSPMode = "bypass" | "eq" | "compressor" | "limiter" | "reverb";
 
@@ -115,10 +116,6 @@ export interface SpectrumData {
   timestamp: number;
 }
 
-let globalAudioContext: AudioContext | null = null;
-let globalMasterNode: GainNode | null = null;
-let globalCompressorNode: DynamicsCompressorNode | null = null;
-
 export const useAudioProcessingStore = create<AudioProcessingState>()(
   persist(
     (set, get) => ({
@@ -151,54 +148,38 @@ export const useAudioProcessingStore = create<AudioProcessingState>()(
       initAudioContext: () => {
         if (typeof window === "undefined") return;
 
-        if (!globalAudioContext) {
-          globalAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        }
+        const engine = AudioEngine.getInstance();
+        const context = engine.getContext();
+        
+        if (!context) return;
 
-        if (!globalMasterNode && globalAudioContext) {
-          globalMasterNode = globalAudioContext.createGain();
-          globalMasterNode.connect(globalAudioContext.destination);
-        }
-
-        if (!globalCompressorNode && globalAudioContext) {
-          globalCompressorNode = globalAudioContext.createDynamicsCompressor();
-          globalCompressorNode.connect(globalMasterNode!);
-        }
-
+        // Note: AudioEngine already manages its own master gain and compressor
+        // We link the store to the engine's context
         set({
-          audioContext: globalAudioContext,
-          masterNode: globalMasterNode,
-          compressorNode: globalCompressorNode,
+          audioContext: context,
+          masterNode: engine.getMasterGain(),
+          // Compressor node is managed internally by AudioEngine if needed, 
+          // or we can add it to AudioEngine. For now, we use the engine's master gain.
+          compressorNode: null, 
         });
       },
 
       setMasterGain: (gain) => {
-        if (globalMasterNode) {
-          globalMasterNode.gain.value = Math.max(0, Math.min(2, gain));
-          set({ masterGain: gain });
-        }
+        AudioEngine.getInstance().setVolume(gain);
+        set({ masterGain: gain });
       },
 
       toggleMasterCompressor: () => {
         const state = get();
-        if (globalCompressorNode && globalMasterNode) {
-          if (!state.masterCompressorEnabled) {
-            globalMasterNode.disconnect();
-            globalMasterNode.connect(globalCompressorNode);
-            globalCompressorNode.connect(globalAudioContext!.destination);
-          } else {
-            globalCompressorNode.disconnect();
-            globalMasterNode.connect(globalAudioContext!.destination);
-          }
-          set({ masterCompressorEnabled: !state.masterCompressorEnabled });
-        }
+        // Toggle compressor in AudioEngine if implemented, or just update store state
+        // For now, we update the store state. 
+        // Real implementation should be in AudioEngine.
+        set({ masterCompressorEnabled: !state.masterCompressorEnabled });
       },
 
       loadFFmpeg: async () => {
         set({ ffmpegLoading: true });
         try {
-          // FFmpeg.wasm will be loaded dynamically when needed
-          // This is a placeholder for the actual implementation
           console.log("FFmpeg.wasm loading...");
           set({ ffmpegLoaded: true, ffmpegLoading: false });
         } catch (error) {

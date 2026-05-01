@@ -141,7 +141,7 @@ export const RingSpectrumV8Effect: EffectPlugin = {
     console.log(`RingSpectrumV8 resized to ${width}x${height}`);
   },
   
-  destroy: () => {
+  destroy: (ctx) => {
     console.log("RingSpectrumV8 effect destroyed");
   }
 };

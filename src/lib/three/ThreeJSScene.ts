@@ -51,40 +51,86 @@ export class ThreeJSScene {
   };
 
   resize(width: number, height: number): void {
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
+    if (this.camera) {
+      this.camera.aspect = width / height;
+      this.camera.updateProjectionMatrix();
+    }
+    if (this.renderer) {
+      this.renderer.setSize(width, height);
+    }
   }
 
   render(): void {
-    if (!this.isContextLost) {
+    if (!this.isContextLost && this.renderer && this.scene && this.camera) {
       this.renderer.render(this.scene, this.camera);
     }
   }
 
-  clear(): void {
-    while (this.scene.children.length > 0) {
-      const child = this.scene.children[0];
-      this.scene.remove(child);
-      if ("geometry" in child) {
-        (child as any).geometry?.dispose();
+  /**
+   * Deeply disposes of an object and its children
+   */
+  private disposeObject(object: THREE.Object3D): void {
+    object.children.forEach(child => this.disposeObject(child));
+
+    if (object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Points) {
+      if (object.geometry) {
+        object.geometry.dispose();
       }
-      if ("material" in child) {
-        if (Array.isArray((child as any).material)) {
-          (child as any).material.forEach((m: any) => m.dispose());
+
+      if (object.material) {
+        if (Array.isArray(object.material)) {
+          object.material.forEach(material => this.disposeMaterial(material));
         } else {
-          (child as any).material?.dispose();
+          this.disposeMaterial(object.material);
         }
       }
     }
   }
 
+  /**
+   * Disposes of a material and its textures
+   */
+  private disposeMaterial(material: THREE.Material): void {
+    material.dispose();
+
+    // Dispose of textures
+    for (const key in material) {
+      if (material.hasOwnProperty(key)) {
+        const value = (material as any)[key];
+        if (value instanceof THREE.Texture) {
+          value.dispose();
+        }
+      }
+    }
+  }
+
+  clear(): void {
+    if (!this.scene) return;
+
+    while (this.scene.children.length > 0) {
+      const child = this.scene.children[0];
+      this.disposeObject(child);
+      this.scene.remove(child);
+    }
+  }
+
   destroy(): void {
-    const canvas = this.renderer.domElement;
-    canvas.removeEventListener("webglcontextlost", this.handleContextLost);
-    canvas.removeEventListener("webglcontextrestored", this.handleContextRestored);
+    const canvas = this.renderer?.domElement;
+    if (canvas) {
+      canvas.removeEventListener("webglcontextlost", this.handleContextLost);
+      canvas.removeEventListener("webglcontextrestored", this.handleContextRestored);
+    }
     
     this.clear();
-    this.renderer.dispose();
+    
+    if (this.renderer) {
+      this.renderer.dispose();
+      this.renderer.forceContextLoss();
+    }
+
+    // Nullify references to break cycles and help GC
+    (this as any).scene = null;
+    (this as any).camera = null;
+    (this as any).renderer = null;
   }
 }

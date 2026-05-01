@@ -328,6 +328,22 @@ export function VisualizationView() {
       window.removeEventListener("resize", resize);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      
+      // Explicitly clear large data structures to help GC
+      particlesRef.current = [];
+      nebulaStarsRef.current = [];
+      spectrumStarsRef.current = [];
+      matrixDropsRef.current = [];
+      bokehRef.current = [];
+      shockwavesRef.current = [];
+      
+      // Clear canvas context if possible (though usually GC'd)
+      if (canvasRef.current) {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     };
   }, [currentView]);
@@ -413,7 +429,7 @@ export function VisualizationView() {
 
       {/* Album Art floating in center */}
       <AnimatePresence>
-        {(currentEffect === "spatialMesh" || currentEffect === "spectrumRing" || currentEffect === "organicFluid" || currentEffect === "vinylGroove") && currentSong?.cover && (
+        {(currentEffect === "spatialMesh" || currentEffect === "organicFluid" || currentEffect === "vinylGroove") && currentSong?.cover && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -421,7 +437,7 @@ export function VisualizationView() {
             transition={{ type: "spring", stiffness: 150, damping: 25 }}
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
           >
-            <div className={`relative overflow-hidden ${(currentEffect === "spectrumRing" || currentEffect === "vinylGroove") ? "w-48 h-48 md:w-72 md:h-72 rounded-full shadow-[0_0_80px_rgba(0,0,0,0.9)]" : "w-[240px] h-[240px] md:w-[360px] md:h-[360px] rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+            <div className={`relative overflow-hidden ${(currentEffect === "vinylGroove") ? "w-48 h-48 md:w-72 md:h-72 rounded-full shadow-[0_0_80px_rgba(0,0,0,0.9)]" : "w-[240px] h-[240px] md:w-[360px] md:h-[360px] rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
               } border border-white/10`}
               style={{
                 transform: `scale(${1 + (dataArrayRef.current?.[2] || 0) / 255 * 0.08})`,

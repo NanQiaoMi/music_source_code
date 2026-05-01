@@ -167,7 +167,8 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
 
   if (!currentSong) return null;
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const progressPercent = duration > 0 && !isNaN(currentTime) && !isNaN(duration) 
+    ? (currentTime / duration) * 100 : 0;
 
   return (
     <div

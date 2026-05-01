@@ -340,6 +340,41 @@ export async function clearAllMetadataCache(): Promise<void> {
       transaction.onerror = () => reject(transaction.error);
     });
   } catch (error) {
-    console.error("Error clearing all metadata cache:", error);
+    console.error("Error clearing metadata cache:", error);
+    throw error;
+  }
+}
+
+/**
+ * Save song emotions to local disk via Electron IPC
+ */
+export async function saveSongEmotions(emotions: Record<string, { x: number; y: number }>): Promise<void> {
+  if (typeof window !== "undefined" && window.electronAPI) {
+    try {
+      await window.electronAPI.saveEmotions(emotions);
+    } catch (error) {
+      console.error("Error saving emotions to disk:", error);
+    }
+  } else {
+    // Fallback for browser: save to localStorage as a backup
+    localStorage.setItem("vibe_emotions_fallback", JSON.stringify(emotions));
+  }
+}
+
+/**
+ * Load song emotions from local disk via Electron IPC
+ */
+export async function loadSongEmotions(): Promise<Record<string, { x: number; y: number }>> {
+  if (typeof window !== "undefined" && window.electronAPI) {
+    try {
+      return await window.electronAPI.loadEmotions();
+    } catch (error) {
+      console.error("Error loading emotions from disk:", error);
+      return {};
+    }
+  } else {
+    // Fallback for browser: load from localStorage
+    const saved = localStorage.getItem("vibe_emotions_fallback");
+    return saved ? JSON.parse(saved) : {};
   }
 }

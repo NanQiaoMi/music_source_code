@@ -223,5 +223,6 @@ export const KaleidoscopeV8: EffectPlugin = {
   },
   
   destroy() {
+    (this as any).time = 0;
   }
 };

@@ -229,7 +229,12 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
     context.restore();
   },
   resize() {},
-  destroy() {}
+  destroy(ctx) {
+    if (ctx && ctx.private) {
+      ctx.private.shapes = [];
+      ctx.private.time = 0;
+    }
+  }
 };
 
 function shiftHue(color: string, degrees: number): string {

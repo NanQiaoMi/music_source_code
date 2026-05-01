@@ -27,10 +27,13 @@ export const VisualizationProgressBar = memo(({
   const [isDragging, setIsDragging] = useState(false);
   const [hoverPosition, setHoverPosition] = useState<number | null>(null);
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const progressPercent = (duration > 0 && !isNaN(currentTime)) 
+    ? Math.max(0, Math.min(100, (currentTime / duration) * 100)) 
+    : 0;
+    
   const bufferedWidth =
-    bufferedRanges.length > 0 && duration > 0
-      ? (bufferedRanges[bufferedRanges.length - 1].end / duration) * 100
+    (bufferedRanges.length > 0 && duration > 0 && !isNaN(bufferedRanges[bufferedRanges.length - 1].end))
+      ? Math.max(0, Math.min(100, (bufferedRanges[bufferedRanges.length - 1].end / duration) * 100))
       : 0;
 
   const handleMouseDown = useCallback(
