@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useAudioStore, type EQPreset as AudioEQPreset } from "@/store/audioStore";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
+import { AudioEngine } from "@/lib/audio/AudioEngine";
 
 export interface EQBand {
   frequency: number;
@@ -138,7 +139,7 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose 
               <div key={index} className="flex flex-col items-center gap-2">
                 <div className="relative w-8 h-24 bg-white/5 rounded-lg overflow-hidden">
                   <div
-                    className="absolute bottom-1/2 left-0 right-0 bg-gradient-to-t from-purple-500 to-pink-500 transition-all duration-150"
+                    className="absolute bottom-1/2 left-0 right-0 bg-white shadow-[0_0_8px_rgba(255,255,255,0.4)] transition-all duration-150"
                     style={{
                       height: `${Math.abs(gain) * 5}%`,
                       bottom: gain >= 0 ? "50%" : "auto",
@@ -218,7 +219,7 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose 
           </button>
           <button
             onClick={onClose}
-            className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity font-medium"
+            className="flex-1 py-3 px-4 rounded-xl bg-white text-black hover:bg-white/90 shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all font-medium"
           >
             完成
           </button>
@@ -229,7 +230,7 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose 
             {Array.from({ length: 50 }).map((_, i) => (
               <motion.div
                 key={i}
-                className="w-1 bg-gradient-to-t from-purple-500 to-pink-500 rounded-full"
+                className="w-1 bg-white/40 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.1)]"
                 animate={{
                   height: [
                     Math.random() * 40 + 10,

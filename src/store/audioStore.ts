@@ -155,6 +155,7 @@ interface AudioState {
   setPreloadCount: (count: number) => void;
   setIsEmotionCurveMode: (enabled: boolean) => void;
   setDynamicCrossfadeDuration: (duration: number) => void;
+  appendSongsAndPlay: (songs: Song[]) => void;
   seekTo: (time: number) => void;
 }
 
@@ -434,7 +435,7 @@ export const useAudioStore = create<AudioState>()(
       setDynamicCrossfadeDuration: (duration) =>
         set({ dynamicCrossfadeDuration: Math.max(0, Math.min(20, duration)) }),
       
-      appendSongsAndPlay: (songs) => {
+      appendSongsAndPlay: (songs: Song[]) => {
         if (!songs || songs.length === 0) return;
         
         const { queue } = get();

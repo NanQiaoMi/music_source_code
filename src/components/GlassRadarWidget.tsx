@@ -30,7 +30,7 @@ export const GlassRadarWidget: React.FC = () => {
 
   const currentEmotion = currentSong
     ? (emotionMap[currentSong.id] || { x: 0, y: 0 })
-    : globalEmotion;
+    : (globalEmotion || { x: 0, y: 0 });
 
   const [isExpanded, setIsExpanded] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);

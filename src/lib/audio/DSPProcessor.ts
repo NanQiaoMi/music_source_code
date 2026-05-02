@@ -11,7 +11,7 @@ export type DSPProcessorType =
 export interface DSPProcessorConfig {
   type: DSPProcessorType;
   enabled: boolean;
-  params: Record<string, number | boolean | string>;
+  params: Record<string, number | boolean | string | object>;
 }
 
 export interface EQBand {

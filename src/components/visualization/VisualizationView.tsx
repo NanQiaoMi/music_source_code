@@ -580,9 +580,6 @@ export function VisualizationView() {
                 transition: 'transform 0.15s cubic-bezier(0.22, 1, 0.36, 1)'
               }}>
               {/* Dynamic glow behind the cover */}
-              {currentEffect === "spectrumRing" && (
-                <div className="absolute inset-0 bg-white/20 animate-pulse blur-2xl -z-10" />
-              )}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={currentSong.cover} alt="cover" className="w-full h-full object-cover" />
               <div className="absolute inset-0 border border-white/20 rounded-[inherit] pointer-events-none mix-blend-overlay" />

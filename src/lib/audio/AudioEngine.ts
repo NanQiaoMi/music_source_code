@@ -165,7 +165,7 @@ export class AudioEngine {
   }
 
   public getByteFrequencyData(array: Uint8Array): void {
-    this.analyser?.getByteFrequencyData(array);
+    this.analyser?.getByteFrequencyData(array as Uint8Array<ArrayBuffer>);
   }
 
   public get fftSize(): number {

@@ -87,7 +87,7 @@ export const StatsAchievementsPanel: React.FC<StatsAchievementsPanelProps> = ({
           {activeTab === "insights" && <InsightsTab stats={listeningStats} />}
 
           {activeTab === "achievements" && (
-            <AchievementsTab achievements={achievements} />
+            <AchievementsTab achievements={achievements} onUnlockAchievement={() => {}} />
           )}
 
           {activeTab === "history" && <DailyHistoryTab stats={listeningStats} />}
