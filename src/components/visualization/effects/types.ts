@@ -5,6 +5,8 @@ export interface EffectContext {
   data: Uint8Array;
   params: any;
   time: number;
+  musicTime: number;
+
   refs: {
     particles: { current: any[] };
     nebulaStars: { current: any[] };
@@ -15,7 +17,9 @@ export interface EffectContext {
     smoothTreble: { current: number };
     bokeh: { current: any[] };
     shockwaves: { current: any[] };
+    resonanceTotems: { current: any[] };
   };
+
   theme: {
     primary: number;
     secondary: number;

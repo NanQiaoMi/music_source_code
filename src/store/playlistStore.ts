@@ -82,31 +82,58 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
 
     const allSongs = [...demoSongs, ...storedSongs];
 
-    const songsWithCachedCovers = await Promise.all(
-      allSongs.map(async (song) => {
-        if (song.source === "local" && song.cover && song.cover.length > 1000) {
-          return song;
-        }
-
-        const cachedCover = await getCoverFromCache(song.id);
-        if (cachedCover) {
-          return { ...song, cover: cachedCover };
-        }
-
-        if (song.cover && !song.cover.startsWith("data:") && !song.cover.startsWith("blob:")) {
-          saveCoverToCache(song.id, song.cover, song.cover).catch(console.error);
-        }
-
-        return song;
-      })
-    );
-
+    // Optimization: Immediately set songs before doing heavy cover cache checks
+    // This allows the UI to show the list instantly with default covers
     set({
-      songs: songsWithCachedCovers,
-      filteredSongs: songsWithCachedCovers,
-      recentPlayed: songsWithCachedCovers,
+      songs: allSongs,
+      filteredSongs: allSongs,
+      recentPlayed: allSongs,
     });
+
+    // Background task: Update covers from cache asynchronously without blocking the main thread
+    (async () => {
+      const CHUNK_SIZE = 20;
+      for (let i = 0; i < allSongs.length; i += CHUNK_SIZE) {
+        const chunk = allSongs.slice(i, i + CHUNK_SIZE);
+        const chunkWithCovers = await Promise.all(
+          chunk.map(async (song) => {
+            if (song.source === "local" && song.cover && song.cover.length > 1000) {
+              return song;
+            }
+
+            const cachedCover = await getCoverFromCache(song.id);
+            if (cachedCover) {
+              return { ...song, cover: cachedCover };
+            }
+
+            if (song.cover && !song.cover.startsWith("data:") && !song.cover.startsWith("blob:")) {
+              saveCoverToCache(song.id, song.cover, song.cover).catch(() => {});
+            }
+
+            return song;
+          })
+        );
+
+        set((state) => {
+          const newSongs = [...state.songs];
+          chunkWithCovers.forEach((song, idx) => {
+            newSongs[i + idx] = song;
+          });
+          return {
+            songs: newSongs,
+            filteredSongs: newSongs,
+            recentPlayed: newRecentPlayedSync(newSongs, state.recentPlayed)
+          };
+        });
+        
+        // Brief pause to allow UI thread to breathe
+        await new Promise(r => setTimeout(r, 0));
+      }
+    })();
   },
+
+
+
 
   addSong: (song) =>
     set((state) => ({
@@ -188,3 +215,8 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
 
   exportSongs: () => get().songs,
 }));
+
+function newRecentPlayedSync(allSongs: Song[], recentPlayed: Song[]) {
+  const songMap = new Map(allSongs.map(s => [s.id, s]));
+  return recentPlayed.map(rp => songMap.get(rp.id) || rp);
+}

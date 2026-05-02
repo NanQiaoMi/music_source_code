@@ -417,31 +417,7 @@ export const MusicCardStack: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      <motion.div
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-8 text-[13px] text-white/25"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
-        <div className="flex items-center gap-2">
-          <kbd className="px-2.5 py-1.5 rounded-lg backdrop-blur-[12px] border border-white/[0.08] text-[11px] font-medium text-white/40">
-            ←
-          </kbd>
-          <span>上一首</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <kbd className="px-2.5 py-1.5 rounded-lg backdrop-blur-[12px] border border-white/[0.08] text-[11px] font-medium text-white/40">
-            Enter
-          </kbd>
-          <span>播放</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <kbd className="px-2.5 py-1.5 rounded-lg backdrop-blur-[12px] border border-white/[0.08] text-[11px] font-medium text-white/40">
-            →
-          </kbd>
-          <span>下一首</span>
-        </div>
-      </motion.div>
+
     </div>
   );
 };

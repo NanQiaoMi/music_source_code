@@ -10,7 +10,9 @@ export type VisualizationEffect =
   | "vinylGroove"
   | "cyberMatrix"
   | "gravitationalField"
-  | "prismPulse";
+  | "prismPulse"
+  | "resonanceTotem";
+
 
 export interface VisualizationPreset {
   id: string;
@@ -38,7 +40,9 @@ interface VisualizationState {
     cyberMatrix: { speed: number; density: number; };
     gravitationalField: { speed: number; sensitivity: number; coreIntensity: number; };
     prismPulse: { complexity: number; refraction: number; drift: number; speed: number; };
+    resonanceTotem: { opacity: number; scanSpeed: number; grainIntensity: number; };
   };
+
 
   setCurrentEffect: (effect: VisualizationEffect) => void;
   setIsFullscreen: (isFullscreen: boolean) => void;
@@ -62,7 +66,9 @@ const defaultEffectSettings = {
   cyberMatrix: { speed: 1.0, density: 1.0 },
   gravitationalField: { speed: 1.0, sensitivity: 1.0, coreIntensity: 1.0 },
   prismPulse: { complexity: 6, refraction: 1.0, drift: 0.5, speed: 1.0 },
+  resonanceTotem: { opacity: 1.0, scanSpeed: 1.0, grainIntensity: 0.05 },
 };
+
 
 export const useVisualizationStore = create<VisualizationState>((set, get) => ({
   currentEffect: "spatialMesh",

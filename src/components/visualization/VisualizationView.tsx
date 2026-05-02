@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef, useEffect, useState, memo } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
+
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useVisualizationStore, VisualizationEffect } from "@/store/visualizationStore";
@@ -10,10 +12,15 @@ import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { X, Maximize2, Minimize2, Settings, Video } from "lucide-react";
-import { RecordingPanel } from "@/components/features-v7/RecordingPanel";
-import { VisualizationSettingsPanel } from "./VisualizationSettingsPanel";
-import { VisualizationProgressBar } from "./VisualizationProgressBar";
+const RecordingPanel = dynamic(() => import("@/components/features-v7/RecordingPanel").then(m => m.RecordingPanel), { ssr: false });
+const VisualizationSettingsPanel = dynamic(() => import("./VisualizationSettingsPanel").then(m => m.VisualizationSettingsPanel), { ssr: false });
+const VisualizationProgressBar = dynamic(() => import("./VisualizationProgressBar").then(m => m.VisualizationProgressBar), { ssr: false });
+
+
+import { useTotemStore } from "@/store/totemStore";
+import { useLyricsSearchStore } from "@/store/lyricsSearchStore";
 import * as Effects from "./effects";
+
 
 const PlayIcon = memo(() => (
   <svg className="w-7 h-7 ml-1" fill="currentColor" viewBox="0 0 24 24">
@@ -78,6 +85,8 @@ export function VisualizationView() {
   const smoothTrebleRef = useRef(0);
   const bokehRef = useRef<any[]>([]);
   const shockwavesRef = useRef<any[]>([]);
+  const resonanceTotemsRef = useRef<any[]>([]);
+
 
   // Mouse idle detection for Zen Mode
   useEffect(() => {
@@ -98,27 +107,69 @@ export function VisualizationView() {
   // Sync fullscreen state with browser events
   useEffect(() => {
     const handleFsChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const isFs = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(isFs);
     };
-    document.addEventListener("fullscreenchange", handleFsChange);
-    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+
+    const events = ["fullscreenchange", "webkitfullscreenchange", "mozfullscreenchange", "MSFullscreenChange"];
+    events.forEach(event => document.addEventListener(event, handleFsChange));
+    
+    return () => {
+      events.forEach(event => document.removeEventListener(event, handleFsChange));
+    };
   }, [setIsFullscreen]);
 
   const handleToggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen().catch((err) => {
-        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-      });
+    // 1. Try Electron Native Fullscreen first (Best for Desktop)
+    if ((window as any).electronAPI?.toggleFullscreen) {
+      (window as any).electronAPI.toggleFullscreen()
+        .then((result: boolean) => setIsFullscreen(result))
+        .catch((err: any) => console.error("Electron fullscreen failed:", err));
+      return;
+    }
+
+    // 2. Fallback to Browser Fullscreen API with vendor prefixes
+    const doc = document as any;
+    const isFs = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+
+    if (!isFs) {
+      const elem = containerRef.current || document.documentElement;
+      const request = elem.requestFullscreen || (elem as any).webkitRequestFullscreen || (elem as any).mozRequestFullScreen || (elem as any).msRequestFullscreen;
+      if (request) {
+        request.call(elem).catch((err: any) => {
+          console.error("Fullscreen request failed:", err);
+        });
+      }
     } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
+      const exit = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+      if (exit) {
+        exit.call(doc).catch((err: any) => {
+          console.error("Exit fullscreen failed:", err);
+        });
       }
     }
   };
 
-  const handleDoubleClick = () => {
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     handleToggleFullscreen();
   };
+
+  // Keyboard shortcut for F key (Fullscreen)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (currentView === "visualization" && e.key.toLowerCase() === "f" && !showSettings && !showRecording) {
+        handleToggleFullscreen();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentView, showSettings, showRecording]);
 
   useEffect(() => {
     if (currentView !== "visualization") return;
@@ -136,6 +187,67 @@ export function VisualizationView() {
       }
     };
   }, [currentView]);
+
+  const totemStore = useTotemStore();
+  const parsedLyrics = useLyricsSearchStore(state => state.parsedLyrics);
+  const workerRef = useRef<Worker | null>(null);
+
+  // Sync music time for shaders
+  useEffect(() => {
+    (window as any)._currentMusicTime = currentTime;
+  }, [currentTime]);
+
+  // Initialize totems for current song
+  useEffect(() => {
+    if (parsedLyrics.length > 0) {
+      totemStore.initializeForSong(parsedLyrics);
+    } else {
+      totemStore.clear();
+    }
+  }, [parsedLyrics]);
+
+  // Update active totems
+  useEffect(() => {
+    totemStore.updateActiveKeywords(currentTime);
+  }, [currentTime]);
+
+  // Manage Texture Worker
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const worker = new Worker(new URL("@/workers/totemTexture.worker.ts", import.meta.url), {
+      type: "module"
+    });
+
+    worker.onmessage = (e) => {
+      if (e.data.type === "texture-generated") {
+        totemStore.addPreloadedTexture(e.data.id, e.data.bitmap);
+      }
+    };
+
+    workerRef.current = worker;
+
+    return () => {
+      worker.terminate();
+    };
+  }, []);
+
+  // Preload textures when keywords change
+  useEffect(() => {
+    if (!workerRef.current || totemStore.allKeywords.length === 0) return;
+
+    totemStore.allKeywords.forEach(kw => {
+      if (!totemStore.preloadedTextures[kw.id]) {
+        workerRef.current?.postMessage({
+          type: "generate",
+          id: kw.id,
+          text: kw.text,
+          style: "serif"
+        });
+      }
+    });
+  }, [totemStore.allKeywords]);
+
 
   const vizTargetHues = useRef({ primary: 280, secondary: 320, accent: 150 });
   const vizActiveHues = useRef({ primary: 280, secondary: 320, accent: 150 });
@@ -246,7 +358,9 @@ export function VisualizationView() {
           height: canvas.height,
           data: dataArrayRef.current,
           time: timestamp,
+          musicTime: currentTime,
           params: settings[currentEff] || settings.spatialMesh,
+
           refs: {
             particles: particlesRef,
             nebulaStars: nebulaStarsRef,
@@ -257,7 +371,9 @@ export function VisualizationView() {
             smoothTreble: smoothTrebleRef,
             bokeh: bokehRef,
             shockwaves: shockwavesRef,
+            resonanceTotems: resonanceTotemsRef,
           },
+
           theme: {
             primary: active.primary,
             secondary: active.secondary,
@@ -282,7 +398,11 @@ export function VisualizationView() {
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
+        // Sync active keywords for Resonance Totem
+        resonanceTotemsRef.current = totemStore.activeKeywords;
+
         // Call the appropriate effect
+
         switch (currentEff) {
           case "spatialMesh":
             Effects.drawSpatialMesh(effectCtx);
@@ -314,9 +434,14 @@ export function VisualizationView() {
           case "prismPulse":
             Effects.drawPrismPulse(effectCtx);
             break;
+          case "resonanceTotem":
+            Effects.drawResonanceTotem(effectCtx);
+            break;
+
           default:
             Effects.drawSpatialMesh(effectCtx);
         }
+
       }
 
       animationFrameRef.current = requestAnimationFrame(draw);
@@ -392,7 +517,12 @@ export function VisualizationView() {
         willChange: 'filter'
       };
     }
+    if (currentEffect === "resonanceTotem" as any) {
+      return { filter: `saturate(1.2) contrast(1.1)`, transform: 'translateZ(0)' };
+    }
     return { transform: 'translateZ(0)' };
+
+
 
 
   };
@@ -408,7 +538,9 @@ export function VisualizationView() {
     { id: "cyberMatrix", name: "赛博矩阵" },
     { id: "prismPulse", name: "棱镜脉冲" },
     { id: "gravitationalField", name: "重力场 (隐藏)" },
+    { id: "resonanceTotem" as any, name: "共鸣图腾" },
   ];
+
 
   return (
     <motion.div
@@ -426,6 +558,9 @@ export function VisualizationView() {
         className="absolute inset-0 w-full h-full transition-all duration-1000 ease-out"
         style={getCanvasStyle()}
       />
+
+
+
 
       {/* Album Art floating in center */}
       <AnimatePresence>
@@ -459,7 +594,8 @@ export function VisualizationView() {
         )}
       </AnimatePresence>
 
-      <div className="absolute inset-0 flex flex-col pointer-events-none">
+      <div className="absolute inset-0 flex flex-col pointer-events-none z-20">
+
         {/* Header */}
         <AnimatePresence>
           {!mouseIdle && (
@@ -511,7 +647,8 @@ export function VisualizationView() {
 
                 <button
                   onClick={handleToggleFullscreen}
-                  className="w-12 h-12 rounded-full bg-black/20 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-105 transition-all duration-300 hidden md:flex"
+                  title={isFullscreen ? "退出全屏 (F)" : "进入全屏 (F)"}
+                  className="w-12 h-12 rounded-full bg-black/20 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-105 transition-all duration-300"
                 >
                   {isFullscreen ? (
                     <Minimize2 className="w-5 h-5 text-white/90" />

@@ -19,8 +19,37 @@ const nextConfig = {
     config.resolve.fallback.sharp = false;
     config.resolve.fallback['onnxruntime-node'] = false;
     
+    // Performance optimization: minimize the number of chunks
+    if (!isServer) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        minSize: 20000,
+        maxSize: 244000,
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all',
+          },
+        },
+      };
+    }
+
     return config;
   },
+  onDemandEntries: {
+    // Keep pages in memory longer for snappier navigation in dev
+    maxInactiveAge: 60 * 1000,
+    pagesBufferLength: 5,
+  },
+  experimental: {
+    optimizeCss: false, // Disabling to fix 'critters' not found error
+
+    scrollRestoration: true,
+  },
+  poweredByHeader: false,
+  compress: true,
+
   images: {
     remotePatterns: [
       {
