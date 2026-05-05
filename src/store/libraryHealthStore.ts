@@ -179,7 +179,7 @@ export function generateHealthReport(songs: Song[]): HealthReport {
       });
     }
 
-    if (!song.cover || song.cover === "/default-cover.jpg") {
+    if (!song.cover || song.cover === "/default-cover.png") {
       missingCover.push(song.id);
       songIssues.push({
         id: `missing-cover-${song.id}`,

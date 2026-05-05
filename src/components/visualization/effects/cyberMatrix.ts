@@ -106,7 +106,7 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
   drawGeometricCore(cx, cy, 40 + bass * 20);
 
   // --- 6. ADVANCED DESIGNER DATA STREAMS ---
-  const cols = 52;
+  const cols = Math.floor(52 * (effectParams.density || 1.0));
   if (refs.matrixDrops.current.length < cols) {
     refs.matrixDrops.current = Array(cols).fill(0).map(() => Math.random() * height);
   }

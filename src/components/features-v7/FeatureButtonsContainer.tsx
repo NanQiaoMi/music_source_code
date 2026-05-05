@@ -35,15 +35,8 @@ const BUTTON_HEIGHT = 56; // w-14 h-14 = 56px
 const BUTTON_SPACING = 16; // 间距
 const MIN_SPACING = 8; // 最小间距
 
-export function FeatureButtonsContainer({
-  onOpenFormatConverter,
-  onOpenTrackCutter,
-  onOpenFingerprintScanner,
-  onOpenDSDConverter,
-  onOpenCrossfadeMixer,
-  onOpenLibraryHealth,
-}: FeatureButtonsContainerProps) {
-  const { currentView } = useUIStore();
+export function FeatureButtonsContainer() {
+  const { currentView, openPanel } = useUIStore();
   const [windowHeight, setWindowHeight] = useState(typeof window !== "undefined" ? window.innerHeight : 800);
   const [buttonPositions, setButtonPositions] = useState<Record<string, number>>({});
 
@@ -117,12 +110,12 @@ export function FeatureButtonsContainer({
         let componentProps = {};
         if (button.id === "professionalTools") {
           componentProps = {
-            onOpenFormatConverter,
-            onOpenTrackCutter,
-            onOpenFingerprintScanner,
-            onOpenDSDConverter,
-            onOpenCrossfadeMixer,
-            onOpenLibraryHealth,
+            onOpenFormatConverter: () => openPanel("formatConverter"),
+            onOpenTrackCutter: () => openPanel("trackCutter"),
+            onOpenFingerprintScanner: () => openPanel("fingerprintScanner"),
+            onOpenDSDConverter: () => openPanel("dsdConverter"),
+            onOpenCrossfadeMixer: () => openPanel("crossfadeMixer"),
+            onOpenLibraryHealth: () => openPanel("libraryHealth"),
           };
         }
         

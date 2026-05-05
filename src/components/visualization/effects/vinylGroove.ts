@@ -58,11 +58,15 @@ export const drawVinylGroove = ({ ctx, width, height, data, params, time, refs, 
   ctx.fillStyle = `rgba(1, 2, 5, ${0.18 + (1 - bass) * 0.05})`; 
   ctx.fillRect(0, 0, safeWidth, safeHeight);
   
-  // Optimized grain (Single call with pattern-like approach)
-  if (Math.random() > 0.5) {
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.012 + twitch * 0.02})`;
-    for (let i = 0; i < 200; i++) { // Reduced count
-      ctx.fillRect(Math.random() * safeWidth, Math.random() * safeHeight, 1.5, 1.5);
+  // Optimized grain (Subtle digital noise)
+  if (Math.random() > 0.4) {
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.015 + twitch * 0.02})`;
+    for (let i = 0; i < 150; i++) { 
+      const gx = Math.random() * safeWidth;
+      const gy = Math.random() * safeHeight;
+      ctx.beginPath();
+      ctx.arc(gx, gy, 0.8, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
@@ -169,29 +173,51 @@ export const drawVinylGroove = ({ ctx, width, height, data, params, time, refs, 
     ctx.restore();
   }
   ctx.restore();
-
-  // Star Particles (ShadowBlur Removed for performance)
+  // --- 5.5 QUANTUM STAR FIELD (Twinkling Glows & Glints) ---
   const starCount = Math.floor(300 * optComp);
-  refs.particles.current.slice(0, starCount).forEach(p => {
-    p.z -= p.v * (1 + bass * 20);
+  refs.particles.current.slice(0, starCount).forEach((p, i) => {
+    p.z -= p.v * (1 + bass * 25);
     if (p.z < 1) { p.z = 2500; }
     const s = 1000 / p.z;
     const px = p.x * s + cx;
     const py = p.y * s + cy;
     
     if (px > 0 && px < safeWidth && py > 0 && py < safeHeight) {
-      const alpha = (1 - p.z / 2500) * (0.4 + treble * 0.4);
-      ctx.fillStyle = `hsla(${themeHue + p.z/50}, 100%, 98%, ${alpha})`;
-      const size = p.s * s * 0.8;
-      ctx.fillRect(px - size, py - size, size * 2, size * 2);
+      // Add a unique twinkle based on index and time
+      const twinkle = Math.sin(t * 5 + i) * 0.3 + 0.7;
+      const alpha = (1 - p.z / 2500) * (0.3 + treble * 0.6) * twinkle;
+      const size = p.s * s * 0.9;
       
-      // Manual glow for bright stars (cheaper than shadowBlur)
+      // Star Body
+      ctx.fillStyle = `hsla(${themeHue + p.z/50}, 100%, 98%, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(px, py, size, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Star Glint (Dynamic Lens Flare)
+      if (alpha > 0.6 && optComp > 0.6) {
+        ctx.strokeStyle = `hsla(${themeHue}, 100%, 95%, ${alpha * 0.5})`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        const gS = size * (4 + Math.sin(t * 10 + i) * 2);
+        ctx.moveTo(px - gS, py); ctx.lineTo(px + gS, py);
+        ctx.moveTo(px, py - gS); ctx.lineTo(px, py + gS);
+        ctx.stroke();
+      }
+
+      // Soft Bloom
       if (alpha > 0.7 && optComp > 0.8) {
-        ctx.fillStyle = `hsla(${themeHue}, 100%, 80%, ${alpha * 0.3})`;
-        ctx.fillRect(px - size * 2, py - size * 2, size * 4, size * 4);
+        const starGrad = ctx.createRadialGradient(px, py, 0, px, py, size * 5);
+        starGrad.addColorStop(0, `hsla(${themeHue}, 100%, 80%, ${alpha * 0.25})`);
+        starGrad.addColorStop(1, "transparent");
+        ctx.fillStyle = starGrad;
+        ctx.beginPath();
+        ctx.arc(px, py, size * 5, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
   });
+
 
   // --- 6. THE QUANTUM GRID ---
   const floorY = cy + 180;
@@ -233,24 +259,39 @@ export const drawVinylGroove = ({ ctx, width, height, data, params, time, refs, 
 
     if (isCore && optComp > 0.5) {
       ctx.globalCompositeOperation = "screen";
-      const shaftCount = 10; // Slightly more shafts
+      const shaftCount = 12; 
       for(let i=0; i<shaftCount; i++) {
         const a = (i / shaftCount) * Math.PI * 2 + t * 0.4;
-        const baseLength = (650 + (isFinite(bass) ? bass : 0) * 450) * optComp;
+        const baseLength = (600 + bass * 500) * optComp;
         const shaftLen = isFinite(baseLength) && baseLength > 0 ? baseLength : 100;
-        const targetX = Math.cos(a) * shaftLen;
-        const targetY = Math.sin(a) * shaftLen;
         
-        if (isFinite(targetX) && isFinite(targetY)) {
-          const rG = ctx.createLinearGradient(0, 0, targetX, targetY);
-          rG.addColorStop(0, `hsla(${accentHue}, 100%, 75%, ${0.25 * (isFinite(bass) ? bass : 0)})`);
-          rG.addColorStop(0.4, `hsla(${themeHue}, 80%, 40%, ${0.1 * (isFinite(bass) ? bass : 0)})`);
-          rG.addColorStop(1, "transparent");
-          ctx.strokeStyle = rG; 
-          ctx.lineWidth = (35 + (isFinite(bass) ? bass : 0) * 45) * optComp;
-          ctx.beginPath(); 
-          ctx.moveTo(0, 0); 
-          ctx.lineTo(targetX, targetY); 
+        // Use a wedge/cone shape for volumetric light instead of a simple line
+        const spread = (0.1 + bass * 0.15);
+        const x1 = Math.cos(a - spread) * shaftLen;
+        const y1 = Math.sin(a - spread) * shaftLen;
+        const x2 = Math.cos(a + spread) * shaftLen;
+        const y2 = Math.sin(a + spread) * shaftLen;
+
+        const vG = ctx.createRadialGradient(0, 0, 0, 0, 0, shaftLen);
+        vG.addColorStop(0, `hsla(${accentHue}, 100%, 80%, ${0.3 * bass})`);
+        vG.addColorStop(0.3, `hsla(${themeHue}, 100%, 50%, ${0.1 * bass})`);
+        vG.addColorStop(1, "transparent");
+        
+        ctx.fillStyle = vG;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Occasional intense "Needle" light
+        if (i % 3 === 0) {
+          ctx.strokeStyle = `hsla(${themeHue}, 100%, 95%, ${0.2 * bass})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(a) * shaftLen * 1.2, Math.sin(a) * shaftLen * 1.2);
           ctx.stroke();
         }
       }

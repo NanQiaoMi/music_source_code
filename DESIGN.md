@@ -1,4 +1,4 @@
-# Design System: Vibe Music Player
+# Design System: mimimusic
 
 ## Core Aesthetic: Premium Glassmorphism
 The design language is centered around transparency, depth, and material honesty. It uses high-saturation accents against deep, neutral backgrounds.

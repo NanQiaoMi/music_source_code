@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { GlobalClientComponents } from "@/components/GlobalClientComponents";
+import { GlobalClientComponents } from "@/components/layout/GlobalClientComponents";
 
 export const metadata: Metadata = {
-  title: "Vibe Music Player",
+  title: "MIMI Music Player",
   description: "沉浸式音乐播放器",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({

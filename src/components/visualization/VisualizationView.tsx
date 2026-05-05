@@ -215,7 +215,7 @@ export function VisualizationView() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const worker = new Worker(new URL("@/workers/totemTexture.worker.ts", import.meta.url), {
+    const worker = new Worker(new URL("../../workers/totemTexture.worker.ts", import.meta.url), {
       type: "module"
     });
 

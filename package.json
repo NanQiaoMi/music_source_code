@@ -1,8 +1,8 @@
 {
-  "name": "vibe-music-player",
-  "version": "1.0.0",
+  "name": "mimimusic",
+  "version": "0.1.0",
   "description": "A beautiful music player with advanced audio effects",
-  "author": "Vibe Music Team",
+  "author": "大咪小咪组",
   "private": true,
   "main": "electron/main/index.js",
   "scripts": {
@@ -75,12 +75,12 @@
   },
   "build": {
     "appId": "com.vibe.musicplayer",
-    "productName": "Vibe Music Player",
+    "productName": "MIMI Music Player",
     "directories": {
       "output": "dist-electron"
     },
     "files": [
-      ".next/**/*",
+      "out/**/*",
       "electron/**/*",
       "public/**/*",
       "package.json"

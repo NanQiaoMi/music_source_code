@@ -1,10 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
   reactStrictMode: true,
   typescript: {
     ignoreBuildErrors: false,
   },
   webpack: (config, { isServer }) => {
+    // ... webpack config (preserving existing)
     if (isServer) {
       config.externals = config.externals || [];
       config.externals.push('@xenova/transformers');
@@ -51,6 +53,7 @@ const nextConfig = {
   compress: true,
 
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',

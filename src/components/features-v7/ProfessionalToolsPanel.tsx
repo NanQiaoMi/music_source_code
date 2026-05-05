@@ -18,7 +18,7 @@ interface ProfessionalToolsPanelProps {
   onOpenLibraryHealth: () => void;
 }
 
-type ToolSection = "overview" | "health-check" | "format-converter" | "cue-cutter" | "fingerprint";
+type ToolSection = "overview" | "health-check" | "format-converter" | "cue-cutter" | "fingerprint" | "ai-settings";
 
 export function ProfessionalToolsPanel({ 
   isOpen, 
@@ -100,6 +100,17 @@ export function ProfessionalToolsPanel({
       action: () => {
         onClose();
         onOpenCrossfadeMixer();
+      },
+    },
+    {
+      id: "ai-settings" as ToolSection,
+      name: "AI 设置",
+      icon: "🤖",
+      description: "管理 AI 接口与模型检测",
+      enabled: true,
+      action: () => {
+        onClose();
+        useUIStore.getState().openPanel("aiSettings");
       },
     },
   ];

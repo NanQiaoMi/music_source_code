@@ -16,7 +16,7 @@ import {
   Music2,
   X,
 } from "lucide-react";
-import { GlassCard } from "../GlassCard";
+import { GlassCard } from "@/components/shared/Glass/GlassCard";
 
 const QUADRANT_META: Record<string, { label: string; color: string; desc: string }> = {
   Q1: { label: "高亢激昂", color: "rgb(249, 115, 22)", desc: "充满能量与激情" },
@@ -37,8 +37,11 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
     setSelectionMode, selectedIds,
     setSelectedIds, clearSelection, points, searchQuery,
     setSearchQuery, searchResults, findSimilar, getSelectionAnalytics,
-    getQuadrantStats
+    getQuadrantStats, autoTagSong, autoTagBatch, taggingStatus,
+    stopTagging
   } = useEmotionStore();
+
+  const [isAutoTagging, setIsAutoTagging] = useState(false);
 
   const currentSong = useAudioStore(state => state.currentSong);
 
@@ -214,6 +217,48 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
                 )}
               </AnimatePresence>
 
+              {/* AI Progress Overlay */}
+              <AnimatePresence>
+                {taggingStatus && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 w-[400px]"
+                  >
+                    <GlassCard className="p-6 border-indigo-500/30 bg-black/80 backdrop-blur-3xl shadow-[0_20px_50px_rgba(79,70,229,0.3)]">
+                      <div className="flex justify-between items-center mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                          <span className="text-[10px] text-white/60 font-black uppercase tracking-widest">AI 智能解析中</span>
+                        </div>
+                        <span className="text-[10px] text-indigo-400 font-mono">{taggingStatus.current} / {taggingStatus.total}</span>
+                      </div>
+                      <div className="text-xs text-white font-black mb-4 truncate italic">“正在解构: {taggingStatus.currentTitle}”</div>
+                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <motion.div 
+                          className="h-full bg-indigo-500"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(taggingStatus.current / taggingStatus.total) * 100}%` }}
+                        />
+                      </div>
+                      <div className="mt-5 flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-[8px] text-white/20 uppercase tracking-tighter">数据已实时同步至本地持久化层</span>
+                          {taggingStatus.isStopping && <span className="text-[8px] text-red-500 font-bold uppercase mt-1">正在强行终止...</span>}
+                        </div>
+                        <button 
+                          onClick={() => stopTagging()}
+                          className="px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-red-500 text-[9px] font-black uppercase tracking-widest transition-all"
+                        >
+                          终止任务
+                        </button>
+                      </div>
+                    </GlassCard>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Interaction Bar - BOTTOM CENTER */}
               <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 pointer-events-auto">
                 {/* Mode Selector */}
@@ -233,6 +278,42 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
                     </button>
                   ))}
                 </div>
+
+                {/* AI Auto-tag Button */}
+                <button
+                  onClick={async () => {
+                    const idsToTag = selectedIds.length > 0 ? selectedIds : points.filter(p => !p.isTagged).map(p => p.id);
+                    if (idsToTag.length === 0) return;
+                    setIsAutoTagging(true);
+                    await autoTagBatch(idsToTag);
+                    setIsAutoTagging(false);
+                  }}
+                  disabled={isAutoTagging}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl border transition-all shadow-xl font-black text-[10px] uppercase tracking-widest ${
+                    isAutoTagging 
+                    ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-300 animate-pulse cursor-wait" 
+                    : "bg-black/60 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-400"
+                  }`}
+                >
+                  <Sparkles size={14} className={isAutoTagging ? "animate-spin" : ""} />
+                  {isAutoTagging ? "AI 深度分析中..." : selectedIds.length > 0 ? `AI 分析选中 (${selectedIds.length})` : "AI 智能补全"}
+                </button>
+
+                {!isAutoTagging && selectedIds.length === 0 && (
+                   <button
+                    onClick={async () => {
+                      const allIds = points.map(p => p.id);
+                      if (allIds.length === 0) return;
+                      setIsAutoTagging(true);
+                      await autoTagBatch(allIds);
+                      setIsAutoTagging(false);
+                    }}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-2xl border border-white/5 bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest"
+                  >
+                    <Layers size={14} />
+                    扫描全库
+                  </button>
+                )}
 
                 <div className="h-8 w-[1px] bg-white/5 mx-0.5" />
 
@@ -334,6 +415,25 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
                             <span className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black flex items-center gap-2">
                               <div className="w-4 h-[1px] bg-white/10" /> 情绪维度实时解算
                             </span>
+                            
+                            {!isAutoTagging && points.filter(p => !p.isTagged).length > 0 && (
+                              <button 
+                                onClick={async () => {
+                                  const untagged = points.filter(p => !p.isTagged).map(p => p.id);
+                                  setIsAutoTagging(true);
+                                  await autoTagBatch(untagged);
+                                  setIsAutoTagging(false);
+                                }}
+                                className="w-full py-4 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 rounded-2xl flex flex-col items-center gap-1 group transition-all"
+                              >
+                                <div className="flex items-center gap-2 text-indigo-400 font-black text-[10px] uppercase tracking-widest">
+                                  <Sparkles size={12} className="group-hover:rotate-12 transition-transform" />
+                                  智能补全全库模型
+                                </div>
+                                <span className="text-[9px] text-white/20">共有 {points.filter(p => !p.isTagged).length} 首歌曲待打标</span>
+                              </button>
+                            )}
+                            
                             <div className="grid grid-cols-1 gap-5">
                               <div className="p-6 bg-white/[0.03] rounded-[32px] border border-white/5 group hover:bg-white/[0.07] transition-all shadow-xl">
                                 <div className="flex justify-between items-end mb-3">

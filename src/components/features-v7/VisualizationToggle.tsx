@@ -16,10 +16,10 @@ export function VisualizationToggle() {
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={() => setCurrentView("visualization")}
-      className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center hover:from-pink-600 hover:to-purple-700 transition-all shadow-2xl"
+      className="w-14 h-14 rounded-full bg-white flex items-center justify-center transition-all shadow-[0_0_20px_rgba(255,255,255,0.4)] hover:shadow-[0_0_35px_rgba(255,255,255,0.6)]"
       title="切换到可视化界面"
     >
-      <Activity className="w-6 h-6 text-white" />
+      <Activity className="w-6 h-6 text-black" />
     </motion.button>
   );
 }

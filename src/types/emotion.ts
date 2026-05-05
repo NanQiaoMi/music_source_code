@@ -1,12 +1,14 @@
 export interface EmotionCoordinate {
   x: number; // Valence: -1 to 1
   y: number; // Arousal: -1 to 1
+  description?: string; // Poetic description
 }
 
 export interface EmotionPoint extends EmotionCoordinate {
   id: string; // Song ID
   title: string;
   artist: string;
+  cover?: string;
   isTagged?: boolean;
 }
 

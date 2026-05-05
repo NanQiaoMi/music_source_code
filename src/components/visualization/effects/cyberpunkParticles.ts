@@ -229,7 +229,8 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
       const stretch = 1 + (suction / 150) * (1 + val) + (speedMult * 0.1);
       ctx.scale(1, Math.min(10, stretch));
       
-      ctx.fillStyle = tint || `hsla(${hue}, 100%, ${90 + treble * 10}%, ${alpha})`;
+      const pGlow = effectParams.glowIntensity || 1.0;
+      ctx.fillStyle = tint || `hsla(${hue}, 100%, ${90 + treble * 10}%, ${alpha * pGlow})`;
       ctx.beginPath();
       ctx.moveTo(0, -pSize * 1.5);
       ctx.lineTo(pSize, pSize);

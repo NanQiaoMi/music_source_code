@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { DSDRate, DSDQuality } from "../store/dsdProcessingStore";
+import { DSDRate, DSDQuality } from "@/store/dsdProcessingStore";
 
 interface DSDConversionMessage {
   type: "convertDSD";

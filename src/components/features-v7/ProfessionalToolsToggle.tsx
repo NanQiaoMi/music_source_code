@@ -36,10 +36,10 @@ export function ProfessionalToolsToggle({
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setShowPanel(true)}
-        className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center hover:from-purple-600 hover:to-indigo-700 transition-all shadow-2xl"
+        className="w-14 h-14 rounded-full bg-white flex items-center justify-center transition-all shadow-[0_0_20px_rgba(255,255,255,0.4)] hover:shadow-[0_0_35px_rgba(255,255,255,0.6)]"
         title="专业工具"
       >
-        <Settings className="w-6 h-6 text-white" />
+        <Settings className="w-6 h-6 text-black" />
       </motion.button>
 
       <ProfessionalToolsPanel

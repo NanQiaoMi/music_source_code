@@ -1,4 +1,4 @@
-# Product Strategy: Vibe Music Player
+# Product Strategy: mimimusic
 
 ## Users
 - **Audiophiles & Visual Enthusiasts**: Users who value high-fidelity sound and immersive visual experiences. They want to see their music come to life.
@@ -6,7 +6,7 @@
 - **Ambient Listeners**: Users who keep the player running in the background or on a second monitor as a piece of digital art.
 
 ## Product Purpose
-Vibe Music Player is a high-end, immersive audio-visual platform. It transforms listening into a multi-sensory experience using glassmorphism UI, advanced Canvas/WebGL visualizations, and interactive gestures. It's not just a player; it's a digital stage for music.
+mimimusic is a high-end, immersive audio-visual platform. It transforms listening into a multi-sensory experience using glassmorphism UI, advanced Canvas/WebGL visualizations, and interactive gestures. It's not just a player; it's a digital stage for music.
 
 ## Brand Identity
 - **Tone**: Premium, Sophisticated, Cutting-edge, Cinematic.

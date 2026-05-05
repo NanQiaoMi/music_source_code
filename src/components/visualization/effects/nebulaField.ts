@@ -102,8 +102,10 @@ export const drawNebulaField = ({ ctx, width, height, data, params, time, refs, 
   draw3DPlanes();
 
   // --- 3. GEOMETRIC FRAMEWORK & SINGULARITY ---
-  ctx.save();
-  ctx.translate(cx + cameraDriftX, cy + cameraDriftY);
+  if (effectParams.hudDetail > 0.1) {
+    ctx.save();
+    ctx.translate(cx + cameraDriftX, cy + cameraDriftY);
+    ctx.globalAlpha = effectParams.hudDetail;
 
   // A. Tech Brackets & Corners
   const drawTechFrames = () => {
@@ -222,6 +224,7 @@ export const drawNebulaField = ({ ctx, width, height, data, params, time, refs, 
   drawNeuralParticles();
 
   ctx.restore();
+  }
 
   // --- 4. TACTICAL HUD ---
   const hudAlpha = effectParams.hudDetail || 1.0;
@@ -240,9 +243,10 @@ export const drawNebulaField = ({ ctx, width, height, data, params, time, refs, 
 
   // --- 5. STAR TRAVERSAL ---
   const stars = refs.nebulaStars.current;
+  const activeStarCount = Math.min(stars.length, effectParams.starCount || 800);
   const warpForce = (15 + treble * 600) * speedMult; 
   ctx.globalCompositeOperation = "screen";
-  stars.forEach((s) => {
+  stars.slice(0, activeStarCount).forEach((s) => {
     s.z -= warpForce;
     if (s.z < 1) { s.z = 2500; s.x = (Math.random() - 0.5) * 2500; s.y = (Math.random() - 0.5) * 2500; }
     const k = 1000 / s.z;

@@ -8,9 +8,14 @@ import { useVisualSettingsStore } from "@/store/visualSettingsStore";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { Settings, X } from "lucide-react";
 import { RenderEngineManager } from "./engines/RenderEngineManager";
+import { ResonanceTotemLayer } from "./ResonanceTotemLayer";
 import { VisualControlDrawer } from "./shared/VisualControlDrawer";
+
 import { useVisualizationV8 } from "@/hooks/useVisualizationV8";
 import { RenderContext, AudioData } from "@/lib/visualization/types";
+import { useTotemStore } from "@/store/totemStore";
+import { useLyricsSearchStore } from "@/store/lyricsSearchStore";
+
 
 const APPLE_SPRING_CONFIG = {
   type: "spring" as const,
@@ -43,6 +48,11 @@ export function VisualizationViewV8() {
     isInitialized
   } = useVisualizationV8();
 
+  const totemStore = useTotemStore();
+  const parsedLyrics = useLyricsSearchStore(state => state.parsedLyrics);
+  const workerRef = useRef<Worker | null>(null);
+
+
   const [showControlDrawer, setShowControlDrawer] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [parameterMode, setParameterMode] = useState<"basic" | "professional" | "expert">("basic");
@@ -63,6 +73,63 @@ export function VisualizationViewV8() {
       window.removeEventListener("resize", updateDimensions);
     };
   }, []);
+
+  // Sync music time for shaders
+  useEffect(() => {
+    (window as any)._currentMusicTime = currentTime;
+  }, [currentTime]);
+
+  // Initialize totems for current song
+  useEffect(() => {
+    if (parsedLyrics.length > 0) {
+      totemStore.initializeForSong(parsedLyrics);
+    } else {
+      totemStore.clear();
+    }
+  }, [parsedLyrics]);
+
+  // Update active totems
+  useEffect(() => {
+    totemStore.updateActiveKeywords(currentTime);
+  }, [currentTime]);
+
+  // Manage Texture Worker
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const worker = new Worker(new URL("../../workers/totemTexture.worker.ts", import.meta.url), {
+      type: "module"
+    });
+
+    worker.onmessage = (e) => {
+      if (e.data.type === "texture-generated") {
+        totemStore.addPreloadedTexture(e.data.id, e.data.bitmap);
+      }
+    };
+
+    workerRef.current = worker;
+
+    return () => {
+      worker.terminate();
+    };
+  }, []);
+
+  // Preload textures when keywords change
+  useEffect(() => {
+    if (!workerRef.current || totemStore.allKeywords.length === 0) return;
+
+    totemStore.allKeywords.forEach(kw => {
+      if (!totemStore.preloadedTextures[kw.id]) {
+        workerRef.current?.postMessage({
+          type: "generate",
+          id: kw.id,
+          text: kw.text,
+          style: "serif"
+        });
+      }
+    });
+  }, [totemStore.allKeywords]);
+
 
   useEffect(() => {
     let animationFrame: number;
@@ -207,7 +274,10 @@ export function VisualizationViewV8() {
 
       <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
 
+      <ResonanceTotemLayer />
+
       <RenderEngineManager
+
         engine={currentEffect?.preferredEngine || "canvas"}
         effect={currentEffect || null}
         onRender={handleRender}

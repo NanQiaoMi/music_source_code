@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { Volume2, VolumeX, Music2, Maximize2 } from "lucide-react";
-import { GlassRadarWidget } from "@/components/GlassRadarWidget";
+import { GlassRadarWidget } from "@/components/widgets/GlassRadarWidget";
 
 export const APPLE_SPRING_CONFIG = {
   type: "spring" as const,

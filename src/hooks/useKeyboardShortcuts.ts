@@ -150,6 +150,9 @@ export const useKeyboardShortcuts = () => {
           if (hasCtrl) {
             e.preventDefault();
             uiStore.toggleFullscreenLyrics?.();
+          } else {
+            e.preventDefault();
+            uiStore.toggleFullscreen();
           }
           break;
 
@@ -183,14 +186,34 @@ export const useKeyboardShortcuts = () => {
             audioStore.setCurrentTime(newTime);
           }
           break;
+
+        case "a":
+          if (hasCtrl && hasShift) {
+            e.preventDefault();
+            uiStore.openPanel("aiSettings");
+          }
+          break;
+
+        case "i":
+          if (hasCtrl) {
+            e.preventDefault();
+            uiStore.togglePanel("aiSettings");
+          }
+          break;
       }
     },
     []
   );
 
   useEffect(() => {
+    const handleFullscreenChange = () => {
+      useUIStore.setState({ isFullscreen: !!document.fullscreenElement });
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [handleKeyDown]);

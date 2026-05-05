@@ -2,6 +2,45 @@
 
 import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
 
+// 导入所有特效实现
+import { SpectrumV8Effect } from "./SpectrumV8";
+import { WaveformV8Effect } from "./WaveformV8";
+import { ParticleNebulaV8 } from "./ParticleNebulaV8";
+import { ResonanceTotemV8 } from "./ResonanceTotemV8";
+import { AudioCrystalV8Effect } from "./AudioCrystalV8";
+import { AudioLiquidV8Effect } from "./AudioLiquidV8";
+import { AudioPaintingV8Effect } from "./AudioPaintingV8";
+import { AudioSculptureV8Effect } from "./AudioSculptureV8";
+import { FractalGeometryV8Effect } from "./FractalGeometryV8";
+import { KaleidoscopeV8 } from "./KaleidoscopeV8";
+import { ParticleFlowFieldV8 } from "./ParticleFlowFieldV8";
+import { ParticleVortexV8Effect } from "./ParticleVortexV8";
+import { SpaceGridV8Effect } from "./SpaceGridV8";
+import { SpectrumSpiralV8 } from "./SpectrumSpiralV8";
+import { StarFieldV8Effect } from "./StarFieldV8";
+import { TunnelFlightV8Effect } from "./TunnelFlightV8";
+import { VibrationGeometryV8Effect } from "./VibrationGeometryV8";
+
+export {
+  SpectrumV8Effect,
+  WaveformV8Effect,
+  ParticleNebulaV8,
+  ResonanceTotemV8,
+  AudioCrystalV8Effect,
+  AudioLiquidV8Effect,
+  AudioPaintingV8Effect,
+  AudioSculptureV8Effect,
+  FractalGeometryV8Effect,
+  KaleidoscopeV8,
+  ParticleFlowFieldV8,
+  ParticleVortexV8Effect,
+  SpaceGridV8Effect,
+  SpectrumSpiralV8,
+  StarFieldV8Effect,
+  TunnelFlightV8Effect,
+  VibrationGeometryV8Effect
+};
+
 export const effectsRegistry: EffectPlugin[] = [];
 
 const TRANSFORM_PARAMS: EffectParameterDefinition[] = [

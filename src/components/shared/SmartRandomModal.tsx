@@ -3,14 +3,14 @@
 import React, { useState, useCallback, useMemo, useDeferredValue } from "react";
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import { X, Play, Sparkles } from "lucide-react";
-import { GlassCard } from "@/components/GlassCard";
-import { GlassButton } from "@/components/GlassButton";
+import { GlassCard } from "@/components/shared/Glass/GlassCard";
+import { GlassButton } from "@/components/shared/GlassButton";
 import { Song } from "@/store/playlistStore";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useListeningHistory } from "@/hooks/useListeningHistory";
 import { generateRecommendations, RecommendationParams, SongWithPlayCount } from "@/utils/recommendationLogic";
-import { toast } from "@/components/GlassToast";
+import { toast } from "@/components/shared/GlassToast";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 
 interface SmartRandomModalProps {

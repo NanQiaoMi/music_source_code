@@ -236,11 +236,30 @@ export function RenderEngineManager({
       const now = Date.now();
       if (now - lastFPSUpdateRef.current >= 1000) {
         const fps = Math.round((frameCountRef.current * 1000) / (now - lastFPSUpdateRef.current));
+        
+        let drawCalls = 0;
+        let gpuMemory = 0;
+        
+        if (actualEngine === "webgl" && threeSceneRef.current) {
+          const info = threeSceneRef.current.renderer.info;
+          drawCalls = info.render.calls;
+          // 估算 GPU 内存占用 (geometries + textures)
+          // 注意：这只是一个近似值，Three.js 的 info.memory 提供的是计数，不是字节数
+          // 但我们可以通过这个计数反映资源占用压力
+          gpuMemory = (info.memory.geometries + info.memory.textures);
+        }
+
+        // 获取 JS 内存占用（如果浏览器支持）
+        const memoryUsage = (performance as any).memory 
+          ? (performance as any).memory.usedJSHeapSize / (1024 * 1024) 
+          : 0;
+
         updateStats({
           fps,
           cpuUsage: Math.min(100, (deltaTime * 1000) / (1000 / config.targetFPS) * 100),
-          memoryUsage: 0,
-          drawCalls: 0
+          memoryUsage,
+          drawCalls,
+          gpuMemory
         });
         frameCountRef.current = 0;
         lastFPSUpdateRef.current = now;

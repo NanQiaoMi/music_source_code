@@ -86,8 +86,11 @@ export class CrossfadeMixer {
 
     try {
       await toAudio.play();
-    } catch (e) {
-      console.error("Crossfade play failed:", e);
+    } catch (e: any) {
+      const isAbort = e.name === "AbortError" || e.code === 20 || e.message?.includes("interrupted");
+      if (!isAbort) {
+        console.error("Crossfade play failed:", e);
+      }
       toGain.gain.setValueAtTime(1, now); // Fallback to instant play
       return;
     }

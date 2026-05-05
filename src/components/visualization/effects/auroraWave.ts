@@ -61,58 +61,61 @@ export const drawAuroraWave = ({ ctx, width, height, data, params, time, theme, 
   };
   drawMist();
 
-  // B. Scattered Background Beams
-  const drawScatteredBeams = () => {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.globalCompositeOperation = "screen";
-    const beamCount = 42;
-    const beamLen = Math.max(width, height) * 1.8;
-    for (let i = 0; i < beamCount; i++) {
-      const angle = (i / beamCount) * Math.PI * 2 + t * 0.035;
-      const bGrd = ctx.createRadialGradient(0, 0, 100, 0, 0, beamLen);
-      const bAlpha = (0.05 + energy * 0.3) * (Math.sin(t * 1.3 + i) * 0.5 + 0.5) * colorInt;
-      const bWidth = 0.015 + energy * 0.05;
-      bGrd.addColorStop(0, `hsla(${auroraHue}, 100%, 75%, ${bAlpha})`);
-      bGrd.addColorStop(1, "transparent");
-      ctx.fillStyle = bGrd;
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, beamLen, angle - bWidth, angle + bWidth); ctx.fill();
-    }
-    ctx.restore();
-  };
-  drawScatteredBeams();
-
-  // --- 4. THE CORE ---
-  const drawCore = () => {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.globalCompositeOperation = "screen";
-
-    // A. Liquid Silk Filaments
-    const layerCount = 3;
-    for (let l = 0; l < layerCount; l++) {
+    // B. Scattered Background Beams
+    const drawScatteredBeams = () => {
+      if (effectParams.hudDetail < 0.1) return;
       ctx.save();
-      ctx.rotate(t * (0.08 + l * 0.03) + l * Math.PI / 3);
-      ctx.beginPath();
-      const filamentAlpha = (0.12 + bass * 0.15) * (1 - l * 0.2) * colorInt;
-      const rBase = 190 + l * 45 + bass * 20;
-      for (let i = 0; i <= 360; i += 3) {
-        const rad = (i * Math.PI) / 180;
-        const hue = (auroraHue + Math.sin(rad * 2 + t) * 20) % 360;
-        ctx.strokeStyle = `hsla(${hue}, 100%, 90%, ${filamentAlpha})`;
-        ctx.lineWidth = 0.45;
-        const wave = Math.sin(rad * 3 + t * 1.1) * (12 + treble * 25) + 
-                     Math.sin(rad * 6 - t * 0.7) * 10 + 
-                     Math.cos(rad * 4 + t * 0.4) * 8;
-        const px = Math.cos(rad) * (rBase + wave);
-        const py = Math.sin(rad) * (rBase + wave);
-        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      ctx.translate(cx, cy);
+      ctx.globalCompositeOperation = "screen";
+      const beamCount = 42;
+      const beamLen = Math.max(width, height) * 1.8;
+      for (let i = 0; i < beamCount; i++) {
+        const angle = (i / beamCount) * Math.PI * 2 + t * 0.035;
+        const bGrd = ctx.createRadialGradient(0, 0, 100, 0, 0, beamLen);
+        const bAlpha = (0.05 + energy * 0.3) * (Math.sin(t * 1.3 + i) * 0.5 + 0.5) * colorInt * effectParams.hudDetail;
+        const bWidth = 0.015 + energy * 0.05;
+        bGrd.addColorStop(0, `hsla(${auroraHue}, 100%, 75%, ${bAlpha})`);
+        bGrd.addColorStop(1, "transparent");
+        ctx.fillStyle = bGrd;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, beamLen, angle - bWidth, angle + bWidth); ctx.fill();
       }
-      ctx.stroke(); ctx.restore();
-    }
-
-    // B. The Prism Core (Hexagon Layers)
-    const prismSize = (95 + bass * 40 + breath * 8);
+      ctx.restore();
+    };
+    drawScatteredBeams();
+  
+    // --- 4. THE CORE ---
+    const drawCore = () => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.globalCompositeOperation = "screen";
+  
+      // A. Liquid Silk Filaments
+      const layerCount = 3;
+      if (effectParams.hudDetail > 0.2) {
+        for (let l = 0; l < layerCount; l++) {
+          ctx.save();
+          ctx.rotate(t * (0.08 + l * 0.03) + l * Math.PI / 3);
+          ctx.beginPath();
+          const filamentAlpha = (0.12 + bass * 0.15) * (1 - l * 0.2) * colorInt * effectParams.hudDetail;
+          const rBase = 190 + l * 45 + bass * 20;
+          for (let i = 0; i <= 360; i += 3) {
+            const rad = (i * Math.PI) / 180;
+            const hue = (auroraHue + Math.sin(rad * 2 + t) * 20) % 360;
+            ctx.strokeStyle = `hsla(${hue}, 100%, 90%, ${filamentAlpha})`;
+            ctx.lineWidth = 0.45;
+            const wave = Math.sin(rad * 3 + t * 1.1) * (12 + treble * 25) + 
+                         Math.sin(rad * 6 - t * 0.7) * 10 + 
+                         Math.cos(rad * 4 + t * 0.4) * 8;
+            const px = Math.cos(rad) * (rBase + wave);
+            const py = Math.sin(rad) * (rBase + wave);
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.stroke(); ctx.restore();
+        }
+      }
+  
+      // B. The Prism Core (Hexagon Layers)
+      const prismSize = (95 + bass * 40 + breath * 8);
     for (let i = 0; i < 2; i++) {
       ctx.save();
       ctx.rotate(t * (0.25 + i * 0.1) + (i * Math.PI / 3));
@@ -184,7 +187,9 @@ export const drawAuroraWave = ({ ctx, width, height, data, params, time, theme, 
     }
     ctx.restore();
   };
-  drawCore();
+  if (effectParams.hudDetail > 0.1) {
+    drawCore();
+  }
 
   // --- 5. OPTICAL SUITE ---
   const fInt = (bass * 0.4 + treble * 0.4) * breath * effectParams.flareAmount;

@@ -114,9 +114,11 @@ export function VisualControlDrawer({
   performanceStats,
 }: VisualControlDrawerProps) {
   const groupedEffects = {
-    spectrum: effects.filter((e) => e.category === "spectrum"),
-    particles: effects.filter((e) => e.category === "particles"),
+    spectrum: effects.filter((e) => ["spectrum", "shapes", "physics"].includes(e.category)),
+    particles: effects.filter((e) => ["particles", "geometry", "space"].includes(e.category)),
   };
+
+
 
   const currentEffect = effects.find((e) => e.id === currentEffectId);
   const currentParams = effectParams[currentEffectId] || {};
@@ -171,8 +173,9 @@ export function VisualControlDrawer({
                     return (
                       <div key={category}>
                         <div className="text-xs text-white/30 uppercase tracking-wider mb-3 font-medium">
-                          {category === "spectrum" ? "频谱与波形" : "粒子效果"}
+                          {category === "spectrum" ? "频谱、形状与波形" : "粒子与几何效果"}
                         </div>
+
                         <div className="grid grid-cols-2 gap-2">
                           {categoryEffects.map((effect) => (
                             <button
@@ -382,7 +385,7 @@ export function VisualControlDrawer({
                         <motion.div
                           className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full"
                           initial={false}
-                          animate={{ width: `${Math.min(100, performanceStats.cpu)}%` }}
+                          animate={{ width: `${Math.min(100, performanceStats.cpu || 0)}%` }}
                           transition={APPLE_SPRING_CONFIG}
                         />
                       </motion.div>

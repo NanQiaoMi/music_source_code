@@ -1,4 +1,4 @@
-# Vibe Music Player Backend
+# mimimusic Backend
 
 AI 增强音乐播放器后端
 

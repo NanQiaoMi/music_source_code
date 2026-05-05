@@ -10,10 +10,17 @@ interface PerformanceState {
   cpuUsage: number;
   memoryUsage: number;
   drawCalls: number;
+  gpuMemory: number; // 单位: MB
   isWebGLAvailable: boolean;
   
   setPerformanceLevel: (level: PerformanceLevel) => void;
-  updateStats: (stats: { fps: number; cpuUsage: number; memoryUsage: number; drawCalls: number }) => void;
+  updateStats: (stats: { 
+    fps: number; 
+    cpuUsage: number; 
+    memoryUsage: number; 
+    drawCalls: number;
+    gpuMemory: number;
+  }) => void;
   setWebGLAvailable: (available: boolean) => void;
 }
 
@@ -56,6 +63,7 @@ export const usePerformanceV8Store = create<PerformanceState>()(
       cpuUsage: 0,
       memoryUsage: 0,
       drawCalls: 0,
+      gpuMemory: 0,
       isWebGLAvailable: typeof WebGLRenderingContext !== "undefined",
       
       setPerformanceLevel: (level) => 
@@ -66,7 +74,8 @@ export const usePerformanceV8Store = create<PerformanceState>()(
           fps: stats.fps, 
           cpuUsage: stats.cpuUsage, 
           memoryUsage: stats.memoryUsage,
-          drawCalls: stats.drawCalls 
+          drawCalls: stats.drawCalls,
+          gpuMemory: stats.gpuMemory
         }),
       
       setWebGLAvailable: (available) => 

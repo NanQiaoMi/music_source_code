@@ -17,10 +17,10 @@ export const drawGravitationalField = ({ ctx, width, height, data, params, time,
   refs.smoothMid.current = (refs.smoothMid.current || 0) * 0.88 + rawMid * 0.12;
   refs.smoothTreble.current = (refs.smoothTreble.current || 0) * 0.9 + rawTreble * 0.1;
   
-  const bass = refs.smoothBass.current;
-  const mid = refs.smoothMid.current;
-  const treble = refs.smoothTreble.current;
-  const volume = rawFull;
+  const bass = refs.smoothBass.current * (effectParams.sensitivity || 1.0);
+  const mid = refs.smoothMid.current * (effectParams.sensitivity || 1.0);
+  const treble = refs.smoothTreble.current * (effectParams.sensitivity || 1.0);
+  const volume = rawFull * (effectParams.sensitivity || 1.0);
 
   const breath = Math.sin(t * 0.6) * 0.5 + 0.5;
 

@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setAlwaysOnTop: (alwaysOnTop) => ipcRenderer.invoke('set-always-on-top', alwaysOnTop),
   saveEmotions: (data) => ipcRenderer.invoke('save-emotions', data),
   loadEmotions: () => ipcRenderer.invoke('load-emotions'),
+  toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
   onTogglePlay: (callback) => ipcRenderer.on('toggle-play', callback),
   onPrevSong: (callback) => ipcRenderer.on('prev-song', callback),
   onNextSong: (callback) => ipcRenderer.on('next-song', callback),

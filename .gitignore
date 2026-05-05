@@ -74,3 +74,12 @@ next-env.d.ts
 
 # zip files
 *.zip
+
+# Electron build artifacts
+/dist/
+/dist-electron/
+/release/
+/MIMI-Music-Player-Portable/
+/win-unpacked/
+*.exe
+*.asar
