@@ -41,11 +41,12 @@ interface EmotionState {
   setIsDragging: (dragging: boolean) => void;
   setDragPointId: (id: string | null) => void;
   
-  autoTagSong: (songId: string) => Promise<void>;
+  autoTagSong: (songId: string, signal?: AbortSignal) => Promise<void>;
   autoTagBatch: (songIds: string[]) => Promise<void>;
   stopTagging: () => void;
   taggingStatus: { current: number; total: number; currentTitle: string; isStopping?: boolean } | null;
   _isStopRequested: boolean;
+  _abortController: AbortController | null;
 
   findSimilar: (songId: string, maxResults?: number) => EmotionPoint[];
   getQuadrantStats: () => { q1: number; q2: number; q3: number; q4: number; untagged: number };
@@ -104,8 +105,13 @@ export const useEmotionStore = create<EmotionState>()(
       dragPointId: null,
       taggingStatus: null,
       _isStopRequested: false,
+      _abortController: null,
       
-      stopTagging: () => set({ _isStopRequested: true }),
+      stopTagging: () => {
+        set({ _isStopRequested: true });
+        const { _abortController } = get();
+        if (_abortController) _abortController.abort();
+      },
 
       updateRealtimeCoordinates: (x, y) => {
         set({ realtimeCoordinates: { x, y } });
@@ -238,33 +244,29 @@ export const useEmotionStore = create<EmotionState>()(
 
       setDragPointId: (dragPointId) => set({ dragPointId }),
       
-      autoTagSong: async (songId) => {
+      autoTagSong: async (songId, signal) => {
         try {
           const { usePlaylistStore } = require("./playlistStore");
           const { useAIStore } = require("./aiStore");
-          
-          const song = usePlaylistStore.getState().songs.find(s => s.id === songId);
-          if (!song) return;
-
           const aiStore = useAIStore.getState();
           const config = aiStore.configs.find(c => c.id === aiStore.activeConfigId);
-          if (!config || !config.apiKey) {
-            console.error("AI not configured for auto-tagging");
+          const { songs } = usePlaylistStore.getState();
+          const song = songs.find(s => s.id === songId);
+          
+          if (!song || !config || !config.apiKey) {
+            console.error("Missing song or API key");
             return;
           }
 
-          const prompt = `Task: High-precision Music Emotion Analysis.
+          const prompt = `Task: Objective Music Emotion Mapping.
           Title: ${song.title} | Artist: ${song.artist}
           
-          Analyze based on:
-          1. Tempo & Rhythm (BPM feel)
-          2. Harmonic Brightness (Major vs Minor)
-          3. Dynamic Range (Energy level)
+          Analyze the track based on its objective musical properties:
+          - Valence: Emotional positivity (-1.0 to 1.0)
+          - Energy: Intensity/Arousal (-1.0 to 1.0)
+          - Description: A brief poetic mood summary.
           
-          Requirement: Use FULL range -1.000 to 1.000. 
-          - BE BOLD: Use edges of the matrix for extreme emotions.
-          - Output JSON: {"v": valence, "e": energy, "d": "poetic description"}
-          - No double quotes in description.`;
+          Requirement: Output JSON {"v", "e", "d"}. Be as precise and neutral as possible.`;
 
           const baseUrl = config.baseUrl.replace(/\/$/, "");
           const url = baseUrl.endsWith("/v1") ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
@@ -278,10 +280,11 @@ export const useEmotionStore = create<EmotionState>()(
             body: JSON.stringify({
               model: config.model,
               messages: [{ role: "user", content: prompt }],
-              temperature: 0.8, // 提高随机性，防止结果趋同
+              temperature: 0.7,
               max_tokens: 200,
               response_format: { type: "json_object" }
-            })
+            }),
+            signal 
           });
 
           if (!response.ok) throw new Error(`API Error: ${response.status}`);
@@ -293,71 +296,104 @@ export const useEmotionStore = create<EmotionState>()(
             const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error("No JSON found");
             
-            let jsonString = jsonMatch[0];
-            if (!jsonString.endsWith('}')) jsonString += '}';
+            const result = JSON.parse(jsonMatch[0]);
             
-            const result = JSON.parse(jsonString);
+            // 1. 获取库均值，仅用于中心化校准
+            const { points } = get();
+            const taggedPoints = points.filter(p => p.isTagged);
+            let biasV = 0, biasE = 0;
+            if (taggedPoints.length > 10) {
+              biasV = taggedPoints.reduce((acc, p) => acc + p.x, 0) / taggedPoints.length;
+              biasE = taggedPoints.reduce((acc, p) => acc + p.y, 0) / taggedPoints.length;
+            }
+
+            // 2. 纯净坐标 (AI 原始值 - 库偏好)
+            let v = Number(result.v ?? result.valence ?? 0) - biasV;
+            let e = Number(result.e ?? result.energy ?? 0) - biasE;
             
-            let v = Number(result.v ?? result.valence ?? 0);
-            let e = Number(result.e ?? result.energy ?? 0);
+            if (isNaN(v)) v = 0; if (isNaN(e)) e = 0;
             const d = String(result.d ?? result.description ?? "AI 暂无描述");
 
-            // --- 强力防重叠算法 (Collision Detection) ---
-            const { points } = get();
-            let attempts = 0;
-            const minDistance = 0.05; // 最小允许间距
+            // 3. 极简螺旋避让 (仅解决重叠)
+            const minDistance = 0.05; 
+            let iteration = 0;
+            const idHash = songId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            let angle = (idHash % 360) * (Math.PI / 180);
             
-            while (attempts < 5) {
+            while (iteration < 20) {
               const tooClose = points.some(p => 
                 p.id !== songId && p.isTagged && 
                 Math.sqrt((p.x - v) ** 2 + (p.y - e) ** 2) < minDistance
               );
-              
               if (!tooClose) break;
-              // 发生冲突，执行螺旋扩散偏移
-              v += (Math.random() - 0.5) * 0.08;
-              e += (Math.random() - 0.5) * 0.08;
-              attempts++;
+              v += Math.cos(angle) * 0.02;
+              e += Math.sin(angle) * 0.02;
+              angle += 2.4; 
+              iteration++;
             }
+
+            v = Math.max(-1, Math.min(1, v));
+            e = Math.max(-1, Math.min(1, e));
             
-            console.log(`[AI-Analysis] ${song.title} -> v:${v.toFixed(3)}, e:${e.toFixed(3)}`);
+            console.log(`[AI-Pure] ${song.title} -> v:${v.toFixed(3)}, e:${e.toFixed(3)}`);
             get().saveSongEmotion(songId, v, e, d);
           } catch (parseError) {
+            if ((parseError as any).name === 'AbortError') return;
             console.warn("Parse Failed:", rawContent);
           }
         } catch (error) {
+          if ((error as any).name === 'AbortError') {
+            console.log("[AI-Abort] Request cancelled by user");
+            return;
+          }
           console.error("Auto-tagging failed:", error);
         }
       },
 
       autoTagBatch: async (songIds) => {
         const { songs } = require("./playlistStore").usePlaylistStore.getState();
-        set({ taggingStatus: { current: 0, total: songIds.length, currentTitle: "" }, _isStopRequested: false });
+        const abortController = new AbortController();
+        set({ 
+          taggingStatus: { current: 0, total: songIds.length, currentTitle: "" }, 
+          _isStopRequested: false,
+          _abortController: abortController 
+        });
 
-        for (let i = 0; i < songIds.length; i++) {
-          if (get()._isStopRequested) {
-            set({ taggingStatus: { ...get().taggingStatus!, isStopping: true } });
-            break;
+        const CONCURRENCY = 3; 
+        let index = 0;
+        let finished = 0;
+
+        const runWorker = async () => {
+          while (index < songIds.length && !get()._isStopRequested) {
+            const currentIndex = index++;
+            const songId = songIds[currentIndex];
+            const song = songs.find((s: any) => s.id === songId);
+            
+            if (song) {
+              set({ taggingStatus: { ...get().taggingStatus!, currentTitle: song.title } });
+              try {
+                await get().autoTagSong(songId, abortController.signal);
+              } catch (e) {
+                if ((e as any).name === 'AbortError') break;
+                console.error(`Failed to tag ${song.title}:`, e);
+              }
+            }
+            
+            finished++;
+            set({ taggingStatus: { ...get().taggingStatus!, current: finished } });
+            
+            // 并发时稍作停顿，避免请求过于密集
+            await new Promise(r => setTimeout(r, 200));
           }
+        };
 
-          const songId = songIds[i];
-          const song = songs.find((s: any) => s.id === songId);
-          
-          set({ 
-            taggingStatus: { 
-              current: i + 1, 
-              total: songIds.length, 
-              currentTitle: song?.title || "Unknown" 
-            } 
-          });
+        // 启动并发 Worker 池
+        const workers = Array.from({ length: Math.min(CONCURRENCY, songIds.length) }, () => runWorker());
+        await Promise.all(workers);
 
-          await get().autoTagSong(songId);
-          
-          // 这里的 saveSongEmotion 内部已经调用了 debouncedSave，
-          // 每一步都会被可靠地排队保存到本地。
-          
-          // 强制小停顿，避免触发 API 频率限制
-          await new Promise(r => setTimeout(r, 300));
+        if (get()._isStopRequested) {
+          set({ taggingStatus: { ...get().taggingStatus!, isStopping: true } });
+          await new Promise(r => setTimeout(r, 1000));
         }
 
         set({ taggingStatus: null });

@@ -14,6 +14,7 @@ const FloatingPlayer = dynamic(
 
 import { GestureController } from "@/components/interaction/GestureController";
 import { GestureFeedback } from "@/components/interaction/GestureFeedback";
+import { AILinerNotes } from "@/components/widgets/AILinerNotes";
 
 export function GlobalClientComponents() {
   useAudioPlayer();
@@ -26,6 +27,7 @@ export function GlobalClientComponents() {
       <AchievementToastContainer />
       <GestureController />
       <GestureFeedback />
+      <AILinerNotes />
     </>
   );
 }
