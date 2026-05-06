@@ -63,6 +63,7 @@ export function HomeView() {
           willChange: "transform, opacity",
           transform: "translateZ(0)",
           backfaceVisibility: "hidden",
+          zIndex: 20, // Ensure it's above AppleDateTime (z-10)
         }}
       >
         <HeaderToolbar />

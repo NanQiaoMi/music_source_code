@@ -8,7 +8,7 @@ interface LinerNotesState {
   isGenerating: boolean;
   
   // Actions
-  getNotes: (artist: string, title: string, lyrics?: string) => Promise<string | null>;
+  getNotes: (artist: string, title: string, lyrics?: string, emotion?: { x: number, y: number }, forceRefresh?: boolean) => Promise<string | null>;
   clearCache: () => void;
 }
 
@@ -18,10 +18,10 @@ export const useLinerNotesStore = create<LinerNotesState>()(
       notes: {},
       isGenerating: false,
 
-      getNotes: async (artist, title, lyrics) => {
+      getNotes: async (artist, title, lyrics, emotion, forceRefresh) => {
         const key = `${artist}-${title}`;
         const cached = get().notes[key];
-        if (cached) return cached;
+        if (cached && !forceRefresh) return cached;
 
         const aiStore = useAIStore.getState();
         const activeConfigId = aiStore.activeConfigId;
@@ -37,19 +37,24 @@ export const useLinerNotesStore = create<LinerNotesState>()(
           const baseUrl = config.baseUrl.replace(/\/$/, "");
           const url = baseUrl.endsWith("/v1") ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
           
-          const systemPrompt = `你是一位拥有 20 年经验的高级音乐评论家，为《Pitchfork》或《The Wire》等前卫音乐杂志撰稿。
-你的任务是为一首歌生成一段极简的“灵魂摘要”。
-风格要求：
-1. 抽象且富有感官色彩：关注质感（texture）、色彩（color）、温度（temperature）和空间感（space）。
-2. 措辞高级：避免使用“好听”、“感人”等通俗词汇。使用如“铝制触感”、“余烬中的回响”、“极简主义的脉冲”、“流动的深蓝”等词汇。
-3. 字数极简：20-40 个字。
-4. 重点：不是在描述歌词，而是在描述这首歌带来的“情绪底色”和“视觉通感”。
+          const emotionContext = emotion 
+            ? `[核心质感]：${emotion.x > 0 ? "偏向明亮/温润" : "偏向幽暗/冷峻"}的底色，伴随${emotion.y > 0 ? "极具颗粒感/侵略性" : "失重/漂流"}的脉络。`
+            : "";
 
-示例：“这首歌的底色是冰冷的铝制触感，混合了深夜 3 点的孤寂与微光。”`;
+          const systemPrompt = `你是一位拒绝平庸、追求极致语义差异的通感艺术家。
+任务：将信号源转译为一段 15-30 字的“感官切片”。
+${emotionContext}
 
-          const userPrompt = `歌曲名：${title}
-艺术家：${artist}
-${lyrics ? `部分歌词：${lyrics.substring(0, 300)}` : ""}`;
+严律：
+1. 禁止套路：严禁使用“时间的铁锈”、“靛蓝色”、“碎裂”、“深渊”等万金油词汇。
+2. 语义溯源：必须从歌名或歌词残片中提取一个具体的“物质锚点”，并基于此进行超现实联想。
+3. 物理属性：文字中必须包含一个极具辨识度的物理特征（如：特定的温度、化学状态、光折射率或罕见的材质）。
+4. 结构：无主体代词。无音乐词汇。仅限一句话。
+
+风格指南：如果这首歌是金属色的，就不要写成丝绒；如果它是干燥的，就不要写成潮湿。追求那种“唯有这首歌才配得上这段文字”的唯一性。`;
+
+          const userPrompt = `信号源：${title} / ${artist}
+${lyrics ? `语义残片：${lyrics.substring(0, 400)}` : ""}`;
 
           const response = await fetch(url, {
             method: "POST",
@@ -63,8 +68,10 @@ ${lyrics ? `部分歌词：${lyrics.substring(0, 300)}` : ""}`;
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt },
               ],
-              temperature: 0.7,
-              max_tokens: 100,
+              temperature: 0.95,
+              presence_penalty: 0.6, // 鼓励谈论新话题
+              frequency_penalty: 0.6, // 减少重复词汇
+              max_tokens: 150,
             }),
           });
 

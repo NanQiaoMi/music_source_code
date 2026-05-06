@@ -81,13 +81,18 @@ export function GlassPanel({
               flex flex-col
               ${className}
             `}
+            initial={{ x: isRight ? "100%" : "-100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: isRight ? "100%" : "-100%", opacity: 0 }}
+            transition={{
+              duration: 0.4,
+              ease: [0.23, 1, 0.32, 1]
+            }}
             style={{
               borderRadius: isRight ? "12px 0 0 12px" : "0 12px 12px 0",
+              willChange: "transform, opacity",
+              backfaceVisibility: "hidden"
             }}
-            initial={{ x: isRight ? "100%" : "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: isRight ? "100%" : "-100%" }}
-            transition={apple.transition.spring}
           >
             {/* Header — Apple style: title centered, close button absolute right */}
             <div className="relative flex items-center justify-between px-5 pt-5 pb-3">

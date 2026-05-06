@@ -14,12 +14,13 @@ export type PanelName =
   | "backupRestore" | "statsAchievements" | "professionalMode"
   | "formatConverter" | "dsdConverter" | "trackCutter" | "crossfadeMixer"
   | "fingerprintScanner" | "libraryHealth" | "professionalTools"
-  | "instantMix" | "smartRandom" | "emotionMatrix" | "aiSettings";
+  | "instantMix" | "smartRandom" | "emotionMatrix" | "aiSettings" | "dnaJournal";
 
 // Full-screen panels that should be mutually exclusive
 const FULLSCREEN_PANELS: PanelName[] = [
   "emotionMatrix", "formatConverter", "dsdConverter", "trackCutter",
   "crossfadeMixer", "professionalMode", "share", "statsAchievements",
+  "dnaJournal",
 ];
 
 function createDefaultPanels(): Record<PanelName, boolean> {
@@ -33,7 +34,7 @@ function createDefaultPanels(): Record<PanelName, boolean> {
     "backupRestore", "statsAchievements", "professionalMode",
     "formatConverter", "dsdConverter", "trackCutter", "crossfadeMixer",
     "fingerprintScanner", "libraryHealth", "professionalTools",
-    "instantMix", "smartRandom", "emotionMatrix", "aiSettings",
+    "instantMix", "smartRandom", "emotionMatrix", "aiSettings", "dnaJournal",
   ];
   allNames.forEach(name => { panels[name] = false; });
   return panels;

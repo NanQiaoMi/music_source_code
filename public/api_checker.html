@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mimimusic AI 核心诊断系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #050505;
+            --accent-purple: #a855f7;
+            --accent-pink: #ec4899;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(236, 72, 153, 0.1) 0%, transparent 50%);
+            color: #fff;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-purple), #7c3aed);
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px var(--accent-purple);
+            filter: brightness(1.1);
+        }
+
+        .input-field {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            border-color: var(--accent-purple);
+            background: rgba(0, 0, 0, 0.5);
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.1);
+        }
+
+        .loader {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top: 2px solid var(--accent-purple);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-purple), transparent);
+            opacity: 0.5;
+            animation: scan 4s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-online { background: #10b981; box-shadow: 0 0 10px #10b981; }
+        .status-offline { background: #ef4444; }
+        .status-testing { background: #f59e0b; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+    <div class="scan-line"></div>
+    
+    <div class="max-w-7xl mx-auto space-y-8">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div class="space-y-2">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 glass rounded-xl">
+                        <svg class="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-3xl font-extrabold tracking-tighter uppercase">AI Core <span class="text-purple-500">核心诊断</span></h1>
+                </div>
+                <p class="text-white/40 text-sm font-medium tracking-wide mono uppercase">神经接口协议 v4.0.1 // 系统自检</p>
+            </div>
+            
+            <div class="flex gap-4">
+                <div class="glass px-4 py-2 rounded-xl flex items-center gap-3">
+                    <div class="status-dot status-online"></div>
+                    <span class="text-[10px] font-bold text-white/60 uppercase tracking-widest">接口就绪 (Interface Ready)</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Left Side: Configuration -->
+            <div class="lg:col-span-5 space-y-8">
+                <section class="glass rounded-[2rem] p-8 space-y-6 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-6 opacity-10">
+                        <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    </div>
+
+                    <h2 class="text-xs font-bold text-purple-400 uppercase tracking-[0.3em]">网络协议配置</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold text-white/30 uppercase ml-1">接口基准地址 (Base URL)</label>
+                            <input id="baseUrl" type="text" value="https://api.openai.com/v1" 
+                                class="w-full input-field rounded-2xl px-5 py-4 text-sm mono text-white/90" placeholder="https://...">
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold text-white/30 uppercase ml-1">加密访问密钥 (Token)</label>
+                            <div class="relative">
+                                <input id="apiKey" type="password" 
+                                    class="w-full input-field rounded-2xl px-5 py-4 text-sm mono text-white/90" placeholder="sk-................................">
+                                <button onclick="toggleKeyVisibility()" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/40 transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold text-white/30 uppercase ml-1">测试指令 (Custom Prompt)</label>
+                            <textarea id="customPrompt" rows="2" 
+                                class="w-full input-field rounded-2xl px-5 py-4 text-sm mono text-white/90 resize-none" 
+                                placeholder="输入测试问题，默认发送 'ping'..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex gap-4">
+                        <button id="refreshBtn" onclick="fetchModelList()" class="flex-1 btn-primary text-white font-bold py-4 rounded-2xl text-xs uppercase tracking-widest shadow-2xl flex items-center justify-center gap-3">
+                            <span id="refreshBtnText">初始化协议 (获取列表)</span>
+                        </button>
+                    </div>
+                </section>
+
+                <section id="modelSection" class="glass rounded-[2rem] p-8 space-y-6 hidden">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <h2 class="text-xs font-bold text-purple-400 uppercase tracking-[0.3em]">可用神经元 (模型库)</h2>
+                            <button onclick="toggleSelectAll()" class="text-[9px] px-2 py-0.5 glass rounded-md text-white/40 hover:text-white/80 hover:bg-white/5 transition-all uppercase font-bold tracking-widest">全选/取消</button>
+                            <button onclick="resetSystem()" class="text-[9px] px-2 py-0.5 glass rounded-md text-red-400/40 hover:text-red-400 hover:bg-red-500/5 transition-all uppercase font-bold tracking-widest border border-red-500/10">重置系统</button>
+                        </div>
+                        <span id="modelCount" class="text-[10px] mono text-white/20">找到 0 个单元</span>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div id="modelList" class="flex flex-wrap gap-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                            <!-- Models will appear here -->
+                        </div>
+
+                        <div class="pt-4 space-y-4 border-t border-white/5">
+                            <div class="flex gap-2">
+                                <input id="manualModel" type="text" placeholder="手动添加神经元..." 
+                                    class="flex-1 input-field rounded-xl px-4 py-2 text-[10px] mono">
+                                <button onclick="addManualModel()" class="px-4 glass hover:bg-white/5 text-[10px] font-bold rounded-xl transition-all">添加</button>
+                            </div>
+                            <button id="batchBtn" onclick="startBatchTest()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-4 rounded-2xl text-xs uppercase tracking-widest transition-all">
+                                执行全面性能诊断
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Side: Diagnostics Output -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+                <!-- Working Models Summary -->
+                <section id="workingSection" class="glass rounded-[2rem] p-6 hidden animate-in fade-in zoom-in duration-500 border-emerald-500/20">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <h2 class="text-xs font-bold uppercase tracking-[0.2em] text-emerald-400">已联通神经元 (正常可用)</h2>
+                        </div>
+                        <span id="workingCount" class="text-[10px] mono text-emerald-400/50">0 UNITS</span>
+                    </div>
+                    <div id="workingList" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                        <!-- Working models will be injected here -->
+                    </div>
+                </section>
+
+                <section class="glass rounded-[3rem] flex-1 flex flex-col overflow-hidden border-emerald-500/10">
+                    <div class="p-8 border-b border-white/5 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></div>
+                            <h2 class="text-sm font-bold uppercase tracking-[0.2em]">实时遥测数据 (Live Telemetry)</h2>
+                        </div>
+                        <button onclick="clearLogs()" class="text-[10px] text-white/20 hover:text-white/40 uppercase font-bold tracking-widest transition-all">清除日志</button>
+                    </div>
+
+                    <div id="logArea" class="h-[450px] p-8 space-y-2 overflow-y-auto mono text-[11px] custom-scrollbar bg-black/20">
+                        <div class="text-white/20 italic">等待协议初始化指令...</div>
+                    </div>
+
+                    <div class="p-6 bg-black/40 border-t border-white/5 flex items-center justify-between">
+                        <div id="statsInfo" class="flex gap-8">
+                            <div class="space-y-1">
+                                <p class="text-[9px] text-white/20 uppercase font-bold">平均延迟</p>
+                                <p id="avgLatency" class="text-sm font-bold text-emerald-400">-- ms</p>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-[9px] text-white/20 uppercase font-bold">成功率</p>
+                                <p id="successRate" class="text-sm font-bold text-purple-400">--%</p>
+                            </div>
+                        </div>
+                        <button id="saveBtn" onclick="exportResults()" disabled class="glass px-6 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-white/5 transition-all disabled:opacity-20">下载数据报告</button>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allModels = [];
+        let workingModels = [];
+        let selectedForTest = new Set();
+        let isTesting = false;
+        let testResults = [];
+
+        window.onload = () => {
+            const storeData = localStorage.getItem('mimi-ai-store');
+            if (storeData) {
+                try {
+                    const parsed = JSON.parse(storeData);
+                    const state = parsed.state;
+                    if (state && state.configs && state.configs.length > 0) {
+                        const active = state.configs.find(c => c.id === state.activeConfigId) || state.configs[0];
+                        document.getElementById('baseUrl').value = active.baseUrl || "https://api.openai.com/v1";
+                        document.getElementById('apiKey').value = active.apiKey || "";
+                        log(`[系统] 检测到现有配置: ${active.name}`, 'purple');
+                    }
+                } catch (e) {
+                    console.error("解析配置失败", e);
+                }
+            }
+        };
+
+        function log(msg, type = 'gray') {
+            const area = document.getElementById('logArea');
+            if (area.innerHTML.includes('等待协议初始化')) area.innerHTML = '';
+            
+            const div = document.createElement('div');
+            const time = new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            let colorClass = 'text-white/40';
+            if (type === 'success') colorClass = 'text-emerald-400 font-bold';
+            if (type === 'error') colorClass = 'text-red-400';
+            if (type === 'purple') colorClass = 'text-purple-400';
+            if (type === 'warning') colorClass = 'text-amber-400';
+
+            div.className = `py-1 animate-in fade-in slide-in-from-left-2 duration-500`;
+            div.innerHTML = `<span class="text-white/10 mr-3">[${time}]</span><span class="${colorClass}">${msg}</span>`;
+            area.appendChild(div);
+            area.scrollTop = area.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logArea').innerHTML = '<div class="text-white/20 italic">日志已清除。</div>';
+            document.getElementById('workingList').innerHTML = '';
+            document.getElementById('workingSection').classList.add('hidden');
+            workingModels = [];
+            testResults = [];
+            updateStats();
+        }
+
+        function toggleKeyVisibility() {
+            const input = document.getElementById('apiKey');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        async function fetchModelList() {
+            const baseUrl = document.getElementById('baseUrl').value.trim().replace(/\/$/, "");
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const btn = document.getElementById('refreshBtn');
+            const btnText = document.getElementById('refreshBtnText');
+            
+            if (!apiKey) return log("错误: API Key 缺失。", "error");
+            
+            btn.disabled = true;
+            btnText.innerHTML = '<div class="loader"></div>';
+            log(`[网络] 正在与 ${baseUrl} 进行握手初始化...`, 'purple');
+
+            try {
+                const fullUrl = baseUrl.endsWith("/v1") ? `${baseUrl}/models` : `${baseUrl}/v1/models`;
+                const response = await fetch(fullUrl, { 
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/json' }
+                });
+
+                if (!response.ok) throw new Error(`HTTP 状态码 ${response.status}`);
+
+                const data = await response.json();
+                let list = Array.isArray(data) ? data : (data.data || []);
+                allModels = list.map(m => typeof m === 'string' ? m : (m.id || m.name)).filter(Boolean).sort();
+                
+                if (allModels.length === 0) throw new Error("接收到的神经元集合为空。");
+
+                selectedForTest.clear();
+                renderList();
+                document.getElementById('modelSection').classList.remove('hidden');
+                log(`[成功] 已同步 ${allModels.length} 个神经元单元。`, 'success');
+            } catch (err) {
+                log(`[失败] 握手失败: ${err.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btnText.innerText = '同步神经元 (Sync Neurons)';
+            }
+        }
+
+        function renderList() {
+            const listEl = document.getElementById('modelList');
+            listEl.innerHTML = '';
+            document.getElementById('modelCount').innerText = `${allModels.length} 单元在线`;
+            allModels.forEach(m => {
+                const span = document.createElement('div');
+                const isSelected = selectedForTest.has(m);
+                span.className = `px-3 py-1.5 border rounded-xl text-[10px] mono cursor-pointer transition-all duration-300 ${isSelected ? 'bg-purple-500/20 border-purple-500 text-purple-300' : 'bg-white/5 border-white/5 text-white/30 hover:bg-white/10'}`;
+                span.innerText = m;
+                span.onclick = () => {
+                    if (selectedForTest.has(m)) selectedForTest.delete(m);
+                    else selectedForTest.add(m);
+                    renderList();
+                };
+                listEl.appendChild(span);
+            });
+            updateBatchBtn();
+        }
+
+        function toggleSelectAll() {
+            if (isTesting) return;
+            if (selectedForTest.size === allModels.length) {
+                selectedForTest.clear();
+            } else {
+                allModels.forEach(m => selectedForTest.add(m));
+            }
+            renderList();
+        }
+
+        function resetSystem() {
+            if (isTesting) return;
+            allModels = [];
+            workingModels = [];
+            selectedForTest.clear();
+            testResults = [];
+            
+            document.getElementById('modelList').innerHTML = '';
+            document.getElementById('modelCount').innerText = '找到 0 个单元';
+            document.getElementById('modelSection').classList.add('hidden');
+            document.getElementById('workingSection').classList.add('hidden');
+            document.getElementById('workingList').innerHTML = '';
+            document.getElementById('logArea').innerHTML = '<div class="text-white/20 italic">系统已重置，等待初始化指令...</div>';
+            
+            updateStats();
+            updateBatchBtn();
+            log("[系统] 所有运行数据已清空。", "warning");
+        }
+
+        function updateBatchBtn() {
+            const btn = document.getElementById('batchBtn');
+            btn.innerText = selectedForTest.size > 0 ? `执行选中诊断 (${selectedForTest.size})` : "执行全局扫描";
+        }
+
+        function addManualModel() {
+            const m = document.getElementById('manualModel').value.trim();
+            if (!m) return;
+            if (!allModels.includes(m)) {
+                allModels.unshift(m);
+                selectedForTest.add(m);
+                renderList();
+                document.getElementById('manualModel').value = '';
+                document.getElementById('modelSection').classList.remove('hidden');
+            }
+        }
+
+        async function startBatchTest() {
+            if (isTesting) return;
+            const modelsToTest = selectedForTest.size > 0 ? Array.from(selectedForTest) : allModels;
+            if (modelsToTest.length === 0) return log("错误: 没有可用的神经元进行诊断。", "error");
+
+            isTesting = true;
+            document.getElementById('batchBtn').disabled = true;
+            document.getElementById('batchBtn').innerText = "扫描中 (SCANNING)...";
+            document.getElementById('workingSection').classList.remove('hidden');
+            
+            const baseUrl = document.getElementById('baseUrl').value.trim().replace(/\/$/, "");
+            const apiKey = document.getElementById('apiKey').value.trim();
+            
+            log(`[指令] 启动对 ${modelsToTest.length} 个单元的批量诊断...`, 'purple');
+
+            for (let i = 0; i < modelsToTest.length; i++) {
+                const model = modelsToTest[i];
+                log(`[处理] 正在探测 ${model}...`);
+                
+                const startTime = performance.now();
+                const result = await testSingleModel(baseUrl, apiKey, model);
+                const endTime = performance.now();
+                const latency = Math.round(endTime - startTime);
+
+                if (result.success) {
+                    workingModels.push({ model, latency, tokens: result.tokens });
+                    testResults.push({ model, status: 'pass', latency });
+                    
+                    // Add to working list UI
+                    const wList = document.getElementById('workingList');
+                    const badge = document.createElement('div');
+                    badge.className = "px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[9px] mono rounded-lg animate-in zoom-in duration-300 flex items-center gap-2";
+                    badge.innerHTML = `<span>${model}</span><span class="opacity-40 text-[8px]">${latency}ms</span>`;
+                    wList.appendChild(badge);
+                    document.getElementById('workingCount').innerText = `${workingModels.length} UNITS`;
+
+                    log(`[通过] ${model} | ${latency}ms | 消耗 ${result.tokens} Token`, 'success');
+                } else {
+                    testResults.push({ model, status: 'fail', latency: 0 });
+                    log(`[失败] ${model} | 连接错误或超时`, 'error');
+                }
+                updateStats();
+            }
+
+            isTesting = false;
+            document.getElementById('batchBtn').disabled = false;
+            updateBatchBtn();
+            document.getElementById('saveBtn').disabled = false;
+            log(`[结束] 诊断序列已完成。成功率: ${workingModels.length}/${modelsToTest.length}`, 'purple');
+        }
+
+        async function testSingleModel(baseUrl, apiKey, model) {
+            const fullUrl = baseUrl.endsWith("/v1") ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
+            const customPrompt = document.getElementById('customPrompt').value.trim() || "ping";
+            
+            try {
+                const response = await fetch(fullUrl, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        model, 
+                        messages: [{ role: "user", content: customPrompt }], 
+                        max_tokens: 10,
+                        temperature: 0
+                    })
+                });
+                if (!response.ok) return { success: false };
+                const data = await response.json();
+                return { success: true, tokens: data.usage?.total_tokens || 0 };
+            } catch (err) { return { success: false }; }
+        }
+
+        function updateStats() {
+            const passCount = testResults.filter(r => r.status === 'pass').length;
+            const total = testResults.length;
+            const rate = total > 0 ? Math.round((passCount / total) * 100) : 0;
+            const avg = workingModels.length > 0 ? Math.round(workingModels.reduce((acc, m) => acc + m.latency, 0) / workingModels.length) : 0;
+            
+            document.getElementById('successRate').innerText = `${rate}%`;
+            document.getElementById('avgLatency').innerText = `${avg || '--'} ms`;
+        }
+
+        function exportResults() {
+            const content = `MIMIMUSIC AI 诊断报告\n生成时间: ${new Date().toISOString()}\n----------------------------------\n` + 
+                testResults.map(r => `${r.model.padEnd(30)} | ${r.status === 'pass' ? '通过' : '失败'} | ${r.latency}ms`).join('\n');
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `mimi_diag_${Date.now()}.txt`; a.click();
+        }
+    </script>
+</body>
+</html>

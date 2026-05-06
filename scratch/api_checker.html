@@ -21,19 +21,19 @@
         <div class="flex-1 glass-panel p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
             <header class="flex items-center gap-5 mb-8">
                 <div class="w-12 h-12 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg"><svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
-                <div><h1 class="text-xl font-extrabold tracking-tight">AI 核心性能诊断</h1><p class="text-slate-400 font-medium text-xs">Final Robust Tool v3.2.2</p></div>
+                <div><h1 class="text-xl font-extrabold tracking-tight">AI 核心性能诊断</h1><p class="text-slate-400 font-medium text-xs">终端稳定版 v3.2.2</p></div>
             </header>
 
             <div class="space-y-5">
                 <div class="grid grid-cols-2 gap-4">
-                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 text-indigo-300">Base URL</label><input id="baseUrl" type="text" value="https://api.mnapi.com/v1" class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-white text-xs font-mono" /></div>
-                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 text-indigo-300">API Key</label><input id="apiKey" type="password" placeholder="sk-..." class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-white text-xs font-mono" /></div>
+                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 text-indigo-300">接口基准地址 (Base URL)</label><input id="baseUrl" type="text" value="https://api.mnapi.com/v1" class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-white text-xs font-mono" /></div>
+                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 text-indigo-300">访问密钥 (API Key)</label><input id="apiKey" type="password" placeholder="请输入 sk-..." class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-white text-xs font-mono" /></div>
                 </div>
 
                 <div class="space-y-4 p-5 bg-white/5 rounded-2xl border border-white/5">
-                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 text-indigo-300">测试指令 / Custom Prompt</label><textarea id="customPrompt" rows="2" class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white text-xs" placeholder="输入测试问题..."></textarea></div>
+                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-2 text-indigo-300">测试指令 (Custom Prompt)</label><textarea id="customPrompt" rows="2" class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white text-xs" placeholder="输入测试问题，默认发送 'hi'"></textarea></div>
                     <div class="flex gap-2">
-                        <input id="manualModel" type="text" placeholder="手动添加模型名" class="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-white font-mono" />
+                        <input id="manualModel" type="text" placeholder="手动添加模型名称 (例如: gpt-4o)" class="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-white font-mono" />
                         <button onclick="addManualModel()" class="px-4 bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold rounded-xl border border-white/10 transition-all">加入候检</button>
                     </div>
                 </div>
@@ -49,7 +49,7 @@
 
                 <div id="modelContainer" class="hidden space-y-4">
                     <div class="p-5 bg-slate-900/40 rounded-2xl border border-white/5">
-                        <div class="flex items-center justify-between mb-3 px-1"><h3 class="text-[10px] font-bold text-slate-400 uppercase">模型库 (点击切换多选，不选则测试全部)</h3><span id="modelCount" class="text-[10px] text-slate-500 italic">0 models</span></div>
+                        <div class="flex items-center justify-between mb-3 px-1"><h3 class="text-[10px] font-bold text-slate-400 uppercase">模型库 (点击切换多选，不选则测试全部)</h3><span id="modelCount" class="text-[10px] text-slate-500 italic">0 个模型</span></div>
                         <div id="modelList" class="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-2"></div>
                     </div>
                     <div id="progressArea" class="hidden p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
@@ -63,7 +63,7 @@
         <div class="w-full lg:w-96 glass-panel rounded-[2.5rem] flex flex-col overflow-hidden border-emerald-500/20">
             <div class="p-6 bg-emerald-500/10 border-b border-emerald-500/20"><h2 class="text-sm font-bold text-emerald-400 flex items-center gap-2 uppercase tracking-widest"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> 实时诊断报告</h2></div>
             <div id="successList" class="flex-1 p-4 space-y-3 overflow-y-auto text-xs font-mono"><div class="text-slate-500 italic text-center py-12">请先点击左侧“刷新列表”</div></div>
-            <div class="p-4 bg-black/20 border-t border-white/5"><button id="saveBtn" onclick="exportResults()" disabled class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white font-bold py-3 rounded-xl transition-all text-xs">导出诊断报告 (.txt)</button></div>
+            <div class="p-4 bg-black/20 border-t border-white/5"><button id="saveBtn" onclick="exportResults()" disabled class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white font-bold py-3 rounded-xl transition-all text-xs">导出报告 (.txt)</button></div>
         </div>
     </div>
 
@@ -92,7 +92,7 @@
                     headers: { 'Authorization': `Bearer ${apiKey}`, 'Accept': 'application/json' }
                 });
 
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP 错误 ${response.status}`);
 
                 const data = await response.json();
                 let list = Array.isArray(data) ? data : (data.data || []);
@@ -104,7 +104,7 @@
                 renderList();
                 document.getElementById('modelContainer').classList.remove('hidden');
                 document.getElementById('batchBtn').classList.remove('hidden');
-                document.getElementById('successList').innerHTML = '<div class="text-slate-500 italic text-center py-12">列表已就绪，请点击“开始测试”</div>';
+                document.getElementById('successList').innerHTML = '<div class="text-slate-500 italic text-center py-12">列表已就绪，请选择模型并开始测试</div>';
             } catch (err) {
                 alert("获取列表失败: " + err.message);
                 document.getElementById('successList').innerHTML = `<div class="text-red-400 p-4 text-center">获取失败<br/>${err.message}</div>`;
@@ -117,7 +117,7 @@
         function renderList() {
             const listEl = document.getElementById('modelList');
             listEl.innerHTML = '';
-            document.getElementById('modelCount').innerText = `${allModels.length} models`;
+            document.getElementById('modelCount').innerText = `${allModels.length} 个模型`;
             allModels.forEach(m => {
                 const span = document.createElement('div');
                 span.id = `m-${m.replace(/[^a-zA-Z0-9]/g, '_')}`;
@@ -150,7 +150,7 @@
         function addManualModel() {
             const m = document.getElementById('manualModel').value.trim();
             if (!m) return;
-            if (allModels.includes(m)) return alert("模型已存在");
+            if (allModels.includes(m)) return alert("该模型已在列表中");
             allModels.unshift(m);
             renderList();
             const el = document.getElementById(`m-${m.replace(/[^a-zA-Z0-9]/g, '_')}`);
@@ -200,14 +200,14 @@
                     if (modelEl) modelEl.className = "px-2 py-1 bg-emerald-500 border border-emerald-400 rounded-lg text-[10px] text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]";
                     const item = document.createElement('div');
                     item.className = "p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-in slide-in-from-right-4 duration-300";
-                    item.innerHTML = `<div class="flex justify-between font-bold text-emerald-400 text-[10px]"><span>${model}</span><span class="bg-emerald-500 text-white px-1.5 py-0.5 rounded text-[8px]">PASS</span></div><div class="flex justify-between text-[9px] opacity-60 mt-1"><span>耗时: ${latency}ms</span><span>消耗: ${result.tokens} tk</span></div>`;
+                    item.innerHTML = `<div class="flex justify-between font-bold text-emerald-400 text-[10px]"><span>${model}</span><span class="bg-emerald-500 text-white px-1.5 py-0.5 rounded text-[8px]">通过</span></div><div class="flex justify-between text-[9px] opacity-60 mt-1"><span>延迟: ${latency}ms</span><span>消耗: ${result.tokens} Token</span></div>`;
                     successList.appendChild(item);
                     document.getElementById('saveBtn').disabled = false;
                 } else {
                     if (modelEl) modelEl.className = "px-2 py-1 bg-red-500/10 border border-red-500/20 rounded-lg text-[10px] text-red-400 opacity-40";
                     const item = document.createElement('div');
                     item.className = "p-2 bg-red-500/5 border border-red-500/10 rounded-lg text-red-400/50 text-[9px] flex justify-between";
-                    item.innerHTML = `<span>${model}</span> <span>FAILED</span>`;
+                    item.innerHTML = `<span>${model}</span> <span>失败</span>`;
                     successList.appendChild(item);
                 }
             }
@@ -232,10 +232,10 @@
         }
 
         function exportResults() {
-            const content = `Mimi AI 诊断报告\n时间: ${new Date().toLocaleString()}\n--------------------------\n` + workingModels.map(m => `${m.model} | ${m.latency}ms | ${m.tokens} tk`).join('\n');
+            const content = `Mimimusic AI 诊断报告\n时间: ${new Date().toLocaleString()}\n--------------------------\n` + workingModels.map(m => `模型: ${m.model} | 延迟: ${m.latency}ms | 消耗: ${m.tokens} Token`).join('\n');
             const blob = new Blob([content], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = `mimi_report.txt`; a.click();
+            const a = document.createElement('a'); a.href = url; a.download = `mimimusic_report.txt`; a.click();
         }
     </script>
 </body>

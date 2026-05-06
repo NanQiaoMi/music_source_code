@@ -288,7 +288,6 @@ export function PanelOrchestrator() {
         factory={FACTORIES.emotionMatrix}
       />
 
-      {/* ─── AI Settings ───────────────────────────────────────── */}
       <LazyPanel
         name="aiSettings"
         isOpen={panels.aiSettings}

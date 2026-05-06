@@ -71,11 +71,18 @@ export function GlassDrawer({
               flex flex-col
               ${className}
             `}
-            style={{ borderRadius: "12px 12px 0 0" }}
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={apple.transition.spring}
+            initial={{ y: "100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
+            transition={{
+              duration: 0.4,
+              ease: [0.23, 1, 0.32, 1]
+            }}
+            style={{ 
+              borderRadius: "12px 12px 0 0",
+              willChange: "transform, opacity",
+              backfaceVisibility: "hidden"
+            }}
           >
             {/* Drag handle — Apple style */}
             <div className="flex justify-center pt-2 pb-1">

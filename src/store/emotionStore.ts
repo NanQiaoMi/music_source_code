@@ -249,24 +249,35 @@ export const useEmotionStore = create<EmotionState>()(
           const { usePlaylistStore } = require("./playlistStore");
           const { useAIStore } = require("./aiStore");
           const aiStore = useAIStore.getState();
-          const config = aiStore.configs.find(c => c.id === aiStore.activeConfigId);
+          const config = aiStore.configs.find((c: any) => c.id === aiStore.activeConfigId);
           const { songs } = usePlaylistStore.getState();
-          const song = songs.find(s => s.id === songId);
+          const song = songs.find((s: any) => s.id === songId);
           
           if (!song || !config || !config.apiKey) {
-            console.error("Missing song or API key");
+            console.error("Missing song, config or API key", { song, config });
+            const { toast } = require("@/components/shared/GlassToast");
+            if (!config || !config.apiKey) toast.warning("未配置有效的 AI 接口");
             return;
           }
 
-          const prompt = `Task: Objective Music Emotion Mapping.
-          Title: ${song.title} | Artist: ${song.artist}
+          const prompt = `你是一位资深的音乐考古学家与情感计算专家。
+          请为这首音乐作品生成精确且【空间分布均衡】的情感坐标。
           
-          Analyze the track based on its objective musical properties:
-          - Valence: Emotional positivity (-1.0 to 1.0)
-          - Energy: Intensity/Arousal (-1.0 to 1.0)
-          - Description: A brief poetic mood summary.
+          作品信息：
+          - 标题：${song.title}
+          - 艺术家：${song.artist}
           
-          Requirement: Output JSON {"v", "e", "d"}. Be as precise and neutral as possible.`;
+          坐标轴定义：
+          1. Valence (v): [-1.0 到 1.0] 情感正向度。
+          2. Energy (e): [-1.0 到 1.0] 物理能量强度。
+          
+          分布策略（追求自然均衡）：
+          - 全空间利用：请务必利用好从中心 (0,0) 到角落 (1,1) 的所有空间。
+          - 拒绝堆积：不要只给中间值，也不要只给极端值。
+          - 情感匹配：如果歌曲情感平和、中立，请将其放在中心区域；如果情感强烈，请大胆推向边缘。
+          - 视觉平衡：你的目标是让数千首歌在星图上形成一个自然的、充满活力的散点图，而不是一个实心的球或一个空心的环。
+          
+          输出 JSON 格式：{"v": float, "e": float, "d": string(12字以内描述)}`;
 
           const baseUrl = config.baseUrl.replace(/\/$/, "");
           const url = baseUrl.endsWith("/v1") ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
@@ -296,26 +307,18 @@ export const useEmotionStore = create<EmotionState>()(
             const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error("No JSON found");
             
-            const result = JSON.parse(jsonMatch[0]);
-            
-            // 1. 获取库均值，仅用于中心化校准
-            const { points } = get();
-            const taggedPoints = points.filter(p => p.isTagged);
-            let biasV = 0, biasE = 0;
-            if (taggedPoints.length > 10) {
-              biasV = taggedPoints.reduce((acc, p) => acc + p.x, 0) / taggedPoints.length;
-              biasE = taggedPoints.reduce((acc, p) => acc + p.y, 0) / taggedPoints.length;
-            }
-
-            // 2. 纯净坐标 (AI 原始值 - 库偏好)
-            let v = Number(result.v ?? result.valence ?? 0) - biasV;
-            let e = Number(result.e ?? result.energy ?? 0) - biasE;
+            // 2. 自然分布：直接使用 AI 产出的数值，保持其原始的情感比例
+            // 不再进行强制对比度拉伸，以允许中间区域自然存在点位
+            let v = Number(result.v ?? result.valence ?? 0);
+            let e = Number(result.e ?? result.energy ?? 0);
             
             if (isNaN(v)) v = 0; if (isNaN(e)) e = 0;
             const d = String(result.d ?? result.description ?? "AI 暂无描述");
 
-            // 3. 极简螺旋避让 (仅解决重叠)
-            const minDistance = 0.05; 
+            const { points } = get();
+
+            // 3. 智能避让：略微增加避让间距，防止点位看起来“堆在一起”
+            const minDistance = 0.08; 
             let iteration = 0;
             const idHash = songId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
             let angle = (idHash % 360) * (Math.PI / 180);
@@ -335,23 +338,20 @@ export const useEmotionStore = create<EmotionState>()(
             v = Math.max(-1, Math.min(1, v));
             e = Math.max(-1, Math.min(1, e));
             
-            console.log(`[AI-Pure] ${song.title} -> v:${v.toFixed(3)}, e:${e.toFixed(3)}`);
             get().saveSongEmotion(songId, v, e, d);
           } catch (parseError) {
             if ((parseError as any).name === 'AbortError') return;
             console.warn("Parse Failed:", rawContent);
           }
         } catch (error) {
-          if ((error as any).name === 'AbortError') {
-            console.log("[AI-Abort] Request cancelled by user");
-            return;
-          }
+          if ((error as any).name === 'AbortError') return;
           console.error("Auto-tagging failed:", error);
         }
       },
 
       autoTagBatch: async (songIds) => {
-        const { songs } = require("./playlistStore").usePlaylistStore.getState();
+        const { usePlaylistStore } = require("./playlistStore");
+        const { songs } = usePlaylistStore.getState();
         const abortController = new AbortController();
         set({ 
           taggingStatus: { current: 0, total: songIds.length, currentTitle: "" }, 
@@ -367,27 +367,28 @@ export const useEmotionStore = create<EmotionState>()(
           while (index < songIds.length && !get()._isStopRequested) {
             const currentIndex = index++;
             const songId = songIds[currentIndex];
+            const { songs } = usePlaylistStore.getState();
             const song = songs.find((s: any) => s.id === songId);
             
-            if (song) {
-              set({ taggingStatus: { ...get().taggingStatus!, currentTitle: song.title } });
-              try {
-                await get().autoTagSong(songId, abortController.signal);
-              } catch (e) {
-                if ((e as any).name === 'AbortError') break;
-                console.error(`Failed to tag ${song.title}:`, e);
-              }
+            if (!song) {
+              finished++;
+              continue;
             }
+
+            console.log(`[Batch Tagging] Processing ${currentIndex + 1}/${songIds.length}: ${song.title}`);
+            set({ taggingStatus: { ...get().taggingStatus!, currentTitle: song.title, current: finished } });
             
-            finished++;
-            set({ taggingStatus: { ...get().taggingStatus!, current: finished } });
-            
-            // 并发时稍作停顿，避免请求过于密集
-            await new Promise(r => setTimeout(r, 200));
+            try {
+              await get().autoTagSong(songId, abortController.signal);
+            } catch (error) {
+              console.error(`[Batch Tagging] Error tagging ${song.title}:`, error);
+            } finally {
+              finished++;
+              set({ taggingStatus: { ...get().taggingStatus!, current: finished } });
+            }
           }
         };
 
-        // 启动并发 Worker 池
         const workers = Array.from({ length: Math.min(CONCURRENCY, songIds.length) }, () => runWorker());
         await Promise.all(workers);
 

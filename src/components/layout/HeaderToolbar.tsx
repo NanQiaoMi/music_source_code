@@ -30,6 +30,8 @@ import {
   Dice1,
   Maximize2,
   Minimize2,
+  Dna,
+  MousePointer2,
 } from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
 import { usePlaylistStore } from "@/store/playlistStore";
@@ -37,6 +39,8 @@ import { useGestureStore } from "@/store/gestureStore";
 import { InstantMixButton } from "@/components/widgets/InstantMix";
 
 import { Logo } from "@/components/layout/Logo";
+import { AIToolbox } from "@/components/layout/AIToolbox";
+import { HoverHub } from "@/components/layout/HoverHub";
 
 /**
  * HeaderToolbar - The primary navigation and tool selection bar.
@@ -83,24 +87,36 @@ export function HeaderToolbar() {
   }, [showProfessionalTools]);
 
   return (
-    <header
+    <motion.header
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ 
+        opacity: currentView === "home" ? 1 : 0, 
+        y: currentView === "home" ? 0 : -10
+      }}
+      transition={{
+        duration: 0.4,
+        ease: [0.23, 1, 0.32, 1],
+        delay: currentView === "home" ? 0.05 : 0
+      }}
       className="absolute top-0 left-0 right-0 z-20 pt-14 pb-4 px-4 backdrop-blur-xl"
       style={{
-        opacity: currentView === "home" ? 1 : 0,
-        transform: currentView === "home" ? "translateY(0)" : "translateY(-20px)",
-        transition: "opacity 0.3s ease, transform 0.3s ease",
-        transitionDelay: currentView === "home" ? "0.05s" : "0s",
         background: "rgba(0,0,0,0.5)",
         borderBottom: "1px solid var(--theme-border)",
+        willChange: "transform, opacity"
       }}
     >
       <div className="flex items-center justify-between max-w-7xl mx-auto">
-        <div
-          style={{
-            opacity: currentView === "home" ? 1 : 0,
-            transform: currentView === "home" ? "translateX(0)" : "translateX(-15px)",
-            transition: "opacity 0.3s ease, transform 0.3s ease",
-            transitionDelay: currentView === "home" ? "0.08s" : "0s",
+        <motion.div
+          initial={{ opacity: 0, x: -15 }}
+          animate={{ 
+            opacity: currentView === "home" ? 1 : 0, 
+            x: currentView === "home" ? 0 : -15 
+          }}
+          transition={{
+            type: "spring",
+            stiffness: 260,
+            damping: 30,
+            delay: currentView === "home" ? 0.08 : 0
           }}
           className="flex items-center gap-2 min-w-0 flex-shrink-0"
         >
@@ -119,236 +135,161 @@ export function HeaderToolbar() {
               {songs.length > 0 ? `${songs.length} 首歌曲` : "导入音乐开始聆听"}
             </p>
           </div>
-        </div>
+        </motion.div>
 
-        <nav
-          className="flex items-center gap-2"
-          style={{
-            opacity: currentView === "home" ? 1 : 0,
-            transform: currentView === "home" ? "translateX(0)" : "translateX(15px)",
-            transition: "opacity 0.3s ease, transform 0.3s ease",
-            transitionDelay: currentView === "home" ? "0.08s" : "0s",
+        <motion.nav
+          initial={{ opacity: 0, x: 15 }}
+          animate={{ 
+            opacity: currentView === "home" ? 1 : 0, 
+            x: currentView === "home" ? 0 : 15 
           }}
+          transition={{
+            type: "spring",
+            stiffness: 260,
+            damping: 30,
+            delay: currentView === "home" ? 0.08 : 0
+          }}
+          className="flex items-center gap-1.5"
         >
-          {/* Apple Music Style Toolbar Buttons */}
-          <button
-            onClick={toggleGestureEnabled}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200"
-            style={{
-              background: isGestureEnabled ? "rgba(255, 255, 255, 0.2)" : "transparent",
-              color: isGestureEnabled ? "#fff" : "var(--theme-text-secondary)",
-              boxShadow: isGestureEnabled ? "0 0 15px rgba(255, 255, 255, 0.2)" : "none",
-            }}
-            title={isGestureEnabled ? "手势控制已开启" : "手势控制已关闭"}
-          >
-            <Hand className="w-[18px] h-[18px]" />
-          </button>
-
+          {/* 1. Essential Tools */}
           <button
             onClick={() => openPanel("search")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
+            className="w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
             style={{ color: "var(--theme-text-secondary)" }}
-            title="搜索"
+            title="快速搜索"
           >
-            <Search className="w-[18px] h-[18px]" />
+            <Search className="w-5 h-5" />
           </button>
 
+          {/* 2. Interactive Shortcuts */}
           <button
-            onClick={() => openPanel("queue")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="播放队列"
-          >
-            <ListMusic className="w-[18px] h-[18px]" />
-          </button>
-
-          <button
-            onClick={() => openPanel("history")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="历史记录"
-          >
-            <History className="w-[18px] h-[18px]" />
-          </button>
-
-          <button
-            onClick={() => openPanel("listeningHistory")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="听歌排行"
-          >
-            <TrendingUp className="w-[18px] h-[18px]" />
-          </button>
-
-          <button
-            onClick={() => openPanel("dailyRecommendation")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="每日推荐"
-          >
-            <Sparkles className="w-[18px] h-[18px]" />
-          </button>
-
-          <InstantMixButton onClick={() => openPanel("instantMix")} />
-
-          <button
-            onClick={() => togglePanel("emotionMatrix")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10 group"
-            style={{ 
-              color: panels.emotionMatrix ? "#fff" : "var(--theme-text-secondary)",
-              background: panels.emotionMatrix ? "rgba(255, 255, 255, 0.15)" : "transparent",
-              boxShadow: panels.emotionMatrix ? "0 0 15px rgba(255, 255, 255, 0.2)" : "none",
+            onClick={() => openPanel("shortcuts")}
+            className="group relative w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-500"
+            style={{
+              background: panels.shortcuts ? "rgba(255, 255, 255, 0.1)" : "transparent",
+              color: panels.shortcuts ? "white" : "var(--theme-text-secondary)",
             }}
-            title="情绪资料库 (Emotion Matrix)"
+            title="交互捷径"
           >
             <motion.div
-              whileHover={{ rotate: 10, scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              className="relative z-10"
             >
-              <Dice1 className="w-[18px] h-[18px]" />
+              <MousePointer2 className="w-[18px] h-[18px]" />
+              {panels.shortcuts && (
+                <motion.div
+                  layoutId="shortcut-glow"
+                  className="absolute inset-0 bg-white/20 blur-xl rounded-full -z-10"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1.8 }}
+                />
+              )}
             </motion.div>
           </button>
 
           <button
-            onClick={() => openPanel("sleepTimer")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="睡眠定时"
+            onClick={toggleGestureEnabled}
+            className="group relative w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-500"
+            style={{
+              background: isGestureEnabled ? "rgba(255, 255, 255, 0.15)" : "transparent",
+              color: isGestureEnabled ? "white" : "var(--theme-text-secondary)",
+            }}
+            title="手势交互"
           >
-            <Moon className="w-[18px] h-[18px]" />
+            <motion.div
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              animate={isGestureEnabled ? {
+                y: [0, -2, 0],
+                transition: { repeat: Infinity, duration: 2, ease: "easeInOut" }
+              } : {}}
+              className="relative z-10"
+            >
+              <Hand className="w-[18px] h-[18px]" />
+              {isGestureEnabled && (
+                <motion.div
+                  layoutId="gesture-glow"
+                  className="absolute inset-0 bg-white/20 blur-lg rounded-full -z-10"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 0.8, scale: 1.5 }}
+                />
+              )}
+            </motion.div>
           </button>
 
-          <button
-            onClick={() => openPanel("settings")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="设置"
-          >
-            <Settings className="w-[18px] h-[18px]" />
-          </button>
+          <div className="w-[1px] h-6 bg-white/10 mx-1" />
 
-          <button
-            onClick={() => openPanel("lyricSettings")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="歌词设置"
-          >
-            <Type className="w-[18px] h-[18px]" />
-          </button>
+          {/* 3. Lyric Hub */}
+          <HoverHub 
+            label="歌词"
+            accentColor="rgba(59, 130, 246, 0.5)"
+            mainIcon={<Type className="w-[18px] h-[18px]" />}
+            items={[
+              { id: "lyricSettings", label: "样式设置", icon: <Type className="w-4 h-4" />, action: () => openPanel("lyricSettings") },
+              { id: "lyricsSearch", label: "联网搜索", icon: <Music className="w-4 h-4" />, action: () => openPanel("lyricsSearch") },
+              { id: "lyricsImport", label: "导入本地", icon: <FileText className="w-4 h-4" />, action: () => openPanel("lyricsImport") },
+              { id: "lyricsCoverEditor", label: "视觉修饰", icon: <Edit3 className="w-4 h-4" />, action: () => openPanel("lyricsCoverEditor") },
+            ]}
+          />
 
-          <button
-            onClick={() => openPanel("lyricsSearch")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="歌词搜索"
-          >
-            <Music className="w-[18px] h-[18px]" />
-          </button>
+          {/* 4. Library Hub */}
+          <HoverHub 
+            label="库房"
+            accentColor="rgba(16, 185, 129, 0.5)"
+            mainIcon={<Database className="w-[18px] h-[18px]" />}
+            items={[
+              { id: "libraryManager", label: "曲库管理", icon: <Database className="w-4 h-4" />, action: () => openPanel("libraryManager") },
+              { id: "smartPlaylist", label: "智能编排", icon: <ListOrdered className="w-4 h-4" />, action: () => openPanel("smartPlaylist") },
+              { id: "offlineCache", label: "离线空间", icon: <Cloud className="w-4 h-4" />, action: () => openPanel("offlineCache") },
+              { id: "backupRestore", label: "数据归档", icon: <HardDrive className="w-4 h-4" />, action: () => openPanel("backupRestore") },
+            ]}
+          />
 
-          <button
-            onClick={() => openPanel("lyricsImport")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="导入歌词"
-          >
-            <FileText className="w-[18px] h-[18px]" />
-          </button>
+          {/* 5. Inspiration Hub */}
+          <HoverHub 
+            label="发现"
+            accentColor="rgba(245, 158, 11, 0.5)"
+            mainIcon={<Sparkles className="w-[18px] h-[18px]" />}
+            items={[
+              { id: "dailyRecommendation", label: "每日私享", icon: <Sparkles className="w-4 h-4" />, action: () => openPanel("dailyRecommendation") },
+              { id: "dnaJournal", label: "听觉基因", icon: <Dna className="w-4 h-4" />, action: () => openPanel("dnaJournal") },
+              { id: "listeningHistory", label: "听歌排行", icon: <TrendingUp className="w-4 h-4" />, action: () => openPanel("listeningHistory") },
+              { id: "statsAchievements", label: "成就奖章", icon: <Award className="w-4 h-4" />, action: () => openPanel("statsAchievements") },
+              { id: "instantMix", label: "即兴混音", icon: <Dice1 className="w-4 h-4" />, action: () => openPanel("instantMix") },
+            ]}
+          />
 
-          <button
-            onClick={() => openPanel("offlineCache")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="离线缓存"
-          >
-            <Cloud className="w-[18px] h-[18px]" />
-          </button>
+          <div className="w-[1px] h-6 bg-white/10 mx-1" />
 
-          <button
-            onClick={() => openPanel("keyboardShortcuts")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="快捷键帮助"
-          >
-            <span className="text-xs font-bold">?</span>
-          </button>
+          {/* 6. AI Hub (Existing AIToolbox) */}
+          <AIToolbox />
+
+          <div className="w-[1px] h-6 bg-white/10 mx-1" />
+
+          {/* 7. System Suite */}
+          <HoverHub 
+            label="工具"
+            accentColor="rgba(139, 92, 246, 0.5)"
+            mainIcon={<Wrench className="w-[18px] h-[18px]" />}
+            items={[
+              { id: "settings", label: "全局偏好", icon: <Settings className="w-4 h-4" />, action: () => openPanel("settings") },
+              { id: "playerSkins", label: "界面皮肤", icon: <Palette className="w-4 h-4" />, action: () => openPanel("playerSkins") },
+              { id: "sleepTimer", label: "睡眠定时", icon: <Moon className="w-4 h-4" />, action: () => openPanel("sleepTimer") },
+              { id: "share", label: "音乐分享", icon: <Share2 className="w-4 h-4" />, action: () => openPanel("share") },
+              { id: "keyboardShortcuts", label: "交互捷径", icon: <span className="text-[10px] font-bold">?</span>, action: () => openPanel("keyboardShortcuts") },
+            ]}
+          />
 
           <button
             onClick={toggleFullscreen}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
+            className="w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
             style={{ 
               color: isFullscreen ? "#fff" : "var(--theme-text-secondary)",
               background: isFullscreen ? "rgba(255, 255, 255, 0.1)" : "transparent"
             }}
-            title={isFullscreen ? "退出全屏" : "全屏"}
           >
-            {isFullscreen ? (
-              <Minimize2 className="w-[18px] h-[18px]" />
-            ) : (
-              <Maximize2 className="w-[18px] h-[18px]" />
-            )}
-          </button>
-
-          <button
-            onClick={() => openPanel("share")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="分享"
-          >
-            <Share2 className="w-[18px] h-[18px]" />
-          </button>
-
-          <button
-            onClick={() => openPanel("playerSkins")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="播放器皮肤"
-          >
-            <Palette className="w-[18px] h-[18px]" />
-          </button>
-
-          <button
-            onClick={() => openPanel("libraryManager")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="音乐库管理"
-          >
-            <Database className="w-[18px] h-[18px]" />
-          </button>
-
-          <button
-            onClick={() => openPanel("lyricsCoverEditor")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="歌词与封面"
-          >
-            <Edit3 className="w-[18px] h-[18px]" />
-          </button>
-
-          <button
-            onClick={() => openPanel("smartPlaylist")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="智能歌单"
-          >
-            <ListOrdered className="w-[18px] h-[18px]" />
-          </button>
-
-          <button
-            onClick={() => openPanel("backupRestore")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="数据备份"
-          >
-            <HardDrive className="w-[18px] h-[18px]" />
-          </button>
-
-          <button
-            onClick={() => openPanel("statsAchievements")}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
-            style={{ color: "var(--theme-text-secondary)" }}
-            title="统计与成就"
-          >
-            <Award className="w-[18px] h-[18px]" />
+            {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
           </button>
 
           {/* Professional Tools Dropdown */}
@@ -370,11 +311,18 @@ export function HeaderToolbar() {
             <AnimatePresence>
               {showProfessionalTools && (
                 <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 w-64 bg-white/10 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl overflow-hidden z-50"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ 
+                    duration: 0.25,
+                    ease: [0.23, 1, 0.32, 1]
+                  }}
+                  style={{ 
+                    transformOrigin: "top right",
+                    willChange: "transform, opacity"
+                  }}
+                  className="absolute right-0 top-full mt-2 w-64 bg-black/70 backdrop-blur-3xl rounded-2xl border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.4)] overflow-hidden z-50"
                 >
                   <div className="p-2 space-y-1">
                     <div className="text-xs font-semibold text-white/50 px-3 py-2 uppercase tracking-wider">
@@ -555,8 +503,8 @@ export function HeaderToolbar() {
             </svg>
             管理音乐
           </motion.a>
-        </nav>
+        </motion.nav>
       </div>
-    </header>
+    </motion.header>
   );
 }

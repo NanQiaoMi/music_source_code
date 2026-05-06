@@ -65,11 +65,18 @@ export function GlassModal({
                 flex flex-col overflow-hidden
                 ${className}
               `}
-              style={{ borderRadius: "14px" }}
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={apple.transition.fast}
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 10, opacity: 0 }}
+              transition={{
+                duration: 0.3,
+                ease: [0.23, 1, 0.32, 1]
+              }}
+              style={{ 
+                borderRadius: "14px",
+                willChange: "transform, opacity",
+                backfaceVisibility: "hidden"
+              }}
             >
               {/* Header */}
               {(title || onClose) && (

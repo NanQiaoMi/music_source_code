@@ -26,6 +26,7 @@ const VirtualCursor = dynamic(() => import("@/components/widgets/VirtualCursor")
 const GlassToastContainer = dynamic(() => import("@/components/shared/GlassToast").then(m => m.GlassToastContainer), { ssr: false });
 const GlassRadarWidget = dynamic(() => import("@/components/widgets/GlassRadarWidget").then(m => m.GlassRadarWidget), { ssr: false });
 const MusicLibrarySyncProvider = dynamic(() => import("@/components/library/MusicLibrarySyncProvider").then(m => m.MusicLibrarySyncProvider), { ssr: false });
+const MusicBackstory = dynamic(() => import("@/components/widgets/MusicBackstory").then(m => m.MusicBackstory), { ssr: false });
 
 
 import { bootstrapApp } from "@/lib/bootstrap";
@@ -140,6 +141,7 @@ export default function Home() {
       <GlassToastContainer />
       <GlassRadarWidget />
       <MusicLibrarySyncProvider />
+      <MusicBackstory />
 
       {/* ─── Feature Panels Orchestration ──────────────────────────── */}
       <PanelOrchestrator />

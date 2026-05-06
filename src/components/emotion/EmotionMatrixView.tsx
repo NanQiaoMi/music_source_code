@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo } from "react";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useEmotionStore } from "@/store/emotionStore";
 import { useAudioStore } from "@/store/audioStore";
+import { useAIStore } from "@/store/aiStore";
+import { useGlassToast } from "@/components/shared/GlassToast";
 import EmotionVisualizer from "./EmotionVisualizer";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,8 +17,14 @@ import {
   Sparkles,
   Music2,
   X,
+  Fingerprint,
+  Terminal,
+  Cpu,
+  Hash,
 } from "lucide-react";
 import { GlassCard } from "@/components/shared/Glass/GlassCard";
+import { DNAJournal } from "@/components/widgets/DNAJournal";
+import { BarChart2 } from "lucide-react";
 
 const QUADRANT_META: Record<string, { label: string; color: string; desc: string }> = {
   Q1: { label: "高亢激昂", color: "rgb(249, 115, 22)", desc: "充满能量与激情" },
@@ -37,17 +45,18 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
     setSelectionMode, selectedIds,
     setSelectedIds, clearSelection, points, searchQuery,
     setSearchQuery, searchResults, findSimilar, getSelectionAnalytics,
-    getQuadrantStats, autoTagSong, autoTagBatch, taggingStatus,
-    stopTagging
+    getQuadrantStats, taggingStatus, autoTagBatch, stopTagging
   } = useEmotionStore();
-
-  const [isAutoTagging, setIsAutoTagging] = useState(false);
 
   const currentSong = useAudioStore(state => state.currentSong);
 
   const [showSidebar, setShowSidebar] = useState(false);
+  const [showDNAJournal, setShowDNAJournal] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"analytics" | "similar" | "tagged">("analytics");
   const [similarSongs, setSimilarSongs] = useState<any[]>([]);
+  const { showToast } = useGlassToast();
+  const activeConfigId = useAIStore(state => state.activeConfigId);
+  const configs = useAIStore(state => state.configs);
 
   useEffect(() => {
     if (isOpen && songs.length > 0) {
@@ -88,6 +97,13 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
         onClick={(e) => e.stopPropagation()}
       >
         <GlassCard className="w-full h-full relative overflow-hidden flex flex-col p-0 border-white/5 bg-black/40 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.8)] rounded-[40px]">
+          {/* Scanning Line Effect */}
+          <motion.div 
+            animate={{ y: ["-10%", "1100%"] }}
+            transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+            className="absolute left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent z-[1] pointer-events-none"
+          />
+
           {/* Header Area */}
           <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/90 to-transparent z-40 flex items-start justify-between px-10 pt-8 pointer-events-none">
             <div className="flex flex-col gap-1 pointer-events-auto">
@@ -130,10 +146,19 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
                     <img src={currentSong.cover} className="w-10 h-10 rounded-xl object-cover border border-white/10 group-hover:scale-110 transition-transform shadow-lg" />
                     <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-[#121212] animate-pulse" />
                   </div>
-                  <div className="flex flex-col min-w-[120px]">
-                    <span className="text-[10px] text-white/40 font-black uppercase tracking-widest leading-none mb-1">正在共鸣</span>
+                <div className="flex flex-col min-w-[120px]">
+                  <span className="text-[10px] text-white/40 font-black uppercase tracking-widest leading-none mb-1">正在共鸣</span>
+                  <div className="flex items-center gap-2">
                     <span className="text-xs text-white font-black truncate max-w-[180px]">{currentSong.title}</span>
+                    <button
+                      onClick={() => useEmotionStore.getState().autoTagSong(currentSong.id)}
+                      className="p-1 rounded-md bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/40 transition-colors"
+                      title="开启音乐考古"
+                    >
+                      <Sparkles size={10} />
+                    </button>
                   </div>
+                </div>
                 </div>
               )}
               <button 
@@ -153,25 +178,25 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
               
               {/* Axis Labels Overlay */}
               <div className="absolute inset-0 pointer-events-none z-20">
-                {/* Visual Guides */}
-                <div className="absolute top-1/2 left-10 right-10 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                <div className="absolute top-10 bottom-10 left-1/2 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent" />
+                {/* Visual Guides - Ultra Delicate Axes */}
+                <div className="absolute top-1/2 left-20 right-20 h-[1px] bg-gradient-to-r from-transparent via-white/[0.05] to-transparent" />
+                <div className="absolute top-20 bottom-20 left-1/2 w-[1px] bg-gradient-to-b from-transparent via-white/[0.05] to-transparent" />
                 
                 <div className="absolute top-32 left-1/2 -translate-x-1/2 flex flex-col items-center">
-                  <span className="text-[11px] text-orange-400 font-black uppercase tracking-[0.6em] drop-shadow-[0_0_10px_rgba(249,115,22,0.4)] italic">高亢 / 激昂 / ENERGY</span>
-                  <div className="w-[1px] h-6 bg-gradient-to-b from-orange-400/60 to-transparent mt-2" />
+                  <span className="text-[11px] text-red-500 font-black uppercase tracking-[0.6em] drop-shadow-[0_0_10px_rgba(239,68,68,0.4)] italic">高亢 / 激昂 / ENERGY</span>
+                  <div className="w-[1px] h-6 bg-gradient-to-b from-red-500/60 to-transparent mt-2" />
                 </div>
                 <div className="absolute bottom-32 left-1/2 -translate-x-1/2 flex flex-col items-center">
-                  <div className="w-[1px] h-6 bg-gradient-to-t from-blue-400/60 to-transparent mb-2" />
-                  <span className="text-[11px] text-blue-400 font-black uppercase tracking-[0.6em] drop-shadow-[0_0_10px_rgba(59,130,246,0.4)] italic">平静 / 低沉 / CALM</span>
+                  <div className="w-[1px] h-6 bg-gradient-to-t from-emerald-500/60 to-transparent mb-2" />
+                  <span className="text-[11px] text-emerald-500 font-black uppercase tracking-[0.6em] drop-shadow-[0_0_10px_rgba(16,185,129,0.4)] italic">平静 / 悠然 / CALM</span>
                 </div>
                 <div className="absolute left-32 top-1/2 -translate-y-1/2 flex items-center">
-                  <span className="text-[11px] text-purple-400 font-black uppercase tracking-[0.6em] -rotate-90 origin-center translate-x-[-50%] drop-shadow-[0_0_10px_rgba(139,92,246,0.4)] italic">悲伤 / 阴暗 / DARK</span>
-                  <div className="w-6 h-[1px] bg-gradient-to-l from-purple-400/60 to-transparent" />
+                  <span className="text-[11px] text-blue-500 font-black uppercase tracking-[0.6em] -rotate-90 origin-center translate-x-[-50%] drop-shadow-[0_0_10px_rgba(59,130,246,0.4)] italic">忧郁 / 阴暗 / DARK</span>
+                  <div className="w-6 h-[1px] bg-gradient-to-l from-blue-500/60 to-transparent" />
                 </div>
                 <div className="absolute right-32 top-1/2 -translate-y-1/2 flex items-center">
-                  <div className="w-6 h-[1px] bg-gradient-to-r from-green-400/60 to-transparent" />
-                  <span className="text-[11px] text-green-400 font-black uppercase tracking-[0.6em] rotate-90 origin-center translate-x-[50%] drop-shadow-[0_0_10px_rgba(34,197,94,0.4)] italic">欢快 / 明亮 / BRIGHT</span>
+                  <div className="w-6 h-[1px] bg-gradient-to-r from-yellow-400/60 to-transparent" />
+                  <span className="text-[11px] text-yellow-400 font-black uppercase tracking-[0.6em] rotate-90 origin-center translate-x-[50%] drop-shadow-[0_0_10px_rgba(250,204,21,0.4)] italic">欢快 / 明亮 / BRIGHT</span>
                 </div>
 
                 {/* Vignette Overlay */}
@@ -217,48 +242,6 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
                 )}
               </AnimatePresence>
 
-              {/* AI Progress Overlay */}
-              <AnimatePresence>
-                {taggingStatus && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 w-[400px]"
-                  >
-                    <GlassCard className="p-6 border-indigo-500/30 bg-black/80 backdrop-blur-3xl shadow-[0_20px_50px_rgba(79,70,229,0.3)]">
-                      <div className="flex justify-between items-center mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                          <span className="text-[10px] text-white/60 font-black uppercase tracking-widest">AI 智能解析中</span>
-                        </div>
-                        <span className="text-[10px] text-indigo-400 font-mono">{taggingStatus.current} / {taggingStatus.total}</span>
-                      </div>
-                      <div className="text-xs text-white font-black mb-4 truncate italic">“正在解构: {taggingStatus.currentTitle}”</div>
-                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-                        <motion.div 
-                          className="h-full bg-indigo-500"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${(taggingStatus.current / taggingStatus.total) * 100}%` }}
-                        />
-                      </div>
-                      <div className="mt-5 flex items-center justify-between">
-                        <div className="flex flex-col">
-                          <span className="text-[8px] text-white/20 uppercase tracking-tighter">数据已实时同步至本地持久化层</span>
-                          {taggingStatus.isStopping && <span className="text-[8px] text-red-500 font-bold uppercase mt-1">正在强行终止...</span>}
-                        </div>
-                        <button 
-                          onClick={() => stopTagging()}
-                          className="px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-red-500 text-[9px] font-black uppercase tracking-widest transition-all"
-                        >
-                          终止任务
-                        </button>
-                      </div>
-                    </GlassCard>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
               {/* Interaction Bar - BOTTOM CENTER */}
               <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 pointer-events-auto">
                 {/* Mode Selector */}
@@ -278,42 +261,6 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
                     </button>
                   ))}
                 </div>
-
-                {/* AI Auto-tag Button */}
-                <button
-                  onClick={async () => {
-                    const idsToTag = selectedIds.length > 0 ? selectedIds : points.filter(p => !p.isTagged).map(p => p.id);
-                    if (idsToTag.length === 0) return;
-                    setIsAutoTagging(true);
-                    await autoTagBatch(idsToTag);
-                    setIsAutoTagging(false);
-                  }}
-                  disabled={isAutoTagging}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl border transition-all shadow-xl font-black text-[10px] uppercase tracking-widest ${
-                    isAutoTagging 
-                    ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-300 animate-pulse cursor-wait" 
-                    : "bg-black/60 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-400"
-                  }`}
-                >
-                  <Sparkles size={14} className={isAutoTagging ? "animate-spin" : ""} />
-                  {isAutoTagging ? "AI 深度分析中..." : selectedIds.length > 0 ? `AI 分析选中 (${selectedIds.length})` : "AI 智能补全"}
-                </button>
-
-                {!isAutoTagging && selectedIds.length === 0 && (
-                   <button
-                    onClick={async () => {
-                      const allIds = points.map(p => p.id);
-                      if (allIds.length === 0) return;
-                      setIsAutoTagging(true);
-                      await autoTagBatch(allIds);
-                      setIsAutoTagging(false);
-                    }}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-2xl border border-white/5 bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest"
-                  >
-                    <Layers size={14} />
-                    扫描全库
-                  </button>
-                )}
 
                 <div className="h-8 w-[1px] bg-white/5 mx-0.5" />
 
@@ -335,6 +282,36 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
                     </button>
                   ))}
                 </div>
+
+                <div className="h-8 w-[1px] bg-white/5 mx-0.5" />
+
+                {/* Aesthetic DNA Trigger - TACTICAL UPGRADE */}
+                <div className="relative group/dna">
+                  {/* Neural Pulse Effect */}
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute inset-0 bg-indigo-500/20 rounded-2xl blur-xl group-hover/dna:bg-indigo-500/40 transition-colors"
+                  />
+                  
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDNAJournal(!showDNAJournal);
+                    }}
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all z-50 relative border ${
+                      showDNAJournal 
+                        ? "bg-indigo-600 border-indigo-400 text-white shadow-[0_0_30px_rgba(79,70,229,0.6)] scale-110" 
+                        : "bg-black/60 border-white/10 text-indigo-400/60 hover:text-indigo-300 hover:bg-black/80 hover:border-indigo-500/30"
+                    }`}
+                  >
+                    <Fingerprint size={20} className={showDNAJournal ? "animate-pulse" : ""} />
+                  </button>
+                  
+                  {/* Status Indicator */}
+                  <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full border-2 border-black animate-pulse" />
+                </div>
+
 
                  {selectedIds.length > 0 && (
                   <>
@@ -362,10 +339,13 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
                           appendSongsAndPlay(sortedSongs);
                         }
                       }}
-                      className="h-11 px-6 bg-white text-black rounded-2xl flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_rgba(255,255,255,0.1)] font-black italic tracking-tight uppercase text-xs group"
+                      className="h-11 px-8 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-[0_10px_40px_rgba(79,70,229,0.4)] border border-indigo-400/50 font-black italic tracking-wider uppercase text-xs group whitespace-nowrap"
                     >
-                      <Play size={16} fill="currentColor" className="group-hover:translate-x-0.5 transition-transform" />
-                      触发共鸣 <span className="opacity-40 ml-1">({selectedIds.length})</span>
+                      <Play size={16} fill="currentColor" className="group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      <span>触发共鸣</span>
+                      <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px] font-mono not-italic ml-1">
+                        {selectedIds.length}
+                      </span>
                     </button>
                   </>
                 )}
@@ -411,29 +391,94 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 -mr-2">
                       {sidebarTab === "analytics" && (
                         <div className="space-y-10">
+                          {/* AI Auto-Tagging Section */}
+                          <div className="p-8 bg-gradient-to-br from-indigo-600/20 to-purple-600/20 rounded-[32px] border border-white/10 shadow-2xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-30 transition-opacity">
+                              <Sparkles size={60} className="text-white" />
+                            </div>
+                            
+                            <div className="relative">
+                              <div className="flex items-center gap-3 mb-4">
+                                <Zap size={16} className="text-indigo-400" />
+                                <span className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.5em]">音乐考古 ARCHAEOLOGY</span>
+                              </div>
+                              
+                              <p className="text-xs text-white/60 mb-6 leading-relaxed">
+                                基于元数据深度解析歌曲的情感底色与意境，自动填充星图坐标。
+                              </p>
+
+                              {taggingStatus ? (
+                                <div className="space-y-4">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[10px] text-white/40 font-black uppercase tracking-widest truncate max-w-[200px]">
+                                      正在解析: {taggingStatus.currentTitle}
+                                    </span>
+                                    <span className="text-[10px] text-white/60 font-mono">
+                                      {taggingStatus.current} / {taggingStatus.total}
+                                    </span>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
+                                    <motion.div 
+                                      initial={{ width: 0 }}
+                                      animate={{ width: `${(taggingStatus.current / taggingStatus.total) * 100}%` }}
+                                      className="h-full bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)]"
+                                    />
+                                  </div>
+                                  <button 
+                                    onClick={stopTagging}
+                                    className="w-full py-3 bg-white/5 hover:bg-red-500/10 text-white/40 hover:text-red-400 rounded-2xl border border-white/5 transition-all text-[10px] font-black uppercase tracking-widest"
+                                  >
+                                    停止解析
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      const activeConfig = configs.find(c => c.id === activeConfigId);
+                                      if (!activeConfig || !activeConfig.apiKey) {
+                                        showToast("请先在 AI 设置中配置并激活 API Key", "warning");
+                                        openPanel("aiSettings");
+                                        return;
+                                      }
+                                      const untaggedIds = points.filter(p => !p.isTagged).map(p => p.id);
+                                      if (untaggedIds.length > 0) {
+                                        autoTagBatch(untaggedIds);
+                                      } else {
+                                        showToast("曲库已全部解析完成", "success");
+                                      }
+                                    }}
+                                    className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl shadow-xl shadow-indigo-600/20 transition-all text-[11px] font-black uppercase tracking-[0.1em] flex items-center justify-center gap-2 group/btn"
+                                  >
+                                    <Sparkles size={14} className="group-hover/btn:animate-pulse" />
+                                    全库解析 ({points.filter(p => !p.isTagged).length})
+                                  </button>
+                                  {selectedIds.length > 0 && (
+                                    <button
+                                      onClick={() => {
+                                        const activeConfig = configs.find(c => c.id === activeConfigId);
+                                        if (!activeConfig || !activeConfig.apiKey) {
+                                          showToast("请先在 AI 设置中配置并激活 API Key", "warning");
+                                          openPanel("aiSettings");
+                                          return;
+                                        }
+                                        autoTagBatch(selectedIds);
+                                      }}
+                                      className="px-5 py-4 bg-white/5 hover:bg-white/10 text-white/60 rounded-2xl border border-white/5 transition-all text-[11px] font-black uppercase"
+                                      title="解析选定歌曲"
+                                    >
+                                      <Play size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
                           <div className="space-y-5">
                             <span className="text-[11px] text-white/20 uppercase tracking-[0.4em] font-black flex items-center gap-2">
                               <div className="w-4 h-[1px] bg-white/10" /> 情绪维度实时解算
                             </span>
-                            
-                            {!isAutoTagging && points.filter(p => !p.isTagged).length > 0 && (
-                              <button 
-                                onClick={async () => {
-                                  const untagged = points.filter(p => !p.isTagged).map(p => p.id);
-                                  setIsAutoTagging(true);
-                                  await autoTagBatch(untagged);
-                                  setIsAutoTagging(false);
-                                }}
-                                className="w-full py-4 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 rounded-2xl flex flex-col items-center gap-1 group transition-all"
-                              >
-                                <div className="flex items-center gap-2 text-indigo-400 font-black text-[10px] uppercase tracking-widest">
-                                  <Sparkles size={12} className="group-hover:rotate-12 transition-transform" />
-                                  智能补全全库模型
-                                </div>
-                                <span className="text-[9px] text-white/20">共有 {points.filter(p => !p.isTagged).length} 首歌曲待打标</span>
-                              </button>
-                            )}
-                            
                             <div className="grid grid-cols-1 gap-5">
                               <div className="p-6 bg-white/[0.03] rounded-[32px] border border-white/5 group hover:bg-white/[0.07] transition-all shadow-xl">
                                 <div className="flex justify-between items-end mb-3">
@@ -557,15 +602,22 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
                               key={p.id}
                               onClick={() => setSelectedIds([p.id])}
                               className={`flex items-center gap-5 p-5 rounded-[28px] border transition-all cursor-pointer group shadow-xl ${
-                                selectedIds.includes(p.id) ? "bg-white text-black scale-[1.02]" : "hover:bg-white/[0.05] border-white/0"
+                                selectedIds.includes(p.id) 
+                                  ? "bg-indigo-500/20 border-indigo-500/40 shadow-[0_0_20px_rgba(99,102,241,0.2)]" 
+                                  : "hover:bg-white/[0.05] border-white/0"
                               }`}
                             >
                               <div className={`w-3.5 h-3.5 rounded-full shrink-0 shadow-2xl transition-all ${selectedIds.includes(p.id) ? "scale-125 shadow-black/20" : "opacity-40"}`} style={{ backgroundColor: QUADRANT_META[getQuadrantLabel(p.x, p.y)].color }} />
                               <div className="flex-1 min-w-0">
-                                <div className={`text-sm font-black truncate tracking-tight ${selectedIds.includes(p.id) ? "text-black" : "text-white"}`}>{p.title}</div>
-                                <div className={`text-[10px] font-black tracking-widest mt-1.5 uppercase ${selectedIds.includes(p.id) ? "text-black/30" : "text-white/10"}`}>
+                                <div className={`text-sm font-black truncate tracking-tight ${selectedIds.includes(p.id) ? "text-white" : "text-white"}`}>{p.title}</div>
+                                <div className={`text-[10px] font-black tracking-widest mt-1.5 uppercase ${selectedIds.includes(p.id) ? "text-indigo-400" : "text-white/10"}`}>
                                   VECTOR: {p.x.toFixed(3)} , {p.y.toFixed(3)}
                                 </div>
+                                {p.description && (
+                                  <div className={`text-[10px] mt-2 italic line-clamp-1 ${selectedIds.includes(p.id) ? "text-black/60" : "text-white/40"}`}>
+                                    "{p.description}"
+                                  </div>
+                                )}
                               </div>
                             </div>
                            ))}
@@ -578,6 +630,32 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
             </AnimatePresence>
           </div>
         </GlassCard>
+
+        {/* DNA Journal Overlay - MOVED TO TOP LEVEL FOR ABSOLUTE VISIBILITY */}
+        <AnimatePresence>
+          {showDNAJournal && (
+            <div className="fixed inset-0 z-[300] flex items-center justify-center p-6">
+              {/* Dark Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowDNAJournal(false)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-md cursor-pointer"
+              />
+              
+              {/* Centered Modal Card */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative w-full max-w-[520px] shadow-[0_30px_100px_rgba(0,0,0,0.9)] z-[301]"
+              >
+                <DNAJournal onClose={() => setShowDNAJournal(false)} />
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );

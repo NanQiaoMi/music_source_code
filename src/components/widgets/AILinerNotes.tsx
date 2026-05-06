@@ -2,24 +2,28 @@
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, RotateCcw } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
 import { useLinerNotesStore } from "@/store/linerNotesStore";
 import { useAIStore } from "@/store/aiStore";
+import { useEmotionStore } from "@/store/emotionStore";
 
 export const AILinerNotes: React.FC = () => {
   const currentSong = useAudioStore((state) => state.currentSong);
-  const { notes, getNotes, isGenerating } = useLinerNotesStore();
+  const { notes, getNotes, isGenerating, clearCache } = useLinerNotesStore();
+  const { points } = useEmotionStore();
   const activeConfigId = useAIStore((state) => state.activeConfigId);
   const [displayNote, setDisplayNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentSong && activeConfigId) {
+      const emotionPoint = points.find(p => p.id === currentSong.id);
       const fetchNotes = async () => {
         const result = await getNotes(
           currentSong.artist,
           currentSong.title,
-          currentSong.lyrics
+          currentSong.lyrics,
+          emotionPoint ? { x: emotionPoint.x, y: emotionPoint.y } : undefined
         );
         setDisplayNote(result);
       };
@@ -27,7 +31,7 @@ export const AILinerNotes: React.FC = () => {
     } else {
       setDisplayNote(null);
     }
-  }, [currentSong?.id, activeConfigId, getNotes]);
+  }, [currentSong?.id, activeConfigId, getNotes, points]);
 
   if (!activeConfigId || (!displayNote && !isGenerating)) {
     return null;
@@ -48,6 +52,24 @@ export const AILinerNotes: React.FC = () => {
             <Sparkles className="w-3 h-3" />
           )}
           <span>AI Emotional Insight</span>
+          <button 
+            onClick={() => {
+              if (currentSong && activeConfigId) {
+                const emotionPoint = points.find(p => p.id === currentSong.id);
+                getNotes(
+                  currentSong.artist,
+                  currentSong.title,
+                  currentSong.lyrics,
+                  emotionPoint ? { x: emotionPoint.x, y: emotionPoint.y } : undefined,
+                  true
+                ).then(result => setDisplayNote(result));
+              }
+            }}
+            className="ml-auto p-1 hover:bg-white/10 rounded-md transition-colors pointer-events-auto"
+            title="重新生成感悟"
+          >
+            <RotateCcw className="w-3 h-3" />
+          </button>
         </div>
 
         <AnimatePresence mode="wait">
