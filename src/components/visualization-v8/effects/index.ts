@@ -3,6 +3,15 @@
 import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
 
 // 导入所有特效实现
+import { ParticleBurstEffect } from "./ParticleBurst";
+import { ParticleExplosionV8Effect } from "./ParticleExplosionV8";
+import { ParticleGravityV8Effect } from "./ParticleGravityV8";
+import { ParticleGridV8Effect } from "./ParticleGridV8";
+import { ParticleTrailV8 } from "./ParticleTrailV8";
+import { RingSpectrumV8Effect } from "./RingSpectrumV8";
+import { AudioShapeV8Effect } from "./AudioShapeV8";
+import { SpectrumWaterfallV8Effect } from "./SpectrumWaterfallV8";
+import { SpringSystemV8Effect } from "./SpringSystemV8";
 import { SpectrumV8Effect } from "./SpectrumV8";
 import { WaveformV8Effect } from "./WaveformV8";
 import { ParticleNebulaV8 } from "./ParticleNebulaV8";
@@ -39,6 +48,15 @@ export {
   StarFieldV8Effect,
   TunnelFlightV8Effect,
   VibrationGeometryV8Effect,
+  ParticleBurstEffect,
+  ParticleExplosionV8Effect,
+  ParticleGravityV8Effect,
+  ParticleGridV8Effect,
+  ParticleTrailV8,
+  RingSpectrumV8Effect,
+  AudioShapeV8Effect,
+  SpectrumWaterfallV8Effect,
+  SpringSystemV8Effect,
 };
 
 export const effectsRegistry: EffectPlugin[] = [];
