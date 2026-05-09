@@ -167,6 +167,9 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
           description,
         };
 
+        // 保存备份数据到 localStorage 以便恢复时使用
+        localStorage.setItem(`backup-data-${backupId}`, JSON.stringify(backupData));
+
         set((state) => ({
           backups: [...state.backups, backupItem],
           isBackingUp: false,
@@ -187,14 +190,46 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
           return;
         }
 
+        // 从 localStorage 获取备份数据
+        const storedKey = `backup-data-${backupId}`;
+        const storedData = localStorage.getItem(storedKey);
+        if (!storedData) {
+          set({ isRestoring: false, restoreProgress: 0 });
+          return;
+        }
+
+        const backupData = JSON.parse(storedData) as BackupData;
+
+        // 真实恢复各 store 的数据
         set({ restoreProgress: 25 });
         await new Promise((resolve) => setTimeout(resolve, 200));
+
+        if (backupData.settings) {
+          if (backupData.settings.audio) localStorage.setItem("audio-store-v4", backupData.settings.audio);
+          if (backupData.settings.visual) localStorage.setItem("visual-settings-v4", backupData.settings.visual);
+          if (backupData.settings.gesture) localStorage.setItem("gesture-store", backupData.settings.gesture);
+          if (backupData.settings.sleep) localStorage.setItem("sleep-timer-store", backupData.settings.sleep);
+        }
 
         set({ restoreProgress: 50 });
         await new Promise((resolve) => setTimeout(resolve, 200));
 
+        if (backupData.playlists) {
+          if (backupData.playlists.playlist) localStorage.setItem("playlist-store", backupData.playlists.playlist);
+          if (backupData.playlists.queue) localStorage.setItem("queue-store", backupData.playlists.queue);
+          if (backupData.playlists.recommendation) localStorage.setItem("recommendation-store", backupData.playlists.recommendation);
+        }
+
         set({ restoreProgress: 75 });
         await new Promise((resolve) => setTimeout(resolve, 200));
+
+        if (backupData.library) {
+          if (backupData.library.library) localStorage.setItem("library-manager-store-v4", backupData.library.library);
+        }
+
+        if (backupData.lyrics) {
+          localStorage.setItem("lyrics-cover-store-v4", backupData.lyrics);
+        }
 
         set({ restoreProgress: 100 });
         await new Promise((resolve) => setTimeout(resolve, 200));
@@ -203,6 +238,8 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
       },
 
       deleteBackup: (backupId) => {
+        // 同时清除 localStorage 中保存的备份数据
+        localStorage.removeItem(`backup-data-${backupId}`);
         set((state) => ({
           backups: state.backups.filter((b) => b.id !== backupId),
         }));
@@ -214,11 +251,36 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
 
         if (!backup) return;
 
-        const backupData: BackupData = {
-          version: backup.version,
-          createdAt: backup.createdAt,
-          type: backup.type,
-        };
+        // 先从localStorage获取真实备份数据
+        const storedKey = `backup-data-${backupId}`;
+        const storedData = localStorage.getItem(storedKey);
+        let backupData: BackupData;
+
+        if (storedData) {
+          backupData = JSON.parse(storedData) as BackupData;
+        } else {
+          // 降级：从各store读取真实数据
+          backupData = {
+            version: backup.version,
+            createdAt: backup.createdAt,
+            type: backup.type,
+            settings: {
+              audio: localStorage.getItem("audio-store-v4"),
+              visual: localStorage.getItem("visual-settings-v4"),
+              gesture: localStorage.getItem("gesture-store"),
+              sleep: localStorage.getItem("sleep-timer-store"),
+            },
+            playlists: {
+              playlist: localStorage.getItem("playlist-store"),
+              queue: localStorage.getItem("queue-store"),
+              recommendation: localStorage.getItem("recommendation-store"),
+            },
+            library: {
+              library: localStorage.getItem("library-manager-store-v4"),
+            },
+            lyrics: localStorage.getItem("lyrics-cover-store-v4"),
+          };
+        }
 
         const jsonString = JSON.stringify(backupData, null, 2);
         const blob = new Blob([jsonString], { type: "application/json" });
@@ -250,6 +312,9 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
                 size: file.size,
                 version: backupData.version,
               };
+
+              // 保存上传的备份数据到 localStorage 以便恢复时使用
+              localStorage.setItem(`backup-data-${backupId}`, JSON.stringify(backupData));
 
               set((state) => ({
                 backups: [...state.backups, backupItem],
