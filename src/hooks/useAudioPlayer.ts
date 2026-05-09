@@ -4,6 +4,7 @@ import { useRef, useEffect, useCallback, useState } from "react";
 import { useAudioStore, AudioError } from "@/store/audioStore";
 import { getStoredMusic, createBlobUrlFromStoredMusic } from "@/services/localMusicStorage";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
+import { useABLoopStore } from "@/store/abLoopStore";
 import { getAudioEffectsManager } from "@/lib/audio/AudioEffectsManager";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
 import { CrossfadeMixer } from "@/lib/audio/CrossfadeMixer";
@@ -28,7 +29,16 @@ const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => v
   const { setCurrentTime, setDuration, setIsLoading, setError, nextSong, loopMode } =
     useAudioStore.getState();
 
-  const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+  const onTimeUpdate = () => {
+    setCurrentTime(audio.currentTime);
+
+    const abState = useABLoopStore.getState();
+    if (abState.isEnabled && abState.pointA !== null && abState.pointB !== null) {
+      if (audio.currentTime >= abState.pointB) {
+        audio.currentTime = abState.pointA;
+      }
+    }
+  };
   const onLoadedMetadata = () => {
     setDuration(audio.duration);
     setIsLoading(false);
