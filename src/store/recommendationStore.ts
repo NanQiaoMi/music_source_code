@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Song } from "./audioStore";
+import { Song } from "./playlistStore";
+import { SongWithPlayCount, generateRecommendations } from "@/utils/recommendationLogic";
+import { usePlaylistStore } from "./playlistStore";
+import { useEmotionStore } from "./emotionStore";
 
 interface PlayRecord {
   songId: string;
@@ -65,29 +68,22 @@ export const useRecommendationStore = create<RecommendationState>()(
         const { playHistory } = get();
         if (playHistory.length === 0) return [];
 
-        const favoriteArtists = get().getFavoriteArtists();
-        const recommendations: Song[] = [];
+        const allSongs = usePlaylistStore.getState().songs;
+        const emotion = useEmotionStore.getState().realtimeCoordinates || { x: 0, y: 0 };
 
-        favoriteArtists.slice(0, 3).forEach(({ artist }) => {
-          const artistSongs = [
-            { title: `${artist} - 推荐歌曲 1`, artist, album: "推荐专辑" },
-            { title: `${artist} - 推荐歌曲 2`, artist, album: "精选集" },
-          ];
-
-          artistSongs.forEach((song, index) => {
-            recommendations.push({
-              id: `rec-${artist}-${index}`,
-              title: song.title,
-              artist: song.artist,
-              album: song.album,
-              duration: 240,
-              cover: "/default-cover.svg",
-              source: "recommendation",
-            });
-          });
+        const historyMap = new Map<string, number>();
+        playHistory.forEach((record) => {
+          historyMap.set(record.songId, record.playCount);
         });
 
-        return recommendations;
+        const songsWithCount: SongWithPlayCount[] = allSongs.map((song) => ({
+          ...song,
+          playCount: historyMap.get(song.id) || 0,
+          lastPlayedAt: playHistory.find((r) => r.songId === song.id)?.lastPlayed,
+          addedAt: (song as any).addedAt,
+        }));
+
+        return generateRecommendations(songsWithCount, { x: emotion.x, y: emotion.y }, 20);
       },
 
       clearPlayHistory: () => set({ playHistory: [] }),
