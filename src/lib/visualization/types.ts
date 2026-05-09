@@ -1,20 +1,8 @@
-export type EffectCategory = 
-  | "particles" 
-  | "geometry" 
-  | "spectrum" 
-  | "physics" 
-  | "space" 
-  | "shapes";
+export type EffectCategory = "particles" | "geometry" | "spectrum" | "physics" | "space" | "shapes";
 
 export type ParameterMode = "basic" | "professional" | "expert";
 
-export type ParameterType = 
-  | "number" 
-  | "color" 
-  | "boolean" 
-  | "select" 
-  | "vector2" 
-  | "vector3";
+export type ParameterType = "number" | "color" | "boolean" | "select" | "vector2" | "vector3";
 
 export type RenderEngine = "canvas" | "webgl" | "auto";
 

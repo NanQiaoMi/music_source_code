@@ -8,7 +8,8 @@ import { MonitorPlay } from "lucide-react";
 
 export function DesktopLyricsToggle() {
   const { currentView } = useUIStore();
-  const { isElectron, isDesktopLyricsOpen, toggleDesktopLyrics, checkDesktopLyricsOpen } = useElectron();
+  const { isElectron, isDesktopLyricsOpen, toggleDesktopLyrics, checkDesktopLyricsOpen } =
+    useElectron();
 
   useEffect(() => {
     if (isElectron) {
@@ -27,9 +28,7 @@ export function DesktopLyricsToggle() {
       whileTap={{ scale: 0.95 }}
       onClick={toggleDesktopLyrics}
       className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-[0_0_20px_rgba(255,255,255,0.4)] hover:shadow-[0_0_35px_rgba(255,255,255,0.6)] ${
-        isDesktopLyricsOpen
-          ? "bg-white"
-          : "bg-white/10 hover:bg-white/20"
+        isDesktopLyricsOpen ? "bg-white" : "bg-white/10 hover:bg-white/20"
       }`}
       title="桌面歌词"
     >

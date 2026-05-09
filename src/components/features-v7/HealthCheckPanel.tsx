@@ -2,18 +2,47 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useHealthCheckStore, issueTypeNames, HealthIssue } from "@/store/healthCheckStore";
-import { X, Play, Square, CheckCircle, AlertTriangle, AlertCircle, XCircle, RefreshCw, Wrench, Eye } from "lucide-react";
+import {
+  X,
+  Play,
+  Square,
+  CheckCircle,
+  AlertTriangle,
+  AlertCircle,
+  XCircle,
+  RefreshCw,
+  Wrench,
+  Eye,
+} from "lucide-react";
 
 interface HealthCheckPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const severityColors: Record<HealthIssue["severity"], { bg: string; text: string; border: string; icon: any }> = {
+const severityColors: Record<
+  HealthIssue["severity"],
+  { bg: string; text: string; border: string; icon: any }
+> = {
   low: { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/30", icon: Eye },
-  medium: { bg: "bg-yellow-500/20", text: "text-yellow-400", border: "border-yellow-500/30", icon: AlertTriangle },
-  high: { bg: "bg-orange-500/20", text: "text-orange-400", border: "border-orange-500/30", icon: AlertCircle },
-  critical: { bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/30", icon: XCircle },
+  medium: {
+    bg: "bg-yellow-500/20",
+    text: "text-yellow-400",
+    border: "border-yellow-500/30",
+    icon: AlertTriangle,
+  },
+  high: {
+    bg: "bg-orange-500/20",
+    text: "text-orange-400",
+    border: "border-orange-500/30",
+    icon: AlertCircle,
+  },
+  critical: {
+    bg: "bg-red-500/20",
+    text: "text-red-400",
+    border: "border-red-500/30",
+    icon: XCircle,
+  },
 };
 
 export function HealthCheckPanel({ isOpen, onClose }: HealthCheckPanelProps) {
@@ -56,18 +85,14 @@ export function HealthCheckPanel({ isOpen, onClose }: HealthCheckPanelProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className={`p-4 rounded-xl border transition-all ${
-          isSelected
-            ? "bg-pink-500/20 border-pink-500/50"
-            : `${severity.bg} ${severity.border}`
+          isSelected ? "bg-pink-500/20 border-pink-500/50" : `${severity.bg} ${severity.border}`
         }`}
       >
         <div className="flex items-start gap-4">
           <button
             onClick={() => selectIssue(issue.id)}
             className={`mt-1 w-5 h-5 rounded border flex items-center justify-center transition-all ${
-              isSelected
-                ? "bg-pink-500 border-pink-500"
-                : "border-white/30 hover:border-white/50"
+              isSelected ? "bg-pink-500 border-pink-500" : "border-white/30 hover:border-white/50"
             }`}
           >
             {isSelected && <CheckCircle className="w-3 h-3 text-white" />}

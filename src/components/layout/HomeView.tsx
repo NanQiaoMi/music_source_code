@@ -12,12 +12,12 @@ const APPLE_SPRING_CONFIG = {
   stiffness: 400,
   damping: 35,
   mass: 1,
-  bounce: 0
+  bounce: 0,
 };
 
 /**
  * HomeView - The main library and homepage view.
- * 
+ *
  * Contains the date/time display, header toolbar, and music card stack.
  * Extracted from page.tsx to keep the layout manageable.
  */

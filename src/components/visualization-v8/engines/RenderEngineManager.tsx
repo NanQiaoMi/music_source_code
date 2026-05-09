@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { RenderEngine, RenderContext, EffectPlugin, AudioData, TransformParams } from "@/lib/visualization/types";
+import {
+  RenderEngine,
+  RenderContext,
+  EffectPlugin,
+  AudioData,
+  TransformParams,
+} from "@/lib/visualization/types";
 import { ThreeJSScene } from "@/lib/three/ThreeJSScene";
 import { usePerformanceV8Store } from "@/store/performanceV8Store";
 
@@ -14,13 +20,13 @@ interface RenderEngineManagerProps {
   height: number;
 }
 
-export function RenderEngineManager({ 
-  engine, 
-  effect, 
-  onRender, 
+export function RenderEngineManager({
+  engine,
+  effect,
+  onRender,
   params = {},
-  width, 
-  height 
+  width,
+  height,
 }: RenderEngineManagerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const threeSceneRef = useRef<ThreeJSScene | null>(null);
@@ -31,17 +37,14 @@ export function RenderEngineManager({
   const effectRef = useRef<EffectPlugin | null>(null);
   const dprRef = useRef(window.devicePixelRatio || 1);
   const privateContextRef = useRef<Record<string, any>>({});
-  
+
   const frequencyDataRef = useRef(new Uint8Array(256));
   const waveformDataRef = useRef(new Uint8Array(256));
-  
+
   const [isWebGLAvailable] = useState(() => {
     try {
       const testCanvas = document.createElement("canvas");
-      return !!(
-        testCanvas.getContext("webgl") || 
-        testCanvas.getContext("experimental-webgl")
-      );
+      return !!(testCanvas.getContext("webgl") || testCanvas.getContext("experimental-webgl"));
     } catch {
       return false;
     }
@@ -51,92 +54,118 @@ export function RenderEngineManager({
   const frameCountRef = useRef(0);
   const lastFPSUpdateRef = useRef(Date.now());
 
-  const selectActualEngine = useCallback((preferred: RenderEngine): RenderEngine => {
-    if (preferred === "webgl" && !isWebGLAvailable) {
-      return "canvas";
-    }
-    if (preferred === "auto") {
-      return isWebGLAvailable ? "webgl" : "canvas";
-    }
-    return preferred;
-  }, [isWebGLAvailable]);
+  const selectActualEngine = useCallback(
+    (preferred: RenderEngine): RenderEngine => {
+      if (preferred === "webgl" && !isWebGLAvailable) {
+        return "canvas";
+      }
+      if (preferred === "auto") {
+        return isWebGLAvailable ? "webgl" : "canvas";
+      }
+      return preferred;
+    },
+    [isWebGLAvailable]
+  );
 
   const actualEngine = selectActualEngine(engine);
 
   const setupCanvas = useCallback(() => {
     if (!canvasRef.current) return null;
-    
+
     const canvas = canvasRef.current;
     const dpr = dprRef.current;
-    
+
     canvas.width = window.innerWidth * dpr;
     canvas.height = window.innerHeight * dpr;
-    
+
     if (ctx2DRef.current) {
       ctx2DRef.current.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
-    
+
     return { displayWidth: window.innerWidth, displayHeight: window.innerHeight };
   }, []);
 
-  const applyTransform = useCallback((context: CanvasRenderingContext2D, displayWidth: number, displayHeight: number, transformParams: TransformParams, dpr: number) => {
-    const { positionX, positionY, scale, rotation } = transformParams;
-    const centerX = displayWidth / 2;
-    const centerY = displayHeight / 2;
-    
-    context.setTransform(dpr, 0, 0, dpr, 0, 0);
-    context.clearRect(0, 0, displayWidth, displayHeight);
-    
-    context.save();
-    context.translate(centerX + positionX * displayWidth, centerY + positionY * displayHeight);
-    context.rotate((rotation * Math.PI) / 180);
-    context.scale(scale, scale);
-    context.translate(-centerX, -centerY);
-  }, []);
+  const applyTransform = useCallback(
+    (
+      context: CanvasRenderingContext2D,
+      displayWidth: number,
+      displayHeight: number,
+      transformParams: TransformParams,
+      dpr: number
+    ) => {
+      const { positionX, positionY, scale, rotation } = transformParams;
+      const centerX = displayWidth / 2;
+      const centerY = displayHeight / 2;
+
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      context.clearRect(0, 0, displayWidth, displayHeight);
+
+      context.save();
+      context.translate(centerX + positionX * displayWidth, centerY + positionY * displayHeight);
+      context.rotate((rotation * Math.PI) / 180);
+      context.scale(scale, scale);
+      context.translate(-centerX, -centerY);
+    },
+    []
+  );
 
   const restoreTransform = useCallback((context: CanvasRenderingContext2D, dpr: number) => {
     context.restore();
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
   }, []);
 
-  const createRenderContext = useCallback((displayWidth: number, displayHeight: number, deltaTime: number, time: number): RenderContext => {
-    const ctx: RenderContext = {
-      canvas: canvasRef.current!,
-      width: displayWidth,
-      height: displayHeight,
-      deltaTime,
-      time,
-      private: privateContextRef.current
-    };
+  const createRenderContext = useCallback(
+    (
+      displayWidth: number,
+      displayHeight: number,
+      deltaTime: number,
+      time: number
+    ): RenderContext => {
+      const ctx: RenderContext = {
+        canvas: canvasRef.current!,
+        width: displayWidth,
+        height: displayHeight,
+        deltaTime,
+        time,
+        private: privateContextRef.current,
+      };
 
-    if (actualEngine === "webgl" && threeSceneRef.current) {
-      ctx.scene = threeSceneRef.current.scene;
-      ctx.camera = threeSceneRef.current.camera;
-      ctx.renderer = threeSceneRef.current.renderer;
-    } else if (ctx2DRef.current) {
-      ctx.ctx = ctx2DRef.current;
-    }
+      if (actualEngine === "webgl" && threeSceneRef.current) {
+        ctx.scene = threeSceneRef.current.scene;
+        ctx.camera = threeSceneRef.current.camera;
+        ctx.renderer = threeSceneRef.current.renderer;
+      } else if (ctx2DRef.current) {
+        ctx.ctx = ctx2DRef.current;
+      }
 
-    return ctx;
-  }, [actualEngine]);
+      return ctx;
+    },
+    [actualEngine]
+  );
 
-  const createAudioData = useCallback((): AudioData => ({
-    frequencyData: frequencyDataRef.current,
-    waveformData: waveformDataRef.current,
-    bass: 0,
-    mid: 0,
-    treble: 0,
-    full: 0,
-    isBeat: false,
-    bpm: 120
-  }), []);
+  const createAudioData = useCallback(
+    (): AudioData => ({
+      frequencyData: frequencyDataRef.current,
+      waveformData: waveformDataRef.current,
+      bass: 0,
+      mid: 0,
+      treble: 0,
+      full: 0,
+      isBeat: false,
+      bpm: 120,
+    }),
+    []
+  );
 
-  const getTransformParams = useCallback((): TransformParams => ({
-    positionX: params.positionX ?? 0,
-    positionY: params.positionY ?? 0,
-    scale: params.scale ?? 1,
-    rotation: params.rotation ?? 0
-  }), [params]);
+  const getTransformParams = useCallback(
+    (): TransformParams => ({
+      positionX: params.positionX ?? 0,
+      positionY: params.positionY ?? 0,
+      scale: params.scale ?? 1,
+      rotation: params.rotation ?? 0,
+    }),
+    [params]
+  );
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -154,7 +183,7 @@ export function RenderEngineManager({
     } else {
       if (!ctx2DRef.current) {
         ctx2DRef.current = canvas.getContext("2d", {
-          alpha: true
+          alpha: true,
         });
       }
       setupCanvas();
@@ -163,11 +192,11 @@ export function RenderEngineManager({
     const handleResize = () => {
       dprRef.current = window.devicePixelRatio || 1;
       const dimensions = setupCanvas();
-      
+
       if (dimensions && actualEngine === "webgl" && threeSceneRef.current) {
         threeSceneRef.current.resize(dimensions.displayWidth, dimensions.displayHeight);
       }
-      
+
       if (effect && dimensions) {
         effect.resize(dimensions.displayWidth, dimensions.displayHeight);
       }
@@ -187,13 +216,13 @@ export function RenderEngineManager({
           scene: threeSceneRef.current?.scene,
           camera: threeSceneRef.current?.camera,
           renderer: threeSceneRef.current?.renderer,
-          private: privateContextRef.current
+          private: privateContextRef.current,
         };
         effectRef.current.destroy(cleanupCtx);
       }
       // Reset private context for the new effect
       privateContextRef.current = {};
-      
+
       const dimensions = setupCanvas();
       if (dimensions) {
         const initCtx: RenderContext = {
@@ -206,7 +235,7 @@ export function RenderEngineManager({
           scene: threeSceneRef.current?.scene,
           camera: threeSceneRef.current?.camera,
           renderer: threeSceneRef.current?.renderer,
-          private: privateContextRef.current
+          private: privateContextRef.current,
         };
         effect.init(initCtx);
         effectRef.current = effect;
@@ -225,9 +254,7 @@ export function RenderEngineManager({
     const render = (timestamp: number) => {
       if (!canvasRef.current || !ctx2DRef.current) return;
 
-      const deltaTime = lastTimeRef.current 
-        ? (timestamp - lastTimeRef.current) / 1000 
-        : 0;
+      const deltaTime = lastTimeRef.current ? (timestamp - lastTimeRef.current) / 1000 : 0;
       lastTimeRef.current = timestamp;
 
       const time = (Date.now() - startTimeRef.current) / 1000;
@@ -236,30 +263,30 @@ export function RenderEngineManager({
       const now = Date.now();
       if (now - lastFPSUpdateRef.current >= 1000) {
         const fps = Math.round((frameCountRef.current * 1000) / (now - lastFPSUpdateRef.current));
-        
+
         let drawCalls = 0;
         let gpuMemory = 0;
-        
+
         if (actualEngine === "webgl" && threeSceneRef.current) {
           const info = threeSceneRef.current.renderer.info;
           drawCalls = info.render.calls;
           // 估算 GPU 内存占用 (geometries + textures)
           // 注意：这只是一个近似值，Three.js 的 info.memory 提供的是计数，不是字节数
           // 但我们可以通过这个计数反映资源占用压力
-          gpuMemory = (info.memory.geometries + info.memory.textures);
+          gpuMemory = info.memory.geometries + info.memory.textures;
         }
 
         // 获取 JS 内存占用（如果浏览器支持）
-        const memoryUsage = (performance as any).memory 
-          ? (performance as any).memory.usedJSHeapSize / (1024 * 1024) 
+        const memoryUsage = (performance as any).memory
+          ? (performance as any).memory.usedJSHeapSize / (1024 * 1024)
           : 0;
 
         updateStats({
           fps,
-          cpuUsage: Math.min(100, (deltaTime * 1000) / (1000 / config.targetFPS) * 100),
+          cpuUsage: Math.min(100, ((deltaTime * 1000) / (1000 / config.targetFPS)) * 100),
           memoryUsage,
           drawCalls,
-          gpuMemory
+          gpuMemory,
         });
         frameCountRef.current = 0;
         lastFPSUpdateRef.current = now;
@@ -297,7 +324,18 @@ export function RenderEngineManager({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [actualEngine, config.targetFPS, updateStats, onRender, params, createRenderContext, createAudioData, getTransformParams, applyTransform, restoreTransform]);
+  }, [
+    actualEngine,
+    config.targetFPS,
+    updateStats,
+    onRender,
+    params,
+    createRenderContext,
+    createAudioData,
+    getTransformParams,
+    applyTransform,
+    restoreTransform,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -312,7 +350,7 @@ export function RenderEngineManager({
           scene: threeSceneRef.current?.scene,
           camera: threeSceneRef.current?.camera,
           renderer: threeSceneRef.current?.renderer,
-          private: privateContextRef.current
+          private: privateContextRef.current,
         };
         effectRef.current.destroy(cleanupCtx);
       }
@@ -323,10 +361,5 @@ export function RenderEngineManager({
     };
   }, []);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 w-full h-full"
-    />
-  );
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />;
 }

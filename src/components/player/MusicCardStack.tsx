@@ -15,15 +15,15 @@ const APPLE_SPRING_CONFIG = {
   stiffness: 400,
   damping: 35,
   mass: 1,
-  bounce: 0
+  bounce: 0,
 };
 
 export const MusicCardStack: React.FC = () => {
   const { songs, recentPlayed, setSelectedSong } = usePlaylistStore();
-  const setCurrentSong = useAudioStore(state => state.setCurrentSong);
-  const setQueue = useAudioStore(state => state.setQueue);
-  const setCurrentIndex = useAudioStore(state => state.setCurrentIndex);
-  const setIsPlaying = useAudioStore(state => state.setIsPlaying);
+  const setCurrentSong = useAudioStore((state) => state.setCurrentSong);
+  const setQueue = useAudioStore((state) => state.setQueue);
+  const setCurrentIndex = useAudioStore((state) => state.setCurrentIndex);
+  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const {
     setQueue: setQueueStore,
     setCurrentIndex: setQueueCurrentIndex,
@@ -382,7 +382,8 @@ export const MusicCardStack: React.FC = () => {
                       <div
                         className="absolute inset-0 pointer-events-none"
                         style={{
-                          background: "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%)",
+                          background:
+                            "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%)",
                           borderRadius: isCenter ? "2rem" : "1.25rem",
                         }}
                       />
@@ -404,9 +405,7 @@ export const MusicCardStack: React.FC = () => {
 
                     {!isCenter && (
                       <div className="absolute bottom-0 left-0 right-0 p-5">
-                        <p className="text-xs text-white/40 truncate font-medium">
-                          {card.title}
-                        </p>
+                        <p className="text-xs text-white/40 truncate font-medium">{card.title}</p>
                       </div>
                     )}
                   </div>
@@ -416,8 +415,6 @@ export const MusicCardStack: React.FC = () => {
           })}
         </AnimatePresence>
       </div>
-
-
     </div>
   );
 };

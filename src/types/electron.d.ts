@@ -4,8 +4,17 @@ export interface ElectronAPI {
   updateLyrics: (lyrics: any) => Promise<void>;
   updateSongInfo: (songInfo: { title: string; artist: string }) => Promise<void>;
   setAlwaysOnTop: (alwaysOnTop: boolean) => Promise<void>;
-  saveEmotions: (data: Record<string, { x: number; y: number }>) => Promise<{ success: boolean; error?: string }>;
+  saveEmotions: (
+    data: Record<string, { x: number; y: number }>
+  ) => Promise<{ success: boolean; error?: string }>;
   loadEmotions: () => Promise<Record<string, { x: number; y: number }>>;
+  toggleFullscreen: () => Promise<boolean>;
+  // Plugin System
+  searchPlugins: (query: string, page?: number, type?: string) => Promise<any[]>;
+  getMediaSource: (musicItem: any, quality?: string) => Promise<any>;
+  getLyric: (musicItem: any) => Promise<any>;
+  listPlugins: () => Promise<any[]>;
+  loadPlugins: () => Promise<any[]>;
   onTogglePlay: (callback: () => void) => void;
   onPrevSong: (callback: () => void) => void;
   onNextSong: (callback: () => void) => void;

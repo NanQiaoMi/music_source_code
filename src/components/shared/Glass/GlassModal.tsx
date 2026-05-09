@@ -70,12 +70,12 @@ export function GlassModal({
               exit={{ y: 10, opacity: 0 }}
               transition={{
                 duration: 0.3,
-                ease: [0.23, 1, 0.32, 1]
+                ease: [0.23, 1, 0.32, 1],
               }}
-              style={{ 
+              style={{
                 borderRadius: "14px",
                 willChange: "transform, opacity",
-                backfaceVisibility: "hidden"
+                backfaceVisibility: "hidden",
               }}
             >
               {/* Header */}

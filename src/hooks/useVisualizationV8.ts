@@ -11,7 +11,7 @@ export function useVisualizationV8() {
   const [currentEffectId, setCurrentEffectId] = useState<string>("spectrum-v8");
   const [effectParams, setEffectParams] = useState<Record<string, Record<string, any>>>({});
   const [isInitialized, setIsInitialized] = useState(false);
-  
+
   const currentEffectRef = useRef<EffectPlugin | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const bufferLengthRef = useRef<number>(0);
@@ -21,18 +21,21 @@ export function useVisualizationV8() {
     initAllEffects();
     const allEffects = getAllEffects();
     setEffects(allEffects);
-    
+
     const initialParams: Record<string, Record<string, any>> = {};
-    allEffects.forEach(effect => {
-      initialParams[effect.id] = effect.parameters.reduce((acc, param) => ({
-        ...acc,
-        [param.id]: param.default
-      }), {});
+    allEffects.forEach((effect) => {
+      initialParams[effect.id] = effect.parameters.reduce(
+        (acc, param) => ({
+          ...acc,
+          [param.id]: param.default,
+        }),
+        {}
+      );
     });
     setEffectParams(initialParams);
-    
+
     setIsInitialized(true);
-    
+
     if (allEffects.length > 0) {
       setCurrentEffectId(allEffects[0].id);
     }
@@ -53,44 +56,47 @@ export function useVisualizationV8() {
   const currentEffect = getEffectById(currentEffectId);
 
   const updateParam = useCallback((effectId: string, paramId: string, value: any) => {
-    setEffectParams(prev => ({
+    setEffectParams((prev) => ({
       ...prev,
       [effectId]: {
         ...prev[effectId],
-        [paramId]: value
-      }
+        [paramId]: value,
+      },
     }));
   }, []);
 
   const getAudioData = useCallback((): AudioData => {
     let frequencyData = new Uint8Array(256);
     let waveformData = new Uint8Array(256);
-    
+
     if (analyserRef.current && dataArrayRef.current) {
       analyserRef.current.getByteFrequencyData(dataArrayRef.current as any);
       frequencyData = new Uint8Array(dataArrayRef.current);
-      
+
       analyserRef.current.getByteTimeDomainData(dataArrayRef.current as any);
       waveformData = new Uint8Array(dataArrayRef.current);
     }
 
-    let bass = 0, mid = 0, treble = 0, full = 0;
-    
+    let bass = 0,
+      mid = 0,
+      treble = 0,
+      full = 0;
+
     if (frequencyData.length > 0) {
       const bassEnd = Math.floor(frequencyData.length * 0.1);
       const midStart = bassEnd;
       const midEnd = Math.floor(frequencyData.length * 0.5);
       const trebleStart = midEnd;
-      
+
       for (let i = 0; i < bassEnd; i++) bass += frequencyData[i];
       bass = bass / bassEnd / 255;
-      
+
       for (let i = midStart; i < midEnd; i++) mid += frequencyData[i];
       mid = mid / (midEnd - midStart) / 255;
-      
+
       for (let i = trebleStart; i < frequencyData.length; i++) treble += frequencyData[i];
       treble = treble / (frequencyData.length - trebleStart) / 255;
-      
+
       for (let i = 0; i < frequencyData.length; i++) full += frequencyData[i];
       full = full / frequencyData.length / 255;
     }
@@ -103,24 +109,27 @@ export function useVisualizationV8() {
       treble,
       full,
       isBeat: full > 0.7,
-      bpm: 120
+      bpm: 120,
     };
   }, []);
 
-  const renderEffect = useCallback((ctx: RenderContext, audioDataParam: AudioData, params: Record<string, any>) => {
-    const audioData = getAudioData();
-    
-    if (currentEffect) {
-      if (currentEffectRef.current !== currentEffect) {
-        currentEffectRef.current?.destroy?.();
-        currentEffect.init?.(ctx);
-        currentEffectRef.current = currentEffect;
+  const renderEffect = useCallback(
+    (ctx: RenderContext, audioDataParam: AudioData, params: Record<string, any>) => {
+      const audioData = getAudioData();
+
+      if (currentEffect) {
+        if (currentEffectRef.current !== currentEffect) {
+          currentEffectRef.current?.destroy?.();
+          currentEffect.init?.(ctx);
+          currentEffectRef.current = currentEffect;
+        }
+
+        currentEffect.render(ctx, audioData, params);
       }
-      
-      currentEffect.render(ctx, audioData, params);
-    }
-  }, [currentEffect, getAudioData]);
-  
+    },
+    [currentEffect, getAudioData]
+  );
+
   const getCurrentParams = useCallback((): Record<string, any> => {
     return effectParams[currentEffectId] || {};
   }, [effectParams, currentEffectId]);
@@ -131,9 +140,12 @@ export function useVisualizationV8() {
     };
   }, []);
 
-  const handleResize = useCallback((width: number, height: number) => {
-    currentEffect?.resize?.(width, height);
-  }, [currentEffect]);
+  const handleResize = useCallback(
+    (width: number, height: number) => {
+      currentEffect?.resize?.(width, height);
+    },
+    [currentEffect]
+  );
 
   return {
     effects,
@@ -145,6 +157,6 @@ export function useVisualizationV8() {
     renderEffect,
     getCurrentParams,
     handleResize,
-    isInitialized
+    isInitialized,
   };
 }

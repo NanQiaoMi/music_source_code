@@ -11,7 +11,6 @@ interface AudioDataSummary {
   treble: number;
 }
 
-
 export function ResonanceTotemLayer() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -21,7 +20,7 @@ export function ResonanceTotemLayer() {
   const groupRef = useRef<THREE.Group | null>(null);
   const currentTimeRef = useRef<number>(0);
 
-  const currentTime = useAudioStore(state => state.currentTime);
+  const currentTime = useAudioStore((state) => state.currentTime);
 
   const { activeKeywords, preloadedTextures } = useTotemStore();
 
@@ -36,11 +35,16 @@ export function ResonanceTotemLayer() {
     if (!canvasRef.current) return;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
     const renderer = new THREE.WebGLRenderer({
       canvas: canvasRef.current,
       alpha: true,
-      antialias: true
+      antialias: true,
     });
 
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -85,10 +89,10 @@ export function ResonanceTotemLayer() {
     const trebleStart = Math.floor(dataArray.length * 0.6);
 
     for (let i = 0; i < bassLimit; i++) bass += dataArray[i];
-    bass = (bass / bassLimit) / 255;
+    bass = bass / bassLimit / 255;
 
     for (let i = trebleStart; i < dataArray.length; i++) treble += dataArray[i];
-    treble = (treble / (dataArray.length - trebleStart)) / 255;
+    treble = treble / (dataArray.length - trebleStart) / 255;
 
     return { bass, treble };
   };
@@ -97,7 +101,7 @@ export function ResonanceTotemLayer() {
 
   useEffect(() => {
     let animationFrame: number;
-    
+
     const vertexShader = `
       varying vec2 vUv;
       void main() {
@@ -136,13 +140,14 @@ export function ResonanceTotemLayer() {
     `;
 
     const render = (time: number) => {
-      if (!rendererRef.current || !sceneRef.current || !cameraRef.current || !groupRef.current) return;
+      if (!rendererRef.current || !sceneRef.current || !cameraRef.current || !groupRef.current)
+        return;
 
       const group = groupRef.current;
       const meshes = meshesRef.current;
 
       // Update meshes
-      const activeIds = new Set(activeKeywords.map(kw => kw.id));
+      const activeIds = new Set(activeKeywords.map((kw) => kw.id));
 
       meshes.forEach((mesh, id) => {
         if (!activeIds.has(id)) {
@@ -153,7 +158,7 @@ export function ResonanceTotemLayer() {
         }
       });
 
-      activeKeywords.forEach(kw => {
+      activeKeywords.forEach((kw) => {
         if (!meshes.has(kw.id) && preloadedTextures[kw.id]) {
           const texture = new THREE.CanvasTexture(preloadedTextures[kw.id] as any);
           const geometry = new THREE.PlaneGeometry(6, 6);
@@ -165,24 +170,20 @@ export function ResonanceTotemLayer() {
               uBass: { value: 0 },
               uTreble: { value: 0 },
               uLife: { value: 0 },
-              uBurst: { value: 0 }
+              uBurst: { value: 0 },
             },
             vertexShader,
             fragmentShader,
             transparent: true,
             depthTest: false,
-            blending: THREE.AdditiveBlending
+            blending: THREE.AdditiveBlending,
           });
 
           const mesh = new THREE.Mesh(geometry, material);
           // Random but stable position
           const seed = kw.startTime;
-          mesh.position.set(
-            (Math.sin(seed) * 5),
-            (Math.cos(seed) * 3),
-            -2
-          );
-          
+          mesh.position.set(Math.sin(seed) * 5, Math.cos(seed) * 3, -2);
+
           group.add(mesh);
           meshes.set(kw.id, mesh);
         }
@@ -190,8 +191,8 @@ export function ResonanceTotemLayer() {
 
       // Update Uniforms
       const audio = getAudioData();
-      
-      activeKeywords.forEach(kw => {
+
+      activeKeywords.forEach((kw) => {
         const mesh = meshes.get(kw.id);
         if (mesh) {
           const material = mesh.material as THREE.ShaderMaterial;
@@ -201,20 +202,18 @@ export function ResonanceTotemLayer() {
           const life = (musicTime - startTime) / totalDuration;
           const burst = Math.max(0, 1.0 - Math.abs(musicTime - kw.startTime) * 1.5);
 
-
           material.uniforms.uTime.value = time * 0.001;
           material.uniforms.uLife.value = Math.max(0, Math.min(1, life));
           material.uniforms.uBurst.value = Math.max(0, burst);
           material.uniforms.uBass.value = audio.bass;
           material.uniforms.uTreble.value = audio.treble;
-          
+
           // Floating animation + Bass pulse
           const scale = 1.0 + audio.bass * 0.1 * kw.intensity + burst * 0.2;
           mesh.scale.set(scale, scale, 1);
           mesh.position.y += Math.sin(time * 0.001 + kw.startTime) * 0.005;
         }
       });
-
 
       rendererRef.current.render(sceneRef.current, cameraRef.current);
       animationFrame = requestAnimationFrame(render);
@@ -226,7 +225,6 @@ export function ResonanceTotemLayer() {
       cancelAnimationFrame(animationFrame);
     };
   }, [activeKeywords, preloadedTextures]); // Remove currentTime from deps
-
 
   return (
     <canvas

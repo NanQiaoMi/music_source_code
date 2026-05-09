@@ -1,14 +1,24 @@
 import { EffectContext } from "./types";
 
-export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, theme }: EffectContext) => {
+export const drawCyberMatrix = ({
+  ctx,
+  width,
+  height,
+  data,
+  params,
+  time,
+  refs,
+  theme,
+}: EffectContext) => {
   const effectParams = params || { speed: 1, density: 1 };
   const t = time * 0.001 * (effectParams.speed || 1);
-  const cx = width / 2, cy = height / 2;
+  const cx = width / 2,
+    cy = height / 2;
 
   // --- 1. SIGNAL PROCESSING ---
   const rawBass = data && data[0] ? (data[0] + data[1] + data[2] + data[3]) / 4 / 255 : 0;
   const rawTreble = data && data[24] ? (data[24] + data[28] + data[32]) / 3 / 255 : 0;
-  
+
   refs.smoothBass.current = (refs.smoothBass.current || 0) * 0.85 + rawBass * 0.15;
   refs.smoothTreble.current = (refs.smoothTreble.current || 0) * 0.88 + rawTreble * 0.12;
   const bass = refs.smoothBass.current;
@@ -23,7 +33,7 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
 
   // --- 3. ATMOSPHERIC BASE ---
   ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = `rgba(0, 3, 12, ${0.22 - bass * 0.08})`; 
+  ctx.fillStyle = `rgba(0, 3, 12, ${0.22 - bass * 0.08})`;
   ctx.fillRect(0, 0, width, height);
 
   const matrixHue = theme.primary;
@@ -31,7 +41,14 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
 
   // Depth Mist
   ctx.globalCompositeOperation = "screen";
-  const mist = ctx.createRadialGradient(cx + driftX, cy + driftY, 0, cx + driftX, cy + driftY, width * 1.4);
+  const mist = ctx.createRadialGradient(
+    cx + driftX,
+    cy + driftY,
+    0,
+    cx + driftX,
+    cy + driftY,
+    width * 1.4
+  );
   mist.addColorStop(0, `hsla(${matrixHue}, 100%, 10%, ${0.1 + bass * 0.2})`);
   mist.addColorStop(1, "transparent");
   ctx.fillStyle = mist;
@@ -51,29 +68,33 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
     for (let i = 0; i < 12; i++) {
       const d = Math.pow(i / 12, 3.2);
       const y = cy + dir * (d * height + scroll * (i / 12));
-      ctx.moveTo(0, y); ctx.lineTo(width, y);
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
     }
     ctx.strokeStyle = `hsla(${matrixHue}, 100%, 75%, ${0.03 + bass * 0.3})`;
     ctx.stroke();
-    
+
     ctx.beginPath();
     for (let x = -width; x < width * 2; x += spacing) {
       const wave = Math.sin(t * 0.4 + x * 0.002) * 40;
-      ctx.moveTo(cx, cy); ctx.lineTo(x + wave, cy + dir * height);
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(x + wave, cy + dir * height);
     }
     ctx.strokeStyle = `hsla(${matrixHue}, 100%, 60%, ${0.06 + bass * 0.2})`;
     ctx.stroke();
   };
-  drawGrid(1); drawGrid(-1);
+  drawGrid(1);
+  drawGrid(-1);
 
   // --- 5. GEOMETRIC SINGULARITY (Core) ---
   const drawPolygon = (x: number, y: number, r: number, sides: number, rot: number) => {
     ctx.beginPath();
-    for(let i=0; i<sides; i++) {
+    for (let i = 0; i < sides; i++) {
       const angle = (i / sides) * Math.PI * 2 + rot;
       const px = x + Math.cos(angle) * r;
       const py = y + Math.sin(angle) * r;
-      if(i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     }
     ctx.closePath();
   };
@@ -81,9 +102,10 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
   const drawGeometricCore = (x: number, y: number, size: number) => {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
-    for(let i=0; i<5; i++) {
+    for (let i = 0; i < 5; i++) {
       const r = size * (0.8 + i * 0.4 + bass * 0.5);
-      const rot = t * (i % 2 === 0 ? 1 : -1) * (0.2 + i * 0.15) + (isPeak ? Math.random() * 0.1 : 0);
+      const rot =
+        t * (i % 2 === 0 ? 1 : -1) * (0.2 + i * 0.15) + (isPeak ? Math.random() * 0.1 : 0);
       ctx.lineWidth = 1.2;
       ctx.strokeStyle = `hsla(${i % 2 === 0 ? matrixHue : secondaryHue}, 100%, 80%, ${0.35 / (i + 1)})`;
       drawPolygon(x, y, r, 4, rot); // Changed to 4 sides (Square)
@@ -108,9 +130,12 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
   // --- 6. ADVANCED DESIGNER DATA STREAMS ---
   const cols = Math.floor(52 * (effectParams.density || 1.0));
   if (refs.matrixDrops.current.length < cols) {
-    refs.matrixDrops.current = Array(cols).fill(0).map(() => Math.random() * height);
+    refs.matrixDrops.current = Array(cols)
+      .fill(0)
+      .map(() => Math.random() * height);
   }
-  const glyphs = "█▓▒░▏▎▍▌▋▊▉█▄▃▂▁▀▔▕▏▎▍▌▋▊▉┃│└┴┬├─┼┐┘┌┏┓┗┛┣┫┳┻╋┃━┏┓┗┛┣┫┳┻╋┃━┏┓┗┛┣┫┳┻╋┃━0123456789ABCDEFαβγδεζηθικλμνξοπρστυφχψω";
+  const glyphs =
+    "█▓▒░▏▎▍▌▋▊▉█▄▃▂▁▀▔▕▏▎▍▌▋▊▉┃│└┴┬├─┼┐┘┌┏┓┗┛┣┫┳┻╋┃━┏┓┗┛┣┫┳┻╋┃━┏┓┗┛┣┫┳┻╋┃━0123456789ABCDEFαβγδεζηθικλμνξοπρστυφχψω";
   for (let l = 0; l < 4; l++) {
     const z = [0.4, 0.8, 1.3, 2.5][l];
     const alpha = [0.12, 0.28, 0.85, 0.35][l];
@@ -121,7 +146,7 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
       if (i % 4 !== l) continue;
       const surge = 1 + bass * 4.8;
       const x = (i / cols) * width + Math.sin(t * 0.6 + i) * 30;
-      refs.matrixDrops.current[i] += (1.2 + surge + treble * 48 + l * 4);
+      refs.matrixDrops.current[i] += 1.2 + surge + treble * 48 + l * 4;
       if (refs.matrixDrops.current[i] > height + 600) refs.matrixDrops.current[i] = -600;
       const y = refs.matrixDrops.current[i];
       const len = 14 + l * 10;
@@ -134,27 +159,36 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
         if (j === 0 && Math.random() > 0.8) char = Math.random() > 0.5 ? "0" : "1";
         if (j === 0) {
           if (isPeak) {
-            ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; ctx.fillText(char, x-8, cY);
-            ctx.fillStyle = "rgba(0, 255, 255, 0.5)"; ctx.fillText(char, x+8, cY);
+            ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+            ctx.fillText(char, x - 8, cY);
+            ctx.fillStyle = "rgba(0, 255, 255, 0.5)";
+            ctx.fillText(char, x + 8, cY);
           }
           ctx.fillStyle = "#fff";
           if (Math.random() > 0.95) {
-            ctx.save(); ctx.globalAlpha = 0.4; ctx.fillStyle = `hsla(${secondaryHue}, 100%, 80%, 0.5)`;
-            ctx.fillText(glyphs[Math.floor(Math.random() * 10)], x, cY); ctx.restore();
+            ctx.save();
+            ctx.globalAlpha = 0.4;
+            ctx.fillStyle = `hsla(${secondaryHue}, 100%, 80%, 0.5)`;
+            ctx.fillText(glyphs[Math.floor(Math.random() * 10)], x, cY);
+            ctx.restore();
           }
         } else {
           if (Math.random() > 0.99 && j < 5) {
-             ctx.fillStyle = `hsla(${matrixHue}, 100%, 75%, ${cAlpha})`;
-             ctx.fillText(char, x + 10, cY); ctx.fillText(char, x - 10, cY);
+            ctx.fillStyle = `hsla(${matrixHue}, 100%, 75%, ${cAlpha})`;
+            ctx.fillText(char, x + 10, cY);
+            ctx.fillText(char, x - 10, cY);
           } else {
-             ctx.fillStyle = `hsla(${matrixHue}, 100%, ${65 + treble * 30}%, ${cAlpha})`;
-             ctx.fillText(char, x, cY);
+            ctx.fillStyle = `hsla(${matrixHue}, 100%, ${65 + treble * 30}%, ${cAlpha})`;
+            ctx.fillText(char, x, cY);
           }
         }
         if (j === 0) ctx.fillText(char, x, cY);
         if (j === 0 && i % 8 === 0) {
           ctx.strokeStyle = `hsla(${matrixHue}, 100%, 80%, ${cAlpha * 0.8})`;
-          ctx.beginPath(); ctx.moveTo(x - fSize/2, cY - fSize); ctx.lineTo(x + fSize/2, cY - fSize); ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x - fSize / 2, cY - fSize);
+          ctx.lineTo(x + fSize / 2, cY - fSize);
+          ctx.stroke();
         }
       }
     }
@@ -164,14 +198,14 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
   const drawMatrixHUD = () => {
     ctx.save();
     // Safety Margin: Increased to prevent clipping during vibration
-    const m = 80; 
+    const m = 80;
     ctx.font = 'bold 12px "Consolas", "Courier New", "Orbitron", monospace';
-    
+
     // Top-Left: System Readout
     ctx.textAlign = "left";
     ctx.fillStyle = `hsla(${matrixHue}, 100%, 80%, 0.8)`;
     const glitch = isPeak && Math.random() > 0.8 ? (Math.random() - 0.5) * 4 : 0;
-    
+
     // Draw with subtle chromatic aberration on peaks
     if (isPeak) {
       ctx.fillStyle = "rgba(255, 0, 80, 0.5)";
@@ -199,7 +233,7 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
     const barH = 3;
     const progress = (t * 0.05) % 1;
     ctx.save();
-    ctx.translate(width/2 - barW/2, height - m - 20);
+    ctx.translate(width / 2 - barW / 2, height - m - 20);
     ctx.strokeStyle = `hsla(${matrixHue}, 100%, 75%, 0.4)`;
     ctx.lineWidth = 1;
     ctx.strokeRect(0, 0, barW, barH);
@@ -207,8 +241,8 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
     ctx.fillRect(2, 2, (barW - 4) * progress, barH - 4);
     ctx.textAlign = "center";
     ctx.font = 'bold 10px "Consolas", monospace';
-    ctx.fillText(`PROCESSING_BUFFER_STREAM [ ${Math.floor(progress * 100)}% ]`, barW/2, -14);
-    
+    ctx.fillText(`PROCESSING_BUFFER_STREAM [ ${Math.floor(progress * 100)}% ]`, barW / 2, -14);
+
     // Pulse effect for progress bar
     if (isPeak) {
       ctx.shadowBlur = 15;
@@ -223,19 +257,22 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
     ctx.translate(width - m - 200, cy - 110);
     ctx.strokeStyle = `hsla(${matrixHue}, 100%, 80%, 0.25)`;
     ctx.strokeRect(0, 0, 200, 240);
-    
+
     // Title with blinking cursor
     ctx.fillStyle = `hsla(${matrixHue}, 100%, 95%, 0.85)`;
     ctx.font = 'bold 13px "Consolas", monospace';
     ctx.textAlign = "left";
     const cursor = Math.floor(t * 2) % 2 === 0 ? "_" : " ";
     ctx.fillText(`>> DATA_STACK_LOG${cursor}`, 12, 24);
-    for(let i=0; i<6; i++) {
-      const hex = Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase().padStart(6, '0');
+    for (let i = 0; i < 6; i++) {
+      const hex = Math.floor(Math.random() * 0xffffff)
+        .toString(16)
+        .toUpperCase()
+        .padStart(6, "0");
       ctx.fillStyle = `hsla(${secondaryHue}, 100%, 70%, 0.4)`;
       ctx.font = 'bold 9px "Consolas", monospace';
       ctx.fillText(`0x${hex} [0x00${i}F]`, 12, 50 + i * 16);
-      const v = (data[i * 10] || 0) / 255 * 160;
+      const v = ((data[i * 10] || 0) / 255) * 160;
       ctx.fillStyle = `hsla(${matrixHue}, 100%, 75%, 0.3)`;
       ctx.fillRect(12, 160 + i * 12, v, 2);
       ctx.fillStyle = `hsla(${matrixHue}, 100%, 75%, 0.1)`;
@@ -247,10 +284,20 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
     ctx.lineWidth = 2;
     ctx.strokeStyle = `hsla(${matrixHue}, 100%, 75%, 0.3)`;
     const bL = 25;
-    [ [m, m], [width-m, m], [width-m, height-m], [m, height-m] ].forEach(([x, y], i) => {
-      ctx.save(); ctx.translate(x, y);
+    [
+      [m, m],
+      [width - m, m],
+      [width - m, height - m],
+      [m, height - m],
+    ].forEach(([x, y], i) => {
+      ctx.save();
+      ctx.translate(x, y);
       ctx.rotate((i * Math.PI) / 2);
-      ctx.beginPath(); ctx.moveTo(0, bL); ctx.lineTo(0, 0); ctx.lineTo(bL, 0); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, bL);
+      ctx.lineTo(0, 0);
+      ctx.lineTo(bL, 0);
+      ctx.stroke();
       ctx.restore();
     });
     ctx.restore();
@@ -262,9 +309,9 @@ export const drawCyberMatrix = ({ ctx, width, height, data, params, time, refs, 
   const vigScale = 1.0 + Math.sin(t * 0.4) * 0.2 + bass * 0.3;
   const vigGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, width * vigScale);
   vigGrd.addColorStop(0.6, "transparent");
-  vigGrd.addColorStop(1, `rgba(0, 0, 0, ${0.9 + Math.sin(t)*0.05})`);
+  vigGrd.addColorStop(1, `rgba(0, 0, 0, ${0.9 + Math.sin(t) * 0.05})`);
   ctx.fillStyle = vigGrd;
   ctx.fillRect(0, 0, width, height);
   ctx.fillStyle = "rgba(255,255,255,0.012)";
-  for(let i=0; i<height; i+=4) ctx.fillRect(0, i, width, 1);
+  for (let i = 0; i < height; i += 4) ctx.fillRect(0, i, width, 1);
 };

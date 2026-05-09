@@ -16,27 +16,57 @@ import { HomeView } from "@/components/layout/HomeView";
 import { PanelOrchestrator } from "@/components/layout/PanelOrchestrator";
 
 // Heavy Views (Lazy Loaded)
-const PlayerView = dynamic(() => import("@/components/layout/PlayerView").then(m => m.PlayerView), { ssr: false });
-const VisualizationView = dynamic(() => import("@/components/visualization/VisualizationView").then(m => m.VisualizationView), { ssr: false });
+const PlayerView = dynamic(
+  () => import("@/components/layout/PlayerView").then((m) => m.PlayerView),
+  { ssr: false }
+);
+const VisualizationView = dynamic(
+  () => import("@/components/visualization/VisualizationView").then((m) => m.VisualizationView),
+  { ssr: false }
+);
 
 // Global Features & Feedback (Lazy Loaded)
-const FeatureButtonsContainer = dynamic(() => import("@/components/features-v7/FeatureButtonsContainer").then(m => m.FeatureButtonsContainer), { ssr: false });
-const DesktopLyrics = dynamic(() => import("@/components/features-v7/DesktopLyrics").then(m => m.DesktopLyrics), { ssr: false });
-const VirtualCursor = dynamic(() => import("@/components/widgets/VirtualCursor").then(m => m.VirtualCursor), { ssr: false });
-const GlassToastContainer = dynamic(() => import("@/components/shared/GlassToast").then(m => m.GlassToastContainer), { ssr: false });
-const GlassRadarWidget = dynamic(() => import("@/components/widgets/GlassRadarWidget").then(m => m.GlassRadarWidget), { ssr: false });
-const MusicLibrarySyncProvider = dynamic(() => import("@/components/library/MusicLibrarySyncProvider").then(m => m.MusicLibrarySyncProvider), { ssr: false });
-const MusicBackstory = dynamic(() => import("@/components/widgets/MusicBackstory").then(m => m.MusicBackstory), { ssr: false });
-
+const FeatureButtonsContainer = dynamic(
+  () =>
+    import("@/components/features-v7/FeatureButtonsContainer").then(
+      (m) => m.FeatureButtonsContainer
+    ),
+  { ssr: false }
+);
+const DesktopLyrics = dynamic(
+  () => import("@/components/features-v7/DesktopLyrics").then((m) => m.DesktopLyrics),
+  { ssr: false }
+);
+const VirtualCursor = dynamic(
+  () => import("@/components/widgets/VirtualCursor").then((m) => m.VirtualCursor),
+  { ssr: false }
+);
+const GlassToastContainer = dynamic(
+  () => import("@/components/shared/GlassToast").then((m) => m.GlassToastContainer),
+  { ssr: false }
+);
+const GlassRadarWidget = dynamic(
+  () => import("@/components/widgets/GlassRadarWidget").then((m) => m.GlassRadarWidget),
+  { ssr: false }
+);
+const MusicLibrarySyncProvider = dynamic(
+  () =>
+    import("@/components/library/MusicLibrarySyncProvider").then((m) => m.MusicLibrarySyncProvider),
+  { ssr: false }
+);
+const MusicBackstory = dynamic(
+  () => import("@/components/widgets/MusicBackstory").then((m) => m.MusicBackstory),
+  { ssr: false }
+);
 
 import { bootstrapApp } from "@/lib/bootstrap";
 
 /**
  * Main Application Entry Point - mimimusic
- * 
- * Refactored to a modular architecture where page.tsx acts only as a 
+ *
+ * Refactored to a modular architecture where page.tsx acts only as a
  * layout skeleton and orchestration layer.
- * 
+ *
  * Architecture:
  * - uiStore: Central source of truth for panel visibility and view navigation.
  * - PanelOrchestrator: Manages lazy-loading and error-isolation for all 32+ feature panels.
@@ -74,7 +104,12 @@ export default function Home() {
           --theme-complementary: rgb(72, 236, 153);
           --theme-background: rgb(15, 15, 35);
           --theme-surface: rgb(30, 30, 60);
-          --theme-gradient: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary), var(--theme-accent));
+          --theme-gradient: linear-gradient(
+            135deg,
+            var(--theme-primary),
+            var(--theme-secondary),
+            var(--theme-accent)
+          );
           --blur-intensity: ${blurIntensity}px;
           --animation-speed: ${animationSpeed}s;
           --theme-border: rgba(255, 255, 255, 0.1);
@@ -88,12 +123,13 @@ export default function Home() {
       <div
         className="absolute inset-0 transition-all pointer-events-none"
         style={{
-          background: "linear-gradient(135deg, var(--theme-background) 0%, rgba(0,0,0,0.8) 50%, var(--theme-surface) 100%)",
+          background:
+            "linear-gradient(135deg, var(--theme-background) 0%, rgba(0,0,0,0.8) 50%, var(--theme-surface) 100%)",
           transitionDuration: `${animationSpeed * 800}ms`,
           backdropFilter: `blur(${blurIntensity}px)`,
         }}
       />
-      
+
       {/* Dynamic radial gradients */}
       <div
         className="absolute inset-0 transition-opacity duration-[800ms] ease-out pointer-events-none"
@@ -105,7 +141,8 @@ export default function Home() {
       <div
         className="absolute inset-0 transition-opacity duration-[800ms] ease-out pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse at bottom right, var(--theme-secondary) 0%, transparent 50%)",
+          background:
+            "radial-gradient(ellipse at bottom right, var(--theme-secondary) 0%, transparent 50%)",
           opacity: 0.1,
         }}
       />
@@ -132,7 +169,7 @@ export default function Home() {
       {/* ─── Primary View Content ─────────────────────────────────── */}
       <HomeView />
       <PlayerView />
-      
+
       {/* ─── Global Visualization & HUD ───────────────────────────── */}
       <VisualizationView />
       <DesktopLyrics />

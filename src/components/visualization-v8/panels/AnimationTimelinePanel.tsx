@@ -21,7 +21,7 @@ export function AnimationTimelinePanel({ onClose }: AnimationTimelinePanelProps)
     setIsPlaying,
     setPlaybackSpeed,
     applyPreset,
-    reset
+    reset,
   } = useAnimationStore();
 
   const [showPresets, setShowPresets] = useState(false);
@@ -29,7 +29,7 @@ export function AnimationTimelinePanel({ onClose }: AnimationTimelinePanelProps)
   const syncModeLabels: Record<string, string> = {
     audio: "音频同步",
     timeline: "时间轴",
-    mixed: "混合"
+    mixed: "混合",
   };
 
   const formatTime = (seconds: number): string => {
@@ -47,7 +47,7 @@ export function AnimationTimelinePanel({ onClose }: AnimationTimelinePanelProps)
               <Clock className="w-5 h-5" />
               动画时间轴
             </h2>
-            
+
             <div className="flex items-center gap-2 bg-white/5 rounded-lg p-1">
               {(["audio", "timeline", "mixed"] as const).map((mode) => (
                 <button
@@ -72,9 +72,7 @@ export function AnimationTimelinePanel({ onClose }: AnimationTimelinePanelProps)
             <button
               onClick={() => setShowPresets(!showPresets)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                showPresets
-                  ? "bg-pink-500 text-white"
-                  : "bg-white/10 text-white hover:bg-white/20"
+                showPresets ? "bg-pink-500 text-white" : "bg-white/10 text-white hover:bg-white/20"
               }`}
             >
               <Layers className="w-4 h-4" />
@@ -176,12 +174,8 @@ export function AnimationTimelinePanel({ onClose }: AnimationTimelinePanelProps)
                       }}
                       className="w-full text-left p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all"
                     >
-                      <div className="font-medium text-white text-sm mb-1">
-                        {preset.name}
-                      </div>
-                      <div className="text-white/40 text-xs">
-                        {preset.description}
-                      </div>
+                      <div className="font-medium text-white text-sm mb-1">{preset.name}</div>
+                      <div className="text-white/40 text-xs">{preset.description}</div>
                       <div className="mt-2 flex items-center gap-1">
                         <span className="px-2 py-0.5 bg-pink-500/20 text-pink-300 text-xs rounded">
                           {syncModeLabels[preset.syncMode]}

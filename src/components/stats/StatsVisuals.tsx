@@ -7,14 +7,14 @@ import { motion } from "framer-motion";
  * Musical DNA Radar Chart
  * Visualizes the balance between different musical qualities or genres
  */
-export const MusicalDNARadar: React.FC<{ 
-  data: Record<string, number>,
-  labels: string[] 
+export const MusicalDNARadar: React.FC<{
+  data: Record<string, number>;
+  labels: string[];
 }> = ({ data, labels }) => {
   const size = 300;
   const center = size / 2;
   const radius = size * 0.4;
-  
+
   // Normalize data to 0-1 range (simplified for demo if data is sparse)
   const points = labels.map((label, i) => {
     const angle = (Math.PI * 2 * i) / labels.length - Math.PI / 2;
@@ -24,7 +24,7 @@ export const MusicalDNARadar: React.FC<{
     return { x, y, label, angle };
   });
 
-  const pathData = `M ${points.map(p => `${p.x},${p.y}`).join(" L ")} Z`;
+  const pathData = `M ${points.map((p) => `${p.x},${p.y}`).join(" L ")} Z`;
 
   return (
     <div className="relative flex items-center justify-center">
@@ -42,7 +42,7 @@ export const MusicalDNARadar: React.FC<{
             strokeDasharray="4 4"
           />
         ))}
-        
+
         {/* Axes */}
         {points.map((p, i) => (
           <line
@@ -119,7 +119,9 @@ export const MusicalDNARadar: React.FC<{
  * Listening Clock (Circular 24h Activity)
  * A circular representation of activity intensity across 24 hours
  */
-export const ListeningClock: React.FC<{ hourlyData: Record<number, number> }> = ({ hourlyData }) => {
+export const ListeningClock: React.FC<{ hourlyData: Record<number, number> }> = ({
+  hourlyData,
+}) => {
   const size = 200;
   const center = size / 2;
   const radius = size * 0.4;
@@ -129,8 +131,16 @@ export const ListeningClock: React.FC<{ hourlyData: Record<number, number> }> = 
     <div className="relative flex items-center justify-center">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         {/* Clock Face */}
-        <circle cx={center} cy={center} r={radius + 10} fill="none" stroke="white" strokeOpacity="0.05" strokeWidth="2" />
-        
+        <circle
+          cx={center}
+          cy={center}
+          r={radius + 10}
+          fill="none"
+          stroke="white"
+          strokeOpacity="0.05"
+          strokeWidth="2"
+        />
+
         {/* Hour Markers */}
         {Array.from({ length: 12 }).map((_, i) => {
           const angle = (Math.PI * 2 * i) / 12 - Math.PI / 2;
@@ -153,7 +163,7 @@ export const ListeningClock: React.FC<{ hourlyData: Record<number, number> }> = 
           const intensity = count / maxCount;
           const angle = (Math.PI * 2 * hour) / 24 - Math.PI / 2;
           const barLength = 5 + intensity * 25;
-          
+
           return (
             <motion.line
               key={hour}
@@ -170,8 +180,18 @@ export const ListeningClock: React.FC<{ hourlyData: Record<number, number> }> = 
             />
           );
         })}
-        
-        <text x={center} y={center} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="12" fontWeight="bold">24H</text>
+
+        <text
+          x={center}
+          y={center}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="white"
+          fontSize="12"
+          fontWeight="bold"
+        >
+          24H
+        </text>
       </svg>
     </div>
   );
@@ -181,7 +201,9 @@ export const ListeningClock: React.FC<{ hourlyData: Record<number, number> }> = 
  * Listening Heatmap (24h Activity)
  * Shows intensity of listening across different hours of the day
  */
-export const ListeningHeatmap: React.FC<{ hourlyData: Record<number, number> }> = ({ hourlyData }) => {
+export const ListeningHeatmap: React.FC<{ hourlyData: Record<number, number> }> = ({
+  hourlyData,
+}) => {
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const maxCount = Math.max(...Object.values(hourlyData), 1);
 
@@ -221,13 +243,13 @@ export const ListeningHeatmap: React.FC<{ hourlyData: Record<number, number> }> 
  * Audio Quality Gauge
  * Shows the ratio of high-quality audio in the library
  */
-export const AudioQualityGauge: React.FC<{ 
-  qualityData: Record<string, number>,
-  total: number 
+export const AudioQualityGauge: React.FC<{
+  qualityData: Record<string, number>;
+  total: number;
 }> = ({ qualityData, total }) => {
   const hiResCount = (qualityData["hi-res"] || 0) + (qualityData["dsd"] || 0);
   const percentage = total > 0 ? (hiResCount / total) * 100 : 0;
-  
+
   const size = 160;
   const strokeWidth = 12;
   const radius = (size - strokeWidth) / 2;
@@ -290,25 +312,33 @@ export const AudioQualityGauge: React.FC<{
  * Activity Trend Sparkline
  * Shows simple play count trend over time
  */
-export const ActivityTrend: React.FC<{ 
-  data: { date: string, playCount: number }[] 
+export const ActivityTrend: React.FC<{
+  data: { date: string; playCount: number }[];
 }> = ({ data }) => {
-  if (data.length < 2) return <div className="text-white/40 text-sm text-center">Need more data for trends</div>;
+  if (data.length < 2)
+    return <div className="text-white/40 text-sm text-center">Need more data for trends</div>;
 
   const width = 400;
   const height = 100;
   const padding = 10;
-  
-  const maxVal = Math.max(...data.map(d => d.playCount), 1);
-  const points = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * (width - padding * 2) + padding;
-    const y = height - (d.playCount / maxVal) * (height - padding * 2) - padding;
-    return `${x},${y}`;
-  }).join(" ");
+
+  const maxVal = Math.max(...data.map((d) => d.playCount), 1);
+  const points = data
+    .map((d, i) => {
+      const x = (i / (data.length - 1)) * (width - padding * 2) + padding;
+      const y = height - (d.playCount / maxVal) * (height - padding * 2) - padding;
+      return `${x},${y}`;
+    })
+    .join(" ");
 
   return (
     <div className="w-full">
-      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+      <svg
+        width="100%"
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+      >
         <defs>
           <linearGradient id="trendGradient" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
@@ -341,11 +371,11 @@ export const ActivityTrend: React.FC<{
  */
 export const ProToolMasteryRadar: React.FC<{ usage: Record<string, number> }> = ({ usage }) => {
   const categories = [
-    { key: 'eq', label: '均衡器' },
-    { key: 'dsd_conv', label: 'DSD转换' },
-    { key: 'save_preset', label: '预设定制' },
-    { key: 'visualizer_config', label: '视觉调节' },
-    { key: 'recording', label: '录制' }
+    { key: "eq", label: "均衡器" },
+    { key: "dsd_conv", label: "DSD转换" },
+    { key: "save_preset", label: "预设定制" },
+    { key: "visualizer_config", label: "视觉调节" },
+    { key: "recording", label: "录制" },
   ];
 
   const size = 220;
@@ -359,18 +389,26 @@ export const ProToolMasteryRadar: React.FC<{ usage: Record<string, number> }> = 
     const r = radius * (0.2 + val * 0.8);
     return {
       x: center + r * Math.cos(angle),
-      y: center + r * Math.sin(angle)
+      y: center + r * Math.sin(angle),
     };
   });
 
-  const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
+  const pathData = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ") + " Z";
 
   return (
     <div className="relative">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         {/* Background Grids */}
         {[0.2, 0.4, 0.6, 0.8, 1].map((rMult, idx) => (
-          <circle key={idx} cx={center} cy={center} r={radius * rMult} fill="none" stroke="white" strokeOpacity="0.05" />
+          <circle
+            key={idx}
+            cx={center}
+            cy={center}
+            r={radius * rMult}
+            fill="none"
+            stroke="white"
+            strokeOpacity="0.05"
+          />
         ))}
 
         {/* Axes */}
@@ -379,9 +417,12 @@ export const ProToolMasteryRadar: React.FC<{ usage: Record<string, number> }> = 
           return (
             <line
               key={i}
-              x1={center} y1={center}
-              x2={center + radius * Math.cos(angle)} y2={center + radius * Math.sin(angle)}
-              stroke="white" strokeOpacity="0.1"
+              x1={center}
+              y1={center}
+              x2={center + radius * Math.cos(angle)}
+              y2={center + radius * Math.sin(angle)}
+              stroke="white"
+              strokeOpacity="0.1"
             />
           );
         })}
@@ -412,9 +453,13 @@ export const ProToolMasteryRadar: React.FC<{ usage: Record<string, number> }> = 
           return (
             <text
               key={i}
-              x={x} y={y}
-              textAnchor="middle" dominantBaseline="middle"
-              fill="white" fillOpacity="0.5" fontSize="10"
+              x={x}
+              y={y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="white"
+              fillOpacity="0.5"
+              fontSize="10"
               fontWeight="bold"
             >
               {cat.label}
@@ -432,12 +477,12 @@ export const ProToolMasteryRadar: React.FC<{ usage: Record<string, number> }> = 
  */
 export const MoodFlow: React.FC<{ moodHistory: string[] }> = ({ moodHistory }) => {
   const colors: Record<string, string> = {
-    'energetic': '#ef4444',
-    'chill': '#3b82f6',
-    'focus': '#10b981',
-    'melancholy': '#8b5cf6',
-    'happy': '#f59e0b',
-    'standard': '#6b7280'
+    energetic: "#ef4444",
+    chill: "#3b82f6",
+    focus: "#10b981",
+    melancholy: "#8b5cf6",
+    happy: "#f59e0b",
+    standard: "#6b7280",
   };
 
   return (
@@ -446,7 +491,7 @@ export const MoodFlow: React.FC<{ moodHistory: string[] }> = ({ moodHistory }) =
         <motion.div
           key={i}
           initial={{ width: 0, opacity: 0 }}
-          animate={{ width: '100%', opacity: 1 }}
+          animate={{ width: "100%", opacity: 1 }}
           transition={{ delay: i * 0.05 }}
           className="h-full rounded-full"
           style={{ backgroundColor: colors[mood] || colors.standard, flex: 1 }}

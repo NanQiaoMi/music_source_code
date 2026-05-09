@@ -20,7 +20,7 @@ export const GestureFeedback: React.FC = () => {
     seekPreviewLyric,
   } = useGestureStore();
 
-  const currentSong = useAudioStore(state => state.currentSong);
+  const currentSong = useAudioStore((state) => state.currentSong);
 
   return (
     <>

@@ -119,14 +119,14 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
         updateTaskStatus(task.id, "converting");
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        
+
         for (let progress = 10; progress <= 100; progress += 10) {
           updateTaskProgress(task.id, progress);
           await new Promise((resolve) => setTimeout(resolve, 200));
         }
 
         const mockBlob = new Blob(["mock audio data"], { type: `audio/${task.targetFormat}` });
-        
+
         updateTaskStatus(task.id, "completed", undefined, mockBlob);
         incrementConverted();
         convertingRef.current.delete(task.id);

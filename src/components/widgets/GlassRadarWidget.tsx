@@ -26,11 +26,11 @@ function getQuadrant(x: number, y: number): keyof typeof QUADRANT_GLOW {
 
 export const GlassRadarWidget: React.FC = () => {
   const { globalEmotion, setGlobalEmotion, emotionMap, saveSongEmotion } = useEmotionStore();
-  const currentSong = useAudioStore(state => state.currentSong);
+  const currentSong = useAudioStore((state) => state.currentSong);
 
   const currentEmotion = currentSong
-    ? (emotionMap[currentSong.id] || { x: 0, y: 0 })
-    : (globalEmotion || { x: 0, y: 0 });
+    ? emotionMap[currentSong.id] || { x: 0, y: 0 }
+    : globalEmotion || { x: 0, y: 0 };
 
   const [isExpanded, setIsExpanded] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -43,15 +43,12 @@ export const GlassRadarWidget: React.FC = () => {
     y.set(-currentEmotion.y * (RADAR_SIZE / 2));
   }, [currentEmotion, x, y]);
 
-  const glowColor = useTransform(
-    [x, y],
-    ([latestX, latestY]: any[]) => {
-      const valX = latestX / (RADAR_SIZE / 2);
-      const valY = -latestY / (RADAR_SIZE / 2);
-      const q = getQuadrant(valX, valY);
-      return QUADRANT_GLOW[q];
-    }
-  );
+  const glowColor = useTransform([x, y], ([latestX, latestY]: any[]) => {
+    const valX = latestX / (RADAR_SIZE / 2);
+    const valY = -latestY / (RADAR_SIZE / 2);
+    const q = getQuadrant(valX, valY);
+    return QUADRANT_GLOW[q];
+  });
 
   const handleDragEnd = useCallback(() => {
     const finalX = x.get() / (RADAR_SIZE / 2);
@@ -63,7 +60,12 @@ export const GlassRadarWidget: React.FC = () => {
       if (currentSong) {
         saveSongEmotion(currentSong.id, finalX, finalY);
         const q = getQuadrant(finalX, finalY);
-        const labels: Record<string, string> = { Q1: "高亢激昂", Q2: "悲伤阴暗", Q3: "平静低沉", Q4: "欢快明亮" };
+        const labels: Record<string, string> = {
+          Q1: "高亢激昂",
+          Q2: "悲伤阴暗",
+          Q3: "平静低沉",
+          Q4: "欢快明亮",
+        };
         toast.success(`已标记为「${labels[q]}」区域`);
       } else {
         setGlobalEmotion({ x: finalX, y: finalY });
@@ -73,7 +75,12 @@ export const GlassRadarWidget: React.FC = () => {
   }, [x, y, currentSong, saveSongEmotion, setGlobalEmotion]);
 
   const currentQuadrant = getQuadrant(currentEmotion.x, currentEmotion.y);
-  const quadrantLabels: Record<string, string> = { Q1: "高亢激昂", Q2: "悲伤阴暗", Q3: "平静低沉", Q4: "欢快明亮" };
+  const quadrantLabels: Record<string, string> = {
+    Q1: "高亢激昂",
+    Q2: "悲伤阴暗",
+    Q3: "平静低沉",
+    Q4: "欢快明亮",
+  };
 
   return (
     <motion.div
@@ -94,7 +101,7 @@ export const GlassRadarWidget: React.FC = () => {
         animate={{
           width: isExpanded ? RADAR_SIZE + 40 : 44,
           height: isExpanded ? RADAR_SIZE + 40 : 44,
-          borderRadius: isExpanded ? 32 : 16
+          borderRadius: isExpanded ? 32 : 16,
         }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
       >
@@ -183,7 +190,10 @@ export const GlassRadarWidget: React.FC = () => {
               <div className="absolute top-2 left-0 right-0 text-center">
                 <div className="text-[10px] text-white/50 font-medium">情绪偏好矩阵</div>
                 {currentSong && (
-                  <div className="text-[8px] mt-0.5 font-bold" style={{ color: QUADRANT_GLOW[currentQuadrant] }}>
+                  <div
+                    className="text-[8px] mt-0.5 font-bold"
+                    style={{ color: QUADRANT_GLOW[currentQuadrant] }}
+                  >
                     {quadrantLabels[currentQuadrant]}
                   </div>
                 )}

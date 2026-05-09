@@ -12,15 +12,22 @@ import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { X, Maximize2, Minimize2, Settings, Video } from "lucide-react";
-const RecordingPanel = dynamic(() => import("@/components/features-v7/RecordingPanel").then(m => m.RecordingPanel), { ssr: false });
-const VisualizationSettingsPanel = dynamic(() => import("./VisualizationSettingsPanel").then(m => m.VisualizationSettingsPanel), { ssr: false });
-const VisualizationProgressBar = dynamic(() => import("./VisualizationProgressBar").then(m => m.VisualizationProgressBar), { ssr: false });
-
+const RecordingPanel = dynamic(
+  () => import("@/components/features-v7/RecordingPanel").then((m) => m.RecordingPanel),
+  { ssr: false }
+);
+const VisualizationSettingsPanel = dynamic(
+  () => import("./VisualizationSettingsPanel").then((m) => m.VisualizationSettingsPanel),
+  { ssr: false }
+);
+const VisualizationProgressBar = dynamic(
+  () => import("./VisualizationProgressBar").then((m) => m.VisualizationProgressBar),
+  { ssr: false }
+);
 
 import { useTotemStore } from "@/store/totemStore";
 import { useLyricsSearchStore } from "@/store/lyricsSearchStore";
 import * as Effects from "./effects";
-
 
 const PlayIcon = memo(() => (
   <svg className="w-7 h-7 ml-1" fill="currentColor" viewBox="0 0 24 24">
@@ -57,12 +64,13 @@ export function VisualizationView() {
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const themeColors = useUIStore((state) => state.themeColors);
   const isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
-  const currentTime = useAudioStore(state => state.currentTime);
-  const duration = useAudioStore(state => state.duration);
-  const bufferedRanges = useAudioStore(state => state.bufferedRanges);
-  const prevSong = useAudioStore(state => state.prevSong);
-  const nextSong = useAudioStore(state => state.nextSong);
-  const { currentEffect, setCurrentEffect, isFullscreen, setIsFullscreen, effectSettings } = useVisualizationStore();
+  const currentTime = useAudioStore((state) => state.currentTime);
+  const duration = useAudioStore((state) => state.duration);
+  const bufferedRanges = useAudioStore((state) => state.bufferedRanges);
+  const prevSong = useAudioStore((state) => state.prevSong);
+  const nextSong = useAudioStore((state) => state.nextSong);
+  const { currentEffect, setCurrentEffect, isFullscreen, setIsFullscreen, effectSettings } =
+    useVisualizationStore();
   const { currentTheme } = useVisualSettingsStore();
   const { seek } = useAudioPlayer();
   const [showSettings, setShowSettings] = useState(false);
@@ -86,7 +94,6 @@ export function VisualizationView() {
   const bokehRef = useRef<any[]>([]);
   const shockwavesRef = useRef<any[]>([]);
   const resonanceTotemsRef = useRef<any[]>([]);
-
 
   // Mouse idle detection for Zen Mode
   useEffect(() => {
@@ -116,18 +123,24 @@ export function VisualizationView() {
       setIsFullscreen(isFs);
     };
 
-    const events = ["fullscreenchange", "webkitfullscreenchange", "mozfullscreenchange", "MSFullscreenChange"];
-    events.forEach(event => document.addEventListener(event, handleFsChange));
-    
+    const events = [
+      "fullscreenchange",
+      "webkitfullscreenchange",
+      "mozfullscreenchange",
+      "MSFullscreenChange",
+    ];
+    events.forEach((event) => document.addEventListener(event, handleFsChange));
+
     return () => {
-      events.forEach(event => document.removeEventListener(event, handleFsChange));
+      events.forEach((event) => document.removeEventListener(event, handleFsChange));
     };
   }, [setIsFullscreen]);
 
   const handleToggleFullscreen = () => {
     // 1. Try Electron Native Fullscreen first (Best for Desktop)
     if ((window as any).electronAPI?.toggleFullscreen) {
-      (window as any).electronAPI.toggleFullscreen()
+      (window as any).electronAPI
+        .toggleFullscreen()
         .then((result: boolean) => setIsFullscreen(result))
         .catch((err: any) => console.error("Electron fullscreen failed:", err));
       return;
@@ -135,18 +148,31 @@ export function VisualizationView() {
 
     // 2. Fallback to Browser Fullscreen API with vendor prefixes
     const doc = document as any;
-    const isFs = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+    const isFs = !!(
+      doc.fullscreenElement ||
+      doc.webkitFullscreenElement ||
+      doc.mozFullScreenElement ||
+      doc.msFullscreenElement
+    );
 
     if (!isFs) {
       const elem = containerRef.current || document.documentElement;
-      const request = elem.requestFullscreen || (elem as any).webkitRequestFullscreen || (elem as any).mozRequestFullScreen || (elem as any).msRequestFullscreen;
+      const request =
+        elem.requestFullscreen ||
+        (elem as any).webkitRequestFullscreen ||
+        (elem as any).mozRequestFullScreen ||
+        (elem as any).msRequestFullscreen;
       if (request) {
         request.call(elem).catch((err: any) => {
           console.error("Fullscreen request failed:", err);
         });
       }
     } else {
-      const exit = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+      const exit =
+        doc.exitFullscreen ||
+        doc.webkitExitFullscreen ||
+        doc.mozCancelFullScreen ||
+        doc.msExitFullscreen;
       if (exit) {
         exit.call(doc).catch((err: any) => {
           console.error("Exit fullscreen failed:", err);
@@ -163,7 +189,12 @@ export function VisualizationView() {
   // Keyboard shortcut for F key (Fullscreen)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (currentView === "visualization" && e.key.toLowerCase() === "f" && !showSettings && !showRecording) {
+      if (
+        currentView === "visualization" &&
+        e.key.toLowerCase() === "f" &&
+        !showSettings &&
+        !showRecording
+      ) {
         handleToggleFullscreen();
       }
     };
@@ -189,7 +220,7 @@ export function VisualizationView() {
   }, [currentView]);
 
   const totemStore = useTotemStore();
-  const parsedLyrics = useLyricsSearchStore(state => state.parsedLyrics);
+  const parsedLyrics = useLyricsSearchStore((state) => state.parsedLyrics);
   const workerRef = useRef<Worker | null>(null);
 
   // Sync music time for shaders
@@ -216,7 +247,7 @@ export function VisualizationView() {
     if (typeof window === "undefined") return;
 
     const worker = new Worker(new URL("../../workers/totemTexture.worker.ts", import.meta.url), {
-      type: "module"
+      type: "module",
     });
 
     worker.onmessage = (e) => {
@@ -236,18 +267,17 @@ export function VisualizationView() {
   useEffect(() => {
     if (!workerRef.current || totemStore.allKeywords.length === 0) return;
 
-    totemStore.allKeywords.forEach(kw => {
+    totemStore.allKeywords.forEach((kw) => {
       if (!totemStore.preloadedTextures[kw.id]) {
         workerRef.current?.postMessage({
           type: "generate",
           id: kw.id,
           text: kw.text,
-          style: "serif"
+          style: "serif",
         });
       }
     });
   }, [totemStore.allKeywords]);
-
 
   const vizTargetHues = useRef({ primary: 280, secondary: 320, accent: 150 });
   const vizActiveHues = useRef({ primary: 280, secondary: 320, accent: 150 });
@@ -258,8 +288,11 @@ export function VisualizationView() {
       if (!rgbStr) return 280;
       const match = rgbStr.match(/\d+/g);
       if (!match) return 280;
-      const r = parseInt(match[0]) / 255, g = parseInt(match[1]) / 255, b = parseInt(match[2]) / 255;
-      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const r = parseInt(match[0]) / 255,
+        g = parseInt(match[1]) / 255,
+        b = parseInt(match[2]) / 255;
+      const max = Math.max(r, g, b),
+        min = Math.min(r, g, b);
       let h = 0;
       if (max !== min) {
         const d = max - min;
@@ -299,7 +332,8 @@ export function VisualizationView() {
           x: (Math.random() - 0.5) * 2000,
           y: (Math.random() - 0.5) * 2000,
           z: Math.random() * 2000,
-          ox: 0, oy: 0,
+          ox: 0,
+          oy: 0,
         });
       }
     };
@@ -314,10 +348,9 @@ export function VisualizationView() {
       return (current + diff * factor + 360) % 360;
     };
 
-
     const draw = (timestamp: number) => {
       timeRef.current = timestamp;
-      
+
       const state = useVisualizationStore.getState();
       const currentEff = state.currentEffect;
       const settings = state.effectSettings;
@@ -325,7 +358,7 @@ export function VisualizationView() {
       const analyser = getAudioAnalyser();
       if (analyser && dataArrayRef.current) {
         analyser.getByteFrequencyData(dataArrayRef.current as any);
-        
+
         // Smooth data for visualization
         const raw = dataArrayRef.current;
         const smooth = smoothDataRef.current;
@@ -338,7 +371,7 @@ export function VisualizationView() {
       // Smooth Hue Transitions
       const target = vizTargetHues.current;
       const active = vizActiveHues.current;
-      
+
       const lerpHueInternal = (curr: number, tar: number, factor: number) => {
         let diff = tar - curr;
         while (diff > 180) diff -= 360;
@@ -380,8 +413,8 @@ export function VisualizationView() {
             accent: active.accent,
           },
           utils: {
-            getThemeBaseHue: () => active.primary
-          }
+            getThemeBaseHue: () => active.primary,
+          },
         };
 
         // --- SAFETY RESET: Ensure each effect starts with a clean slate ---
@@ -441,7 +474,6 @@ export function VisualizationView() {
           default:
             Effects.drawSpatialMesh(effectCtx);
         }
-
       }
 
       animationFrameRef.current = requestAnimationFrame(draw);
@@ -455,7 +487,7 @@ export function VisualizationView() {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
       }
-      
+
       // Explicitly clear large data structures to help GC
       particlesRef.current = [];
       nebulaStarsRef.current = [];
@@ -463,7 +495,7 @@ export function VisualizationView() {
       matrixDropsRef.current = [];
       bokehRef.current = [];
       shockwavesRef.current = [];
-      
+
       // Clear canvas context if possible (though usually GC'd)
       if (canvasRef.current) {
         const canvas = canvasRef.current;
@@ -486,45 +518,41 @@ export function VisualizationView() {
       const blurVal = Math.min(effectSettings.spatialMesh.blurIntensity, 80);
       return {
         filter: `blur(${blurVal}px) saturate(1.8) contrast(1.1)`,
-        transform: 'translateZ(0)',
-        willChange: 'filter'
+        transform: "translateZ(0)",
+        willChange: "filter",
       };
     }
     if (currentEffect === "organicFluid") {
       return {
         filter: `saturate(1.3) contrast(1.25) brightness(0.8) drop-shadow(0 0 40px rgba(0, 100, 255, 0.15))`,
-        transform: 'translateZ(0)',
-        willChange: 'filter'
+        transform: "translateZ(0)",
+        willChange: "filter",
       };
     }
     if (currentEffect === "auroraWave") {
-      return { filter: `saturate(1.2) contrast(1.1)`, transform: 'translateZ(0)' };
+      return { filter: `saturate(1.2) contrast(1.1)`, transform: "translateZ(0)" };
     }
     if (currentEffect === "nebulaField") {
-      return { filter: `saturate(1.3) brightness(1.1)`, transform: 'translateZ(0)' };
+      return { filter: `saturate(1.3) brightness(1.1)`, transform: "translateZ(0)" };
     }
     if (currentEffect === "vinylGroove") {
-      return { 
-        filter: `saturate(1.4) contrast(1.15) brightness(1.05) drop-shadow(0 0 40px rgba(100, 150, 255, 0.15))`, 
-        transform: 'translateZ(0)',
-        willChange: 'filter'
+      return {
+        filter: `saturate(1.4) contrast(1.15) brightness(1.05) drop-shadow(0 0 40px rgba(100, 150, 255, 0.15))`,
+        transform: "translateZ(0)",
+        willChange: "filter",
       };
     }
     if (currentEffect === "spectrumRing") {
-      return { 
-        filter: `saturate(1.4) contrast(1.1) brightness(1.1) drop-shadow(0 0 30px rgba(255, 255, 255, 0.05))`, 
-        transform: 'translateZ(0)',
-        willChange: 'filter'
+      return {
+        filter: `saturate(1.4) contrast(1.1) brightness(1.1) drop-shadow(0 0 30px rgba(255, 255, 255, 0.05))`,
+        transform: "translateZ(0)",
+        willChange: "filter",
       };
     }
-    if (currentEffect === "resonanceTotem" as any) {
-      return { filter: `saturate(1.2) contrast(1.1)`, transform: 'translateZ(0)' };
+    if (currentEffect === ("resonanceTotem" as any)) {
+      return { filter: `saturate(1.2) contrast(1.1)`, transform: "translateZ(0)" };
     }
-    return { transform: 'translateZ(0)' };
-
-
-
-
+    return { transform: "translateZ(0)" };
   };
 
   const effectsList: { id: VisualizationEffect; name: string }[] = [
@@ -540,7 +568,6 @@ export function VisualizationView() {
     { id: "gravitationalField", name: "重力场 (隐藏)" },
     { id: "resonanceTotem" as any, name: "共鸣图腾" },
   ];
-
 
   return (
     <motion.div
@@ -559,40 +586,44 @@ export function VisualizationView() {
         style={getCanvasStyle()}
       />
 
-
-
-
       {/* Album Art floating in center */}
       <AnimatePresence>
-        {(currentEffect === "spatialMesh" || currentEffect === "organicFluid" || currentEffect === "vinylGroove") && currentSong?.cover && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: -20 }}
-            transition={{ type: "spring", stiffness: 150, damping: 25 }}
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-          >
-            <div className={`relative overflow-hidden ${(currentEffect === "vinylGroove") ? "w-48 h-48 md:w-72 md:h-72 rounded-full shadow-[0_0_80px_rgba(0,0,0,0.9)]" : "w-[240px] h-[240px] md:w-[360px] md:h-[360px] rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
-              } border border-white/10`}
-              style={{
-                transform: `scale(${1 + (dataArrayRef.current?.[2] || 0) / 255 * 0.08})`,
-                willChange: 'transform',
-                transition: 'transform 0.15s cubic-bezier(0.22, 1, 0.36, 1)'
-              }}>
-              {/* Dynamic glow behind the cover */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={currentSong.cover} alt="cover" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 border border-white/20 rounded-[inherit] pointer-events-none mix-blend-overlay" />
-              
-              {/* Overlay reflection */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
-            </div>
-          </motion.div>
-        )}
+        {(currentEffect === "spatialMesh" ||
+          currentEffect === "organicFluid" ||
+          currentEffect === "vinylGroove") &&
+          currentSong?.cover && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: -20 }}
+              transition={{ type: "spring", stiffness: 150, damping: 25 }}
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            >
+              <div
+                className={`relative overflow-hidden ${
+                  currentEffect === "vinylGroove"
+                    ? "w-48 h-48 md:w-72 md:h-72 rounded-full shadow-[0_0_80px_rgba(0,0,0,0.9)]"
+                    : "w-[240px] h-[240px] md:w-[360px] md:h-[360px] rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+                } border border-white/10`}
+                style={{
+                  transform: `scale(${1 + ((dataArrayRef.current?.[2] || 0) / 255) * 0.08})`,
+                  willChange: "transform",
+                  transition: "transform 0.15s cubic-bezier(0.22, 1, 0.36, 1)",
+                }}
+              >
+                {/* Dynamic glow behind the cover */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={currentSong.cover} alt="cover" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 border border-white/20 rounded-[inherit] pointer-events-none mix-blend-overlay" />
+
+                {/* Overlay reflection */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+              </div>
+            </motion.div>
+          )}
       </AnimatePresence>
 
       <div className="absolute inset-0 flex flex-col pointer-events-none z-20">
-
         {/* Header */}
         <AnimatePresence>
           {!mouseIdle && (
@@ -617,10 +648,11 @@ export function VisualizationView() {
                       setCurrentEffect(effect.id);
                       useStatsAchievementsStore.getState().reportProToolsUsage("visualizer_config");
                     }}
-                    className={`px-4 py-1.5 rounded-full text-[11px] font-bold tracking-widest transition-all duration-300 whitespace-nowrap shrink-0 uppercase ${currentEffect === effect.id
+                    className={`px-4 py-1.5 rounded-full text-[11px] font-bold tracking-widest transition-all duration-300 whitespace-nowrap shrink-0 uppercase ${
+                      currentEffect === effect.id
                         ? "bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.5)] scale-105"
                         : "text-white/50 hover:text-white/90 hover:bg-white/5"
-                      }`}
+                    }`}
                   >
                     {effect.name}
                   </button>
@@ -685,7 +717,7 @@ export function VisualizationView() {
                           <span className="px-2 py-0.5 rounded-md bg-white/10 text-xs font-bold uppercase tracking-wider text-white/80">
                             Hires
                           </span>
-                          {currentSong.artist} {currentSong.album ? ` • ${currentSong.album}` : ''}
+                          {currentSong.artist} {currentSong.album ? ` • ${currentSong.album}` : ""}
                         </p>
                       </div>
 
@@ -734,10 +766,7 @@ export function VisualizationView() {
         <div className="absolute inset-0 bg-black/50 z-50 pointer-events-none transition-opacity duration-500" />
       )}
 
-      <VisualizationSettingsPanel
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-      />
+      <VisualizationSettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
       <RecordingPanel
         isOpen={showRecording}

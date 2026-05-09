@@ -9,9 +9,10 @@ import { useLyricsCoverStore } from "@/store/lyricsCoverStore";
 
 export const MusicBackstory: React.FC = () => {
   const { currentSong } = useAudioStore();
-  const { backstories, metaphors, isLoading, fetchBackstory, fetchMetaphors, lastRawResponse } = useKnowledgeStore();
+  const { backstories, metaphors, isLoading, fetchBackstory, fetchMetaphors, lastRawResponse } =
+    useKnowledgeStore();
   const { loadLyric } = useLyricsCoverStore();
-  
+
   const [isVisible, setIsVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [activeTab, setActiveTab] = useState<"backstory" | "metaphors">("backstory");
@@ -25,12 +26,19 @@ export const MusicBackstory: React.FC = () => {
   // --- DERIVE LYRICS ---
   const lyricsText = useMemo(() => {
     if (!currentSong) return "";
-    if (currentSong.lyrics && typeof currentSong.lyrics === 'string' && currentSong.lyrics.length > 5) {
+    if (
+      currentSong.lyrics &&
+      typeof currentSong.lyrics === "string" &&
+      currentSong.lyrics.length > 5
+    ) {
       return currentSong.lyrics.slice(0, 1200);
     }
     const lyricData = loadLyric(currentSong.id);
     if (lyricData && lyricData.lines && lyricData.lines.length > 0) {
-      return lyricData.lines.map(l => l.text).join("\n").slice(0, 1200);
+      return lyricData.lines
+        .map((l) => l.text)
+        .join("\n")
+        .slice(0, 1200);
     }
     return "";
   }, [currentSong?.id, currentSong?.lyrics, loadLyric]);
@@ -76,9 +84,10 @@ export const MusicBackstory: React.FC = () => {
               relative h-12 flex items-center gap-3 px-4 rounded-full 
               backdrop-blur-3xl border transition-all duration-500
               ${isVisible ? "opacity-0 pointer-events-none" : "opacity-100"}
-              ${isHovered 
-                ? "bg-white/10 border-white/20 shadow-[0_0_30px_rgba(168,85,247,0.3)]" 
-                : "bg-black/20 border-white/10 shadow-2xl"
+              ${
+                isHovered
+                  ? "bg-white/10 border-white/20 shadow-[0_0_30px_rgba(168,85,247,0.3)]"
+                  : "bg-black/20 border-white/10 shadow-2xl"
               }
             `}
           >
@@ -122,43 +131,100 @@ export const MusicBackstory: React.FC = () => {
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4">
                     <div className="flex bg-white/5 p-1 rounded-2xl">
-                      <button onClick={() => setActiveTab("backstory")} className={`px-4 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === "backstory" ? "bg-white/10 text-white" : "text-white/20"}`}>Archive</button>
-                      <button onClick={() => setActiveTab("metaphors")} className={`px-4 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === "metaphors" ? "bg-white/10 text-white" : "text-white/20"}`}>Poetry</button>
+                      <button
+                        onClick={() => setActiveTab("backstory")}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === "backstory" ? "bg-white/10 text-white" : "text-white/20"}`}
+                      >
+                        Archive
+                      </button>
+                      <button
+                        onClick={() => setActiveTab("metaphors")}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === "metaphors" ? "bg-white/10 text-white" : "text-white/20"}`}
+                      >
+                        Poetry
+                      </button>
                     </div>
-                    <motion.button onClick={() => handleFetch(true)} className={`p-2 rounded-xl bg-white/5 text-white/30 hover:text-white/60 transition-all ${isLoading ? "animate-spin" : ""}`}><RotateCcw className="w-3.5 h-3.5" /></motion.button>
+                    <motion.button
+                      onClick={() => handleFetch(true)}
+                      className={`p-2 rounded-xl bg-white/5 text-white/30 hover:text-white/60 transition-all ${isLoading ? "animate-spin" : ""}`}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </motion.button>
                   </div>
-                  <button onClick={() => setIsVisible(false)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/30 hover:text-white/60"><X className="w-4 h-4" /></button>
+                  <button
+                    onClick={() => setIsVisible(false)}
+                    className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/30 hover:text-white/60"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
 
                 <div className="min-h-[160px] flex flex-col justify-center">
                   {isLoading ? (
                     <div className="flex flex-col items-center justify-center gap-4 opacity-40">
                       <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-                      <span className="text-[10px] tracking-[0.4em] text-white font-black uppercase">Cognitive Extraction...</span>
+                      <span className="text-[10px] tracking-[0.4em] text-white font-black uppercase">
+                        Cognitive Extraction...
+                      </span>
                     </div>
                   ) : activeTab === "backstory" ? (
-                    <motion.div key="backstory" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                      <div className="flex items-center gap-2 mb-2"><Scroll className="w-3 h-3 text-purple-400" /><span className="text-[9px] font-black text-purple-400/60 uppercase tracking-widest">Historical context</span></div>
-                      <p className="text-[15px] text-white/90 leading-relaxed font-serif italic">“{backstoryData?.content || "这段往事，暂且消失在数字的尘埃中。"}”</p>
+                    <motion.div
+                      key="backstory"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-4"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Scroll className="w-3 h-3 text-purple-400" />
+                        <span className="text-[9px] font-black text-purple-400/60 uppercase tracking-widest">
+                          Historical context
+                        </span>
+                      </div>
+                      <p className="text-[15px] text-white/90 leading-relaxed font-serif italic">
+                        “{backstoryData?.content || "这段往事，暂且消失在数字的尘埃中。"}”
+                      </p>
                     </motion.div>
                   ) : (
                     <div className="space-y-5">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2"><Quote className="w-3 h-3 text-blue-400" /><span className="text-[9px] font-black text-blue-400/60 uppercase tracking-widest">Poetic analysis</span></div>
-                        {lyricCount > 0 && <span className="text-[8px] text-white/20 font-medium uppercase tracking-tighter">Linked: {lyricCount} chars</span>}
+                        <div className="flex items-center gap-2">
+                          <Quote className="w-3 h-3 text-blue-400" />
+                          <span className="text-[9px] font-black text-blue-400/60 uppercase tracking-widest">
+                            Poetic analysis
+                          </span>
+                        </div>
+                        {lyricCount > 0 && (
+                          <span className="text-[8px] text-white/20 font-medium uppercase tracking-tighter">
+                            Linked: {lyricCount} chars
+                          </span>
+                        )}
                       </div>
-                      
-                      {metaphorData && metaphorData.length > 0 ? metaphorData.map((m, i) => (
-                        <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} className="group/item">
-                          <div className="text-[11px] font-black text-white/40 group-hover/item:text-purple-400 transition-colors uppercase tracking-[0.2em] mb-1">{m.term}</div>
-                          <div className="text-[13px] text-white/60 leading-relaxed italic border-l border-white/5 pl-3">{m.meaning}</div>
-                        </motion.div>
-                      )) : (
+
+                      {metaphorData && metaphorData.length > 0 ? (
+                        metaphorData.map((m, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.1 }}
+                            className="group/item"
+                          >
+                            <div className="text-[11px] font-black text-white/40 group-hover/item:text-purple-400 transition-colors uppercase tracking-[0.2em] mb-1">
+                              {m.term}
+                            </div>
+                            <div className="text-[13px] text-white/60 leading-relaxed italic border-l border-white/5 pl-3">
+                              {m.meaning}
+                            </div>
+                          </motion.div>
+                        ))
+                      ) : (
                         <div className="flex flex-col items-center justify-center py-10 opacity-30 gap-4">
-                          <div className="text-center italic text-xs tracking-widest uppercase px-4">{lyricCount === 0 ? "未检测到有效歌词源" : "未捕捉到共鸣意象"}</div>
-                          
+                          <div className="text-center italic text-xs tracking-widest uppercase px-4">
+                            {lyricCount === 0 ? "未检测到有效歌词源" : "未捕捉到共鸣意象"}
+                          </div>
+
                           {lastRawResponse && (
-                            <button 
+                            <button
                               onClick={() => setShowDebug(!showDebug)}
                               className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-black text-white/60 uppercase tracking-widest transition-all"
                             >
@@ -169,8 +235,14 @@ export const MusicBackstory: React.FC = () => {
                       )}
 
                       {showDebug && lastRawResponse && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-4 p-4 bg-white/5 rounded-xl border border-white/10 max-h-40 overflow-y-auto">
-                          <div className="text-[8px] font-mono text-white/40 break-all whitespace-pre-wrap">{lastRawResponse}</div>
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          className="mt-4 p-4 bg-white/5 rounded-xl border border-white/10 max-h-40 overflow-y-auto"
+                        >
+                          <div className="text-[8px] font-mono text-white/40 break-all whitespace-pre-wrap">
+                            {lastRawResponse}
+                          </div>
                         </motion.div>
                       )}
                     </div>
@@ -180,9 +252,13 @@ export const MusicBackstory: React.FC = () => {
                 <div className="mt-10 pt-6 border-t border-white/5 flex items-center justify-between opacity-40">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-3 h-3 text-purple-500" />
-                    <span className="text-[8px] font-black tracking-widest uppercase text-white">Mimi Intelligence Protocol</span>
+                    <span className="text-[8px] font-black tracking-widest uppercase text-white">
+                      Mimi Intelligence Protocol
+                    </span>
                   </div>
-                  <span className="text-[8px] font-medium tracking-widest uppercase text-white">ID: {currentKey.slice(0, 8)}</span>
+                  <span className="text-[8px] font-medium tracking-widest uppercase text-white">
+                    ID: {currentKey.slice(0, 8)}
+                  </span>
                 </div>
               </div>
             </div>

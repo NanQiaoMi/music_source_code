@@ -31,22 +31,16 @@ export function getNormalizedPlay(song: SongWithPlayCount, maxPlayCount: number)
   return Math.min(playCount / maxPlayCount, 1);
 }
 
-export function calculateFreshnessScore(
-  song: SongWithPlayCount,
-  maxPlayCount: number
-): number {
+export function calculateFreshnessScore(song: SongWithPlayCount, maxPlayCount: number): number {
   const normalizedPlay = getNormalizedPlay(song, maxPlayCount);
   const freshnessScore = 1 - normalizedPlay;
   return Math.max(0, Math.min(1, freshnessScore));
 }
 
-export function calculateFamiliarityScore(
-  song: SongWithPlayCount,
-  maxPlayCount: number
-): number {
+export function calculateFamiliarityScore(song: SongWithPlayCount, maxPlayCount: number): number {
   const normalizedPlay = getNormalizedPlay(song, maxPlayCount);
   let familiarityScore = normalizedPlay;
-  
+
   if (song.lastPlayedAt) {
     const daysSincePlayed = (Date.now() - song.lastPlayedAt) / (1000 * 60 * 60 * 24);
     if (daysSincePlayed < 1) {
@@ -57,13 +51,13 @@ export function calculateFamiliarityScore(
       familiarityScore = Math.min(1, familiarityScore + 0.1);
     }
   }
-  
+
   return Math.max(0, Math.min(1, familiarityScore));
 }
 
 export function calculateSimilarity(songA: Song, songB: Song): number {
   if (!songA || !songB) return 0.5;
-  
+
   let totalScore = 0;
   let totalWeight = 0;
 
@@ -107,15 +101,31 @@ export function calculateSimilarity(songA: Song, songB: Song): number {
 
   if (titleA && titleB) {
     let titleScore = 0;
-    
-    const remixKeywords = ["remix", "mix", "edit", "version", "cover", "live", "acoustic", "demo", "radio"];
+
+    const remixKeywords = [
+      "remix",
+      "mix",
+      "edit",
+      "version",
+      "cover",
+      "live",
+      "acoustic",
+      "demo",
+      "radio",
+    ];
     const hasKeywordA = remixKeywords.some((k) => titleA.includes(k));
     const hasKeywordB = remixKeywords.some((k) => titleB.includes(k));
-    
+
     if (hasKeywordA || hasKeywordB) {
-      const cleanTitleA = titleA.replace(/[\(\[\{].*?[\)\]\}]/g, "").replace(/remix|mix|edit|version|cover|live|acoustic|demo|radio/gi, "").trim();
-      const cleanTitleB = titleB.replace(/[\(\[\{].*?[\)\]\}]/g, "").replace(/remix|mix|edit|version|cover|live|acoustic|demo|radio/gi, "").trim();
-      
+      const cleanTitleA = titleA
+        .replace(/[\(\[\{].*?[\)\]\}]/g, "")
+        .replace(/remix|mix|edit|version|cover|live|acoustic|demo|radio/gi, "")
+        .trim();
+      const cleanTitleB = titleB
+        .replace(/[\(\[\{].*?[\)\]\}]/g, "")
+        .replace(/remix|mix|edit|version|cover|live|acoustic|demo|radio/gi, "")
+        .trim();
+
       if (cleanTitleA && cleanTitleB) {
         if (cleanTitleA === cleanTitleB) {
           titleScore = 0.9;
@@ -124,7 +134,7 @@ export function calculateSimilarity(songA: Song, songB: Song): number {
         }
       }
     }
-    
+
     totalScore += titleScore * 0.25;
     totalWeight += 0.25;
   }
@@ -140,7 +150,7 @@ export function calculateDiversityScore(
   if (selectedSongs.length === 0) return 1.0;
 
   let diversityScore = 1.0;
-  
+
   const recentArtists = selectedSongs.slice(-8).map((s) => (s.artist || "").toLowerCase());
   const recentAlbums = selectedSongs.slice(-5).map((s) => (s.album || "").toLowerCase());
 
@@ -170,7 +180,7 @@ export function getSmartScore(
 
   const freshnessScore = calculateFreshnessScore(song, maxPlayCount);
   const familiarityScore = calculateFamiliarityScore(song, maxPlayCount);
-  
+
   let similarityScore = 0.5;
   if (currentSong) {
     similarityScore = calculateSimilarity(currentSong, song);
@@ -205,7 +215,7 @@ export function getSmartScore(
 
   const baseWeight = 0.3;
   const totalWeight = absX + absY + baseWeight;
-  
+
   const finalScore = (frequencyScore * absX + styleScore * absY + 0.5 * baseWeight) / totalWeight;
 
   return {
@@ -228,9 +238,7 @@ export function generateRecommendations(
   const maxPlayCount = getMaxPlayCount(songs);
   const { currentSong, x, y } = params;
 
-  const availableSongs = songs.filter(
-    (song) => !currentSong || song.id !== currentSong.id
-  );
+  const availableSongs = songs.filter((song) => !currentSong || song.id !== currentSong.id);
 
   if (availableSongs.length === 0) return [];
 

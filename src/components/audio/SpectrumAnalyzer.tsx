@@ -20,12 +20,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const [isReady, setIsReady] = useState(false);
 
-  const {
-    isSpectrumEnabled,
-    barColor,
-    backgroundColor,
-    gridColor,
-  } = useSpectrumStore();
+  const { isSpectrumEnabled, barColor, backgroundColor, gridColor } = useSpectrumStore();
 
   useEffect(() => {
     const checkReady = () => {
@@ -66,12 +61,12 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
 
     const engine = AudioEngine.getInstance();
     const frequencyBinCount = engine.frequencyBinCount;
-    
+
     // Use a persistent array to avoid allocations
     if (!dataArrayRef.current || dataArrayRef.current.length !== frequencyBinCount) {
       dataArrayRef.current = new Uint8Array(frequencyBinCount);
     }
-    
+
     const dataArray = dataArrayRef.current;
     engine.getByteFrequencyData(dataArray);
 

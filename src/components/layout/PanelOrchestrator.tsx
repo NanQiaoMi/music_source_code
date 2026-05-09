@@ -6,48 +6,94 @@ import { LazyPanel, prefetchPanel } from "@/components/shared/LazyPanel";
 
 // ─── Module Factories (Extracted for prefetching) ─────────────────
 const FACTORIES = {
-  queue: () => import("@/components/player/QueuePanel").then(m => ({ default: m.QueuePanel })),
-  history: () => import("@/components/library/HistoryPanel").then(m => ({ default: m.HistoryPanel })),
-  settings: () => import("@/components/settings/SettingsPanel").then(m => ({ default: m.SettingsPanel })),
-  sleepTimer: () => import("@/components/widgets/SleepTimerPanel").then(m => ({ default: m.SleepTimerPanel })),
-  search: () => import("@/components/player/SearchPanel").then(m => ({ default: m.SearchPanel })),
-  lyricSettings: () => import("@/components/lyrics/LyricSettingsPanel").then(m => ({ default: m.LyricSettingsPanel })),
+  queue: () => import("@/components/player/QueuePanel").then((m) => ({ default: m.QueuePanel })),
+  history: () =>
+    import("@/components/library/HistoryPanel").then((m) => ({ default: m.HistoryPanel })),
+  settings: () =>
+    import("@/components/settings/SettingsPanel").then((m) => ({ default: m.SettingsPanel })),
+  sleepTimer: () =>
+    import("@/components/widgets/SleepTimerPanel").then((m) => ({ default: m.SleepTimerPanel })),
+  search: () => import("@/components/player/SearchPanel").then((m) => ({ default: m.SearchPanel })),
+  lyricSettings: () =>
+    import("@/components/lyrics/LyricSettingsPanel").then((m) => ({
+      default: m.LyricSettingsPanel,
+    })),
   lyricsSearch: () => import("@/components/lyrics/LyricsSearchPanel"),
-  lyricsImport: () => import("@/components/lyrics/LyricsImportPanel").then(m => ({ default: m.LyricsImportPanel })),
-  lyricsCoverEditor: () => import("@/components/lyrics/LyricsCoverEditor").then(m => ({ default: m.LyricsCoverEditor })),
-  eq: () => import("@/components/audio/AudioEqualizer").then(m => ({ default: m.AudioEqualizer })),
-  visualSettings: () => import("@/components/settings/VisualSettings").then(m => ({ default: m.VisualSettingsPanel })),
-  listeningHistory: () => import("@/components/library/ListeningHistory").then(m => ({ default: m.ListeningHistory })),
-  dailyRecommendation: () => import("@/components/widgets/DailyRecommendation").then(m => ({ default: m.DailyRecommendation })),
-  libraryManager: () => import("@/components/library/LibraryManagerPanel").then(m => ({ default: m.LibraryManagerPanel })),
-  smartPlaylist: () => import("@/components/library/SmartPlaylistPanel").then(m => ({ default: m.SmartPlaylistPanel })),
-  offlineCache: () => import("@/components/library/OfflineCachePanel").then(m => ({ default: m.OfflineCachePanel })),
-  share: () => import("@/components/social/SharePanel").then(m => ({ default: m.SharePanel })),
-  playerSkins: () => import("@/components/player/PlayerSkinsPanel").then(m => ({ default: m.PlayerSkinsPanel })),
-  keyboardShortcuts: () => import("@/components/settings/KeyboardShortcutsHelp").then(m => ({ default: m.KeyboardShortcutsHelp })),
-  backupRestore: () => import("@/components/library/BackupRestorePanel").then(m => ({ default: m.BackupRestorePanel })),
-  statsAchievements: () => import("@/components/widgets/StatsAchievementsPanel").then(m => ({ default: m.StatsAchievementsPanel })),
-  professionalMode: () => import("@/components/widgets/ProfessionalModeToggle").then(m => ({ default: m.ProfessionalModePanel })),
+  lyricsImport: () =>
+    import("@/components/lyrics/LyricsImportPanel").then((m) => ({ default: m.LyricsImportPanel })),
+  lyricsCoverEditor: () =>
+    import("@/components/lyrics/LyricsCoverEditor").then((m) => ({ default: m.LyricsCoverEditor })),
+  eq: () =>
+    import("@/components/audio/AudioEqualizer").then((m) => ({ default: m.AudioEqualizer })),
+  visualSettings: () =>
+    import("@/components/settings/VisualSettings").then((m) => ({
+      default: m.VisualSettingsPanel,
+    })),
+  listeningHistory: () =>
+    import("@/components/library/ListeningHistory").then((m) => ({ default: m.ListeningHistory })),
+  dailyRecommendation: () =>
+    import("@/components/widgets/DailyRecommendation").then((m) => ({
+      default: m.DailyRecommendation,
+    })),
+  libraryManager: () =>
+    import("@/components/library/LibraryManagerPanel").then((m) => ({
+      default: m.LibraryManagerPanel,
+    })),
+  smartPlaylist: () =>
+    import("@/components/library/SmartPlaylistPanel").then((m) => ({
+      default: m.SmartPlaylistPanel,
+    })),
+  offlineCache: () =>
+    import("@/components/library/OfflineCachePanel").then((m) => ({
+      default: m.OfflineCachePanel,
+    })),
+  share: () => import("@/components/social/SharePanel").then((m) => ({ default: m.SharePanel })),
+  playerSkins: () =>
+    import("@/components/player/PlayerSkinsPanel").then((m) => ({ default: m.PlayerSkinsPanel })),
+  keyboardShortcuts: () =>
+    import("@/components/settings/KeyboardShortcutsHelp").then((m) => ({
+      default: m.KeyboardShortcutsHelp,
+    })),
+  backupRestore: () =>
+    import("@/components/library/BackupRestorePanel").then((m) => ({
+      default: m.BackupRestorePanel,
+    })),
+  statsAchievements: () =>
+    import("@/components/widgets/StatsAchievementsPanel").then((m) => ({
+      default: m.StatsAchievementsPanel,
+    })),
+  professionalMode: () =>
+    import("@/components/widgets/ProfessionalModeToggle").then((m) => ({
+      default: m.ProfessionalModePanel,
+    })),
   formatConverter: () => import("@/components/audio/FormatConverter"),
   dsdConverter: () => import("@/components/audio/DSDConverter"),
   trackCutter: () => import("@/components/audio/TrackCutter"),
   crossfadeMixer: () => import("@/components/audio/CrossfadeMixer"),
-  fingerprintScanner: () => import("@/components/interaction/FingerprintScannerPanel").then(m => ({ default: m.FingerprintScannerPanel })),
-  libraryHealth: () => import("@/components/library/LibraryHealthPanel").then(m => ({ default: m.LibraryHealthPanel })),
-  instantMix: () => import("@/components/widgets/InstantMix").then(m => ({ default: m.InstantMix })),
-  smartRandom: () => import("@/components/shared/SmartRandomModal").then(m => ({ default: m.SmartRandomModal })),
+  fingerprintScanner: () =>
+    import("@/components/interaction/FingerprintScannerPanel").then((m) => ({
+      default: m.FingerprintScannerPanel,
+    })),
+  libraryHealth: () =>
+    import("@/components/library/LibraryHealthPanel").then((m) => ({
+      default: m.LibraryHealthPanel,
+    })),
+  instantMix: () =>
+    import("@/components/widgets/InstantMix").then((m) => ({ default: m.InstantMix })),
+  smartRandom: () =>
+    import("@/components/shared/SmartRandomModal").then((m) => ({ default: m.SmartRandomModal })),
   emotionMatrix: () => import("@/components/emotion/EmotionMatrixView"),
   aiSettings: () => import("@/components/settings/AISettingsPanel"),
 };
 
 /**
  * PanelOrchestrator - Central controller for all feature panels.
- * 
+ *
  * Each panel is wrapped in LazyPanel which provides:
  * - Code splitting (JS loads only when panel opens)
  * - Error isolation (crash in one panel won't affect others)
  * - Consistent loading state
- * 
+ *
  * All panel visibility is driven by uiStore.panels.
  */
 export function PanelOrchestrator() {
@@ -57,16 +103,16 @@ export function PanelOrchestrator() {
   useEffect(() => {
     const prefetchModules = async () => {
       // Delay prefetching slightly to not compete with initial page load
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       // High priority (User likely to click)
       prefetchPanel("queue", FACTORIES.queue);
       prefetchPanel("search", FACTORIES.search);
       prefetchPanel("settings", FACTORIES.settings);
       prefetchPanel("history", FACTORIES.history);
-      
+
       // Medium priority (Secondary tools)
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       prefetchPanel("eq", FACTORIES.eq);
       prefetchPanel("visualSettings", FACTORIES.visualSettings);
       prefetchPanel("lyricsSearch", FACTORIES.lyricsSearch);
@@ -98,8 +144,14 @@ export function PanelOrchestrator() {
         onClose={() => closePanel("settings")}
         factory={FACTORIES.settings}
         extraProps={{
-          onOpenEQ: () => { closePanel("settings"); openPanel("eq"); },
-          onOpenVisualSettings: () => { closePanel("settings"); openPanel("visualSettings"); },
+          onOpenEQ: () => {
+            closePanel("settings");
+            openPanel("eq");
+          },
+          onOpenVisualSettings: () => {
+            closePanel("settings");
+            openPanel("visualSettings");
+          },
         }}
       />
       <LazyPanel

@@ -12,7 +12,11 @@ import {
   Trash2,
   RefreshCw,
 } from "lucide-react";
-import { useLibraryHealthStore, generateHealthReport, HealthIssueType } from "@/store/libraryHealthStore";
+import {
+  useLibraryHealthStore,
+  generateHealthReport,
+  HealthIssueType,
+} from "@/store/libraryHealthStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 
 interface LibraryHealthPanelProps {
@@ -20,10 +24,7 @@ interface LibraryHealthPanelProps {
   onClose: () => void;
 }
 
-export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({
-  isOpen,
-  onClose,
-}) => {
+export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, onClose }) => {
   const { songs } = usePlaylistStore();
   const [activeTab, setActiveTab] = useState<"scan" | "results" | "settings">("scan");
   const [isScanning, setIsScanning] = useState(false);
@@ -142,7 +143,12 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({
                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -253,9 +259,7 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({
                             <div className="font-medium text-white">
                               {issue.songId || "未知歌曲"}
                             </div>
-                            <div className="text-sm text-white/60 mt-1">
-                              {issue.description}
-                            </div>
+                            <div className="text-sm text-white/60 mt-1">{issue.description}</div>
                             {issue.suggestion && (
                               <div className="text-sm text-emerald-400/80 mt-2">
                                 建议: {issue.suggestion}

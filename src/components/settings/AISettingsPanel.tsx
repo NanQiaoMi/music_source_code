@@ -2,9 +2,19 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Settings, X, Plus, Trash2, CheckCircle, AlertCircle, 
-  RefreshCcw, Globe, Key, Cpu, Activity, Zap
+import {
+  Settings,
+  X,
+  Plus,
+  Trash2,
+  CheckCircle,
+  AlertCircle,
+  RefreshCcw,
+  Globe,
+  Key,
+  Cpu,
+  Activity,
+  Zap,
 } from "lucide-react";
 import { useAIStore, AIConfig } from "@/store/aiStore";
 import { useGlassToast } from "@/components/shared/GlassToast";
@@ -17,20 +27,26 @@ interface AISettingsPanelProps {
 }
 
 const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) => {
-  const { 
-    configs, activeConfigId, addConfig, removeConfig, 
-    updateConfig, setActiveConfig, testConfig, fetchModels 
+  const {
+    configs,
+    activeConfigId,
+    addConfig,
+    removeConfig,
+    updateConfig,
+    setActiveConfig,
+    testConfig,
+    fetchModels,
   } = useAIStore();
-  
+
   const { showToast } = useGlassToast();
-  
+
   const [newConfig, setNewConfig] = useState({
     name: "",
     baseUrl: "https://api.mnapi.com/v1",
     apiKey: "",
-    model: ""
+    model: "",
   });
-  
+
   const [isAdding, setIsAdding] = useState(false);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
@@ -62,11 +78,11 @@ const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) =>
     const models = await fetchModels(id);
     setAvailableModels(models);
     setIsFetchingModels(false);
-    
+
     if (models.length > 0) {
       showToast(`已发现 ${models.length} 个可用模型`, "info");
       // If current model is empty, select the first one
-      const config = configs.find(c => c.id === id);
+      const config = configs.find((c) => c.id === id);
       if (config && !config.model) {
         updateConfig(id, { model: models[0] });
       }
@@ -121,18 +137,24 @@ const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) =>
                     key={config.id}
                     layout
                     className={`p-4 rounded-2xl border transition-all ${
-                      activeConfigId === config.id 
-                        ? "bg-white/10 border-purple-500/50" 
+                      activeConfigId === config.id
+                        ? "bg-white/10 border-purple-500/50"
                         : "bg-white/5 border-white/10"
                     }`}
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${
-                          config.status === "online" ? "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" :
-                          config.status === "offline" ? "bg-red-500" :
-                          config.status === "testing" ? "bg-yellow-500 animate-pulse" : "bg-white/20"
-                        }`} />
+                        <div
+                          className={`w-3 h-3 rounded-full ${
+                            config.status === "online"
+                              ? "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
+                              : config.status === "offline"
+                                ? "bg-red-500"
+                                : config.status === "testing"
+                                  ? "bg-yellow-500 animate-pulse"
+                                  : "bg-white/20"
+                          }`}
+                        />
                         <div>
                           <h3 className="text-white font-medium flex items-center gap-2">
                             {config.name}
@@ -153,13 +175,15 @@ const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) =>
                           className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
                           title="测试连通性"
                         >
-                          <RefreshCcw className={`w-4 h-4 ${config.status === "testing" ? "animate-spin" : ""}`} />
+                          <RefreshCcw
+                            className={`w-4 h-4 ${config.status === "testing" ? "animate-spin" : ""}`}
+                          />
                         </button>
                         <button
                           onClick={() => setActiveConfig(config.id)}
                           className={`p-2 rounded-lg transition-all ${
-                            activeConfigId === config.id 
-                              ? "bg-purple-500 text-white" 
+                            activeConfigId === config.id
+                              ? "bg-purple-500 text-white"
                               : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
                           }`}
                         >
@@ -184,15 +208,21 @@ const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) =>
                         >
                           {!config.model && <option value="">未选择模型</option>}
                           {config.model && <option value={config.model}>{config.model}</option>}
-                          {availableModels.filter(m => m !== config.model).map(m => (
-                            <option key={m} value={m}>{m}</option>
-                          ))}
+                          {availableModels
+                            .filter((m) => m !== config.model)
+                            .map((m) => (
+                              <option key={m} value={m}>
+                                {m}
+                              </option>
+                            ))}
                         </select>
                       </div>
                       <div className="flex flex-col gap-1">
                         <label className="text-[10px] text-white/30 uppercase">最后检测</label>
                         <div className="px-2 py-1.5 text-xs text-white/60">
-                          {config.lastTested ? new Date(config.lastTested).toLocaleTimeString() : "从未测试"}
+                          {config.lastTested
+                            ? new Date(config.lastTested).toLocaleTimeString()
+                            : "从未测试"}
                         </div>
                       </div>
                     </div>

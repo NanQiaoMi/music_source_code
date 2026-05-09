@@ -17,8 +17,8 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
   translationLyrics,
   transliterationLyrics,
 }) => {
-  const currentTime = useAudioStore(state => state.currentTime);
-  const currentSong = useAudioStore(state => state.currentSong);
+  const currentTime = useAudioStore((state) => state.currentTime);
+  const currentSong = useAudioStore((state) => state.currentSong);
   const {
     showTranslation,
     showTransliteration,
@@ -82,13 +82,13 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
 
   useEffect(() => {
     if (!lyricsContainerRef.current) return;
-    
+
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setContainerHeight(entry.contentRect.height);
       }
     });
-    
+
     observer.observe(lyricsContainerRef.current);
     return () => observer.disconnect();
   }, []);
@@ -98,7 +98,7 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
       const element = lyricRefs.current[currentIndex];
       const elementTop = element!.offsetTop;
       const elementHeight = element!.offsetHeight;
-      
+
       const targetY = containerHeight / 2 - elementTop - elementHeight / 2;
       setOffsetY(targetY);
     } else if (currentIndex === -1 || containerHeight === 0) {
@@ -106,13 +106,16 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
     }
   }, [currentIndex, lyrics.merged, containerHeight]);
 
-  const scrollTransition = React.useMemo(() => ({
-    type: "spring" as const,
-    stiffness: 80,
-    damping: 25,
-    mass: 1,
-    restDelta: 0.01
-  }), []);
+  const scrollTransition = React.useMemo(
+    () => ({
+      type: "spring" as const,
+      stiffness: 80,
+      damping: 25,
+      mass: 1,
+      restDelta: 0.01,
+    }),
+    []
+  );
 
   return (
     <div
@@ -120,12 +123,15 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
       className="relative w-full h-full overflow-hidden px-8"
       style={{
         maskImage: "linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)",
-        WebkitMaskImage: "linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)",
+        WebkitMaskImage:
+          "linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)",
         opacity,
       }}
     >
       {!hasLyrics ? (
-        <div className={`w-full h-full flex flex-col justify-center items-center ${alignmentClass} px-12 text-center opacity-40`}>
+        <div
+          className={`w-full h-full flex flex-col justify-center items-center ${alignmentClass} px-12 text-center opacity-40`}
+        >
           <p className="text-xl font-medium text-white mb-2">暂无歌词同步</p>
           <p className="text-sm text-white/50">该歌曲暂未找到匹配的歌词数据</p>
         </div>
@@ -134,10 +140,10 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
           animate={{ y: offsetY }}
           transition={scrollTransition}
           className={`absolute top-0 left-0 right-0 flex flex-col ${alignmentClass} space-y-10 max-w-full mx-auto w-full`}
-          style={{ 
-            paddingTop: containerHeight / 2, 
+          style={{
+            paddingTop: containerHeight / 2,
             paddingBottom: containerHeight / 2,
-            willChange: "transform"
+            willChange: "transform",
           }}
         >
           {lyrics.merged.map((lyric, idx) => {
@@ -148,10 +154,12 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
             return (
               <motion.div
                 key={`${lyric.time}-${idx}`}
-                ref={(el) => { lyricRefs.current[idx] = el; }}
+                ref={(el) => {
+                  lyricRefs.current[idx] = el;
+                }}
                 initial={false}
                 animate={{
-                  opacity: isCurrent ? 1 : isNear ? 0.4 - (distance * 0.08) : 0.1,
+                  opacity: isCurrent ? 1 : isNear ? 0.4 - distance * 0.08 : 0.1,
                   scale: isCurrent ? 1.05 : 1,
                   filter: isCurrent ? "blur(0px)" : `blur(${Math.min(distance * 0.5, 4)}px)`,
                 }}
@@ -165,8 +173,12 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
                     lineHeight: 1.2,
                     fontWeight: isCurrent ? fontWeight : Math.max(300, fontWeight - 200),
                     color: isCurrent ? currentLineColor : inactiveLineColor,
-                    textShadow: isCurrent && textShadow ? `0 4px ${textShadowBlur}px ${textShadowColor}` : "none",
-                    WebkitTextStroke: isCurrent && textStroke ? `${textStrokeWidth}px ${textStrokeColor}` : "none",
+                    textShadow:
+                      isCurrent && textShadow
+                        ? `0 4px ${textShadowBlur}px ${textShadowColor}`
+                        : "none",
+                    WebkitTextStroke:
+                      isCurrent && textStroke ? `${textStrokeWidth}px ${textStrokeColor}` : "none",
                   }}
                 >
                   {lyric.original}

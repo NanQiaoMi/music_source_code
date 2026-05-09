@@ -24,7 +24,7 @@ export interface ListeningStats {
   topSongs: { song: Song; playCount: number }[];
   genreDistribution: { genre: string; count: number }[];
   dailyPlayData: { date: string; playCount: number; listenTime: number }[];
-  
+
   // New detailed stats
   hourlyDistribution: Record<number, number>; // 0-23
   dayOfWeekDistribution: Record<number, number>; // 0-6
@@ -48,7 +48,17 @@ export interface Achievement {
   unlockedAt?: number;
   progress: number;
   total: number;
-  conditionType?: "plays" | "songs" | "artists" | "albums" | "time" | "streak" | "special" | "quality" | "pro-tools" | "completion";
+  conditionType?:
+    | "plays"
+    | "songs"
+    | "artists"
+    | "albums"
+    | "time"
+    | "streak"
+    | "special"
+    | "quality"
+    | "pro-tools"
+    | "completion";
 }
 
 export interface StatsPeriod {
@@ -65,7 +75,13 @@ interface StatsAchievementsState {
   lastCalculated: number;
   activeToasts: AchievementToast[];
 
-  recordPlay: (song: Song, duration: number, completed: boolean, skipped: boolean, quality?: string) => void;
+  recordPlay: (
+    song: Song,
+    duration: number,
+    completed: boolean,
+    skipped: boolean,
+    quality?: string
+  ) => void;
   reportProToolsUsage: (toolId: string) => void;
   calculateStats: (songs: Song[], timeRange?: TimeRange) => Promise<void>;
   getStatsForPeriod: (period: StatsPeriod) => ListeningStats;
@@ -80,7 +96,7 @@ interface StatsAchievementsState {
   setIsCalculating: (calculating: boolean) => void;
   resetStats: () => void;
   resetAchievements: () => void;
-  
+
   removeToast: (toastId: string) => void;
 }
 
@@ -88,8 +104,38 @@ function generateAchievements(): Achievement[] {
   const achievements: Achievement[] = [];
 
   const playTiers = [1, 5, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
-  const playNames = ['初次见面', '渐入佳境', '常驻听客', '五十已达', '百次循环', '两百漫游', '音乐不休', '千次感动', '两千盛宴', '播放狂魔', '万籁俱寂', '两万里程', '五万巅峰', '十万神迹'];
-  const playIcons = ['🎵', '🎧', '📻', '💿', '🔁', '🔥', '🌟', '🎸', '🎹', '👑', '🚀', '🌌', '🌠', '💎'];
+  const playNames = [
+    "初次见面",
+    "渐入佳境",
+    "常驻听客",
+    "五十已达",
+    "百次循环",
+    "两百漫游",
+    "音乐不休",
+    "千次感动",
+    "两千盛宴",
+    "播放狂魔",
+    "万籁俱寂",
+    "两万里程",
+    "五万巅峰",
+    "十万神迹",
+  ];
+  const playIcons = [
+    "🎵",
+    "🎧",
+    "📻",
+    "💿",
+    "🔁",
+    "🔥",
+    "🌟",
+    "🎸",
+    "🎹",
+    "👑",
+    "🚀",
+    "🌌",
+    "🌠",
+    "💎",
+  ];
 
   playTiers.forEach((total, i) => {
     achievements.push({
@@ -98,19 +144,31 @@ function generateAchievements(): Achievement[] {
       nameEn: `Plays ${total}`,
       description: `累计播放 ${total} 首歌曲`,
       descriptionEn: `Play ${total} songs in total`,
-      icon: playIcons[i] || '🎵',
-      category: 'listening',
-      difficulty: i < 4 ? 'bronze' : i < 8 ? 'silver' : i < 11 ? 'gold' : 'platinum',
+      icon: playIcons[i] || "🎵",
+      category: "listening",
+      difficulty: i < 4 ? "bronze" : i < 8 ? "silver" : i < 11 ? "gold" : "platinum",
       unlocked: false,
       progress: 0,
       total: total,
-      conditionType: 'plays'
+      conditionType: "plays",
     });
   });
 
   const songTiers = [1, 5, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
-  const songNames = ['单曲循环', '五音不全', '十首入库', '五十精选', '百首珍藏', '两百曲库', '五百大关', '千首大赏', '两千漫游', '五千海量', '万首之王'];
-  const songIcons = ['🎼', '🎶', '🎵', '🎹', '🎻', '🎺', '🎷', '🎤', '🎧', '🎸', '👑'];
+  const songNames = [
+    "单曲循环",
+    "五音不全",
+    "十首入库",
+    "五十精选",
+    "百首珍藏",
+    "两百曲库",
+    "五百大关",
+    "千首大赏",
+    "两千漫游",
+    "五千海量",
+    "万首之王",
+  ];
+  const songIcons = ["🎼", "🎶", "🎵", "🎹", "🎻", "🎺", "🎷", "🎤", "🎧", "🎸", "👑"];
 
   songTiers.forEach((total, i) => {
     achievements.push({
@@ -119,19 +177,30 @@ function generateAchievements(): Achievement[] {
       nameEn: `Songs ${total}`,
       description: `播放 ${total} 首不同的歌曲`,
       descriptionEn: `Play ${total} different songs`,
-      icon: songIcons[i] || '🎼',
-      category: 'exploration',
-      difficulty: i < 3 ? 'bronze' : i < 7 ? 'silver' : i < 9 ? 'gold' : 'platinum',
+      icon: songIcons[i] || "🎼",
+      category: "exploration",
+      difficulty: i < 3 ? "bronze" : i < 7 ? "silver" : i < 9 ? "gold" : "platinum",
       unlocked: false,
       progress: 0,
       total: total,
-      conditionType: 'songs'
+      conditionType: "songs",
     });
   });
 
   const artistTiers = [1, 5, 10, 25, 50, 100, 200, 500, 1000, 2000];
-  const artistNames = ['初识歌手', '追星小径', '十面埋伏', '群星荟萃', '五十知音', '百家争鸣', '二百大将', '五百罗汉', '千人一面', '万人迷'];
-  const artistIcons = ['👤', '👥', '🗣️', '🎭', '🎨', '🌟', '💫', '✨', '👑', '🏆'];
+  const artistNames = [
+    "初识歌手",
+    "追星小径",
+    "十面埋伏",
+    "群星荟萃",
+    "五十知音",
+    "百家争鸣",
+    "二百大将",
+    "五百罗汉",
+    "千人一面",
+    "万人迷",
+  ];
+  const artistIcons = ["👤", "👥", "🗣️", "🎭", "🎨", "🌟", "💫", "✨", "👑", "🏆"];
 
   artistTiers.forEach((total, i) => {
     achievements.push({
@@ -140,19 +209,30 @@ function generateAchievements(): Achievement[] {
       nameEn: `Artists ${total}`,
       description: `聆听 ${total} 位不同的歌手`,
       descriptionEn: `Listen to ${total} different artists`,
-      icon: artistIcons[i] || '👤',
-      category: 'exploration',
-      difficulty: i < 3 ? 'bronze' : i < 6 ? 'silver' : i < 8 ? 'gold' : 'platinum',
+      icon: artistIcons[i] || "👤",
+      category: "exploration",
+      difficulty: i < 3 ? "bronze" : i < 6 ? "silver" : i < 8 ? "gold" : "platinum",
       unlocked: false,
       progress: 0,
       total: total,
-      conditionType: 'artists'
+      conditionType: "artists",
     });
   });
 
   const albumTiers = [1, 5, 10, 25, 50, 100, 200, 500, 1000, 2000];
-  const albumNames = ['第一张专', '五张黑胶', '十张CD', '廿五卡带', '五十磁带', '百大专辑', '二百佳作', '五百神专', '千张收藏', '万碟之主'];
-  const albumIcons = ['💽', '📀', '💿', '📼', '📦', '📚', '🗄️', '🏛️', '🏰', '🌌'];
+  const albumNames = [
+    "第一张专",
+    "五张黑胶",
+    "十张CD",
+    "廿五卡带",
+    "五十磁带",
+    "百大专辑",
+    "二百佳作",
+    "五百神专",
+    "千张收藏",
+    "万碟之主",
+  ];
+  const albumIcons = ["💽", "📀", "💿", "📼", "📦", "📚", "🗄️", "🏛️", "🏰", "🌌"];
 
   albumTiers.forEach((total, i) => {
     achievements.push({
@@ -161,24 +241,31 @@ function generateAchievements(): Achievement[] {
       nameEn: `Albums ${total}`,
       description: `聆听 ${total} 张不同的专辑`,
       descriptionEn: `Listen to ${total} different albums`,
-      icon: albumIcons[i] || '💿',
-      category: 'collection',
-      difficulty: i < 3 ? 'bronze' : i < 6 ? 'silver' : i < 8 ? 'gold' : 'platinum',
+      icon: albumIcons[i] || "💿",
+      category: "collection",
+      difficulty: i < 3 ? "bronze" : i < 6 ? "silver" : i < 8 ? "gold" : "platinum",
       unlocked: false,
       progress: 0,
       total: total,
-      conditionType: 'albums'
+      conditionType: "albums",
     });
   });
 
-  const timeTiers = [
-    1, 5, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000
-  ];
+  const timeTiers = [1, 5, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
   const timeNames = [
-    '一小时', '五小时', '十小时', '五十时', '百小时', '两百时', 
-    '五百时', '千小时', '两千时', '五千时', '万小时定律'
+    "一小时",
+    "五小时",
+    "十小时",
+    "五十时",
+    "百小时",
+    "两百时",
+    "五百时",
+    "千小时",
+    "两千时",
+    "五千时",
+    "万小时定律",
   ];
-  const timeIcons = ['⏳', '⌛', '⏰', '🕰️', '⏱️', '⏲️', '📅', '📆', '🗓️', '🌌', '♾️'];
+  const timeIcons = ["⏳", "⌛", "⏰", "🕰️", "⏱️", "⏲️", "📅", "📆", "🗓️", "🌌", "♾️"];
 
   timeTiers.forEach((total, i) => {
     achievements.push({
@@ -187,18 +274,27 @@ function generateAchievements(): Achievement[] {
       nameEn: `Time ${total}H`,
       description: `累计听歌 ${total} 小时`,
       descriptionEn: `Listen for ${total} hours total`,
-      icon: timeIcons[i] || '⏳',
-      category: 'listening',
-      difficulty: i < 3 ? 'bronze' : i < 6 ? 'silver' : i < 8 ? 'gold' : 'platinum',
+      icon: timeIcons[i] || "⏳",
+      category: "listening",
+      difficulty: i < 3 ? "bronze" : i < 6 ? "silver" : i < 8 ? "gold" : "platinum",
       unlocked: false,
       progress: 0,
       total: total * 3600,
-      conditionType: 'time'
+      conditionType: "time",
     });
   });
 
   const streakTiers = [3, 7, 14, 30, 50, 100, 365, 1000];
-  const streakNames = ['三天打鱼', '一周连续', '两周相伴', '满月连续', '五十天', '百日筑基', '周年纪念', '千日之恋'];
+  const streakNames = [
+    "三天打鱼",
+    "一周连续",
+    "两周相伴",
+    "满月连续",
+    "五十天",
+    "百日筑基",
+    "周年纪念",
+    "千日之恋",
+  ];
   streakTiers.forEach((total, i) => {
     achievements.push({
       id: `streak-${total}`,
@@ -206,27 +302,54 @@ function generateAchievements(): Achievement[] {
       nameEn: `Streak ${total}`,
       description: `连续 ${total} 天听歌`,
       descriptionEn: `Listen for ${total} days in a row`,
-      icon: '🔥',
-      category: 'milestone',
-      difficulty: i < 2 ? 'bronze' : i < 5 ? 'silver' : i < 7 ? 'gold' : 'platinum',
+      icon: "🔥",
+      category: "milestone",
+      difficulty: i < 2 ? "bronze" : i < 5 ? "silver" : i < 7 ? "gold" : "platinum",
       unlocked: false,
       progress: 0,
       total: total,
-      conditionType: 'streak'
+      conditionType: "streak",
     });
   });
 
   // Temporal Achievements
   const temporalSpecials: Partial<Achievement>[] = [
-    { id: 'midnight-melodies', name: '午夜旋律', nameEn: 'Midnight Melodies', icon: '🌙', description: '在凌晨 0 点到 2 点之间听歌 10 次', total: 10, category: 'temporal', conditionType: 'special' },
-    { id: 'morning-coffee', name: '晨间咖啡', nameEn: 'Morning Coffee', icon: '☕', description: '在早上 7 点到 9 点之间听歌 10 次', total: 10, category: 'temporal', conditionType: 'special' },
-    { id: 'focus-mode', name: '深度专注', nameEn: 'Deep Focus', icon: '🧠', description: '连续听歌超过 3 小时不间断', total: 1, category: 'temporal', conditionType: 'special' }
+    {
+      id: "midnight-melodies",
+      name: "午夜旋律",
+      nameEn: "Midnight Melodies",
+      icon: "🌙",
+      description: "在凌晨 0 点到 2 点之间听歌 10 次",
+      total: 10,
+      category: "temporal",
+      conditionType: "special",
+    },
+    {
+      id: "morning-coffee",
+      name: "晨间咖啡",
+      nameEn: "Morning Coffee",
+      icon: "☕",
+      description: "在早上 7 点到 9 点之间听歌 10 次",
+      total: 10,
+      category: "temporal",
+      conditionType: "special",
+    },
+    {
+      id: "focus-mode",
+      name: "深度专注",
+      nameEn: "Deep Focus",
+      icon: "🧠",
+      description: "连续听歌超过 3 小时不间断",
+      total: 1,
+      category: "temporal",
+      conditionType: "special",
+    },
   ];
 
-  temporalSpecials.forEach(s => {
+  temporalSpecials.forEach((s) => {
     achievements.push({
       ...s,
-      difficulty: 'silver',
+      difficulty: "silver",
       unlocked: false,
       progress: 0,
       total: s.total || 1,
@@ -235,18 +358,58 @@ function generateAchievements(): Achievement[] {
 
   // Technical Achievements
   const technicalSpecials: Partial<Achievement>[] = [
-    { id: 'audiophile-starter', name: '初级发烧友', nameEn: 'Audiophile Starter', icon: '🎧', description: '播放 5 首 Hi-Res 歌曲', total: 5, conditionType: 'quality' },
-    { id: 'dsd-master', name: 'DSD 大师', nameEn: 'DSD Master', icon: '💎', description: '使用 DSD 转换器处理 10 首歌曲', total: 10, conditionType: 'pro-tools' },
-    { id: 'eq-wizard', name: '均衡器巫师', nameEn: 'EQ Wizard', icon: '🎚️', description: '自定义并保存 3 个 EQ 预设', total: 3, conditionType: 'pro-tools' },
-    { id: 'visual-connoisseur', name: '视觉鉴赏家', nameEn: 'Visual Connoisseur', icon: '🌈', description: '尝试所有的可视化效果', total: 10, conditionType: 'pro-tools' },
-    { id: 'preset-artisan', name: '预设工匠', nameEn: 'Preset Artisan', icon: '🎨', description: '保存 3 个自定义可视化预设', total: 3, conditionType: 'pro-tools' }
+    {
+      id: "audiophile-starter",
+      name: "初级发烧友",
+      nameEn: "Audiophile Starter",
+      icon: "🎧",
+      description: "播放 5 首 Hi-Res 歌曲",
+      total: 5,
+      conditionType: "quality",
+    },
+    {
+      id: "dsd-master",
+      name: "DSD 大师",
+      nameEn: "DSD Master",
+      icon: "💎",
+      description: "使用 DSD 转换器处理 10 首歌曲",
+      total: 10,
+      conditionType: "pro-tools",
+    },
+    {
+      id: "eq-wizard",
+      name: "均衡器巫师",
+      nameEn: "EQ Wizard",
+      icon: "🎚️",
+      description: "自定义并保存 3 个 EQ 预设",
+      total: 3,
+      conditionType: "pro-tools",
+    },
+    {
+      id: "visual-connoisseur",
+      name: "视觉鉴赏家",
+      nameEn: "Visual Connoisseur",
+      icon: "🌈",
+      description: "尝试所有的可视化效果",
+      total: 10,
+      conditionType: "pro-tools",
+    },
+    {
+      id: "preset-artisan",
+      name: "预设工匠",
+      nameEn: "Preset Artisan",
+      icon: "🎨",
+      description: "保存 3 个自定义可视化预设",
+      total: 3,
+      conditionType: "pro-tools",
+    },
   ];
 
-  technicalSpecials.forEach(s => {
+  technicalSpecials.forEach((s) => {
     achievements.push({
       ...s,
-      category: 'technical',
-      difficulty: 'gold',
+      category: "technical",
+      difficulty: "gold",
       unlocked: false,
       progress: 0,
       total: s.total || 1,
@@ -255,15 +418,42 @@ function generateAchievements(): Achievement[] {
 
   // Exploration / Mood Achievements
   const extraExploration: Partial<Achievement>[] = [
-    { id: 'genre-nomad', name: '风格游牧民', nameEn: 'Genre Nomad', icon: '🌍', description: '聆听超过 5 种不同的音乐风格', total: 5, category: 'exploration', conditionType: 'special' },
-    { id: 'lyric-legend', name: '歌词传奇', nameEn: 'Lyric Legend', icon: '📜', description: '在全屏模式下阅读歌词超过 10 次', total: 10, category: 'exploration', conditionType: 'special' },
-    { id: 'wave-rider', name: '波浪冲浪者', nameEn: 'Wave Rider', icon: '🏄', description: '在一次会话中切换 5 种不同的视觉效果', total: 5, category: 'technical', conditionType: 'special' }
+    {
+      id: "genre-nomad",
+      name: "风格游牧民",
+      nameEn: "Genre Nomad",
+      icon: "🌍",
+      description: "聆听超过 5 种不同的音乐风格",
+      total: 5,
+      category: "exploration",
+      conditionType: "special",
+    },
+    {
+      id: "lyric-legend",
+      name: "歌词传奇",
+      nameEn: "Lyric Legend",
+      icon: "📜",
+      description: "在全屏模式下阅读歌词超过 10 次",
+      total: 10,
+      category: "exploration",
+      conditionType: "special",
+    },
+    {
+      id: "wave-rider",
+      name: "波浪冲浪者",
+      nameEn: "Wave Rider",
+      icon: "🏄",
+      description: "在一次会话中切换 5 种不同的视觉效果",
+      total: 5,
+      category: "technical",
+      conditionType: "special",
+    },
   ];
 
-  extraExploration.forEach(s => {
+  extraExploration.forEach((s) => {
     achievements.push({
       ...s,
-      difficulty: 'silver',
+      difficulty: "silver",
       unlocked: false,
       progress: 0,
       total: s.total || 1,
@@ -330,10 +520,8 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
 
         set((state) => {
           const stats = state.listeningStats;
-          
-          const existingDailyData = stats.dailyPlayData.find(
-            (d) => d.date === today
-          );
+
+          const existingDailyData = stats.dailyPlayData.find((d) => d.date === today);
 
           const newDailyData = existingDailyData
             ? stats.dailyPlayData.map((d) =>
@@ -440,17 +628,19 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
         const topSongs = Array.from(songPlayCounts.entries())
           .map(([songId, playCount]) => {
             const song = songs.find((s) => s.id === songId);
-            return song ? { 
-              song: {
-                id: song.id,
-                title: song.title,
-                artist: song.artist,
-                album: song.album,
-                duration: song.duration,
-                cover: song.cover?.startsWith("data:") ? "" : song.cover,
-              } as Song, 
-              playCount 
-            } : null;
+            return song
+              ? {
+                  song: {
+                    id: song.id,
+                    title: song.title,
+                    artist: song.artist,
+                    album: song.album,
+                    duration: song.duration,
+                    cover: song.cover?.startsWith("data:") ? "" : song.cover,
+                  } as Song,
+                  playCount,
+                }
+              : null;
           })
           .filter((item): item is { song: Song; playCount: number } => item !== null)
           .sort((a, b) => b.playCount - a.playCount)
@@ -488,7 +678,7 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
         set((state) => {
           const achievement = state.achievements.find((a) => a.id === achievementId);
           const alreadyUnlocked = achievement?.unlocked;
-          
+
           const newAchievements = state.achievements.map((a) =>
             a.id === achievementId
               ? {
@@ -499,7 +689,7 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
                 }
               : a
           );
-          
+
           let newToasts = state.activeToasts;
           if (achievement && !alreadyUnlocked) {
             newToasts = [
@@ -511,14 +701,14 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
               },
             ];
           }
-          
+
           return {
             achievements: newAchievements,
             activeToasts: newToasts,
           };
         });
       },
-      
+
       removeToast: (toastId) => {
         set((state) => ({
           activeToasts: state.activeToasts.filter((t) => t.id !== toastId),
@@ -527,7 +717,7 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
 
       checkAchievements: (stats) => {
         const { achievements, unlockAchievement } = get();
-        
+
         const currentHour = new Date().getHours();
         const currentDay = new Date().getDay();
 
@@ -558,22 +748,39 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
               break;
             case "special":
               if (achievement.id === "night-owl" && currentHour >= 2 && currentHour < 5) {
-                 progress = 1;
+                progress = 1;
               } else if (achievement.id === "early-bird" && currentHour >= 5 && currentHour < 8) {
-                 progress = 1;
-              } else if (achievement.id === "weekend-warrior" && (currentDay === 0 || currentDay === 6)) {
-                 progress = 1;
-              } else if (achievement.id === "midnight-melodies" && currentHour >= 0 && currentHour < 2) {
-                 progress = Math.min((achievement.progress || 0) + 1, achievement.total);
-              } else if (achievement.id === "morning-coffee" && currentHour >= 7 && currentHour < 9) {
-                 progress = Math.min((achievement.progress || 0) + 1, achievement.total);
+                progress = 1;
+              } else if (
+                achievement.id === "weekend-warrior" &&
+                (currentDay === 0 || currentDay === 6)
+              ) {
+                progress = 1;
+              } else if (
+                achievement.id === "midnight-melodies" &&
+                currentHour >= 0 &&
+                currentHour < 2
+              ) {
+                progress = Math.min((achievement.progress || 0) + 1, achievement.total);
+              } else if (
+                achievement.id === "morning-coffee" &&
+                currentHour >= 7 &&
+                currentHour < 9
+              ) {
+                progress = Math.min((achievement.progress || 0) + 1, achievement.total);
               } else if (achievement.id === "genre-nomad") {
-                 progress = Math.min(Object.keys(stats.genreDistribution).length || 0, achievement.total);
+                progress = Math.min(
+                  Object.keys(stats.genreDistribution).length || 0,
+                  achievement.total
+                );
               }
               break;
             case "quality":
               if (achievement.id === "audiophile-starter") {
-                progress = Math.min(stats.audioQualityDistribution["hi-res"] || 0, achievement.total);
+                progress = Math.min(
+                  stats.audioQualityDistribution["hi-res"] || 0,
+                  achievement.total
+                );
               }
               break;
             case "pro-tools":
@@ -582,7 +789,10 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
               } else if (achievement.id === "eq-wizard") {
                 progress = Math.min(stats.proToolsUsage["eq"] || 0, achievement.total);
               } else if (achievement.id === "visual-connoisseur") {
-                progress = Math.min(stats.proToolsUsage["visualizer_config"] || 0, achievement.total);
+                progress = Math.min(
+                  stats.proToolsUsage["visualizer_config"] || 0,
+                  achievement.total
+                );
               } else if (achievement.id === "preset-artisan") {
                 progress = Math.min(stats.proToolsUsage["save_preset"] || 0, achievement.total);
               }
@@ -666,7 +876,7 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
                 if (state.state && state.state.listeningStats) {
                   // Aggressively prune to last 30 days
                   if (Array.isArray(state.state.listeningStats.dailyPlayData)) {
-                    state.state.listeningStats.dailyPlayData = 
+                    state.state.listeningStats.dailyPlayData =
                       state.state.listeningStats.dailyPlayData.slice(-30);
                   }
                   // Clear active toasts as they are temporary

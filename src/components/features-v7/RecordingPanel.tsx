@@ -31,7 +31,7 @@ export function RecordingPanel({ isOpen, onClose, canvasRef }: RecordingPanelPro
     clearRecording,
     downloadRecording,
   } = useRecordingStore();
-  
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -67,7 +67,7 @@ export function RecordingPanel({ isOpen, onClose, canvasRef }: RecordingPanelPro
 
     try {
       const stream = canvasRef.current.captureStream(30);
-      
+
       const engine = AudioEngine.getInstance();
       const audioContext = engine.getContext();
       if (!audioContext) return;
@@ -137,9 +137,11 @@ export function RecordingPanel({ isOpen, onClose, canvasRef }: RecordingPanelPro
 
           <div className="flex-1 flex flex-col justify-center space-y-6">
             <div className="text-center">
-              <div className={`text-4xl font-bold mb-2 ${
-                status === "recording" ? "text-red-500 animate-pulse" : "text-white"
-              }`}>
+              <div
+                className={`text-4xl font-bold mb-2 ${
+                  status === "recording" ? "text-red-500 animate-pulse" : "text-white"
+                }`}
+              >
                 {formatTime(recordingTime)}
               </div>
               <div className="text-sm text-white/60">
@@ -158,11 +160,7 @@ export function RecordingPanel({ isOpen, onClose, canvasRef }: RecordingPanelPro
 
             {status === "ready" && videoUrl && (
               <div className="space-y-3">
-                <video
-                  src={videoUrl}
-                  controls
-                  className="w-full rounded-lg bg-black"
-                />
+                <video src={videoUrl} controls className="w-full rounded-lg bg-black" />
                 <div className="flex gap-2">
                   <button
                     onClick={downloadRecording}

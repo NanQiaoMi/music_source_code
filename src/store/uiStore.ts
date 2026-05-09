@@ -6,37 +6,95 @@ type ThemeMode = "light" | "dark" | "auto";
 
 // ─── Centralized Panel Names ───────────────────────────────────
 export type PanelName =
-  | "queue" | "history" | "settings" | "sleepTimer" | "search"
-  | "lyricSettings" | "eq" | "visualSettings" | "keyboardShortcuts"
-  | "listeningHistory" | "dailyRecommendation" | "lyricsImport"
-  | "offlineCache" | "share" | "playerSkins" | "lyricsSearch"
-  | "libraryManager" | "lyricsCoverEditor" | "smartPlaylist"
-  | "backupRestore" | "statsAchievements" | "professionalMode"
-  | "formatConverter" | "dsdConverter" | "trackCutter" | "crossfadeMixer"
-  | "fingerprintScanner" | "libraryHealth" | "professionalTools"
-  | "instantMix" | "smartRandom" | "emotionMatrix" | "aiSettings" | "dnaJournal";
+  | "queue"
+  | "history"
+  | "settings"
+  | "sleepTimer"
+  | "search"
+  | "lyricSettings"
+  | "eq"
+  | "visualSettings"
+  | "keyboardShortcuts"
+  | "listeningHistory"
+  | "dailyRecommendation"
+  | "lyricsImport"
+  | "offlineCache"
+  | "share"
+  | "playerSkins"
+  | "lyricsSearch"
+  | "libraryManager"
+  | "lyricsCoverEditor"
+  | "smartPlaylist"
+  | "backupRestore"
+  | "statsAchievements"
+  | "professionalMode"
+  | "formatConverter"
+  | "dsdConverter"
+  | "trackCutter"
+  | "crossfadeMixer"
+  | "fingerprintScanner"
+  | "libraryHealth"
+  | "professionalTools"
+  | "instantMix"
+  | "smartRandom"
+  | "emotionMatrix"
+  | "aiSettings"
+  | "dnaJournal";
 
 // Full-screen panels that should be mutually exclusive
 const FULLSCREEN_PANELS: PanelName[] = [
-  "emotionMatrix", "formatConverter", "dsdConverter", "trackCutter",
-  "crossfadeMixer", "professionalMode", "share", "statsAchievements",
+  "emotionMatrix",
+  "formatConverter",
+  "dsdConverter",
+  "trackCutter",
+  "crossfadeMixer",
+  "professionalMode",
+  "share",
+  "statsAchievements",
   "dnaJournal",
 ];
 
 function createDefaultPanels(): Record<PanelName, boolean> {
   const panels = {} as Record<PanelName, boolean>;
   const allNames: PanelName[] = [
-    "queue", "history", "settings", "sleepTimer", "search",
-    "lyricSettings", "eq", "visualSettings", "keyboardShortcuts",
-    "listeningHistory", "dailyRecommendation", "lyricsImport",
-    "offlineCache", "share", "playerSkins", "lyricsSearch",
-    "libraryManager", "lyricsCoverEditor", "smartPlaylist",
-    "backupRestore", "statsAchievements", "professionalMode",
-    "formatConverter", "dsdConverter", "trackCutter", "crossfadeMixer",
-    "fingerprintScanner", "libraryHealth", "professionalTools",
-    "instantMix", "smartRandom", "emotionMatrix", "aiSettings", "dnaJournal",
+    "queue",
+    "history",
+    "settings",
+    "sleepTimer",
+    "search",
+    "lyricSettings",
+    "eq",
+    "visualSettings",
+    "keyboardShortcuts",
+    "listeningHistory",
+    "dailyRecommendation",
+    "lyricsImport",
+    "offlineCache",
+    "share",
+    "playerSkins",
+    "lyricsSearch",
+    "libraryManager",
+    "lyricsCoverEditor",
+    "smartPlaylist",
+    "backupRestore",
+    "statsAchievements",
+    "professionalMode",
+    "formatConverter",
+    "dsdConverter",
+    "trackCutter",
+    "crossfadeMixer",
+    "fingerprintScanner",
+    "libraryHealth",
+    "professionalTools",
+    "instantMix",
+    "smartRandom",
+    "emotionMatrix",
+    "aiSettings",
+    "dnaJournal",
   ];
-  allNames.forEach(name => { panels[name] = false; });
+  allNames.forEach((name) => {
+    panels[name] = false;
+  });
   return panels;
 }
 
@@ -117,18 +175,22 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   // ─── Centralized Panel Management ──────────────────────────
   panels: createDefaultPanels(),
-  openPanel: (name) => set((state) => {
-    const next = { ...state.panels };
-    // If opening a fullscreen panel, close other fullscreen panels
-    if (FULLSCREEN_PANELS.includes(name)) {
-      FULLSCREEN_PANELS.forEach(p => { next[p] = false; });
-    }
-    next[name] = true;
-    return { panels: next };
-  }),
-  closePanel: (name) => set((state) => ({
-    panels: { ...state.panels, [name]: false },
-  })),
+  openPanel: (name) =>
+    set((state) => {
+      const next = { ...state.panels };
+      // If opening a fullscreen panel, close other fullscreen panels
+      if (FULLSCREEN_PANELS.includes(name)) {
+        FULLSCREEN_PANELS.forEach((p) => {
+          next[p] = false;
+        });
+      }
+      next[name] = true;
+      return { panels: next };
+    }),
+  closePanel: (name) =>
+    set((state) => ({
+      panels: { ...state.panels, [name]: false },
+    })),
   togglePanel: (name) => {
     const isOpen = get().panels[name];
     if (isOpen) {

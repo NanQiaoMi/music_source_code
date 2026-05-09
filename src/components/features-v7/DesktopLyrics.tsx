@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 
 export function DesktopLyrics() {
-  const currentSong = useAudioStore(state => state.currentSong);
-  const currentTime = useAudioStore(state => state.currentTime);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentTime = useAudioStore((state) => state.currentTime);
   const [currentLyric, setCurrentLyric] = useState<string>("");
 
   useEffect(() => {
@@ -21,7 +21,7 @@ export function DesktopLyrics() {
     }
 
     try {
-      const lyricArray = typeof lyrics === 'string' ? JSON.parse(lyrics) : lyrics;
+      const lyricArray = typeof lyrics === "string" ? JSON.parse(lyrics) : lyrics;
       if (!Array.isArray(lyricArray) || lyricArray.length === 0) {
         setCurrentLyric(currentSong?.title || "");
         return;
@@ -53,10 +53,12 @@ export function DesktopLyrics() {
           transition={{ duration: 0.3 }}
           className="text-center px-8"
         >
-          <div className="text-4xl md:text-5xl font-bold text-white drop-shadow-2xl"
-               style={{
-                 textShadow: "0 0 20px rgba(0,0,0,0.8), 0 0 40px rgba(255,255,255,0.3)"
-               }}>
+          <div
+            className="text-4xl md:text-5xl font-bold text-white drop-shadow-2xl"
+            style={{
+              textShadow: "0 0 20px rgba(0,0,0,0.8), 0 0 40px rgba(255,255,255,0.3)",
+            }}
+          >
             {currentLyric}
           </div>
           {currentSong && (

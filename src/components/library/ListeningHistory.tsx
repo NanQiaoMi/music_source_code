@@ -16,7 +16,7 @@ type TimePeriod = "week" | "month";
 
 export const ListeningHistory: React.FC<ListeningHistoryProps> = ({ isOpen, onClose }) => {
   const { getWeeklyRanking, getMonthlyRanking, getTopArtists } = useListeningHistory();
-  const playQueue = useAudioStore(state => state.playQueue);
+  const playQueue = useAudioStore((state) => state.playQueue);
 
   const [viewMode, setViewMode] = useState<ViewMode>("songs");
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("week");

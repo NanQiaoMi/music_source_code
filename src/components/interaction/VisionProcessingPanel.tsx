@@ -15,7 +15,7 @@ export const VisionProcessingPanel: React.FC = () => {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState("vit-base");
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const models = [
@@ -42,7 +42,7 @@ export const VisionProcessingPanel: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
-      
+
       const response = await fetch(
         `http://localhost:8000/api/vision/process?model_id=${selectedModel}`,
         {
@@ -79,9 +79,7 @@ export const VisionProcessingPanel: React.FC = () => {
 
       <div className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-white/80 mb-2">
-            选择模型
-          </label>
+          <label className="block text-sm font-medium text-white/80 mb-2">选择模型</label>
           <div className="grid grid-cols-2 gap-3">
             {models.map((model) => (
               <button
@@ -101,9 +99,7 @@ export const VisionProcessingPanel: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white/80 mb-2">
-            上传图像
-          </label>
+          <label className="block text-sm font-medium text-white/80 mb-2">上传图像</label>
           <div
             onClick={() => fileInputRef.current?.click()}
             className={`p-8 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
@@ -135,9 +131,7 @@ export const VisionProcessingPanel: React.FC = () => {
                   <Upload className="w-10 h-10 text-white/50" />
                   <div className="text-center">
                     <div className="text-white/80">点击或拖拽上传</div>
-                    <div className="text-white/50 text-sm">
-                      支持 JPG, PNG, WebP (最大 20MB)
-                    </div>
+                    <div className="text-white/50 text-sm">支持 JPG, PNG, WebP (最大 20MB)</div>
                   </div>
                 </>
               )}
@@ -198,7 +192,9 @@ export const VisionProcessingPanel: React.FC = () => {
                 <div key={index} className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-white/70">{label}</span>
-                    <span className="text-white/90 font-mono">{(result.scores[index] * 100).toFixed(1)}%</span>
+                    <span className="text-white/90 font-mono">
+                      {(result.scores[index] * 100).toFixed(1)}%
+                    </span>
                   </div>
                   <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                     <div

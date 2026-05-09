@@ -16,7 +16,6 @@ import { RenderContext, AudioData } from "@/lib/visualization/types";
 import { useTotemStore } from "@/store/totemStore";
 import { useLyricsSearchStore } from "@/store/lyricsSearchStore";
 
-
 const APPLE_SPRING_CONFIG = {
   type: "spring" as const,
   stiffness: 350,
@@ -26,14 +25,14 @@ const APPLE_SPRING_CONFIG = {
 
 export function VisualizationViewV8() {
   const { currentView, setCurrentView, isTransitioning, setIsTransitioning } = useUIStore();
-  const isPlaying = useAudioStore(state => state.isPlaying);
-  const currentSong = useAudioStore(state => state.currentSong);
-  const currentTime = useAudioStore(state => state.currentTime);
-  const duration = useAudioStore(state => state.duration);
-  const bufferedRanges = useAudioStore(state => state.bufferedRanges);
-  const setIsPlaying = useAudioStore(state => state.setIsPlaying);
-  const prevSong = useAudioStore(state => state.prevSong);
-  const nextSong = useAudioStore(state => state.nextSong);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentTime = useAudioStore((state) => state.currentTime);
+  const duration = useAudioStore((state) => state.duration);
+  const bufferedRanges = useAudioStore((state) => state.bufferedRanges);
+  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const prevSong = useAudioStore((state) => state.prevSong);
+  const nextSong = useAudioStore((state) => state.nextSong);
   const { currentTheme, blurIntensity, animationSpeed } = useVisualSettingsStore();
   const { seek } = useAudioPlayer();
   const {
@@ -45,24 +44,27 @@ export function VisualizationViewV8() {
     updateParam,
     renderEffect,
     getCurrentParams,
-    isInitialized
+    isInitialized,
   } = useVisualizationV8();
 
   const totemStore = useTotemStore();
-  const parsedLyrics = useLyricsSearchStore(state => state.parsedLyrics);
+  const parsedLyrics = useLyricsSearchStore((state) => state.parsedLyrics);
   const workerRef = useRef<Worker | null>(null);
-
 
   const [showControlDrawer, setShowControlDrawer] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [parameterMode, setParameterMode] = useState<"basic" | "professional" | "expert">("basic");
-  const [performanceStats, setPerformanceStats] = useState<{ fps: number; cpu: number; memory: number } | null>(null);
+  const [performanceStats, setPerformanceStats] = useState<{
+    fps: number;
+    cpu: number;
+    memory: number;
+  } | null>(null);
 
   useEffect(() => {
     const updateDimensions = () => {
       setDimensions({
         width: window.innerWidth,
-        height: window.innerHeight
+        height: window.innerHeight,
       });
     };
 
@@ -98,7 +100,7 @@ export function VisualizationViewV8() {
     if (typeof window === "undefined") return;
 
     const worker = new Worker(new URL("../../workers/totemTexture.worker.ts", import.meta.url), {
-      type: "module"
+      type: "module",
     });
 
     worker.onmessage = (e) => {
@@ -118,18 +120,17 @@ export function VisualizationViewV8() {
   useEffect(() => {
     if (!workerRef.current || totemStore.allKeywords.length === 0) return;
 
-    totemStore.allKeywords.forEach(kw => {
+    totemStore.allKeywords.forEach((kw) => {
       if (!totemStore.preloadedTextures[kw.id]) {
         workerRef.current?.postMessage({
           type: "generate",
           id: kw.id,
           text: kw.text,
-          style: "serif"
+          style: "serif",
         });
       }
     });
   }, [totemStore.allKeywords]);
-
 
   useEffect(() => {
     let animationFrame: number;
@@ -188,9 +189,12 @@ export function VisualizationViewV8() {
     });
   }, [setCurrentView, setIsTransitioning]);
 
-  const handleRender = useCallback((ctx: RenderContext, audioData: AudioData, params: Record<string, any>) => {
-    renderEffect(ctx, audioData, params);
-  }, [renderEffect]);
+  const handleRender = useCallback(
+    (ctx: RenderContext, audioData: AudioData, params: Record<string, any>) => {
+      renderEffect(ctx, audioData, params);
+    },
+    [renderEffect]
+  );
 
   if (currentView !== "visualization") return null;
 
@@ -277,7 +281,6 @@ export function VisualizationViewV8() {
       <ResonanceTotemLayer />
 
       <RenderEngineManager
-
         engine={currentEffect?.preferredEngine || "canvas"}
         effect={currentEffect || null}
         onRender={handleRender}
@@ -317,9 +320,7 @@ export function VisualizationViewV8() {
         performanceStats={performanceStats ?? undefined}
       />
 
-      {isTransitioning && (
-        <div className="absolute inset-0 bg-black/50 z-50 pointer-events-none" />
-      )}
+      {isTransitioning && <div className="absolute inset-0 bg-black/50 z-50 pointer-events-none" />}
     </motion.div>
   );
 }

@@ -2,7 +2,10 @@
 
 import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useStatsAchievementsStore, AchievementToast as AchievementToastType } from "@/store/statsAchievementsStore";
+import {
+  useStatsAchievementsStore,
+  AchievementToast as AchievementToastType,
+} from "@/store/statsAchievementsStore";
 
 const AchievementToastItem: React.FC<{ toast: AchievementToastType }> = ({ toast }) => {
   const removeToast = useStatsAchievementsStore((state) => state.removeToast);
@@ -26,25 +29,24 @@ const AchievementToastItem: React.FC<{ toast: AchievementToastType }> = ({ toast
         WebkitBackdropFilter: "blur(20px)",
       }}
     >
-      <div className="flex-shrink-0 text-3xl">
-        {toast.achievement.icon}
-      </div>
-      
+      <div className="flex-shrink-0 text-3xl">{toast.achievement.icon}</div>
+
       <div className="flex-1 min-w-0">
-        <div className="text-white font-semibold text-lg">
-          {toast.achievement.name}
-        </div>
-        <div className="text-white/60 text-sm mt-0.5">
-          {toast.achievement.description}
-        </div>
+        <div className="text-white font-semibold text-lg">{toast.achievement.name}</div>
+        <div className="text-white/60 text-sm mt-0.5">{toast.achievement.description}</div>
       </div>
-      
+
       <button
         onClick={() => removeToast(toast.id)}
         className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M6 18L18 6M6 6l12 12"
+          />
         </svg>
       </button>
     </motion.div>

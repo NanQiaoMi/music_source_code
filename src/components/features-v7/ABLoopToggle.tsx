@@ -9,9 +9,9 @@ import { ABLoopPanel } from "./ABLoopPanel";
 
 export function ABLoopToggle() {
   const { currentView } = useUIStore();
-  const currentTime = useAudioStore(state => state.currentTime);
-  const duration = useAudioStore(state => state.duration);
-  const seekTo = useAudioStore(state => state.seekTo);
+  const currentTime = useAudioStore((state) => state.currentTime);
+  const duration = useAudioStore((state) => state.duration);
+  const seekTo = useAudioStore((state) => state.seekTo);
   const [showPanel, setShowPanel] = useState(false);
 
   if (currentView !== "player" && currentView !== "visualization") return null;

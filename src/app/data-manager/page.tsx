@@ -36,12 +36,12 @@ interface MiniPlayerProps {
 }
 
 const MiniPlayer: React.FC<MiniPlayerProps> = ({ onClose }) => {
-  const currentSong = useAudioStore(state => state.currentSong);
-  const isPlaying = useAudioStore(state => state.isPlaying);
-  const currentTime = useAudioStore(state => state.currentTime);
-  const duration = useAudioStore(state => state.duration);
-  const setIsPlaying = useAudioStore(state => state.setIsPlaying);
-  const seekTo = useAudioStore(state => state.seekTo);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const currentTime = useAudioStore((state) => state.currentTime);
+  const duration = useAudioStore((state) => state.duration);
+  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const seekTo = useAudioStore((state) => state.seekTo);
   const { setCurrentView } = useUIStore();
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -174,10 +174,10 @@ const BottomTimeDisplay: React.FC<BottomTimeDisplayProps> = ({ currentTime, isPl
 
 export default function DataManagerPage() {
   const { initializePlaylist } = usePlaylistStore();
-  const currentSong = useAudioStore(state => state.currentSong);
-  const isPlaying = useAudioStore(state => state.isPlaying);
-  const currentTime = useAudioStore(state => state.currentTime);
-  const duration = useAudioStore(state => state.duration);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const currentTime = useAudioStore((state) => state.currentTime);
+  const duration = useAudioStore((state) => state.duration);
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("local");
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -363,7 +363,12 @@ export default function DataManagerPage() {
 
 const MoreIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+    />
   </svg>
 );
 

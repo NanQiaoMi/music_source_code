@@ -17,7 +17,7 @@ export const AudioPaintingV8Effect: EffectPlugin = {
       min: 5,
       max: 100,
       step: 1,
-      default: 30
+      default: 30,
     },
     {
       id: "opacity",
@@ -27,7 +27,7 @@ export const AudioPaintingV8Effect: EffectPlugin = {
       min: 0.1,
       max: 1,
       step: 0.05,
-      default: 0.6
+      default: 0.6,
     },
     {
       id: "fadeSpeed",
@@ -37,7 +37,7 @@ export const AudioPaintingV8Effect: EffectPlugin = {
       min: 0.001,
       max: 0.05,
       step: 0.001,
-      default: 0.005
+      default: 0.005,
     },
     {
       id: "brushType",
@@ -49,8 +49,8 @@ export const AudioPaintingV8Effect: EffectPlugin = {
         { label: "圆形", value: "circle" },
         { label: "方形", value: "square" },
         { label: "星形", value: "star" },
-        { label: "模糊", value: "blur" }
-      ]
+        { label: "模糊", value: "blur" },
+      ],
     },
     {
       id: "colorScheme",
@@ -63,8 +63,8 @@ export const AudioPaintingV8Effect: EffectPlugin = {
         { label: "温暖", value: "warm" },
         { label: "冷色", value: "cool" },
         { label: "彩虹", value: "rainbow" },
-        { label: "灰度", value: "grayscale" }
-      ]
+        { label: "灰度", value: "grayscale" },
+      ],
     },
     {
       id: "brushCount",
@@ -74,7 +74,7 @@ export const AudioPaintingV8Effect: EffectPlugin = {
       min: 1,
       max: 10,
       step: 1,
-      default: 3
+      default: 3,
     },
     {
       id: "moveSpeed",
@@ -84,7 +84,7 @@ export const AudioPaintingV8Effect: EffectPlugin = {
       min: 0.1,
       max: 5,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "audioSensitivity",
@@ -94,7 +94,7 @@ export const AudioPaintingV8Effect: EffectPlugin = {
       min: 0.1,
       max: 3,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "trailLength",
@@ -104,7 +104,7 @@ export const AudioPaintingV8Effect: EffectPlugin = {
       min: 1,
       max: 20,
       step: 1,
-      default: 5
+      default: 5,
     },
     {
       id: "rotationSpeed",
@@ -114,7 +114,7 @@ export const AudioPaintingV8Effect: EffectPlugin = {
       min: -2,
       max: 2,
       step: 0.1,
-      default: 0.5
+      default: 0.5,
     },
     {
       id: "clearMode",
@@ -126,13 +126,13 @@ export const AudioPaintingV8Effect: EffectPlugin = {
         { label: "渐变", value: "fade" },
         { label: "黑色", value: "black" },
         { label: "白色", value: "white" },
-        { label: "不清除", value: "none" }
-      ]
-    }
+        { label: "不清除", value: "none" },
+      ],
+    },
   ],
   private: {
     brushes: [],
-    time: 0
+    time: 0,
   },
   init(ctx) {
     (this as any).private.brushes = [];
@@ -140,7 +140,7 @@ export const AudioPaintingV8Effect: EffectPlugin = {
   },
   render(ctx, audioData, params) {
     if (!ctx.ctx || !ctx.canvas) return;
-    
+
     const canvas = ctx.canvas;
     const context = ctx.ctx;
     const width = canvas.width;
@@ -163,7 +163,7 @@ export const AudioPaintingV8Effect: EffectPlugin = {
           vx: (Math.random() - 0.5) * 2,
           vy: (Math.random() - 0.5) * 2,
           angle: Math.random() * Math.PI * 2,
-          trail: []
+          trail: [],
         });
       }
       (this as any).private.brushes = brushes;
@@ -235,11 +235,11 @@ export const AudioPaintingV8Effect: EffectPlugin = {
       ctx.private.brushes = [];
       ctx.private.time = 0;
     }
-  }
+  },
 };
 
 function getColor(scheme: string, index: number, total: number, time: number): string {
-  const hue = (index / total * 360 + time * 50) % 360;
+  const hue = ((index / total) * 360 + time * 50) % 360;
 
   switch (scheme) {
     case "neon":
@@ -260,7 +260,14 @@ function getColor(scheme: string, index: number, total: number, time: number): s
   }
 }
 
-function drawBrush(ctx: CanvasRenderingContext2D, type: string, size: number, bass: number, mid: number, treble: number) {
+function drawBrush(
+  ctx: CanvasRenderingContext2D,
+  type: string,
+  size: number,
+  bass: number,
+  mid: number,
+  treble: number
+) {
   const audioSize = size * (1 + bass * 0.5);
 
   switch (type) {
@@ -287,8 +294,15 @@ function drawBrush(ctx: CanvasRenderingContext2D, type: string, size: number, ba
   }
 }
 
-function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, outerR: number, innerR: number, spikes: number) {
-  let rot = Math.PI / 2 * 3;
+function drawStar(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  outerR: number,
+  innerR: number,
+  spikes: number
+) {
+  let rot = (Math.PI / 2) * 3;
   let x = cx;
   let y = cy;
   const step = Math.PI / spikes;

@@ -11,14 +11,69 @@ export interface TotemKeyword {
 // Emotional keywords dictionary (Chinese/English)
 const EMOTIONAL_DICTIONARY = [
   // High intensity
-  "虚假", "喧哗", "自由", "孤独", "绝望", "疯狂", "毁灭", "重生", "永恒", "深渊",
-  "Fake", "Noise", "Freedom", "Loneliness", "Despair", "Crazy", "Destruction", "Rebirth", "Eternal", "Abyss",
+  "虚假",
+  "喧哗",
+  "自由",
+  "孤独",
+  "绝望",
+  "疯狂",
+  "毁灭",
+  "重生",
+  "永恒",
+  "深渊",
+  "Fake",
+  "Noise",
+  "Freedom",
+  "Loneliness",
+  "Despair",
+  "Crazy",
+  "Destruction",
+  "Rebirth",
+  "Eternal",
+  "Abyss",
   // Medium intensity
-  "梦", "光", "暗", "心", "碎", "爱", "恨", "生", "死", "风", "雨", "雷", "电",
-  "Dream", "Light", "Dark", "Heart", "Broken", "Love", "Hate", "Life", "Death", "Wind", "Rain", "Thunder",
+  "梦",
+  "光",
+  "暗",
+  "心",
+  "碎",
+  "爱",
+  "恨",
+  "生",
+  "死",
+  "风",
+  "雨",
+  "雷",
+  "电",
+  "Dream",
+  "Light",
+  "Dark",
+  "Heart",
+  "Broken",
+  "Love",
+  "Hate",
+  "Life",
+  "Death",
+  "Wind",
+  "Rain",
+  "Thunder",
   // Verbs/Adjectives
-  "跳动", "燃烧", "冰冷", "温暖", "颤抖", "呼唤", "沉默", "爆发",
-  "Beat", "Burn", "Cold", "Warm", "Tremble", "Call", "Silence", "Burst"
+  "跳动",
+  "燃烧",
+  "冰冷",
+  "温暖",
+  "颤抖",
+  "呼唤",
+  "沉默",
+  "爆发",
+  "Beat",
+  "Burn",
+  "Cold",
+  "Warm",
+  "Tremble",
+  "Call",
+  "Silence",
+  "Burst",
 ];
 
 /**
@@ -29,16 +84,16 @@ export function extractKeywords(lyrics: LyricLine[]): TotemKeyword[] {
 
   const keywords: TotemKeyword[] = [];
   const textFrequency: Record<string, number> = {};
-  
+
   // 1. Analyze frequency to find chorus keywords
-  lyrics.forEach(line => {
+  lyrics.forEach((line) => {
     const text = line.text.trim();
     if (text.length < 2) return;
     textFrequency[text] = (textFrequency[text] || 0) + 1;
   });
 
   // 2. Identify potential chorus lines (repeated lines)
-  const chorusLines = Object.keys(textFrequency).filter(text => textFrequency[text] >= 2);
+  const chorusLines = Object.keys(textFrequency).filter((text) => textFrequency[text] >= 2);
 
   lyrics.forEach((line, index) => {
     const text = line.text.trim();
@@ -77,7 +132,7 @@ export function extractKeywords(lyrics: LyricLine[]): TotemKeyword[] {
         text: foundWord,
         startTime: line.time,
         duration: duration,
-        intensity: intensity
+        intensity: intensity,
       });
     }
   });
@@ -86,7 +141,7 @@ export function extractKeywords(lyrics: LyricLine[]): TotemKeyword[] {
   const filteredKeywords: TotemKeyword[] = [];
   let lastTime = -10;
 
-  keywords.forEach(kw => {
+  keywords.forEach((kw) => {
     if (kw.startTime - lastTime > 4) {
       filteredKeywords.push(kw);
       lastTime = kw.startTime;

@@ -150,7 +150,7 @@ export const useAudioProcessingStore = create<AudioProcessingState>()(
 
         const engine = AudioEngine.getInstance();
         const context = engine.getContext();
-        
+
         if (!context) return;
 
         // Note: AudioEngine already manages its own master gain and compressor
@@ -158,9 +158,9 @@ export const useAudioProcessingStore = create<AudioProcessingState>()(
         set({
           audioContext: context,
           masterNode: engine.getMasterGain(),
-          // Compressor node is managed internally by AudioEngine if needed, 
+          // Compressor node is managed internally by AudioEngine if needed,
           // or we can add it to AudioEngine. For now, we use the engine's master gain.
-          compressorNode: null, 
+          compressorNode: null,
         });
       },
 
@@ -172,7 +172,7 @@ export const useAudioProcessingStore = create<AudioProcessingState>()(
       toggleMasterCompressor: () => {
         const state = get();
         // Toggle compressor in AudioEngine if implemented, or just update store state
-        // For now, we update the store state. 
+        // For now, we update the store state.
         // Real implementation should be in AudioEngine.
         set({ masterCompressorEnabled: !state.masterCompressorEnabled });
       },

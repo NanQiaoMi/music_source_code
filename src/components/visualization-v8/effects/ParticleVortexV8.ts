@@ -17,7 +17,7 @@ export const ParticleVortexV8Effect: EffectPlugin = {
       min: 200,
       max: 3000,
       step: 100,
-      default: 1500
+      default: 1500,
     },
     {
       id: "vortexStrength",
@@ -27,7 +27,7 @@ export const ParticleVortexV8Effect: EffectPlugin = {
       min: 0,
       max: 5,
       step: 0.1,
-      default: 2
+      default: 2,
     },
     {
       id: "vortexCount",
@@ -37,7 +37,7 @@ export const ParticleVortexV8Effect: EffectPlugin = {
       min: 1,
       max: 5,
       step: 1,
-      default: 2
+      default: 2,
     },
     {
       id: "audioIntensity",
@@ -47,7 +47,7 @@ export const ParticleVortexV8Effect: EffectPlugin = {
       min: 0,
       max: 3,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "colorScheme",
@@ -59,8 +59,8 @@ export const ParticleVortexV8Effect: EffectPlugin = {
         { label: "旋涡", value: "vortex" },
         { label: "火焰", value: "fire" },
         { label: "海洋", value: "ocean" },
-        { label: "银河", value: "galaxy" }
-      ]
+        { label: "银河", value: "galaxy" },
+      ],
     },
     {
       id: "particleSize",
@@ -70,7 +70,7 @@ export const ParticleVortexV8Effect: EffectPlugin = {
       min: 1,
       max: 8,
       step: 0.5,
-      default: 3
+      default: 3,
     },
     {
       id: "fadeSpeed",
@@ -80,7 +80,7 @@ export const ParticleVortexV8Effect: EffectPlugin = {
       min: 0,
       max: 0.1,
       step: 0.005,
-      default: 0.015
+      default: 0.015,
     },
     {
       id: "direction",
@@ -91,13 +91,13 @@ export const ParticleVortexV8Effect: EffectPlugin = {
       options: [
         { label: "顺时针", value: "clockwise" },
         { label: "逆时针", value: "counter" },
-        { label: "混合", value: "mixed" }
-      ]
-    }
+        { label: "混合", value: "mixed" },
+      ],
+    },
   ],
   private: {
     particles: [],
-    time: 0
+    time: 0,
   },
   init(ctx) {
     (this as any).private.particles = [];
@@ -105,7 +105,7 @@ export const ParticleVortexV8Effect: EffectPlugin = {
   },
   render(ctx, audioData, params) {
     if (!ctx.ctx || !ctx.canvas) return;
-    
+
     const canvas = ctx.canvas;
     const context = ctx.ctx;
     const width = canvas.width;
@@ -133,7 +133,7 @@ export const ParticleVortexV8Effect: EffectPlugin = {
           vy: (Math.random() - 0.5) * 2,
           angle: Math.random() * Math.PI * 2,
           color: Math.random(),
-          vortexIndex: i % params.vortexCount
+          vortexIndex: i % params.vortexCount,
         });
       }
       (this as any).private.particles = particles;
@@ -148,7 +148,7 @@ export const ParticleVortexV8Effect: EffectPlugin = {
       const radius = Math.min(width, height) * 0.2;
       vortexCenters.push({
         x: centerX + Math.cos(angle) * radius,
-        y: centerY + Math.sin(angle) * radius
+        y: centerY + Math.sin(angle) * radius,
       });
     }
 
@@ -160,7 +160,7 @@ export const ParticleVortexV8Effect: EffectPlugin = {
         const dx = center.x - particle.x;
         const dy = center.y - particle.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        
+
         if (dist > 10) {
           let direction = 1;
           if (params.direction === "counter") {
@@ -169,11 +169,11 @@ export const ParticleVortexV8Effect: EffectPlugin = {
             direction = index % 2 === 0 ? 1 : -1;
           }
 
-          const strength = params.vortexStrength * audioMultiplier / Math.max(dist, 50);
-          
+          const strength = (params.vortexStrength * audioMultiplier) / Math.max(dist, 50);
+
           fx += (-dy / dist) * strength * direction;
           fy += (dx / dist) * strength * direction;
-          
+
           const pullStrength = 0.3 / Math.max(dist, 100);
           fx += (dx / dist) * pullStrength;
           fy += (dy / dist) * pullStrength;
@@ -182,7 +182,7 @@ export const ParticleVortexV8Effect: EffectPlugin = {
 
       particle.vx += fx;
       particle.vy += fy;
-      
+
       particle.vx *= 0.99;
       particle.vy *= 0.99;
 
@@ -194,7 +194,12 @@ export const ParticleVortexV8Effect: EffectPlugin = {
       particle.x = Math.max(0, Math.min(width, particle.x));
       particle.y = Math.max(0, Math.min(height, particle.y));
 
-      const hue = getVortexColor(params.colorScheme, particle.color, particle.vortexIndex, (this as any).private.time);
+      const hue = getVortexColor(
+        params.colorScheme,
+        particle.color,
+        particle.vortexIndex,
+        (this as any).private.time
+      );
       const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
       const alpha = Math.min(1, 0.3 + speed * 0.15);
 
@@ -205,7 +210,7 @@ export const ParticleVortexV8Effect: EffectPlugin = {
     });
 
     vortexCenters.forEach((center, index) => {
-      const hue = (index / params.vortexCount * 360 + (this as any).private.time * 30) % 360;
+      const hue = ((index / params.vortexCount) * 360 + (this as any).private.time * 30) % 360;
       context.beginPath();
       context.arc(center.x, center.y, 10 + avgEnergy * 15, 0, Math.PI * 2);
       context.fillStyle = `hsla(${hue}, 100%, 70%, 0.7)`;
@@ -220,10 +225,15 @@ export const ParticleVortexV8Effect: EffectPlugin = {
       ctx.private.particles = [];
       ctx.private.time = 0;
     }
-  }
+  },
 };
 
-function getVortexColor(scheme: string, colorValue: number, vortexIndex: number, time: number): number {
+function getVortexColor(
+  scheme: string,
+  colorValue: number,
+  vortexIndex: number,
+  time: number
+): number {
   switch (scheme) {
     case "vortex":
       return (colorValue * 360 + time * 40 + vortexIndex * 60) % 360;

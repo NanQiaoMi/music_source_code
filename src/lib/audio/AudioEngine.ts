@@ -35,7 +35,7 @@ export class AudioEngine {
     if (this.context || typeof window === "undefined") return;
 
     this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
-    
+
     // Create master nodes
     this.masterGain = this.context.createGain();
     this.analyser = this.context.createAnalyser();
@@ -44,7 +44,7 @@ export class AudioEngine {
 
     // Build default graph (EQ -> Gain -> Analyser -> Destination)
     this.initEQNodes();
-    
+
     // Connect EQ chain
     if (this.eqNodes.length > 0) {
       for (let i = 0; i < this.eqNodes.length - 1; i++) {
@@ -59,12 +59,16 @@ export class AudioEngine {
 
   private initEQNodes(): void {
     if (!this.context) return;
-    
+
     this.eqNodes = [];
     for (let i = 0; i < AudioEngine.EQ_FREQUENCIES.length; i++) {
       const filter = this.context.createBiquadFilter();
       filter.type =
-        i === 0 ? "lowshelf" : i === AudioEngine.EQ_FREQUENCIES.length - 1 ? "highshelf" : "peaking";
+        i === 0
+          ? "lowshelf"
+          : i === AudioEngine.EQ_FREQUENCIES.length - 1
+            ? "highshelf"
+            : "peaking";
       filter.frequency.value = AudioEngine.EQ_FREQUENCIES[i];
       filter.Q.value = 1;
       filter.gain.value = 0;
@@ -98,7 +102,7 @@ export class AudioEngine {
         console.warn("AudioEngine: Source node creation failed", e);
       }
     }
-    
+
     this.isInitialized = true;
   }
 
@@ -107,7 +111,7 @@ export class AudioEngine {
    */
   public createMediaSource(audioElement: HTMLAudioElement): MediaElementAudioSourceNode | null {
     if (!this.context || !audioElement) return null;
-    
+
     let sourceNode = this.sourceNodes.get(audioElement);
     if (!sourceNode) {
       try {
@@ -138,7 +142,7 @@ export class AudioEngine {
 
   public updateEQ(bands: number[]): void {
     if (!this.eqNodes.length) return;
-    
+
     this.eqNodes.forEach((filter, i) => {
       if (bands[i] !== undefined) {
         filter.gain.setTargetAtTime(bands[i], this.context?.currentTime || 0, 0.01);

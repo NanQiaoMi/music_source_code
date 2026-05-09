@@ -51,7 +51,7 @@ export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ conf
 
   useEffect(() => {
     if (!config.enabled) return;
-    
+
     const engine = AudioEngine.getInstance();
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -60,7 +60,7 @@ export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ conf
     if (!ctx) return;
 
     const bufferLength = engine.frequencyBinCount;
-    
+
     // Persistent arrays to avoid allocations
     if (!dataArrayRef.current || dataArrayRef.current.length !== bufferLength) {
       dataArrayRef.current = new Uint8Array(bufferLength);
@@ -68,7 +68,7 @@ export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ conf
     if (!processedDataRef.current || processedDataRef.current.length !== bufferLength) {
       processedDataRef.current = new Uint8Array(bufferLength);
     }
-    
+
     const dataArray = dataArrayRef.current;
     const processedData = processedDataRef.current;
 
@@ -89,7 +89,7 @@ export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ conf
       } else {
         processedData.set(dataArray);
       }
-      
+
       if (!prevDataRef.current || prevDataRef.current.length !== bufferLength) {
         prevDataRef.current = new Uint8Array(bufferLength);
       }
@@ -106,7 +106,7 @@ export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ conf
 
       for (let i = 0; i < barCount; i++) {
         // Use a subset of frequencies for the bars (lower half for better visuals)
-        const dataIndex = Math.floor((i / barCount) * (bufferLength / 2)); 
+        const dataIndex = Math.floor((i / barCount) * (bufferLength / 2));
         const value = processedData[dataIndex] || 0;
         const barHeight = (value / 255) * maxBarHeight;
 

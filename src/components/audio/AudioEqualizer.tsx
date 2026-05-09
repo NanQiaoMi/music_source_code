@@ -40,11 +40,11 @@ interface AudioEqualizerProps {
 
 export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose }) => {
   const { audioElement } = useAudioPlayer();
-  const setEQBands = useAudioStore(state => state.setEQBands);
-  const currentEQPreset = useAudioStore(state => state.currentEQPreset);
-  const setCurrentEQPreset = useAudioStore(state => state.setCurrentEQPreset);
-  const eqBands = useAudioStore(state => state.eqBands);
-  const loadEQPreset = useAudioStore(state => state.loadEQPreset);
+  const setEQBands = useAudioStore((state) => state.setEQBands);
+  const currentEQPreset = useAudioStore((state) => state.currentEQPreset);
+  const setCurrentEQPreset = useAudioStore((state) => state.setCurrentEQPreset);
+  const eqBands = useAudioStore((state) => state.eqBands);
+  const loadEQPreset = useAudioStore((state) => state.loadEQPreset);
   const [bands, setBands] = useState<number[]>(
     eqBands.length === 30 ? eqBands : DEFAULT_EQ_BANDS_30
   );
@@ -197,10 +197,11 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose 
               <button
                 key={preset.id}
                 onClick={() => handlePresetSelect(preset.id)}
-                className={`p-3 rounded-xl transition-all flex flex-col items-center gap-1 ${selectedPreset === preset.id
+                className={`p-3 rounded-xl transition-all flex flex-col items-center gap-1 ${
+                  selectedPreset === preset.id
                     ? "bg-white/20 text-white ring-2 ring-white/30"
                     : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
-                  }`}
+                }`}
               >
                 <span className="text-xl">{preset.icon}</span>
                 <span className="text-xs font-medium">{preset.name}</span>

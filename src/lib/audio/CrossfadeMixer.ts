@@ -28,15 +28,17 @@ export class CrossfadeMixer {
    */
   public prepareElement(audio: HTMLAudioElement): GainNode | null {
     if (!this.context) return null;
-    
+
     let gainNode = this.gainNodes.get(audio);
     if (!gainNode) {
       gainNode = this.context.createGain();
       gainNode.gain.value = 1;
-      
+
       const source = AudioEngine.getInstance().createMediaSource(audio);
       if (source) {
-        try { source.disconnect(); } catch (e) {}
+        try {
+          source.disconnect();
+        } catch (e) {}
         source.connect(gainNode);
         const entry = AudioEngine.getInstance().getEQChainEntry();
         if (entry) {
@@ -57,7 +59,9 @@ export class CrossfadeMixer {
     const minDuration = 1.5; // Reduced for better responsiveness
     const maxDuration = 5;
     const rawDuration = minDuration + (distance / 2.82) * (maxDuration - minDuration);
-    return isFinite(rawDuration) ? Math.min(maxDuration, Math.max(minDuration, rawDuration)) : minDuration;
+    return isFinite(rawDuration)
+      ? Math.min(maxDuration, Math.max(minDuration, rawDuration))
+      : minDuration;
   }
 
   /**
@@ -74,7 +78,7 @@ export class CrossfadeMixer {
     if (!fromGain || !toGain || !this.context) return;
 
     const now = this.context.currentTime;
-    
+
     // Cancel any ongoing ramps on BOTH nodes to prevent overlaps
     fromGain.gain.cancelScheduledValues(now);
     toGain.gain.cancelScheduledValues(now);
@@ -87,7 +91,8 @@ export class CrossfadeMixer {
     try {
       await toAudio.play();
     } catch (e: any) {
-      const isAbort = e.name === "AbortError" || e.code === 20 || e.message?.includes("interrupted");
+      const isAbort =
+        e.name === "AbortError" || e.code === 20 || e.message?.includes("interrupted");
       if (!isAbort) {
         console.error("Crossfade play failed:", e);
       }
@@ -99,16 +104,19 @@ export class CrossfadeMixer {
     fromGain.gain.linearRampToValueAtTime(0.001, now + duration);
     toGain.gain.linearRampToValueAtTime(1, now + duration);
 
-    // We don't block the UI with a long await anymore. 
+    // We don't block the UI with a long await anymore.
     // We use a timer just for the 'from' cleanup.
-    setTimeout(() => {
-      try {
-        if (fromAudio.paused === false) {
-           fromAudio.pause();
-           fromAudio.currentTime = 0;
-           fromGain.gain.setValueAtTime(1, this.context!.currentTime);
-        }
-      } catch (e) {}
-    }, duration * 1000 + 100);
+    setTimeout(
+      () => {
+        try {
+          if (fromAudio.paused === false) {
+            fromAudio.pause();
+            fromAudio.currentTime = 0;
+            fromGain.gain.setValueAtTime(1, this.context!.currentTime);
+          }
+        } catch (e) {}
+      },
+      duration * 1000 + 100
+    );
   }
 }

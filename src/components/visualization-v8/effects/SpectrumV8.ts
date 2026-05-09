@@ -18,7 +18,7 @@ export const SpectrumV8Effect: EffectPlugin = {
       min: 16,
       max: 128,
       step: 8,
-      default: 48
+      default: 48,
     },
     {
       id: "barWidth",
@@ -28,7 +28,7 @@ export const SpectrumV8Effect: EffectPlugin = {
       min: 4,
       max: 40,
       step: 2,
-      default: 12
+      default: 12,
     },
     {
       id: "barSpacing",
@@ -38,14 +38,14 @@ export const SpectrumV8Effect: EffectPlugin = {
       min: 1,
       max: 16,
       step: 1,
-      default: 4
+      default: 4,
     },
     {
       id: "color",
       name: "颜色",
       type: "color",
       mode: "basic",
-      default: "#a855f7"
+      default: "#a855f7",
     },
     {
       id: "glowIntensity",
@@ -55,7 +55,7 @@ export const SpectrumV8Effect: EffectPlugin = {
       min: 0,
       max: 6,
       step: 0.5,
-      default: 2
+      default: 2,
     },
     {
       id: "smoothing",
@@ -65,15 +65,15 @@ export const SpectrumV8Effect: EffectPlugin = {
       min: 0.1,
       max: 0.95,
       step: 0.05,
-      default: 0.8
+      default: 0.8,
     },
     {
       id: "mirror",
       name: "镜像显示",
       type: "boolean",
       mode: "basic",
-      default: true
-    }
+      default: true,
+    },
   ],
 
   init: (ctx) => {
@@ -93,7 +93,7 @@ export const SpectrumV8Effect: EffectPlugin = {
       color = "#a855f7",
       glowIntensity = 2,
       smoothing = 0.8,
-      mirror = true
+      mirror = true,
     } = params;
 
     context.globalCompositeOperation = "screen";
@@ -109,7 +109,7 @@ export const SpectrumV8Effect: EffectPlugin = {
     if (!ctx.private.smoothedBars) {
       ctx.private.smoothedBars = new Float32Array(128).fill(0);
     }
-    
+
     const smoothedBars = ctx.private.smoothedBars as Float32Array;
     for (let i = 0; i < Math.min(rawValues.length, smoothedBars.length); i++) {
       const rawHeight = rawValues[i] / 255;
@@ -128,11 +128,13 @@ export const SpectrumV8Effect: EffectPlugin = {
 
     const parseColor = (hex: string) => {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-      } : { r: 168, g: 85, b: 247 };
+      return result
+        ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16),
+          }
+        : { r: 168, g: 85, b: 247 };
     };
 
     const rgb = parseColor(color);
@@ -146,7 +148,10 @@ export const SpectrumV8Effect: EffectPlugin = {
       const gradient = context.createLinearGradient(x, centerY - barHeight, x, centerY);
       const alpha = 0.4 + smoothedBars[i] * 0.6;
       gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`);
-      gradient.addColorStop(0.4, `rgba(${rgb.r + 50}, ${rgb.g + 50}, ${rgb.b + 50}, ${alpha * 0.8})`);
+      gradient.addColorStop(
+        0.4,
+        `rgba(${rgb.r + 50}, ${rgb.g + 50}, ${rgb.b + 50}, ${alpha * 0.8})`
+      );
       gradient.addColorStop(1, `rgba(255, 255, 255, ${alpha * 0.5})`);
 
       context.fillStyle = gradient;
@@ -164,7 +169,12 @@ export const SpectrumV8Effect: EffectPlugin = {
       context.fill();
 
       if (mirror) {
-        const mirrorGradient = context.createLinearGradient(x, centerY, x, centerY + barHeight * 0.6);
+        const mirrorGradient = context.createLinearGradient(
+          x,
+          centerY,
+          x,
+          centerY + barHeight * 0.6
+        );
         mirrorGradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha * 0.4})`);
         mirrorGradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
 
@@ -205,5 +215,5 @@ export const SpectrumV8Effect: EffectPlugin = {
       ctx.private.smoothedBars = null;
     }
     console.log("SpectrumV8 effect destroyed");
-  }
+  },
 };

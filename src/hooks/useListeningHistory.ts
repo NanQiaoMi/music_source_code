@@ -37,11 +37,11 @@ export interface ArtistStats {
 const STORAGE_KEY = "listening_history";
 const ARTIST_STATS_KEY = "artist_stats";
 const MAX_HISTORY_ITEMS = 150; // Reduced from 500 to prevent QuotaExceededError
-const MAX_ARTIST_STATS = 50;  // Reduced from 100
+const MAX_ARTIST_STATS = 50; // Reduced from 100
 
 export const useListeningHistory = () => {
-  const currentSong = useAudioStore(state => state.currentSong);
-  const isPlaying = useAudioStore(state => state.isPlaying);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
 
   const getHistoryFromStorage = useCallback((): Record<string, ListeningRecord> => {
     if (typeof window === "undefined") return {};
@@ -78,9 +78,7 @@ export const useListeningHistory = () => {
         // Emergency prune: keep only 50 most recent items
         const entries = Object.entries(history);
         const prunedHistory = Object.fromEntries(
-          entries
-            .sort(([, a], [, b]) => b.lastPlayedAt - a.lastPlayedAt)
-            .slice(0, 50)
+          entries.sort(([, a], [, b]) => b.lastPlayedAt - a.lastPlayedAt).slice(0, 50)
         );
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(prunedHistory));

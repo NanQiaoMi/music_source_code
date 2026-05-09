@@ -23,47 +23,47 @@ interface HoverHubProps {
 // Apple-style spring configuration
 const HUB_TRANSITION = {
   duration: 0.3,
-  ease: [0.23, 1, 0.32, 1]
+  ease: [0.23, 1, 0.32, 1],
 };
 
 const CONTAINER_VARIANTS = {
-  hidden: { 
-    opacity: 0, 
-    y: 8
+  hidden: {
+    opacity: 0,
+    y: 8,
   },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
+  visible: {
+    opacity: 1,
+    y: 0,
     transition: {
       ...HUB_TRANSITION,
       staggerChildren: 0.03,
-      delayChildren: 0.01
-    }
+      delayChildren: 0.01,
+    },
   },
-  exit: { 
-    opacity: 0, 
-    y: 4, 
-    transition: { 
+  exit: {
+    opacity: 0,
+    y: 4,
+    transition: {
       duration: 0.15,
-      ease: "easeOut"
-    }
-  }
+      ease: "easeOut",
+    },
+  },
 };
 
 const ITEM_VARIANTS = {
   hidden: { opacity: 0, y: 5 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
-    transition: HUB_TRANSITION
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: HUB_TRANSITION,
   },
 };
 
-export const HoverHub: React.FC<HoverHubProps> = ({ 
-  label, 
-  mainIcon, 
-  items, 
-  accentColor = "rgba(255, 255, 255, 0.4)" 
+export const HoverHub: React.FC<HoverHubProps> = ({
+  label,
+  mainIcon,
+  items,
+  accentColor = "rgba(255, 255, 255, 0.4)",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -80,11 +80,7 @@ export const HoverHub: React.FC<HoverHubProps> = ({
   };
 
   return (
-    <div 
-      className="relative"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       <button
         className="h-10 px-3 rounded-lg flex items-center gap-2 transition-all duration-500 group relative"
         style={{
@@ -92,13 +88,13 @@ export const HoverHub: React.FC<HoverHubProps> = ({
           color: isOpen ? "#fff" : "var(--theme-text-secondary)",
         }}
       >
-        <motion.div 
+        <motion.div
           animate={{ rotate: isOpen ? 5 : 0, scale: isOpen ? 1.1 : 1 }}
           className="relative flex items-center justify-center"
         >
           {mainIcon}
           {isOpen && (
-            <motion.div 
+            <motion.div
               layoutId={`hub-glow-${label}`}
               className="absolute inset-0 blur-xl rounded-full -z-10 opacity-40"
               style={{ background: accentColor }}
@@ -110,15 +106,12 @@ export const HoverHub: React.FC<HoverHubProps> = ({
         <span className="text-[13px] font-medium tracking-tight opacity-80 group-hover:opacity-100 transition-opacity">
           {label}
         </span>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={HUB_TRANSITION}
-        >
+        <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={HUB_TRANSITION}>
           <ChevronDown className="w-3.5 h-3.5 opacity-20" />
         </motion.div>
 
         {isOpen && (
-          <motion.div 
+          <motion.div
             layoutId={`hub-underline-${label}`}
             className="absolute bottom-1 left-3 right-3 h-[2px] rounded-full"
             style={{ background: accentColor }}
@@ -134,10 +127,10 @@ export const HoverHub: React.FC<HoverHubProps> = ({
             animate="visible"
             exit="exit"
             className="absolute left-0 top-full mt-2 w-64 bg-black/70 backdrop-blur-3xl rounded-2xl border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden z-[9999]"
-            style={{ 
+            style={{
               willChange: "transform, opacity",
               backfaceVisibility: "hidden",
-              transformOrigin: "top left"
+              transformOrigin: "top left",
             }}
           >
             <div className="p-2.5 space-y-0.5">
@@ -169,12 +162,14 @@ export const HoverHub: React.FC<HoverHubProps> = ({
                 </motion.button>
               ))}
             </div>
-            
-            <motion.div 
+
+            <motion.div
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
-              className="h-[1px] w-full origin-left opacity-30" 
-              style={{ background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)` }} 
+              className="h-[1px] w-full origin-left opacity-30"
+              style={{
+                background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`,
+              }}
             />
           </motion.div>
         )}

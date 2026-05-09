@@ -122,18 +122,15 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
           return {
             songs: newSongs,
             filteredSongs: newSongs,
-            recentPlayed: newRecentPlayedSync(newSongs, state.recentPlayed)
+            recentPlayed: newRecentPlayedSync(newSongs, state.recentPlayed),
           };
         });
-        
+
         // Brief pause to allow UI thread to breathe
-        await new Promise(r => setTimeout(r, 0));
+        await new Promise((r) => setTimeout(r, 0));
       }
     })();
   },
-
-
-
 
   addSong: (song) =>
     set((state) => ({
@@ -217,6 +214,6 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
 }));
 
 function newRecentPlayedSync(allSongs: Song[], recentPlayed: Song[]) {
-  const songMap = new Map(allSongs.map(s => [s.id, s]));
-  return recentPlayed.map(rp => songMap.get(rp.id) || rp);
+  const songMap = new Map(allSongs.map((s) => [s.id, s]));
+  return recentPlayed.map((rp) => songMap.get(rp.id) || rp);
 }

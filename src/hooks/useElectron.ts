@@ -6,10 +6,10 @@ import { useAudioPlayer } from "./useAudioPlayer";
 
 export function useElectron() {
   const [isElectron, setIsElectron] = useState(false);
-  const [isDesktopLyricsOpen, setIsDesktopLyricsOpen] = useState(false); 
-  const currentSong = useAudioStore(state => state.currentSong);
-  const prevSong = useAudioStore(state => state.prevSong);
-  const nextSong = useAudioStore(state => state.nextSong);
+  const [isDesktopLyricsOpen, setIsDesktopLyricsOpen] = useState(false);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const prevSong = useAudioStore((state) => state.prevSong);
+  const nextSong = useAudioStore((state) => state.nextSong);
   const { togglePlay } = useAudioPlayer();
 
   useEffect(() => {

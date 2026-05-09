@@ -10,9 +10,7 @@ export const SpeechSynthesisPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const models = [
-    { id: "sambert-zh", name: "SamBERT", desc: "中文语音合成" },
-  ];
+  const models = [{ id: "sambert-zh", name: "SamBERT", desc: "中文语音合成" }];
 
   const handleSynthesize = async () => {
     if (!text.trim()) return;
@@ -59,9 +57,7 @@ export const SpeechSynthesisPanel: React.FC = () => {
 
       <div className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-white/80 mb-2">
-            输入文本
-          </label>
+          <label className="block text-sm font-medium text-white/80 mb-2">输入文本</label>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}

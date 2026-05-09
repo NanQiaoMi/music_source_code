@@ -14,9 +14,9 @@ export const AudioProcessingPanel: React.FC = () => {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState("wav2vec2-base");
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const reportUsage = useStatsAchievementsStore(state => state.reportProToolsUsage);
+  const reportUsage = useStatsAchievementsStore((state) => state.reportProToolsUsage);
 
   const models = [
     { id: "wav2vec2-base", name: "Wav2Vec 2.0", desc: "音频特征提取" },
@@ -42,7 +42,7 @@ export const AudioProcessingPanel: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
-      
+
       const response = await fetch(
         `http://localhost:8000/api/audio/process?model_id=${selectedModel}`,
         {
@@ -80,9 +80,7 @@ export const AudioProcessingPanel: React.FC = () => {
 
       <div className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-white/80 mb-2">
-            选择模型
-          </label>
+          <label className="block text-sm font-medium text-white/80 mb-2">选择模型</label>
           <div className="grid grid-cols-2 gap-3">
             {models.map((model) => (
               <button
@@ -102,9 +100,7 @@ export const AudioProcessingPanel: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white/80 mb-2">
-            上传音频文件
-          </label>
+          <label className="block text-sm font-medium text-white/80 mb-2">上传音频文件</label>
           <div
             onClick={() => fileInputRef.current?.click()}
             className={`p-8 rounded-xl border-2 border-dashed cursor-pointer transition-all ${

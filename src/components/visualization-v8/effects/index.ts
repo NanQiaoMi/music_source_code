@@ -38,7 +38,7 @@ export {
   SpectrumSpiralV8,
   StarFieldV8Effect,
   TunnelFlightV8Effect,
-  VibrationGeometryV8Effect
+  VibrationGeometryV8Effect,
 };
 
 export const effectsRegistry: EffectPlugin[] = [];
@@ -52,7 +52,7 @@ const TRANSFORM_PARAMS: EffectParameterDefinition[] = [
     min: -1,
     max: 1,
     step: 0.01,
-    default: 0
+    default: 0,
   },
   {
     id: "positionY",
@@ -62,7 +62,7 @@ const TRANSFORM_PARAMS: EffectParameterDefinition[] = [
     min: -1,
     max: 1,
     step: 0.01,
-    default: 0
+    default: 0,
   },
   {
     id: "scale",
@@ -72,7 +72,7 @@ const TRANSFORM_PARAMS: EffectParameterDefinition[] = [
     min: 0.1,
     max: 3,
     step: 0.05,
-    default: 1
+    default: 1,
   },
   {
     id: "rotation",
@@ -82,25 +82,25 @@ const TRANSFORM_PARAMS: EffectParameterDefinition[] = [
     min: 0,
     max: 360,
     step: 1,
-    default: 0
-  }
+    default: 0,
+  },
 ];
 
 function addTransformParameters(effect: EffectPlugin): EffectPlugin {
   return {
     ...effect,
-    parameters: [...effect.parameters, ...TRANSFORM_PARAMS]
+    parameters: [...effect.parameters, ...TRANSFORM_PARAMS],
   };
 }
 
 export function registerEffect(effect: EffectPlugin) {
-  if (!effectsRegistry.find(e => e.id === effect.id)) {
+  if (!effectsRegistry.find((e) => e.id === effect.id)) {
     effectsRegistry.push(addTransformParameters(effect));
   }
 }
 
 export function getEffectById(id: string): EffectPlugin | undefined {
-  return effectsRegistry.find(e => e.id === id);
+  return effectsRegistry.find((e) => e.id === id);
 }
 
 export function getAllEffects(): EffectPlugin[] {
@@ -108,5 +108,5 @@ export function getAllEffects(): EffectPlugin[] {
 }
 
 export function getEffectsByCategory(category: string): EffectPlugin[] {
-  return effectsRegistry.filter(e => e.category === category);
+  return effectsRegistry.filter((e) => e.category === category);
 }

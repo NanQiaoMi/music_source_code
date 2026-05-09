@@ -10,7 +10,14 @@ import {
   lyricPresets,
 } from "@/store/lyricSettingsStore";
 import {
-  AlignLeft, AlignCenter, AlignRight, Eye, EyeOff, Settings2, Moon, Move,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Eye,
+  EyeOff,
+  Settings2,
+  Moon,
+  Move,
 } from "lucide-react";
 import { GlassPanel } from "@/components/shared/Glass";
 
@@ -21,15 +28,48 @@ interface LyricSettingsPanelProps {
 
 export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, onClose }) => {
   const {
-    showTranslation, showTransliteration, fontSize, lineHeight, fontFamily, fontWeight,
-    opacity, alignment, animationType, animationSpeed, animationIntensity,
-    currentLineColor, inactiveLineColor, translationColor,
-    textShadow, textShadowColor, textShadowBlur, textStroke, textStrokeColor, textStrokeWidth,
-    setShowTranslation, setShowTransliteration, setFontSize, setLineHeight, setFontFamily,
-    setFontWeight, setOpacity, setAlignment, setAnimationType, setAnimationSpeed,
-    setAnimationIntensity, setCurrentLineColor, setInactiveLineColor, setTranslationColor,
-    setTextShadow, setTextShadowColor, setTextShadowBlur, setTextStroke, setTextStrokeColor,
-    setTextStrokeWidth, applyPreset, resetSettings,
+    showTranslation,
+    showTransliteration,
+    fontSize,
+    lineHeight,
+    fontFamily,
+    fontWeight,
+    opacity,
+    alignment,
+    animationType,
+    animationSpeed,
+    animationIntensity,
+    currentLineColor,
+    inactiveLineColor,
+    translationColor,
+    textShadow,
+    textShadowColor,
+    textShadowBlur,
+    textStroke,
+    textStrokeColor,
+    textStrokeWidth,
+    setShowTranslation,
+    setShowTransliteration,
+    setFontSize,
+    setLineHeight,
+    setFontFamily,
+    setFontWeight,
+    setOpacity,
+    setAlignment,
+    setAnimationType,
+    setAnimationSpeed,
+    setAnimationIntensity,
+    setCurrentLineColor,
+    setInactiveLineColor,
+    setTranslationColor,
+    setTextShadow,
+    setTextShadowColor,
+    setTextShadowBlur,
+    setTextStroke,
+    setTextStrokeColor,
+    setTextStrokeWidth,
+    applyPreset,
+    resetSettings,
   } = useLyricSettingsStore();
 
   const alignmentOptions = [
@@ -47,7 +87,12 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
   const animationOptions = [
     { value: "fade" as LyricAnimationType, icon: Moon, label: "淡入淡出", desc: "柔和过渡效果" },
     { value: "scroll" as LyricAnimationType, icon: Move, label: "平滑滚动", desc: "流畅滚动切换" },
-    { value: "rhythm" as LyricAnimationType, icon: Settings2, label: "节奏动态", desc: "跟随音乐节拍" },
+    {
+      value: "rhythm" as LyricAnimationType,
+      icon: Settings2,
+      label: "节奏动态",
+      desc: "跟随音乐节拍",
+    },
   ];
 
   return (
@@ -68,7 +113,9 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                     className="w-3 h-3 rounded-full"
                     style={{
                       backgroundColor: preset.settings.currentLineColor || "#fff",
-                      boxShadow: preset.settings.textShadow ? `0 0 8px ${preset.settings.textShadowColor}` : "none",
+                      boxShadow: preset.settings.textShadow
+                        ? `0 0 8px ${preset.settings.textShadowColor}`
+                        : "none",
                     }}
                   />
                   <span className="text-white text-sm font-medium">{preset.name}</span>
@@ -85,7 +132,11 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
           <div className="space-y-2">
             <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
               <div className="flex items-center gap-3">
-                {showTranslation ? <Eye className="w-5 h-5 text-white/60" /> : <EyeOff className="w-5 h-5 text-white/60" />}
+                {showTranslation ? (
+                  <Eye className="w-5 h-5 text-white/60" />
+                ) : (
+                  <EyeOff className="w-5 h-5 text-white/60" />
+                )}
                 <span className="text-white/80">显示翻译</span>
               </div>
               <button
@@ -101,7 +152,11 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
             </div>
             <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
               <div className="flex items-center gap-3">
-                {showTransliteration ? <Eye className="w-5 h-5 text-white/60" /> : <EyeOff className="w-5 h-5 text-white/60" />}
+                {showTransliteration ? (
+                  <Eye className="w-5 h-5 text-white/60" />
+                ) : (
+                  <EyeOff className="w-5 h-5 text-white/60" />
+                )}
                 <span className="text-white/80">显示音译</span>
               </div>
               <button
@@ -127,11 +182,15 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
               <span>{fontSize}px</span>
             </div>
             <input
-              type="range" min="12" max="24"
+              type="range"
+              min="12"
+              max="24"
               value={fontSize}
               onChange={(e) => setFontSize(parseFloat(e.target.value))}
               className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
-              style={{ background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((fontSize - 12) / 12) * 100}%, rgba(255,255,255,0.1) ${((fontSize - 12) / 12) * 100}%)` }}
+              style={{
+                background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((fontSize - 12) / 12) * 100}%, rgba(255,255,255,0.1) ${((fontSize - 12) / 12) * 100}%)`,
+              }}
             />
           </div>
           <div className="space-y-2">
@@ -140,11 +199,16 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
               <span>{lineHeight.toFixed(1)}</span>
             </div>
             <input
-              type="range" min="1.0" max="2.0" step="0.1"
+              type="range"
+              min="1.0"
+              max="2.0"
+              step="0.1"
               value={lineHeight}
               onChange={(e) => setLineHeight(parseFloat(e.target.value))}
               className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
-              style={{ background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((lineHeight - 1.0) / 1.0) * 100}%, rgba(255,255,255,0.1) ${((lineHeight - 1.0) / 1.0) * 100}%)` }}
+              style={{
+                background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((lineHeight - 1.0) / 1.0) * 100}%, rgba(255,255,255,0.1) ${((lineHeight - 1.0) / 1.0) * 100}%)`,
+              }}
             />
           </div>
           <div className="space-y-2">
@@ -155,7 +219,9 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                   key={option.value}
                   onClick={() => setFontFamily(option.value)}
                   className={`py-2 rounded-lg text-sm font-medium transition-colors ${
-                    fontFamily === option.value ? "bg-white/20 text-white" : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                    fontFamily === option.value
+                      ? "bg-white/20 text-white"
+                      : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
                   }`}
                   style={{ fontFamily: option.value }}
                 >
@@ -170,11 +236,16 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
               <span>{fontWeight}</span>
             </div>
             <input
-              type="range" min="300" max="900" step="100"
+              type="range"
+              min="300"
+              max="900"
+              step="100"
               value={fontWeight}
               onChange={(e) => setFontWeight(parseInt(e.target.value))}
               className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
-              style={{ background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((fontWeight - 300) / 600) * 100}%, rgba(255,255,255,0.1) ${((fontWeight - 300) / 600) * 100}%)` }}
+              style={{
+                background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((fontWeight - 300) / 600) * 100}%, rgba(255,255,255,0.1) ${((fontWeight - 300) / 600) * 100}%)`,
+              }}
             />
           </div>
         </div>
@@ -188,7 +259,9 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                 key={option.value}
                 onClick={() => setAnimationType(option.value)}
                 className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${
-                  animationType === option.value ? "bg-white/20 text-white" : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                  animationType === option.value
+                    ? "bg-white/20 text-white"
+                    : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 <option.icon className="w-5 h-5" />
@@ -205,11 +278,16 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
               <span>{animationSpeed.toFixed(1)}x</span>
             </div>
             <input
-              type="range" min="0.5" max="2.0" step="0.1"
+              type="range"
+              min="0.5"
+              max="2.0"
+              step="0.1"
               value={animationSpeed}
               onChange={(e) => setAnimationSpeed(parseFloat(e.target.value))}
               className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
-              style={{ background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((animationSpeed - 0.5) / 1.5) * 100}%, rgba(255,255,255,0.1) ${((animationSpeed - 0.5) / 1.5) * 100}%)` }}
+              style={{
+                background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((animationSpeed - 0.5) / 1.5) * 100}%, rgba(255,255,255,0.1) ${((animationSpeed - 0.5) / 1.5) * 100}%)`,
+              }}
             />
           </div>
           <div className="space-y-2">
@@ -218,11 +296,16 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
               <span>{Math.round(animationIntensity * 100)}%</span>
             </div>
             <input
-              type="range" min="0.5" max="1.5" step="0.1"
+              type="range"
+              min="0.5"
+              max="1.5"
+              step="0.1"
               value={animationIntensity}
               onChange={(e) => setAnimationIntensity(parseFloat(e.target.value))}
               className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
-              style={{ background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((animationIntensity - 0.5) / 1.0) * 100}%, rgba(255,255,255,0.1) ${((animationIntensity - 0.5) / 1.0) * 100}%)` }}
+              style={{
+                background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((animationIntensity - 0.5) / 1.0) * 100}%, rgba(255,255,255,0.1) ${((animationIntensity - 0.5) / 1.0) * 100}%)`,
+              }}
             />
           </div>
         </div>
@@ -236,11 +319,16 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
               <span>{Math.round(opacity * 100)}%</span>
             </div>
             <input
-              type="range" min="0.5" max="1.0" step="0.01"
+              type="range"
+              min="0.5"
+              max="1.0"
+              step="0.01"
               value={opacity}
               onChange={(e) => setOpacity(parseFloat(e.target.value))}
               className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
-              style={{ background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((opacity - 0.5) / 0.5) * 100}%, rgba(255,255,255,0.1) ${((opacity - 0.5) / 0.5) * 100}%)` }}
+              style={{
+                background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((opacity - 0.5) / 0.5) * 100}%, rgba(255,255,255,0.1) ${((opacity - 0.5) / 0.5) * 100}%)`,
+              }}
             />
           </div>
           <div className="space-y-2">
@@ -251,7 +339,9 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                   key={option.value}
                   onClick={() => setAlignment(option.value)}
                   className={`py-2 rounded-lg text-sm font-medium transition-colors ${
-                    alignment === option.value ? "bg-white/20 text-white" : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                    alignment === option.value
+                      ? "bg-white/20 text-white"
+                      : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   <option.icon className="w-5 h-5 mx-auto" />
@@ -269,9 +359,15 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
             { label: "非当前行颜色", value: inactiveLineColor, set: setInactiveLineColor },
             { label: "翻译颜色", value: translationColor, set: setTranslationColor },
           ].map((item) => (
-            <div key={item.label} className="flex items-center justify-between p-3 rounded-xl bg-white/5">
+            <div
+              key={item.label}
+              className="flex items-center justify-between p-3 rounded-xl bg-white/5"
+            >
               <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full border border-white/20" style={{ backgroundColor: item.value }} />
+                <div
+                  className="w-5 h-5 rounded-full border border-white/20"
+                  style={{ backgroundColor: item.value }}
+                />
                 <span className="text-white/80">{item.label}</span>
               </div>
               <input
@@ -304,10 +400,18 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
             <>
               <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
                 <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full border border-white/20" style={{ backgroundColor: textShadowColor }} />
+                  <div
+                    className="w-5 h-5 rounded-full border border-white/20"
+                    style={{ backgroundColor: textShadowColor }}
+                  />
                   <span className="text-white/80">阴影颜色</span>
                 </div>
-                <input type="color" value={textShadowColor} onChange={(e) => setTextShadowColor(e.target.value)} className="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent" />
+                <input
+                  type="color"
+                  value={textShadowColor}
+                  onChange={(e) => setTextShadowColor(e.target.value)}
+                  className="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent"
+                />
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm text-white/80">
@@ -315,11 +419,15 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                   <span>{textShadowBlur}px</span>
                 </div>
                 <input
-                  type="range" min="0" max="50"
+                  type="range"
+                  min="0"
+                  max="50"
                   value={textShadowBlur}
                   onChange={(e) => setTextShadowBlur(parseInt(e.target.value))}
                   className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
-                  style={{ background: `linear-gradient(to right, rgba(255,255,255,0.6) ${(textShadowBlur / 50) * 100}%, rgba(255,255,255,0.1) ${(textShadowBlur / 50) * 100}%)` }}
+                  style={{
+                    background: `linear-gradient(to right, rgba(255,255,255,0.6) ${(textShadowBlur / 50) * 100}%, rgba(255,255,255,0.1) ${(textShadowBlur / 50) * 100}%)`,
+                  }}
                 />
               </div>
             </>
@@ -341,10 +449,18 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
             <>
               <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
                 <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full border border-white/20" style={{ backgroundColor: textStrokeColor }} />
+                  <div
+                    className="w-5 h-5 rounded-full border border-white/20"
+                    style={{ backgroundColor: textStrokeColor }}
+                  />
                   <span className="text-white/80">描边颜色</span>
                 </div>
-                <input type="color" value={textStrokeColor} onChange={(e) => setTextStrokeColor(e.target.value)} className="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent" />
+                <input
+                  type="color"
+                  value={textStrokeColor}
+                  onChange={(e) => setTextStrokeColor(e.target.value)}
+                  className="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent"
+                />
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm text-white/80">
@@ -352,11 +468,16 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                   <span>{textStrokeWidth}px</span>
                 </div>
                 <input
-                  type="range" min="0" max="5" step="0.5"
+                  type="range"
+                  min="0"
+                  max="5"
+                  step="0.5"
                   value={textStrokeWidth}
                   onChange={(e) => setTextStrokeWidth(parseFloat(e.target.value))}
                   className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
-                  style={{ background: `linear-gradient(to right, rgba(255,255,255,0.6) ${(textStrokeWidth / 5) * 100}%, rgba(255,255,255,0.1) ${(textStrokeWidth / 5) * 100}%)` }}
+                  style={{
+                    background: `linear-gradient(to right, rgba(255,255,255,0.6) ${(textStrokeWidth / 5) * 100}%, rgba(255,255,255,0.1) ${(textStrokeWidth / 5) * 100}%)`,
+                  }}
                 />
               </div>
             </>

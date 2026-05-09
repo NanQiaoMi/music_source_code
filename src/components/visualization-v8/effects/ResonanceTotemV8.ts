@@ -18,7 +18,7 @@ export const ResonanceTotemV8: EffectPlugin = {
       min: 0.05,
       max: 0.4,
       step: 0.01,
-      default: 0.2
+      default: 0.2,
     },
     {
       id: "burstIntensity",
@@ -28,7 +28,7 @@ export const ResonanceTotemV8: EffectPlugin = {
       min: 0.1,
       max: 1.0,
       step: 0.1,
-      default: 0.6
+      default: 0.6,
     },
     {
       id: "glitchAmount",
@@ -38,8 +38,8 @@ export const ResonanceTotemV8: EffectPlugin = {
       min: 0,
       max: 1,
       step: 0.05,
-      default: 0.3
-    }
+      default: 0.3,
+    },
   ],
 
   init(ctx: RenderContext) {
@@ -94,12 +94,12 @@ export const ResonanceTotemV8: EffectPlugin = {
       }
     `;
 
-    ctx.private = { 
-      group, 
-      meshes, 
-      vertexShader, 
+    ctx.private = {
+      group,
+      meshes,
+      vertexShader,
       fragmentShader,
-      initialized: true
+      initialized: true,
     };
   },
 
@@ -115,7 +115,7 @@ export const ResonanceTotemV8: EffectPlugin = {
     const burstIntensity = params.burstIntensity ?? 0.6;
 
     // 1. Manage Meshes for active keywords
-    const activeIds = new Set(activeKeywords.map(kw => kw.id));
+    const activeIds = new Set(activeKeywords.map((kw) => kw.id));
 
     // Remove expired meshes
     meshes.forEach((mesh: THREE.Mesh, id: string) => {
@@ -128,7 +128,7 @@ export const ResonanceTotemV8: EffectPlugin = {
     });
 
     // Add new meshes
-    activeKeywords.forEach(kw => {
+    activeKeywords.forEach((kw) => {
       if (!meshes.has(kw.id) && textures[kw.id]) {
         const texture = new THREE.CanvasTexture(textures[kw.id] as any);
         const geometry = new THREE.PlaneGeometry(4, 4);
@@ -140,13 +140,13 @@ export const ResonanceTotemV8: EffectPlugin = {
             uBass: { value: 0 },
             uTreble: { value: 0 },
             uLife: { value: 0 },
-            uBurst: { value: 0 }
+            uBurst: { value: 0 },
           },
           vertexShader,
           fragmentShader,
           transparent: true,
           depthTest: false,
-          blending: THREE.AdditiveBlending
+          blending: THREE.AdditiveBlending,
         });
 
         const mesh = new THREE.Mesh(geometry, material);
@@ -156,7 +156,7 @@ export const ResonanceTotemV8: EffectPlugin = {
           (Math.random() - 0.5) * 2,
           -5 // Deep background
         );
-        
+
         group.add(mesh);
         meshes.set(kw.id, mesh);
       }
@@ -164,32 +164,32 @@ export const ResonanceTotemV8: EffectPlugin = {
 
     // 2. Update mesh uniforms
     const currentTime = audioData.full; // We need global time from ctx
-    
-    activeKeywords.forEach(kw => {
+
+    activeKeywords.forEach((kw) => {
       const mesh = meshes.get(kw.id);
       if (mesh) {
         const material = mesh.material as THREE.ShaderMaterial;
-        
+
         // Calculate lifecycle (normalized 0 to 1)
         const totalDuration = kw.duration + 3; // +3s for emergence
         const startTime = kw.startTime - 3;
         // We need the current music time. For now we assume store's time is updated.
         // Wait, the store doesn't have currentTime. I'll get it from audioData if possible or pass it via context.
         // Since we are in the render loop of the visualizer, we use ctx.time.
-        
+
         // Wait, the totem lifecycle is tied to MUSIC time, not absolute time.
         // I'll use a hack or assume ctx.time is synced with music if possible.
         // Actually, I should pass musicTime to the render function.
-        
+
         // For now, let's use ctx.time but we need to know the offset.
         // Better: the store should be updated by the player.
-        
+
         // Let's assume uLife and uBurst are handled here.
         // We need the actual music time. I'll use the one from useAudioStore.
         // (Accessing store in every frame is okay in small apps, but better to pass it).
-        
+
         const musicTime = (window as any)._currentMusicTime || 0; // Global hack for now or use useAudioStore.getState()
-        
+
         const life = (musicTime - startTime) / totalDuration;
         const burst = Math.max(0, 1.0 - Math.abs(musicTime - kw.startTime) * 2.0); // 0.5s burst window
 
@@ -202,9 +202,9 @@ export const ResonanceTotemV8: EffectPlugin = {
 
         // Bass Pulse: Scale is handled slightly in shader now, but we can do transform too.
         // V2 spec: max +-15% smooth breathing scale.
-        const scale = 1.0 + (audioData.bass * 0.15 * kw.intensity);
+        const scale = 1.0 + audioData.bass * 0.15 * kw.intensity;
         mesh.scale.set(scale, scale, 1);
-        
+
         // Also subtle vertical drift
         const driftY = Math.sin(ctx.time * 0.5 + kw.startTime) * 0.5;
         mesh.position.y = driftY;
@@ -212,8 +212,7 @@ export const ResonanceTotemV8: EffectPlugin = {
     });
   },
 
-  resize(width: number, height: number) {
-  },
+  resize(width: number, height: number) {},
 
   destroy(ctx?: RenderContext) {
     if (ctx && ctx.private && ctx.private.group) {
@@ -224,5 +223,5 @@ export const ResonanceTotemV8: EffectPlugin = {
       });
       ctx.private.meshes.clear();
     }
-  }
+  },
 };

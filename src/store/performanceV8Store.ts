@@ -12,12 +12,12 @@ interface PerformanceState {
   drawCalls: number;
   gpuMemory: number; // 单位: MB
   isWebGLAvailable: boolean;
-  
+
   setPerformanceLevel: (level: PerformanceLevel) => void;
-  updateStats: (stats: { 
-    fps: number; 
-    cpuUsage: number; 
-    memoryUsage: number; 
+  updateStats: (stats: {
+    fps: number;
+    cpuUsage: number;
+    memoryUsage: number;
     drawCalls: number;
     gpuMemory: number;
   }) => void;
@@ -30,29 +30,29 @@ const PERFORMANCE_CONFIGS: Record<PerformanceLevel, PerformanceConfig> = {
     targetFPS: 30,
     maxParticles: 1000,
     postProcessing: false,
-    webglQuality: "low"
+    webglQuality: "low",
   },
   medium: {
     level: "medium",
     targetFPS: 30,
     maxParticles: 3000,
     postProcessing: true,
-    webglQuality: "medium"
+    webglQuality: "medium",
   },
   high: {
     level: "high",
     targetFPS: 60,
     maxParticles: 8000,
     postProcessing: true,
-    webglQuality: "high"
+    webglQuality: "high",
   },
   ultra: {
     level: "ultra",
     targetFPS: 60,
     maxParticles: 20000,
     postProcessing: true,
-    webglQuality: "ultra"
-  }
+    webglQuality: "ultra",
+  },
 };
 
 export const usePerformanceV8Store = create<PerformanceState>()(
@@ -65,27 +65,25 @@ export const usePerformanceV8Store = create<PerformanceState>()(
       drawCalls: 0,
       gpuMemory: 0,
       isWebGLAvailable: typeof WebGLRenderingContext !== "undefined",
-      
-      setPerformanceLevel: (level) => 
-        set({ config: PERFORMANCE_CONFIGS[level] }),
-      
-      updateStats: (stats) => 
-        set({ 
-          fps: stats.fps, 
-          cpuUsage: stats.cpuUsage, 
+
+      setPerformanceLevel: (level) => set({ config: PERFORMANCE_CONFIGS[level] }),
+
+      updateStats: (stats) =>
+        set({
+          fps: stats.fps,
+          cpuUsage: stats.cpuUsage,
           memoryUsage: stats.memoryUsage,
           drawCalls: stats.drawCalls,
-          gpuMemory: stats.gpuMemory
+          gpuMemory: stats.gpuMemory,
         }),
-      
-      setWebGLAvailable: (available) => 
-        set({ isWebGLAvailable: available })
+
+      setWebGLAvailable: (available) => set({ isWebGLAvailable: available }),
     }),
     {
       name: "performance-v8-store",
       partialize: (state) => ({
-        config: state.config
-      })
+        config: state.config,
+      }),
     }
   )
 );

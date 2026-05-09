@@ -37,7 +37,7 @@ export default function LyricsSearchPanel({ isOpen, onClose }: LyricsSearchPanel
     autoMatchLyrics,
   } = useLyricsSearchStore();
 
-  const currentSong = useAudioStore(state => state.currentSong);
+  const currentSong = useAudioStore((state) => state.currentSong);
   const { showToast } = useGlassToast();
 
   const [activeTab, setActiveTab] = useState<"search" | "favorites" | "history">("search");

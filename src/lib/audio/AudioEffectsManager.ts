@@ -55,7 +55,7 @@ export class AudioEffectsManager {
   // 新增：赛博失真
   private cyberpunkDistortion: WaveShaperNode | null = null;
   private cyberpunkFilter: BiquadFilterNode | null = null;
-  
+
   // 新增：低保真电台
   private loFiPhoneHPF: BiquadFilterNode | null = null;
   private loFiPhoneLPF: BiquadFilterNode | null = null;
@@ -89,7 +89,7 @@ export class AudioEffectsManager {
       "phaser",
       "vocalRemove",
       "cyberpunkDistortion",
-      "loFiPhone"
+      "loFiPhone",
     ];
 
     effectTypes.forEach((type) => {
@@ -256,7 +256,7 @@ export class AudioEffectsManager {
     this.cyberpunkFilter.type = "peaking";
     this.cyberpunkFilter.frequency.value = 2500;
     this.cyberpunkFilter.gain.value = 10;
-    
+
     // 低保真电台 (Telephone EQ & Noise)
     this.loFiPhoneHPF = this.context.createBiquadFilter();
     this.loFiPhoneHPF.type = "highpass";
@@ -266,7 +266,7 @@ export class AudioEffectsManager {
     this.loFiPhoneLPF.frequency.value = 2500;
     this.loFiPhoneDistortion = this.context.createWaveShaper();
     this.createDistortionCurve(this.loFiPhoneDistortion, 15);
-    
+
     this.loFiPhoneNoise = this.context.createOscillator();
     this.loFiPhoneNoise.type = "sawtooth";
     this.loFiPhoneNoise.frequency.value = 50; // Low frequency rumble
@@ -363,10 +363,10 @@ export class AudioEffectsManager {
       this.stereoWidenerDelayLeft?.disconnect();
       this.stereoWidenerDelayRight?.disconnect();
       this.tremoloGain?.disconnect();
-      
+
       this.cyberpunkDistortion?.disconnect();
       this.cyberpunkFilter?.disconnect();
-      
+
       this.loFiPhoneHPF?.disconnect();
       this.loFiPhoneLPF?.disconnect();
       this.loFiPhoneDistortion?.disconnect();
@@ -422,12 +422,12 @@ export class AudioEffectsManager {
       this.vocalRemoveGain
     ) {
       const intensity = this.effectIntensities.get("vocalRemove") || 0.8;
-      
+
       // 使用中置频率滤波来削弱人声（人声通常在 200Hz-4000Hz）
       this.vocalRemoveHP.frequency.value = 100 + intensity * 200;
       this.vocalRemoveLP.frequency.value = 5000 - intensity * 2000;
       this.vocalRemoveGain.gain.value = 0.5 + intensity * 0.5;
-      
+
       currentNode.connect(this.vocalRemoveHP);
       this.vocalRemoveHP.connect(this.vocalRemoveLP);
       this.vocalRemoveLP.connect(this.vocalRemoveGain);
@@ -478,7 +478,7 @@ export class AudioEffectsManager {
       this.talkieDistortion.connect(this.talkieLPF);
       currentNode = this.talkieLPF;
     }
-    
+
     // 赛博失真
     if (
       this.effectsEnabled.get("cyberpunkDistortion") &&
@@ -488,12 +488,12 @@ export class AudioEffectsManager {
       const intensity = this.effectIntensities.get("cyberpunkDistortion") || 0.7;
       this.createDistortionCurve(this.cyberpunkDistortion, 50 + intensity * 200);
       this.cyberpunkFilter.gain.value = intensity * 15;
-      
+
       currentNode.connect(this.cyberpunkDistortion);
       this.cyberpunkDistortion.connect(this.cyberpunkFilter);
       currentNode = this.cyberpunkFilter;
     }
-    
+
     // 低保真电台
     if (
       this.effectsEnabled.get("loFiPhone") &&
@@ -505,7 +505,7 @@ export class AudioEffectsManager {
       const intensity = this.effectIntensities.get("loFiPhone") || 0.8;
       this.loFiPhoneHPF.frequency.value = 300 + intensity * 200; // 300-500
       this.loFiPhoneLPF.frequency.value = 3000 - intensity * 1000; // 3000-2000
-      
+
       this.loFiPhoneNoiseGain.gain.value = intensity * 0.05; // Add background static
       this.loFiPhoneNoiseGain.connect(this.destinationNode); // Route static directly
 
@@ -644,7 +644,7 @@ export class AudioEffectsManager {
       "phaser",
       "vocalRemove",
       "cyberpunkDistortion",
-      "loFiPhone"
+      "loFiPhone",
     ];
 
     effectTypes.forEach((type) => {

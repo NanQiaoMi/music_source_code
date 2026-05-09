@@ -14,13 +14,17 @@ export interface AIConfig {
 interface AIState {
   configs: AIConfig[];
   activeConfigId: string | null;
-  
+
+  isEnabled: boolean;
+
   // Actions
   addConfig: (config: Omit<AIConfig, "id" | "status">) => void;
   removeConfig: (id: string) => void;
   updateConfig: (id: string, updates: Partial<AIConfig>) => void;
   setActiveConfig: (id: string | null) => void;
-  
+  toggleEnabled: () => void;
+  setEnabled: (enabled: boolean) => void;
+
   // Test logic
   testConfig: (id: string) => Promise<boolean>;
   fetchModels: (id: string) => Promise<string[]>;
@@ -31,6 +35,7 @@ export const useAIStore = create<AIState>()(
     (set, get) => ({
       configs: [],
       activeConfigId: null,
+      isEnabled: true,
 
       addConfig: (config) => {
         const id = Math.random().toString(36).substring(2, 11);
@@ -53,6 +58,10 @@ export const useAIStore = create<AIState>()(
       },
 
       setActiveConfig: (id) => set({ activeConfigId: id }),
+
+      toggleEnabled: () => set((state) => ({ isEnabled: !state.isEnabled })),
+
+      setEnabled: (enabled) => set({ isEnabled: enabled }),
 
       testConfig: async (id) => {
         const config = get().configs.find((c) => c.id === id);

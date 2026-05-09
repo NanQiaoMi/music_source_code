@@ -2,13 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  ChevronDown,
-  Sparkles,
-  Sliders,
-  Gauge,
-  X,
-} from "lucide-react";
+import { ChevronDown, Sparkles, Sliders, Gauge, X } from "lucide-react";
 import { EffectPlugin, EffectCategory } from "@/lib/visualization/types";
 
 interface VisualControlDrawerProps {
@@ -33,7 +27,7 @@ const APPLE_SPRING_CONFIG = {
   stiffness: 400,
   damping: 35,
   mass: 1,
-  bounce: 0
+  bounce: 0,
 };
 
 const ACCORDION_VARIANTS = {
@@ -41,15 +35,15 @@ const ACCORDION_VARIANTS = {
   visible: {
     height: "auto",
     opacity: 1,
-    transition: APPLE_SPRING_CONFIG
+    transition: APPLE_SPRING_CONFIG,
   },
-  exit: { height: 0, opacity: 0, transition: APPLE_SPRING_CONFIG }
+  exit: { height: 0, opacity: 0, transition: APPLE_SPRING_CONFIG },
 };
 
 const CONTENT_VARIANTS = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { delay: 0.1, ...APPLE_SPRING_CONFIG } },
-  exit: { opacity: 0, transition: APPLE_SPRING_CONFIG }
+  exit: { opacity: 0, transition: APPLE_SPRING_CONFIG },
 };
 
 function AccordionSection({
@@ -75,10 +69,7 @@ function AccordionSection({
           {icon}
           <span className="text-sm font-medium">{title}</span>
         </div>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={APPLE_SPRING_CONFIG}
-        >
+        <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={APPLE_SPRING_CONFIG}>
           <ChevronDown className="w-4 h-4 text-white/40" />
         </motion.div>
       </button>
@@ -118,8 +109,6 @@ export function VisualControlDrawer({
     particles: effects.filter((e) => ["particles", "geometry", "space"].includes(e.category)),
   };
 
-
-
   const currentEffect = effects.find((e) => e.id === currentEffectId);
   const currentParams = effectParams[currentEffectId] || {};
 
@@ -149,9 +138,7 @@ export function VisualControlDrawer({
             className="fixed right-0 top-0 bottom-0 w-[380px] bg-[#0a0a0c]/80 backdrop-blur-[64px] backdrop-saturate-[180%] border-l border-white/10 z-50 flex flex-col shadow-[-20px_0_60px_rgba(0,0,0,0.5)]"
           >
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.08]">
-              <h2 className="text-lg font-semibold text-white tracking-tight">
-                视觉效果
-              </h2>
+              <h2 className="text-lg font-semibold text-white tracking-tight">视觉效果</h2>
               <button
                 onClick={onClose}
                 className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
@@ -232,15 +219,13 @@ export function VisualControlDrawer({
                     .map((param) => (
                       <div key={param.id} className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <label className="text-sm text-white/70">
-                            {param.name}
-                          </label>
+                          <label className="text-sm text-white/70">{param.name}</label>
                           <span className="text-xs text-white/40 tabular-nums font-medium">
-                            {typeof currentParams[param.id] === 'number'
+                            {typeof currentParams[param.id] === "number"
                               ? (currentParams[param.id] ?? param.default).toFixed(
                                   param.step && param.step < 1 ? 2 : 0
                                 )
-                              : currentParams[param.id] ?? param.default}
+                              : (currentParams[param.id] ?? param.default)}
                           </span>
                         </div>
 
@@ -250,7 +235,7 @@ export function VisualControlDrawer({
                               className="absolute top-0 left-0 h-full bg-gradient-to-r from-white/60 to-white rounded-full"
                               initial={false}
                               animate={{
-                                width: `${((currentParams[param.id] ?? param.default) - (param.min ?? 0)) / ((param.max ?? 100) - (param.min ?? 0)) * 100}%`
+                                width: `${(((currentParams[param.id] ?? param.default) - (param.min ?? 0)) / ((param.max ?? 100) - (param.min ?? 0))) * 100}%`,
                               }}
                               transition={APPLE_SPRING_CONFIG}
                             />
@@ -261,11 +246,7 @@ export function VisualControlDrawer({
                               step={param.step ?? 1}
                               value={currentParams[param.id] ?? param.default}
                               onChange={(e) =>
-                                onParamChange(
-                                  currentEffectId,
-                                  param.id,
-                                  parseFloat(e.target.value)
-                                )
+                                onParamChange(currentEffectId, param.id, parseFloat(e.target.value))
                               }
                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
@@ -279,11 +260,7 @@ export function VisualControlDrawer({
                                 type="color"
                                 value={currentParams[param.id] ?? param.default}
                                 onChange={(e) =>
-                                  onParamChange(
-                                    currentEffectId,
-                                    param.id,
-                                    e.target.value
-                                  )
+                                  onParamChange(currentEffectId, param.id, e.target.value)
                                 }
                                 className="absolute inset-0 w-full h-full cursor-pointer"
                               />
@@ -297,11 +274,7 @@ export function VisualControlDrawer({
                         {param.type === "boolean" && (
                           <button
                             onClick={() =>
-                              onParamChange(
-                                currentEffectId,
-                                param.id,
-                                !currentParams[param.id]
-                              )
+                              onParamChange(currentEffectId, param.id, !currentParams[param.id])
                             }
                             className={`
                               w-12 h-6 rounded-full transition-all relative
@@ -312,7 +285,11 @@ export function VisualControlDrawer({
                               className="absolute top-0.5 w-5 h-5 rounded-full shadow transition-all"
                               animate={{ left: currentParams[param.id] ? "26px" : "2px" }}
                               transition={APPLE_SPRING_CONFIG}
-                              style={{ background: currentParams[param.id] ? "#000" : "rgba(255,255,255,0.6)" }}
+                              style={{
+                                background: currentParams[param.id]
+                                  ? "#000"
+                                  : "rgba(255,255,255,0.6)",
+                              }}
                             />
                           </button>
                         )}
@@ -321,11 +298,7 @@ export function VisualControlDrawer({
                           <select
                             value={currentParams[param.id] ?? param.default}
                             onChange={(e) =>
-                              onParamChange(
-                                currentEffectId,
-                                param.id,
-                                e.target.value
-                              )
+                              onParamChange(currentEffectId, param.id, e.target.value)
                             }
                             className="w-full px-3 py-2.5 rounded-xl bg-white/[0.08] border border-white/10 text-white text-sm appearance-none cursor-pointer"
                           >
@@ -343,20 +316,14 @@ export function VisualControlDrawer({
                       </div>
                     ))}
 
-                  {currentEffect?.parameters.filter((p) =>
-                    shouldShowParam(p.mode)
-                  ).length === 0 && (
-                    <p className="text-sm text-white/30 text-center py-6">
-                      当前模式无可调参数
-                    </p>
+                  {currentEffect?.parameters.filter((p) => shouldShowParam(p.mode)).length ===
+                    0 && (
+                    <p className="text-sm text-white/30 text-center py-6">当前模式无可调参数</p>
                   )}
                 </div>
               </AccordionSection>
 
-              <AccordionSection
-                title="性能监控"
-                icon={<Gauge className="w-4 h-4" />}
-              >
+              <AccordionSection title="性能监控" icon={<Gauge className="w-4 h-4" />}>
                 {performanceStats ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -366,8 +333,8 @@ export function VisualControlDrawer({
                           performanceStats.fps >= 55
                             ? "text-emerald-400"
                             : performanceStats.fps >= 30
-                            ? "text-amber-400"
-                            : "text-rose-400"
+                              ? "text-amber-400"
+                              : "text-rose-400"
                         }`}
                       >
                         {performanceStats.fps.toFixed(0)} FPS
@@ -379,21 +346,17 @@ export function VisualControlDrawer({
                         {performanceStats.memory.toFixed(0)} MB
                       </span>
                     </div>
-                    <motion.div
-                        className="h-1.5 bg-white/10 rounded-full overflow-hidden"
-                      >
-                        <motion.div
-                          className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full"
-                          initial={false}
-                          animate={{ width: `${Math.min(100, performanceStats.cpu || 0)}%` }}
-                          transition={APPLE_SPRING_CONFIG}
-                        />
-                      </motion.div>
+                    <motion.div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full"
+                        initial={false}
+                        animate={{ width: `${Math.min(100, performanceStats.cpu || 0)}%` }}
+                        transition={APPLE_SPRING_CONFIG}
+                      />
+                    </motion.div>
                   </div>
                 ) : (
-                  <p className="text-sm text-white/30 text-center py-6">
-                    性能数据不可用
-                  </p>
+                  <p className="text-sm text-white/30 text-center py-6">性能数据不可用</p>
                 )}
               </AccordionSection>
             </div>

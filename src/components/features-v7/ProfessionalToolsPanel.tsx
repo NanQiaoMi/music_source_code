@@ -18,17 +18,23 @@ interface ProfessionalToolsPanelProps {
   onOpenLibraryHealth: () => void;
 }
 
-type ToolSection = "overview" | "health-check" | "format-converter" | "cue-cutter" | "fingerprint" | "ai-settings";
+type ToolSection =
+  | "overview"
+  | "health-check"
+  | "format-converter"
+  | "cue-cutter"
+  | "fingerprint"
+  | "ai-settings";
 
-export function ProfessionalToolsPanel({ 
-  isOpen, 
+export function ProfessionalToolsPanel({
+  isOpen,
   onClose,
   onOpenFormatConverter,
   onOpenTrackCutter,
   onOpenFingerprintScanner,
   onOpenDSDConverter,
   onOpenCrossfadeMixer,
-  onOpenLibraryHealth
+  onOpenLibraryHealth,
 }: ProfessionalToolsPanelProps) {
   const { currentView } = useUIStore();
   const { isProfessionalMode, enabledFeatures, isFeatureEnabled } = useProfessionalModeStore();
@@ -179,9 +185,7 @@ export function ProfessionalToolsPanel({
                         <h3 className="text-white font-semibold mb-1">{tool.name}</h3>
                         <p className="text-white/60 text-sm">{tool.description}</p>
                       </div>
-                      {tool.enabled && (
-                        <div className="w-2 h-2 rounded-full bg-green-400" />
-                      )}
+                      {tool.enabled && <div className="w-2 h-2 rounded-full bg-green-400" />}
                     </div>
                   </motion.button>
                 ))}

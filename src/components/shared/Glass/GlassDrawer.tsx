@@ -33,9 +33,9 @@ interface GlassDrawerProps {
 }
 
 const heightStyles: Record<DrawerHeight, string> = {
-  auto:  "max-h-[80vh]",
-  half:  "h-[50vh]",
-  full:  "h-[90vh]",
+  auto: "max-h-[80vh]",
+  half: "h-[50vh]",
+  full: "h-[90vh]",
 };
 
 export function GlassDrawer({
@@ -76,12 +76,12 @@ export function GlassDrawer({
             exit={{ y: "100%", opacity: 0 }}
             transition={{
               duration: 0.4,
-              ease: [0.23, 1, 0.32, 1]
+              ease: [0.23, 1, 0.32, 1],
             }}
-            style={{ 
+            style={{
               borderRadius: "12px 12px 0 0",
               willChange: "transform, opacity",
-              backfaceVisibility: "hidden"
+              backfaceVisibility: "hidden",
             }}
           >
             {/* Drag handle — Apple style */}
@@ -92,9 +92,7 @@ export function GlassDrawer({
             {/* Header */}
             <div className="relative flex items-center justify-between px-5 pt-2 pb-3">
               {title && (
-                <h2 className="text-[17px] font-semibold text-white tracking-[-0.01em]">
-                  {title}
-                </h2>
+                <h2 className="text-[17px] font-semibold text-white tracking-[-0.01em]">{title}</h2>
               )}
               <div className="flex items-center gap-2 ml-auto">
                 {headerRight}
@@ -122,9 +120,7 @@ export function GlassDrawer({
             <div className="h-px bg-white/[0.08] mx-5" />
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain">
-              {children}
-            </div>
+            <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain">{children}</div>
 
             {/* Footer */}
             {footer && (

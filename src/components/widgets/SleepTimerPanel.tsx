@@ -20,8 +20,14 @@ const TIMER_OPTIONS = [
 
 export function SleepTimerPanel({ isOpen, onClose }: SleepTimerPanelProps) {
   const {
-    minutes, remainingSeconds, isActive,
-    setTimer, startTimer, pauseTimer, resumeTimer, cancelTimer,
+    minutes,
+    remainingSeconds,
+    isActive,
+    setTimer,
+    startTimer,
+    pauseTimer,
+    resumeTimer,
+    cancelTimer,
   } = useSleepTimerStore();
 
   const handleSelectTimer = (value: number) => {
@@ -59,9 +65,7 @@ export function SleepTimerPanel({ isOpen, onClose }: SleepTimerPanelProps) {
             <div className="text-[42px] font-bold text-white font-mono tabular-nums tracking-tight">
               {formatSleepTime(remainingSeconds)}
             </div>
-            <p className="text-white/40 text-[12px] mt-1">
-              {isActive ? "运行中" : "已暂停"}
-            </p>
+            <p className="text-white/40 text-[12px] mt-1">{isActive ? "运行中" : "已暂停"}</p>
           </motion.div>
         )}
 
@@ -91,9 +95,13 @@ export function SleepTimerPanel({ isOpen, onClose }: SleepTimerPanelProps) {
               className="flex-1 py-3 rounded-xl bg-white text-black text-[13px] font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
             >
               {isActive ? (
-                <><Pause className="w-4 h-4" /> 暂停</>
+                <>
+                  <Pause className="w-4 h-4" /> 暂停
+                </>
               ) : (
-                <><Play className="w-4 h-4" /> {remainingSeconds > 0 ? "继续" : "开始"}</>
+                <>
+                  <Play className="w-4 h-4" /> {remainingSeconds > 0 ? "继续" : "开始"}
+                </>
               )}
             </button>
             <button

@@ -17,7 +17,7 @@ export const SpaceGridV8Effect: EffectPlugin = {
       min: 10,
       max: 50,
       step: 5,
-      default: 20
+      default: 20,
     },
     {
       id: "waveHeight",
@@ -27,7 +27,7 @@ export const SpaceGridV8Effect: EffectPlugin = {
       min: 0,
       max: 100,
       step: 5,
-      default: 50
+      default: 50,
     },
     {
       id: "waveSpeed",
@@ -37,7 +37,7 @@ export const SpaceGridV8Effect: EffectPlugin = {
       min: 0,
       max: 5,
       step: 0.1,
-      default: 2
+      default: 2,
     },
     {
       id: "rotationSpeed",
@@ -47,7 +47,7 @@ export const SpaceGridV8Effect: EffectPlugin = {
       min: -1,
       max: 1,
       step: 0.05,
-      default: 0.3
+      default: 0.3,
     },
     {
       id: "audioIntensity",
@@ -57,21 +57,21 @@ export const SpaceGridV8Effect: EffectPlugin = {
       min: 0,
       max: 3,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "color1",
       name: "主颜色",
       type: "color",
       mode: "basic",
-      default: "#00ffff"
+      default: "#00ffff",
     },
     {
       id: "color2",
       name: "辅助颜色",
       type: "color",
       mode: "professional",
-      default: "#ff00ff"
+      default: "#ff00ff",
     },
     {
       id: "lineWidth",
@@ -81,7 +81,7 @@ export const SpaceGridV8Effect: EffectPlugin = {
       min: 0.5,
       max: 5,
       step: 0.5,
-      default: 1.5
+      default: 1.5,
     },
     {
       id: "perspective",
@@ -91,7 +91,7 @@ export const SpaceGridV8Effect: EffectPlugin = {
       min: 100,
       max: 1000,
       step: 50,
-      default: 400
+      default: 400,
     },
     {
       id: "fillMode",
@@ -102,19 +102,19 @@ export const SpaceGridV8Effect: EffectPlugin = {
       options: [
         { label: "不填充", value: "none" },
         { label: "渐变填充", value: "gradient" },
-        { label: "纯色填充", value: "solid" }
-      ]
-    }
+        { label: "纯色填充", value: "solid" },
+      ],
+    },
   ],
   private: {
-    time: 0
+    time: 0,
   },
   init(ctx) {
     (this as any).private.time = 0;
   },
   render(ctx, audioData, params) {
     if (!ctx.ctx || !ctx.canvas) return;
-    
+
     const canvas = ctx.canvas;
     const context = ctx.ctx;
     const width = canvas.width;
@@ -152,14 +152,14 @@ export const SpaceGridV8Effect: EffectPlugin = {
     for (let z = -gridSize / 2; z <= gridSize / 2; z++) {
       context.beginPath();
       let first = true;
-      
+
       for (let x = -gridSize / 2; x <= gridSize / 2; x++) {
         const wavePhase = (this as any).private.time * params.waveSpeed;
         const wave = Math.sin(x * 0.3 + wavePhase) * Math.cos(z * 0.3 + wavePhase * 0.7);
         const y = wave * params.waveHeight * audioMultiplier;
-        
+
         const projected = project3D(x * spacing, y, z * spacing, perspective);
-        
+
         if (first) {
           context.moveTo(projected.x, projected.y);
           first = false;
@@ -173,14 +173,14 @@ export const SpaceGridV8Effect: EffectPlugin = {
     for (let x = -gridSize / 2; x <= gridSize / 2; x++) {
       context.beginPath();
       let first = true;
-      
+
       for (let z = -gridSize / 2; z <= gridSize / 2; z++) {
         const wavePhase = (this as any).private.time * params.waveSpeed;
         const wave = Math.sin(x * 0.3 + wavePhase) * Math.cos(z * 0.3 + wavePhase * 0.7);
         const y = wave * params.waveHeight * audioMultiplier;
-        
+
         const projected = project3D(x * spacing, y, z * spacing, perspective);
-        
+
         if (first) {
           context.moveTo(projected.x, projected.y);
           first = false;
@@ -193,28 +193,44 @@ export const SpaceGridV8Effect: EffectPlugin = {
 
     if (params.fillMode !== "none") {
       context.globalAlpha = 0.2;
-      
+
       for (let z = -gridSize / 2; z < gridSize / 2; z++) {
         for (let x = -gridSize / 2; x < gridSize / 2; x++) {
           const wavePhase = (this as any).private.time * params.waveSpeed;
-          
-          const y1 = Math.sin(x * 0.3 + wavePhase) * Math.cos(z * 0.3 + wavePhase * 0.7) * params.waveHeight * audioMultiplier;
-          const y2 = Math.sin((x + 1) * 0.3 + wavePhase) * Math.cos(z * 0.3 + wavePhase * 0.7) * params.waveHeight * audioMultiplier;
-          const y3 = Math.sin((x + 1) * 0.3 + wavePhase) * Math.cos((z + 1) * 0.3 + wavePhase * 0.7) * params.waveHeight * audioMultiplier;
-          const y4 = Math.sin(x * 0.3 + wavePhase) * Math.cos((z + 1) * 0.3 + wavePhase * 0.7) * params.waveHeight * audioMultiplier;
-          
+
+          const y1 =
+            Math.sin(x * 0.3 + wavePhase) *
+            Math.cos(z * 0.3 + wavePhase * 0.7) *
+            params.waveHeight *
+            audioMultiplier;
+          const y2 =
+            Math.sin((x + 1) * 0.3 + wavePhase) *
+            Math.cos(z * 0.3 + wavePhase * 0.7) *
+            params.waveHeight *
+            audioMultiplier;
+          const y3 =
+            Math.sin((x + 1) * 0.3 + wavePhase) *
+            Math.cos((z + 1) * 0.3 + wavePhase * 0.7) *
+            params.waveHeight *
+            audioMultiplier;
+          const y4 =
+            Math.sin(x * 0.3 + wavePhase) *
+            Math.cos((z + 1) * 0.3 + wavePhase * 0.7) *
+            params.waveHeight *
+            audioMultiplier;
+
           const p1 = project3D(x * spacing, y1, z * spacing, perspective);
           const p2 = project3D((x + 1) * spacing, y2, z * spacing, perspective);
           const p3 = project3D((x + 1) * spacing, y3, (z + 1) * spacing, perspective);
           const p4 = project3D(x * spacing, y4, (z + 1) * spacing, perspective);
-          
+
           context.beginPath();
           context.moveTo(p1.x, p1.y);
           context.lineTo(p2.x, p2.y);
           context.lineTo(p3.x, p3.y);
           context.lineTo(p4.x, p4.y);
           context.closePath();
-          
+
           if (params.fillMode === "gradient") {
             const fillGradient = context.createLinearGradient(p1.x, p1.y, p3.x, p3.y);
             fillGradient.addColorStop(0, params.color1);
@@ -225,7 +241,7 @@ export const SpaceGridV8Effect: EffectPlugin = {
             const hue = 180 + (depth / params.waveHeight) * 60;
             context.fillStyle = `hsl(${hue}, 80%, 50%)`;
           }
-          
+
           context.fill();
         }
       }
@@ -239,13 +255,13 @@ export const SpaceGridV8Effect: EffectPlugin = {
     if (ctx && ctx.private) {
       ctx.private.time = 0;
     }
-  }
+  },
 };
 
 function project3D(x: number, y: number, z: number, perspective: number) {
   const scale = perspective / (perspective + z + 500);
   return {
     x: x * scale,
-    y: y * scale
+    y: y * scale,
   };
 }

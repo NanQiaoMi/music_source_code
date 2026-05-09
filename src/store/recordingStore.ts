@@ -7,7 +7,7 @@ interface RecordingState {
   recordingTime: number;
   videoBlob: Blob | null;
   videoUrl: string | null;
-  
+
   startRecording: () => void;
   stopRecording: () => void;
   setRecordingTime: (time: number | ((prev: number) => number)) => void;
@@ -23,14 +23,14 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
   videoUrl: null,
 
   startRecording: () => set({ status: "recording", recordingTime: 0 }),
-  
+
   stopRecording: () => set({ status: "processing" }),
-  
-  setRecordingTime: (time) => 
-    set((state) => ({ 
-      recordingTime: typeof time === 'function' ? time(state.recordingTime) : time 
+
+  setRecordingTime: (time) =>
+    set((state) => ({
+      recordingTime: typeof time === "function" ? time(state.recordingTime) : time,
     })),
-  
+
   setVideoBlob: (blob) => {
     let videoUrl = null;
     if (blob) {
@@ -38,7 +38,7 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
     }
     set({ videoBlob: blob, videoUrl, status: blob ? "ready" : "idle" });
   },
-  
+
   clearRecording: () => {
     const { videoUrl } = get();
     if (videoUrl) {
@@ -46,7 +46,7 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
     }
     set({ status: "idle", recordingTime: 0, videoBlob: null, videoUrl: null });
   },
-  
+
   downloadRecording: () => {
     const { videoBlob } = get();
     if (videoBlob) {

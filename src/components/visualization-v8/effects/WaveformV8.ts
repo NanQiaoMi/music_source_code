@@ -18,7 +18,7 @@ export const WaveformV8Effect: EffectPlugin = {
       min: 1,
       max: 5,
       step: 1,
-      default: 3
+      default: 3,
     },
     {
       id: "amplitude",
@@ -28,7 +28,7 @@ export const WaveformV8Effect: EffectPlugin = {
       min: 0.3,
       max: 2,
       step: 0.1,
-      default: 0.8
+      default: 0.8,
     },
     {
       id: "lineWidth",
@@ -38,14 +38,14 @@ export const WaveformV8Effect: EffectPlugin = {
       min: 1,
       max: 8,
       step: 0.5,
-      default: 2.5
+      default: 2.5,
     },
     {
       id: "color",
       name: "颜色",
       type: "color",
       mode: "basic",
-      default: "#60a5fa"
+      default: "#60a5fa",
     },
     {
       id: "glowIntensity",
@@ -55,7 +55,7 @@ export const WaveformV8Effect: EffectPlugin = {
       min: 0,
       max: 8,
       step: 0.5,
-      default: 3
+      default: 3,
     },
     {
       id: "smoothing",
@@ -65,7 +65,7 @@ export const WaveformV8Effect: EffectPlugin = {
       min: 0.1,
       max: 0.95,
       step: 0.05,
-      default: 0.75
+      default: 0.75,
     },
     {
       id: "bassResponse",
@@ -75,8 +75,8 @@ export const WaveformV8Effect: EffectPlugin = {
       min: 0.5,
       max: 3,
       step: 0.1,
-      default: 1.5
-    }
+      default: 1.5,
+    },
   ],
 
   init: (ctx) => {
@@ -97,7 +97,7 @@ export const WaveformV8Effect: EffectPlugin = {
       color = "#60a5fa",
       glowIntensity = 3,
       smoothing = 0.75,
-      bassResponse = 1.5
+      bassResponse = 1.5,
     } = params;
 
     context.globalCompositeOperation = "screen";
@@ -110,7 +110,7 @@ export const WaveformV8Effect: EffectPlugin = {
     if (!ctx.private.smoothedData) {
       ctx.private.smoothedData = new Float32Array(256).fill(128);
     }
-    
+
     ctx.private.time += ctx.deltaTime;
 
     const rawData = audioData.waveformData
@@ -136,7 +136,7 @@ export const WaveformV8Effect: EffectPlugin = {
       const waveProgress = wave / (waveCount - 1 || 1);
       const offsetY = (wave - (waveCount - 1) / 2) * (canvas.height * 0.12);
       const centerY = canvas.height / 2 + offsetY;
-      const scaleY = (canvas.height * 0.35) * amplitude * bassBoost;
+      const scaleY = canvas.height * 0.35 * amplitude * bassBoost;
 
       const phaseOffset = wave * 0.4;
       const frequencyMultiplier = 1 + wave * 0.3;
@@ -175,10 +175,10 @@ export const WaveformV8Effect: EffectPlugin = {
           const p2 = points[Math.min(points.length - 1, i + 1)];
           const p3 = points[Math.min(points.length - 1, i + 2)];
 
-          const cp1x = p1.x + (p2.x - p0.x) / 6 * frequencyMultiplier;
-          const cp1y = p1.y + (p2.y - p0.y) / 6 * frequencyMultiplier;
-          const cp2x = p2.x - (p3.x - p1.x) / 6 * frequencyMultiplier;
-          const cp2y = p2.y - (p3.y - p1.y) / 6 * frequencyMultiplier;
+          const cp1x = p1.x + ((p2.x - p0.x) / 6) * frequencyMultiplier;
+          const cp1y = p1.y + ((p2.y - p0.y) / 6) * frequencyMultiplier;
+          const cp2x = p2.x - ((p3.x - p1.x) / 6) * frequencyMultiplier;
+          const cp2y = p2.y - ((p3.y - p1.y) / 6) * frequencyMultiplier;
 
           context.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
         }
@@ -209,5 +209,5 @@ export const WaveformV8Effect: EffectPlugin = {
       ctx.private.time = 0;
     }
     console.log("WaveformV8 effect destroyed");
-  }
+  },
 };

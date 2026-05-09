@@ -22,20 +22,20 @@ interface FloatingPlayerProps {
 }
 
 export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
-  const isPlaying = useAudioStore(state => state.isPlaying);
-  const currentTime = useAudioStore(state => state.currentTime);
-  const duration = useAudioStore(state => state.duration);
-  const volume = useAudioStore(state => state.volume);
-  const isMuted = useAudioStore(state => state.isMuted);
-  const currentSong = useAudioStore(state => state.currentSong);
-  const isLoading = useAudioStore(state => state.isLoading);
-  const setIsPlaying = useAudioStore(state => state.setIsPlaying);
-  const prevSong = useAudioStore(state => state.prevSong);
-  const nextSong = useAudioStore(state => state.nextSong);
-  const setVolume = useAudioStore(state => state.setVolume);
-  const toggleMute = useAudioStore(state => state.toggleMute);
-  const loopMode = useAudioStore(state => state.loopMode);
-  const setLoopMode = useAudioStore(state => state.setLoopMode);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const currentTime = useAudioStore((state) => state.currentTime);
+  const duration = useAudioStore((state) => state.duration);
+  const volume = useAudioStore((state) => state.volume);
+  const isMuted = useAudioStore((state) => state.isMuted);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const isLoading = useAudioStore((state) => state.isLoading);
+  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const prevSong = useAudioStore((state) => state.prevSong);
+  const nextSong = useAudioStore((state) => state.nextSong);
+  const setVolume = useAudioStore((state) => state.setVolume);
+  const toggleMute = useAudioStore((state) => state.toggleMute);
+  const loopMode = useAudioStore((state) => state.loopMode);
+  const setLoopMode = useAudioStore((state) => state.setLoopMode);
 
   const { setCurrentView } = useUIStore();
   const { isFeatureEnabled } = useProfessionalModeStore();
@@ -55,18 +55,21 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
     positionRef.current = position;
   }, [position]);
 
-  const clampPosition = useCallback((x: number, y: number) => {
-    const padding = 16;
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-    const playerWidth = 360;
-    const playerHeight = isExpanded ? 480 : 72;
+  const clampPosition = useCallback(
+    (x: number, y: number) => {
+      const padding = 16;
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+      const playerWidth = 360;
+      const playerHeight = isExpanded ? 480 : 72;
 
-    return {
-      x: Math.max(padding, Math.min(x, windowWidth - playerWidth - padding)),
-      y: Math.max(padding, Math.min(y, windowHeight - playerHeight - padding)),
-    };
-  }, [isExpanded]);
+      return {
+        x: Math.max(padding, Math.min(x, windowWidth - playerWidth - padding)),
+        y: Math.max(padding, Math.min(y, windowHeight - playerHeight - padding)),
+      };
+    },
+    [isExpanded]
+  );
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -151,26 +154,32 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, [isExpanded, clampPosition]);
 
-  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    if (!duration) return;
+  const handleProgressClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.stopPropagation();
+      if (!duration) return;
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = x / rect.width;
-    const newTime = percentage * duration;
-    useAudioStore.getState().seekTo(newTime);
-  }, [duration]);
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const percentage = x / rect.width;
+      const newTime = percentage * duration;
+      useAudioStore.getState().seekTo(newTime);
+    },
+    [duration]
+  );
 
-  const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    setVolume(parseFloat(e.target.value));
-  }, [setVolume]);
+  const handleVolumeChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      setVolume(parseFloat(e.target.value));
+    },
+    [setVolume]
+  );
 
   if (!currentSong) return null;
 
-  const progressPercent = duration > 0 && !isNaN(currentTime) && !isNaN(duration) 
-    ? (currentTime / duration) * 100 : 0;
+  const progressPercent =
+    duration > 0 && !isNaN(currentTime) && !isNaN(duration) ? (currentTime / duration) * 100 : 0;
 
   return (
     <div
@@ -218,9 +227,7 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
               }}
             >
               <div className="relative w-full h-full rounded-xl overflow-hidden shadow-lg bg-black/40">
-                <div
-                  className={`absolute inset-0 ${isPlaying ? "animate-spin-slow" : ""}`}
-                >
+                <div className={`absolute inset-0 ${isPlaying ? "animate-spin-slow" : ""}`}>
                   <Image
                     src={currentSong.cover}
                     alt={currentSong.title}
@@ -263,15 +270,10 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
               <h4 className="text-white font-semibold text-sm truncate tracking-tight">
                 {currentSong.title}
               </h4>
-              <p className="text-white/[0.55] text-xs truncate mt-0.5">
-                {currentSong.artist}
-              </p>
+              <p className="text-white/[0.55] text-xs truncate mt-0.5">{currentSong.artist}</p>
             </div>
 
-            <div
-              className="flex items-center gap-1"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={prevSong}
                 className="w-9 h-9 flex items-center justify-center text-white/60 hover:text-white transition-colors rounded-full hover:bg-white/[0.08]"
@@ -427,9 +429,17 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
                       setLoopMode(modes[nextIndex]);
                     }}
                     className={`transition-all ${
-                      (loopMode === "all" || loopMode === "single") ? "text-white" : "text-white/40 hover:text-white/60"
+                      loopMode === "all" || loopMode === "single"
+                        ? "text-white"
+                        : "text-white/40 hover:text-white/60"
                     }`}
-                    title={loopMode === "single" ? "单曲循环" : loopMode === "all" ? "列表循环" : "顺序播放"}
+                    title={
+                      loopMode === "single"
+                        ? "单曲循环"
+                        : loopMode === "all"
+                          ? "列表循环"
+                          : "顺序播放"
+                    }
                   >
                     {loopMode === "single" ? (
                       <Repeat1 className="w-4 h-4" />

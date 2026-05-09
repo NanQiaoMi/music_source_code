@@ -29,21 +29,24 @@ self.onmessage = async (event: MessageEvent<TotemTextureMessage>) => {
 
     // Setup text style based on Resonance Totem V2 spec
     // Minimalist, Swiss Editorial, High-End Precision
-    const fontFamily = style === "serif" ? "'EB Garamond', 'Times New Roman', serif" : "'Inter', 'Helvetica Neue', sans-serif";
-    
+    const fontFamily =
+      style === "serif"
+        ? "'EB Garamond', 'Times New Roman', serif"
+        : "'Inter', 'Helvetica Neue', sans-serif";
+
     // Italic 300 weight for V2
     ctx.font = `italic 300 80px ${fontFamily}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
     // Warm White OKLCH equivalent (approximate for canvas)
-    ctx.fillStyle = "#faf9f6"; 
-    
+    ctx.fillStyle = "#faf9f6";
+
     // REMOVE cheap shadows and gradients per V2 spec
     ctx.shadowBlur = 0;
-    
+
     // Draw text with tracking (if supported, otherwise default)
-    if ('letterSpacing' in ctx) {
+    if ("letterSpacing" in ctx) {
       (ctx as any).letterSpacing = "8px";
     }
 
@@ -54,7 +57,7 @@ self.onmessage = async (event: MessageEvent<TotemTextureMessage>) => {
     const response: TotemTextureResponse = {
       type: "texture-generated",
       id,
-      bitmap
+      bitmap,
     };
 
     self.postMessage(response, [bitmap]);

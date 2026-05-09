@@ -10,24 +10,19 @@ interface PresetManagerPanelProps {
 }
 
 export function PresetManagerPanel({ onClose }: PresetManagerPanelProps) {
-  const { 
-    presets, 
-    currentPresetId, 
+  const {
+    presets,
+    currentPresetId,
     loadSystemPresets,
     addPreset,
     setCurrentPreset,
     toggleFavorite,
     deletePreset,
     exportPreset,
-    importPreset
+    importPreset,
   } = usePresetStore();
-  
-  const { 
-    currentEffect, 
-    effectParams, 
-    currentEffectId,
-    updateParam
-  } = useVisualizationV8();
+
+  const { currentEffect, effectParams, currentEffectId, updateParam } = useVisualizationV8();
 
   useEffect(() => {
     if (presets.length === 0) {
@@ -35,18 +30,18 @@ export function PresetManagerPanel({ onClose }: PresetManagerPanelProps) {
     }
   }, [presets.length, loadSystemPresets]);
 
-  const filteredPresets = currentEffect 
-    ? presets.filter(p => p.effectId === currentEffect.id)
+  const filteredPresets = currentEffect
+    ? presets.filter((p) => p.effectId === currentEffect.id)
     : [];
 
-  const favorites = filteredPresets.filter(p => p.isFavorite);
-  const others = filteredPresets.filter(p => !p.isFavorite);
+  const favorites = filteredPresets.filter((p) => p.isFavorite);
+  const others = filteredPresets.filter((p) => !p.isFavorite);
 
   const handleSaveCurrent = () => {
     if (!currentEffect || !currentEffectId) return;
-    
+
     const currentParams = effectParams[currentEffectId] || {};
-    
+
     const preset = {
       id: crypto.randomUUID(),
       name: `${currentEffect.name} - 自定义`,
@@ -56,17 +51,17 @@ export function PresetManagerPanel({ onClose }: PresetManagerPanelProps) {
       updatedAt: Date.now(),
       isSystem: false,
       isFavorite: false,
-      parameters: { ...currentParams }
+      parameters: { ...currentParams },
     };
-    
+
     addPreset(preset);
   };
 
   const handleApplyPreset = (preset: any) => {
     if (!currentEffectId) return;
-    
+
     setCurrentPreset(preset.id);
-    
+
     Object.entries(preset.parameters).forEach(([key, value]) => {
       updateParam(currentEffectId, key, value);
     });
@@ -75,7 +70,7 @@ export function PresetManagerPanel({ onClose }: PresetManagerPanelProps) {
   const handleExport = (presetId: string) => {
     const json = exportPreset(presetId);
     if (!json) return;
-    
+
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -149,15 +144,10 @@ export function PresetManagerPanel({ onClose }: PresetManagerPanelProps) {
           )}
         </div>
       </div>
-      {preset.description && (
-        <p className="text-gray-400 text-xs mb-2">{preset.description}</p>
-      )}
+      {preset.description && <p className="text-gray-400 text-xs mb-2">{preset.description}</p>}
       <div className="flex flex-wrap gap-1">
         {preset.tags.map((tag: string) => (
-          <span
-            key={tag}
-            className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-300"
-          >
+          <span key={tag} className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-300">
             {tag}
           </span>
         ))}
@@ -197,9 +187,7 @@ export function PresetManagerPanel({ onClose }: PresetManagerPanelProps) {
 
         <div className="flex-1 overflow-y-auto space-y-6 min-h-0">
           {!currentEffect ? (
-            <div className="text-center text-gray-400 py-12">
-              请先选择一个可视化效果
-            </div>
+            <div className="text-center text-gray-400 py-12">请先选择一个可视化效果</div>
           ) : filteredPresets.length === 0 ? (
             <div className="text-center text-gray-400 py-12">
               暂无预设，点击"保存当前"创建第一个
@@ -212,20 +200,16 @@ export function PresetManagerPanel({ onClose }: PresetManagerPanelProps) {
                     <Star size={16} className="text-yellow-400" />
                     收藏
                   </h3>
-                  <div className="space-y-2">
-                    {favorites.map(renderPresetCard)}
-                  </div>
+                  <div className="space-y-2">{favorites.map(renderPresetCard)}</div>
                 </div>
               )}
-              
+
               {others.length > 0 && (
                 <div>
                   <h3 className="text-white font-medium mb-3">
                     {favorites.length > 0 ? "其他" : "预设"}
                   </h3>
-                  <div className="space-y-2">
-                    {others.map(renderPresetCard)}
-                  </div>
+                  <div className="space-y-2">{others.map(renderPresetCard)}</div>
                 </div>
               )}
             </>

@@ -22,7 +22,7 @@ const QUICK_OPTIONS = [5, 10, 20];
 
 export const InstantMix: React.FC<InstantMixProps> = ({ isOpen, onClose }) => {
   const { songs } = usePlaylistStore();
-  const playQueue = useAudioStore(state => state.playQueue);
+  const playQueue = useAudioStore((state) => state.playQueue);
   const { getPlayCount, getLastPlayedAt } = useListeningHistory();
   const [customCount, setCustomCount] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -99,28 +99,31 @@ export const InstantMix: React.FC<InstantMixProps> = ({ isOpen, onClose }) => {
     return selected;
   }, []);
 
-  const handleGenerate = useCallback(async (selectedCount: number) => {
-    if (songs.length === 0) {
-      toast.error("请先导入音乐");
-      return;
-    }
+  const handleGenerate = useCallback(
+    async (selectedCount: number) => {
+      if (songs.length === 0) {
+        toast.error("请先导入音乐");
+        return;
+      }
 
-    const actualCount = Math.min(selectedCount, songs.length);
-    setIsGenerating(true);
+      const actualCount = Math.min(selectedCount, songs.length);
+      setIsGenerating(true);
 
-    try {
-      const weightedSongs = generateWeightedSongs();
-      const selectedSongs = selectRandomSongs(weightedSongs, actualCount);
+      try {
+        const weightedSongs = generateWeightedSongs();
+        const selectedSongs = selectRandomSongs(weightedSongs, actualCount);
 
-      playQueue(selectedSongs, 0);
-      toast.success(`已生成 ${selectedSongs.length} 首灵感歌单`);
-      onClose();
-    } catch (error) {
-      toast.error("生成歌单失败，请重试");
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [songs, generateWeightedSongs, selectRandomSongs, playQueue, onClose]);
+        playQueue(selectedSongs, 0);
+        toast.success(`已生成 ${selectedSongs.length} 首灵感歌单`);
+        onClose();
+      } catch (error) {
+        toast.error("生成歌单失败，请重试");
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [songs, generateWeightedSongs, selectRandomSongs, playQueue, onClose]
+  );
 
   const handleCustomCount = useCallback(() => {
     const num = parseInt(customCount);
@@ -226,10 +229,7 @@ export const InstantMixButton: React.FC<{ onClick: () => void }> = ({ onClick })
       style={{ color: "var(--theme-text-secondary)" }}
       title="灵感瞬间"
     >
-      <motion.div
-        whileHover={{ rotate: 10, scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-      >
+      <motion.div whileHover={{ rotate: 10, scale: 1.1 }} whileTap={{ scale: 0.9 }}>
         <Shuffle className="w-[18px] h-[18px]" />
       </motion.div>
     </button>

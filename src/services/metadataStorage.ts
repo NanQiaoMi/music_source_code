@@ -348,7 +348,9 @@ export async function clearAllMetadataCache(): Promise<void> {
 /**
  * Save song emotions to local disk via Electron IPC
  */
-export async function saveSongEmotions(emotions: Record<string, { x: number; y: number; description?: string }>): Promise<void> {
+export async function saveSongEmotions(
+  emotions: Record<string, { x: number; y: number; description?: string }>
+): Promise<void> {
   if (typeof window !== "undefined" && window.electronAPI) {
     try {
       await window.electronAPI.saveEmotions(emotions);
@@ -364,7 +366,9 @@ export async function saveSongEmotions(emotions: Record<string, { x: number; y: 
 /**
  * Load song emotions from local disk via Electron IPC
  */
-export async function loadSongEmotions(): Promise<Record<string, { x: number; y: number; description?: string }>> {
+export async function loadSongEmotions(): Promise<
+  Record<string, { x: number; y: number; description?: string }>
+> {
   if (typeof window !== "undefined" && window.electronAPI) {
     try {
       return await window.electronAPI.loadEmotions();

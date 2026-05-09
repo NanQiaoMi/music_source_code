@@ -58,9 +58,9 @@ export const DEFAULT_ANIMATION_PRESETS: AnimationPreset[] = [
       frequencyBands: [
         { band: "bass", multiplier: 1.5, smoothing: 0.2 },
         { band: "mid", multiplier: 1, smoothing: 0.1 },
-        { band: "treble", multiplier: 0.8, smoothing: 0.05 }
-      ]
-    }
+        { band: "treble", multiplier: 0.8, smoothing: 0.05 },
+      ],
+    },
   },
   {
     id: "bass-driven",
@@ -74,9 +74,9 @@ export const DEFAULT_ANIMATION_PRESETS: AnimationPreset[] = [
       frequencyBands: [
         { band: "bass", multiplier: 3, smoothing: 0.3 },
         { band: "mid", multiplier: 0.5, smoothing: 0.1 },
-        { band: "treble", multiplier: 0.3, smoothing: 0.05 }
-      ]
-    }
+        { band: "treble", multiplier: 0.3, smoothing: 0.05 },
+      ],
+    },
   },
   {
     id: "full-spectrum",
@@ -90,9 +90,9 @@ export const DEFAULT_ANIMATION_PRESETS: AnimationPreset[] = [
       frequencyBands: [
         { band: "bass", multiplier: 1.2, smoothing: 0.2 },
         { band: "mid", multiplier: 1, smoothing: 0.15 },
-        { band: "treble", multiplier: 1, smoothing: 0.1 }
-      ]
-    }
+        { band: "treble", multiplier: 1, smoothing: 0.1 },
+      ],
+    },
   },
   {
     id: "smooth-transition",
@@ -106,9 +106,9 @@ export const DEFAULT_ANIMATION_PRESETS: AnimationPreset[] = [
       frequencyBands: [
         { band: "bass", multiplier: 1, smoothing: 0.5 },
         { band: "mid", multiplier: 1, smoothing: 0.5 },
-        { band: "treble", multiplier: 1, smoothing: 0.5 }
-      ]
-    }
+        { band: "treble", multiplier: 1, smoothing: 0.5 },
+      ],
+    },
   },
   {
     id: "pulse-effect",
@@ -122,8 +122,8 @@ export const DEFAULT_ANIMATION_PRESETS: AnimationPreset[] = [
       frequencyBands: [
         { band: "bass", multiplier: 2, smoothing: 0.1 },
         { band: "mid", multiplier: 0.5, smoothing: 0.1 },
-        { band: "treble", multiplier: 0.3, smoothing: 0.05 }
-      ]
-    }
-  }
+        { band: "treble", multiplier: 0.3, smoothing: 0.05 },
+      ],
+    },
+  },
 ];

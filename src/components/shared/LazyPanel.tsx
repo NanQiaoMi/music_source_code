@@ -25,7 +25,10 @@ const prefetchTracker = new Set<string>();
 /**
  * Prefetch a panel's code in the background
  */
-export function prefetchPanel(name: string, factory: () => Promise<{ default: ComponentType<any> }>) {
+export function prefetchPanel(
+  name: string,
+  factory: () => Promise<{ default: ComponentType<any> }>
+) {
   if (!prefetchTracker.has(name)) {
     prefetchTracker.add(name);
     // Trigger the dynamic import
@@ -49,7 +52,7 @@ function getOrCreateLazy(name: string, factory: () => Promise<{ default: Compone
  * 1. React.lazy() for code splitting (panel JS only loads when opened)
  * 2. Suspense for loading states
  * 3. PanelErrorBoundary for crash isolation
- * 
+ *
  * Usage:
  * <LazyPanel
  *   name="formatConverter"

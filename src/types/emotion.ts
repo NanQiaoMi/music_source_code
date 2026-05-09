@@ -31,4 +31,3 @@ export interface EmotionMatrixState {
   curvePath: { x: number; y: number }[];
   globalEmotion: EmotionCoordinate;
 }
-

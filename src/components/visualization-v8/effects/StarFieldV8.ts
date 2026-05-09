@@ -17,7 +17,7 @@ export const StarFieldV8Effect: EffectPlugin = {
       min: 500,
       max: 5000,
       step: 100,
-      default: 2000
+      default: 2000,
     },
     {
       id: "speed",
@@ -27,7 +27,7 @@ export const StarFieldV8Effect: EffectPlugin = {
       min: 0.1,
       max: 5,
       step: 0.1,
-      default: 2
+      default: 2,
     },
     {
       id: "starSize",
@@ -37,7 +37,7 @@ export const StarFieldV8Effect: EffectPlugin = {
       min: 1,
       max: 10,
       step: 0.5,
-      default: 3
+      default: 3,
     },
     {
       id: "fieldOfView",
@@ -47,7 +47,7 @@ export const StarFieldV8Effect: EffectPlugin = {
       min: 60,
       max: 120,
       step: 5,
-      default: 90
+      default: 90,
     },
     {
       id: "audioIntensity",
@@ -57,7 +57,7 @@ export const StarFieldV8Effect: EffectPlugin = {
       min: 0,
       max: 3,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "colorScheme",
@@ -69,8 +69,8 @@ export const StarFieldV8Effect: EffectPlugin = {
         { label: "白色", value: "white" },
         { label: "彩色", value: "colorful" },
         { label: "蓝色", value: "blue" },
-        { label: "红色", value: "red" }
-      ]
+        { label: "红色", value: "red" },
+      ],
     },
     {
       id: "trailLength",
@@ -80,7 +80,7 @@ export const StarFieldV8Effect: EffectPlugin = {
       min: 0,
       max: 5,
       step: 0.5,
-      default: 0
+      default: 0,
     },
     {
       id: "warpEffect",
@@ -90,12 +90,12 @@ export const StarFieldV8Effect: EffectPlugin = {
       min: 0,
       max: 2,
       step: 0.1,
-      default: 0
-    }
+      default: 0,
+    },
   ],
   private: {
     stars: [],
-    time: 0
+    time: 0,
   },
   init(ctx) {
     (this as any).private.stars = [];
@@ -103,7 +103,7 @@ export const StarFieldV8Effect: EffectPlugin = {
   },
   render(ctx, audioData, params) {
     if (!ctx.ctx || !ctx.canvas) return;
-    
+
     const canvas = ctx.canvas;
     const context = ctx.ctx;
     const width = canvas.width;
@@ -120,7 +120,7 @@ export const StarFieldV8Effect: EffectPlugin = {
     const audioMultiplier = 1 + avgEnergy * params.audioIntensity;
 
     let stars = (this as any).private.stars;
-    
+
     if (stars.length !== params.starCount) {
       stars = [];
       for (let i = 0; i < params.starCount; i++) {
@@ -128,7 +128,7 @@ export const StarFieldV8Effect: EffectPlugin = {
           x: (Math.random() - 0.5) * 2000,
           y: (Math.random() - 0.5) * 2000,
           z: Math.random() * 2000 + 100,
-          pz: 0
+          pz: 0,
         });
       }
       (this as any).private.stars = stars;
@@ -204,5 +204,5 @@ export const StarFieldV8Effect: EffectPlugin = {
       ctx.private.stars = [];
       ctx.private.time = 0;
     }
-  }
+  },
 };

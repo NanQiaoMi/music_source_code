@@ -123,7 +123,8 @@ export const useHealthCheckStore = create<HealthCheckState>((set, get) => ({
 
   selectAllIssues: () =>
     set((state) => ({
-      selectedIssues: new Set(state.issues.map((i) => i.id)) })),
+      selectedIssues: new Set(state.issues.map((i) => i.id)),
+    })),
 
   deselectAllIssues: () => set({ selectedIssues: new Set() }),
 
@@ -146,8 +147,7 @@ export const useHealthCheckStore = create<HealthCheckState>((set, get) => ({
     }
   },
 
-  clearIssues: () =>
-    set({ issues: [], selectedIssues: new Set() }),
+  clearIssues: () => set({ issues: [], selectedIssues: new Set() }),
 
   dismissIssue: (issueId) =>
     set((state) => ({

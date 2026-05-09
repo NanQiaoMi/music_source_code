@@ -15,7 +15,7 @@ interface VisualizationV8State {
   effectSettings: EffectSettingsV8;
   effects: EffectPlugin[];
   isFullscreen: boolean;
-  
+
   setCurrentEffect: (effect: VisualizationEffectV8) => void;
   setCurrentEngine: (engine: RenderEngine) => void;
   setParameterMode: (mode: ParameterMode) => void;
@@ -33,43 +33,45 @@ export const useVisualizationV8Store = create<VisualizationV8State>()(
       effectSettings: {},
       effects: [],
       isFullscreen: false,
-      
+
       setCurrentEffect: (effect) => set({ currentEffect: effect }),
-      
+
       setCurrentEngine: (engine) => set({ currentEngine: engine }),
-      
+
       setParameterMode: (mode) => set({ parameterMode: mode }),
-      
-      updateEffectSettings: (effectId, settings) => 
+
+      updateEffectSettings: (effectId, settings) =>
         set((state) => ({
           effectSettings: {
             ...state.effectSettings,
             [effectId]: {
               ...state.effectSettings[effectId],
-              ...settings
-            }
-          }
+              ...settings,
+            },
+          },
         })),
-      
-      registerEffect: (effect) => 
+
+      registerEffect: (effect) =>
         set((state) => {
-          if (!state.effects.find(e => e.id === effect.id)) {
+          if (!state.effects.find((e) => e.id === effect.id)) {
             return {
               effects: [...state.effects, effect],
               effectSettings: {
                 ...state.effectSettings,
-                [effect.id]: effect.parameters.reduce((acc, param) => ({
-                  ...acc,
-                  [param.id]: param.default
-                }), {})
-              }
+                [effect.id]: effect.parameters.reduce(
+                  (acc, param) => ({
+                    ...acc,
+                    [param.id]: param.default,
+                  }),
+                  {}
+                ),
+              },
             };
           }
           return state;
         }),
-      
-      toggleFullscreen: () => 
-        set((state) => ({ isFullscreen: !state.isFullscreen }))
+
+      toggleFullscreen: () => set((state) => ({ isFullscreen: !state.isFullscreen })),
     }),
     {
       name: "visualization-v8-store",
@@ -77,8 +79,8 @@ export const useVisualizationV8Store = create<VisualizationV8State>()(
         currentEffect: state.currentEffect,
         currentEngine: state.currentEngine,
         parameterMode: state.parameterMode,
-        effectSettings: state.effectSettings
-      })
+        effectSettings: state.effectSettings,
+      }),
     }
   )
 );

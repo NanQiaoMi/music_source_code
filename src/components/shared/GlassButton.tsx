@@ -90,9 +90,7 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
       `}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-white/[0.1] via-transparent to-black/[0.05] pointer-events-none" />
-      <div className="relative z-10 flex items-center gap-2">
-        {children}
-      </div>
+      <div className="relative z-10 flex items-center gap-2">{children}</div>
     </button>
   );
 

@@ -28,7 +28,7 @@ export const ParticleNebulaV8: EffectPlugin = {
       min: 500,
       max: 5000,
       step: 500,
-      default: 2000
+      default: 2000,
     },
     {
       id: "driftSpeed",
@@ -38,7 +38,7 @@ export const ParticleNebulaV8: EffectPlugin = {
       min: 0.1,
       max: 2,
       step: 0.1,
-      default: 0.5
+      default: 0.5,
     },
     {
       id: "beatResponse",
@@ -48,7 +48,7 @@ export const ParticleNebulaV8: EffectPlugin = {
       min: 0,
       max: 2,
       step: 0.1,
-      default: 0.8
+      default: 0.8,
     },
     {
       id: "colorScheme",
@@ -59,9 +59,9 @@ export const ParticleNebulaV8: EffectPlugin = {
         { label: "月光银", value: "moonlight" },
         { label: "暖阳金", value: "warmlight" },
         { label: "深海蓝", value: "deepsea" },
-        { label: "极光绿", value: "aurora" }
+        { label: "极光绿", value: "aurora" },
       ],
-      default: "moonlight"
+      default: "moonlight",
     },
     {
       id: "glowIntensity",
@@ -71,8 +71,8 @@ export const ParticleNebulaV8: EffectPlugin = {
       min: 0,
       max: 4,
       step: 0.2,
-      default: 1.5
-    }
+      default: 1.5,
+    },
   ],
 
   init(ctx: RenderContext) {
@@ -86,7 +86,7 @@ export const ParticleNebulaV8: EffectPlugin = {
       moonlight: 220,
       warmlight: 35,
       deepsea: 200,
-      aurora: 160
+      aurora: 160,
     };
 
     for (let i = 0; i < count; i++) {
@@ -103,7 +103,7 @@ export const ParticleNebulaV8: EffectPlugin = {
         vz: (Math.random() - 0.5) * 0.0001,
         size: Math.random() * 1.5 + 0.5,
         alpha: Math.random() * 0.5 + 0.2,
-        color: baseHue.moonlight + (Math.random() - 0.5) * 30
+        color: baseHue.moonlight + (Math.random() - 0.5) * 30,
       });
     }
 
@@ -135,14 +135,14 @@ export const ParticleNebulaV8: EffectPlugin = {
       moonlight: 220,
       warmlight: 35,
       deepsea: 200,
-      aurora: 160
+      aurora: 160,
     };
 
     // 确保 particles 数组存在
     if (!ctx.private.particles) {
       ctx.private.particles = [];
     }
-    
+
     const particles = ctx.private.particles as DustParticle[];
     while (particles.length < particleCount) {
       const theta = Math.random() * Math.PI * 2;
@@ -158,7 +158,7 @@ export const ParticleNebulaV8: EffectPlugin = {
         vz: (Math.random() - 0.5) * 0.0001 * driftSpeed,
         size: Math.random() * 1.5 + 0.5,
         alpha: Math.random() * 0.5 + 0.2,
-        color: baseHue[colorScheme] + (Math.random() - 0.5) * 30
+        color: baseHue[colorScheme] + (Math.random() - 0.5) * 30,
       });
     }
     while (particles.length > particleCount) {
@@ -169,7 +169,7 @@ export const ParticleNebulaV8: EffectPlugin = {
     context.globalCompositeOperation = "screen";
 
     if (currentBeatIntensity > 0.3) {
-      context.fillStyle = `rgba(${colorScheme === 'warmlight' ? '255,200,100' : colorScheme === 'deepsea' ? '100,150,255' : '200,220,255'}, ${currentBeatIntensity * 0.08})`;
+      context.fillStyle = `rgba(${colorScheme === "warmlight" ? "255,200,100" : colorScheme === "deepsea" ? "100,150,255" : "200,220,255"}, ${currentBeatIntensity * 0.08})`;
       context.fillRect(0, 0, width, height);
     }
 
@@ -215,7 +215,8 @@ export const ParticleNebulaV8: EffectPlugin = {
       const perspective = 1.8 / (1.8 - z);
       const screenX = centerX + x * scale * perspective;
       const screenY = centerY + y * scale * perspective;
-      const screenSize = particle.size * perspective * (1 + currentBeatIntensity * beatResponse * 0.5);
+      const screenSize =
+        particle.size * perspective * (1 + currentBeatIntensity * beatResponse * 0.5);
 
       let hue = particle.color;
       switch (colorScheme) {
@@ -233,7 +234,8 @@ export const ParticleNebulaV8: EffectPlugin = {
           break;
       }
 
-      const alpha = particle.alpha * (0.4 + z * 0.4) * perspective * (0.6 + currentBeatIntensity * 0.4);
+      const alpha =
+        particle.alpha * (0.4 + z * 0.4) * perspective * (0.6 + currentBeatIntensity * 0.4);
 
       context.fillStyle = `hsla(${hue}, 70%, 65%, ${alpha})`;
       context.shadowColor = `hsla(${hue}, 80%, 70%, ${alpha * 0.8})`;
@@ -249,13 +251,12 @@ export const ParticleNebulaV8: EffectPlugin = {
     context.restore();
   },
 
-  resize(width: number, height: number) {
-  },
+  resize(width: number, height: number) {},
 
   destroy(ctx?: RenderContext) {
     if (ctx && ctx.private) {
       ctx.private.particles = [];
       ctx.private.time = 0;
     }
-  }
+  },
 };

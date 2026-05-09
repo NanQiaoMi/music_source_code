@@ -83,8 +83,8 @@ export const useMediaSession = () => {
   }, [setupMediaSessionHandlers, updateMediaSession]);
 
   // Subscribe to only the fields needed for periodic updates
-  const currentSong = useAudioStore(state => state.currentSong);
-  const isPlaying = useAudioStore(state => state.isPlaying);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
 
   useEffect(() => {
     const interval = setInterval(() => {

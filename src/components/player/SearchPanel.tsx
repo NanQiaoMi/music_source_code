@@ -3,7 +3,16 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
-  Search, X, Mic, Clock, TrendingUp, Music, User, Disc, Loader2, Trash2,
+  Search,
+  X,
+  Mic,
+  Clock,
+  TrendingUp,
+  Music,
+  User,
+  Disc,
+  Loader2,
+  Trash2,
 } from "lucide-react";
 import { useSearchStore, SearchType } from "@/store/searchStore";
 import { usePlaylistStore, Song } from "@/store/playlistStore";
@@ -25,13 +34,24 @@ const SEARCH_TYPES: { value: SearchType; label: string; icon: typeof Music }[] =
 
 export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const {
-    query, searchType, results, recentSearches, isSearching, isVoiceSearch,
-    setQuery, setSearchType, search, clearSearch, removeRecentSearch, clearRecentSearches, setIsVoiceSearch,
+    query,
+    searchType,
+    results,
+    recentSearches,
+    isSearching,
+    isVoiceSearch,
+    setQuery,
+    setSearchType,
+    search,
+    clearSearch,
+    removeRecentSearch,
+    clearRecentSearches,
+    setIsVoiceSearch,
   } = useSearchStore();
 
   const { songs } = usePlaylistStore();
-  const setCurrentSong = useAudioStore(state => state.setCurrentSong);
-  const setIsPlaying = useAudioStore(state => state.setIsPlaying);
+  const setCurrentSong = useAudioStore((state) => state.setCurrentSong);
+  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isListening, setIsListening] = useState(false);
 
@@ -115,7 +135,10 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
             />
             {query && (
               <button
-                onClick={() => { setQuery(""); clearSearch(); }}
+                onClick={() => {
+                  setQuery("");
+                  clearSearch();
+                }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white/50 hover:text-white"
               >
                 <X className="w-3 h-3" />
@@ -133,7 +156,10 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
             }`}
           >
             {isListening ? (
-              <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.5 }}>
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ repeat: Infinity, duration: 0.5 }}
+              >
                 <Mic className="w-5 h-5" />
               </motion.div>
             ) : (
@@ -191,7 +217,10 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                   {searchQuery}
                   <X
                     className="w-3 h-3 hover:text-white"
-                    onClick={(e) => { e.stopPropagation(); removeRecentSearch(searchQuery); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeRecentSearch(searchQuery);
+                    }}
                   />
                 </motion.button>
               ))}

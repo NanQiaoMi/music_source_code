@@ -4,13 +4,13 @@ import { useUIStore } from "@/store/uiStore";
 
 /**
  * bootstrapApp - Orchestrates the startup sequence of the application.
- * 
- * Ensures core services (Playlist, Audio) are initialized before 
+ *
+ * Ensures core services (Playlist, Audio) are initialized before
  * secondary features (Emotions, Recommendations).
  */
 export async function bootstrapApp() {
   console.log("[Bootstrap] Starting mimimusic initialization...");
-  
+
   try {
     // 1. Core initialization (Crucial for playback)
     await usePlaylistStore.getState().initializePlaylist();
@@ -22,7 +22,7 @@ export async function bootstrapApp() {
 
     // 3. UI Readiness
     // Any extra logic before showing the main UI
-    
+
     console.log("[Bootstrap] Application successfully bootstrapped.");
     return true;
   } catch (error) {

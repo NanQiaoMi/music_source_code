@@ -9,7 +9,11 @@ import { Song } from "@/store/playlistStore";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useListeningHistory } from "@/hooks/useListeningHistory";
-import { generateRecommendations, RecommendationParams, SongWithPlayCount } from "@/utils/recommendationLogic";
+import {
+  generateRecommendations,
+  RecommendationParams,
+  SongWithPlayCount,
+} from "@/utils/recommendationLogic";
 import { toast } from "@/components/shared/GlassToast";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 
@@ -29,7 +33,7 @@ export const SmartRandomModal: React.FC<SmartRandomModalProps> = ({
   currentSong,
 }) => {
   const { songs } = usePlaylistStore();
-  const playQueue = useAudioStore(state => state.playQueue);
+  const playQueue = useAudioStore((state) => state.playQueue);
   const { getPlayCount, getLastPlayedAt } = useListeningHistory();
   const { unlockAchievement } = useStatsAchievementsStore();
   const controls = useAnimationControls();
@@ -78,20 +82,20 @@ export const SmartRandomModal: React.FC<SmartRandomModalProps> = ({
       y: position.y,
     };
     const allRecommendations = generateRecommendations(songsWithPlayCount, params, 50);
-    
+
     if (allRecommendations.length === 0) {
       toast.error("没有可播放的歌曲");
       return;
     }
-    
+
     if (Math.abs(position.x) > 0.95 && Math.abs(position.y) > 0.95) {
       unlockAchievement("extremist");
     }
-    
+
     if (position.x < 0 && position.y < 0) {
       unlockAchievement("deep-sea-explorer");
     }
-    
+
     playQueue(allRecommendations as Song[], 0);
     toast.success("已生成 " + allRecommendations.length + " 首智能推荐");
     onClose();
@@ -122,12 +126,7 @@ export const SmartRandomModal: React.FC<SmartRandomModalProps> = ({
         onClick={(e) => e.stopPropagation()}
         className="relative"
       >
-        <GlassCard
-          blur={40}
-          rounded="3xl"
-          hover={false}
-          className="p-6 w-[400px]"
-        >
+        <GlassCard blur={40} rounded="3xl" hover={false} className="p-6 w-[400px]">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
@@ -166,7 +165,8 @@ export const SmartRandomModal: React.FC<SmartRandomModalProps> = ({
                 <div
                   className="absolute inset-0"
                   style={{
-                    backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)",
+                    backgroundImage:
+                      "linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)",
                     backgroundSize: gridSize + "px " + gridSize + "px",
                   }}
                 />
@@ -247,28 +247,17 @@ export const SmartRandomModal: React.FC<SmartRandomModalProps> = ({
                       className="w-10 h-10 rounded-lg object-cover"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="text-white text-sm font-medium truncate">
-                        {song.title}
-                      </div>
-                      <div className="text-white/50 text-xs truncate">
-                        {song.artist}
-                      </div>
+                      <div className="text-white text-sm font-medium truncate">{song.title}</div>
+                      <div className="text-white/50 text-xs truncate">{song.artist}</div>
                     </div>
-                    <span className="text-white/30 text-xs font-medium">
-                      #{index + 1}
-                    </span>
+                    <span className="text-white/30 text-xs font-medium">#{index + 1}</span>
                   </motion.div>
                 ))}
               </AnimatePresence>
             </div>
           </div>
 
-          <GlassButton
-            variant="primary"
-            size="lg"
-            onClick={handlePlay}
-            className="w-full"
-          >
+          <GlassButton variant="primary" size="lg" onClick={handlePlay} className="w-full">
             <Play className="w-4 h-4" />
             <span>播放推荐</span>
           </GlassButton>

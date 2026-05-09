@@ -18,7 +18,8 @@ const PERFORMANCE_LEVELS: { level: PerformanceLevel; name: string; color: string
 ];
 
 export function PerformanceMonitorPanel({ isOpen, onClose }: PerformanceMonitorPanelProps) {
-  const { config, fps, cpuUsage, memoryUsage, drawCalls, setPerformanceLevel } = usePerformanceV8Store();
+  const { config, fps, cpuUsage, memoryUsage, drawCalls, setPerformanceLevel } =
+    usePerformanceV8Store();
 
   const getFPSColor = (fps: number): string => {
     if (fps >= 55) return "text-green-400";
@@ -52,8 +53,18 @@ export function PerformanceMonitorPanel({ isOpen, onClose }: PerformanceMonitorP
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all"
           >
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -64,9 +75,7 @@ export function PerformanceMonitorPanel({ isOpen, onClose }: PerformanceMonitorP
               <Gauge className="w-3 h-3" />
               FPS
             </div>
-            <div className={`text-2xl font-bold ${getFPSColor(fps)}`}>
-              {fps}
-            </div>
+            <div className={`text-2xl font-bold ${getFPSColor(fps)}`}>{fps}</div>
           </div>
 
           <div className="bg-white/5 rounded-lg p-3">
@@ -84,9 +93,7 @@ export function PerformanceMonitorPanel({ isOpen, onClose }: PerformanceMonitorP
               <Layers className="w-3 h-3" />
               绘制
             </div>
-            <div className="text-2xl font-bold text-white">
-              {drawCalls}
-            </div>
+            <div className="text-2xl font-bold text-white">{drawCalls}</div>
           </div>
 
           <div className="bg-white/5 rounded-lg p-3">
@@ -94,9 +101,7 @@ export function PerformanceMonitorPanel({ isOpen, onClose }: PerformanceMonitorP
               <Zap className="w-3 h-3" />
               内存
             </div>
-            <div className="text-2xl font-bold text-white">
-              {memoryUsage.toFixed(1)}MB
-            </div>
+            <div className="text-2xl font-bold text-white">{memoryUsage.toFixed(1)}MB</div>
           </div>
         </div>
 
@@ -107,7 +112,7 @@ export function PerformanceMonitorPanel({ isOpen, onClose }: PerformanceMonitorP
               性能档位
             </span>
           </div>
-          
+
           <div className="grid grid-cols-4 gap-2">
             {PERFORMANCE_LEVELS.map(({ level, name, color }) => (
               <button

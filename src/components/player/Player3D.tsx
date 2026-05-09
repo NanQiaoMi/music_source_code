@@ -9,12 +9,28 @@ import { GlassCard } from "@/components/shared/Glass/GlassCard";
 import { useAudioStore, LoopMode } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
-import { Sparkles, Play, Pause, SkipBack, SkipForward, Repeat, Repeat1, Shuffle, Volume2, VolumeX } from "lucide-react";
+import {
+  Sparkles,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Repeat,
+  Repeat1,
+  Shuffle,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 
 // Lazy Load Sub-components
-const LyricVisualizer = dynamic(() => import("@/components/lyrics/LyricVisualizer").then(m => m.LyricVisualizer), { ssr: false });
-const FullscreenLyrics = dynamic(() => import("@/components/lyrics/FullscreenLyrics").then(m => m.FullscreenLyrics), { ssr: false });
-
+const LyricVisualizer = dynamic(
+  () => import("@/components/lyrics/LyricVisualizer").then((m) => m.LyricVisualizer),
+  { ssr: false }
+);
+const FullscreenLyrics = dynamic(
+  () => import("@/components/lyrics/FullscreenLyrics").then((m) => m.FullscreenLyrics),
+  { ssr: false }
+);
 
 const formatTime = (seconds: number): string => {
   if (isNaN(seconds) || seconds < 0) return "0:00";
@@ -66,11 +82,7 @@ const BreathingBorder = memo(
                 transparent 100%)`,
               filter: "blur(8px)",
             }}
-            animate={
-              isPlaying
-                ? { opacity: [0.4, 0.9, 0.4] }
-                : { opacity: 0.25 }
-            }
+            animate={isPlaying ? { opacity: [0.4, 0.9, 0.4] } : { opacity: 0.25 }}
             transition={
               isPlaying
                 ? { repeat: Infinity, duration: 3.2, ease: [0.4, 0, 0.2, 1], delay: 1.6 }
@@ -88,11 +100,7 @@ const BreathingBorder = memo(
                 transparent 100%)`,
               filter: "blur(0.5px)",
             }}
-            animate={
-              isPlaying
-                ? { opacity: [0.3, 0.8, 0.3] }
-                : { opacity: 0.2 }
-            }
+            animate={isPlaying ? { opacity: [0.3, 0.8, 0.3] } : { opacity: 0.2 }}
             transition={
               isPlaying
                 ? { repeat: Infinity, duration: 3.2, ease: [0.4, 0, 0.2, 1], delay: 1.75 }
@@ -121,115 +129,119 @@ const APPLE_SPRING_CONFIG = {
   bounce: 0,
 };
 
-const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(({ cover, title, isPlaying, albumId }) => {
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(
+  ({ cover, title, isPlaying, albumId }) => {
+    const [tilt, setTilt] = useState({ x: 0, y: 0 });
+    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
 
-    const rotateX = ((mouseY - centerY) / centerY) * -8;
-    const rotateY = ((mouseX - centerX) / centerX) * 8;
+      const rotateX = ((mouseY - centerY) / centerY) * -8;
+      const rotateY = ((mouseX - centerX) / centerX) * 8;
 
-    setTilt({ x: rotateX, y: rotateY });
-    setMousePosition({ x: (mouseX - centerX) / centerX, y: (mouseY - centerY) / centerY });
-  }, []);
+      setTilt({ x: rotateX, y: rotateY });
+      setMousePosition({ x: (mouseX - centerX) / centerX, y: (mouseY - centerY) / centerY });
+    }, []);
 
-  const handleMouseLeave = useCallback(() => {
-    setTilt({ x: 0, y: 0 });
-    setMousePosition({ x: 0, y: 0 });
-  }, []);
+    const handleMouseLeave = useCallback(() => {
+      setTilt({ x: 0, y: 0 });
+      setMousePosition({ x: 0, y: 0 });
+    }, []);
 
-  return (
-    <motion.div
-      layoutId={albumId ? `album-cover-${albumId}` : undefined}
-      className="relative w-full max-w-[500px] mx-auto"
-      animate={{
-        rotateX: tilt.x,
-        rotateY: tilt.y,
-        scale: isPlaying ? 1 : 0.95,
-      }}
-      transition={APPLE_SPRING_CONFIG}
-      style={{
-        perspective: 1200,
-      }}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-    >
+    return (
       <motion.div
-        className="relative w-full aspect-square"
+        layoutId={albumId ? `album-cover-${albumId}` : undefined}
+        className="relative w-full max-w-[500px] mx-auto"
         animate={{
-          scale: isPlaying ? [1, 1.02, 1] : 1,
+          rotateX: tilt.x,
+          rotateY: tilt.y,
+          scale: isPlaying ? 1 : 0.95,
         }}
-        transition={
-          isPlaying
-            ? { duration: 4, repeat: Infinity, ease: "easeInOut" }
-            : { duration: 0.5 }
-        }
+        transition={APPLE_SPRING_CONFIG}
+        style={{
+          perspective: 1200,
+        }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
       >
-        <div
-          className="relative w-full h-full rounded-[2rem] overflow-hidden"
-          style={{
-            transformStyle: "preserve-3d",
-            boxShadow: `
+        <motion.div
+          className="relative w-full aspect-square"
+          animate={{
+            scale: isPlaying ? [1, 1.02, 1] : 1,
+          }}
+          transition={
+            isPlaying ? { duration: 4, repeat: Infinity, ease: "easeInOut" } : { duration: 0.5 }
+          }
+        >
+          <div
+            className="relative w-full h-full rounded-[2rem] overflow-hidden"
+            style={{
+              transformStyle: "preserve-3d",
+              boxShadow: `
               0 60px 100px rgba(0, 0, 0, 0.6),
               0 30px 60px rgba(0, 0, 0, 0.4),
               0 0 0 1px rgba(255, 255, 255, 0.1)
             `,
-            transform: `translateZ(0)`,
-          }}
-        >
-          <Image
-            src={cover}
-            alt={title}
-            fill
-            className="object-cover"
-            priority
-            unoptimized
-          />
+              transform: `translateZ(0)`,
+            }}
+          >
+            <Image src={cover} alt={title} fill className="object-cover" priority unoptimized />
 
-          <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/[0.08] via-transparent to-black/[0.15] pointer-events-none" />
-          <div className="absolute inset-0 rounded-[2rem] ring-1 ring-inset ring-white/10" />
+            <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/[0.08] via-transparent to-black/[0.15] pointer-events-none" />
+            <div className="absolute inset-0 rounded-[2rem] ring-1 ring-inset ring-white/10" />
+
+            <motion.div
+              className="absolute inset-0 rounded-[2rem] bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0"
+              animate={{ opacity: isPlaying ? [0, 0.4, 0] : 0 }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            />
+          </div>
 
           <motion.div
-            className="absolute inset-0 rounded-[2rem] bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0"
-            animate={{ opacity: isPlaying ? [0, 0.4, 0] : 0 }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut",
+            className="absolute -inset-1 rounded-[2.5rem] pointer-events-none"
+            style={{
+              background: `radial-gradient(circle at ${50 + mousePosition.x * 20}% ${50 + mousePosition.y * 20}%, rgba(255,255,255,0.15) 0%, transparent 50%)`,
+              opacity: 0.6,
             }}
           />
-        </div>
-
-        <motion.div
-          className="absolute -inset-1 rounded-[2.5rem] pointer-events-none"
-          style={{
-            background: `radial-gradient(circle at ${50 + mousePosition.x * 20}% ${50 + mousePosition.y * 20}%, rgba(255,255,255,0.15) 0%, transparent 50%)`,
-            opacity: 0.6,
-          }}
-        />
+        </motion.div>
       </motion.div>
-    </motion.div>
-  );
-});
+    );
+  }
+);
 CoverWith3DEffect.displayName = "CoverWith3DEffect";
 
 export const Player3D: React.FC = () => {
-  const isPlaying = useAudioStore(state => state.isPlaying);
-  const currentTime = useAudioStore(state => state.currentTime);
-  const duration = useAudioStore(state => state.duration);
-  const currentSong = useAudioStore(state => state.currentSong);
-  const isLoading = useAudioStore(state => state.isLoading);
-  const error = useAudioStore(state => state.error);
-  const clearError = useAudioStore(state => state.clearError);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const currentTime = useAudioStore((state) => state.currentTime);
+  const duration = useAudioStore((state) => state.duration);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const isLoading = useAudioStore((state) => state.isLoading);
+  const error = useAudioStore((state) => state.error);
+  const clearError = useAudioStore((state) => state.clearError);
   const { setCurrentView, setIsTransitioning } = useUIStore();
   const { isFavorite, toggleFavorite } = useFavoritesStore();
-  const { setIsPlaying, nextSong, prevSong, seekTo, volume, isMuted, toggleMute, setVolume, loopMode, cycleLoopMode } = useAudioStore();
+  const {
+    setIsPlaying,
+    nextSong,
+    prevSong,
+    seekTo,
+    volume,
+    isMuted,
+    toggleMute,
+    setVolume,
+    loopMode,
+    cycleLoopMode,
+  } = useAudioStore();
 
   const [breathingEffectEnabled] = useState(true);
   const [showFullscreenLyrics, setShowFullscreenLyrics] = useState(false);
@@ -301,9 +313,7 @@ export const Player3D: React.FC = () => {
                   {currentSong?.artist || "请选择歌曲播放"}
                 </p>
                 {currentSong?.album && (
-                  <p className="text-white/30 text-sm mt-2 truncate px-4">
-                    {currentSong.album}
-                  </p>
+                  <p className="text-white/30 text-sm mt-2 truncate px-4">{currentSong.album}</p>
                 )}
               </motion.div>
 
@@ -370,143 +380,153 @@ export const Player3D: React.FC = () => {
           <div className="max-w-4xl mx-auto relative overflow-hidden rounded-[32px] bg-[#0a0c14]/60 backdrop-blur-[60px] border border-white/10 shadow-[0_20px_80px_rgba(0,0,0,0.8)] px-10 py-8">
             {/* Subtle highlight gradient */}
             <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/5 to-transparent opacity-30 pointer-events-none" />
-            
+
             <div className="relative z-10">
               {/* 进度条 */}
-            <div className="mb-6">
-              <div className="flex justify-between text-sm text-white/60 mb-2">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-              <div 
-                className="h-1.5 bg-white/10 rounded-full cursor-pointer group"
-                onClick={(e) => {
-                  if (!currentSong) return;
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const percent = (e.clientX - rect.left) / rect.width;
-                  seekTo(duration * percent);
-                }}
-              >
-                <motion.div
-                  className="h-full bg-white rounded-full relative shadow-[0_0_12px_rgba(255,255,255,0.6)]"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(currentTime / duration) * 100}%` }}
-                  transition={{ duration: 0.1 }}
+              <div className="mb-6">
+                <div className="flex justify-between text-sm text-white/60 mb-2">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
+                <div
+                  className="h-1.5 bg-white/10 rounded-full cursor-pointer group"
+                  onClick={(e) => {
+                    if (!currentSong) return;
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const percent = (e.clientX - rect.left) / rect.width;
+                    seekTo(duration * percent);
+                  }}
                 >
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.8)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                </motion.div>
+                  <motion.div
+                    className="h-full bg-white rounded-full relative shadow-[0_0_12px_rgba(255,255,255,0.6)]"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(currentTime / duration) * 100}%` }}
+                    transition={{ duration: 0.1 }}
+                  >
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.8)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </motion.div>
+                </div>
               </div>
-            </div>
 
-            {/* 控制按钮 */}
-            <div className="flex items-center justify-between">
-              {/* 左侧控制 */}
-              <div className="flex items-center gap-4">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    if (loopMode === "shuffle") {
-                      useAudioStore.getState().setLoopMode("all");
-                    } else {
-                      useAudioStore.getState().setLoopMode("shuffle");
+              {/* 控制按钮 */}
+              <div className="flex items-center justify-between">
+                {/* 左侧控制 */}
+                <div className="flex items-center gap-4">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      if (loopMode === "shuffle") {
+                        useAudioStore.getState().setLoopMode("all");
+                      } else {
+                        useAudioStore.getState().setLoopMode("shuffle");
+                      }
+                    }}
+                    className={`p-2 rounded-full transition-all ${
+                      loopMode === "shuffle"
+                        ? "text-white bg-white/20 shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+                        : "text-white/50 hover:text-white hover:bg-white/10"
+                    }`}
+                    title="随机播放"
+                  >
+                    <Shuffle className="w-5 h-5" />
+                  </motion.button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      const modes: LoopMode[] = ["none", "all", "single"];
+                      const currentIndex = modes.indexOf(loopMode as any);
+                      const nextIndex = (currentIndex + 1) % modes.length;
+                      useAudioStore.getState().setLoopMode(modes[nextIndex]);
+                    }}
+                    className={`p-2 rounded-full transition-all ${
+                      loopMode === "all" || loopMode === "single"
+                        ? "text-white bg-white/20 shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+                        : "text-white/50 hover:text-white hover:bg-white/10"
+                    }`}
+                    title={
+                      loopMode === "single"
+                        ? "单曲循环"
+                        : loopMode === "all"
+                          ? "列表循环"
+                          : "顺序播放"
                     }
-                  }}
-                  className={`p-2 rounded-full transition-all ${
-                    loopMode === "shuffle" ? "text-white bg-white/20 shadow-[0_0_15px_rgba(255,255,255,0.2)]" : "text-white/50 hover:text-white hover:bg-white/10"
-                  }`}
-                  title="随机播放"
-                >
-                  <Shuffle className="w-5 h-5" />
-                </motion.button>
+                  >
+                    {loopMode === "single" ? (
+                      <Repeat1 className="w-5 h-5" />
+                    ) : (
+                      <Repeat className="w-5 h-5" />
+                    )}
+                  </motion.button>
+                </div>
 
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    const modes: LoopMode[] = ["none", "all", "single"];
-                    const currentIndex = modes.indexOf(loopMode as any);
-                    const nextIndex = (currentIndex + 1) % modes.length;
-                    useAudioStore.getState().setLoopMode(modes[nextIndex]);
-                  }}
-                  className={`p-2 rounded-full transition-all ${
-                    (loopMode === "all" || loopMode === "single") ? "text-white bg-white/20 shadow-[0_0_15px_rgba(255,255,255,0.2)]" : "text-white/50 hover:text-white hover:bg-white/10"
-                  }`}
-                  title={loopMode === "single" ? "单曲循环" : loopMode === "all" ? "列表循环" : "顺序播放"}
-                >
-                  {loopMode === "single" ? (
-                    <Repeat1 className="w-5 h-5" />
-                  ) : (
-                    <Repeat className="w-5 h-5" />
-                  )}
-                </motion.button>
-              </div>
+                {/* 中间播放控制 */}
+                <div className="flex items-center gap-6">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={prevSong}
+                    disabled={!currentSong}
+                    className="p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30"
+                  >
+                    <SkipBack className="w-8 h-8" />
+                  </motion.button>
 
-              {/* 中间播放控制 */}
-              <div className="flex items-center gap-6">
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={prevSong}
-                  disabled={!currentSong}
-                  className="p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30"
-                >
-                  <SkipBack className="w-8 h-8" />
-                </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    disabled={!currentSong}
+                    className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-black shadow-[0_0_25px_rgba(255,255,255,0.4)] hover:shadow-[0_0_40px_rgba(255,255,255,0.6)] transition-all disabled:opacity-30"
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-8 h-8" fill="currentColor" />
+                    ) : (
+                      <Play className="w-8 h-8 ml-1" fill="currentColor" />
+                    )}
+                  </motion.button>
 
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  disabled={!currentSong}
-                  className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-black shadow-[0_0_25px_rgba(255,255,255,0.4)] hover:shadow-[0_0_40px_rgba(255,255,255,0.6)] transition-all disabled:opacity-30"
-                >
-                  {isPlaying ? (
-                    <Pause className="w-8 h-8" fill="currentColor" />
-                  ) : (
-                    <Play className="w-8 h-8 ml-1" fill="currentColor" />
-                  )}
-                </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={nextSong}
+                    disabled={!currentSong}
+                    className="p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30"
+                  >
+                    <SkipForward className="w-8 h-8" />
+                  </motion.button>
+                </div>
 
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={nextSong}
-                  disabled={!currentSong}
-                  className="p-3 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30"
-                >
-                  <SkipForward className="w-8 h-8" />
-                </motion.button>
-              </div>
-
-              {/* 右侧音量控制 */}
-              <div className="flex items-center gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={toggleMute}
-                  className="p-2 text-white/60 hover:text-white transition-all"
-                >
-                  {isMuted || volume === 0 ? (
-                    <VolumeX className="w-5 h-5" />
-                  ) : (
-                    <Volume2 className="w-5 h-5" />
-                  )}
-                </motion.button>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={isMuted ? 0 : volume}
-                  onChange={(e) => setVolume(parseFloat(e.target.value))}
-                  className="w-24 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg"
-                />
+                {/* 右侧音量控制 */}
+                <div className="flex items-center gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={toggleMute}
+                    className="p-2 text-white/60 hover:text-white transition-all"
+                  >
+                    {isMuted || volume === 0 ? (
+                      <VolumeX className="w-5 h-5" />
+                    ) : (
+                      <Volume2 className="w-5 h-5" />
+                    )}
+                  </motion.button>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={isMuted ? 0 : volume}
+                    onChange={(e) => setVolume(parseFloat(e.target.value))}
+                    className="w-24 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
       </div>
 
       <AnimatePresence>

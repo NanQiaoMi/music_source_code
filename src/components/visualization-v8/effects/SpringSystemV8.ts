@@ -17,7 +17,7 @@ export const SpringSystemV8Effect: EffectPlugin = {
       min: 10,
       max: 100,
       step: 5,
-      default: 30
+      default: 30,
     },
     {
       id: "stiffness",
@@ -27,7 +27,7 @@ export const SpringSystemV8Effect: EffectPlugin = {
       min: 0.1,
       max: 2,
       step: 0.05,
-      default: 0.5
+      default: 0.5,
     },
     {
       id: "damping",
@@ -37,7 +37,7 @@ export const SpringSystemV8Effect: EffectPlugin = {
       min: 0,
       max: 1,
       step: 0.05,
-      default: 0.3
+      default: 0.3,
     },
     {
       id: "gravity",
@@ -47,7 +47,7 @@ export const SpringSystemV8Effect: EffectPlugin = {
       min: 0,
       max: 2,
       step: 0.1,
-      default: 0.5
+      default: 0.5,
     },
     {
       id: "layout",
@@ -59,8 +59,8 @@ export const SpringSystemV8Effect: EffectPlugin = {
         { label: "网格", value: "grid" },
         { label: "圆形", value: "circle" },
         { label: "垂直线", value: "vertical" },
-        { label: "水平线", value: "horizontal" }
-      ]
+        { label: "水平线", value: "horizontal" },
+      ],
     },
     {
       id: "audioIntensity",
@@ -70,21 +70,21 @@ export const SpringSystemV8Effect: EffectPlugin = {
       min: 0,
       max: 3,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "springColor",
       name: "弹簧颜色",
       type: "color",
       mode: "basic",
-      default: "#00ffff"
+      default: "#00ffff",
     },
     {
       id: "particleColor",
       name: "粒子颜色",
       type: "color",
       mode: "basic",
-      default: "#ff00ff"
+      default: "#ff00ff",
     },
     {
       id: "particleSize",
@@ -94,7 +94,7 @@ export const SpringSystemV8Effect: EffectPlugin = {
       min: 3,
       max: 20,
       step: 1,
-      default: 8
+      default: 8,
     },
     {
       id: "lineWidth",
@@ -104,7 +104,7 @@ export const SpringSystemV8Effect: EffectPlugin = {
       min: 1,
       max: 5,
       step: 0.5,
-      default: 2
+      default: 2,
     },
     {
       id: "connectionMode",
@@ -115,8 +115,8 @@ export const SpringSystemV8Effect: EffectPlugin = {
       options: [
         { label: "邻居连接", value: "neighbors" },
         { label: "全部连接", value: "all" },
-        { label: "不连接", value: "none" }
-      ]
+        { label: "不连接", value: "none" },
+      ],
     },
     {
       id: "opacity",
@@ -126,12 +126,12 @@ export const SpringSystemV8Effect: EffectPlugin = {
       min: 0.1,
       max: 1,
       step: 0.05,
-      default: 0.8
-    }
+      default: 0.8,
+    },
   ],
   private: {
     particles: [],
-    time: 0
+    time: 0,
   },
   init(ctx) {
     (this as any).private.particles = [];
@@ -139,7 +139,7 @@ export const SpringSystemV8Effect: EffectPlugin = {
   },
   render(ctx, audioData, params) {
     if (!ctx.ctx || !ctx.canvas) return;
-    
+
     const canvas = ctx.canvas;
     const context = ctx.ctx;
     const width = canvas.width;
@@ -166,7 +166,8 @@ export const SpringSystemV8Effect: EffectPlugin = {
             const row = Math.floor(i / cols);
             const col = i % cols;
             x = width * 0.2 + (col / (cols - 1 || 1)) * width * 0.6;
-            y = height * 0.2 + (row / (Math.ceil(params.springCount / cols) - 1 || 1)) * height * 0.6;
+            y =
+              height * 0.2 + (row / (Math.ceil(params.springCount / cols) - 1 || 1)) * height * 0.6;
             break;
           case "circle":
             const angle = (i / params.springCount) * Math.PI * 2;
@@ -194,7 +195,7 @@ export const SpringSystemV8Effect: EffectPlugin = {
           originY: y,
           vx: 0,
           vy: 0,
-          index: i
+          index: i,
         });
       }
       (this as any).private.particles = particles;
@@ -218,8 +219,8 @@ export const SpringSystemV8Effect: EffectPlugin = {
       particle.vx += Math.cos(noiseAngle) * audioForce * 0.01;
       particle.vy += Math.sin(noiseAngle) * audioForce * 0.01;
 
-      particle.vx *= (1 - params.damping * 0.05);
-      particle.vy *= (1 - params.damping * 0.05);
+      particle.vx *= 1 - params.damping * 0.05;
+      particle.vy *= 1 - params.damping * 0.05;
 
       particle.x += particle.vx;
       particle.y += particle.vy;
@@ -266,5 +267,5 @@ export const SpringSystemV8Effect: EffectPlugin = {
       ctx.private.particles = [];
       ctx.private.time = 0;
     }
-  }
+  },
 };

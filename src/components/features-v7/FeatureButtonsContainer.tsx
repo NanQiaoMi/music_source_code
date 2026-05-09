@@ -37,7 +37,9 @@ const MIN_SPACING = 8; // 最小间距
 
 export function FeatureButtonsContainer() {
   const { currentView, openPanel } = useUIStore();
-  const [windowHeight, setWindowHeight] = useState(typeof window !== "undefined" ? window.innerHeight : 800);
+  const [windowHeight, setWindowHeight] = useState(
+    typeof window !== "undefined" ? window.innerHeight : 800
+  );
   const [buttonPositions, setButtonPositions] = useState<Record<string, number>>({});
 
   const calculatePositions = useCallback(() => {
@@ -59,7 +61,7 @@ export function FeatureButtonsContainer() {
 
     const availableSpacing = (availableHeight - totalButtonsHeight) / (buttons.length - 1);
     const actualSpacing = Math.max(MIN_SPACING, availableSpacing);
-    
+
     const positions: Record<string, number> = {};
     let currentBottom = 20;
     buttons.forEach((button) => {
@@ -106,7 +108,7 @@ export function FeatureButtonsContainer() {
       {visibleButtons.map((button) => {
         const ButtonComponent = button.component;
         const position = buttonPositions[button.id] ?? button.defaultPosition;
-        
+
         let componentProps = {};
         if (button.id === "professionalTools") {
           componentProps = {
@@ -118,7 +120,7 @@ export function FeatureButtonsContainer() {
             onOpenLibraryHealth: () => openPanel("libraryHealth"),
           };
         }
-        
+
         return (
           <div
             key={button.id}

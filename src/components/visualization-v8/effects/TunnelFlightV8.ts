@@ -17,7 +17,7 @@ export const TunnelFlightV8Effect: EffectPlugin = {
       min: 20,
       max: 100,
       step: 5,
-      default: 40
+      default: 40,
     },
     {
       id: "speed",
@@ -27,7 +27,7 @@ export const TunnelFlightV8Effect: EffectPlugin = {
       min: 0.1,
       max: 5,
       step: 0.1,
-      default: 2
+      default: 2,
     },
     {
       id: "radius",
@@ -37,7 +37,7 @@ export const TunnelFlightV8Effect: EffectPlugin = {
       min: 50,
       max: 300,
       step: 10,
-      default: 150
+      default: 150,
     },
     {
       id: "rotationSpeed",
@@ -47,7 +47,7 @@ export const TunnelFlightV8Effect: EffectPlugin = {
       min: -2,
       max: 2,
       step: 0.1,
-      default: 0.5
+      default: 0.5,
     },
     {
       id: "audioIntensity",
@@ -57,7 +57,7 @@ export const TunnelFlightV8Effect: EffectPlugin = {
       min: 0,
       max: 3,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "colorScheme",
@@ -69,8 +69,8 @@ export const TunnelFlightV8Effect: EffectPlugin = {
         { label: "霓虹", value: "neon" },
         { label: "火焰", value: "fire" },
         { label: "海洋", value: "ocean" },
-        { label: "彩虹", value: "rainbow" }
-      ]
+        { label: "彩虹", value: "rainbow" },
+      ],
     },
     {
       id: "lineWidth",
@@ -80,7 +80,7 @@ export const TunnelFlightV8Effect: EffectPlugin = {
       min: 1,
       max: 10,
       step: 0.5,
-      default: 2
+      default: 2,
     },
     {
       id: "glowIntensity",
@@ -90,7 +90,7 @@ export const TunnelFlightV8Effect: EffectPlugin = {
       min: 0,
       max: 20,
       step: 1,
-      default: 5
+      default: 5,
     },
     {
       id: "fillMode",
@@ -101,13 +101,13 @@ export const TunnelFlightV8Effect: EffectPlugin = {
       options: [
         { label: "仅描边", value: "stroke" },
         { label: "仅填充", value: "fill" },
-        { label: "描边+填充", value: "both" }
-      ]
-    }
+        { label: "描边+填充", value: "both" },
+      ],
+    },
   ],
   private: {
     segments: [],
-    time: 0
+    time: 0,
   },
   init(ctx) {
     (this as any).private.segments = [];
@@ -115,7 +115,7 @@ export const TunnelFlightV8Effect: EffectPlugin = {
   },
   render(ctx, audioData, params) {
     if (!ctx.ctx || !ctx.canvas) return;
-    
+
     const canvas = ctx.canvas;
     const context = ctx.ctx;
     const width = canvas.width;
@@ -132,13 +132,13 @@ export const TunnelFlightV8Effect: EffectPlugin = {
     const audioMultiplier = 1 + avgEnergy * params.audioIntensity;
 
     let segments = (this as any).private.segments;
-    
+
     if (segments.length !== params.segmentCount) {
       segments = [];
       for (let i = 0; i < params.segmentCount; i++) {
         segments.push({
           z: i * (500 / params.segmentCount),
-          rotation: 0
+          rotation: 0,
         });
       }
       (this as any).private.segments = segments;
@@ -156,7 +156,7 @@ export const TunnelFlightV8Effect: EffectPlugin = {
 
     segments.forEach((segment: any, index: number) => {
       segment.z -= speed;
-      
+
       if (segment.z < 1) {
         segment.z = 500;
       }
@@ -165,9 +165,14 @@ export const TunnelFlightV8Effect: EffectPlugin = {
       const radius = baseRadius * perspective * audioMultiplier;
       const segmentAngle = (index / segments.length) * Math.PI * 2;
 
-      const hue = getColorHue(params.colorScheme, index, segments.length, (this as any).private.time);
+      const hue = getColorHue(
+        params.colorScheme,
+        index,
+        segments.length,
+        (this as any).private.time
+      );
       const brightness = Math.max(0.3, 1 - segment.z / 500);
-      
+
       let color: string;
       switch (params.colorScheme) {
         case "neon":
@@ -199,7 +204,7 @@ export const TunnelFlightV8Effect: EffectPlugin = {
       }
 
       drawTunnelRing(context, radius, segmentAngle, 8);
-      
+
       if (params.fillMode === "fill" || params.fillMode === "both") {
         context.fill();
       }
@@ -220,7 +225,7 @@ export const TunnelFlightV8Effect: EffectPlugin = {
       ctx.private.segments = [];
       ctx.private.time = 0;
     }
-  }
+  },
 };
 
 function getColorHue(scheme: string, index: number, total: number, time: number): number {
@@ -229,20 +234,25 @@ function getColorHue(scheme: string, index: number, total: number, time: number)
   return (baseHue + timeHue) % 360;
 }
 
-function drawTunnelRing(ctx: CanvasRenderingContext2D, radius: number, offsetAngle: number, sides: number) {
+function drawTunnelRing(
+  ctx: CanvasRenderingContext2D,
+  radius: number,
+  offsetAngle: number,
+  sides: number
+) {
   ctx.beginPath();
-  
+
   for (let i = 0; i <= sides; i++) {
     const angle = (i / sides) * Math.PI * 2 + offsetAngle;
     const x = Math.cos(angle) * radius;
     const y = Math.sin(angle) * radius;
-    
+
     if (i === 0) {
       ctx.moveTo(x, y);
     } else {
       ctx.lineTo(x, y);
     }
   }
-  
+
   ctx.closePath();
 }

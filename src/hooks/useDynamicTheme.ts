@@ -86,7 +86,11 @@ function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: n
 }
 
 function boostVibrantColors(colors: ThemeColors): ThemeColors {
-  const boostSaturation = (colorStr: string, saturationBoost: number = 1.5, lightnessBoost: number = 1.2): string => {
+  const boostSaturation = (
+    colorStr: string,
+    saturationBoost: number = 1.5,
+    lightnessBoost: number = 1.2
+  ): string => {
     const match = colorStr.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
     if (!match) return colorStr;
 
@@ -132,7 +136,7 @@ function boostVibrantColors(colors: ThemeColors): ThemeColors {
 
 export function useDynamicTheme() {
   const { themeColors, isDynamicTheme, setThemeColors, themeMode } = useUIStore();
-  const currentSong = useAudioStore(state => state.currentSong);
+  const currentSong = useAudioStore((state) => state.currentSong);
   const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentColorsRef = useRef<ThemeColors>(defaultColors);
 

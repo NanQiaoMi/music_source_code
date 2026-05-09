@@ -22,7 +22,7 @@ export class ThreeJSScene {
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
-      alpha: true
+      alpha: true,
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -32,7 +32,7 @@ export class ThreeJSScene {
 
   private setupContextListeners(): void {
     const canvas = this.renderer.domElement;
-    
+
     canvas.addEventListener("webglcontextlost", this.handleContextLost);
     canvas.addEventListener("webglcontextrestored", this.handleContextRestored);
   }
@@ -70,16 +70,20 @@ export class ThreeJSScene {
    * Deeply disposes of an object and its children
    */
   private disposeObject(object: THREE.Object3D): void {
-    object.children.forEach(child => this.disposeObject(child));
+    object.children.forEach((child) => this.disposeObject(child));
 
-    if (object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Points) {
+    if (
+      object instanceof THREE.Mesh ||
+      object instanceof THREE.Line ||
+      object instanceof THREE.Points
+    ) {
       if (object.geometry) {
         object.geometry.dispose();
       }
 
       if (object.material) {
         if (Array.isArray(object.material)) {
-          object.material.forEach(material => this.disposeMaterial(material));
+          object.material.forEach((material) => this.disposeMaterial(material));
         } else {
           this.disposeMaterial(object.material);
         }
@@ -120,9 +124,9 @@ export class ThreeJSScene {
       canvas.removeEventListener("webglcontextlost", this.handleContextLost);
       canvas.removeEventListener("webglcontextrestored", this.handleContextRestored);
     }
-    
+
     this.clear();
-    
+
     if (this.renderer) {
       this.renderer.dispose();
       this.renderer.forceContextLoss();

@@ -17,7 +17,7 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
       min: 0.2,
       max: 1,
       step: 0.05,
-      default: 0.5
+      default: 0.5,
     },
     {
       id: "explosionSize",
@@ -27,7 +27,7 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
       min: 50,
       max: 300,
       step: 10,
-      default: 150
+      default: 150,
     },
     {
       id: "particlePerExplosion",
@@ -37,7 +37,7 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
       min: 20,
       max: 200,
       step: 10,
-      default: 80
+      default: 80,
     },
     {
       id: "audioIntensity",
@@ -47,7 +47,7 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
       min: 0,
       max: 3,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "colorScheme",
@@ -59,8 +59,8 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
         { label: "爆炸", value: "explosion" },
         { label: "烟花", value: "fireworks" },
         { label: "星云", value: "nebula" },
-        { label: "闪电", value: "lightning" }
-      ]
+        { label: "闪电", value: "lightning" },
+      ],
     },
     {
       id: "particleSize",
@@ -70,7 +70,7 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
       min: 2,
       max: 15,
       step: 1,
-      default: 6
+      default: 6,
     },
     {
       id: "gravity",
@@ -80,7 +80,7 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
       min: 0,
       max: 1,
       step: 0.05,
-      default: 0.2
+      default: 0.2,
     },
     {
       id: "fadeOut",
@@ -91,14 +91,14 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
       options: [
         { label: "淡出", value: "fade" },
         { label: "保留", value: "persist" },
-        { label: "清除", value: "clear" }
-      ]
-    }
+        { label: "清除", value: "clear" },
+      ],
+    },
   ],
   private: {
     particles: [],
     lastBassValue: 0,
-    time: 0
+    time: 0,
   },
   init(ctx) {
     (this as any).private.particles = [];
@@ -107,7 +107,7 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
   },
   render(ctx, audioData, params) {
     if (!ctx.ctx || !ctx.canvas) return;
-    
+
     const canvas = ctx.canvas;
     const context = ctx.ctx;
     const width = canvas.width;
@@ -125,14 +125,17 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
 
     let particles = (this as any).private.particles;
 
-    if (bass > params.explosionThreshold && (this as any).private.lastBassValue < params.explosionThreshold) {
+    if (
+      bass > params.explosionThreshold &&
+      (this as any).private.lastBassValue < params.explosionThreshold
+    ) {
       const explosionX = centerX + (Math.random() - 0.5) * width * 0.5;
       const explosionY = centerY + (Math.random() - 0.5) * height * 0.5;
-      
+
       for (let i = 0; i < params.particlePerExplosion; i++) {
         const angle = Math.random() * Math.PI * 2;
         const speed = (2 + Math.random() * 8) * audioMultiplier;
-        
+
         particles.push({
           x: explosionX,
           y: explosionY,
@@ -141,7 +144,7 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
           life: 1,
           maxLife: 0.8 + Math.random() * 0.4,
           size: params.particleSize * (0.5 + Math.random() * 0.5),
-          color: Math.random()
+          color: Math.random(),
         });
       }
     }
@@ -159,12 +162,12 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
 
     particles.forEach((particle: any) => {
       particle.vy += params.gravity;
-      
+
       particle.x += particle.vx;
       particle.y += particle.vy;
-      
+
       particle.life -= 0.015;
-      
+
       if (particle.x < 0 || particle.x > width) particle.vx *= -0.8;
       if (particle.y > height) particle.vy *= -0.8;
       particle.x = Math.max(0, Math.min(width, particle.x));
@@ -191,7 +194,7 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
       ctx.private.lastBassValue = 0;
       ctx.private.time = 0;
     }
-  }
+  },
 };
 
 function getExplosionColor(scheme: string, colorValue: number, time: number): number {

@@ -135,10 +135,10 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
   translationLyrics,
   transliterationLyrics,
 }) => {
-  const currentTime = useAudioStore(state => state.currentTime);
-  const currentSong = useAudioStore(state => state.currentSong);
-  const isPlaying = useAudioStore(state => state.isPlaying);
-  const duration = useAudioStore(state => state.duration);
+  const currentTime = useAudioStore((state) => state.currentTime);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const duration = useAudioStore((state) => state.duration);
 
   const { themeColors } = useAlbumTheme(currentSong?.cover);
 
@@ -274,13 +274,13 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
   // 监听容器大小变化
   useEffect(() => {
     if (!lyricsContainerRef.current) return;
-    
+
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setContainerHeight(entry.contentRect.height);
       }
     });
-    
+
     observer.observe(lyricsContainerRef.current);
     return () => observer.disconnect();
   }, []);
@@ -291,7 +291,7 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
       const element = lyricRefs.current[currentIndex];
       const elementTop = element!.offsetTop;
       const elementHeight = element!.offsetHeight;
-      
+
       // 计算目标偏移量：容器中心 - 元素顶部 - 元素高度的一半
       const targetY = containerHeight / 2 - elementTop - elementHeight / 2;
       setOffsetY(targetY);
@@ -301,13 +301,16 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
   }, [currentIndex, lyrics.merged, containerHeight]);
 
   // 动画配置
-  const scrollTransition = React.useMemo(() => ({
-    type: "spring" as const,
-    stiffness: 80,
-    damping: 25,
-    mass: 1,
-    restDelta: 0.01
-  }), []);
+  const scrollTransition = React.useMemo(
+    () => ({
+      type: "spring" as const,
+      stiffness: 80,
+      damping: 25,
+      mass: 1,
+      restDelta: 0.01,
+    }),
+    []
+  );
 
   if (!isOpen) return null;
 
@@ -368,14 +371,17 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
           ref={lyricsContainerRef}
           onClick={handleLyricsClick}
           className="relative h-full w-full overflow-hidden px-8 cursor-pointer z-10"
-          style={{ 
+          style={{
             opacity,
             maskImage: "linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)",
-            WebkitMaskImage: "linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)",
+            WebkitMaskImage:
+              "linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)",
           }}
         >
           {!hasLyrics ? (
-            <div className={`h-full flex flex-col justify-center items-center ${alignmentClass} space-y-4`}>
+            <div
+              className={`h-full flex flex-col justify-center items-center ${alignmentClass} space-y-4`}
+            >
               <p className={`${fontFamilyClass} text-white/60 text-2xl`}>暂无歌词</p>
               <p className={`${fontFamilyClass} text-white/40 text-sm`}>点击任意位置退出</p>
             </div>
@@ -384,10 +390,10 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
               animate={{ y: offsetY }}
               transition={scrollTransition}
               className={`absolute top-0 left-0 right-0 flex flex-col ${alignmentClass} space-y-10 max-w-5xl mx-auto w-full`}
-              style={{ 
-                paddingTop: containerHeight / 2, 
+              style={{
+                paddingTop: containerHeight / 2,
                 paddingBottom: containerHeight / 2,
-                willChange: "transform"
+                willChange: "transform",
               }}
             >
               {lyrics.merged.map((lyric, idx) => {
@@ -399,11 +405,13 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
                 return (
                   <motion.div
                     key={`${lyric.time}-${idx}`}
-                    ref={(el) => { lyricRefs.current[idx] = el; }}
+                    ref={(el) => {
+                      lyricRefs.current[idx] = el;
+                    }}
                     initial={false}
                     animate={{
                       scale: isCurrent ? 1.05 : 1,
-                      opacity: isCurrent ? 1 : isNear ? 0.4 - (distance * 0.08) : 0.1,
+                      opacity: isCurrent ? 1 : isNear ? 0.4 - distance * 0.08 : 0.1,
                       filter: isCurrent ? "blur(0px)" : `blur(${Math.min(distance * 0.5, 4)}px)`,
                     }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
@@ -417,8 +425,14 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
                         lineHeight: 1.2,
                         fontWeight: isCurrent ? fontWeight : Math.max(300, fontWeight - 200),
                         color: isCurrent ? currentLineColor : inactiveLineColor,
-                        textShadow: isCurrent && textShadow ? `0 4px ${textShadowBlur}px ${textShadowColor}` : "none",
-                        WebkitTextStroke: isCurrent && textStroke ? `${textStrokeWidth}px ${textStrokeColor}` : "none",
+                        textShadow:
+                          isCurrent && textShadow
+                            ? `0 4px ${textShadowBlur}px ${textShadowColor}`
+                            : "none",
+                        WebkitTextStroke:
+                          isCurrent && textStroke
+                            ? `${textStrokeWidth}px ${textStrokeColor}`
+                            : "none",
                       }}
                     >
                       {lyric.original}

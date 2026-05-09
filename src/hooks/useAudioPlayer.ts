@@ -25,7 +25,8 @@ const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => v
   if ((audio as any)._vibeListenersAttached) return;
   (audio as any)._vibeListenersAttached = true;
 
-  const { setCurrentTime, setDuration, setIsLoading, setError, nextSong, loopMode } = useAudioStore.getState();
+  const { setCurrentTime, setDuration, setIsLoading, setError, nextSong, loopMode } =
+    useAudioStore.getState();
 
   const onTimeUpdate = () => setCurrentTime(audio.currentTime);
   const onLoadedMetadata = () => {
@@ -78,7 +79,7 @@ const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => v
   audio.addEventListener("pause", onPause);
   audio.addEventListener("ended", onEnded);
   audio.addEventListener("error", onError);
-  
+
   // No cleanup for these global-style listeners to ensure they keep working
   // when temporary views unmount. They are attached to long-lived audio instances.
 };
@@ -86,43 +87,46 @@ const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => v
 export const useAudioPlayer = () => {
   const [hookId] = useState(() => Math.random().toString(36).substr(2, 9));
   const [audioElement, setLocalAudioElement] = useState<HTMLAudioElement | null>(null);
-  
-  const isPlaying = useAudioStore(state => state.isPlaying);
-  const volume = useAudioStore(state => state.volume);
-  const isMuted = useAudioStore(state => state.isMuted);
-  const playbackRate = useAudioStore(state => state.playbackRate);
-  const currentSong = useAudioStore(state => state.currentSong);
-  const eqBands = useAudioStore(state => state.eqBands);
-  const isEQEnabled = useAudioStore(state => state.isEQEnabled);
-  const isEmotionCurveMode = useAudioStore(state => state.isEmotionCurveMode);
-  
-  const setIsPlaying = useAudioStore(state => state.setIsPlaying);
-  const setCurrentTime = useAudioStore(state => state.setCurrentTime);
-  const setDuration = useAudioStore(state => state.setDuration);
-  const setIsLoading = useAudioStore(state => state.setIsLoading);
-  const setError = useAudioStore(state => state.setError);
-  const setDynamicCrossfadeDuration = useAudioStore(state => state.setDynamicCrossfadeDuration);
+
+  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const volume = useAudioStore((state) => state.volume);
+  const isMuted = useAudioStore((state) => state.isMuted);
+  const playbackRate = useAudioStore((state) => state.playbackRate);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const eqBands = useAudioStore((state) => state.eqBands);
+  const isEQEnabled = useAudioStore((state) => state.isEQEnabled);
+  const isEmotionCurveMode = useAudioStore((state) => state.isEmotionCurveMode);
+
+  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const setCurrentTime = useAudioStore((state) => state.setCurrentTime);
+  const setDuration = useAudioStore((state) => state.setDuration);
+  const setIsLoading = useAudioStore((state) => state.setIsLoading);
+  const setError = useAudioStore((state) => state.setError);
+  const setDynamicCrossfadeDuration = useAudioStore((state) => state.setDynamicCrossfadeDuration);
 
   const { recordPlay } = useStatsAchievementsStore();
 
-  const handlePlayError = useCallback((error: any) => {
-    const isAbortError = 
-      error.name === "AbortError" || 
-      error.code === 20 ||
-      error.message?.includes("interrupted") ||
-      error.message?.includes("new load request") ||
-      error.message?.includes("pause");
+  const handlePlayError = useCallback(
+    (error: any) => {
+      const isAbortError =
+        error.name === "AbortError" ||
+        error.code === 20 ||
+        error.message?.includes("interrupted") ||
+        error.message?.includes("new load request") ||
+        error.message?.includes("pause");
 
-    if (isAbortError) return;
+      if (isAbortError) return;
 
-    console.error("Playback error:", error);
-    setError({
-      type: "play",
-      message: `播放失败: ${error.message || "未知原因"}`,
-      timestamp: Date.now(),
-    });
-    setIsPlaying(false);
-  }, [setError, setIsPlaying]);
+      console.error("Playback error:", error);
+      setError({
+        type: "play",
+        message: `播放失败: ${error.message || "未知原因"}`,
+        timestamp: Date.now(),
+      });
+      setIsPlaying(false);
+    },
+    [setError, setIsPlaying]
+  );
 
   // Initialization Effect
   useEffect(() => {
@@ -130,14 +134,14 @@ export const useAudioPlayer = () => {
       audioInstance = new Audio();
       audioInstance.crossOrigin = "anonymous";
       audioElementRef.current = audioInstance;
-      
+
       secondaryAudioInstance = new Audio();
       secondaryAudioInstance.crossOrigin = "anonymous";
       secondaryElementRef.current = secondaryAudioInstance;
     }
 
     setLocalAudioElement(audioElementRef.current);
-    
+
     // Global ref for legacy components
     if (typeof window !== "undefined") {
       (window as any).audioElementRef = audioElementRef;
@@ -176,7 +180,7 @@ export const useAudioPlayer = () => {
     // Initialize AudioEngine if not done
     const engine = AudioEngine.getInstance();
     engine.init(audio);
-    
+
     // Connect effects
     const analyser = engine.getAnalyser();
     const context = engine.getContext();
@@ -221,7 +225,7 @@ export const useAudioPlayer = () => {
 
       const previousSongId = currentSongIdRef.current;
       currentSongIdRef.current = songId;
-      
+
       let audioUrl = currentSong.audioUrl;
       if (audioUrl?.startsWith("stored://")) {
         const id = audioUrl.replace("stored://", "");
@@ -245,10 +249,10 @@ export const useAudioPlayer = () => {
 
         const fromAudio = audio;
         const toAudio = secondaryElementRef.current;
-        
+
         toAudio.src = audioUrl;
         mixer.crossfade(fromAudio, toAudio, duration).catch(handlePlayError);
-        
+
         audioElementRef.current = toAudio;
         secondaryElementRef.current = fromAudio;
         setLocalAudioElement(toAudio);
@@ -262,7 +266,16 @@ export const useAudioPlayer = () => {
     };
 
     managePlayback();
-  }, [hookId, currentSong, isPlaying, isEmotionCurveMode, handlePlayError, setError, setIsLoading, setDynamicCrossfadeDuration]);
+  }, [
+    hookId,
+    currentSong,
+    isPlaying,
+    isEmotionCurveMode,
+    handlePlayError,
+    setError,
+    setIsLoading,
+    setDynamicCrossfadeDuration,
+  ]);
 
   // Side effects sync
   useEffect(() => {
@@ -290,22 +303,28 @@ export const useAudioPlayer = () => {
 
   const togglePlay = useCallback(() => setIsPlaying(!isPlaying), [isPlaying, setIsPlaying]);
 
-  const seek = useCallback((time: number) => {
-    const audio = audioElementRef.current;
-    if (audio) {
-      audio.currentTime = Math.max(0, Math.min(time, audio.duration || 0));
-      setCurrentTime(audio.currentTime);
-    }
-  }, [setCurrentTime]);
+  const seek = useCallback(
+    (time: number) => {
+      const audio = audioElementRef.current;
+      if (audio) {
+        audio.currentTime = Math.max(0, Math.min(time, audio.duration || 0));
+        setCurrentTime(audio.currentTime);
+      }
+    },
+    [setCurrentTime]
+  );
 
-  const seekRelative = useCallback((delta: number) => {
-    const audio = audioElementRef.current;
-    if (audio) {
-      const newTime = audio.currentTime + delta;
-      audio.currentTime = Math.max(0, Math.min(newTime, audio.duration || 0));
-      setCurrentTime(audio.currentTime);
-    }
-  }, [setCurrentTime]);
+  const seekRelative = useCallback(
+    (delta: number) => {
+      const audio = audioElementRef.current;
+      if (audio) {
+        const newTime = audio.currentTime + delta;
+        audio.currentTime = Math.max(0, Math.min(newTime, audio.duration || 0));
+        setCurrentTime(audio.currentTime);
+      }
+    },
+    [setCurrentTime]
+  );
 
   return {
     togglePlay,

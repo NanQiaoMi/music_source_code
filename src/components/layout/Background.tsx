@@ -22,12 +22,7 @@ interface FluidBlob {
 const PRIME_DURATIONS = [23, 29, 31, 37, 41];
 
 const generateFluidBlobs = (colors: ThemeColors): FluidBlob[] => {
-  const colorArray = [
-    colors.primary,
-    colors.secondary,
-    colors.accent,
-    colors.complementary,
-  ];
+  const colorArray = [colors.primary, colors.secondary, colors.accent, colors.complementary];
 
   const blendModes: GlobalCompositeOperation[] = [
     "screen",
@@ -44,14 +39,14 @@ const generateFluidBlobs = (colors: ThemeColors): FluidBlob[] => {
     return {
       id: i,
       size: 60 + Math.random() * 60,
-      initialX: -20 + (i * 30),
-      initialY: -30 + (i * 25),
+      initialX: -20 + i * 30,
+      initialY: -30 + i * 25,
       color: boostedColor,
       blur: 120 + Math.random() * 40,
       animationDuration: PRIME_DURATIONS[i % PRIME_DURATIONS.length],
       animationDelay: i * 1.7,
       blendMode: blendModes[i % blendModes.length],
-      rotateRange: 0 + (i * 45),
+      rotateRange: 0 + i * 45,
     };
   });
 };
@@ -64,7 +59,9 @@ function boostVibrantColor(colorStr: string): string {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
 
-  let h = 0, s = 0, l = (max + min) / 2 / 255;
+  let h = 0,
+    s = 0,
+    l = (max + min) / 2 / 255;
 
   if (max !== min) {
     const d = (max - min) / 255;
@@ -148,9 +145,9 @@ const FluidBlobComponent: React.FC<{
 };
 
 export const Background: React.FC = () => {
-  const themeColors = useUIStore(state => state.themeColors);
-  const isDynamicTheme = useUIStore(state => state.isDynamicTheme);
-  const currentSong = useAudioStore(state => state.currentSong);
+  const themeColors = useUIStore((state) => state.themeColors);
+  const isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
+  const currentSong = useAudioStore((state) => state.currentSong);
   const [extractedColors, setExtractedColors] = useState<ThemeColors | null>(null);
   const [isActive, setIsActive] = useState(false);
 
@@ -215,14 +212,16 @@ export const Background: React.FC = () => {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse 150% 80% at 50% -30%, rgba(255,255,255,0.05) 0%, transparent 50%)",
+          background:
+            "radial-gradient(ellipse 150% 80% at 50% -30%, rgba(255,255,255,0.05) 0%, transparent 50%)",
         }}
       />
 
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse 100% 50% at 50% 100%, rgba(0,0,0,0.5) 0%, transparent 60%)",
+          background:
+            "radial-gradient(ellipse 100% 50% at 50% 100%, rgba(0,0,0,0.5) 0%, transparent 60%)",
         }}
       />
 

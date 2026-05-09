@@ -30,18 +30,18 @@ const formatTime = (seconds: number): string => {
 };
 
 export const GlobalPlayerBar: React.FC = () => {
-  const isPlaying = useAudioStore(state => state.isPlaying);
-  const currentTime = useAudioStore(state => state.currentTime);
-  const duration = useAudioStore(state => state.duration);
-  const volume = useAudioStore(state => state.volume);
-  const isMuted = useAudioStore(state => state.isMuted);
-  const currentSong = useAudioStore(state => state.currentSong);
-  const isLoading = useAudioStore(state => state.isLoading);
-  const setIsPlaying = useAudioStore(state => state.setIsPlaying);
-  const prevSong = useAudioStore(state => state.prevSong);
-  const nextSong = useAudioStore(state => state.nextSong);
-  const setVolume = useAudioStore(state => state.setVolume);
-  const toggleMute = useAudioStore(state => state.toggleMute);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const currentTime = useAudioStore((state) => state.currentTime);
+  const duration = useAudioStore((state) => state.duration);
+  const volume = useAudioStore((state) => state.volume);
+  const isMuted = useAudioStore((state) => state.isMuted);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const isLoading = useAudioStore((state) => state.isLoading);
+  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const prevSong = useAudioStore((state) => state.prevSong);
+  const nextSong = useAudioStore((state) => state.nextSong);
+  const setVolume = useAudioStore((state) => state.setVolume);
+  const toggleMute = useAudioStore((state) => state.toggleMute);
 
   const { setCurrentView } = useUIStore();
 
@@ -50,8 +50,8 @@ export const GlobalPlayerBar: React.FC = () => {
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverX, setHoverX] = useState<number>(0);
 
-  const progress = duration > 0 && !isNaN(currentTime) && !isNaN(duration) 
-    ? (currentTime / duration) * 100 : 0;
+  const progress =
+    duration > 0 && !isNaN(currentTime) && !isNaN(duration) ? (currentTime / duration) * 100 : 0;
 
   const handleProgressClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -135,9 +135,7 @@ export const GlobalPlayerBar: React.FC = () => {
             <p className="text-sm font-semibold tracking-tight text-white line-clamp-1">
               {currentSong.title}
             </p>
-            <p className="text-xs font-medium text-white/60 line-clamp-1">
-              {currentSong.artist}
-            </p>
+            <p className="text-xs font-medium text-white/60 line-clamp-1">{currentSong.artist}</p>
           </div>
         </div>
 
@@ -198,8 +196,9 @@ export const GlobalPlayerBar: React.FC = () => {
             onMouseLeave={handleProgressLeave}
           >
             <div
-              className={`relative h-1 bg-white/20 rounded-full overflow-hidden cursor-pointer transition-all duration-200 ${isHoveringProgress ? "h-2" : ""
-                }`}
+              className={`relative h-1 bg-white/20 rounded-full overflow-hidden cursor-pointer transition-all duration-200 ${
+                isHoveringProgress ? "h-2" : ""
+              }`}
               onClick={handleProgressClick}
               onMouseMove={handleProgressHover}
             >
@@ -222,16 +221,16 @@ export const GlobalPlayerBar: React.FC = () => {
                   initial={{ opacity: 0, y: 8, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.95 }}
-                  transition={{ 
+                  transition={{
                     type: "spring",
                     stiffness: 400,
-                    damping: 30
+                    damping: 30,
                   }}
                   className="absolute -top-10 px-2 py-1 bg-black/80 backdrop-blur-md rounded-lg text-xs text-white/90 pointer-events-none"
-                  style={{ 
+                  style={{
                     left: hoverX,
                     transform: "translateX(-50%)",
-                    willChange: "transform, opacity"
+                    willChange: "transform, opacity",
                   }}
                 >
                   {formatTime(hoverTime)}

@@ -20,8 +20,8 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
         { label: "方形", value: "square" },
         { label: "三角形", value: "triangle" },
         { label: "星形", value: "star" },
-        { label: "六边形", value: "hexagon" }
-      ]
+        { label: "六边形", value: "hexagon" },
+      ],
     },
     {
       id: "vibrationIntensity",
@@ -31,7 +31,7 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
       min: 0,
       max: 50,
       step: 1,
-      default: 20
+      default: 20,
     },
     {
       id: "count",
@@ -41,7 +41,7 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
       min: 1,
       max: 20,
       step: 1,
-      default: 5
+      default: 5,
     },
     {
       id: "rotationSpeed",
@@ -51,7 +51,7 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
       min: -2,
       max: 2,
       step: 0.1,
-      default: 0.5
+      default: 0.5,
     },
     {
       id: "baseSize",
@@ -61,7 +61,7 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
       min: 20,
       max: 200,
       step: 5,
-      default: 80
+      default: 80,
     },
     {
       id: "audioResponse",
@@ -73,8 +73,8 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
         { label: "低频", value: "bass" },
         { label: "中频", value: "mid" },
         { label: "高频", value: "treble" },
-        { label: "全频", value: "full" }
-      ]
+        { label: "全频", value: "full" },
+      ],
     },
     {
       id: "lineWidth",
@@ -84,21 +84,21 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
       min: 1,
       max: 10,
       step: 0.5,
-      default: 3
+      default: 3,
     },
     {
       id: "color1",
       name: "主颜色",
       type: "color",
       mode: "basic",
-      default: "#00ffff"
+      default: "#00ffff",
     },
     {
       id: "color2",
       name: "辅助颜色",
       type: "color",
       mode: "professional",
-      default: "#ff00ff"
+      default: "#ff00ff",
     },
     {
       id: "fillMode",
@@ -109,8 +109,8 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
       options: [
         { label: "仅描边", value: "stroke" },
         { label: "仅填充", value: "fill" },
-        { label: "描边+填充", value: "both" }
-      ]
+        { label: "描边+填充", value: "both" },
+      ],
     },
     {
       id: "opacity",
@@ -120,7 +120,7 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
       min: 0.1,
       max: 1,
       step: 0.05,
-      default: 0.8
+      default: 0.8,
     },
     {
       id: "glowIntensity",
@@ -130,12 +130,12 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
       min: 0,
       max: 20,
       step: 1,
-      default: 5
-    }
+      default: 5,
+    },
   ],
   private: {
     time: 0,
-    shapes: []
+    shapes: [],
   },
   init(ctx) {
     (this as any).private.time = 0;
@@ -143,7 +143,7 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
   },
   render(ctx, audioData, params) {
     if (!ctx.ctx || !ctx.canvas) return;
-    
+
     const canvas = ctx.canvas;
     const context = ctx.ctx;
     const width = canvas.width;
@@ -176,7 +176,7 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
         shapes.push({
           angle: (i / params.count) * Math.PI * 2,
           phase: i * 0.5,
-          distance: 80 + i * 40
+          distance: 80 + i * 40,
         });
       }
       (this as any).private.shapes = shapes;
@@ -214,7 +214,11 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
       context.translate(x, y);
       context.rotate(shape.angle + (this as any).private.time);
 
-      drawShape(context, params.shapeType, size + vibration * Math.sin((this as any).private.time * 3 + shape.phase));
+      drawShape(
+        context,
+        params.shapeType,
+        size + vibration * Math.sin((this as any).private.time * 3 + shape.phase)
+      );
 
       if (params.fillMode === "fill" || params.fillMode === "both") {
         context.fill();
@@ -234,7 +238,7 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
       ctx.private.shapes = [];
       ctx.private.time = 0;
     }
-  }
+  },
 };
 
 function shiftHue(color: string, degrees: number): string {
@@ -256,7 +260,9 @@ function rgbToHsl(r: number, g: number, b: number) {
   b /= 255;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  let h = 0, s, l = (max + min) / 2;
+  let h = 0,
+    s,
+    l = (max + min) / 2;
 
   if (max === min) {
     h = s = 0;
@@ -287,16 +293,16 @@ function hslToRgb(h: number, s: number, l: number) {
     const hue2rgb = (p: number, q: number, t: number) => {
       if (t < 0) t += 1;
       if (t > 1) t -= 1;
-      if (t < 1/6) return p + (q - p) * 6 * t;
-      if (t < 1/2) return q;
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
       return p;
     };
     const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
     const p = 2 * l - q;
-    r = hue2rgb(p, q, h + 1/3);
+    r = hue2rgb(p, q, h + 1 / 3);
     g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1/3);
+    b = hue2rgb(p, q, h - 1 / 3);
   }
   return { r: r * 255, g: g * 255, b: b * 255 };
 }
@@ -323,7 +329,13 @@ function drawShape(ctx: CanvasRenderingContext2D, type: string, size: number) {
   }
 }
 
-function drawPolygon(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number, sides: number) {
+function drawPolygon(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  sides: number
+) {
   ctx.moveTo(cx + radius * Math.cos(0), cy + radius * Math.sin(0));
   for (let i = 1; i <= sides; i++) {
     const angle = (i * 2 * Math.PI) / sides;
@@ -332,8 +344,15 @@ function drawPolygon(ctx: CanvasRenderingContext2D, cx: number, cy: number, radi
   ctx.closePath();
 }
 
-function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, outerR: number, innerR: number, spikes: number) {
-  let rot = Math.PI / 2 * 3;
+function drawStar(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  outerR: number,
+  innerR: number,
+  spikes: number
+) {
+  let rot = (Math.PI / 2) * 3;
   let x = cx;
   let y = cy;
   const step = Math.PI / spikes;

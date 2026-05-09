@@ -86,20 +86,18 @@ export function GlassPanel({
             exit={{ x: isRight ? "100%" : "-100%", opacity: 0 }}
             transition={{
               duration: 0.4,
-              ease: [0.23, 1, 0.32, 1]
+              ease: [0.23, 1, 0.32, 1],
             }}
             style={{
               borderRadius: isRight ? "12px 0 0 12px" : "0 12px 12px 0",
               willChange: "transform, opacity",
-              backfaceVisibility: "hidden"
+              backfaceVisibility: "hidden",
             }}
           >
             {/* Header — Apple style: title centered, close button absolute right */}
             <div className="relative flex items-center justify-between px-5 pt-5 pb-3">
               {title && (
-                <h2 className="text-[17px] font-semibold text-white tracking-[-0.01em]">
-                  {title}
-                </h2>
+                <h2 className="text-[17px] font-semibold text-white tracking-[-0.01em]">{title}</h2>
               )}
               <div className="flex items-center gap-2 ml-auto">
                 {headerRight}
@@ -132,9 +130,7 @@ export function GlassPanel({
             <div className="h-px bg-white/[0.08] mx-5" />
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain">
-              {children}
-            </div>
+            <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain">{children}</div>
 
             {/* Footer */}
             {footer && (

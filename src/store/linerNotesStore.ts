@@ -6,9 +6,15 @@ interface LinerNotesState {
   // Key: artist-title or songId
   notes: Record<string, string>;
   isGenerating: boolean;
-  
+
   // Actions
-  getNotes: (artist: string, title: string, lyrics?: string, emotion?: { x: number, y: number }, forceRefresh?: boolean) => Promise<string | null>;
+  getNotes: (
+    artist: string,
+    title: string,
+    lyrics?: string,
+    emotion?: { x: number; y: number },
+    forceRefresh?: boolean
+  ) => Promise<string | null>;
   clearCache: () => void;
 }
 
@@ -24,6 +30,8 @@ export const useLinerNotesStore = create<LinerNotesState>()(
         if (cached && !forceRefresh) return cached;
 
         const aiStore = useAIStore.getState();
+        if (!aiStore.isEnabled) return null;
+
         const activeConfigId = aiStore.activeConfigId;
         const config = aiStore.configs.find((c) => c.id === activeConfigId);
 
@@ -35,9 +43,11 @@ export const useLinerNotesStore = create<LinerNotesState>()(
 
         try {
           const baseUrl = config.baseUrl.replace(/\/$/, "");
-          const url = baseUrl.endsWith("/v1") ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
-          
-          const emotionContext = emotion 
+          const url = baseUrl.endsWith("/v1")
+            ? `${baseUrl}/chat/completions`
+            : `${baseUrl}/v1/chat/completions`;
+
+          const emotionContext = emotion
             ? `[核心质感]：${emotion.x > 0 ? "偏向明亮/温润" : "偏向幽暗/冷峻"}的底色，伴随${emotion.y > 0 ? "极具颗粒感/侵略性" : "失重/漂流"}的脉络。`
             : "";
 

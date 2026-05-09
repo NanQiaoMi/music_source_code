@@ -10,39 +10,43 @@ const SAFE_PADDING = 80;
 const getPointColor = (v: number, e: number, alpha: number = 1) => {
   // Continuous HSL color mapping based on Russell Circumplex Model
   // Angle determines Hue, Magnitude determines Saturation/Lightness
-  
+
   // Calculate angle in degrees (0 to 360)
   // atan2(y, x) -> atan2(energy, valence)
   let angle = Math.atan2(e, v) * (180 / Math.PI);
   if (angle < 0) angle += 360;
-  
+
   // Magnitude (distance from center)
   const mag = Math.sqrt(v * v + e * e);
   const clampedMag = Math.min(1, mag);
-  
+
   // Hue mapping:
   // 0 deg (Right, v+) -> Hue 45 (Yellow/Orange - Happy)
   // 90 deg (Top, e+) -> Hue 0 (Red - Energetic/Passionate)
   // 180 deg (Left, v-) -> Hue 240 (Blue - Sad/Melancholy)
   // 270 deg (Bottom, e-) -> Hue 140 (Green/Teal - Calm/Peaceful)
-  
+
   // Linear interpolation of hue between primary emotion points
   let hue = 0;
-  if (angle <= 90) { // Q1: Happy/Energetic
+  if (angle <= 90) {
+    // Q1: Happy/Energetic
     hue = 45 - (angle / 90) * 45; // 45 down to 0
-  } else if (angle <= 180) { // Q2: Angry/Tense
+  } else if (angle <= 180) {
+    // Q2: Angry/Tense
     hue = 360 - ((angle - 90) / 90) * 120; // 360 down to 240
-  } else if (angle <= 270) { // Q3: Sad/Calm
+  } else if (angle <= 270) {
+    // Q3: Sad/Calm
     hue = 240 - ((angle - 180) / 90) * 100; // 240 down to 140
-  } else { // Q4: Peaceful/Happy
+  } else {
+    // Q4: Peaceful/Happy
     hue = 140 - ((angle - 270) / 90) * 95; // 140 down to 45
   }
-  
+
   // Saturation increases with magnitude
-  const saturation = 40 + clampedMag * 50; 
+  const saturation = 40 + clampedMag * 50;
   // Lightness: brighter for high valence, darker for low valence
-  const lightness = 45 + (v * 15);
-  
+  const lightness = 45 + v * 15;
+
   return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
 };
 
@@ -51,15 +55,15 @@ const EmotionVisualizer: React.FC = () => {
   const animationRef = useRef<number>(0);
   const timeRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
-  const stardustRef = useRef<{x: number, y: number, size: number, speed: number}[]>([]);
-  
+  const stardustRef = useRef<{ x: number; y: number; size: number; speed: number }[]>([]);
+
   // Initialize stardust once
   useEffect(() => {
     stardustRef.current = Array.from({ length: 150 }, () => ({
       x: Math.random(),
       y: Math.random(),
       size: Math.random() * 1.5 + 0.5,
-      speed: Math.random() * 0.01 + 0.005
+      speed: Math.random() * 0.01 + 0.005,
     }));
   }, []);
 
@@ -71,12 +75,12 @@ const EmotionVisualizer: React.FC = () => {
   const { songs } = usePlaylistStore();
   const { points, selectedIds, searchResults } = useEmotionStore();
 
-  const getPixelPos = (p: {x: number, y: number}, w: number, h: number) => {
+  const getPixelPos = (p: { x: number; y: number }, w: number, h: number) => {
     const innerW = w - SAFE_PADDING * 2;
     const innerH = h - SAFE_PADDING * 2;
     return {
       x: SAFE_PADDING + (p.x * 0.5 + 0.5) * innerW,
-      y: SAFE_PADDING + ((-p.y) * 0.5 + 0.5) * innerH
+      y: SAFE_PADDING + (-p.y * 0.5 + 0.5) * innerH,
     };
   };
 
@@ -102,38 +106,38 @@ const EmotionVisualizer: React.FC = () => {
         ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
       }
     };
-    
+
     const ro = new ResizeObserver(handleResize);
     if (canvas.parentElement) ro.observe(canvas.parentElement);
     handleResize();
 
     const draw = (time: number) => {
       const state = useEmotionStore.getState();
-      const { 
-        points, 
-        viewMode, 
+      const {
+        points,
+        viewMode,
         selectionMode,
-        lassoPath, 
-        marqueeRect, 
+        lassoPath,
+        marqueeRect,
         selectedIds,
         searchResults,
-        hoveredPointId
+        hoveredPointId,
       } = state;
 
       const deltaTime = (time - lastTimeRef.current) / 1000;
       lastTimeRef.current = time;
       timeRef.current = time * 0.001;
       const t = timeRef.current;
-      
+
       const width = canvas.width / window.devicePixelRatio;
       const height = canvas.height / window.devicePixelRatio;
-      
+
       ctx.clearRect(0, 0, width, height);
 
       // 0. Atmospheric Quadrant Glows (Moved from CSS to Canvas for smoother blending)
       ctx.save();
       ctx.globalCompositeOperation = "screen";
-      
+
       const drawQuadrantGlow = (cx: number, cy: number, color: string) => {
         const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(width, height) * 0.8);
         g.addColorStop(0, color);
@@ -146,13 +150,13 @@ const EmotionVisualizer: React.FC = () => {
       drawQuadrantGlow(width * 0.25, height * 0.25, "rgba(239, 68, 68, 0.03)"); // Q2
       drawQuadrantGlow(width * 0.25, height * 0.75, "rgba(59, 130, 246, 0.03)"); // Q3
       drawQuadrantGlow(width * 0.75, height * 0.75, "rgba(16, 185, 129, 0.03)"); // Q4
-      
+
       ctx.restore();
 
       // 1. Stardust Background - Hide in heatmap for maximum purity
       if (viewMode !== "heatmap") {
         ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
-        stardustRef.current.forEach(star => {
+        stardustRef.current.forEach((star) => {
           const sx = ((star.x + t * star.speed) % 1) * width;
           const sy = ((star.y + t * star.speed * 0.5) % 1) * height;
           ctx.beginPath();
@@ -165,40 +169,51 @@ const EmotionVisualizer: React.FC = () => {
       ctx.strokeStyle = "rgba(255, 255, 255, 0.02)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(width / 2, 40); ctx.lineTo(width / 2, height - 40);
-      ctx.moveTo(40, height / 2); ctx.lineTo(width - 40, height / 2);
+      ctx.moveTo(width / 2, 40);
+      ctx.lineTo(width / 2, height - 40);
+      ctx.moveTo(40, height / 2);
+      ctx.lineTo(width - 40, height / 2);
       ctx.stroke();
 
       // 3. Heatmap (Nebula Effect) - REFINED SILK & SMOKE
       if (viewMode === "heatmap") {
         ctx.save();
         ctx.globalCompositeOperation = "screen";
-        
-        points.forEach(p => {
+
+        points.forEach((p) => {
           if (!p.isTagged) return;
           const pos = getPixelPos(p, width, height);
-          
+
           // Ultra-slow atmospheric drift
           const seed = (p.x + p.y) * 100;
           const driftX = Math.sin(t * 0.3 + seed) * 15;
           const driftY = Math.cos(t * 0.2 + seed) * 15;
-          
+
           const gradSize = 220; // Much wider for smoother blending
 
           const grad = ctx.createRadialGradient(
-            pos.x + driftX, pos.y + driftY, 0, 
-            pos.x + driftX, pos.y + driftY, gradSize
+            pos.x + driftX,
+            pos.y + driftY,
+            0,
+            pos.x + driftX,
+            pos.y + driftY,
+            gradSize
           );
-          
+
           // Very low alpha steps for silk-like texture
           grad.addColorStop(0, getPointColor(p.x, p.y, 0.03));
           grad.addColorStop(0.4, getPointColor(p.x, p.y, 0.01));
-          grad.addColorStop(1, 'transparent');
-          
+          grad.addColorStop(1, "transparent");
+
           ctx.fillStyle = grad;
-          ctx.fillRect(pos.x + driftX - gradSize, pos.y + driftY - gradSize, gradSize * 2, gradSize * 2);
+          ctx.fillRect(
+            pos.x + driftX - gradSize,
+            pos.y + driftY - gradSize,
+            gradSize * 2,
+            gradSize * 2
+          );
         });
-        
+
         ctx.restore();
       }
 
@@ -208,12 +223,12 @@ const EmotionVisualizer: React.FC = () => {
         ctx.beginPath();
         ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
         ctx.lineWidth = 0.5;
-        const selectedPoints = points.filter(p => selectedIds.includes(p.id));
+        const selectedPoints = points.filter((p) => selectedIds.includes(p.id));
         for (let i = 0; i < selectedPoints.length; i++) {
           for (let j = i + 1; j < selectedPoints.length; j++) {
             const p1 = getPixelPos(selectedPoints[i], width, height);
             const p2 = getPixelPos(selectedPoints[j], width, height);
-            const dist = Math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2);
+            const dist = Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
             if (dist < 200) {
               ctx.moveTo(p1.x, p1.y);
               ctx.lineTo(p2.x, p2.y);
@@ -225,12 +240,12 @@ const EmotionVisualizer: React.FC = () => {
       }
 
       // 3. Draw Stars
-      points.forEach(p => {
+      points.forEach((p) => {
         const rawPos = getPixelPos(p, width, height);
-        
+
         // Quantum Jitter: Deterministic micro-shift based on ID to prevent "piling"
         // This makes the map look more organic without changing the data
-        const idSeed = p.id.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+        const idSeed = p.id.split("").reduce((a, b) => a + b.charCodeAt(0), 0);
         const jitterX = Math.sin(idSeed * 1.23) * 3;
         const jitterY = Math.cos(idSeed * 4.56) * 3;
         const pos = { x: rawPos.x + jitterX, y: rawPos.y + jitterY };
@@ -243,10 +258,10 @@ const EmotionVisualizer: React.FC = () => {
 
         if (p.isTagged || isSelected || isSearchResult) {
           const pulse = Math.sin(t * 3 + (p.x + p.y) * 2) * 0.1 + 0.9;
-          let radius = isCurrent ? 6 : (isSelected ? 5 : 3);
+          let radius = isCurrent ? 6 : isSelected ? 5 : 3;
           if (isHovered) radius *= 1.4;
           if (isSearchResult) radius = 8;
-          
+
           const finalRadius = radius * (isCurrent ? pulse * 1.2 : 1.0);
 
           // Glow
@@ -277,7 +292,7 @@ const EmotionVisualizer: React.FC = () => {
           // Core
           ctx.beginPath();
           ctx.arc(pos.x, pos.y, finalRadius, 0, Math.PI * 2);
-          
+
           if (isSearchResult) {
             ctx.fillStyle = "#fbbf24";
           } else if (isSelected) {
@@ -316,10 +331,10 @@ const EmotionVisualizer: React.FC = () => {
       });
 
       // 4. Tools Visuals
-      if (selectionMode === 'lasso' && lassoPath.length > 1) {
+      if (selectionMode === "lasso" && lassoPath.length > 1) {
         ctx.beginPath();
         ctx.moveTo(lassoPath[0].x, lassoPath[0].y);
-        lassoPath.forEach(p => ctx.lineTo(p.x, p.y));
+        lassoPath.forEach((p) => ctx.lineTo(p.x, p.y));
         ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
         ctx.setLineDash([5, 5]);
         ctx.lineWidth = 1.5;
@@ -329,7 +344,7 @@ const EmotionVisualizer: React.FC = () => {
         ctx.setLineDash([]);
       }
 
-      if (selectionMode === 'marquee' && marqueeRect) {
+      if (selectionMode === "marquee" && marqueeRect) {
         const { x1, y1, x2, y2 } = marqueeRect;
         ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
         ctx.setLineDash([5, 5]);
@@ -350,7 +365,8 @@ const EmotionVisualizer: React.FC = () => {
   }, [audioCurrentSong]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    const { selectionMode, setLassoPath, setMarqueeRect, clearSelection } = useEmotionStore.getState();
+    const { selectionMode, setLassoPath, setMarqueeRect, clearSelection } =
+      useEmotionStore.getState();
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
     const x = e.clientX - rect.left;
@@ -359,9 +375,9 @@ const EmotionVisualizer: React.FC = () => {
     isDraggingRef.current = true;
     startPosRef.current = { x, y };
 
-    if (selectionMode === 'lasso') setLassoPath([{ x, y }]);
-    else if (selectionMode === 'marquee') setMarqueeRect({ x1: x, y1: y, x2: x, y2: y });
-    else if (selectionMode === 'none' && !hoveredPoint) clearSelection();
+    if (selectionMode === "lasso") setLassoPath([{ x, y }]);
+    else if (selectionMode === "marquee") setMarqueeRect({ x1: x, y1: y, x2: x, y2: y });
+    else if (selectionMode === "none" && !hoveredPoint) clearSelection();
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -371,34 +387,38 @@ const EmotionVisualizer: React.FC = () => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const { 
-      points, 
-      selectionMode, 
-      lassoPath, 
-      setLassoPath, 
-      setMarqueeRect, 
-      setHoveredPointId, 
+    const {
+      points,
+      selectionMode,
+      lassoPath,
+      setLassoPath,
+      setMarqueeRect,
+      setHoveredPointId,
       brushRadius,
-      setSelectedIds
+      setSelectedIds,
     } = useEmotionStore.getState();
 
     if (isDraggingRef.current) {
-      if (selectionMode === 'lasso') {
+      if (selectionMode === "lasso") {
         setLassoPath([...lassoPath, { x, y }]);
-      } else if (selectionMode === 'marquee') {
+      } else if (selectionMode === "marquee") {
         setMarqueeRect({ x1: startPosRef.current.x, y1: startPosRef.current.y, x2: x, y2: y });
-      } else if (selectionMode === 'brush') {
+      } else if (selectionMode === "brush") {
         const width = canvas.width / window.devicePixelRatio;
         const height = canvas.height / window.devicePixelRatio;
         const worldPos = canvasToWorld(x, y, width, height);
         const radiusInWorld = (brushRadius / (width - SAFE_PADDING * 2)) * 2;
-        
-        const newSelected = points.filter(p => {
-          const dist = Math.sqrt((p.x - worldPos.x)**2 + (p.y - worldPos.y)**2);
-          return dist < radiusInWorld;
-        }).map(p => p.id);
-        
-        setSelectedIds(prev => Array.from(new Set([...(Array.isArray(prev) ? prev : []), ...newSelected])));
+
+        const newSelected = points
+          .filter((p) => {
+            const dist = Math.sqrt((p.x - worldPos.x) ** 2 + (p.y - worldPos.y) ** 2);
+            return dist < radiusInWorld;
+          })
+          .map((p) => p.id);
+
+        setSelectedIds((prev) =>
+          Array.from(new Set([...(Array.isArray(prev) ? prev : []), ...newSelected]))
+        );
       }
     } else {
       // Hover detection
@@ -406,10 +426,13 @@ const EmotionVisualizer: React.FC = () => {
       const height = canvas.height / window.devicePixelRatio;
       let minD = 20;
       let near = null;
-      points.forEach(p => {
+      points.forEach((p) => {
         const pos = getPixelPos(p, width, height);
-        const d = Math.sqrt((x - pos.x)**2 + (y - pos.y)**2);
-        if (d < minD) { minD = d; near = p; }
+        const d = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
+        if (d < minD) {
+          minD = d;
+          near = p;
+        }
       });
       setHoveredPoint(near);
       setHoveredPointId(near?.id || null);
@@ -418,40 +441,57 @@ const EmotionVisualizer: React.FC = () => {
 
   const handleMouseUp = () => {
     isDraggingRef.current = false;
-    const { selectionMode, marqueeRect, lassoPath, points, setSelectedIds, setMarqueeRect, setLassoPath } = useEmotionStore.getState();
+    const {
+      selectionMode,
+      marqueeRect,
+      lassoPath,
+      points,
+      setSelectedIds,
+      setMarqueeRect,
+      setLassoPath,
+    } = useEmotionStore.getState();
     const canvas = canvasRef.current;
     if (!canvas) return;
     const width = canvas.width / window.devicePixelRatio;
     const height = canvas.height / window.devicePixelRatio;
 
-    if (selectionMode === 'marquee' && marqueeRect) {
+    if (selectionMode === "marquee" && marqueeRect) {
       const xMin = Math.min(marqueeRect.x1, marqueeRect.x2);
       const xMax = Math.max(marqueeRect.x1, marqueeRect.x2);
       const yMin = Math.min(marqueeRect.y1, marqueeRect.y2);
       const yMax = Math.max(marqueeRect.y1, marqueeRect.y2);
 
-      const ids = points.filter(p => {
-        const pos = getPixelPos(p, width, height);
-        return pos.x >= xMin && pos.x <= xMax && pos.y >= yMin && pos.y <= yMax;
-      }).map(p => p.id);
+      const ids = points
+        .filter((p) => {
+          const pos = getPixelPos(p, width, height);
+          return pos.x >= xMin && pos.x <= xMax && pos.y >= yMin && pos.y <= yMax;
+        })
+        .map((p) => p.id);
       setSelectedIds(ids);
       setMarqueeRect(null);
-    } else if (selectionMode === 'lasso' && lassoPath.length > 2) {
-      const ids = points.filter(p => {
-        const pos = getPixelPos(p, width, height);
-        let inside = false;
-        for (let i = 0, j = lassoPath.length - 1; i < lassoPath.length; j = i++) {
-          if (((lassoPath[i].y > pos.y) !== (lassoPath[j].y > pos.y)) &&
-              (pos.x < (lassoPath[j].x - lassoPath[i].x) * (pos.y - lassoPath[i].y) / (lassoPath[j].y - lassoPath[i].y) + lassoPath[i].x)) {
+    } else if (selectionMode === "lasso" && lassoPath.length > 2) {
+      const ids = points
+        .filter((p) => {
+          const pos = getPixelPos(p, width, height);
+          let inside = false;
+          for (let i = 0, j = lassoPath.length - 1; i < lassoPath.length; j = i++) {
+            if (
+              lassoPath[i].y > pos.y !== lassoPath[j].y > pos.y &&
+              pos.x <
+                ((lassoPath[j].x - lassoPath[i].x) * (pos.y - lassoPath[i].y)) /
+                  (lassoPath[j].y - lassoPath[i].y) +
+                  lassoPath[i].x
+            ) {
               inside = !inside;
+            }
           }
-        }
-        return inside;
-      }).map(p => p.id);
+          return inside;
+        })
+        .map((p) => p.id);
       setSelectedIds(ids);
       setLassoPath([]);
-    } else if (selectionMode === 'none' && hoveredPoint) {
-      const song = songs.find(s => s.id === hoveredPoint.id);
+    } else if (selectionMode === "none" && hoveredPoint) {
+      const song = songs.find((s) => s.id === hoveredPoint.id);
       if (song) audioPlaySong(song);
     }
   };
@@ -463,58 +503,90 @@ const EmotionVisualizer: React.FC = () => {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={() => { isDraggingRef.current = false; setHoveredPoint(null); useEmotionStore.getState().setHoveredPointId(null); }}
+        onMouseLeave={() => {
+          isDraggingRef.current = false;
+          setHoveredPoint(null);
+          useEmotionStore.getState().setHoveredPointId(null);
+        }}
         className="w-full h-full cursor-crosshair"
       />
       {hoveredPoint && !isDraggingRef.current && (
-        <div 
+        <div
           className="absolute z-[100] pointer-events-none px-6 py-4 bg-black/80 backdrop-blur-3xl rounded-[32px] border border-white/10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all min-w-[240px]"
-          style={{ 
-            left: Math.min(getPixelPos(hoveredPoint, canvasRef.current?.width ? canvasRef.current.width / window.devicePixelRatio : 0, canvasRef.current?.height ? canvasRef.current.height / window.devicePixelRatio : 0).x + 30, (canvasRef.current?.clientWidth || 0) - 260),
-            top: Math.max(getPixelPos(hoveredPoint, canvasRef.current?.width ? canvasRef.current.width / window.devicePixelRatio : 0, canvasRef.current?.height ? canvasRef.current.height / window.devicePixelRatio : 0).y - 120, 20)
+          style={{
+            left: Math.min(
+              getPixelPos(
+                hoveredPoint,
+                canvasRef.current?.width ? canvasRef.current.width / window.devicePixelRatio : 0,
+                canvasRef.current?.height ? canvasRef.current.height / window.devicePixelRatio : 0
+              ).x + 30,
+              (canvasRef.current?.clientWidth || 0) - 260
+            ),
+            top: Math.max(
+              getPixelPos(
+                hoveredPoint,
+                canvasRef.current?.width ? canvasRef.current.width / window.devicePixelRatio : 0,
+                canvasRef.current?.height ? canvasRef.current.height / window.devicePixelRatio : 0
+              ).y - 120,
+              20
+            ),
           }}
         >
           <div className="flex flex-col gap-4">
-             <div className="flex items-center gap-4">
-                {hoveredPoint.cover ? (
-                  <img src={hoveredPoint.cover} className="w-12 h-12 rounded-2xl shadow-2xl object-cover border border-white/10" />
-                ) : (
-                  <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10">
-                    <Music2 size={20} className="text-white/20" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                   <div className="text-[13px] font-black tracking-tight truncate leading-tight">{hoveredPoint.title}</div>
-                   <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] truncate mt-1 font-bold">{hoveredPoint.artist}</div>
+            <div className="flex items-center gap-4">
+              {hoveredPoint.cover ? (
+                <img
+                  src={hoveredPoint.cover}
+                  className="w-12 h-12 rounded-2xl shadow-2xl object-cover border border-white/10"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10">
+                  <Music2 size={20} className="text-white/20" />
                 </div>
-             </div>
-             
-             {hoveredPoint.description && (
-               <div className="pt-3 border-t border-white/5">
-                 <div className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.3em] mb-2 opacity-50">情绪意境 archeology</div>
-                 <div className="text-[11px] text-white/70 italic leading-relaxed font-medium">
-                   "{hoveredPoint.description}"
-                 </div>
-               </div>
-             )}
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-black tracking-tight truncate leading-tight">
+                  {hoveredPoint.title}
+                </div>
+                <div className="text-[10px] text-white/40 uppercase tracking-[0.2em] truncate mt-1 font-bold">
+                  {hoveredPoint.artist}
+                </div>
+              </div>
+            </div>
 
-             <div className="flex items-center gap-3 mt-1">
-               <div className="px-2 py-1 bg-white/5 rounded-lg border border-white/5 flex items-center gap-2">
-                 <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: getPointColor(hoveredPoint.x, hoveredPoint.y) }} />
-                 <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">
-                   {hoveredPoint.x.toFixed(2)}, {hoveredPoint.y.toFixed(2)}
-                 </span>
-               </div>
-             </div>
+            {hoveredPoint.description && (
+              <div className="pt-3 border-t border-white/5">
+                <div className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.3em] mb-2 opacity-50">
+                  情绪意境 archeology
+                </div>
+                <div className="text-[11px] text-white/70 italic leading-relaxed font-medium">
+                  "{hoveredPoint.description}"
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 mt-1">
+              <div className="px-2 py-1 bg-white/5 rounded-lg border border-white/5 flex items-center gap-2">
+                <div
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: getPointColor(hoveredPoint.x, hoveredPoint.y) }}
+                />
+                <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">
+                  {hoveredPoint.x.toFixed(2)}, {hoveredPoint.y.toFixed(2)}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       )}
-      {selectedIds.length === 1 && !hoveredPoint && !isDraggingRef.current && (
+      {selectedIds.length === 1 &&
+        !hoveredPoint &&
+        !isDraggingRef.current &&
         (() => {
-          const p = points.find(p => p.id === selectedIds[0]);
+          const p = points.find((p) => p.id === selectedIds[0]);
           if (!p || !p.description) return null;
           return (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -20, y: 20 }}
               animate={{ opacity: 1, x: 0, y: 0 }}
               className="absolute bottom-24 left-10 z-[90] pointer-events-none w-[320px] bg-black/60 backdrop-blur-3xl rounded-[32px] border border-white/10 p-8 shadow-2xl overflow-hidden"
@@ -522,18 +594,22 @@ const EmotionVisualizer: React.FC = () => {
               {/* Tactical Accents */}
               <div className="absolute top-0 left-0 w-12 h-12 border-t-2 border-l-2 border-indigo-500/30 rounded-tl-[32px]" />
               <div className="absolute bottom-0 right-0 w-12 h-12 border-b-2 border-r-2 border-indigo-500/30 rounded-br-[32px]" />
-              
+
               <div className="relative space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse shadow-[0_0_10px_#6366f1]" />
-                    <span className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.4em]">深度意境解构 ANALYSIS</span>
+                    <span className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.4em]">
+                      深度意境解构 ANALYSIS
+                    </span>
                   </div>
-                  <span className="text-[10px] text-white/20 font-mono">#{p.id.slice(0, 8).toUpperCase()}</span>
+                  <span className="text-[10px] text-white/20 font-mono">
+                    #{p.id.slice(0, 8).toUpperCase()}
+                  </span>
                 </div>
 
                 <div className="space-y-4">
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 1 }}
@@ -544,20 +620,27 @@ const EmotionVisualizer: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
                     <div>
-                      <div className="text-[9px] text-white/20 uppercase font-black tracking-widest mb-1">坐标 VECTOR</div>
-                      <div className="text-xs font-mono text-indigo-400/80">{p.x.toFixed(3)}, {p.y.toFixed(3)}</div>
+                      <div className="text-[9px] text-white/20 uppercase font-black tracking-widest mb-1">
+                        坐标 VECTOR
+                      </div>
+                      <div className="text-xs font-mono text-indigo-400/80">
+                        {p.x.toFixed(3)}, {p.y.toFixed(3)}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-[9px] text-white/20 uppercase font-black tracking-widest mb-1">维度 DOMAIN</div>
-                      <div className="text-xs font-mono text-emerald-400/80">{p.x >= 0 ? 'BRIGHT' : 'DARK'} / {p.y >= 0 ? 'ENERGY' : 'CALM'}</div>
+                      <div className="text-[9px] text-white/20 uppercase font-black tracking-widest mb-1">
+                        维度 DOMAIN
+                      </div>
+                      <div className="text-xs font-mono text-emerald-400/80">
+                        {p.x >= 0 ? "BRIGHT" : "DARK"} / {p.y >= 0 ? "ENERGY" : "CALM"}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </motion.div>
           );
-        })()
-      )}
+        })()}
     </div>
   );
 };

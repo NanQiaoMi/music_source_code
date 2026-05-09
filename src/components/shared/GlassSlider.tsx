@@ -8,7 +8,7 @@ const APPLE_SPRING_CONFIG = {
   stiffness: 400,
   damping: 35,
   mass: 1,
-  bounce: 0
+  bounce: 0,
 };
 
 interface GlassSliderProps {

@@ -6,7 +6,7 @@ interface PresetStore {
   currentPresetId: string | null;
   isLoading: boolean;
   error: string | null;
-  
+
   addPreset: (preset: EffectPreset) => void;
   updatePreset: (id: string, updates: Partial<EffectPreset>) => void;
   deletePreset: (id: string) => void;
@@ -25,7 +25,7 @@ export const usePresetStore = create<PresetStore>((set, get) => ({
 
   addPreset: (preset) => {
     set((state) => ({
-      presets: [...state.presets, preset]
+      presets: [...state.presets, preset],
     }));
   },
 
@@ -33,14 +33,14 @@ export const usePresetStore = create<PresetStore>((set, get) => ({
     set((state) => ({
       presets: state.presets.map((p) =>
         p.id === id ? { ...p, ...updates, updatedAt: Date.now() } : p
-      )
+      ),
     }));
   },
 
   deletePreset: (id) => {
     set((state) => ({
       presets: state.presets.filter((p) => p.id !== id),
-      currentPresetId: state.currentPresetId === id ? null : state.currentPresetId
+      currentPresetId: state.currentPresetId === id ? null : state.currentPresetId,
     }));
   },
 
@@ -52,31 +52,41 @@ export const usePresetStore = create<PresetStore>((set, get) => ({
     set((state) => ({
       presets: state.presets.map((p) =>
         p.id === id ? { ...p, isFavorite: !p.isFavorite, updatedAt: Date.now() } : p
-      )
+      ),
     }));
   },
 
   exportPreset: (id) => {
     const preset = get().presets.find((p) => p.id === id);
     if (!preset) return "";
-    
-    return JSON.stringify({
-      version: "1.0",
-      type: "single",
-      presets: [preset],
-      metadata: {
-        name: preset.name,
-        description: preset.description,
-        author: preset.author
-      }
-    }, null, 2);
+
+    return JSON.stringify(
+      {
+        version: "1.0",
+        type: "single",
+        presets: [preset],
+        metadata: {
+          name: preset.name,
+          description: preset.description,
+          author: preset.author,
+        },
+      },
+      null,
+      2
+    );
   },
 
   importPreset: (jsonString) => {
     try {
       const data = JSON.parse(jsonString);
       if (data.presets && data.presets.length > 0) {
-        const preset = { ...data.presets[0], id: crypto.randomUUID(), createdAt: Date.now(), updatedAt: Date.now(), isSystem: false };
+        const preset = {
+          ...data.presets[0],
+          id: crypto.randomUUID(),
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          isSystem: false,
+        };
         get().addPreset(preset);
         return preset;
       }
@@ -108,8 +118,8 @@ export const usePresetStore = create<PresetStore>((set, get) => ({
           positionX: 0,
           positionY: 0,
           scale: 1,
-          rotation: 0
-        }
+          rotation: 0,
+        },
       },
       {
         id: "spectrum-bold",
@@ -131,8 +141,8 @@ export const usePresetStore = create<PresetStore>((set, get) => ({
           positionX: 0,
           positionY: 0,
           scale: 1,
-          rotation: 0
-        }
+          rotation: 0,
+        },
       },
       {
         id: "particle-burst-intense",
@@ -153,11 +163,11 @@ export const usePresetStore = create<PresetStore>((set, get) => ({
           positionX: 0,
           positionY: 0,
           scale: 1,
-          rotation: 0
-        }
-      }
+          rotation: 0,
+        },
+      },
     ];
-    
+
     set({ presets: systemPresets, isLoading: false });
-  }
+  },
 }));

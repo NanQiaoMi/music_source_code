@@ -1,26 +1,47 @@
 import { EffectContext } from "./types";
 
-export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time, refs, theme }: EffectContext) => {
-  const effectParams = params || { speed: 1, particleCount: 600, particleSize: 2, glowIntensity: 1 };
-  
+export const drawCyberpunkParticles = ({
+  ctx,
+  width,
+  height,
+  data,
+  params,
+  time,
+  refs,
+  theme,
+}: EffectContext) => {
+  const effectParams = params || {
+    speed: 1,
+    particleCount: 600,
+    particleSize: 2,
+    glowIntensity: 1,
+  };
+
   // --- CINEMATIC MULTI-BAND ANALYTICS ---
   const rawBass = data && data[0] ? (data[0] + data[1] + data[2] + data[3]) / 4 / 255 : 0;
   const rawMid = data && data[14] ? (data[14] + data[18] + data[22]) / 3 / 255 : 0;
   const rawTreble = data && data[45] ? (data[45] + data[55] + data[65]) / 3 / 255 : 0;
-  
+
   // Robust smoothing
-  refs.smoothBass.current = Math.max(0, Math.min(1, refs.smoothBass.current * 0.85 + (isFinite(rawBass) ? rawBass : 0) * 0.15));
-  const smoothMid = (refs.smoothMid ? refs.smoothMid.current : 0) * 0.88 + (isFinite(rawMid) ? rawMid : 0) * 0.12;
+  refs.smoothBass.current = Math.max(
+    0,
+    Math.min(1, refs.smoothBass.current * 0.85 + (isFinite(rawBass) ? rawBass : 0) * 0.15)
+  );
+  const smoothMid =
+    (refs.smoothMid ? refs.smoothMid.current : 0) * 0.88 + (isFinite(rawMid) ? rawMid : 0) * 0.12;
   if (!refs.smoothMid) (refs as any).smoothMid = { current: smoothMid };
   else refs.smoothMid.current = Math.max(0, Math.min(1, smoothMid));
-  refs.smoothTreble.current = Math.max(0, Math.min(1, refs.smoothTreble.current * 0.92 + (isFinite(rawTreble) ? rawTreble : 0) * 0.08));
-  
+  refs.smoothTreble.current = Math.max(
+    0,
+    Math.min(1, refs.smoothTreble.current * 0.92 + (isFinite(rawTreble) ? rawTreble : 0) * 0.08)
+  );
+
   const bass = refs.smoothBass.current;
   const mid = refs.smoothMid.current;
   const treble = refs.smoothTreble.current;
 
   const t = time * 0.001;
-  const speedMult = Math.min(10, (0.5 + bass * 2.8) * (effectParams.speed || 1)); 
+  const speedMult = Math.min(10, (0.5 + bass * 2.8) * (effectParams.speed || 1));
   const cx = width / 2;
   const cy = height / 2;
 
@@ -31,13 +52,13 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
   const breathe = Math.pow(Math.sin(t * 0.4) * 0.5 + 0.5, 1.5);
   const orbitX = Math.sin(t * 0.08) * 100;
   const orbitY = Math.cos(t * 0.06) * 80;
-  
+
   const camScale = 1.05 + bass * 0.12 + breathe * 0.06;
   const camShake = bass > 0.96 ? (Math.random() - 0.5) * 15 : 0;
   const focusPlane = 1200 + Math.sin(t * 0.25) * 500 + (bass - mid) * 200;
 
   ctx.save();
-  
+
   // 1. CINEMATIC ATMOSPHERE
   const drawBackground = () => {
     const bgGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, width * 1.8);
@@ -51,11 +72,13 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
     ctx.globalCompositeOperation = "screen";
     for (let i = 0; i < 60; i++) {
       const seed = i * 17.7;
-      const sx = ((Math.sin(seed) * 10000) % width + width) % width;
-      const sy = ((Math.cos(seed * 1.3) * 10000) % height + height) % height;
+      const sx = (((Math.sin(seed) * 10000) % width) + width) % width;
+      const sy = (((Math.cos(seed * 1.3) * 10000) % height) + height) % height;
       const sAlpha = (0.05 + bass * 0.08) * (0.5 + Math.sin(t * 0.5 + seed) * 0.5);
       ctx.fillStyle = `hsla(${themeHue}, 100%, 90%, ${sAlpha})`;
-      ctx.beginPath(); ctx.arc(sx, sy, 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(sx, sy, 0.5, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.restore();
   };
@@ -74,7 +97,7 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
       ctx.lineWidth = 1;
       ctx.translate(cx, cy);
       ctx.rotate(t * 0.05);
-      
+
       const hr = 360 + breathe * 40;
       for (let i = 0; i < 64; i += 2) {
         const ang = (i / 64) * Math.PI * 2;
@@ -84,10 +107,12 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
         ctx.lineTo(Math.cos(ang) * (hr + val), Math.sin(ang) * (hr + val));
         ctx.stroke();
       }
-      
+
       ctx.rotate(-t * 0.1);
       ctx.setLineDash([10, 20]);
-      ctx.beginPath(); ctx.arc(0, 0, hr + 50, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, hr + 50, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
 
@@ -97,7 +122,7 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
       ctx.lineWidth = 0.8;
       const gridSize = 420;
       const gridZ = (t * speedMult * 0.12) % gridSize;
-      
+
       for (let i = -5; i <= 5; i++) {
         ctx.beginPath();
         for (let j = -12; j <= 12; j++) {
@@ -107,10 +132,11 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
           const warp = (bass * 180000) / (d + 900);
           const px = gx + warp * (gx > cx ? 1 : -1);
           const py = gy + warp * (gy > cy ? 1 : -1);
-          if (j === -12) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          if (j === -12) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
         }
         ctx.stroke();
-        
+
         ctx.beginPath();
         for (let j = -12; j <= 12; j++) {
           const gx = cx + j * 70 + gridZ;
@@ -119,7 +145,8 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
           const warp = (bass * 180000) / (d + 900);
           const px = gx + warp * (gx > cx ? 1 : -1);
           const py = gy + warp * (gy > cy ? 1 : -1);
-          if (j === -12) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          if (j === -12) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
         }
         ctx.stroke();
       }
@@ -136,14 +163,16 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
     auraGrd.addColorStop(0.3, `hsla(${themeHue}, 100%, 55%, ${coreAlpha * 0.4})`);
     auraGrd.addColorStop(1, "transparent");
     ctx.fillStyle = auraGrd;
-    ctx.beginPath(); ctx.arc(cx, cy, coreR * 8 + ripple, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, coreR * 8 + ripple, 0, Math.PI * 2);
+    ctx.fill();
 
     // Enhanced Nested Wireframe Singularity
     ctx.save();
     ctx.translate(cx, cy);
     ctx.lineWidth = 1.2;
     const coreGeomR = 40 + bass * 120;
-    
+
     ctx.save();
     ctx.rotate(t * 0.3 + treble * 0.5);
     ctx.strokeStyle = `hsla(${themeHue}, 100%, 85%, ${coreAlpha * 1.5})`;
@@ -214,28 +243,31 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
 
       const pSize = Math.min(40, (effectParams.particleSize || 2.4) * scale * (1 + val * 0.5));
       const hue = i % 15 === 0 ? accentHue : themeHue;
-      
+
       // Bokeh Effect
       const blur = Math.abs(p.z - focusPlane) / 800;
       if (blur > 0.4) {
         ctx.fillStyle = `hsla(${hue}, 100%, 75%, ${Math.min(0.1, alpha * 0.08)})`;
-        ctx.beginPath(); ctx.arc(x2d, y2d, pSize * (1 + blur * 8), 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x2d, y2d, pSize * (1 + blur * 8), 0, Math.PI * 2);
+        ctx.fill();
       }
 
       // Safe Stretching
       ctx.save();
       ctx.translate(x2d, y2d);
       ctx.rotate(ang + Math.PI / 2);
-      const stretch = 1 + (suction / 150) * (1 + val) + (speedMult * 0.1);
+      const stretch = 1 + (suction / 150) * (1 + val) + speedMult * 0.1;
       ctx.scale(1, Math.min(10, stretch));
-      
+
       const pGlow = effectParams.glowIntensity || 1.0;
       ctx.fillStyle = tint || `hsla(${hue}, 100%, ${90 + treble * 10}%, ${alpha * pGlow})`;
       ctx.beginPath();
       ctx.moveTo(0, -pSize * 1.5);
       ctx.lineTo(pSize, pSize);
       ctx.lineTo(-pSize, pSize);
-      ctx.closePath(); ctx.fill();
+      ctx.closePath();
+      ctx.fill();
       ctx.restore();
 
       if (val > 0.92 && p.z < 1400 && !tint && nodes.length < 40) {
@@ -245,28 +277,33 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
 
     // Neural Connections (With Traveling Pulses)
     if (nodes.length > 2 && (treble > 0.5 || mid > 0.6)) {
-       ctx.lineWidth = 0.5;
-       for (let i = 0; i < nodes.length; i++) {
-         const n1 = nodes[i];
-         for (let j = i + 1; j < Math.min(nodes.length, i + 3); j++) {
-           const n2 = nodes[j];
-           const dist = Math.hypot(n1.x - n2.x, n1.y - n2.y);
-           if (dist < 300) {
-             const cAlpha = Math.min(0.12, n1.alpha * n2.alpha * 0.2);
-             const grad = ctx.createLinearGradient(n1.x, n1.y, n2.x, n2.y);
-             grad.addColorStop(0, `hsla(${n1.hue}, 100%, 80%, ${cAlpha})`);
-             grad.addColorStop(1, `hsla(${n2.hue}, 100%, 80%, ${cAlpha})`);
-             ctx.strokeStyle = grad;
-             ctx.beginPath(); ctx.moveTo(n1.x, n1.y); ctx.lineTo(n2.x, n2.y); ctx.stroke();
-             
-             const pulsePos = (t * 2.2 + i) % 1;
-             const px = n1.x + (n2.x - n1.x) * pulsePos;
-             const py = n1.y + (n2.y - n1.y) * pulsePos;
-             ctx.fillStyle = `hsla(${n1.hue}, 100%, 95%, ${Math.min(0.2, cAlpha * 2.5)})`;
-             ctx.beginPath(); ctx.arc(px, py, 1.1, 0, Math.PI * 2); ctx.fill();
-           }
-         }
-       }
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i < nodes.length; i++) {
+        const n1 = nodes[i];
+        for (let j = i + 1; j < Math.min(nodes.length, i + 3); j++) {
+          const n2 = nodes[j];
+          const dist = Math.hypot(n1.x - n2.x, n1.y - n2.y);
+          if (dist < 300) {
+            const cAlpha = Math.min(0.12, n1.alpha * n2.alpha * 0.2);
+            const grad = ctx.createLinearGradient(n1.x, n1.y, n2.x, n2.y);
+            grad.addColorStop(0, `hsla(${n1.hue}, 100%, 80%, ${cAlpha})`);
+            grad.addColorStop(1, `hsla(${n2.hue}, 100%, 80%, ${cAlpha})`);
+            ctx.strokeStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(n1.x, n1.y);
+            ctx.lineTo(n2.x, n2.y);
+            ctx.stroke();
+
+            const pulsePos = (t * 2.2 + i) % 1;
+            const px = n1.x + (n2.x - n1.x) * pulsePos;
+            const py = n1.y + (n2.y - n1.y) * pulsePos;
+            ctx.fillStyle = `hsla(${n1.hue}, 100%, 95%, ${Math.min(0.2, cAlpha * 2.5)})`;
+            ctx.beginPath();
+            ctx.arc(px, py, 1.1, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
     }
     ctx.restore();
   };
@@ -281,11 +318,16 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
     const pulseR = width * 0.4 * (bass - 0.88);
     const pulseGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, pulseR);
     pulseGrd.addColorStop(0, "transparent");
-    pulseGrd.addColorStop(0.8, `hsla(${themeHue}, 100%, 80%, ${Math.min(0.04, (bass - 0.88) * 0.12)})`);
+    pulseGrd.addColorStop(
+      0.8,
+      `hsla(${themeHue}, 100%, 80%, ${Math.min(0.04, (bass - 0.88) * 0.12)})`
+    );
     pulseGrd.addColorStop(1, "transparent");
     ctx.strokeStyle = pulseGrd;
     ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(cx, cy, pulseR, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, pulseR, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -320,9 +362,13 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
     const gSize = 10 + i * 25 + bass * 15;
     const gAlpha = 0.02 * (0.5 + Math.sin(t + i) * 0.5);
     ctx.fillStyle = `hsla(${i % 2 === 0 ? accentHue : themeHue}, 100%, 85%, ${gAlpha})`;
-    ctx.beginPath(); ctx.arc(gx, gy, gSize, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(gx, gy, gSize, 0, Math.PI * 2);
+    ctx.fill();
     ctx.strokeStyle = `hsla(${themeHue}, 100%, 90%, ${gAlpha * 0.5})`;
-    ctx.beginPath(); ctx.arc(gx, gy, gSize * 1.3, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(gx, gy, gSize * 1.3, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   // --- MASTER POST-PROCESS ---
@@ -332,9 +378,9 @@ export const drawCyberpunkParticles = ({ ctx, width, height, data, params, time,
   ctx.font = "7px monospace";
   ctx.fillStyle = `hsla(${themeHue}, 100%, 80%, 0.4)`;
   for (let i = 0; i < 8; i++) {
-    const y = ((t * 40 + i * 50) % height);
+    const y = (t * 40 + i * 50) % height;
     ctx.fillText(Math.random().toString(16).slice(2, 10).toUpperCase(), 15, y);
-    ctx.fillText(`0x${Math.floor(Math.random()*255).toString(16)}`, width - 45, height - y);
+    ctx.fillText(`0x${Math.floor(Math.random() * 255).toString(16)}`, width - 45, height - y);
   }
   ctx.restore();
 

@@ -40,7 +40,7 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
     incrementProcessed,
     incrementFailed,
   } = useDSDProcessingStore();
-  const reportUsage = useStatsAchievementsStore(state => state.reportProToolsUsage);
+  const reportUsage = useStatsAchievementsStore((state) => state.reportProToolsUsage);
 
   const [selectedSongs, setSelectedSongs] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"select" | "queue" | "settings">("select");

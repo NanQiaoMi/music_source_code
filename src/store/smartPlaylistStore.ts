@@ -15,8 +15,23 @@ export type SmartPlaylistType =
 
 export interface SmartPlaylistRule {
   id: string;
-  field: "artist" | "album" | "genre" | "duration" | "playCount" | "addedTime" | "title" | "emotion";
-  operator: "contains" | "equals" | "greaterThan" | "lessThan" | "notContains" | "notEquals" | "inQuadrant";
+  field:
+    | "artist"
+    | "album"
+    | "genre"
+    | "duration"
+    | "playCount"
+    | "addedTime"
+    | "title"
+    | "emotion";
+  operator:
+    | "contains"
+    | "equals"
+    | "greaterThan"
+    | "lessThan"
+    | "notContains"
+    | "notEquals"
+    | "inQuadrant";
   value: string | number;
 }
 
@@ -188,13 +203,13 @@ function evaluateRule(song: Song, rule: SmartPlaylistRule): boolean {
       if (operator === "equals") return duration === durationValue;
       if (operator === "notEquals") return duration !== durationValue;
       break;
-    
+
     case "emotion":
       const { useEmotionStore } = require("./emotionStore");
       const emotionMap = useEmotionStore.getState().emotionMap;
       const emotion = emotionMap[song.id];
       if (!emotion) return false;
-      
+
       if (operator === "inQuadrant") {
         const quadrant = String(value);
         if (quadrant === "Q1") return emotion.x > 0 && emotion.y > 0;
@@ -313,8 +328,8 @@ export const useSmartPlaylistStore = create<SmartPlaylistState>()(
 
         switch (playlist.type) {
           case "recently-added":
-            results = allSongs.filter((song) => 
-              song.addedAt && Date.now() - song.addedAt < 30 * 86400000
+            results = allSongs.filter(
+              (song) => song.addedAt && Date.now() - song.addedAt < 30 * 86400000
             );
             if (results.length === 0) results = allSongs.slice(0, 50);
             break;

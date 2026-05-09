@@ -12,12 +12,12 @@ export const AILinerNotes: React.FC = () => {
   const currentSong = useAudioStore((state) => state.currentSong);
   const { notes, getNotes, isGenerating, clearCache } = useLinerNotesStore();
   const { points } = useEmotionStore();
-  const activeConfigId = useAIStore((state) => state.activeConfigId);
+  const { isEnabled, activeConfigId } = useAIStore();
   const [displayNote, setDisplayNote] = useState<string | null>(null);
 
   useEffect(() => {
-    if (currentSong && activeConfigId) {
-      const emotionPoint = points.find(p => p.id === currentSong.id);
+    if (currentSong && activeConfigId && isEnabled) {
+      const emotionPoint = points.find((p) => p.id === currentSong.id);
       const fetchNotes = async () => {
         const result = await getNotes(
           currentSong.artist,
@@ -31,9 +31,9 @@ export const AILinerNotes: React.FC = () => {
     } else {
       setDisplayNote(null);
     }
-  }, [currentSong?.id, activeConfigId, getNotes, points]);
+  }, [currentSong?.id, activeConfigId, isEnabled, getNotes, points]);
 
-  if (!activeConfigId || (!displayNote && !isGenerating)) {
+  if (!isEnabled || !activeConfigId || (!displayNote && !isGenerating)) {
     return null;
   }
 
@@ -52,17 +52,17 @@ export const AILinerNotes: React.FC = () => {
             <Sparkles className="w-3 h-3" />
           )}
           <span>AI Emotional Insight</span>
-          <button 
+          <button
             onClick={() => {
               if (currentSong && activeConfigId) {
-                const emotionPoint = points.find(p => p.id === currentSong.id);
+                const emotionPoint = points.find((p) => p.id === currentSong.id);
                 getNotes(
                   currentSong.artist,
                   currentSong.title,
                   currentSong.lyrics,
                   emotionPoint ? { x: emotionPoint.x, y: emotionPoint.y } : undefined,
                   true
-                ).then(result => setDisplayNote(result));
+                ).then((result) => setDisplayNote(result));
               }
             }}
             className="ml-auto p-1 hover:bg-white/10 rounded-md transition-colors pointer-events-auto"
@@ -91,7 +91,7 @@ export const AILinerNotes: React.FC = () => {
                 “{displayNote}”
               </p>
             )}
-            
+
             {/* Subtle left border decoration */}
             <div className="absolute -left-4 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-white/20 to-transparent" />
           </motion.div>

@@ -17,7 +17,7 @@ export const FractalGeometryV8Effect: EffectPlugin = {
       min: 3,
       max: 10,
       step: 1,
-      default: 5
+      default: 5,
     },
     {
       id: "scale",
@@ -27,7 +27,7 @@ export const FractalGeometryV8Effect: EffectPlugin = {
       min: 0.5,
       max: 3,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "rotation",
@@ -37,7 +37,7 @@ export const FractalGeometryV8Effect: EffectPlugin = {
       min: 0,
       max: 360,
       step: 1,
-      default: 0
+      default: 0,
     },
     {
       id: "shapeType",
@@ -49,8 +49,8 @@ export const FractalGeometryV8Effect: EffectPlugin = {
         { label: "谢尔宾斯基三角形", value: "sierpinski" },
         { label: "科赫雪花", value: "koch" },
         { label: "分形树", value: "tree" },
-        { label: "分形圆", value: "circles" }
-      ]
+        { label: "分形圆", value: "circles" },
+      ],
     },
     {
       id: "lineWidth",
@@ -60,7 +60,7 @@ export const FractalGeometryV8Effect: EffectPlugin = {
       min: 1,
       max: 10,
       step: 0.5,
-      default: 2
+      default: 2,
     },
     {
       id: "audioIntensity",
@@ -70,7 +70,7 @@ export const FractalGeometryV8Effect: EffectPlugin = {
       min: 0,
       max: 2,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "rotationSpeed",
@@ -80,21 +80,21 @@ export const FractalGeometryV8Effect: EffectPlugin = {
       min: -2,
       max: 2,
       step: 0.1,
-      default: 0
+      default: 0,
     },
     {
       id: "color1",
       name: "主颜色",
       type: "color",
       mode: "basic",
-      default: "#00ffff"
+      default: "#00ffff",
     },
     {
       id: "color2",
       name: "辅助颜色",
       type: "color",
       mode: "professional",
-      default: "#ff00ff"
+      default: "#ff00ff",
     },
     {
       id: "fillOpacity",
@@ -104,7 +104,7 @@ export const FractalGeometryV8Effect: EffectPlugin = {
       min: 0,
       max: 1,
       step: 0.05,
-      default: 0.3
+      default: 0.3,
     },
     {
       id: "strokeOpacity",
@@ -114,12 +114,12 @@ export const FractalGeometryV8Effect: EffectPlugin = {
       min: 0,
       max: 1,
       step: 0.05,
-      default: 0.8
-    }
+      default: 0.8,
+    },
   ],
   private: {
     time: 0,
-    baseRotation: 0
+    baseRotation: 0,
   },
   init(ctx) {
     (this as any).private.time = 0;
@@ -127,7 +127,7 @@ export const FractalGeometryV8Effect: EffectPlugin = {
   },
   render(ctx, audioData, params) {
     if (!ctx.ctx || !ctx.canvas) return;
-    
+
     const canvas = ctx.canvas;
     const context = ctx.ctx;
     const width = canvas.width;
@@ -146,7 +146,7 @@ export const FractalGeometryV8Effect: EffectPlugin = {
 
     context.save();
     context.translate(centerX, centerY);
-    context.rotate((this as any).private.baseRotation + (params.rotation * Math.PI / 180));
+    context.rotate((this as any).private.baseRotation + (params.rotation * Math.PI) / 180);
     context.scale(params.scale * audioMultiplier, params.scale * audioMultiplier);
 
     const gradient = context.createRadialGradient(0, 0, 0, 0, 0, Math.max(width, height) / 2);
@@ -188,15 +188,21 @@ export const FractalGeometryV8Effect: EffectPlugin = {
       ctx.private.time = 0;
       ctx.private.baseRotation = 0;
     }
-  }
+  },
 };
 
-function drawSierpinskiTriangle(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, depth: number) {
+function drawSierpinskiTriangle(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  depth: number
+) {
   if (depth <= 0) {
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineTo(x + size / 2, y + size * Math.sqrt(3) / 2);
-    ctx.lineTo(x - size / 2, y + size * Math.sqrt(3) / 2);
+    ctx.lineTo(x + size / 2, y + (size * Math.sqrt(3)) / 2);
+    ctx.lineTo(x - size / 2, y + (size * Math.sqrt(3)) / 2);
     ctx.closePath();
     ctx.stroke();
     return;
@@ -204,15 +210,33 @@ function drawSierpinskiTriangle(ctx: CanvasRenderingContext2D, x: number, y: num
 
   const newSize = size / 2;
   drawSierpinskiTriangle(ctx, x, y, newSize, depth - 1);
-  drawSierpinskiTriangle(ctx, x + newSize / 2, y + newSize * Math.sqrt(3) / 2, newSize, depth - 1);
-  drawSierpinskiTriangle(ctx, x - newSize / 2, y + newSize * Math.sqrt(3) / 2, newSize, depth - 1);
+  drawSierpinskiTriangle(
+    ctx,
+    x + newSize / 2,
+    y + (newSize * Math.sqrt(3)) / 2,
+    newSize,
+    depth - 1
+  );
+  drawSierpinskiTriangle(
+    ctx,
+    x - newSize / 2,
+    y + (newSize * Math.sqrt(3)) / 2,
+    newSize,
+    depth - 1
+  );
 }
 
-function drawKochSnowflake(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, depth: number) {
+function drawKochSnowflake(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  depth: number
+) {
   ctx.beginPath();
   for (let i = 0; i < 3; i++) {
-    const angle = (i * 120 - 90) * Math.PI / 180;
-    const nextAngle = ((i + 1) * 120 - 90) * Math.PI / 180;
+    const angle = ((i * 120 - 90) * Math.PI) / 180;
+    const nextAngle = (((i + 1) * 120 - 90) * Math.PI) / 180;
     drawKochLine(
       ctx,
       x + size * Math.cos(angle),
@@ -225,7 +249,14 @@ function drawKochSnowflake(ctx: CanvasRenderingContext2D, x: number, y: number, 
   ctx.stroke();
 }
 
-function drawKochLine(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, depth: number) {
+function drawKochLine(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  depth: number
+) {
   if (depth <= 0) {
     ctx.lineTo(x2, y2);
     return;
@@ -236,8 +267,8 @@ function drawKochLine(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2:
 
   const xA = x1 + dx / 3;
   const yA = y1 + dy / 3;
-  const xB = x1 + dx * 2 / 3;
-  const yB = y1 + dy * 2 / 3;
+  const xB = x1 + (dx * 2) / 3;
+  const yB = y1 + (dy * 2) / 3;
 
   const xC = xA + (dx / 3) * 0.5 - (dy / 3) * (Math.sqrt(3) / 2);
   const yC = yA + (dx / 3) * (Math.sqrt(3) / 2) + (dy / 3) * 0.5;
@@ -248,11 +279,18 @@ function drawKochLine(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2:
   drawKochLine(ctx, xB, yB, x2, y2, depth - 1);
 }
 
-function drawFractalTree(ctx: CanvasRenderingContext2D, x: number, y: number, length: number, angle: number, depth: number) {
+function drawFractalTree(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  length: number,
+  angle: number,
+  depth: number
+) {
   if (depth <= 0 || length < 2) return;
 
-  const endX = x + length * Math.cos(angle * Math.PI / 180);
-  const endY = y + length * Math.sin(angle * Math.PI / 180);
+  const endX = x + length * Math.cos((angle * Math.PI) / 180);
+  const endY = y + length * Math.sin((angle * Math.PI) / 180);
 
   ctx.beginPath();
   ctx.moveTo(x, y);
@@ -266,7 +304,13 @@ function drawFractalTree(ctx: CanvasRenderingContext2D, x: number, y: number, le
   drawFractalTree(ctx, endX, endY, branchLength, angle + branchAngle, depth - 1);
 }
 
-function drawFractalCircles(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, depth: number) {
+function drawFractalCircles(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  depth: number
+) {
   if (depth <= 0 || radius < 2) return;
 
   ctx.beginPath();

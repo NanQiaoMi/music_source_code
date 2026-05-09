@@ -10,12 +10,12 @@ const APPLE_SPRING_CONFIG = {
   stiffness: 400,
   damping: 35,
   mass: 1,
-  bounce: 0
+  bounce: 0,
 };
 
 /**
  * PlayerView - The immersive 3D player view.
- * 
+ *
  * Extracted from page.tsx to isolate player-specific layout and animation.
  */
 export function PlayerView() {

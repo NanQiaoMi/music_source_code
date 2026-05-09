@@ -14,7 +14,7 @@ interface LyricsImportPanelProps {
 
 export const LyricsImportPanel: React.FC<LyricsImportPanelProps> = ({ isOpen, onClose }) => {
   const { songs, updateSong } = usePlaylistStore();
-  const currentSong = useAudioStore(state => state.currentSong);
+  const currentSong = useAudioStore((state) => state.currentSong);
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [lyricsContent, setLyricsContent] = useState("");
   const [isEditing, setIsEditing] = useState(false);
@@ -113,7 +113,6 @@ export const LyricsImportPanel: React.FC<LyricsImportPanelProps> = ({ isOpen, on
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-4xl max-h-[80vh] bg-[#1c1c1e]/90 backdrop-blur-[40px] rounded-[24px] border border-white/10 shadow-2xl overflow-hidden flex flex-col"
       >
-
         <div className="relative z-10 flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-white/10">
             <div className="flex items-center gap-3">

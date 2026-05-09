@@ -39,7 +39,10 @@ export function GlassCard({
   const motionProps = hover
     ? {
         whileHover: { scale: hoverScale },
-        transition: { duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
+        transition: {
+          duration: 0.3,
+          ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
+        },
       }
     : {};
 
@@ -56,12 +59,14 @@ export function GlassCard({
         shadow-[0_16px_40px_rgba(0,0,0,0.25)]
         ${className}
       `}
-      style={{
-        backdropFilter: `blur(${blur}px) saturate(180%)`,
-        WebkitBackdropFilter: `blur(${blur}px) saturate(180%)`,
-        borderRadius: ROUNDED_VALUES[rounded] || rounded,
-        ...style,
-      } as React.CSSProperties}
+      style={
+        {
+          backdropFilter: `blur(${blur}px) saturate(180%)`,
+          WebkitBackdropFilter: `blur(${blur}px) saturate(180%)`,
+          borderRadius: ROUNDED_VALUES[rounded] || rounded,
+          ...style,
+        } as React.CSSProperties
+      }
       {...motionProps}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-white/[0.06] via-transparent to-black/[0.08] pointer-events-none" />

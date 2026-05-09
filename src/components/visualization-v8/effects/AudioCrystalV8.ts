@@ -19,8 +19,8 @@ export const AudioCrystalV8Effect: EffectPlugin = {
         { label: "钻石", value: "diamond" },
         { label: "八面体", value: "octahedron" },
         { label: "立方体", value: "cube" },
-        { label: "十二面体", value: "dodecahedron" }
-      ]
+        { label: "十二面体", value: "dodecahedron" },
+      ],
     },
     {
       id: "crystalSize",
@@ -30,7 +30,7 @@ export const AudioCrystalV8Effect: EffectPlugin = {
       min: 50,
       max: 300,
       step: 10,
-      default: 150
+      default: 150,
     },
     {
       id: "rotationSpeed",
@@ -40,7 +40,7 @@ export const AudioCrystalV8Effect: EffectPlugin = {
       min: -2,
       max: 2,
       step: 0.1,
-      default: 0.5
+      default: 0.5,
     },
     {
       id: "audioIntensity",
@@ -50,7 +50,7 @@ export const AudioCrystalV8Effect: EffectPlugin = {
       min: 0,
       max: 3,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "colorScheme",
@@ -62,8 +62,8 @@ export const AudioCrystalV8Effect: EffectPlugin = {
         { label: "水晶", value: "crystal" },
         { label: "红宝石", value: "ruby" },
         { label: "蓝宝石", value: "sapphire" },
-        { label: "祖母绿", value: "emerald" }
-      ]
+        { label: "祖母绿", value: "emerald" },
+      ],
     },
     {
       id: "refraction",
@@ -73,7 +73,7 @@ export const AudioCrystalV8Effect: EffectPlugin = {
       min: 0,
       max: 2,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "lineWidth",
@@ -83,7 +83,7 @@ export const AudioCrystalV8Effect: EffectPlugin = {
       min: 1,
       max: 5,
       step: 0.5,
-      default: 2
+      default: 2,
     },
     {
       id: "fillOpacity",
@@ -93,18 +93,18 @@ export const AudioCrystalV8Effect: EffectPlugin = {
       min: 0,
       max: 1,
       step: 0.05,
-      default: 0.3
-    }
+      default: 0.3,
+    },
   ],
   private: {
-    time: 0
+    time: 0,
   },
   init(ctx) {
     (this as any).private.time = 0;
   },
   render(ctx, audioData, params) {
     if (!ctx.ctx || !ctx.canvas) return;
-    
+
     const canvas = ctx.canvas;
     const context = ctx.ctx;
     const width = canvas.width;
@@ -134,7 +134,14 @@ export const AudioCrystalV8Effect: EffectPlugin = {
     context.lineCap = "round";
     context.lineJoin = "round";
 
-    drawCrystal(context, params.crystalType, size, colors, params.refraction * audioMultiplier, params.fillOpacity);
+    drawCrystal(
+      context,
+      params.crystalType,
+      size,
+      colors,
+      params.refraction * audioMultiplier,
+      params.fillOpacity
+    );
 
     context.restore();
   },
@@ -143,7 +150,7 @@ export const AudioCrystalV8Effect: EffectPlugin = {
     if (ctx && ctx.private) {
       ctx.private.time = 0;
     }
-  }
+  },
 };
 
 function getCrystalColors(scheme: string) {
@@ -161,7 +168,14 @@ function getCrystalColors(scheme: string) {
   }
 }
 
-function drawCrystal(ctx: CanvasRenderingContext2D, type: string, size: number, colors: string[], refraction: number, opacity: number) {
+function drawCrystal(
+  ctx: CanvasRenderingContext2D,
+  type: string,
+  size: number,
+  colors: string[],
+  refraction: number,
+  opacity: number
+) {
   switch (type) {
     case "diamond":
       drawDiamond(ctx, size, colors, opacity);
@@ -178,21 +192,46 @@ function drawCrystal(ctx: CanvasRenderingContext2D, type: string, size: number, 
   }
 }
 
-function drawDiamond(ctx: CanvasRenderingContext2D, size: number, colors: string[], opacity: number) {
+function drawDiamond(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  colors: string[],
+  opacity: number
+) {
   const faces = [
-    [{ x: 0, y: -size }, { x: size * 0.8, y: 0 }, { x: 0, y: size * 0.3 }],
-    [{ x: 0, y: -size }, { x: -size * 0.8, y: 0 }, { x: 0, y: size * 0.3 }],
-    [{ x: 0, y: -size }, { x: size * 0.8, y: 0 }, { x: 0, y: -size * 0.2 }],
-    [{ x: 0, y: -size }, { x: -size * 0.8, y: 0 }, { x: 0, y: -size * 0.2 }],
-    [{ x: size * 0.8, y: 0 }, { x: 0, y: size * 0.5 }, { x: -size * 0.8, y: 0 }]
+    [
+      { x: 0, y: -size },
+      { x: size * 0.8, y: 0 },
+      { x: 0, y: size * 0.3 },
+    ],
+    [
+      { x: 0, y: -size },
+      { x: -size * 0.8, y: 0 },
+      { x: 0, y: size * 0.3 },
+    ],
+    [
+      { x: 0, y: -size },
+      { x: size * 0.8, y: 0 },
+      { x: 0, y: -size * 0.2 },
+    ],
+    [
+      { x: 0, y: -size },
+      { x: -size * 0.8, y: 0 },
+      { x: 0, y: -size * 0.2 },
+    ],
+    [
+      { x: size * 0.8, y: 0 },
+      { x: 0, y: size * 0.5 },
+      { x: -size * 0.8, y: 0 },
+    ],
   ];
 
   faces.forEach((face, i) => {
     ctx.beginPath();
     ctx.moveTo(face[0].x, face[0].y);
-    face.forEach(point => ctx.lineTo(point.x, point.y));
+    face.forEach((point) => ctx.lineTo(point.x, point.y));
     ctx.closePath();
-    
+
     ctx.strokeStyle = colors[i % colors.length];
     ctx.fillStyle = colors[i % colors.length];
     ctx.globalAlpha = opacity;
@@ -202,27 +241,32 @@ function drawDiamond(ctx: CanvasRenderingContext2D, size: number, colors: string
   });
 }
 
-function drawOctahedron(ctx: CanvasRenderingContext2D, size: number, colors: string[], opacity: number) {
+function drawOctahedron(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  colors: string[],
+  opacity: number
+) {
   const vertices = [
     { x: 0, y: -size },
     { x: size, y: 0 },
     { x: 0, y: size },
-    { x: -size, y: 0 }
+    { x: -size, y: 0 },
   ];
 
   const faces = [
     [0, 1, 3],
     [1, 2, 3],
     [0, 1, 2],
-    [0, 2, 3]
+    [0, 2, 3],
   ];
 
   faces.forEach((face, i) => {
     ctx.beginPath();
     ctx.moveTo(vertices[face[0]].x, vertices[face[0]].y);
-    face.forEach(idx => ctx.lineTo(vertices[idx].x, vertices[idx].y));
+    face.forEach((idx) => ctx.lineTo(vertices[idx].x, vertices[idx].y));
     ctx.closePath();
-    
+
     ctx.strokeStyle = colors[i % colors.length];
     ctx.fillStyle = colors[i % colors.length];
     ctx.globalAlpha = opacity;
@@ -235,19 +279,34 @@ function drawOctahedron(ctx: CanvasRenderingContext2D, size: number, colors: str
 function drawCube(ctx: CanvasRenderingContext2D, size: number, colors: string[], opacity: number) {
   const s = size * 0.7;
   const offset = size * 0.3;
-  
+
   const faces = [
-    [{ x: -s, y: -s - offset }, { x: s, y: -s - offset }, { x: s, y: s - offset }, { x: -s, y: s - offset }],
-    [{ x: -s + offset, y: -s }, { x: s + offset, y: -s }, { x: s + offset, y: s }, { x: -s + offset, y: s }],
-    [{ x: -s, y: -s - offset }, { x: s, y: -s - offset }, { x: s + offset, y: -s }, { x: -s + offset, y: -s }]
+    [
+      { x: -s, y: -s - offset },
+      { x: s, y: -s - offset },
+      { x: s, y: s - offset },
+      { x: -s, y: s - offset },
+    ],
+    [
+      { x: -s + offset, y: -s },
+      { x: s + offset, y: -s },
+      { x: s + offset, y: s },
+      { x: -s + offset, y: s },
+    ],
+    [
+      { x: -s, y: -s - offset },
+      { x: s, y: -s - offset },
+      { x: s + offset, y: -s },
+      { x: -s + offset, y: -s },
+    ],
   ];
 
   faces.forEach((face, i) => {
     ctx.beginPath();
     ctx.moveTo(face[0].x, face[0].y);
-    face.forEach(point => ctx.lineTo(point.x, point.y));
+    face.forEach((point) => ctx.lineTo(point.x, point.y));
     ctx.closePath();
-    
+
     ctx.strokeStyle = colors[i % colors.length];
     ctx.fillStyle = colors[i % colors.length];
     ctx.globalAlpha = opacity;
@@ -257,7 +316,12 @@ function drawCube(ctx: CanvasRenderingContext2D, size: number, colors: string[],
   });
 }
 
-function drawDodecahedron(ctx: CanvasRenderingContext2D, size: number, colors: string[], opacity: number) {
+function drawDodecahedron(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  colors: string[],
+  opacity: number
+) {
   const sides = 12;
   const innerRadius = size * 0.4;
   const outerRadius = size;
@@ -265,14 +329,14 @@ function drawDodecahedron(ctx: CanvasRenderingContext2D, size: number, colors: s
   for (let i = 0; i < sides; i++) {
     const angle1 = (i / sides) * Math.PI * 2;
     const angle2 = ((i + 1) / sides) * Math.PI * 2;
-    
+
     ctx.beginPath();
     ctx.moveTo(Math.cos(angle1) * outerRadius, Math.sin(angle1) * outerRadius);
     ctx.lineTo(Math.cos(angle1) * innerRadius, Math.sin(angle1) * innerRadius);
     ctx.lineTo(Math.cos(angle2) * innerRadius, Math.sin(angle2) * innerRadius);
     ctx.lineTo(Math.cos(angle2) * outerRadius, Math.sin(angle2) * outerRadius);
     ctx.closePath();
-    
+
     ctx.strokeStyle = colors[i % colors.length];
     ctx.fillStyle = colors[i % colors.length];
     ctx.globalAlpha = opacity;

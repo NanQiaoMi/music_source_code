@@ -1,8 +1,8 @@
 import { create } from "zustand";
 
-export type VisualizationEffect = 
-  | "spatialMesh" 
-  | "cyberpunkParticles" 
+export type VisualizationEffect =
+  | "spatialMesh"
+  | "cyberpunkParticles"
   | "organicFluid"
   | "auroraWave"
   | "spectrumRing"
@@ -12,7 +12,6 @@ export type VisualizationEffect =
   | "gravitationalField"
   | "prismPulse"
   | "resonanceTotem";
-
 
 export interface VisualizationPreset {
   id: string;
@@ -28,21 +27,54 @@ interface VisualizationState {
   currentPresetId: string | null;
   showSongInfo: boolean;
   reactToMusic: boolean;
-  
-  effectSettings: {
-    spatialMesh: { blurIntensity: number; speed: number; colorIntensity: number; };
-    cyberpunkParticles: { particleCount: number; particleSize: number; speed: number; glowIntensity: number; };
-    organicFluid: { complexity: number; speed: number; colorShift: number; };
-    auroraWave: { speed: number; colorIntensity: number; coreComplexity: number; flareAmount: number; hudDetail: number; };
-    spectrumRing: { ringCount: number; rotationSpeed: number; barWidth: number; colorMode: number; glowIntensity: number; haloStyle: number; flareAmount: number; chromaticIntensity: number; hudDetail: number; };
-    nebulaField: { starCount: number; nebulaIntensity: number; speed: number; depth: number; flareAmount: number; hudDetail: number; };
-    vinylGroove: { spinSpeed: number; grooveIntensity: number; glowAmount: number; opticalComplexity: number; chromaticIntensity: number; };
-    cyberMatrix: { speed: number; density: number; };
-    gravitationalField: { speed: number; sensitivity: number; coreIntensity: number; };
-    prismPulse: { complexity: number; refraction: number; drift: number; speed: number; };
-    resonanceTotem: { opacity: number; scanSpeed: number; grainIntensity: number; };
-  };
 
+  effectSettings: {
+    spatialMesh: { blurIntensity: number; speed: number; colorIntensity: number };
+    cyberpunkParticles: {
+      particleCount: number;
+      particleSize: number;
+      speed: number;
+      glowIntensity: number;
+    };
+    organicFluid: { complexity: number; speed: number; colorShift: number };
+    auroraWave: {
+      speed: number;
+      colorIntensity: number;
+      coreComplexity: number;
+      flareAmount: number;
+      hudDetail: number;
+    };
+    spectrumRing: {
+      ringCount: number;
+      rotationSpeed: number;
+      barWidth: number;
+      colorMode: number;
+      glowIntensity: number;
+      haloStyle: number;
+      flareAmount: number;
+      chromaticIntensity: number;
+      hudDetail: number;
+    };
+    nebulaField: {
+      starCount: number;
+      nebulaIntensity: number;
+      speed: number;
+      depth: number;
+      flareAmount: number;
+      hudDetail: number;
+    };
+    vinylGroove: {
+      spinSpeed: number;
+      grooveIntensity: number;
+      glowAmount: number;
+      opticalComplexity: number;
+      chromaticIntensity: number;
+    };
+    cyberMatrix: { speed: number; density: number };
+    gravitationalField: { speed: number; sensitivity: number; coreIntensity: number };
+    prismPulse: { complexity: number; refraction: number; drift: number; speed: number };
+    resonanceTotem: { opacity: number; scanSpeed: number; grainIntensity: number };
+  };
 
   setCurrentEffect: (effect: VisualizationEffect) => void;
   setIsFullscreen: (isFullscreen: boolean) => void;
@@ -59,16 +91,44 @@ const defaultEffectSettings = {
   spatialMesh: { blurIntensity: 120, speed: 1.0, colorIntensity: 0.8 },
   cyberpunkParticles: { particleCount: 500, particleSize: 2.0, speed: 1.5, glowIntensity: 1.0 },
   organicFluid: { complexity: 1.0, speed: 1.0, colorShift: 0.5 },
-  auroraWave: { speed: 1.0, colorIntensity: 1.0, coreComplexity: 1.0, flareAmount: 1.0, hudDetail: 1.0 },
-  spectrumRing: { ringCount: 3, rotationSpeed: 0.5, barWidth: 3.0, colorMode: 0, glowIntensity: 1.0, haloStyle: 0, flareAmount: 1.0, chromaticIntensity: 1.0, hudDetail: 1.0 },
-  nebulaField: { starCount: 800, nebulaIntensity: 1.0, speed: 0.5, depth: 1.0, flareAmount: 1.0, hudDetail: 1.0 },
-  vinylGroove: { spinSpeed: 1.0, grooveIntensity: 1.0, glowAmount: 1.0, opticalComplexity: 1.0, chromaticIntensity: 1.0 },
+  auroraWave: {
+    speed: 1.0,
+    colorIntensity: 1.0,
+    coreComplexity: 1.0,
+    flareAmount: 1.0,
+    hudDetail: 1.0,
+  },
+  spectrumRing: {
+    ringCount: 3,
+    rotationSpeed: 0.5,
+    barWidth: 3.0,
+    colorMode: 0,
+    glowIntensity: 1.0,
+    haloStyle: 0,
+    flareAmount: 1.0,
+    chromaticIntensity: 1.0,
+    hudDetail: 1.0,
+  },
+  nebulaField: {
+    starCount: 800,
+    nebulaIntensity: 1.0,
+    speed: 0.5,
+    depth: 1.0,
+    flareAmount: 1.0,
+    hudDetail: 1.0,
+  },
+  vinylGroove: {
+    spinSpeed: 1.0,
+    grooveIntensity: 1.0,
+    glowAmount: 1.0,
+    opticalComplexity: 1.0,
+    chromaticIntensity: 1.0,
+  },
   cyberMatrix: { speed: 1.0, density: 1.0 },
   gravitationalField: { speed: 1.0, sensitivity: 1.0, coreIntensity: 1.0 },
   prismPulse: { complexity: 6, refraction: 1.0, drift: 0.5, speed: 1.0 },
   resonanceTotem: { opacity: 1.0, scanSpeed: 1.0, grainIntensity: 0.05 },
 };
-
 
 export const useVisualizationStore = create<VisualizationState>((set, get) => ({
   currentEffect: "spatialMesh",

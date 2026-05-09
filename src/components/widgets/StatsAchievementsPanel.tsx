@@ -4,7 +4,15 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Trophy, BarChart3, Calendar, Zap, Clock, Disc, Activity } from "lucide-react";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
-import { MusicalDNARadar, ListeningHeatmap, AudioQualityGauge, ActivityTrend, ListeningClock, ProToolMasteryRadar, MoodFlow } from "@/components/stats/StatsVisuals";
+import {
+  MusicalDNARadar,
+  ListeningHeatmap,
+  AudioQualityGauge,
+  ActivityTrend,
+  ListeningClock,
+  ProToolMasteryRadar,
+  MoodFlow,
+} from "@/components/stats/StatsVisuals";
 
 interface StatsAchievementsPanelProps {
   isOpen: boolean;
@@ -99,12 +107,48 @@ export const StatsAchievementsPanel: React.FC<StatsAchievementsPanelProps> = ({
 
 function OverviewTab({ stats }: { stats: any }) {
   const metrics = [
-    { label: "总播放次数", value: stats.totalPlayCount || 0, icon: <Activity className="w-4 h-4" />, color: "from-amber-500/20 to-orange-500/20", borderColor: "border-amber-500/30" },
-    { label: "总收听时长", value: `${Math.floor((stats.totalListenTime || 0) / 3600)}小时`, icon: <Clock className="w-4 h-4" />, color: "from-emerald-500/20 to-teal-500/20", borderColor: "border-emerald-500/30" },
-    { label: "歌手数量", value: stats.uniqueArtists || 0, icon: <Zap className="w-4 h-4" />, color: "from-violet-500/20 to-purple-500/20", borderColor: "border-violet-500/30" },
-    { label: "专辑数量", value: stats.uniqueAlbums || 0, icon: <Disc className="w-4 h-4" />, color: "from-blue-500/20 to-cyan-500/20", borderColor: "border-blue-500/30" },
-    { label: "歌曲数量", value: stats.uniqueSongs || 0, icon: <BarChart3 className="w-4 h-4" />, color: "from-pink-500/20 to-rose-500/20", borderColor: "border-pink-500/30" },
-    { label: "完成率", value: `${Math.round((stats.completedSongsCount / (stats.totalPlayCount || 1)) * 100)}%`, icon: <Zap className="w-4 h-4" />, color: "from-indigo-500/20 to-blue-500/20", borderColor: "border-indigo-500/30" },
+    {
+      label: "总播放次数",
+      value: stats.totalPlayCount || 0,
+      icon: <Activity className="w-4 h-4" />,
+      color: "from-amber-500/20 to-orange-500/20",
+      borderColor: "border-amber-500/30",
+    },
+    {
+      label: "总收听时长",
+      value: `${Math.floor((stats.totalListenTime || 0) / 3600)}小时`,
+      icon: <Clock className="w-4 h-4" />,
+      color: "from-emerald-500/20 to-teal-500/20",
+      borderColor: "border-emerald-500/30",
+    },
+    {
+      label: "歌手数量",
+      value: stats.uniqueArtists || 0,
+      icon: <Zap className="w-4 h-4" />,
+      color: "from-violet-500/20 to-purple-500/20",
+      borderColor: "border-violet-500/30",
+    },
+    {
+      label: "专辑数量",
+      value: stats.uniqueAlbums || 0,
+      icon: <Disc className="w-4 h-4" />,
+      color: "from-blue-500/20 to-cyan-500/20",
+      borderColor: "border-blue-500/30",
+    },
+    {
+      label: "歌曲数量",
+      value: stats.uniqueSongs || 0,
+      icon: <BarChart3 className="w-4 h-4" />,
+      color: "from-pink-500/20 to-rose-500/20",
+      borderColor: "border-pink-500/30",
+    },
+    {
+      label: "完成率",
+      value: `${Math.round((stats.completedSongsCount / (stats.totalPlayCount || 1)) * 100)}%`,
+      icon: <Zap className="w-4 h-4" />,
+      color: "from-indigo-500/20 to-blue-500/20",
+      borderColor: "border-indigo-500/30",
+    },
   ];
 
   return (
@@ -132,7 +176,9 @@ function OverviewTab({ stats }: { stats: any }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {stats.favoriteArtist && (
           <div className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-            <div className="text-white/40 text-xs uppercase tracking-wider mb-2">最喜爱的艺术家</div>
+            <div className="text-white/40 text-xs uppercase tracking-wider mb-2">
+              最喜爱的艺术家
+            </div>
             <div className="text-white font-semibold text-xl">{stats.favoriteArtist}</div>
           </div>
         )}
@@ -148,13 +194,15 @@ function OverviewTab({ stats }: { stats: any }) {
 }
 
 function InsightsTab({ stats }: { stats: any }) {
-  const genreLabels = stats.genreDistribution?.length > 0 
-    ? stats.genreDistribution.map((g: any) => g.genre)
-    : ["Pop", "Rock", "Jazz", "Classical", "Electronic", "Lofi"];
-    
-  const genreData = stats.genreDistribution?.length > 0
-    ? stats.genreDistribution.reduce((acc: any, g: any) => ({ ...acc, [g.genre]: g.count }), {})
-    : { "Pop": 85, "Rock": 65, "Jazz": 40, "Classical": 30, "Electronic": 90, "Lofi": 55 };
+  const genreLabels =
+    stats.genreDistribution?.length > 0
+      ? stats.genreDistribution.map((g: any) => g.genre)
+      : ["Pop", "Rock", "Jazz", "Classical", "Electronic", "Lofi"];
+
+  const genreData =
+    stats.genreDistribution?.length > 0
+      ? stats.genreDistribution.reduce((acc: any, g: any) => ({ ...acc, [g.genre]: g.count }), {})
+      : { Pop: 85, Rock: 65, Jazz: 40, Classical: 30, Electronic: 90, Lofi: 55 };
 
   return (
     <div className="space-y-8">
@@ -177,9 +225,9 @@ function InsightsTab({ stats }: { stats: any }) {
             <span className="text-xs text-white/40">音质倾向</span>
           </div>
           <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center min-h-[340px]">
-            <AudioQualityGauge 
-              qualityData={stats.audioQualityDistribution || {}} 
-              total={stats.totalPlayCount || 0} 
+            <AudioQualityGauge
+              qualityData={stats.audioQualityDistribution || {}}
+              total={stats.totalPlayCount || 0}
             />
           </div>
         </section>

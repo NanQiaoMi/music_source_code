@@ -20,13 +20,8 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
   const animationRef = useRef<number | null>(null);
   const [isReady, setIsReady] = useState(false);
 
-  const {
-    isGenerating,
-    generationProgress,
-    showPeaks,
-    waveformColor,
-    backgroundColor,
-  } = useWaveformStore();
+  const { isGenerating, generationProgress, showPeaks, waveformColor, backgroundColor } =
+    useWaveformStore();
 
   useEffect(() => {
     const checkReady = () => {
@@ -51,7 +46,7 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
     if (!ctx) return;
 
     const { width, height } = container.getBoundingClientRect();
-    
+
     // 只有在尺寸变化时才重置 canvas 大小
     const dpr = window.devicePixelRatio || 1;
     if (canvas.width !== width * dpr || canvas.height !== height * dpr) {

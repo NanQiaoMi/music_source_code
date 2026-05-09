@@ -159,7 +159,7 @@ export const useCrossfadeStore = create<CrossfadeState>()(
         const arrayBuffer = await audioBlob.arrayBuffer();
         const engine = AudioEngine.getInstance();
         const audioContext = engine.getContext();
-        
+
         if (!audioContext) {
           throw new Error("Audio context not available");
         }

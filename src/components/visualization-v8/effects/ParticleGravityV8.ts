@@ -17,7 +17,7 @@ export const ParticleGravityV8Effect: EffectPlugin = {
       min: 100,
       max: 2000,
       step: 50,
-      default: 800
+      default: 800,
     },
     {
       id: "gravityStrength",
@@ -27,7 +27,7 @@ export const ParticleGravityV8Effect: EffectPlugin = {
       min: 0,
       max: 5,
       step: 0.1,
-      default: 2
+      default: 2,
     },
     {
       id: "attractorCount",
@@ -37,7 +37,7 @@ export const ParticleGravityV8Effect: EffectPlugin = {
       min: 1,
       max: 5,
       step: 1,
-      default: 3
+      default: 3,
     },
     {
       id: "audioIntensity",
@@ -47,7 +47,7 @@ export const ParticleGravityV8Effect: EffectPlugin = {
       min: 0,
       max: 3,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "colorScheme",
@@ -59,8 +59,8 @@ export const ParticleGravityV8Effect: EffectPlugin = {
         { label: "霓虹", value: "neon" },
         { label: "火焰", value: "fire" },
         { label: "海洋", value: "ocean" },
-        { label: "极光", value: "aurora" }
-      ]
+        { label: "极光", value: "aurora" },
+      ],
     },
     {
       id: "particleSize",
@@ -70,7 +70,7 @@ export const ParticleGravityV8Effect: EffectPlugin = {
       min: 1,
       max: 10,
       step: 0.5,
-      default: 3
+      default: 3,
     },
     {
       id: "fadeEffect",
@@ -80,7 +80,7 @@ export const ParticleGravityV8Effect: EffectPlugin = {
       min: 0,
       max: 0.1,
       step: 0.005,
-      default: 0.02
+      default: 0.02,
     },
     {
       id: "trailMode",
@@ -91,14 +91,14 @@ export const ParticleGravityV8Effect: EffectPlugin = {
       options: [
         { label: "淡出", value: "fade" },
         { label: "不清除", value: "none" },
-        { label: "清除", value: "clear" }
-      ]
-    }
+        { label: "清除", value: "clear" },
+      ],
+    },
   ],
   private: {
     particles: [],
     attractors: [],
-    time: 0
+    time: 0,
   },
   init(ctx) {
     (this as any).private.particles = [];
@@ -107,7 +107,7 @@ export const ParticleGravityV8Effect: EffectPlugin = {
   },
   render(ctx, audioData, params) {
     if (!ctx.ctx || !ctx.canvas) return;
-    
+
     const canvas = ctx.canvas;
     const context = ctx.ctx;
     const width = canvas.width;
@@ -134,7 +134,7 @@ export const ParticleGravityV8Effect: EffectPlugin = {
           y: centerY + (Math.random() - 0.5) * 400,
           vx: (Math.random() - 0.5) * 2,
           vy: (Math.random() - 0.5) * 2,
-          phase: i * (Math.PI * 2 / params.attractorCount)
+          phase: i * ((Math.PI * 2) / params.attractorCount),
         });
       }
       (this as any).private.attractors = attractors;
@@ -148,7 +148,7 @@ export const ParticleGravityV8Effect: EffectPlugin = {
           y: Math.random() * height,
           vx: (Math.random() - 0.5) * 2,
           vy: (Math.random() - 0.5) * 2,
-          color: Math.random()
+          color: Math.random(),
         });
       }
       (this as any).private.particles = particles;
@@ -165,8 +165,10 @@ export const ParticleGravityV8Effect: EffectPlugin = {
     attractors.forEach((attractor: any, index: number) => {
       attractor.phase += 0.01;
       const orbitRadius = 150;
-      attractor.x = centerX + Math.cos(attractor.phase + (this as any).private.time * 0.5) * orbitRadius;
-      attractor.y = centerY + Math.sin(attractor.phase * 0.7 + (this as any).private.time * 0.3) * orbitRadius;
+      attractor.x =
+        centerX + Math.cos(attractor.phase + (this as any).private.time * 0.5) * orbitRadius;
+      attractor.y =
+        centerY + Math.sin(attractor.phase * 0.7 + (this as any).private.time * 0.3) * orbitRadius;
     });
 
     particles.forEach((particle: any) => {
@@ -178,14 +180,14 @@ export const ParticleGravityV8Effect: EffectPlugin = {
         const dy = attractor.y - particle.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const force = (params.gravityStrength * audioMultiplier) / Math.max(dist, 20);
-        
+
         fx += (dx / dist) * force;
         fy += (dy / dist) * force;
       });
 
       particle.vx += fx * 0.1;
       particle.vy += fy * 0.1;
-      
+
       particle.vx *= 0.99;
       particle.vy *= 0.99;
 
@@ -208,7 +210,7 @@ export const ParticleGravityV8Effect: EffectPlugin = {
     });
 
     attractors.forEach((attractor: any, index: number) => {
-      const hue = (index / params.attractorCount * 360 + (this as any).private.time * 50) % 360;
+      const hue = ((index / params.attractorCount) * 360 + (this as any).private.time * 50) % 360;
       context.beginPath();
       context.arc(attractor.x, attractor.y, 8 + avgEnergy * 10, 0, Math.PI * 2);
       context.fillStyle = `hsla(${hue}, 100%, 70%, 0.8)`;
@@ -225,7 +227,7 @@ export const ParticleGravityV8Effect: EffectPlugin = {
       ctx.private.attractors = [];
       ctx.private.time = 0;
     }
-  }
+  },
 };
 
 function getGravityColor(scheme: string, colorValue: number, time: number): number {

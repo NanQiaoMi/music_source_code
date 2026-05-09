@@ -17,7 +17,7 @@ export const AudioSculptureV8Effect: EffectPlugin = {
       min: 32,
       max: 128,
       step: 8,
-      default: 64
+      default: 64,
     },
     {
       id: "deformIntensity",
@@ -27,7 +27,7 @@ export const AudioSculptureV8Effect: EffectPlugin = {
       min: 0,
       max: 10,
       step: 0.5,
-      default: 5
+      default: 5,
     },
     {
       id: "rotationSpeed",
@@ -37,7 +37,7 @@ export const AudioSculptureV8Effect: EffectPlugin = {
       min: -2,
       max: 2,
       step: 0.1,
-      default: 0.5
+      default: 0.5,
     },
     {
       id: "audioIntensity",
@@ -47,7 +47,7 @@ export const AudioSculptureV8Effect: EffectPlugin = {
       min: 0,
       max: 3,
       step: 0.1,
-      default: 1
+      default: 1,
     },
     {
       id: "colorScheme",
@@ -59,8 +59,8 @@ export const AudioSculptureV8Effect: EffectPlugin = {
         { label: "霓虹", value: "neon" },
         { label: "金属", value: "metal" },
         { label: "火焰", value: "fire" },
-        { label: "海洋", value: "ocean" }
-      ]
+        { label: "海洋", value: "ocean" },
+      ],
     },
     {
       id: "sculptureType",
@@ -72,8 +72,8 @@ export const AudioSculptureV8Effect: EffectPlugin = {
         { label: "球体", value: "sphere" },
         { label: "立方体", value: "cube" },
         { label: "圆环", value: "torus" },
-        { label: "星形", value: "star" }
-      ]
+        { label: "星形", value: "star" },
+      ],
     },
     {
       id: "lineWidth",
@@ -83,7 +83,7 @@ export const AudioSculptureV8Effect: EffectPlugin = {
       min: 0.5,
       max: 5,
       step: 0.5,
-      default: 1.5
+      default: 1.5,
     },
     {
       id: "glowIntensity",
@@ -93,7 +93,7 @@ export const AudioSculptureV8Effect: EffectPlugin = {
       min: 0,
       max: 20,
       step: 1,
-      default: 8
+      default: 8,
     },
     {
       id: "fillMode",
@@ -104,19 +104,19 @@ export const AudioSculptureV8Effect: EffectPlugin = {
       options: [
         { label: "仅描边", value: "stroke" },
         { label: "仅填充", value: "fill" },
-        { label: "描边+填充", value: "both" }
-      ]
-    }
+        { label: "描边+填充", value: "both" },
+      ],
+    },
   ],
   private: {
-    time: 0
+    time: 0,
   },
   init(ctx) {
     (this as any).private.time = 0;
   },
   render(ctx, audioData, params) {
     if (!ctx.ctx || !ctx.canvas) return;
-    
+
     const canvas = ctx.canvas;
     const context = ctx.ctx;
     const width = canvas.width;
@@ -144,14 +144,23 @@ export const AudioSculptureV8Effect: EffectPlugin = {
     const rotationX = (this as any).private.time * params.rotationSpeed * 0.3;
     const rotationY = (this as any).private.time * params.rotationSpeed * 0.5;
 
-    const points: Array<{ x: number; y: number; z: number; originalX: number; originalY: number; originalZ: number }> = [];
+    const points: Array<{
+      x: number;
+      y: number;
+      z: number;
+      originalX: number;
+      originalY: number;
+      originalZ: number;
+    }> = [];
 
     for (let i = 0; i < detailLevel; i++) {
       for (let j = 0; j < detailLevel; j++) {
         const u = (i / detailLevel) * Math.PI * 2;
         const v = (j / detailLevel) * Math.PI;
 
-        let x = 0, y = 0, z = 0;
+        let x = 0,
+          y = 0,
+          z = 0;
 
         switch (params.sculptureType) {
           case "sphere":
@@ -186,15 +195,16 @@ export const AudioSculptureV8Effect: EffectPlugin = {
         const originalY = y;
         const originalZ = z;
 
-        const deformation = 
-          Math.sin(x * 3 + (this as any).private.time) * 
-          Math.cos(y * 3 + (this as any).private.time * 0.7) * 
-          Math.sin(z * 3 + bass * 2) * 
-          params.deformIntensity * audioMultiplier;
+        const deformation =
+          Math.sin(x * 3 + (this as any).private.time) *
+          Math.cos(y * 3 + (this as any).private.time * 0.7) *
+          Math.sin(z * 3 + bass * 2) *
+          params.deformIntensity *
+          audioMultiplier;
 
-        x *= (1 + deformation * 0.3);
-        y *= (1 + deformation * 0.3);
-        z *= (1 + deformation * 0.3);
+        x *= 1 + deformation * 0.3;
+        y *= 1 + deformation * 0.3;
+        z *= 1 + deformation * 0.3;
 
         const rotated = rotate3D(x, y, z, rotationX, rotationY);
 
@@ -204,12 +214,12 @@ export const AudioSculptureV8Effect: EffectPlugin = {
           z: rotated.z,
           originalX,
           originalY,
-          originalZ
+          originalZ,
         });
       }
     }
 
-    const projectedPoints = points.map(p => {
+    const projectedPoints = points.map((p) => {
       const scale = 400 / (400 + p.z * baseRadius);
       return {
         x: p.x * baseRadius * scale,
@@ -217,7 +227,7 @@ export const AudioSculptureV8Effect: EffectPlugin = {
         z: p.z,
         originalX: p.originalX,
         originalY: p.originalY,
-        originalZ: p.originalZ
+        originalZ: p.originalZ,
       };
     });
 
@@ -243,7 +253,13 @@ export const AudioSculptureV8Effect: EffectPlugin = {
         const avgZ = (p1.z + p2.z + p3.z + p4.z) / 4;
         const brightness = Math.max(0.2, (1 + avgZ) / 2);
 
-        const hue = getSculptureHue(params.colorScheme, p1.originalX, p1.originalY, p1.originalZ, (this as any).private.time);
+        const hue = getSculptureHue(
+          params.colorScheme,
+          p1.originalX,
+          p1.originalY,
+          p1.originalZ,
+          (this as any).private.time
+        );
         const color = `hsl(${hue}, 80%, ${40 + brightness * 40}%)`;
 
         context.strokeStyle = color;
@@ -275,7 +291,7 @@ export const AudioSculptureV8Effect: EffectPlugin = {
     if (ctx && ctx.private) {
       ctx.private.time = 0;
     }
-  }
+  },
 };
 
 function rotate3D(x: number, y: number, z: number, rotX: number, rotY: number) {
@@ -295,14 +311,14 @@ function rotate3D(x: number, y: number, z: number, rotX: number, rotY: number) {
 function getSculptureHue(scheme: string, x: number, y: number, z: number, time: number): number {
   switch (scheme) {
     case "neon":
-      return ((Math.atan2(y, x) / Math.PI * 180 + 360) % 360 + time * 50) % 360;
+      return ((((Math.atan2(y, x) / Math.PI) * 180 + 360) % 360) + time * 50) % 360;
     case "metal":
-      return 200 + (z * 30);
+      return 200 + z * 30;
     case "fire":
-      return 20 + (z * 20);
+      return 20 + z * 20;
     case "ocean":
-      return 180 + (z * 40);
+      return 180 + z * 40;
     default:
-      return ((Math.atan2(y, x) / Math.PI * 180 + 360) % 360 + time * 50) % 360;
+      return ((((Math.atan2(y, x) / Math.PI) * 180 + 360) % 360) + time * 50) % 360;
   }
 }

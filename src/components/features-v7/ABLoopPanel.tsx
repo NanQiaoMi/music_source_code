@@ -18,13 +18,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-export function ABLoopPanel({
-  isOpen,
-  onClose,
-  currentTime,
-  duration,
-  seekTo,
-}: ABLoopPanelProps) {
+export function ABLoopPanel({ isOpen, onClose, currentTime, duration, seekTo }: ABLoopPanelProps) {
   const {
     isEnabled,
     pointA,
@@ -96,8 +90,8 @@ export function ABLoopPanel({
                   isEnabled
                     ? "bg-pink-500 text-white shadow-lg shadow-pink-500/30"
                     : pointA !== null && pointB !== null && pointA < pointB
-                    ? "bg-white/20 text-white hover:bg-white/30"
-                    : "bg-white/5 text-white/40 cursor-not-allowed"
+                      ? "bg-white/20 text-white hover:bg-white/30"
+                      : "bg-white/5 text-white/40 cursor-not-allowed"
                 }`}
               >
                 <Repeat className="w-5 h-5" />

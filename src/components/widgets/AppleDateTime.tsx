@@ -37,20 +37,20 @@ export const AppleDateTime: React.FC = () => {
   if (!mounted || !time) return null;
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className="flex flex-col items-center justify-center select-none"
     >
       <div className="flex items-baseline gap-2">
-        <span 
+        <span
           className="text-9xl font-light tracking-tighter text-white/90 italic"
           style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
         >
           {time.hours}
         </span>
-        
-        <motion.span 
+
+        <motion.span
           animate={{ opacity: [0.1, 0.4, 0.1] }}
           transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
           className="text-6xl font-extralight text-white/10 mx-2"
@@ -58,7 +58,7 @@ export const AppleDateTime: React.FC = () => {
           /
         </motion.span>
 
-        <span 
+        <span
           className="text-9xl font-light tracking-tighter text-white/90"
           style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
         >
@@ -68,9 +68,9 @@ export const AppleDateTime: React.FC = () => {
 
       <div className="mt-10 flex items-center gap-6">
         <div className="h-[1px] w-12 bg-gradient-to-l from-white/10 to-transparent" />
-        <span 
+        <span
           className="text-xs font-black tracking-[0.5em] text-white/30 uppercase italic"
-          style={{ fontFamily: 'system-ui' }}
+          style={{ fontFamily: "system-ui" }}
         >
           {dateStr}
         </span>

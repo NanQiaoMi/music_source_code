@@ -434,14 +434,14 @@ export const useAudioStore = create<AudioState>()(
       setIsEmotionCurveMode: (enabled) => set({ isEmotionCurveMode: enabled }),
       setDynamicCrossfadeDuration: (duration) =>
         set({ dynamicCrossfadeDuration: Math.max(0, Math.min(20, duration)) }),
-      
+
       appendSongsAndPlay: (songs: Song[]) => {
         if (!songs || songs.length === 0) return;
-        
+
         const { queue } = get();
         const startIndex = queue.length;
         const newQueue = [...queue, ...songs];
-        
+
         const queueStore = require("./queueStore").useQueueStore.getState();
         queueStore.setQueue(newQueue);
         queueStore.setCurrentIndex(startIndex);
@@ -454,7 +454,7 @@ export const useAudioStore = create<AudioState>()(
           currentTime: 0,
           isPlaying: true,
           isLoading: true,
-          error: null
+          error: null,
         });
       },
       seekTo: (time) => set({ currentTime: Math.max(0, time) }),

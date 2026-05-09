@@ -26,10 +26,7 @@ export function AudioEnhancementToggle() {
         <Zap className="w-6 h-6 text-black" />
       </motion.button>
 
-      <AudioEffectsPanel
-        isOpen={showEffects}
-        onClose={() => setShowEffects(false)}
-      />
+      <AudioEffectsPanel isOpen={showEffects} onClose={() => setShowEffects(false)} />
     </>
   );
 }

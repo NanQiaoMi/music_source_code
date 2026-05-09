@@ -10,7 +10,10 @@ interface ParameterControlProps {
   currentMode: ParameterMode;
 }
 
-function shouldShowParameter(param: EffectParameterDefinition, currentMode: ParameterMode): boolean {
+function shouldShowParameter(
+  param: EffectParameterDefinition,
+  currentMode: ParameterMode
+): boolean {
   const modeOrder: ParameterMode[] = ["basic", "professional", "expert"];
   const currentIndex = modeOrder.indexOf(currentMode);
   const paramIndex = modeOrder.indexOf(param.mode);
@@ -58,9 +61,7 @@ export function BooleanParameter({ param, value, onChange }: ParameterControlPro
       <label className="text-sm text-white/80">{param.name}</label>
       <button
         onClick={() => onChange(!value)}
-        className={`w-12 h-6 rounded-full transition-all ${
-          value ? "bg-pink-500" : "bg-white/20"
-        }`}
+        className={`w-12 h-6 rounded-full transition-all ${value ? "bg-pink-500" : "bg-white/20"}`}
       >
         <div
           className={`w-5 h-5 rounded-full bg-white transition-transform ${
@@ -98,13 +99,36 @@ export function ParameterControl({ param, value, onChange, currentMode }: Parame
 
   switch (param.type) {
     case "number":
-      return <NumberParameter param={param} value={value} onChange={onChange} currentMode={currentMode} />;
+      return (
+        <NumberParameter
+          param={param}
+          value={value}
+          onChange={onChange}
+          currentMode={currentMode}
+        />
+      );
     case "color":
-      return <ColorParameter param={param} value={value} onChange={onChange} currentMode={currentMode} />;
+      return (
+        <ColorParameter param={param} value={value} onChange={onChange} currentMode={currentMode} />
+      );
     case "boolean":
-      return <BooleanParameter param={param} value={value} onChange={onChange} currentMode={currentMode} />;
+      return (
+        <BooleanParameter
+          param={param}
+          value={value}
+          onChange={onChange}
+          currentMode={currentMode}
+        />
+      );
     case "select":
-      return <SelectParameter param={param} value={value} onChange={onChange} currentMode={currentMode} />;
+      return (
+        <SelectParameter
+          param={param}
+          value={value}
+          onChange={onChange}
+          currentMode={currentMode}
+        />
+      );
     default:
       return null;
   }

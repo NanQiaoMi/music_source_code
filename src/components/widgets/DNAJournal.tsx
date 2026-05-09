@@ -2,29 +2,47 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Fingerprint, Zap, Calendar, ShieldCheck, RefreshCcw, Loader2, BrainCircuit, Activity, Share2, Download, X } from "lucide-react";
+import {
+  Fingerprint,
+  Zap,
+  Calendar,
+  ShieldCheck,
+  RefreshCcw,
+  Loader2,
+  BrainCircuit,
+  Activity,
+  Share2,
+  Download,
+  X,
+} from "lucide-react";
 import { useKnowledgeStore } from "@/store/knowledgeStore";
 import { useEmotionStore } from "@/store/emotionStore";
 import { useGlassToast } from "@/components/shared/GlassToast";
+import { useAIStore } from "@/store/aiStore";
 
 export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { dnaJournal, isLoading, generateDNAJournal } = useKnowledgeStore();
   const { points } = useEmotionStore();
   const { showToast } = useGlassToast();
+  const { isEnabled } = useAIStore();
   const [isHovered, setIsHovered] = useState(false);
 
   const handleGenerate = () => {
-    const taggedPoints = points.filter(p => p.isTagged);
+    if (!isEnabled) {
+      showToast("AI 功能已暂停", "warning");
+      return;
+    }
+    const taggedPoints = points.filter((p) => p.isTagged);
     if (taggedPoints.length === 0) {
       showToast("请先在星图中标记一些歌曲以开启基因测序", "warning");
       return;
     }
-    
+
     const totalSongs = taggedPoints.length;
     const avgV = taggedPoints.reduce((acc, p) => acc + (p.x || 0), 0) / totalSongs;
     const avgE = taggedPoints.reduce((acc, p) => acc + (p.y || 0), 0) / totalSongs;
-    
-    const genres = Array.from(new Set(taggedPoints.flatMap(p => p.tags || [])));
+
+    const genres = Array.from(new Set(taggedPoints.flatMap((p) => p.tags || [])));
     let dominantQuadrant = "Q1";
     if (avgV < 0 && avgE >= 0) dominantQuadrant = "Q2";
     else if (avgV < 0 && avgE < 0) dominantQuadrant = "Q3";
@@ -35,7 +53,7 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
       averageValence: avgV,
       averageEnergy: avgE,
       dominantQuadrant,
-      genres
+      genres,
     });
   };
 
@@ -46,30 +64,38 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
     }, 1500);
   };
 
-  const formattedDate = dnaJournal 
-    ? new Date(dnaJournal.timestamp).toLocaleDateString('zh-CN', { year: 'numeric', month: 'numeric', day: 'numeric' })
-    : new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'numeric', day: 'numeric' });
+  const formattedDate = dnaJournal
+    ? new Date(dnaJournal.timestamp).toLocaleDateString("zh-CN", {
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+      })
+    : new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "numeric", day: "numeric" });
 
   return (
-    <div 
+    <div
       className="relative w-full group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-      
+
       <div className="relative p-10 rounded-[40px] bg-black/60 backdrop-blur-3xl border border-white/10 overflow-hidden shadow-2xl">
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] pointer-events-none mix-blend-overlay" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)]" />
-        
+
         {/* Header Section */}
         <div className="flex items-start justify-between mb-12 relative z-10">
           <div className="flex flex-col">
             <div className="flex items-center gap-2 mb-1">
               <Activity className="w-3 h-3 text-indigo-400 animate-pulse" />
-              <span className="text-[10px] font-black tracking-[0.5em] text-white/80 uppercase">听觉基因解构报告</span>
+              <span className="text-[10px] font-black tracking-[0.5em] text-white/80 uppercase">
+                听觉基因解构报告
+              </span>
             </div>
-            <span className="text-[10px] font-medium tracking-[0.2em] text-white/20 uppercase italic">NEURAL IDENTITY JOURNAL</span>
+            <span className="text-[10px] font-medium tracking-[0.2em] text-white/20 uppercase italic">
+              NEURAL IDENTITY JOURNAL
+            </span>
           </div>
           <div className="flex gap-2">
             <motion.button
@@ -116,8 +142,12 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
                 <div className="absolute inset-0 bg-indigo-500/20 blur-2xl rounded-full animate-pulse" />
               </div>
               <div className="text-center space-y-2">
-                <div className="text-[10px] font-black tracking-[0.6em] text-white/40 uppercase">Decoding Neural Signals...</div>
-                <div className="text-[8px] font-mono text-white/20 uppercase tracking-widest italic">Aesthetic DNA Matrix Initialization</div>
+                <div className="text-[10px] font-black tracking-[0.6em] text-white/40 uppercase">
+                  Decoding Neural Signals...
+                </div>
+                <div className="text-[8px] font-mono text-white/20 uppercase tracking-widest italic">
+                  Aesthetic DNA Matrix Initialization
+                </div>
               </div>
             </div>
           ) : !dnaJournal ? (
@@ -126,8 +156,10 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
                 <Fingerprint className="w-10 h-10 text-white/10 group-hover:text-indigo-500/40 transition-all" />
               </div>
               <div className="space-y-4">
-                <div className="text-sm font-black text-white/40 uppercase tracking-[0.3em] italic">暂未建立神经连接</div>
-                <button 
+                <div className="text-sm font-black text-white/40 uppercase tracking-[0.3em] italic">
+                  暂未建立神经连接
+                </div>
+                <button
                   onClick={handleGenerate}
                   className="px-8 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-600/20 active:scale-95"
                 >
@@ -136,11 +168,17 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
               </div>
             </div>
           ) : (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-12">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-12"
+            >
               <div className="space-y-5">
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_15px_#6366f1]" />
-                  <span className="text-[11px] font-black tracking-[0.5em] text-indigo-400 uppercase">身份：{dnaJournal.archetype}</span>
+                  <span className="text-[11px] font-black tracking-[0.5em] text-indigo-400 uppercase">
+                    身份：{dnaJournal.archetype}
+                  </span>
                 </div>
                 <div className="pl-6 border-l-2 border-indigo-500/20">
                   <h3 className="text-2xl md:text-3xl font-serif italic text-white leading-snug tracking-tight">
@@ -152,7 +190,9 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
               <div className="space-y-4 pt-4">
                 <div className="flex items-center gap-3 opacity-40">
                   <BrainCircuit className="w-4 h-4 text-indigo-400" />
-                  <span className="text-[9px] font-black tracking-[0.4em] uppercase text-white/60">深度解构 / NEURAL ANALYSIS</span>
+                  <span className="text-[9px] font-black tracking-[0.4em] uppercase text-white/60">
+                    深度解构 / NEURAL ANALYSIS
+                  </span>
                 </div>
                 <p className="text-[13px] text-white/50 leading-relaxed font-medium italic selection:bg-indigo-500/30 pl-1">
                   {dnaJournal.description}
@@ -164,13 +204,17 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
                   <div className="text-[8px] font-black tracking-widest uppercase text-white/20 flex items-center gap-2">
                     <Zap className="w-2.5 h-2.5" /> 主导流派 / DOMINANCE
                   </div>
-                  <div className="text-[12px] font-bold tracking-[0.1em] text-white/80 uppercase truncate">{dnaJournal.genre}</div>
+                  <div className="text-[12px] font-bold tracking-[0.1em] text-white/80 uppercase truncate">
+                    {dnaJournal.genre}
+                  </div>
                 </div>
                 <div className="space-y-2.5">
                   <div className="text-[8px] font-black tracking-widest uppercase text-white/20 flex items-center gap-2">
                     <Calendar className="w-2.5 h-2.5" /> 解析时间 / TIMESTAMP
                   </div>
-                  <div className="text-[12px] font-bold tracking-[0.1em] text-white/80">{formattedDate}</div>
+                  <div className="text-[12px] font-bold tracking-[0.1em] text-white/80">
+                    {formattedDate}
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -182,22 +226,26 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2.5">
               <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="text-[9px] font-black tracking-[0.4em] uppercase text-white/20 italic">Neural Identity Protocol v1.0</span>
+              <span className="text-[9px] font-black tracking-[0.4em] uppercase text-white/20 italic">
+                Neural Identity Protocol v1.0
+              </span>
             </div>
             {dnaJournal && (
-               <button 
-               onClick={handleGenerate}
-               disabled={isLoading}
-               className="text-[9px] font-black text-indigo-400/60 hover:text-indigo-400 uppercase tracking-[0.2em] transition-all flex items-center gap-2 group/ref"
-             >
-               <RefreshCcw className={`w-3 h-3 ${isLoading ? "animate-spin" : "group-hover/ref:rotate-180 transition-transform duration-500"}`} />
-               重新解算数据
-             </button>
+              <button
+                onClick={handleGenerate}
+                disabled={isLoading}
+                className="text-[9px] font-black text-indigo-400/60 hover:text-indigo-400 uppercase tracking-[0.2em] transition-all flex items-center gap-2 group/ref"
+              >
+                <RefreshCcw
+                  className={`w-3 h-3 ${isLoading ? "animate-spin" : "group-hover/ref:rotate-180 transition-transform duration-500"}`}
+                />
+                重新解算数据
+              </button>
             )}
           </div>
           <div className="flex gap-1.5 h-3 items-end">
             {[0.4, 0.7, 0.2, 0.9, 0.5, 0.3].map((h, i) => (
-              <motion.div 
+              <motion.div
                 key={i}
                 animate={{ height: [`${h * 100}%`, "100%", `${h * 100}%`] }}
                 transition={{ duration: 1.5 + i * 0.2, repeat: Infinity, ease: "easeInOut" }}
@@ -210,7 +258,7 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
         {/* Scanning Line Effect */}
         <AnimatePresence>
           {isLoading && (
-            <motion.div 
+            <motion.div
               initial={{ top: "-10%" }}
               animate={{ top: "110%" }}
               exit={{ opacity: 0 }}

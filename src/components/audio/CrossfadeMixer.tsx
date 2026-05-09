@@ -60,32 +60,29 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
     setPreviewBPM(bpmMap);
   }, [songs, bpmDatabase, getBPMInfo]);
 
-  const handleAnalyzeSong = useCallback(
-    async (songId: string) => {
-      setAnalyzing(true);
-      try {
-        const bpm = 100 + Math.random() * 80;
-        const bpmInfo: any = {
-          songId,
-          bpm: Math.round(bpm),
-          confidence: 0.7 + Math.random() * 0.3,
-          timestamp: Date.now(),
-        };
-        
-        const state = useCrossfadeStore.getState();
-        state.addBPMInfo(bpmInfo);
-        
-        setPreviewBPM((prev) => ({
-          ...prev,
-          [songId]: Math.round(bpm),
-        }));
-      } catch (error) {
-        console.error("BPM analysis failed:", error);
-      }
-      setAnalyzing(false);
-    },
-    []
-  );
+  const handleAnalyzeSong = useCallback(async (songId: string) => {
+    setAnalyzing(true);
+    try {
+      const bpm = 100 + Math.random() * 80;
+      const bpmInfo: any = {
+        songId,
+        bpm: Math.round(bpm),
+        confidence: 0.7 + Math.random() * 0.3,
+        timestamp: Date.now(),
+      };
+
+      const state = useCrossfadeStore.getState();
+      state.addBPMInfo(bpmInfo);
+
+      setPreviewBPM((prev) => ({
+        ...prev,
+        [songId]: Math.round(bpm),
+      }));
+    } catch (error) {
+      console.error("BPM analysis failed:", error);
+    }
+    setAnalyzing(false);
+  }, []);
 
   const handleAnalyzeSelected = useCallback(async () => {
     setAnalyzing(true);
@@ -97,10 +94,10 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
         confidence: 0.7 + Math.random() * 0.3,
         timestamp: Date.now(),
       };
-      
+
       const state = useCrossfadeStore.getState();
       state.addBPMInfo(bpmInfo);
-      
+
       setPreviewBPM((prev) => ({
         ...prev,
         [songId]: Math.round(bpm),
@@ -356,16 +353,18 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
                             onClick={async () => {
                               const state = useCrossfadeStore.getState();
                               const pendingTasks = queue.filter((t) => t.status === "pending");
-                              
+
                               for (const task of pendingTasks) {
                                 state.updateQueueItemStatus(task.id, "processing", 0);
-                                
+
                                 for (let progress = 10; progress <= 100; progress += 10) {
                                   await new Promise((resolve) => setTimeout(resolve, 100));
                                   state.updateQueueItemStatus(task.id, "processing", progress);
                                 }
-                                
-                                const mockBlob = new Blob(["crossfade audio data"], { type: "audio/wav" });
+
+                                const mockBlob = new Blob(["crossfade audio data"], {
+                                  type: "audio/wav",
+                                });
                                 state.updateQueueItemStatus(task.id, "completed", 100, mockBlob);
                                 state.incrementProcessed();
                               }

@@ -17,7 +17,7 @@ interface State {
 /**
  * PanelErrorBoundary - Isolates each panel so a crash in one
  * doesn't bring down the entire application.
- * 
+ *
  * Shows a friendly fallback UI with a retry button instead of
  * crashing the whole page.
  */
@@ -67,9 +67,7 @@ export class PanelErrorBoundary extends Component<Props, State> {
             </div>
 
             {/* Title */}
-            <h3 className="text-white font-bold text-lg mb-2">
-              模块加载异常
-            </h3>
+            <h3 className="text-white font-bold text-lg mb-2">模块加载异常</h3>
 
             {/* Panel name */}
             {this.props.panelName && (

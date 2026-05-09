@@ -11,11 +11,27 @@ const INDEX_TIP = 8;
 
 // 手部骨骼连接
 const HAND_CONNECTIONS = [
-  [0, 1], [1, 2], [2, 3], [3, 4],
-  [0, 5], [5, 6], [6, 7], [7, 8],
-  [5, 9], [9, 10], [10, 11], [11, 12],
-  [9, 13], [13, 14], [14, 15], [15, 16],
-  [13, 17], [0, 17], [17, 18], [18, 19], [19, 20],
+  [0, 1],
+  [1, 2],
+  [2, 3],
+  [3, 4],
+  [0, 5],
+  [5, 6],
+  [6, 7],
+  [7, 8],
+  [5, 9],
+  [9, 10],
+  [10, 11],
+  [11, 12],
+  [9, 13],
+  [13, 14],
+  [14, 15],
+  [15, 16],
+  [13, 17],
+  [0, 17],
+  [17, 18],
+  [18, 19],
+  [19, 20],
 ];
 
 interface NormalizedLandmark {
@@ -52,18 +68,36 @@ export const GestureController: React.FC = () => {
   const SWIPE_MAX_TIME_MS = 350;
   const HAND_LOST_TIMEOUT_MS = 600;
 
-  const isEnabled = useGestureStore(state => state.isEnabled);
+  const isEnabled = useGestureStore((state) => state.isEnabled);
 
   // Use non-reactive getState() for setters called in the hot loop
   const getGestureActions = useCallback(() => useGestureStore.getState(), []);
 
-  const setIsCameraActive = useCallback((v: boolean) => useGestureStore.getState().setIsCameraActive(v), []);
-  const setCursorPosition = useCallback((x: number, y: number) => useGestureStore.getState().setCursorPosition(x, y), []);
-  const setIsHandDetected = useCallback((v: boolean) => useGestureStore.getState().setIsHandDetected(v), []);
-  const setIsPinching = useCallback((v: boolean) => useGestureStore.getState().setIsPinching(v), []);
+  const setIsCameraActive = useCallback(
+    (v: boolean) => useGestureStore.getState().setIsCameraActive(v),
+    []
+  );
+  const setCursorPosition = useCallback(
+    (x: number, y: number) => useGestureStore.getState().setCursorPosition(x, y),
+    []
+  );
+  const setIsHandDetected = useCallback(
+    (v: boolean) => useGestureStore.getState().setIsHandDetected(v),
+    []
+  );
+  const setIsPinching = useCallback(
+    (v: boolean) => useGestureStore.getState().setIsPinching(v),
+    []
+  );
   const setIsEnabled = useCallback((v: boolean) => useGestureStore.getState().setIsEnabled(v), []);
-  const setLastGesture = useCallback((v: GestureType) => useGestureStore.getState().setLastGesture(v), []);
-  const setGestureTriggered = useCallback((v: boolean) => useGestureStore.getState().setGestureTriggered(v), []);
+  const setLastGesture = useCallback(
+    (v: GestureType) => useGestureStore.getState().setLastGesture(v),
+    []
+  );
+  const setGestureTriggered = useCallback(
+    (v: boolean) => useGestureStore.getState().setGestureTriggered(v),
+    []
+  );
 
   // ============ 手势检测逻辑 ============
 
@@ -111,48 +145,45 @@ export const GestureController: React.FC = () => {
 
   // ============ 绘制骨骼 ============
 
-  const drawSkeleton = useCallback(
-    (landmarks: NormalizedLandmark[], canvas: HTMLCanvasElement) => {
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+  const drawSkeleton = useCallback((landmarks: NormalizedLandmark[], canvas: HTMLCanvasElement) => {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
 
-      // 连接线
-      ctx.strokeStyle = "rgba(0, 255, 136, 0.7)";
-      ctx.lineWidth = 2;
-      ctx.lineCap = "round";
-      for (const [a, b] of HAND_CONNECTIONS) {
-        ctx.beginPath();
-        ctx.moveTo(landmarks[a].x * w, landmarks[a].y * h);
-        ctx.lineTo(landmarks[b].x * w, landmarks[b].y * h);
-        ctx.stroke();
-      }
+    // 连接线
+    ctx.strokeStyle = "rgba(0, 255, 136, 0.7)";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    for (const [a, b] of HAND_CONNECTIONS) {
+      ctx.beginPath();
+      ctx.moveTo(landmarks[a].x * w, landmarks[a].y * h);
+      ctx.lineTo(landmarks[b].x * w, landmarks[b].y * h);
+      ctx.stroke();
+    }
 
-      // 关键点
-      for (let i = 0; i < landmarks.length; i++) {
-        const lm = landmarks[i];
-        const isKey = i === THUMB_TIP || i === INDEX_TIP;
-        ctx.beginPath();
-        ctx.arc(lm.x * w, lm.y * h, isKey ? 5 : 3, 0, Math.PI * 2);
-        ctx.fillStyle = isKey ? "#ff00ff" : i === WRIST ? "#ff6b6b" : "#ffffff";
-        ctx.fill();
-      }
+    // 关键点
+    for (let i = 0; i < landmarks.length; i++) {
+      const lm = landmarks[i];
+      const isKey = i === THUMB_TIP || i === INDEX_TIP;
+      ctx.beginPath();
+      ctx.arc(lm.x * w, lm.y * h, isKey ? 5 : 3, 0, Math.PI * 2);
+      ctx.fillStyle = isKey ? "#ff00ff" : i === WRIST ? "#ff6b6b" : "#ffffff";
+      ctx.fill();
+    }
 
-      // 如果在捏合状态，画一条拇指-食指连线
-      const pinchDist = getDistance2D(landmarks[THUMB_TIP], landmarks[INDEX_TIP]);
-      if (pinchDist < PINCH_RELEASE_THRESHOLD) {
-        ctx.strokeStyle = "rgba(255, 0, 255, 0.9)";
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(landmarks[THUMB_TIP].x * w, landmarks[THUMB_TIP].y * h);
-        ctx.lineTo(landmarks[INDEX_TIP].x * w, landmarks[INDEX_TIP].y * h);
-        ctx.stroke();
-      }
-    },
-    []
-  );
+    // 如果在捏合状态，画一条拇指-食指连线
+    const pinchDist = getDistance2D(landmarks[THUMB_TIP], landmarks[INDEX_TIP]);
+    if (pinchDist < PINCH_RELEASE_THRESHOLD) {
+      ctx.strokeStyle = "rgba(255, 0, 255, 0.9)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(landmarks[THUMB_TIP].x * w, landmarks[THUMB_TIP].y * h);
+      ctx.lineTo(landmarks[INDEX_TIP].x * w, landmarks[INDEX_TIP].y * h);
+      ctx.stroke();
+    }
+  }, []);
 
   // ============ 派发鼠标事件 ============
 
@@ -379,7 +410,10 @@ export const GestureController: React.FC = () => {
               } else {
                 // 手部丢失
                 const now = Date.now();
-                if (lastHandTimeRef.current && now - lastHandTimeRef.current > HAND_LOST_TIMEOUT_MS) {
+                if (
+                  lastHandTimeRef.current &&
+                  now - lastHandTimeRef.current > HAND_LOST_TIMEOUT_MS
+                ) {
                   setIsHandDetected(false);
                   setIsPinching(false);
 
@@ -431,7 +465,7 @@ export const GestureController: React.FC = () => {
       if (handLandmarkerRef.current) {
         try {
           handLandmarkerRef.current.close();
-        } catch (_) { }
+        } catch (_) {}
         handLandmarkerRef.current = null;
       }
 
@@ -509,12 +543,7 @@ export const GestureController: React.FC = () => {
 
       {/* 隐藏的 video 元素（当摄像头画面隐藏时仍需运行） */}
       {!showCamera && (
-        <video
-          ref={videoRef}
-          className="w-0 h-0 absolute opacity-0"
-          playsInline
-          muted
-        />
+        <video ref={videoRef} className="w-0 h-0 absolute opacity-0" playsInline muted />
       )}
 
       {/* 快捷键提示 */}
