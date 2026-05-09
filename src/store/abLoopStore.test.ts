@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { useABLoopStore } from '@/store/abLoopStore';
+import { describe, it, expect, beforeEach } from "vitest";
+import { useABLoopStore } from "@/store/abLoopStore";
 
-describe('ABLoop', () => {
+describe("ABLoop", () => {
   beforeEach(() => {
     useABLoopStore.setState({
       isEnabled: false,
@@ -10,7 +10,7 @@ describe('ABLoop', () => {
     });
   });
 
-  it('设置 A/B 点后可以启用循环', () => {
+  it("设置 A/B 点后可以启用循环", () => {
     const store = useABLoopStore.getState();
     store.setPointA(10);
     store.setPointB(30);
@@ -18,7 +18,7 @@ describe('ABLoop', () => {
     expect(useABLoopStore.getState().isEnabled).toBe(true);
   });
 
-  it('A 点大于 B 点时不能启用循环', () => {
+  it("A 点大于 B 点时不能启用循环", () => {
     const store = useABLoopStore.getState();
     store.setPointA(30);
     store.setPointB(10);
@@ -26,7 +26,7 @@ describe('ABLoop', () => {
     expect(useABLoopStore.getState().isEnabled).toBe(false);
   });
 
-  it('清除 A 点后自动禁用循环', () => {
+  it("清除 A 点后自动禁用循环", () => {
     const store = useABLoopStore.getState();
     store.setPointA(10);
     store.setPointB(30);

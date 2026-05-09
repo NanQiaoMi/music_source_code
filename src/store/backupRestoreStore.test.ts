@@ -3,7 +3,9 @@ import { useBackupRestoreStore } from "./backupRestoreStore";
 
 function setupLocalStorageMock() {
   const store = new Map<string, string>();
-  vi.spyOn(Storage.prototype, "getItem").mockImplementation((key: string) => store.get(key) ?? null);
+  vi.spyOn(Storage.prototype, "getItem").mockImplementation(
+    (key: string) => store.get(key) ?? null
+  );
   vi.spyOn(Storage.prototype, "setItem").mockImplementation((key: string, value: string) => {
     store.set(key, value);
   });
@@ -41,7 +43,13 @@ describe("backupRestoreStore", () => {
   let localStorageStore: Map<string, string>;
 
   beforeEach(() => {
-    useBackupRestoreStore.setState({ backups: [], isBackingUp: false, isRestoring: false, restoreProgress: 0, backupProgress: 0 });
+    useBackupRestoreStore.setState({
+      backups: [],
+      isBackingUp: false,
+      isRestoring: false,
+      restoreProgress: 0,
+      backupProgress: 0,
+    });
     localStorageStore = setupLocalStorageMock();
   });
 
@@ -66,7 +74,7 @@ describe("backupRestoreStore", () => {
     });
 
     it("should add backup item to store backups list", async () => {
-      const backupItem = await useBackupRestoreStore.getState().createBackup("settings", "test-backup");
+      await useBackupRestoreStore.getState().createBackup("settings", "test-backup");
       const { backups } = useBackupRestoreStore.getState();
       expect(backups).toHaveLength(1);
       expect(backups[0].name).toBe("test-backup");

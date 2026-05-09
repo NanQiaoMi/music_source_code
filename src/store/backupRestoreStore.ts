@@ -18,13 +18,13 @@ export interface BackupData {
   createdAt: number;
   type: BackupType;
 
-  settings?: any;
-  playlists?: any;
-  library?: any;
-  lyrics?: any;
-  covers?: any;
-  eqPresets?: any;
-  themes?: any;
+  settings?: unknown;
+  playlists?: unknown;
+  library?: unknown;
+  lyrics?: unknown;
+  covers?: unknown;
+  eqPresets?: unknown;
+  themes?: unknown;
 }
 
 export interface BackupSchedule {
@@ -205,26 +205,34 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
         await new Promise((resolve) => setTimeout(resolve, 200));
 
         if (backupData.settings) {
-          if (backupData.settings.audio) localStorage.setItem("audio-store-v4", backupData.settings.audio);
-          if (backupData.settings.visual) localStorage.setItem("visual-settings-v4", backupData.settings.visual);
-          if (backupData.settings.gesture) localStorage.setItem("gesture-store", backupData.settings.gesture);
-          if (backupData.settings.sleep) localStorage.setItem("sleep-timer-store", backupData.settings.sleep);
+          if (backupData.settings.audio)
+            localStorage.setItem("audio-store-v4", backupData.settings.audio);
+          if (backupData.settings.visual)
+            localStorage.setItem("visual-settings-v4", backupData.settings.visual);
+          if (backupData.settings.gesture)
+            localStorage.setItem("gesture-store", backupData.settings.gesture);
+          if (backupData.settings.sleep)
+            localStorage.setItem("sleep-timer-store", backupData.settings.sleep);
         }
 
         set({ restoreProgress: 50 });
         await new Promise((resolve) => setTimeout(resolve, 200));
 
         if (backupData.playlists) {
-          if (backupData.playlists.playlist) localStorage.setItem("playlist-store", backupData.playlists.playlist);
-          if (backupData.playlists.queue) localStorage.setItem("queue-store", backupData.playlists.queue);
-          if (backupData.playlists.recommendation) localStorage.setItem("recommendation-store", backupData.playlists.recommendation);
+          if (backupData.playlists.playlist)
+            localStorage.setItem("playlist-store", backupData.playlists.playlist);
+          if (backupData.playlists.queue)
+            localStorage.setItem("queue-store", backupData.playlists.queue);
+          if (backupData.playlists.recommendation)
+            localStorage.setItem("recommendation-store", backupData.playlists.recommendation);
         }
 
         set({ restoreProgress: 75 });
         await new Promise((resolve) => setTimeout(resolve, 200));
 
         if (backupData.library) {
-          if (backupData.library.library) localStorage.setItem("library-manager-store-v4", backupData.library.library);
+          if (backupData.library.library)
+            localStorage.setItem("library-manager-store-v4", backupData.library.library);
         }
 
         if (backupData.lyrics) {

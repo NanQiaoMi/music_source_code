@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { generateHealthReport } from "./libraryHealthStore";
 import { usePlaylistStore } from "./playlistStore";
-import type { Song } from "./playlistStore";
 
 export type HealthIssueType =
   | "missing_file"
@@ -76,7 +75,7 @@ export const useHealthCheckStore = create<HealthCheckState>((set, get) => ({
       "missing-cover": "missing_metadata",
       "missing-lyrics": "missing_metadata",
       "corrupted-file": "corrupt_file",
-      "duplicate": "duplicate",
+      duplicate: "duplicate",
       "low-quality": "low_quality",
       "unknown-format": "unsupported_format",
     };
@@ -93,11 +92,7 @@ export const useHealthCheckStore = create<HealthCheckState>((set, get) => ({
         artist: song?.artist || "未知艺术家",
         filePath: issue.songId,
         severity:
-          issue.severity === "high"
-            ? "high"
-            : issue.severity === "medium"
-              ? "medium"
-              : "low",
+          issue.severity === "high" ? "high" : issue.severity === "medium" ? "medium" : "low",
         description: issue.description,
         canAutoFix: true,
       };

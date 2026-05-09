@@ -88,12 +88,26 @@ describe("healthCheckStore", () => {
     useHealthCheckStore.setState({
       issues: [
         {
-          id: "i1", type: "missing_metadata", songId: "s1", title: "T", artist: "A",
-          filePath: "/p", severity: "low", description: "d", canAutoFix: true,
+          id: "i1",
+          type: "missing_metadata",
+          songId: "s1",
+          title: "T",
+          artist: "A",
+          filePath: "/p",
+          severity: "low",
+          description: "d",
+          canAutoFix: true,
         },
         {
-          id: "i2", type: "duplicate", songId: "s2", title: "T2", artist: "A2",
-          filePath: "/p2", severity: "medium", description: "d2", canAutoFix: true,
+          id: "i2",
+          type: "duplicate",
+          songId: "s2",
+          title: "T2",
+          artist: "A2",
+          filePath: "/p2",
+          severity: "medium",
+          description: "d2",
+          canAutoFix: true,
         },
       ],
     });
