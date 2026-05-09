@@ -181,10 +181,32 @@ export const useAudioProcessingStore = create<AudioProcessingState>()(
         set({ ffmpegLoading: true });
         try {
           console.log("FFmpeg.wasm loading...");
-          set({ ffmpegLoaded: true, ffmpegLoading: false });
+
+          const { FFmpeg } = await import("@ffmpeg/ffmpeg");
+          const { toBlobURL } = await import("@ffmpeg/util");
+
+          const ffmpeg = new FFmpeg();
+
+          ffmpeg.on("log", ({ message }) => {
+            console.log("FFmpeg:", message);
+          });
+
+          ffmpeg.on("progress", ({ progress }) => {
+            set({ processingProgress: Math.round(progress * 100) });
+          });
+
+          const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+
+          await ffmpeg.load({
+            coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+            wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+          });
+
+          console.log("FFmpeg.wasm loaded successfully");
+          set({ ffmpegLoaded: true, ffmpegLoading: false, processingProgress: 0 });
         } catch (error) {
           console.error("Failed to load FFmpeg:", error);
-          set({ ffmpegLoading: false });
+          set({ ffmpegLoading: false, processingProgress: 0 });
         }
       },
 
