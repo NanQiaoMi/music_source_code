@@ -44,3 +44,4 @@
 - [ ] 已添加/更新相关文档
 - [ ] 无未处理的 TODO/FIXME
 - [ ] Changelog 已更新（如适用）
+- [ ] 关联 AGENTS.md/docs/nbl 文档已更新（如适用）

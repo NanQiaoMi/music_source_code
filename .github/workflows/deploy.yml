@@ -27,8 +27,8 @@ jobs:
       - name: Run Lint
         run: npm run lint
 
-      # - name: Run Tests (Vitest)
-      #   run: npm run test:coverage
+      - name: Run Tests (Vitest)
+        run: npm run test
 
   deploy-to-vercel:
     needs: build-and-test
