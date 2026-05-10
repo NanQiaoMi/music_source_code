@@ -39,6 +39,7 @@ interface EmotionMatrixViewProps {
 }
 
 const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }) => {
+  const { showToast } = useGlassToast();
   const { songs } = usePlaylistStore();
   const {
     initializePoints,

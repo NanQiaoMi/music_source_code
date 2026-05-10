@@ -20,7 +20,7 @@ import { useAIStore } from "@/store/aiStore";
 
 const HUB_TRANSITION = {
   duration: 0.3,
-  ease: [0.23, 1, 0.32, 1],
+  ease: [0.23, 1, 0.32, 1] as const,
 };
 
 const CONTAINER_VARIANTS = {
@@ -45,7 +45,7 @@ const CONTAINER_VARIANTS = {
       ease: "easeOut",
     },
   },
-};
+} as const;
 
 const ITEM_VARIANTS = {
   hidden: { opacity: 0, y: 5 },

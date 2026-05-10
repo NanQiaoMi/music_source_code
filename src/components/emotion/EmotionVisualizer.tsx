@@ -71,7 +71,7 @@ const EmotionVisualizer: React.FC = () => {
   const startPosRef = useRef({ x: 0, y: 0 });
   const [hoveredPoint, setHoveredPoint] = useState<any>(null);
 
-  const { audioPlaySong, currentSong: audioCurrentSong } = useAudioStore();
+  const { playSong: audioPlaySong, currentSong: audioCurrentSong } = useAudioStore();
   const { songs } = usePlaylistStore();
   const { points, selectedIds, searchResults } = useEmotionStore();
 
@@ -425,8 +425,8 @@ const EmotionVisualizer: React.FC = () => {
       const width = canvas.width / window.devicePixelRatio;
       const height = canvas.height / window.devicePixelRatio;
       let minD = 20;
-      let near = null;
-      points.forEach((p) => {
+      let near: any = null;
+      points.forEach((p: any) => {
         const pos = getPixelPos(p, width, height);
         const d = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
         if (d < minD) {
