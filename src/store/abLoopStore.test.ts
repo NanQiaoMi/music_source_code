@@ -7,6 +7,7 @@ describe("ABLoop", () => {
       isEnabled: false,
       pointA: null,
       pointB: null,
+      loopCount: 0,
     });
   });
 
@@ -34,5 +35,23 @@ describe("ABLoop", () => {
     store.clearPointA();
     expect(useABLoopStore.getState().isEnabled).toBe(false);
     expect(useABLoopStore.getState().pointA).toBeNull();
+  });
+
+  it("loopCount 初始为 0", () => {
+    expect(useABLoopStore.getState().loopCount).toBe(0);
+  });
+
+  it("incrementLoopCount 递增 loopCount", () => {
+    const store = useABLoopStore.getState();
+    store.incrementLoopCount();
+    expect(useABLoopStore.getState().loopCount).toBe(1);
+    store.incrementLoopCount();
+    expect(useABLoopStore.getState().loopCount).toBe(2);
+  });
+
+  it("resetLoopCount 归零 loopCount", () => {
+    useABLoopStore.setState({ loopCount: 5 });
+    useABLoopStore.getState().resetLoopCount();
+    expect(useABLoopStore.getState().loopCount).toBe(0);
   });
 });

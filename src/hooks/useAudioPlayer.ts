@@ -36,6 +36,7 @@ const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => v
     if (abState.isEnabled && abState.pointA !== null && abState.pointB !== null) {
       if (audio.currentTime >= abState.pointB) {
         audio.currentTime = abState.pointA;
+        useABLoopStore.getState().incrementLoopCount();
       }
     }
   };
