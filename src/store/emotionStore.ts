@@ -2,6 +2,10 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { saveSongEmotions, loadSongEmotions } from "@/services/metadataStorage";
 import { EmotionPoint, EmotionCoordinate } from "@/types/emotion";
+import { useSmartPlaylistStore } from "./smartPlaylistStore";
+import { usePlaylistStore } from "./playlistStore";
+import { useAIStore } from "./aiStore";
+import { toast } from "@/components/shared/GlassToast";
 
 interface EmotionState {
   realtimeCoordinates: { x: number; y: number } | null;
@@ -153,8 +157,6 @@ export const useEmotionStore = create<EmotionState>()(
 
         setTimeout(() => {
           try {
-            const { useSmartPlaylistStore } = require("./smartPlaylistStore");
-            const { usePlaylistStore } = require("./playlistStore");
             const allSongs = usePlaylistStore.getState().songs;
             useSmartPlaylistStore.getState().generateAllPlaylists(allSongs);
           } catch (e) {
@@ -257,8 +259,6 @@ export const useEmotionStore = create<EmotionState>()(
 
       autoTagSong: async (songId, signal) => {
         try {
-          const { usePlaylistStore } = require("./playlistStore");
-          const { useAIStore } = require("./aiStore");
           const aiStore = useAIStore.getState();
           if (!aiStore.isEnabled) return;
           const config = aiStore.configs.find((c: any) => c.id === aiStore.activeConfigId);
@@ -267,7 +267,6 @@ export const useEmotionStore = create<EmotionState>()(
 
           if (!song || !config || !config.apiKey) {
             console.error("Missing song, config or API key", { song, config });
-            const { toast } = require("@/components/shared/GlassToast");
             if (!config || !config.apiKey) toast.warning("未配置有效的 AI 接口");
             return;
           }
@@ -367,10 +366,8 @@ export const useEmotionStore = create<EmotionState>()(
       },
 
       autoTagBatch: async (songIds) => {
-        const { useAIStore } = require("./aiStore");
         if (!useAIStore.getState().isEnabled) return;
 
-        const { usePlaylistStore } = require("./playlistStore");
         const { songs } = usePlaylistStore.getState();
         const abortController = new AbortController();
         set({

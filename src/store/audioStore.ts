@@ -462,7 +462,7 @@ export const useAudioStore = create<AudioState>()(
         const startIndex = queue.length;
         const newQueue = [...queue, ...songs];
 
-        const queueStore = require("./queueStore").useQueueStore.getState();
+        const queueStore = useQueueStore.getState();
         queueStore.setQueue(newQueue);
         queueStore.setCurrentIndex(startIndex);
         queueStore.addToHistory(songs[0]);
