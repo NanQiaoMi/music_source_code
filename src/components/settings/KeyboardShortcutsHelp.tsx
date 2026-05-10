@@ -3,6 +3,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { X, Keyboard } from "lucide-react";
+import { useKeyboardShortcutsStore } from "@/store/keyboardShortcutsStore";
 
 interface KeyboardShortcutsHelpProps {
   isOpen: boolean;
@@ -15,32 +16,15 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const shortcuts = [
-    { key: "Space", action: "播放/暂停" },
-    { key: "← / →", action: "快退/快进 5秒" },
-    { key: "Shift + ← / →", action: "快退/快进 10秒" },
-    { key: "↑ / ↓", action: "调节音量" },
-    { key: "Ctrl + D", action: "收藏歌曲" },
-    { key: "Ctrl + R / L", action: "切换播放模式" },
-    { key: "Ctrl + M", action: "静音/取消静音" },
-    { key: "Ctrl + N / P", action: "下一首/上一首" },
-    { key: "Ctrl + F", action: "全屏歌词" },
-    { key: "Esc", action: "返回/关闭面板" },
-    { key: "= / -", action: "加快/减慢播放速度" },
-    { key: "0-9", action: "跳转到进度 %" },
-    { key: "Ctrl + Shift + A", action: "打开 AI 设置面板" },
-    { key: "Ctrl + Shift + L", action: "打开歌词生成面板" },
-    { key: "Ctrl + Shift + T", action: "打开 AI 教程面板" },
-    { key: "Ctrl + I", action: "切换 AI 设置面板" },
-  ];
+  const { defaults, getBinding } = useKeyboardShortcutsStore();
 
-  const categories = [
-    { name: "播放控制", shortcuts: [0, 1, 2, 10, 11] },
-    { name: "音量控制", shortcuts: [3, 4, 6] },
-    { name: "歌曲操作", shortcuts: [5, 7] },
-    { name: "界面切换", shortcuts: [8, 9] },
-    { name: "AI 功能", shortcuts: [12, 13, 14, 15] },
-  ];
+  const shortcuts = defaults.map((d) => ({
+    key: getBinding(d.id).join(" / "),
+    action: d.description,
+    category: d.category,
+  }));
+
+  const categories = Array.from(new Set(shortcuts.map((s) => s.category)));
 
   return (
     <motion.div
@@ -58,7 +42,6 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-2xl bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
       >
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10">
           <div className="flex items-center gap-3">
             <Keyboard className="w-6 h-6 text-white/80" />
@@ -72,17 +55,17 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({
           </button>
         </div>
 
-        {/* Shortcuts Grid */}
         <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar min-h-0">
-          {categories.map((category) => (
-            <div key={category.name}>
-              <h3 className="text-white/60 font-medium mb-3 text-sm uppercase tracking-wider">
-                {category.name}
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                {category.shortcuts.map((index) => {
-                  const shortcut = shortcuts[index];
-                  return (
+          {categories.map((cat) => {
+            const catShortcuts = shortcuts.filter((s) => s.category === cat);
+            if (catShortcuts.length === 0) return null;
+            return (
+              <div key={cat}>
+                <h3 className="text-white/60 font-medium mb-3 text-sm uppercase tracking-wider">
+                  {cat}
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {catShortcuts.map((shortcut) => (
                     <div
                       key={shortcut.key}
                       className="flex items-center justify-between py-2 px-3 bg-white/5 rounded-lg"
@@ -92,14 +75,13 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({
                         {shortcut.key}
                       </kbd>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* Footer */}
         <div className="p-4 border-t border-white/10 bg-white/5">
           <p className="text-white/40 text-xs text-center">按住 Shift 键可进行大幅度调节</p>
         </div>

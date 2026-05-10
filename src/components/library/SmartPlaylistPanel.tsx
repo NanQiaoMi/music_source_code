@@ -18,7 +18,7 @@ interface SmartPlaylistPanelProps {
 const TAB_ITEMS = [
   { id: "system", name: "系统歌单", icon: "🎵" },
   { id: "custom", name: "自定义规则", icon: "⚙️" },
-  { id: "import", name: "M3U导入导出", icon: "📦" },
+  { id: "import", name: "导入导出", icon: "📦" },
 ] as const;
 
 type TabId = (typeof TAB_ITEMS)[number]["id"];
@@ -65,7 +65,7 @@ export const SmartPlaylistPanel: React.FC<SmartPlaylistPanelProps> = ({ isOpen, 
             </div>
             <div>
               <h2 className="text-white text-2xl font-semibold">智能歌单</h2>
-              <p className="text-white/60 text-sm">系统歌单、自定义规则、M3U导入导出</p>
+              <p className="text-white/60 text-sm">系统歌单、自定义规则、多格式导入导出</p>
             </div>
           </div>
           <button
@@ -262,50 +262,91 @@ function ImportExportTab({
   onImportPlaylist: (content: string, format: any, songs: Song[]) => Song[];
 }) {
   const [importText, setImportText] = useState("");
+  const [importFormat, setImportFormat] = useState<string>("m3u");
+  const [exportFormat, setExportFormat] = useState<string>("m3u");
+
+  const formatOptions = [
+    { value: "m3u", label: "M3U", ext: "m3u", type: "audio/x-mpegurl" },
+    { value: "pls", label: "PLS", ext: "pls", type: "audio/x-scpls" },
+    { value: "xspf", label: "XSPF", ext: "xspf", type: "application/xspf+xml" },
+    { value: "wpl", label: "WPL", ext: "wpl", type: "application/vnd.ms-wpl" },
+    { value: "txt", label: "TXT", ext: "txt", type: "text/plain" },
+  ];
 
   const handleExport = () => {
-    const m3u = onExportPlaylist(songs, "m3u");
-    const blob = new Blob([m3u], { type: "audio/x-mpegurl" });
+    const fmt = formatOptions.find((f) => f.value === exportFormat) || formatOptions[0];
+    const content = onExportPlaylist(songs, exportFormat);
+    const blob = new Blob([content], { type: fmt.type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "playlist.m3u";
+    a.download = `playlist.${fmt.ext}`;
     a.click();
   };
 
   const handleImport = () => {
     if (importText) {
-      onImportPlaylist(importText, "m3u", songs);
+      onImportPlaylist(importText, importFormat, songs);
       setImportText("");
     }
   };
 
   return (
     <div className="space-y-6">
-      <h3 className="text-white text-xl font-semibold">M3U导入导出</h3>
+      <h3 className="text-white text-xl font-semibold">播放列表导入导出</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <h4 className="text-white font-semibold">导出歌单</h4>
-          <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-            <p className="text-white/60 text-sm mb-4">导出当前所有歌曲为M3U格式</p>
+          <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+            <p className="text-white/60 text-sm">导出当前所有歌曲</p>
+            <div className="flex gap-2">
+              {formatOptions.map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => setExportFormat(f.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    exportFormat === f.value
+                      ? "bg-pink-500/30 text-pink-300 border border-pink-500/40"
+                      : "bg-white/10 text-white/60 hover:bg-white/20 border border-transparent"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
             <button
               onClick={handleExport}
               className="w-full px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-medium hover:from-pink-600 hover:to-rose-600 transition-all duration-200 flex items-center justify-center gap-2"
             >
               <Download className="w-4 h-4" />
-              导出M3U
+              导出 {formatOptions.find((f) => f.value === exportFormat)?.label}
             </button>
           </div>
         </div>
 
         <div className="space-y-4">
           <h4 className="text-white font-semibold">导入歌单</h4>
-          <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+          <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+            <div className="flex gap-2">
+              {formatOptions.filter(f => f.value !== "txt").map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => setImportFormat(f.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    importFormat === f.value
+                      ? "bg-pink-500/30 text-pink-300 border border-pink-500/40"
+                      : "bg-white/10 text-white/60 hover:bg-white/20 border border-transparent"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
             <textarea
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
-              placeholder="粘贴M3U内容..."
+              placeholder={`粘贴${formatOptions.find((f) => f.value === importFormat)?.label}内容...`}
               className="w-full h-32 p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-pink-500 mb-4"
             />
             <button
@@ -314,7 +355,7 @@ function ImportExportTab({
               className="w-full px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Upload className="w-4 h-4" />
-              导入M3U
+              导入 {formatOptions.find((f) => f.value === importFormat)?.label}
             </button>
           </div>
         </div>

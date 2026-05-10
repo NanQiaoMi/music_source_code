@@ -24,6 +24,8 @@ interface QueueState {
   insertNext: (song: Song) => void;
   removeFromQueue: (index: number) => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
+  removeFromQueueById: (id: string) => void;
+  removeMultipleFromQueue: (indices: number[]) => void;
   clearQueue: () => void;
   addToHistory: (song: Song) => void;
   clearHistory: () => void;
@@ -98,6 +100,31 @@ export const useQueueStore = create<QueueState>()(
         }),
 
       clearQueue: () => set({ queue: [], currentIndex: 0 }),
+
+      removeFromQueueById: (id) =>
+        set((state) => {
+          const index = state.queue.findIndex((s) => s.id === id);
+          if (index === -1) return {};
+          const newQueue = [...state.queue];
+          newQueue.splice(index, 1);
+          let newIndex = state.currentIndex;
+          if (index < state.currentIndex) {
+            newIndex = Math.max(0, state.currentIndex - 1);
+          } else if (index === state.currentIndex && newQueue.length > 0) {
+            newIndex = Math.min(state.currentIndex, newQueue.length - 1);
+          }
+          return { queue: newQueue, currentIndex: newIndex };
+        }),
+
+      removeMultipleFromQueue: (indices) =>
+        set((state) => {
+          const sorted = [...indices].sort((a, b) => b - a);
+          const newQueue = [...state.queue];
+          for (const i of sorted) {
+            newQueue.splice(i, 1);
+          }
+          return { queue: newQueue, currentIndex: Math.min(state.currentIndex, newQueue.length - 1 >= 0 ? newQueue.length - 1 : 0) };
+        }),
 
       addToHistory: (song) =>
         set((state) => {

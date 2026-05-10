@@ -47,7 +47,7 @@ export interface SmartPlaylist {
   songCount: number;
 }
 
-export type PlaylistExportFormat = "m3u" | "m3u8" | "txt";
+export type PlaylistExportFormat = "m3u" | "m3u8" | "txt" | "pls" | "xspf" | "wpl";
 
 interface SmartPlaylistState {
   smartPlaylists: SmartPlaylist[];
@@ -237,6 +237,73 @@ function generateM3U(songs: Song[]): string {
   return m3u;
 }
 
+function generatePLS(songs: Song[]): string {
+  let pls = "[playlist]\n";
+  pls += `NumberOfEntries=${songs.length}\n\n`;
+
+  songs.forEach((song, i) => {
+    const num = i + 1;
+    pls += `File${num}=${song.id}.mp3\n`;
+    pls += `Title${num}=${song.artist} - ${song.title}\n`;
+    pls += `Length${num}=${Math.round(song.duration)}\n\n`;
+  });
+
+  pls += "Version=2\n";
+  return pls;
+}
+
+function generateXSPF(songs: Song[]): string {
+  let xspf = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  xspf += '<playlist version="1" xmlns="http://xspf.org/ns/0/">\n';
+  xspf += "  <trackList>\n";
+
+  for (const song of songs) {
+    xspf += "    <track>\n";
+    xspf += `      <location>${escapeXml(song.id)}.mp3</location>\n`;
+    xspf += `      <title>${escapeXml(song.title)}</title>\n`;
+    xspf += `      <creator>${escapeXml(song.artist)}</creator>\n`;
+    if (song.album) xspf += `      <album>${escapeXml(song.album)}</album>\n`;
+    xspf += `      <duration>${Math.round(song.duration * 1000)}</duration>\n`;
+    xspf += "    </track>\n";
+  }
+
+  xspf += "  </trackList>\n";
+  xspf += "</playlist>\n";
+  return xspf;
+}
+
+function generateWPL(songs: Song[]): string {
+  let wpl = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  wpl += '  <smil>\n';
+  wpl += '    <head>\n';
+  wpl += `      <title>Playlist</title>\n`;
+  wpl += `      <meta name="PlaylistType" content="audio"/>\n`;
+  wpl += `      <meta name="TotalDuration" content="${songs.reduce((s, t) => s + t.duration, 0)}"/>\n`;
+  wpl += `      <meta name="ItemCount" content="${songs.length}"/>\n`;
+  wpl += '    </head>\n';
+  wpl += '    <body>\n';
+  wpl += '      <seq>\n';
+
+  for (const song of songs) {
+    wpl += `        <media src="${escapeXml(song.id)}.mp3"`;
+    wpl += ` title="${escapeXml(song.title)}"`;
+    wpl += ` artist="${escapeXml(song.artist)}"`;
+    if (song.album) wpl += ` album="${escapeXml(song.album)}"`;
+    wpl += ` duration="${Math.round(song.duration * 1000)}"`;
+    wpl += '/>\n';
+  }
+
+  wpl += '      </seq>\n';
+  wpl += '    </body>\n';
+  wpl += '  </smil>\n';
+  return wpl;
+}
+
+function escapeXml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+}
+
 export const useSmartPlaylistStore = create<SmartPlaylistState>()(
   persist(
     (set, get) => ({
@@ -411,6 +478,12 @@ export const useSmartPlaylistStore = create<SmartPlaylistState>()(
           case "m3u":
           case "m3u8":
             return generateM3U(songs);
+          case "pls":
+            return generatePLS(songs);
+          case "xspf":
+            return generateXSPF(songs);
+          case "wpl":
+            return generateWPL(songs);
           case "txt":
             return songs.map((s) => `${s.artist} - ${s.title}`).join("\n");
           default:
@@ -421,9 +494,75 @@ export const useSmartPlaylistStore = create<SmartPlaylistState>()(
       importPlaylist: (content, format, allSongs) => {
         const lines = content.split("\n").filter((l) => l.trim());
         const matchedSongs: Song[] = [];
+        let i = 0;
 
-        for (const line of lines) {
-          if (line.startsWith("#")) continue;
+        while (i < lines.length) {
+          const line = lines[i].trim();
+
+          // PLS format: File1=..., Title1=...
+          if (line.startsWith("File") && line.includes("=")) {
+            i++;
+            continue;
+          }
+          if (line.startsWith("Title") && line.includes("=")) {
+            const titlePart = line.substring(line.indexOf("=") + 1);
+            const song = allSongs.find((s) =>
+              titlePart.toLowerCase().includes(s.title.toLowerCase())
+            );
+            if (song && !matchedSongs.find((m) => m.id === song.id)) {
+              matchedSongs.push(song);
+            }
+            i++;
+            continue;
+          }
+          if (line.startsWith("Length") || line.startsWith("NumberOfEntries") || line === "[playlist]" || line === "Version=2") {
+            i++;
+            continue;
+          }
+
+          // XSPF format: <title>, <creator>, <location> tags
+          if (line.includes("<title>") && line.includes("</title>")) {
+            const titleMatch = line.match(/<title>(.*?)<\/title>/);
+            const creatorMatch = lines.slice(i, i + 5).join(" ").match(/<creator>(.*?)<\/creator>/);
+            const searchTerm = titleMatch ? titleMatch[1] : "";
+            const song = allSongs.find((s) =>
+              searchTerm.toLowerCase().includes(s.title.toLowerCase()) ||
+              (creatorMatch && s.artist.toLowerCase().includes(creatorMatch[1].toLowerCase()))
+            );
+            if (song && !matchedSongs.find((m) => m.id === song.id)) {
+              matchedSongs.push(song);
+            }
+            i++;
+            continue;
+          }
+
+          // WPL format: media src="..."
+          if (line.includes('<media') && line.includes('src=')) {
+            const titleMatch = line.match(/title="(.*?)"/);
+            const artistMatch = line.match(/artist="(.*?)"/);
+            const searchTerm = titleMatch ? titleMatch[1] : "";
+            const song = allSongs.find((s) =>
+              searchTerm.toLowerCase().includes(s.title.toLowerCase()) ||
+              (artistMatch && s.artist.toLowerCase().includes(artistMatch[1].toLowerCase()))
+            );
+            if (song && !matchedSongs.find((m) => m.id === song.id)) {
+              matchedSongs.push(song);
+            }
+            i++;
+            continue;
+          }
+
+          // Skip XML/SMIL tags
+          if (line.startsWith("<") || line.startsWith("</") || line.startsWith("<?") || line.startsWith("<?")) {
+            i++;
+            continue;
+          }
+
+          // M3U/TXT: skip comments, match by title/artist
+          if (line.startsWith("#")) {
+            i++;
+            continue;
+          }
 
           const songMatch = allSongs.find((song) => {
             const searchTerm = line.toLowerCase();
@@ -433,9 +572,10 @@ export const useSmartPlaylistStore = create<SmartPlaylistState>()(
             );
           });
 
-          if (songMatch) {
+          if (songMatch && !matchedSongs.find((m) => m.id === songMatch.id)) {
             matchedSongs.push(songMatch);
           }
+          i++;
         }
 
         return matchedSongs;
