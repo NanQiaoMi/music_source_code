@@ -98,6 +98,17 @@ interface StatsAchievementsState {
   resetAchievements: () => void;
 
   removeToast: (toastId: string) => void;
+
+  // Query methods for stats dashboard
+  getPlayTimeStats(): {
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+    allTime: number;
+  };
+  getTopPlayedSongs(limit: number): { songId: string; title: string; artist: string; playCount: number }[];
+  getTopArtists(limit: number): { artist: string; playCount: number }[];
+  getHourlyDistribution(): { hour: number; count: number }[];
 }
 
 function generateAchievements(): Achievement[] {
@@ -847,6 +858,61 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
             progress: 0,
           })),
         }),
+
+      getPlayTimeStats: () => {
+        const stats = get().listeningStats;
+        const now = Date.now();
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        const monthStart = new Date();
+        monthStart.setDate(1);
+        monthStart.setHours(0, 0, 0, 0);
+
+        let today = 0;
+        let thisWeek = 0;
+        let thisMonth = 0;
+
+        for (const day of stats.dailyPlayData) {
+          const dayDate = new Date(day.date).getTime();
+          if (dayDate >= todayStart.getTime()) today += day.listenTime;
+          if (dayDate >= weekStart.getTime()) thisWeek += day.listenTime;
+          if (dayDate >= monthStart.getTime()) thisMonth += day.listenTime;
+        }
+
+        return {
+          today,
+          thisWeek,
+          thisMonth,
+          allTime: stats.totalListenTime,
+        };
+      },
+
+      getTopPlayedSongs: (limit) => {
+        const songs = get().listeningStats.topSongs;
+        return songs
+          .slice(0, limit)
+          .map((s) => ({
+            songId: s.song.id,
+            title: s.song.title,
+            artist: s.song.artist,
+            playCount: s.playCount,
+          }));
+      },
+
+      getTopArtists: (limit) => {
+        return get().listeningStats.topArtists.slice(0, limit);
+      },
+
+      getHourlyDistribution: () => {
+        const dist = get().listeningStats.hourlyDistribution;
+        return Array.from({ length: 24 }, (_, hour) => ({
+          hour,
+          count: dist[hour] || 0,
+        }));
+      },
     }),
     {
       name: "stats-achievements-store-v4",
