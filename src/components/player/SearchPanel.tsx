@@ -14,7 +14,7 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
-import { useSearchStore, SearchType } from "@/store/searchStore";
+import { useSearchStore, SearchType, FilterType } from "@/store/searchStore";
 import { usePlaylistStore, Song } from "@/store/playlistStore";
 import { useAudioStore } from "@/store/audioStore";
 import Image from "next/image";
@@ -40,6 +40,11 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     recentSearches,
     isSearching,
     isVoiceSearch,
+    page,
+    pageSize,
+    totalResults,
+    filters,
+    searchHistory,
     setQuery,
     setSearchType,
     search,
@@ -47,6 +52,10 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     removeRecentSearch,
     clearRecentSearches,
     setIsVoiceSearch,
+    setPage,
+    setFilterType,
+    clearFilters,
+    clearHistory,
   } = useSearchStore();
 
   const { songs } = usePlaylistStore();
@@ -119,6 +128,20 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     search(songs);
   };
 
+  const handleHistoryClick = (searchQuery: string) => {
+    setQuery(searchQuery);
+    search(songs);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(totalResults / pageSize));
+
+  const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
+    { value: "all", label: "全部" },
+    { value: "title", label: "标题" },
+    { value: "artist", label: "歌手" },
+    { value: "album", label: "专辑" },
+  ];
+
   const content = (
     <div className="overflow-hidden">
       <div className="p-4 border-b border-white/10">
@@ -186,6 +209,27 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
             </motion.button>
           ))}
         </div>
+
+        <div className="flex items-center gap-2 mt-3">
+          <span className="text-xs text-white/50">过滤:</span>
+          <select
+            value={filters.type}
+            onChange={(e) => setFilterType(e.target.value as FilterType)}
+            className="bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none focus:border-white/30"
+          >
+            {FILTER_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          {filters.type !== "all" && (
+            <button
+              onClick={clearFilters}
+              className="text-xs text-white/40 hover:text-white/70"
+            >
+              清除
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="max-h-[60vh] overflow-y-auto custom-scrollbar min-h-0">
@@ -228,6 +272,32 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
           </div>
         )}
 
+        {!query && searchHistory.length > 0 && (
+          <div className="px-4 pb-2">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-white/40">搜索历史</span>
+              <button
+                onClick={clearHistory}
+                className="text-xs text-white/40 hover:text-white/70 flex items-center gap-1"
+              >
+                <Trash2 className="w-3 h-3" />
+                清空
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {searchHistory.slice(0, 10).map((item, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleHistoryClick(item)}
+                  className="px-2 py-0.5 rounded bg-white/5 text-white/50 text-xs hover:bg-white/10 transition-colors"
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {isSearching && (
           <div className="p-8 flex items-center justify-center">
             <Loader2 className="w-8 h-8 text-white/50 animate-spin" />
@@ -245,7 +315,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
           <div className="p-4">
             <div className="flex items-center gap-2 text-white/60 mb-3">
               <TrendingUp className="w-4 h-4" />
-              <span className="text-sm">搜索结果 ({results.length})</span>
+              <span className="text-sm">搜索结果 ({totalResults})</span>
             </div>
             <div className="space-y-2">
               {results.map((song, index) => (
@@ -275,6 +345,31 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                 </motion.div>
               ))}
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 mt-4 pt-3 border-t border-white/10">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
+                  className="px-3 py-1 rounded-lg text-xs bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  上一页
+                </motion.button>
+                <span className="text-xs text-white/50">
+                  第{page}页 / 共{totalPages}页
+                </span>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(page + 1)}
+                  className="px-3 py-1 rounded-lg text-xs bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  下一页
+                </motion.button>
+              </div>
+            )}
           </div>
         )}
       </div>
