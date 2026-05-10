@@ -23,8 +23,7 @@ let playStartTime: number = 0;
 // Stable event handlers outside the hook to prevent duplicate listeners
 // and ensure we can attach them once to each audio element
 const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => void) => {
-  if ((audio as any)._vibeListenersAttached) return;
-  (audio as any)._vibeListenersAttached = true;
+  detachListeners(audio);
 
   const { setCurrentTime, setDuration, setIsLoading, setError, nextSong, loopMode } =
     useAudioStore.getState();
@@ -91,8 +90,28 @@ const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => v
   audio.addEventListener("ended", onEnded);
   audio.addEventListener("error", onError);
 
-  // No cleanup for these global-style listeners to ensure they keep working
-  // when temporary views unmount. They are attached to long-lived audio instances.
+  (audio as any)._vibeListenersAttached = true;
+  (audio as any)._vibeCleanup = () => {
+    audio.removeEventListener("timeupdate", onTimeUpdate);
+    audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+    audio.removeEventListener("durationchange", onDurationChange);
+    audio.removeEventListener("loadstart", onLoadStart);
+    audio.removeEventListener("canplay", onCanPlay);
+    audio.removeEventListener("waiting", onWaiting);
+    audio.removeEventListener("playing", onPlaying);
+    audio.removeEventListener("play", onPlay);
+    audio.removeEventListener("pause", onPause);
+    audio.removeEventListener("ended", onEnded);
+    audio.removeEventListener("error", onError);
+    (audio as any)._vibeListenersAttached = false;
+    (audio as any)._vibeCleanup = undefined;
+  };
+};
+
+const detachListeners = (audio: HTMLAudioElement) => {
+  if (typeof (audio as any)._vibeCleanup === "function") {
+    (audio as any)._vibeCleanup();
+  }
 };
 
 export const useAudioPlayer = () => {
