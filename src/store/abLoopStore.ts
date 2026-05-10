@@ -6,6 +6,7 @@ interface ABLoopState {
   pointB: number | null;
   isSettingPointA: boolean;
   isSettingPointB: boolean;
+  loopCount: number;
 
   enableLoop: () => void;
   disableLoop: () => void;
@@ -18,6 +19,8 @@ interface ABLoopState {
   startSettingPointA: () => void;
   startSettingPointB: () => void;
   stopSettingPoint: () => void;
+  incrementLoopCount: () => void;
+  resetLoopCount: () => void;
 }
 
 export const useABLoopStore = create<ABLoopState>((set, get) => ({
@@ -26,11 +29,12 @@ export const useABLoopStore = create<ABLoopState>((set, get) => ({
   pointB: null,
   isSettingPointA: false,
   isSettingPointB: false,
+  loopCount: 0,
 
   enableLoop: () => {
     const { pointA, pointB } = get();
     if (pointA !== null && pointB !== null && pointA < pointB) {
-      set({ isEnabled: true });
+      set({ isEnabled: true, loopCount: 0 });
     }
   },
 
@@ -42,7 +46,7 @@ export const useABLoopStore = create<ABLoopState>((set, get) => ({
       set({ isEnabled: false });
     } else {
       if (pointA !== null && pointB !== null && pointA < pointB) {
-        set({ isEnabled: true });
+        set({ isEnabled: true, loopCount: 0 });
       }
     }
   },
@@ -78,6 +82,7 @@ export const useABLoopStore = create<ABLoopState>((set, get) => ({
       pointA: null,
       pointB: null,
       isEnabled: false,
+      loopCount: 0,
     }),
 
   startSettingPointA: () =>
@@ -97,4 +102,10 @@ export const useABLoopStore = create<ABLoopState>((set, get) => ({
       isSettingPointA: false,
       isSettingPointB: false,
     }),
+
+  incrementLoopCount: () =>
+    set((state) => ({ loopCount: state.loopCount + 1 })),
+
+  resetLoopCount: () =>
+    set({ loopCount: 0 }),
 }));

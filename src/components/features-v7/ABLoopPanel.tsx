@@ -25,6 +25,7 @@ export function ABLoopPanel({ isOpen, onClose, currentTime, duration, seekTo }: 
     pointB,
     isSettingPointA,
     isSettingPointB,
+    loopCount,
     toggleLoop,
     setPointA,
     setPointB,
@@ -97,6 +98,11 @@ export function ABLoopPanel({ isOpen, onClose, currentTime, duration, seekTo }: 
                 <Repeat className="w-5 h-5" />
                 {isEnabled ? "循环中" : "启用循环"}
               </button>
+              {isEnabled && (
+                <div className="text-center text-sm text-white/60">
+                  已循环 <span className="text-pink-400 font-bold">{loopCount}</span> 次
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
