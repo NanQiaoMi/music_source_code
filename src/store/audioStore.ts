@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useQueueStore } from "./queueStore";
+import { useRecommendationStore } from "./recommendationStore";
 
 export interface Song {
   id: string;
@@ -282,7 +283,36 @@ export const useAudioStore = create<AudioState>()(
 
       nextSong: () => {
         const { queue, currentIndex, loopMode } = get();
-        if (queue.length === 0) return;
+
+        if (queue.length === 0) {
+          const queueStore = useQueueStore.getState();
+          if (queueStore.playThroughMode === 'play-through') {
+            set({ currentSong: null, isPlaying: false });
+            return;
+          }
+          if (loopMode !== 'single' && loopMode !== 'list') {
+            const recs = useRecommendationStore.getState().getRecommendations();
+            if (recs.length > 0) {
+              queueStore.setQueue(recs);
+              queueStore.setCurrentIndex(0);
+              queueStore.addToHistory(recs[0]);
+              set({
+                queue: recs,
+                currentIndex: 0,
+                currentSong: recs[0],
+                currentTime: 0,
+                isPlaying: true,
+                isLoading: true,
+                error: null,
+              });
+            } else {
+              set({ currentSong: null, isPlaying: false });
+            }
+          } else {
+            set({ currentSong: null, isPlaying: false });
+          }
+          return;
+        }
 
         let nextIndex: number;
 

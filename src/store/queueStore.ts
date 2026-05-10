@@ -16,10 +16,12 @@ interface QueueState {
   queue: Song[];
   currentIndex: number;
   history: HistorySong[];
+  playThroughMode: 'normal' | 'play-through';
 
   setQueue: (songs: Song[]) => void;
   setCurrentIndex: (index: number) => void;
   addToQueue: (song: Song) => void;
+  insertNext: (song: Song) => void;
   removeFromQueue: (index: number) => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
   clearQueue: () => void;
@@ -29,6 +31,8 @@ interface QueueState {
   nextSong: () => Song | null;
   prevSong: () => Song | null;
   getCurrentSong: () => Song | null;
+  shuffleQueue: () => void;
+  setPlayThroughMode: (mode: 'normal' | 'play-through') => void;
 }
 
 export const useQueueStore = create<QueueState>()(
@@ -37,6 +41,7 @@ export const useQueueStore = create<QueueState>()(
       queue: [],
       currentIndex: 0,
       history: [],
+      playThroughMode: 'normal',
 
       setQueue: (songs) => set({ queue: songs }),
 
@@ -46,6 +51,16 @@ export const useQueueStore = create<QueueState>()(
         set((state) => ({
           queue: [...state.queue, song],
         })),
+
+      insertNext: (song) =>
+        set((state) => {
+          if (state.queue.length === 0) {
+            return { queue: [song] };
+          }
+          const newQueue = [...state.queue];
+          newQueue.splice(state.currentIndex + 1, 0, song);
+          return { queue: newQueue };
+        }),
 
       removeFromQueue: (index) =>
         set((state) => {
@@ -127,10 +142,23 @@ export const useQueueStore = create<QueueState>()(
         }
         return state.queue[state.currentIndex];
       },
+
+      shuffleQueue: () => {
+        const queue = [...get().queue];
+        for (let i = queue.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [queue[i], queue[j]] = [queue[j], queue[i]];
+        }
+        set({ queue });
+      },
+
+      setPlayThroughMode: (mode) => set({ playThroughMode: mode }),
     }),
     {
-      name: "queue-store-v4",
+      name: "queue-store-v5",
       partialize: (state) => ({
+        queue: state.queue,
+        currentIndex: state.currentIndex,
         history: state.history,
       }),
       storage: {
