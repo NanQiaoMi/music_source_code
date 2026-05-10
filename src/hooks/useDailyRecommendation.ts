@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Song } from "@/store/audioStore";
+import { Song } from "@/types/song";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";

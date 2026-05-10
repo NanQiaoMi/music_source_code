@@ -8,20 +8,9 @@ import {
   preloadCovers,
 } from "@/services/coverCache";
 import { useAudioStore } from "./audioStore";
+import { Song } from "@/types/song";
 
-export interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  album?: string;
-  cover: string;
-  audioUrl?: string;
-  lyrics?: string;
-  duration: number;
-  source?: "local" | "demo" | "imported" | string;
-  addedAt?: number;
-  playCount?: number;
-}
+export type { Song };
 
 export interface PlaylistState {
   songs: Song[];

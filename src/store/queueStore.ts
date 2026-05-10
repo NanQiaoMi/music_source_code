@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Song } from "./playlistStore";
+import { Song } from "@/types/song";
 
 export interface HistorySong {
   id: string;

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Song } from "@/store/playlistStore";
+import { Song } from "@/types/song";
 
 export interface AchievementToast {
   id: string;

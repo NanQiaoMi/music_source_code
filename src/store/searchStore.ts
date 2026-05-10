@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Song } from "./playlistStore";
+import { Song } from "@/types/song";
 
 export type SearchType = "all" | "song" | "artist" | "album";
 

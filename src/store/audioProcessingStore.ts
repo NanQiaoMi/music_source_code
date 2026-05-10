@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Song } from "./playlistStore";
+import { Song } from "@/types/song";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
 
 export type DSPMode = "bypass" | "eq" | "compressor" | "limiter" | "reverb";

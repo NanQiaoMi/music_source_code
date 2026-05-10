@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { usePlaylistStore, Song } from "./playlistStore";
+import { usePlaylistStore } from "./playlistStore";
+import { Song } from "@/types/song";
 
 function createMockSong(id: string): Song {
   return {

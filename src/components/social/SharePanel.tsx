@@ -3,7 +3,8 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { Clipboard, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAudioStore, Song } from "@/store/audioStore";
+import { useAudioStore } from "@/store/audioStore";
+import { Song } from "@/types/song";
 import {
   X,
   Share2,

@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { FileText, Image, Upload, Edit3 } from "lucide-react";
 import { useLyricsCoverStore } from "@/store/lyricsCoverStore";
-import { usePlaylistStore, type Song } from "@/store/playlistStore";
+import { usePlaylistStore } from "@/store/playlistStore";
+import type { Song } from "@/types/song";
 
 interface LyricsCoverEditorProps {
   isOpen: boolean;

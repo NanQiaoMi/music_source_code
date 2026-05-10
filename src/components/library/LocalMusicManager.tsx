@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Song, usePlaylistStore } from "@/store/playlistStore";
+import { usePlaylistStore } from "@/store/playlistStore";
+import { Song } from "@/types/song";
 import { generateSongId } from "@/utils/songValidation";
 import {
   saveMusicFile,

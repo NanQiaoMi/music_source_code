@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Song } from "@/store/playlistStore";
+import { Song } from "@/types/song";
 import {
   validateSong,
   ValidationError,

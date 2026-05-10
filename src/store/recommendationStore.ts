@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Song } from "./playlistStore";
+import { Song } from "@/types/song";
 import { SongWithPlayCount, generateRecommendations } from "@/utils/recommendationLogic";
 import { usePlaylistStore } from "./playlistStore";
 import { useEmotionStore } from "./emotionStore";

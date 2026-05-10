@@ -3,19 +3,9 @@ import { persist } from "zustand/middleware";
 import { useQueueStore } from "./queueStore";
 import { useRecommendationStore } from "./recommendationStore";
 
-export interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  cover: string;
-  audioUrl?: string;
-  lyrics?: string;
-  translationLyrics?: string;
-  transliterationLyrics?: string;
-  duration: number;
-  album?: string;
-  source?: "local" | "demo" | "imported" | string;
-}
+import { Song } from "@/types/song";
+
+export type { Song };
 
 export type LoopMode = "none" | "single" | "all" | "shuffle";
 

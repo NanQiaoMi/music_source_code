@@ -15,7 +15,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { useSearchStore, SearchType, FilterType } from "@/store/searchStore";
-import { usePlaylistStore, Song } from "@/store/playlistStore";
+import { usePlaylistStore } from "@/store/playlistStore";
+import { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
 import Image from "next/image";
 import { GlassModal } from "@/components/shared/Glass";
