@@ -51,6 +51,50 @@ describe("queueStore", () => {
       expect(parsed.state.queue[0].lyrics).toBeUndefined();
       expect(parsed.state.queue[0].audioUrl).toBe("stored://heavy-song");
     });
+
+    it("should persist only minimal queue fields for large queues", () => {
+      const store = useQueueStore.getState();
+      const songs = Array.from({ length: 200 }, (_, i) => ({
+        ...createMockSong(String(i)),
+        cover: `data:image/png;base64,${"a".repeat(2000)}`,
+        lyrics: "l".repeat(2000),
+        translationLyrics: "t".repeat(2000),
+        transliterationLyrics: "r".repeat(2000),
+        genre: "genre",
+        year: 2026,
+        trackNumber: i,
+        playCount: i,
+        addedAt: i,
+        filePath: `C:/music/${i}.mp3`,
+        fileSize: 123456,
+        sampleRate: 44100,
+        bitRate: 320,
+        format: "mp3",
+        bpm: 120,
+        key: "C",
+      }));
+
+      store.setQueue(songs);
+
+      const persisted = localStorage.getItem("queue-store-v5");
+      expect(persisted).not.toBeNull();
+
+      const parsed = JSON.parse(persisted!);
+      expect(parsed.state.queue).toHaveLength(200);
+      expect(parsed.state.queue[0]).toMatchObject({
+        id: "0",
+        title: "Song 0",
+        artist: "Artist",
+        duration: 200,
+        source: "local",
+        cover: "",
+      });
+      expect(parsed.state.queue[0].lyrics).toBeUndefined();
+      expect(parsed.state.queue[0].translationLyrics).toBeUndefined();
+      expect(parsed.state.queue[0].transliterationLyrics).toBeUndefined();
+      expect(parsed.state.queue[0].filePath).toBeUndefined();
+      expect(parsed.state.queue[0].bitRate).toBeUndefined();
+    });
   });
 
   describe("insertNext", () => {

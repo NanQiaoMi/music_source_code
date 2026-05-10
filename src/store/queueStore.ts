@@ -12,13 +12,23 @@ export interface HistorySong {
   playedAt: number;
 }
 
-function sanitizePersistedSong(song: Song): Song {
+type PersistedQueueSong = Pick<
+  Song,
+  "id" | "title" | "artist" | "album" | "duration" | "cover" | "source" | "audioUrl"
+>;
+
+function sanitizePersistedSong(song: Song): PersistedQueueSong {
   const sanitizedCover = song.cover?.startsWith("data:image/") ? "" : song.cover;
 
   return {
-    ...song,
+    id: song.id,
+    title: song.title,
+    artist: song.artist,
+    album: song.album,
+    duration: song.duration,
     cover: sanitizedCover,
-    lyrics: undefined,
+    source: song.source,
+    audioUrl: song.audioUrl,
   };
 }
 
