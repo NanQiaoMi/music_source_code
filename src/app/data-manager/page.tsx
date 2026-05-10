@@ -72,7 +72,7 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ onClose }) => {
             onClick={() => setCurrentView("player")}
           >
             <Image
-              src={currentSong.cover}
+              src={currentSong.cover ?? "/default-cover.png"}
               alt={currentSong.title}
               fill
               className="object-cover"
