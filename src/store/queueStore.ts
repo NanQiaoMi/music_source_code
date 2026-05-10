@@ -16,7 +16,7 @@ interface QueueState {
   queue: Song[];
   currentIndex: number;
   history: HistorySong[];
-  playThroughMode: 'normal' | 'play-through';
+  playThroughMode: "normal" | "play-through";
 
   setQueue: (songs: Song[]) => void;
   setCurrentIndex: (index: number) => void;
@@ -34,7 +34,7 @@ interface QueueState {
   prevSong: () => Song | null;
   getCurrentSong: () => Song | null;
   shuffleQueue: () => void;
-  setPlayThroughMode: (mode: 'normal' | 'play-through') => void;
+  setPlayThroughMode: (mode: "normal" | "play-through") => void;
 }
 
 export const useQueueStore = create<QueueState>()(
@@ -43,7 +43,7 @@ export const useQueueStore = create<QueueState>()(
       queue: [],
       currentIndex: 0,
       history: [],
-      playThroughMode: 'normal',
+      playThroughMode: "normal",
 
       setQueue: (songs) => set({ queue: songs }),
 
@@ -123,7 +123,13 @@ export const useQueueStore = create<QueueState>()(
           for (const i of sorted) {
             newQueue.splice(i, 1);
           }
-          return { queue: newQueue, currentIndex: Math.min(state.currentIndex, newQueue.length - 1 >= 0 ? newQueue.length - 1 : 0) };
+          return {
+            queue: newQueue,
+            currentIndex: Math.min(
+              state.currentIndex,
+              newQueue.length - 1 >= 0 ? newQueue.length - 1 : 0
+            ),
+          };
         }),
 
       addToHistory: (song) =>
@@ -200,8 +206,8 @@ export const useQueueStore = create<QueueState>()(
         setItem: (name, value) => {
           try {
             localStorage.setItem(name, JSON.stringify(value));
-          } catch (error) {
-            if (error instanceof Error && error.name === "QuotaExceededError") {
+          } catch (_error) {
+            if (_error instanceof Error && _error.name === "QuotaExceededError") {
               console.warn("Queue store quota exceeded, aggressively clearing history...");
               try {
                 const state = JSON.parse(JSON.stringify(value));
@@ -210,7 +216,7 @@ export const useQueueStore = create<QueueState>()(
                   state.state.history = state.state.history.slice(0, 5);
                 }
                 localStorage.setItem(name, JSON.stringify(state));
-              } catch (e) {
+              } catch {
                 console.warn("Failed to save even with 5 history items, clearing all history.");
                 try {
                   const state = JSON.parse(JSON.stringify(value));

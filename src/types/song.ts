@@ -5,7 +5,7 @@ export interface Song {
   album?: string;
   duration: number;
   cover?: string;
-  source: 'local' | 'upload' | 'recommendation' | string;
+  source: "local" | "upload" | "recommendation" | string;
   audioUrl?: string;
   lyrics?: string;
   genre?: string;
@@ -23,9 +23,9 @@ export interface Song {
 }
 
 export type HealthIssueType =
-  | 'missing_file'
-  | 'corrupt_file'
-  | 'missing_metadata'
-  | 'duplicate'
-  | 'low_quality'
-  | 'unsupported_format';
+  | "missing_file"
+  | "corrupt_file"
+  | "missing_metadata"
+  | "duplicate"
+  | "low_quality"
+  | "unsupported_format";

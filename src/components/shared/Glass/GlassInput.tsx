@@ -24,9 +24,7 @@ export function GlassInput({
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-white/60 text-xs font-medium mb-1.5 px-1">
-          {label}
-        </label>
+        <label className="block text-white/60 text-xs font-medium mb-1.5 px-1">{label}</label>
       )}
       <input
         type={type}

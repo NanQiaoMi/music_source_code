@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
-import { Keyboard } from "lucide-react";
-import { useKeyboardShortcutsStore, ShortcutBinding } from "@/store/keyboardShortcutsStore";
+import { useKeyboardShortcutsStore } from "@/store/keyboardShortcutsStore";
 import { GlassPanel } from "@/components/shared/Glass";
 import { GlassButton } from "@/components/shared/GlassButton";
 
@@ -127,9 +125,10 @@ export const KeyboardShortcutsSettings: React.FC<KeyboardShortcutsSettingsProps>
                               className={`
                                 px-2.5 py-1 rounded-lg text-xs font-mono cursor-pointer
                                 transition-colors
-                                ${isDefault(binding.id)
-                                  ? "bg-white/10 text-white/70"
-                                  : "bg-white/20 text-white"
+                                ${
+                                  isDefault(binding.id)
+                                    ? "bg-white/10 text-white/70"
+                                    : "bg-white/20 text-white"
                                 }
                                 hover:bg-white/20
                               `}

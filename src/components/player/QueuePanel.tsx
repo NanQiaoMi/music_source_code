@@ -4,7 +4,6 @@ import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useQueueStore } from "@/store/queueStore";
-import { useAudioStore } from "@/store/audioStore";
 import { formatTime } from "@/utils/formatTime";
 import { GlassPanel } from "@/components/shared/Glass";
 import { GlassButton } from "@/components/shared/GlassButton";
@@ -17,24 +16,18 @@ interface QueuePanelProps {
 
 export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
   const {
-    queue, currentIndex, removeFromQueue, removeFromQueueById,
-    removeMultipleFromQueue, clearQueue, reorderQueue, setCurrentIndex, addToQueue,
+    queue,
+    currentIndex,
+    removeFromQueue,
+    removeMultipleFromQueue,
+    clearQueue,
+    reorderQueue,
+    addToQueue,
   } = useQueueStore();
-  const currentSong = useAudioStore((s) => s.currentSong);
-  const setCurrentSong = useAudioStore((s) => s.setCurrentSong);
-  const setIsPlaying = useAudioStore((s) => s.setIsPlaying);
+
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-
-  const handlePlayFromQueue = (index: number) => {
-    setCurrentIndex(index);
-    const song = queue[index];
-    if (song) {
-      setCurrentSong(song);
-      setIsPlaying(true);
-    }
-  };
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
@@ -42,9 +35,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
     e.dataTransfer.setData("text/plain", String(index));
 
     // For multi-select drag: include all selected indices
-    const dragIndices = selectedIndices.has(index)
-      ? Array.from(selectedIndices)
-      : [index];
+    const dragIndices = selectedIndices.has(index) ? Array.from(selectedIndices) : [index];
     e.dataTransfer.setData("application/x-queue-indices", JSON.stringify(dragIndices));
   };
 
@@ -64,7 +55,9 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
         const song: Song = JSON.parse(externalSongData);
         addToQueue(song);
         return;
-      } catch { /* ignore parse errors */ }
+      } catch {
+        /* ignore parse errors */
+      }
     }
 
     // Handle multi-select reorder
@@ -88,7 +81,9 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
         }
 
         // Adjust target index based on removals
-        const removedBeforeTarget = removedItems.filter((r) => r.originalIndex < targetIndex).length;
+        const removedBeforeTarget = removedItems.filter(
+          (r) => r.originalIndex < targetIndex
+        ).length;
         const insertAt = Math.max(0, Math.min(targetIndex - removedBeforeTarget, newQueue.length));
 
         // Insert in original order
@@ -99,7 +94,9 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
         useQueueStore.setState({ queue: newQueue });
         setSelectedIndices(new Set());
         return;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     // Single reorder fallback
@@ -118,18 +115,20 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
   };
 
   // Drag-to-remove: detect drag outside the list
-  const handleRemoveOnDragEnd = useCallback((e: React.DragEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const { clientX, clientY } = e;
-    const isOutside =
-      clientX < rect.left || clientX > rect.right ||
-      clientY < rect.top || clientY > rect.bottom;
+  const handleRemoveOnDragEnd = useCallback(
+    (e: React.DragEvent) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const { clientX, clientY } = e;
+      const isOutside =
+        clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom;
 
-    if (isOutside && draggedIndex !== null) {
-      removeFromQueue(draggedIndex);
-      setSelectedIndices(new Set());
-    }
-  }, [draggedIndex, removeFromQueue]);
+      if (isOutside && draggedIndex !== null) {
+        removeFromQueue(draggedIndex);
+        setSelectedIndices(new Set());
+      }
+    },
+    [draggedIndex, removeFromQueue]
+  );
 
   const toggleSelect = (index: number) => {
     setSelectedIndices((prev) => {
@@ -199,7 +198,9 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
             try {
               const song: Song = JSON.parse(songData);
               addToQueue(song);
-            } catch { /* ignore */ }
+            } catch {
+              /* ignore */
+            }
           }
         }}
       >
@@ -241,7 +242,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                 ${dragOverIndex === index ? "border-t border-white/30" : ""}
                 ${selectedIndices.has(index) ? "bg-white/[0.10] ring-1 ring-white/20" : ""}
               `}
-              onClick={(e) => {
+              onClick={() => {
                 if (selectedIndices.size > 0) {
                   toggleSelect(index);
                 } else {
@@ -315,7 +316,12 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                 className="text-white/20 hover:text-red-400 transition-colors p-1"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </motion.div>

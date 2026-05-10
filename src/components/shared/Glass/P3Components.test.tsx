@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import React from "react";
 
 describe("GlassInput", () => {
   it("exports a component", async () => {
@@ -84,8 +83,8 @@ describe("Playlist format generators", () => {
   it("generates PLS format", async () => {
     const mod = await import("@/store/smartPlaylistStore");
     const songs = [
-      { id: "1", title: "Song A", artist: "Artist X", duration: 200 } as any,
-      { id: "2", title: "Song B", artist: "Artist Y", duration: 180 } as any,
+      { id: "1", title: "Song A", artist: "Artist X", duration: 200 } as unknown as Song,
+      { id: "2", title: "Song B", artist: "Artist Y", duration: 180 } as unknown as Song,
     ];
     const output = mod.useSmartPlaylistStore.getState().exportPlaylist(songs, "pls");
     expect(output).toContain("[playlist]");
@@ -98,7 +97,13 @@ describe("Playlist format generators", () => {
   it("generates XSPF format", async () => {
     const mod = await import("@/store/smartPlaylistStore");
     const songs = [
-      { id: "1", title: "Song A", artist: "Artist X", album: "Album 1", duration: 200 } as any,
+      {
+        id: "1",
+        title: "Song A",
+        artist: "Artist X",
+        album: "Album 1",
+        duration: 200,
+      } as unknown as Song,
     ];
     const output = mod.useSmartPlaylistStore.getState().exportPlaylist(songs, "xspf");
     expect(output).toContain('<?xml version="1.0"');
@@ -111,7 +116,7 @@ describe("Playlist format generators", () => {
   it("generates WPL format", async () => {
     const mod = await import("@/store/smartPlaylistStore");
     const songs = [
-      { id: "1", title: "Song A", artist: "Artist X", duration: 200 } as any,
+      { id: "1", title: "Song A", artist: "Artist X", duration: 200 } as unknown as Song,
     ];
     const output = mod.useSmartPlaylistStore.getState().exportPlaylist(songs, "wpl");
     expect(output).toContain("<smil>");

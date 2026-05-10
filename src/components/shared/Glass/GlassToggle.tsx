@@ -42,9 +42,7 @@ export function GlassToggle({
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
         />
       </motion.div>
-      {label && (
-        <span className="text-white/80 text-sm">{label}</span>
-      )}
+      {label && <span className="text-white/80 text-sm">{label}</span>}
     </button>
   );
 }

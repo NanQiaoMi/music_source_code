@@ -6,6 +6,12 @@ import { ListMusic, Plus, Download, Upload, Sparkles, Play } from "lucide-react"
 import { useSmartPlaylistStore } from "@/store/smartPlaylistStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import type { Song } from "@/types/song";
+import type {
+  SmartPlaylist,
+  SmartPlaylistType,
+  SmartPlaylistRule,
+  PlaylistExportFormat,
+} from "@/store/smartPlaylistStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useAudioStore } from "@/store/audioStore";
 import { toast } from "@/components/shared/GlassToast";
@@ -30,9 +36,7 @@ export const SmartPlaylistPanel: React.FC<SmartPlaylistPanelProps> = ({ isOpen, 
   const {
     smartPlaylists,
     customPlaylists,
-    selectedPlaylist,
     createSmartPlaylist,
-    updateSmartPlaylist,
     deleteSmartPlaylist,
     generatePlaylist,
     exportPlaylist,
@@ -107,7 +111,6 @@ export const SmartPlaylistPanel: React.FC<SmartPlaylistPanelProps> = ({ isOpen, 
             <CustomRulesTab
               playlists={customPlaylists}
               onCreatePlaylist={createSmartPlaylist}
-              onUpdatePlaylist={updateSmartPlaylist}
               onDeletePlaylist={deleteSmartPlaylist}
             />
           )}
@@ -126,21 +129,19 @@ export const SmartPlaylistPanel: React.FC<SmartPlaylistPanelProps> = ({ isOpen, 
 };
 
 function SystemPlaylistsTab({
-  playlists,
   songs,
   onGeneratePlaylist,
   getDefaultPlaylists,
 }: {
-  playlists: any[];
   songs: Song[];
-  onGeneratePlaylist: (playlist: any, songs: Song[]) => Song[];
-  getDefaultPlaylists: () => any[];
+  onGeneratePlaylist: (playlist: SmartPlaylist, songs: Song[]) => Song[];
+  getDefaultPlaylists: () => SmartPlaylist[];
 }) {
   const defaultPlaylists = getDefaultPlaylists();
   const queueStore = useQueueStore();
   // No reactive subscription needed - only used in click handlers
 
-  const handleGeneratePlaylist = (playlist: any) => {
+  const handleGeneratePlaylist = (playlist: SmartPlaylist) => {
     const generatedSongs = onGeneratePlaylist(playlist, songs);
 
     if (generatedSongs.length > 0) {
@@ -199,12 +200,14 @@ function SystemPlaylistsTab({
 function CustomRulesTab({
   playlists,
   onCreatePlaylist,
-  onUpdatePlaylist,
   onDeletePlaylist,
 }: {
-  playlists: any[];
-  onCreatePlaylist: (name: string, type: any, rules?: any[]) => any;
-  onUpdatePlaylist: (id: string, updates: Partial<any>) => void;
+  playlists: SmartPlaylist[];
+  onCreatePlaylist: (
+    name: string,
+    type: SmartPlaylistType,
+    rules?: SmartPlaylistRule[]
+  ) => SmartPlaylist;
   onDeletePlaylist: (id: string) => void;
 }) {
   return (
@@ -258,8 +261,8 @@ function ImportExportTab({
   onImportPlaylist,
 }: {
   songs: Song[];
-  onExportPlaylist: (songs: Song[], format: any) => string;
-  onImportPlaylist: (content: string, format: any, songs: Song[]) => Song[];
+  onExportPlaylist: (songs: Song[], format: PlaylistExportFormat) => string;
+  onImportPlaylist: (content: string, format: PlaylistExportFormat, songs: Song[]) => Song[];
 }) {
   const [importText, setImportText] = useState("");
   const [importFormat, setImportFormat] = useState<string>("m3u");
@@ -329,19 +332,21 @@ function ImportExportTab({
           <h4 className="text-white font-semibold">导入歌单</h4>
           <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
             <div className="flex gap-2">
-              {formatOptions.filter(f => f.value !== "txt").map((f) => (
-                <button
-                  key={f.value}
-                  onClick={() => setImportFormat(f.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    importFormat === f.value
-                      ? "bg-pink-500/30 text-pink-300 border border-pink-500/40"
-                      : "bg-white/10 text-white/60 hover:bg-white/20 border border-transparent"
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
+              {formatOptions
+                .filter((f) => f.value !== "txt")
+                .map((f) => (
+                  <button
+                    key={f.value}
+                    onClick={() => setImportFormat(f.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      importFormat === f.value
+                        ? "bg-pink-500/30 text-pink-300 border border-pink-500/40"
+                        : "bg-white/10 text-white/60 hover:bg-white/20 border border-transparent"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
             </div>
             <textarea
               value={importText}

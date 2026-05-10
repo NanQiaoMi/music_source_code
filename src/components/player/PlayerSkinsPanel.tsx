@@ -465,11 +465,26 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                         className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-left"
                       >
                         <div className="flex gap-1 mb-2">
-                          <div className="w-5 h-5 rounded" style={{ backgroundColor: theme.colors.primary }} />
-                          <div className="w-5 h-5 rounded" style={{ backgroundColor: theme.colors.secondary }} />
-                          <div className="w-5 h-5 rounded" style={{ backgroundColor: theme.colors.accent }} />
-                          <div className="w-5 h-5 rounded" style={{ backgroundColor: theme.colors.surface }} />
-                          <div className="w-5 h-5 rounded" style={{ backgroundColor: theme.colors.background }} />
+                          <div
+                            className="w-5 h-5 rounded"
+                            style={{ backgroundColor: theme.colors.primary }}
+                          />
+                          <div
+                            className="w-5 h-5 rounded"
+                            style={{ backgroundColor: theme.colors.secondary }}
+                          />
+                          <div
+                            className="w-5 h-5 rounded"
+                            style={{ backgroundColor: theme.colors.accent }}
+                          />
+                          <div
+                            className="w-5 h-5 rounded"
+                            style={{ backgroundColor: theme.colors.surface }}
+                          />
+                          <div
+                            className="w-5 h-5 rounded"
+                            style={{ backgroundColor: theme.colors.background }}
+                          />
                         </div>
                         <p className="text-white text-xs">{theme.name}</p>
                       </button>
@@ -488,9 +503,18 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                         >
                           <div className="flex items-center gap-3">
                             <div className="flex gap-1">
-                              <div className="w-5 h-5 rounded" style={{ backgroundColor: theme.colors.primary }} />
-                              <div className="w-5 h-5 rounded" style={{ backgroundColor: theme.colors.secondary }} />
-                              <div className="w-5 h-5 rounded" style={{ backgroundColor: theme.colors.accent }} />
+                              <div
+                                className="w-5 h-5 rounded"
+                                style={{ backgroundColor: theme.colors.primary }}
+                              />
+                              <div
+                                className="w-5 h-5 rounded"
+                                style={{ backgroundColor: theme.colors.secondary }}
+                              />
+                              <div
+                                className="w-5 h-5 rounded"
+                                style={{ backgroundColor: theme.colors.accent }}
+                              />
                             </div>
                             <span className="text-white text-sm">{theme.name}</span>
                           </div>

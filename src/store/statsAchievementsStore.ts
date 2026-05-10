@@ -106,7 +106,9 @@ interface StatsAchievementsState {
     thisMonth: number;
     allTime: number;
   };
-  getTopPlayedSongs(limit: number): { songId: string; title: string; artist: string; playCount: number }[];
+  getTopPlayedSongs(
+    limit: number
+  ): { songId: string; title: string; artist: string; playCount: number }[];
   getTopArtists(limit: number): { artist: string; playCount: number }[];
   getHourlyDistribution(): { hour: number; count: number }[];
 }
@@ -892,14 +894,12 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
 
       getTopPlayedSongs: (limit) => {
         const songs = get().listeningStats.topSongs;
-        return songs
-          .slice(0, limit)
-          .map((s) => ({
-            songId: s.song.id,
-            title: s.song.title,
-            artist: s.song.artist,
-            playCount: s.playCount,
-          }));
+        return songs.slice(0, limit).map((s) => ({
+          songId: s.song.id,
+          title: s.song.title,
+          artist: s.song.artist,
+          playCount: s.playCount,
+        }));
       },
 
       getTopArtists: (limit) => {

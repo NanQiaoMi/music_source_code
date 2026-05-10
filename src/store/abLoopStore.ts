@@ -103,9 +103,7 @@ export const useABLoopStore = create<ABLoopState>((set, get) => ({
       isSettingPointB: false,
     }),
 
-  incrementLoopCount: () =>
-    set((state) => ({ loopCount: state.loopCount + 1 })),
+  incrementLoopCount: () => set((state) => ({ loopCount: state.loopCount + 1 })),
 
-  resetLoopCount: () =>
-    set({ loopCount: 0 }),
+  resetLoopCount: () => set({ loopCount: 0 }),
 }));

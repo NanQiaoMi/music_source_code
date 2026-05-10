@@ -64,16 +64,16 @@ describe("visualSettingsStore - Theme Import/Export", () => {
   });
 
   it("importTheme returns false for JSON missing required fields", () => {
-    const result = useVisualSettingsStore.getState().importTheme(
-      JSON.stringify({ name: "bad", version: "1.0" })
-    );
+    const result = useVisualSettingsStore
+      .getState()
+      .importTheme(JSON.stringify({ name: "bad", version: "1.0" }));
     expect(result).toBe(false);
   });
 
   it("importTheme returns false when colors missing required keys", () => {
-    const result = useVisualSettingsStore.getState().importTheme(
-      JSON.stringify({ name: "bad", version: "1.0", colors: { primary: "#fff" } })
-    );
+    const result = useVisualSettingsStore
+      .getState()
+      .importTheme(JSON.stringify({ name: "bad", version: "1.0", colors: { primary: "#fff" } }));
     expect(result).toBe(false);
   });
 

@@ -60,9 +60,7 @@ const StatsVisuals = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-sm opacity-40 w-6">{i + 1}</span>
                   <div>
-                    <p className="text-sm font-medium truncate max-w-[200px]">
-                      {song.title}
-                    </p>
+                    <p className="text-sm font-medium truncate max-w-[200px]">{song.title}</p>
                     <p className="text-xs opacity-50">{song.artist}</p>
                   </div>
                 </div>

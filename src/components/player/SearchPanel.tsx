@@ -219,14 +219,13 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
             className="bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none focus:border-white/30"
           >
             {FILTER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
             ))}
           </select>
           {filters.type !== "all" && (
-            <button
-              onClick={clearFilters}
-              className="text-xs text-white/40 hover:text-white/70"
-            >
+            <button onClick={clearFilters} className="text-xs text-white/40 hover:text-white/70">
               清除
             </button>
           )}

@@ -169,7 +169,7 @@ function evaluateRule(song: Song, rule: SmartPlaylistRule): boolean {
   const { field, operator, value } = rule;
 
   switch (field) {
-    case "title":
+    case "title": {
       const title = song.title.toLowerCase();
       const titleValue = String(value).toLowerCase();
       if (operator === "contains") return title.includes(titleValue);
@@ -177,8 +177,9 @@ function evaluateRule(song: Song, rule: SmartPlaylistRule): boolean {
       if (operator === "equals") return title === titleValue;
       if (operator === "notEquals") return title !== titleValue;
       break;
+    }
 
-    case "artist":
+    case "artist": {
       const artist = song.artist.toLowerCase();
       const artistValue = String(value).toLowerCase();
       if (operator === "contains") return artist.includes(artistValue);
@@ -186,8 +187,9 @@ function evaluateRule(song: Song, rule: SmartPlaylistRule): boolean {
       if (operator === "equals") return artist === artistValue;
       if (operator === "notEquals") return artist !== artistValue;
       break;
+    }
 
-    case "album":
+    case "album": {
       const album = (song.album || "").toLowerCase();
       const albumValue = String(value).toLowerCase();
       if (operator === "contains") return album.includes(albumValue);
@@ -195,8 +197,9 @@ function evaluateRule(song: Song, rule: SmartPlaylistRule): boolean {
       if (operator === "equals") return album === albumValue;
       if (operator === "notEquals") return album !== albumValue;
       break;
+    }
 
-    case "duration":
+    case "duration": {
       const duration = song.duration;
       const durationValue = Number(value);
       if (operator === "greaterThan") return duration > durationValue;
@@ -204,8 +207,9 @@ function evaluateRule(song: Song, rule: SmartPlaylistRule): boolean {
       if (operator === "equals") return duration === durationValue;
       if (operator === "notEquals") return duration !== durationValue;
       break;
+    }
 
-    case "emotion":
+    case "emotion": {
       const emotionMap = useEmotionStore.getState().emotionMap;
       const emotion = emotionMap[song.id];
       if (!emotion) return false;
@@ -218,6 +222,7 @@ function evaluateRule(song: Song, rule: SmartPlaylistRule): boolean {
         if (quadrant === "Q4") return emotion.x > 0 && emotion.y < 0;
       }
       break;
+    }
 
     default:
       return true;
@@ -274,15 +279,15 @@ function generateXSPF(songs: Song[]): string {
 
 function generateWPL(songs: Song[]): string {
   let wpl = '<?xml version="1.0" encoding="UTF-8"?>\n';
-  wpl += '  <smil>\n';
-  wpl += '    <head>\n';
+  wpl += "  <smil>\n";
+  wpl += "    <head>\n";
   wpl += `      <title>Playlist</title>\n`;
   wpl += `      <meta name="PlaylistType" content="audio"/>\n`;
   wpl += `      <meta name="TotalDuration" content="${songs.reduce((s, t) => s + t.duration, 0)}"/>\n`;
   wpl += `      <meta name="ItemCount" content="${songs.length}"/>\n`;
-  wpl += '    </head>\n';
-  wpl += '    <body>\n';
-  wpl += '      <seq>\n';
+  wpl += "    </head>\n";
+  wpl += "    <body>\n";
+  wpl += "      <seq>\n";
 
   for (const song of songs) {
     wpl += `        <media src="${escapeXml(song.id)}.mp3"`;
@@ -290,18 +295,22 @@ function generateWPL(songs: Song[]): string {
     wpl += ` artist="${escapeXml(song.artist)}"`;
     if (song.album) wpl += ` album="${escapeXml(song.album)}"`;
     wpl += ` duration="${Math.round(song.duration * 1000)}"`;
-    wpl += '/>\n';
+    wpl += "/>\n";
   }
 
-  wpl += '      </seq>\n';
-  wpl += '    </body>\n';
-  wpl += '  </smil>\n';
+  wpl += "      </seq>\n";
+  wpl += "    </body>\n";
+  wpl += "  </smil>\n";
   return wpl;
 }
 
 function escapeXml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 export const useSmartPlaylistStore = create<SmartPlaylistState>()(
@@ -401,13 +410,14 @@ export const useSmartPlaylistStore = create<SmartPlaylistState>()(
             if (results.length === 0) results = allSongs.slice(0, 50);
             break;
 
-          case "recently-played":
+          case "recently-played": {
             const queueStore = useQueueStore.getState();
             const recentlyPlayed = queueStore.history.slice(0, 50);
             const recentlyPlayedIds = new Set(recentlyPlayed.map((s) => s.id));
             results = allSongs.filter((s) => recentlyPlayedIds.has(s.id));
             if (results.length === 0) results = allSongs.slice(0, 50);
             break;
+          }
 
           case "most-played":
             results = [...allSongs]
@@ -421,7 +431,7 @@ export const useSmartPlaylistStore = create<SmartPlaylistState>()(
               .slice(0, 50);
             break;
 
-          case "favorites":
+          case "favorites": {
             const statsStore = useStatsAchievementsStore.getState();
             results =
               statsStore.listeningStats.topSongs
@@ -429,6 +439,7 @@ export const useSmartPlaylistStore = create<SmartPlaylistState>()(
                 .filter(Boolean)
                 .slice(0, 50) || allSongs.slice(0, 50);
             break;
+          }
 
           case "never-played":
             results = allSongs.filter((song) => (song.playCount || 0) === 0);
@@ -515,7 +526,12 @@ export const useSmartPlaylistStore = create<SmartPlaylistState>()(
             i++;
             continue;
           }
-          if (line.startsWith("Length") || line.startsWith("NumberOfEntries") || line === "[playlist]" || line === "Version=2") {
+          if (
+            line.startsWith("Length") ||
+            line.startsWith("NumberOfEntries") ||
+            line === "[playlist]" ||
+            line === "Version=2"
+          ) {
             i++;
             continue;
           }
@@ -523,11 +539,15 @@ export const useSmartPlaylistStore = create<SmartPlaylistState>()(
           // XSPF format: <title>, <creator>, <location> tags
           if (line.includes("<title>") && line.includes("</title>")) {
             const titleMatch = line.match(/<title>(.*?)<\/title>/);
-            const creatorMatch = lines.slice(i, i + 5).join(" ").match(/<creator>(.*?)<\/creator>/);
+            const creatorMatch = lines
+              .slice(i, i + 5)
+              .join(" ")
+              .match(/<creator>(.*?)<\/creator>/);
             const searchTerm = titleMatch ? titleMatch[1] : "";
-            const song = allSongs.find((s) =>
-              searchTerm.toLowerCase().includes(s.title.toLowerCase()) ||
-              (creatorMatch && s.artist.toLowerCase().includes(creatorMatch[1].toLowerCase()))
+            const song = allSongs.find(
+              (s) =>
+                searchTerm.toLowerCase().includes(s.title.toLowerCase()) ||
+                (creatorMatch && s.artist.toLowerCase().includes(creatorMatch[1].toLowerCase()))
             );
             if (song && !matchedSongs.find((m) => m.id === song.id)) {
               matchedSongs.push(song);
@@ -537,13 +557,14 @@ export const useSmartPlaylistStore = create<SmartPlaylistState>()(
           }
 
           // WPL format: media src="..."
-          if (line.includes('<media') && line.includes('src=')) {
+          if (line.includes("<media") && line.includes("src=")) {
             const titleMatch = line.match(/title="(.*?)"/);
             const artistMatch = line.match(/artist="(.*?)"/);
             const searchTerm = titleMatch ? titleMatch[1] : "";
-            const song = allSongs.find((s) =>
-              searchTerm.toLowerCase().includes(s.title.toLowerCase()) ||
-              (artistMatch && s.artist.toLowerCase().includes(artistMatch[1].toLowerCase()))
+            const song = allSongs.find(
+              (s) =>
+                searchTerm.toLowerCase().includes(s.title.toLowerCase()) ||
+                (artistMatch && s.artist.toLowerCase().includes(artistMatch[1].toLowerCase()))
             );
             if (song && !matchedSongs.find((m) => m.id === song.id)) {
               matchedSongs.push(song);
@@ -553,7 +574,12 @@ export const useSmartPlaylistStore = create<SmartPlaylistState>()(
           }
 
           // Skip XML/SMIL tags
-          if (line.startsWith("<") || line.startsWith("</") || line.startsWith("<?") || line.startsWith("<?")) {
+          if (
+            line.startsWith("<") ||
+            line.startsWith("</") ||
+            line.startsWith("<?") ||
+            line.startsWith("<?")
+          ) {
             i++;
             continue;
           }

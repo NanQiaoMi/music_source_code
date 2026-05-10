@@ -299,11 +299,11 @@ export const useAudioStore = create<AudioState>()(
 
         if (queue.length === 0) {
           const queueStore = useQueueStore.getState();
-          if (queueStore.playThroughMode === 'play-through') {
+          if (queueStore.playThroughMode === "play-through") {
             set({ currentSong: null, isPlaying: false });
             return;
           }
-          if (loopMode !== 'single' && loopMode !== 'list') {
+          if (loopMode !== "single" && loopMode !== "list") {
             const recs = useRecommendationStore.getState().getRecommendations();
             if (recs.length > 0) {
               queueStore.setQueue(recs);

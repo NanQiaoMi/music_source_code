@@ -76,7 +76,13 @@ describe("queueStore", () => {
   describe("shuffleQueue (Fisher-Yates)", () => {
     it("should keep queue length unchanged after shuffle", () => {
       const store = useQueueStore.getState();
-      const songs = [createMockSong("1"), createMockSong("2"), createMockSong("3"), createMockSong("4"), createMockSong("5")];
+      const songs = [
+        createMockSong("1"),
+        createMockSong("2"),
+        createMockSong("3"),
+        createMockSong("4"),
+        createMockSong("5"),
+      ];
       store.setQueue(songs);
 
       store.shuffleQueue();
@@ -87,7 +93,13 @@ describe("queueStore", () => {
 
     it("should contain all original elements after shuffle", () => {
       const store = useQueueStore.getState();
-      const songs = [createMockSong("1"), createMockSong("2"), createMockSong("3"), createMockSong("4"), createMockSong("5")];
+      const songs = [
+        createMockSong("1"),
+        createMockSong("2"),
+        createMockSong("3"),
+        createMockSong("4"),
+        createMockSong("5"),
+      ];
       store.setQueue(songs);
 
       store.shuffleQueue();

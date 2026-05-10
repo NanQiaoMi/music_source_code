@@ -99,11 +99,7 @@ const FACTORIES = {
  * All panel visibility is driven by uiStore.panels.
  */
 export function PanelOrchestrator() {
-  const panels = useStoreWithEqualityFn(
-    useUIStore,
-    (s) => s.panels,
-    shallow
-  );
+  const panels = useStoreWithEqualityFn(useUIStore, (s) => s.panels, shallow);
   const closePanel = useUIStore((s) => s.closePanel);
   const openPanel = useUIStore((s) => s.openPanel);
 
