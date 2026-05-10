@@ -31,6 +31,26 @@ describe("queueStore", () => {
       expect(parsed.state.currentIndex).toBe(1);
       expect(parsed.state.history).toHaveLength(1);
     });
+
+    it("should strip heavy queue payloads before persisting", () => {
+      const store = useQueueStore.getState();
+      const largeSong = {
+        ...createMockSong("heavy"),
+        cover: `data:image/png;base64,${"a".repeat(10_000)}`,
+        lyrics: "l".repeat(10_000),
+        audioUrl: "stored://heavy-song",
+      };
+
+      store.setQueue([largeSong]);
+
+      const persisted = localStorage.getItem("queue-store-v5");
+      expect(persisted).not.toBeNull();
+
+      const parsed = JSON.parse(persisted!);
+      expect(parsed.state.queue[0].cover).toBe("");
+      expect(parsed.state.queue[0].lyrics).toBeUndefined();
+      expect(parsed.state.queue[0].audioUrl).toBe("stored://heavy-song");
+    });
   });
 
   describe("insertNext", () => {

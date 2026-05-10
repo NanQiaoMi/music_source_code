@@ -12,6 +12,16 @@ export interface HistorySong {
   playedAt: number;
 }
 
+function sanitizePersistedSong(song: Song): Song {
+  const sanitizedCover = song.cover?.startsWith("data:image/") ? "" : song.cover;
+
+  return {
+    ...song,
+    cover: sanitizedCover,
+    lyrics: undefined,
+  };
+}
+
 interface QueueState {
   queue: Song[];
   currentIndex: number;
@@ -190,7 +200,7 @@ export const useQueueStore = create<QueueState>()(
     {
       name: "queue-store-v5",
       partialize: (state) => ({
-        queue: state.queue,
+        queue: state.queue.map(sanitizePersistedSong),
         currentIndex: state.currentIndex,
         history: state.history,
       }),
