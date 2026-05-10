@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback, useMemo } from "react";
 import { useAudioStore } from "@/store/audioStore";
-import { Song } from "@/store/audioStore";
+import { Song } from "@/types/song";
 
 const sanitizeSongForStorage = (song: Song) => {
   return {

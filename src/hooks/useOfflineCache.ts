@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { usePlaylistStore } from "@/store/playlistStore";
-import { Song } from "@/store/audioStore";
+import { Song } from "@/types/song";
 import {
   getStoredMusic,
   saveMusicFile,

@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useQueueStore, HistorySong } from "@/store/queueStore";
 import { useAudioStore } from "@/store/audioStore";
 import { formatTime } from "@/utils/formatTime";
-import { Song } from "@/store/playlistStore";
+import { Song } from "@/types/song";
 import { GlassDrawer } from "@/components/shared/Glass";
 
 interface HistoryPanelProps {

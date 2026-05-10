@@ -1,8 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Song } from "@/store/playlistStore";
+import { Song } from "@/types/song";
 import { useQueueStore } from "./queueStore";
 import { useStatsAchievementsStore } from "./statsAchievementsStore";
+import { useEmotionStore } from "./emotionStore";
 
 export type SmartPlaylistType =
   | "recently-added"
@@ -205,7 +206,6 @@ function evaluateRule(song: Song, rule: SmartPlaylistRule): boolean {
       break;
 
     case "emotion":
-      const { useEmotionStore } = require("./emotionStore");
       const emotionMap = useEmotionStore.getState().emotionMap;
       const emotion = emotionMap[song.id];
       if (!emotion) return false;

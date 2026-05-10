@@ -7,20 +7,10 @@ import {
   deleteCoverFromCache,
   preloadCovers,
 } from "@/services/coverCache";
+import { useAudioStore } from "./audioStore";
+import { Song } from "@/types/song";
 
-export interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  album?: string;
-  cover: string;
-  audioUrl?: string;
-  lyrics?: string;
-  duration: number;
-  source?: "local" | "demo" | "imported" | string;
-  addedAt?: number;
-  playCount?: number;
-}
+export type { Song };
 
 export interface PlaylistState {
   songs: Song[];
@@ -28,6 +18,7 @@ export interface PlaylistState {
   selectedSong: Song | null;
   searchQuery: string;
   filteredSongs: Song[];
+  selectedSongIds: Set<string>;
 
   initializePlaylist: () => Promise<void>;
   addSong: (song: Song) => void;
@@ -41,6 +32,13 @@ export interface PlaylistState {
   clearFilters: () => void;
   importSongs: (songs: Song[]) => void;
   exportSongs: () => Song[];
+  selectSong: (songId: string) => void;
+  selectAllSongs: () => void;
+  deselectAllSongs: () => void;
+  areAllSongsSelected: () => boolean;
+  getSelectedSongs: () => Song[];
+  removeSelectedSongs: () => void;
+  playSelectedSongs: () => void;
 }
 
 export const usePlaylistStore = create<PlaylistState>((set, get) => ({
@@ -49,6 +47,7 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   selectedSong: null,
   searchQuery: "",
   filteredSongs: [],
+  selectedSongIds: new Set<string>(),
 
   initializePlaylist: async () => {
     const songsDataLength = songsData.length;
@@ -211,6 +210,56 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
     }),
 
   exportSongs: () => get().songs,
+
+  selectSong: (songId) =>
+    set((state) => {
+      const newSet = new Set(state.selectedSongIds);
+      if (newSet.has(songId)) {
+        newSet.delete(songId);
+      } else {
+        newSet.add(songId);
+      }
+      return { selectedSongIds: newSet };
+    }),
+
+  selectAllSongs: () =>
+    set((state) => ({
+      selectedSongIds: new Set(state.songs.map((s) => s.id)),
+    })),
+
+  deselectAllSongs: () => set({ selectedSongIds: new Set<string>() }),
+
+  areAllSongsSelected: () => {
+    const { songs, selectedSongIds } = get();
+    return songs.length > 0 && selectedSongIds.size === songs.length;
+  },
+
+  getSelectedSongs: () => {
+    const { songs, selectedSongIds } = get();
+    return songs.filter((s) => selectedSongIds.has(s.id));
+  },
+
+  removeSelectedSongs: () =>
+    set((state) => {
+      const idsToRemove = state.selectedSongIds;
+      const newSongs = state.songs.filter((s) => !idsToRemove.has(s.id));
+      idsToRemove.forEach((id) => {
+        deleteCoverFromCache(id).catch(console.error);
+      });
+      return {
+        songs: newSongs,
+        filteredSongs: newSongs,
+        selectedSongIds: new Set<string>(),
+      };
+    }),
+
+  playSelectedSongs: () => {
+    const state = get();
+    const selected = state.songs.filter((s) => state.selectedSongIds.has(s.id));
+    if (selected.length === 0) return;
+    const audioStore = useAudioStore.getState();
+    audioStore.playQueue(selected, 0);
+  },
 }));
 
 function newRecentPlayedSync(allSongs: Song[], recentPlayed: Song[]) {

@@ -82,7 +82,6 @@ function parseLRC(lrcText: string): LyricLine[] {
 
   for (const line of lrcLines) {
     let match;
-    let lastIndex = 0;
 
     while ((match = timeRegex.exec(line)) !== null) {
       const minutes = parseInt(match[1]);
@@ -100,8 +99,6 @@ function parseLRC(lrcText: string): LyricLine[] {
           text,
         });
       }
-
-      lastIndex = match.index + match[0].length;
     }
   }
 
@@ -274,11 +271,97 @@ export const useLyricsCoverStore = create<LyricEditorState>()(
       },
 
       cropCover: (songId, cropData) => {
-        return null;
+        const { covers } = get();
+        const existingCover = covers.find((c) => c.songId === songId);
+        if (!existingCover) return null;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = cropData.width;
+        canvas.height = cropData.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+
+        try {
+          const imgElement = new Image();
+          imgElement.src = existingCover.imageData;
+
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = cropData.width;
+          tempCanvas.height = cropData.height;
+          const tempCtx = tempCanvas.getContext("2d");
+          if (!tempCtx) return null;
+
+          tempCtx.drawImage(
+            imgElement,
+            cropData.x,
+            cropData.y,
+            cropData.width,
+            cropData.height,
+            0,
+            0,
+            cropData.width,
+            cropData.height
+          );
+
+          const croppedDataUrl = tempCanvas.toDataURL(existingCover.format || "png");
+
+          const croppedCover: CoverData = {
+            ...existingCover,
+            imageData: croppedDataUrl,
+            lastModified: Date.now(),
+          };
+
+          set((state) => ({
+            covers: state.covers.map((c) => (c.songId === songId ? croppedCover : c)),
+          }));
+
+          return croppedCover;
+        } catch (e) {
+          console.error("Failed to crop cover:", e);
+          return null;
+        }
       },
 
       resizeCover: (songId, targetSize) => {
-        return null;
+        const { covers } = get();
+        const existingCover = covers.find((c) => c.songId === songId);
+        if (!existingCover) return null;
+
+        try {
+          const imgElement = new Image();
+          imgElement.src = existingCover.imageData;
+
+          const canvas = document.createElement("canvas");
+          canvas.width = targetSize;
+          canvas.height = targetSize;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return null;
+
+          const scale = Math.min(targetSize / imgElement.width, targetSize / imgElement.height);
+          const width = imgElement.width * scale;
+          const height = imgElement.height * scale;
+          const x = (targetSize - width) / 2;
+          const y = (targetSize - height) / 2;
+
+          ctx.drawImage(imgElement, x, y, width, height);
+
+          const resizedDataUrl = canvas.toDataURL(existingCover.format || "png");
+
+          const resizedCover: CoverData = {
+            ...existingCover,
+            imageData: resizedDataUrl,
+            lastModified: Date.now(),
+          };
+
+          set((state) => ({
+            covers: state.covers.map((c) => (c.songId === songId ? resizedCover : c)),
+          }));
+
+          return resizedCover;
+        } catch (e) {
+          console.error("Failed to resize cover:", e);
+          return null;
+        }
       },
 
       setCurrentTime: (time) => {

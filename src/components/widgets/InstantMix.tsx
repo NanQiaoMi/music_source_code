@@ -3,7 +3,8 @@
 import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, Shuffle, X, Zap } from "lucide-react";
-import { usePlaylistStore, Song } from "@/store/playlistStore";
+import { usePlaylistStore } from "@/store/playlistStore";
+import { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
 import { useListeningHistory } from "@/hooks/useListeningHistory";
 import { toast } from "@/components/shared/GlassToast";

@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePlaylistStore, Song } from "@/store/playlistStore";
+import { usePlaylistStore } from "@/store/playlistStore";
+import { Song } from "@/types/song";
 import { SongEditForm } from "./SongEditForm";
 import {
   exportSongsToJSON,

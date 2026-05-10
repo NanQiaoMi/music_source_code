@@ -7,6 +7,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { Volume2, VolumeX, Music2, Maximize2 } from "lucide-react";
 import { GlassRadarWidget } from "@/components/widgets/GlassRadarWidget";
+import { useABLoopStore } from "@/store/abLoopStore";
 
 export const APPLE_SPRING_CONFIG = {
   type: "spring" as const,
@@ -43,7 +44,7 @@ export const GlobalPlayerBar: React.FC = () => {
   const setVolume = useAudioStore((state) => state.setVolume);
   const toggleMute = useAudioStore((state) => state.toggleMute);
 
-  const { setCurrentView } = useUIStore();
+  const setCurrentView = useUIStore((state) => state.setCurrentView);
 
   const [isHoveringProgress, setIsHoveringProgress] = useState(false);
   const [isDraggingProgress, setIsDraggingProgress] = useState(false);
@@ -52,6 +53,10 @@ export const GlobalPlayerBar: React.FC = () => {
 
   const progress =
     duration > 0 && !isNaN(currentTime) && !isNaN(duration) ? (currentTime / duration) * 100 : 0;
+
+  const abLoopEnabled = useABLoopStore((s) => s.isEnabled);
+  const pointA = useABLoopStore((s) => s.pointA);
+  const pointB = useABLoopStore((s) => s.pointB);
 
   const handleProgressClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -213,6 +218,26 @@ export const GlobalPlayerBar: React.FC = () => {
                   opacity: isHoveringProgress ? 1 : 0,
                 }}
               />
+
+              {abLoopEnabled && pointA !== null && pointB !== null && (
+                <>
+                  <div
+                    className="absolute top-0 w-0.5 h-full bg-blue-400 z-10"
+                    style={{ left: `${(pointA / duration) * 100}%` }}
+                  />
+                  <div
+                    className="absolute top-0 w-0.5 h-full bg-red-400 z-10"
+                    style={{ left: `${(pointB / duration) * 100}%` }}
+                  />
+                  <div
+                    className="absolute top-0 h-full bg-blue-400/20 z-10"
+                    style={{
+                      left: `${(pointA / duration) * 100}%`,
+                      width: `${((pointB - pointA) / duration) * 100}%`,
+                    }}
+                  />
+                </>
+              )}
             </div>
 
             <AnimatePresence>

@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { Song } from "./playlistStore";
+import { persist } from "zustand/middleware";
+import { Song } from "@/types/song";
 
 interface FavoritesState {
   favorites: Song[];
@@ -12,34 +13,41 @@ interface FavoritesState {
   getFavorites: () => Song[];
 }
 
-export const useFavoritesStore = create<FavoritesState>((set, get) => ({
-  favorites: [],
+export const useFavoritesStore = create<FavoritesState>()(
+  persist(
+    (set, get) => ({
+      favorites: [],
 
-  addToFavorites: (song) =>
-    set((state) => {
-      if (state.favorites.some((s) => s.id === song.id)) {
-        return state;
-      }
-      return { favorites: [...state.favorites, song] };
+      addToFavorites: (song) =>
+        set((state) => {
+          if (state.favorites.some((s) => s.id === song.id)) {
+            return state;
+          }
+          return { favorites: [...state.favorites, song] };
+        }),
+
+      removeFromFavorites: (songId) =>
+        set((state) => ({
+          favorites: state.favorites.filter((s) => s.id !== songId),
+        })),
+
+      isFavorite: (songId) => {
+        return get().favorites.some((s) => s.id === songId);
+      },
+
+      toggleFavorite: (song) => {
+        const isFav = get().isFavorite(song.id);
+        if (isFav) {
+          get().removeFromFavorites(song.id);
+        } else {
+          get().addToFavorites(song);
+        }
+      },
+
+      getFavorites: () => get().favorites,
     }),
-
-  removeFromFavorites: (songId) =>
-    set((state) => ({
-      favorites: state.favorites.filter((s) => s.id !== songId),
-    })),
-
-  isFavorite: (songId) => {
-    return get().favorites.some((s) => s.id === songId);
-  },
-
-  toggleFavorite: (song) => {
-    const isFav = get().isFavorite(song.id);
-    if (isFav) {
-      get().removeFromFavorites(song.id);
-    } else {
-      get().addToFavorites(song);
+    {
+      name: "favorites-store",
     }
-  },
-
-  getFavorites: () => get().favorites,
-}));
+  )
+);

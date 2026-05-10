@@ -1,6 +1,216 @@
 {
   "version": 1,
   "skills": {
+    "brainstorming": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/brainstorming/SKILL.md",
+      "computedHash": "88d6b0577c77067a3c4d112f7c4685d0fe39ab959936213d8643b4d5bbfef62e"
+    },
+    "deep-research": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/deep-research/SKILL.md",
+      "computedHash": "da4325c200b2953819c3cd5805d2e2ece7b31053b7af9acd3dfc4650e79939c8"
+    },
+    "edit-rules": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/edit-rules/SKILL.md",
+      "computedHash": "7b9bfcdd6e63a760dbf9a40f5704cf5dcb52555bd9c1c23fc1b4af09f1de91dd"
+    },
+    "evolve": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/evolve/SKILL.md",
+      "computedHash": "b8114109ad293326da97a823df036c7547e16489ed4ae58deb056cd69d946b68"
+    },
+    "executing-plans": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/executing-plans/SKILL.md",
+      "computedHash": "8b0e6765c7903719a02e7ed521b5f4b5080bc3e7badb977bf721ff50f1c1f4b9"
+    },
+    "finishing-a-development-branch": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/finishing-a-development-branch/SKILL.md",
+      "computedHash": "4685539edcf63b81f67e0953884536922bc324c3aa540909176325d874c6b74b"
+    },
+    "install-rules": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/install-rules/SKILL.md",
+      "computedHash": "e226c6191d75d7ddf7f79e5c21759e5d05ea836dfe5c51e3902db654db9ab49b"
+    },
+    "java-spring-integration-testing": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/java-spring-integration-testing/SKILL.md",
+      "computedHash": "f4540d8e60ca2f5640bfd35fe812cc0bf878eeb0e18c7fa67e43ae07f8da4473"
+    },
+    "parallel-subagent-driven-development": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/parallel-subagent-driven-development/SKILL.md",
+      "computedHash": "83bd925fd3c5c29466e881f8c37d50ba07a7cab0f08b99770023f18eed4a6c30"
+    },
+    "receiving-code-review": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/receiving-code-review/SKILL.md",
+      "computedHash": "8e0d9daa252d6e6e33d96529ce7b0712871384f151976fe6d491b0e386379cd4"
+    },
+    "refactor-clean": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/refactor-clean/SKILL.md",
+      "computedHash": "09c0e6b4c9b539e90897c437ef66e175c8c7d69a0ba9b511238e39ccdd9076de"
+    },
+    "requesting-code-review": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/requesting-code-review/SKILL.md",
+      "computedHash": "d60de0315562d77a54bc88f95e979a0880d243d44cdfb60e3d581517ebe1c9c5"
+    },
+    "status-line": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/status-line/SKILL.md",
+      "computedHash": "142ab16c577aebcc05e0ca9d9fcadb383ea955701f36b7a3bf0202be02afb534"
+    },
+    "subagent-driven-development": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/subagent-driven-development/SKILL.md",
+      "computedHash": "e277ab11746c756112147870457ad34cb4e7223b77fe3fb8e09874bf83f691cc"
+    },
+    "tech-design": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/tech-design/SKILL.md",
+      "computedHash": "771df6cc1e652f8ada652403837a5bcebe67718ba0bd201a924a75b3c7b4f10e"
+    },
+    "test-coverage": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/test-coverage/SKILL.md",
+      "computedHash": "e6ef3e6c9ec83731fa5ac8cce828db9d30985566960c1713367fc62516838082"
+    },
+    "test-driven-development": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/test-driven-development/SKILL.md",
+      "computedHash": "fb96e927453caa9cd90a684aafb0ad2bab9123ee2a17c611a82c327f428af12d"
+    },
+    "using-git-worktrees": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/using-git-worktrees/SKILL.md",
+      "computedHash": "933fcf3401024aa025ca7c91b6ed96c6f6fbf771c57ffd24d3db0c923f9c2cd3"
+    },
+    "writing-plans": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/writing-plans/SKILL.md",
+      "computedHash": "2cee2be58722be3500ad878d971250441847c9ac5f3e99fc73e736523d8dbc58"
+    },
+    "writing-skills": {
+      "source": "icefrag/nbl-superpowers",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/writing-skills/SKILL.md",
+      "computedHash": "762ec76efeed2223f49a514353e1df15127a2f33e62d0511e8949b18a8623c62"
+    },
+    "agent-browser": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/agent-browser/SKILL.md",
+      "computedHash": "c8333b30962efea2a1903549f92a4b16fbaac84db276baae9a8973cfb9546361"
+    },
+    "changelog-maintenance": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/changelog-maintenance/SKILL.md",
+      "computedHash": "6a03bd96ca3c1aaa8da7e25fc8e3102f71b5f1962db97b23b9d7ebdf7aa2b56a"
+    },
+    "code-refactoring": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/code-refactoring/SKILL.md",
+      "computedHash": "515df4df4bbe3170fab6a6d4f46b05078d98e67b6dcca31e4edd86973b08f35e"
+    },
+    "context7": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/context7/SKILL.md",
+      "computedHash": "30058fdbd0106670f9fe0653680d28d499b5e627927345b5ce969139cff00a27"
+    },
+    "docx": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/docx/SKILL.md",
+      "computedHash": "73620a7175d78ba94c854f8135edbad4f209b152fe96ea9d66e8d5788972412d"
+    },
+    "frontend-design": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/frontend-design/SKILL.md",
+      "computedHash": "bf3856f8210387a18af210a4bacbed03881b2a34fc73c0310b519c325655e25b"
+    },
+    "gpt-researcher": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/gpt-researcher/SKILL.md",
+      "computedHash": "c667fa7b0ef9e2a0205038ec05f9339fd35f58b2f7aee0904778f5edb875cc42"
+    },
+    "marketing-skills": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/marketing-skills/SKILL.md",
+      "computedHash": "ba3c71f486d0bb0a8c7d84eb14db521a4e70eedfeaf80eddd1ef5065a77120a3"
+    },
+    "pdf-processing": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/pdf-processing/SKILL.md",
+      "computedHash": "54af155959993930d6d0e32212d378cf70edf7aa3c27a8cac87b51c7d2294da7"
+    },
+    "skill-creator": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/skill-creator/SKILL.md",
+      "computedHash": "c50f51483c2b88e2db401c97f3f3593d8efb441cee0c81572973ee07922bbe1f"
+    },
+    "superpowers": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/superpowers/SKILL.md",
+      "computedHash": "ded83f8a9a5db2322e42b6cfb433f1f1de313ee5f2a71648486d39b66038ba32"
+    },
+    "systematic-debugging": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/systematic-debugging/SKILL.md",
+      "computedHash": "096b6d25a449ab2b49ae2fbc0ccf6741e9c7033915f4fd61fe1659e59c8ba965"
+    },
+    "tavily": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/tavily/SKILL.md",
+      "computedHash": "41f43840a538079602b17c9d3f0a798de4cb7f8241d55a33ef67017200735533"
+    },
+    "tmux": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/tmux/SKILL.md",
+      "computedHash": "6365f128f9647c4edfafffe402425bb48d5308d293a30ca34da5eb7b5e3386a0"
+    },
+    "webapp-testing": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/webapp-testing/SKILL.md",
+      "computedHash": "9db9e173e4dbc4696979c9123b28cc54935d3d3dce5b8bbabb89ef981bea9e94"
+    },
     "brandkit": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",

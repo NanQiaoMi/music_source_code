@@ -1,4 +1,4 @@
-import { Song } from "@/store/playlistStore";
+import { Song } from "@/types/song";
 import { validateSongsBatch, ValidationResult } from "./songValidation";
 
 export interface ImportResult {

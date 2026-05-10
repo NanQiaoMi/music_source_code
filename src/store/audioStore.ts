@@ -1,20 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useQueueStore } from "./queueStore";
+import { useRecommendationStore } from "./recommendationStore";
+import { usePlayerStore } from "./playerStore";
+import { useEQStore } from "./eqStore";
 
-export interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  cover: string;
-  audioUrl?: string;
-  lyrics?: string;
-  translationLyrics?: string;
-  transliterationLyrics?: string;
-  duration: number;
-  album?: string;
-  source?: "local" | "demo" | "imported" | string;
-}
+import { Song } from "@/types/song";
+
+export type { Song };
 
 export type LoopMode = "none" | "single" | "all" | "shuffle";
 
@@ -100,7 +93,6 @@ interface AudioState {
   gaplessPlayback: boolean;
   preloadCount: number;
 
-  // Emotion Curve Mode
   isEmotionCurveMode: boolean;
   dynamicCrossfadeDuration: number;
 
@@ -204,25 +196,23 @@ const getDefaultEQPreset = (preset: EQPreset): number[] => {
 export const useAudioStore = create<AudioState>()(
   persist(
     (set, get) => ({
-      isPlaying: false,
-      currentTime: 0,
-      duration: 0,
-      volume: 0.7,
-      isMuted: false,
-      playbackRate: 1.0,
-      loopMode: "none",
-      currentSong: null,
+      isPlaying: usePlayerStore.getState().isPlaying,
+      currentTime: usePlayerStore.getState().currentTime,
+      duration: usePlayerStore.getState().duration,
+      volume: usePlayerStore.getState().volume,
+      isMuted: usePlayerStore.getState().isMuted,
+      playbackRate: usePlayerStore.getState().playbackRate,
+      loopMode: usePlayerStore.getState().loopMode,
+      currentSong: usePlayerStore.getState().currentSong,
       queue: [],
       currentIndex: 0,
-      isLoading: false,
+      isLoading: usePlayerStore.getState().isLoading,
       error: null,
       bufferedRanges: [],
 
-      eqBands: [
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      ],
+      eqBands: useEQStore.getState().eqBands,
       currentEQPreset: "flat",
-      isEQEnabled: true,
+      isEQEnabled: useEQStore.getState().isEQEnabled,
       customEQPresets: {},
 
       stereoEnhance: 0,
@@ -259,30 +249,83 @@ export const useAudioStore = create<AudioState>()(
       isEmotionCurveMode: false,
       dynamicCrossfadeDuration: 3,
 
-      setIsPlaying: (playing) => set({ isPlaying: playing }),
-      setCurrentTime: (time) => set({ currentTime: Math.max(0, time) }),
-      setDuration: (duration) => set({ duration: duration }),
-      setVolume: (volume) => set({ volume: Math.max(0, Math.min(1, volume)) }),
-      toggleMute: () => set((state) => ({ isMuted: !state.isMuted })),
+      setIsPlaying: (playing) => {
+        usePlayerStore.getState().setIsPlaying(playing);
+        set({ isPlaying: playing });
+      },
+      setCurrentTime: (time) => {
+        usePlayerStore.getState().setCurrentTime(time);
+        set({ currentTime: Math.max(0, time) });
+      },
+      setDuration: (duration) => {
+        usePlayerStore.getState().setDuration(duration);
+        set({ duration });
+      },
+      setVolume: (volume) => {
+        usePlayerStore.getState().setVolume(volume);
+        set({ volume: Math.max(0, Math.min(1, volume)) });
+      },
+      toggleMute: () => {
+        usePlayerStore.getState().toggleMute();
+        set((state) => ({ isMuted: !state.isMuted }));
+      },
       setPlaybackRate: (rate) => {
+        usePlayerStore.getState().setPlaybackRate(rate);
         const clampedRate = Math.max(0.5, Math.min(2.0, rate));
         set({ playbackRate: Math.round(clampedRate * 10) / 10 });
       },
-      setLoopMode: (mode) => set({ loopMode: mode }),
+      setLoopMode: (mode) => {
+        usePlayerStore.getState().setLoopMode(mode);
+        set({ loopMode: mode });
+      },
       cycleLoopMode: () => {
         const modes: LoopMode[] = ["none", "all", "single", "shuffle"];
         const { loopMode } = get();
         const currentIndex = modes.indexOf(loopMode);
         const nextIndex = (currentIndex + 1) % modes.length;
-        set({ loopMode: modes[nextIndex] });
+        const nextMode = modes[nextIndex];
+        usePlayerStore.getState().setLoopMode(nextMode);
+        set({ loopMode: nextMode });
       },
-      setCurrentSong: (song) => set({ currentSong: song }),
+      setCurrentSong: (song) => {
+        usePlayerStore.getState().setCurrentSong(song);
+        set({ currentSong: song });
+      },
       setQueue: (songs) => set({ queue: songs }),
       setCurrentIndex: (index) => set({ currentIndex: index }),
 
       nextSong: () => {
         const { queue, currentIndex, loopMode } = get();
-        if (queue.length === 0) return;
+
+        if (queue.length === 0) {
+          const queueStore = useQueueStore.getState();
+          if (queueStore.playThroughMode === 'play-through') {
+            set({ currentSong: null, isPlaying: false });
+            return;
+          }
+          if (loopMode !== 'single' && loopMode !== 'list') {
+            const recs = useRecommendationStore.getState().getRecommendations();
+            if (recs.length > 0) {
+              queueStore.setQueue(recs);
+              queueStore.setCurrentIndex(0);
+              queueStore.addToHistory(recs[0]);
+              set({
+                queue: recs,
+                currentIndex: 0,
+                currentSong: recs[0],
+                currentTime: 0,
+                isPlaying: true,
+                isLoading: true,
+                error: null,
+              });
+            } else {
+              set({ currentSong: null, isPlaying: false });
+            }
+          } else {
+            set({ currentSong: null, isPlaying: false });
+          }
+          return;
+        }
 
         let nextIndex: number;
 
@@ -336,7 +379,10 @@ export const useAudioStore = create<AudioState>()(
         });
       },
 
-      setIsLoading: (loading) => set({ isLoading: loading }),
+      setIsLoading: (loading) => {
+        usePlayerStore.getState().setIsLoading(loading);
+        set({ isLoading: loading });
+      },
       setError: (error) => set({ error, isPlaying: false }),
       clearError: () => set({ error: null }),
       setBufferedRanges: (ranges) => set({ bufferedRanges: ranges }),
@@ -380,26 +426,35 @@ export const useAudioStore = create<AudioState>()(
         });
       },
 
-      setEQBands: (bands) =>
+      setEQBands: (bands) => {
+        useEQStore.getState().setEQBands(bands);
         set({
           eqBands: bands,
           currentEQPreset:
             bands === getDefaultEQPreset(get().currentEQPreset) ? get().currentEQPreset : "custom1",
-        }),
-      setCurrentEQPreset: (preset) => {
-        set({
-          currentEQPreset: preset,
-          eqBands: getDefaultEQPreset(preset),
         });
       },
-      setIsEQEnabled: (enabled) => set({ isEQEnabled: enabled }),
+      setCurrentEQPreset: (preset) => {
+        const bands = getDefaultEQPreset(preset);
+        useEQStore.getState().setEQBands(bands);
+        set({
+          currentEQPreset: preset,
+          eqBands: bands,
+        });
+      },
+      setIsEQEnabled: (enabled) => {
+        useEQStore.getState().setEQEnabled(enabled);
+        set({ isEQEnabled: enabled });
+      },
       saveCustomEQPreset: (name, bands) =>
         set((state) => ({
           customEQPresets: { ...state.customEQPresets, [name]: bands },
         })),
       loadEQPreset: (preset) => {
+        const bands = getDefaultEQPreset(preset);
+        useEQStore.getState().setEQBands(bands);
         set({
-          eqBands: getDefaultEQPreset(preset),
+          eqBands: bands,
           currentEQPreset: preset,
         });
       },
@@ -442,7 +497,7 @@ export const useAudioStore = create<AudioState>()(
         const startIndex = queue.length;
         const newQueue = [...queue, ...songs];
 
-        const queueStore = require("./queueStore").useQueueStore.getState();
+        const queueStore = useQueueStore.getState();
         queueStore.setQueue(newQueue);
         queueStore.setCurrentIndex(startIndex);
         queueStore.addToHistory(songs[0]);

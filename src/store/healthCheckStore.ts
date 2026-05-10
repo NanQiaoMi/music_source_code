@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { generateHealthReport } from "./libraryHealthStore";
+import { usePlaylistStore } from "./playlistStore";
 
 export type HealthIssueType =
   | "missing_file"
@@ -59,52 +61,48 @@ export const useHealthCheckStore = create<HealthCheckState>((set, get) => ({
   startCheck: async () => {
     set({ isRunning: true, progress: 0, issues: [] });
 
-    const mockIssues: HealthIssue[] = [
-      {
-        id: "issue-1",
-        type: "missing_metadata",
-        songId: "song-1",
-        title: "未知歌曲",
-        artist: "未知艺术家",
-        filePath: "D:/Music/song1.mp3",
-        severity: "low",
-        description: "缺少专辑信息",
-        canAutoFix: true,
-      },
-      {
-        id: "issue-2",
-        type: "duplicate",
-        songId: "song-2",
-        title: "Sample Song",
-        artist: "Sample Artist",
-        filePath: "D:/Music/song2.mp3",
-        severity: "medium",
-        description: "发现 2 个重复文件",
-        canAutoFix: true,
-      },
-      {
-        id: "issue-3",
-        type: "low_quality",
-        songId: "song-3",
-        title: "Low Quality Track",
-        artist: "Artist",
-        filePath: "D:/Music/song3.mp3",
-        severity: "low",
-        description: "比特率低于 192kbps",
-        canAutoFix: false,
-      },
-    ];
+    const songs = usePlaylistStore.getState().songs;
 
     for (let i = 0; i <= 100; i += 10) {
       await new Promise((resolve) => setTimeout(resolve, 200));
       set({ progress: i });
     }
 
+    const report = generateHealthReport(songs);
+
+    const typeMap: Record<string, HealthIssueType> = {
+      "missing-metadata": "missing_metadata",
+      "missing-cover": "missing_metadata",
+      "missing-lyrics": "missing_metadata",
+      "corrupted-file": "corrupt_file",
+      duplicate: "duplicate",
+      "low-quality": "low_quality",
+      "unknown-format": "unsupported_format",
+    };
+
+    const songMap = new Map(songs.map((s) => [s.id, s]));
+
+    const issues: HealthIssue[] = report.issues.map((issue) => {
+      const song = songMap.get(issue.songId);
+      return {
+        id: `hc-${issue.id}`,
+        type: typeMap[issue.type] || "missing_metadata",
+        songId: issue.songId,
+        title: song?.title || "未知歌曲",
+        artist: song?.artist || "未知艺术家",
+        filePath: issue.songId,
+        severity:
+          issue.severity === "high" ? "high" : issue.severity === "medium" ? "medium" : "low",
+        description: issue.description,
+        canAutoFix: true,
+      };
+    });
+
     set({
       isRunning: false,
-      issues: mockIssues,
+      issues,
       lastCheckTime: Date.now(),
-      totalSongsScanned: 150,
+      totalSongsScanned: songs.length,
     });
   },
 

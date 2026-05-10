@@ -5,7 +5,7 @@ import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import { X, Play, Sparkles } from "lucide-react";
 import { GlassCard } from "@/components/shared/Glass/GlassCard";
 import { GlassButton } from "@/components/shared/GlassButton";
-import { Song } from "@/store/playlistStore";
+import { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useListeningHistory } from "@/hooks/useListeningHistory";

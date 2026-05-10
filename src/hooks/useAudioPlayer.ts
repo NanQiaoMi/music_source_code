@@ -2,8 +2,11 @@
 
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useAudioStore, AudioError } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
+import { useEQStore } from "@/store/eqStore";
 import { getStoredMusic, createBlobUrlFromStoredMusic } from "@/services/localMusicStorage";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
+import { useABLoopStore } from "@/store/abLoopStore";
 import { getAudioEffectsManager } from "@/lib/audio/AudioEffectsManager";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
 import { CrossfadeMixer } from "@/lib/audio/CrossfadeMixer";
@@ -22,13 +25,22 @@ let playStartTime: number = 0;
 // Stable event handlers outside the hook to prevent duplicate listeners
 // and ensure we can attach them once to each audio element
 const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => void) => {
-  if ((audio as any)._vibeListenersAttached) return;
-  (audio as any)._vibeListenersAttached = true;
+  detachListeners(audio);
 
   const { setCurrentTime, setDuration, setIsLoading, setError, nextSong, loopMode } =
     useAudioStore.getState();
 
-  const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+  const onTimeUpdate = () => {
+    setCurrentTime(audio.currentTime);
+
+    const abState = useABLoopStore.getState();
+    if (abState.isEnabled && abState.pointA !== null && abState.pointB !== null) {
+      if (audio.currentTime >= abState.pointB) {
+        audio.currentTime = abState.pointA;
+        useABLoopStore.getState().incrementLoopCount();
+      }
+    }
+  };
   const onLoadedMetadata = () => {
     setDuration(audio.duration);
     setIsLoading(false);
@@ -80,27 +92,47 @@ const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => v
   audio.addEventListener("ended", onEnded);
   audio.addEventListener("error", onError);
 
-  // No cleanup for these global-style listeners to ensure they keep working
-  // when temporary views unmount. They are attached to long-lived audio instances.
+  (audio as any)._vibeListenersAttached = true;
+  (audio as any)._vibeCleanup = () => {
+    audio.removeEventListener("timeupdate", onTimeUpdate);
+    audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+    audio.removeEventListener("durationchange", onDurationChange);
+    audio.removeEventListener("loadstart", onLoadStart);
+    audio.removeEventListener("canplay", onCanPlay);
+    audio.removeEventListener("waiting", onWaiting);
+    audio.removeEventListener("playing", onPlaying);
+    audio.removeEventListener("play", onPlay);
+    audio.removeEventListener("pause", onPause);
+    audio.removeEventListener("ended", onEnded);
+    audio.removeEventListener("error", onError);
+    (audio as any)._vibeListenersAttached = false;
+    (audio as any)._vibeCleanup = undefined;
+  };
+};
+
+const detachListeners = (audio: HTMLAudioElement) => {
+  if (typeof (audio as any)._vibeCleanup === "function") {
+    (audio as any)._vibeCleanup();
+  }
 };
 
 export const useAudioPlayer = () => {
   const [hookId] = useState(() => Math.random().toString(36).substr(2, 9));
   const [audioElement, setLocalAudioElement] = useState<HTMLAudioElement | null>(null);
 
-  const isPlaying = useAudioStore((state) => state.isPlaying);
-  const volume = useAudioStore((state) => state.volume);
-  const isMuted = useAudioStore((state) => state.isMuted);
-  const playbackRate = useAudioStore((state) => state.playbackRate);
-  const currentSong = useAudioStore((state) => state.currentSong);
-  const eqBands = useAudioStore((state) => state.eqBands);
-  const isEQEnabled = useAudioStore((state) => state.isEQEnabled);
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const volume = usePlayerStore((state) => state.volume);
+  const isMuted = usePlayerStore((state) => state.isMuted);
+  const playbackRate = usePlayerStore((state) => state.playbackRate);
+  const currentSong = usePlayerStore((state) => state.currentSong);
+  const eqBands = useEQStore((state) => state.eqBands);
+  const isEQEnabled = useEQStore((state) => state.isEQEnabled);
   const isEmotionCurveMode = useAudioStore((state) => state.isEmotionCurveMode);
 
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
-  const setCurrentTime = useAudioStore((state) => state.setCurrentTime);
-  const setDuration = useAudioStore((state) => state.setDuration);
-  const setIsLoading = useAudioStore((state) => state.setIsLoading);
+  const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
+  const setCurrentTime = usePlayerStore((state) => state.setCurrentTime);
+  const setDuration = usePlayerStore((state) => state.setDuration);
+  const setIsLoading = usePlayerStore((state) => state.setIsLoading);
   const setError = useAudioStore((state) => state.setError);
   const setDynamicCrossfadeDuration = useAudioStore((state) => state.setDynamicCrossfadeDuration);
 

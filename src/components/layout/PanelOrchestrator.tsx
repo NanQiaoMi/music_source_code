@@ -2,6 +2,8 @@
 
 import React, { useEffect } from "react";
 import { useUIStore, PanelName } from "@/store/uiStore";
+import { useStoreWithEqualityFn } from "zustand/traditional";
+import { shallow } from "zustand/shallow";
 import { LazyPanel, prefetchPanel } from "@/components/shared/LazyPanel";
 
 // ─── Module Factories (Extracted for prefetching) ─────────────────
@@ -97,7 +99,13 @@ const FACTORIES = {
  * All panel visibility is driven by uiStore.panels.
  */
 export function PanelOrchestrator() {
-  const { panels, closePanel, openPanel } = useUIStore();
+  const panels = useStoreWithEqualityFn(
+    useUIStore,
+    (s) => s.panels,
+    shallow
+  );
+  const closePanel = useUIStore((s) => s.closePanel);
+  const openPanel = useUIStore((s) => s.openPanel);
 
   // Prefetch priority modules on mount
   useEffect(() => {

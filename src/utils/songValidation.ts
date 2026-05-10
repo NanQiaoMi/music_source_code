@@ -1,4 +1,4 @@
-import { Song } from "@/store/playlistStore";
+import { Song } from "@/types/song";
 
 export interface ValidationError {
   field: string;

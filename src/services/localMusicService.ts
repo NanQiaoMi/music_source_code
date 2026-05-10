@@ -1,4 +1,4 @@
-import { Song } from "@/store/playlistStore";
+import { Song } from "@/types/song";
 import { generateSongId } from "@/utils/songValidation";
 
 // @ts-ignore - jsmediatags doesn't have proper types
