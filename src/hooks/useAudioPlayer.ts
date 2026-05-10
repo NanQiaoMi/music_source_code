@@ -2,6 +2,8 @@
 
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useAudioStore, AudioError } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
+import { useEQStore } from "@/store/eqStore";
 import { getStoredMusic, createBlobUrlFromStoredMusic } from "@/services/localMusicStorage";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { useABLoopStore } from "@/store/abLoopStore";
@@ -118,19 +120,19 @@ export const useAudioPlayer = () => {
   const [hookId] = useState(() => Math.random().toString(36).substr(2, 9));
   const [audioElement, setLocalAudioElement] = useState<HTMLAudioElement | null>(null);
 
-  const isPlaying = useAudioStore((state) => state.isPlaying);
-  const volume = useAudioStore((state) => state.volume);
-  const isMuted = useAudioStore((state) => state.isMuted);
-  const playbackRate = useAudioStore((state) => state.playbackRate);
-  const currentSong = useAudioStore((state) => state.currentSong);
-  const eqBands = useAudioStore((state) => state.eqBands);
-  const isEQEnabled = useAudioStore((state) => state.isEQEnabled);
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const volume = usePlayerStore((state) => state.volume);
+  const isMuted = usePlayerStore((state) => state.isMuted);
+  const playbackRate = usePlayerStore((state) => state.playbackRate);
+  const currentSong = usePlayerStore((state) => state.currentSong);
+  const eqBands = useEQStore((state) => state.eqBands);
+  const isEQEnabled = useEQStore((state) => state.isEQEnabled);
   const isEmotionCurveMode = useAudioStore((state) => state.isEmotionCurveMode);
 
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
-  const setCurrentTime = useAudioStore((state) => state.setCurrentTime);
-  const setDuration = useAudioStore((state) => state.setDuration);
-  const setIsLoading = useAudioStore((state) => state.setIsLoading);
+  const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
+  const setCurrentTime = usePlayerStore((state) => state.setCurrentTime);
+  const setDuration = usePlayerStore((state) => state.setDuration);
+  const setIsLoading = usePlayerStore((state) => state.setIsLoading);
   const setError = useAudioStore((state) => state.setError);
   const setDynamicCrossfadeDuration = useAudioStore((state) => state.setDynamicCrossfadeDuration);
 
