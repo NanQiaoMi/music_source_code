@@ -44,7 +44,7 @@ export const GlobalPlayerBar: React.FC = () => {
   const setVolume = useAudioStore((state) => state.setVolume);
   const toggleMute = useAudioStore((state) => state.toggleMute);
 
-  const { setCurrentView } = useUIStore();
+  const setCurrentView = useUIStore((state) => state.setCurrentView);
 
   const [isHoveringProgress, setIsHoveringProgress] = useState(false);
   const [isDraggingProgress, setIsDraggingProgress] = useState(false);
