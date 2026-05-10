@@ -229,7 +229,7 @@ export const useQueueStore = create<QueueState>()(
                 }
               }
             } else {
-              console.warn("Failed to save queue store:", error);
+              console.warn("Failed to save queue store:", _error);
             }
           }
         },

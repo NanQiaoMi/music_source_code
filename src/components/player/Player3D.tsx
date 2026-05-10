@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback, memo } from "react";
+import React, { useState, useCallback, memo } from "react";
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { GlassCard } from "@/components/shared/Glass/GlassCard";
 import { useAudioStore, LoopMode } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
@@ -115,7 +114,7 @@ const BreathingBorder = memo(
 BreathingBorder.displayName = "BreathingBorder";
 
 interface CoverWith3DEffectProps {
-  cover: string;
+  cover?: string;
   title: string;
   isPlaying: boolean;
   albumId?: string;
@@ -128,6 +127,8 @@ const APPLE_SPRING_CONFIG = {
   mass: 1,
   bounce: 0,
 };
+
+const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(
   ({ cover, title, isPlaying, albumId }) => {
@@ -190,7 +191,14 @@ const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(
               transform: `translateZ(0)`,
             }}
           >
-            <Image src={cover} alt={title} fill className="object-cover" priority unoptimized />
+            <Image
+              src={cover || DEFAULT_COVER_SRC}
+              alt={title}
+              fill
+              className="object-cover"
+              priority
+              unoptimized
+            />
 
             <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/[0.08] via-transparent to-black/[0.15] pointer-events-none" />
             <div className="absolute inset-0 rounded-[2rem] ring-1 ring-inset ring-white/10" />
@@ -240,7 +248,6 @@ export const Player3D: React.FC = () => {
     toggleMute,
     setVolume,
     loopMode,
-    cycleLoopMode,
   } = useAudioStore();
 
   const [breathingEffectEnabled] = useState(true);

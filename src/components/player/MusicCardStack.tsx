@@ -18,6 +18,8 @@ const APPLE_SPRING_CONFIG = {
   bounce: 0,
 };
 
+const DEFAULT_COVER_SRC = "/default-cover.svg";
+
 export const MusicCardStack: React.FC = () => {
   const { songs, recentPlayed, setSelectedSong } = usePlaylistStore();
   const setCurrentSong = useAudioStore((state) => state.setCurrentSong);
@@ -41,7 +43,6 @@ export const MusicCardStack: React.FC = () => {
       setCenterIndex(Math.floor(Math.random() * targetLength));
     }
   }, [songs.length, recentPlayed.length]);
-  const [isAnimating, setIsAnimating] = useState(false);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -81,7 +82,6 @@ export const MusicCardStack: React.FC = () => {
       const song = displaySongs[index];
       if (!song) return;
 
-      setIsAnimating(true);
       setSelectedCard(index);
       setIsTransitioning(true);
 
@@ -100,7 +100,6 @@ export const MusicCardStack: React.FC = () => {
 
         setTimeout(() => {
           setIsTransitioning(false);
-          setIsAnimating(false);
           setSelectedCard(null);
         }, 600);
       });
@@ -124,26 +123,20 @@ export const MusicCardStack: React.FC = () => {
   const handlePrev = useCallback(() => {
     if (animatingRef.current || selectedCard !== null) return;
     animatingRef.current = true;
-    setIsAnimating(true);
-
     setCenterIndex((prev) => prev - 1);
 
     setTimeout(() => {
       animatingRef.current = false;
-      setIsAnimating(false);
     }, 300);
   }, [selectedCard]);
 
   const handleNext = useCallback(() => {
     if (animatingRef.current || selectedCard !== null) return;
     animatingRef.current = true;
-    setIsAnimating(true);
-
     setCenterIndex((prev) => prev + 1);
 
     setTimeout(() => {
       animatingRef.current = false;
-      setIsAnimating(false);
     }, 300);
   }, [selectedCard]);
 
@@ -353,7 +346,7 @@ export const MusicCardStack: React.FC = () => {
                       style={{ borderRadius: isCenter ? "2rem" : "1.25rem" }}
                     >
                       <Image
-                        src={card.cover}
+                        src={card.cover || DEFAULT_COVER_SRC}
                         alt={card.title}
                         fill
                         className="object-cover"

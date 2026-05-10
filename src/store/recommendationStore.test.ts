@@ -18,6 +18,7 @@ describe("recommendationStore", () => {
           album: "Album 1",
           cover: "/cover.png",
           duration: 200,
+          source: "local",
         },
         {
           id: "s2",
@@ -26,6 +27,7 @@ describe("recommendationStore", () => {
           album: "Album 1",
           cover: "/cover.png",
           duration: 180,
+          source: "local",
         },
         {
           id: "s3",
@@ -34,6 +36,7 @@ describe("recommendationStore", () => {
           album: "Album 2",
           cover: "/cover.png",
           duration: 220,
+          source: "local",
         },
       ],
     });
@@ -48,6 +51,7 @@ describe("recommendationStore", () => {
       album: "Album 1",
       cover: "/cover.png",
       duration: 200,
+      source: "local",
     });
 
     const history = useRecommendationStore.getState().playHistory;
@@ -64,6 +68,7 @@ describe("recommendationStore", () => {
       artist: "Artist A",
       cover: "/cover.png",
       duration: 200,
+      source: "local",
     });
     store.recordPlay({
       id: "s1",
@@ -71,6 +76,7 @@ describe("recommendationStore", () => {
       artist: "Artist A",
       cover: "/cover.png",
       duration: 200,
+      source: "local",
     });
 
     const history = useRecommendationStore.getState().playHistory;
@@ -91,6 +97,7 @@ describe("recommendationStore", () => {
       artist: "Artist A",
       cover: "/cover.png",
       duration: 200,
+      source: "local",
     });
 
     const result = useRecommendationStore.getState().getRecommendations();
@@ -110,6 +117,7 @@ describe("recommendationStore", () => {
       artist: "Artist A",
       cover: "/cover.png",
       duration: 200,
+      source: "local",
     });
     store.recordPlay({
       id: "s1",
@@ -117,6 +125,7 @@ describe("recommendationStore", () => {
       artist: "Artist A",
       cover: "/cover.png",
       duration: 200,
+      source: "local",
     });
     store.recordPlay({
       id: "s3",
@@ -124,6 +133,7 @@ describe("recommendationStore", () => {
       artist: "Artist B",
       cover: "/cover.png",
       duration: 220,
+      source: "local",
     });
 
     const artists = useRecommendationStore.getState().getFavoriteArtists();
@@ -142,6 +152,7 @@ describe("recommendationStore", () => {
       artist: "Artist A",
       cover: "/cover.png",
       duration: 200,
+      source: "local",
     });
     useRecommendationStore.getState().clearPlayHistory();
 

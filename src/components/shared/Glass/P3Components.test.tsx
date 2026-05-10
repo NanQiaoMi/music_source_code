@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import type { Song } from "@/types/song";
 
 describe("GlassInput", () => {
   it("exports a component", async () => {

@@ -6,7 +6,6 @@ import Image from "next/image";
 import { useQueueStore, HistorySong } from "@/store/queueStore";
 import { useAudioStore } from "@/store/audioStore";
 import { formatTime } from "@/utils/formatTime";
-import { Song } from "@/types/song";
 import { GlassDrawer } from "@/components/shared/Glass";
 
 interface HistoryPanelProps {
@@ -40,18 +39,22 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ isOpen, onClose }) =
   );
 
   const handlePlay = (song: HistorySong) => {
-    setCurrentSong({ ...song, cover: song.cover || "/default-cover.png" });
+    setCurrentSong({ ...song, cover: song.cover || "/default-cover.png", source: "local" });
     setIsPlaying(true);
   };
 
   const handleAddToQueue = (song: HistorySong) => {
-    addToQueue({ ...song, cover: song.cover || "/default-cover.png" });
+    addToQueue({ ...song, cover: song.cover || "/default-cover.png", source: "local" });
   };
 
   const handleReplayAll = (dateKey: string) => {
     const songs = groupedHistory[dateKey];
     if (songs?.length > 0) {
-      setCurrentSong({ ...songs[0], cover: songs[0].cover || "/default-cover.png" });
+      setCurrentSong({
+        ...songs[0],
+        cover: songs[0].cover || "/default-cover.png",
+        source: "local",
+      });
       setIsPlaying(true);
       songs.slice(1).forEach((song) => handleAddToQueue(song));
     }

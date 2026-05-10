@@ -46,6 +46,11 @@ interface KnowledgeState {
   clearCache: () => void;
 }
 
+const getActiveAIConfig = () => {
+  const aiStore = useAIStore.getState();
+  return aiStore.configs.find((c) => c.id === aiStore.activeConfigId) ?? null;
+};
+
 function extractJson(text: string): any[] {
   if (!text) return [];
   try {
@@ -75,9 +80,7 @@ export const useKnowledgeStore = create<KnowledgeState>()(
       fetchBackstory: async (title, artist, force = false) => {
         const key = `${artist}-${title}`.toLowerCase();
         if (get().backstories[key] && !force) return;
-        const aiStore = useAIStore.getState();
-        const config =
-          aiStore.configs?.find((c) => c.id === aiStore.activeConfigId) || (aiStore.config as any);
+        const config = getActiveAIConfig();
         if (!config?.apiKey) return;
         set({ isLoading: true });
         try {
@@ -116,9 +119,7 @@ export const useKnowledgeStore = create<KnowledgeState>()(
       fetchMetaphors: async (title, artist, lyrics, force = false) => {
         const key = `${artist}-${title}`.toLowerCase();
         if (get().metaphors[key] && get().metaphors[key].length > 0 && !force) return;
-        const aiStore = useAIStore.getState();
-        const config =
-          aiStore.configs?.find((c) => c.id === aiStore.activeConfigId) || (aiStore.config as any);
+        const config = getActiveAIConfig();
         if (!config?.apiKey) return;
         set({ isLoading: true });
         const baseUrl = (config.baseUrl || "https://api.openai.com/v1").replace(/\/$/, "");
@@ -142,7 +143,7 @@ export const useKnowledgeStore = create<KnowledgeState>()(
                 },
                 {
                   role: "user",
-                  content: `歌曲：${title} / ${artist}\n歌词：${lyrics.slice(0, 500)}`,
+                  content: `歌曲：${title} / ${artist}\n歌词：${(lyrics ?? "").slice(0, 500)}`,
                 },
               ],
               temperature: 0.3,
@@ -163,9 +164,7 @@ export const useKnowledgeStore = create<KnowledgeState>()(
       },
 
       generateDNAJournal: async (stats) => {
-        const aiStore = useAIStore.getState();
-        const config =
-          aiStore.configs?.find((c) => c.id === aiStore.activeConfigId) || (aiStore.config as any);
+        const config = getActiveAIConfig();
         if (!config?.apiKey) return;
 
         set({ isLoading: true });

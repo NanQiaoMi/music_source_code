@@ -303,7 +303,7 @@ export const useAudioStore = create<AudioState>()(
             set({ currentSong: null, isPlaying: false });
             return;
           }
-          if (loopMode !== "single" && loopMode !== "list") {
+          if (loopMode !== "single" && loopMode !== "all") {
             const recs = useRecommendationStore.getState().getRecommendations();
             if (recs.length > 0) {
               queueStore.setQueue(recs);

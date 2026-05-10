@@ -21,6 +21,8 @@ interface FloatingPlayerProps {
   className?: string;
 }
 
+const DEFAULT_COVER_SRC = "/default-cover.svg";
+
 export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const currentTime = useAudioStore((state) => state.currentTime);
@@ -49,8 +51,6 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const positionRef = useRef({ x: 24, y: 300 });
-  const containerRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     positionRef.current = position;
   }, [position]);
@@ -183,7 +183,6 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
 
   return (
     <div
-      ref={containerRef}
       className="fixed z-[99999]"
       style={{
         left: position.x,
@@ -229,7 +228,7 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
               <div className="relative w-full h-full rounded-xl overflow-hidden shadow-lg bg-black/40">
                 <div className={`absolute inset-0 ${isPlaying ? "animate-spin-slow" : ""}`}>
                   <Image
-                    src={currentSong.cover}
+                    src={currentSong.cover || DEFAULT_COVER_SRC}
                     alt={currentSong.title}
                     fill
                     className="object-cover"

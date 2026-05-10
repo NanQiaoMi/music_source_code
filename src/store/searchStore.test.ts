@@ -9,6 +9,7 @@ const mockSongs = [
     album: "Album X",
     duration: 200,
     cover: "/cover.svg",
+    source: "local",
   },
   {
     id: "2",
@@ -17,6 +18,7 @@ const mockSongs = [
     album: "Album Y",
     duration: 300,
     cover: "/cover.svg",
+    source: "local",
   },
   {
     id: "3",
@@ -25,6 +27,7 @@ const mockSongs = [
     album: "Album Z",
     duration: 150,
     cover: "/cover.svg",
+    source: "local",
   },
   {
     id: "4",
@@ -33,6 +36,7 @@ const mockSongs = [
     album: "Album X",
     duration: 400,
     cover: "/cover.svg",
+    source: "local",
   },
   {
     id: "5",
@@ -41,6 +45,7 @@ const mockSongs = [
     album: "Album W",
     duration: 180,
     cover: "/cover.svg",
+    source: "local",
   },
   {
     id: "6",
@@ -49,6 +54,7 @@ const mockSongs = [
     album: "Album V",
     duration: 500,
     cover: "/cover.svg",
+    source: "local",
   },
   {
     id: "7",
@@ -57,6 +63,7 @@ const mockSongs = [
     album: "Album U",
     duration: 90,
     cover: "/cover.svg",
+    source: "local",
   },
   {
     id: "8",
@@ -65,6 +72,7 @@ const mockSongs = [
     album: "Album T",
     duration: 250,
     cover: "/cover.svg",
+    source: "local",
   },
   {
     id: "9",
@@ -73,6 +81,7 @@ const mockSongs = [
     album: "Album S",
     duration: 350,
     cover: "/cover.svg",
+    source: "local",
   },
   {
     id: "10",
@@ -81,6 +90,7 @@ const mockSongs = [
     album: "Album R",
     duration: 120,
     cover: "/cover.svg",
+    source: "local",
   },
   {
     id: "11",
@@ -89,6 +99,7 @@ const mockSongs = [
     album: "Album Q",
     duration: 220,
     cover: "/cover.svg",
+    source: "local",
   },
   {
     id: "12",
@@ -97,6 +108,7 @@ const mockSongs = [
     album: "Album P",
     duration: 310,
     cover: "/cover.svg",
+    source: "local",
   },
 ];
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { useUIStore, PanelName } from "@/store/uiStore";
 
@@ -23,10 +23,10 @@ interface HoverHubProps {
 // Apple-style spring configuration
 const HUB_TRANSITION = {
   duration: 0.3,
-  ease: [0.23, 1, 0.32, 1],
+  ease: [0.23, 1, 0.32, 1] as const,
 };
 
-const CONTAINER_VARIANTS = {
+const CONTAINER_VARIANTS: Variants = {
   hidden: {
     opacity: 0,
     y: 8,
@@ -45,12 +45,12 @@ const CONTAINER_VARIANTS = {
     y: 4,
     transition: {
       duration: 0.15,
-      ease: "easeOut",
+        ease: [0.16, 1, 0.3, 1],
+      },
     },
-  },
 };
 
-const ITEM_VARIANTS = {
+const ITEM_VARIANTS: Variants = {
   hidden: { opacity: 0, y: 5 },
   visible: {
     opacity: 1,

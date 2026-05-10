@@ -15,8 +15,8 @@ import {
 import {
   useLibraryHealthStore,
   generateHealthReport,
-  HealthIssueType,
 } from "@/store/libraryHealthStore";
+import type { HealthIssueType } from "@/types/song";
 import { usePlaylistStore } from "@/store/playlistStore";
 
 interface LibraryHealthPanelProps {

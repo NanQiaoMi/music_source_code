@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { Song } from "@/types/song";
@@ -17,6 +17,8 @@ import {
 import { importLocalSongs, LocalImportResult, formatFileSize } from "@/utils/localMusicImport";
 import { formatDuration } from "@/utils/songValidation";
 import Image from "next/image";
+
+const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 export const DataManager: React.FC = () => {
   const {
@@ -461,7 +463,12 @@ export const DataManager: React.FC = () => {
 
                 {/* Cover */}
                 <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
-                  <Image src={song.cover} alt={song.title} fill className="object-cover" />
+                  <Image
+                    src={song.cover || DEFAULT_COVER_SRC}
+                    alt={song.title}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
 
                 {/* Info */}

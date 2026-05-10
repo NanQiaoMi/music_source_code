@@ -12,6 +12,7 @@ const sanitizeSongForStorage = (song: Song) => {
     album: song.album,
     duration: song.duration,
     cover: song.cover?.startsWith("data:image/") ? "" : song.cover,
+    source: song.source,
   };
 };
 

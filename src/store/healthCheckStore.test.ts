@@ -23,6 +23,7 @@ describe("healthCheckStore", () => {
           artist: "",
           cover: "",
           duration: 180,
+          source: "local",
         },
         {
           id: "test-2",
@@ -31,6 +32,7 @@ describe("healthCheckStore", () => {
           cover: "/default-cover.png",
           duration: 200,
           lyrics: "",
+          source: "local",
         },
       ],
     });
@@ -51,6 +53,7 @@ describe("healthCheckStore", () => {
           artist: "B",
           cover: "https://c.com",
           duration: 100,
+          source: "local",
         },
       ],
     });

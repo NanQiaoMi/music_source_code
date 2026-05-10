@@ -194,6 +194,7 @@ export const useEmotionStore = create<EmotionState>()(
                 title: song.title || "Unknown Title",
                 artist: song.artist || "Unknown Artist",
                 cover: song.cover,
+                tags: song.genre ? [song.genre] : undefined,
                 x: coords.x,
                 y: coords.y,
                 description: coords.description,
@@ -319,6 +320,14 @@ export const useEmotionStore = create<EmotionState>()(
           try {
             const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error("No JSON found");
+            const result = JSON.parse(jsonMatch[0]) as {
+              v?: number;
+              valence?: number;
+              e?: number;
+              energy?: number;
+              d?: string;
+              description?: string;
+            };
 
             // 2. 自然分布：直接使用 AI 产出的数值，保持其原始的情感比例
             // 不再进行强制对比度拉伸，以允许中间区域自然存在点位

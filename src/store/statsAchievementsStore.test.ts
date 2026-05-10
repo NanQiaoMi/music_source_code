@@ -9,6 +9,7 @@ function createMockSong(id: string, title?: string, artist?: string): Song {
     artist: artist ?? "Test Artist",
     cover: "cover.jpg",
     duration: 200,
+    source: "local",
   };
 }
 

@@ -27,6 +27,23 @@ export interface BackupData {
   themes?: unknown;
 }
 
+interface StoredSettingsBackup {
+  audio?: string | null;
+  visual?: string | null;
+  gesture?: string | null;
+  sleep?: string | null;
+}
+
+interface StoredPlaylistsBackup {
+  playlist?: string | null;
+  queue?: string | null;
+  recommendation?: string | null;
+}
+
+interface StoredLibraryBackup {
+  library?: string | null;
+}
+
 export interface BackupSchedule {
   id: string;
   enabled: boolean;
@@ -205,37 +222,37 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
         await new Promise((resolve) => setTimeout(resolve, 200));
 
         if (backupData.settings) {
-          if (backupData.settings.audio)
-            localStorage.setItem("audio-store-v4", backupData.settings.audio);
-          if (backupData.settings.visual)
-            localStorage.setItem("visual-settings-v4", backupData.settings.visual);
-          if (backupData.settings.gesture)
-            localStorage.setItem("gesture-store", backupData.settings.gesture);
-          if (backupData.settings.sleep)
-            localStorage.setItem("sleep-timer-store", backupData.settings.sleep);
+          const settings = backupData.settings as StoredSettingsBackup;
+          if (settings.audio)
+            localStorage.setItem("audio-store-v4", settings.audio);
+          if (settings.visual)
+            localStorage.setItem("visual-settings-v4", settings.visual);
+          if (settings.gesture)
+            localStorage.setItem("gesture-store", settings.gesture);
+          if (settings.sleep)
+            localStorage.setItem("sleep-timer-store", settings.sleep);
         }
 
         set({ restoreProgress: 50 });
         await new Promise((resolve) => setTimeout(resolve, 200));
 
         if (backupData.playlists) {
-          if (backupData.playlists.playlist)
-            localStorage.setItem("playlist-store", backupData.playlists.playlist);
-          if (backupData.playlists.queue)
-            localStorage.setItem("queue-store", backupData.playlists.queue);
-          if (backupData.playlists.recommendation)
-            localStorage.setItem("recommendation-store", backupData.playlists.recommendation);
+          const playlists = backupData.playlists as StoredPlaylistsBackup;
+          if (playlists.playlist) localStorage.setItem("playlist-store", playlists.playlist);
+          if (playlists.queue) localStorage.setItem("queue-store", playlists.queue);
+          if (playlists.recommendation)
+            localStorage.setItem("recommendation-store", playlists.recommendation);
         }
 
         set({ restoreProgress: 75 });
         await new Promise((resolve) => setTimeout(resolve, 200));
 
         if (backupData.library) {
-          if (backupData.library.library)
-            localStorage.setItem("library-manager-store-v4", backupData.library.library);
+          const library = backupData.library as StoredLibraryBackup;
+          if (library.library) localStorage.setItem("library-manager-store-v4", library.library);
         }
 
-        if (backupData.lyrics) {
+        if (typeof backupData.lyrics === "string") {
           localStorage.setItem("lyrics-cover-store-v4", backupData.lyrics);
         }
 

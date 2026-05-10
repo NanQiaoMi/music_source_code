@@ -1,15 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Song } from "@/types/song";
-
-export type HealthIssueType =
-  | "missing-metadata"
-  | "missing-cover"
-  | "missing-lyrics"
-  | "corrupted-file"
-  | "duplicate"
-  | "low-quality"
-  | "unknown-format";
+import { Song, HealthIssueType } from "@/types/song";
 
 export interface HealthIssue {
   id: string;

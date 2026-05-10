@@ -1,14 +1,7 @@
 import { create } from "zustand";
 import { generateHealthReport } from "./libraryHealthStore";
 import { usePlaylistStore } from "./playlistStore";
-
-export type HealthIssueType =
-  | "missing_file"
-  | "corrupt_file"
-  | "missing_metadata"
-  | "duplicate"
-  | "low_quality"
-  | "unsupported_format";
+import { HealthIssueType } from "@/types/song";
 
 export interface HealthIssue {
   id: string;
@@ -44,10 +37,19 @@ interface HealthCheckState {
 const issueTypeNames: Record<HealthIssueType, string> = {
   missing_file: "文件缺失",
   corrupt_file: "文件损坏",
+  corrupted_file: "文件损坏",
+  "missing-metadata": "元数据缺失",
+  "missing-cover": "封面缺失",
+  "missing-lyrics": "歌词缺失",
   missing_metadata: "元数据缺失",
+  missing_cover: "封面缺失",
+  missing_lyrics: "歌词缺失",
   duplicate: "重复文件",
   low_quality: "低质量",
+  "low-quality": "低质量",
   unsupported_format: "不支持格式",
+  "corrupted-file": "文件损坏",
+  "unknown-format": "不支持格式",
 };
 
 export const useHealthCheckStore = create<HealthCheckState>((set, get) => ({
@@ -72,8 +74,8 @@ export const useHealthCheckStore = create<HealthCheckState>((set, get) => ({
 
     const typeMap: Record<string, HealthIssueType> = {
       "missing-metadata": "missing_metadata",
-      "missing-cover": "missing_metadata",
-      "missing-lyrics": "missing_metadata",
+      "missing-cover": "missing_cover",
+      "missing-lyrics": "missing_lyrics",
       "corrupted-file": "corrupt_file",
       duplicate: "duplicate",
       "low-quality": "low_quality",

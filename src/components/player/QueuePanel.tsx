@@ -4,10 +4,13 @@ import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useQueueStore } from "@/store/queueStore";
+import { useAudioStore } from "@/store/audioStore";
 import { formatTime } from "@/utils/formatTime";
 import { GlassPanel } from "@/components/shared/Glass";
 import { GlassButton } from "@/components/shared/GlassButton";
 import { Song } from "@/types/song";
+
+const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 interface QueuePanelProps {
   isOpen: boolean;
@@ -130,14 +133,26 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
     [draggedIndex, removeFromQueue]
   );
 
-  const toggleSelect = (index: number) => {
+  const handlePlayFromQueue = useCallback(
+    (index: number) => {
+      const song = queue[index];
+      if (song) {
+        useQueueStore.getState().setCurrentIndex(index);
+        useAudioStore.getState().setCurrentSong(song);
+        useAudioStore.getState().setIsPlaying(true);
+      }
+    },
+    [queue]
+  );
+
+  const toggleSelect = useCallback((index: number) => {
     setSelectedIndices((prev) => {
       const next = new Set(prev);
       if (next.has(index)) next.delete(index);
       else next.add(index);
       return next;
     });
-  };
+  }, []);
 
   const handleBulkDelete = () => {
     removeMultipleFromQueue(Array.from(selectedIndices));
@@ -224,15 +239,14 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
           </div>
         ) : (
           queue.map((song, index) => (
-            <motion.div
+            <div
               key={song.id}
-              layout
               draggable
               onDragStart={(e) => handleDragStart(e, index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, index)}
-              onDragEnd={(e) => {
+              onDragEnd={(e: React.DragEvent<HTMLDivElement>) => {
                 handleDragEnd();
                 handleRemoveOnDragEnd(e);
               }}
@@ -273,7 +287,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
               </div>
 
               <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
-                <Image src={song.cover} alt={song.title} fill className="object-cover" />
+                <Image src={song.cover || DEFAULT_COVER_SRC} alt={song.title} fill className="object-cover" />
                 {index === currentIndex && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <div className="flex gap-0.5">
@@ -324,7 +338,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                   />
                 </svg>
               </button>
-            </motion.div>
+            </div>
           ))
         )}
       </div>

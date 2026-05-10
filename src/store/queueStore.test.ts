@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { useQueueStore } from "./queueStore";
 
 function createMockSong(id: string) {
-  return { id, title: `Song ${id}`, artist: "Artist", duration: 200 };
+  return { id, title: `Song ${id}`, artist: "Artist", duration: 200, source: "local" };
 }
 
 describe("queueStore", () => {

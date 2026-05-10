@@ -4,8 +4,6 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
-  ListMusic,
-  History,
   Settings,
   Moon,
   Hand,
@@ -36,7 +34,6 @@ import {
 import { useUIStore } from "@/store/uiStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useGestureStore } from "@/store/gestureStore";
-import { InstantMixButton } from "@/components/widgets/InstantMix";
 
 import { Logo } from "@/components/layout/Logo";
 import { AIToolbox } from "@/components/layout/AIToolbox";
@@ -49,8 +46,7 @@ import { HoverHub } from "@/components/layout/HoverHub";
  * Uses centralized panel management from uiStore.
  */
 export function HeaderToolbar() {
-  const { currentView, openPanel, togglePanel, panels, isFullscreen, toggleFullscreen } =
-    useUIStore();
+  const { currentView, openPanel, panels, isFullscreen, toggleFullscreen } = useUIStore();
   const { songs } = usePlaylistStore();
   const { isEnabled: isGestureEnabled, toggleGestureEnabled } = useGestureStore();
 
@@ -169,11 +165,11 @@ export function HeaderToolbar() {
 
           {/* 2. Interactive Shortcuts */}
           <button
-            onClick={() => openPanel("shortcuts")}
+            onClick={() => openPanel("keyboardShortcuts")}
             className="group relative w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-500"
             style={{
-              background: panels.shortcuts ? "rgba(255, 255, 255, 0.1)" : "transparent",
-              color: panels.shortcuts ? "white" : "var(--theme-text-secondary)",
+              background: panels.keyboardShortcuts ? "rgba(255, 255, 255, 0.1)" : "transparent",
+              color: panels.keyboardShortcuts ? "white" : "var(--theme-text-secondary)",
             }}
             title="交互捷径"
           >
@@ -183,7 +179,7 @@ export function HeaderToolbar() {
               className="relative z-10"
             >
               <MousePointer2 className="w-[18px] h-[18px]" />
-              {panels.shortcuts && (
+              {panels.keyboardShortcuts && (
                 <motion.div
                   layoutId="shortcut-glow"
                   className="absolute inset-0 bg-white/20 blur-xl rounded-full -z-10"

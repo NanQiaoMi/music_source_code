@@ -10,14 +10,9 @@ import {
   getAllStoredMusic,
   deleteStoredMusic,
   clearAllStoredMusic,
-  createBlobUrlFromStoredMusic,
   StoredMusic,
 } from "@/services/localMusicStorage";
-import {
-  associateLyricsWithAudioFiles,
-  isLyricsFile,
-  readLyricsFile,
-} from "@/services/lyricsService";
+import { associateLyricsWithAudioFiles } from "@/services/lyricsService";
 import Image from "next/image";
 
 // @ts-ignore - jsmediatags doesn't have proper types
@@ -25,6 +20,7 @@ import jsmediatags from "jsmediatags";
 
 // Supported audio formats
 const SUPPORTED_AUDIO_FORMATS = [".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".opus"];
+const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 interface ProcessingFile {
   file: File;
@@ -433,7 +429,12 @@ export const LocalMusicManager: React.FC = () => {
                 className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-colors group"
               >
                 <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                  <Image src={song.cover} alt={song.title} fill className="object-cover" />
+                  <Image
+                    src={song.cover || DEFAULT_COVER_SRC}
+                    alt={song.title}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="text-white font-medium truncate">{song.title}</h4>

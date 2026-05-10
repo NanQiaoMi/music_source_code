@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Scroll, Sparkles, X, Loader2, Quote, Brain, RotateCcw, bug } from "lucide-react";
+import { Scroll, Sparkles, X, Loader2, Quote, Brain, RotateCcw } from "lucide-react";
 import { useKnowledgeStore } from "@/store/knowledgeStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useLyricsCoverStore } from "@/store/lyricsCoverStore";

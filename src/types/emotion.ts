@@ -9,6 +9,7 @@ export interface EmotionPoint extends EmotionCoordinate {
   title: string;
   artist: string;
   cover?: string;
+  tags?: string[];
   isTagged?: boolean;
 }
 

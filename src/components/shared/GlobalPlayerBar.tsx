@@ -23,6 +23,8 @@ export const APPLE_SPRING_GENTLE = {
   mass: 0.8,
 };
 
+const DEFAULT_COVER_SRC = "/default-cover.svg";
+
 const formatTime = (seconds: number): string => {
   if (isNaN(seconds) || seconds < 0) return "0:00";
   const mins = Math.floor(seconds / 60);
@@ -47,7 +49,6 @@ export const GlobalPlayerBar: React.FC = () => {
   const setCurrentView = useUIStore((state) => state.setCurrentView);
 
   const [isHoveringProgress, setIsHoveringProgress] = useState(false);
-  const [isDraggingProgress, setIsDraggingProgress] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverX, setHoverX] = useState<number>(0);
 
@@ -123,7 +124,7 @@ export const GlobalPlayerBar: React.FC = () => {
             onClick={() => setCurrentView("player")}
           >
             <Image
-              src={currentSong.cover}
+              src={currentSong.cover || DEFAULT_COVER_SRC}
               alt={currentSong.title}
               fill
               className="object-cover"

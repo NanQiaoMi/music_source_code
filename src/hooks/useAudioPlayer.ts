@@ -222,6 +222,13 @@ export const useAudioPlayer = () => {
         effectsManager.connect(analyser, context.destination, audio);
       });
     }
+
+    return () => {
+      detachListeners(audio);
+      if (secondaryElementRef.current) {
+        detachListeners(secondaryElementRef.current);
+      }
+    };
   }, [audioElement, handlePlayError, setDuration, setCurrentTime]);
 
   // Playback Management Effect (Only run by the manager instance)

@@ -48,11 +48,16 @@ export const exportSongsToCSV = (songs: Song[]): string => {
     song.source || "local",
   ]);
 
-  const escapeCSV = (value: string): string => {
-    if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-      return `"${value.replace(/"/g, '""')}"`;
+  const escapeCSV = (value: string | undefined): string => {
+    const normalized = value ?? "";
+    if (
+      normalized.includes(",") ||
+      normalized.includes('"') ||
+      normalized.includes("\n")
+    ) {
+      return `"${normalized.replace(/"/g, '""')}"`;
     }
-    return value;
+    return normalized;
   };
 
   return [headers.join(","), ...rows.map((row) => row.map(escapeCSV).join(","))].join("\n");

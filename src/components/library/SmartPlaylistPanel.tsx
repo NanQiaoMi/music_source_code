@@ -100,7 +100,6 @@ export const SmartPlaylistPanel: React.FC<SmartPlaylistPanelProps> = ({ isOpen, 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 min-h-0">
           {activeTab === "system" && (
             <SystemPlaylistsTab
-              playlists={smartPlaylists}
               songs={songs}
               onGeneratePlaylist={generatePlaylist}
               getDefaultPlaylists={getDefaultSmartPlaylists}
@@ -265,10 +264,15 @@ function ImportExportTab({
   onImportPlaylist: (content: string, format: PlaylistExportFormat, songs: Song[]) => Song[];
 }) {
   const [importText, setImportText] = useState("");
-  const [importFormat, setImportFormat] = useState<string>("m3u");
-  const [exportFormat, setExportFormat] = useState<string>("m3u");
+  const [importFormat, setImportFormat] = useState<PlaylistExportFormat>("m3u");
+  const [exportFormat, setExportFormat] = useState<PlaylistExportFormat>("m3u");
 
-  const formatOptions = [
+  const formatOptions: {
+    value: PlaylistExportFormat;
+    label: string;
+    ext: string;
+    type: string;
+  }[] = [
     { value: "m3u", label: "M3U", ext: "m3u", type: "audio/x-mpegurl" },
     { value: "pls", label: "PLS", ext: "pls", type: "audio/x-scpls" },
     { value: "xspf", label: "XSPF", ext: "xspf", type: "application/xspf+xml" },

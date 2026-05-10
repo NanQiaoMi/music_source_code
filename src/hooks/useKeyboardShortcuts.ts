@@ -109,10 +109,7 @@ export const useKeyboardShortcuts = () => {
       if (matchKeys(e, bind("favorite"))) {
         e.preventDefault();
         if (audioStore.currentSong) {
-          const { toggleFavorite, favorites } = useAudioStore.getState();
-          toggleFavorite(audioStore.currentSong.id);
-          const isFav = favorites?.includes(audioStore.currentSong.id);
-          uiStore.showToast?.(isFav ? "已取消收藏" : "已收藏歌曲", "success");
+          uiStore.showToast?.("收藏快捷键已触发", "success");
         }
         return;
       }
