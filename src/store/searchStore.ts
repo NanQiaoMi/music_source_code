@@ -8,6 +8,7 @@ export type FilterType = "all" | "title" | "artist" | "album";
 interface Filters {
   type: FilterType;
   durationRange: { min: number; max: number } | null;
+  source: string;
 }
 
 interface SearchState {
@@ -22,6 +23,7 @@ interface SearchState {
   totalResults: number;
   filters: Filters;
   searchHistory: string[];
+  lastSearchSongs: Song[];
 
   setQuery: (query: string) => void;
   setSearchType: (type: SearchType) => void;
@@ -35,6 +37,7 @@ interface SearchState {
   setPageSize: (size: number) => void;
   setFilterType: (type: FilterType) => void;
   setDurationRange: (range: { min: number; max: number } | null) => void;
+  setSourceFilter: (source: string) => void;
   clearFilters: () => void;
   addToHistory: (query: string) => void;
   clearHistory: () => void;
@@ -46,7 +49,41 @@ const MAX_SEARCH_HISTORY = 20;
 const defaultFilters: Filters = {
   type: "all",
   durationRange: null,
+  source: "all",
 };
+
+function includesValue(value: string | undefined, query: string): boolean {
+  return Boolean(value?.toLowerCase().includes(query));
+}
+
+function scoreSong(song: Song, query: string, searchType: SearchType): number {
+  const title = song.title.toLowerCase();
+  const artist = song.artist.toLowerCase();
+  const album = song.album?.toLowerCase() || "";
+  const genre = song.genre?.toLowerCase() || "";
+  let score = 0;
+
+  if (searchType === "all" || searchType === "song") {
+    if (title === query) score = Math.max(score, 100);
+    else if (title.startsWith(query)) score = Math.max(score, 80);
+    else if (title.includes(query)) score = Math.max(score, 60);
+  }
+
+  if (searchType === "all" || searchType === "artist") {
+    if (artist === query || artist.startsWith(query)) score = Math.max(score, 50);
+    else if (artist.includes(query)) score = Math.max(score, 40);
+  }
+
+  if (searchType === "all" || searchType === "album") {
+    if (album.includes(query)) score = Math.max(score, 30);
+  }
+
+  if (searchType === "all" && genre.includes(query)) {
+    score = Math.max(score, 20);
+  }
+
+  return score;
+}
 
 export const useSearchStore = create<SearchState>((set, get) => ({
   query: "",
@@ -60,20 +97,21 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   totalResults: 0,
   filters: { ...defaultFilters },
   searchHistory: [],
+  lastSearchSongs: [],
 
-  setQuery: (query) => set({ query }),
+  setQuery: (query) => set({ query, page: 1 }),
 
   setSearchType: (type) => {
-    set({ searchType: type });
+    set({ searchType: type, page: 1 });
     const { query, search } = get();
     if (query) {
-      const allSongs = useSearchStore.getState().results;
-      search([]);
+      search(get().lastSearchSongs);
     }
   },
 
   search: (songs) => {
-    const { query, searchType, filters, page, pageSize } = get();
+    const { query, searchType, filters, page, pageSize, lastSearchSongs } = get();
+    const corpus = songs.length > 0 ? songs : lastSearchSongs;
 
     if (!query.trim()) {
       set({ results: [], isSearching: false, totalResults: 0 });
@@ -85,41 +123,31 @@ export const useSearchStore = create<SearchState>((set, get) => ({
 
     const lowerQuery = query.toLowerCase().trim();
 
-    let filtered = songs.filter((song) => {
-      switch (searchType) {
-        case "song":
-          return song.title.toLowerCase().includes(lowerQuery);
-        case "artist":
-          return song.artist.toLowerCase().includes(lowerQuery);
-        case "album":
-          return song.album?.toLowerCase().includes(lowerQuery);
-        case "all":
-        default:
-          return (
-            song.title.toLowerCase().includes(lowerQuery) ||
-            song.artist.toLowerCase().includes(lowerQuery) ||
-            song.album?.toLowerCase().includes(lowerQuery)
-          );
-      }
-    });
+    let filtered = corpus
+      .map((song) => ({ song, score: scoreSong(song, lowerQuery, searchType) }))
+      .filter((item) => item.score > 0);
 
     if (filters.type !== "all") {
-      filtered = filtered.filter((song) => {
+      filtered = filtered.filter(({ song }) => {
         switch (filters.type) {
           case "title":
-            return song.title.toLowerCase().includes(lowerQuery);
+            return includesValue(song.title, lowerQuery);
           case "artist":
-            return song.artist.toLowerCase().includes(lowerQuery);
+            return includesValue(song.artist, lowerQuery);
           case "album":
-            return song.album?.toLowerCase().includes(lowerQuery);
+            return includesValue(song.album, lowerQuery);
           default:
             return true;
         }
       });
     }
 
+    if (filters.source !== "all") {
+      filtered = filtered.filter(({ song }) => song.source === filters.source);
+    }
+
     if (filters.durationRange) {
-      filtered = filtered.filter((song) => {
+      filtered = filtered.filter(({ song }) => {
         const dur = song.duration;
         return dur >= filters.durationRange!.min && dur <= filters.durationRange!.max;
       });
@@ -127,9 +155,12 @@ export const useSearchStore = create<SearchState>((set, get) => ({
 
     const totalResults = filtered.length;
     const start = (page - 1) * pageSize;
-    const pagedResults = filtered.slice(start, start + pageSize);
+    const pagedResults = filtered
+      .sort((a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title))
+      .slice(start, start + pageSize)
+      .map((item) => item.song);
 
-    set({ results: pagedResults, totalResults, isSearching: false });
+    set({ results: pagedResults, totalResults, isSearching: false, lastSearchSongs: corpus });
 
     if (filtered.length > 0) {
       get().addRecentSearch(query);
@@ -175,11 +206,10 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   },
 
   setPage: (page) => {
-    set({ page });
+    set({ page: Math.max(1, page) });
     const { query, search } = get();
     if (query) {
-      const store = useSearchStore.getState();
-      search([]);
+      search(get().lastSearchSongs);
     }
   },
 
@@ -197,6 +227,13 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   setDurationRange: (range) => {
     set((state) => ({
       filters: { ...state.filters, durationRange: range },
+      page: 1,
+    }));
+  },
+
+  setSourceFilter: (source) => {
+    set((state) => ({
+      filters: { ...state.filters, source },
       page: 1,
     }));
   },

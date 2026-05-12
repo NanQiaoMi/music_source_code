@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -13,11 +13,15 @@ import {
   Disc,
   Loader2,
   Trash2,
+  ListPlus,
+  Play,
+  Plus,
 } from "lucide-react";
 import { useSearchStore, SearchType, FilterType } from "@/store/searchStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
+import { useQueueStore } from "@/store/queueStore";
 import Image from "next/image";
 import { GlassModal } from "@/components/shared/Glass";
 
@@ -57,11 +61,15 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     setIsVoiceSearch,
     setPage,
     setFilterType,
+    setDurationRange,
+    setSourceFilter,
     clearFilters,
     clearHistory,
   } = useSearchStore();
 
   const { songs } = usePlaylistStore();
+  const addToQueue = useQueueStore((state) => state.addToQueue);
+  const insertNext = useQueueStore((state) => state.insertNext);
   const setCurrentSong = useAudioStore((state) => state.setCurrentSong);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +88,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       }
     }, 300);
     return () => clearTimeout(timeoutId);
-  }, [query, searchType, songs, search]);
+  }, [query, searchType, filters, songs, search]);
 
   const handleVoiceSearch = useCallback(() => {
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
@@ -126,6 +134,19 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     onClose();
   };
 
+  const handleAddToQueue = (song: Song) => {
+    addToQueue(song);
+  };
+
+  const handlePlayNext = (song: Song) => {
+    insertNext(song);
+  };
+
+  const handleNarrowSearch = (value: string, type: SearchType) => {
+    setQuery(value);
+    setSearchType(type);
+  };
+
   const handleRecentSearchClick = (searchQuery: string) => {
     setQuery(searchQuery);
     search(songs);
@@ -144,6 +165,27 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     { value: "artist", label: "歌手" },
     { value: "album", label: "专辑" },
   ];
+
+  const durationOptions = [
+    { label: "全部时长", value: "all", range: null },
+    { label: "短歌", value: "short", range: { min: 0, max: 180 } },
+    { label: "中等", value: "medium", range: { min: 181, max: 360 } },
+    { label: "长曲", value: "long", range: { min: 361, max: Number.MAX_SAFE_INTEGER } },
+  ];
+
+  const sourceOptions = useMemo(() => {
+    const sources = Array.from(new Set(songs.map((song) => song.source).filter(Boolean))).sort();
+    return ["all", ...sources];
+  }, [songs]);
+
+  const selectedDuration =
+    durationOptions.find((option) => {
+      if (!option.range && !filters.durationRange) return true;
+      return (
+        option.range?.min === filters.durationRange?.min &&
+        option.range?.max === filters.durationRange?.max
+      );
+    })?.value || "all";
 
   const content = (
     <div className="overflow-hidden">
@@ -231,6 +273,33 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               清除
             </button>
           )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <select
+            value={selectedDuration}
+            onChange={(e) => {
+              const option = durationOptions.find((item) => item.value === e.target.value);
+              setDurationRange(option?.range ?? null);
+            }}
+            className="bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none focus:border-white/30"
+          >
+            {durationOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.source}
+            onChange={(e) => setSourceFilter(e.target.value)}
+            className="bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none focus:border-white/30"
+          >
+            {sourceOptions.map((source) => (
+              <option key={source} value={source}>
+                {source === "all" ? "全部来源" : source}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -345,10 +414,59 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                     <p className="text-white/50 text-sm truncate">{song.artist}</p>
                   </div>
                   {song.album && (
-                    <span className="text-white/40 text-xs px-2 py-1 rounded-full bg-white/5">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleNarrowSearch(song.album || "", "album");
+                      }}
+                      className="text-white/40 hover:text-white text-xs px-2 py-1 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
+                      title="按专辑继续搜索"
+                    >
                       {song.album}
-                    </span>
+                    </button>
                   )}
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePlaySong(song);
+                      }}
+                      className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform"
+                      title="立即播放"
+                    >
+                      <Play className="w-3.5 h-3.5" fill="currentColor" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToQueue(song);
+                      }}
+                      className="w-8 h-8 rounded-full bg-white/10 text-white/70 flex items-center justify-center hover:bg-white/20 hover:text-white transition-colors"
+                      title="加入队列"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePlayNext(song);
+                      }}
+                      className="w-8 h-8 rounded-full bg-white/10 text-white/70 flex items-center justify-center hover:bg-white/20 hover:text-white transition-colors"
+                      title="播放下一首"
+                    >
+                      <ListPlus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleNarrowSearch(song.artist, "artist");
+                      }}
+                      className="w-8 h-8 rounded-full bg-white/10 text-white/70 flex items-center justify-center hover:bg-white/20 hover:text-white transition-colors"
+                      title="按歌手继续搜索"
+                    >
+                      <User className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </motion.div>
               ))}
             </div>

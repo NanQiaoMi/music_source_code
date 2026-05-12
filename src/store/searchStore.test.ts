@@ -121,7 +121,8 @@ describe("searchStore", () => {
       pageSize: 5,
       totalResults: 0,
       searchHistory: [],
-      filters: { type: "all", durationRange: null },
+      filters: { type: "all", durationRange: null, source: "all" },
+      lastSearchSongs: [],
       isSearching: false,
       recentSearches: [],
       searchType: "all",
@@ -184,5 +185,73 @@ describe("searchStore", () => {
     state.results.forEach((song) => {
       expect(song.artist.toLowerCase()).toContain("artist a");
     });
+  });
+
+  it("ranks exact title matches before artist and album matches", () => {
+    const songs = [
+      {
+        id: "artist",
+        title: "Other",
+        artist: "Ocean",
+        album: "Blue",
+        duration: 200,
+        source: "local",
+      },
+      {
+        id: "title",
+        title: "Ocean",
+        artist: "Someone",
+        album: "Blue",
+        duration: 200,
+        source: "local",
+      },
+      {
+        id: "album",
+        title: "Track",
+        artist: "Someone",
+        album: "Ocean",
+        duration: 200,
+        source: "local",
+      },
+    ];
+
+    useSearchStore.getState().setQuery("Ocean");
+    useSearchStore.getState().search(songs);
+
+    expect(useSearchStore.getState().results.map((song) => song.id)).toEqual([
+      "title",
+      "artist",
+      "album",
+    ]);
+  });
+
+  it("keeps the original song corpus when changing pages", () => {
+    const store = useSearchStore.getState();
+    store.setQuery("Song");
+    store.search(mockSongs);
+
+    expect(useSearchStore.getState().totalResults).toBe(6);
+
+    useSearchStore.getState().setPage(2);
+
+    expect(useSearchStore.getState().page).toBe(2);
+    expect(useSearchStore.getState().results).toHaveLength(1);
+    expect(useSearchStore.getState().totalResults).toBe(6);
+  });
+
+  it("filters by source and duration range together", () => {
+    const songs = [
+      { id: "local-short", title: "Focus", artist: "A", duration: 90, source: "local" },
+      { id: "local-medium", title: "Focus", artist: "B", duration: 240, source: "local" },
+      { id: "remote-medium", title: "Focus", artist: "C", duration: 260, source: "remote" },
+    ];
+
+    const store = useSearchStore.getState();
+    store.setQuery("Focus");
+    store.setDurationRange({ min: 180, max: 300 });
+    store.setSourceFilter("local");
+    store.search(songs);
+
+    expect(useSearchStore.getState().results.map((song) => song.id)).toEqual(["local-medium"]);
   });
 });
