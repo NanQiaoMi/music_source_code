@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { useUIStore } from "./uiStore";
+import { validateShortcutMap } from "@/hooks/useKeyboardShortcuts";
 
 const initialState = useUIStore.getInitialState();
 
@@ -41,7 +42,9 @@ describe("uiStore", () => {
 
     useUIStore.getState().closeAllPanels();
 
-    expect(Object.values(useUIStore.getState().panels).every((isOpen) => isOpen === false)).toBe(true);
+    expect(Object.values(useUIStore.getState().panels).every((isOpen) => isOpen === false)).toBe(
+      true
+    );
   });
 
   it("keeps fullscreen panels mutually exclusive while preserving non-fullscreen panels", () => {
@@ -119,5 +122,15 @@ describe("uiStore", () => {
 
     useUIStore.getState().toggleTheme();
     expect(useUIStore.getState().themeMode).toBe("dark");
+  });
+
+  it("rejects duplicate shortcut assignments", () => {
+    const result = validateShortcutMap({
+      playPause: "Space",
+      openSearch: "Space",
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.conflicts).toEqual([["playPause", "openSearch"]]);
   });
 });

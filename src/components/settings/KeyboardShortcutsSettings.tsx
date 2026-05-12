@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useKeyboardShortcutsStore } from "@/store/keyboardShortcutsStore";
 import { GlassPanel } from "@/components/shared/Glass";
 import { GlassButton } from "@/components/shared/GlassButton";
+import { validateShortcutMap } from "@/hooks/useKeyboardShortcuts";
 
 interface KeyboardShortcutsSettingsProps {
   isOpen: boolean;
@@ -21,6 +22,14 @@ export const KeyboardShortcutsSettings: React.FC<KeyboardShortcutsSettingsProps>
   const [pendingKeys, setPendingKeys] = useState<string[]>([]);
 
   const categories = Array.from(new Set(defaults.map((d) => d.category)));
+  const currentShortcutMap = Object.fromEntries(
+    defaults.map((binding) => [binding.id, getBinding(binding.id)])
+  );
+  const globalValidation = validateShortcutMap(currentShortcutMap);
+  const pendingValidation =
+    recordingId && pendingKeys.length > 0
+      ? validateShortcutMap({ ...currentShortcutMap, [recordingId]: pendingKeys })
+      : { valid: true, conflicts: [] };
 
   useEffect(() => {
     if (!recordingId) return;
@@ -47,13 +56,21 @@ export const KeyboardShortcutsSettings: React.FC<KeyboardShortcutsSettingsProps>
 
   const handleConfirm = useCallback(() => {
     if (!recordingId || pendingKeys.length === 0) return;
+    if (!pendingValidation.valid) {
+      setConflictMsg(
+        "Shortcut conflicts: " +
+          pendingValidation.conflicts.map((pair) => pair.join(" / ")).join(", ")
+      );
+      return;
+    }
+
     const result = setBinding(recordingId, pendingKeys);
     if (!result.success) {
       setConflictMsg("与以下快捷键冲突: " + result.conflicts.join(", "));
     }
     setRecordingId(null);
     setPendingKeys([]);
-  }, [recordingId, pendingKeys, setBinding]);
+  }, [pendingValidation, recordingId, pendingKeys, setBinding]);
 
   const handleCancel = () => {
     setRecordingId(null);
@@ -110,7 +127,12 @@ export const KeyboardShortcutsSettings: React.FC<KeyboardShortcutsSettingsProps>
                             </kbd>
                             {pendingKeys.length > 0 && (
                               <>
-                                <GlassButton size="sm" variant="primary" onClick={handleConfirm}>
+                                <GlassButton
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={handleConfirm}
+                                  disabled={!pendingValidation.valid}
+                                >
                                   确认
                                 </GlassButton>
                                 <GlassButton size="sm" variant="ghost" onClick={handleCancel}>
@@ -145,6 +167,12 @@ export const KeyboardShortcutsSettings: React.FC<KeyboardShortcutsSettingsProps>
                                 重置
                               </button>
                             )}
+                            <button
+                              onClick={() => setBinding(binding.id, [])}
+                              className="text-white/30 hover:text-white/60 text-[11px] transition-colors"
+                            >
+                              Clear
+                            </button>
                           </>
                         )}
                       </div>
@@ -158,6 +186,16 @@ export const KeyboardShortcutsSettings: React.FC<KeyboardShortcutsSettingsProps>
         {conflictMsg && (
           <div className="mx-3 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-xl">
             <p className="text-red-400 text-xs">{conflictMsg}</p>
+          </div>
+        )}
+        {(!globalValidation.valid || !pendingValidation.valid) && (
+          <div className="mx-3 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+            <p className="text-amber-300 text-xs">
+              Shortcut conflict:{" "}
+              {[...globalValidation.conflicts, ...pendingValidation.conflicts]
+                .map((pair) => pair.join(" / "))
+                .join(", ")}
+            </p>
           </div>
         )}
       </div>

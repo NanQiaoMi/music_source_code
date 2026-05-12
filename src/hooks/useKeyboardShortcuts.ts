@@ -5,6 +5,40 @@ import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { useKeyboardShortcutsStore } from "@/store/keyboardShortcutsStore";
 
+export interface ShortcutValidationResult {
+  valid: boolean;
+  conflicts: [string, string][];
+}
+
+export function normalizeShortcutValue(value: string | string[]): string {
+  return Array.isArray(value) ? value.join("+") : value;
+}
+
+export function validateShortcutMap(
+  shortcuts: Record<string, string | string[]>
+): ShortcutValidationResult {
+  const seen = new Map<string, string>();
+  const conflicts: [string, string][] = [];
+
+  Object.entries(shortcuts).forEach(([id, value]) => {
+    const normalized = normalizeShortcutValue(value).trim();
+    if (!normalized) return;
+
+    const existing = seen.get(normalized);
+    if (existing) {
+      conflicts.push([existing, id]);
+      return;
+    }
+
+    seen.set(normalized, id);
+  });
+
+  return {
+    valid: conflicts.length === 0,
+    conflicts,
+  };
+}
+
 function matchKeys(e: KeyboardEvent, pattern: string[]): boolean {
   const hasCtrl = e.ctrlKey || e.metaKey;
   const hasShift = e.shiftKey;

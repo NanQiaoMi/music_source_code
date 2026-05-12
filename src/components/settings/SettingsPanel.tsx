@@ -37,8 +37,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   const [fadeInOut, setFadeInOut] = useState(true);
   const [autoPause, setAutoPause] = useState(false);
+  const [settingsSearch, setSettingsSearch] = useState("");
 
   const speedOptions = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+  const hasSearch = settingsSearch.trim().length > 0;
+  const matchesSetting = (keywords: string) =>
+    !hasSearch || keywords.toLowerCase().includes(settingsSearch.trim().toLowerCase());
 
   return (
     <GlassPanel
@@ -61,8 +65,17 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       }
     >
       <div className="p-5 space-y-7">
+        <input
+          value={settingsSearch}
+          onChange={(e) => setSettingsSearch(e.target.value)}
+          placeholder="搜索设置"
+          className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/30"
+        />
+
         {/* Volume */}
-        <div className="space-y-3">
+        <div
+          className={`space-y-3 ${matchesSetting("volume mute audio 音量 静音") ? "" : "hidden"}`}
+        >
           <div className="flex items-center justify-between">
             <h3 className="text-[13px] font-medium text-white/80">音量</h3>
             <button
@@ -116,7 +129,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </div>
 
         {/* Playback Speed */}
-        <div className="space-y-3">
+        <div
+          className={`space-y-3 ${matchesSetting("playback speed rate 播放 速度") ? "" : "hidden"}`}
+        >
           <h3 className="text-[13px] font-medium text-white/80">播放速度</h3>
           <div className="grid grid-cols-3 gap-1.5">
             {speedOptions.map((speed) => (
@@ -155,7 +170,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </div>
 
         {/* Audio Effects */}
-        <div className="space-y-3">
+        <div
+          className={`space-y-3 ${
+            matchesSetting("audio effects eq bass treble vocal surround stereo 音效 均衡器")
+              ? ""
+              : "hidden"
+          }`}
+        >
           <h3 className="text-[13px] font-medium text-white/80">音频效果</h3>
 
           <button
