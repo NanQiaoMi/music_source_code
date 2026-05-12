@@ -37,6 +37,32 @@ function getPeriodLabel(hour: number): string {
   return "深夜型";
 }
 
+export function getTopTimeWindow(hourlyDistribution: Record<number, number>): {
+  label: string;
+  startHour: number;
+  count: number;
+} {
+  const [hour, count] = Object.entries(hourlyDistribution).sort(
+    (a, b) => Number(b[1]) - Number(a[1])
+  )[0] || ["0", 0];
+  const startHour = Number(hour);
+  const endHour = (startHour + 1) % 24;
+
+  return {
+    label: `${String(startHour).padStart(2, "0")}:00-${String(endHour).padStart(2, "0")}:00`,
+    startHour,
+    count: Number(count) || 0,
+  };
+}
+
+export function getListeningNextAction(summary: ListeningInsightSummary): string {
+  if (summary.skipRate >= 35) return "整理高跳过率歌曲";
+  if (summary.explorationScore < 25) return "试试新歌手发现";
+  if (summary.replayScore >= 40) return "继续复听核心曲目";
+  if (summary.completionRate < 65) return "开启完整专注收听";
+  return summary.trend === "cooling" ? "开启完整专注收听" : "继续复听核心曲目";
+}
+
 export function summarizeListeningStats(stats: ListeningStats): ListeningInsightSummary {
   const total = Math.max(1, stats.totalPlayCount || 0);
   const completionRate = clampPercent(((stats.completedSongsCount || 0) / total) * 100);

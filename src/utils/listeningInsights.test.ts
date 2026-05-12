@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Achievement, ListeningStats } from "@/store/statsAchievementsStore";
-import { getAchievementSpotlights, summarizeListeningStats } from "./listeningInsights";
+import {
+  getAchievementSpotlights,
+  getListeningNextAction,
+  getTopTimeWindow,
+  summarizeListeningStats,
+} from "./listeningInsights";
 
 const baseStats: ListeningStats = {
   totalPlayCount: 100,
@@ -123,5 +128,37 @@ describe("listeningInsights", () => {
     expect(spotlight.unlockedRecently.map((item) => item.id)).toEqual(["a"]);
     expect(spotlight.nearlyUnlocked.map((item) => item.id)).toEqual(["b", "c", "d"]);
     expect(spotlight.recommended[0].id).toBe("b");
+  });
+
+  it("returns the busiest listening time window", () => {
+    const window = getTopTimeWindow({ 8: 2, 21: 8, 22: 6 });
+
+    expect(window).toEqual({
+      label: "21:00-22:00",
+      startHour: 21,
+      count: 8,
+    });
+  });
+
+  it("suggests整理高跳过率歌曲 when skip rate is high", () => {
+    const summary = summarizeListeningStats({
+      ...baseStats,
+      skippedSongsCount: 45,
+      completedSongsCount: 40,
+    });
+
+    expect(getListeningNextAction(summary)).toBe("整理高跳过率歌曲");
+  });
+
+  it("suggests trying new artists when exploration is low", () => {
+    const summary = summarizeListeningStats({
+      ...baseStats,
+      uniqueArtists: 8,
+      uniqueSongs: 95,
+      skippedSongsCount: 5,
+      completedSongsCount: 85,
+    });
+
+    expect(getListeningNextAction(summary)).toBe("试试新歌手发现");
   });
 });

@@ -13,7 +13,12 @@ import {
   ProToolMasteryRadar,
   MoodFlow,
 } from "@/components/stats/StatsVisuals";
-import { getAchievementSpotlights, summarizeListeningStats } from "@/utils/listeningInsights";
+import {
+  getAchievementSpotlights,
+  getListeningNextAction,
+  getTopTimeWindow,
+  summarizeListeningStats,
+} from "@/utils/listeningInsights";
 
 interface StatsAchievementsPanelProps {
   isOpen: boolean;
@@ -108,6 +113,8 @@ export const StatsAchievementsPanel: React.FC<StatsAchievementsPanelProps> = ({
 
 function OverviewTab({ stats }: { stats: any }) {
   const summary = summarizeListeningStats(stats);
+  const topWindow = getTopTimeWindow(stats.hourlyDistribution || {});
+  const nextAction = getListeningNextAction(summary);
   const metrics = [
     {
       label: "总播放次数",
@@ -213,6 +220,23 @@ function OverviewTab({ stats }: { stats: any }) {
           <div className="text-white/40 text-xs uppercase tracking-wider mb-2">复听倾向</div>
           <div className="text-white font-semibold text-xl">{summary.replayScore}%</div>
           <div className="text-white/50 text-sm mt-2">{summary.metrics[2]?.hint}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-5 rounded-2xl bg-amber-500/[0.08] border border-amber-500/20">
+          <div className="text-amber-200/60 text-xs uppercase tracking-wider mb-2">建议下一步</div>
+          <div className="text-white font-semibold text-2xl">{nextAction}</div>
+          <div className="text-white/55 text-sm mt-2">
+            根据完成率、跳过率、探索倾向和复听倾向生成，优先处理最影响体验的行为。
+          </div>
+        </div>
+        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+          <div className="text-white/40 text-xs uppercase tracking-wider mb-2">最活跃时段</div>
+          <div className="text-white font-semibold text-2xl">{topWindow.label}</div>
+          <div className="text-white/50 text-sm mt-2">
+            该时段累计 {topWindow.count} 次播放，可用于推荐、提醒和首页默认歌单排序。
+          </div>
         </div>
       </div>
     </div>
