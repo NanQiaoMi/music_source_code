@@ -60,6 +60,11 @@ function isQuotaExceededError(error: unknown): boolean {
   );
 }
 
+function clampQueueIndex(index: number, length: number): number {
+  if (length <= 0) return 0;
+  return Math.max(0, Math.min(index, length - 1));
+}
+
 interface QueueState {
   queue: Song[];
   currentIndex: number;
@@ -70,11 +75,13 @@ interface QueueState {
   setCurrentIndex: (index: number) => void;
   addToQueue: (song: Song) => void;
   insertNext: (song: Song) => void;
+  moveToNext: (index: number) => void;
   removeFromQueue: (index: number) => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
   removeFromQueueById: (id: string) => void;
   removeMultipleFromQueue: (indices: number[]) => void;
   clearQueue: () => void;
+  clearPlayed: () => void;
   addToHistory: (song: Song) => void;
   clearHistory: () => void;
 
@@ -93,9 +100,16 @@ export const useQueueStore = create<QueueState>()(
       history: [],
       playThroughMode: "normal",
 
-      setQueue: (songs) => set({ queue: songs }),
+      setQueue: (songs) =>
+        set((state) => ({
+          queue: songs,
+          currentIndex: clampQueueIndex(state.currentIndex, songs.length),
+        })),
 
-      setCurrentIndex: (index) => set({ currentIndex: index }),
+      setCurrentIndex: (index) =>
+        set((state) => ({
+          currentIndex: clampQueueIndex(index, state.queue.length),
+        })),
 
       addToQueue: (song) =>
         set((state) => ({
@@ -110,6 +124,31 @@ export const useQueueStore = create<QueueState>()(
           const newQueue = [...state.queue];
           newQueue.splice(state.currentIndex + 1, 0, song);
           return { queue: newQueue };
+        }),
+
+      moveToNext: (index) =>
+        set((state) => {
+          if (
+            index < 0 ||
+            index >= state.queue.length ||
+            index === state.currentIndex ||
+            index === state.currentIndex + 1
+          ) {
+            return {};
+          }
+
+          const currentSong = state.queue[state.currentIndex];
+          const songToMove = state.queue[index];
+          const newQueue = state.queue.filter((_, itemIndex) => itemIndex !== index);
+          const currentIndexAfterRemoval = newQueue.findIndex((song) => song.id === currentSong.id);
+          const insertAt = Math.min(currentIndexAfterRemoval + 1, newQueue.length);
+
+          newQueue.splice(insertAt, 0, songToMove);
+
+          return {
+            queue: newQueue,
+            currentIndex: newQueue.findIndex((song) => song.id === currentSong.id),
+          };
         }),
 
       removeFromQueue: (index) =>
@@ -148,6 +187,16 @@ export const useQueueStore = create<QueueState>()(
         }),
 
       clearQueue: () => set({ queue: [], currentIndex: 0 }),
+
+      clearPlayed: () =>
+        set((state) => {
+          if (state.currentIndex <= 0) return {};
+
+          return {
+            queue: state.queue.slice(state.currentIndex),
+            currentIndex: 0,
+          };
+        }),
 
       removeFromQueueById: (id) =>
         set((state) => {
@@ -241,6 +290,7 @@ export const useQueueStore = create<QueueState>()(
         queue: state.queue.map(sanitizePersistedSong),
         currentIndex: state.currentIndex,
         history: state.history,
+        playThroughMode: state.playThroughMode,
       }),
       storage: {
         getItem: (name) => {

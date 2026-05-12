@@ -126,6 +126,78 @@ describe("queueStore", () => {
       expect(parsed.state.queue).toEqual([]);
       expect(parsed.state.currentIndex).toBe(0);
     });
+
+    it("should persist play-through mode with the queue state", () => {
+      const store = useQueueStore.getState();
+
+      store.setPlayThroughMode("play-through");
+
+      const persisted = localStorage.getItem("queue-store-v5");
+      expect(persisted).not.toBeNull();
+
+      const parsed = JSON.parse(persisted!);
+      expect(parsed.state.playThroughMode).toBe("play-through");
+    });
+  });
+
+  describe("queue invariants", () => {
+    it("should clamp currentIndex when set beyond queue bounds", () => {
+      const store = useQueueStore.getState();
+      store.setQueue([createMockSong("1"), createMockSong("2")]);
+
+      store.setCurrentIndex(99);
+
+      expect(useQueueStore.getState().currentIndex).toBe(1);
+    });
+
+    it("should keep currentIndex within queue bounds after removing the current song", () => {
+      const songs = [createMockSong("a"), createMockSong("b"), createMockSong("c")];
+      const store = useQueueStore.getState();
+
+      store.setQueue(songs);
+      store.setCurrentIndex(2);
+      store.removeFromQueue(2);
+
+      expect(useQueueStore.getState().currentIndex).toBe(1);
+      expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual(["a", "b"]);
+    });
+
+    it("should move a later queue item directly after the current song", () => {
+      const store = useQueueStore.getState();
+      store.setQueue([
+        createMockSong("current"),
+        createMockSong("next"),
+        createMockSong("later"),
+        createMockSong("last"),
+      ]);
+      store.setCurrentIndex(0);
+
+      store.moveToNext(2);
+
+      expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual([
+        "current",
+        "later",
+        "next",
+        "last",
+      ]);
+      expect(useQueueStore.getState().currentIndex).toBe(0);
+    });
+
+    it("should clear played queue items and keep the active song at index zero", () => {
+      const store = useQueueStore.getState();
+      store.setQueue([
+        createMockSong("played-1"),
+        createMockSong("played-2"),
+        createMockSong("current"),
+        createMockSong("next"),
+      ]);
+      store.setCurrentIndex(2);
+
+      store.clearPlayed();
+
+      expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual(["current", "next"]);
+      expect(useQueueStore.getState().currentIndex).toBe(0);
+    });
   });
 
   describe("insertNext", () => {

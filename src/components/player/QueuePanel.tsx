@@ -6,9 +6,10 @@ import Image from "next/image";
 import { useQueueStore } from "@/store/queueStore";
 import { useAudioStore } from "@/store/audioStore";
 import { formatTime } from "@/utils/formatTime";
-import { GlassPanel } from "@/components/shared/Glass";
+import { EmptyState, GlassPanel } from "@/components/shared/Glass";
 import { GlassButton } from "@/components/shared/GlassButton";
 import { Song } from "@/types/song";
+import { CornerDownRight, GripVertical, ListMusic, Trash2 } from "lucide-react";
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
@@ -24,8 +25,10 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
     removeFromQueue,
     removeMultipleFromQueue,
     clearQueue,
+    clearPlayed,
     reorderQueue,
     addToQueue,
+    moveToNext,
   } = useQueueStore();
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -183,6 +186,14 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
           >
             全选
           </button>
+          {currentIndex > 0 && (
+            <button
+              onClick={clearPlayed}
+              className="text-white/60 hover:text-white text-[13px] px-3 py-1 rounded-full hover:bg-white/10 transition-colors"
+            >
+              清除已播放
+            </button>
+          )}
           <button
             onClick={clearQueue}
             className="text-white/60 hover:text-white text-[13px] px-3 py-1 rounded-full hover:bg-white/10 transition-colors"
@@ -202,7 +213,11 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
       onClose={onClose}
       title="播放队列"
       headerRight={headerRight}
-      footer={<p className="text-white/40 text-[13px] text-center">共 {queue.length} 首歌曲</p>}
+      footer={
+        <p className="text-white/40 text-[13px] text-center">
+          共 {queue.length} 首歌曲{queue.length > 0 ? ` · 当前第 ${currentIndex + 1} 首` : ""}
+        </p>
+      }
     >
       <div
         className="p-3 space-y-1 min-h-[200px]"
@@ -220,23 +235,11 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
         }}
       >
         {queue.length === 0 ? (
-          <div className="text-center py-16 text-white/30">
-            <svg
-              className="w-14 h-14 mx-auto mb-3 opacity-40"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M4 6h16M4 10h16M4 14h16M4 18h16"
-              />
-            </svg>
-            <p className="text-[13px]">播放队列为空</p>
-            <p className="text-[11px] text-white/20 mt-1">从音乐库拖入歌曲到此处</p>
-          </div>
+          <EmptyState
+            icon={<ListMusic className="w-14 h-14" />}
+            title="播放队列为空"
+            description="从音乐库、搜索结果或推荐中添加歌曲。"
+          />
         ) : (
           queue.map((song, index) => (
             <div
@@ -250,8 +253,8 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                 handleDragEnd();
                 handleRemoveOnDragEnd(e);
               }}
-              className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all duration-150
-                ${index === currentIndex ? "bg-white/[0.12]" : "hover:bg-white/[0.06]"}
+              className={`group flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all duration-150
+                ${index === currentIndex ? "bg-white/[0.14] ring-1 ring-white/15" : "hover:bg-white/[0.06]"}
                 ${draggedIndex === index ? "opacity-40" : ""}
                 ${dragOverIndex === index ? "border-t border-white/30" : ""}
                 ${selectedIndices.has(index) ? "bg-white/[0.10] ring-1 ring-white/20" : ""}
@@ -281,9 +284,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
               </div>
 
               <div className="text-white/20 cursor-grab active:cursor-grabbing">
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M9 5h2v2H9V5zm0 4h2v2H9V9zm0 4h2v2H9v-2zm0 4h2v2H9v-2zM5 5h2v2H5V5zm0 4h2v2H5V9zm0 4h2v2H5v-2zm0 4h2v2H5v-2z" />
-                </svg>
+                <GripVertical className="w-3.5 h-3.5" />
               </div>
 
               <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
@@ -312,6 +313,11 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
               </div>
 
               <div className="flex-1 min-w-0">
+                {index === currentIndex && (
+                  <div className="mb-0.5 text-[9px] font-semibold tracking-[0.18em] text-white/45">
+                    正在播放
+                  </div>
+                )}
                 <h4
                   className={`text-[13px] font-medium truncate ${index === currentIndex ? "text-white" : "text-white/80"}`}
                 >
@@ -325,18 +331,24 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  moveToNext(index);
+                }}
+                disabled={index === currentIndex || index === currentIndex + 1}
+                className="text-white/20 hover:text-white transition-colors p-1 disabled:opacity-20 disabled:cursor-not-allowed"
+                title="播放下一首"
+              >
+                <CornerDownRight className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
                   removeFromQueue(index);
                 }}
                 className="text-white/20 hover:text-red-400 transition-colors p-1"
+                title="移出队列"
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
           ))
