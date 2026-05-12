@@ -6,6 +6,7 @@ import {
   calculateFreshnessScore,
   calculateSimilarity,
   generateRecommendations,
+  scoreSongForRecommendation,
   getMaxPlayCount,
   getNormalizedPlay,
   type SongWithPlayCount,
@@ -154,6 +155,30 @@ describe("recommendationLogic", () => {
       ];
 
       expect(generateRecommendations(songs, { x: 0, y: 0 }, 10)).toHaveLength(2);
+    });
+  });
+
+  describe("scoreSongForRecommendation", () => {
+    it("adds reason codes for matching artist, genre, and replay pattern", () => {
+      const candidateSong = createSong({
+        id: "candidate",
+        artist: "Candidate Artist",
+        genre: "Electronic",
+        playCount: 4,
+      });
+      const recentSong = createSong({ id: "recent", artist: "Other Artist", genre: "Pop" });
+
+      const result = scoreSongForRecommendation(candidateSong, {
+        recentSongs: [recentSong],
+        topArtists: ["Candidate Artist"],
+        topGenres: ["Electronic"],
+        skippedSongIds: new Set(),
+      });
+
+      expect(result.reasons.map((reason) => reason.code)).toEqual(
+        expect.arrayContaining(["artist-match", "genre-match", "replay-friendly"])
+      );
+      expect(result.score).toBeGreaterThan(50);
     });
   });
 });

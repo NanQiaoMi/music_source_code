@@ -20,6 +20,25 @@ export interface SongWithScore extends SongWithPlayCount {
   _finalScore: number;
 }
 
+export interface RecommendationReason {
+  code: "artist-match" | "genre-match" | "fresh-discovery" | "replay-friendly" | "skip-avoidance";
+  label: string;
+  weight: number;
+}
+
+export interface RecommendationContext {
+  recentSongs: Song[];
+  topArtists: string[];
+  topGenres: string[];
+  skippedSongIds: Set<string>;
+}
+
+export interface ScoredRecommendation {
+  song: SongWithPlayCount;
+  score: number;
+  reasons: RecommendationReason[];
+}
+
 export function getMaxPlayCount(songs: SongWithPlayCount[]): number {
   if (songs.length === 0) return 1;
   return Math.max(...songs.map((song) => song.playCount || 0), 1);
@@ -271,4 +290,61 @@ export function generateRecommendations(
   }
 
   return selectedSongs;
+}
+
+export function scoreSongForRecommendation(
+  song: SongWithPlayCount,
+  context: RecommendationContext
+): ScoredRecommendation {
+  const reasons: RecommendationReason[] = [];
+  let score = 50;
+  const recentIds = new Set(context.recentSongs.map((recentSong) => recentSong.id));
+
+  if (context.topArtists.includes(song.artist)) {
+    reasons.push({ code: "artist-match", label: "常听歌手", weight: 24 });
+    score += 24;
+  }
+
+  if (song.genre && context.topGenres.includes(song.genre)) {
+    reasons.push({ code: "genre-match", label: "偏好风格", weight: 18 });
+    score += 18;
+  }
+
+  if ((song.playCount || 0) >= 3) {
+    reasons.push({ code: "replay-friendly", label: "适合复听", weight: 14 });
+    score += 14;
+  }
+
+  if (!recentIds.has(song.id) && (song.playCount || 0) <= 1) {
+    reasons.push({ code: "fresh-discovery", label: "新鲜发现", weight: 12 });
+    score += 12;
+  }
+
+  if (!context.skippedSongIds.has(song.id)) {
+    reasons.push({ code: "skip-avoidance", label: "低跳过风险", weight: 8 });
+    score += 8;
+  } else {
+    score -= 20;
+  }
+
+  return {
+    song,
+    score: Math.max(0, score),
+    reasons,
+  };
+}
+
+export function generateExplainableRecommendations(
+  songs: SongWithPlayCount[],
+  context: RecommendationContext,
+  limit: number = 20,
+  dismissedSongIds: string[] = []
+): ScoredRecommendation[] {
+  const dismissed = new Set(dismissedSongIds);
+
+  return songs
+    .filter((song) => !dismissed.has(song.id))
+    .map((song) => scoreSongForRecommendation(song, context))
+    .sort((a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title))
+    .slice(0, limit);
 }

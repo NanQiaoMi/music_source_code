@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDailyRecommendation } from "@/hooks/useDailyRecommendation";
 import { useAudioStore } from "@/store/audioStore";
-import { X, Sparkles, Play, RefreshCw, Clock, Music } from "lucide-react";
+import { useQueueStore } from "@/store/queueStore";
+import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
+import { scoreSongForRecommendation } from "@/utils/recommendationLogic";
+import { X, Sparkles, Play, RefreshCw, Clock, Music, Plus, ListPlus, EyeOff } from "lucide-react";
 
 interface DailyRecommendationProps {
   isOpen: boolean;
@@ -12,22 +15,74 @@ interface DailyRecommendationProps {
 }
 
 export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen, onClose }) => {
-  const { recommendation, isLoading, refreshRecommendation, playAll, hasRecommendation } =
+  const { recommendation, isLoading, refreshRecommendation, hasRecommendation } =
     useDailyRecommendation();
+  const addToQueue = useQueueStore((state) => state.addToQueue);
+  const insertNext = useQueueStore((state) => state.insertNext);
+  const history = useQueueStore((state) => state.history);
+  const playQueue = useAudioStore((state) => state.playQueue);
+  const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dismissedSongIds, setDismissedSongIds] = useState<Set<string>>(new Set());
+
+  const visibleRecommendation = useMemo(
+    () => recommendation.filter((song) => !dismissedSongIds.has(song.id)),
+    [dismissedSongIds, recommendation]
+  );
+
+  const recommendationReasons = useMemo(() => {
+    const topArtists = (listeningStats.topArtists || []).slice(0, 5).map((item) => item.artist);
+    const topGenres = (listeningStats.genreDistribution || []).slice(0, 5).map((item) => item.genre);
+    const recentSongs = history.slice(0, 20).map((song) => ({
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
+      duration: song.duration,
+      cover: song.cover,
+      source: "local",
+    }));
+    const playCounts = new Map(
+      (listeningStats.topSongs || []).map((item) => [item.song.id, item.playCount])
+    );
+
+    return new Map(
+      visibleRecommendation.map((song) => [
+        song.id,
+        scoreSongForRecommendation(
+          { ...song, playCount: playCounts.get(song.id) || song.playCount || 0 },
+          {
+            recentSongs,
+            topArtists,
+            topGenres,
+            skippedSongIds: new Set(),
+          }
+        ).reasons.slice(0, 3),
+      ])
+    );
+  }, [history, listeningStats, visibleRecommendation]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    setDismissedSongIds(new Set());
     refreshRecommendation();
     setTimeout(() => setIsRefreshing(false), 1000);
   };
 
   const handlePlayAll = () => {
-    playAll(0);
+    if (visibleRecommendation.length > 0) {
+      playQueue(visibleRecommendation, 0);
+    }
   };
 
   const handlePlaySong = (index: number) => {
-    playAll(index);
+    if (visibleRecommendation.length > 0) {
+      playQueue(visibleRecommendation, index);
+    }
+  };
+
+  const handleDismiss = (songId: string) => {
+    setDismissedSongIds((current) => new Set([...current, songId]));
   };
 
   const formatTime = (date: Date): string => {
@@ -86,7 +141,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
           <div className="p-4 border-b border-white/10">
             <button
               onClick={handlePlayAll}
-              disabled={!hasRecommendation}
+              disabled={visibleRecommendation.length === 0}
               className="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play className="w-5 h-5" />
@@ -107,7 +162,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                   <div className="w-12 h-12 rounded-full border-4 border-purple-500/30 border-t-purple-500 animate-spin" />
                   <p className="text-white/60 mt-4">正在生成推荐...</p>
                 </motion.div>
-              ) : !hasRecommendation || recommendation?.length === 0 ? (
+              ) : !hasRecommendation || visibleRecommendation.length === 0 ? (
                 <motion.div
                   key="empty"
                   initial={{ opacity: 0 }}
@@ -129,7 +184,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                   exit={{ opacity: 0 }}
                   className="space-y-2"
                 >
-                  {recommendation?.map((song, index) => (
+                  {visibleRecommendation.map((song, index) => (
                     <motion.div
                       key={song.id}
                       initial={{ opacity: 0, y: 10 }}
@@ -153,6 +208,16 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                       <div className="flex-1 min-w-0">
                         <h4 className="text-white font-medium truncate">{song.title}</h4>
                         <p className="text-white/50 text-sm truncate">{song.artist}</p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {(recommendationReasons.get(song.id) || []).map((reason) => (
+                            <span
+                              key={reason.code}
+                              className="rounded-full bg-white/[0.07] px-2 py-0.5 text-[10px] text-white/45"
+                            >
+                              {reason.label}
+                            </span>
+                          ))}
+                        </div>
                       </div>
 
                       {song.duration > 0 && (
@@ -169,8 +234,39 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                           handlePlaySong(index);
                         }}
                         className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="立即播放"
                       >
                         <Play className="w-4 h-4 text-white" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addToQueue(song);
+                        }}
+                        className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="加入队列"
+                      >
+                        <Plus className="w-4 h-4 text-white" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          insertNext(song);
+                        }}
+                        className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="播放下一首"
+                      >
+                        <ListPlus className="w-4 h-4 text-white" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDismiss(song.id);
+                        }}
+                        className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="忽略本次推荐"
+                      >
+                        <EyeOff className="w-4 h-4 text-white" />
                       </button>
                     </motion.div>
                   ))}

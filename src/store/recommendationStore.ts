@@ -1,7 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Song } from "@/types/song";
-import { SongWithPlayCount, generateRecommendations } from "@/utils/recommendationLogic";
+import {
+  RecommendationContext,
+  ScoredRecommendation,
+  SongWithPlayCount,
+  generateExplainableRecommendations,
+  generateRecommendations,
+} from "@/utils/recommendationLogic";
 import { usePlaylistStore } from "./playlistStore";
 import { useEmotionStore } from "./emotionStore";
 
@@ -16,11 +22,16 @@ interface PlayRecord {
 
 interface RecommendationState {
   playHistory: PlayRecord[];
-  recommendations: Song[];
+  recommendations: ScoredRecommendation[];
+  dismissedSongIds: string[];
+  lastGeneratedAt: number;
   isLoading: boolean;
 
   recordPlay: (song: Song) => void;
   getRecommendations: () => Song[];
+  refreshRecommendations: (songs: Song[], context: RecommendationContext) => void;
+  dismissRecommendation: (songId: string) => void;
+  clearDismissedRecommendations: () => void;
   clearPlayHistory: () => void;
   getFavoriteArtists: () => { artist: string; playCount: number }[];
 }
@@ -30,6 +41,8 @@ export const useRecommendationStore = create<RecommendationState>()(
     (set, get) => ({
       playHistory: [],
       recommendations: [],
+      dismissedSongIds: [],
+      lastGeneratedAt: 0,
       isLoading: false,
 
       recordPlay: (song) => {
@@ -65,7 +78,11 @@ export const useRecommendationStore = create<RecommendationState>()(
       },
 
       getRecommendations: () => {
-        const { playHistory } = get();
+        const { playHistory, recommendations } = get();
+        if (recommendations.length > 0) {
+          return recommendations.map((recommendation) => recommendation.song);
+        }
+
         if (playHistory.length === 0) return [];
 
         const allSongs = usePlaylistStore.getState().songs;
@@ -85,6 +102,39 @@ export const useRecommendationStore = create<RecommendationState>()(
 
         return generateRecommendations(songsWithCount, { x: emotion.x, y: emotion.y }, 20);
       },
+
+      refreshRecommendations: (songs, context) => {
+        const { dismissedSongIds } = get();
+        const historyMap = new Map<string, number>();
+        get().playHistory.forEach((record) => historyMap.set(record.songId, record.playCount));
+
+        const songsWithCount: SongWithPlayCount[] = songs.map((song) => ({
+          ...song,
+          playCount: historyMap.get(song.id) || (song as SongWithPlayCount).playCount || 0,
+          lastPlayedAt: get().playHistory.find((record) => record.songId === song.id)?.lastPlayed,
+          addedAt: (song as SongWithPlayCount).addedAt,
+        }));
+
+        set({
+          recommendations: generateExplainableRecommendations(
+            songsWithCount,
+            context,
+            20,
+            dismissedSongIds
+          ),
+          lastGeneratedAt: Date.now(),
+        });
+      },
+
+      dismissRecommendation: (songId) =>
+        set((state) => ({
+          dismissedSongIds: state.dismissedSongIds.includes(songId)
+            ? state.dismissedSongIds
+            : [...state.dismissedSongIds, songId].slice(-100),
+          recommendations: state.recommendations.filter((item) => item.song.id !== songId),
+        })),
+
+      clearDismissedRecommendations: () => set({ dismissedSongIds: [] }),
 
       clearPlayHistory: () => set({ playHistory: [] }),
 

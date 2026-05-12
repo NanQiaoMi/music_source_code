@@ -7,6 +7,8 @@ describe("recommendationStore", () => {
     useRecommendationStore.setState({
       playHistory: [],
       recommendations: [],
+      dismissedSongIds: [],
+      lastGeneratedAt: 0,
       isLoading: false,
     });
     usePlaylistStore.setState({
@@ -157,5 +159,37 @@ describe("recommendationStore", () => {
     useRecommendationStore.getState().clearPlayHistory();
 
     expect(useRecommendationStore.getState().playHistory).toHaveLength(0);
+  });
+
+  it("refreshRecommendations stores explainable recommendations", () => {
+    const store = useRecommendationStore.getState();
+    store.refreshRecommendations(usePlaylistStore.getState().songs, {
+      recentSongs: [],
+      topArtists: ["Artist A"],
+      topGenres: [],
+      skippedSongIds: new Set(),
+    });
+
+    const recommendations = useRecommendationStore.getState().recommendations;
+    expect(recommendations.length).toBeGreaterThan(0);
+    expect(recommendations[0].song.id).toBeDefined();
+    expect(recommendations[0].reasons.length).toBeGreaterThan(0);
+    expect(useRecommendationStore.getState().lastGeneratedAt).toBeGreaterThan(0);
+  });
+
+  it("dismissRecommendation removes a song from stored recommendations", () => {
+    const store = useRecommendationStore.getState();
+    store.refreshRecommendations(usePlaylistStore.getState().songs, {
+      recentSongs: [],
+      topArtists: ["Artist A"],
+      topGenres: [],
+      skippedSongIds: new Set(),
+    });
+
+    const firstId = useRecommendationStore.getState().recommendations[0].song.id;
+    store.dismissRecommendation(firstId);
+
+    expect(useRecommendationStore.getState().dismissedSongIds).toContain(firstId);
+    expect(useRecommendationStore.getState().recommendations.some((item) => item.song.id === firstId)).toBe(false);
   });
 });
