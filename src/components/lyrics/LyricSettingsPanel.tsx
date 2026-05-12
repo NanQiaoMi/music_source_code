@@ -95,6 +95,57 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
     },
   ];
 
+  const readablePresets = [
+    {
+      name: "Compact",
+      description: "Smaller text and tighter line spacing",
+      apply: () => {
+        setFontSize(14);
+        setLineHeight(1.2);
+        setFontWeight(600);
+        setOpacity(0.9);
+        setShowTranslation(false);
+        setShowTransliteration(false);
+        setInactiveLineColor("rgba(255,255,255,0.45)");
+        setTextShadow(false);
+      },
+    },
+    {
+      name: "Focus",
+      description: "Larger current line with stronger dimming",
+      apply: () => {
+        setFontSize(22);
+        setLineHeight(1.6);
+        setFontWeight(800);
+        setOpacity(1);
+        setShowTranslation(false);
+        setShowTransliteration(false);
+        setCurrentLineColor("#ffffff");
+        setInactiveLineColor("rgba(255,255,255,0.28)");
+        setTextShadow(true);
+        setTextShadowBlur(28);
+      },
+    },
+    {
+      name: "Karaoke",
+      description: "Bright lead line and visible translation",
+      apply: () => {
+        setFontSize(20);
+        setLineHeight(1.5);
+        setFontWeight(900);
+        setOpacity(1);
+        setShowTranslation(true);
+        setShowTransliteration(false);
+        setCurrentLineColor("#fff7ad");
+        setInactiveLineColor("rgba(255,255,255,0.35)");
+        setTranslationColor("rgba(255,255,255,0.82)");
+        setTextShadow(true);
+        setTextShadowColor("rgba(255,210,90,0.35)");
+        setTextShadowBlur(24);
+      },
+    },
+  ];
+
   return (
     <GlassPanel position="left" size="sm" isOpen={isOpen} onClose={onClose} title="歌词设置">
       <div className="p-5 space-y-7">
@@ -121,6 +172,22 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                   <span className="text-white text-sm font-medium">{preset.name}</span>
                 </div>
                 <p className="text-white/50 text-xs">{preset.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-white font-medium">Readable presets</h3>
+          <div className="grid grid-cols-1 gap-2">
+            {readablePresets.map((preset) => (
+              <button
+                key={preset.name}
+                onClick={preset.apply}
+                className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-left"
+              >
+                <div className="text-white text-sm font-medium">{preset.name}</div>
+                <p className="text-white/50 text-xs mt-1">{preset.description}</p>
               </button>
             ))}
           </div>
