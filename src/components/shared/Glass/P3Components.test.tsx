@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
 import type { Song } from "@/types/song";
 
 describe("GlassInput", () => {
@@ -26,6 +27,17 @@ describe("EmptyState", () => {
   it("exports a component", async () => {
     const mod = await import("./EmptyState");
     expect(mod.EmptyState).toBeDefined();
+  });
+
+  it("renders empty state action when provided", async () => {
+    const { EmptyState } = await import("./EmptyState");
+    const html = renderToStaticMarkup(
+      <EmptyState title="No songs" actionLabel="Import" onAction={() => undefined} />
+    );
+
+    expect(html).toContain("No songs");
+    expect(html).toContain("<button");
+    expect(html).toContain("Import");
   });
 });
 
