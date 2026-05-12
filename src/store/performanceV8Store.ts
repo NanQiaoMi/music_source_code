@@ -12,6 +12,8 @@ interface PerformanceState {
   drawCalls: number;
   gpuMemory: number; // 单位: MB
   isWebGLAvailable: boolean;
+  lowFpsStartedAt: number | null;
+  needsRecovery: boolean;
 
   setPerformanceLevel: (level: PerformanceLevel) => void;
   updateStats: (stats: {
@@ -22,7 +24,11 @@ interface PerformanceState {
     gpuMemory: number;
   }) => void;
   setWebGLAvailable: (available: boolean) => void;
+  resetRecoveryState: () => void;
 }
+
+const LOW_FPS_THRESHOLD = 20;
+const LOW_FPS_RECOVERY_MS = 5000;
 
 const PERFORMANCE_CONFIGS: Record<PerformanceLevel, PerformanceConfig> = {
   low: {
@@ -65,19 +71,33 @@ export const usePerformanceV8Store = create<PerformanceState>()(
       drawCalls: 0,
       gpuMemory: 0,
       isWebGLAvailable: typeof WebGLRenderingContext !== "undefined",
+      lowFpsStartedAt: null,
+      needsRecovery: false,
 
-      setPerformanceLevel: (level) => set({ config: PERFORMANCE_CONFIGS[level] }),
+      setPerformanceLevel: (level) =>
+        set({ config: PERFORMANCE_CONFIGS[level], lowFpsStartedAt: null, needsRecovery: false }),
 
       updateStats: (stats) =>
-        set({
-          fps: stats.fps,
-          cpuUsage: stats.cpuUsage,
-          memoryUsage: stats.memoryUsage,
-          drawCalls: stats.drawCalls,
-          gpuMemory: stats.gpuMemory,
+        set((state) => {
+          const now = Date.now();
+          const isLowFps = stats.fps > 0 && stats.fps < LOW_FPS_THRESHOLD;
+          const lowFpsStartedAt = isLowFps ? (state.lowFpsStartedAt ?? now) : null;
+          const lowFpsDuration = lowFpsStartedAt === null ? 0 : now - lowFpsStartedAt;
+
+          return {
+            fps: stats.fps,
+            cpuUsage: stats.cpuUsage,
+            memoryUsage: stats.memoryUsage,
+            drawCalls: stats.drawCalls,
+            gpuMemory: stats.gpuMemory,
+            lowFpsStartedAt,
+            needsRecovery: isLowFps && lowFpsDuration >= LOW_FPS_RECOVERY_MS,
+          };
         }),
 
       setWebGLAvailable: (available) => set({ isWebGLAvailable: available }),
+
+      resetRecoveryState: () => set({ lowFpsStartedAt: null, needsRecovery: false }),
     }),
     {
       name: "performance-v8-store",

@@ -14,13 +14,16 @@ interface VisualizationV8State {
   parameterMode: ParameterMode;
   effectSettings: EffectSettingsV8;
   effects: EffectPlugin[];
+  favoriteEffects: string[];
   isFullscreen: boolean;
 
   setCurrentEffect: (effect: VisualizationEffectV8) => void;
   setCurrentEngine: (engine: RenderEngine) => void;
   setParameterMode: (mode: ParameterMode) => void;
   updateEffectSettings: (effectId: string, settings: Record<string, any>) => void;
+  resetEffectSettings: (effectId: string) => void;
   registerEffect: (effect: EffectPlugin) => void;
+  toggleFavoriteEffect: (effectId: string) => void;
   toggleFullscreen: () => void;
 }
 
@@ -32,6 +35,7 @@ export const useVisualizationV8Store = create<VisualizationV8State>()(
       parameterMode: "basic",
       effectSettings: {},
       effects: [],
+      favoriteEffects: [],
       isFullscreen: false,
 
       setCurrentEffect: (effect) => set({ currentEffect: effect }),
@@ -50,6 +54,25 @@ export const useVisualizationV8Store = create<VisualizationV8State>()(
             },
           },
         })),
+
+      resetEffectSettings: (effectId) =>
+        set((state) => {
+          const effect = state.effects.find((item) => item.id === effectId);
+          if (!effect) return state;
+
+          return {
+            effectSettings: {
+              ...state.effectSettings,
+              [effectId]: effect.parameters.reduce(
+                (acc, param) => ({
+                  ...acc,
+                  [param.id]: param.default,
+                }),
+                {}
+              ),
+            },
+          };
+        }),
 
       registerEffect: (effect) =>
         set((state) => {
@@ -71,6 +94,16 @@ export const useVisualizationV8Store = create<VisualizationV8State>()(
           return state;
         }),
 
+      toggleFavoriteEffect: (effectId) =>
+        set((state) => {
+          const isFavorite = state.favoriteEffects.includes(effectId);
+          return {
+            favoriteEffects: isFavorite
+              ? state.favoriteEffects.filter((id) => id !== effectId)
+              : [effectId, ...state.favoriteEffects].slice(0, 12),
+          };
+        }),
+
       toggleFullscreen: () => set((state) => ({ isFullscreen: !state.isFullscreen })),
     }),
     {
@@ -80,6 +113,7 @@ export const useVisualizationV8Store = create<VisualizationV8State>()(
         currentEngine: state.currentEngine,
         parameterMode: state.parameterMode,
         effectSettings: state.effectSettings,
+        favoriteEffects: state.favoriteEffects,
       }),
     }
   )

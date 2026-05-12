@@ -5,8 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
+import { usePerformanceV8Store } from "@/store/performanceV8Store";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
-import { Settings, X } from "lucide-react";
+import { Gauge, Settings, X } from "lucide-react";
 import { RenderEngineManager } from "./engines/RenderEngineManager";
 import { ResonanceTotemLayer } from "./ResonanceTotemLayer";
 import { VisualControlDrawer } from "./shared/VisualControlDrawer";
@@ -34,6 +35,16 @@ export function VisualizationViewV8() {
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);
   const { currentTheme, blurIntensity, animationSpeed } = useVisualSettingsStore();
+  const {
+    fps,
+    cpuUsage,
+    memoryUsage,
+    isWebGLAvailable,
+    needsRecovery,
+    setPerformanceLevel,
+    setWebGLAvailable,
+    resetRecoveryState,
+  } = usePerformanceV8Store();
   const { seek } = useAudioPlayer();
   const {
     effects,
@@ -60,6 +71,12 @@ export function VisualizationViewV8() {
     memory: number;
   } | null>(null);
 
+  const firstCanvasEffectId = effects.find((effect) => effect.preferredEngine !== "webgl")?.id;
+  const shouldShowRecovery =
+    !currentEffect ||
+    (currentEffect.preferredEngine === "webgl" && !isWebGLAvailable) ||
+    needsRecovery;
+
   useEffect(() => {
     const updateDimensions = () => {
       setDimensions({
@@ -75,6 +92,17 @@ export function VisualizationViewV8() {
       window.removeEventListener("resize", updateDimensions);
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    try {
+      const canvas = document.createElement("canvas");
+      setWebGLAvailable(!!(canvas.getContext("webgl") || canvas.getContext("experimental-webgl")));
+    } catch {
+      setWebGLAvailable(false);
+    }
+  }, [setWebGLAvailable]);
 
   // Sync music time for shaders
   useEffect(() => {
@@ -288,6 +316,60 @@ export function VisualizationViewV8() {
         width={dimensions.width}
         height={dimensions.height}
       />
+
+      {shouldShowRecovery && (
+        <div className="absolute inset-x-0 top-24 z-40 flex justify-center px-4 pointer-events-none">
+          <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-white/15 bg-black/70 backdrop-blur-2xl p-5 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/15 text-amber-200">
+                <Gauge className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-semibold text-white">可视化需要恢复</h3>
+                <p className="mt-1 text-sm text-white/60">
+                  {!currentEffect
+                    ? "当前效果未初始化。"
+                    : currentEffect.preferredEngine === "webgl" && !isWebGLAvailable
+                      ? "当前设备不可用 WebGL，建议切换到 Canvas 效果。"
+                      : `帧率已低于 20 FPS，当前约 ${fps.toFixed(0)} FPS。`}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={!firstCanvasEffectId}
+                    onClick={() => {
+                      if (firstCanvasEffectId) {
+                        setCurrentEffectId(firstCanvasEffectId);
+                      }
+                      resetRecoveryState();
+                    }}
+                    className="rounded-xl bg-white px-3 py-2 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-50"
+                  >
+                    切换 Canvas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPerformanceLevel("low")}
+                    className="rounded-xl bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+                  >
+                    降低质量
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowControlDrawer(true)}
+                    className="rounded-xl bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+                  >
+                    打开控制
+                  </button>
+                </div>
+                <p className="mt-3 text-xs text-white/35">
+                  CPU {cpuUsage.toFixed(0)}% · Memory {memoryUsage.toFixed(0)} MB
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <motion.button
         onClick={handleBack}
