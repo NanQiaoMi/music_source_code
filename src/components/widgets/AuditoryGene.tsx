@@ -14,15 +14,50 @@ import {
 } from "lucide-react";
 import { useKnowledgeStore } from "@/store/knowledgeStore";
 import { useEmotionStore } from "@/store/emotionStore";
+import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
+import { summarizeListeningStats } from "@/utils/listeningInsights";
 
 export const AuditoryGene: React.FC = () => {
   const { dnaJournal, isLoading, generateDNAJournal } = useKnowledgeStore();
   const { points } = useEmotionStore();
+  const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
   const [isHovered, setIsHovered] = useState(false);
+  const summary = summarizeListeningStats(listeningStats);
 
   const handleGenerate = () => {
     const taggedPoints = points.filter((p) => p.isTagged);
-    if (taggedPoints.length === 0) return;
+
+    if (taggedPoints.length === 0) {
+      const genres = (listeningStats.genreDistribution || [])
+        .slice()
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5)
+        .map((item) => item.genre);
+
+      const hourlyDistribution = listeningStats.hourlyDistribution || {};
+      const dominantHour = Number(
+        Object.entries(hourlyDistribution).sort((a, b) => Number(b[1]) - Number(a[1]))[0]?.[0] ?? 21
+      );
+
+      const qualityDistribution = listeningStats.audioQualityDistribution || {};
+      const hiResCount = (qualityDistribution["hi-res"] || 0) + (qualityDistribution.lossless || 0);
+      const avgV = summary.replayScore >= 50 ? -0.15 : 0.2;
+      const avgE = dominantHour >= 18 || dominantHour < 2 ? 0.35 : -0.05;
+
+      let dominantQuadrant = "Q1";
+      if (avgV < 0 && avgE >= 0) dominantQuadrant = "Q2";
+      else if (avgV < 0 && avgE < 0) dominantQuadrant = "Q3";
+      else if (avgV >= 0 && avgE < 0) dominantQuadrant = "Q4";
+
+      generateDNAJournal({
+        totalSongs: listeningStats.uniqueSongs || listeningStats.totalPlayCount || 0,
+        averageValence: avgV,
+        averageEnergy: avgE + (hiResCount > 0 ? 0.1 : 0),
+        dominantQuadrant,
+        genres,
+      });
+      return;
+    }
 
     const totalSongs = taggedPoints.length;
     const avgV = taggedPoints.reduce((acc, p) => acc + (p.x || 0), 0) / totalSongs;
@@ -154,8 +189,8 @@ export const AuditoryGene: React.FC = () => {
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-10 pt-8 border-t border-white/5">
-                <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-4 pt-8 border-t border-white/5">
+                <div className="space-y-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                   <div className="text-[8px] font-black tracking-widest uppercase text-white/20">
                     主导流派 / DOMINANCE
                   </div>
@@ -163,14 +198,76 @@ export const AuditoryGene: React.FC = () => {
                     {dnaJournal.genre}
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                   <div className="text-[8px] font-black tracking-widest uppercase text-white/20">
-                    解析时间 / TIMESTAMP
+                    活跃时段 / RHYTHM
                   </div>
                   <div className="text-[12px] font-bold tracking-[0.1em] text-white/70">
-                    {formattedDate}
+                    {summary.dominantPeriod}
                   </div>
                 </div>
+                <div className="space-y-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+                  <div className="text-[8px] font-black tracking-widest uppercase text-white/20">
+                    探索倾向 / DISCOVERY
+                  </div>
+                  <div className="text-[12px] font-bold tracking-[0.1em] text-white/70">
+                    {summary.explorationScore}%
+                  </div>
+                </div>
+                <div className="space-y-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+                  <div className="text-[8px] font-black tracking-widest uppercase text-white/20">
+                    完整听完率 / FOCUS
+                  </div>
+                  <div className="text-[12px] font-bold tracking-[0.1em] text-white/70">
+                    {summary.completionRate}%
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center gap-3 opacity-30">
+                  <Zap className="w-3.5 h-3.5" />
+                  <span className="text-[9px] font-black tracking-[0.3em] uppercase">
+                    判断证据 / EVIDENCE
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {summary.metrics.map((metric) => (
+                    <div
+                      key={metric.label}
+                      className="rounded-2xl border border-white/5 bg-white/[0.02] p-4"
+                    >
+                      <div className="text-[10px] font-black tracking-[0.2em] uppercase text-white/25">
+                        {metric.label}
+                      </div>
+                      <div className="mt-2 text-lg font-semibold text-white/90">{metric.value}</div>
+                      <div className="mt-1 text-[11px] leading-relaxed text-white/40">
+                        {metric.hint}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-2xl border border-indigo-500/10 bg-indigo-500/[0.04] p-4">
+                  <div className="text-[9px] font-black tracking-[0.3em] text-indigo-300/70 uppercase">
+                    画像结论 / PROFILE SUMMARY
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-white/65">
+                    你的收听习惯更偏向
+                    <span className="text-white"> {summary.dominantPeriod} </span>
+                    节律，主导风格集中在
+                    <span className="text-white"> {summary.dominantGenres.join(" / ") || dnaJournal.genre} </span>
+                    ，近期整体热度
+                    <span className="text-white">
+                      {summary.trend === "rising"
+                        ? " 正在上升"
+                        : summary.trend === "cooling"
+                          ? " 正在降温"
+                          : " 保持稳定"}
+                    </span>
+                    。
+                  </p>
+                </div>
+                <div className="text-[11px] text-white/25 tracking-wide">解析时间：{formattedDate}</div>
               </div>
             </motion.div>
           )}

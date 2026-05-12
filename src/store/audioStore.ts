@@ -300,6 +300,7 @@ export const useAudioStore = create<AudioState>()(
         if (queue.length === 0) {
           const queueStore = useQueueStore.getState();
           if (queueStore.playThroughMode === "play-through") {
+            usePlayerStore.getState().setCurrentSong(null);
             set({ currentSong: null, isPlaying: false });
             return;
           }
@@ -309,6 +310,7 @@ export const useAudioStore = create<AudioState>()(
               queueStore.setQueue(recs);
               queueStore.setCurrentIndex(0);
               queueStore.addToHistory(recs[0]);
+              usePlayerStore.getState().setCurrentSong(recs[0]);
               set({
                 queue: recs,
                 currentIndex: 0,
@@ -319,9 +321,11 @@ export const useAudioStore = create<AudioState>()(
                 error: null,
               });
             } else {
+              usePlayerStore.getState().setCurrentSong(null);
               set({ currentSong: null, isPlaying: false });
             }
           } else {
+            usePlayerStore.getState().setCurrentSong(null);
             set({ currentSong: null, isPlaying: false });
           }
           return;
@@ -340,6 +344,7 @@ export const useAudioStore = create<AudioState>()(
         const queueStore = useQueueStore.getState();
         queueStore.setCurrentIndex(nextIndex);
         queueStore.addToHistory(nextSongItem);
+        usePlayerStore.getState().setCurrentSong(nextSongItem);
 
         set({
           currentIndex: nextIndex,
@@ -368,6 +373,7 @@ export const useAudioStore = create<AudioState>()(
         const queueStore = useQueueStore.getState();
         queueStore.setCurrentIndex(prevIndex);
         queueStore.addToHistory(prevSongItem);
+        usePlayerStore.getState().setCurrentSong(prevSongItem);
 
         set({
           currentIndex: prevIndex,
@@ -392,6 +398,7 @@ export const useAudioStore = create<AudioState>()(
         queueStore.setQueue([song]);
         queueStore.setCurrentIndex(0);
         queueStore.addToHistory(song);
+        usePlayerStore.getState().setCurrentSong(song);
 
         set({
           currentSong: song,
@@ -413,6 +420,7 @@ export const useAudioStore = create<AudioState>()(
         queueStore.setQueue(songs);
         queueStore.setCurrentIndex(index);
         queueStore.addToHistory(songs[index]);
+        usePlayerStore.getState().setCurrentSong(songs[index]);
 
         set({
           queue: songs,
@@ -501,6 +509,7 @@ export const useAudioStore = create<AudioState>()(
         queueStore.setQueue(newQueue);
         queueStore.setCurrentIndex(startIndex);
         queueStore.addToHistory(songs[0]);
+        usePlayerStore.getState().setCurrentSong(songs[0]);
 
         set({
           queue: newQueue,

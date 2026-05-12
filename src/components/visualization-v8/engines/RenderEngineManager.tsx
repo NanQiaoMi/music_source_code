@@ -35,7 +35,7 @@ export function RenderEngineManager({
   const lastTimeRef = useRef<number>(0);
   const startTimeRef = useRef<number>(Date.now());
   const effectRef = useRef<EffectPlugin | null>(null);
-  const dprRef = useRef(window.devicePixelRatio || 1);
+  const dprRef = useRef(1);
   const privateContextRef = useRef<Record<string, any>>({});
 
   const frequencyDataRef = useRef(new Uint8Array(256));
@@ -53,6 +53,28 @@ export function RenderEngineManager({
   const { config, updateStats } = usePerformanceV8Store();
   const frameCountRef = useRef(0);
   const lastFPSUpdateRef = useRef(Date.now());
+
+  const getDisplaySize = useCallback(() => {
+    const fallbackWidth = typeof window !== "undefined" ? window.innerWidth : 0;
+    const fallbackHeight = typeof window !== "undefined" ? window.innerHeight : 0;
+
+    return {
+      displayWidth: width || canvasRef.current?.clientWidth || fallbackWidth,
+      displayHeight: height || canvasRef.current?.clientHeight || fallbackHeight,
+    };
+  }, [height, width]);
+
+  const getQualityDpr = useCallback(() => {
+    const rawDpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const maxDprByQuality = {
+      low: 1,
+      medium: 1.5,
+      high: 1.75,
+      ultra: 2,
+    }[config.webglQuality];
+
+    return Math.max(1, Math.min(rawDpr, maxDprByQuality));
+  }, [config.webglQuality]);
 
   const selectActualEngine = useCallback(
     (preferred: RenderEngine): RenderEngine => {
@@ -73,17 +95,19 @@ export function RenderEngineManager({
     if (!canvasRef.current) return null;
 
     const canvas = canvasRef.current;
-    const dpr = dprRef.current;
+    const { displayWidth, displayHeight } = getDisplaySize();
+    const dpr = getQualityDpr();
 
-    canvas.width = window.innerWidth * dpr;
-    canvas.height = window.innerHeight * dpr;
+    dprRef.current = dpr;
+    canvas.width = Math.max(1, Math.floor(displayWidth * dpr));
+    canvas.height = Math.max(1, Math.floor(displayHeight * dpr));
 
     if (ctx2DRef.current) {
       ctx2DRef.current.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
-    return { displayWidth: window.innerWidth, displayHeight: window.innerHeight };
-  }, []);
+    return { displayWidth, displayHeight };
+  }, [getDisplaySize, getQualityDpr]);
 
   const applyTransform = useCallback(
     (
@@ -184,13 +208,13 @@ export function RenderEngineManager({
       if (!ctx2DRef.current) {
         ctx2DRef.current = canvas.getContext("2d", {
           alpha: true,
+          desynchronized: true,
         });
       }
       setupCanvas();
     }
 
     const handleResize = () => {
-      dprRef.current = window.devicePixelRatio || 1;
       const dimensions = setupCanvas();
 
       if (dimensions && actualEngine === "webgl" && threeSceneRef.current) {
@@ -206,10 +230,11 @@ export function RenderEngineManager({
 
     if (effect && effect !== effectRef.current) {
       if (effectRef.current) {
+        const dimensions = getDisplaySize();
         const cleanupCtx: RenderContext = {
           canvas,
-          width: window.innerWidth,
-          height: window.innerHeight,
+          width: dimensions.displayWidth,
+          height: dimensions.displayHeight,
           deltaTime: 0,
           time: 0,
           ctx: ctx2DRef.current || undefined,
@@ -248,13 +273,26 @@ export function RenderEngineManager({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [actualEngine, isWebGLAvailable, effect, setupCanvas]);
+  }, [actualEngine, isWebGLAvailable, effect, setupCanvas, getDisplaySize]);
 
   useEffect(() => {
     const render = (timestamp: number) => {
-      if (!canvasRef.current || !ctx2DRef.current) return;
+      if (!canvasRef.current) return;
 
-      const deltaTime = lastTimeRef.current ? (timestamp - lastTimeRef.current) / 1000 : 0;
+      if (actualEngine !== "webgl" && !ctx2DRef.current) {
+        animationFrameRef.current = requestAnimationFrame(render);
+        return;
+      }
+
+      const elapsed = lastTimeRef.current ? timestamp - lastTimeRef.current : Infinity;
+      const frameInterval = 1000 / Math.max(1, config.targetFPS);
+
+      if (elapsed < frameInterval) {
+        animationFrameRef.current = requestAnimationFrame(render);
+        return;
+      }
+
+      const deltaTime = Number.isFinite(elapsed) ? elapsed / 1000 : 0;
       lastTimeRef.current = timestamp;
 
       const time = (Date.now() - startTimeRef.current) / 1000;
@@ -292,8 +330,7 @@ export function RenderEngineManager({
         lastFPSUpdateRef.current = now;
       }
 
-      const displayWidth = window.innerWidth;
-      const displayHeight = window.innerHeight;
+      const { displayWidth, displayHeight } = getDisplaySize();
       const dpr = dprRef.current;
 
       const ctx = createRenderContext(displayWidth, displayHeight, deltaTime, time);
@@ -335,15 +372,17 @@ export function RenderEngineManager({
     getTransformParams,
     applyTransform,
     restoreTransform,
+    getDisplaySize,
   ]);
 
   useEffect(() => {
     return () => {
       if (effectRef.current) {
+        const dimensions = getDisplaySize();
         const cleanupCtx: RenderContext = {
           canvas: canvasRef.current!,
-          width: window.innerWidth,
-          height: window.innerHeight,
+          width: dimensions.displayWidth,
+          height: dimensions.displayHeight,
           deltaTime: 0,
           time: 0,
           ctx: ctx2DRef.current || undefined,
@@ -359,7 +398,13 @@ export function RenderEngineManager({
         threeSceneRef.current = null;
       }
     };
-  }, []);
+  }, [getDisplaySize]);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 w-full h-full"
+      style={{ transform: "translateZ(0)" }}
+    />
+  );
 }

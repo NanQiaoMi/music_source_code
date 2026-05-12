@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { useQueueStore } from "./queueStore";
 
 function createMockSong(id: string) {
@@ -14,6 +14,10 @@ describe("queueStore", () => {
       playThroughMode: "normal",
     });
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe("persistence", () => {
@@ -94,6 +98,33 @@ describe("queueStore", () => {
       expect(parsed.state.queue[0].transliterationLyrics).toBeUndefined();
       expect(parsed.state.queue[0].filePath).toBeUndefined();
       expect(parsed.state.queue[0].bitRate).toBeUndefined();
+    });
+
+    it("should drop persisted queue when quota is still exceeded after clearing history", () => {
+      const store = useQueueStore.getState();
+      const originalSetItem = Storage.prototype.setItem;
+
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (key, value) {
+        if (key === "queue-store-v5" && value.length > 600) {
+          throw new DOMException("Quota exceeded", "QuotaExceededError");
+        }
+
+        return originalSetItem.call(this, key, value);
+      });
+
+      const songs = Array.from({ length: 25 }, (_, i) => ({
+        ...createMockSong(String(i)),
+        audioUrl: `stored://${String(i).padStart(2, "0")}/${"a".repeat(120)}`,
+      }));
+
+      expect(() => store.setQueue(songs)).not.toThrow();
+
+      const persisted = localStorage.getItem("queue-store-v5");
+      expect(persisted).not.toBeNull();
+
+      const parsed = JSON.parse(persisted!);
+      expect(parsed.state.queue).toEqual([]);
+      expect(parsed.state.currentIndex).toBe(0);
     });
   });
 

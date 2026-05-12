@@ -6,7 +6,7 @@
   "private": true,
   "main": "electron/main/index.js",
   "scripts": {
-    "dev": "npm run clean && node scripts/clean-port.js && next dev --webpack -p 3025",
+    "dev": "node scripts/clean-port.js && npm run clean && next dev --webpack -p 3025",
     "dev:electron": "concurrently \"npm run dev\" \"wait-on http://localhost:3025 && cross-env NODE_ENV=development electron .\"",
     "dev:full": "node scripts/start-full.js",
     "start:full": "node scripts/start-full.js",

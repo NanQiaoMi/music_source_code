@@ -22,7 +22,10 @@ function cleanPort() {
             // 提取所有 PID
             const match = line.match(/\s+(\d+)$/);
             if (match) {
-              pids.add(match[1]);
+              const pid = Number(match[1]);
+              if (Number.isInteger(pid) && pid > 0 && pid !== process.pid) {
+                pids.add(String(pid));
+              }
             }
           });
           
@@ -59,7 +62,10 @@ function cleanPort() {
           lines.slice(1).forEach(line => {
             const parts = line.split(/\s+/);
             if (parts[1]) {
-              pids.add(parts[1]);
+              const pid = Number(parts[1]);
+              if (Number.isInteger(pid) && pid > 0 && pid !== process.pid) {
+                pids.add(String(pid));
+              }
             }
           });
           

@@ -4,7 +4,9 @@ import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useListeningHistory } from "@/hooks/useListeningHistory";
 import { useAudioStore } from "@/store/audioStore";
+import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { X, TrendingUp, Music, User, Clock, BarChart3 } from "lucide-react";
+import { summarizeListeningStats } from "@/utils/listeningInsights";
 
 interface ListeningHistoryProps {
   isOpen: boolean;
@@ -13,16 +15,26 @@ interface ListeningHistoryProps {
 
 type ViewMode = "songs" | "artists";
 type TimePeriod = "week" | "month";
+type SongBoard = "hot" | "replay";
 
 export const ListeningHistory: React.FC<ListeningHistoryProps> = ({ isOpen, onClose }) => {
   const { getWeeklyRanking, getMonthlyRanking, getTopArtists } = useListeningHistory();
   const playQueue = useAudioStore((state) => state.playQueue);
+  const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
 
   const [viewMode, setViewMode] = useState<ViewMode>("songs");
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("week");
+  const [songBoard, setSongBoard] = useState<SongBoard>("hot");
+  const summary = summarizeListeningStats(listeningStats);
 
   const songRanking = useMemo(() => {
-    return timePeriod === "week" ? getWeeklyRanking() : getMonthlyRanking();
+    const ranking = timePeriod === "week" ? getWeeklyRanking() : getMonthlyRanking();
+    if (songBoard === "replay") {
+      return ranking
+        .slice()
+        .sort((a, b) => b.totalListenTime - a.totalListenTime || b.playCount - a.playCount);
+    }
+    return ranking;
   }, [timePeriod, getWeeklyRanking, getMonthlyRanking]);
 
   const artistRanking = useMemo(() => {
@@ -107,27 +119,69 @@ export const ListeningHistory: React.FC<ListeningHistoryProps> = ({ isOpen, onCl
         </div>
 
         {/* Time Period Filter */}
-        <div className="flex gap-2 p-4 border-b border-white/10">
-          <button
-            onClick={() => setTimePeriod("week")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              timePeriod === "week"
-                ? "bg-purple-500 text-white"
-                : "bg-white/10 text-white/60 hover:bg-white/20"
-            }`}
-          >
-            本周
-          </button>
-          <button
-            onClick={() => setTimePeriod("month")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              timePeriod === "month"
-                ? "bg-purple-500 text-white"
-                : "bg-white/10 text-white/60 hover:bg-white/20"
-            }`}
-          >
-            本月
-          </button>
+        <div className="space-y-3 p-4 border-b border-white/10">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setTimePeriod("week")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                timePeriod === "week"
+                  ? "bg-purple-500 text-white"
+                  : "bg-white/10 text-white/60 hover:bg-white/20"
+              }`}
+            >
+              本周
+            </button>
+            <button
+              onClick={() => setTimePeriod("month")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                timePeriod === "month"
+                  ? "bg-purple-500 text-white"
+                  : "bg-white/10 text-white/60 hover:bg-white/20"
+              }`}
+            >
+              本月
+            </button>
+          </div>
+          {viewMode === "songs" && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSongBoard("hot")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  songBoard === "hot"
+                    ? "bg-white/15 text-white"
+                    : "bg-white/5 text-white/55 hover:bg-white/10"
+                }`}
+              >
+                热门榜
+              </button>
+              <button
+                onClick={() => setSongBoard("replay")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  songBoard === "replay"
+                    ? "bg-white/15 text-white"
+                    : "bg-white/5 text-white/55 hover:bg-white/10"
+                }`}
+              >
+                复听榜
+              </button>
+            </div>
+          )}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="text-[11px] tracking-[0.25em] uppercase text-white/35">近期偏好摘要</div>
+            <p className="mt-2 text-sm leading-relaxed text-white/70">
+              你最近更偏向 <span className="text-white">{summary.dominantPeriod}</span> 收听，
+              热门风格集中在 <span className="text-white">{summary.dominantGenres.join(" / ") || "未形成明显偏好"}</span>，
+              当前整体听歌热度
+              <span className="text-white">
+                {summary.trend === "rising"
+                  ? " 正在升温"
+                  : summary.trend === "cooling"
+                    ? " 正在回落"
+                    : " 维持平稳"}
+              </span>
+              。
+            </p>
+          </div>
         </div>
 
         {/* Content */}
@@ -188,6 +242,9 @@ export const ListeningHistory: React.FC<ListeningHistoryProps> = ({ isOpen, onCl
                           <Clock className="w-3 h-3" />
                           {formatDuration(record.totalListenTime)}
                         </div>
+                        <div className="text-[11px] text-white/30 mt-1">
+                          {songBoard === "replay" ? "高复听内容" : "近期热门内容"}
+                        </div>
                       </div>
                     </motion.div>
                   ))
@@ -245,6 +302,7 @@ export const ListeningHistory: React.FC<ListeningHistoryProps> = ({ isOpen, onCl
                           <Clock className="w-3 h-3" />
                           {formatDuration(artist.totalListenTime)}
                         </div>
+                        <div className="text-[11px] text-white/30 mt-1">{artist.songs.size} 首歌持续出现</div>
                       </div>
                     </motion.div>
                   ))

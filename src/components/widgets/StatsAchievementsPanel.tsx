@@ -13,6 +13,7 @@ import {
   ProToolMasteryRadar,
   MoodFlow,
 } from "@/components/stats/StatsVisuals";
+import { getAchievementSpotlights, summarizeListeningStats } from "@/utils/listeningInsights";
 
 interface StatsAchievementsPanelProps {
   isOpen: boolean;
@@ -106,6 +107,7 @@ export const StatsAchievementsPanel: React.FC<StatsAchievementsPanelProps> = ({
 };
 
 function OverviewTab({ stats }: { stats: any }) {
+  const summary = summarizeListeningStats(stats);
   const metrics = [
     {
       label: "总播放次数",
@@ -144,7 +146,7 @@ function OverviewTab({ stats }: { stats: any }) {
     },
     {
       label: "完成率",
-      value: `${Math.round((stats.completedSongsCount / (stats.totalPlayCount || 1)) * 100)}%`,
+      value: `${summary.completionRate}%`,
       icon: <Zap className="w-4 h-4" />,
       color: "from-indigo-500/20 to-blue-500/20",
       borderColor: "border-indigo-500/30",
@@ -188,6 +190,30 @@ function OverviewTab({ stats }: { stats: any }) {
             <div className="text-white font-semibold text-xl">{stats.favoriteSong}</div>
           </div>
         )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+          <div className="text-white/40 text-xs uppercase tracking-wider mb-2">当前收听势能</div>
+          <div className="text-white font-semibold text-xl">
+            {summary.trend === "rising"
+              ? "热度上升"
+              : summary.trend === "cooling"
+                ? "热度降温"
+                : "稳定输出"}
+          </div>
+          <div className="text-white/50 text-sm mt-2">最近 7 天较前一阶段 {summary.trendDelta > 0 ? "+" : ""}{summary.trendDelta} 次/日</div>
+        </div>
+        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+          <div className="text-white/40 text-xs uppercase tracking-wider mb-2">探索倾向</div>
+          <div className="text-white font-semibold text-xl">{summary.explorationScore}%</div>
+          <div className="text-white/50 text-sm mt-2">{summary.metrics[1]?.hint}</div>
+        </div>
+        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+          <div className="text-white/40 text-xs uppercase tracking-wider mb-2">复听倾向</div>
+          <div className="text-white font-semibold text-xl">{summary.replayScore}%</div>
+          <div className="text-white/50 text-sm mt-2">{summary.metrics[2]?.hint}</div>
+        </div>
       </div>
     </div>
   );
@@ -253,7 +279,7 @@ function InsightsTab({ stats }: { stats: any }) {
             <span className="text-xs text-white/40">最近30天动态</span>
           </div>
           <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col justify-center min-h-[300px]">
-            <ActivityTrend data={stats.dailyPlayData?.slice(-30) || []} />
+            <ActivityTrend data={(stats.dailyPlayData?.slice(-30) || []).map((day: any) => day.playCount || 0)} />
           </div>
         </section>
       </div>
@@ -306,6 +332,7 @@ function AchievementsTab({
   achievements: any[];
   onUnlockAchievement: (achievementId: string) => void;
 }) {
+  const spotlight = getAchievementSpotlights(achievements);
   const categories = [
     { id: "listening", name: "聆听", icon: "🎵" },
     { id: "exploration", name: "探索", icon: "🔍" },
@@ -321,6 +348,61 @@ function AchievementsTab({
 
   return (
     <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+          <div className="text-white/40 text-xs uppercase tracking-wider mb-3">最近解锁</div>
+          <div className="space-y-2">
+            {spotlight.unlockedRecently.length === 0 ? (
+              <div className="text-sm text-white/40">还没有新解锁，继续积累听歌记录。</div>
+            ) : (
+              spotlight.unlockedRecently.map((achievement) => (
+                <div key={achievement.id} className="flex items-center gap-3 rounded-xl bg-amber-500/10 px-3 py-2">
+                  <span className="text-lg">{achievement.icon}</span>
+                  <div>
+                    <div className="text-sm font-medium text-white">{achievement.name}</div>
+                    <div className="text-xs text-white/45">{achievement.description}</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+          <div className="text-white/40 text-xs uppercase tracking-wider mb-3">即将达成</div>
+          <div className="space-y-3">
+            {spotlight.nearlyUnlocked.length === 0 ? (
+              <div className="text-sm text-white/40">先多使用功能，系统会自动识别最近目标。</div>
+            ) : (
+              spotlight.nearlyUnlocked.map((achievement) => (
+                <div key={achievement.id}>
+                  <div className="flex items-center justify-between text-sm text-white mb-1">
+                    <span>{achievement.icon} {achievement.name}</span>
+                    <span className="text-white/50">{achievement.progress}/{achievement.total}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-500 to-orange-500"
+                      style={{ width: `${Math.min(100, (achievement.progress / achievement.total) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+          <div className="text-white/40 text-xs uppercase tracking-wider mb-3">推荐冲刺</div>
+          <div className="space-y-2">
+            {spotlight.recommended.map((achievement) => (
+              <div key={achievement.id} className="rounded-xl bg-white/[0.03] px-3 py-2">
+                <div className="text-sm font-medium text-white">{achievement.icon} {achievement.name}</div>
+                <div className="text-xs text-white/45 mt-1">{achievement.description}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         <h3 className="text-white text-xl font-semibold">成就系统</h3>
         <div className="flex gap-2">
