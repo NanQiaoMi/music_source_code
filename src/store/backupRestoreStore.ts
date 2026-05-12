@@ -27,6 +27,17 @@ export interface BackupData {
   themes?: unknown;
 }
 
+export interface BackupPreview {
+  schemaVersion: string;
+  majorVersion: number;
+  canRestore: boolean;
+  includedStores: string[];
+  type: BackupType;
+  createdAt: number;
+  size: number;
+  error?: string;
+}
+
 interface StoredSettingsBackup {
   audio?: string | null;
   visual?: string | null;
@@ -62,6 +73,7 @@ interface BackupRestoreState {
   isRestoring: boolean;
   backupProgress: number;
   restoreProgress: number;
+  restoreError: string | null;
 
   schedules: BackupSchedule[];
 
@@ -72,6 +84,8 @@ interface BackupRestoreState {
   uploadBackup: (file: File) => Promise<BackupItem>;
 
   getBackupData: (backupId: string) => BackupData | null;
+  getBackupPreview: (backupId: string) => BackupPreview | null;
+  previewBackupData: (backupData: BackupData) => BackupPreview;
   exportBackup: (backupData: BackupData) => string;
   importBackup: (jsonString: string) => BackupData;
 
@@ -109,6 +123,69 @@ function estimateBackupSize(data: BackupData): number {
   return new Blob([jsonString]).size;
 }
 
+const CURRENT_BACKUP_MAJOR_VERSION = 4;
+
+function getMajorVersion(version: string): number {
+  return Number.parseInt(version.split(".")[0] || "0", 10);
+}
+
+function assertSupportedBackupVersion(version: string): void {
+  const majorVersion = getMajorVersion(version);
+  if (!Number.isFinite(majorVersion) || majorVersion > CURRENT_BACKUP_MAJOR_VERSION) {
+    throw new Error(`Unsupported backup schema version: ${version}`);
+  }
+}
+
+function getIncludedStores(data: BackupData): string[] {
+  const stores: string[] = [];
+
+  if (data.settings) {
+    stores.push("audio-store-v4", "visual-settings-v4", "gesture-store", "sleep-timer-store");
+  }
+
+  if (data.playlists) {
+    stores.push("playlist-store", "queue-store", "recommendation-store");
+  }
+
+  if (data.library) {
+    stores.push("library-manager-store-v4");
+  }
+
+  if (data.lyrics) {
+    stores.push("lyrics-cover-store-v4");
+  }
+
+  if (data.covers) {
+    stores.push("covers");
+  }
+
+  if (data.eqPresets) {
+    stores.push("eq-presets");
+  }
+
+  if (data.themes) {
+    stores.push("themes");
+  }
+
+  return Array.from(new Set(stores));
+}
+
+function createBackupPreview(data: BackupData): BackupPreview {
+  const majorVersion = getMajorVersion(data.version);
+  const canRestore = Number.isFinite(majorVersion) && majorVersion <= CURRENT_BACKUP_MAJOR_VERSION;
+
+  return {
+    schemaVersion: data.version,
+    majorVersion,
+    canRestore,
+    includedStores: getIncludedStores(data),
+    type: data.type,
+    createdAt: data.createdAt,
+    size: estimateBackupSize(data),
+    error: canRestore ? undefined : `Unsupported backup schema version: ${data.version}`,
+  };
+}
+
 export const useBackupRestoreStore = create<BackupRestoreState>()(
   persist(
     (set, get) => ({
@@ -118,10 +195,11 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
       isRestoring: false,
       backupProgress: 0,
       restoreProgress: 0,
+      restoreError: null,
       schedules: [],
 
       createBackup: async (type, name, description) => {
-        set({ isBackingUp: true, backupProgress: 0 });
+        set({ isBackingUp: true, backupProgress: 0, restoreError: null });
 
         const backupId = generateBackupId();
         const createdAt = Date.now();
@@ -197,7 +275,7 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
       },
 
       restoreBackup: async (backupId) => {
-        set({ isRestoring: true, restoreProgress: 0 });
+        set({ isRestoring: true, restoreProgress: 0, restoreError: null });
 
         const { backups } = get();
         const backup = backups.find((b) => b.id === backupId);
@@ -216,6 +294,13 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
         }
 
         const backupData = JSON.parse(storedData) as BackupData;
+        try {
+          assertSupportedBackupVersion(backupData.version);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unsupported backup schema";
+          set({ isRestoring: false, restoreProgress: 0, restoreError: message });
+          throw error;
+        }
 
         // 真实恢复各 store 的数据
         set({ restoreProgress: 25 });
@@ -223,14 +308,10 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
 
         if (backupData.settings) {
           const settings = backupData.settings as StoredSettingsBackup;
-          if (settings.audio)
-            localStorage.setItem("audio-store-v4", settings.audio);
-          if (settings.visual)
-            localStorage.setItem("visual-settings-v4", settings.visual);
-          if (settings.gesture)
-            localStorage.setItem("gesture-store", settings.gesture);
-          if (settings.sleep)
-            localStorage.setItem("sleep-timer-store", settings.sleep);
+          if (settings.audio) localStorage.setItem("audio-store-v4", settings.audio);
+          if (settings.visual) localStorage.setItem("visual-settings-v4", settings.visual);
+          if (settings.gesture) localStorage.setItem("gesture-store", settings.gesture);
+          if (settings.sleep) localStorage.setItem("sleep-timer-store", settings.sleep);
         }
 
         set({ restoreProgress: 50 });
@@ -361,6 +442,11 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
         const backup = backups.find((b) => b.id === backupId);
         if (!backup) return null;
 
+        const storedData = localStorage.getItem(`backup-data-${backupId}`);
+        if (storedData) {
+          return JSON.parse(storedData) as BackupData;
+        }
+
         return {
           version: backup.version,
           createdAt: backup.createdAt,
@@ -368,12 +454,21 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
         };
       },
 
+      getBackupPreview: (backupId) => {
+        const backupData = get().getBackupData(backupId);
+        return backupData ? createBackupPreview(backupData) : null;
+      },
+
+      previewBackupData: (backupData) => createBackupPreview(backupData),
+
       exportBackup: (backupData) => {
         return JSON.stringify(backupData, null, 2);
       },
 
       importBackup: (jsonString) => {
-        return JSON.parse(jsonString) as BackupData;
+        const backupData = JSON.parse(jsonString) as BackupData;
+        assertSupportedBackupVersion(backupData.version);
+        return backupData;
       },
 
       addSchedule: (schedule) => {

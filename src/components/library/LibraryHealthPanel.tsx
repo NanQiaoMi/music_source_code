@@ -1,22 +1,25 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useCallback, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
   AlertCircle,
   CheckCircle,
-  Music,
-  Image,
+  Download,
   FileText,
-  Trash2,
+  Image,
+  Music,
   RefreshCw,
+  Trash2,
+  X,
 } from "lucide-react";
 import {
-  useLibraryHealthStore,
   generateHealthReport,
+  HealthIssueGroup,
+  useLibraryHealthStore,
 } from "@/store/libraryHealthStore";
-import type { HealthIssueType } from "@/types/song";
+import { HealthIssueType } from "@/types/song";
 import { usePlaylistStore } from "@/store/playlistStore";
 
 interface LibraryHealthPanelProps {
@@ -24,289 +27,307 @@ interface LibraryHealthPanelProps {
   onClose: () => void;
 }
 
+const issueLabels: Partial<Record<HealthIssueType, string>> = {
+  missing_file: "Missing audio",
+  duplicate: "Duplicates",
+  low_quality: "Invalid metadata",
+  oversized_cover: "Oversized cover",
+  missing_metadata: "Missing metadata",
+  missing_cover: "Missing cover",
+  missing_lyrics: "Missing lyrics",
+};
+
+function getIssueIcon(type: HealthIssueType) {
+  switch (type) {
+    case "missing_metadata":
+      return <FileText className="w-4 h-4 text-yellow-300" />;
+    case "missing_cover":
+    case "oversized_cover":
+      return <Image className="w-4 h-4 text-orange-300" />;
+    case "missing_lyrics":
+      return <Music className="w-4 h-4 text-blue-300" />;
+    default:
+      return <AlertCircle className="w-4 h-4 text-red-300" />;
+  }
+}
+
+function getSeverityClass(severity: string) {
+  switch (severity) {
+    case "critical":
+      return "border-red-400/40 bg-red-500/15";
+    case "warning":
+      return "border-amber-400/40 bg-amber-500/15";
+    default:
+      return "border-sky-400/30 bg-sky-500/10";
+  }
+}
+
 export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, onClose }) => {
   const { songs } = usePlaylistStore();
   const [activeTab, setActiveTab] = useState<"scan" | "results" | "settings">("scan");
-  const [isScanning, setIsScanning] = useState(false);
+  const [localScanning, setLocalScanning] = useState(false);
 
   const {
     healthReport,
-    lastScan,
-    isScanning: storeIsScanning,
-    scanProgress,
     autoScan,
     setHealthReport,
     setAutoScan,
+    setScanning,
+    setScanProgress,
+    ignoreIssue,
     clearIssues,
+    exportHealthReport,
   } = useLibraryHealthStore();
 
-  const issues = healthReport?.issues || [];
-  const issueCounts: Record<string, number> = {};
-
-  if (healthReport) {
-    issues.forEach((issue) => {
-      issueCounts[issue.type] = (issueCounts[issue.type] || 0) + 1;
-    });
-  }
-
-  const totalIssues = Object.values(issueCounts).reduce((a, b) => a + b, 0) as number;
+  const issueGroups = useMemo(
+    () => Object.values(healthReport?.issueGroups || {}),
+    [healthReport?.issueGroups]
+  );
+  const totalIssues = healthReport?.issuesCount || 0;
 
   const startScan = useCallback(async () => {
     if (songs.length === 0) return;
 
-    setIsScanning(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    setLocalScanning(true);
+    setScanning(true);
+    setScanProgress(25);
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     const report = generateHealthReport(songs);
+    setScanProgress(100);
     setHealthReport(report);
 
-    setIsScanning(false);
+    setLocalScanning(false);
+    setScanning(false);
     setActiveTab("results");
-  }, [songs, setHealthReport]);
+  }, [songs, setHealthReport, setScanProgress, setScanning]);
 
-  const getIssueIcon = (type: string) => {
-    switch (type) {
-      case "missing-metadata":
-        return <FileText className="w-4 h-4 text-yellow-400" />;
-      case "missing-cover":
-        return <Image className="w-4 h-4 text-orange-400" />;
-      case "missing-lyrics":
-        return <Music className="w-4 h-4 text-blue-400" />;
-      case "duplicate":
-        return <AlertCircle className="w-4 h-4 text-red-400" />;
-      case "corrupted-file":
-        return <AlertCircle className="w-4 h-4 text-red-500" />;
-      default:
-        return <AlertCircle className="w-4 h-4 text-white/50" />;
-    }
+  const downloadReport = () => {
+    const reportJson = exportHealthReport();
+    if (!reportJson) return;
+
+    const blob = new Blob([reportJson], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `library-health-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
-  const getIssueLabel = (type: string) => {
-    switch (type) {
-      case "missing-metadata":
-        return "缺少元数据";
-      case "missing-cover":
-        return "缺少封面";
-      case "missing-lyrics":
-        return "缺少歌词";
-      case "duplicate":
-        return "重复歌曲";
-      case "corrupted-file":
-        return "文件损坏";
-      case "low-quality":
-        return "低音质";
-      default:
-        return type;
-    }
-  };
-
-  const getIssueSeverityColor = (severity: string) => {
-    switch (severity) {
-      case "high":
-        return "bg-red-500/20 border-red-500/50";
-      case "medium":
-        return "bg-yellow-500/20 border-yellow-500/50";
-      case "low":
-        return "bg-blue-500/20 border-blue-500/50";
-      default:
-        return "bg-white/5 border-white/10";
-    }
-  };
+  if (!isOpen) return null;
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md"
+        onClick={onClose}
+      >
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md"
-          onClick={onClose}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-3xl bg-zinc-950/90 backdrop-blur-xl rounded-2xl border border-white/15 shadow-2xl mx-4 overflow-hidden"
         >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-2xl bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl mx-4 overflow-hidden"
-          >
-            <div className="flex items-center justify-between p-4 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-600/20 flex items-center justify-center">
-                  <Activity className="w-5 h-5 text-emerald-400" />
-                </div>
-                <h2>音乐库健康检查</h2>
+          <div className="flex items-center justify-between p-4 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600/20 flex items-center justify-center">
+                <Activity className="w-5 h-5 text-emerald-300" />
               </div>
+              <div>
+                <h2 className="text-white font-semibold">音乐库健康检查</h2>
+                <p className="text-white/45 text-xs">
+                  {healthReport
+                    ? `${healthReport.totalSongs} songs · ${healthReport.issuesCount} issues`
+                    : "Scan library issues before cleanup"}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="p-4 max-h-[65vh] overflow-y-auto custom-scrollbar min-h-0">
+            <div className="flex flex-wrap gap-2 mb-6">
+              {(["scan", "results", "settings"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                    activeTab === tab
+                      ? "bg-emerald-600 text-white"
+                      : "bg-white/10 text-white/70 hover:bg-white/20"
+                  }`}
+                >
+                  {tab === "scan" ? "扫描" : tab === "results" ? `结果 (${totalIssues})` : "设置"}
+                </button>
+              ))}
               <button
-                onClick={onClose}
-                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                onClick={downloadReport}
+                disabled={!healthReport}
+                className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-40 text-sm"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <Download className="w-4 h-4" />
+                导出报告
               </button>
             </div>
 
-            <div className="p-4 max-h-[60vh] overflow-y-auto custom-scrollbar min-h-0">
-              <div className="flex gap-2 mb-6">
-                <button
-                  onClick={() => setActiveTab("scan")}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
-                    activeTab === "scan"
-                      ? "bg-emerald-600 text-white"
-                      : "bg-white/10 text-white/70 hover:bg-white/20"
-                  }`}
-                >
-                  扫描
-                </button>
-                <button
-                  onClick={() => setActiveTab("results")}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
-                    activeTab === "results"
-                      ? "bg-emerald-600 text-white"
-                      : "bg-white/10 text-white/70 hover:bg-white/20"
-                  }`}
-                >
-                  结果 ({totalIssues})
-                </button>
-                <button
-                  onClick={() => setActiveTab("settings")}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
-                    activeTab === "settings"
-                      ? "bg-emerald-600 text-white"
-                      : "bg-white/10 text-white/70 hover:bg-white/20"
-                  }`}
-                >
-                  设置
-                </button>
-              </div>
-
-              {activeTab === "scan" && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-white/5 rounded-xl p-4 text-center">
-                      <div className="text-2xl font-bold text-white">{songs.length}</div>
-                      <div className="text-sm text-white/60">总歌曲</div>
-                    </div>
-                    <div className="bg-white/5 rounded-xl p-4 text-center">
-                      <div className="text-2xl font-bold text-red-400">{totalIssues}</div>
-                      <div className="text-sm text-white/60">发现问题</div>
-                    </div>
-                    <div className="bg-white/5 rounded-xl p-4 text-center">
-                      <div className="text-2xl font-bold text-emerald-400">
-                        {songs.length - totalIssues}
-                      </div>
-                      <div className="text-sm text-white/60">健康歌曲</div>
-                    </div>
-                  </div>
-
-                  {isScanning ? (
-                    <div className="flex flex-col items-center py-8">
-                      <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin mb-4" />
-                      <p className="text-white/70">正在扫描音乐库...</p>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={startScan}
-                      disabled={songs.length === 0}
-                      className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-white/20 disabled:text-white/50 rounded-xl transition-colors"
-                    >
-                      开始扫描
-                    </button>
-                  )}
-
-                  <div className="bg-white/5 rounded-xl p-4 space-y-3">
-                    <h4 className="text-sm font-medium text-white/70">扫描项目</h4>
-                    {Object.entries(issueCounts).map(([type, count]) => (
-                      <div key={type} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {getIssueIcon(type)}
-                          <span className="text-sm text-white/80">{getIssueLabel(type)}</span>
-                        </div>
-                        <span className="text-sm text-white/50">{count} 个</span>
-                      </div>
-                    ))}
-                    {Object.keys(issueCounts).length === 0 && (
-                      <p className="text-sm text-white/50 text-center">运行扫描以查看问题统计</p>
-                    )}
-                  </div>
+            {activeTab === "scan" && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-3 gap-4">
+                  <StatCard label="总歌曲" value={songs.length} />
+                  <StatCard label="发现问题" value={totalIssues} tone="text-red-300" />
+                  <StatCard
+                    label="健康歌曲"
+                    value={healthReport?.healthySongs ?? songs.length}
+                    tone="text-emerald-300"
+                  />
                 </div>
-              )}
 
-              {activeTab === "results" && (
-                <div className="space-y-4 max-h-96 overflow-y-auto custom-scrollbar min-h-0">
-                  {totalIssues === 0 ? (
-                    <div className="text-center py-12">
-                      <CheckCircle className="w-16 h-16 mx-auto text-emerald-400 mb-4" />
-                      <p className="text-lg text-white/80">音乐库非常健康！</p>
-                      <p className="text-sm text-white/50 mt-2">没有发现任何问题</p>
-                    </div>
-                  ) : (
-                    issues.map((issue, index) => (
-                      <div
-                        key={`${issue.songId}-${index}`}
-                        className={`p-4 rounded-xl border ${getIssueSeverityColor(issue.severity)}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          {getIssueIcon(issue.type)}
-                          <div className="flex-1">
-                            <div className="font-medium text-white">
-                              {issue.songId || "未知歌曲"}
-                            </div>
-                            <div className="text-sm text-white/60 mt-1">{issue.description}</div>
-                            {issue.suggestion && (
-                              <div className="text-sm text-emerald-400/80 mt-2">
-                                建议: {issue.suggestion}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-
-              {activeTab === "settings" && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
-                    <div>
-                      <div className="font-medium text-white">自动扫描</div>
-                      <div className="text-sm text-white/60">启动时自动检查音乐库</div>
-                    </div>
-                    <button
-                      onClick={() => setAutoScan(!autoScan)}
-                      className={`w-12 h-7 rounded-full transition-colors ${
-                        autoScan ? "bg-emerald-600" : "bg-white/20"
-                      }`}
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                          autoScan ? "translate-x-6" : "translate-x-1"
-                        }`}
-                      />
-                    </button>
+                {localScanning ? (
+                  <div className="flex flex-col items-center py-8">
+                    <RefreshCw className="w-8 h-8 text-emerald-300 animate-spin mb-4" />
+                    <p className="text-white/70">正在扫描音乐库...</p>
                   </div>
-
+                ) : (
                   <button
-                    onClick={clearIssues}
-                    className="w-full py-3 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-xl transition-colors flex items-center justify-center gap-2"
+                    onClick={startScan}
+                    disabled={songs.length === 0}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-white/20 disabled:text-white/50 rounded-xl transition-colors text-white"
                   >
-                    <Trash2 className="w-4 h-4" />
-                    清空所有问题记录
+                    开始扫描
+                  </button>
+                )}
+              </div>
+            )}
+
+            {activeTab === "results" && (
+              <div className="space-y-4">
+                {issueGroups.length === 0 ? (
+                  <div className="text-center py-12">
+                    <CheckCircle className="w-16 h-16 mx-auto text-emerald-300 mb-4" />
+                    <p className="text-lg text-white/80">音乐库状态良好</p>
+                    <p className="text-sm text-white/50 mt-2">没有发现需要处理的问题</p>
+                  </div>
+                ) : (
+                  issueGroups.map((group) => (
+                    <IssueGroupCard key={group.type} group={group} onIgnore={ignoreIssue} />
+                  ))
+                )}
+              </div>
+            )}
+
+            {activeTab === "settings" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+                  <div>
+                    <div className="font-medium text-white">自动扫描</div>
+                    <div className="text-sm text-white/60">启动时自动检查音乐库</div>
+                  </div>
+                  <button
+                    onClick={() => setAutoScan(!autoScan)}
+                    className={`w-12 h-7 rounded-full transition-colors ${
+                      autoScan ? "bg-emerald-600" : "bg-white/20"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                        autoScan ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
                   </button>
                 </div>
-              )}
-            </div>
-          </motion.div>
+
+                <button
+                  onClick={clearIssues}
+                  className="w-full py-3 bg-red-600/20 hover:bg-red-600/30 text-red-300 rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  清空问题记录
+                </button>
+              </div>
+            )}
+          </div>
         </motion.div>
-      )}
+      </motion.div>
     </AnimatePresence>
   );
 };
+
+function StatCard({
+  label,
+  value,
+  tone = "text-white",
+}: {
+  label: string;
+  value: number;
+  tone?: string;
+}) {
+  return (
+    <div className="bg-white/5 rounded-xl p-4 text-center">
+      <div className={`text-2xl font-bold ${tone}`}>{value}</div>
+      <div className="text-sm text-white/60">{label}</div>
+    </div>
+  );
+}
+
+function IssueGroupCard({
+  group,
+  onIgnore,
+}: {
+  group: HealthIssueGroup;
+  onIgnore: (issueId: string) => void;
+}) {
+  return (
+    <div className={`p-4 rounded-xl border ${getSeverityClass(group.severity)}`}>
+      <div className="flex items-start gap-3">
+        {getIssueIcon(group.type)}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-medium text-white">{issueLabels[group.type] || group.type}</h3>
+              <p className="text-xs text-white/45 mt-1">
+                {group.count} issue(s) · {group.affectedSongIds.length} song(s) affected
+              </p>
+            </div>
+            <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/60">
+              {group.severity}
+            </span>
+          </div>
+
+          <div className="mt-3 space-y-2">
+            {group.issues.slice(0, 4).map((issue) => (
+              <div
+                key={issue.id}
+                className="flex items-center justify-between gap-3 rounded-lg bg-black/20 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-white/80">{issue.songId}</p>
+                  <p className="truncate text-xs text-white/45">{issue.suggestion}</p>
+                </div>
+                {issue.actions.includes("ignore") && (
+                  <button
+                    onClick={() => onIgnore(issue.id)}
+                    className="shrink-0 rounded-lg bg-white/10 px-2 py-1 text-xs text-white/60 hover:text-white"
+                  >
+                    忽略
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

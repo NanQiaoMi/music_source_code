@@ -28,6 +28,7 @@ export const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ isOpen, 
     backupProgress,
     isRestoring,
     restoreProgress,
+    restoreError,
     schedules,
     createBackup,
     downloadBackup,
@@ -35,6 +36,7 @@ export const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ isOpen, 
     restoreBackup,
     uploadBackup,
     addSchedule,
+    getBackupPreview,
   } = useBackupRestoreStore();
 
   if (!isOpen) return null;
@@ -118,6 +120,8 @@ export const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ isOpen, 
               backups={backups}
               onRestore={restoreBackup}
               onUploadBackup={uploadBackup}
+              getBackupPreview={getBackupPreview}
+              restoreError={restoreError}
             />
           )}
         </div>
@@ -321,14 +325,20 @@ function RestoreTab({
   backups,
   onRestore,
   onUploadBackup,
+  getBackupPreview,
+  restoreError,
 }: {
   isRestoring: boolean;
   restoreProgress: number;
   backups: any[];
   onRestore: (backupId: string) => Promise<void>;
   onUploadBackup: (file: File) => Promise<any>;
+  getBackupPreview: (backupId: string) => any;
+  restoreError: string | null;
 }) {
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedBackupId, setSelectedBackupId] = useState<string | null>(null);
+  const selectedPreview = selectedBackupId ? getBackupPreview(selectedBackupId) : null;
 
   const handleFileDrop = useCallback(
     (e: React.DragEvent) => {
@@ -412,7 +422,7 @@ function RestoreTab({
             {backups.slice(0, 5).map((backup) => (
               <button
                 key={backup.id}
-                onClick={() => handleRestore(backup.id)}
+                onClick={() => setSelectedBackupId(backup.id)}
                 disabled={isRestoring}
                 className="w-full p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-left transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -430,6 +440,48 @@ function RestoreTab({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {selectedPreview && selectedBackupId && (
+        <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-white font-semibold">恢复预览</div>
+              <div className="text-white/60 text-sm">
+                Schema {selectedPreview.schemaVersion} · {selectedPreview.includedStores.length}{" "}
+                stores
+              </div>
+            </div>
+            <button
+              onClick={() => handleRestore(selectedBackupId)}
+              disabled={isRestoring || !selectedPreview.canRestore}
+              className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-200 disabled:opacity-40"
+            >
+              确认恢复
+            </button>
+          </div>
+          {!selectedPreview.canRestore && (
+            <div className="rounded-xl bg-red-500/15 border border-red-400/30 p-3 text-sm text-red-200">
+              {selectedPreview.error}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {selectedPreview.includedStores.map((storeName: string) => (
+              <span
+                key={storeName}
+                className="rounded-lg bg-white/10 px-2 py-1 text-xs text-white/60"
+              >
+                {storeName}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {restoreError && (
+        <div className="rounded-2xl bg-red-500/15 border border-red-400/30 p-4 text-sm text-red-200">
+          {restoreError}
         </div>
       )}
 

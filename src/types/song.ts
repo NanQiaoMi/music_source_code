@@ -34,6 +34,7 @@ export type HealthIssueType =
   | "low_quality"
   | "unsupported_format"
   | "corrupted_file"
+  | "oversized_cover"
   | "missing-metadata"
   | "missing-cover"
   | "missing-lyrics"
