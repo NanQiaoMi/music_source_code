@@ -21,9 +21,24 @@ import {
   Activity,
   QrCode,
   Disc3,
+  Wand2,
+  Info,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { toast } from "@/components/shared/GlassToast";
+import {
+  DEFAULT_POSTER_CONFIG,
+  POSTER_ASPECT_RATIO_PRESETS,
+  POSTER_QUICK_PRESETS,
+  POSTER_RESOLUTION_PRESETS,
+  POSTER_THEME_COLORS,
+  applyPosterPreset,
+  createPosterFileName,
+  getPosterExportMeta,
+  getPosterQualityChecks,
+} from "@/utils/posterWorkshop";
 
 interface SharePanelProps {
   isOpen: boolean;
@@ -64,30 +79,6 @@ export interface PosterConfig {
   textEffect: "none" | "shadow" | "glow" | "neon" | "stroke";
 }
 
-const DEFAULT_CONFIG: PosterConfig = {
-  template: "apple",
-  coverScale: 1.05,
-  coverYOffset: 0,
-  coverRadius: 0.15,
-  titleSize: 1.0,
-  titleYOffset: 0,
-  artistOpacity: 0.7,
-  lyricSize: 1.0,
-  blurIntensity: 1.2,
-  noiseOpacity: 0.2,
-  overlayDepth: 0.4,
-  aspectRatio: 0.5625, // 9:16
-  showWaveform: true,
-  showQRCode: true,
-  primaryColor: "#fa2d48",
-  lyricAlignment: "center",
-  lineSpacing: 1.5,
-  maxLyricLines: 5,
-  lyricColor: "rgba(255,255,255,0.9)",
-  lyricFont: "sans",
-  textEffect: "shadow",
-};
-
 const ASPECT_RATIO_PRESETS = [
   { name: "1:1 正方形", value: 1 },
   { name: "4:5 Ins图", value: 0.8 },
@@ -99,17 +90,6 @@ const RESOLUTION_PRESETS = [
   { pixelRatio: 1, label: "标清" },
   { pixelRatio: 2, label: "高清 (推荐)" },
   { pixelRatio: 3, label: "超清" },
-];
-
-const THEME_COLORS = [
-  "#fa2d48",
-  "#1DB954",
-  "#0a84ff",
-  "#bf5af2",
-  "#ff9f0a",
-  "#1c1c1e",
-  "#F5F5dc",
-  "#8B4513",
 ];
 
 const parseLyrics = (lyricString?: string): string[] => {
@@ -1866,7 +1846,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
   const [customLyric, setCustomLyric] = useState<string>("");
   const [isEditingLyric, setIsEditingLyric] = useState(false);
   const [selectedLyricLines, setSelectedLyricLines] = useState<string[]>([]);
-  const [config, setConfig] = useState<PosterConfig>(DEFAULT_CONFIG);
+  const [config, setConfig] = useState<PosterConfig>(DEFAULT_POSTER_CONFIG);
   const [resolution, setResolution] = useState<number>(2);
 
   const previewContainerRef = useRef<HTMLDivElement>(null);
@@ -1902,9 +1882,49 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
       : ["在这美好的时光里", "让音乐治愈你的心灵", "每一个音符都是故事", "聆听内心的声音"];
   }, [currentSong]);
 
+  const lyricLineCount = useMemo(() => {
+    if (isEditingLyric) {
+      return customLyric
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean).length;
+    }
+
+    if (selectedLyricLines.length > 0) return selectedLyricLines.length;
+    return selectedLyric ? 1 : 0;
+  }, [customLyric, isEditingLyric, selectedLyric, selectedLyricLines.length]);
+
+  const exportMeta = useMemo(
+    () => getPosterExportMeta(config, resolution, RENDER_WIDTH),
+    [config, resolution]
+  );
+
+  const qualityChecks = useMemo(
+    () =>
+      getPosterQualityChecks({
+        config,
+        resolution,
+        lyricLineCount,
+        hasCover: Boolean(currentSong?.cover),
+      }),
+    [config, currentSong?.cover, lyricLineCount, resolution]
+  );
+
+  const failedQualityChecks = qualityChecks.filter((check) => !check.passed);
+
   const updateConfig = useCallback((key: keyof PosterConfig, value: any) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
   }, []);
+
+  const applyQuickPreset = useCallback((presetId: (typeof POSTER_QUICK_PRESETS)[number]["id"]) => {
+    setConfig((prev) => applyPosterPreset(prev, presetId));
+  }, []);
+
+  useEffect(() => {
+    setSelectedLyricLines((prev) =>
+      prev.length > config.maxLyricLines ? prev.slice(0, config.maxLyricLines) : prev
+    );
+  }, [config.maxLyricLines]);
 
   const handleSaveImage = async () => {
     if (!posterRef.current || !currentSong) return;
@@ -1918,7 +1938,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
         // html-to-image captures the unscaled node, achieving high quality!
       });
       const link = document.createElement("a");
-      link.download = `${currentSong.title} - ${config.template} - Share.png`;
+      link.download = createPosterFileName(currentSong.title, config.template);
       link.href = dataUrl;
       link.click();
       toast.success("海报已保存！");
@@ -2023,6 +2043,104 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
             {/* CONTROLS AREA */}
             <div className="w-[440px] bg-white/5 border-l border-white/10 flex flex-col shrink-0 shadow-2xl z-10">
               <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8 min-h-0">
+                <ControlGroup title="Quick workflow" icon={Wand2}>
+                  <div className="grid grid-cols-2 gap-3">
+                    {POSTER_QUICK_PRESETS.map((preset) => {
+                      const isActive = Object.entries(preset.config).every(
+                        ([key, value]) => config[key as keyof PosterConfig] === value
+                      );
+
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => applyQuickPreset(preset.id)}
+                          title={preset.description}
+                          className={`rounded-xl border p-3 text-left transition-all ${
+                            isActive
+                              ? "border-white/50 bg-white/15 text-white"
+                              : "border-white/10 bg-black/20 text-white/70 hover:border-white/25 hover:bg-white/10"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold">{preset.name}</span>
+                            {isActive && <CheckCircle2 className="h-4 w-4 text-emerald-300" />}
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-white/45">
+                            {preset.description}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-white/35">Export</div>
+                      <div className="mt-1 text-xs font-semibold text-white">{exportMeta.label}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-white/35">Quality</div>
+                      <div className="mt-1 text-xs font-semibold text-white">
+                        {exportMeta.megapixels.toFixed(2)} MP
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-white/35">Checks</div>
+                      <div
+                        className={`mt-1 text-xs font-semibold ${
+                          failedQualityChecks.length === 0 ? "text-emerald-300" : "text-amber-300"
+                        }`}
+                      >
+                        {failedQualityChecks.length === 0
+                          ? "Ready"
+                          : `${failedQualityChecks.length} issue${
+                              failedQualityChecks.length === 1 ? "" : "s"
+                            }`}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {qualityChecks.map((check) => {
+                      const Icon = check.passed
+                        ? CheckCircle2
+                        : check.severity === "warning"
+                          ? AlertTriangle
+                          : Info;
+
+                      return (
+                        <div
+                          key={check.id}
+                          className={`flex items-start gap-2 rounded-xl border px-3 py-2 ${
+                            check.passed
+                              ? "border-emerald-400/15 bg-emerald-400/5"
+                              : check.severity === "warning"
+                                ? "border-amber-400/20 bg-amber-400/10"
+                                : "border-white/10 bg-white/[0.04]"
+                          }`}
+                        >
+                          <Icon
+                            className={`mt-0.5 h-4 w-4 shrink-0 ${
+                              check.passed
+                                ? "text-emerald-300"
+                                : check.severity === "warning"
+                                  ? "text-amber-300"
+                                  : "text-white/45"
+                            }`}
+                          />
+                          <div className="min-w-0">
+                            <div className="text-xs font-medium text-white/80">{check.label}</div>
+                            <div className="mt-0.5 text-[11px] leading-relaxed text-white/45">
+                              {check.detail}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ControlGroup>
+
                 {/* TEMPLATE SELECTION */}
                 <ControlGroup title="模板风格" icon={LayoutTemplate}>
                   <div className="grid grid-cols-2 gap-3">
@@ -2109,7 +2227,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                   config.template === "cyberpunk") && (
                   <ControlGroup title="主题色彩" icon={Palette}>
                     <div className="flex gap-3 flex-wrap">
-                      {THEME_COLORS.map((color) => (
+                      {POSTER_THEME_COLORS.map((color) => (
                         <button
                           key={color}
                           onClick={() => updateConfig("primaryColor", color)}
@@ -2390,7 +2508,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                 {/* EXPORT SETTINGS */}
                 <div className="pt-4 border-t border-white/10 space-y-4">
                   <div className="flex gap-2">
-                    {ASPECT_RATIO_PRESETS.map((preset) => (
+                    {POSTER_ASPECT_RATIO_PRESETS.map((preset) => (
                       <button
                         key={preset.name}
                         onClick={() => updateConfig("aspectRatio", preset.value)}
@@ -2406,7 +2524,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                   </div>
 
                   <div className="flex gap-2">
-                    {RESOLUTION_PRESETS.map((preset) => (
+                    {POSTER_RESOLUTION_PRESETS.map((preset) => (
                       <button
                         key={preset.pixelRatio}
                         onClick={() => setResolution(preset.pixelRatio)}
@@ -2426,7 +2544,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
               {/* ACTION BUTTONS */}
               <div className="p-6 border-t border-white/10 bg-white/5 shrink-0 space-y-3">
                 <button
-                  onClick={() => setConfig(DEFAULT_CONFIG)}
+                  onClick={() => setConfig(DEFAULT_POSTER_CONFIG)}
                   className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 text-sm font-medium transition-all flex items-center justify-center gap-2"
                 >
                   <RefreshCw className="w-4 h-4" />
