@@ -65,13 +65,13 @@ export function VisualizationViewV8() {
   const [showControlDrawer, setShowControlDrawer] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [parameterMode, setParameterMode] = useState<"basic" | "professional" | "expert">("basic");
-  const [performanceStats, setPerformanceStats] = useState<{
-    fps: number;
-    cpu: number;
-    memory: number;
-  } | null>(null);
 
   const firstCanvasEffectId = effects.find((effect) => effect.preferredEngine !== "webgl")?.id;
+  const performanceStats = {
+    fps,
+    cpu: cpuUsage,
+    memory: memoryUsage,
+  };
   const shouldShowRecovery =
     !currentEffect ||
     (currentEffect.preferredEngine === "webgl" && !isWebGLAvailable) ||
@@ -159,42 +159,6 @@ export function VisualizationViewV8() {
       }
     });
   }, [totemStore.allKeywords]);
-
-  useEffect(() => {
-    let animationFrame: number;
-    let lastTime = performance.now();
-    let frameCount = 0;
-    let fps = 0;
-
-    const updatePerformance = () => {
-      frameCount++;
-      const currentTime = performance.now();
-      if (currentTime - lastTime >= 1000) {
-        fps = frameCount;
-        frameCount = 0;
-        lastTime = currentTime;
-
-        if (currentView === "visualization") {
-          setPerformanceStats({
-            fps,
-            cpu: Math.random() * 30 + 10,
-            memory: Math.random() * 100 + 50,
-          });
-        }
-      }
-      animationFrame = requestAnimationFrame(updatePerformance);
-    };
-
-    if (currentView === "visualization") {
-      animationFrame = requestAnimationFrame(updatePerformance);
-    }
-
-    return () => {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-      }
-    };
-  }, [currentView]);
 
   useEffect(() => {
     if (currentView !== "visualization") return;
@@ -399,7 +363,7 @@ export function VisualizationViewV8() {
         onParamChange={updateParam}
         parameterMode={parameterMode}
         onParameterModeChange={setParameterMode}
-        performanceStats={performanceStats ?? undefined}
+        performanceStats={performanceStats}
       />
 
       {isTransitioning && <div className="absolute inset-0 bg-black/50 z-50 pointer-events-none" />}
