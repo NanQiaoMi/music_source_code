@@ -6,6 +6,7 @@ import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
 import { usePerformanceV8Store } from "@/store/performanceV8Store";
+import { useVisualizationV8Store } from "@/store/visualizationV8Store";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { Gauge, Settings, X } from "lucide-react";
 import { RenderEngineManager } from "./engines/RenderEngineManager";
@@ -64,7 +65,8 @@ export function VisualizationViewV8() {
 
   const [showControlDrawer, setShowControlDrawer] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [parameterMode, setParameterMode] = useState<"basic" | "professional" | "expert">("basic");
+  const parameterMode = useVisualizationV8Store((state) => state.parameterMode);
+  const setParameterMode = useVisualizationV8Store((state) => state.setParameterMode);
 
   const firstCanvasEffectId = effects.find((effect) => effect.preferredEngine !== "webgl")?.id;
   const performanceStats = {
