@@ -3,7 +3,13 @@
 import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Gauge, RotateCcw, Search, Sliders, Sparkles, Star, X } from "lucide-react";
-import { EffectCategory, EffectPlugin, PerformanceLevel } from "@/lib/visualization/types";
+import {
+  EffectCategory,
+  EffectPlugin,
+  ParameterMode,
+  PerformanceLevel,
+} from "@/lib/visualization/types";
+import { shouldShowParameterMode } from "@/lib/visualization/parameterMode";
 import { usePerformanceV8Store } from "@/store/performanceV8Store";
 import { useVisualizationV8Store } from "@/store/visualizationV8Store";
 
@@ -138,8 +144,7 @@ export function VisualControlDrawer({
     .filter((effect): effect is EffectPlugin => Boolean(effect));
 
   const shouldShowParam = (paramMode: string) => {
-    const modeOrder = ["basic", "professional", "expert"];
-    return modeOrder.indexOf(paramMode) >= modeOrder.indexOf(parameterMode);
+    return shouldShowParameterMode(paramMode as ParameterMode, parameterMode);
   };
 
   const resetCurrentEffectParams = () => {

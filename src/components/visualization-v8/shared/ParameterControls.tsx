@@ -2,6 +2,7 @@
 
 import React from "react";
 import { EffectParameterDefinition, ParameterMode } from "@/lib/visualization/types";
+import { shouldShowParameterMode } from "@/lib/visualization/parameterMode";
 
 interface ParameterControlProps {
   param: EffectParameterDefinition;
@@ -14,10 +15,7 @@ function shouldShowParameter(
   param: EffectParameterDefinition,
   currentMode: ParameterMode
 ): boolean {
-  const modeOrder: ParameterMode[] = ["basic", "professional", "expert"];
-  const currentIndex = modeOrder.indexOf(currentMode);
-  const paramIndex = modeOrder.indexOf(param.mode);
-  return paramIndex <= currentIndex;
+  return shouldShowParameterMode(param.mode, currentMode);
 }
 
 export function NumberParameter({ param, value, onChange }: ParameterControlProps) {
