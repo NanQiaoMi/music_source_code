@@ -108,7 +108,7 @@ const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) =>
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
           className="relative w-full max-w-2xl max-h-[85vh] flex flex-col"
         >
-          <GlassCard className="flex flex-col h-full overflow-hidden border-white/20">
+          <GlassCard className="flex flex-col overflow-hidden border-white/20">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-white/10">
               <div className="flex items-center gap-3">

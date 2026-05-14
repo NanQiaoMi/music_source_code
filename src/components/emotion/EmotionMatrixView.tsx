@@ -455,7 +455,7 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
                       <X size={20} />
                     </button>
                   </div>
-                  <div className="p-8 flex flex-col h-full">
+                  <div className="p-8 flex flex-col">
                     {/* Sidebar Tabs */}
                     <div className="flex p-1 bg-white/[0.03] rounded-2xl mb-8 border border-white/5 shadow-inner">
                       {[

@@ -35,17 +35,116 @@ export interface PosterConfig {
 export interface PosterPreset {
   id: "story" | "feed" | "lyric-focus" | "cover-focus";
   name: string;
+  nameZh: string;
   description: string;
+  descriptionZh: string;
   config: Partial<PosterConfig>;
 }
 
 export interface PosterQualityCheck {
   id: "cover" | "lyrics" | "resolution" | "lyric-density" | "contrast";
   label: string;
+  labelZh: string;
   detail: string;
+  detailZh: string;
   passed: boolean;
   severity: "info" | "warning";
 }
+
+export interface PosterTemplateMeta {
+  id: PosterTemplate;
+  name: string;
+  nameZh: string;
+  icon: string;
+  gradient: string;
+  description: string;
+  descriptionZh: string;
+  supportsThemeColor: boolean;
+}
+
+/** Template metadata for UI rendering. */
+export const POSTER_TEMPLATE_META: PosterTemplateMeta[] = [
+  {
+    id: "apple",
+    name: "Apple Glass",
+    nameZh: "苹果玻璃",
+    icon: "🍎",
+    gradient: "from-blue-500 to-purple-500",
+    description: "Frosted glass with blurred cover backdrop.",
+    descriptionZh: "毛玻璃风格，模糊封面背景",
+    supportsThemeColor: false,
+  },
+  {
+    id: "spotify",
+    name: "Spotify Vibrant",
+    nameZh: "Spotify 风格",
+    icon: "📢",
+    gradient: "from-green-400 to-emerald-600",
+    description: "Bold gradient with cover at bottom-right.",
+    descriptionZh: "活力渐变，封面右下角布局",
+    supportsThemeColor: true,
+  },
+  {
+    id: "gradient",
+    name: "Starry Gradient",
+    nameZh: "渐变星空",
+    icon: "🌌",
+    gradient: "from-purple-600 to-blue-900",
+    description: "Deep gradient sky with floating cover art.",
+    descriptionZh: "深邃渐变天空，悬浮封面",
+    supportsThemeColor: true,
+  },
+  {
+    id: "vinyl",
+    name: "Classic Vinyl",
+    nameZh: "经典黑胶",
+    icon: "💽",
+    gradient: "from-[#d5cebc] to-[#c2ba9e]",
+    description: "Warm vinyl record with cream paper texture.",
+    descriptionZh: "温暖黑胶唱片，奶油色纸质纹理",
+    supportsThemeColor: true,
+  },
+  {
+    id: "cassette",
+    name: "Retro Cassette",
+    nameZh: "复古磁带",
+    icon: "📼",
+    gradient: "from-gray-700 to-gray-900",
+    description: "Nostalgic cassette tape with reels and sticker.",
+    descriptionZh: "怀旧磁带造型，卷轴与贴纸细节",
+    supportsThemeColor: true,
+  },
+  {
+    id: "minimal",
+    name: "Minimal White",
+    nameZh: "极简白色",
+    icon: "✨",
+    gradient: "from-gray-100 to-gray-300",
+    description: "Clean white canvas with large cover art.",
+    descriptionZh: "纯净白色画布，大尺寸封面",
+    supportsThemeColor: false,
+  },
+  {
+    id: "aura",
+    name: "Dreamy Aura",
+    nameZh: "梦幻光晕",
+    icon: "✨",
+    gradient: "from-violet-500 to-fuchsia-500",
+    description: "Luminous orbs with ethereal glow.",
+    descriptionZh: "发光球体，空灵梦幻光晕",
+    supportsThemeColor: true,
+  },
+  {
+    id: "cyberpunk",
+    name: "Cyberpunk",
+    nameZh: "赛博朋克",
+    icon: "🖥",
+    gradient: "from-cyan-500 to-yellow-500",
+    description: "Neon-lit digital grid with glitch accents.",
+    descriptionZh: "霓虹灯光数字网格，故障艺术风格",
+    supportsThemeColor: true,
+  },
+];
 
 export const DEFAULT_POSTER_CONFIG: PosterConfig = {
   template: "apple",
@@ -72,16 +171,16 @@ export const DEFAULT_POSTER_CONFIG: PosterConfig = {
 };
 
 export const POSTER_ASPECT_RATIO_PRESETS = [
-  { name: "Square 1:1", value: 1 },
-  { name: "Feed 4:5", value: 0.8 },
-  { name: "Story 9:16", value: 0.5625 },
-  { name: "Portrait 3:4", value: 0.75 },
+  { name: "1:1 Square", nameZh: "1:1 正方形", value: 1 },
+  { name: "4:5 Feed", nameZh: "4:5 Ins图", value: 0.8 },
+  { name: "9:16 Story", nameZh: "9:16 手机屏", value: 0.5625 },
+  { name: "3:4 Portrait", nameZh: "3:4 竖图", value: 0.75 },
 ];
 
 export const POSTER_RESOLUTION_PRESETS = [
-  { pixelRatio: 1, label: "Standard" },
-  { pixelRatio: 2, label: "HD" },
-  { pixelRatio: 3, label: "Ultra" },
+  { pixelRatio: 1, label: "Standard", labelZh: "标清" },
+  { pixelRatio: 2, label: "HD", labelZh: "高清 (推荐)" },
+  { pixelRatio: 3, label: "Ultra", labelZh: "超清" },
 ];
 
 export const POSTER_THEME_COLORS = [
@@ -99,7 +198,9 @@ export const POSTER_QUICK_PRESETS: PosterPreset[] = [
   {
     id: "story",
     name: "Story",
+    nameZh: "故事",
     description: "Vertical social poster with balanced cover, lyric, and QR.",
+    descriptionZh: "竖版社交海报，封面、歌词与二维码均衡布局",
     config: {
       template: "apple",
       aspectRatio: 0.5625,
@@ -113,7 +214,9 @@ export const POSTER_QUICK_PRESETS: PosterPreset[] = [
   {
     id: "feed",
     name: "Feed",
+    nameZh: "动态",
     description: "Compact 4:5 layout for feed sharing.",
+    descriptionZh: "4:5 紧凑布局，适合动态分享",
     config: {
       template: "spotify",
       aspectRatio: 0.8,
@@ -127,7 +230,9 @@ export const POSTER_QUICK_PRESETS: PosterPreset[] = [
   {
     id: "lyric-focus",
     name: "Lyric",
+    nameZh: "歌词",
     description: "Quiet quote card with larger lyric and fewer lines.",
+    descriptionZh: "安静引文卡片，突出歌词，行数精简",
     config: {
       template: "minimal",
       aspectRatio: 1,
@@ -145,7 +250,9 @@ export const POSTER_QUICK_PRESETS: PosterPreset[] = [
   {
     id: "cover-focus",
     name: "Cover",
+    nameZh: "封面",
     description: "Album-art led poster for high-impact cover sharing.",
+    descriptionZh: "以封面为主视觉，冲击力强的专辑海报",
     config: {
       template: "gradient",
       aspectRatio: 0.75,
@@ -194,48 +301,72 @@ export function getPosterQualityChecks({
     {
       id: "cover",
       label: "Cover",
+      labelZh: "封面",
       detail: hasCover ? "Cover art is available." : "Missing cover art; fallback artwork will export.",
+      detailZh: hasCover ? "封面图片可用" : "缺少封面图片，将使用默认封面导出",
       passed: hasCover,
       severity: "warning",
     },
     {
       id: "lyrics",
       label: "Lyrics",
+      labelZh: "歌词",
       detail:
         lyricLineCount > 0
           ? `${lyricLineCount} lyric line${lyricLineCount === 1 ? "" : "s"} selected.`
           : "No lyric line selected; poster will rely on song metadata.",
+      detailZh:
+        lyricLineCount > 0
+          ? `已选 ${lyricLineCount} 行歌词`
+          : "未选择歌词，海报将使用歌曲信息",
       passed: lyricLineCount > 0,
       severity: "info",
     },
     {
       id: "resolution",
       label: "Resolution",
+      labelZh: "分辨率",
       detail: resolution >= 2 ? "Export resolution is ready for sharing." : "Use HD or Ultra for crisper text.",
+      detailZh: resolution >= 2 ? "导出分辨率适合分享" : "建议使用高清或超清以获得更清晰的文字",
       passed: resolution >= 2,
       severity: "warning",
     },
     {
       id: "lyric-density",
       label: "Lyric density",
+      labelZh: "歌词密度",
       detail:
         config.maxLyricLines <= 5
           ? "Lyric density is easy to scan."
           : "Too many lyric lines can crowd small posters.",
+      detailZh:
+        config.maxLyricLines <= 5
+          ? "歌词密度适中，易于阅读"
+          : "歌词行数过多，可能影响小尺寸海报的阅读体验",
       passed: config.maxLyricLines <= 5,
       severity: "warning",
     },
     {
       id: "contrast",
       label: "Contrast",
+      labelZh: "对比度",
       detail:
         config.textEffect === "none" && config.template !== "minimal"
           ? "Consider shadow or glow for busy artwork."
           : "Text treatment should remain readable.",
+      detailZh:
+        config.textEffect === "none" && config.template !== "minimal"
+          ? "建议添加阴影或发光效果以提升可读性"
+          : "文字效果适合当前模板",
       passed: config.textEffect !== "none" || config.template === "minimal",
       severity: "info",
     },
   ];
+}
+
+/** Get template metadata by id. */
+export function getTemplateMeta(id: PosterTemplate): PosterTemplateMeta {
+  return POSTER_TEMPLATE_META.find((t) => t.id === id) ?? POSTER_TEMPLATE_META[0];
 }
 
 export function createPosterFileName(title: string, template: PosterTemplate): string {

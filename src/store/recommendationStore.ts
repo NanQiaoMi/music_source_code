@@ -20,12 +20,20 @@ interface PlayRecord {
   genres?: string[];
 }
 
+interface NegativeFeedback {
+  songId: string;
+  artist?: string;
+  genre?: string;
+  createdAt: number;
+}
+
 interface RecommendationState {
   playHistory: PlayRecord[];
   recommendations: ScoredRecommendation[];
   dismissedSongIds: string[];
   lastGeneratedAt: number;
   isLoading: boolean;
+  negativeFeedback: NegativeFeedback[];
 
   recordPlay: (song: Song) => void;
   getRecommendations: () => Song[];
@@ -34,6 +42,8 @@ interface RecommendationState {
   clearDismissedRecommendations: () => void;
   clearPlayHistory: () => void;
   getFavoriteArtists: () => { artist: string; playCount: number }[];
+  addNegativeFeedback: (song: Song) => void;
+  clearNegativeFeedback: () => void;
 }
 
 export const useRecommendationStore = create<RecommendationState>()(
@@ -44,6 +54,7 @@ export const useRecommendationStore = create<RecommendationState>()(
       dismissedSongIds: [],
       lastGeneratedAt: 0,
       isLoading: false,
+      negativeFeedback: [],
 
       recordPlay: (song) => {
         set((state) => {
@@ -100,7 +111,15 @@ export const useRecommendationStore = create<RecommendationState>()(
           addedAt: (song as any).addedAt,
         }));
 
-        return generateRecommendations(songsWithCount, { x: emotion.x, y: emotion.y }, 20);
+        const { negativeFeedback } = get();
+        const negArtists = new Set(negativeFeedback.filter((f) => f.artist).map((f) => f.artist!));
+        const negGenres = new Set(negativeFeedback.filter((f) => f.genre).map((f) => f.genre!));
+        const filtered = songsWithCount.filter((s) => {
+          if (negArtists.has(s.artist)) return false;
+          if (s.genre && negGenres.has(s.genre)) return false;
+          return true;
+        });
+        return generateRecommendations(filtered.length > 0 ? filtered : songsWithCount, { x: emotion.x, y: emotion.y }, 20);
       },
 
       refreshRecommendations: (songs, context) => {
@@ -138,6 +157,23 @@ export const useRecommendationStore = create<RecommendationState>()(
 
       clearPlayHistory: () => set({ playHistory: [] }),
 
+      addNegativeFeedback: (song) => {
+        set((state) => {
+          const existing = state.negativeFeedback.find((f) => f.songId === song.id);
+          if (existing) return state;
+          const feedback: NegativeFeedback = {
+            songId: song.id,
+            artist: song.artist,
+            genre: song.genre,
+            createdAt: Date.now(),
+          };
+          return {
+            negativeFeedback: [...state.negativeFeedback, feedback].slice(-200),
+            recommendations: state.recommendations.filter((item) => item.song.id !== song.id),
+          };
+        });
+      },
+      clearNegativeFeedback: () => set({ negativeFeedback: [] }),
       getFavoriteArtists: () => {
         const { playHistory } = get();
         const artistCounts = new Map<string, number>();
@@ -175,6 +211,7 @@ export const useRecommendationStore = create<RecommendationState>()(
                   // Aggressively clear history as it's not critical
                   state.state.playHistory = [];
                   state.state.recommendations = [];
+                state.state.negativeFeedback = [];
                 }
                 localStorage.setItem(name, JSON.stringify(state));
               } catch (e) {

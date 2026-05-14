@@ -348,3 +348,84 @@ export function generateExplainableRecommendations(
     .sort((a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title))
     .slice(0, limit);
 }
+
+export interface DailyRecommendationMode {
+  name: string;
+  hour: number;
+  targetFamiliarity: number;
+  targetFreshness: number;
+  description: string;
+}
+
+export interface DailyRecommendationGroup {
+  category: "familiar" | "extend" | "discover";
+  title: string;
+  description: string;
+  songs: SongWithPlayCount[];
+  reasons: Map<string, RecommendationReason[]>;
+}
+
+export interface DailyRecommendationResult {
+  groups: DailyRecommendationGroup[];
+  orderedSongs: SongWithPlayCount[];
+  mode: DailyRecommendationMode;
+  generatedAt: number;
+}
+
+export function getDailyRecommendationMode(hour?: number): DailyRecommendationMode {
+  const h = hour ?? new Date().getHours();
+  if (h >= 5 && h < 11) return { name: "早间活力", hour: h, targetFamiliarity: 0.55, targetFreshness: 0.45, description: "充满活力的早间推荐" };
+  if (h >= 11 && h < 14) return { name: "午间放松", hour: h, targetFamiliarity: 0.5, targetFreshness: 0.5, description: "舒缓的午间推荐" };
+  if (h >= 14 && h < 17) return { name: "下午专注", hour: h, targetFamiliarity: 0.6, targetFreshness: 0.4, description: "专注工作的下午推荐" };
+  if (h >= 17 && h < 21) return { name: "傍晚平衡", hour: h, targetFamiliarity: 0.45, targetFreshness: 0.55, description: "平衡的傍晚推荐" };
+  return { name: "夜间舒缓", hour: h, targetFamiliarity: 0.65, targetFreshness: 0.35, description: "舒缓放松的夜间推荐" };
+}
+
+export function generateDailyRecommendationGroups(
+  songs: SongWithPlayCount[],
+  context: RecommendationContext,
+  mode?: DailyRecommendationMode,
+  groupSize: number = 6
+): DailyRecommendationResult {
+  const effectiveMode = mode ?? getDailyRecommendationMode();
+  const maxPlayCount = getMaxPlayCount(songs);
+  const now = Date.now();
+  const recentThreshold = now - 14 * 24 * 60 * 60 * 1000;
+
+  const scored = songs.map((song) => {
+    const s = scoreSongForRecommendation(song, context);
+    const f = calculateFamiliarityScore(song, maxPlayCount);
+    const r = calculateFreshnessScore(song, maxPlayCount);
+    return { ...s, _familiarity: f, _freshness: r, _isRecent: (song.addedAt ?? 0) > recentThreshold };
+  }).sort((a, b) => b.score - a.score);
+
+  const used = new Set<string>();
+  const pick = (filter: (s: typeof scored[0]) => boolean, limit: number) => {
+    const result: typeof scored = [];
+    for (const s of scored) {
+      if (result.length >= limit) break;
+      if (used.has(s.song.id) || !filter(s)) continue;
+      result.push(s);
+      used.add(s.song.id);
+    }
+    return result;
+  };
+
+  const familiarSongs = pick((s) => s._familiarity >= 0.5 || s._familiarity >= effectiveMode.targetFamiliarity - 0.15, groupSize);
+  const extendSongs = pick((s) => context.topArtists.includes(s.song.artist) || (!!s.song.genre && context.topGenres.includes(s.song.genre)), groupSize);
+  const discoverSongs = pick(() => true, groupSize);
+
+  const buildReasons = (items: {song: SongWithPlayCount; reasons: RecommendationReason[]}[]) => {
+    const m = new Map<string, RecommendationReason[]>();
+    for (const item of items) m.set(item.song.id, item.reasons);
+    return m;
+  };
+
+  const groups: DailyRecommendationGroup[] = [];
+  if (familiarSongs.length) groups.push({ category: "familiar", title: "熟悉再听", description: "你经常听的歌", songs: familiarSongs.map(s => s.song), reasons: buildReasons(familiarSongs) });
+  if (extendSongs.length) groups.push({ category: "extend", title: "风格延展", description: "与你偏好相似的歌", songs: extendSongs.map(s => s.song), reasons: buildReasons(extendSongs) });
+  if (discoverSongs.length) groups.push({ category: "discover", title: "新鲜发现", description: "探索未知音乐", songs: discoverSongs.map(s => s.song), reasons: buildReasons(discoverSongs) });
+
+  const orderedSongs = [...familiarSongs, ...extendSongs, ...discoverSongs].map(s => s.song);
+  return { groups, orderedSongs, mode: effectiveMode, generatedAt: now };
+}

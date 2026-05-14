@@ -1,8 +1,9 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useQueueStore } from "./queueStore";
 import { useRecommendationStore } from "./recommendationStore";
 import { usePlayerStore } from "./playerStore";
+import { usePlaylistStore } from "./playlistStore";
 import { useEQStore } from "./eqStore";
 
 import { Song } from "@/types/song";
@@ -335,15 +336,17 @@ export const useAudioStore = create<AudioState>()(
 
         if (loopMode === "shuffle") {
           nextIndex = Math.floor(Math.random() * queue.length);
+        } else if (loopMode === "none" && currentIndex >= queue.length - 1) {
+          // End of queue with no loop: stop playback
+          usePlayerStore.getState().setCurrentSong(null);
+          useQueueStore.getState().setCurrentIndex(0);
+          set({ currentSong: null, isPlaying: false, currentTime: 0 });
+          return;
         } else {
           nextIndex = (currentIndex + 1) % queue.length;
         }
-
         const nextSongItem = queue[nextIndex];
-
         const queueStore = useQueueStore.getState();
-        queueStore.setCurrentIndex(nextIndex);
-        queueStore.addToHistory(nextSongItem);
         usePlayerStore.getState().setCurrentSong(nextSongItem);
 
         set({
@@ -393,10 +396,17 @@ export const useAudioStore = create<AudioState>()(
       clearError: () => set({ error: null }),
       setBufferedRanges: (ranges) => set({ bufferedRanges: ranges }),
 
+
       playSong: (song) => {
+        // Auto-populate queue from playlist library so next/prev and auto-advance work
+        const playlistSongs = usePlaylistStore.getState().songs;
+        const idx = playlistSongs.findIndex((s) => s.id === song.id);
+        const fullQueue = idx >= 0 ? playlistSongs : [song];
+        const startIdx = idx >= 0 ? idx : 0;
+
         const queueStore = useQueueStore.getState();
-        queueStore.setQueue([song]);
-        queueStore.setCurrentIndex(0);
+        queueStore.setQueue(fullQueue);
+        queueStore.setCurrentIndex(startIdx);
         queueStore.addToHistory(song);
         usePlayerStore.getState().setCurrentSong(song);
 
@@ -406,8 +416,8 @@ export const useAudioStore = create<AudioState>()(
           isPlaying: true,
           isLoading: true,
           error: null,
-          queue: [song],
-          currentIndex: 0,
+          queue: fullQueue,
+          currentIndex: startIdx,
           isEmotionCurveMode: false,
         });
       },

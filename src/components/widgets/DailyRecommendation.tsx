@@ -7,7 +7,8 @@ import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { scoreSongForRecommendation } from "@/utils/recommendationLogic";
-import { X, Sparkles, Play, RefreshCw, Clock, Music, Plus, ListPlus, EyeOff } from "lucide-react";
+import { X, Sparkles, Play, RefreshCw, Clock, Music, Plus, ListPlus, EyeOff, ThumbsDown } from "lucide-react";
+import { useRecommendationStore } from "@/store/recommendationStore";
 
 interface DailyRecommendationProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ interface DailyRecommendationProps {
 }
 
 export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen, onClose }) => {
-  const { recommendation, isLoading, refreshRecommendation, hasRecommendation } =
+  const { recommendation, isLoading, refreshRecommendation, hasRecommendation, recommendationGroups, recommendationMode } =
     useDailyRecommendation();
   const addToQueue = useQueueStore((state) => state.addToQueue);
   const insertNext = useQueueStore((state) => state.insertNext);
@@ -24,11 +25,17 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dismissedSongIds, setDismissedSongIds] = useState<Set<string>>(new Set());
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const addNegativeFeedback = useRecommendationStore((s) => s.addNegativeFeedback);
 
-  const visibleRecommendation = useMemo(
-    () => recommendation.filter((song) => !dismissedSongIds.has(song.id)),
-    [dismissedSongIds, recommendation]
-  );
+  const visibleRecommendation = useMemo(() => {
+    const filtered = recommendation.filter((song) => !dismissedSongIds.has(song.id));
+    if (activeCategory === "all") return filtered;
+    const group = recommendationGroups.find((g) => g.category === activeCategory);
+    if (!group) return filtered;
+    const groupIds = new Set(group.songs.map((s) => s.id));
+    return filtered.filter((s) => groupIds.has(s.id));
+  }, [dismissedSongIds, recommendation, activeCategory, recommendationGroups]);
 
   const recommendationReasons = useMemo(() => {
     const topArtists = (listeningStats.topArtists || []).slice(0, 5).map((item) => item.artist);
@@ -85,6 +92,11 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
     setDismissedSongIds((current) => new Set([...current, songId]));
   };
 
+  const handleNegativeFeedback = (song: typeof recommendation[0]) => {
+    addNegativeFeedback(song);
+    handleDismiss(song.id);
+  };
+
   const formatTime = (date: Date): string => {
     const hours = date.getHours();
     const minutes = date.getMinutes();
@@ -111,7 +123,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-2xl max-h-[80vh] bg-[#1c1c1e]/90 backdrop-blur-[40px] rounded-[24px] border border-white/10 shadow-2xl overflow-hidden flex flex-col"
       >
-        <div className="relative z-10 flex flex-col h-full">
+        <div className="flex flex-col">
           <div className="flex items-center justify-between p-6 border-b border-white/10">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
@@ -130,6 +142,13 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                 <RefreshCw className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`} />
               </button>
               <button
+                onClick={() => useRecommendationStore.getState().clearNegativeFeedback()}
+                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all"
+                title="清除反馈记忆"
+              >
+                <ThumbsDown className="w-4 h-4" />
+              </button>
+              <button
                 onClick={onClose}
                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
               >
@@ -138,6 +157,34 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
             </div>
           </div>
 
+          {recommendationMode && (
+            <div className="px-6 py-2 text-white/40 text-sm">
+              {recommendationMode.description}
+            </div>
+          )}
+          {recommendationGroups.length > 0 && (
+            <div className="px-4 pb-2 flex gap-2 flex-wrap">
+              <button
+                onClick={() => setActiveCategory("all")}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  activeCategory === "all" ? "bg-white/20 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"
+                }`}
+              >
+                全部 ({recommendation.filter((s) => !dismissedSongIds.has(s.id)).length})
+              </button>
+              {recommendationGroups.map((group) => (
+                <button
+                  key={group.category}
+                  onClick={() => setActiveCategory(group.category)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    activeCategory === group.category ? "bg-white/20 text-white" : "bg-white/5 text-white/50 hover:bg-white/10"
+                  }`}
+                >
+                  {group.title} ({group.songs.filter((s) => !dismissedSongIds.has(s.id)).length})
+                </button>
+              ))}
+            </div>
+          )}
           <div className="p-4 border-b border-white/10">
             <button
               onClick={handlePlayAll}
@@ -267,6 +314,16 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                         title="忽略本次推荐"
                       >
                         <EyeOff className="w-4 h-4 text-white" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNegativeFeedback(song);
+                        }}
+                        className="w-8 h-8 rounded-full bg-white/10 hover:bg-red-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="不再推荐此类"
+                      >
+                        <ThumbsDown className="w-4 h-4 text-white" />
                       </button>
                     </motion.div>
                   ))}

@@ -107,7 +107,7 @@ export const ProfessionalModePanel: React.FC<ProfessionalModePanelProps> = ({
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-2xl max-h-[85vh] bg-white/10 backdrop-blur-3xl rounded-3xl border border-white/20 m-4 overflow-hidden flex flex-col"
           >
-            <div className="relative z-10 flex flex-col h-full">
+            <div className="flex flex-col">
               <div className="flex items-center justify-between p-6 border-b border-white/10">
                 <h2 className="text-2xl font-bold text-white">专业模式设置</h2>
                 <button
