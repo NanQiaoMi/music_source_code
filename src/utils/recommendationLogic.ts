@@ -255,7 +255,7 @@ export function generateRecommendations(
   if (songs.length === 0) return [];
 
   const maxPlayCount = getMaxPlayCount(songs);
-  const { currentSong, x, y } = params;
+  const { currentSong } = params;
 
   const availableSongs = songs.filter((song) => !currentSong || song.id !== currentSong.id);
 
@@ -272,10 +272,7 @@ export function generateRecommendations(
   for (let i = 0; i < Math.min(limit, availableSongs.length); i++) {
     const candidates = preScoredSongs
       .filter((item) => !usedSongIds.has(item.song.id))
-      .map((item) => {
-        const updatedScore = getSmartScore(item.song, maxPlayCount, params, selectedSongs);
-        return updatedScore;
-      });
+      .map((item) => getSmartScore(item.song, maxPlayCount, params, selectedSongs));
 
     if (candidates.length === 0) break;
 
@@ -325,6 +322,11 @@ export function scoreSongForRecommendation(
     score += 8;
   } else {
     score -= 20;
+  }
+
+  if (reasons.length === 0) {
+    reasons.push({ code: "fresh-discovery", label: "新鲜发现", weight: 8 });
+    score += 8;
   }
 
   return {
@@ -378,54 +380,62 @@ export function getDailyRecommendationMode(hour?: number): DailyRecommendationMo
   if (h >= 11 && h < 14) return { name: "午间放松", hour: h, targetFamiliarity: 0.5, targetFreshness: 0.5, description: "舒缓的午间推荐" };
   if (h >= 14 && h < 17) return { name: "下午专注", hour: h, targetFamiliarity: 0.6, targetFreshness: 0.4, description: "专注工作的下午推荐" };
   if (h >= 17 && h < 21) return { name: "傍晚平衡", hour: h, targetFamiliarity: 0.45, targetFreshness: 0.55, description: "平衡的傍晚推荐" };
-  return { name: "夜间舒缓", hour: h, targetFamiliarity: 0.65, targetFreshness: 0.35, description: "舒缓放松的夜间推荐" };
+  return { name: "深夜沉浸", hour: h, targetFamiliarity: 0.7, targetFreshness: 0.3, description: "适合夜晚的沉浸推荐" };
 }
 
 export function generateDailyRecommendationGroups(
   songs: SongWithPlayCount[],
   context: RecommendationContext,
-  mode?: DailyRecommendationMode,
-  groupSize: number = 6
+  mode: DailyRecommendationMode = getDailyRecommendationMode(),
+  perGroupLimit: number = 6
 ): DailyRecommendationResult {
-  const effectiveMode = mode ?? getDailyRecommendationMode();
-  const maxPlayCount = getMaxPlayCount(songs);
-  const now = Date.now();
-  const recentThreshold = now - 14 * 24 * 60 * 60 * 1000;
+  const scored = songs.map((song) => scoreSongForRecommendation(song, context));
+  const byScore = [...scored].sort((a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title));
 
-  const scored = songs.map((song) => {
-    const s = scoreSongForRecommendation(song, context);
-    const f = calculateFamiliarityScore(song, maxPlayCount);
-    const r = calculateFreshnessScore(song, maxPlayCount);
-    return { ...s, _familiarity: f, _freshness: r, _isRecent: (song.addedAt ?? 0) > recentThreshold };
-  }).sort((a, b) => b.score - a.score);
+  const familiar = byScore.filter((item) => (item.song.playCount || 0) >= 3).slice(0, perGroupLimit);
+  const discover = byScore.filter((item) => (item.song.playCount || 0) <= 1).slice(0, perGroupLimit);
+  const familiarIds = new Set(familiar.map((item) => item.song.id));
+  const discoverIds = new Set(discover.map((item) => item.song.id));
+  const extend = byScore
+    .filter((item) => !familiarIds.has(item.song.id) && !discoverIds.has(item.song.id))
+    .slice(0, perGroupLimit);
 
-  const used = new Set<string>();
-  const pick = (filter: (s: typeof scored[0]) => boolean, limit: number) => {
-    const result: typeof scored = [];
-    for (const s of scored) {
-      if (result.length >= limit) break;
-      if (used.has(s.song.id) || !filter(s)) continue;
-      result.push(s);
-      used.add(s.song.id);
+  const makeGroup = (
+    category: DailyRecommendationGroup["category"],
+    title: string,
+    description: string,
+    items: ScoredRecommendation[]
+  ): DailyRecommendationGroup => ({
+    category,
+    title,
+    description,
+    songs: items.map((item) => item.song),
+    reasons: new Map(items.map((item) => [item.song.id, item.reasons])),
+  });
+
+  const groups = [
+    makeGroup("familiar", "常听延续", "从你的高频播放里挑选", familiar),
+    makeGroup("extend", "相邻探索", "沿着当前偏好向外扩展", extend),
+    makeGroup("discover", "新鲜发现", "降低重复度，补充新鲜感", discover),
+  ].filter((group) => group.songs.length > 0);
+
+  const orderedSongs: SongWithPlayCount[] = [];
+  const usedIds = new Set<string>();
+  const rounds = Math.max(...groups.map((group) => group.songs.length), 0);
+  for (let index = 0; index < rounds; index++) {
+    for (const group of groups) {
+      const song = group.songs[index];
+      if (song && !usedIds.has(song.id)) {
+        orderedSongs.push(song);
+        usedIds.add(song.id);
+      }
     }
-    return result;
+  }
+
+  return {
+    groups,
+    orderedSongs,
+    mode,
+    generatedAt: Date.now(),
   };
-
-  const familiarSongs = pick((s) => s._familiarity >= 0.5 || s._familiarity >= effectiveMode.targetFamiliarity - 0.15, groupSize);
-  const extendSongs = pick((s) => context.topArtists.includes(s.song.artist) || (!!s.song.genre && context.topGenres.includes(s.song.genre)), groupSize);
-  const discoverSongs = pick(() => true, groupSize);
-
-  const buildReasons = (items: {song: SongWithPlayCount; reasons: RecommendationReason[]}[]) => {
-    const m = new Map<string, RecommendationReason[]>();
-    for (const item of items) m.set(item.song.id, item.reasons);
-    return m;
-  };
-
-  const groups: DailyRecommendationGroup[] = [];
-  if (familiarSongs.length) groups.push({ category: "familiar", title: "熟悉再听", description: "你经常听的歌", songs: familiarSongs.map(s => s.song), reasons: buildReasons(familiarSongs) });
-  if (extendSongs.length) groups.push({ category: "extend", title: "风格延展", description: "与你偏好相似的歌", songs: extendSongs.map(s => s.song), reasons: buildReasons(extendSongs) });
-  if (discoverSongs.length) groups.push({ category: "discover", title: "新鲜发现", description: "探索未知音乐", songs: discoverSongs.map(s => s.song), reasons: buildReasons(discoverSongs) });
-
-  const orderedSongs = [...familiarSongs, ...extendSongs, ...discoverSongs].map(s => s.song);
-  return { groups, orderedSongs, mode: effectiveMode, generatedAt: now };
 }

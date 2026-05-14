@@ -27,6 +27,10 @@ interface NegativeFeedback {
   createdAt: number;
 }
 
+function getAddedAt(song: Song): number | undefined {
+  return "addedAt" in song && typeof song.addedAt === "number" ? song.addedAt : undefined;
+}
+
 interface RecommendationState {
   playHistory: PlayRecord[];
   recommendations: ScoredRecommendation[];
@@ -44,6 +48,20 @@ interface RecommendationState {
   getFavoriteArtists: () => { artist: string; playCount: number }[];
   addNegativeFeedback: (song: Song) => void;
   clearNegativeFeedback: () => void;
+}
+
+function applyNegativeFeedbackFilter(
+  songs: SongWithPlayCount[],
+  feedback: NegativeFeedback[]
+): SongWithPlayCount[] {
+  const negativeArtists = new Set(feedback.filter((item) => item.artist).map((item) => item.artist));
+  const negativeGenres = new Set(feedback.filter((item) => item.genre).map((item) => item.genre));
+
+  return songs.filter((song) => {
+    if (negativeArtists.has(song.artist)) return false;
+    if (song.genre && negativeGenres.has(song.genre)) return false;
+    return true;
+  });
 }
 
 export const useRecommendationStore = create<RecommendationState>()(
@@ -82,14 +100,12 @@ export const useRecommendationStore = create<RecommendationState>()(
             ];
           }
 
-          const prunedHistory = updatedHistory.slice(-200);
-
-          return { playHistory: prunedHistory };
+          return { playHistory: updatedHistory.slice(-200) };
         });
       },
 
       getRecommendations: () => {
-        const { playHistory, recommendations } = get();
+        const { playHistory, recommendations, negativeFeedback } = get();
         if (recommendations.length > 0) {
           return recommendations.map((recommendation) => recommendation.song);
         }
@@ -100,26 +116,21 @@ export const useRecommendationStore = create<RecommendationState>()(
         const emotion = useEmotionStore.getState().realtimeCoordinates || { x: 0, y: 0 };
 
         const historyMap = new Map<string, number>();
-        playHistory.forEach((record) => {
-          historyMap.set(record.songId, record.playCount);
-        });
+        playHistory.forEach((record) => historyMap.set(record.songId, record.playCount));
 
         const songsWithCount: SongWithPlayCount[] = allSongs.map((song) => ({
           ...song,
           playCount: historyMap.get(song.id) || 0,
-          lastPlayedAt: playHistory.find((r) => r.songId === song.id)?.lastPlayed,
-          addedAt: (song as any).addedAt,
+          lastPlayedAt: playHistory.find((record) => record.songId === song.id)?.lastPlayed,
+          addedAt: getAddedAt(song),
         }));
 
-        const { negativeFeedback } = get();
-        const negArtists = new Set(negativeFeedback.filter((f) => f.artist).map((f) => f.artist!));
-        const negGenres = new Set(negativeFeedback.filter((f) => f.genre).map((f) => f.genre!));
-        const filtered = songsWithCount.filter((s) => {
-          if (negArtists.has(s.artist)) return false;
-          if (s.genre && negGenres.has(s.genre)) return false;
-          return true;
-        });
-        return generateRecommendations(filtered.length > 0 ? filtered : songsWithCount, { x: emotion.x, y: emotion.y }, 20);
+        const filtered = applyNegativeFeedbackFilter(songsWithCount, negativeFeedback);
+        return generateRecommendations(
+          filtered.length > 0 ? filtered : songsWithCount,
+          { x: emotion.x, y: emotion.y },
+          20
+        );
       },
 
       refreshRecommendations: (songs, context) => {
@@ -129,9 +140,9 @@ export const useRecommendationStore = create<RecommendationState>()(
 
         const songsWithCount: SongWithPlayCount[] = songs.map((song) => ({
           ...song,
-          playCount: historyMap.get(song.id) || (song as SongWithPlayCount).playCount || 0,
+          playCount: historyMap.get(song.id) || song.playCount || 0,
           lastPlayedAt: get().playHistory.find((record) => record.songId === song.id)?.lastPlayed,
-          addedAt: (song as SongWithPlayCount).addedAt,
+          addedAt: getAddedAt(song),
         }));
 
         set({
@@ -159,21 +170,25 @@ export const useRecommendationStore = create<RecommendationState>()(
 
       addNegativeFeedback: (song) => {
         set((state) => {
-          const existing = state.negativeFeedback.find((f) => f.songId === song.id);
+          const existing = state.negativeFeedback.find((item) => item.songId === song.id);
           if (existing) return state;
+
           const feedback: NegativeFeedback = {
             songId: song.id,
             artist: song.artist,
             genre: song.genre,
             createdAt: Date.now(),
           };
+
           return {
             negativeFeedback: [...state.negativeFeedback, feedback].slice(-200),
             recommendations: state.recommendations.filter((item) => item.song.id !== song.id),
           };
         });
       },
+
       clearNegativeFeedback: () => set({ negativeFeedback: [] }),
+
       getFavoriteArtists: () => {
         const { playHistory } = get();
         const artistCounts = new Map<string, number>();
@@ -208,14 +223,13 @@ export const useRecommendationStore = create<RecommendationState>()(
               try {
                 const state = JSON.parse(JSON.stringify(value));
                 if (state.state) {
-                  // Aggressively clear history as it's not critical
                   state.state.playHistory = [];
                   state.state.recommendations = [];
-                state.state.negativeFeedback = [];
+                  state.state.negativeFeedback = [];
                 }
                 localStorage.setItem(name, JSON.stringify(state));
-              } catch (e) {
-                console.error("Failed to save even empty recommendation store:", e);
+              } catch (fallbackError) {
+                console.error("Failed to save even empty recommendation store:", fallbackError);
               }
             }
           }
