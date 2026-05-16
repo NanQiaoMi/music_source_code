@@ -4,12 +4,12 @@ import { Song } from "@/types/song";
 import {
   RecommendationContext,
   ScoredRecommendation,
+  RecommendationParams,
   SongWithPlayCount,
   generateExplainableRecommendations,
   generateRecommendations,
 } from "@/utils/recommendationLogic";
-import { usePlaylistStore } from "./playlistStore";
-import { useEmotionStore } from "./emotionStore";
+import { RecommendationInputSnapshot } from "@/lib/recommendation/inputs";
 
 interface PlayRecord {
   songId: string;
@@ -40,7 +40,7 @@ interface RecommendationState {
   negativeFeedback: NegativeFeedback[];
 
   recordPlay: (song: Song) => void;
-  getRecommendations: () => Song[];
+  getRecommendations: (inputs?: RecommendationInputSnapshot) => Song[];
   refreshRecommendations: (songs: Song[], context: RecommendationContext) => void;
   dismissRecommendation: (songId: string) => void;
   clearDismissedRecommendations: () => void;
@@ -54,7 +54,9 @@ function applyNegativeFeedbackFilter(
   songs: SongWithPlayCount[],
   feedback: NegativeFeedback[]
 ): SongWithPlayCount[] {
-  const negativeArtists = new Set(feedback.filter((item) => item.artist).map((item) => item.artist));
+  const negativeArtists = new Set(
+    feedback.filter((item) => item.artist).map((item) => item.artist)
+  );
   const negativeGenres = new Set(feedback.filter((item) => item.genre).map((item) => item.genre));
 
   return songs.filter((song) => {
@@ -104,21 +106,18 @@ export const useRecommendationStore = create<RecommendationState>()(
         });
       },
 
-      getRecommendations: () => {
+      getRecommendations: (inputs) => {
         const { playHistory, recommendations, negativeFeedback } = get();
         if (recommendations.length > 0) {
           return recommendations.map((recommendation) => recommendation.song);
         }
 
-        if (playHistory.length === 0) return [];
-
-        const allSongs = usePlaylistStore.getState().songs;
-        const emotion = useEmotionStore.getState().realtimeCoordinates || { x: 0, y: 0 };
+        if (playHistory.length === 0 || !inputs) return [];
 
         const historyMap = new Map<string, number>();
         playHistory.forEach((record) => historyMap.set(record.songId, record.playCount));
 
-        const songsWithCount: SongWithPlayCount[] = allSongs.map((song) => ({
+        const songsWithCount: SongWithPlayCount[] = inputs.songs.map((song) => ({
           ...song,
           playCount: historyMap.get(song.id) || 0,
           lastPlayedAt: playHistory.find((record) => record.songId === song.id)?.lastPlayed,
@@ -126,11 +125,15 @@ export const useRecommendationStore = create<RecommendationState>()(
         }));
 
         const filtered = applyNegativeFeedbackFilter(songsWithCount, negativeFeedback);
-        return generateRecommendations(
+        const emotion: RecommendationParams = inputs.emotion;
+        const generated = generateRecommendations(
           filtered.length > 0 ? filtered : songsWithCount,
           { x: emotion.x, y: emotion.y },
           20
         );
+        return generated.length > 0
+          ? generated
+          : (filtered.length > 0 ? filtered : songsWithCount).slice(0, 20);
       },
 
       refreshRecommendations: (songs, context) => {

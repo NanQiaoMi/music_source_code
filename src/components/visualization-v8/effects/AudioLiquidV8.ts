@@ -1,6 +1,8 @@
 "use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+import { EffectPlugin } from "@/lib/visualization/types";
+import { useUIStore } from "@/store/uiStore";
 
 export const AudioLiquidV8Effect: EffectPlugin = {
   id: "audio-liquid-v8",
@@ -204,7 +206,6 @@ export const AudioLiquidV8Effect: EffectPlugin = {
     let hasColor = false;
 
     try {
-      const { useUIStore } = require("@/store/uiStore");
       const themeColors = useUIStore.getState().themeColors;
       // Prefer dominant or vibrant for a brighter look, fallback to darkMuted
       const targetHex = themeColors?.dominant || themeColors?.vibrant || themeColors?.darkMuted;
@@ -215,7 +216,9 @@ export const AudioLiquidV8Effect: EffectPlugin = {
         b = parseInt(targetHex.slice(5, 7), 16) || 0;
         hasColor = true;
       }
-    } catch (e) {}
+    } catch {
+      // Theme colors are optional for this effect.
+    }
 
     if (hasColor) {
       // 1. Clear with a deep shade of the cover color instead of pure black

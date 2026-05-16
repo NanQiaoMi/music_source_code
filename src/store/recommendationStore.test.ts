@@ -40,6 +40,11 @@ const createContext = () => ({
   skippedSongIds: new Set<string>(),
 });
 
+const createInputs = () => ({
+  songs,
+  emotion: { x: 0, y: 0 },
+});
+
 describe("recommendationStore", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -74,7 +79,7 @@ describe("recommendationStore", () => {
   });
 
   it("getRecommendations should return empty array when playHistory is empty", () => {
-    const result = useRecommendationStore.getState().getRecommendations();
+    const result = useRecommendationStore.getState().getRecommendations(createInputs());
     expect(result).toEqual([]);
   });
 
@@ -82,7 +87,7 @@ describe("recommendationStore", () => {
     const store = useRecommendationStore.getState();
     store.recordPlay(songs[0]);
 
-    const result = useRecommendationStore.getState().getRecommendations();
+    const result = useRecommendationStore.getState().getRecommendations(createInputs());
     expect(result.length).toBeGreaterThan(0);
     result.forEach((song) => {
       expect(song.id).toBeDefined();
@@ -132,7 +137,9 @@ describe("recommendationStore", () => {
     store.dismissRecommendation(firstId);
 
     expect(useRecommendationStore.getState().dismissedSongIds).toContain(firstId);
-    expect(useRecommendationStore.getState().recommendations.some((item) => item.song.id === firstId)).toBe(false);
+    expect(
+      useRecommendationStore.getState().recommendations.some((item) => item.song.id === firstId)
+    ).toBe(false);
   });
 
   it("removes dismissed songs from active recommendations", () => {
@@ -141,7 +148,9 @@ describe("recommendationStore", () => {
 
     store.dismissRecommendation("s1");
 
-    expect(useRecommendationStore.getState().recommendations.map((item) => item.song.id)).not.toContain("s1");
+    expect(
+      useRecommendationStore.getState().recommendations.map((item) => item.song.id)
+    ).not.toContain("s1");
   });
 
   it("filters negative-feedback artists when fallback recommendations are generated", () => {
@@ -149,7 +158,7 @@ describe("recommendationStore", () => {
     store.recordPlay(songs[2]);
     store.addNegativeFeedback(songs[0]);
 
-    const result = store.getRecommendations();
+    const result = store.getRecommendations(createInputs());
 
     expect(result.length).toBeGreaterThan(0);
     expect(result.some((song) => song.artist === "Artist A")).toBe(false);
