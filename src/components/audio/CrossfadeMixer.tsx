@@ -1,14 +1,13 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
-import { useCrossfadeStore, BPMInfo } from "@/store/crossfadeStore";
+import { canRenderCrossfadePreview, detect } from "@/lib/audio/processingCapabilities";
+import { useCrossfadeStore } from "@/store/crossfadeStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Waves,
-  Settings,
   Play,
-  Pause,
   SkipForward,
   Trash2,
   CheckCircle,
@@ -33,13 +32,10 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
     presets,
     setSettings,
     getBPMInfo,
-    analyzeSongBPM,
     addToQueue,
     removeFromQueue,
     clearQueue,
-    incrementProcessed,
     applyPreset,
-    calculateBPMMatchScore,
     findCompatiblePairs,
   } = useCrossfadeStore();
 
@@ -48,6 +44,8 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
   const [selectedSongs, setSelectedSongs] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [previewBPM, setPreviewBPM] = useState<Record<string, number>>({});
+  const capabilities = detect();
+  const crossfadePreviewAvailable = canRenderCrossfadePreview(capabilities);
 
   useEffect(() => {
     const bpmMap: Record<string, number> = {};
@@ -57,14 +55,14 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
         bpmMap[song.id] = info.bpm;
       }
     });
-    setPreviewBPM(bpmMap);
+    queueMicrotask(() => setPreviewBPM(bpmMap));
   }, [songs, bpmDatabase, getBPMInfo]);
 
   const handleAnalyzeSong = useCallback(async (songId: string) => {
     setAnalyzing(true);
     try {
       const bpm = 100 + Math.random() * 80;
-      const bpmInfo: any = {
+      const bpmInfo = {
         songId,
         bpm: Math.round(bpm),
         confidence: 0.7 + Math.random() * 0.3,
@@ -88,7 +86,7 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
     setAnalyzing(true);
     for (const songId of selectedSongs) {
       const bpm = 100 + Math.random() * 80;
-      const bpmInfo: any = {
+      const bpmInfo = {
         songId,
         bpm: Math.round(bpm),
         confidence: 0.7 + Math.random() * 0.3,
@@ -137,7 +135,9 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
     setSelectedSongs([]);
   }, []);
 
-  const getStatusIcon = (status: "pending" | "processing" | "completed" | "error") => {
+  const getStatusIcon = (
+    status: "pending" | "processing" | "completed" | "error" | "preview-only"
+  ) => {
     switch (status) {
       case "pending":
         return <div className="w-4 h-4 rounded-full border-2 border-gray-500" />;
@@ -145,6 +145,8 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
         return <Loader2 className="w-4 h-4 animate-spin text-blue-500" />;
       case "completed":
         return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case "preview-only":
+        return <Waves className="w-4 h-4 text-yellow-500" />;
       case "error":
         return <XCircle className="w-4 h-4 text-red-500" />;
     }
@@ -239,6 +241,13 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
                     设置
                   </button>
                 </div>
+
+                {!crossfadePreviewAvailable && (
+                  <div className="mb-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-100">
+                    Local crossfade rendering is not available in this browser - export disabled.
+                    Preview analysis remains available.
+                  </div>
+                )}
 
                 {activeTab === "analyze" && (
                   <div className="space-y-4">
@@ -357,15 +366,29 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
                               for (const task of pendingTasks) {
                                 state.updateQueueItemStatus(task.id, "processing", 0);
 
+                                if (!crossfadePreviewAvailable) {
+                                  state.updateQueueItemStatus(
+                                    task.id,
+                                    "preview-only",
+                                    0,
+                                    undefined,
+                                    "Local crossfade rendering is not available in this browser - export disabled"
+                                  );
+                                  continue;
+                                }
+
                                 for (let progress = 10; progress <= 100; progress += 10) {
                                   await new Promise((resolve) => setTimeout(resolve, 100));
                                   state.updateQueueItemStatus(task.id, "processing", progress);
                                 }
 
-                                const mockBlob = new Blob(["crossfade audio data"], {
-                                  type: "audio/wav",
-                                });
-                                state.updateQueueItemStatus(task.id, "completed", 100, mockBlob);
+                                state.updateQueueItemStatus(
+                                  task.id,
+                                  "preview-only",
+                                  100,
+                                  undefined,
+                                  "Crossfade preview rendered, but WAV export is not wired yet"
+                                );
                                 state.incrementProcessed();
                               }
                             }}
@@ -463,6 +486,9 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
                               )}
                               {item.status === "error" && item.error && (
                                 <div className="text-xs text-red-400 mt-2">{item.error}</div>
+                              )}
+                              {item.status === "preview-only" && item.error && (
+                                <div className="text-xs text-yellow-300 mt-2">{item.error}</div>
                               )}
                             </motion.div>
                           );
