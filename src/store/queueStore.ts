@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { bulkRemove, clearAfterCurrent, playNext, shuffleAfter } from "@/lib/queue/queueActions";
 import { Song } from "@/types/song";
 
 export interface HistorySong {
@@ -75,6 +76,10 @@ interface QueueState {
   setCurrentIndex: (index: number) => void;
   addToQueue: (song: Song) => void;
   insertNext: (song: Song) => void;
+  playNext: (song: Song) => void;
+  clearAfterCurrent: () => void;
+  bulkRemove: (ids: string[]) => void;
+  shuffleAfterCurrent: () => void;
   moveToNext: (index: number) => void;
   removeFromQueue: (index: number) => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
@@ -118,12 +123,32 @@ export const useQueueStore = create<QueueState>()(
 
       insertNext: (song) =>
         set((state) => {
-          if (state.queue.length === 0) {
-            return { queue: [song] };
-          }
-          const newQueue = [...state.queue];
-          newQueue.splice(state.currentIndex + 1, 0, song);
-          return { queue: newQueue };
+          const next = playNext(state, song);
+          return { queue: next.queue, currentIndex: next.currentIndex };
+        }),
+
+      playNext: (song) =>
+        set((state) => {
+          const next = playNext(state, song);
+          return { queue: next.queue, currentIndex: next.currentIndex };
+        }),
+
+      clearAfterCurrent: () =>
+        set((state) => {
+          const next = clearAfterCurrent(state);
+          return { queue: next.queue, currentIndex: next.currentIndex };
+        }),
+
+      bulkRemove: (ids) =>
+        set((state) => {
+          const next = bulkRemove(state, ids);
+          return { queue: next.queue, currentIndex: next.currentIndex };
+        }),
+
+      shuffleAfterCurrent: () =>
+        set((state) => {
+          const next = shuffleAfter(state);
+          return { queue: next.queue, currentIndex: next.currentIndex };
         }),
 
       moveToNext: (index) =>
@@ -153,18 +178,11 @@ export const useQueueStore = create<QueueState>()(
 
       removeFromQueue: (index) =>
         set((state) => {
-          const newQueue = [...state.queue];
-          newQueue.splice(index, 1);
+          const target = state.queue[index];
+          if (!target) return {};
 
-          // Adjust current index if needed
-          let newIndex = state.currentIndex;
-          if (index < state.currentIndex) {
-            newIndex = Math.max(0, state.currentIndex - 1);
-          } else if (index === state.currentIndex && newQueue.length > 0) {
-            newIndex = Math.min(state.currentIndex, newQueue.length - 1);
-          }
-
-          return { queue: newQueue, currentIndex: newIndex };
+          const next = bulkRemove(state, [target.id]);
+          return { queue: next.queue, currentIndex: next.currentIndex };
         }),
 
       reorderQueue: (fromIndex, toIndex) =>
@@ -173,7 +191,6 @@ export const useQueueStore = create<QueueState>()(
           const [moved] = newQueue.splice(fromIndex, 1);
           newQueue.splice(toIndex, 0, moved);
 
-          // Adjust current index
           let newCurrentIndex = state.currentIndex;
           if (fromIndex === state.currentIndex) {
             newCurrentIndex = toIndex;
@@ -200,33 +217,17 @@ export const useQueueStore = create<QueueState>()(
 
       removeFromQueueById: (id) =>
         set((state) => {
-          const index = state.queue.findIndex((s) => s.id === id);
-          if (index === -1) return {};
-          const newQueue = [...state.queue];
-          newQueue.splice(index, 1);
-          let newIndex = state.currentIndex;
-          if (index < state.currentIndex) {
-            newIndex = Math.max(0, state.currentIndex - 1);
-          } else if (index === state.currentIndex && newQueue.length > 0) {
-            newIndex = Math.min(state.currentIndex, newQueue.length - 1);
-          }
-          return { queue: newQueue, currentIndex: newIndex };
+          const next = bulkRemove(state, [id]);
+          return { queue: next.queue, currentIndex: next.currentIndex };
         }),
 
       removeMultipleFromQueue: (indices) =>
         set((state) => {
-          const sorted = [...indices].sort((a, b) => b - a);
-          const newQueue = [...state.queue];
-          for (const i of sorted) {
-            newQueue.splice(i, 1);
-          }
-          return {
-            queue: newQueue,
-            currentIndex: Math.min(
-              state.currentIndex,
-              newQueue.length - 1 >= 0 ? newQueue.length - 1 : 0
-            ),
-          };
+          const ids = indices
+            .map((index) => state.queue[index]?.id)
+            .filter((id): id is string => Boolean(id));
+          const next = bulkRemove(state, ids);
+          return { queue: next.queue, currentIndex: next.currentIndex };
         }),
 
       addToHistory: (song) =>
@@ -310,7 +311,6 @@ export const useQueueStore = create<QueueState>()(
               try {
                 const state = clonePersistedValue(value);
                 if (state.state && state.state.history) {
-                  // Try reducing to 5 items first
                   state.state.history = state.state.history.slice(0, 5);
                 }
                 tryPersistQueueState(name, state);
