@@ -1,5 +1,5 @@
-import { AudioEffectType } from "@/store/audioEffectsStore";
-import { getAudioContext, getAudioAnalyser } from "@/hooks/useAudioPlayer";
+import type { AudioEffectType } from "@/store/audioEffectsStore";
+import { getAudioContext } from "@/hooks/useAudioPlayer";
 
 export class AudioEffectsManager {
   private context: AudioContext | null = null;
@@ -371,7 +371,9 @@ export class AudioEffectsManager {
       this.loFiPhoneLPF?.disconnect();
       this.loFiPhoneDistortion?.disconnect();
       this.loFiPhoneNoiseGain?.disconnect();
-    } catch (e) {}
+    } catch {
+      // Nodes may already be disconnected; rebuild the chain below.
+    }
 
     const hasAnyEffect = Array.from(this.effectsEnabled.values()).some((v) => v);
 
