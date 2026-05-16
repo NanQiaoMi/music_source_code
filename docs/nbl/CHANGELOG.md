@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-05-17
+
+### Added
+
+- `d2c20f3` feat(queue): multi-select queue actions, play-next pure helpers, and queue store action wiring.
+- `9547cdd` feat(audio-effects): built-in effect presets, morph interpolation, safe preset persistence, and rebuilt Audio Effects panel.
+- `b2ae01e` feat(audio): processing capability detection plus preview-only/export-disabled conversion and crossfade states.
+- `f4bd42f` refactor(coupling): recommendation input helper, store decoupling, and static `AudioLiquidV8` UI store import.
+
+### Verified
+
+- `npm run test -- src/lib/queue src/store/queueStore.test.ts`
+- `npm run test -- src/lib/audio/effectsPresets.test.ts src/store/audioEffectsStore.test.ts`
+- `npm run test -- src/lib/audio/processingCapabilities.test.ts`
+- `npm run test -- src/lib/recommendation/inputs.test.ts src/store/recommendationStore.test.ts src/utils/recommendationLogic.test.ts`
+
 ## [v0.3.0] - TBD
 
 ### ✨ 新功能
