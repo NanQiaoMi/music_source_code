@@ -215,6 +215,28 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
                   }}
                 >
                   {lyric.original}
+                  {isCurrent && (
+                    <motion.span
+                      aria-hidden="true"
+                      className="mx-auto mt-2 block h-0.5 rounded-full"
+                      initial={shouldReduceMotion ? false : { scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.45 }}
+                      style={{
+                        width: "56%",
+                        transformOrigin:
+                          alignment === "right"
+                            ? "right"
+                            : alignment === "left"
+                              ? "left"
+                              : "center",
+                        background: currentLineColor,
+                        boxShadow: textShadow
+                          ? `0 0 ${Math.max(8, textShadowBlur / 2)}px ${currentLineColor}`
+                          : "none",
+                      }}
+                    />
+                  )}
                 </p>
 
                 {showTranslation && lyric.translation && (

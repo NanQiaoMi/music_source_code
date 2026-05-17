@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   useLyricSettingsStore,
@@ -20,6 +20,7 @@ import {
   Move,
 } from "lucide-react";
 import { GlassPanel } from "@/components/shared/Glass";
+import { LYRIC_READABILITY_PRESETS, LyricReadabilityPreset } from "@/lib/lyrics/readabilityPresets";
 
 interface LyricSettingsPanelProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ interface LyricSettingsPanelProps {
 }
 
 export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, onClose }) => {
+  const [activeReadablePreset, setActiveReadablePreset] = useState<string | null>(null);
   const {
     showTranslation,
     showTransliteration,
@@ -95,56 +97,25 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
     },
   ];
 
-  const readablePresets = [
-    {
-      name: "Compact",
-      description: "Smaller text and tighter line spacing",
-      apply: () => {
-        setFontSize(14);
-        setLineHeight(1.2);
-        setFontWeight(600);
-        setOpacity(0.9);
-        setShowTranslation(false);
-        setShowTransliteration(false);
-        setInactiveLineColor("rgba(255,255,255,0.45)");
-        setTextShadow(false);
-      },
-    },
-    {
-      name: "Focus",
-      description: "Larger current line with stronger dimming",
-      apply: () => {
-        setFontSize(22);
-        setLineHeight(1.6);
-        setFontWeight(800);
-        setOpacity(1);
-        setShowTranslation(false);
-        setShowTransliteration(false);
-        setCurrentLineColor("#ffffff");
-        setInactiveLineColor("rgba(255,255,255,0.28)");
-        setTextShadow(true);
-        setTextShadowBlur(28);
-      },
-    },
-    {
-      name: "Karaoke",
-      description: "Bright lead line and visible translation",
-      apply: () => {
-        setFontSize(20);
-        setLineHeight(1.5);
-        setFontWeight(900);
-        setOpacity(1);
-        setShowTranslation(true);
-        setShowTransliteration(false);
-        setCurrentLineColor("#fff7ad");
-        setInactiveLineColor("rgba(255,255,255,0.35)");
-        setTranslationColor("rgba(255,255,255,0.82)");
-        setTextShadow(true);
-        setTextShadowColor("rgba(255,210,90,0.35)");
-        setTextShadowBlur(24);
-      },
-    },
-  ];
+  const applyReadablePreset = (preset: LyricReadabilityPreset) => {
+    setActiveReadablePreset(preset.id);
+    setFontSize(preset.fontSize);
+    setLineHeight(preset.lineHeight);
+    setFontWeight(preset.weight);
+    setOpacity(1);
+    setShowTranslation(preset.showTranslation);
+    setShowTransliteration(false);
+    setCurrentLineColor(preset.id === "karaoke" ? "#fff7ad" : "#ffffff");
+    setInactiveLineColor(`rgba(255,255,255,${preset.contrast})`);
+    setTranslationColor("rgba(255,255,255,0.82)");
+    setTextShadow(preset.glow > 0);
+    setTextShadowColor(
+      preset.id === "karaoke" ? "rgba(255,210,90,0.35)" : "rgba(255,255,255,0.22)"
+    );
+    setTextShadowBlur(preset.glow);
+  };
+
+  const markCustom = () => setActiveReadablePreset("custom");
 
   return (
     <GlassPanel position="left" size="sm" isOpen={isOpen} onClose={onClose} title="歌词设置">
@@ -178,13 +149,24 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
         </div>
 
         <div className="space-y-3">
-          <h3 className="text-white font-medium">Readable presets</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-white font-medium">Readable presets</h3>
+            {activeReadablePreset === "custom" && (
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/55">
+                Custom
+              </span>
+            )}
+          </div>
           <div className="grid grid-cols-1 gap-2">
-            {readablePresets.map((preset) => (
+            {LYRIC_READABILITY_PRESETS.map((preset) => (
               <button
-                key={preset.name}
-                onClick={preset.apply}
-                className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-left"
+                key={preset.id}
+                onClick={() => applyReadablePreset(preset)}
+                className={`p-3 rounded-xl transition-colors text-left ${
+                  activeReadablePreset === preset.id
+                    ? "bg-white/15 ring-1 ring-white/25"
+                    : "bg-white/5 hover:bg-white/10"
+                }`}
               >
                 <div className="text-white text-sm font-medium">{preset.name}</div>
                 <p className="text-white/50 text-xs mt-1">{preset.description}</p>
@@ -253,7 +235,10 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
               min="12"
               max="24"
               value={fontSize}
-              onChange={(e) => setFontSize(parseFloat(e.target.value))}
+              onChange={(e) => {
+                markCustom();
+                setFontSize(parseFloat(e.target.value));
+              }}
               className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
               style={{
                 background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((fontSize - 12) / 12) * 100}%, rgba(255,255,255,0.1) ${((fontSize - 12) / 12) * 100}%)`,
@@ -271,7 +256,10 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
               max="2.0"
               step="0.1"
               value={lineHeight}
-              onChange={(e) => setLineHeight(parseFloat(e.target.value))}
+              onChange={(e) => {
+                markCustom();
+                setLineHeight(parseFloat(e.target.value));
+              }}
               className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
               style={{
                 background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((lineHeight - 1.0) / 1.0) * 100}%, rgba(255,255,255,0.1) ${((lineHeight - 1.0) / 1.0) * 100}%)`,
@@ -308,7 +296,10 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
               max="900"
               step="100"
               value={fontWeight}
-              onChange={(e) => setFontWeight(parseInt(e.target.value))}
+              onChange={(e) => {
+                markCustom();
+                setFontWeight(parseInt(e.target.value));
+              }}
               className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
               style={{
                 background: `linear-gradient(to right, rgba(255,255,255,0.6) ${((fontWeight - 300) / 600) * 100}%, rgba(255,255,255,0.1) ${((fontWeight - 300) / 600) * 100}%)`,
