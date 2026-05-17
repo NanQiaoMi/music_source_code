@@ -24,8 +24,24 @@ import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import Image from "next/image";
 import { GlassModal } from "@/components/shared/Glass";
+import { parseSearchCommand, SEARCH_COMMAND_HINTS } from "@/lib/search/commandRouter";
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
+
+interface SpeechRecognitionLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+}
+
+interface SpeechRecognitionWindow extends Window {
+  SpeechRecognition?: new () => SpeechRecognitionLike;
+  webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+}
 
 interface SearchPanelProps {
   isOpen: boolean;
@@ -46,12 +62,13 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     results,
     recentSearches,
     isSearching,
-    isVoiceSearch,
     page,
     pageSize,
     totalResults,
     filters,
     searchHistory,
+    recentCommands,
+    commandFeedback,
     setQuery,
     setSearchType,
     search,
@@ -65,11 +82,15 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     setSourceFilter,
     clearFilters,
     clearHistory,
+    addRecentCommand,
+    setCommandFeedback,
   } = useSearchStore();
 
   const { songs } = usePlaylistStore();
   const addToQueue = useQueueStore((state) => state.addToQueue);
   const insertNext = useQueueStore((state) => state.insertNext);
+  const clearQueue = useQueueStore((state) => state.clearQueue);
+  const shuffleQueue = useQueueStore((state) => state.shuffleQueue);
   const setCurrentSong = useAudioStore((state) => state.setCurrentSong);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -96,8 +117,10 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       return;
     }
 
+    const speechWindow = window as SpeechRecognitionWindow;
     const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
     recognition.lang = "zh-CN";
@@ -107,7 +130,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     setIsListening(true);
     setIsVoiceSearch(true);
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
       setQuery(transcript);
       search(songs);
@@ -128,11 +151,14 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     recognition.start();
   }, [setQuery, setIsVoiceSearch, songs, search]);
 
-  const handlePlaySong = (song: Song) => {
-    setCurrentSong(song);
-    setIsPlaying(true);
-    onClose();
-  };
+  const handlePlaySong = useCallback(
+    (song: Song) => {
+      setCurrentSong(song);
+      setIsPlaying(true);
+      onClose();
+    },
+    [onClose, setCurrentSong, setIsPlaying]
+  );
 
   const handleAddToQueue = (song: Song) => {
     addToQueue(song);
@@ -156,6 +182,82 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     setQuery(searchQuery);
     search(songs);
   };
+
+  const findCommandMatches = useCallback(
+    (searchQuery: string) => {
+      const needle = searchQuery.toLowerCase().trim();
+      if (!needle) return [];
+      return songs.filter((song) => {
+        const title = song.title.toLowerCase();
+        const artist = song.artist.toLowerCase();
+        const album = song.album?.toLowerCase() || "";
+        return title.includes(needle) || artist.includes(needle) || album.includes(needle);
+      });
+    },
+    [songs]
+  );
+
+  const runCommand = useCallback(
+    (value: string) => {
+      const command = parseSearchCommand(value);
+
+      if (command.kind === "text-search") {
+        setQuery(command.query);
+        search(songs);
+        return;
+      }
+
+      addRecentCommand(command.raw.trim());
+
+      if (command.kind === "clear") {
+        clearQueue();
+        setCommandFeedback("Queue cleared");
+        return;
+      }
+
+      if (command.kind === "shuffle") {
+        shuffleQueue();
+        setCommandFeedback("Queue shuffled");
+        return;
+      }
+
+      if (command.kind === "sleep") {
+        setCommandFeedback(
+          command.minutes ? `Sleep timer noted for ${command.minutes} minutes` : "Use /sleep 30m"
+        );
+        return;
+      }
+
+      const matches = findCommandMatches(command.query);
+      if (matches.length === 0) {
+        setCommandFeedback(`No matches for "${command.query}"`);
+        return;
+      }
+
+      if (command.kind === "play") {
+        handlePlaySong(matches[0]);
+        setCommandFeedback(`Playing ${matches[0].title}`);
+        return;
+      }
+
+      if (command.kind === "queue") {
+        matches.slice(0, 10).forEach(addToQueue);
+        setCommandFeedback(`Queued ${Math.min(matches.length, 10)} songs`);
+      }
+    },
+    [
+      addRecentCommand,
+      addToQueue,
+      clearQueue,
+      findCommandMatches,
+      handlePlaySong,
+      search,
+      setCommandFeedback,
+      setQuery,
+      shuffleQueue,
+      songs,
+    ]
+  );
 
   const totalPages = Math.max(1, Math.ceil(totalResults / pageSize));
 
@@ -198,6 +300,12 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  runCommand(query);
+                }
+              }}
               placeholder="搜索歌曲、艺人、专辑..."
               className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-10 text-white placeholder-white/40 focus:outline-none focus:border-white/30 transition-colors"
             />
@@ -234,6 +342,29 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               <Mic className="w-5 h-5" />
             )}
           </motion.button>
+        </div>
+
+        <div
+          className="mt-3 flex flex-wrap items-center gap-2"
+          role="listbox"
+          aria-label="Search commands"
+        >
+          {SEARCH_COMMAND_HINTS.map((hint) => (
+            <button
+              key={hint}
+              onClick={() => {
+                setQuery(hint.endsWith("m") ? hint : `${hint} `);
+                inputRef.current?.focus();
+              }}
+              className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-white/55 transition-colors hover:bg-white/[0.12] hover:text-white"
+            >
+              {hint}
+            </button>
+          ))}
+        </div>
+
+        <div aria-live="polite" className="mt-2 min-h-4 text-xs text-emerald-300/80">
+          {commandFeedback}
         </div>
 
         <div className="flex gap-2 mt-4">
@@ -363,6 +494,23 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                   className="px-2 py-0.5 rounded bg-white/5 text-white/50 text-xs hover:bg-white/10 transition-colors"
                 >
                   {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!query && recentCommands.length > 0 && (
+          <div className="px-4 pb-3">
+            <div className="mb-2 text-xs text-white/40">Recent commands</div>
+            <div className="flex flex-wrap gap-1.5">
+              {recentCommands.map((command) => (
+                <button
+                  key={command}
+                  onClick={() => runCommand(command)}
+                  className="rounded bg-white/5 px-2 py-0.5 text-xs text-white/50 transition-colors hover:bg-white/10"
+                >
+                  {command}
                 </button>
               ))}
             </div>

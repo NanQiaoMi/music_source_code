@@ -24,6 +24,8 @@ interface SearchState {
   filters: Filters;
   searchHistory: string[];
   lastSearchSongs: Song[];
+  recentCommands: string[];
+  commandFeedback: string | null;
 
   setQuery: (query: string) => void;
   setSearchType: (type: SearchType) => void;
@@ -41,6 +43,8 @@ interface SearchState {
   clearFilters: () => void;
   addToHistory: (query: string) => void;
   clearHistory: () => void;
+  addRecentCommand: (command: string) => void;
+  setCommandFeedback: (message: string | null) => void;
 }
 
 const MAX_RECENT_SEARCHES = 10;
@@ -98,6 +102,8 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   filters: { ...defaultFilters },
   searchHistory: [],
   lastSearchSongs: [],
+  recentCommands: [],
+  commandFeedback: null,
 
   setQuery: (query) => set({ query, page: 1 }),
 
@@ -257,4 +263,16 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   clearHistory: () => {
     set({ searchHistory: [] });
   },
+
+  addRecentCommand: (command) => {
+    if (!command.trim()) return;
+    set((state) => ({
+      recentCommands: [command, ...state.recentCommands.filter((item) => item !== command)].slice(
+        0,
+        5
+      ),
+    }));
+  },
+
+  setCommandFeedback: (message) => set({ commandFeedback: message }),
 }));

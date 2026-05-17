@@ -127,6 +127,8 @@ describe("searchStore", () => {
       recentSearches: [],
       searchType: "all",
       isVoiceSearch: false,
+      recentCommands: [],
+      commandFeedback: null,
     });
   });
 
@@ -253,5 +255,23 @@ describe("searchStore", () => {
     store.search(songs);
 
     expect(useSearchStore.getState().results.map((song) => song.id)).toEqual(["local-medium"]);
+  });
+
+  it("keeps the five most recent commands without duplicates", () => {
+    const store = useSearchStore.getState();
+    store.addRecentCommand("/play a");
+    store.addRecentCommand("/queue b");
+    store.addRecentCommand("/clear");
+    store.addRecentCommand("/shuffle");
+    store.addRecentCommand("/sleep 10m");
+    store.addRecentCommand("/play a");
+
+    expect(useSearchStore.getState().recentCommands).toEqual([
+      "/play a",
+      "/sleep 10m",
+      "/shuffle",
+      "/clear",
+      "/queue b",
+    ]);
   });
 });
