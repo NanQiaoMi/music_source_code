@@ -5,6 +5,7 @@
 ### Added
 
 - `dde228e` feat(search): Search command center now supports `/pause`, `/next`, `/prev`, and `/volume 60` backed by real audio store actions.
+- feat(settings): Visual settings now exposes Cinematic, Balanced, and Battery performance presets backed by the V8 performance store.
 - `3176e35` feat(smart-playlist): usable rule builder and pure smart-playlist rule engine.
 - `f8fb272` feat(library): actionable Library Health results, issue ignore flow, and stable report export.
 - `ca36fb5` feat(search): `/sleep` command execution through the real sleep timer store.
@@ -24,6 +25,7 @@
 ### Verified
 
 - Search command slice: targeted tests passed, 5 files and 26 tests; targeted ESLint passed; `npm run build` passed; local Search panel smoke showed `/pause`, `/next`, `/prev`, and `/volume 60` with 0 console/page/request/404 errors.
+- Visual settings preset slice: targeted tests passed, 2 files and 4 tests; targeted ESLint passed; `npm run build` passed; local smoke on `http://localhost:3025` showed title `MIMI Music Player` with 0 console errors.
 - Targeted tests passed: 11 files, 46 tests.
 - Full test suite passed after `d207bc7`: 48 files, 293 tests.
 - `npm run build` passed.

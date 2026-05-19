@@ -34,6 +34,31 @@ describe("performanceV8Store", () => {
 
     usePerformanceV8Store.getState().setPerformanceLevel("medium");
     expect(usePerformanceV8Store.getState().config.targetFPS).toBe(30);
+
+    usePerformanceV8Store.getState().setPerformanceLevel("ultra");
+    expect(usePerformanceV8Store.getState().activePreset).toBe("custom");
+  });
+
+  it("applies user-facing visual performance presets", () => {
+    usePerformanceV8Store.getState().setPerformancePreset("cinematic");
+    expect(usePerformanceV8Store.getState().activePreset).toBe("cinematic");
+    expect(usePerformanceV8Store.getState().config).toMatchObject({
+      level: "high",
+      targetFPS: 60,
+      maxParticles: 8000,
+      postProcessing: true,
+      webglQuality: "high",
+    });
+
+    usePerformanceV8Store.getState().setPerformancePreset("battery");
+    expect(usePerformanceV8Store.getState().activePreset).toBe("battery");
+    expect(usePerformanceV8Store.getState().config).toMatchObject({
+      level: "low",
+      targetFPS: 30,
+      maxParticles: 1000,
+      postProcessing: false,
+      webglQuality: "low",
+    });
   });
 
   it("flags sustained low fps as a recovery condition", () => {

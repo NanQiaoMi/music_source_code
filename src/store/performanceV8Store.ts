@@ -4,8 +4,12 @@ import type { PerformanceLevel, PerformanceConfig } from "@/lib/visualization/ty
 
 export type { PerformanceLevel };
 
+export type VisualPerformancePreset = "cinematic" | "balanced" | "battery";
+export type ActiveVisualPerformancePreset = VisualPerformancePreset | "custom";
+
 interface PerformanceState {
   config: PerformanceConfig;
+  activePreset: ActiveVisualPerformancePreset;
   fps: number;
   cpuUsage: number;
   memoryUsage: number;
@@ -16,6 +20,7 @@ interface PerformanceState {
   needsRecovery: boolean;
 
   setPerformanceLevel: (level: PerformanceLevel) => void;
+  setPerformancePreset: (preset: VisualPerformancePreset) => void;
   updateStats: (stats: {
     fps: number;
     cpuUsage: number;
@@ -61,10 +66,46 @@ const PERFORMANCE_CONFIGS: Record<PerformanceLevel, PerformanceConfig> = {
   },
 };
 
+const PERFORMANCE_PRESETS: Record<VisualPerformancePreset, PerformanceConfig> = {
+  cinematic: PERFORMANCE_CONFIGS.high,
+  balanced: PERFORMANCE_CONFIGS.medium,
+  battery: PERFORMANCE_CONFIGS.low,
+};
+
+function presetFromPerformanceLevel(level: PerformanceLevel): ActiveVisualPerformancePreset {
+  if (level === "high") return "cinematic";
+  if (level === "medium") return "balanced";
+  if (level === "low") return "battery";
+  return "custom";
+}
+
+export const VISUAL_PERFORMANCE_PRESETS: Array<{
+  id: VisualPerformancePreset;
+  name: string;
+  description: string;
+}> = [
+  {
+    id: "cinematic",
+    name: "Cinematic",
+    description: "60 FPS, richer particles, post-processing on.",
+  },
+  {
+    id: "balanced",
+    name: "Balanced",
+    description: "Stable 30 FPS with a moderate particle budget.",
+  },
+  {
+    id: "battery",
+    name: "Battery",
+    description: "Lower particle count and no post-processing.",
+  },
+];
+
 export const usePerformanceV8Store = create<PerformanceState>()(
   persist(
     (set) => ({
       config: PERFORMANCE_CONFIGS.medium,
+      activePreset: "balanced",
       fps: 60,
       cpuUsage: 0,
       memoryUsage: 0,
@@ -75,7 +116,20 @@ export const usePerformanceV8Store = create<PerformanceState>()(
       needsRecovery: false,
 
       setPerformanceLevel: (level) =>
-        set({ config: PERFORMANCE_CONFIGS[level], lowFpsStartedAt: null, needsRecovery: false }),
+        set({
+          config: PERFORMANCE_CONFIGS[level],
+          activePreset: presetFromPerformanceLevel(level),
+          lowFpsStartedAt: null,
+          needsRecovery: false,
+        }),
+
+      setPerformancePreset: (preset) =>
+        set({
+          config: PERFORMANCE_PRESETS[preset],
+          activePreset: preset,
+          lowFpsStartedAt: null,
+          needsRecovery: false,
+        }),
 
       updateStats: (stats) =>
         set((state) => {
@@ -103,6 +157,7 @@ export const usePerformanceV8Store = create<PerformanceState>()(
       name: "performance-v8-store",
       partialize: (state) => ({
         config: state.config,
+        activePreset: state.activePreset,
       }),
     }
   )

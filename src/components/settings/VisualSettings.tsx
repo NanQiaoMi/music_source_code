@@ -1,17 +1,89 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { X, Keyboard } from "lucide-react";
+import { Gauge, RotateCcw, Sliders, Sparkles, X } from "lucide-react";
 import {
-  useVisualSettingsStore,
-  defaultVisualSettings,
-  VisualSettings,
-} from "@/store/visualSettingsStore";
+  usePerformanceV8Store,
+  VISUAL_PERFORMANCE_PRESETS,
+  type VisualPerformancePreset,
+} from "@/store/performanceV8Store";
+import { useVisualSettingsStore } from "@/store/visualSettingsStore";
 
 interface VisualSettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+const visualModes = [
+  {
+    id: "light" as const,
+    name: "Light",
+    description: "Fast motion with lighter blur.",
+    blur: 10,
+    shadow: 10,
+    speed: 1.2,
+    perspective: 1000,
+  },
+  {
+    id: "heavy" as const,
+    name: "Glass",
+    description: "Deeper blur and stronger depth.",
+    blur: 30,
+    shadow: 25,
+    speed: 0.8,
+    perspective: 600,
+  },
+  {
+    id: "minimal" as const,
+    name: "Minimal",
+    description: "Lower decoration and faster response.",
+    blur: 0,
+    shadow: 0,
+    speed: 1.5,
+    perspective: 1200,
+  },
+];
+
+function RangeControl({
+  label,
+  valueLabel,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  valueLabel: string;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  onChange: (value: number) => void;
+}) {
+  const percent = ((value - min) / (max - min)) * 100;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm">
+        <span className="text-white/80">{label}</span>
+        <span className="text-white/60">{valueLabel}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10"
+        style={{
+          background: `linear-gradient(to right, rgba(255,255,255,0.55) ${percent}%, rgba(255,255,255,0.12) ${percent}%)`,
+        }}
+      />
+    </div>
+  );
 }
 
 export const VisualSettingsPanel: React.FC<VisualSettingsPanelProps> = ({ isOpen, onClose }) => {
@@ -26,49 +98,37 @@ export const VisualSettingsPanel: React.FC<VisualSettingsPanelProps> = ({ isOpen
     setAnimationSpeed,
     setPerspectiveIntensity,
     setVisualMode,
-    setVisualSettings,
     resetSettings,
   } = useVisualSettingsStore();
+  const { activePreset, config, setPerformancePreset } = usePerformanceV8Store();
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  });
 
-  const visualModes = [
-    {
-      id: "light" as const,
-      name: "轻盈模式",
-      icon: "🪶",
-      description: "轻度毛玻璃效果，快速动画",
-      blur: 10,
-      shadow: 10,
-      speed: 1.2,
-      perspective: 1000,
-    },
-    {
-      id: "heavy" as const,
-      name: "厚重玻璃模式",
-      icon: "🪟",
-      description: "重度毛玻璃效果，深度阴影",
-      blur: 30,
-      shadow: 25,
-      speed: 0.8,
-      perspective: 600,
-    },
-    {
-      id: "minimal" as const,
-      name: "极简模式",
-      icon: "⬜",
-      description: "最小化装饰，纯色背景",
-      blur: 0,
-      shadow: 0,
-      speed: 1.5,
-      perspective: 1200,
-    },
-  ];
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
 
-  const handleModeSelect = (mode: (typeof visualModes)[0]) => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      setPrefersReducedMotion(event.matches);
+    };
+
+    media.addEventListener?.("change", handleChange);
+    return () => media.removeEventListener?.("change", handleChange);
+  }, []);
+
+  const handleModeSelect = (mode: (typeof visualModes)[number]) => {
     setVisualMode(mode.id);
     setBlurIntensity(mode.blur);
     setShadowDepth(mode.shadow);
     setAnimationSpeed(mode.speed);
     setPerspectiveIntensity(mode.perspective);
+  };
+
+  const handlePerformancePreset = (preset: VisualPerformancePreset) => {
+    setPerformancePreset(preset);
   };
 
   if (!isOpen) return null;
@@ -78,145 +138,171 @@ export const VisualSettingsPanel: React.FC<VisualSettingsPanelProps> = ({ isOpen
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
+        initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
+        exit={{ scale: 0.98, opacity: 0 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-2xl bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
+        onClick={(event) => event.stopPropagation()}
+        className="relative max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-white/20 bg-white/10 shadow-2xl backdrop-blur-2xl"
       >
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <h2 className="text-white text-2xl font-semibold">视觉效果设置</h2>
+        <div className="flex items-center justify-between border-b border-white/10 p-6">
+          <div>
+            <h2 className="text-2xl font-semibold text-white">Visual settings</h2>
+            <p className="mt-1 text-sm text-white/50">Tune glass depth and visualization load.</p>
+          </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            aria-label="Close visual settings"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-6 border-b border-white/10">
-          <h3 className="text-white font-medium mb-4">预设风格</h3>
-          <div className="grid grid-cols-3 gap-3">
-            {visualModes.map((mode) => (
-              <button
-                key={mode.id}
-                onClick={() => handleModeSelect(mode)}
-                className={`p-4 rounded-2xl transition-all flex flex-col items-center gap-2 ${
-                  visualMode === mode.id
-                    ? "bg-white/20 text-white ring-2 ring-white/30"
-                    : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <span className="text-3xl">{mode.icon}</span>
-                <span className="text-sm font-medium">{mode.name}</span>
-                <span className="text-xs text-white/50 text-center">{mode.description}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="p-6 space-y-6">
-          <h3 className="text-white font-medium mb-4">自定义调节</h3>
-
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-white/80">毛玻璃模糊强度</span>
-              <span className="text-white/60">{blurIntensity}px</span>
+        <div className="max-h-[calc(90vh-88px)] overflow-y-auto">
+          <div className="border-b border-white/10 p-6">
+            <div className="mb-4 flex items-center gap-2 text-white">
+              <Sparkles className="h-4 w-4 text-cyan-200" />
+              <h3 className="font-medium">Visual style</h3>
             </div>
-            <input
-              type="range"
-              min="0"
-              max="50"
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {visualModes.map((mode) => (
+                <button
+                  type="button"
+                  key={mode.id}
+                  onClick={() => handleModeSelect(mode)}
+                  aria-pressed={visualMode === mode.id}
+                  className={`flex min-h-[116px] flex-col items-start gap-2 rounded-xl p-4 text-left transition-all ${
+                    visualMode === mode.id
+                      ? "bg-white/20 text-white ring-2 ring-white/30"
+                      : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <span className="text-sm font-semibold">{mode.name}</span>
+                  <span className="text-xs leading-relaxed text-white/55">{mode.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-b border-white/10 p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-white">
+                <Gauge className="h-4 w-4 text-emerald-200" />
+                <h3 className="font-medium">Performance presets</h3>
+              </div>
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/65">
+                {config.webglQuality}
+              </span>
+            </div>
+
+            {prefersReducedMotion && (
+              <div className="mb-4 rounded-xl border border-amber-300/25 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+                Reduced motion is on - visuals will downgrade automatically
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {VISUAL_PERFORMANCE_PRESETS.map((preset) => {
+                const isActive = activePreset === preset.id;
+
+                return (
+                  <button
+                    type="button"
+                    key={preset.id}
+                    onClick={() => handlePerformancePreset(preset.id)}
+                    aria-pressed={isActive}
+                    className={`min-h-[116px] rounded-xl border p-4 text-left transition ${
+                      isActive
+                        ? "border-emerald-200/60 bg-emerald-200/15 text-white"
+                        : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <div className="text-sm font-semibold">{preset.name}</div>
+                    <div className="mt-2 text-xs leading-relaxed text-white/55">
+                      {preset.description}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-xl bg-white/5 p-3">
+                <div className="text-white/50">Target FPS</div>
+                <div className="mt-1 text-xl font-semibold text-white">{config.targetFPS}</div>
+              </div>
+              <div className="rounded-xl bg-white/5 p-3">
+                <div className="text-white/50">Particle budget</div>
+                <div className="mt-1 text-xl font-semibold text-white">
+                  {config.maxParticles.toLocaleString()}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6 p-6">
+            <div className="flex items-center gap-2 text-white">
+              <Sliders className="h-4 w-4 text-sky-200" />
+              <h3 className="font-medium">Custom tuning</h3>
+            </div>
+
+            <RangeControl
+              label="Blur intensity"
+              valueLabel={`${blurIntensity}px`}
               value={blurIntensity}
-              onChange={(e) => setBlurIntensity(parseInt(e.target.value))}
-              className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
-              style={{
-                background: `linear-gradient(to right, rgba(255, 255, 255, 0.5) ${(blurIntensity / 50) * 100}%, rgba(255, 255, 255, 0.1) ${
-                  (blurIntensity / 50) * 100
-                }%)`,
-              }}
+              min={0}
+              max={50}
+              onChange={(value) => setBlurIntensity(value)}
             />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-white/80">卡片阴影深度</span>
-              <span className="text-white/60">{shadowDepth}px</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="40"
+            <RangeControl
+              label="Shadow depth"
+              valueLabel={`${shadowDepth}px`}
               value={shadowDepth}
-              onChange={(e) => setShadowDepth(parseInt(e.target.value))}
-              className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
-              style={{
-                background: `linear-gradient(to right, rgba(255, 255, 255, 0.5) ${(shadowDepth / 40) * 100}%, rgba(255, 255, 255, 0.1) ${
-                  (shadowDepth / 40) * 100
-                }%)`,
-              }}
+              min={0}
+              max={40}
+              onChange={(value) => setShadowDepth(value)}
             />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-white/80">背景动效速度</span>
-              <span className="text-white/60">{animationSpeed.toFixed(1)}x</span>
-            </div>
-            <input
-              type="range"
-              min="0.5"
-              max="2.0"
-              step="0.1"
+            <RangeControl
+              label="Animation speed"
+              valueLabel={`${animationSpeed.toFixed(1)}x`}
               value={animationSpeed}
-              onChange={(e) => setAnimationSpeed(parseFloat(e.target.value))}
-              className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
-              style={{
-                background: `linear-gradient(to right, rgba(255, 255, 255, 0.5) ${((animationSpeed - 0.5) / 1.5) * 100}%, rgba(255, 255, 255, 0.1) ${
-                  ((animationSpeed - 0.5) / 1.5) * 100
-                }%)`,
-              }}
+              min={0.5}
+              max={2}
+              step={0.1}
+              onChange={(value) => setAnimationSpeed(value)}
             />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-white/80">3D 透视强度</span>
-              <span className="text-white/60">{perspectiveIntensity}px</span>
-            </div>
-            <input
-              type="range"
-              min="400"
-              max="1500"
+            <RangeControl
+              label="3D perspective"
+              valueLabel={`${perspectiveIntensity}px`}
               value={perspectiveIntensity}
-              onChange={(e) => setPerspectiveIntensity(parseInt(e.target.value))}
-              className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
-              style={{
-                background: `linear-gradient(to right, rgba(255, 255, 255, 0.5) ${((perspectiveIntensity - 400) / 1100) * 100}%, rgba(255, 255, 255, 0.1) ${
-                  ((perspectiveIntensity - 400) / 1100) * 100
-                }%)`,
-              }}
+              min={400}
+              max={1500}
+              onChange={(value) => setPerspectiveIntensity(value)}
             />
           </div>
         </div>
 
-        <div className="p-6 flex gap-3 border-t border-white/10">
+        <div className="flex gap-3 border-t border-white/10 p-6">
           <button
+            type="button"
             onClick={resetSettings}
-            className="flex-1 py-3 px-4 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors font-medium"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 font-medium text-white transition-colors hover:bg-white/20"
           >
-            恢复默认
+            <RotateCcw className="h-4 w-4" />
+            Reset
           </button>
           <button
+            type="button"
             onClick={onClose}
-            className="flex-1 py-3 px-4 rounded-xl bg-white text-black hover:bg-white/90 shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all font-medium"
+            className="flex-1 rounded-xl bg-white px-4 py-3 font-medium text-black shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all hover:bg-white/90"
           >
-            完成
+            Done
           </button>
         </div>
       </motion.div>
