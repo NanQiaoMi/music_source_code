@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-05-20
+
+### Added
+
+- `3176e35` feat(smart-playlist): usable rule builder and pure smart-playlist rule engine.
+- `f8fb272` feat(library): actionable Library Health results, issue ignore flow, and stable report export.
+- `ca36fb5` feat(search): `/sleep` command execution through the real sleep timer store.
+- `ad66673` feat(mix): Smart Mix Sessions MVP with deterministic session helper, store, and widget.
+- `b21bf2f` feat(journal): local Listening Journal with persisted day notes and panel routing.
+
+### Changed
+
+- `69b7f8c` refactor(stats): typed Stats dashboard view models for overview metrics and daily history.
+- `71662d2` refactor(visualization): typed V8 audio snapshot passed through render context instead of reading `_currentMusicTime`.
+
+### Fixed
+
+- `96a48a7` fix(verification): final TypeScript/build/smoke blockers, including event typing, theme color parsing, nullable narrowing, command expectations, and local `noise.svg` asset references.
+
+### Verified
+
+- Targeted tests passed: 11 files, 46 tests.
+- Full test suite passed: 48 files, 293 tests.
+- `npm run build` passed.
+- Local smoke passed on `http://localhost:3025`: title `MIMI Music Player`, Search panel opened, 0 console errors, 0 page errors, 0 404s.
+- Broad targeted ESLint over older touched UI files still has inherited formatting/debt and was not used as the final gate.
+
 ## 2026-05-17
 
 ### Added
