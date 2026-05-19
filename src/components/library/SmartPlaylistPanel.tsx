@@ -26,6 +26,13 @@ import {
   type SmartPlaylistType,
 } from "@/store/smartPlaylistStore";
 import { toast } from "@/components/shared/GlassToast";
+import {
+  buildSmartPlaylistRule,
+  DEFAULT_SMART_PLAYLIST_RULE_DRAFT,
+  getSmartPlaylistOperatorOptions,
+  normalizeSmartPlaylistOperator,
+  SMART_PLAYLIST_FIELD_OPTIONS,
+} from "@/lib/library/smartPlaylistRules";
 import { evaluateSmartPlaylistRules } from "@/lib/smart-playlist/ruleEngine";
 import type { Song } from "@/types/song";
 
@@ -37,33 +44,11 @@ interface SmartPlaylistPanelProps {
 type TabId = "system" | "custom" | "import";
 
 type RuleField = SmartPlaylistRule["field"];
-type RuleOperator = SmartPlaylistRule["operator"];
 
 const TAB_ITEMS: { id: TabId; label: string }[] = [
   { id: "system", label: "System" },
   { id: "custom", label: "Rules" },
   { id: "import", label: "Import / Export" },
-];
-
-const FIELD_OPTIONS: { value: RuleField; label: string }[] = [
-  { value: "title", label: "Title" },
-  { value: "artist", label: "Artist" },
-  { value: "album", label: "Album" },
-  { value: "genre", label: "Genre" },
-  { value: "duration", label: "Duration" },
-  { value: "playCount", label: "Play count" },
-  { value: "addedTime", label: "Added time" },
-  { value: "emotion", label: "Emotion" },
-];
-
-const OPERATOR_OPTIONS: { value: RuleOperator; label: string }[] = [
-  { value: "contains", label: "contains" },
-  { value: "equals", label: "equals" },
-  { value: "notContains", label: "does not contain" },
-  { value: "notEquals", label: "does not equal" },
-  { value: "greaterThan", label: "greater than" },
-  { value: "lessThan", label: "less than" },
-  { value: "inQuadrant", label: "in quadrant" },
 ];
 
 const FORMAT_OPTIONS: { value: PlaylistExportFormat; label: string; ext: string; type: string }[] =
@@ -76,38 +61,8 @@ const FORMAT_OPTIONS: { value: PlaylistExportFormat; label: string; ext: string;
     { value: "txt", label: "TXT", ext: "txt", type: "text/plain" },
   ];
 
-const DEFAULT_RULE: Omit<SmartPlaylistRule, "id"> = {
-  field: "artist",
-  operator: "contains",
-  value: "",
-};
-
 function nextRuleId() {
   return `rule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function canUseOperator(field: RuleField, operator: RuleOperator) {
-  if (field === "emotion") return operator === "inQuadrant";
-  if (["duration", "playCount", "addedTime"].includes(field)) {
-    return ["equals", "notEquals", "greaterThan", "lessThan"].includes(operator);
-  }
-  return ["contains", "equals", "notContains", "notEquals"].includes(operator);
-}
-
-function normalizeOperator(field: RuleField, operator: RuleOperator): RuleOperator {
-  if (canUseOperator(field, operator)) return operator;
-  if (field === "emotion") return "inQuadrant";
-  if (["duration", "playCount", "addedTime"].includes(field)) return "greaterThan";
-  return "contains";
-}
-
-function normalizeRuleValue(field: RuleField, value: string): string | number {
-  if (["duration", "playCount", "addedTime"].includes(field)) return Number(value || 0);
-  return value;
-}
-
-function availableOperators(field: RuleField) {
-  return OPERATOR_OPTIONS.filter((operator) => canUseOperator(field, operator.value));
 }
 
 function playlistSummary(playlist: SmartPlaylist) {
@@ -327,7 +282,9 @@ function CustomRulesTab({
 }) {
   const [newPlaylistName, setNewPlaylistName] = useState("Focus mix");
   const [selectedId, setSelectedId] = useState<string | null>(playlists[0]?.id ?? null);
-  const [draftRule, setDraftRule] = useState<Omit<SmartPlaylistRule, "id">>(DEFAULT_RULE);
+  const [draftRule, setDraftRule] = useState<Omit<SmartPlaylistRule, "id">>(
+    DEFAULT_SMART_PLAYLIST_RULE_DRAFT
+  );
 
   const selectedPlaylist =
     playlists.find((playlist) => playlist.id === selectedId) || playlists[0] || null;
@@ -337,13 +294,7 @@ function CustomRulesTab({
     [emotionMap, generatePlaylist, selectedPlaylist, songs]
   );
   const draftPreviewCount = useMemo(() => {
-    const draftValue = normalizeRuleValue(draftRule.field, String(draftRule.value));
-    const normalizedDraft: SmartPlaylistRule = {
-      id: "draft-rule",
-      field: draftRule.field,
-      operator: normalizeOperator(draftRule.field, draftRule.operator),
-      value: draftValue,
-    };
+    const normalizedDraft = buildSmartPlaylistRule("draft-rule", draftRule);
 
     return songs.filter((song) => evaluateSmartPlaylistRules(song, [normalizedDraft], emotionMap))
       .length;
@@ -365,7 +316,7 @@ function CustomRulesTab({
     setDraftRule((current) => ({
       ...current,
       field,
-      operator: normalizeOperator(field, current.operator),
+      operator: normalizeSmartPlaylistOperator(field, current.operator),
       value: field === "emotion" ? "Q1" : current.value,
     }));
   };
@@ -379,13 +330,8 @@ function CustomRulesTab({
       toast.warning("Enter a rule value");
       return;
     }
-    addRule(selectedPlaylist.id, {
-      id: nextRuleId(),
-      field: draftRule.field,
-      operator: normalizeOperator(draftRule.field, draftRule.operator),
-      value: normalizeRuleValue(draftRule.field, String(draftRule.value)),
-    });
-    setDraftRule(DEFAULT_RULE);
+    addRule(selectedPlaylist.id, buildSmartPlaylistRule(nextRuleId(), draftRule));
+    setDraftRule(DEFAULT_SMART_PLAYLIST_RULE_DRAFT);
     toast.success("Rule saved");
   };
 
@@ -495,7 +441,7 @@ function CustomRulesTab({
                   onChange={(event) => updateDraftField(event.target.value as RuleField)}
                   className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-rose-300/60"
                 >
-                  {FIELD_OPTIONS.map((field) => (
+                  {SMART_PLAYLIST_FIELD_OPTIONS.map((field) => (
                     <option key={field.value} value={field.value}>
                       {field.label}
                     </option>
@@ -537,7 +483,7 @@ function CustomRulesTab({
                   Operator chips
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {availableOperators(draftRule.field).map((operator) => (
+                  {getSmartPlaylistOperatorOptions(draftRule.field).map((operator) => (
                     <button
                       key={operator.value}
                       type="button"
@@ -545,12 +491,14 @@ function CustomRulesTab({
                         setDraftRule((current) => ({ ...current, operator: operator.value }))
                       }
                       className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                        normalizeOperator(draftRule.field, draftRule.operator) === operator.value
+                        normalizeSmartPlaylistOperator(draftRule.field, draftRule.operator) ===
+                        operator.value
                           ? "border-rose-300/60 bg-rose-500/20 text-rose-50"
                           : "border-white/10 bg-white/5 text-white/55 hover:bg-white/10 hover:text-white"
                       }`}
                       aria-pressed={
-                        normalizeOperator(draftRule.field, draftRule.operator) === operator.value
+                        normalizeSmartPlaylistOperator(draftRule.field, draftRule.operator) ===
+                        operator.value
                       }
                     >
                       {operator.label}
