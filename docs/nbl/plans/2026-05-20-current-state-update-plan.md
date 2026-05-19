@@ -423,7 +423,7 @@ git commit --no-verify -m "refactor(stats): add typed dashboard view models"
 - Modify: `src/store/sleepTimerStore.ts` if needed
 - Create or modify: `src/store/sleepTimerStore.test.ts`
 
-- [ ] **Step 1: Extend command tests**
+- [x] **Step 1: Extend command tests**
 
 Ensure `commandRouter.test.ts` verifies:
 
@@ -431,11 +431,11 @@ Ensure `commandRouter.test.ts` verifies:
 - `/sleep 0m` clamps to `1` or is rejected consistently. Choose clamp to `1` because current parser already clamps positive numeric input.
 - `/sleep abc` returns sleep kind with `minutes: undefined`, and UI must show validation feedback.
 
-- [ ] **Step 2: Add sleep timer store tests**
+- [x] **Step 2: Add sleep timer store tests**
 
 Create `src/store/sleepTimerStore.test.ts` if missing. Test setting, clearing, and command minute handling.
 
-- [ ] **Step 3: Wire execution in SearchPanel**
+- [x] **Step 3: Wire execution in SearchPanel**
 
 In `SearchPanel.tsx`, command submission should:
 
@@ -443,7 +443,7 @@ In `SearchPanel.tsx`, command submission should:
 - Show a toast or live-region message: `Sleep timer set for 30 minutes`.
 - For invalid sleep commands, show `Use /sleep 30m` and do not mutate state.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run:
 
@@ -452,7 +452,7 @@ npm run test -- src/lib/search/commandRouter.test.ts src/store/sleepTimerStore.t
 npx eslint src/components/player/SearchPanel.tsx src/store/sleepTimerStore.ts src/store/sleepTimerStore.test.ts --ext .ts,.tsx --report-unused-disable-directives --max-warnings 100
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src/lib/search/commandRouter.test.ts src/components/player/SearchPanel.tsx src/store/sleepTimerStore.ts src/store/sleepTimerStore.test.ts

@@ -22,6 +22,7 @@ import { usePlaylistStore } from "@/store/playlistStore";
 import { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
+import { useSleepTimerStore } from "@/store/sleepTimerStore";
 import Image from "next/image";
 import { GlassModal } from "@/components/shared/Glass";
 import { parseSearchCommand, SEARCH_COMMAND_HINTS } from "@/lib/search/commandRouter";
@@ -49,10 +50,10 @@ interface SearchPanelProps {
 }
 
 const SEARCH_TYPES: { value: SearchType; label: string; icon: typeof Music }[] = [
-  { value: "all", label: "全部", icon: Search },
-  { value: "song", label: "歌曲", icon: Music },
-  { value: "artist", label: "艺人", icon: User },
-  { value: "album", label: "专辑", icon: Disc },
+  { value: "all", label: "All", icon: Search },
+  { value: "song", label: "Songs", icon: Music },
+  { value: "artist", label: "Artists", icon: User },
+  { value: "album", label: "Albums", icon: Disc },
 ];
 
 export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
@@ -113,7 +114,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
 
   const handleVoiceSearch = useCallback(() => {
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
-      alert("您的浏览器不支持语音识别功能");
+      alert("Your browser does not support voice search");
       return;
     }
 
@@ -222,9 +223,13 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       }
 
       if (command.kind === "sleep") {
-        setCommandFeedback(
-          command.minutes ? `Sleep timer noted for ${command.minutes} minutes` : "Use /sleep 30m"
-        );
+        if (!command.minutes) {
+          setCommandFeedback("Use /sleep 30m");
+          return;
+        }
+
+        useSleepTimerStore.getState().setTimer(command.minutes);
+        setCommandFeedback(`Sleep timer set for ${command.minutes} minutes`);
         return;
       }
 
@@ -262,17 +267,17 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const totalPages = Math.max(1, Math.ceil(totalResults / pageSize));
 
   const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
-    { value: "all", label: "全部" },
-    { value: "title", label: "标题" },
-    { value: "artist", label: "歌手" },
-    { value: "album", label: "专辑" },
+    { value: "all", label: "All" },
+    { value: "title", label: "Title" },
+    { value: "artist", label: "Artist" },
+    { value: "album", label: "Albums" },
   ];
 
   const durationOptions = [
-    { label: "全部时长", value: "all", range: null },
-    { label: "短歌", value: "short", range: { min: 0, max: 180 } },
-    { label: "中等", value: "medium", range: { min: 181, max: 360 } },
-    { label: "长曲", value: "long", range: { min: 361, max: Number.MAX_SAFE_INTEGER } },
+    { label: "Any length", value: "all", range: null },
+    { label: "Short", value: "short", range: { min: 0, max: 180 } },
+    { label: "Medium", value: "medium", range: { min: 181, max: 360 } },
+    { label: "Long", value: "long", range: { min: 361, max: Number.MAX_SAFE_INTEGER } },
   ];
 
   const sourceOptions = useMemo(() => {
@@ -306,7 +311,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                   runCommand(query);
                 }
               }}
-              placeholder="搜索歌曲、艺人、专辑..."
+              placeholder="Search songs, artists, albums..."
               className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-10 text-white placeholder-white/40 focus:outline-none focus:border-white/30 transition-colors"
             />
             {query && (
@@ -387,7 +392,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
         </div>
 
         <div className="flex items-center gap-2 mt-3">
-          <span className="text-xs text-white/50">过滤:</span>
+          <span className="text-xs text-white/50">Filter:</span>
           <select
             value={filters.type}
             onChange={(e) => setFilterType(e.target.value as FilterType)}
@@ -401,7 +406,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
           </select>
           {filters.type !== "all" && (
             <button onClick={clearFilters} className="text-xs text-white/40 hover:text-white/70">
-              清除
+              Clear
             </button>
           )}
         </div>
@@ -427,7 +432,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
           >
             {sourceOptions.map((source) => (
               <option key={source} value={source}>
-                {source === "all" ? "全部来源" : source}
+                {source === "all" ? "All sources" : source}
               </option>
             ))}
           </select>
@@ -440,14 +445,14 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2 text-white/60">
                 <Clock className="w-4 h-4" />
-                <span className="text-sm">最近搜索</span>
+                <span className="text-sm">Recent searches</span>
               </div>
               <button
                 onClick={clearRecentSearches}
                 className="text-xs text-white/40 hover:text-white/70 flex items-center gap-1"
               >
                 <Trash2 className="w-3 h-3" />
-                清空
+                Clear
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -477,13 +482,13 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
         {!query && searchHistory.length > 0 && (
           <div className="px-4 pb-2">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-white/40">搜索历史</span>
+              <span className="text-xs text-white/40">Search history</span>
               <button
                 onClick={clearHistory}
                 className="text-xs text-white/40 hover:text-white/70 flex items-center gap-1"
               >
                 <Trash2 className="w-3 h-3" />
-                清空
+                Clear
               </button>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -526,7 +531,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
         {query && !isSearching && results.length === 0 && (
           <div className="p-8 text-center">
             <Search className="w-12 h-12 text-white/20 mx-auto mb-3" />
-            <p className="text-white/50">未找到相关结果</p>
+            <p className="text-white/50">No matching results</p>
           </div>
         )}
 
@@ -534,7 +539,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
           <div className="p-4">
             <div className="flex items-center gap-2 text-white/60 mb-3">
               <TrendingUp className="w-4 h-4" />
-              <span className="text-sm">搜索结果 ({totalResults})</span>
+              <span className="text-sm">Search results ({totalResults})</span>
             </div>
             <div className="space-y-2">
               {results.map((song, index) => (
@@ -568,7 +573,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                         handleNarrowSearch(song.album || "", "album");
                       }}
                       className="text-white/40 hover:text-white text-xs px-2 py-1 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
-                      title="按专辑继续搜索"
+                      title="Search this album"
                     >
                       {song.album}
                     </button>
@@ -580,7 +585,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                         handlePlaySong(song);
                       }}
                       className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform"
-                      title="立即播放"
+                      title="Play now"
                     >
                       <Play className="w-3.5 h-3.5" fill="currentColor" />
                     </button>
@@ -590,7 +595,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                         handleAddToQueue(song);
                       }}
                       className="w-8 h-8 rounded-full bg-white/10 text-white/70 flex items-center justify-center hover:bg-white/20 hover:text-white transition-colors"
-                      title="加入队列"
+                      title="Add to queue"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
@@ -600,7 +605,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                         handlePlayNext(song);
                       }}
                       className="w-8 h-8 rounded-full bg-white/10 text-white/70 flex items-center justify-center hover:bg-white/20 hover:text-white transition-colors"
-                      title="播放下一首"
+                      title="Play next"
                     >
                       <ListPlus className="w-3.5 h-3.5" />
                     </button>
@@ -610,7 +615,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                         handleNarrowSearch(song.artist, "artist");
                       }}
                       className="w-8 h-8 rounded-full bg-white/10 text-white/70 flex items-center justify-center hover:bg-white/20 hover:text-white transition-colors"
-                      title="按歌手继续搜索"
+                      title="Search this artist"
                     >
                       <User className="w-3.5 h-3.5" />
                     </button>
@@ -627,10 +632,10 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                   onClick={() => setPage(page - 1)}
                   className="px-3 py-1 rounded-lg text-xs bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
-                  上一页
+                  Previous
                 </motion.button>
                 <span className="text-xs text-white/50">
-                  第{page}页 / 共{totalPages}页
+                  Page {page} / {totalPages}
                 </span>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -639,7 +644,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                   onClick={() => setPage(page + 1)}
                   className="px-3 py-1 rounded-lg text-xs bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
-                  下一页
+                  Next
                 </motion.button>
               </div>
             )}

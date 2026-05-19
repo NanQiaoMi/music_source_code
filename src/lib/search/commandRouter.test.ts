@@ -26,7 +26,7 @@ describe("parseSearchCommand", () => {
     expect(parseSearchCommand("/shuffle")).toMatchObject({ kind: "shuffle", query: "" });
   });
 
-  it("parses sleep command minutes", () => {
+  it("parses sleep command minutes and validation boundaries", () => {
     expect(parseSearchCommand("/sleep 25m")).toMatchObject({
       kind: "sleep",
       minutes: 25,
@@ -34,6 +34,18 @@ describe("parseSearchCommand", () => {
     expect(parseSearchCommand("/sleep 10")).toMatchObject({
       kind: "sleep",
       minutes: 10,
+    });
+    expect(parseSearchCommand("/sleep 30m")).toMatchObject({
+      kind: "sleep",
+      minutes: 30,
+    });
+    expect(parseSearchCommand("/sleep 0m")).toMatchObject({
+      kind: "sleep",
+      minutes: 1,
+    });
+    expect(parseSearchCommand("/sleep abc")).toMatchObject({
+      kind: "sleep",
+      minutes: undefined,
     });
   });
 
