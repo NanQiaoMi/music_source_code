@@ -555,7 +555,7 @@ git commit --no-verify -m "feat(mix): add smart mix sessions mvp"
 - Modify: `src/store/uiStore.ts`
 - Modify: `src/store/uiStore.test.ts`
 
-- [ ] **Step 1: Implement rollup tests**
+- [x] **Step 1: Implement rollup tests**
 
 Test `rollupDay` for:
 
@@ -563,7 +563,7 @@ Test `rollupDay` for:
 - Top songs are sorted by play count descending.
 - Dominant mood tie is resolved by first seen mood for deterministic output.
 
-- [ ] **Step 2: Implement rollup helper**
+- [x] **Step 2: Implement rollup helper**
 
 Use this shape:
 
@@ -577,7 +577,7 @@ export interface JournalDay {
 }
 ```
 
-- [ ] **Step 3: Implement persisted store**
+- [x] **Step 3: Implement persisted store**
 
 Persist under `journal-store-v1`. Actions:
 
@@ -586,13 +586,13 @@ Persist under `journal-store-v1`. Actions:
 - `getWeek(anchorDate?: string): JournalDay[]`
 - `trimToLast90Days(): void`
 
-- [ ] **Step 4: Add UI entry and panel**
+- [x] **Step 4: Add UI entry and panel**
 
 - `ListeningJournalCard` renders a seven-day ribbon with accessible labels.
 - `JournalDayPanel` opens through `PanelOrchestrator`, shows total minutes, top songs, dominant mood, and one-line note input.
 - The note input saves on blur and on Enter.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run:
 
@@ -601,7 +601,7 @@ npm run test -- src/lib/journal/listeningJournal.test.ts src/store/listeningJour
 npx eslint src/lib/journal/listeningJournal.ts src/store/listeningJournalStore.ts src/components/widgets/ListeningJournalCard.tsx src/components/widgets/JournalDayPanel.tsx src/components/layout/PanelOrchestrator.tsx src/store/uiStore.ts --ext .ts,.tsx --report-unused-disable-directives --max-warnings 100
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/lib/journal src/store/listeningJournalStore.ts src/store/listeningJournalStore.test.ts src/components/widgets/ListeningJournalCard.tsx src/components/widgets/JournalDayPanel.tsx src/components/layout/PanelOrchestrator.tsx src/store/uiStore.ts src/store/uiStore.test.ts

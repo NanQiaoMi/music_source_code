@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { useUIStore, PanelName } from "@/store/uiStore";
+import { useUIStore } from "@/store/uiStore";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/shallow";
 import { LazyPanel, prefetchPanel } from "@/components/shared/LazyPanel";
@@ -33,6 +33,8 @@ const FACTORIES = {
     })),
   listeningHistory: () =>
     import("@/components/library/ListeningHistory").then((m) => ({ default: m.ListeningHistory })),
+  listeningJournal: () =>
+    import("@/components/widgets/JournalDayPanel").then((m) => ({ default: m.JournalDayPanel })),
   dailyRecommendation: () =>
     import("@/components/widgets/DailyRecommendation").then((m) => ({
       default: m.DailyRecommendation,
@@ -217,6 +219,12 @@ export function PanelOrchestrator() {
         isOpen={panels.listeningHistory}
         onClose={() => closePanel("listeningHistory")}
         factory={FACTORIES.listeningHistory}
+      />
+      <LazyPanel
+        name="listeningJournal"
+        isOpen={panels.listeningJournal}
+        onClose={() => closePanel("listeningJournal")}
+        factory={FACTORIES.listeningJournal}
       />
       <LazyPanel
         name="dailyRecommendation"

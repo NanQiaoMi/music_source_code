@@ -25,6 +25,17 @@ describe("uiStore", () => {
     expect(useUIStore.getState().isPanelOpen("queue")).toBe(false);
   });
 
+  it("registers the listening journal panel", () => {
+    const store = useUIStore.getState();
+
+    expect(store.panels.listeningJournal).toBe(false);
+
+    store.openPanel("listeningJournal");
+    expect(useUIStore.getState().isPanelOpen("listeningJournal")).toBe(true);
+
+    useUIStore.getState().closePanel("listeningJournal");
+    expect(useUIStore.getState().isPanelOpen("listeningJournal")).toBe(false);
+  });
   it("toggles a panel on and off", () => {
     const store = useUIStore.getState();
     store.togglePanel("search");
