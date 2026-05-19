@@ -26,6 +26,28 @@ describe("parseSearchCommand", () => {
     expect(parseSearchCommand("/shuffle")).toMatchObject({ kind: "shuffle", query: "" });
   });
 
+  it("parses playback control commands", () => {
+    expect(parseSearchCommand("/pause")).toMatchObject({ kind: "pause", query: "" });
+    expect(parseSearchCommand("/next")).toMatchObject({ kind: "next", query: "" });
+    expect(parseSearchCommand("/prev")).toMatchObject({ kind: "prev", query: "" });
+  });
+
+  it("parses volume command as a normalized percentage", () => {
+    expect(parseSearchCommand("/volume 60")).toMatchObject({
+      kind: "volume",
+      query: "60",
+      volume: 0.6,
+    });
+    expect(parseSearchCommand("/volume 150")).toMatchObject({
+      kind: "volume",
+      volume: 1,
+    });
+    expect(parseSearchCommand("/volume abc")).toMatchObject({
+      kind: "volume",
+      volume: undefined,
+    });
+  });
+
   it("parses sleep command minutes and validation boundaries", () => {
     expect(parseSearchCommand("/sleep 25m")).toMatchObject({
       kind: "sleep",

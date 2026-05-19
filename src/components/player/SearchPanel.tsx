@@ -26,6 +26,7 @@ import { useSleepTimerStore } from "@/store/sleepTimerStore";
 import Image from "next/image";
 import { GlassModal } from "@/components/shared/Glass";
 import { parseSearchCommand, SEARCH_COMMAND_HINTS } from "@/lib/search/commandRouter";
+import { executeSearchCommand } from "@/lib/search/commandExecutor";
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
@@ -94,6 +95,10 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const shuffleQueue = useQueueStore((state) => state.shuffleQueue);
   const setCurrentSong = useAudioStore((state) => state.setCurrentSong);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const nextSong = useAudioStore((state) => state.nextSong);
+  const prevSong = useAudioStore((state) => state.prevSong);
+  const setVolume = useAudioStore((state) => state.setVolume);
+  const setSleepTimer = useSleepTimerStore((state) => state.setTimer);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isListening, setIsListening] = useState(false);
 
@@ -184,81 +189,41 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     search(songs);
   };
 
-  const findCommandMatches = useCallback(
-    (searchQuery: string) => {
-      const needle = searchQuery.toLowerCase().trim();
-      if (!needle) return [];
-      return songs.filter((song) => {
-        const title = song.title.toLowerCase();
-        const artist = song.artist.toLowerCase();
-        const album = song.album?.toLowerCase() || "";
-        return title.includes(needle) || artist.includes(needle) || album.includes(needle);
-      });
-    },
-    [songs]
-  );
-
   const runCommand = useCallback(
     (value: string) => {
       const command = parseSearchCommand(value);
-
-      if (command.kind === "text-search") {
-        setQuery(command.query);
-        search(songs);
-        return;
-      }
-
-      addRecentCommand(command.raw.trim());
-
-      if (command.kind === "clear") {
-        clearQueue();
-        setCommandFeedback("Queue cleared");
-        return;
-      }
-
-      if (command.kind === "shuffle") {
-        shuffleQueue();
-        setCommandFeedback("Queue shuffled");
-        return;
-      }
-
-      if (command.kind === "sleep") {
-        if (!command.minutes) {
-          setCommandFeedback("Use /sleep 30m");
-          return;
-        }
-
-        useSleepTimerStore.getState().setTimer(command.minutes);
-        setCommandFeedback(`Sleep timer set for ${command.minutes} minutes`);
-        return;
-      }
-
-      const matches = findCommandMatches(command.query);
-      if (matches.length === 0) {
-        setCommandFeedback(`No matches for "${command.query}"`);
-        return;
-      }
-
-      if (command.kind === "play") {
-        handlePlaySong(matches[0]);
-        setCommandFeedback(`Playing ${matches[0].title}`);
-        return;
-      }
-
-      if (command.kind === "queue") {
-        matches.slice(0, 10).forEach(addToQueue);
-        setCommandFeedback(`Queued ${Math.min(matches.length, 10)} songs`);
-      }
+      executeSearchCommand(command, {
+        songs,
+        setQuery,
+        search,
+        addRecentCommand,
+        setCommandFeedback,
+        clearQueue,
+        shuffleQueue,
+        addToQueue,
+        setCurrentSong,
+        setIsPlaying,
+        nextSong,
+        prevSong,
+        setVolume,
+        setSleepTimer,
+        onClose,
+      });
     },
     [
       addRecentCommand,
       addToQueue,
       clearQueue,
-      findCommandMatches,
-      handlePlaySong,
+      nextSong,
+      onClose,
+      prevSong,
       search,
       setCommandFeedback,
+      setCurrentSong,
+      setIsPlaying,
+      setSleepTimer,
       setQuery,
+      setVolume,
       shuffleQueue,
       songs,
     ]
