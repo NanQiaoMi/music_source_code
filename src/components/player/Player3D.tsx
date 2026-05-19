@@ -8,6 +8,8 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useAudioStore, LoopMode } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
+import { useABLoopStore } from "@/store/abLoopStore";
+import { ABLoopProgressMarkers } from "@/components/shared/ABLoopProgressMarkers";
 import {
   Sparkles,
   Play,
@@ -309,6 +311,9 @@ export const Player3D: React.FC = () => {
   const isLoading = useAudioStore((state) => state.isLoading);
   const error = useAudioStore((state) => state.error);
   const clearError = useAudioStore((state) => state.clearError);
+  const abLoopEnabled = useABLoopStore((state) => state.isEnabled);
+  const pointA = useABLoopStore((state) => state.pointA);
+  const pointB = useABLoopStore((state) => state.pointB);
   const { setCurrentView, setIsTransitioning } = useUIStore();
   const { isFavorite, toggleFavorite } = useFavoritesStore();
   const {
@@ -477,7 +482,7 @@ export const Player3D: React.FC = () => {
                   <span>{formatTime(duration)}</span>
                 </div>
                 <div
-                  className="h-1.5 bg-white/10 rounded-full cursor-pointer group"
+                  className="relative h-1.5 overflow-hidden rounded-full bg-white/10 cursor-pointer group"
                   onClick={(e) => {
                     if (!currentSong) return;
                     const rect = e.currentTarget.getBoundingClientRect();
@@ -485,6 +490,12 @@ export const Player3D: React.FC = () => {
                     seekTo(duration * percent);
                   }}
                 >
+                  <ABLoopProgressMarkers
+                    isEnabled={abLoopEnabled}
+                    pointA={pointA}
+                    pointB={pointB}
+                    duration={duration}
+                  />
                   <motion.div
                     className="h-full bg-white rounded-full relative shadow-[0_0_12px_rgba(255,255,255,0.6)]"
                     initial={{ width: 0 }}

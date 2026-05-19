@@ -8,6 +8,7 @@ import { useUIStore } from "@/store/uiStore";
 import { Volume2, VolumeX, Music2, Maximize2 } from "lucide-react";
 import { GlassRadarWidget } from "@/components/widgets/GlassRadarWidget";
 import { useABLoopStore } from "@/store/abLoopStore";
+import { ABLoopProgressMarkers } from "@/components/shared/ABLoopProgressMarkers";
 
 export const APPLE_SPRING_CONFIG = {
   type: "spring" as const,
@@ -220,25 +221,12 @@ export const GlobalPlayerBar: React.FC = () => {
                 }}
               />
 
-              {abLoopEnabled && pointA !== null && pointB !== null && (
-                <>
-                  <div
-                    className="absolute top-0 w-0.5 h-full bg-blue-400 z-10"
-                    style={{ left: `${(pointA / duration) * 100}%` }}
-                  />
-                  <div
-                    className="absolute top-0 w-0.5 h-full bg-red-400 z-10"
-                    style={{ left: `${(pointB / duration) * 100}%` }}
-                  />
-                  <div
-                    className="absolute top-0 h-full bg-blue-400/20 z-10"
-                    style={{
-                      left: `${(pointA / duration) * 100}%`,
-                      width: `${((pointB - pointA) / duration) * 100}%`,
-                    }}
-                  />
-                </>
-              )}
+              <ABLoopProgressMarkers
+                isEnabled={abLoopEnabled}
+                pointA={pointA}
+                pointB={pointB}
+                duration={duration}
+              />
             </div>
 
             <AnimatePresence>
