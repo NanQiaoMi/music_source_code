@@ -329,7 +329,7 @@ git commit --no-verify -m "feat(library): make health results actionable"
 - Create: `src/lib/stats/viewModels.test.ts`
 - Modify: `src/components/widgets/StatsAchievementsPanel.tsx`
 
-- [ ] **Step 1: Write view-model tests**
+- [x] **Step 1: Write view-model tests**
 
 Create `src/lib/stats/viewModels.test.ts` covering:
 
@@ -337,7 +337,7 @@ Create `src/lib/stats/viewModels.test.ts` covering:
 - Missing stats fields become zero or `null`, not `undefined`.
 - `buildDailyHistory(stats)` sorts days descending and caps to 30 rows.
 
-- [ ] **Step 2: Implement view models**
+- [x] **Step 2: Implement view models**
 
 Create `src/lib/stats/viewModels.ts` exporting typed helpers:
 
@@ -386,7 +386,7 @@ function completionRate(stats: ListeningStats): number {
 }
 ```
 
-- [ ] **Step 3: Refactor component away from broad `any`**
+- [x] **Step 3: Refactor component away from broad `any`**
 
 In `StatsAchievementsPanel.tsx`:
 
@@ -395,7 +395,7 @@ In `StatsAchievementsPanel.tsx`:
 - Keep existing chart components; do not refactor chart internals in this task.
 - Repair only touched copy.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run:
 
@@ -404,7 +404,7 @@ npm run test -- src/lib/stats/viewModels.test.ts src/store/statsAchievementsStor
 npx eslint src/lib/stats/viewModels.ts src/lib/stats/viewModels.test.ts src/components/widgets/StatsAchievementsPanel.tsx --ext .ts,.tsx --report-unused-disable-directives --max-warnings 100
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src/lib/stats/viewModels.ts src/lib/stats/viewModels.test.ts src/components/widgets/StatsAchievementsPanel.tsx

@@ -2,16 +2,31 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Trophy, BarChart3, Calendar, Zap, Clock, Disc, Activity } from "lucide-react";
-import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import {
-  MusicalDNARadar,
-  ListeningHeatmap,
-  AudioQualityGauge,
+  Activity,
+  BarChart3,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Disc,
+  Sparkles,
+  Trophy,
+  X,
+  Zap,
+} from "lucide-react";
+import {
+  type Achievement,
+  type ListeningStats,
+  useStatsAchievementsStore,
+} from "@/store/statsAchievementsStore";
+import {
   ActivityTrend,
+  AudioQualityGauge,
   ListeningClock,
-  ProToolMasteryRadar,
+  ListeningHeatmap,
   MoodFlow,
+  MusicalDNARadar,
+  ProToolMasteryRadar,
 } from "@/components/stats/StatsVisuals";
 import {
   getAchievementSpotlights,
@@ -19,6 +34,12 @@ import {
   getTopTimeWindow,
   summarizeListeningStats,
 } from "@/utils/listeningInsights";
+import {
+  buildDailyHistory,
+  buildOverviewMetrics,
+  type MetricCardModel,
+  type MetricTone,
+} from "@/lib/stats/viewModels";
 
 interface StatsAchievementsPanelProps {
   isOpen: boolean;
@@ -26,20 +47,55 @@ interface StatsAchievementsPanelProps {
 }
 
 const TAB_ITEMS = [
-  { id: "overview", name: "概览", icon: "📊" },
-  { id: "insights", name: "洞察", icon: "🧠" },
-  { id: "achievements", name: "成就", icon: "🏆" },
-  { id: "history", name: "日志", icon: "📅" },
+  { id: "overview", name: "Overview", icon: BarChart3 },
+  { id: "insights", name: "Insights", icon: Sparkles },
+  { id: "achievements", name: "Achievements", icon: Trophy },
+  { id: "history", name: "History", icon: Calendar },
 ] as const;
 
 type TabId = (typeof TAB_ITEMS)[number]["id"];
+
+const metricToneClass: Record<MetricTone, { card: string; icon: string }> = {
+  amber: { card: "from-amber-500/20 to-orange-500/20 border-amber-500/30", icon: "text-amber-200" },
+  emerald: {
+    card: "from-emerald-500/20 to-teal-500/20 border-emerald-500/30",
+    icon: "text-emerald-200",
+  },
+  violet: {
+    card: "from-violet-500/20 to-purple-500/20 border-violet-500/30",
+    icon: "text-violet-200",
+  },
+  blue: { card: "from-blue-500/20 to-cyan-500/20 border-blue-500/30", icon: "text-blue-200" },
+  pink: { card: "from-pink-500/20 to-rose-500/20 border-pink-500/30", icon: "text-pink-200" },
+  indigo: {
+    card: "from-indigo-500/20 to-blue-500/20 border-indigo-500/30",
+    icon: "text-indigo-200",
+  },
+};
+
+const metricIcons: Record<string, React.ReactNode> = {
+  plays: <Activity className="h-4 w-4" />,
+  time: <Clock className="h-4 w-4" />,
+  artists: <Zap className="h-4 w-4" />,
+  albums: <Disc className="h-4 w-4" />,
+  songs: <BarChart3 className="h-4 w-4" />,
+  completion: <CheckCircle2 className="h-4 w-4" />,
+};
+
+const categoryLabels: Record<Achievement["category"], string> = {
+  listening: "Listening",
+  exploration: "Explore",
+  collection: "Collection",
+  milestone: "Milestone",
+  technical: "Tools",
+  temporal: "Time",
+};
 
 export const StatsAchievementsPanel: React.FC<StatsAchievementsPanelProps> = ({
   isOpen,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-
   const { listeningStats, achievements, unlockAchievement } = useStatsAchievementsStore();
 
   if (!isOpen) return null;
@@ -49,7 +105,7 @@ export const StatsAchievementsPanel: React.FC<StatsAchievementsPanelProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -57,53 +113,56 @@ export const StatsAchievementsPanel: React.FC<StatsAchievementsPanelProps> = ({
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-5xl bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
+        onClick={(event) => event.stopPropagation()}
+        className="relative flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/20 bg-white/10 shadow-2xl backdrop-blur-2xl"
       >
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
+        <div className="flex items-center justify-between border-b border-white/10 p-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500/30 to-orange-500/30 flex items-center justify-center">
-              <Trophy className="w-6 h-6 text-white" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/30 to-orange-500/30">
+              <Trophy className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h2 className="text-white text-2xl font-semibold">数据统计与成就</h2>
-              <p className="text-white/60 text-sm">概览、成就、每日数据</p>
+              <h2 className="text-2xl font-semibold text-white">Stats and Achievements</h2>
+              <p className="text-sm text-white/60">
+                Listening overview, insights, progress, and daily history.
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            aria-label="Close stats and achievements"
           >
-            ✕
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="flex border-b border-white/10">
-          {TAB_ITEMS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-4 px-4 text-sm font-medium transition-all duration-200 ${
-                activeTab === tab.id
-                  ? "text-white border-b-2 border-amber-500 bg-white/5"
-                  : "text-white/60 hover:text-white/80 hover:bg-white/5"
-              }`}
-            >
-              <span className="mr-2">{tab.icon}</span>
-              {tab.name}
-            </button>
-          ))}
+          {TAB_ITEMS.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex flex-1 items-center justify-center gap-2 px-4 py-4 text-sm font-medium transition-all duration-200 ${
+                  activeTab === tab.id
+                    ? "border-b-2 border-amber-500 bg-white/5 text-white"
+                    : "text-white/60 hover:bg-white/5 hover:text-white/80"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.name}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar min-h-0">
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-6">
           {activeTab === "overview" && <OverviewTab stats={listeningStats} />}
-
           {activeTab === "insights" && <InsightsTab stats={listeningStats} />}
-
           {activeTab === "achievements" && (
-            <AchievementsTab achievements={achievements} onUnlockAchievement={() => {}} />
+            <AchievementsTab achievements={achievements} onUnlockAchievement={unlockAchievement} />
           )}
-
           {activeTab === "history" && <DailyHistoryTab stats={listeningStats} />}
         </div>
       </motion.div>
@@ -111,131 +170,76 @@ export const StatsAchievementsPanel: React.FC<StatsAchievementsPanelProps> = ({
   );
 };
 
-function OverviewTab({ stats }: { stats: any }) {
+function OverviewTab({ stats }: { stats: ListeningStats }) {
   const summary = summarizeListeningStats(stats);
   const topWindow = getTopTimeWindow(stats.hourlyDistribution || {});
   const nextAction = getListeningNextAction(summary);
-  const metrics = [
-    {
-      label: "总播放次数",
-      value: stats.totalPlayCount || 0,
-      icon: <Activity className="w-4 h-4" />,
-      color: "from-amber-500/20 to-orange-500/20",
-      borderColor: "border-amber-500/30",
-    },
-    {
-      label: "总收听时长",
-      value: `${Math.floor((stats.totalListenTime || 0) / 3600)}小时`,
-      icon: <Clock className="w-4 h-4" />,
-      color: "from-emerald-500/20 to-teal-500/20",
-      borderColor: "border-emerald-500/30",
-    },
-    {
-      label: "歌手数量",
-      value: stats.uniqueArtists || 0,
-      icon: <Zap className="w-4 h-4" />,
-      color: "from-violet-500/20 to-purple-500/20",
-      borderColor: "border-violet-500/30",
-    },
-    {
-      label: "专辑数量",
-      value: stats.uniqueAlbums || 0,
-      icon: <Disc className="w-4 h-4" />,
-      color: "from-blue-500/20 to-cyan-500/20",
-      borderColor: "border-blue-500/30",
-    },
-    {
-      label: "歌曲数量",
-      value: stats.uniqueSongs || 0,
-      icon: <BarChart3 className="w-4 h-4" />,
-      color: "from-pink-500/20 to-rose-500/20",
-      borderColor: "border-pink-500/30",
-    },
-    {
-      label: "完成率",
-      value: `${summary.completionRate}%`,
-      icon: <Zap className="w-4 h-4" />,
-      color: "from-indigo-500/20 to-blue-500/20",
-      borderColor: "border-indigo-500/30",
-    },
-  ];
+  const metrics = buildOverviewMetrics(stats);
 
   return (
     <div className="space-y-6">
-      <h3 className="text-white text-xl font-semibold">核心数据指标</h3>
+      <div>
+        <h3 className="text-xl font-semibold text-white">Core metrics</h3>
+        <p className="mt-1 text-sm text-white/50">
+          A compact snapshot of listening depth, variety, and completion.
+        </p>
+      </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {metrics.map((metric, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className={`p-6 rounded-2xl bg-gradient-to-br ${metric.color} border ${metric.borderColor} relative overflow-hidden group`}
-          >
-            <div className="absolute top-4 right-4 opacity-20 group-hover:scale-110 transition-transform">
-              {metric.icon}
-            </div>
-            <div className="text-3xl font-bold text-white mb-1">{metric.value}</div>
-            <div className="text-white/60 text-xs uppercase tracking-wider">{metric.label}</div>
-          </motion.div>
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+        {metrics.map((metric, index) => (
+          <MetricCard key={metric.id} metric={metric} index={index} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {stats.favoriteArtist && (
-          <div className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-            <div className="text-white/40 text-xs uppercase tracking-wider mb-2">
-              最喜爱的艺术家
-            </div>
-            <div className="text-white font-semibold text-xl">{stats.favoriteArtist}</div>
-          </div>
-        )}
-        {stats.favoriteSong && (
-          <div className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-            <div className="text-white/40 text-xs uppercase tracking-wider mb-2">最喜爱的单曲</div>
-            <div className="text-white font-semibold text-xl">{stats.favoriteSong}</div>
-          </div>
-        )}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <FavoriteCard
+          label="Favorite artist"
+          value={stats.favoriteArtist}
+          fallback="No favorite artist yet"
+        />
+        <FavoriteCard
+          label="Favorite song"
+          value={stats.favoriteSong}
+          fallback="No favorite song yet"
+        />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-          <div className="text-white/40 text-xs uppercase tracking-wider mb-2">当前收听势能</div>
-          <div className="text-white font-semibold text-xl">
-            {summary.trend === "rising"
-              ? "热度上升"
-              : summary.trend === "cooling"
-                ? "热度降温"
-                : "稳定输出"}
-          </div>
-          <div className="text-white/50 text-sm mt-2">最近 7 天较前一阶段 {summary.trendDelta > 0 ? "+" : ""}{summary.trendDelta} 次/日</div>
-        </div>
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-          <div className="text-white/40 text-xs uppercase tracking-wider mb-2">探索倾向</div>
-          <div className="text-white font-semibold text-xl">{summary.explorationScore}%</div>
-          <div className="text-white/50 text-sm mt-2">{summary.metrics[1]?.hint}</div>
-        </div>
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-          <div className="text-white/40 text-xs uppercase tracking-wider mb-2">复听倾向</div>
-          <div className="text-white font-semibold text-xl">{summary.replayScore}%</div>
-          <div className="text-white/50 text-sm mt-2">{summary.metrics[2]?.hint}</div>
-        </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <InsightTile
+          label="Listening trend"
+          value={trendLabel(summary.trend)}
+          detail={`Last 7 days versus previous period: ${summary.trendDelta > 0 ? "+" : ""}${summary.trendDelta} plays/day`}
+        />
+        <InsightTile
+          label="Exploration"
+          value={`${summary.explorationScore}%`}
+          detail={summary.metrics[1]?.hint || "Not enough listening history yet."}
+        />
+        <InsightTile
+          label="Replay bias"
+          value={`${summary.replayScore}%`}
+          detail={summary.metrics[2]?.hint || "Replay behavior will appear after more plays."}
+        />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-5 rounded-2xl bg-amber-500/[0.08] border border-amber-500/20">
-          <div className="text-amber-200/60 text-xs uppercase tracking-wider mb-2">建议下一步</div>
-          <div className="text-white font-semibold text-2xl">{nextAction}</div>
-          <div className="text-white/55 text-sm mt-2">
-            根据完成率、跳过率、探索倾向和复听倾向生成，优先处理最影响体验的行为。
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.08] p-5">
+          <div className="mb-2 text-xs uppercase tracking-wider text-amber-200/60">
+            Suggested next step
+          </div>
+          <div className="text-2xl font-semibold text-white">{nextAction}</div>
+          <div className="mt-2 text-sm text-white/55">
+            Generated from completion rate, skip rate, exploration, replay, and current trend.
           </div>
         </div>
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-          <div className="text-white/40 text-xs uppercase tracking-wider mb-2">最活跃时段</div>
-          <div className="text-white font-semibold text-2xl">{topWindow.label}</div>
-          <div className="text-white/50 text-sm mt-2">
-            该时段累计 {topWindow.count} 次播放，可用于推荐、提醒和首页默认歌单排序。
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-2 text-xs uppercase tracking-wider text-white/40">
+            Most active hour
+          </div>
+          <div className="text-2xl font-semibold text-white">{topWindow.label}</div>
+          <div className="mt-2 text-sm text-white/50">
+            {topWindow.count} plays in this hour window. Useful for recommendations and default
+            playlist timing.
           </div>
         </div>
       </div>
@@ -243,108 +247,150 @@ function OverviewTab({ stats }: { stats: any }) {
   );
 }
 
-function InsightsTab({ stats }: { stats: any }) {
-  const genreLabels =
-    stats.genreDistribution?.length > 0
-      ? stats.genreDistribution.map((g: any) => g.genre)
-      : ["Pop", "Rock", "Jazz", "Classical", "Electronic", "Lofi"];
+function MetricCard({ metric, index }: { metric: MetricCardModel; index: number }) {
+  const tone = metricToneClass[metric.tone];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-br p-6 ${tone.card}`}
+    >
+      <div
+        className={`absolute right-4 top-4 opacity-40 transition-transform group-hover:scale-110 ${tone.icon}`}
+      >
+        {metricIcons[metric.id] || <BarChart3 className="h-4 w-4" />}
+      </div>
+      <div className="mb-1 text-3xl font-bold text-white">{metric.value}</div>
+      <div className="text-xs uppercase tracking-wider text-white/60">{metric.label}</div>
+    </motion.div>
+  );
+}
 
+function FavoriteCard({
+  label,
+  value,
+  fallback,
+}: {
+  label: string;
+  value: string | null;
+  fallback: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 transition-colors hover:bg-white/10">
+      <div className="mb-2 text-xs uppercase tracking-wider text-white/40">{label}</div>
+      <div className="text-xl font-semibold text-white">{value || fallback}</div>
+    </div>
+  );
+}
+
+function InsightTile({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <div className="mb-2 text-xs uppercase tracking-wider text-white/40">{label}</div>
+      <div className="text-xl font-semibold text-white">{value}</div>
+      <div className="mt-2 text-sm text-white/50">{detail}</div>
+    </div>
+  );
+}
+
+function InsightsTab({ stats }: { stats: ListeningStats }) {
+  const genreLabels =
+    stats.genreDistribution.length > 0
+      ? stats.genreDistribution.map((genre) => genre.genre)
+      : ["Pop", "Rock", "Jazz", "Classical", "Electronic", "Lofi"];
   const genreData =
-    stats.genreDistribution?.length > 0
-      ? stats.genreDistribution.reduce((acc: any, g: any) => ({ ...acc, [g.genre]: g.count }), {})
+    stats.genreDistribution.length > 0
+      ? stats.genreDistribution.reduce<Record<string, number>>((acc, genre) => {
+          acc[genre.genre] = genre.count;
+          return acc;
+        }, {})
       : { Pop: 85, Rock: 65, Jazz: 40, Classical: 30, Electronic: 90, Lofi: 55 };
+  const dailyTrend = buildDailyHistory(stats)
+    .slice()
+    .reverse()
+    .map((day) => day.playCount);
+  const moodHistory = Object.entries(stats.moodDistribution || {}).flatMap(([mood, count]) =>
+    Array.from({ length: Math.min(count, 20) }, (_, index) => ({ mood, timestamp: index }))
+  );
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Radar Chart Section */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-white font-medium">音乐 DNA</h4>
-            <span className="text-xs text-white/40">基于风格偏好</span>
-          </div>
-          <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center min-h-[340px]">
-            <MusicalDNARadar data={genreData} labels={genreLabels} />
-          </div>
-        </section>
-
-        {/* Audio Quality Section */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-white font-medium">音频质量分布</h4>
-            <span className="text-xs text-white/40">音质倾向</span>
-          </div>
-          <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center min-h-[340px]">
-            <AudioQualityGauge
-              qualityData={stats.audioQualityDistribution || {}}
-              total={stats.totalPlayCount || 0}
-            />
-          </div>
-        </section>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <StatsSection title="Music DNA" caption="Based on genre preference">
+          <MusicalDNARadar data={genreData} labels={genreLabels} />
+        </StatsSection>
+        <StatsSection title="Audio quality" caption="Playback quality mix">
+          <AudioQualityGauge
+            qualityData={stats.audioQualityDistribution || {}}
+            total={stats.totalPlayCount || 0}
+          />
+        </StatsSection>
       </div>
 
-      {/* Activity Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Clock Section */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-white font-medium">24小时收听时钟</h4>
-            <span className="text-xs text-white/40">全天活跃周期</span>
-          </div>
-          <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center min-h-[300px]">
-            <ListeningClock hourlyData={stats.hourlyDistribution || {}} />
-          </div>
-        </section>
-
-        {/* Heatmap Section */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-white font-medium">活跃度趋势</h4>
-            <span className="text-xs text-white/40">最近30天动态</span>
-          </div>
-          <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col justify-center min-h-[300px]">
-            <ActivityTrend data={(stats.dailyPlayData?.slice(-30) || []).map((day: any) => day.playCount || 0)} />
-          </div>
-        </section>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <StatsSection title="24-hour listening clock" caption="Daily activity cycle" compact>
+          <ListeningClock hourlyData={toStringRecord(stats.hourlyDistribution)} />
+        </StatsSection>
+        <StatsSection title="Activity trend" caption="Last 30 tracked days" compact>
+          <ActivityTrend data={dailyTrend} />
+        </StatsSection>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Pro-Tool Mastery Radar Section */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-white font-medium">专业工具掌握度</h4>
-            <span className="text-xs text-white/40">技术功能使用频率</span>
-          </div>
-          <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center min-h-[340px]">
-            <ProToolMasteryRadar usage={stats.proToolsUsage || {}} />
-          </div>
-        </section>
-
-        {/* Mood Flow Section */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-white font-medium">心境流转</h4>
-            <span className="text-xs text-white/40">收听情绪序列</span>
-          </div>
-          <div className="p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col justify-center gap-6 min-h-[340px]">
-            <MoodFlow moodHistory={stats.moodHistory || []} />
-            <div className="text-[10px] text-white/30 text-center leading-relaxed">
-              基于音频特征和收听习惯的自动心情建模。
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <StatsSection title="Pro tool mastery" caption="Advanced feature usage">
+          <ProToolMasteryRadar usage={stats.proToolsUsage || {}} />
+        </StatsSection>
+        <StatsSection title="Mood flow" caption="Mood sequence from listening tags">
+          <div className="flex min-h-[220px] flex-col justify-center gap-6">
+            <MoodFlow moodHistory={moodHistory} />
+            <div className="text-center text-[10px] leading-relaxed text-white/30">
+              Built from recorded mood distribution. More emotion tags make this view more precise.
             </div>
           </div>
-        </section>
+        </StatsSection>
       </div>
 
-      {/* Full Width Section */}
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h4 className="text-white font-medium">分时段活跃强度</h4>
-          <span className="text-xs text-white/40">每小时详细分布</span>
-        </div>
-        <div className="p-6 rounded-3xl bg-white/5 border border-white/10">
-          <ListeningHeatmap hourlyData={stats.hourlyDistribution || {}} />
+        <SectionHeader title="Hourly activity strength" caption="Detailed distribution by hour" />
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <ListeningHeatmap hourlyData={toStringRecord(stats.hourlyDistribution)} />
         </div>
       </section>
+    </div>
+  );
+}
+
+function StatsSection({
+  title,
+  caption,
+  compact = false,
+  children,
+}: {
+  title: string;
+  caption: string;
+  compact?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-4">
+      <SectionHeader title={title} caption={caption} />
+      <div
+        className={`flex items-center justify-center rounded-3xl border border-white/10 bg-white/5 p-8 ${
+          compact ? "min-h-[300px]" : "min-h-[340px]"
+        }`}
+      >
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function SectionHeader({ title, caption }: { title: string; caption: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <h4 className="font-medium text-white">{title}</h4>
+      <span className="text-xs text-white/40">{caption}</span>
     </div>
   );
 }
@@ -353,188 +399,227 @@ function AchievementsTab({
   achievements,
   onUnlockAchievement,
 }: {
-  achievements: any[];
+  achievements: Achievement[];
   onUnlockAchievement: (achievementId: string) => void;
 }) {
   const spotlight = getAchievementSpotlights(achievements);
-  const categories = [
-    { id: "listening", name: "聆听", icon: "🎵" },
-    { id: "exploration", name: "探索", icon: "🔍" },
-    { id: "collection", name: "收藏", icon: "💎" },
-    { id: "temporal", name: "时间", icon: "⏰" },
-    { id: "technical", name: "技术", icon: "🛠️" },
-    { id: "milestone", name: "里程碑", icon: "🏆" },
-  ];
-
-  const [selectedCategory, setSelectedCategory] = useState<string>("listening");
-
-  const filteredAchievements = achievements.filter((a) => a.category === selectedCategory);
+  const categories = Object.entries(categoryLabels) as Array<[Achievement["category"], string]>;
+  const [selectedCategory, setSelectedCategory] = useState<Achievement["category"]>("listening");
+  const filteredAchievements = achievements.filter(
+    (achievement) => achievement.category === selectedCategory
+  );
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-          <div className="text-white/40 text-xs uppercase tracking-wider mb-3">最近解锁</div>
-          <div className="space-y-2">
-            {spotlight.unlockedRecently.length === 0 ? (
-              <div className="text-sm text-white/40">还没有新解锁，继续积累听歌记录。</div>
-            ) : (
-              spotlight.unlockedRecently.map((achievement) => (
-                <div key={achievement.id} className="flex items-center gap-3 rounded-xl bg-amber-500/10 px-3 py-2">
-                  <span className="text-lg">{achievement.icon}</span>
-                  <div>
-                    <div className="text-sm font-medium text-white">{achievement.name}</div>
-                    <div className="text-xs text-white/45">{achievement.description}</div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-          <div className="text-white/40 text-xs uppercase tracking-wider mb-3">即将达成</div>
-          <div className="space-y-3">
-            {spotlight.nearlyUnlocked.length === 0 ? (
-              <div className="text-sm text-white/40">先多使用功能，系统会自动识别最近目标。</div>
-            ) : (
-              spotlight.nearlyUnlocked.map((achievement) => (
-                <div key={achievement.id}>
-                  <div className="flex items-center justify-between text-sm text-white mb-1">
-                    <span>{achievement.icon} {achievement.name}</span>
-                    <span className="text-white/50">{achievement.progress}/{achievement.total}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-amber-500 to-orange-500"
-                      style={{ width: `${Math.min(100, (achievement.progress / achievement.total) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-          <div className="text-white/40 text-xs uppercase tracking-wider mb-3">推荐冲刺</div>
-          <div className="space-y-2">
-            {spotlight.recommended.map((achievement) => (
-              <div key={achievement.id} className="rounded-xl bg-white/[0.03] px-3 py-2">
-                <div className="text-sm font-medium text-white">{achievement.icon} {achievement.name}</div>
-                <div className="text-xs text-white/45 mt-1">{achievement.description}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <SpotlightCard
+          title="Recently unlocked"
+          empty="No recent unlocks yet."
+          achievements={spotlight.unlockedRecently}
+        />
+        <SpotlightCard
+          title="Nearly there"
+          empty="Play more tracks to surface the next target."
+          achievements={spotlight.nearlyUnlocked}
+          showProgress
+        />
+        <SpotlightCard
+          title="Recommended push"
+          empty="No recommendations yet."
+          achievements={spotlight.recommended}
+        />
       </div>
 
-      <div className="flex items-center justify-between">
-        <h3 className="text-white text-xl font-semibold">成就系统</h3>
-        <div className="flex gap-2">
-          {categories.map((cat) => (
+      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+        <h3 className="text-xl font-semibold text-white">Achievement system</h3>
+        <div className="flex flex-wrap gap-2">
+          {categories.map(([id, name]) => (
             <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-all duration-200 ${
-                selectedCategory === cat.id
-                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+              key={id}
+              onClick={() => setSelectedCategory(id)}
+              className={`rounded-lg px-3 py-1.5 text-sm transition-all duration-200 ${
+                selectedCategory === id
+                  ? "border border-amber-500/30 bg-amber-500/20 text-amber-300"
                   : "bg-white/5 text-white/60 hover:bg-white/10"
               }`}
             >
-              <span className="mr-1">{cat.icon}</span>
-              {cat.name}
+              {name}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {filteredAchievements.map((achievement) => (
-          <div
+          <AchievementCard
             key={achievement.id}
-            className={`p-5 rounded-2xl transition-all duration-200 ${
-              achievement.unlocked
-                ? "bg-amber-500/20 border border-amber-500/40 shadow-lg shadow-amber-500/5 scale-[1.02]"
-                : "bg-white/5 border border-white/10 opacity-60"
-            }`}
-          >
-            <div className="flex items-start gap-4">
-              <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${
-                  achievement.unlocked ? "bg-amber-500/20" : "bg-white/5"
-                }`}
-              >
-                {achievement.icon}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <div className="text-white font-semibold">{achievement.name}</div>
-                  {achievement.unlocked && (
-                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs">
-                      已解锁
-                    </span>
-                  )}
-                </div>
-                <div className="text-white/60 text-sm mt-1">{achievement.description}</div>
-
-                {!achievement.unlocked && (
-                  <div className="mt-3">
-                    <div className="text-white/40 text-xs mb-1">
-                      进度: {achievement.progress} / {achievement.total}
-                    </div>
-                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-500 to-orange-500"
-                        style={{
-                          width: `${Math.min(100, (achievement.progress / achievement.total) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+            achievement={achievement}
+            onUnlockAchievement={onUnlockAchievement}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function DailyHistoryTab({ stats }: { stats: any }) {
-  const dailyData = stats.dailyPlayData || [];
+function SpotlightCard({
+  title,
+  empty,
+  achievements,
+  showProgress = false,
+}: {
+  title: string;
+  empty: string;
+  achievements: Achievement[];
+  showProgress?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <div className="mb-3 text-xs uppercase tracking-wider text-white/40">{title}</div>
+      <div className="space-y-2">
+        {achievements.length === 0 ? (
+          <div className="text-sm text-white/40">{empty}</div>
+        ) : (
+          achievements.map((achievement) => (
+            <div key={achievement.id} className="rounded-xl bg-white/[0.03] px-3 py-2">
+              <div className="flex items-center justify-between gap-3 text-sm font-medium text-white">
+                <span className="truncate">{achievement.nameEn || achievement.name}</span>
+                <span className="shrink-0 text-xs text-white/45">
+                  {achievement.progress}/{achievement.total}
+                </span>
+              </div>
+              <div className="mt-1 text-xs text-white/45">
+                {achievement.descriptionEn || achievement.description}
+              </div>
+              {showProgress && (
+                <ProgressBar current={achievement.progress} total={achievement.total} />
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AchievementCard({
+  achievement,
+  onUnlockAchievement,
+}: {
+  achievement: Achievement;
+  onUnlockAchievement: (achievementId: string) => void;
+}) {
+  const title = achievement.nameEn || achievement.name;
+  const description = achievement.descriptionEn || achievement.description;
+
+  return (
+    <div
+      className={`rounded-2xl p-5 transition-all duration-200 ${
+        achievement.unlocked
+          ? "scale-[1.02] border border-amber-500/40 bg-amber-500/20 shadow-lg shadow-amber-500/5"
+          : "border border-white/10 bg-white/5 opacity-75"
+      }`}
+    >
+      <div className="flex items-start gap-4">
+        <div
+          className={`flex h-12 w-12 items-center justify-center rounded-xl ${
+            achievement.unlocked ? "bg-amber-500/20 text-amber-200" : "bg-white/5 text-white/55"
+          }`}
+        >
+          <Trophy className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <div className="font-semibold text-white">{title}</div>
+            {achievement.unlocked && (
+              <span className="rounded bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">
+                Unlocked
+              </span>
+            )}
+          </div>
+          <div className="mt-1 text-sm text-white/60">{description}</div>
+          <ProgressBar current={achievement.progress} total={achievement.total} />
+          {!achievement.unlocked && process.env.NODE_ENV === "development" && (
+            <button
+              onClick={() => onUnlockAchievement(achievement.id)}
+              className="mt-3 rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/15 hover:text-white"
+            >
+              Unlock in dev
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProgressBar({ current, total }: { current: number; total: number }) {
+  const percent = Math.min(100, total > 0 ? (current / total) * 100 : 0);
+  return (
+    <div className="mt-3">
+      <div className="mb-1 text-xs text-white/40">
+        Progress: {current} / {total}
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+        <div
+          className="h-full bg-gradient-to-r from-amber-500 to-orange-500"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function DailyHistoryTab({ stats }: { stats: ListeningStats }) {
+  const dailyData = buildDailyHistory(stats);
 
   return (
     <div className="space-y-6">
-      <h3 className="text-white text-xl font-semibold">每日数据</h3>
+      <div>
+        <h3 className="text-xl font-semibold text-white">Daily history</h3>
+        <p className="mt-1 text-sm text-white/50">
+          Recent listening activity, sorted newest first.
+        </p>
+      </div>
 
       {dailyData.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-3xl bg-white/5 flex items-center justify-center">
-            <Calendar className="w-10 h-10 text-white/40" />
+        <div className="py-12 text-center">
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/5">
+            <Calendar className="h-10 w-10 text-white/40" />
           </div>
-          <h3 className="text-white font-semibold mb-2">暂无数据</h3>
-          <p className="text-white/60">开始听歌后数据会显示在这里</p>
+          <h3 className="mb-2 font-semibold text-white">No daily data yet</h3>
+          <p className="text-white/60">Start listening and daily stats will appear here.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {dailyData
-            .slice(-10)
-            .reverse()
-            .map((data: any, index: number) => (
-              <div key={index} className="p-5 rounded-2xl bg-white/5 border border-white/10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-semibold">{data.date}</div>
-                    <div className="text-white/60 text-sm">
-                      播放 {data.playCount} 次 · {Math.floor(data.listenTime / 60)}分钟
-                    </div>
+          {dailyData.slice(0, 10).map((data) => (
+            <div key={data.date} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-white">{data.date}</div>
+                  <div className="text-sm text-white/60">
+                    {data.playCount} plays - {data.listenMinutes} minutes
                   </div>
-                  <BarChart3 className="w-5 h-5 text-white/40" />
                 </div>
+                <BarChart3 className="h-5 w-5 text-white/40" />
               </div>
-            ))}
+            </div>
+          ))}
         </div>
       )}
     </div>
   );
+}
+
+function trendLabel(trend: "rising" | "steady" | "cooling"): string {
+  if (trend === "rising") return "Rising";
+  if (trend === "cooling") return "Cooling";
+  return "Steady";
+}
+
+function toStringRecord(record: Record<number, number>): Record<string, number> {
+  return Object.entries(record || {}).reduce<Record<string, number>>((acc, [key, value]) => {
+    acc[key] = Number(value) || 0;
+    return acc;
+  }, {});
 }
