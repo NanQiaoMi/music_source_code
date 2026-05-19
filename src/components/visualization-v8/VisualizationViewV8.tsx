@@ -271,7 +271,7 @@ export function VisualizationViewV8() {
         }}
       />
 
-      <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+      <div className="absolute inset-0 opacity-[0.03] bg-[url('/noise.svg')]" />
 
       <ResonanceTotemLayer />
 

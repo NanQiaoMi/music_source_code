@@ -30,7 +30,7 @@ describe("keyboardShortcutsStore", () => {
 
     expect(result.success).toBe(false);
     expect(result.conflicts).toEqual(["快退 5秒"]);
-    expect(useKeyboardShortcutsStore.getState().getBinding("play-pause")).toEqual(["ArrowLeft"]);
+    expect(useKeyboardShortcutsStore.getState().getBinding("play-pause")).toEqual(["Space"]);
   });
 
   it("removes one override with resetBinding", () => {

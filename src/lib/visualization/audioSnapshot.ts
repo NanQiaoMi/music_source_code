@@ -5,7 +5,7 @@ export interface VisualizationAudioSnapshot {
 }
 
 function normalizeTime(value: number | undefined): number {
-  if (!Number.isFinite(value) || value < 0) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
     return 0;
   }
 

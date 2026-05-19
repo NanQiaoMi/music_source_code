@@ -4,12 +4,6 @@ import { ThemeColors, defaultColors } from "@/utils/colorExtractor";
 type ViewType = "home" | "player" | "visualization" | "emotion";
 type ThemeMode = "light" | "dark" | "auto";
 
-interface ElectronFullscreenWindow extends Window {
-  electronAPI?: {
-    toggleFullscreen: () => Promise<boolean>;
-  };
-}
-
 // ─── Centralized Panel Names ───────────────────────────────────
 export type PanelName =
   | "queue"
@@ -252,10 +246,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   setIsFullscreen: (isFullscreen) => set({ isFullscreen }),
   toggleFullscreen: async () => {
     // If running in Electron, use the IPC call
-    const electronWindow =
-      typeof window !== "undefined" ? (window as ElectronFullscreenWindow) : null;
-    if (electronWindow?.electronAPI) {
-      const newState = await electronWindow.electronAPI.toggleFullscreen();
+    const electronAPI = typeof window !== "undefined" ? window.electronAPI : null;
+    if (electronAPI?.toggleFullscreen) {
+      const newState = await electronAPI.toggleFullscreen();
       set({ isFullscreen: newState });
     } else {
       // Browser Fallback with real API call

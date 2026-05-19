@@ -22,6 +22,10 @@ function orderedSelection(selection: Set<string>, queue: Song[]): string[] {
   return queue.map((song) => song.id).filter((id) => selection.has(id));
 }
 
+function hasShiftKey(event: Event): event is Event & { shiftKey: boolean } {
+  return "shiftKey" in event && typeof event.shiftKey === "boolean";
+}
+
 export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
   const {
     queue,
@@ -309,7 +313,9 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                   <input
                     type="checkbox"
                     checked={isSelected}
-                    onChange={(e) => toggleSelect(index, e.nativeEvent.shiftKey)}
+                    onChange={(e) =>
+                      toggleSelect(index, hasShiftKey(e.nativeEvent) && e.nativeEvent.shiftKey)
+                    }
                     className="h-3.5 w-3.5 cursor-pointer accent-white/70"
                   />
                 </label>

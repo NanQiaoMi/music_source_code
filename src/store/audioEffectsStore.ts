@@ -491,8 +491,9 @@ export const useAudioEffectsStore = create<AudioEffectsState>()(
       morphTo: (toId, durationMs = 800) => {
         const to = getBuiltInEffectPreset(toId);
         if (!to) return;
-        const from = get().activePresetId
-          ? (getBuiltInEffectPreset(get().activePresetId) ?? BUILT_IN_EFFECT_PRESETS[0])
+        const activePresetId = get().activePresetId;
+        const from = activePresetId
+          ? (getBuiltInEffectPreset(activePresetId) ?? BUILT_IN_EFFECT_PRESETS[0])
           : BUILT_IN_EFFECT_PRESETS[0];
         const nextPreset = morph(from, to, 1);
         set((state) => ({

@@ -148,7 +148,7 @@ export const useDailyRecommendation = () => {
       recentSongs,
       topArtists,
       topGenres,
-      skippedSongIds: new Set(),
+      skippedSongIds: new Set<string>(),
     };
     const result = generateDailyRecommendationGroups(songsWithCount, context, mode, 6);
 

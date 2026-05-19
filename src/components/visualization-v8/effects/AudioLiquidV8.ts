@@ -4,6 +4,26 @@
 import { EffectPlugin } from "@/lib/visualization/types";
 import { useUIStore } from "@/store/uiStore";
 
+function parseThemeColor(color?: string): [number, number, number] | null {
+  if (!color) return null;
+
+  const hex = color.match(/^#([0-9a-f]{6})$/i);
+  if (hex) {
+    return [
+      parseInt(hex[1].slice(0, 2), 16),
+      parseInt(hex[1].slice(2, 4), 16),
+      parseInt(hex[1].slice(4, 6), 16),
+    ];
+  }
+
+  const rgb = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (rgb) {
+    return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+  }
+
+  return null;
+}
+
 export const AudioLiquidV8Effect: EffectPlugin = {
   id: "audio-liquid-v8",
   name: "音频液体",
@@ -207,13 +227,15 @@ export const AudioLiquidV8Effect: EffectPlugin = {
 
     try {
       const themeColors = useUIStore.getState().themeColors;
-      // Prefer dominant or vibrant for a brighter look, fallback to darkMuted
-      const targetHex = themeColors?.dominant || themeColors?.vibrant || themeColors?.darkMuted;
+      const parsedColor = parseThemeColor(
+        themeColors?.primary ||
+          themeColors?.accent ||
+          themeColors?.gradient?.[0] ||
+          themeColors?.surface
+      );
 
-      if (targetHex) {
-        r = parseInt(targetHex.slice(1, 3), 16) || 0;
-        g = parseInt(targetHex.slice(3, 5), 16) || 0;
-        b = parseInt(targetHex.slice(5, 7), 16) || 0;
+      if (parsedColor) {
+        [r, g, b] = parsedColor;
         hasColor = true;
       }
     } catch {
