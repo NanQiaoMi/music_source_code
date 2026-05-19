@@ -26,6 +26,7 @@ import {
   type SmartPlaylistType,
 } from "@/store/smartPlaylistStore";
 import { toast } from "@/components/shared/GlassToast";
+import { evaluateSmartPlaylistRules } from "@/lib/smart-playlist/ruleEngine";
 import type { Song } from "@/types/song";
 
 interface SmartPlaylistPanelProps {
@@ -103,6 +104,10 @@ function normalizeOperator(field: RuleField, operator: RuleOperator): RuleOperat
 function normalizeRuleValue(field: RuleField, value: string): string | number {
   if (["duration", "playCount", "addedTime"].includes(field)) return Number(value || 0);
   return value;
+}
+
+function availableOperators(field: RuleField) {
+  return OPERATOR_OPTIONS.filter((operator) => canUseOperator(field, operator.value));
 }
 
 function playlistSummary(playlist: SmartPlaylist) {
@@ -331,6 +336,18 @@ function CustomRulesTab({
       selectedPlaylist ? generatePlaylist(selectedPlaylist, songs, { emotions: emotionMap }) : [],
     [emotionMap, generatePlaylist, selectedPlaylist, songs]
   );
+  const draftPreviewCount = useMemo(() => {
+    const draftValue = normalizeRuleValue(draftRule.field, String(draftRule.value));
+    const normalizedDraft: SmartPlaylistRule = {
+      id: "draft-rule",
+      field: draftRule.field,
+      operator: normalizeOperator(draftRule.field, draftRule.operator),
+      value: draftValue,
+    };
+
+    return songs.filter((song) => evaluateSmartPlaylistRules(song, [normalizedDraft], emotionMap))
+      .length;
+  }, [draftRule, emotionMap, songs]);
 
   const createPlaylist = () => {
     const name = newPlaylistName.trim();
@@ -458,11 +475,21 @@ function CustomRulesTab({
             </div>
 
             <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
-                <Save className="h-4 w-4 text-rose-200" />
-                Add rule
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <Save className="h-4 w-4 text-rose-200" />
+                  Add rule
+                </div>
+                <div className="rounded-lg border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-right">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-rose-100/70">
+                    Draft preview
+                  </div>
+                  <div className="text-sm font-semibold text-white">
+                    {draftPreviewCount} songs would match this rule
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]">
                 <select
                   value={draftRule.field}
                   onChange={(event) => updateDraftField(event.target.value as RuleField)}
@@ -471,24 +498,6 @@ function CustomRulesTab({
                   {FIELD_OPTIONS.map((field) => (
                     <option key={field.value} value={field.value}>
                       {field.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={draftRule.operator}
-                  onChange={(event) =>
-                    setDraftRule((current) => ({
-                      ...current,
-                      operator: event.target.value as RuleOperator,
-                    }))
-                  }
-                  className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-rose-300/60"
-                >
-                  {OPERATOR_OPTIONS.filter((operator) =>
-                    canUseOperator(draftRule.field, operator.value)
-                  ).map((operator) => (
-                    <option key={operator.value} value={operator.value}>
-                      {operator.label}
                     </option>
                   ))}
                 </select>
@@ -522,6 +531,32 @@ function CustomRulesTab({
                   <Plus className="h-4 w-4" />
                   Save rule
                 </button>
+              </div>
+              <div className="mt-4">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/45">
+                  Operator chips
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {availableOperators(draftRule.field).map((operator) => (
+                    <button
+                      key={operator.value}
+                      type="button"
+                      onClick={() =>
+                        setDraftRule((current) => ({ ...current, operator: operator.value }))
+                      }
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        normalizeOperator(draftRule.field, draftRule.operator) === operator.value
+                          ? "border-rose-300/60 bg-rose-500/20 text-rose-50"
+                          : "border-white/10 bg-white/5 text-white/55 hover:bg-white/10 hover:text-white"
+                      }`}
+                      aria-pressed={
+                        normalizeOperator(draftRule.field, draftRule.operator) === operator.value
+                      }
+                    >
+                      {operator.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
