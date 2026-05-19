@@ -201,6 +201,12 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
 
             {activeTab === "scan" && (
               <div className="space-y-6">
+                <HealthStatusBanner
+                  songsCount={songs.length}
+                  totalIssues={totalIssues}
+                  hasScanned={hasScanned}
+                />
+
                 <div className="grid grid-cols-3 gap-4">
                   <StatCard label="Songs" value={songs.length} />
                   <StatCard label="Issues" value={totalIssues} tone="text-red-300" />
@@ -301,6 +307,94 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
     </AnimatePresence>
   );
 };
+
+function HealthStatusBanner({
+  songsCount,
+  totalIssues,
+  hasScanned,
+}: {
+  songsCount: number;
+  totalIssues: number;
+  hasScanned: boolean;
+}) {
+  if (songsCount === 0) {
+    return (
+      <StatusBanner
+        icon={<Music className="h-5 w-5" />}
+        status="Empty library"
+        detail="Import songs before cleanup checks."
+        tone="info"
+      />
+    );
+  }
+
+  if (!hasScanned) {
+    return (
+      <StatusBanner
+        icon={<Activity className="h-5 w-5" />}
+        status="Ready to scan"
+        detail="Run a scan to classify missing files, metadata, covers, and lyrics."
+        tone="info"
+      />
+    );
+  }
+
+  if (totalIssues === 0) {
+    return (
+      <StatusBanner
+        icon={<CheckCircle className="h-5 w-5" />}
+        status="Healthy library"
+        detail="No active issues in the latest scan."
+        tone="success"
+      />
+    );
+  }
+
+  return (
+    <StatusBanner
+      icon={<AlertCircle className="h-5 w-5" />}
+      status="Needs attention"
+      detail="Review and resolve active library issues."
+      tone="warning"
+    />
+  );
+}
+
+function StatusBanner({
+  icon,
+  status,
+  detail,
+  tone,
+}: {
+  icon: React.ReactNode;
+  status: string;
+  detail: string;
+  tone: "info" | "success" | "warning";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
+      : tone === "warning"
+        ? "border-amber-400/35 bg-amber-500/10 text-amber-200"
+        : "border-sky-400/25 bg-sky-500/10 text-sky-200";
+
+  return (
+    <section className={`rounded-2xl border p-4 ${toneClass}`} aria-label="Health status">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10">
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <div className="text-xs font-semibold uppercase tracking-wide text-white/45">
+            Health status
+          </div>
+          <div className="mt-1 font-semibold text-white">{status}</div>
+          <p className="mt-0.5 text-sm text-white/60">{detail}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function ScanStateCard({
   songsCount,
