@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   X,
   Palette,
   Check,
-  RotateCcw,
   Save,
   Download,
   Upload,
@@ -20,6 +19,15 @@ import {
   Zap,
   Trash2,
 } from "lucide-react";
+import {
+  HALO_SKINS,
+  getHaloRenderMode,
+  getHaloSkin,
+  paintHaloPreview,
+  type HaloPaintContext,
+  type HaloSkinId,
+} from "@/lib/skins/halo/haloSkins";
+import { usePerformanceV8Store } from "@/store/performanceV8Store";
 import { useVisualSettingsStore, type ThemeConfig } from "@/store/visualSettingsStore";
 
 export interface PlayerSkin {
@@ -197,6 +205,7 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
   const [showCustomEditor, setShowCustomEditor] = useState(false);
   const [customSkinDraft, setCustomSkinDraft] = useState<Partial<PlayerSkin>>({});
   const [showThemeManager, setShowThemeManager] = useState(false);
+  const [activeHaloId, setActiveHaloId] = useState<HaloSkinId>("aurora");
 
   const {
     customThemes,
@@ -206,6 +215,7 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
     deleteCustomTheme,
     getBuiltInThemes,
   } = useVisualSettingsStore();
+  const { config: performanceConfig } = usePerformanceV8Store();
 
   const [builtInThemes] = useState<ThemeConfig[]>(() => getBuiltInThemes());
 
@@ -244,11 +254,17 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
     loadCustomSkins();
   }, [loadCustomSkins]);
 
-  const allSkins = [...builtInSkins, ...customSkins];
-
   const handleApplySkin = (skin: PlayerSkin) => {
     applySkin(skin);
   };
+
+  const activeHalo = getHaloSkin(activeHaloId);
+  const haloRenderMode = getHaloRenderMode({
+    targetFps: performanceConfig.targetFPS,
+    reducedMotion:
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true,
+  });
 
   const handleSaveCustomSkin = () => {
     if (customSkinDraft.name && customSkinDraft.primary && customSkinDraft.background) {
@@ -578,6 +594,40 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                   </div>
                 </div>
 
+                <section className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-white">Halo</h3>
+                      <p className="text-xs text-white/45">
+                        Now playing glow: {activeHalo.name} - {haloRenderMode}
+                      </p>
+                    </div>
+                    <HaloPreviewCanvas skin={activeHalo} renderMode={haloRenderMode} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {HALO_SKINS.map((halo) => (
+                      <button
+                        key={halo.id}
+                        type="button"
+                        onClick={() => setActiveHaloId(halo.id)}
+                        className={`rounded-xl border p-3 text-left transition-colors ${
+                          activeHalo.id === halo.id
+                            ? "border-white/45 bg-white/15"
+                            : "border-white/10 bg-black/15 hover:bg-white/10"
+                        }`}
+                        aria-pressed={activeHalo.id === halo.id}
+                      >
+                        <div
+                          className="mb-2 h-2 rounded-full"
+                          style={{ background: halo.accent }}
+                        />
+                        <p className="text-sm font-semibold text-white">{halo.name}</p>
+                        <p className="mt-1 text-xs text-white/45">{halo.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
                 {customSkins.length > 0 && (
                   <div>
                     <h3 className="text-white font-semibold mb-4">自定义皮肤</h3>
@@ -635,3 +685,34 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
     </motion.div>
   );
 };
+
+function HaloPreviewCanvas({
+  skin,
+  renderMode,
+}: {
+  skin: (typeof HALO_SKINS)[number];
+  renderMode: ReturnType<typeof getHaloRenderMode>;
+}) {
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+
+  React.useEffect(() => {
+    const context = canvasRef.current?.getContext("2d");
+    if (!context) return;
+
+    paintHaloPreview(context as unknown as HaloPaintContext, skin, {
+      currentTime: 0,
+      level: 0.72,
+      renderMode,
+    });
+  }, [renderMode, skin]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={40}
+      height={40}
+      className="h-10 w-10 rounded-full border border-white/15"
+      aria-label={`${skin.name} halo preview`}
+    />
+  );
+}
