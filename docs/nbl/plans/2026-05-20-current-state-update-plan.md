@@ -469,7 +469,7 @@ git commit --no-verify -m "feat(search): execute sleep timer command"
 - Create: `src/components/widgets/SmartMixSessionCard.tsx`
 - Modify: widget registration location after inspection, likely `src/components/layout/HeaderToolbar.tsx` or the existing widget rail owner
 
-- [ ] **Step 1: Build deterministic session helper**
+- [x] **Step 1: Build deterministic session helper**
 
 `buildSession` input:
 
@@ -501,11 +501,11 @@ export interface SmartMixSession {
 }
 ```
 
-- [ ] **Step 2: Test helper behavior**
+- [x] **Step 2: Test helper behavior**
 
 `sessionBuilder.test.ts` should verify deterministic order with `random: () => 0.42`, excludes duplicate song ids, includes seed song first, and respects `length`.
 
-- [ ] **Step 3: Implement `smartMixStore`**
+- [x] **Step 3: Implement `smartMixStore`**
 
 Store actions:
 
@@ -516,7 +516,7 @@ Store actions:
 
 Do not persist v1.
 
-- [ ] **Step 4: Add widget card**
+- [x] **Step 4: Add widget card**
 
 `SmartMixSessionCard.tsx` should provide three controls:
 
@@ -526,7 +526,7 @@ Do not persist v1.
 
 Primary actions: `Start mix`, `Regenerate`, `Play mix`.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run:
 
@@ -535,7 +535,7 @@ npm run test -- src/lib/mix/sessionBuilder.test.ts src/store/smartMixStore.test.
 npx eslint src/lib/mix/sessionBuilder.ts src/store/smartMixStore.ts src/components/widgets/SmartMixSessionCard.tsx --ext .ts,.tsx --report-unused-disable-directives --max-warnings 100
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/lib/mix src/store/smartMixStore.ts src/store/smartMixStore.test.ts src/components/widgets/SmartMixSessionCard.tsx
