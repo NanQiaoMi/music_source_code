@@ -273,7 +273,7 @@ git commit --no-verify -m "feat(smart-playlist): add usable rule builder"
 - Modify: `src/store/libraryHealthStore.ts`
 - Modify: `src/store/libraryHealthStore.test.ts`
 
-- [ ] **Step 1: Add store tests for issue actions**
+- [x] **Step 1: Add store tests for issue actions**
 
 Extend `src/store/libraryHealthStore.test.ts` to verify:
 
@@ -281,7 +281,7 @@ Extend `src/store/libraryHealthStore.test.ts` to verify:
 - `clearIssues()` resets `healthReport` issue counts without losing `autoScan`.
 - `exportHealthReport()` returns valid JSON containing `totalSongs`, `issuesCount`, and `issueGroups`.
 
-- [ ] **Step 2: Run tests before editing UI**
+- [x] **Step 2: Run tests before editing UI**
 
 Run:
 
@@ -291,11 +291,11 @@ npm run test -- src/store/libraryHealthStore.test.ts
 
 Expected: fail if current ignore/export semantics do not match the new tests.
 
-- [ ] **Step 3: Implement missing store behavior**
+- [x] **Step 3: Implement missing store behavior**
 
 Update `src/store/libraryHealthStore.ts` so actions have deterministic results and export JSON is parseable with stable keys.
 
-- [ ] **Step 4: Repair panel text and states**
+- [x] **Step 4: Repair panel text and states**
 
 In `LibraryHealthPanel.tsx`:
 
@@ -304,7 +304,7 @@ In `LibraryHealthPanel.tsx`:
 - Add issue cards with severity color, issue count, top 3 affected songs, `Ignore` action, and `Export report` action.
 - Keep the modal structure and existing `generateHealthReport(songs)` call.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run:
 
@@ -315,7 +315,7 @@ npx eslint src/components/library/LibraryHealthPanel.tsx src/store/libraryHealth
 
 Expected: tests pass; targeted lint has no new no-unused-vars errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/components/library/LibraryHealthPanel.tsx src/store/libraryHealthStore.ts src/store/libraryHealthStore.test.ts

@@ -40,14 +40,14 @@ const issueLabels: Partial<Record<HealthIssueType, string>> = {
 function getIssueIcon(type: HealthIssueType) {
   switch (type) {
     case "missing_metadata":
-      return <FileText className="w-4 h-4 text-yellow-300" />;
+      return <FileText className="h-4 w-4 text-yellow-300" />;
     case "missing_cover":
     case "oversized_cover":
-      return <Image className="w-4 h-4 text-orange-300" />;
+      return <Image className="h-4 w-4 text-orange-300" />;
     case "missing_lyrics":
-      return <Music className="w-4 h-4 text-blue-300" />;
+      return <Music className="h-4 w-4 text-blue-300" />;
     default:
-      return <AlertCircle className="w-4 h-4 text-red-300" />;
+      return <AlertCircle className="h-4 w-4 text-red-300" />;
   }
 }
 
@@ -79,14 +79,26 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
     exportHealthReport,
   } = useLibraryHealthStore();
 
+  const songLookup = useMemo(
+    () =>
+      new Map(
+        songs.map((song) => [song.id, `${song.title || "Untitled"} - ${song.artist || "Unknown"}`])
+      ),
+    [songs]
+  );
   const issueGroups = useMemo(
     () => Object.values(healthReport?.issueGroups || {}),
     [healthReport?.issueGroups]
   );
   const totalIssues = healthReport?.issuesCount || 0;
+  const hasScanned = Boolean(healthReport);
 
   const startScan = useCallback(async () => {
-    if (songs.length === 0) return;
+    if (songs.length === 0) {
+      setHealthReport(generateHealthReport([]));
+      setActiveTab("results");
+      return;
+    }
 
     setLocalScanning(true);
     setScanning(true);
@@ -125,7 +137,7 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
         onClick={onClose}
       >
         <motion.div
@@ -133,79 +145,89 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-3xl bg-zinc-950/90 backdrop-blur-xl rounded-2xl border border-white/15 shadow-2xl mx-4 overflow-hidden"
+          className="mx-4 flex max-h-[86vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-zinc-950/90 shadow-2xl backdrop-blur-xl"
         >
-          <div className="flex items-center justify-between p-4 border-b border-white/10">
+          <div className="flex items-center justify-between border-b border-white/10 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-600/20 flex items-center justify-center">
-                <Activity className="w-5 h-5 text-emerald-300" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600/20">
+                <Activity className="h-5 w-5 text-emerald-300" />
               </div>
               <div>
-                <h2 className="text-white font-semibold">音乐库健康检查</h2>
-                <p className="text-white/45 text-xs">
-                  {healthReport
-                    ? `${healthReport.totalSongs} songs · ${healthReport.issuesCount} issues`
-                    : "Scan library issues before cleanup"}
+                <h2 className="font-semibold text-white">Library Health</h2>
+                <p className="text-xs text-white/45">
+                  {hasScanned
+                    ? `${healthReport?.totalSongs || 0} songs - ${totalIssues} active issues`
+                    : "Scan the library before cleanup or export."}
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+              aria-label="Close library health"
             >
-              <X className="w-5 h-5" />
+              <X className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="p-4 max-h-[65vh] overflow-y-auto custom-scrollbar min-h-0">
-            <div className="flex flex-wrap gap-2 mb-6">
+          <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="mb-6 flex flex-wrap gap-2">
               {(["scan", "results", "settings"] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                  className={`rounded-lg px-4 py-2 text-sm transition-colors ${
                     activeTab === tab
                       ? "bg-emerald-600 text-white"
                       : "bg-white/10 text-white/70 hover:bg-white/20"
                   }`}
                 >
-                  {tab === "scan" ? "扫描" : tab === "results" ? `结果 (${totalIssues})` : "设置"}
+                  {tab === "scan"
+                    ? "Scan"
+                    : tab === "results"
+                      ? `Results (${totalIssues})`
+                      : "Settings"}
                 </button>
               ))}
               <button
                 onClick={downloadReport}
                 disabled={!healthReport}
-                className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-40 text-sm"
+                className="ml-auto inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/20 disabled:opacity-40"
               >
-                <Download className="w-4 h-4" />
-                导出报告
+                <Download className="h-4 w-4" />
+                Export report
               </button>
             </div>
 
             {activeTab === "scan" && (
               <div className="space-y-6">
                 <div className="grid grid-cols-3 gap-4">
-                  <StatCard label="总歌曲" value={songs.length} />
-                  <StatCard label="发现问题" value={totalIssues} tone="text-red-300" />
+                  <StatCard label="Songs" value={songs.length} />
+                  <StatCard label="Issues" value={totalIssues} tone="text-red-300" />
                   <StatCard
-                    label="健康歌曲"
+                    label="Healthy"
                     value={healthReport?.healthySongs ?? songs.length}
                     tone="text-emerald-300"
                   />
                 </div>
 
+                <ScanStateCard
+                  songsCount={songs.length}
+                  totalIssues={totalIssues}
+                  hasScanned={hasScanned}
+                />
+
                 {localScanning ? (
                   <div className="flex flex-col items-center py-8">
-                    <RefreshCw className="w-8 h-8 text-emerald-300 animate-spin mb-4" />
-                    <p className="text-white/70">正在扫描音乐库...</p>
+                    <RefreshCw className="mb-4 h-8 w-8 animate-spin text-emerald-300" />
+                    <p className="text-white/70">Scanning library...</p>
                   </div>
                 ) : (
                   <button
                     onClick={startScan}
-                    disabled={songs.length === 0}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-white/20 disabled:text-white/50 rounded-xl transition-colors text-white"
+                    className="w-full rounded-xl bg-emerald-600 py-3 text-white transition-colors hover:bg-emerald-700"
                   >
-                    开始扫描
+                    {songs.length === 0 ? "Create empty health report" : "Start scan"}
                   </button>
                 )}
               </div>
@@ -213,15 +235,30 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
 
             {activeTab === "results" && (
               <div className="space-y-4">
-                {issueGroups.length === 0 ? (
-                  <div className="text-center py-12">
-                    <CheckCircle className="w-16 h-16 mx-auto text-emerald-300 mb-4" />
-                    <p className="text-lg text-white/80">音乐库状态良好</p>
-                    <p className="text-sm text-white/50 mt-2">没有发现需要处理的问题</p>
-                  </div>
+                {!hasScanned ? (
+                  <EmptyResultsState
+                    title="No scan yet"
+                    description="Run a scan to see broken audio, metadata, cover, and lyric issues."
+                  />
+                ) : songs.length === 0 ? (
+                  <EmptyResultsState
+                    title="Library is empty"
+                    description="Import songs first, then run health checks before cleanup."
+                  />
+                ) : issueGroups.length === 0 ? (
+                  <EmptyResultsState
+                    title="Library looks healthy"
+                    description="No active issues are left in the current report."
+                    healthy
+                  />
                 ) : (
                   issueGroups.map((group) => (
-                    <IssueGroupCard key={group.type} group={group} onIgnore={ignoreIssue} />
+                    <IssueGroupCard
+                      key={group.type}
+                      group={group}
+                      songLookup={songLookup}
+                      onIgnore={ignoreIssue}
+                    />
                   ))
                 )}
               </div>
@@ -229,19 +266,20 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
 
             {activeTab === "settings" && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+                <div className="flex items-center justify-between rounded-xl bg-white/5 p-4">
                   <div>
-                    <div className="font-medium text-white">自动扫描</div>
-                    <div className="text-sm text-white/60">启动时自动检查音乐库</div>
+                    <div className="font-medium text-white">Auto scan</div>
+                    <div className="text-sm text-white/60">
+                      Check library health when the library opens.
+                    </div>
                   </div>
                   <button
                     onClick={() => setAutoScan(!autoScan)}
-                    className={`w-12 h-7 rounded-full transition-colors ${
-                      autoScan ? "bg-emerald-600" : "bg-white/20"
-                    }`}
+                    className={`h-7 w-12 rounded-full transition-colors ${autoScan ? "bg-emerald-600" : "bg-white/20"}`}
+                    aria-label="Toggle auto scan"
                   >
                     <div
-                      className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                      className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
                         autoScan ? "translate-x-6" : "translate-x-1"
                       }`}
                     />
@@ -250,10 +288,10 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
 
                 <button
                   onClick={clearIssues}
-                  className="w-full py-3 bg-red-600/20 hover:bg-red-600/30 text-red-300 rounded-xl transition-colors flex items-center justify-center gap-2"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600/20 py-3 text-red-300 transition-colors hover:bg-red-600/30"
                 >
-                  <Trash2 className="w-4 h-4" />
-                  清空问题记录
+                  <Trash2 className="h-4 w-4" />
+                  Clear active issues
                 </button>
               </div>
             )}
@@ -263,6 +301,98 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
     </AnimatePresence>
   );
 };
+
+function ScanStateCard({
+  songsCount,
+  totalIssues,
+  hasScanned,
+}: {
+  songsCount: number;
+  totalIssues: number;
+  hasScanned: boolean;
+}) {
+  if (songsCount === 0) {
+    return (
+      <StatePanel icon={<Music className="h-5 w-5" />} title="No songs imported" tone="info">
+        Import tracks before running cleanup. An empty report can still confirm the health panel is
+        working.
+      </StatePanel>
+    );
+  }
+
+  if (!hasScanned) {
+    return (
+      <StatePanel icon={<Activity className="h-5 w-5" />} title="Ready to scan" tone="info">
+        The scan checks missing audio, duplicate metadata, covers, lyrics, and invalid durations.
+      </StatePanel>
+    );
+  }
+
+  if (totalIssues === 0) {
+    return (
+      <StatePanel icon={<CheckCircle className="h-5 w-5" />} title="Healthy library" tone="success">
+        The current report has no active issues. Export it if you need a snapshot.
+      </StatePanel>
+    );
+  }
+
+  return (
+    <StatePanel icon={<AlertCircle className="h-5 w-5" />} title="Issues found" tone="warning">
+      Review the Results tab, ignore resolved items, or export the report for later cleanup.
+    </StatePanel>
+  );
+}
+
+function EmptyResultsState({
+  title,
+  description,
+  healthy = false,
+}: {
+  title: string;
+  description: string;
+  healthy?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 py-12 text-center">
+      <CheckCircle
+        className={`mx-auto mb-4 h-14 w-14 ${healthy ? "text-emerald-300" : "text-white/35"}`}
+      />
+      <p className="text-lg text-white/80">{title}</p>
+      <p className="mx-auto mt-2 max-w-md text-sm text-white/50">{description}</p>
+    </div>
+  );
+}
+
+function StatePanel({
+  icon,
+  title,
+  tone,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  tone: "info" | "success" | "warning";
+  children: React.ReactNode;
+}) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
+      : tone === "warning"
+        ? "border-amber-400/30 bg-amber-500/10 text-amber-200"
+        : "border-sky-400/25 bg-sky-500/10 text-sky-200";
+
+  return (
+    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5">{icon}</div>
+        <div>
+          <div className="font-medium text-white">{title}</div>
+          <p className="mt-1 text-sm text-white/60">{children}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function StatCard({
   label,
@@ -274,7 +404,7 @@ function StatCard({
   tone?: string;
 }) {
   return (
-    <div className="bg-white/5 rounded-xl p-4 text-center">
+    <div className="rounded-xl bg-white/5 p-4 text-center">
       <div className={`text-2xl font-bold ${tone}`}>{value}</div>
       <div className="text-sm text-white/60">{label}</div>
     </div>
@@ -283,36 +413,41 @@ function StatCard({
 
 function IssueGroupCard({
   group,
+  songLookup,
   onIgnore,
 }: {
   group: HealthIssueGroup;
+  songLookup: Map<string, string>;
   onIgnore: (issueId: string) => void;
 }) {
   return (
-    <div className={`p-4 rounded-xl border ${getSeverityClass(group.severity)}`}>
+    <div className={`rounded-xl border p-4 ${getSeverityClass(group.severity)}`}>
       <div className="flex items-start gap-3">
         {getIssueIcon(group.type)}
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="font-medium text-white">{issueLabels[group.type] || group.type}</h3>
-              <p className="text-xs text-white/45 mt-1">
-                {group.count} issue(s) · {group.affectedSongIds.length} song(s) affected
+              <p className="mt-1 text-xs text-white/45">
+                {group.count} issue{group.count === 1 ? "" : "s"} - {group.affectedSongIds.length}{" "}
+                song{group.affectedSongIds.length === 1 ? "" : "s"} affected
               </p>
             </div>
-            <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/60">
+            <span className="rounded-full bg-white/10 px-2 py-1 text-xs capitalize text-white/60">
               {group.severity}
             </span>
           </div>
 
           <div className="mt-3 space-y-2">
-            {group.issues.slice(0, 4).map((issue) => (
+            {group.issues.slice(0, 3).map((issue) => (
               <div
                 key={issue.id}
                 className="flex items-center justify-between gap-3 rounded-lg bg-black/20 px-3 py-2"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm text-white/80">{issue.songId}</p>
+                  <p className="truncate text-sm text-white/80">
+                    {songLookup.get(issue.songId) || issue.songId}
+                  </p>
                   <p className="truncate text-xs text-white/45">{issue.suggestion}</p>
                 </div>
                 {issue.actions.includes("ignore") && (
@@ -320,11 +455,16 @@ function IssueGroupCard({
                     onClick={() => onIgnore(issue.id)}
                     className="shrink-0 rounded-lg bg-white/10 px-2 py-1 text-xs text-white/60 hover:text-white"
                   >
-                    忽略
+                    Ignore
                   </button>
                 )}
               </div>
             ))}
+            {group.issues.length > 3 && (
+              <div className="px-3 text-xs text-white/40">
+                +{group.issues.length - 3} more affected songs
+              </div>
+            )}
           </div>
         </div>
       </div>

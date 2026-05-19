@@ -54,4 +54,42 @@ describe("libraryHealthStore", () => {
       "rescan"
     );
   });
+
+  it("ignores an issue and removes it from active groups", () => {
+    const report = generateHealthReport([createSong({ id: "missing-url", audioUrl: "" })]);
+    useLibraryHealthStore.getState().setHealthReport(report);
+    const issueId = report.issues[0].id;
+
+    useLibraryHealthStore.getState().ignoreIssue(issueId);
+
+    const state = useLibraryHealthStore.getState();
+    expect(state.ignoredIssueIds).toContain(issueId);
+    expect(state.healthReport?.issues).toHaveLength(0);
+    expect(state.healthReport?.issueGroups).toEqual({});
+  });
+
+  it("clears issues without changing auto scan settings", () => {
+    const report = generateHealthReport([createSong({ id: "missing-url", audioUrl: "" })]);
+    useLibraryHealthStore.getState().setAutoScan(false);
+    useLibraryHealthStore.getState().setHealthReport(report);
+
+    useLibraryHealthStore.getState().clearIssues();
+
+    const state = useLibraryHealthStore.getState();
+    expect(state.autoScan).toBe(false);
+    expect(state.healthReport?.issuesCount).toBe(0);
+    expect(state.healthReport?.issues).toEqual([]);
+  });
+
+  it("exports parseable report JSON with stable summary fields", () => {
+    const report = generateHealthReport([createSong({ id: "missing-url", audioUrl: "" })]);
+    useLibraryHealthStore.getState().setHealthReport(report);
+
+    const exported = useLibraryHealthStore.getState().exportHealthReport();
+    const parsed = JSON.parse(exported || "{}");
+
+    expect(parsed.totalSongs).toBe(1);
+    expect(parsed.issuesCount).toBeGreaterThan(0);
+    expect(parsed.issueGroups.missing_file.count).toBe(1);
+  });
 });
