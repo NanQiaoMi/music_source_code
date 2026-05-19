@@ -36,6 +36,16 @@ describe("uiStore", () => {
     useUIStore.getState().closePanel("listeningJournal");
     expect(useUIStore.getState().isPanelOpen("listeningJournal")).toBe(false);
   });
+
+  it("registers the smart mix session panel", () => {
+    const store = useUIStore.getState();
+
+    expect(store.panels.smartMixSession).toBe(false);
+
+    store.openPanel("smartMixSession");
+    expect(useUIStore.getState().isPanelOpen("smartMixSession")).toBe(true);
+  });
+
   it("toggles a panel on and off", () => {
     const store = useUIStore.getState();
     store.togglePanel("search");

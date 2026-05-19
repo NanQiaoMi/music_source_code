@@ -84,6 +84,10 @@ const FACTORIES = {
     })),
   instantMix: () =>
     import("@/components/widgets/InstantMix").then((m) => ({ default: m.InstantMix })),
+  smartMixSession: () =>
+    import("@/components/widgets/SmartMixSessionPanel").then((m) => ({
+      default: m.SmartMixSessionPanel,
+    })),
   smartRandom: () =>
     import("@/components/shared/SmartRandomModal").then((m) => ({ default: m.SmartRandomModal })),
   emotionMatrix: () => import("@/components/emotion/EmotionMatrixView"),
@@ -335,6 +339,12 @@ export function PanelOrchestrator() {
         isOpen={panels.instantMix}
         onClose={() => closePanel("instantMix")}
         factory={FACTORIES.instantMix}
+      />
+      <LazyPanel
+        name="smartMixSession"
+        isOpen={panels.smartMixSession}
+        onClose={() => closePanel("smartMixSession")}
+        factory={FACTORIES.smartMixSession}
       />
       <LazyPanel
         name="smartRandom"

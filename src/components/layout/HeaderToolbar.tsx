@@ -328,6 +328,12 @@ export function HeaderToolbar() {
                 icon: <Dice1 className="w-4 h-4" />,
                 action: () => openPanel("instantMix"),
               },
+              {
+                id: "smartMixSession",
+                label: "Smart Mix",
+                icon: <Sparkles className="w-4 h-4" />,
+                action: () => openPanel("smartMixSession"),
+              },
             ]}
           />
 

@@ -37,6 +37,7 @@ export type PanelName =
   | "libraryHealth"
   | "professionalTools"
   | "instantMix"
+  | "smartMixSession"
   | "smartRandom"
   | "emotionMatrix"
   | "aiSettings"
@@ -89,6 +90,7 @@ function createDefaultPanels(): Record<PanelName, boolean> {
     "libraryHealth",
     "professionalTools",
     "instantMix",
+    "smartMixSession",
     "smartRandom",
     "emotionMatrix",
     "aiSettings",
