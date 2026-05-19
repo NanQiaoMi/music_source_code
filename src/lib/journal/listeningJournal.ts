@@ -1,3 +1,5 @@
+import type { Song } from "@/types/song";
+
 export interface JournalPlayEvent {
   songId: string;
   playedAt: number;
@@ -11,6 +13,14 @@ export interface JournalDay {
   topSongIds: string[];
   dominantMood: string | null;
   note?: string;
+}
+
+export interface JournalSongRow {
+  id: string;
+  title: string;
+  artist: string;
+  album?: string;
+  missing: boolean;
 }
 
 export function rollupDay(date: string, events: JournalPlayEvent[], note?: string): JournalDay {
@@ -54,4 +64,30 @@ export function getIsoDate(offsetDays = 0, anchorDate = new Date()): string {
   const date = new Date(anchorDate);
   date.setDate(date.getDate() + offsetDays);
   return date.toISOString().slice(0, 10);
+}
+
+export function buildJournalSongRows(songIds: string[], library: Song[]): JournalSongRow[] {
+  const songById = new Map(library.map((song) => [song.id, song]));
+
+  return songIds.map((id) => {
+    const song = songById.get(id);
+
+    if (!song) {
+      return {
+        id,
+        title: id,
+        artist: "Unknown artist",
+        album: undefined,
+        missing: true,
+      };
+    }
+
+    return {
+      id,
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
+      missing: false,
+    };
+  });
 }

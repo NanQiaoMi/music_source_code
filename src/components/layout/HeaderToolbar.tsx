@@ -20,6 +20,7 @@ import {
   ListOrdered,
   HardDrive,
   Award,
+  BookOpen,
   Disc3,
   Scissors,
   Waves,
@@ -315,6 +316,12 @@ export function HeaderToolbar() {
                 label: "听歌排行",
                 icon: <TrendingUp className="w-4 h-4" />,
                 action: () => openPanel("listeningHistory"),
+              },
+              {
+                id: "listeningJournal",
+                label: "Listening Journal",
+                icon: <BookOpen className="w-4 h-4" />,
+                action: () => openPanel("listeningJournal"),
               },
               {
                 id: "statsAchievements",

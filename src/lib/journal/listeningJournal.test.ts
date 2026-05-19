@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getIsoDate, rollupDay, type JournalPlayEvent } from "./listeningJournal";
+import {
+  buildJournalSongRows,
+  getIsoDate,
+  rollupDay,
+  type JournalPlayEvent,
+} from "./listeningJournal";
 
 describe("rollupDay", () => {
   it("returns zero minutes and no top songs for an empty day", () => {
@@ -40,5 +45,52 @@ describe("rollupDay", () => {
 
   it("creates ISO date strings from an anchor date", () => {
     expect(getIsoDate(-1, new Date("2026-05-20T12:00:00.000Z"))).toBe("2026-05-19");
+  });
+
+  it("builds readable top-song rows from journal song ids", () => {
+    const rows = buildJournalSongRows(
+      ["b", "missing", "a"],
+      [
+        {
+          id: "a",
+          title: "Aurora",
+          artist: "Night Drive",
+          duration: 180,
+          source: "local",
+        },
+        {
+          id: "b",
+          title: "Blue Hour",
+          artist: "City Lights",
+          album: "Late Set",
+          duration: 220,
+          source: "local",
+        },
+      ]
+    );
+
+    expect(rows).toEqual([
+      {
+        id: "b",
+        title: "Blue Hour",
+        artist: "City Lights",
+        album: "Late Set",
+        missing: false,
+      },
+      {
+        id: "missing",
+        title: "missing",
+        artist: "Unknown artist",
+        album: undefined,
+        missing: true,
+      },
+      {
+        id: "a",
+        title: "Aurora",
+        artist: "Night Drive",
+        album: undefined,
+        missing: false,
+      },
+    ]);
   });
 });

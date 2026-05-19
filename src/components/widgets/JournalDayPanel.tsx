@@ -3,6 +3,8 @@
 import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import { BookOpen, Clock, Music2, Smile, X } from "lucide-react";
+import { buildJournalSongRows } from "@/lib/journal/listeningJournal";
+import { usePlaylistStore } from "@/store/playlistStore";
 import { useListeningJournalStore } from "@/store/listeningJournalStore";
 
 interface JournalDayPanelProps {
@@ -12,13 +14,17 @@ interface JournalDayPanelProps {
 
 export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
   const { selectedDate, days, appendNote } = useListeningJournalStore();
+  const songs = usePlaylistStore((state) => state.songs);
   const day = days[selectedDate] || {
     date: selectedDate,
     totalMinutes: 0,
     topSongIds: [],
     dominantMood: null,
   };
-  const topSongIds = useMemo(() => day.topSongIds.slice(0, 5), [day.topSongIds]);
+  const topSongs = useMemo(
+    () => buildJournalSongRows(day.topSongIds.slice(0, 5), songs),
+    [day.topSongIds, songs]
+  );
 
   const saveNote = (value: string) => {
     appendNote(selectedDate, value.trim());
@@ -71,7 +77,7 @@ export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
             <Metric
               icon={<Music2 className="h-4 w-4" />}
               label="Top songs"
-              value={String(topSongIds.length)}
+              value={String(topSongs.length)}
             />
             <Metric
               icon={<Smile className="h-4 w-4" />}
@@ -82,19 +88,32 @@ export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
             <h3 className="mb-3 text-sm font-medium text-white">Top songs</h3>
-            {topSongIds.length === 0 ? (
+            {topSongs.length === 0 ? (
               <p className="text-sm text-white/45">No songs recorded for this day yet.</p>
             ) : (
               <div className="space-y-2">
-                {topSongIds.map((songId, index) => (
+                {topSongs.map((song, index) => (
                   <div
-                    key={songId}
+                    key={song.id}
                     className="flex items-center gap-3 rounded-xl bg-black/20 px-3 py-2"
                   >
                     <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-xs text-white/55">
                       {index + 1}
                     </span>
-                    <span className="truncate text-sm text-white/75">{songId}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-white/80">
+                        {song.title}
+                      </span>
+                      <span className="block truncate text-xs text-white/45">
+                        {song.artist}
+                        {song.album ? ` - ${song.album}` : ""}
+                      </span>
+                    </span>
+                    {song.missing && (
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/45">
+                        Missing
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
