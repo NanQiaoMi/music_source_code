@@ -15,6 +15,7 @@ import { VisualControlDrawer } from "./shared/VisualControlDrawer";
 
 import { useVisualizationV8 } from "@/hooks/useVisualizationV8";
 import { RenderContext, AudioData } from "@/lib/visualization/types";
+import { createAudioSnapshot } from "@/lib/visualization/audioSnapshot";
 import { useTotemStore } from "@/store/totemStore";
 import { useLyricsSearchStore } from "@/store/lyricsSearchStore";
 
@@ -106,11 +107,6 @@ export function VisualizationViewV8() {
     }
   }, [setWebGLAvailable]);
 
-  // Sync music time for shaders
-  useEffect(() => {
-    (window as any)._currentMusicTime = currentTime;
-  }, [currentTime]);
-
   // Initialize totems for current song
   useEffect(() => {
     if (parsedLyrics.length > 0) {
@@ -183,6 +179,11 @@ export function VisualizationViewV8() {
     });
   }, [setCurrentView, setIsTransitioning]);
 
+  const audioSnapshot = createAudioSnapshot({
+    currentTime,
+    duration,
+    isPlaying,
+  });
   const handleRender = useCallback(
     (ctx: RenderContext, audioData: AudioData, params: Record<string, any>) => {
       renderEffect(ctx, audioData, params);
@@ -279,6 +280,7 @@ export function VisualizationViewV8() {
         effect={currentEffect || null}
         onRender={handleRender}
         params={getCurrentParams()}
+        audioSnapshot={audioSnapshot}
         width={dimensions.width}
         height={dimensions.height}
       />

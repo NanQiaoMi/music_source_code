@@ -163,32 +163,15 @@ export const ResonanceTotemV8: EffectPlugin = {
     });
 
     // 2. Update mesh uniforms
-    const currentTime = audioData.full; // We need global time from ctx
-
     activeKeywords.forEach((kw) => {
       const mesh = meshes.get(kw.id);
       if (mesh) {
         const material = mesh.material as THREE.ShaderMaterial;
 
-        // Calculate lifecycle (normalized 0 to 1)
-        const totalDuration = kw.duration + 3; // +3s for emergence
+        // Calculate lifecycle against typed music playback time.
+        const totalDuration = kw.duration + 3;
         const startTime = kw.startTime - 3;
-        // We need the current music time. For now we assume store's time is updated.
-        // Wait, the store doesn't have currentTime. I'll get it from audioData if possible or pass it via context.
-        // Since we are in the render loop of the visualizer, we use ctx.time.
-
-        // Wait, the totem lifecycle is tied to MUSIC time, not absolute time.
-        // I'll use a hack or assume ctx.time is synced with music if possible.
-        // Actually, I should pass musicTime to the render function.
-
-        // For now, let's use ctx.time but we need to know the offset.
-        // Better: the store should be updated by the player.
-
-        // Let's assume uLife and uBurst are handled here.
-        // We need the actual music time. I'll use the one from useAudioStore.
-        // (Accessing store in every frame is okay in small apps, but better to pass it).
-
-        const musicTime = (window as any)._currentMusicTime || 0; // Global hack for now or use useAudioStore.getState()
+        const musicTime = ctx.audioSnapshot?.currentTime ?? 0;
 
         const life = (musicTime - startTime) / totalDuration;
         const burst = Math.max(0, 1.0 - Math.abs(musicTime - kw.startTime) * 2.0); // 0.5s burst window

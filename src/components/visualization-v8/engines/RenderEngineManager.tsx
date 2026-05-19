@@ -8,6 +8,7 @@ import {
   AudioData,
   TransformParams,
 } from "@/lib/visualization/types";
+import type { VisualizationAudioSnapshot } from "@/lib/visualization/audioSnapshot";
 import { ThreeJSScene } from "@/lib/three/ThreeJSScene";
 import { usePerformanceV8Store } from "@/store/performanceV8Store";
 
@@ -16,6 +17,7 @@ interface RenderEngineManagerProps {
   effect: EffectPlugin | null;
   onRender: (ctx: RenderContext, audioData: AudioData, params: Record<string, any>) => void;
   params?: Record<string, any>;
+  audioSnapshot?: VisualizationAudioSnapshot;
   width: number;
   height: number;
 }
@@ -25,6 +27,7 @@ export function RenderEngineManager({
   effect,
   onRender,
   params = {},
+  audioSnapshot,
   width,
   height,
 }: RenderEngineManagerProps) {
@@ -37,6 +40,7 @@ export function RenderEngineManager({
   const effectRef = useRef<EffectPlugin | null>(null);
   const dprRef = useRef(1);
   const privateContextRef = useRef<Record<string, any>>({});
+  const audioSnapshotRef = useRef(audioSnapshot);
 
   const frequencyDataRef = useRef(new Uint8Array(256));
   const waveformDataRef = useRef(new Uint8Array(256));
@@ -53,6 +57,10 @@ export function RenderEngineManager({
   const { config, updateStats } = usePerformanceV8Store();
   const frameCountRef = useRef(0);
   const lastFPSUpdateRef = useRef(Date.now());
+
+  useEffect(() => {
+    audioSnapshotRef.current = audioSnapshot;
+  }, [audioSnapshot]);
 
   const getDisplaySize = useCallback(() => {
     const fallbackWidth = typeof window !== "undefined" ? window.innerWidth : 0;
@@ -151,6 +159,7 @@ export function RenderEngineManager({
         height: displayHeight,
         deltaTime,
         time,
+        audioSnapshot: audioSnapshotRef.current,
         private: privateContextRef.current,
       };
 

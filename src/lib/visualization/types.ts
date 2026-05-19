@@ -1,3 +1,5 @@
+import type { VisualizationAudioSnapshot } from "./audioSnapshot";
+
 export type EffectCategory = "particles" | "geometry" | "spectrum" | "physics" | "space" | "shapes";
 
 export type ParameterMode = "basic" | "professional" | "expert";
@@ -44,6 +46,7 @@ export interface RenderContext {
   height: number;
   deltaTime: number;
   time: number;
+  audioSnapshot?: VisualizationAudioSnapshot;
   private?: Record<string, any>;
 }
 
