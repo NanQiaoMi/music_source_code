@@ -762,7 +762,7 @@ Update `docs/nbl/plans/INDEX.md` so this plan is Active during implementation an
 - [x] **Completed evidence**
 
 - Targeted tests: `npm run test -- src/lib/smart-playlist src/store/smartPlaylistStore.test.ts src/store/libraryHealthStore.test.ts src/lib/stats src/lib/search src/store/sleepTimerStore.test.ts src/lib/mix src/store/smartMixStore.test.ts src/lib/journal src/store/listeningJournalStore.test.ts src/lib/visualization/audioSnapshot.test.ts` passed; 11 files, 46 tests.
-- Full tests: `npm run test` passed; 48 files, 293 tests. jsdom canvas `getContext()` and Vitest worker termination warnings were non-fatal.
+- Full tests: `npm run test` passed after `d207bc7` set an explicit 10s Vitest timeout; 48 files, 293 tests. jsdom canvas `getContext()` warnings were non-fatal.
 - Build: `npm run build` passed; Next routes `/`, `/_not-found`, and `/data-manager` built successfully.
 - Local smoke: `http://localhost:3025` opened with title `MIMI Music Player`; Search panel opened; 0 console errors, 0 page errors, 0 404s.
 - Lint note: broad targeted ESLint over older touched UI files still reports inherited formatting/debt, so it was not used as the final gate.

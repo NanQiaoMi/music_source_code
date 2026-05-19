@@ -12,11 +12,12 @@ Shipped on branch `codex/animation-function-iteration-plan`:
 - Local Listening Journal with persisted day notes. Commit `b21bf2f`.
 - V8 typed audio snapshot cleanup replacing the `_currentMusicTime` global. Commit `71662d2`.
 - Final build and smoke blockers fixed, including local `noise.svg` asset usage. Commit `96a48a7`.
+- Full-suite stability fix: explicit 10s Vitest test timeout for import-heavy jsdom tests. Commit `d207bc7`.
 
 Verification:
 
 - Targeted tests: `npm run test -- src/lib/smart-playlist src/store/smartPlaylistStore.test.ts src/store/libraryHealthStore.test.ts src/lib/stats src/lib/search src/store/sleepTimerStore.test.ts src/lib/mix src/store/smartMixStore.test.ts src/lib/journal src/store/listeningJournalStore.test.ts src/lib/visualization/audioSnapshot.test.ts` passed; 11 files, 46 tests.
-- Full tests: `npm run test` passed; 48 files, 293 tests. jsdom canvas `getContext()` and Vitest worker termination warnings were non-fatal.
+- Full tests: `npm run test` passed after `d207bc7`; 48 files, 293 tests. jsdom canvas `getContext()` warnings were non-fatal.
 - Build: `npm run build` passed.
 - Local smoke: `http://localhost:3025`, title `MIMI Music Player`; Search panel opened; 0 console errors, 0 page errors, 0 404s.
 - ESLint note: broad targeted ESLint over older touched UI files still reports inherited formatting/debt, so lint was not used as the final gate.

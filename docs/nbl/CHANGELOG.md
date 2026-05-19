@@ -18,11 +18,12 @@
 ### Fixed
 
 - `96a48a7` fix(verification): final TypeScript/build/smoke blockers, including event typing, theme color parsing, nullable narrowing, command expectations, and local `noise.svg` asset references.
+- `d207bc7` test: stabilized the full Vitest suite by setting an explicit 10s per-test timeout for import-heavy jsdom tests.
 
 ### Verified
 
 - Targeted tests passed: 11 files, 46 tests.
-- Full test suite passed: 48 files, 293 tests.
+- Full test suite passed after `d207bc7`: 48 files, 293 tests.
 - `npm run build` passed.
 - Local smoke passed on `http://localhost:3025`: title `MIMI Music Player`, Search panel opened, 0 console errors, 0 page errors, 0 404s.
 - Broad targeted ESLint over older touched UI files still has inherited formatting/debt and was not used as the final gate.
