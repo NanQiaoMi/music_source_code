@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildDailyHistory, buildOverviewMetrics } from "./viewModels";
+import {
+  buildDailyHistory,
+  buildListeningStreak,
+  buildOverviewMetrics,
+  buildWeeklyMomentum,
+} from "./viewModels";
 import type { ListeningStats } from "@/store/statsAchievementsStore";
 
 function createStats(overrides: Partial<ListeningStats> = {}): ListeningStats {
@@ -81,5 +86,56 @@ describe("stats view models", () => {
     });
 
     expect(history).toEqual([{ date: "2026-05-20", playCount: 0, listenMinutes: 0 }]);
+  });
+
+  it("buildWeeklyMomentum returns the latest seven days in chronological order", () => {
+    const momentum = buildWeeklyMomentum(
+      createStats({
+        dailyPlayData: [
+          { date: "2026-05-16", playCount: 2, listenTime: 600 },
+          { date: "2026-05-14", playCount: 1, listenTime: 120 },
+          { date: "2026-05-20", playCount: 5, listenTime: 1500 },
+          { date: "2026-05-18", playCount: 0, listenTime: 0 },
+          { date: "2026-05-19", playCount: 4, listenTime: 900 },
+          { date: "2026-05-15", playCount: 3, listenTime: 300 },
+          { date: "2026-05-17", playCount: 6, listenTime: 1800 },
+          { date: "2026-05-13", playCount: 9, listenTime: 2400 },
+        ],
+      })
+    );
+
+    expect(momentum.days.map((day) => day.date)).toEqual([
+      "2026-05-14",
+      "2026-05-15",
+      "2026-05-16",
+      "2026-05-17",
+      "2026-05-18",
+      "2026-05-19",
+      "2026-05-20",
+    ]);
+    expect(momentum.totalPlays).toBe(21);
+    expect(momentum.totalMinutes).toBe(87);
+    expect(momentum.peakPlays).toBe(6);
+    expect(momentum.days.find((day) => day.date === "2026-05-17")?.heightPercent).toBe(100);
+  });
+
+  it("buildListeningStreak reports current and best consecutive active days", () => {
+    const streak = buildListeningStreak(
+      createStats({
+        dailyPlayData: [
+          { date: "2026-05-14", playCount: 2, listenTime: 600 },
+          { date: "2026-05-15", playCount: 1, listenTime: 300 },
+          { date: "2026-05-16", playCount: 3, listenTime: 900 },
+          { date: "2026-05-17", playCount: 0, listenTime: 0 },
+          { date: "2026-05-18", playCount: 4, listenTime: 1200 },
+          { date: "2026-05-19", playCount: 5, listenTime: 1500 },
+        ],
+      })
+    );
+
+    expect(streak.currentDays).toBe(2);
+    expect(streak.bestDays).toBe(3);
+    expect(streak.lastActiveDate).toBe("2026-05-19");
+    expect(streak.label).toBe("2-day streak");
   });
 });

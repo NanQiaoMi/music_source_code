@@ -36,9 +36,12 @@ import {
 } from "@/utils/listeningInsights";
 import {
   buildDailyHistory,
+  buildListeningStreak,
   buildOverviewMetrics,
+  buildWeeklyMomentum,
   type MetricCardModel,
   type MetricTone,
+  type WeeklyMomentumDay,
 } from "@/lib/stats/viewModels";
 
 interface StatsAchievementsPanelProps {
@@ -175,6 +178,8 @@ function OverviewTab({ stats }: { stats: ListeningStats }) {
   const topWindow = getTopTimeWindow(stats.hourlyDistribution || {});
   const nextAction = getListeningNextAction(summary);
   const metrics = buildOverviewMetrics(stats);
+  const weeklyMomentum = buildWeeklyMomentum(stats);
+  const streak = buildListeningStreak(stats);
 
   return (
     <div className="space-y-6">
@@ -189,6 +194,20 @@ function OverviewTab({ stats }: { stats: ListeningStats }) {
         {metrics.map((metric, index) => (
           <MetricCard key={metric.id} metric={metric} index={index} />
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.5fr_1fr]">
+        <WeeklyMomentumCard
+          days={weeklyMomentum.days}
+          totalPlays={weeklyMomentum.totalPlays}
+          totalMinutes={weeklyMomentum.totalMinutes}
+        />
+        <StreakCard
+          label={streak.label}
+          currentDays={streak.currentDays}
+          bestDays={streak.bestDays}
+          lastActiveDate={streak.lastActiveDate}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -244,6 +263,96 @@ function OverviewTab({ stats }: { stats: ListeningStats }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function WeeklyMomentumCard({
+  days,
+  totalPlays,
+  totalMinutes,
+}: {
+  days: WeeklyMomentumDay[];
+  totalPlays: number;
+  totalMinutes: number;
+}) {
+  const visibleDays =
+    days.length > 0
+      ? days
+      : Array.from({ length: 7 }, (_, index) => ({
+          date: `day-${index}`,
+          playCount: 0,
+          listenMinutes: 0,
+          heightPercent: 0,
+        }));
+
+  return (
+    <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="text-xs uppercase tracking-wider text-white/40">Weekly momentum</div>
+          <div className="mt-2 text-2xl font-semibold text-white">{totalPlays} plays</div>
+          <div className="mt-1 text-sm text-white/50">{totalMinutes} min this week</div>
+        </div>
+        <div className="rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-100">
+          7 days
+        </div>
+      </div>
+      <div className="mt-5 flex h-24 items-end gap-2">
+        {visibleDays.map((day) => (
+          <div key={day.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+            <div className="flex h-16 w-full items-end rounded-full bg-white/[0.04] px-1">
+              <div
+                className="w-full rounded-full bg-gradient-to-t from-amber-500 to-orange-300"
+                style={{ height: `${Math.max(day.heightPercent, day.playCount > 0 ? 12 : 4)}%` }}
+                aria-label={`${day.date}: ${day.playCount} plays`}
+              />
+            </div>
+            <span className="max-w-full truncate text-[10px] text-white/35">
+              {day.date.slice(5)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function StreakCard({
+  label,
+  currentDays,
+  bestDays,
+  lastActiveDate,
+}: {
+  label: string;
+  currentDays: number;
+  bestDays: number;
+  lastActiveDate: string | null;
+}) {
+  const percent = bestDays > 0 ? Math.min(100, Math.round((currentDays / bestDays) * 100)) : 0;
+
+  return (
+    <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <div className="text-xs uppercase tracking-wider text-white/40">Listening streak</div>
+      <div className="mt-4 flex items-center gap-4">
+        <div
+          className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
+          style={{
+            background: `conic-gradient(rgb(251 191 36) ${percent}%, rgba(255,255,255,0.08) 0)`,
+          }}
+        >
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-950/90 text-xl font-semibold text-white">
+            {currentDays}
+          </div>
+        </div>
+        <div className="min-w-0">
+          <div className="text-2xl font-semibold text-white">{label}</div>
+          <div className="mt-1 text-sm text-white/50">Best streak: {bestDays} days</div>
+          <div className="mt-1 text-xs text-white/35">
+            Last active: {lastActiveDate || "No listening yet"}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
