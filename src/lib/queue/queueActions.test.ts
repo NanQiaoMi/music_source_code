@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { Song } from "@/types/song";
-import { bulkRemove, clearAfterCurrent, dedupe, playNext, shuffleAfter } from "./queueActions";
+import {
+  bulkRemove,
+  clearAfterCurrent,
+  countDuplicateSongs,
+  dedupe,
+  playNext,
+  shuffleAfter,
+} from "./queueActions";
 
 function song(id: string): Song {
   return {
@@ -56,6 +63,12 @@ describe("queueActions", () => {
 
     expect(result.queue.map((item) => item.id)).toEqual(["a", "b", "c"]);
     expect(result.currentIndex).toBe(2);
+  });
+
+  it("counts duplicate queue entries by song id", () => {
+    const duplicated = [song("a"), song("b"), song("a"), song("c"), song("b"), song("a")];
+
+    expect(countDuplicateSongs(duplicated)).toBe(3);
   });
 
   it("shuffles only the songs after the current song", () => {

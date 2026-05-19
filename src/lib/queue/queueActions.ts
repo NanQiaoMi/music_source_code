@@ -112,3 +112,18 @@ export function dedupe(state: QueueSlice): QueueSlice {
   const nextIndex = currentSong ? newQueue.findIndex((song) => song.id === currentSong.id) : 0;
   return { queue: newQueue, currentIndex: clampQueueIndex(nextIndex, newQueue.length) };
 }
+
+export function countDuplicateSongs(queue: Song[]): number {
+  const seen = new Set<string>();
+  let duplicateCount = 0;
+
+  for (const song of queue) {
+    if (seen.has(song.id)) {
+      duplicateCount += 1;
+    } else {
+      seen.add(song.id);
+    }
+  }
+
+  return duplicateCount;
+}

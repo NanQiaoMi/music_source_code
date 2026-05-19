@@ -3,9 +3,10 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { CornerDownRight, GripVertical, ListMusic, Shuffle, Trash2, X } from "lucide-react";
+import { CopyX, CornerDownRight, GripVertical, ListMusic, Shuffle, Trash2, X } from "lucide-react";
 import { EmptyState, GlassPanel } from "@/components/shared/Glass";
 import { GlassButton } from "@/components/shared/GlassButton";
+import { countDuplicateSongs } from "@/lib/queue/queueActions";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { Song } from "@/types/song";
@@ -38,6 +39,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
     moveToNext,
     clearAfterCurrent,
     bulkRemove,
+    dedupeQueue,
     shuffleAfterCurrent,
   } = useQueueStore();
 
@@ -51,6 +53,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
     [queue, selectedIds]
   );
   const selectedCount = selectedOrderedIds.length;
+  const duplicateCount = useMemo(() => countDuplicateSongs(queue), [queue]);
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
@@ -170,6 +173,11 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
     clearSelection();
   };
 
+  const handleDedupeQueue = () => {
+    dedupeQueue();
+    clearSelection();
+  };
+
   const headerRight = (
     <div className="flex items-center gap-2">
       {selectedCount > 0 ? (
@@ -246,10 +254,16 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
         }}
       >
         {queue.length > 0 && (
-          <div className="mb-2 flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] p-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] p-2">
             <GlassButton size="sm" variant="ghost" onClick={handleClearAfterCurrent}>
               Clear after current
             </GlassButton>
+            {duplicateCount > 0 && (
+              <GlassButton size="sm" variant="ghost" onClick={handleDedupeQueue}>
+                <CopyX className="h-3.5 w-3.5" />
+                Remove duplicates ({duplicateCount})
+              </GlassButton>
+            )}
             <GlassButton size="sm" variant="ghost" onClick={handleShuffleRemaining}>
               <Shuffle className="h-3.5 w-3.5" />
               Shuffle remaining

@@ -198,6 +198,28 @@ describe("queueStore", () => {
       expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual(["current", "next"]);
       expect(useQueueStore.getState().currentIndex).toBe(0);
     });
+
+    it("should remove duplicate queue items while keeping the active song selected", () => {
+      const store = useQueueStore.getState();
+      store.setQueue([
+        createMockSong("intro"),
+        createMockSong("repeat"),
+        createMockSong("middle"),
+        createMockSong("repeat"),
+        createMockSong("outro"),
+      ]);
+      store.setCurrentIndex(3);
+
+      store.dedupeQueue();
+
+      expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual([
+        "intro",
+        "repeat",
+        "middle",
+        "outro",
+      ]);
+      expect(useQueueStore.getState().currentIndex).toBe(1);
+    });
   });
 
   describe("insertNext", () => {

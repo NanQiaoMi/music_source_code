@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { bulkRemove, clearAfterCurrent, playNext, shuffleAfter } from "@/lib/queue/queueActions";
+import {
+  bulkRemove,
+  clearAfterCurrent,
+  dedupe,
+  playNext,
+  shuffleAfter,
+} from "@/lib/queue/queueActions";
 import { Song } from "@/types/song";
 
 export interface HistorySong {
@@ -79,6 +85,7 @@ interface QueueState {
   playNext: (song: Song) => void;
   clearAfterCurrent: () => void;
   bulkRemove: (ids: string[]) => void;
+  dedupeQueue: () => void;
   shuffleAfterCurrent: () => void;
   moveToNext: (index: number) => void;
   removeFromQueue: (index: number) => void;
@@ -142,6 +149,12 @@ export const useQueueStore = create<QueueState>()(
       bulkRemove: (ids) =>
         set((state) => {
           const next = bulkRemove(state, ids);
+          return { queue: next.queue, currentIndex: next.currentIndex };
+        }),
+
+      dedupeQueue: () =>
+        set((state) => {
+          const next = dedupe(state);
           return { queue: next.queue, currentIndex: next.currentIndex };
         }),
 
