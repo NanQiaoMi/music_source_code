@@ -76,6 +76,11 @@ describe("rollupDay", () => {
           duration: 220,
           source: "local",
         },
+      ],
+      [
+        { songId: "b", playedAt: 1, listenSeconds: 90 },
+        { songId: "b", playedAt: 2, listenSeconds: 120 },
+        { songId: "a", playedAt: 3, listenSeconds: 30 },
       ]
     );
 
@@ -86,6 +91,8 @@ describe("rollupDay", () => {
         artist: "City Lights",
         album: "Late Set",
         missing: false,
+        playCount: 2,
+        totalMinutes: 4,
       },
       {
         id: "missing",
@@ -93,6 +100,8 @@ describe("rollupDay", () => {
         artist: "Unknown artist",
         album: undefined,
         missing: true,
+        playCount: 0,
+        totalMinutes: 0,
       },
       {
         id: "a",
@@ -100,6 +109,8 @@ describe("rollupDay", () => {
         artist: "Night Drive",
         album: undefined,
         missing: false,
+        playCount: 1,
+        totalMinutes: 1,
       },
     ]);
   });

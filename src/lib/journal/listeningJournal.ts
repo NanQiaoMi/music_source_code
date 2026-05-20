@@ -22,6 +22,8 @@ export interface JournalSongRow {
   artist: string;
   album?: string;
   missing: boolean;
+  playCount: number;
+  totalMinutes: number;
 }
 
 export function deriveJournalMood(emotion?: EmotionCoordinate | null): string | null {
@@ -79,11 +81,29 @@ export function getIsoDate(offsetDays = 0, anchorDate = new Date()): string {
   return date.toISOString().slice(0, 10);
 }
 
-export function buildJournalSongRows(songIds: string[], library: Song[]): JournalSongRow[] {
+export function buildJournalSongRows(
+  songIds: string[],
+  library: Song[],
+  events: JournalPlayEvent[] = []
+): JournalSongRow[] {
   const songById = new Map(library.map((song) => [song.id, song]));
+  const eventStats = new Map<string, { playCount: number; listenSeconds: number }>();
+
+  events.forEach((event) => {
+    const current = eventStats.get(event.songId) || { playCount: 0, listenSeconds: 0 };
+    eventStats.set(event.songId, {
+      playCount: current.playCount + 1,
+      listenSeconds: current.listenSeconds + Math.max(0, event.listenSeconds || 0),
+    });
+  });
 
   return songIds.map((id) => {
     const song = songById.get(id);
+    const stats = eventStats.get(id) || { playCount: 0, listenSeconds: 0 };
+    const summary = {
+      playCount: stats.playCount,
+      totalMinutes: Math.round(stats.listenSeconds / 60),
+    };
 
     if (!song) {
       return {
@@ -92,6 +112,7 @@ export function buildJournalSongRows(songIds: string[], library: Song[]): Journa
         artist: "Unknown artist",
         album: undefined,
         missing: true,
+        ...summary,
       };
     }
 
@@ -101,6 +122,7 @@ export function buildJournalSongRows(songIds: string[], library: Song[]): Journa
       artist: song.artist,
       album: song.album,
       missing: false,
+      ...summary,
     };
   });
 }

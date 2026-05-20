@@ -39,10 +39,16 @@ describe("JournalDayPanel", () => {
       days: {
         "2026-05-20": {
           date: "2026-05-20",
-          totalMinutes: 42,
+          totalMinutes: 2,
           topSongIds: ["song-1"],
           dominantMood: "focus",
         },
+      },
+      eventsByDate: {
+        "2026-05-20": [
+          { songId: "song-1", playedAt: 1, listenSeconds: 60, mood: "focus" },
+          { songId: "song-1", playedAt: 2, listenSeconds: 60, mood: "focus" },
+        ],
       },
     });
   });
@@ -60,6 +66,8 @@ describe("JournalDayPanel", () => {
 
     const noteInput = container.querySelector("input");
     expect(noteInput).not.toBeNull();
+    expect(container.textContent).toContain("2 plays");
+    expect(container.textContent).toContain("2 min");
 
     await act(async () => {
       noteInput!.value = "Late night listening";

@@ -9,10 +9,12 @@
 ### Changed
 
 - The journal store now persists per-day playback events, rebuilds day rollups from those events, preserves notes, and prunes events with the 90-day journal window.
+- Journal day details now show per-song play counts and listened minutes from recorded playback events.
 
 ### Verified
 
 - Targeted tests passed: npm run test -- src/lib/journal/listeningJournal.test.ts src/store/listeningJournalStore.test.ts; 2 files, 13 tests.
+- Journal detail tests passed: npm run test -- src/lib/journal/listeningJournal.test.ts src/components/widgets/JournalDayPanel.test.tsx src/store/listeningJournalStore.test.ts; 3 files, 14 tests.
 - Type check passed: npx tsc --noEmit --pretty false.
 - Production build passed: npm run build.
 - Full Vitest suite passed: npm run test; 67 files, 350 tests. Vitest still prints non-fatal existing worker shutdown and jsdom canvas getContext warnings after the pass.

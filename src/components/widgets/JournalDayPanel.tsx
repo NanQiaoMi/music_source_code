@@ -13,9 +13,10 @@ interface JournalDayPanelProps {
 }
 
 export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
-  const { selectedDate, days, appendNote } = useListeningJournalStore();
+  const { selectedDate, days, eventsByDate, appendNote } = useListeningJournalStore();
   const songs = usePlaylistStore((state) => state.songs);
   const [statusMessage, setStatusMessage] = useState("Notes save on blur or Enter.");
+  const dayEvents = eventsByDate[selectedDate];
   const day = days[selectedDate] || {
     date: selectedDate,
     totalMinutes: 0,
@@ -23,8 +24,8 @@ export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
     dominantMood: null,
   };
   const topSongs = useMemo(
-    () => buildJournalSongRows(day.topSongIds.slice(0, 5), songs),
-    [day.topSongIds, songs]
+    () => buildJournalSongRows(day.topSongIds.slice(0, 5), songs, dayEvents || []),
+    [day.topSongIds, songs, dayEvents]
   );
 
   const saveNote = (value: string) => {
@@ -116,6 +117,10 @@ export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
                         Missing
                       </span>
                     )}
+                    <span className="shrink-0 text-right text-[11px] text-cyan-100/65">
+                      <span className="block">{song.playCount} plays</span>
+                      <span className="block text-white/35">{song.totalMinutes} min</span>
+                    </span>
                   </div>
                 ))}
               </div>
