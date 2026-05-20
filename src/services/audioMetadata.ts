@@ -183,7 +183,7 @@ export async function extractAudioMetadata(
     const durationPromise = getAudioDuration(file);
 
     // Extract metadata using jsmediatags
-    const metadataResult = await new Promise<AudioMetadata>((resolve, reject) => {
+    const metadataResult = await new Promise<AudioMetadata>((resolve, _reject) => {
       jsmediatags.read(file, {
         onSuccess: async (tag: any) => {
           const tags = tag.tags || {};

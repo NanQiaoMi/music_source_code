@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const TunnelFlightV8Effect: EffectPlugin = {
   id: "tunnel-flight-v8",

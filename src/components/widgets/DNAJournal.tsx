@@ -12,7 +12,6 @@ import {
   BrainCircuit,
   Activity,
   Share2,
-  Download,
   X,
 } from "lucide-react";
 import { useKnowledgeStore } from "@/store/knowledgeStore";

@@ -25,7 +25,7 @@ export interface HiResState {
   setShowDetailedInfo: (show: boolean) => void;
   setAutoDetect: (auto: boolean) => void;
 
-  detectQuality: (sampleRate: number, bitDepth: number, channels: number) => AudioQuality;
+  detectQuality: (sampleRate: number, bitDepth: number, _channels: number) => AudioQuality;
   getQualityBadge: (quality: AudioQuality) => string;
   getQualityColor: (quality: AudioQuality) => string;
 }

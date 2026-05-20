@@ -5,7 +5,7 @@ import { generateSongId } from "@/utils/songValidation";
 import jsmediatags from "jsmediatags";
 
 // Storage keys
-const LOCAL_MUSIC_KEY = "vibe_music_local_library";
+const _LOCAL_MUSIC_KEY = "vibe_music_local_library";
 const LOCAL_MUSIC_METADATA_KEY = "vibe_music_local_metadata";
 
 // Supported audio formats

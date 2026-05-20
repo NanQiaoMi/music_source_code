@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { Song } from "@/types/song";
 import {
-  getStoredMusic,
   saveMusicFile,
   deleteStoredMusic,
   getAllStoredMusic,

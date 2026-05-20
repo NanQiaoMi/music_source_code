@@ -26,7 +26,7 @@ export const useHandGesture = () => {
   }, []);
 
   const checkFistGesture = useCallback((landmarks: any[]) => {
-    const thumbTip = landmarks[4];
+    const _thumbTip = landmarks[4];
     const indexTip = landmarks[8];
     const middleTip = landmarks[12];
     const ringTip = landmarks[16];

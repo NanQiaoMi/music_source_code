@@ -1,12 +1,7 @@
 import { create } from "zustand";
 import { songsData, searchSongs, filterSongsByArtist, filterSongsByAlbum } from "@/data/songsData";
 import { getAllStoredMusic } from "@/services/localMusicStorage";
-import {
-  getCoverFromCache,
-  saveCoverToCache,
-  deleteCoverFromCache,
-  preloadCovers,
-} from "@/services/coverCache";
+import { getCoverFromCache, saveCoverToCache, deleteCoverFromCache } from "@/services/coverCache";
 import { useAudioStore } from "./audioStore";
 import { Song } from "@/types/song";
 

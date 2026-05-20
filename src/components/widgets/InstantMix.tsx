@@ -117,7 +117,7 @@ export const InstantMix: React.FC<InstantMixProps> = ({ isOpen, onClose }) => {
         playQueue(selectedSongs, 0);
         toast.success(`已生成 ${selectedSongs.length} 首灵感歌单`);
         onClose();
-      } catch (error) {
+      } catch {
         toast.error("生成歌单失败，请重试");
       } finally {
         setIsGenerating(false);

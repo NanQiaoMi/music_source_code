@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Fingerprint,
   Zap,
-  Calendar,
   ShieldCheck,
   RefreshCcw,
   Loader2,
