@@ -167,11 +167,16 @@ export const ListeningHistory: React.FC<ListeningHistoryProps> = ({ isOpen, onCl
             </div>
           )}
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <div className="text-[11px] tracking-[0.25em] uppercase text-white/35">近期偏好摘要</div>
+            <div className="text-[11px] tracking-[0.25em] uppercase text-white/35">
+              近期偏好摘要
+            </div>
             <p className="mt-2 text-sm leading-relaxed text-white/70">
               你最近更偏向 <span className="text-white">{summary.dominantPeriod}</span> 收听，
-              热门风格集中在 <span className="text-white">{summary.dominantGenres.join(" / ") || "未形成明显偏好"}</span>，
-              当前整体听歌热度
+              热门风格集中在{" "}
+              <span className="text-white">
+                {summary.dominantGenres.join(" / ") || "未形成明显偏好"}
+              </span>
+              ， 当前整体听歌热度
               <span className="text-white">
                 {summary.trend === "rising"
                   ? " 正在升温"
@@ -302,7 +307,9 @@ export const ListeningHistory: React.FC<ListeningHistoryProps> = ({ isOpen, onCl
                           <Clock className="w-3 h-3" />
                           {formatDuration(artist.totalListenTime)}
                         </div>
-                        <div className="text-[11px] text-white/30 mt-1">{artist.songs.size} 首歌持续出现</div>
+                        <div className="text-[11px] text-white/30 mt-1">
+                          {artist.songs.size} 首歌持续出现
+                        </div>
                       </div>
                     </motion.div>
                   ))

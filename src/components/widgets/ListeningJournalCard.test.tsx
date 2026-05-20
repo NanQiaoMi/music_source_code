@@ -52,7 +52,9 @@ describe("ListeningJournalCard", () => {
       root.render(<ListeningJournalCard />);
     });
 
-    const ribbon = container.querySelector('[role="list"][aria-label="Seven-day listening journal"]');
+    const ribbon = container.querySelector(
+      '[role="list"][aria-label="Seven-day listening journal"]'
+    );
     expect(ribbon).not.toBeNull();
     expect(ribbon?.querySelectorAll("button")).toHaveLength(7);
     expect(container.textContent).toContain("2/7 active");

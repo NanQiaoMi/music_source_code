@@ -268,7 +268,10 @@ export const POSTER_QUICK_PRESETS: PosterPreset[] = [
   },
 ];
 
-export function applyPosterPreset(config: PosterConfig, presetId: PosterPreset["id"]): PosterConfig {
+export function applyPosterPreset(
+  config: PosterConfig,
+  presetId: PosterPreset["id"]
+): PosterConfig {
   const preset = POSTER_QUICK_PRESETS.find((item) => item.id === presetId);
   return preset ? { ...config, ...preset.config } : config;
 }
@@ -302,7 +305,9 @@ export function getPosterQualityChecks({
       id: "cover",
       label: "Cover",
       labelZh: "封面",
-      detail: hasCover ? "Cover art is available." : "Missing cover art; fallback artwork will export.",
+      detail: hasCover
+        ? "Cover art is available."
+        : "Missing cover art; fallback artwork will export.",
       detailZh: hasCover ? "封面图片可用" : "缺少封面图片，将使用默认封面导出",
       passed: hasCover,
       severity: "warning",
@@ -316,9 +321,7 @@ export function getPosterQualityChecks({
           ? `${lyricLineCount} lyric line${lyricLineCount === 1 ? "" : "s"} selected.`
           : "No lyric line selected; poster will rely on song metadata.",
       detailZh:
-        lyricLineCount > 0
-          ? `已选 ${lyricLineCount} 行歌词`
-          : "未选择歌词，海报将使用歌曲信息",
+        lyricLineCount > 0 ? `已选 ${lyricLineCount} 行歌词` : "未选择歌词，海报将使用歌曲信息",
       passed: lyricLineCount > 0,
       severity: "info",
     },
@@ -326,7 +329,10 @@ export function getPosterQualityChecks({
       id: "resolution",
       label: "Resolution",
       labelZh: "分辨率",
-      detail: resolution >= 2 ? "Export resolution is ready for sharing." : "Use HD or Ultra for crisper text.",
+      detail:
+        resolution >= 2
+          ? "Export resolution is ready for sharing."
+          : "Use HD or Ultra for crisper text.",
       detailZh: resolution >= 2 ? "导出分辨率适合分享" : "建议使用高清或超清以获得更清晰的文字",
       passed: resolution >= 2,
       severity: "warning",

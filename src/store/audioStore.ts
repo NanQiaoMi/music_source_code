@@ -396,7 +396,6 @@ export const useAudioStore = create<AudioState>()(
       clearError: () => set({ error: null }),
       setBufferedRanges: (ranges) => set({ bufferedRanges: ranges }),
 
-
       playSong: (song) => {
         // Auto-populate queue from playlist library so next/prev and auto-advance work
         const playlistSongs = usePlaylistStore.getState().songs;

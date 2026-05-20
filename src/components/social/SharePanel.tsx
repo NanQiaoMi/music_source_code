@@ -291,7 +291,9 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                   <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
                     <div>
                       <div className="text-[10px] uppercase tracking-wider text-white/35">导出</div>
-                      <div className="mt-1 text-xs font-semibold text-white">{exportMeta.label}</div>
+                      <div className="mt-1 text-xs font-semibold text-white">
+                        {exportMeta.label}
+                      </div>
                     </div>
                     <div>
                       <div className="text-[10px] uppercase tracking-wider text-white/35">质量</div>
@@ -384,7 +386,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                 </ControlGroup>
 
                 {/* THEME COLOR */}
-                {(getTemplateMeta(config.template).supportsThemeColor) && (
+                {getTemplateMeta(config.template).supportsThemeColor && (
                   <ControlGroup title="主题色彩" icon={Palette}>
                     <div className="flex gap-3 flex-wrap">
                       {POSTER_THEME_COLORS.map((color) => (

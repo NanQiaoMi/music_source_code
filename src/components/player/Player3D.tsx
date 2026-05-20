@@ -25,10 +25,7 @@ import {
 
 const CHUNK_RETRY_PREFIX = "dynamic-import-retry:";
 
-const loadWithChunkRetry = async <T,>(
-  importer: () => Promise<T>,
-  retryKey: string
-): Promise<T> => {
+const loadWithChunkRetry = async <T,>(importer: () => Promise<T>, retryKey: string): Promise<T> => {
   try {
     return await importer();
   } catch (error) {
@@ -183,31 +180,34 @@ const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(
       mousePosition: { x: 0, y: 0 },
     });
 
-    const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-      if (shouldReduceMotion) return;
+    const handleMouseMove = useCallback(
+      (e: React.MouseEvent<HTMLDivElement>) => {
+        if (shouldReduceMotion) return;
 
-      const rect = e.currentTarget.getBoundingClientRect();
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
 
-      const rotateX = ((mouseY - centerY) / centerY) * -8;
-      const rotateY = ((mouseX - centerX) / centerX) * 8;
+        const rotateX = ((mouseY - centerY) / centerY) * -8;
+        const rotateY = ((mouseX - centerX) / centerX) * 8;
 
-      nextPointerStateRef.current = {
-        tilt: { x: rotateX, y: rotateY },
-        mousePosition: { x: (mouseX - centerX) / centerX, y: (mouseY - centerY) / centerY },
-      };
+        nextPointerStateRef.current = {
+          tilt: { x: rotateX, y: rotateY },
+          mousePosition: { x: (mouseX - centerX) / centerX, y: (mouseY - centerY) / centerY },
+        };
 
-      if (pointerFrameRef.current !== null) return;
+        if (pointerFrameRef.current !== null) return;
 
-      pointerFrameRef.current = requestAnimationFrame(() => {
-        setTilt(nextPointerStateRef.current.tilt);
-        setMousePosition(nextPointerStateRef.current.mousePosition);
-        pointerFrameRef.current = null;
-      });
-    }, [shouldReduceMotion]);
+        pointerFrameRef.current = requestAnimationFrame(() => {
+          setTilt(nextPointerStateRef.current.tilt);
+          setMousePosition(nextPointerStateRef.current.mousePosition);
+          pointerFrameRef.current = null;
+        });
+      },
+      [shouldReduceMotion]
+    );
 
     const handleMouseLeave = useCallback(() => {
       nextPointerStateRef.current = {

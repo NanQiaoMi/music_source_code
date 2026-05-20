@@ -142,7 +142,7 @@ function sortNearlyUnlocked(a: Achievement, b: Achievement): number {
   const ratioA = a.total > 0 ? a.progress / a.total : 0;
   const ratioB = b.total > 0 ? b.progress / b.total : 0;
   if (ratioB !== ratioA) return ratioB - ratioA;
-  return (a.total - a.progress) - (b.total - b.progress);
+  return a.total - a.progress - (b.total - b.progress);
 }
 
 export function getAchievementSpotlights(achievements: Achievement[]): AchievementSpotlight {

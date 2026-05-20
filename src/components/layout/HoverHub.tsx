@@ -45,9 +45,9 @@ const CONTAINER_VARIANTS: Variants = {
     y: 4,
     transition: {
       duration: 0.15,
-        ease: [0.16, 1, 0.3, 1],
-      },
+      ease: [0.16, 1, 0.3, 1],
     },
+  },
 };
 
 const ITEM_VARIANTS: Variants = {

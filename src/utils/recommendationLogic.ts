@@ -376,11 +376,45 @@ export interface DailyRecommendationResult {
 
 export function getDailyRecommendationMode(hour?: number): DailyRecommendationMode {
   const h = hour ?? new Date().getHours();
-  if (h >= 5 && h < 11) return { name: "早间活力", hour: h, targetFamiliarity: 0.55, targetFreshness: 0.45, description: "充满活力的早间推荐" };
-  if (h >= 11 && h < 14) return { name: "午间放松", hour: h, targetFamiliarity: 0.5, targetFreshness: 0.5, description: "舒缓的午间推荐" };
-  if (h >= 14 && h < 17) return { name: "下午专注", hour: h, targetFamiliarity: 0.6, targetFreshness: 0.4, description: "专注工作的下午推荐" };
-  if (h >= 17 && h < 21) return { name: "傍晚平衡", hour: h, targetFamiliarity: 0.45, targetFreshness: 0.55, description: "平衡的傍晚推荐" };
-  return { name: "深夜沉浸", hour: h, targetFamiliarity: 0.7, targetFreshness: 0.3, description: "适合夜晚的沉浸推荐" };
+  if (h >= 5 && h < 11)
+    return {
+      name: "早间活力",
+      hour: h,
+      targetFamiliarity: 0.55,
+      targetFreshness: 0.45,
+      description: "充满活力的早间推荐",
+    };
+  if (h >= 11 && h < 14)
+    return {
+      name: "午间放松",
+      hour: h,
+      targetFamiliarity: 0.5,
+      targetFreshness: 0.5,
+      description: "舒缓的午间推荐",
+    };
+  if (h >= 14 && h < 17)
+    return {
+      name: "下午专注",
+      hour: h,
+      targetFamiliarity: 0.6,
+      targetFreshness: 0.4,
+      description: "专注工作的下午推荐",
+    };
+  if (h >= 17 && h < 21)
+    return {
+      name: "傍晚平衡",
+      hour: h,
+      targetFamiliarity: 0.45,
+      targetFreshness: 0.55,
+      description: "平衡的傍晚推荐",
+    };
+  return {
+    name: "深夜沉浸",
+    hour: h,
+    targetFamiliarity: 0.7,
+    targetFreshness: 0.3,
+    description: "适合夜晚的沉浸推荐",
+  };
 }
 
 export function generateDailyRecommendationGroups(
@@ -390,10 +424,16 @@ export function generateDailyRecommendationGroups(
   perGroupLimit: number = 6
 ): DailyRecommendationResult {
   const scored = songs.map((song) => scoreSongForRecommendation(song, context));
-  const byScore = [...scored].sort((a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title));
+  const byScore = [...scored].sort(
+    (a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title)
+  );
 
-  const familiar = byScore.filter((item) => (item.song.playCount || 0) >= 3).slice(0, perGroupLimit);
-  const discover = byScore.filter((item) => (item.song.playCount || 0) <= 1).slice(0, perGroupLimit);
+  const familiar = byScore
+    .filter((item) => (item.song.playCount || 0) >= 3)
+    .slice(0, perGroupLimit);
+  const discover = byScore
+    .filter((item) => (item.song.playCount || 0) <= 1)
+    .slice(0, perGroupLimit);
   const familiarIds = new Set(familiar.map((item) => item.song.id));
   const discoverIds = new Set(discover.map((item) => item.song.id));
   const extend = byScore

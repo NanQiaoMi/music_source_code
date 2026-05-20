@@ -255,7 +255,10 @@ export const AuditoryGene: React.FC = () => {
                     你的收听习惯更偏向
                     <span className="text-white"> {summary.dominantPeriod} </span>
                     节律，主导风格集中在
-                    <span className="text-white"> {summary.dominantGenres.join(" / ") || dnaJournal.genre} </span>
+                    <span className="text-white">
+                      {" "}
+                      {summary.dominantGenres.join(" / ") || dnaJournal.genre}{" "}
+                    </span>
                     ，近期整体热度
                     <span className="text-white">
                       {summary.trend === "rising"
@@ -267,7 +270,9 @@ export const AuditoryGene: React.FC = () => {
                     。
                   </p>
                 </div>
-                <div className="text-[11px] text-white/25 tracking-wide">解析时间：{formattedDate}</div>
+                <div className="text-[11px] text-white/25 tracking-wide">
+                  解析时间：{formattedDate}
+                </div>
               </div>
             </motion.div>
           )}
