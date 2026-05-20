@@ -25,9 +25,9 @@ import {
   getHaloSkin,
   paintHaloPreview,
   type HaloPaintContext,
-  type HaloSkinId,
 } from "@/lib/skins/halo/haloSkins";
 import { usePerformanceV8Store } from "@/store/performanceV8Store";
+import { usePlayerSkinStore } from "@/store/playerSkinStore";
 import { useVisualSettingsStore, type ThemeConfig } from "@/store/visualSettingsStore";
 
 export interface PlayerSkin {
@@ -205,7 +205,8 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
   const [showCustomEditor, setShowCustomEditor] = useState(false);
   const [customSkinDraft, setCustomSkinDraft] = useState<Partial<PlayerSkin>>({});
   const [showThemeManager, setShowThemeManager] = useState(false);
-  const [activeHaloId, setActiveHaloId] = useState<HaloSkinId>("aurora");
+  const activeHaloId = usePlayerSkinStore((state) => state.activeHaloId);
+  const setActiveHaloId = usePlayerSkinStore((state) => state.setActiveHaloId);
 
   const {
     customThemes,
