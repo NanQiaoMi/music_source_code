@@ -1,0 +1,109 @@
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Song } from "@/types/song";
+
+const songs: Song[] = [
+  {
+    id: "seed",
+    title: "Midnight City",
+    artist: "M83",
+    album: "Hurry Up",
+    genre: "Synthpop",
+    duration: 245,
+    source: "local",
+    bpm: 128,
+  },
+  {
+    id: "track-2",
+    title: "Intro",
+    artist: "The xx",
+    album: "xx",
+    genre: "Indie",
+    duration: 132,
+    source: "local",
+    bpm: 92,
+  },
+  {
+    id: "track-3",
+    title: "A Real Hero",
+    artist: "College",
+    album: "Drive",
+    genre: "Synthpop",
+    duration: 267,
+    source: "local",
+    bpm: 112,
+  },
+];
+
+const mocks = vi.hoisted(() => ({
+  playQueue: vi.fn(),
+}));
+
+vi.mock("framer-motion", () => ({
+  motion: {
+    div: "div",
+  },
+}));
+
+vi.mock("@/store/playlistStore", () => ({
+  usePlaylistStore: (selector: (state: { songs: Song[] }) => unknown) => selector({ songs }),
+}));
+
+vi.mock("@/store/audioStore", () => ({
+  useAudioStore: (selector: (state: { playQueue: typeof mocks.playQueue }) => unknown) =>
+    selector({ playQueue: mocks.playQueue }),
+}));
+
+afterEach(() => {
+  document.body.innerHTML = "";
+});
+
+describe("SmartMixSessionCard", () => {
+  beforeEach(async () => {
+    mocks.playQueue.mockClear();
+    const { useSmartMixStore } = await import("@/store/smartMixStore");
+    useSmartMixStore.setState({ currentSession: null, lastInput: null });
+  });
+
+  it("announces session status when a mix is started and played", async () => {
+    vi.setSystemTime(new Date("2026-05-20T00:00:00.000Z"));
+    const { SmartMixSessionCard } = await import("./SmartMixSessionCard");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<SmartMixSessionCard />);
+    });
+
+    const startButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Start mix")
+    );
+
+    await act(async () => {
+      startButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const status = container.querySelector('[role="status"]');
+    expect(status?.textContent).toContain("Mix ready: 3 tracks from Midnight City");
+    expect(container.textContent).toContain("Midnight City");
+    expect(container.textContent).toContain("A Real Hero");
+
+    const playButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Play mix")
+    );
+
+    await act(async () => {
+      playButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(status?.textContent).toContain("Queued 3 Smart Mix tracks");
+    expect(mocks.playQueue).toHaveBeenCalledWith(expect.any(Array), 0);
+
+    await act(async () => {
+      root.unmount();
+    });
+    vi.useRealTimers();
+  });
+});

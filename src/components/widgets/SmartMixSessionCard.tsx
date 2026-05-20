@@ -21,6 +21,7 @@ export function SmartMixSessionCard() {
   const { currentSession, start, regenerate, commitToQueue } = useSmartMixStore();
   const [knobs, setKnobs] = useState<SmartMixKnobs>(DEFAULT_KNOBS);
   const [selectedSeedId, setSelectedSeedId] = useState<string>("");
+  const [statusMessage, setStatusMessage] = useState("Choose a seed track to shape a Smart Mix.");
   const seedSong = useMemo(
     () => songs.find((song) => song.id === selectedSeedId) || songs[0] || null,
     [selectedSeedId, songs]
@@ -36,18 +37,20 @@ export function SmartMixSessionCard() {
 
   const handleStart = () => {
     if (!seedSong) return;
-    start({
+    const session = start({
       seedSong,
       library: songs,
       recentSongIds,
       knobs,
     });
+    setStatusMessage(`Mix ready: ${session.songs.length} tracks from ${seedSong.title}`);
   };
 
   const handlePlay = () => {
     if (!currentSession || currentSession.songs.length === 0) return;
     commitToQueue();
     playQueue(currentSession.songs, 0);
+    setStatusMessage(`Queued ${currentSession.songs.length} Smart Mix tracks`);
   };
 
   return (
@@ -67,6 +70,14 @@ export function SmartMixSessionCard() {
         <div className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/55">
           {sessionSongs.length > 0 ? `${sessionSongs.length} tracks` : "No mix"}
         </div>
+      </div>
+
+      <div
+        role="status"
+        aria-live="polite"
+        className="mb-4 rounded-xl border border-fuchsia-300/20 bg-fuchsia-500/10 px-3 py-2 text-sm text-fuchsia-100"
+      >
+        {statusMessage}
       </div>
 
       <div className="mb-5 grid gap-3 md:grid-cols-[1fr_auto]">
