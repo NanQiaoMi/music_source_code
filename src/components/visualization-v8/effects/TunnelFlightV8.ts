@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
 
@@ -178,14 +178,16 @@ export const TunnelFlightV8Effect: EffectPlugin = {
         case "neon":
           color = `hsl(${hue}, 100%, ${50 + brightness * 30}%)`;
           break;
-        case "fire":
+        case "fire": {
           const fireHue = 10 + hue * 0.3;
           color = `hsl(${fireHue}, 100%, ${40 + brightness * 40}%)`;
           break;
-        case "ocean":
+        }
+        case "ocean": {
           const oceanHue = 180 + hue * 0.4;
           color = `hsl(${oceanHue}, 80%, ${40 + brightness * 30}%)`;
           break;
+        }
         case "rainbow":
           color = `hsl(${hue}, 100%, ${50 + brightness * 30}%)`;
           break;

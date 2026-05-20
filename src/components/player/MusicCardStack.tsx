@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
@@ -153,13 +153,14 @@ export const MusicCardStack: React.FC = () => {
           e.preventDefault();
           handleNext();
           break;
-        case "Enter":
+        case "Enter": {
           e.preventDefault();
           const centerCardIndex = visibleCards.find((card) => card.offset === 0)?.displayIndex;
           if (centerCardIndex !== undefined) {
             handleCardClick(centerCardIndex);
           }
           break;
+        }
       }
     };
 
@@ -177,12 +178,13 @@ export const MusicCardStack: React.FC = () => {
       case "swipe_right":
         handlePrev();
         break;
-      case "fist":
+      case "fist": {
         const centerCardIndex = visibleCards.find((card) => card.offset === 0)?.displayIndex;
         if (centerCardIndex !== undefined) {
           handleCardClick(centerCardIndex);
         }
         break;
+      }
     }
   }, [
     lastGesture,

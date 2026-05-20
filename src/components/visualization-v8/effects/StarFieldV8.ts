@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
 
@@ -162,19 +162,21 @@ export const StarFieldV8Effect: EffectPlugin = {
 
       let color = "white";
       switch (params.colorScheme) {
-        case "colorful":
+        case "colorful": {
           const hue = (star.x + star.y + (this as any).private.time * 100) % 360;
           color = `hsl(${hue}, 100%, ${50 + brightness * 30}%)`;
           break;
+        }
         case "blue":
           color = `rgb(${Math.floor(100 * brightness)}, ${Math.floor(150 * brightness)}, ${Math.floor(255 * brightness)})`;
           break;
         case "red":
           color = `rgb(${Math.floor(255 * brightness)}, ${Math.floor(100 * brightness)}, ${Math.floor(100 * brightness)})`;
           break;
-        default:
+        default: {
           const gray = Math.floor(255 * brightness);
           color = `rgb(${gray}, ${gray}, ${gray})`;
+        }
       }
 
       context.fillStyle = color;

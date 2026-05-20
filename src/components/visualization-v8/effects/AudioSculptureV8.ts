@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
 
@@ -173,14 +173,15 @@ export const AudioSculptureV8Effect: EffectPlugin = {
             y = Math.sign(Math.sin(u)) * 0.5;
             z = Math.cos(v) * 0.5;
             break;
-          case "torus":
+          case "torus": {
             const torusR = 0.7;
             const torusr = 0.3;
             x = (torusR + torusr * Math.cos(v)) * Math.cos(u);
             y = (torusR + torusr * Math.cos(v)) * Math.sin(u);
             z = torusr * Math.sin(v);
             break;
-          case "star":
+          }
+          case "star": {
             const starR = 1;
             const starr = 0.4;
             const starAngle = (u * 5) % (Math.PI * 2);
@@ -189,6 +190,7 @@ export const AudioSculptureV8Effect: EffectPlugin = {
             y = starRadius * Math.sin(u) * Math.sin(v);
             z = Math.cos(v);
             break;
+          }
         }
 
         const originalX = x;

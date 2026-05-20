@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
 
@@ -244,17 +244,20 @@ function getColor(scheme: string, index: number, total: number, time: number): s
   switch (scheme) {
     case "neon":
       return `hsl(${hue}, 100%, 60%)`;
-    case "warm":
+    case "warm": {
       const warmHue = (hue % 90) + 10;
       return `hsl(${warmHue}, 80%, 55%)`;
-    case "cool":
+    }
+    case "cool": {
       const coolHue = (hue % 120) + 180;
       return `hsl(${coolHue}, 80%, 55%)`;
+    }
     case "rainbow":
       return `hsl(${hue}, 100%, 60%)`;
-    case "grayscale":
+    case "grayscale": {
       const gray = 30 + (index / total) * 40;
       return `hsl(0, 0%, ${gray}%)`;
+    }
     default:
       return `hsl(${hue}, 100%, 60%)`;
   }
@@ -282,7 +285,7 @@ function drawBrush(
     case "star":
       drawStar(ctx, 0, 0, audioSize / 2, audioSize / 4, 5);
       break;
-    case "blur":
+    case "blur": {
       const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, audioSize);
       gradient.addColorStop(0, ctx.fillStyle as string);
       gradient.addColorStop(1, "transparent");
@@ -291,6 +294,7 @@ function drawBrush(
       ctx.arc(0, 0, audioSize, 0, Math.PI * 2);
       ctx.fill();
       break;
+    }
   }
 }
 

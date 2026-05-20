@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
 
@@ -161,7 +161,7 @@ export const SpringSystemV8Effect: EffectPlugin = {
         let x, y;
 
         switch (params.layout) {
-          case "grid":
+          case "grid": {
             const cols = Math.ceil(Math.sqrt(params.springCount));
             const row = Math.floor(i / cols);
             const col = i % cols;
@@ -169,12 +169,14 @@ export const SpringSystemV8Effect: EffectPlugin = {
             y =
               height * 0.2 + (row / (Math.ceil(params.springCount / cols) - 1 || 1)) * height * 0.6;
             break;
-          case "circle":
+          }
+          case "circle": {
             const angle = (i / params.springCount) * Math.PI * 2;
             const radius = Math.min(width, height) * 0.3;
             x = width / 2 + Math.cos(angle) * radius;
             y = height / 2 + Math.sin(angle) * radius;
             break;
+          }
           case "vertical":
             x = width / 2;
             y = height * 0.1 + (i / (params.springCount - 1 || 1)) * height * 0.8;

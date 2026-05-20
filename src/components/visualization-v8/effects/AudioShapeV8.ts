@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { EffectPlugin } from "@/lib/visualization/types";
 
@@ -110,10 +110,11 @@ export const AudioShapeV8Effect: EffectPlugin = {
       context.beginPath();
 
       switch (type) {
-        case "square":
+        case "square": {
           const halfSize = size / 2;
           context.rect(-halfSize, -halfSize, size, size);
           break;
+        }
 
         case "triangle":
           context.moveTo(0, -size);
