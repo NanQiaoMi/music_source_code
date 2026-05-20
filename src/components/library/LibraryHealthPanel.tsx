@@ -22,6 +22,11 @@ import {
 import { HealthIssueType } from "@/types/song";
 import { usePlaylistStore } from "@/store/playlistStore";
 
+import {
+  getLibraryHealthNextAction,
+  type LibraryHealthNextAction,
+} from "@/lib/library/libraryHealthActions";
+
 interface LibraryHealthPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -92,6 +97,17 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
   );
   const totalIssues = healthReport?.issuesCount || 0;
   const hasScanned = Boolean(healthReport);
+  const missingFileCount = healthReport?.issueGroups.missing_file?.count || 0;
+  const nextAction = useMemo(
+    () =>
+      getLibraryHealthNextAction({
+        songsCount: songs.length,
+        hasScanned,
+        totalIssues,
+        missingFileCount,
+      }),
+    [hasScanned, missingFileCount, songs.length, totalIssues]
+  );
 
   const startScan = useCallback(async () => {
     if (songs.length === 0) {
@@ -113,6 +129,15 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
     setScanning(false);
     setActiveTab("results");
   }, [songs, setHealthReport, setScanProgress, setScanning]);
+
+  const runNextAction = useCallback(() => {
+    if (nextAction.target === "scan") {
+      void startScan();
+      return;
+    }
+
+    setActiveTab("results");
+  }, [nextAction.target, startScan]);
 
   const downloadReport = () => {
     const reportJson = exportHealthReport();
@@ -221,6 +246,9 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
                   songsCount={songs.length}
                   totalIssues={totalIssues}
                   hasScanned={hasScanned}
+                  nextAction={nextAction}
+                  onNextAction={runNextAction}
+                  actionDisabled={localScanning}
                 />
 
                 {localScanning ? (
@@ -228,14 +256,7 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
                     <RefreshCw className="mb-4 h-8 w-8 animate-spin text-emerald-300" />
                     <p className="text-white/70">Scanning library...</p>
                   </div>
-                ) : (
-                  <button
-                    onClick={startScan}
-                    className="w-full rounded-xl bg-emerald-600 py-3 text-white transition-colors hover:bg-emerald-700"
-                  >
-                    {songs.length === 0 ? "Create empty health report" : "Start scan"}
-                  </button>
-                )}
+                ) : null}
               </div>
             )}
 
@@ -400,16 +421,35 @@ function ScanStateCard({
   songsCount,
   totalIssues,
   hasScanned,
+  nextAction,
+  onNextAction,
+  actionDisabled,
 }: {
   songsCount: number;
   totalIssues: number;
   hasScanned: boolean;
+  nextAction: LibraryHealthNextAction;
+  onNextAction: () => void;
+  actionDisabled: boolean;
 }) {
+  const nextActionButton = (
+    <button
+      type="button"
+      onClick={onNextAction}
+      disabled={actionDisabled}
+      className="mt-4 inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
+      aria-label={"Library health next action: " + nextAction.label}
+    >
+      {nextAction.label}
+    </button>
+  );
+
   if (songsCount === 0) {
     return (
       <StatePanel icon={<Music className="h-5 w-5" />} title="No songs imported" tone="info">
         Import tracks before running cleanup. An empty report can still confirm the health panel is
         working.
+        {nextActionButton}
       </StatePanel>
     );
   }
@@ -418,6 +458,7 @@ function ScanStateCard({
     return (
       <StatePanel icon={<Activity className="h-5 w-5" />} title="Ready to scan" tone="info">
         The scan checks missing audio, duplicate metadata, covers, lyrics, and invalid durations.
+        {nextActionButton}
       </StatePanel>
     );
   }
@@ -426,6 +467,7 @@ function ScanStateCard({
     return (
       <StatePanel icon={<CheckCircle className="h-5 w-5" />} title="Healthy library" tone="success">
         The current report has no active issues. Export it if you need a snapshot.
+        {nextActionButton}
       </StatePanel>
     );
   }
@@ -433,6 +475,7 @@ function ScanStateCard({
   return (
     <StatePanel icon={<AlertCircle className="h-5 w-5" />} title="Issues found" tone="warning">
       Review the Results tab, ignore resolved items, or export the report for later cleanup.
+      {nextActionButton}
     </StatePanel>
   );
 }
@@ -481,7 +524,7 @@ function StatePanel({
         <div className="mt-0.5">{icon}</div>
         <div>
           <div className="font-medium text-white">{title}</div>
-          <p className="mt-1 text-sm text-white/60">{children}</p>
+          <div className="mt-1 text-sm text-white/60">{children}</div>
         </div>
       </div>
     </div>

@@ -85,6 +85,7 @@ describe("LibraryHealthPanel", () => {
     expect(html).toContain("Health status");
     expect(html).toContain("Empty library");
     expect(html).toContain("Import songs before cleanup checks");
+    expect(html).toContain("Scan folder");
   });
 
   it("renders an immediate healthy status after a clean scan", async () => {
@@ -100,6 +101,7 @@ describe("LibraryHealthPanel", () => {
     expect(html).toContain("Health status");
     expect(html).toContain("Healthy library");
     expect(html).toContain("No active issues in the latest scan");
+    expect(html).toContain("Run weekly check");
   });
 
   it("renders an immediate attention-needed status when issues are present", async () => {
@@ -115,5 +117,6 @@ describe("LibraryHealthPanel", () => {
     expect(html).toContain("Health status");
     expect(html).toContain("Needs attention");
     expect(html).toContain("Review and resolve active library issues");
+    expect(html).toContain("Resolve 1 broken path");
   });
 });

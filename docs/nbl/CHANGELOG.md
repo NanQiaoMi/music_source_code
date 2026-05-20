@@ -6,6 +6,7 @@
 
 - feat(journal): confirmed playback now auto-records Listening Journal events with local mood labels.
 - feat(mix): Smart Mix sessions can now be saved as persistent custom playlist groups.
+- feat(library): Library Health now shows next-best action buttons for empty, scan-ready, healthy, and issue states.
 - fix(audio): DSD Converter now resolves real stored/local/fetchable source audio before worker conversion.
 - fix(audio): FFmpeg loading now records readiness/error state and reuses in-flight load requests.
 
@@ -15,6 +16,7 @@
 - Journal day details now show per-song play counts and listened minutes from recorded playback events.
 - Playlist groups now persist under `playlist-group-store-v1`, and playlist backups include saved custom groups.
 - Music Library now exposes saved custom playlists with play/delete actions, so saved Smart Mixes are discoverable after creation.
+- Library Health next actions now prioritize broken audio paths, route issue states to Results, and disable the action while a scan is running.
 - DSD conversion now runs tasks sequentially against the worker, updates only the active task from each worker response, and surfaces missing-source/worker-output failures instead of completing against a fake 1 KB blob.
 - Audio processing readiness now feeds `processingCapabilities` through `__MIMI_FFMPEG_WASM_LOADED__`, and FFmpeg load failures are visible in `ffmpegLoadError` instead of being swallowed silently.
 
@@ -24,6 +26,7 @@
 - Journal detail tests passed: npm run test -- src/lib/journal/listeningJournal.test.ts src/components/widgets/JournalDayPanel.test.tsx src/store/listeningJournalStore.test.ts; 3 files, 14 tests.
 - Smart Mix save tests passed: npm run test -- src/store/playlistGroupStore.test.ts src/store/smartMixStore.test.ts src/components/widgets/SmartMixSessionCard.test.tsx src/store/backupRestoreStore.test.ts; 4 files, 24 tests.
 - Library playlist tests passed: npm run test -- src/components/library/LibraryManagerPanel.test.tsx src/store/playlistGroupStore.test.ts; 2 files, 3 tests.
+- Library Health action tests passed: npm run test -- src/lib/library/libraryHealthActions.test.ts src/components/library/LibraryHealthPanel.test.tsx src/store/libraryHealthStore.test.ts; 3 files, 10 tests.
 - DSD conversion tests passed: npm run test -- src/lib/audio/dsdSource.test.ts src/components/audio/DSDConverter.test.tsx; 2 files, 6 tests.
 - DSD targeted ESLint passed: npx eslint src/components/audio/DSDConverter.tsx src/components/audio/DSDConverter.test.tsx src/lib/audio/dsdSource.ts src/lib/audio/dsdSource.test.ts --ext .ts,.tsx --report-unused-disable-directives --max-warnings 100.
 - FFmpeg loading tests passed: npm run test -- src/store/audioProcessingStore.test.ts src/lib/audio/processingCapabilities.test.ts; 2 files, 12 tests.
