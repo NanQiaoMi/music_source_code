@@ -1,6 +1,6 @@
 "use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const ParticleExplosionV8Effect: EffectPlugin = {
   id: "particle-explosion-v8",

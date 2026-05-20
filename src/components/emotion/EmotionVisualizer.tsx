@@ -124,7 +124,7 @@ const EmotionVisualizer: React.FC = () => {
         hoveredPointId,
       } = state;
 
-      const deltaTime = (time - lastTimeRef.current) / 1000;
+      const _deltaTime = (time - lastTimeRef.current) / 1000;
       lastTimeRef.current = time;
       timeRef.current = time * 0.001;
       const t = timeRef.current;

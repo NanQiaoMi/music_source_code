@@ -1,6 +1,6 @@
 "use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const ParticleGravityV8Effect: EffectPlugin = {
   id: "particle-gravity-v8",

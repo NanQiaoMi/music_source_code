@@ -71,7 +71,7 @@ export const GestureController: React.FC = () => {
   const isEnabled = useGestureStore((state) => state.isEnabled);
 
   // Use non-reactive getState() for setters called in the hot loop
-  const getGestureActions = useCallback(() => useGestureStore.getState(), []);
+  const _getGestureActions = useCallback(() => useGestureStore.getState(), []);
 
   const setIsCameraActive = useCallback(
     (v: boolean) => useGestureStore.getState().setIsCameraActive(v),

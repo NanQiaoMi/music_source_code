@@ -10,7 +10,7 @@ export const SpeechSynthesisPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const models = [{ id: "sambert-zh", name: "SamBERT", desc: "中文语音合成" }];
+  const _models = [{ id: "sambert-zh", name: "SamBERT", desc: "中文语音合成" }];
 
   const handleSynthesize = async () => {
     if (!text.trim()) return;

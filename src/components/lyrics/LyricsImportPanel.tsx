@@ -82,7 +82,7 @@ export const LyricsImportPanel: React.FC<LyricsImportPanelProps> = ({ isOpen, on
       setLyricsContent(text);
       saveLyrics(text);
       setIsEditing(false);
-    } catch (error) {
+    } catch {
       setMessage("读取歌词文件失败");
     } finally {
       setIsLoading(false);
