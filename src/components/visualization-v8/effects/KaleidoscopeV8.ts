@@ -1,4 +1,5 @@
-﻿import { EffectPlugin, RenderContext, AudioData } from "@/lib/visualization/types";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { EffectPlugin, RenderContext, AudioData } from "@/lib/visualization/types";
 
 export const KaleidoscopeV8: EffectPlugin = {
   id: "kaleidoscope",

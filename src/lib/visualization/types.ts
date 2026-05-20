@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { VisualizationAudioSnapshot } from "./audioSnapshot";
 
 export type EffectCategory = "particles" | "geometry" | "spectrum" | "physics" | "space" | "shapes";

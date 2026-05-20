@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as THREE from "three";
 import { EffectPlugin, RenderContext, AudioData } from "@/lib/visualization/types";
 import { useTotemStore } from "@/store/totemStore";
