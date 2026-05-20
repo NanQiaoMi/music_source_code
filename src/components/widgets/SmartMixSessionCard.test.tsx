@@ -57,6 +57,7 @@ vi.mock("@/store/audioStore", () => ({
 
 afterEach(() => {
   document.body.innerHTML = "";
+  vi.useRealTimers();
 });
 
 describe("SmartMixSessionCard", () => {
@@ -104,6 +105,40 @@ describe("SmartMixSessionCard", () => {
     await act(async () => {
       root.unmount();
     });
-    vi.useRealTimers();
+  });
+
+  it("announces when an existing mix is regenerated", async () => {
+    vi.setSystemTime(new Date("2026-05-20T00:00:00.000Z"));
+    const { SmartMixSessionCard } = await import("./SmartMixSessionCard");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<SmartMixSessionCard />);
+    });
+
+    const startButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Start mix")
+    );
+
+    await act(async () => {
+      startButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const regenerateButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Regenerate")
+    );
+
+    await act(async () => {
+      regenerateButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const status = container.querySelector('[role="status"]');
+    expect(status?.textContent).toContain("Regenerated mix: 3 tracks from Midnight City");
+
+    await act(async () => {
+      root.unmount();
+    });
   });
 });

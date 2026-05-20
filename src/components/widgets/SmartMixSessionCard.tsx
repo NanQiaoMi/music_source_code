@@ -53,6 +53,13 @@ export function SmartMixSessionCard() {
     setStatusMessage(`Queued ${currentSession.songs.length} Smart Mix tracks`);
   };
 
+  const handleRegenerate = () => {
+    const session = regenerate();
+    if (!session) return;
+    const seedTitle = session.songs[0]?.title || "the seed track";
+    setStatusMessage(`Regenerated mix: ${session.songs.length} tracks from ${seedTitle}`);
+  };
+
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 shadow-xl backdrop-blur-xl">
       <div className="mb-5 flex items-start justify-between gap-4">
@@ -135,7 +142,7 @@ export function SmartMixSessionCard() {
 
       <div className="mt-5 flex flex-wrap gap-2">
         <button
-          onClick={() => regenerate()}
+          onClick={handleRegenerate}
           disabled={!currentSession}
           className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm text-white/70 transition-colors hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
