@@ -24,7 +24,7 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { points } = useEmotionStore();
   const { showToast } = useGlassToast();
   const { isEnabled } = useAIStore();
-  const [isHovered, setIsHovered] = useState(false);
+  const [_isHovered, setIsHovered] = useState(false);
 
   const handleGenerate = () => {
     if (!isEnabled) {

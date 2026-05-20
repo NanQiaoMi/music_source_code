@@ -85,7 +85,7 @@ export const useAIStore = create<AIState>()(
           } else {
             throw new Error("API response not OK");
           }
-        } catch (_error) {
+        } catch {
           get().updateConfig(id, { status: "offline", lastTested: Date.now() });
           return false;
         }

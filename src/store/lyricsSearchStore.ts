@@ -62,7 +62,7 @@ export const useLyricsSearchStore = create<LyricsSearchState>()(
           if (title) {
             get().addToSearchHistory(artist ? `${title} - ${artist}` : title);
           }
-        } catch (_error) {
+        } catch {
           set({ error: "Lyrics search failed", isLoading: false, lyricSourceState: "failed" });
         }
       },
@@ -146,7 +146,7 @@ export const useLyricsSearchStore = create<LyricsSearchState>()(
             get().selectLyrics(lyrics);
           }
           set({ isLoading: false, lyricSourceState: lyrics ? "matched" : "failed" });
-        } catch (_error) {
+        } catch {
           set({ error: "Auto match lyrics failed", isLoading: false, lyricSourceState: "failed" });
         }
       },

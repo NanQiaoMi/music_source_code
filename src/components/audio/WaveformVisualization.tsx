@@ -11,7 +11,7 @@ interface WaveformVisualizationProps {
 }
 
 export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
-  songId,
+  songId: _songId,
   audioElement,
   className = "",
 }) => {

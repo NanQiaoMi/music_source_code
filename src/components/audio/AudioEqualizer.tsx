@@ -49,7 +49,7 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose 
     eqBands.length === 30 ? eqBands : DEFAULT_EQ_BANDS_30
   );
   const [selectedPreset, setSelectedPreset] = useState<AudioEQPreset>(currentEQPreset);
-  const [isCustom, setIsCustom] = useState(false);
+  const [_isCustom, setIsCustom] = useState(false);
 
   useEffect(() => {
     if (audioElement && isOpen) {

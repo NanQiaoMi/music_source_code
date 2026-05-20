@@ -126,10 +126,10 @@ function LyricsTab({
   songs,
   selectedSong,
   onSelectSong,
-  lyrics,
+  lyrics: _lyrics,
   currentLyric,
   onLoadLyric,
-  onSaveLyric,
+  onSaveLyric: _onSaveLyric,
   onImportLRC,
   onExportLRC,
 }: {
@@ -235,9 +235,9 @@ function CoverTab({
   songs,
   selectedSong,
   onSelectSong,
-  covers,
+  covers: _covers,
   onLoadCover,
-  onSaveCover,
+  onSaveCover: _onSaveCover,
   onImportCover,
 }: {
   songs: Song[];

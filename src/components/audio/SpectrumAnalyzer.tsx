@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useSpectrumStore } from "@/store/spectrumStore";
-import { getAudioAnalyser, getAudioContext } from "@/hooks/useAudioPlayer";
+import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
 
 interface SpectrumAnalyzerProps {
@@ -11,7 +11,7 @@ interface SpectrumAnalyzerProps {
 }
 
 export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
-  audioElement,
+  audioElement: _audioElement,
   className = "",
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);

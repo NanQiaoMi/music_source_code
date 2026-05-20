@@ -13,7 +13,7 @@ export const drawResonanceTotem = ({
   params,
   time,
   refs,
-  theme,
+  theme: _theme,
 }: EffectContext) => {
   const sw = width || 1920;
   const sh = height || 1080;
@@ -22,7 +22,7 @@ export const drawResonanceTotem = ({
 
   const {
     opacity = 1.0,
-    scanSpeed = 1.0,
+    scanSpeed: _scanSpeed = 1.0,
     grainIntensity = 0.05,
     fontFamily = "'EB Garamond', serif",
   } = params || {};
@@ -31,7 +31,7 @@ export const drawResonanceTotem = ({
   const getVal = (i: number) => (data && data[i] !== undefined ? data[i] / 255 : 0);
   // Fallbacks if refs don't exist
   const bass = refs?.smoothBass?.current || getVal(2) * 1.5 || 0;
-  const treble = refs?.smoothTreble?.current || getVal(20) || 0;
+  const _treble = refs?.smoothTreble?.current || getVal(20) || 0;
 
   // 2. BACKGROUND CLEAR (Minimalists use deep carbon)
   ctx.save();

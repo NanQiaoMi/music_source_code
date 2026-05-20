@@ -20,7 +20,7 @@ export const AuditoryGene: React.FC = () => {
   const { dnaJournal, isLoading, generateDNAJournal } = useKnowledgeStore();
   const { points } = useEmotionStore();
   const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
-  const [isHovered, setIsHovered] = useState(false);
+  const [_isHovered, setIsHovered] = useState(false);
   const summary = summarizeListeningStats(listeningStats);
 
   const handleGenerate = () => {

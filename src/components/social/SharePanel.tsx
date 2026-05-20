@@ -4,7 +4,6 @@ import React, { useState, useRef, useMemo, useCallback, useEffect } from "react"
 import { Clipboard, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
-import type { Song } from "@/types/song";
 import {
   X,
   Share2,
@@ -40,7 +39,7 @@ import {
   getPosterQualityChecks,
   getTemplateMeta,
 } from "@/utils/posterWorkshop";
-import type { PosterConfig, PosterTemplate } from "@/utils/posterWorkshop";
+import type { PosterConfig } from "@/utils/posterWorkshop";
 import { PosterPreview, parseLyrics } from "./PosterTemplates";
 import { ControlGroup, GlassSlider } from "./PosterControls";
 

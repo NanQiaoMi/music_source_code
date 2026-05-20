@@ -124,7 +124,7 @@ function createLocalAudioUrl(file: File): string {
 /**
  * Generate a unique local file ID
  */
-function generateLocalFileId(): string {
+function _generateLocalFileId(): string {
   return `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 

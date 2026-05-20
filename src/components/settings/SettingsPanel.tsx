@@ -16,7 +16,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   isOpen,
   onClose,
   onOpenEQ,
-  onOpenVisualSettings,
+  onOpenVisualSettings: _onOpenVisualSettings,
 }) => {
   const volume = useAudioStore((state) => state.volume);
   const setVolume = useAudioStore((state) => state.setVolume);

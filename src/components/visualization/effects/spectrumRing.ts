@@ -13,7 +13,7 @@ export const drawSpectrumRing = ({
   params,
   time,
   refs,
-  theme,
+  theme: _theme,
 }: EffectContext) => {
   // --- 0. DIMENSIONS & PARAMS ---
   const sw = width || 1920;

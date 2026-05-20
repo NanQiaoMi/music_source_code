@@ -85,7 +85,7 @@ export const SpectrumWaterfallV8Effect: EffectPlugin = {
     const context = ctx.ctx;
     const {
       barCount = 64,
-      scrollSpeed = 3,
+      scrollSpeed: _scrollSpeed = 3,
       intensityMultiplier = 1.5,
       colorScheme = "rainbow",
       glowIntensity = 0.3,
