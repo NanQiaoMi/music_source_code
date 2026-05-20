@@ -150,7 +150,7 @@ export const DataManager: React.FC = () => {
       if (result.success && result.songs.length > 0) {
         importSongs(result.songs);
       }
-    } catch (error) {
+    } catch {
       setImportResult({
         success: false,
         songs: [],

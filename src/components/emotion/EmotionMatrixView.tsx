@@ -18,9 +18,6 @@ import {
   Music2,
   X,
   Fingerprint,
-  Terminal,
-  Cpu,
-  Hash,
 } from "lucide-react";
 import { GlassCard } from "@/components/shared/Glass/GlassCard";
 import { DNAJournal } from "@/components/widgets/DNAJournal";

@@ -2,8 +2,8 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { useHiResStore, AudioQuality } from "@/store/hiresStore";
-import { Star, Award, Activity, Music } from "lucide-react";
+import { useHiResStore } from "@/store/hiresStore";
+import { Star, Award } from "lucide-react";
 
 interface HiResBadgeProps {
   className?: string;
@@ -36,7 +36,7 @@ export const HiResMiniBadge: React.FC<HiResMiniBadgeProps> = ({
   const sampleRate = song.sampleRate || 44100;
   const bitDepth = song.bitDepth || 16;
   const channels = song.channels || 2;
-  const format = song.format || "FLAC";
+  const _format = song.format || "FLAC";
 
   const quality = detectQuality(sampleRate, bitDepth, channels);
   const color = getQualityColor(quality);

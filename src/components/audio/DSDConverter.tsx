@@ -5,17 +5,7 @@ import { useDSDProcessingStore, DSDTask, formatDSDRate } from "@/store/dsdProces
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Cpu,
-  Settings,
-  Trash2,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Download,
-  FileAudio,
-  Zap,
-} from "lucide-react";
+import { Cpu, Trash2, CheckCircle, XCircle, Loader2, Download, FileAudio, Zap } from "lucide-react";
 
 interface DSDConverterProps {
   isOpen: boolean;

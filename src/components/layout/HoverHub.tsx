@@ -3,7 +3,7 @@
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { ChevronDown } from "lucide-react";
-import { useUIStore, PanelName } from "@/store/uiStore";
+import { PanelName } from "@/store/uiStore";
 
 interface HubItem {
   id: PanelName | string;

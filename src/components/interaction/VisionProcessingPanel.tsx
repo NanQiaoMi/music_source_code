@@ -58,7 +58,7 @@ export const VisionProcessingPanel: React.FC = () => {
       } else {
         setError(data.error_message || "处理失败");
       }
-    } catch (err) {
+    } catch {
       setError("网络错误，请确保后端服务已启动");
     } finally {
       setIsProcessing(false);

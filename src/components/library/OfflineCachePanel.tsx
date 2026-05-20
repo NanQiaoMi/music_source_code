@@ -14,7 +14,6 @@ import {
   Loader2,
   HardDrive,
   Music,
-  RefreshCw,
 } from "lucide-react";
 
 interface OfflineCachePanelProps {

@@ -2,17 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Sparkles,
-  ChevronDown,
-  Activity,
-  Trash2,
-  Brain,
-  Dice1,
-  Settings,
-  Pause,
-  Play,
-} from "lucide-react";
+import { ChevronDown, Activity, Trash2, Brain, Dice1, Settings, Pause, Play } from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
 import { useLinerNotesStore } from "@/store/linerNotesStore";
 import { useGlassToast } from "@/components/shared/GlassToast";

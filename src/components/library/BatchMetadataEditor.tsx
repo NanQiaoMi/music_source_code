@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useMetadataEditorStore, BatchEditOperation } from "@/store/metadataEditorStore";
-import { Edit2, Trash2, Plus, Eye, Save, X, Wand2 } from "lucide-react";
+import { Edit2, Trash2, Plus, Eye, Save, Wand2 } from "lucide-react";
 import { usePlaylistStore } from "@/store/playlistStore";
 
 interface BatchMetadataEditorProps {

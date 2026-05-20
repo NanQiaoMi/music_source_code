@@ -14,7 +14,7 @@ interface FeatureButtonConfig {
   defaultPosition: number;
 }
 
-interface FeatureButtonsContainerProps {
+interface _FeatureButtonsContainerProps {
   onOpenFormatConverter?: () => void;
   onOpenTrackCutter?: () => void;
   onOpenFingerprintScanner?: () => void;
