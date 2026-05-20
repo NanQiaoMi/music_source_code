@@ -53,7 +53,7 @@ export function HeaderToolbar() {
 
   const [showProfessionalTools, setShowProfessionalTools] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
-    new Set(["模式与设置", "音频处理工具", "智能分析工具"])
+    new Set(["Mode and settings", "Audio tools", "Analysis tools"])
   );
   const professionalToolsRef = useRef<HTMLDivElement>(null);
 
@@ -129,13 +129,13 @@ export function HeaderToolbar() {
               className="text-[26px] font-bold tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis"
               style={{ color: "var(--theme-text-primary)" }}
             >
-              资料库
+              Music Library
             </h1>
             <p
               className="text-[13px] font-medium opacity-60 whitespace-nowrap overflow-hidden text-ellipsis"
               style={{ color: "var(--theme-text-secondary)" }}
             >
-              {songs.length > 0 ? `${songs.length} 首歌曲` : "导入音乐开始聆听"}
+              {songs.length > 0 ? `${songs.length} songs` : "Import music to begin"}
             </p>
           </div>
         </motion.div>
@@ -159,7 +159,7 @@ export function HeaderToolbar() {
             onClick={() => openPanel("search")}
             className="w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/10"
             style={{ color: "var(--theme-text-secondary)" }}
-            title="快速搜索"
+            title="Quick search"
           >
             <Search className="w-5 h-5" />
           </button>
@@ -172,7 +172,7 @@ export function HeaderToolbar() {
               background: panels.keyboardShortcuts ? "rgba(255, 255, 255, 0.1)" : "transparent",
               color: panels.keyboardShortcuts ? "white" : "var(--theme-text-secondary)",
             }}
-            title="交互捷径"
+            title="Keyboard shortcuts"
           >
             <motion.div
               whileHover={{ scale: 1.1 }}
@@ -198,7 +198,7 @@ export function HeaderToolbar() {
               background: isGestureEnabled ? "rgba(255, 255, 255, 0.15)" : "transparent",
               color: isGestureEnabled ? "white" : "var(--theme-text-secondary)",
             }}
-            title="手势交互"
+            title="Gesture control"
           >
             <motion.div
               whileHover={{ scale: 1.1 }}
@@ -229,31 +229,31 @@ export function HeaderToolbar() {
 
           {/* 3. Lyric Hub */}
           <HoverHub
-            label="歌词"
+            label="Lyrics"
             accentColor="rgba(59, 130, 246, 0.5)"
             mainIcon={<Type className="w-[18px] h-[18px]" />}
             items={[
               {
                 id: "lyricSettings",
-                label: "样式设置",
+                label: "Lyric style",
                 icon: <Type className="w-4 h-4" />,
                 action: () => openPanel("lyricSettings"),
               },
               {
                 id: "lyricsSearch",
-                label: "联网搜索",
+                label: "Online lyrics",
                 icon: <Music className="w-4 h-4" />,
                 action: () => openPanel("lyricsSearch"),
               },
               {
                 id: "lyricsImport",
-                label: "导入本地",
+                label: "Import lyrics",
                 icon: <FileText className="w-4 h-4" />,
                 action: () => openPanel("lyricsImport"),
               },
               {
                 id: "lyricsCoverEditor",
-                label: "视觉修饰",
+                label: "Cover editor",
                 icon: <Edit3 className="w-4 h-4" />,
                 action: () => openPanel("lyricsCoverEditor"),
               },
@@ -262,31 +262,31 @@ export function HeaderToolbar() {
 
           {/* 4. Library Hub */}
           <HoverHub
-            label="库房"
+            label="Library"
             accentColor="rgba(16, 185, 129, 0.5)"
             mainIcon={<Database className="w-[18px] h-[18px]" />}
             items={[
               {
                 id: "libraryManager",
-                label: "曲库管理",
+                label: "Music library",
                 icon: <Database className="w-4 h-4" />,
                 action: () => openPanel("libraryManager"),
               },
               {
                 id: "smartPlaylist",
-                label: "智能编排",
+                label: "Smart playlists",
                 icon: <ListOrdered className="w-4 h-4" />,
                 action: () => openPanel("smartPlaylist"),
               },
               {
                 id: "offlineCache",
-                label: "离线空间",
+                label: "Offline cache",
                 icon: <Cloud className="w-4 h-4" />,
                 action: () => openPanel("offlineCache"),
               },
               {
                 id: "backupRestore",
-                label: "数据归档",
+                label: "Backup and restore",
                 icon: <HardDrive className="w-4 h-4" />,
                 action: () => openPanel("backupRestore"),
               },
@@ -295,25 +295,25 @@ export function HeaderToolbar() {
 
           {/* 5. Inspiration Hub */}
           <HoverHub
-            label="发现"
+            label="Discover"
             accentColor="rgba(245, 158, 11, 0.5)"
             mainIcon={<Sparkles className="w-[18px] h-[18px]" />}
             items={[
               {
                 id: "dailyRecommendation",
-                label: "每日私享",
+                label: "Daily recommendations",
                 icon: <Sparkles className="w-4 h-4" />,
                 action: () => openPanel("dailyRecommendation"),
               },
               {
                 id: "dnaJournal",
-                label: "听觉基因",
+                label: "Listening DNA",
                 icon: <Dna className="w-4 h-4" />,
                 action: () => openPanel("dnaJournal"),
               },
               {
                 id: "listeningHistory",
-                label: "听歌排行",
+                label: "Listening history",
                 icon: <TrendingUp className="w-4 h-4" />,
                 action: () => openPanel("listeningHistory"),
               },
@@ -325,13 +325,13 @@ export function HeaderToolbar() {
               },
               {
                 id: "statsAchievements",
-                label: "成就奖章",
+                label: "Stats and badges",
                 icon: <Award className="w-4 h-4" />,
                 action: () => openPanel("statsAchievements"),
               },
               {
                 id: "instantMix",
-                label: "即兴混音",
+                label: "Instant mix",
                 icon: <Dice1 className="w-4 h-4" />,
                 action: () => openPanel("instantMix"),
               },
@@ -353,37 +353,37 @@ export function HeaderToolbar() {
 
           {/* 7. System Suite */}
           <HoverHub
-            label="工具"
+            label="Tools"
             accentColor="rgba(139, 92, 246, 0.5)"
             mainIcon={<Wrench className="w-[18px] h-[18px]" />}
             items={[
               {
                 id: "settings",
-                label: "全局偏好",
+                label: "Preferences",
                 icon: <Settings className="w-4 h-4" />,
                 action: () => openPanel("settings"),
               },
               {
                 id: "playerSkins",
-                label: "界面皮肤",
+                label: "Player skins",
                 icon: <Palette className="w-4 h-4" />,
                 action: () => openPanel("playerSkins"),
               },
               {
                 id: "sleepTimer",
-                label: "睡眠定时",
+                label: "Sleep timer",
                 icon: <Moon className="w-4 h-4" />,
                 action: () => openPanel("sleepTimer"),
               },
               {
                 id: "share",
-                label: "音乐分享",
+                label: "Share music",
                 icon: <Share2 className="w-4 h-4" />,
                 action: () => openPanel("share"),
               },
               {
                 id: "keyboardShortcuts",
-                label: "交互捷径",
+                label: "Keyboard shortcuts",
                 icon: <span className="text-[10px] font-bold">?</span>,
                 action: () => openPanel("keyboardShortcuts"),
               },
@@ -411,7 +411,7 @@ export function HeaderToolbar() {
                 color: showProfessionalTools ? "#fff" : "var(--theme-text-secondary)",
                 boxShadow: showProfessionalTools ? "0 0 15px rgba(255, 255, 255, 0.2)" : "none",
               }}
-              title="专业工具箱"
+              title="Professional tools"
             >
               <Wrench className="w-[18px] h-[18px]" />
               <ChevronDown
@@ -437,24 +437,26 @@ export function HeaderToolbar() {
                 >
                   <div className="p-2 space-y-1">
                     <div className="text-xs font-semibold text-white/50 px-3 py-2 uppercase tracking-wider">
-                      专业功能
+                      Professional tools
                     </div>
 
-                    {/* 模式与设置 */}
+                    {/* Mode and settings */}
                     <div>
                       <button
-                        onClick={() => toggleGroup("模式与设置")}
+                        onClick={() => toggleGroup("Mode and settings")}
                         className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-left"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-white/90">模式与设置</span>
+                          <span className="text-sm font-medium text-white/90">
+                            Mode and settings
+                          </span>
                         </div>
                         <ChevronDown
-                          className={`w-4 h-4 text-white/50 transition-transform duration-200 ${expandedGroups.has("模式与设置") ? "rotate-180" : ""}`}
+                          className={`w-4 h-4 text-white/50 transition-transform duration-200 ${expandedGroups.has("Mode and settings") ? "rotate-180" : ""}`}
                         />
                       </button>
                       <AnimatePresence>
-                        {expandedGroups.has("模式与设置") && (
+                        {expandedGroups.has("Mode and settings") && (
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
@@ -470,7 +472,7 @@ export function HeaderToolbar() {
                                 }}
                                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-left"
                               >
-                                <span className="text-sm text-white/80">专业模式</span>
+                                <span className="text-sm text-white/80">Professional mode</span>
                               </button>
                             </div>
                           </motion.div>
@@ -478,22 +480,22 @@ export function HeaderToolbar() {
                       </AnimatePresence>
                     </div>
 
-                    {/* 音频处理工具 */}
+                    {/* Audio tools */}
                     <div>
                       <button
-                        onClick={() => toggleGroup("音频处理工具")}
+                        onClick={() => toggleGroup("Audio tools")}
                         className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-left"
                       >
                         <div className="flex items-center gap-2">
                           <Disc3 className="w-4 h-4 text-pink-400" />
-                          <span className="text-sm font-medium text-white/90">音频处理工具</span>
+                          <span className="text-sm font-medium text-white/90">Audio tools</span>
                         </div>
                         <ChevronDown
-                          className={`w-4 h-4 text-white/50 transition-transform duration-200 ${expandedGroups.has("音频处理工具") ? "rotate-180" : ""}`}
+                          className={`w-4 h-4 text-white/50 transition-transform duration-200 ${expandedGroups.has("Audio tools") ? "rotate-180" : ""}`}
                         />
                       </button>
                       <AnimatePresence>
-                        {expandedGroups.has("音频处理工具") && (
+                        {expandedGroups.has("Audio tools") && (
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
@@ -509,7 +511,7 @@ export function HeaderToolbar() {
                                 }}
                                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-left"
                               >
-                                <span className="text-sm text-white/80">格式转换</span>
+                                <span className="text-sm text-white/80">Format converter</span>
                               </button>
                               <button
                                 onClick={() => {
@@ -518,7 +520,7 @@ export function HeaderToolbar() {
                                 }}
                                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-left"
                               >
-                                <span className="text-sm text-white/80">DSD 转换</span>
+                                <span className="text-sm text-white/80">DSD converter</span>
                               </button>
                               <button
                                 onClick={() => {
@@ -528,7 +530,7 @@ export function HeaderToolbar() {
                                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-left"
                               >
                                 <Scissors className="w-4 h-4 text-purple-400" />
-                                <span className="text-sm text-white/80">整轨切割</span>
+                                <span className="text-sm text-white/80">Track cutter</span>
                               </button>
                             </div>
                           </motion.div>
@@ -536,22 +538,22 @@ export function HeaderToolbar() {
                       </AnimatePresence>
                     </div>
 
-                    {/* 智能分析工具 */}
+                    {/* Analysis tools */}
                     <div>
                       <button
-                        onClick={() => toggleGroup("智能分析工具")}
+                        onClick={() => toggleGroup("Analysis tools")}
                         className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-left"
                       >
                         <div className="flex items-center gap-2">
                           <Waves className="w-4 h-4 text-green-400" />
-                          <span className="text-sm font-medium text-white/90">智能分析工具</span>
+                          <span className="text-sm font-medium text-white/90">Analysis tools</span>
                         </div>
                         <ChevronDown
-                          className={`w-4 h-4 text-white/50 transition-transform duration-200 ${expandedGroups.has("智能分析工具") ? "rotate-180" : ""}`}
+                          className={`w-4 h-4 text-white/50 transition-transform duration-200 ${expandedGroups.has("Analysis tools") ? "rotate-180" : ""}`}
                         />
                       </button>
                       <AnimatePresence>
-                        {expandedGroups.has("智能分析工具") && (
+                        {expandedGroups.has("Analysis tools") && (
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
@@ -567,7 +569,7 @@ export function HeaderToolbar() {
                                 }}
                                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-left"
                               >
-                                <span className="text-sm text-white/80">交叉淡入淡出</span>
+                                <span className="text-sm text-white/80">Crossfade mixer</span>
                               </button>
                               <button
                                 onClick={() => {
@@ -576,7 +578,7 @@ export function HeaderToolbar() {
                                 }}
                                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-left"
                               >
-                                <span className="text-sm text-white/80">音频指纹</span>
+                                <span className="text-sm text-white/80">Audio fingerprint</span>
                               </button>
                               <button
                                 onClick={() => {
@@ -585,7 +587,7 @@ export function HeaderToolbar() {
                                 }}
                                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-left"
                               >
-                                <span className="text-sm text-white/80">健康检查</span>
+                                <span className="text-sm text-white/80">Library health</span>
                               </button>
                             </div>
                           </motion.div>
@@ -618,7 +620,7 @@ export function HeaderToolbar() {
                 d="M12 6v6m0 0v6m0-6h6m-6 0H6"
               />
             </svg>
-            管理音乐
+            Manage music
           </motion.a>
         </motion.nav>
       </div>

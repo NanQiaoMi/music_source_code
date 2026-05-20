@@ -90,4 +90,49 @@ describe("HeaderToolbar", () => {
 
     expect(mocks.openPanel).toHaveBeenCalledWith("listeningJournal");
   });
+
+  it("uses readable labels for the primary navigation hubs", async () => {
+    const { HeaderToolbar } = await import("./HeaderToolbar");
+
+    const html = renderToStaticMarkup(<HeaderToolbar />);
+
+    expect(html).toContain("Music Library");
+    expect(html).toContain("Import music to begin");
+    expect(html).toContain('title="Quick search"');
+    expect(html).toContain('title="Professional tools"');
+
+    expect(mocks.capturedHubs.map((hub) => hub.label)).toEqual([
+      "Lyrics",
+      "Library",
+      "Discover",
+      "Tools",
+    ]);
+
+    const labelsById = Object.fromEntries(
+      mocks.capturedHubs.flatMap((hub) => hub.items).map((item) => [item.id, item.label])
+    );
+
+    expect(labelsById).toMatchObject({
+      lyricSettings: "Lyric style",
+      lyricsSearch: "Online lyrics",
+      lyricsImport: "Import lyrics",
+      lyricsCoverEditor: "Cover editor",
+      libraryManager: "Music library",
+      smartPlaylist: "Smart playlists",
+      offlineCache: "Offline cache",
+      backupRestore: "Backup and restore",
+      dailyRecommendation: "Daily recommendations",
+      dnaJournal: "Listening DNA",
+      listeningHistory: "Listening history",
+      listeningJournal: "Listening Journal",
+      statsAchievements: "Stats and badges",
+      instantMix: "Instant mix",
+      smartMixSession: "Smart Mix",
+      settings: "Preferences",
+      playerSkins: "Player skins",
+      sleepTimer: "Sleep timer",
+      share: "Share music",
+      keyboardShortcuts: "Keyboard shortcuts",
+    });
+  });
 });
