@@ -31,8 +31,8 @@ export const PosterPreview = ({
 }) => {
   const W = RENDER_WIDTH; // 800
   const H = renderHeight;
-  const isLandscape = config.aspectRatio > 1.2;
-  const isSquare = config.aspectRatio > 0.9 && config.aspectRatio < 1.1;
+  const _isLandscape = config.aspectRatio > 1.2;
+  const _isSquare = config.aspectRatio > 0.9 && config.aspectRatio < 1.1;
 
   // Adaptive sizing based on canvas area
   const coverSize = Math.min(W * 0.42, H * 0.32);
@@ -674,8 +674,8 @@ export const PosterPreview = ({
 
   // --- CASSETTE TEMPLATE ---
   if (config.template === "cassette") {
-    const reelSize = Math.min(80, H * 0.06);
-    const infoCover = Math.min(120, H * 0.1);
+    const _reelSize = Math.min(80, H * 0.06);
+    const _infoCover = Math.min(120, H * 0.1);
     return (
       <div
         ref={posterRef}

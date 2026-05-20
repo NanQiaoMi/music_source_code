@@ -4,7 +4,6 @@ import {
   AnimationTrack,
   AnimationKeyframe,
   AnimationSyncMode,
-  DEFAULT_ANIMATION_PRESETS,
   AnimationPreset,
 } from "@/lib/visualization/animationTypes";
 

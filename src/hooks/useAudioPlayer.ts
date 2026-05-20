@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
-import { useAudioStore, AudioError } from "@/store/audioStore";
+import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useEQStore } from "@/store/eqStore";
 import { getStoredMusic, createBlobUrlFromStoredMusic } from "@/services/localMusicStorage";
@@ -20,15 +20,21 @@ const currentAudioUrlRef: { current: string | null } = { current: null };
 const isPlayingRef: { current: boolean } = { current: false };
 const currentSongIdRef: { current: string | null } = { current: null };
 let activeManagerId: string | null = null;
-const playStartTime: number = 0;
+const _playStartTime: number = 0;
 
 // Stable event handlers outside the hook to prevent duplicate listeners
 // and ensure we can attach them once to each audio element
 const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => void) => {
   detachListeners(audio);
 
-  const { setCurrentTime, setDuration, setIsLoading, setError, nextSong, loopMode } =
-    useAudioStore.getState();
+  const {
+    setCurrentTime,
+    setDuration,
+    setIsLoading,
+    setError,
+    nextSong,
+    loopMode: _loopMode,
+  } = useAudioStore.getState();
 
   const onTimeUpdate = () => {
     setCurrentTime(audio.currentTime);
@@ -136,7 +142,7 @@ export const useAudioPlayer = () => {
   const setError = useAudioStore((state) => state.setError);
   const setDynamicCrossfadeDuration = useAudioStore((state) => state.setDynamicCrossfadeDuration);
 
-  const { recordPlay } = useStatsAchievementsStore();
+  const { recordPlay: _recordPlay } = useStatsAchievementsStore();
 
   const handlePlayError = useCallback(
     (error: any) => {

@@ -63,7 +63,7 @@ export function VisualizationView() {
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const themeColors = useUIStore((state) => state.themeColors);
-  const isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
+  const _isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
   const currentTime = useAudioStore((state) => state.currentTime);
   const duration = useAudioStore((state) => state.duration);
   const bufferedRanges = useAudioStore((state) => state.bufferedRanges);
@@ -71,7 +71,7 @@ export function VisualizationView() {
   const nextSong = useAudioStore((state) => state.nextSong);
   const { currentEffect, setCurrentEffect, isFullscreen, setIsFullscreen, effectSettings } =
     useVisualizationStore();
-  const { currentTheme } = useVisualSettingsStore();
+  const { currentTheme: _currentTheme } = useVisualSettingsStore();
   const { seek } = useAudioPlayer();
   const [showSettings, setShowSettings] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
@@ -324,7 +324,7 @@ export function VisualizationView() {
       initParticles(canvas.width, canvas.height);
     };
 
-    const initParticles = (w: number, h: number) => {
+    const initParticles = (_w: number, _h: number) => {
       particlesRef.current = [];
       const count = 1000;
       for (let i = 0; i < count; i++) {
@@ -341,7 +341,7 @@ export function VisualizationView() {
     resize();
     window.addEventListener("resize", resize);
 
-    const lerpHue = (current: number, target: number, factor: number) => {
+    const _lerpHue = (current: number, target: number, factor: number) => {
       let diff = target - current;
       while (diff > 180) diff -= 360;
       while (diff < -180) diff += 360;

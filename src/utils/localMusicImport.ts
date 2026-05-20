@@ -20,7 +20,7 @@ const SUPPORTED_AUDIO_FORMATS = [".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a"
 const SUPPORTED_IMAGE_FORMATS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
 
 // Supported lyrics formats
-const SUPPORTED_LYRICS_FORMATS = [".lrc"];
+const _SUPPORTED_LYRICS_FORMATS = [".lrc"];
 
 /**
  * Extract metadata from audio file using jsmediatags
