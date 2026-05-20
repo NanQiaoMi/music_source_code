@@ -13,7 +13,7 @@ function day(date: string, totalMinutes = 10): JournalDay {
 describe("listeningJournalStore", () => {
   beforeEach(() => {
     vi.setSystemTime(new Date("2026-05-20T12:00:00.000Z"));
-    useListeningJournalStore.setState({ days: {}, selectedDate: "2026-05-20" });
+    useListeningJournalStore.setState({ days: {}, eventsByDate: {}, selectedDate: "2026-05-20" });
     localStorage.clear();
   });
 
@@ -61,11 +61,58 @@ describe("listeningJournalStore", () => {
     useListeningJournalStore.getState().upsertDay(day("2026-02-01", 1));
     useListeningJournalStore.getState().upsertDay(day("2026-02-20", 2));
     useListeningJournalStore.getState().upsertDay(day("2026-05-20", 3));
+    useListeningJournalStore.setState({
+      eventsByDate: {
+        "2026-02-01": [{ songId: "old", playedAt: Date.now(), listenSeconds: 60 }],
+        "2026-02-20": [{ songId: "keep", playedAt: Date.now(), listenSeconds: 60 }],
+      },
+    });
 
     useListeningJournalStore.getState().trimToLast90Days();
 
     expect(useListeningJournalStore.getState().days["2026-02-01"]).toBeUndefined();
     expect(useListeningJournalStore.getState().days["2026-02-20"]).toBeDefined();
     expect(useListeningJournalStore.getState().days["2026-05-20"]).toBeDefined();
+    expect(useListeningJournalStore.getState().eventsByDate["2026-02-01"]).toBeUndefined();
+    expect(useListeningJournalStore.getState().eventsByDate["2026-02-20"]).toHaveLength(1);
+  });
+
+  it("records play events into the daily journal rollup", () => {
+    const store = useListeningJournalStore.getState();
+
+    store.recordPlay({ songId: "a", playedAt: Date.now(), listenSeconds: 90, mood: "focus" });
+    store.recordPlay({
+      songId: "b",
+      playedAt: Date.now() + 1,
+      listenSeconds: 60,
+      mood: "calm",
+    });
+    store.recordPlay({
+      songId: "a",
+      playedAt: Date.now() + 2,
+      listenSeconds: 30,
+      mood: "focus",
+    });
+
+    expect(useListeningJournalStore.getState().days["2026-05-20"]).toMatchObject({
+      date: "2026-05-20",
+      totalMinutes: 3,
+      topSongIds: ["a", "b"],
+      dominantMood: "focus",
+    });
+    expect(useListeningJournalStore.getState().eventsByDate["2026-05-20"]).toHaveLength(3);
+  });
+
+  it("preserves the note when recording another play for the same day", () => {
+    const store = useListeningJournalStore.getState();
+
+    store.appendNote("2026-05-20", "Late night listening");
+    store.recordPlay({ songId: "a", playedAt: Date.now(), listenSeconds: 60 });
+
+    expect(useListeningJournalStore.getState().days["2026-05-20"]).toMatchObject({
+      note: "Late night listening",
+      totalMinutes: 1,
+      topSongIds: ["a"],
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildJournalSongRows,
+  deriveJournalMood,
   getIsoDate,
   rollupDay,
   type JournalPlayEvent,
@@ -45,6 +46,15 @@ describe("rollupDay", () => {
 
   it("creates ISO date strings from an anchor date", () => {
     expect(getIsoDate(-1, new Date("2026-05-20T12:00:00.000Z"))).toBe("2026-05-19");
+  });
+
+  it("derives readable mood labels from emotion coordinates", () => {
+    expect(deriveJournalMood({ x: 0.7, y: 0.8 })).toBe("uplift");
+    expect(deriveJournalMood({ x: -0.6, y: 0.7 })).toBe("intense");
+    expect(deriveJournalMood({ x: 0.5, y: -0.7 })).toBe("soft");
+    expect(deriveJournalMood({ x: -0.5, y: -0.7 })).toBe("low-key");
+    expect(deriveJournalMood({ x: 0, y: 0 })).toBe("neutral");
+    expect(deriveJournalMood(null)).toBeNull();
   });
 
   it("builds readable top-song rows from journal song ids", () => {

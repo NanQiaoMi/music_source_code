@@ -1,4 +1,5 @@
 import type { Song } from "@/types/song";
+import type { EmotionCoordinate } from "@/types/emotion";
 
 export interface JournalPlayEvent {
   songId: string;
@@ -21,6 +22,18 @@ export interface JournalSongRow {
   artist: string;
   album?: string;
   missing: boolean;
+}
+
+export function deriveJournalMood(emotion?: EmotionCoordinate | null): string | null {
+  if (!emotion) return null;
+
+  const valence = Number.isFinite(emotion.x) ? Math.max(-1, Math.min(1, emotion.x)) : 0;
+  const arousal = Number.isFinite(emotion.y) ? Math.max(-1, Math.min(1, emotion.y)) : 0;
+
+  if (Math.abs(valence) < 0.15 && Math.abs(arousal) < 0.15) return "neutral";
+  if (arousal >= 0.35) return valence >= 0 ? "uplift" : "intense";
+  if (arousal <= -0.35) return valence >= 0 ? "soft" : "low-key";
+  return valence >= 0 ? "bright" : "reflective";
 }
 
 export function rollupDay(date: string, events: JournalPlayEvent[], note?: string): JournalDay {

@@ -6,10 +6,13 @@ import { usePlayerStore } from "@/store/playerStore";
 import { useEQStore } from "@/store/eqStore";
 import { getStoredMusic, createBlobUrlFromStoredMusic } from "@/services/localMusicStorage";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
+import { useListeningJournalStore } from "@/store/listeningJournalStore";
+import { useEmotionStore } from "@/store/emotionStore";
 import { useABLoopStore } from "@/store/abLoopStore";
 import { getAudioEffectsManager } from "@/lib/audio/AudioEffectsManager";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
 import { CrossfadeMixer } from "@/lib/audio/CrossfadeMixer";
+import { deriveJournalMood } from "@/lib/journal/listeningJournal";
 
 // Module-level shared state to persist across hook unmounts/remounts
 let audioInstance: HTMLAudioElement | null = null;
@@ -19,12 +22,59 @@ const secondaryElementRef: { current: HTMLAudioElement | null } = { current: nul
 const currentAudioUrlRef: { current: string | null } = { current: null };
 const isPlayingRef: { current: boolean } = { current: false };
 const currentSongIdRef: { current: string | null } = { current: null };
+const lastRecordedSongIdRef: { current: string | null } = { current: null };
 let activeManagerId: string | null = null;
-const _playStartTime: number = 0;
+const CONFIRMED_PLAYBACK_SECONDS = 5;
+
+type ManagedAudioElement = HTMLAudioElement & {
+  _vibeListenersAttached?: boolean;
+  _vibeCleanup?: () => void;
+};
+
+type PlaybackErrorLike = {
+  name?: string;
+  code?: number;
+  message?: string;
+};
+
+type AudioWindow = Window & {
+  audioElementRef?: typeof audioElementRef;
+};
+
+function ensureAudioElements(): HTMLAudioElement | null {
+  if (typeof Audio === "undefined") return audioElementRef.current;
+
+  if (!audioInstance) {
+    audioInstance = new Audio();
+    audioInstance.crossOrigin = "anonymous";
+    audioElementRef.current = audioInstance;
+
+    secondaryAudioInstance = new Audio();
+    secondaryAudioInstance.crossOrigin = "anonymous";
+    secondaryElementRef.current = secondaryAudioInstance;
+  }
+
+  return audioElementRef.current;
+}
+
+function getPlaybackError(error: unknown): PlaybackErrorLike {
+  return typeof error === "object" && error !== null ? (error as PlaybackErrorLike) : {};
+}
+
+function getPlaybackErrorMessage(error: unknown): string {
+  const playbackError = getPlaybackError(error);
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (playbackError.message) return playbackError.message;
+  return "unknown reason";
+}
 
 // Stable event handlers outside the hook to prevent duplicate listeners
 // and ensure we can attach them once to each audio element
-const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => void) => {
+const attachListeners = (
+  audio: ManagedAudioElement,
+  handlePlayError: (error: PlaybackErrorLike) => void
+) => {
   detachListeners(audio);
 
   const {
@@ -71,8 +121,8 @@ const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => v
       nextSong();
     }
   };
-  const onError = (e: any) => {
-    const error = (e.target as HTMLAudioElement).error;
+  const onError = (event: Event) => {
+    const error = (event.target as HTMLAudioElement).error;
     console.error("Audio element error event:", error);
     if (error) {
       setError({
@@ -98,8 +148,8 @@ const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => v
   audio.addEventListener("ended", onEnded);
   audio.addEventListener("error", onError);
 
-  (audio as any)._vibeListenersAttached = true;
-  (audio as any)._vibeCleanup = () => {
+  audio._vibeListenersAttached = true;
+  audio._vibeCleanup = () => {
     audio.removeEventListener("timeupdate", onTimeUpdate);
     audio.removeEventListener("loadedmetadata", onLoadedMetadata);
     audio.removeEventListener("durationchange", onDurationChange);
@@ -111,20 +161,22 @@ const attachListeners = (audio: HTMLAudioElement, handlePlayError: (e: any) => v
     audio.removeEventListener("pause", onPause);
     audio.removeEventListener("ended", onEnded);
     audio.removeEventListener("error", onError);
-    (audio as any)._vibeListenersAttached = false;
-    (audio as any)._vibeCleanup = undefined;
+    audio._vibeListenersAttached = false;
+    audio._vibeCleanup = undefined;
   };
 };
 
-const detachListeners = (audio: HTMLAudioElement) => {
-  if (typeof (audio as any)._vibeCleanup === "function") {
-    (audio as any)._vibeCleanup();
+const detachListeners = (audio: ManagedAudioElement) => {
+  if (typeof audio._vibeCleanup === "function") {
+    audio._vibeCleanup();
   }
 };
 
 export const useAudioPlayer = () => {
   const [hookId] = useState(() => Math.random().toString(36).substr(2, 9));
-  const [audioElement, setLocalAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [audioElement, setLocalAudioElement] = useState<HTMLAudioElement | null>(() =>
+    ensureAudioElements()
+  );
 
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const volume = usePlayerStore((state) => state.volume);
@@ -142,16 +194,19 @@ export const useAudioPlayer = () => {
   const setError = useAudioStore((state) => state.setError);
   const setDynamicCrossfadeDuration = useAudioStore((state) => state.setDynamicCrossfadeDuration);
 
-  const { recordPlay: _recordPlay } = useStatsAchievementsStore();
+  const recordStatsPlay = useStatsAchievementsStore((state) => state.recordPlay);
+  const recordJournalPlay = useListeningJournalStore((state) => state.recordPlay);
 
   const handlePlayError = useCallback(
-    (error: any) => {
+    (error: PlaybackErrorLike) => {
+      const playbackError = getPlaybackError(error);
+      const message = getPlaybackErrorMessage(error);
       const isAbortError =
-        error.name === "AbortError" ||
-        error.code === 20 ||
-        error.message?.includes("interrupted") ||
-        error.message?.includes("new load request") ||
-        error.message?.includes("pause");
+        playbackError.name === "AbortError" ||
+        playbackError.code === 20 ||
+        message.includes("interrupted") ||
+        message.includes("new load request") ||
+        message.includes("pause");
 
       if (isAbortError) return;
 
@@ -168,21 +223,14 @@ export const useAudioPlayer = () => {
 
   // Initialization Effect
   useEffect(() => {
-    if (!audioInstance) {
-      audioInstance = new Audio();
-      audioInstance.crossOrigin = "anonymous";
-      audioElementRef.current = audioInstance;
-
-      secondaryAudioInstance = new Audio();
-      secondaryAudioInstance.crossOrigin = "anonymous";
-      secondaryElementRef.current = secondaryAudioInstance;
+    const audio = ensureAudioElements();
+    if (audio && audioElement !== audio) {
+      queueMicrotask(() => setLocalAudioElement(audio));
     }
-
-    setLocalAudioElement(audioElementRef.current);
 
     // Global ref for legacy components
     if (typeof window !== "undefined") {
-      (window as any).audioElementRef = audioElementRef;
+      (window as AudioWindow).audioElementRef = audioElementRef;
     }
 
     // Manager election
@@ -195,7 +243,7 @@ export const useAudioPlayer = () => {
         activeManagerId = null;
       }
     };
-  }, [hookId]);
+  }, [audioElement, hookId]);
 
   // Sync state with shared element whenever it changes
   useEffect(() => {
@@ -270,6 +318,9 @@ export const useAudioPlayer = () => {
 
       const previousSongId = currentSongIdRef.current;
       currentSongIdRef.current = songId;
+      if (previousSongId !== songId) {
+        lastRecordedSongIdRef.current = null;
+      }
 
       let audioUrl = currentSong.audioUrl;
       if (audioUrl?.startsWith("stored://")) {
@@ -321,6 +372,35 @@ export const useAudioPlayer = () => {
     setIsLoading,
     setDynamicCrossfadeDuration,
   ]);
+
+  useEffect(() => {
+    if (activeManagerId !== hookId || !currentSong || !isPlaying) return;
+
+    const songId = currentSong.id;
+    if (lastRecordedSongIdRef.current === songId) return;
+
+    const playedAt = Date.now();
+    const timer = window.setTimeout(() => {
+      const playerState = usePlayerStore.getState();
+      if (!playerState.isPlaying || playerState.currentSong?.id !== songId) return;
+
+      const audio = audioElementRef.current;
+      const elapsedSeconds = Math.round(audio?.currentTime || CONFIRMED_PLAYBACK_SECONDS);
+      const songDuration = Math.round(currentSong.duration || elapsedSeconds);
+      const listenSeconds = Math.min(
+        Math.max(CONFIRMED_PLAYBACK_SECONDS, elapsedSeconds),
+        Math.max(CONFIRMED_PLAYBACK_SECONDS, songDuration)
+      );
+      const mood = deriveJournalMood(useEmotionStore.getState().emotionMap[songId]);
+
+      lastRecordedSongIdRef.current = songId;
+      recordStatsPlay(currentSong, listenSeconds, false, false, currentSong.format || "standard");
+      recordJournalPlay({ songId, playedAt, listenSeconds, mood });
+      useListeningJournalStore.getState().trimToLast90Days();
+    }, CONFIRMED_PLAYBACK_SECONDS * 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [hookId, currentSong, isPlaying, recordStatsPlay, recordJournalPlay]);
 
   // Side effects sync
   useEffect(() => {
