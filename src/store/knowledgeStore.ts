@@ -222,7 +222,7 @@ export const useKnowledgeStore = create<KnowledgeState>()(
           } else {
             throw new Error("Failed to parse DNA Journal");
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("generateDNAJournal failed:", error);
           set({ isLoading: false });
         }

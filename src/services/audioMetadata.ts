@@ -104,7 +104,7 @@ function extractCoverImage(tags: any): { data: string; format: string } | undefi
       reader.onerror = () => resolve(undefined);
       reader.readAsDataURL(blob);
     }) as any;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error extracting cover image:", error);
     return undefined;
   }
@@ -215,7 +215,7 @@ export async function extractAudioMetadata(
 
           resolve(metadata);
         },
-        onError: async (_error: any) => {
+        onError: async (_error: unknown) => {
           // Fallback to filename parsing if metadata extraction fails
           const parsedFilename = parseFilename(file.name);
           const duration = await durationPromise;
@@ -239,7 +239,7 @@ export async function extractAudioMetadata(
       success: true,
       metadata: metadataResult,
     };
-  } catch (error) {
+  } catch (error: any) {
     return {
       success: false,
       error: `元数据提取失败: ${error instanceof Error ? error.message : "未知错误"}`,
