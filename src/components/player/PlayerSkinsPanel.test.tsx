@@ -3,6 +3,39 @@ import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const originalGetContext = HTMLCanvasElement.prototype.getContext;
+
+function createCanvasContextStub(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+  return {
+    canvas,
+    clearRect: vi.fn(),
+    beginPath: vi.fn(),
+    arc: vi.fn(),
+    stroke: vi.fn(),
+    fill: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    save: vi.fn(),
+    restore: vi.fn(),
+    translate: vi.fn(),
+    rotate: vi.fn(),
+    createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+    set fillStyle(_value: string | CanvasGradient) {},
+    set strokeStyle(_value: string | CanvasGradient) {},
+    set globalAlpha(_value: number) {},
+    set lineWidth(_value: number) {},
+  } as unknown as CanvasRenderingContext2D;
+}
+
+function installCanvasContextStub() {
+  Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+    configurable: true,
+    value: vi.fn(function (this: HTMLCanvasElement, contextId: string) {
+      return contextId === "2d" ? createCanvasContextStub(this) : null;
+    }) as HTMLCanvasElement["getContext"],
+  });
+}
+
 vi.mock("framer-motion", () => ({
   motion: {
     div: "div",
@@ -22,12 +55,17 @@ vi.mock("@/store/visualSettingsStore", () => ({
 
 beforeEach(async () => {
   localStorage.clear();
+  installCanvasContextStub();
   const { usePlayerSkinStore } = await import("@/store/playerSkinStore");
   usePlayerSkinStore.setState({ activeHaloId: "aurora" });
 });
 
 afterEach(() => {
   document.body.innerHTML = "";
+  Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+    configurable: true,
+    value: originalGetContext,
+  });
 });
 
 describe("PlayerSkinsPanel", () => {

@@ -2,12 +2,13 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { useAudioStore } from "@/store/audioStore";
+import { useAudioStore, type LoopMode } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { useProfessionalModeStore } from "@/store/professionalModeStore";
 import { useAudioElementRef } from "@/context/AudioElementContext";
 import { WaveformVisualization } from "@/components/audio/WaveformVisualization";
 import { SpectrumAnalyzer } from "@/components/audio/SpectrumAnalyzer";
+import { NowPlayingHalo } from "@/components/player/NowPlayingHalo";
 import { Award, ChevronUp, Volume2, VolumeX, Disc3, Repeat, Repeat1, Shuffle } from "lucide-react";
 
 const formatTime = (seconds: number): string => {
@@ -22,6 +23,7 @@ interface FloatingPlayerProps {
 }
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
+const LOOP_SEQUENCE: LoopMode[] = ["none", "all", "single"];
 
 export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
   const isPlaying = useAudioStore((state) => state.isPlaying);
@@ -47,6 +49,7 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
   const [isHoveringControls, setIsHoveringControls] = useState(false);
   const [position, setPosition] = useState({ x: 24, y: 300 });
   const [isDragging, setIsDragging] = useState(false);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
@@ -99,35 +102,41 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
     };
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+
+      e.preventDefault();
+
+      const newX = e.clientX - dragStartRef.current.x;
+      const newY = e.clientY - dragStartRef.current.y;
+
+      const clamped = clampPosition(newX, newY);
+      setPosition(clamped);
+    },
+    [clampPosition]
+  );
+
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      if (!isDraggingRef.current) return;
+
+      const touch = e.touches[0];
+      const newX = touch.clientX - dragStartRef.current.x;
+      const newY = touch.clientY - dragStartRef.current.y;
+
+      const clamped = clampPosition(newX, newY);
+      setPosition(clamped);
+    },
+    [clampPosition]
+  );
+
+  const handleDragEnd = useCallback(() => {
     if (!isDraggingRef.current) return;
 
-    e.preventDefault();
-
-    const newX = e.clientX - dragStartRef.current.x;
-    const newY = e.clientY - dragStartRef.current.y;
-
-    const clamped = clampPosition(newX, newY);
-    setPosition(clamped);
-  };
-
-  const handleTouchMove = (e: TouchEvent) => {
-    if (!isDraggingRef.current) return;
-
-    const touch = e.touches[0];
-    const newX = touch.clientX - dragStartRef.current.x;
-    const newY = touch.clientY - dragStartRef.current.y;
-
-    const clamped = clampPosition(newX, newY);
-    setPosition(clamped);
-  };
-
-  const handleDragEnd = () => {
-    if (isDraggingRef.current) {
-      isDraggingRef.current = false;
-      setIsDragging(false);
-    }
-  };
+    isDraggingRef.current = false;
+    setIsDragging(false);
+  }, []);
 
   useEffect(() => {
     if (isDragging) {
@@ -143,7 +152,11 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleDragEnd);
     };
-  }, [isDragging]);
+  }, [handleDragEnd, handleMouseMove, handleTouchMove, isDragging]);
+
+  useEffect(() => {
+    setAudioElement(audioElementRef.current);
+  }, [audioElementRef, isExpanded]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -225,7 +238,14 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
                 setIsExpanded(!isExpanded);
               }}
             >
-              <div className="relative w-full h-full rounded-xl overflow-hidden shadow-lg bg-black/40">
+              <NowPlayingHalo
+                currentTime={currentTime}
+                isPlaying={isPlaying}
+                level={isMuted ? 0 : volume}
+                size={88}
+                className="opacity-90"
+              />
+              <div className="relative z-10 w-full h-full rounded-xl overflow-hidden shadow-lg bg-black/40">
                 <div className={`absolute inset-0 ${isPlaying ? "animate-spin-slow" : ""}`}>
                   <Image
                     src={currentSong.cover || DEFAULT_COVER_SRC}
@@ -327,7 +347,7 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
                   <div className="overflow-hidden rounded-lg">
                     <WaveformVisualization
                       songId={currentSong?.id}
-                      audioElement={audioElementRef.current}
+                      audioElement={audioElement}
                       className="h-14 bg-black/40 rounded-lg"
                     />
                   </div>
@@ -336,7 +356,7 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
                 {isFeatureEnabled("spectrum") && (
                   <div className="overflow-hidden rounded-lg">
                     <SpectrumAnalyzer
-                      audioElement={audioElementRef.current}
+                      audioElement={audioElement}
                       className="h-14 bg-black/40 rounded-lg"
                     />
                   </div>
@@ -422,10 +442,9 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = () => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      const modes: ("none" | "all" | "single")[] = ["none", "all", "single"];
-                      const currentIndex = modes.indexOf(loopMode as any);
-                      const nextIndex = (currentIndex + 1) % modes.length;
-                      setLoopMode(modes[nextIndex]);
+                      const currentIndex = LOOP_SEQUENCE.indexOf(loopMode);
+                      const nextIndex = (Math.max(currentIndex, 0) + 1) % LOOP_SEQUENCE.length;
+                      setLoopMode(LOOP_SEQUENCE[nextIndex]);
                     }}
                     className={`transition-all ${
                       loopMode === "all" || loopMode === "single"

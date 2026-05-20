@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { Volume2, VolumeX, Music2, Maximize2 } from "lucide-react";
+import { NowPlayingHalo } from "@/components/player/NowPlayingHalo";
 import { GlassRadarWidget } from "@/components/widgets/GlassRadarWidget";
 import { useABLoopStore } from "@/store/abLoopStore";
 import { ABLoopProgressMarkers } from "@/components/shared/ABLoopProgressMarkers";
@@ -118,24 +119,33 @@ export const GlobalPlayerBar: React.FC = () => {
         <div className="flex items-center gap-4 min-w-0 flex-1">
           <motion.div
             layoutId={currentSong ? `album-cover-${currentSong.id}` : undefined}
-            className="relative w-12 h-12 rounded-md overflow-hidden shadow-md flex-shrink-0 cursor-pointer"
+            className="relative w-12 h-12 flex-shrink-0 cursor-pointer"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             transition={APPLE_SPRING_CONFIG}
             onClick={() => setCurrentView("player")}
           >
-            <Image
-              src={currentSong.cover || DEFAULT_COVER_SRC}
-              alt={currentSong.title}
-              fill
-              className="object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = "/default-cover.svg";
-              }}
-              unoptimized
+            <NowPlayingHalo
+              currentTime={currentTime}
+              isPlaying={isPlaying}
+              level={isMuted ? 0 : volume}
+              size={76}
+              className="opacity-85"
             />
-            <div className="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-md" />
+            <div className="relative z-10 h-full w-full overflow-hidden rounded-md shadow-md">
+              <Image
+                src={currentSong.cover || DEFAULT_COVER_SRC}
+                alt={currentSong.title}
+                fill
+                className="object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = "/default-cover.svg";
+                }}
+                unoptimized
+              />
+              <div className="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-md" />
+            </div>
           </motion.div>
 
           <div className="min-w-0 flex-1 max-w-[200px]">
