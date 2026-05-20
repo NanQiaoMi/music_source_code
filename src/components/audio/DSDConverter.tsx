@@ -15,12 +15,12 @@ interface DSDConverterProps {
 const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
   const { songs } = usePlaylistStore();
   const {
-    isEnabled,
+    isEnabled: _isEnabled,
     settings,
     tasks,
     totalProcessed,
     totalFailed,
-    setEnabled,
+    setEnabled: _setEnabled,
     setSettings,
     addTask,
     updateTaskProgress,

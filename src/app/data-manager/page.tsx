@@ -24,7 +24,7 @@ interface MiniPlayerProps {
   onClose: () => void;
 }
 
-const MiniPlayer: React.FC<MiniPlayerProps> = ({ onClose }) => {
+const MiniPlayer: React.FC<MiniPlayerProps> = ({ onClose: _onClose }) => {
   const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const currentTime = useAudioStore((state) => state.currentTime);
@@ -166,7 +166,7 @@ export default function DataManagerPage() {
   const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const currentTime = useAudioStore((state) => state.currentTime);
-  const duration = useAudioStore((state) => state.duration);
+  const _duration = useAudioStore((state) => state.duration);
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("local");
   const [showMoreMenu, setShowMoreMenu] = useState(false);

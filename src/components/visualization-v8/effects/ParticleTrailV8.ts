@@ -1,14 +1,5 @@
 import { EffectPlugin, RenderContext, AudioData } from "@/lib/visualization/types";
 
-interface TrailParticle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  trail: { x: number; y: number; alpha: number }[];
-  hue: number;
-}
-
 export const ParticleTrailV8: EffectPlugin = {
   id: "particle-trail",
   name: "粒子轨迹",

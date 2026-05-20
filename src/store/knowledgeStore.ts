@@ -113,7 +113,7 @@ export const useKnowledgeStore = create<KnowledgeState>()(
             backstories: { ...state.backstories, [key]: { content, timestamp: Date.now() } },
             isLoading: false,
           }));
-        } catch (error) {
+        } catch (_error) {
           set({ isLoading: false });
         }
       },

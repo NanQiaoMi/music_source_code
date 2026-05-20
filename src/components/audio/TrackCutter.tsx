@@ -35,10 +35,10 @@ const TrackCutter: React.FC<TrackCutterProps> = ({ isOpen, onClose }) => {
     deselectAllTracks,
     updateTrackStatus,
     removeTask,
-    clearCompletedTasks,
+    clearCompletedTasks: _clearCompletedTasks,
     setSettings,
     incrementCut,
-    incrementFailed,
+    incrementFailed: _incrementFailed,
   } = useTrackCuttingStore();
 
   const [activeTab, setActiveTab] = useState<"upload" | "tracks" | "settings">("upload");

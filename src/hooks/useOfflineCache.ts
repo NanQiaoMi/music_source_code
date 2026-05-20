@@ -26,7 +26,7 @@ export interface OfflineCacheStats {
 }
 
 export const useOfflineCache = () => {
-  const { songs, updateSong } = usePlaylistStore();
+  const { songs, updateSong: _updateSong } = usePlaylistStore();
   const [cacheStatus, setCacheStatus] = useState<Record<string, CacheStatus>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isCaching, setIsCaching] = useState<string | null>(null);

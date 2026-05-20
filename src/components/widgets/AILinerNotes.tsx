@@ -10,7 +10,7 @@ import { useEmotionStore } from "@/store/emotionStore";
 
 export const AILinerNotes: React.FC = () => {
   const currentSong = useAudioStore((state) => state.currentSong);
-  const { notes, getNotes, isGenerating, clearCache } = useLinerNotesStore();
+  const { notes: _notes, getNotes, isGenerating, clearCache: _clearCache } = useLinerNotesStore();
   const { points } = useEmotionStore();
   const { isEnabled, activeConfigId } = useAIStore();
   const [displayNote, setDisplayNote] = useState<string | null>(null);

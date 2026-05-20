@@ -6,11 +6,6 @@ import { useTotemStore } from "@/store/totemStore";
 import { useAudioStore } from "@/store/audioStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 
-interface AudioDataSummary {
-  bass: number;
-  treble: number;
-}
-
 export function ResonanceTotemLayer() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);

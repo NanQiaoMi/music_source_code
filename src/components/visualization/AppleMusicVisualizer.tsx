@@ -42,7 +42,7 @@ interface AppleMusicVisualizerProps {
 }
 
 export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ config }) => {
-  const { audioElement } = useAudioPlayer();
+  const { audioElement: _audioElement } = useAudioPlayer();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const prevDataRef = useRef<Uint8Array | null>(null);

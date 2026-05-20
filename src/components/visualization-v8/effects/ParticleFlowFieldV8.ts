@@ -1,15 +1,5 @@
 import { EffectPlugin, RenderContext, AudioData } from "@/lib/visualization/types";
 
-interface FlowFieldParticle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  maxLife: number;
-  hue: number;
-}
-
 export const ParticleFlowFieldV8: EffectPlugin = {
   id: "particle-flow-field",
   name: "粒子流场",

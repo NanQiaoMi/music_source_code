@@ -468,7 +468,7 @@ export const useEmotionStore = create<EmotionState>()(
           }))
           .sort((a, b) => a.distance - b.distance)
           .slice(0, maxResults)
-          .map(({ distance, ...p }) => p);
+          .map(({ distance: _distance, ...p }) => p);
       },
 
       getQuadrantStats: () => {

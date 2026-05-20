@@ -36,7 +36,7 @@ export function ProfessionalToolsPanel({
   onOpenCrossfadeMixer,
   onOpenLibraryHealth,
 }: ProfessionalToolsPanelProps) {
-  const { currentView } = useUIStore();
+  const { currentView: _currentView } = useUIStore();
   const { isProfessionalMode, enabledFeatures, isFeatureEnabled } = useProfessionalModeStore();
   const [_activeSection, setActiveSection] = useState<ToolSection>("overview");
   const [showHealthCheck, setShowHealthCheck] = useState(false);

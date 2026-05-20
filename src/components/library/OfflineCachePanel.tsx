@@ -23,7 +23,7 @@ interface OfflineCachePanelProps {
 
 export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({ isOpen, onClose }) => {
   const {
-    cacheStatus,
+    cacheStatus: _cacheStatus,
     isLoading,
     isCaching,
     cacheSong,

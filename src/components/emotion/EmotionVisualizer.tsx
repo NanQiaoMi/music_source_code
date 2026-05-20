@@ -73,7 +73,7 @@ const EmotionVisualizer: React.FC = () => {
 
   const { playSong: audioPlaySong, currentSong: audioCurrentSong } = useAudioStore();
   const { songs } = usePlaylistStore();
-  const { points, selectedIds, searchResults } = useEmotionStore();
+  const { points, selectedIds, searchResults: _searchResults } = useEmotionStore();
 
   const getPixelPos = (p: { x: number; y: number }, w: number, h: number) => {
     const innerW = w - SAFE_PADDING * 2;
