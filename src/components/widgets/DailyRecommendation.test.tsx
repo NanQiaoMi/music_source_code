@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+﻿import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Song } from "@/types/song";
 
@@ -9,7 +9,8 @@ const recommendedSong: Song = {
   album: "Hurry Up",
   genre: "Synthpop",
   duration: 245,
-  url: "blob:midnight-city",
+  source: "recommendation",
+  audioUrl: "blob:midnight-city",
 };
 
 vi.mock("framer-motion", () => ({

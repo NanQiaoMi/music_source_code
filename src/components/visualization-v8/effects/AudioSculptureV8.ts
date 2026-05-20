@@ -295,15 +295,15 @@ export const AudioSculptureV8Effect: EffectPlugin = {
 };
 
 function rotate3D(x: number, y: number, z: number, rotX: number, rotY: number) {
-  let cosX = Math.cos(rotX);
-  let sinX = Math.sin(rotX);
-  let cosY = Math.cos(rotY);
-  let sinY = Math.sin(rotY);
+  const cosX = Math.cos(rotX);
+  const sinX = Math.sin(rotX);
+  const cosY = Math.cos(rotY);
+  const sinY = Math.sin(rotY);
 
-  let y1 = y * cosX - z * sinX;
-  let z1 = y * sinX + z * cosX;
-  let x2 = x * cosY + z1 * sinY;
-  let z2 = -x * sinY + z1 * cosY;
+  const y1 = y * cosX - z * sinX;
+  const z1 = y * sinX + z * cosX;
+  const x2 = x * cosY + z1 * sinY;
+  const z2 = -x * sinY + z1 * cosY;
 
   return { x: x2, y: y1, z: z2 };
 }

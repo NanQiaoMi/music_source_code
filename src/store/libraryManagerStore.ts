@@ -373,7 +373,7 @@ export const useLibraryManagerStore = create<LibraryManagerState>()(
         const artists = new Set<string>();
         const albums = new Set<string>();
         let totalDuration = 0;
-        let totalFileSize = 0;
+        const totalFileSize = 0;
 
         for (const song of songs) {
           artists.add(song.artist);

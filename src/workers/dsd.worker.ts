@@ -1,4 +1,4 @@
-/// <reference lib="webworker" />
+﻿/// <reference lib="webworker" />
 
 import { DSDRate, DSDQuality } from "@/store/dsdProcessingStore";
 
@@ -75,7 +75,7 @@ const convertDSDToPCM = async (
   const arrayBuffer = await fileBlob.arrayBuffer();
   const inputData = new Uint8Array(arrayBuffer);
 
-  const sourceHz = dsdRateToHz[sourceRate];
+  const _sourceHz = dsdRateToHz[sourceRate];
   const decimationFactor = decimationFactors[dsdQuality];
   const outputLength = Math.floor(inputData.length / decimationFactor);
 
@@ -166,12 +166,12 @@ const convertDSDToPCM = async (
 const convertDSDToDOP = async (
   fileBlob: Blob,
   sourceRate: DSDRate,
-  targetSampleRate: number
+  _targetSampleRate: number
 ): Promise<Blob> => {
   const arrayBuffer = await fileBlob.arrayBuffer();
   const inputData = new Uint8Array(arrayBuffer);
 
-  const sourceHz = dsdRateToHz[sourceRate];
+  const _sourceHz = dsdRateToHz[sourceRate];
   const decimationFactor = 64;
   const outputLength = Math.floor(inputData.length / decimationFactor);
 

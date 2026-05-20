@@ -1,15 +1,15 @@
-import { defineConfig } from 'vitest/config';
-import path from 'path';
+import { defineConfig } from "vitest/config";
+import path from "path";
 
 export default defineConfig({
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
     testTimeout: 10000,
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      include: ['src/lib/audio/**', 'src/utils/**'],
+      provider: "v8",
+      reporter: ["text", "json", "html"],
+      include: ["src/lib/audio/**", "src/utils/**"],
       thresholds: {
         statements: 30,
         branches: 20,
@@ -18,7 +18,7 @@ export default defineConfig({
       },
     },
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
 });

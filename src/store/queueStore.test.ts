@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+﻿import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { useQueueStore } from "./queueStore";
 
 function createMockSong(id: string) {
@@ -104,7 +104,7 @@ describe("queueStore", () => {
       const store = useQueueStore.getState();
       const originalSetItem = Storage.prototype.setItem;
 
-      vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (key, value) {
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key: string, value: string) {
         if (key === "queue-store-v5" && value.length > 600) {
           throw new DOMException("Quota exceeded", "QuotaExceededError");
         }

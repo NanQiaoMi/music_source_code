@@ -1,4 +1,4 @@
-/// <reference lib="webworker" />
+﻿/// <reference lib="webworker" />
 
 interface TotemTextureMessage {
   type: "generate";
@@ -47,7 +47,7 @@ self.onmessage = async (event: MessageEvent<TotemTextureMessage>) => {
 
     // Draw text with tracking (if supported, otherwise default)
     if ("letterSpacing" in ctx) {
-      (ctx as any).letterSpacing = "8px";
+      (ctx as unknown as { letterSpacing: string }).letterSpacing = "8px";
     }
 
     ctx.fillText(text.toUpperCase(), 256, 256);

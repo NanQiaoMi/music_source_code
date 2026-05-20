@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+﻿import { describe, expect, it, vi } from "vitest";
 import { executeSearchCommand } from "./commandExecutor";
 import type { SearchCommand } from "./commandRouter";
 import type { Song } from "@/types/song";
@@ -18,6 +18,7 @@ function song(overrides: Partial<Song>): Song {
     title: "Ocean Eyes",
     artist: "Billie",
     duration: 200,
+    source: "local",
     ...overrides,
   };
 }

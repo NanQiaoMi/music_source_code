@@ -14,13 +14,13 @@ import { CrossfadeMixer } from "@/lib/audio/CrossfadeMixer";
 // Module-level shared state to persist across hook unmounts/remounts
 let audioInstance: HTMLAudioElement | null = null;
 let secondaryAudioInstance: HTMLAudioElement | null = null;
-let audioElementRef: { current: HTMLAudioElement | null } = { current: null };
-let secondaryElementRef: { current: HTMLAudioElement | null } = { current: null };
-let currentAudioUrlRef: { current: string | null } = { current: null };
-let isPlayingRef: { current: boolean } = { current: false };
-let currentSongIdRef: { current: string | null } = { current: null };
+const audioElementRef: { current: HTMLAudioElement | null } = { current: null };
+const secondaryElementRef: { current: HTMLAudioElement | null } = { current: null };
+const currentAudioUrlRef: { current: string | null } = { current: null };
+const isPlayingRef: { current: boolean } = { current: false };
+const currentSongIdRef: { current: string | null } = { current: null };
 let activeManagerId: string | null = null;
-let playStartTime: number = 0;
+const playStartTime: number = 0;
 
 // Stable event handlers outside the hook to prevent duplicate listeners
 // and ensure we can attach them once to each audio element

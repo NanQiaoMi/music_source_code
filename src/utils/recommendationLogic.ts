@@ -1,4 +1,4 @@
-import { Song } from "@/types/song";
+﻿import { Song } from "@/types/song";
 
 export interface SongWithPlayCount extends Song {
   playCount: number;
@@ -137,11 +137,11 @@ export function calculateSimilarity(songA: Song, songB: Song): number {
 
     if (hasKeywordA || hasKeywordB) {
       const cleanTitleA = titleA
-        .replace(/[\(\[\{].*?[\)\]\}]/g, "")
+        .replace(/[[(){}].*?[\])}]/g, "")
         .replace(/remix|mix|edit|version|cover|live|acoustic|demo|radio/gi, "")
         .trim();
       const cleanTitleB = titleB
-        .replace(/[\(\[\{].*?[\)\]\}]/g, "")
+        .replace(/[[(){}].*?[\])}]/g, "")
         .replace(/remix|mix|edit|version|cover|live|acoustic|demo|radio/gi, "")
         .trim();
 

@@ -1,4 +1,4 @@
-/// <reference lib="webworker" />
+﻿/// <reference lib="webworker" />
 
 interface FingerprintMessage {
   type: "generate";
@@ -64,7 +64,7 @@ function generateFingerprint(audioBuffer: AudioBuffer): number[] {
   const startTime = performance.now();
 
   const channelData = audioBuffer.getChannelData(0);
-  const sampleRate = audioBuffer.sampleRate;
+  const _sampleRate = audioBuffer.sampleRate;
   const duration = audioBuffer.duration;
 
   const fingerprint: number[] = [];
@@ -113,7 +113,7 @@ function computeSpectrum(frame: Float32Array, numBands: number): number[] {
   return spectrum;
 }
 
-function computeHash(spectrum: number[], position: number): number {
+function computeHash(spectrum: number[], _position: number): number {
   let hash = 0;
 
   for (let i = 0; i < spectrum.length - 1; i++) {

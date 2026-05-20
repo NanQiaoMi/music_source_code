@@ -1,4 +1,4 @@
-/// <reference lib="webworker" />
+﻿/// <reference lib="webworker" />
 
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
@@ -36,7 +36,7 @@ const loadFFmpeg = async () => {
   return ffmpeg;
 };
 
-const toBlobURL = async (url: string, mimeType: string) => {
+const toBlobURL = async (url: string, _mimeType: string) => {
   const resp = await fetch(url);
   const body = await resp.blob();
   return URL.createObjectURL(body);

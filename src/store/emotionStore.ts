@@ -334,7 +334,7 @@ export const useEmotionStore = create<EmotionState>()(
           if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
           const data = await response.json();
-          let rawContent = data.choices[0].message.content.trim();
+          const rawContent = data.choices[0].message.content.trim();
 
           try {
             const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
