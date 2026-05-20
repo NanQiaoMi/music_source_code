@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { BookOpen, Clock, Music2, Smile, X } from "lucide-react";
 import { buildJournalSongRows } from "@/lib/journal/listeningJournal";
@@ -15,6 +15,7 @@ interface JournalDayPanelProps {
 export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
   const { selectedDate, days, appendNote } = useListeningJournalStore();
   const songs = usePlaylistStore((state) => state.songs);
+  const [statusMessage, setStatusMessage] = useState("Notes save on blur or Enter.");
   const day = days[selectedDate] || {
     date: selectedDate,
     totalMinutes: 0,
@@ -28,6 +29,7 @@ export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
 
   const saveNote = (value: string) => {
     appendNote(selectedDate, value.trim());
+    setStatusMessage(`Saved note for ${selectedDate}`);
   };
 
   if (!isOpen) return null;
@@ -136,6 +138,9 @@ export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
               placeholder="What did this listening day feel like?"
               className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-cyan-300/50"
             />
+            <span role="status" aria-live="polite" className="mt-2 block text-xs text-cyan-200/70">
+              {statusMessage}
+            </span>
           </label>
         </main>
       </motion.div>
