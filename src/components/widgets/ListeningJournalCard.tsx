@@ -1,14 +1,16 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { BookOpen, CalendarDays } from "lucide-react";
 import { useListeningJournalStore } from "@/store/listeningJournalStore";
 import { useUIStore } from "@/store/uiStore";
 
 export function ListeningJournalCard() {
-  const week = useListeningJournalStore((state) => state.getWeek());
+  const days = useListeningJournalStore((state) => state.days);
+  const getWeek = useListeningJournalStore((state) => state.getWeek);
   const setSelectedDate = useListeningJournalStore((state) => state.setSelectedDate);
   const openPanel = useUIStore((state) => state.openPanel);
+  const week = useMemo(() => getWeek(), [getWeek, days]);
   const totalMinutes = week.reduce((sum, day) => sum + day.totalMinutes, 0);
   const activeDays = week.filter((day) => day.totalMinutes > 0).length;
 
