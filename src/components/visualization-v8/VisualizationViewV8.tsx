@@ -34,9 +34,9 @@ export function VisualizationViewV8() {
   const duration = useAudioStore((state) => state.duration);
   const _bufferedRanges = useAudioStore((state) => state.bufferedRanges);
   const _setIsPlaying = useAudioStore((state) => state.setIsPlaying);
-  const prevSong = useAudioStore((state) => state.prevSong);
-  const nextSong = useAudioStore((state) => state.nextSong);
-  const { currentTheme, blurIntensity, animationSpeed } = useVisualSettingsStore();
+  const _prevSong = useAudioStore((state) => state.prevSong);
+  const _nextSong = useAudioStore((state) => state.nextSong);
+  const { currentTheme: _currentTheme, blurIntensity, animationSpeed } = useVisualSettingsStore();
   const {
     fps,
     cpuUsage,
@@ -47,7 +47,7 @@ export function VisualizationViewV8() {
     setWebGLAvailable,
     resetRecoveryState,
   } = usePerformanceV8Store();
-  const { seek } = useAudioPlayer();
+  const { seek: _seek } = useAudioPlayer();
   const {
     effects,
     currentEffectId,
