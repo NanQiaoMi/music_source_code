@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const AudioPaintingV8Effect: EffectPlugin = {
   id: "audio-painting-v8",
@@ -268,8 +268,8 @@ function drawBrush(
   type: string,
   size: number,
   bass: number,
-  mid: number,
-  treble: number
+  _mid: number,
+  _treble: number
 ) {
   const audioSize = size * (1 + bass * 0.5);
 

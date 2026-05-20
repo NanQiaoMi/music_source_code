@@ -1,6 +1,6 @@
 "use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const AudioCrystalV8Effect: EffectPlugin = {
   id: "audio-crystal-v8",

@@ -6,7 +6,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { DataManager } from "@/components/library/DataManager";
 import { LocalMusicManager } from "@/components/library/LocalMusicManager";
-import { GlassCard } from "@/components/shared/Glass/GlassCard";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
