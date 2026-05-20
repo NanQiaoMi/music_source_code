@@ -126,9 +126,23 @@ const BUILT_IN_SKINS: PlayerSkin[] = [
 
 const SKINS_STORAGE_KEY = "player_custom_skins";
 
+function applySkinVariables(skin: PlayerSkin) {
+  document.documentElement.style.setProperty("--theme-primary", skin.primary);
+  document.documentElement.style.setProperty("--theme-secondary", skin.secondary);
+  document.documentElement.style.setProperty("--theme-accent", skin.accent);
+  document.documentElement.style.setProperty("--theme-background", skin.background);
+}
+
 export const usePlayerSkins = () => {
-  const [currentSkin, setCurrentSkin] = useState<PlayerSkin>(BUILT_IN_SKINS[0]);
+  const activeBaseSkinId = usePlayerSkinStore((state) => state.activeBaseSkinId);
+  const setActiveBaseSkinId = usePlayerSkinStore((state) => state.setActiveBaseSkinId);
   const [customSkins, setCustomSkins] = useState<PlayerSkin[]>([]);
+  const currentSkin = React.useMemo(
+    () =>
+      [...BUILT_IN_SKINS, ...customSkins].find((skin) => skin.id === activeBaseSkinId) ??
+      BUILT_IN_SKINS[0],
+    [activeBaseSkinId, customSkins]
+  );
 
   const loadCustomSkins = useCallback(() => {
     try {
@@ -167,13 +181,20 @@ export const usePlayerSkins = () => {
     [customSkins]
   );
 
-  const applySkin = useCallback((skin: PlayerSkin) => {
-    setCurrentSkin(skin);
-    document.documentElement.style.setProperty("--theme-primary", skin.primary);
-    document.documentElement.style.setProperty("--theme-secondary", skin.secondary);
-    document.documentElement.style.setProperty("--theme-accent", skin.accent);
-    document.documentElement.style.setProperty("--theme-background", skin.background);
-  }, []);
+  const applySkin = useCallback(
+    (skin: PlayerSkin) => {
+      setActiveBaseSkinId(skin.id);
+      document.documentElement.style.setProperty("--theme-primary", skin.primary);
+      document.documentElement.style.setProperty("--theme-secondary", skin.secondary);
+      document.documentElement.style.setProperty("--theme-accent", skin.accent);
+      document.documentElement.style.setProperty("--theme-background", skin.background);
+    },
+    [setActiveBaseSkinId]
+  );
+
+  React.useEffect(() => {
+    applySkinVariables(currentSkin);
+  }, [currentSkin]);
 
   return {
     currentSkin,
@@ -563,6 +584,7 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                     {builtInSkins.map((skin) => (
                       <button
                         key={skin.id}
+                        data-player-skin-id={skin.id}
                         onClick={() => handleApplySkin(skin)}
                         className={`relative p-3 rounded-xl transition-all ${
                           currentSkin.id === skin.id
@@ -643,6 +665,7 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                           }`}
                         >
                           <button
+                            data-player-skin-id={skin.id}
                             onClick={() => handleApplySkin(skin)}
                             className="w-full text-left"
                           >

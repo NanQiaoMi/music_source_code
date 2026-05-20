@@ -56,8 +56,16 @@ vi.mock("@/store/visualSettingsStore", () => ({
 beforeEach(async () => {
   localStorage.clear();
   installCanvasContextStub();
+  for (const property of [
+    "--theme-primary",
+    "--theme-secondary",
+    "--theme-accent",
+    "--theme-background",
+  ]) {
+    document.documentElement.style.removeProperty(property);
+  }
   const { usePlayerSkinStore } = await import("@/store/playerSkinStore");
-  usePlayerSkinStore.setState({ activeHaloId: "aurora" });
+  usePlayerSkinStore.setState({ activeBaseSkinId: "default", activeHaloId: "aurora" });
 });
 
 afterEach(() => {
@@ -102,6 +110,54 @@ describe("PlayerSkinsPanel", () => {
     });
 
     expect(usePlayerSkinStore.getState().activeHaloId).toBe("vinyl");
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("stores the selected base player skin when a built-in skin is clicked", async () => {
+    const { PlayerSkinsPanel } = await import("./PlayerSkinsPanel");
+    const { usePlayerSkinStore } = await import("@/store/playerSkinStore");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<PlayerSkinsPanel isOpen={true} onClose={() => undefined} />);
+    });
+
+    const oceanButton = container.querySelector("[data-player-skin-id=ocean]");
+
+    expect(oceanButton).not.toBeNull();
+
+    await act(async () => {
+      oceanButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(usePlayerSkinStore.getState().activeBaseSkinId).toBe("ocean");
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("applies the persisted base player skin when the panel mounts", async () => {
+    const { PlayerSkinsPanel } = await import("./PlayerSkinsPanel");
+    const { usePlayerSkinStore } = await import("@/store/playerSkinStore");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    usePlayerSkinStore.setState({ activeBaseSkinId: "ocean" });
+
+    await act(async () => {
+      root.render(<PlayerSkinsPanel isOpen={true} onClose={() => undefined} />);
+    });
+
+    expect(document.documentElement.style.getPropertyValue("--theme-primary")).toBe(
+      "rgb(14, 165, 233)"
+    );
 
     await act(async () => {
       root.unmount();

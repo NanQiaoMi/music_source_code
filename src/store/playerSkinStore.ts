@@ -5,9 +5,15 @@ import { getHaloSkin, type HaloSkin, type HaloSkinId } from "@/lib/skins/halo/ha
 export const PLAYER_SKIN_STORE_KEY = "player-skin-store-v1";
 
 interface PlayerSkinState {
+  activeBaseSkinId: string;
   activeHaloId: HaloSkinId;
+  setActiveBaseSkinId: (id: string) => void;
   setActiveHaloId: (id: HaloSkinId) => void;
   getActiveHalo: () => HaloSkin;
+}
+
+function normalizeBaseSkinId(value: unknown): string {
+  return typeof value === "string" && value.trim().length > 0 ? value : "default";
 }
 
 function normalizeHaloId(value: unknown): HaloSkinId {
@@ -23,6 +29,7 @@ function mergePersistedState(
 
   return {
     ...currentState,
+    activeBaseSkinId: normalizeBaseSkinId(maybeState.activeBaseSkinId),
     activeHaloId: normalizeHaloId(maybeState.activeHaloId),
   };
 }
@@ -30,13 +37,18 @@ function mergePersistedState(
 export const usePlayerSkinStore = create<PlayerSkinState>()(
   persist(
     (set, get) => ({
+      activeBaseSkinId: "default",
       activeHaloId: "aurora",
+      setActiveBaseSkinId: (id) => set({ activeBaseSkinId: normalizeBaseSkinId(id) }),
       setActiveHaloId: (id) => set({ activeHaloId: normalizeHaloId(id) }),
       getActiveHalo: () => getHaloSkin(get().activeHaloId),
     }),
     {
       name: PLAYER_SKIN_STORE_KEY,
-      partialize: (state) => ({ activeHaloId: state.activeHaloId }),
+      partialize: (state) => ({
+        activeBaseSkinId: state.activeBaseSkinId,
+        activeHaloId: state.activeHaloId,
+      }),
       merge: mergePersistedState,
     }
   )
