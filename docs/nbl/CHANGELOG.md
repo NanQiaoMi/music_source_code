@@ -7,6 +7,7 @@
 - feat(journal): confirmed playback now auto-records Listening Journal events with local mood labels.
 - feat(mix): Smart Mix sessions can now be saved as persistent custom playlist groups.
 - fix(audio): DSD Converter now resolves real stored/local/fetchable source audio before worker conversion.
+- fix(audio): FFmpeg loading now records readiness/error state and reuses in-flight load requests.
 
 ### Changed
 
@@ -15,6 +16,7 @@
 - Playlist groups now persist under `playlist-group-store-v1`, and playlist backups include saved custom groups.
 - Music Library now exposes saved custom playlists with play/delete actions, so saved Smart Mixes are discoverable after creation.
 - DSD conversion now runs tasks sequentially against the worker, updates only the active task from each worker response, and surfaces missing-source/worker-output failures instead of completing against a fake 1 KB blob.
+- Audio processing readiness now feeds `processingCapabilities` through `__MIMI_FFMPEG_WASM_LOADED__`, and FFmpeg load failures are visible in `ffmpegLoadError` instead of being swallowed silently.
 
 ### Verified
 
@@ -24,6 +26,8 @@
 - Library playlist tests passed: npm run test -- src/components/library/LibraryManagerPanel.test.tsx src/store/playlistGroupStore.test.ts; 2 files, 3 tests.
 - DSD conversion tests passed: npm run test -- src/lib/audio/dsdSource.test.ts src/components/audio/DSDConverter.test.tsx; 2 files, 6 tests.
 - DSD targeted ESLint passed: npx eslint src/components/audio/DSDConverter.tsx src/components/audio/DSDConverter.test.tsx src/lib/audio/dsdSource.ts src/lib/audio/dsdSource.test.ts --ext .ts,.tsx --report-unused-disable-directives --max-warnings 100.
+- FFmpeg loading tests passed: npm run test -- src/store/audioProcessingStore.test.ts src/lib/audio/processingCapabilities.test.ts; 2 files, 12 tests.
+- FFmpeg targeted ESLint passed: npx eslint src/store/audioProcessingStore.ts src/store/audioProcessingStore.test.ts src/lib/audio/processingCapabilities.ts src/lib/audio/processingCapabilities.test.ts --ext .ts,.tsx --report-unused-disable-directives --max-warnings 100.
 - Type check passed: npx tsc --noEmit --pretty false.
 - Production build passed: npm run build.
 - Local smoke passed on http://localhost:3025: page title `MIMI Music Player`, Library menu opened, Music Library panel showed Saved playlists, and Playwright reported 0 console errors.

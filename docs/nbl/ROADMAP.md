@@ -1,30 +1,35 @@
+## 2026-05-21 Audio Processing Reality Update
+
+- Phase 2.8 FFmpeg loading is now verified in `audioProcessingStore`: duplicate load calls reuse the same in-flight promise, successful loads set the global `__MIMI_FFMPEG_WASM_LOADED__` capability flag, and failed loads store `ffmpegLoadError` while clearing readiness.
+- Verification: `npm run test -- src/store/audioProcessingStore.test.ts src/lib/audio/processingCapabilities.test.ts`, targeted ESLint for the touched audio processing files, and `npx tsc --noEmit --pretty false --incremental false` passed before full-suite validation.
+
 ## 2026-05-20 Phase 1+2 Progress Update
 
 Active on branch `codex/animation-function-iteration-plan`:
 
 ### Phase 1 - Store架构解耦 (5/6完成)
 
-| 任务 | 状态 | Commit |
-|------|------|--------|
-| 1.1 Coordinator类型定义 | ✅ | `728c8c9` |
-| 1.2 AudioCoordinator + QueueCoordinator | ✅ | `b2e46e4` |
-| 1.3 emotionStore解耦 | ✅ | `d84c745` |
-| 1.4 消除动态require() | ⏭️ | 无动态require |
-| 1.5 拆分audioStore | ⏳ | 待做（需修改158组件） |
-| 1.6 统一Song类型 | ✅ | 已统一 |
+| 任务                                    | 状态 | Commit                |
+| --------------------------------------- | ---- | --------------------- |
+| 1.1 Coordinator类型定义                 | ✅   | `728c8c9`             |
+| 1.2 AudioCoordinator + QueueCoordinator | ✅   | `b2e46e4`             |
+| 1.3 emotionStore解耦                    | ✅   | `d84c745`             |
+| 1.4 消除动态require()                   | ⏭️   | 无动态require         |
+| 1.5 拆分audioStore                      | ⏳   | 待做（需修改158组件） |
+| 1.6 统一Song类型                        | ✅   | 已统一                |
 
 ### Phase 2 - P0堵塞修复 (验证中)
 
-| 任务 | 状态 | 说明 |
-|------|------|------|
-| 2.1 健康检查真实化 | ✅ | 已有真实实现，测试通过 |
-| 2.2 备份恢复真实化 | ✅ | 已有真实实现，测试通过 |
-| 2.3 推荐系统真实化 | ✅ | 已有真实实现 |
-| 2.4 AB循环真实执行 | ✅ | 已有基本实现 |
-| 2.5 收藏功能持久化 | ✅ | 已使用persist中间件 |
-| 2.6 V8效果注册补齐 | ✅ | 28个效果已注册 |
-| 2.7 歌词封面编辑补齐 | ✅ | 已有cropCover/resizeCover |
-| 2.8 FFmpeg加载真实化 | ⏳ | 待验证 |
+| 任务                 | 状态 | 说明                      |
+| -------------------- | ---- | ------------------------- |
+| 2.1 健康检查真实化   | ✅   | 已有真实实现，测试通过    |
+| 2.2 备份恢复真实化   | ✅   | 已有真实实现，测试通过    |
+| 2.3 推荐系统真实化   | ✅   | 已有真实实现              |
+| 2.4 AB循环真实执行   | ✅   | 已有基本实现              |
+| 2.5 收藏功能持久化   | ✅   | 已使用persist中间件       |
+| 2.6 V8效果注册补齐   | ✅   | 28个效果已注册            |
+| 2.7 歌词封面编辑补齐 | ✅   | 已有cropCover/resizeCover |
+| 2.8 FFmpeg加载真实化 | ⏳   | 待验证                    |
 
 ### 新增文件
 
@@ -64,6 +69,7 @@ Verification:
 - ESLint note: broad targeted ESLint over older touched UI files still reports inherited formatting/debt, so lint was not used as the final gate.
 
 ---
+
 ## 2026-05-17 Reality Update
 
 Active plan: `docs/nbl/plans/2026-05-16-experience-polish-and-design-upgrade.md`.
@@ -82,23 +88,28 @@ Still open from the 2026-05-16 plan:
 - Final full `npm run test`, `npm run build`, and local browser smoke on port 3025.
 
 ---
+
 # MIMI Music Player 迭代路线�?
+
 > **版本**: v1.0 | **创建日期**: 2026-05-10 | **核心理念**: 不修改已�?UI/视觉效果，聚焦功能完善、架构优化、体验提�?
+
 ---
 
 ## 现状总览
 
-```
+````
 已完成的坚固基础                         待完善的薄弱环节
 ┌───────────────────────────�?    ┌────────────────────────────────�?�?32+ 功能面板框架 (Glass)   �?    �?8 �?Store 功能是骨架存�?     �?�?28 �?V8 效果文件          �?    �?11 个效果未注册到系�?         �?�?44 �?Zustand Store        �?    �?动�?require() 循环依赖       �?�?16 个自定义 Hooks          �?    �?重复 Song 类型定义             �?�?完整的玻璃拟�?UI           �?    �?Store 耦合过重                 �?�?Electron 桌面包装           �?    �?批量操作缺失                   �?�?音视频引擎框�?              �?    �?无播放队列持久化               �?�?设计系统 Tokens + Glass �? �?    �?测试覆盖�?~5%                �?�?手势控制 / 快捷�?          �?    �?ESLint 19,790 行问�?         �?└───────────────────────────�?    └────────────────────────────────�?```
 
 ---
 
 ## 优先级策�?
-```
+````
+
 P0 🔴 堵塞修复 ── 已有框架但功能是空壳/假数据，直接影响用户体验
 P1 🟡 功能增强 ── 新功能或已有功能的重要完善，提升使用价�?P2 🔵 架构优化 ── 代码质量、可维护性、性能提升
 P3 🟢 锦上添花 ── 体验细节打磨
+
 ```
 
 ---
@@ -187,37 +198,39 @@ P3 🟢 锦上添花 ── 体验细节打磨
 ## 时间线总览
 
 ```
-Week 1              Week 2              Week 3              Week 4
-┌────────────────�? ┌────────────────�? ┌────────────────�? ┌────────────────�?�?Phase 0         �? �?Phase 2         �? �?Phase 3         �? �?Phase 4+5       �?�?基础设施 + 流程  �? �?P0 堵塞修复     �? �?P1 功能增强     �? �?优化 + 视觉     �?�?                �? �?                �? �?                �? �?                �?�?文档体系 �?    �? �?健康检�?      �? �?队列完善       �? �?Store 测试     �?�?Prettier 格式�?�? �?备份恢复       �? �?批量操作       �? �?TS 修复        �?�?CI 激�?       �? �?推荐系统       �? �?统计仪表�?    �? �?Glass 组件补全  �?�?                �? �?AB循环+收藏    �? �?搜索增强       �? �?快捷键配�?    �?�?Phase 1 (并行)  �? �?V8 + FFmpeg    �? �?主题导入导出   �? �?               �?�?Store 解�?     �? �?歌词编辑�?    �? �?               �? �?               �?└────────────────�? └────────────────�? └────────────────�? └────────────────�?```
+
+Week 1 Week 2 Week 3 Week 4
+┌────────────────�? ┌────────────────�? ┌────────────────�? ┌────────────────�?�?Phase 0 �? �?Phase 2 �? �?Phase 3 �? �?Phase 4+5 �?�?基础设施 + 流程 �? �?P0 堵塞修复 �? �?P1 功能增强 �? �?优化 + 视觉 �?�? �? �? �? �? �? �? �?�?文档体系 �? �? �?健康检�? �? �?队列完善 �? �?Store 测试 �?�?Prettier 格式�?�? �?备份恢复 �? �?批量操作 �? �?TS 修复 �?�?CI 激�? �? �?推荐系统 �? �?统计仪表�? �? �?Glass 组件补全 �?�? �? �?AB循环+收藏 �? �?搜索增强 �? �?快捷键配�? �?�?Phase 1 (并行) �? �?V8 + FFmpeg �? �?主题导入导出 �? �? �?�?Store 解�? �? �?歌词编辑�? �? �? �? �? �?└────────────────�? └────────────────�? └────────────────�? └────────────────�?```
 
 ---
 
 ## 执行原则
 
 - **每个任务 = 独立 `feature/xxx` 分支 �?PR �?Review �?合并**
-- **Phase 0 + Phase 1 可并�?*（文�?+ 解耦互不依赖）
+- \*_Phase 0 + Phase 1 可并�?_（文�?+ 解耦互不依赖）
 - **Phase 2-3 串行**（功能修复依�?store 解耦完成）
-- **Phase 4-5 可并�?*（测�?+ 视觉互不依赖�?
+- \*_Phase 4-5 可并�?_（测�?+ 视觉互不依赖�?
+
 ---
 
 ## 涉及文件变动总览
 
-| Phase | 文件 | 操作 |
-|-------|------|------|
-| 0 | `AGENTS.md`, `docs/nbl/*.md` | 新建 |
-| 0 | `src/**/*.{ts,tsx,css,json}` | Prettier 格式�?|
-| 0 | `.github/workflows/deploy.yml` | 取消注释测试步骤 |
-| 0 | `vitest.config.ts` | 添加覆盖率阈�?|
-| 1 | `src/store/coordinator/` | 新建目录 |
-| 1 | `src/store/audioStore.ts` | 拆分 |
-| 1 | `src/store/playerStore.ts` | 新建（抽取） |
-| 1 | `src/types/song.ts` | 合并类型 |
-| 2 | 8 �?store 文件 | 重构 |
-| 2 | `src/components/visualization-v8/effects/index.ts` | 修改 |
-| 2 | `src/hooks/useAudioPlayer.ts` | 修改 |
-| 3 | `src/store/queueStore.ts`, `playlistStore.ts`, `searchStore.ts`, `statsAchievementsStore.ts` | 修改 |
-| 3 | `src/components/stats/StatsVisuals.tsx` | 重构 |
-| 4 | 10+ store 测试文件 | 新建 |
-| 4 | 多个组件 | Selector 优化 |
-| 5 | `src/components/shared/Glass/` | 新增组件 |
-| 5 | `src/hooks/useKeyboardShortcuts.ts` | 重构 |
+| Phase | 文件                                                                                         | 操作             |
+| ----- | -------------------------------------------------------------------------------------------- | ---------------- |
+| 0     | `AGENTS.md`, `docs/nbl/*.md`                                                                 | 新建             |
+| 0     | `src/**/*.{ts,tsx,css,json}`                                                                 | Prettier 格式�?  |
+| 0     | `.github/workflows/deploy.yml`                                                               | 取消注释测试步骤 |
+| 0     | `vitest.config.ts`                                                                           | 添加覆盖率阈�?   |
+| 1     | `src/store/coordinator/`                                                                     | 新建目录         |
+| 1     | `src/store/audioStore.ts`                                                                    | 拆分             |
+| 1     | `src/store/playerStore.ts`                                                                   | 新建（抽取）     |
+| 1     | `src/types/song.ts`                                                                          | 合并类型         |
+| 2     | 8 �?store 文件                                                                               | 重构             |
+| 2     | `src/components/visualization-v8/effects/index.ts`                                           | 修改             |
+| 2     | `src/hooks/useAudioPlayer.ts`                                                                | 修改             |
+| 3     | `src/store/queueStore.ts`, `playlistStore.ts`, `searchStore.ts`, `statsAchievementsStore.ts` | 修改             |
+| 3     | `src/components/stats/StatsVisuals.tsx`                                                      | 重构             |
+| 4     | 10+ store 测试文件                                                                           | 新建             |
+| 4     | 多个组件                                                                                     | Selector 优化    |
+| 5     | `src/components/shared/Glass/`                                                               | 新增组件         |
+| 5     | `src/hooks/useKeyboardShortcuts.ts`                                                          | 重构             |
