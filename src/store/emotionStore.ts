@@ -2,10 +2,31 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { saveSongEmotions, loadSongEmotions } from "@/services/metadataStorage";
 import { EmotionPoint, EmotionCoordinate } from "@/types/emotion";
-import { useSmartPlaylistStore } from "./smartPlaylistStore";
-import { usePlaylistStore } from "./playlistStore";
-import { useAIStore } from "./aiStore";
 import { toast } from "@/components/shared/GlassToast";
+import type { Song } from "@/types/song";
+
+interface AIConfig {
+  id: string;
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+}
+
+interface EmotionCallbacks {
+  getSongs: () => Song[];
+  getAIConfig: () => { isEnabled: boolean; config: AIConfig | null };
+  onEmotionSaved: (songId: string) => void;
+}
+
+let emotionCallbacks: EmotionCallbacks = {
+  getSongs: () => [],
+  getAIConfig: () => ({ isEnabled: false, config: null }),
+  onEmotionSaved: () => {},
+};
+
+export function setEmotionCallbacks(callbacks: Partial<EmotionCallbacks>) {
+  emotionCallbacks = { ...emotionCallbacks, ...callbacks };
+}
 
 interface EmotionState {
   realtimeCoordinates: { x: number; y: number } | null;
@@ -157,8 +178,7 @@ export const useEmotionStore = create<EmotionState>()(
 
         setTimeout(() => {
           try {
-            const allSongs = usePlaylistStore.getState().songs;
-            useSmartPlaylistStore.getState().generateAllPlaylists(allSongs);
+            emotionCallbacks.onEmotionSaved(songId);
           } catch (e) {
             console.warn("Could not trigger smart playlist generation:", e);
           }
@@ -260,15 +280,14 @@ export const useEmotionStore = create<EmotionState>()(
 
       autoTagSong: async (songId, signal) => {
         try {
-          const aiStore = useAIStore.getState();
-          if (!aiStore.isEnabled) return;
-          const config = aiStore.configs.find((c: any) => c.id === aiStore.activeConfigId);
-          const { songs } = usePlaylistStore.getState();
-          const song = songs.find((s: any) => s.id === songId);
+          const { isEnabled, config } = emotionCallbacks.getAIConfig();
+          if (!isEnabled || !config) return;
+          const songs = emotionCallbacks.getSongs();
+          const song = songs.find((s) => s.id === songId);
 
-          if (!song || !config || !config.apiKey) {
+          if (!song || !config.apiKey) {
             console.error("Missing song, config or API key", { song, config });
-            if (!config || !config.apiKey) toast.warning("未配置有效的 AI 接口");
+            if (!config.apiKey) toast.warning("未配置有效的 AI 接口");
             return;
           }
 
@@ -375,9 +394,10 @@ export const useEmotionStore = create<EmotionState>()(
       },
 
       autoTagBatch: async (songIds) => {
-        if (!useAIStore.getState().isEnabled) return;
+        const { isEnabled } = emotionCallbacks.getAIConfig();
+        if (!isEnabled) return;
 
-        const { songs } = usePlaylistStore.getState();
+        const songs = emotionCallbacks.getSongs();
         const abortController = new AbortController();
         set({
           taggingStatus: { current: 0, total: songIds.length, currentTitle: "" },
@@ -393,8 +413,7 @@ export const useEmotionStore = create<EmotionState>()(
           while (index < songIds.length && !get()._isStopRequested) {
             const currentIndex = index++;
             const songId = songIds[currentIndex];
-            const { songs } = usePlaylistStore.getState();
-            const song = songs.find((s: any) => s.id === songId);
+            const song = songs.find((s) => s.id === songId);
 
             if (!song) {
               finished++;
