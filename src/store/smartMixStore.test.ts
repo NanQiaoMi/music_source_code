@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSmartMixStore, type SmartMixInput } from "./smartMixStore";
+import { usePlaylistGroupStore } from "./playlistGroupStore";
 import { useQueueStore } from "./queueStore";
 import type { Song } from "@/types/song";
 
@@ -33,6 +34,7 @@ describe("smartMixStore", () => {
   beforeEach(() => {
     vi.setSystemTime(new Date("2026-05-20T00:00:00.000Z"));
     useSmartMixStore.setState({ currentSession: null, lastInput: null });
+    usePlaylistGroupStore.setState({ groups: [], currentGroupId: null });
     useQueueStore.setState({ queue: [], currentIndex: 0, history: [], playThroughMode: "normal" });
     localStorage.clear();
   });
@@ -68,6 +70,22 @@ describe("smartMixStore", () => {
     expect(useQueueStore.getState().queue.map((item) => item.id)).toEqual(
       session.songs.map((item) => item.id)
     );
+  });
+
+  it("saves the active mix as a custom playlist group", () => {
+    const session = useSmartMixStore.getState().start(input());
+
+    const groupId = useSmartMixStore.getState().saveCurrentAsPlaylist("Road mix");
+    const group = groupId ? usePlaylistGroupStore.getState().getGroupById(groupId) : null;
+
+    expect(groupId).not.toBeNull();
+    expect(group).toMatchObject({ name: "Road mix", type: "custom" });
+    expect(group?.songs.map((item) => item.id)).toEqual(session.songs.map((item) => item.id));
+    expect(usePlaylistGroupStore.getState().currentGroupId).toBe(groupId);
+  });
+
+  it("returns null when saving without an active mix", () => {
+    expect(useSmartMixStore.getState().saveCurrentAsPlaylist("Empty mix")).toBeNull();
   });
 
   it("clears the active session", () => {

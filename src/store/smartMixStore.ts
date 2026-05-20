@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { buildSession, type SmartMixInput, type SmartMixSession } from "@/lib/mix/sessionBuilder";
+import { usePlaylistGroupStore } from "./playlistGroupStore";
 import { useQueueStore } from "./queueStore";
 
 interface SmartMixState {
@@ -9,6 +10,7 @@ interface SmartMixState {
   regenerate: () => SmartMixSession | null;
   clear: () => void;
   commitToQueue: () => void;
+  saveCurrentAsPlaylist: (name?: string) => string | null;
 }
 
 export const useSmartMixStore = create<SmartMixState>((set, get) => ({
@@ -36,6 +38,16 @@ export const useSmartMixStore = create<SmartMixState>((set, get) => ({
     const session = get().currentSession;
     if (!session) return;
     useQueueStore.getState().setQueue(session.songs);
+  },
+
+  saveCurrentAsPlaylist: (name) => {
+    const session = get().currentSession;
+    if (!session || session.songs.length === 0) return null;
+
+    const seedTitle = session.songs[0]?.title || "Smart Mix";
+    return usePlaylistGroupStore
+      .getState()
+      .createGroupFromSongs(name || `Smart Mix - ${seedTitle}`, session.songs, "custom");
   },
 }));
 

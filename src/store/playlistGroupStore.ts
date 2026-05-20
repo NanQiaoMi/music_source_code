@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import { Song } from "@/types/song";
 
 export type PlaylistGroupType = "recent" | "favorites" | "custom" | "daily";
@@ -17,8 +18,8 @@ interface PlaylistGroupState {
   groups: PlaylistGroup[];
   currentGroupId: string | null;
 
-  // Actions
   createGroup: (name: string, type: PlaylistGroupType) => string;
+  createGroupFromSongs: (name: string, songs: Song[], type?: PlaylistGroupType) => string;
   deleteGroup: (groupId: string) => void;
   updateGroup: (groupId: string, updates: Partial<PlaylistGroup>) => void;
   addSongToGroup: (groupId: string, song: Song) => void;
@@ -28,96 +29,136 @@ interface PlaylistGroupState {
   getDefaultGroups: () => PlaylistGroup[];
 }
 
+const DEFAULT_COVER =
+  "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop";
+
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
-export const usePlaylistGroupStore = create<PlaylistGroupState>((set, get) => ({
-  groups: [
+function createDefaultGroups(): PlaylistGroup[] {
+  const now = Date.now();
+
+  return [
     {
       id: "recent",
       type: "recent",
-      name: "最近播放",
-      cover: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop",
+      name: "Recently Played",
+      cover: DEFAULT_COVER,
       songs: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     },
     {
       id: "favorites",
       type: "favorites",
-      name: "我的收藏",
+      name: "Favorites",
       cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop",
       songs: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     },
     {
       id: "daily",
       type: "daily",
-      name: "每日推荐",
+      name: "Daily Recommendations",
       cover: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=600&fit=crop",
       songs: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     },
-  ],
-  currentGroupId: null,
+  ];
+}
 
-  createGroup: (name, type) => {
-    const id = generateId();
-    const newGroup: PlaylistGroup = {
-      id,
-      type,
-      name,
-      cover: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop",
-      songs: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    set((state) => ({ groups: [...state.groups, newGroup] }));
-    return id;
-  },
+function dedupeSongs(songs: Song[]): Song[] {
+  const seen = new Set<string>();
 
-  deleteGroup: (groupId) =>
-    set((state) => ({
-      groups: state.groups.filter((g) => g.id !== groupId),
-    })),
+  return songs.filter((song) => {
+    if (seen.has(song.id)) return false;
+    seen.add(song.id);
+    return true;
+  });
+}
 
-  updateGroup: (groupId, updates) =>
-    set((state) => ({
-      groups: state.groups.map((g) =>
-        g.id === groupId ? { ...g, ...updates, updatedAt: Date.now() } : g
-      ),
-    })),
+function normalizeGroupName(name: string): string {
+  const trimmed = name.trim();
+  return trimmed.length > 0 ? trimmed : "Untitled playlist";
+}
 
-  addSongToGroup: (groupId, song) =>
-    set((state) => ({
-      groups: state.groups.map((g) =>
-        g.id === groupId
-          ? {
-              ...g,
-              songs: g.songs.some((s) => s.id === song.id) ? g.songs : [...g.songs, song],
-              updatedAt: Date.now(),
-            }
-          : g
-      ),
-    })),
+export const usePlaylistGroupStore = create<PlaylistGroupState>()(
+  persist(
+    (set, get) => ({
+      groups: createDefaultGroups(),
+      currentGroupId: null,
 
-  removeSongFromGroup: (groupId, songId) =>
-    set((state) => ({
-      groups: state.groups.map((g) =>
-        g.id === groupId
-          ? { ...g, songs: g.songs.filter((s) => s.id !== songId), updatedAt: Date.now() }
-          : g
-      ),
-    })),
+      createGroup: (name, type) => get().createGroupFromSongs(name, [], type),
 
-  setCurrentGroup: (groupId) => set({ currentGroupId: groupId }),
+      createGroupFromSongs: (name, songs, type = "custom") => {
+        const id = generateId();
+        const now = Date.now();
+        const uniqueSongs = dedupeSongs(songs);
+        const newGroup: PlaylistGroup = {
+          id,
+          type,
+          name: normalizeGroupName(name),
+          cover: uniqueSongs[0]?.cover || DEFAULT_COVER,
+          songs: uniqueSongs,
+          createdAt: now,
+          updatedAt: now,
+        };
 
-  getGroupById: (groupId) => {
-    return get().groups.find((g) => g.id === groupId);
-  },
+        set((state) => ({ groups: [...state.groups, newGroup], currentGroupId: id }));
+        return id;
+      },
 
-  getDefaultGroups: () => {
-    return get().groups.filter((g) => g.type !== "custom");
-  },
-}));
+      deleteGroup: (groupId) =>
+        set((state) => ({
+          groups: state.groups.filter((group) => group.id !== groupId),
+          currentGroupId: state.currentGroupId === groupId ? null : state.currentGroupId,
+        })),
+
+      updateGroup: (groupId, updates) =>
+        set((state) => ({
+          groups: state.groups.map((group) =>
+            group.id === groupId ? { ...group, ...updates, updatedAt: Date.now() } : group
+          ),
+        })),
+
+      addSongToGroup: (groupId, song) =>
+        set((state) => ({
+          groups: state.groups.map((group) =>
+            group.id === groupId
+              ? {
+                  ...group,
+                  songs: group.songs.some((item) => item.id === song.id)
+                    ? group.songs
+                    : [...group.songs, song],
+                  updatedAt: Date.now(),
+                }
+              : group
+          ),
+        })),
+
+      removeSongFromGroup: (groupId, songId) =>
+        set((state) => ({
+          groups: state.groups.map((group) =>
+            group.id === groupId
+              ? {
+                  ...group,
+                  songs: group.songs.filter((song) => song.id !== songId),
+                  updatedAt: Date.now(),
+                }
+              : group
+          ),
+        })),
+
+      setCurrentGroup: (groupId) => set({ currentGroupId: groupId }),
+
+      getGroupById: (groupId) => get().groups.find((group) => group.id === groupId),
+
+      getDefaultGroups: () => get().groups.filter((group) => group.type !== "custom"),
+    }),
+    {
+      name: "playlist-group-store-v1",
+      partialize: (state) => ({ groups: state.groups, currentGroupId: state.currentGroupId }),
+    }
+  )
+);

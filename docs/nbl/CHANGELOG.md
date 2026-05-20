@@ -5,19 +5,22 @@
 ### Added
 
 - feat(journal): confirmed playback now auto-records Listening Journal events with local mood labels.
+- feat(mix): Smart Mix sessions can now be saved as persistent custom playlist groups.
 
 ### Changed
 
 - The journal store now persists per-day playback events, rebuilds day rollups from those events, preserves notes, and prunes events with the 90-day journal window.
 - Journal day details now show per-song play counts and listened minutes from recorded playback events.
+- Playlist groups now persist under `playlist-group-store-v1`, and playlist backups include saved custom groups.
 
 ### Verified
 
 - Targeted tests passed: npm run test -- src/lib/journal/listeningJournal.test.ts src/store/listeningJournalStore.test.ts; 2 files, 13 tests.
 - Journal detail tests passed: npm run test -- src/lib/journal/listeningJournal.test.ts src/components/widgets/JournalDayPanel.test.tsx src/store/listeningJournalStore.test.ts; 3 files, 14 tests.
+- Smart Mix save tests passed: npm run test -- src/store/playlistGroupStore.test.ts src/store/smartMixStore.test.ts src/components/widgets/SmartMixSessionCard.test.tsx src/store/backupRestoreStore.test.ts; 4 files, 24 tests.
 - Type check passed: npx tsc --noEmit --pretty false.
 - Production build passed: npm run build.
-- Full Vitest suite passed: npm run test; 67 files, 350 tests. Vitest still prints non-fatal existing worker shutdown and jsdom canvas getContext warnings after the pass.
+- Full Vitest suite passed: npm run test; 68 files, 355 tests. Vitest still prints a non-fatal existing jsdom canvas getContext warning after the pass.
 
 ## 2026-05-20
 

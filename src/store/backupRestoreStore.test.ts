@@ -92,6 +92,7 @@ describe("backupRestoreStore", () => {
 
     it("should expose a preview of stores included in a backup", async () => {
       localStorageStore.set("playlist-store", '{"items":["song1"]}');
+      localStorageStore.set("playlist-group-store-v1", '{"groups":["mix1"]}');
 
       const item = await useBackupRestoreStore
         .getState()
@@ -101,6 +102,7 @@ describe("backupRestoreStore", () => {
       expect(preview?.schemaVersion).toBe("4.0.0");
       expect(preview?.includedStores).toEqual([
         "playlist-store",
+        "playlist-group-store-v1",
         "queue-store",
         "recommendation-store",
       ]);
@@ -124,13 +126,16 @@ describe("backupRestoreStore", () => {
 
     it("should restore playlist data to localStorage", async () => {
       localStorageStore.set("playlist-store", '{"items":["song1"]}');
+      localStorageStore.set("playlist-group-store-v1", '{"groups":["mix1"]}');
       const backupItem = await useBackupRestoreStore.getState().createBackup("playlists");
 
       localStorageStore.set("playlist-store", '{"items":[]}');
+      localStorageStore.set("playlist-group-store-v1", '{"groups":[]}');
 
       await useBackupRestoreStore.getState().restoreBackup(backupItem.id);
 
       expect(localStorageStore.get("playlist-store")).toBe('{"items":["song1"]}');
+      expect(localStorageStore.get("playlist-group-store-v1")).toBe('{"groups":["mix1"]}');
     });
 
     it("should restore library data to localStorage", async () => {

@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ListMusic, Play, RefreshCw, SlidersHorizontal, Sparkles } from "lucide-react";
+import { ListMusic, Play, RefreshCw, Save, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useSmartMixStore } from "@/store/smartMixStore";
@@ -18,9 +18,11 @@ const DEFAULT_KNOBS: SmartMixKnobs = {
 export function SmartMixSessionCard() {
   const songs = usePlaylistStore((state) => state.songs);
   const playQueue = useAudioStore((state) => state.playQueue);
-  const { currentSession, start, regenerate, commitToQueue } = useSmartMixStore();
+  const { currentSession, start, regenerate, commitToQueue, saveCurrentAsPlaylist } =
+    useSmartMixStore();
   const [knobs, setKnobs] = useState<SmartMixKnobs>(DEFAULT_KNOBS);
   const [selectedSeedId, setSelectedSeedId] = useState<string>("");
+  const [playlistName, setPlaylistName] = useState("Smart Mix");
   const [statusMessage, setStatusMessage] = useState("Choose a seed track to shape a Smart Mix.");
   const seedSong = useMemo(
     () => songs.find((song) => song.id === selectedSeedId) || songs[0] || null,
@@ -43,6 +45,7 @@ export function SmartMixSessionCard() {
       recentSongIds,
       knobs,
     });
+    setPlaylistName(`Smart Mix - ${seedSong.title}`);
     setStatusMessage(`Mix ready: ${session.songs.length} tracks from ${seedSong.title}`);
   };
 
@@ -58,6 +61,15 @@ export function SmartMixSessionCard() {
     if (!session) return;
     const seedTitle = session.songs[0]?.title || "the seed track";
     setStatusMessage(`Regenerated mix: ${session.songs.length} tracks from ${seedTitle}`);
+  };
+
+  const handleSave = () => {
+    if (!currentSession || currentSession.songs.length === 0) return;
+    const groupId = saveCurrentAsPlaylist(playlistName);
+    if (!groupId) return;
+    setStatusMessage(
+      `Saved ${currentSession.songs.length} tracks to ${playlistName.trim() || "Smart Mix"}`
+    );
   };
 
   return (
@@ -156,6 +168,28 @@ export function SmartMixSessionCard() {
         >
           <Play className="h-4 w-4" />
           Play mix
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-2 md:grid-cols-[1fr_auto]">
+        <label className="block">
+          <span className="mb-1 block text-xs uppercase tracking-wider text-white/40">
+            Save as playlist
+          </span>
+          <input
+            value={playlistName}
+            onChange={(event) => setPlaylistName(event.target.value)}
+            maxLength={80}
+            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-fuchsia-300/50"
+          />
+        </label>
+        <button
+          onClick={handleSave}
+          disabled={!currentSession}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm text-white/70 transition-colors hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Save className="h-4 w-4" />
+          Save playlist
         </button>
       </div>
 

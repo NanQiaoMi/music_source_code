@@ -47,6 +47,7 @@ interface StoredSettingsBackup {
 
 interface StoredPlaylistsBackup {
   playlist?: string | null;
+  playlistGroups?: string | null;
   queue?: string | null;
   recommendation?: string | null;
 }
@@ -144,7 +145,7 @@ function getIncludedStores(data: BackupData): string[] {
   }
 
   if (data.playlists) {
-    stores.push("playlist-store", "queue-store", "recommendation-store");
+    stores.push("playlist-store", "playlist-group-store-v1", "queue-store", "recommendation-store");
   }
 
   if (data.library) {
@@ -226,6 +227,7 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
         if (type === "full" || type === "playlists") {
           backupData.playlists = {
             playlist: localStorage.getItem("playlist-store"),
+            playlistGroups: localStorage.getItem("playlist-group-store-v1"),
             queue: localStorage.getItem("queue-store"),
             recommendation: localStorage.getItem("recommendation-store"),
           };
@@ -320,6 +322,8 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
         if (backupData.playlists) {
           const playlists = backupData.playlists as StoredPlaylistsBackup;
           if (playlists.playlist) localStorage.setItem("playlist-store", playlists.playlist);
+          if (playlists.playlistGroups)
+            localStorage.setItem("playlist-group-store-v1", playlists.playlistGroups);
           if (playlists.queue) localStorage.setItem("queue-store", playlists.queue);
           if (playlists.recommendation)
             localStorage.setItem("recommendation-store", playlists.recommendation);
@@ -378,6 +382,7 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
             },
             playlists: {
               playlist: localStorage.getItem("playlist-store"),
+              playlistGroups: localStorage.getItem("playlist-group-store-v1"),
               queue: localStorage.getItem("queue-store"),
               recommendation: localStorage.getItem("recommendation-store"),
             },

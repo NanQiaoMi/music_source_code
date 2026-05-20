@@ -64,7 +64,10 @@ describe("SmartMixSessionCard", () => {
   beforeEach(async () => {
     mocks.playQueue.mockClear();
     const { useSmartMixStore } = await import("@/store/smartMixStore");
+    const { usePlaylistGroupStore } = await import("@/store/playlistGroupStore");
     useSmartMixStore.setState({ currentSession: null, lastInput: null });
+    usePlaylistGroupStore.setState({ groups: [], currentGroupId: null });
+    localStorage.clear();
   });
 
   it("announces session status when a mix is started and played", async () => {
@@ -136,6 +139,48 @@ describe("SmartMixSessionCard", () => {
 
     const status = container.querySelector('[role="status"]');
     expect(status?.textContent).toContain("Regenerated mix: 3 tracks from Midnight City");
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("saves the current mix as a custom playlist", async () => {
+    vi.setSystemTime(new Date("2026-05-20T00:00:00.000Z"));
+    const { SmartMixSessionCard } = await import("./SmartMixSessionCard");
+    const { usePlaylistGroupStore } = await import("@/store/playlistGroupStore");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(<SmartMixSessionCard />);
+    });
+
+    const startButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Start mix")
+    );
+
+    await act(async () => {
+      startButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const saveButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Save playlist")
+    );
+
+    await act(async () => {
+      saveButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const status = container.querySelector('[role="status"]');
+    const savedGroup = usePlaylistGroupStore
+      .getState()
+      .groups.find((group) => group.name.includes("Midnight City"));
+
+    expect(status?.textContent).toContain("Saved 3 tracks to Smart Mix - Midnight City");
+    expect(savedGroup?.type).toBe("custom");
+    expect(savedGroup?.songs.map((song) => song.id)).toEqual(["seed", "track-3", "track-2"]);
 
     await act(async () => {
       root.unmount();
