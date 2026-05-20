@@ -2,11 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  useMetadataEditorStore,
-  BatchEditOperation,
-  RegexPreset,
-} from "@/store/metadataEditorStore";
+import { useMetadataEditorStore, BatchEditOperation } from "@/store/metadataEditorStore";
 import { Edit2, Trash2, Plus, Eye, Save, X, Wand2 } from "lucide-react";
 import { usePlaylistStore } from "@/store/playlistStore";
 
@@ -17,10 +13,9 @@ interface BatchMetadataEditorProps {
 export const BatchMetadataEditor: React.FC<BatchMetadataEditorProps> = ({ className = "" }) => {
   const { songs } = usePlaylistStore();
   const {
-    selectedSongs,
     operations,
     previewChanges,
-    previewMode,
+
     regexPresets,
     setSelectedSongs,
     addOperation,
@@ -28,7 +23,6 @@ export const BatchMetadataEditor: React.FC<BatchMetadataEditorProps> = ({ classN
     clearOperations,
     generatePreview,
     applyChanges,
-    setPreviewMode,
   } = useMetadataEditorStore();
 
   const [activeTab, setActiveTab] = useState<"select" | "edit" | "preview">("select");
@@ -37,7 +31,7 @@ export const BatchMetadataEditor: React.FC<BatchMetadataEditorProps> = ({ classN
   const [editValue, setEditValue] = useState("");
   const [editType, setEditType] = useState<"set" | "clear" | "replace" | "append">("set");
   const [searchValue, setSearchValue] = useState("");
-  const [regexPattern, setRegexPattern] = useState("");
+  const [regexPattern, _setRegexPattern] = useState("");
 
   const handleSelectAll = () => {
     setSelectedIds(songs.map((s) => s.id));
@@ -71,7 +65,7 @@ export const BatchMetadataEditor: React.FC<BatchMetadataEditorProps> = ({ classN
     setSearchValue("");
   };
 
-  const handleApplyRegex = () => {
+  const _handleApplyRegex = () => {
     const preset = regexPresets.find((p) => p.name === regexPattern);
     if (!preset) return;
 

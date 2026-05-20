@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,17 +10,7 @@ import { GlassCard } from "@/components/shared/Glass/GlassCard";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
-import {
-  Search,
-  Plus,
-  Settings,
-  ChevronDown,
-  Home,
-  Music2,
-  ListMusic,
-  Upload,
-  Database,
-} from "lucide-react";
+import { Search, Settings, Home, Music2, ListMusic, Database } from "lucide-react";
 
 type TabType = "local" | "data";
 

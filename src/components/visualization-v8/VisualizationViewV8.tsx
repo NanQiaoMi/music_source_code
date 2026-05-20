@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useState, useCallback, memo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
@@ -29,11 +29,11 @@ const APPLE_SPRING_CONFIG = {
 export function VisualizationViewV8() {
   const { currentView, setCurrentView, isTransitioning, setIsTransitioning } = useUIStore();
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const _currentSong = useAudioStore((state) => state.currentSong);
   const currentTime = useAudioStore((state) => state.currentTime);
   const duration = useAudioStore((state) => state.duration);
-  const bufferedRanges = useAudioStore((state) => state.bufferedRanges);
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const _bufferedRanges = useAudioStore((state) => state.bufferedRanges);
+  const _setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);
   const { currentTheme, blurIntensity, animationSpeed } = useVisualSettingsStore();

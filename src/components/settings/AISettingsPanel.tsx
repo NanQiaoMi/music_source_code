@@ -1,25 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Settings,
-  X,
-  Plus,
-  Trash2,
-  CheckCircle,
-  AlertCircle,
-  RefreshCcw,
-  Globe,
-  Key,
-  Cpu,
-  Activity,
-  Zap,
-} from "lucide-react";
-import { useAIStore, AIConfig } from "@/store/aiStore";
+import { X, Plus, Trash2, RefreshCcw, Globe, Key, Activity, Zap } from "lucide-react";
+import { useAIStore } from "@/store/aiStore";
 import { useGlassToast } from "@/components/shared/GlassToast";
 import { GlassCard } from "@/components/shared/Glass/GlassCard";
-import { GlassButton } from "@/components/shared/GlassButton";
 
 interface AISettingsPanelProps {
   isOpen: boolean;
@@ -49,7 +35,7 @@ const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) =>
 
   const [isAdding, setIsAdding] = useState(false);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [_isFetchingModels, setIsFetchingModels] = useState(false);
 
   const handleAdd = () => {
     if (!newConfig.name || !newConfig.apiKey) {

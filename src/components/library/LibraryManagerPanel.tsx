@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Database, Trash2, FileScan, Settings, BarChart3, RefreshCw } from "lucide-react";
+import { Database, Trash2, RefreshCw } from "lucide-react";
 import { useLibraryManagerStore } from "@/store/libraryManagerStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import type { Song } from "@/types/song";
@@ -254,8 +254,7 @@ function DeduplicateTab({
 function RenameTab({
   renameRules,
   selectedRule,
-  onAddRule,
-  onUpdateRule,
+
   onDeleteRule,
   onSelectRule,
 }: {
@@ -309,7 +308,6 @@ function RenameTab({
 
 function ScanTab({
   scanFilters,
-  onSetFilters,
 }: {
   scanFilters: any;
   onSetFilters: (filters: Partial<any>) => void;

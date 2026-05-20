@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
 import { useProfessionalModeStore, PROFESSIONAL_FEATURE_INFO } from "@/store/professionalModeStore";
-import { X, Settings, RefreshCw, FileAudio, Music, Activity } from "lucide-react";
+import { X, Settings, RefreshCw, Activity } from "lucide-react";
 import { HealthCheckPanel } from "./HealthCheckPanel";
 
 interface ProfessionalToolsPanelProps {
@@ -38,7 +38,7 @@ export function ProfessionalToolsPanel({
 }: ProfessionalToolsPanelProps) {
   const { currentView } = useUIStore();
   const { isProfessionalMode, enabledFeatures, isFeatureEnabled } = useProfessionalModeStore();
-  const [activeSection, setActiveSection] = useState<ToolSection>("overview");
+  const [_activeSection, setActiveSection] = useState<ToolSection>("overview");
   const [showHealthCheck, setShowHealthCheck] = useState(false);
 
   const tools = [

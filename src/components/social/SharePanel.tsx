@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { Clipboard, Check } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import type { Song } from "@/types/song";
 import {
@@ -19,7 +19,6 @@ import {
   Box,
   LayoutTemplate,
   Activity,
-  QrCode,
   Disc3,
   Wand2,
   Info,
@@ -56,7 +55,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
   const currentSong = useAudioStore((state) => state.currentSong);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [selectedLyric, setSelectedLyric] = useState<string>("");
+  const [selectedLyric, _setSelectedLyric] = useState<string>("");
   const [customLyric, setCustomLyric] = useState<string>("");
   const [isEditingLyric, setIsEditingLyric] = useState(false);
   const [selectedLyricLines, setSelectedLyricLines] = useState<string[]>([]);

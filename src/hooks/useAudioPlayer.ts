@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useAudioStore, AudioError } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useEQStore } from "@/store/eqStore";
