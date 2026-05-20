@@ -630,7 +630,7 @@ export const PosterPreview = ({
                   whiteSpace: "pre-wrap",
                 }}
               >
-                "{lyric}"
+                &quot;{lyric}&quot;
               </p>
             )}
           </div>
@@ -982,7 +982,7 @@ export const PosterPreview = ({
                           whiteSpace: "pre-wrap",
                         }}
                       >
-                        "{lyric}"
+                        &quot;{lyric}&quot;
                       </p>
                     </div>
                   )}

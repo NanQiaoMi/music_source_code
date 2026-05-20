@@ -190,7 +190,7 @@ export function PresetManagerPanel({ onClose }: PresetManagerPanelProps) {
             <div className="text-center text-gray-400 py-12">请先选择一个可视化效果</div>
           ) : filteredPresets.length === 0 ? (
             <div className="text-center text-gray-400 py-12">
-              暂无预设，点击"保存当前"创建第一个
+              暂无预设，点击&quot;保存当前&quot;创建第一个
             </div>
           ) : (
             <>

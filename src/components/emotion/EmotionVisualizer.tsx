@@ -560,7 +560,7 @@ const EmotionVisualizer: React.FC = () => {
                   情绪意境 archeology
                 </div>
                 <div className="text-[11px] text-white/70 italic leading-relaxed font-medium">
-                  "{hoveredPoint.description}"
+                  &quot;{hoveredPoint.description}&quot;
                 </div>
               </div>
             )}
@@ -615,7 +615,7 @@ const EmotionVisualizer: React.FC = () => {
                     transition={{ duration: 1 }}
                     className="text-sm text-white/90 font-medium italic leading-relaxed tracking-tight"
                   >
-                    "{p.description}"
+                    &quot;{p.description}&quot;
                   </motion.div>
 
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">

@@ -802,7 +802,7 @@ const EmotionMatrixView: React.FC<EmotionMatrixViewProps> = ({ isOpen, onClose }
                                     <div
                                       className={`text-[10px] mt-2 italic line-clamp-1 ${selectedIds.includes(p.id) ? "text-black/60" : "text-white/40"}`}
                                     >
-                                      "{p.description}"
+                                      &quot;{p.description}&quot;
                                     </div>
                                   )}
                                 </div>
