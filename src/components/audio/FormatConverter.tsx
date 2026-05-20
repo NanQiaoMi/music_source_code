@@ -2,6 +2,8 @@
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { canExportConvertedAudio, detect } from "@/lib/audio/processingCapabilities";
+import { resolveAudioSourceBlob } from "@/lib/audio/audioSource";
+import { runFormatConversionWorkerTask } from "@/lib/audio/formatConversionWorker";
 import { useFormatConversionStore, ConversionTask } from "@/store/formatConversionStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { motion, AnimatePresence } from "framer-motion";
@@ -90,7 +92,7 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
         title: s.title,
         artist: s.artist,
         path: s.audioUrl || "",
-        format: "mp3",
+        format: s.format || "mp3",
       })),
       settings.targetFormat
     );
@@ -121,24 +123,36 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
             "Local conversion not available in this browser - export disabled"
           );
           incrementFailed();
-          convertingRef.current.delete(task.id);
           continue;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const sourceSong = songs.find((song) => song.id === task.songId);
+        const source = await resolveAudioSourceBlob({
+          id: task.songId,
+          title: task.songTitle,
+          audioUrl: task.sourcePath || sourceSong?.audioUrl,
+          format: task.sourceFormat || sourceSong?.format,
+        });
 
-        for (let progress = 10; progress <= 100; progress += 10) {
-          updateTaskProgress(task.id, progress);
-          await new Promise((resolve) => setTimeout(resolve, 200));
+        const activeWorker = workerRef.current;
+        if (!activeWorker) {
+          throw new Error("Conversion worker is not available");
         }
 
-        updateTaskStatus(
-          task.id,
-          "preview-only",
-          "Local conversion pipeline is available, but encoder export is not wired yet"
-        );
+        const outputBlob = await runFormatConversionWorkerTask({
+          worker: activeWorker,
+          fileBlob: source.blob,
+          sourceFormat: source.inferredFormat,
+          targetFormat: task.targetFormat,
+          bitrate: settings.bitrate,
+          sampleRate: settings.sampleRate,
+          channels: settings.channels,
+          preserveMetadata: settings.preserveMetadata,
+          onProgress: (progress) => updateTaskProgress(task.id, progress),
+        });
+
+        updateTaskStatus(task.id, "completed", undefined, outputBlob);
         incrementConverted();
-        convertingRef.current.delete(task.id);
       } catch (error) {
         updateTaskStatus(
           task.id,
@@ -146,6 +160,7 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
           error instanceof Error ? error.message : "Conversion failed"
         );
         incrementFailed();
+      } finally {
         convertingRef.current.delete(task.id);
       }
     }
@@ -159,6 +174,11 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
     incrementFailed,
     setIsConverting,
     exportAvailable,
+    songs,
+    settings.bitrate,
+    settings.channels,
+    settings.preserveMetadata,
+    settings.sampleRate,
   ]);
 
   const downloadFile = useCallback((task: ConversionTask) => {
