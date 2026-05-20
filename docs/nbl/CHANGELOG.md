@@ -18,6 +18,7 @@
 - Playlist groups now persist under `playlist-group-store-v1`, and playlist backups include saved custom groups.
 - Music Library now exposes saved custom playlists with play/delete actions, so saved Smart Mixes are discoverable after creation.
 - Library Health next actions now prioritize broken audio paths, route issue states to Results, and disable the action while a scan is running.
+- Smart Playlist imports now match exported M3U/PLS/XSPF/WPL entries by title labels, generated filenames, stored paths, URLs, and decoded XML entities.
 - Format conversion now posts real source blobs to the FFmpeg worker, stores worker output blobs for download, and surfaces missing-source/worker-output failures instead of simulating progress.
 - DSD conversion now runs tasks sequentially against the worker, updates only the active task from each worker response, and surfaces missing-source/worker-output failures instead of completing against a fake 1 KB blob.
 - Audio processing readiness now feeds `processingCapabilities` through `__MIMI_FFMPEG_WASM_LOADED__`, and FFmpeg load failures are visible in `ffmpegLoadError` instead of being swallowed silently.
@@ -29,6 +30,7 @@
 - Smart Mix save tests passed: npm run test -- src/store/playlistGroupStore.test.ts src/store/smartMixStore.test.ts src/components/widgets/SmartMixSessionCard.test.tsx src/store/backupRestoreStore.test.ts; 4 files, 24 tests.
 - Library playlist tests passed: npm run test -- src/components/library/LibraryManagerPanel.test.tsx src/store/playlistGroupStore.test.ts; 2 files, 3 tests.
 - Library Health action tests passed: npm run test -- src/lib/library/libraryHealthActions.test.ts src/components/library/LibraryHealthPanel.test.tsx src/store/libraryHealthStore.test.ts; 3 files, 10 tests.
+- Smart Playlist import tests passed: npm run test -- src/store/smartPlaylistStore.test.ts; 1 file, 5 tests.
 - Format conversion tests passed: npm run test -- src/lib/audio/audioSource.test.ts src/lib/audio/formatConversionWorker.test.ts src/lib/audio/processingCapabilities.test.ts; 3 files, 13 tests.
 - DSD conversion tests passed: npm run test -- src/lib/audio/dsdSource.test.ts src/components/audio/DSDConverter.test.tsx; 2 files, 6 tests.
 - DSD targeted ESLint passed: npx eslint src/components/audio/DSDConverter.tsx src/components/audio/DSDConverter.test.tsx src/lib/audio/dsdSource.ts src/lib/audio/dsdSource.test.ts --ext .ts,.tsx --report-unused-disable-directives --max-warnings 100.

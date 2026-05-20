@@ -67,4 +67,54 @@ describe("smartPlaylistStore", () => {
     expect(store.exportPlaylist(songs, "wpl")).toContain('<media src="s1.mp3"');
     expect(store.exportPlaylist(songs, "txt")).toContain("M83 - Midnight City");
   });
+
+  it("imports M3U entries from labels, generated file names, and stored paths", () => {
+    const store = useSmartPlaylistStore.getState();
+    const localSongs: Song[] = [
+      ...songs,
+      {
+        id: "s3",
+        title: "Untitled source",
+        artist: "Tape Archive",
+        album: "Loose cuts",
+        duration: 90,
+        source: "local",
+        filePath: "D:\\library\\loose-track.wav",
+      },
+    ];
+
+    const imported = store.importPlaylist(
+      [
+        "#EXTM3U",
+        "#EXTINF:245,M83 - Midnight City",
+        "s1.mp3",
+        "D:\\library\\loose-track.wav",
+        "s1.mp3",
+      ].join("\n"),
+      "m3u",
+      localSongs
+    );
+
+    expect(imported.map((song) => song.id)).toEqual(["s1", "s3"]);
+  });
+
+  it("imports XML playlist titles with escaped entities", () => {
+    const store = useSmartPlaylistStore.getState();
+    const specialSong: Song = {
+      id: "special",
+      title: "Salt & Light",
+      artist: "ATB <Live>",
+      album: "Entity checks",
+      duration: 180,
+      source: "local",
+      audioUrl: "stored://special",
+    };
+
+    expect(
+      store.importPlaylist(store.exportPlaylist([specialSong], "xspf"), "xspf", [specialSong])
+    ).toEqual([specialSong]);
+    expect(
+      store.importPlaylist(store.exportPlaylist([specialSong], "wpl"), "wpl", [specialSong])
+    ).toEqual([specialSong]);
+  });
 });

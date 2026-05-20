@@ -212,6 +212,23 @@ function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
+function decodeXml(value: string): string {
+  return value.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (match, entity) => {
+    const normalized = String(entity).toLowerCase();
+    if (normalized === "amp") return "&";
+    if (normalized === "lt") return "<";
+    if (normalized === "gt") return ">";
+    if (normalized === "quot") return '"';
+    if (normalized === "apos") return "'";
+
+    const codePoint = normalized.startsWith("#x")
+      ? Number.parseInt(normalized.slice(2), 16)
+      : Number.parseInt(normalized.slice(1), 10);
+
+    return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
+  });
+}
+
 function generateXSPF(songs: Song[]): string {
   let xspf = '<?xml version="1.0" encoding="UTF-8"?>\n';
   xspf += '<playlist version="1" xmlns="http://xspf.org/ns/0/">\n';
@@ -258,18 +275,66 @@ function generateWPL(songs: Song[]): string {
   return wpl;
 }
 
+function normalizePlaylistMatchValue(value: string | undefined): string {
+  return decodeXml(value || "")
+    .trim()
+    .replace(/^file:\/\/+/i, "")
+    .toLowerCase();
+}
+
+function fileNameFromPath(value: string | undefined): string {
+  return normalizePlaylistMatchValue(value).split(/[\\/]/).pop()?.split(/[?#]/, 1)[0] || "";
+}
+
+function withoutExtension(value: string): string {
+  return value.replace(/\.[a-z0-9]+$/i, "");
+}
+
+function songMatchCandidates(song: Song): string[] {
+  const fileName = fileNameFromPath(song.filePath || song.audioUrl || `${song.id}.mp3`);
+  const values = [
+    song.title,
+    song.artist,
+    `${song.artist} - ${song.title}`,
+    song.id,
+    `${song.id}.mp3`,
+    song.filePath,
+    song.audioUrl,
+    fileName,
+    withoutExtension(fileName),
+  ];
+
+  return Array.from(
+    new Set(values.map((value) => normalizePlaylistMatchValue(value)).filter(Boolean))
+  );
+}
+
 function findMatchingSong(line: string, allSongs: Song[]): Song | undefined {
-  const searchTerm = line.toLowerCase();
-  return allSongs.find((song) => {
-    const title = song.title.toLowerCase();
-    const artist = song.artist.toLowerCase();
-    return searchTerm.includes(title) || title.includes(searchTerm) || searchTerm.includes(artist);
-  });
+  const searchTerm = normalizePlaylistMatchValue(line);
+  if (!searchTerm) return undefined;
+
+  return allSongs.find((song) =>
+    songMatchCandidates(song).some(
+      (candidate) =>
+        searchTerm === candidate || searchTerm.includes(candidate) || candidate.includes(searchTerm)
+    )
+  );
 }
 
 function parseXmlValue(line: string, tag: string): string | null {
   const match = line.match(new RegExp(`<${tag}>(.*?)</${tag}>`));
-  return match?.[1] || null;
+  return match?.[1] ? decodeXml(match[1]) : null;
+}
+
+function parseXmlAttribute(line: string, attribute: string): string | null {
+  const match = line.match(new RegExp(`${attribute}=["'](.*?)["']`));
+  return match?.[1] ? decodeXml(match[1]) : null;
+}
+
+function parseM3UExtInfo(line: string): string | null {
+  if (!line.toUpperCase().startsWith("#EXTINF")) return null;
+  const commaIndex = line.indexOf(",");
+  return commaIndex >= 0 ? line.slice(commaIndex + 1).trim() : null;
 }
 
 export const useSmartPlaylistStore = create<SmartPlaylistState>()(
@@ -474,20 +539,31 @@ export const useSmartPlaylistStore = create<SmartPlaylistState>()(
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
 
-          if (format === "pls" && line.startsWith("Title") && line.includes("=")) {
-            pushMatch(findMatchingSong(line.slice(line.indexOf("=") + 1), allSongs));
+          if ((format === "m3u" || format === "m3u8") && line.startsWith("#")) {
+            const label = parseM3UExtInfo(line);
+            if (label) pushMatch(findMatchingSong(label, allSongs));
+            continue;
+          }
+
+          if (
+            format === "pls" &&
+            (line.startsWith("Title") || line.startsWith("File")) &&
+            line.includes("=")
+          ) {
+            const value = line.slice(line.indexOf("=") + 1);
+            pushMatch(findMatchingSong(value, allSongs));
             continue;
           }
 
           if (format === "xspf") {
-            const title = parseXmlValue(line, "title");
-            if (title) pushMatch(findMatchingSong(title, allSongs));
+            const value = parseXmlValue(line, "title") || parseXmlValue(line, "location");
+            if (value) pushMatch(findMatchingSong(value, allSongs));
             continue;
           }
 
           if (format === "wpl" && line.includes("<media")) {
-            const title = line.match(/title="(.*?)"/)?.[1];
-            if (title) pushMatch(findMatchingSong(title, allSongs));
+            const value = parseXmlAttribute(line, "title") || parseXmlAttribute(line, "src");
+            if (value) pushMatch(findMatchingSong(value, allSongs));
             continue;
           }
 
