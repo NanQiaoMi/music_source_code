@@ -195,7 +195,7 @@ export const ResonanceTotemV8: EffectPlugin = {
     });
   },
 
-  resize(width: number, height: number) {},
+  resize(_width: number, _height: number) {},
 
   destroy(ctx?: RenderContext) {
     if (ctx && ctx.private && ctx.private.group) {

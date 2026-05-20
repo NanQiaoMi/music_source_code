@@ -2,7 +2,6 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { glass } from "@/lib/tokens";
 
 interface GlassCardProps {
   children: React.ReactNode;

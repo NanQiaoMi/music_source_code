@@ -3,9 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
-import { usePlaylistStore } from "@/store/playlistStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
-import { useEmotionStore } from "@/store/emotionStore";
 import { useDynamicTheme } from "@/hooks/useDynamicTheme";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 

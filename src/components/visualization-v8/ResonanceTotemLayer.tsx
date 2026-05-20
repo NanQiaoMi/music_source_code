@@ -4,7 +4,7 @@ import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { useTotemStore } from "@/store/totemStore";
 import { useAudioStore } from "@/store/audioStore";
-import { useAudioPlayer, getAudioAnalyser } from "@/hooks/useAudioPlayer";
+import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 
 interface AudioDataSummary {
   bass: number;

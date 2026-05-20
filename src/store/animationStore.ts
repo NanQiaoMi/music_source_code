@@ -49,7 +49,7 @@ const DEFAULT_STATE: AnimationState = {
   },
 };
 
-export const useAnimationStore = create<AnimationStore>((set, get) => ({
+export const useAnimationStore = create<AnimationStore>((set, _get) => ({
   ...DEFAULT_STATE,
 
   setSyncMode: (mode) => set({ syncMode: mode }),

@@ -1,6 +1,6 @@
 ﻿import { Song } from "@/types/song";
-import { generateSongId, formatDuration } from "./songValidation";
-import { associateLyricsWithAudioFiles, isLyricsFile } from "@/services/lyricsService";
+import { generateSongId } from "./songValidation";
+import { associateLyricsWithAudioFiles } from "@/services/lyricsService";
 
 // @ts-expect-error - jsmediatags doesn't have proper types
 import jsmediatags from "jsmediatags";

@@ -79,7 +79,7 @@ export const ParticleBurstEffect: EffectPlugin = {
     },
   ],
 
-  init: (ctx) => {
+  init: (_ctx) => {
     particles = [];
     lastBurstTime = 0;
     console.log("ParticleBurst effect initialized");

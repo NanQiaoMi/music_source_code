@@ -346,7 +346,7 @@ export const useAudioStore = create<AudioState>()(
           nextIndex = (currentIndex + 1) % queue.length;
         }
         const nextSongItem = queue[nextIndex];
-        const queueStore = useQueueStore.getState();
+        const _queueStore = useQueueStore.getState();
         usePlayerStore.getState().setCurrentSong(nextSongItem);
 
         set({

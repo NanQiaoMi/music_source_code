@@ -109,7 +109,7 @@ export const TunnelFlightV8Effect: EffectPlugin = {
     segments: [],
     time: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.segments = [];
     (this as any).private.time = 0;
   },

@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { Database, Trash2, RefreshCw } from "lucide-react";
 import { useLibraryManagerStore } from "@/store/libraryManagerStore";
 import { usePlaylistStore } from "@/store/playlistStore";
-import type { Song } from "@/types/song";
 
 interface LibraryManagerPanelProps {
   isOpen: boolean;

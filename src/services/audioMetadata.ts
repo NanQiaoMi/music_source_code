@@ -215,7 +215,7 @@ export async function extractAudioMetadata(
 
           resolve(metadata);
         },
-        onError: async (error: any) => {
+        onError: async (_error: any) => {
           // Fallback to filename parsing if metadata extraction fails
           const parsedFilename = parseFilename(file.name);
           const duration = await durationPromise;

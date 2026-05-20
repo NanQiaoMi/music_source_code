@@ -11,7 +11,7 @@ export function drawPrismPulse({
   refs,
 }: EffectContext) {
   const complexity = params.complexity || 6;
-  const refraction = params.refraction || 1.0;
+  const _refraction = params.refraction || 1.0;
   const drift = params.drift || 0.5;
   const speed = params.speed || 1.0;
 

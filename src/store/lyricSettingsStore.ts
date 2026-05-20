@@ -168,7 +168,7 @@ export const lyricPresets: LyricPreset[] = [
 
 export const useLyricSettingsStore = create<LyricSettings>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       ...defaultSettings,
 
       setShowTranslation: (show) => set({ showTranslation: show }),

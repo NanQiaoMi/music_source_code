@@ -73,7 +73,7 @@ export const SpectrumWaterfallV8Effect: EffectPlugin = {
     },
   ],
 
-  init: (ctx) => {
+  init: (_ctx) => {
     history = [];
     console.log("SpectrumWaterfallV8 effect initialized");
   },
@@ -162,7 +162,7 @@ export const SpectrumWaterfallV8Effect: EffectPlugin = {
     console.log(`SpectrumWaterfallV8 resized to ${width}x${height}`);
   },
 
-  destroy: (ctx) => {
+  destroy: (_ctx) => {
     history = [];
     console.log("SpectrumWaterfallV8 effect destroyed");
   },

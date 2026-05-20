@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Database, Download, Upload, Trash2, Clock, Settings } from "lucide-react";
+import { Database, Download, Upload, Trash2, Clock } from "lucide-react";
 import { useBackupRestoreStore, BackupType } from "@/store/backupRestoreStore";
 
 interface BackupRestorePanelProps {

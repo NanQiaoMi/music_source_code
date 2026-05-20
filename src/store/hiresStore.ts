@@ -32,7 +32,7 @@ export interface HiResState {
 
 export const useHiResStore = create<HiResState>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       currentQuality: null,
       showQualityBadge: true,
       showDetailedInfo: false,
@@ -54,7 +54,7 @@ export const useHiResStore = create<HiResState>()(
         set({ autoDetect: auto });
       },
 
-      detectQuality: (sampleRate, bitDepth, channels) => {
+      detectQuality: (sampleRate, bitDepth, _channels) => {
         if (sampleRate >= 2822400 || sampleRate >= 11289600) {
           return "DSD";
         }

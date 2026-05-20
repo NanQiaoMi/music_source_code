@@ -1,6 +1,6 @@
 "use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const SpaceGridV8Effect: EffectPlugin = {
   id: "space-grid-v8",
@@ -109,7 +109,7 @@ export const SpaceGridV8Effect: EffectPlugin = {
   private: {
     time: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.time = 0;
   },
   render(ctx, audioData, params) {

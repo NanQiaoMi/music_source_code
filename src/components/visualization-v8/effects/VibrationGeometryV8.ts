@@ -137,7 +137,7 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
     time: 0,
     shapes: [],
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.time = 0;
     (this as any).private.shapes = [];
   },

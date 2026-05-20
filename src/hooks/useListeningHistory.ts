@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useMemo } from "react";
+import { useEffect, useCallback } from "react";
 import { useAudioStore } from "@/store/audioStore";
 import { Song } from "@/types/song";
 

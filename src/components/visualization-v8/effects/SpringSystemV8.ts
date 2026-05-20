@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const SpringSystemV8Effect: EffectPlugin = {
   id: "spring-system-v8",
@@ -133,7 +133,7 @@ export const SpringSystemV8Effect: EffectPlugin = {
     particles: [],
     time: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.particles = [];
     (this as any).private.time = 0;
   },

@@ -82,7 +82,7 @@ export const drawOrganicFluid = ({
   ctx.translate(-cx, -cy);
 
   const primaryHue = isFinite(theme.primary) ? theme.primary : 200;
-  const accentHue = isFinite(theme.accent) ? theme.accent : 280;
+  const _accentHue = isFinite(theme.accent) ? theme.accent : 280;
 
   // --- 3. ORGANIC CELLS (Replaced Vector Shapes) ---
   if (!refs.particles.current || refs.particles.current.length < 40) {
@@ -165,7 +165,7 @@ export const drawOrganicFluid = ({
     const cShift = (effectParams.colorShift || 0.5) * 360;
     const bHue = (primaryHue - 40 + i * 15 + Math.sin(t * 0.15) * 40 + cShift + 360) % 360;
 
-    const isSpecial = val > 0.85;
+    const _isSpecial = val > 0.85;
     const chromAb = (0.2 + bass * 0.8) * 10;
 
     [0, 1].forEach((pass) => {

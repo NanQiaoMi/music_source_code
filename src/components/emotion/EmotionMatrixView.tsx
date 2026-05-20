@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { GlassCard } from "@/components/shared/Glass/GlassCard";
 import { DNAJournal } from "@/components/widgets/DNAJournal";
-import { BarChart2 } from "lucide-react";
 
 const QUADRANT_META: Record<string, { label: string; color: string; desc: string }> = {
   Q1: { label: "高亢激昂", color: "rgb(249, 115, 22)", desc: "充满能量与激情" },

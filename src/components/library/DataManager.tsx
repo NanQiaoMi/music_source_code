@@ -14,7 +14,7 @@ import {
   readFileAsText,
   ImportResult,
 } from "@/utils/dataIO";
-import { importLocalSongs, LocalImportResult, formatFileSize } from "@/utils/localMusicImport";
+import { importLocalSongs, LocalImportResult } from "@/utils/localMusicImport";
 import { formatDuration } from "@/utils/songValidation";
 import Image from "next/image";
 

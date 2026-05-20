@@ -121,7 +121,7 @@ export const FractalGeometryV8Effect: EffectPlugin = {
     time: 0,
     baseRotation: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.time = 0;
     (this as any).private.baseRotation = 0;
   },

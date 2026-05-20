@@ -134,7 +134,7 @@ export const AudioPaintingV8Effect: EffectPlugin = {
     brushes: [],
     time: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.brushes = [];
     (this as any).private.time = 0;
   },

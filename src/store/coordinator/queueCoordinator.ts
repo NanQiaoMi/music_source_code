@@ -1,5 +1,4 @@
 import { useQueueStore } from "@/store/queueStore";
-import { useRecommendationStore } from "@/store/recommendationStore";
 import type { Song } from "@/types/song";
 import type { QueueCoordinator } from "./types";
 import { audioCoordinator } from "./audioCoordinator";

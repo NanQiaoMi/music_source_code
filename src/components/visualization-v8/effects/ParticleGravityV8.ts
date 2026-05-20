@@ -100,7 +100,7 @@ export const ParticleGravityV8Effect: EffectPlugin = {
     attractors: [],
     time: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.particles = [];
     (this as any).private.attractors = [];
     (this as any).private.time = 0;
@@ -162,7 +162,7 @@ export const ParticleGravityV8Effect: EffectPlugin = {
       context.fillRect(0, 0, width, height);
     }
 
-    attractors.forEach((attractor: any, index: number) => {
+    attractors.forEach((attractor: any, _index: number) => {
       attractor.phase += 0.01;
       const orbitRadius = 150;
       attractor.x =

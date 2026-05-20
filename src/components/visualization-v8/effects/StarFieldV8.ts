@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const StarFieldV8Effect: EffectPlugin = {
   id: "star-field-v8",
@@ -97,7 +97,7 @@ export const StarFieldV8Effect: EffectPlugin = {
     stars: [],
     time: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.stars = [];
     (this as any).private.time = 0;
   },

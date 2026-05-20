@@ -111,7 +111,7 @@ export const AudioSculptureV8Effect: EffectPlugin = {
   private: {
     time: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.time = 0;
   },
   render(ctx, audioData, params) {

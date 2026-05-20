@@ -100,7 +100,7 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
     lastBassValue: 0,
     time: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.particles = [];
     (this as any).private.lastBassValue = 0;
     (this as any).private.time = 0;

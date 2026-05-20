@@ -74,7 +74,7 @@ export const ListeningHeatmap: React.FC<HeatmapProps> = ({ hourlyData }) => {
   const max = Math.max(...hours.map((h) => hourlyData[h] || 0), 1);
   const cellSize = 16;
   const gap = 2;
-  const width = hours.length * (cellSize + gap);
+  const _width = hours.length * (cellSize + gap);
 
   return (
     <div className="flex flex-wrap gap-1">

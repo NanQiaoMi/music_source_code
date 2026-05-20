@@ -1,6 +1,5 @@
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useEmotionStore } from "@/store/emotionStore";
-import { useUIStore } from "@/store/uiStore";
 
 /**
  * bootstrapApp - Orchestrates the startup sequence of the application.

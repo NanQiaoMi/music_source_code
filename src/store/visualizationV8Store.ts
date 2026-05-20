@@ -29,7 +29,7 @@ interface VisualizationV8State {
 
 export const useVisualizationV8Store = create<VisualizationV8State>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       currentEffect: "spectrum",
       currentEngine: "canvas",
       parameterMode: "basic",

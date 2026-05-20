@@ -1,5 +1,5 @@
 import { Song } from "@/types/song";
-import { validateSongsBatch, ValidationResult } from "./songValidation";
+import { validateSongsBatch } from "./songValidation";
 
 export interface ImportResult {
   success: boolean;
@@ -118,7 +118,7 @@ export const importSongsFromCSV = (csvString: string): ImportResult => {
       return result;
     }
 
-    const headers = parseCSVLine(lines[0]);
+    const _headers = parseCSVLine(lines[0]);
     const songs: Partial<Song>[] = [];
 
     for (let i = 1; i < lines.length; i++) {

@@ -202,7 +202,7 @@ export const ParticleTrailV8: EffectPlugin = {
     context.restore();
   },
 
-  resize(width: number, height: number) {},
+  resize(_width: number, _height: number) {},
 
   destroy() {
     (this as any).particles = [];

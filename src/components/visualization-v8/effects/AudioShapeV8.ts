@@ -72,7 +72,7 @@ export const AudioShapeV8Effect: EffectPlugin = {
     },
   ],
 
-  init: (ctx) => {
+  init: (_ctx) => {
     console.log("AudioShapeV8 effect initialized");
   },
 
@@ -200,7 +200,7 @@ export const AudioShapeV8Effect: EffectPlugin = {
     console.log(`AudioShapeV8 resized to ${width}x${height}`);
   },
 
-  destroy: (ctx) => {
+  destroy: (_ctx) => {
     console.log("AudioShapeV8 effect destroyed");
   },
 };

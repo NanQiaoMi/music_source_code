@@ -42,7 +42,7 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose 
   const { audioElement } = useAudioPlayer();
   const setEQBands = useAudioStore((state) => state.setEQBands);
   const currentEQPreset = useAudioStore((state) => state.currentEQPreset);
-  const setCurrentEQPreset = useAudioStore((state) => state.setCurrentEQPreset);
+  const _setCurrentEQPreset = useAudioStore((state) => state.setCurrentEQPreset);
   const eqBands = useAudioStore((state) => state.eqBands);
   const loadEQPreset = useAudioStore((state) => state.loadEQPreset);
   const [bands, setBands] = useState<number[]>(

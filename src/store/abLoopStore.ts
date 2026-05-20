@@ -66,13 +66,13 @@ export const useABLoopStore = create<ABLoopState>((set, get) => ({
     })),
 
   clearPointA: () =>
-    set((state) => ({
+    set((_state) => ({
       pointA: null,
       isEnabled: false,
     })),
 
   clearPointB: () =>
-    set((state) => ({
+    set((_state) => ({
       pointB: null,
       isEnabled: false,
     })),
