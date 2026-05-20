@@ -104,7 +104,11 @@ describe("queueStore", () => {
       const store = useQueueStore.getState();
       const originalSetItem = Storage.prototype.setItem;
 
-      vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key: string, value: string) {
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+        this: Storage,
+        key: string,
+        value: string
+      ) {
         if (key === "queue-store-v5" && value.length > 600) {
           throw new DOMException("Quota exceeded", "QuotaExceededError");
         }

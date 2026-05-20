@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -265,7 +265,7 @@ export const DataManager: React.FC = () => {
             <input
               ref={folderInputRef}
               type="file"
-              // @ts-ignore - webkitdirectory is not in standard HTMLInputElement
+              // @ts-expect-error - webkitdirectory is not in standard HTMLInputElement
               webkitdirectory=""
               directory=""
               multiple

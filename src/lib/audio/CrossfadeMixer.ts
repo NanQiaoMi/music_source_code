@@ -1,4 +1,4 @@
-import { AudioEngine } from "./AudioEngine";
+﻿import { AudioEngine } from "./AudioEngine";
 import { useAudioStore } from "@/store/audioStore";
 import { useEmotionStore } from "@/store/emotionStore";
 
@@ -38,7 +38,9 @@ export class CrossfadeMixer {
       if (source) {
         try {
           source.disconnect();
-        } catch (e) {}
+        } catch {
+          /* ignore */
+        }
         source.connect(gainNode);
         const entry = AudioEngine.getInstance().getEQChainEntry();
         if (entry) {
@@ -114,7 +116,9 @@ export class CrossfadeMixer {
             fromAudio.currentTime = 0;
             fromGain.gain.setValueAtTime(1, this.context!.currentTime);
           }
-        } catch (e) {}
+        } catch {
+          /* ignore */
+        }
       },
       duration * 1000 + 100
     );

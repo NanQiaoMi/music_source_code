@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,7 +15,7 @@ import {
 import { associateLyricsWithAudioFiles } from "@/services/lyricsService";
 import Image from "next/image";
 
-// @ts-ignore - jsmediatags doesn't have proper types
+// @ts-expect-error - jsmediatags doesn't have proper types
 import jsmediatags from "jsmediatags";
 
 // Supported audio formats
@@ -385,7 +385,7 @@ export const LocalMusicManager: React.FC = () => {
         <input
           ref={folderInputRef}
           type="file"
-          // @ts-ignore
+          // @ts-expect-error
           webkitdirectory=""
           directory=""
           multiple

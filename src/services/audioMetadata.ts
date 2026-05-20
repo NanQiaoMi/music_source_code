@@ -1,7 +1,7 @@
-// Audio Metadata Extraction and Cache Service
+﻿// Audio Metadata Extraction and Cache Service
 // Extracts and caches metadata from audio files (MP3, FLAC, WAV, etc.)
 
-// @ts-ignore - jsmediatags doesn't have proper types
+// @ts-expect-error - jsmediatags doesn't have proper types
 import jsmediatags from "jsmediatags";
 
 export interface AudioMetadata {

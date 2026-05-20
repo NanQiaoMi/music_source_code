@@ -1,7 +1,7 @@
-import { Song } from "@/types/song";
+﻿import { Song } from "@/types/song";
 import { generateSongId } from "@/utils/songValidation";
 
-// @ts-ignore - jsmediatags doesn't have proper types
+// @ts-expect-error - jsmediatags doesn't have proper types
 import jsmediatags from "jsmediatags";
 
 // Storage keys

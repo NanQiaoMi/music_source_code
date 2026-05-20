@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useDSDProcessingStore, DSDTask, formatDSDRate } from "@/store/dsdProcessingStore";
@@ -55,10 +55,13 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
     setWorker(dsdWorker);
 
     dsdWorker.onmessage = (event) => {
-      const { type, data } = event.data;
+      const { type } = event.data;
       if (type === "progress") {
+        // Progress updates handled by UI
       } else if (type === "complete") {
+        // Completion handled by UI
       } else if (type === "error") {
+        // Error handling TODO
       }
     };
 

@@ -1,8 +1,8 @@
-import { Song } from "@/types/song";
+﻿import { Song } from "@/types/song";
 import { generateSongId, formatDuration } from "./songValidation";
 import { associateLyricsWithAudioFiles, isLyricsFile } from "@/services/lyricsService";
 
-// @ts-ignore - jsmediatags doesn't have proper types
+// @ts-expect-error - jsmediatags doesn't have proper types
 import jsmediatags from "jsmediatags";
 
 export interface LocalImportResult {

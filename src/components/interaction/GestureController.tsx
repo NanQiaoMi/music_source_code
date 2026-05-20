@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useGestureStore, GestureType } from "@/store/gestureStore";
@@ -465,7 +465,9 @@ export const GestureController: React.FC = () => {
       if (handLandmarkerRef.current) {
         try {
           handLandmarkerRef.current.close();
-        } catch (_) {}
+        } catch {
+          /* ignore */
+        }
         handLandmarkerRef.current = null;
       }
 

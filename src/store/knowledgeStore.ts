@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -65,7 +65,9 @@ function extractJson(text: string): any[] {
       const obj = JSON.parse(objectMatch[0]);
       return Array.isArray(obj) ? obj : [obj];
     }
-  } catch (e) {}
+  } catch {
+    /* ignore */
+  }
   return [];
 }
 
