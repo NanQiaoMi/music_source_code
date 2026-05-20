@@ -30,6 +30,18 @@ interface AIState {
   fetchModels: (id: string) => Promise<string[]>;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function extractModelIds(payload: unknown): string[] {
+  if (!isRecord(payload) || !Array.isArray(payload.data)) return [];
+
+  return payload.data
+    .map((model) => (isRecord(model) ? model.id : null))
+    .filter((id): id is string => typeof id === "string" && id.trim().length > 0);
+}
+
 export const useAIStore = create<AIState>()(
   persist(
     (set, get) => ({
@@ -107,9 +119,8 @@ export const useAIStore = create<AIState>()(
 
           if (!response.ok) return [];
 
-          const data = await response.json();
-          const models = data.data.map((m: any) => m.id);
-          return models;
+          const data: unknown = await response.json();
+          return extractModelIds(data);
         } catch (error) {
           console.error("Failed to fetch models:", error);
           return [];
