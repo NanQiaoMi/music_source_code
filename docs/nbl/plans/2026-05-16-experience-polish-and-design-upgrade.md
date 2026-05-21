@@ -1,4 +1,4 @@
-﻿# Experience Polish And Design Upgrade Implementation Plan
+# Experience Polish And Design Upgrade Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use nbl.subagent-driven-development (recommended) or nbl.executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -23,9 +23,9 @@
 - Remaining gaps from the 05-14 plan:
   - Queue side of Task 4 (queue regression tests, QueuePanel action upgrades).
   - Task 5 Audio Effects presets + morphing + persistence boundary tests.
-  - Task 6 mock blob paths still present at `src/components/audio/FormatConverter.tsx:128` and `src/components/audio/CrossfadeMixer.tsx:365`.
-  - Task 8 decoupling: `src/store/recommendationStore.ts` still imports `playlistStore` and `emotionStore` directly; `src/components/visualization-v8/effects/AudioLiquidV8.ts:207` still uses dynamic `require("@/store/uiStore")`.
-  - Task 10 docs alignment (ROADMAP reality + plan index) not yet finalized.
+- Task 6 mock blob paths now ship as honest capability states in `src/components/audio/FormatConverter.tsx` and `src/components/audio/CrossfadeMixer.tsx`.
+- Task 8 decoupling and the `AudioLiquidV8` static UI store access shipped on 2026-05-17.
+- Task 10 docs alignment (ROADMAP reality + plan index) shipped on 2026-05-21.
 - 67 store files, 32 test files; coverage is concentrated on recently-touched slices.
 
 ---
@@ -102,7 +102,7 @@
 
 ### Task 1: Finish Queue Side Of The Queue+Search Command Center
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** None
 **Parallelizable:** Yes (file ownership: `src/store/queueStore.ts`, `src/lib/queue/*`, `src/components/player/QueuePanel.tsx`)
@@ -129,7 +129,7 @@
 
 ### Task 2: Audio Effects Presets, Morphing, Safe Persistence
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** None
 **Parallelizable:** Yes (file ownership: `src/lib/audio/effectsPresets.*`, `src/store/audioEffectsStore.*`, `src/components/features-v7/AudioEffectsPanel.tsx`)
@@ -154,7 +154,7 @@
 
 ### Task 3: Replace Mock Blob Paths With Honest Capability States
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** None
 **Parallelizable:** Yes (file ownership: `src/lib/audio/processingCapabilities.*`, `src/components/audio/FormatConverter.tsx`, `src/components/audio/CrossfadeMixer.tsx`)
@@ -176,7 +176,7 @@
 
 ### Task 4: Decouple Recommendation Inputs And Remove Dynamic Require
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** None
 **Parallelizable:** Yes, but coordinate with Task 5 of Part B (both touch `recommendationStore`)
@@ -200,7 +200,7 @@
 
 ### Task 5: Doc Reality Pass
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** Tasks 1-4 of Part A
 **Parallelizable:** No (snapshot of completed work)
@@ -221,7 +221,7 @@
 
 ### Task 6: Queue+Search As Real Command Center (Design Pass)
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** Part A Task 1
 **Parallelizable:** Yes with Part B Task 7-9 (different files)
@@ -248,7 +248,7 @@ Goal: search bar becomes a `/`-triggered command center matching the visual rhyt
 
 ### Task 7: Lyrics Readability Presets + Karaoke Polish
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** None
 **Parallelizable:** Yes
@@ -269,7 +269,7 @@ Goal: search bar becomes a `/`-triggered command center matching the visual rhyt
 
 ### Task 8: Library Health + Smart Playlist Design Pass
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** None
 **Parallelizable:** Yes
@@ -290,7 +290,7 @@ Goal: search bar becomes a `/`-triggered command center matching the visual rhyt
 
 ### Task 9: Stats / Achievements / Daily Recommendation Glow-Up
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** None
 **Parallelizable:** Yes
@@ -308,7 +308,7 @@ Goal: search bar becomes a `/`-triggered command center matching the visual rhyt
 
 ### Task 10: Visualization Performance Presets In Settings
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** None
 **Parallelizable:** Yes
@@ -333,7 +333,7 @@ Three new features chosen because they reuse the existing data the app already c
 
 A "session" is a temporary, AI-flavored queue built from the current song plus three knobs: `energy`, `familiarity`, `length`. It is throwaway by default; the user can save it as a real playlist.
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** Part A Task 4 (decoupled recommendation inputs)
 **Parallelizable:** Yes after dependency
@@ -361,7 +361,7 @@ A "session" is a temporary, AI-flavored queue built from the current song plus t
 
 Daily auto-rollup of plays + emotion + optional one-line note. Lives in a single panel that opens from a new Glass card; persists across sessions; never asks for network.
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** None
 **Parallelizable:** Yes
@@ -389,7 +389,7 @@ Daily auto-rollup of plays + emotion + optional one-line note. Lives in a single
 
 A small set of three player skins that change only the mini-player Halo (glow ring, particles, ambient hue) without touching V7.0 core view layout. Skins plug into the existing `playerSkinsStore`.
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** None
 **Parallelizable:** Yes
@@ -417,7 +417,7 @@ A small set of three player skins that change only the mini-player Halo (glow ri
 
 ### Task 14: Final Verification
 
-- [ ] Task complete
+- [x] Task complete
 
 **Dependencies:** All previous tasks
 **Parallelizable:** No

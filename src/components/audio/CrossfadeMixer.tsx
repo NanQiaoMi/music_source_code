@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
+import { resolveAudioSourceBlob } from "@/lib/audio/audioSource";
+import { renderCrossfadePreview } from "@/lib/audio/crossfadeRenderer";
 import { canRenderCrossfadePreview, detect } from "@/lib/audio/processingCapabilities";
 import { useCrossfadeStore } from "@/store/crossfadeStore";
 import { usePlaylistStore } from "@/store/playlistStore";
@@ -134,6 +136,66 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
   const clearSelection = useCallback(() => {
     setSelectedSongs([]);
   }, []);
+
+  const handleStartMixing = useCallback(async () => {
+    const state = useCrossfadeStore.getState();
+    const pendingTasks = state.queue.filter((task) => task.status === "pending");
+
+    for (const task of pendingTasks) {
+      state.updateQueueItemStatus(task.id, "processing", 0);
+
+      if (!crossfadePreviewAvailable) {
+        state.updateQueueItemStatus(
+          task.id,
+          "preview-only",
+          0,
+          undefined,
+          "Local crossfade rendering is not available in this browser - export disabled"
+        );
+        state.incrementProcessed();
+        continue;
+      }
+
+      const fromSong = songs.find((song) => song.id === task.fromSongId);
+      const toSong = songs.find((song) => song.id === task.toSongId);
+
+      if (!fromSong || !toSong) {
+        state.updateQueueItemStatus(
+          task.id,
+          "error",
+          0,
+          undefined,
+          "Crossfade source song is missing from the library"
+        );
+        continue;
+      }
+
+      try {
+        const [fromSource, toSource] = await Promise.all([
+          resolveAudioSourceBlob(fromSong),
+          resolveAudioSourceBlob(toSong),
+        ]);
+        const outputBlob = await renderCrossfadePreview({
+          fromBlob: fromSource.blob,
+          toBlob: toSource.blob,
+          durationSeconds: settings.duration,
+          curveType: settings.curveType,
+          onProgress: (progress) => state.updateQueueItemStatus(task.id, "processing", progress),
+        });
+
+        state.updateQueueItemStatus(task.id, "completed", 100, outputBlob);
+        state.incrementProcessed();
+      } catch (error) {
+        state.updateQueueItemStatus(
+          task.id,
+          "error",
+          0,
+          undefined,
+          error instanceof Error ? error.message : "Crossfade rendering failed"
+        );
+      }
+    }
+  }, [crossfadePreviewAvailable, settings.curveType, settings.duration, songs]);
 
   const getStatusIcon = (
     status: "pending" | "processing" | "completed" | "error" | "preview-only"
@@ -359,39 +421,7 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
                       <div className="flex gap-2">
                         {queue.some((q) => q.status === "pending") && (
                           <button
-                            onClick={async () => {
-                              const state = useCrossfadeStore.getState();
-                              const pendingTasks = queue.filter((t) => t.status === "pending");
-
-                              for (const task of pendingTasks) {
-                                state.updateQueueItemStatus(task.id, "processing", 0);
-
-                                if (!crossfadePreviewAvailable) {
-                                  state.updateQueueItemStatus(
-                                    task.id,
-                                    "preview-only",
-                                    0,
-                                    undefined,
-                                    "Local crossfade rendering is not available in this browser - export disabled"
-                                  );
-                                  continue;
-                                }
-
-                                for (let progress = 10; progress <= 100; progress += 10) {
-                                  await new Promise((resolve) => setTimeout(resolve, 100));
-                                  state.updateQueueItemStatus(task.id, "processing", progress);
-                                }
-
-                                state.updateQueueItemStatus(
-                                  task.id,
-                                  "preview-only",
-                                  100,
-                                  undefined,
-                                  "Crossfade preview rendered, but WAV export is not wired yet"
-                                );
-                                state.incrementProcessed();
-                              }
-                            }}
+                            onClick={handleStartMixing}
                             className="px-4 py-1.5 text-xs bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors text-white font-medium flex items-center gap-2"
                           >
                             <Play className="w-3 h-3" />

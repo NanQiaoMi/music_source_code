@@ -1,6 +1,8 @@
 ## 2026-05-21 Audio Processing Reality Update
 
 - Phase 2.8 FFmpeg loading is now verified in `audioProcessingStore`: duplicate load calls reuse the same in-flight promise, successful loads set the global `__MIMI_FFMPEG_WASM_LOADED__` capability flag, and failed loads store `ffmpegLoadError` while clearing readiness.
+- Crossfade Mixer now resolves real source audio blobs and renders a WAV preview through `OfflineAudioContext` when the browser supports local rendering; unsupported browsers stay in the explicit `preview-only` state instead of faking completion.
+- Verification: `npm run test -- src/lib/audio/crossfadeRenderer.test.ts src/components/audio/CrossfadeMixer.test.tsx`, `npx tsc --noEmit --incremental false`, and targeted ESLint for the touched audio files passed before browser smoke.
 - Verification: `npm run test -- src/store/audioProcessingStore.test.ts src/lib/audio/processingCapabilities.test.ts`, targeted ESLint for the touched audio processing files, and `npx tsc --noEmit --pretty false --incremental false` passed before full-suite validation.
 
 ## 2026-05-20 Phase 1+2 Progress Update

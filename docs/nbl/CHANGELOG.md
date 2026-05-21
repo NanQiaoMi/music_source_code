@@ -4,6 +4,7 @@
 
 ### Added
 
+- feat(audio): Crossfade Mixer now renders real WAV previews from resolved source audio when local rendering is available.
 - feat(journal): confirmed playback now auto-records Listening Journal events with local mood labels.
 - feat(mix): Smart Mix sessions can now be saved as persistent custom playlist groups.
 - feat(library): Library Health now shows next-best action buttons for empty, scan-ready, healthy, and issue states.
@@ -13,6 +14,7 @@
 
 ### Changed
 
+- Crossfade queue processing now uses `OfflineAudioContext` plus the shared crossfade renderer helper, and unsupported browsers remain preview-only instead of simulating a completed export.
 - The journal store now persists per-day playback events, rebuilds day rollups from those events, preserves notes, and prunes events with the 90-day journal window.
 - Journal day details now show per-song play counts and listened minutes from recorded playback events.
 - Playlist groups now persist under `playlist-group-store-v1`, and playlist backups include saved custom groups.
@@ -25,6 +27,9 @@
 
 ### Verified
 
+- Targeted tests passed: npm run test -- src/lib/audio/crossfadeRenderer.test.ts src/components/audio/CrossfadeMixer.test.tsx; 2 files, 5 tests.
+- Type check passed: npx tsc --noEmit --incremental false.
+- Targeted ESLint passed: npx eslint src/components/audio/CrossfadeMixer.tsx src/components/audio/CrossfadeMixer.test.tsx src/lib/audio/crossfadeRenderer.ts src/lib/audio/crossfadeRenderer.test.ts --max-warnings 0.
 - Targeted tests passed: npm run test -- src/lib/journal/listeningJournal.test.ts src/store/listeningJournalStore.test.ts; 2 files, 13 tests.
 - Journal detail tests passed: npm run test -- src/lib/journal/listeningJournal.test.ts src/components/widgets/JournalDayPanel.test.tsx src/store/listeningJournalStore.test.ts; 3 files, 14 tests.
 - Smart Mix save tests passed: npm run test -- src/store/playlistGroupStore.test.ts src/store/smartMixStore.test.ts src/components/widgets/SmartMixSessionCard.test.tsx src/store/backupRestoreStore.test.ts; 4 files, 24 tests.
