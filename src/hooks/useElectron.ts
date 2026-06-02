@@ -5,16 +5,13 @@ import { useAudioStore } from "@/store/audioStore";
 import { useAudioPlayer } from "./useAudioPlayer";
 
 export function useElectron() {
-  const [isElectron, setIsElectron] = useState(false);
   const [isDesktopLyricsOpen, setIsDesktopLyricsOpen] = useState(false);
   const currentSong = useAudioStore((state) => state.currentSong);
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);
   const { togglePlay } = useAudioPlayer();
 
-  useEffect(() => {
-    setIsElectron(typeof window !== "undefined" && !!window.electronAPI);
-  }, []);
+  const isElectron = typeof window !== "undefined" && !!window.electronAPI;
 
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;

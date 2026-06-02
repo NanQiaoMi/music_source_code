@@ -1,9 +1,15 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { motion } from "framer-motion";
-import { Database, Download, Upload, Trash2, Clock } from "lucide-react";
-import { useBackupRestoreStore, BackupType } from "@/store/backupRestoreStore";
+import { Clock, Database, Download, Trash2, Upload, X } from "lucide-react";
+import {
+  BackupItem,
+  BackupPreview,
+  BackupSchedule,
+  BackupType,
+  useBackupRestoreStore,
+} from "@/store/backupRestoreStore";
 
 interface BackupRestorePanelProps {
   isOpen: boolean;
@@ -11,10 +17,10 @@ interface BackupRestorePanelProps {
 }
 
 const TAB_ITEMS = [
-  { id: "backup", name: "立即备份", icon: "💾" },
-  { id: "history", name: "备份历史", icon: "📜" },
-  { id: "schedule", name: "定时备份", icon: "⏰" },
-  { id: "restore", name: "恢复数据", icon: "🔄" },
+  { id: "backup", name: "立即备份", icon: "Backup" },
+  { id: "history", name: "备份历史", icon: "History" },
+  { id: "schedule", name: "定时备份", icon: "Schedule" },
+  { id: "restore", name: "恢复数据", icon: "Restore" },
 ] as const;
 
 type TabId = (typeof TAB_ITEMS)[number]["id"];
@@ -55,23 +61,24 @@ export const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ isOpen, 
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-5xl bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
+        className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-white/20 bg-white/10 shadow-2xl backdrop-blur-2xl"
       >
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
+        <div className="flex items-center justify-between border-b border-white/10 p-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/30 to-teal-500/30 flex items-center justify-center">
-              <Database className="w-6 h-6 text-white" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/30 to-teal-500/30">
+              <Database className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h2 className="text-white text-2xl font-semibold">数据备份与恢复</h2>
-              <p className="text-white/60 text-sm">备份、恢复、定时备份管理</p>
+              <h2 className="text-2xl font-semibold text-white">数据备份与恢复</h2>
+              <p className="text-sm text-white/60">备份、恢复和定时保护本地播放数据</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            aria-label="关闭"
           >
-            ✕
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -80,19 +87,19 @@ export const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ isOpen, 
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-4 px-4 text-sm font-medium transition-all duration-200 ${
+              className={`flex-1 px-4 py-4 text-sm font-medium transition-all duration-200 ${
                 activeTab === tab.id
-                  ? "text-white border-b-2 border-emerald-500 bg-white/5"
-                  : "text-white/60 hover:text-white/80 hover:bg-white/5"
+                  ? "border-b-2 border-emerald-500 bg-white/5 text-white"
+                  : "text-white/60 hover:bg-white/5 hover:text-white/80"
               }`}
             >
-              <span className="mr-2">{tab.icon}</span>
+              <span className="sr-only">{tab.icon}</span>
               {tab.name}
             </button>
           ))}
         </div>
 
-        <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar min-h-0">
+        <div className="max-h-[60vh] min-h-0 overflow-y-auto p-6 custom-scrollbar">
           {activeTab === "backup" && (
             <BackupTab
               isBackingUp={isBackingUp}
@@ -137,14 +144,14 @@ function BackupTab({
 }: {
   isBackingUp: boolean;
   backupProgress: number;
-  onCreateBackup: (type: BackupType, name?: string, description?: string) => Promise<any>;
+  onCreateBackup: (type: BackupType, name?: string, description?: string) => Promise<BackupItem>;
 }) {
-  const BACKUP_TYPES = [
-    { id: "full" as BackupType, name: "完整备份", desc: "所有数据和配置", icon: "📦" },
-    { id: "settings" as BackupType, name: "仅设置", desc: "界面配置和偏好", icon: "⚙️" },
-    { id: "playlists" as BackupType, name: "仅歌单", desc: "歌单和播放历史", icon: "🎵" },
-    { id: "library" as BackupType, name: "仅音乐库", desc: "音乐库元数据", icon: "💿" },
-    { id: "lyrics" as BackupType, name: "仅歌词", desc: "歌词和封面", icon: "📝" },
+  const backupTypes = [
+    { id: "full" as BackupType, name: "完整备份", desc: "所有数据、配置、歌单和歌词" },
+    { id: "settings" as BackupType, name: "仅设置", desc: "界面、播放、可视化等偏好" },
+    { id: "playlists" as BackupType, name: "仅歌单", desc: "歌单、队列和推荐状态" },
+    { id: "library" as BackupType, name: "仅音乐库", desc: "音乐库索引和元数据" },
+    { id: "lyrics" as BackupType, name: "仅歌词", desc: "歌词与封面相关数据" },
   ];
 
   const handleCreateBackup = async (type: BackupType) => {
@@ -157,33 +164,32 @@ function BackupTab({
 
   return (
     <div className="space-y-6">
-      <div className="text-center py-6">
-        <h3 className="text-white text-xl font-semibold mb-2">选择备份类型</h3>
-        <p className="text-white/60">备份数据保存到本地，不会上传到任何服务器</p>
+      <div className="py-6 text-center">
+        <h3 className="mb-2 text-xl font-semibold text-white">选择备份类型</h3>
+        <p className="text-white/60">备份保存在浏览器本地，可下载为 JSON 文件长期保存</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {BACKUP_TYPES.map((type) => (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {backupTypes.map((type) => (
           <button
             key={type.id}
             onClick={() => handleCreateBackup(type.id)}
             disabled={isBackingUp}
-            className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-left transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-2xl border border-white/10 bg-white/5 p-5 text-left transition-all duration-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <div className="text-3xl mb-2">{type.icon}</div>
-            <div className="text-white font-semibold mb-1">{type.name}</div>
-            <div className="text-white/60 text-sm">{type.desc}</div>
+            <div className="mb-1 font-semibold text-white">{type.name}</div>
+            <div className="text-sm text-white/60">{type.desc}</div>
           </button>
         ))}
       </div>
 
       {isBackingUp && (
-        <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-emerald-300 font-semibold">正在备份...</div>
+        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="font-semibold text-emerald-300">正在备份...</div>
             <div className="text-emerald-300">{backupProgress}%</div>
           </div>
-          <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-3 overflow-hidden rounded-full bg-white/10">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${backupProgress}%` }}
@@ -201,44 +207,44 @@ function BackupHistoryTab({
   onDownload,
   onDelete,
 }: {
-  backups: any[];
+  backups: BackupItem[];
   onDownload: (backupId: string) => void;
   onDelete: (backupId: string) => void;
 }) {
   return (
     <div className="space-y-4">
       {backups.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-3xl bg-white/5 flex items-center justify-center">
-            <Clock className="w-10 h-10 text-white/40" />
+        <div className="py-12 text-center">
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/5">
+            <Clock className="h-10 w-10 text-white/40" />
           </div>
-          <h3 className="text-white font-semibold mb-2">暂无备份</h3>
+          <h3 className="mb-2 font-semibold text-white">暂无备份</h3>
           <p className="text-white/60">创建备份后会显示在这里</p>
         </div>
       ) : (
         <div className="space-y-3">
           {backups.map((backup) => (
-            <div key={backup.id} className="p-5 rounded-2xl bg-white/5 border border-white/10">
-              <div className="flex items-center justify-between">
+            <div key={backup.id} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-white font-semibold">{backup.name}</div>
-                  <div className="text-white/60 text-sm">
-                    {new Date(backup.createdAt).toLocaleString("zh-CN")} · {backup.type}
+                  <div className="font-semibold text-white">{backup.name}</div>
+                  <div className="text-sm text-white/60">
+                    {new Date(backup.createdAt).toLocaleString("zh-CN")} - {backup.type}
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => onDownload(backup.id)}
-                    className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm flex items-center gap-1"
+                    className="flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
                   >
-                    <Download className="w-4 h-4" />
+                    <Download className="h-4 w-4" />
                     下载
                   </button>
                   <button
                     onClick={() => onDelete(backup.id)}
-                    className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm flex items-center gap-1"
+                    className="flex items-center gap-1 rounded-lg bg-red-500/20 px-3 py-1.5 text-sm text-red-300 hover:bg-red-500/30"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="h-4 w-4" />
                     删除
                   </button>
                 </div>
@@ -255,64 +261,64 @@ function ScheduleTab({
   schedules,
   onAddSchedule,
 }: {
-  schedules: any[];
-  onAddSchedule: (schedule: any) => void;
+  schedules: BackupSchedule[];
+  onAddSchedule: (schedule: Omit<BackupSchedule, "id">) => void;
 }) {
-  const SCHEDULE_OPTIONS = [
-    { id: "daily", name: "每日", desc: "每天自动备份" },
-    { id: "weekly", name: "每周", desc: "每周自动备份" },
-    { id: "monthly", name: "每月", desc: "每月自动备份" },
+  const scheduleOptions = [
+    { id: "daily" as const, name: "每日", desc: "每天自动创建一份完整备份" },
+    { id: "weekly" as const, name: "每周", desc: "每周自动创建一份完整备份" },
+    { id: "monthly" as const, name: "每月", desc: "每月自动创建一份完整备份" },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="text-center py-6">
-        <h3 className="text-white text-xl font-semibold mb-2">定时备份设置</h3>
-        <p className="text-white/60">设置自动备份频率</p>
+      <div className="py-6 text-center">
+        <h3 className="mb-2 text-xl font-semibold text-white">定时备份设置</h3>
+        <p className="text-white/60">选择一个频率后，系统会按配置保留最近的备份</p>
       </div>
 
       <div className="space-y-3">
-        {SCHEDULE_OPTIONS.map((option) => (
+        {scheduleOptions.map((option) => (
           <button
             key={option.id}
             onClick={() =>
               onAddSchedule({
                 enabled: true,
-                frequency: option.id as any,
+                frequency: option.id,
                 time: "02:00",
                 maxBackups: 10,
-                backupType: "full" as BackupType,
+                backupType: "full",
               })
             }
-            className="w-full p-5 rounded-2xl text-left transition-all duration-200 bg-white/5 border border-white/10 hover:bg-white/10"
+            className="w-full rounded-2xl border border-white/10 bg-white/5 p-5 text-left transition-all duration-200 hover:bg-white/10"
           >
-            <div className="text-white font-semibold mb-1">{option.name}</div>
-            <div className="text-white/60 text-sm">{option.desc}</div>
+            <div className="mb-1 font-semibold text-white">{option.name}</div>
+            <div className="text-sm text-white/60">{option.desc}</div>
           </button>
         ))}
       </div>
 
-      <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-        <div className="text-white/80 font-medium mb-3">已配置的定时任务</div>
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <div className="mb-3 font-medium text-white/80">已配置的定时任务</div>
         {schedules.length === 0 ? (
-          <p className="text-white/40 text-sm">暂无定时任务</p>
+          <p className="text-sm text-white/40">暂无定时任务</p>
         ) : (
           <div className="space-y-2">
             {schedules.map((schedule) => (
-              <div key={schedule.id} className="text-white/60 text-sm">
-                {schedule.frequency} - {schedule.enabled ? "已启用" : "已禁用"}
+              <div key={schedule.id} className="text-sm text-white/60">
+                {schedule.frequency} - {schedule.enabled ? "已启用" : "已停用"}
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-        <div className="text-white/80 font-medium mb-3">备份说明</div>
-        <ul className="text-white/40 text-sm space-y-2">
-          <li>• 自动备份会保存在浏览器本地</li>
-          <li>• 建议定期下载备份到本地文件</li>
-          <li>• 可以随时在备份历史中管理备份</li>
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <div className="mb-3 font-medium text-white/80">备份说明</div>
+        <ul className="space-y-2 text-sm text-white/40">
+          <li>自动备份会保存在浏览器本地。</li>
+          <li>建议定期下载关键备份到本地文件。</li>
+          <li>可以随时在备份历史中下载或删除备份。</li>
         </ul>
       </div>
     </div>
@@ -330,10 +336,10 @@ function RestoreTab({
 }: {
   isRestoring: boolean;
   restoreProgress: number;
-  backups: any[];
+  backups: BackupItem[];
   onRestore: (backupId: string) => Promise<void>;
-  onUploadBackup: (file: File) => Promise<any>;
-  getBackupPreview: (backupId: string) => any;
+  onUploadBackup: (file: File) => Promise<BackupItem>;
+  getBackupPreview: (backupId: string) => BackupPreview | null;
   restoreError: string | null;
 }) {
   const [isDragging, setIsDragging] = useState(false);
@@ -346,7 +352,7 @@ function RestoreTab({
       setIsDragging(false);
       const file = e.dataTransfer.files[0];
       if (file && file.name.endsWith(".json")) {
-        onUploadBackup(file);
+        void onUploadBackup(file);
       }
     },
     [onUploadBackup]
@@ -356,7 +362,7 @@ function RestoreTab({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
-        onUploadBackup(file);
+        void onUploadBackup(file);
       }
     },
     [onUploadBackup]
@@ -379,62 +385,45 @@ function RestoreTab({
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleFileDrop}
-        className={`p-8 rounded-2xl border-2 border-dashed text-center transition-all duration-200 ${
-          isDragging
-            ? "border-emerald-500 bg-emerald-500/10"
-            : "border-white/20 bg-white/5 hover:border-white/30"
+        className={`relative rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-200 ${
+          isDragging ? "border-emerald-500 bg-emerald-500/10" : "border-white/20 bg-white/5"
         }`}
       >
-        <Upload className="w-12 h-12 text-white/40 mx-auto mb-4" />
-        <h3 className="text-white font-semibold mb-2">上传备份文件恢复</h3>
-        <p className="text-white/60 text-sm mb-4">拖拽或点击上传 .json 备份文件</p>
+        <Upload className="mx-auto mb-4 h-12 w-12 text-white/40" />
+        <h3 className="mb-2 font-semibold text-white">上传备份文件恢复</h3>
+        <p className="mb-4 text-sm text-white/60">拖拽或点击选择 .json 备份文件</p>
         <input
           type="file"
           accept=".json"
           onChange={handleFileSelect}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-        />
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = ".json";
-            input.onchange = (event) => {
-              const file = (event.target as HTMLInputElement).files?.[0];
-              if (file) {
-                onUploadBackup(file);
-              }
-            };
-            input.click();
-          }}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
           disabled={isRestoring}
-          className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        />
+        <span className="inline-flex rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 font-semibold text-white">
           选择文件
-        </button>
+        </span>
       </div>
 
       {backups.length > 0 && (
         <div className="space-y-4">
-          <div className="text-white/80 font-medium">或从历史备份恢复</div>
+          <div className="font-medium text-white/80">或从历史备份恢复</div>
           <div className="space-y-3">
             {backups.slice(0, 5).map((backup) => (
               <button
                 key={backup.id}
                 onClick={() => setSelectedBackupId(backup.id)}
                 disabled={isRestoring}
-                className="w-full p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-left transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 p-5 text-left transition-all duration-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-4">
                   <div>
-                    <div className="text-white font-semibold">{backup.name}</div>
-                    <div className="text-white/60 text-sm">
+                    <div className="font-semibold text-white">{backup.name}</div>
+                    <div className="text-sm text-white/60">
                       {new Date(backup.createdAt).toLocaleString("zh-CN")}
                     </div>
                   </div>
-                  <div className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 text-sm">
-                    恢复
+                  <div className="rounded-lg bg-emerald-500/20 px-3 py-1.5 text-sm text-emerald-300">
+                    预览
                   </div>
                 </div>
               </button>
@@ -444,30 +433,30 @@ function RestoreTab({
       )}
 
       {selectedPreview && selectedBackupId && (
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+        <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-white font-semibold">恢复预览</div>
-              <div className="text-white/60 text-sm">
-                Schema {selectedPreview.schemaVersion} · {selectedPreview.includedStores.length}{" "}
+              <div className="font-semibold text-white">恢复预览</div>
+              <div className="text-sm text-white/60">
+                Schema {selectedPreview.schemaVersion} - {selectedPreview.includedStores.length}{" "}
                 stores
               </div>
             </div>
             <button
-              onClick={() => handleRestore(selectedBackupId)}
+              onClick={() => void handleRestore(selectedBackupId)}
               disabled={isRestoring || !selectedPreview.canRestore}
-              className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-200 disabled:opacity-40"
+              className="rounded-xl bg-emerald-500/20 px-4 py-2 text-emerald-200 disabled:opacity-40"
             >
               确认恢复
             </button>
           </div>
           {!selectedPreview.canRestore && (
-            <div className="rounded-xl bg-red-500/15 border border-red-400/30 p-3 text-sm text-red-200">
+            <div className="rounded-xl border border-red-400/30 bg-red-500/15 p-3 text-sm text-red-200">
               {selectedPreview.error}
             </div>
           )}
           <div className="flex flex-wrap gap-2">
-            {selectedPreview.includedStores.map((storeName: string) => (
+            {selectedPreview.includedStores.map((storeName) => (
               <span
                 key={storeName}
                 className="rounded-lg bg-white/10 px-2 py-1 text-xs text-white/60"
@@ -480,18 +469,18 @@ function RestoreTab({
       )}
 
       {restoreError && (
-        <div className="rounded-2xl bg-red-500/15 border border-red-400/30 p-4 text-sm text-red-200">
+        <div className="rounded-2xl border border-red-400/30 bg-red-500/15 p-4 text-sm text-red-200">
           {restoreError}
         </div>
       )}
 
       {isRestoring && (
-        <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-emerald-300 font-semibold">正在恢复...</div>
+        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="font-semibold text-emerald-300">正在恢复...</div>
             <div className="text-emerald-300">{restoreProgress}%</div>
           </div>
-          <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-3 overflow-hidden rounded-full bg-white/10">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${restoreProgress}%` }}

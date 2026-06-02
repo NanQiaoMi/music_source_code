@@ -6,6 +6,8 @@ import { ChevronDown, Gauge, RotateCcw, Search, Sliders, Sparkles, Star, X } fro
 import {
   EffectCategory,
   EffectPlugin,
+  EffectParameterSet,
+  EffectParameterValue,
   ParameterMode,
   PerformanceLevel,
 } from "@/lib/visualization/types";
@@ -19,8 +21,8 @@ interface VisualControlDrawerProps {
   effects: EffectPlugin[];
   currentEffectId: string;
   onEffectSelect: (effectId: string) => void;
-  effectParams: Record<string, Record<string, any>>;
-  onParamChange: (effectId: string, paramId: string, value: any) => void;
+  effectParams: EffectParameterSet;
+  onParamChange: (effectId: string, paramId: string, value: EffectParameterValue) => void;
   parameterMode: "basic" | "professional" | "expert";
   onParameterModeChange: (mode: "basic" | "professional" | "expert") => void;
   performanceStats?: {

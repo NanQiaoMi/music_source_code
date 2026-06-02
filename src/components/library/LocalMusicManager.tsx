@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,8 +15,8 @@ import {
 import { associateLyricsWithAudioFiles } from "@/services/lyricsService";
 import Image from "next/image";
 
-// @ts-expect-error - jsmediatags doesn't have proper types
-import jsmediatags from "jsmediatags";
+import jsmediatags, { type MediaTagResult } from "jsmediatags";
+import { DIRECTORY_INPUT_PROPS } from "./directoryInputProps";
 
 // Supported audio formats
 const SUPPORTED_AUDIO_FORMATS = [".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".opus"];
@@ -29,23 +29,19 @@ interface ProcessingFile {
 }
 
 export const LocalMusicManager: React.FC = () => {
-  const { songs, addSong, removeSong, importSongs } = usePlaylistStore();
+  const { addSong, removeSong, importSongs } = usePlaylistStore();
   const [localSongs, setLocalSongs] = useState<Song[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingFiles, setProcessingFiles] = useState<ProcessingFile[]>([]);
   const [showProcessModal, setShowProcessModal] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
-  // Load stored music on mount
-  useEffect(() => {
-    loadStoredMusic();
-  }, []);
-
-  const loadStoredMusic = async () => {
+  const loadStoredMusic = useCallback(async () => {
     setIsLoading(true);
     try {
       const stored = await getAllStoredMusic();
@@ -66,7 +62,7 @@ export const LocalMusicManager: React.FC = () => {
       setLocalSongs(songList);
 
       // Also add to playlist store if not already there
-      const existingIds = new Set(songs.map((s) => s.id));
+      const existingIds = new Set(usePlaylistStore.getState().songs.map((s) => s.id));
       const newSongs = songList.filter((s) => !existingIds.has(s.id));
       if (newSongs.length > 0) {
         importSongs(newSongs);
@@ -76,7 +72,16 @@ export const LocalMusicManager: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [importSongs]);
+
+  // Load stored music on mount
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadStoredMusic();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [loadStoredMusic]);
 
   const isSupportedAudioFile = (file: File): boolean => {
     const extension = "." + file.name.split(".").pop()?.toLowerCase();
@@ -105,8 +110,8 @@ export const LocalMusicManager: React.FC = () => {
       };
 
       jsmediatags.read(file, {
-        onSuccess: async (tag: any) => {
-          const tags = tag.tags;
+        onSuccess: async (tag: MediaTagResult) => {
+          const tags = tag.tags || {};
           let coverData: string | undefined;
 
           if (tags.picture) {
@@ -197,8 +202,22 @@ export const LocalMusicManager: React.FC = () => {
 
   const handleFiles = async (files: File[]) => {
     const audioFiles = files.filter(isSupportedAudioFile);
-    if (audioFiles.length === 0) return;
+    if (files.length === 0) {
+      setImportError(null);
+      return;
+    }
 
+    if (audioFiles.length === 0) {
+      const visibleNames = files
+        .slice(0, 3)
+        .map((file) => file.name)
+        .join(", ");
+      const moreCount = files.length > 3 ? ` 等 ${files.length} 个文件` : "";
+      setImportError(`未找到支持的音频文件${visibleNames ? `：${visibleNames}${moreCount}` : ""}`);
+      return;
+    }
+
+    setImportError(null);
     setProcessingFiles(audioFiles.map((f) => ({ file: f, status: "pending" })));
     setShowProcessModal(true);
     setIsProcessing(true);
@@ -284,14 +303,14 @@ export const LocalMusicManager: React.FC = () => {
     }
   }, []);
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
 
     const files = Array.from(e.dataTransfer.files);
     await handleFiles(files);
-  }, []);
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -374,6 +393,12 @@ export const LocalMusicManager: React.FC = () => {
           </div>
         </div>
 
+        {importError && (
+          <div className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {importError}
+          </div>
+        )}
+
         <input
           ref={fileInputRef}
           type="file"
@@ -385,9 +410,7 @@ export const LocalMusicManager: React.FC = () => {
         <input
           ref={folderInputRef}
           type="file"
-          // @ts-expect-error
-          webkitdirectory=""
-          directory=""
+          {...DIRECTORY_INPUT_PROPS}
           multiple
           onChange={handleFileSelect}
           className="hidden"

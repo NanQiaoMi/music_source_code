@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useMemo } from "react";
 import { BookOpen, CalendarDays } from "lucide-react";
@@ -27,14 +27,14 @@ export function ListeningJournalCard() {
             <BookOpen className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">Listening Journal</h3>
+            <h3 className="text-lg font-semibold text-white">听歌日记</h3>
             <p className="text-sm text-white/50">
-              A local seven-day ribbon for notes, mood, and listening depth.
+              本地七天笔记、心情和听歌深度记录。
             </p>
           </div>
         </div>
         <div className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/55">
-          {activeDays}/7 active
+          {activeDays}/7 天活跃
         </div>
       </div>
 
@@ -61,7 +61,7 @@ export function ListeningJournalCard() {
                 {day.totalMinutes}
               </span>
               <span className="truncate text-[10px] text-white/40">
-                {day.dominantMood || "note"}
+                {day.dominantMood || "笔记"}
               </span>
             </button>
           );
@@ -74,7 +74,7 @@ export function ListeningJournalCard() {
         className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm text-white/70 transition-colors hover:bg-white/15 hover:text-white"
       >
         <CalendarDays className="h-4 w-4" />
-        Open today journal - {totalMinutes} min this week
+        打开今日日记 - {totalMinutes} 本周分钟
       </button>
     </section>
   );

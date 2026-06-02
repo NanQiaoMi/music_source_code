@@ -3,10 +3,17 @@
 import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { useQueueStore, HistorySong } from "@/store/queueStore";
+import { useQueueStore, type HistorySong } from "@/store/queueStore";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlaylistStore } from "@/store/playlistStore";
+import { useUIStore } from "@/store/uiStore";
 import { formatTime } from "@/utils/formatTime";
 import { GlassDrawer } from "@/components/shared/Glass";
+import {
+  resolveHistoryPlaybackSong,
+  resolvePlayableHistorySongs,
+} from "@/lib/history/historyPlayback";
+import { hasPlayableAudioSource } from "@/lib/audio/playableAudioSource";
 
 interface HistoryPanelProps {
   isOpen: boolean;
@@ -15,8 +22,10 @@ interface HistoryPanelProps {
 
 export const HistoryPanel: React.FC<HistoryPanelProps> = ({ isOpen, onClose }) => {
   const { history, clearHistory, addToQueue } = useQueueStore();
-  const setCurrentSong = useAudioStore((state) => state.setCurrentSong);
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const { songs: librarySongs } = usePlaylistStore();
+  const playSong = useAudioStore((state) => state.playSong);
+  const playQueue = useAudioStore((state) => state.playQueue);
+  const showToast = useUIStore((state) => state.showToast);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const groupedHistory = useMemo(() => {
@@ -39,25 +48,36 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ isOpen, onClose }) =
   );
 
   const handlePlay = (song: HistorySong) => {
-    setCurrentSong({ ...song, cover: song.cover || "/default-cover.png", source: "local" });
-    setIsPlaying(true);
+    const resolvedSong = resolveHistoryPlaybackSong(song, librarySongs);
+    if (!hasPlayableAudioSource(resolvedSong)) {
+      showToast("这首历史歌曲的音频源已不可用，请重新导入。", "warning");
+      return;
+    }
+
+    playSong(resolvedSong);
   };
 
   const handleAddToQueue = (song: HistorySong) => {
-    addToQueue({ ...song, cover: song.cover || "/default-cover.png", source: "local" });
+    const resolvedSong = resolveHistoryPlaybackSong(song, librarySongs);
+    if (!hasPlayableAudioSource(resolvedSong)) {
+      showToast("这首历史歌曲的音频源已不可用，请重新导入。", "warning");
+      return;
+    }
+
+    addToQueue(resolvedSong);
   };
 
   const handleReplayAll = (dateKey: string) => {
     const songs = groupedHistory[dateKey];
-    if (songs?.length > 0) {
-      setCurrentSong({
-        ...songs[0],
-        cover: songs[0].cover || "/default-cover.png",
-        source: "local",
-      });
-      setIsPlaying(true);
-      songs.slice(1).forEach((song) => handleAddToQueue(song));
+    if (!songs?.length) return;
+
+    const playableSongs = resolvePlayableHistorySongs(songs, librarySongs);
+    if (playableSongs.length === 0) {
+      showToast("这一天的播放历史没有可用音频源，请重新导入相关歌曲。", "warning");
+      return;
     }
+
+    playQueue(playableSongs, 0);
   };
 
   return (

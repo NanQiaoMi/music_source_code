@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -15,10 +15,10 @@ interface Metaphor {
 }
 
 export interface DNAJournal {
-  archetype: string; // 人格名号 (如：虚无主义漫游者)
-  motto: string; // 核心格言
-  genre: string; // 主导流派
-  description: string; // 深度解析
+  archetype: string;
+  motto: string;
+  genre: string;
+  description: string;
   timestamp: number;
 }
 
@@ -46,12 +46,24 @@ interface KnowledgeState {
   clearCache: () => void;
 }
 
+interface ChatCompletionResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 const getActiveAIConfig = () => {
   const aiStore = useAIStore.getState();
-  return aiStore.configs.find((c) => c.id === aiStore.activeConfigId) ?? null;
+  return aiStore.configs.find((config) => config.id === aiStore.activeConfigId) ?? null;
 };
 
-function extractJson(text: string): any[] {
+function extractJson(text: string): unknown[] {
   if (!text) return [];
   try {
     const cleaned = text
@@ -62,13 +74,67 @@ function extractJson(text: string): any[] {
     if (arrayMatch) return JSON.parse(arrayMatch[0]);
     const objectMatch = cleaned.match(/{[\s\S]*}/);
     if (objectMatch) {
-      const obj = JSON.parse(objectMatch[0]);
-      return Array.isArray(obj) ? obj : [obj];
+      const objectValue = JSON.parse(objectMatch[0]);
+      return Array.isArray(objectValue) ? objectValue : [objectValue];
     }
   } catch {
-    /* ignore */
+    /* ignore malformed model output */
   }
   return [];
+}
+
+function isMetaphor(value: unknown): value is Metaphor {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Metaphor).term === "string" &&
+    typeof (value as Metaphor).meaning === "string"
+  );
+}
+
+function toDNAJournal(value: unknown): Omit<DNAJournal, "timestamp"> | null {
+  if (typeof value !== "object" || value === null) return null;
+  const candidate = value as Partial<DNAJournal>;
+  if (
+    typeof candidate.archetype !== "string" ||
+    typeof candidate.motto !== "string" ||
+    typeof candidate.genre !== "string" ||
+    typeof candidate.description !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    archetype: candidate.archetype,
+    motto: candidate.motto,
+    genre: candidate.genre,
+    description: candidate.description,
+  };
+}
+
+async function requestChatCompletion(url: string, apiKey: string, body: unknown): Promise<string> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`AI request failed: ${response.status}`);
+  }
+
+  const data = (await response.json()) as ChatCompletionResponse;
+  return data.choices?.[0]?.message?.content ?? "";
+}
+
+function getChatCompletionUrl(baseUrl: string) {
+  const normalized = (baseUrl || "https://api.openai.com/v1").replace(/\/$/, "");
+  return normalized.endsWith("/v1")
+    ? `${normalized}/chat/completions`
+    : `${normalized}/v1/chat/completions`;
 }
 
 export const useKnowledgeStore = create<KnowledgeState>()(
@@ -84,64 +150,57 @@ export const useKnowledgeStore = create<KnowledgeState>()(
         if (get().backstories[key] && !force) return;
         const config = getActiveAIConfig();
         if (!config?.apiKey) return;
-        set({ isLoading: true });
-        try {
-          const baseUrl = (config.baseUrl || "https://api.openai.com/v1").replace(/\/$/, "");
-          const url = baseUrl.endsWith("/v1")
-            ? `${baseUrl}/chat/completions`
-            : `${baseUrl}/v1/chat/completions`;
-          const systemPrompt = `你是一位极简主义音乐评论家。任务：一句话侧写。15-30字。严禁废话。`;
-          const response = await fetch(url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${config.apiKey}`,
-            },
-            body: JSON.stringify({
-              model: config.model || "gpt-4o-mini",
-              messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: `歌曲：${title} / ${artist}` },
-              ],
-              temperature: 0.8,
-              max_tokens: 150,
-            }),
-          });
-          const data = await response.json();
-          const content = data.choices[0]?.message?.content || "暂无考古信息。";
-          set((state) => ({
-            backstories: { ...state.backstories, [key]: { content, timestamp: Date.now() } },
-            isLoading: false,
-          }));
-        } catch {
-          set({ isLoading: false });
-        }
-      },
 
-      fetchMetaphors: async (title, artist, lyrics, force = false) => {
-        const key = `${artist}-${title}`.toLowerCase();
-        if (get().metaphors[key] && get().metaphors[key].length > 0 && !force) return;
-        const config = getActiveAIConfig();
-        if (!config?.apiKey) return;
         set({ isLoading: true });
-        const baseUrl = (config.baseUrl || "https://api.openai.com/v1").replace(/\/$/, "");
-        const url = baseUrl.endsWith("/v1")
-          ? `${baseUrl}/chat/completions`
-          : `${baseUrl}/v1/chat/completions`;
         try {
-          const response = await fetch(url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${config.apiKey}`,
-            },
-            body: JSON.stringify({
+          const content = await requestChatCompletion(
+            getChatCompletionUrl(config.baseUrl),
+            config.apiKey,
+            {
               model: config.model || "gpt-4o-mini",
               messages: [
                 {
                   role: "system",
                   content:
-                    '你是一位诗学专家。解析意象。JSON: [{"term": "...", "meaning": "..."}]。严禁废话。',
+                    "你是一位凝练的音乐评论家。请用一句中文写出 15-30 字的歌曲背景或聆听提示，避免空话。",
+                },
+                { role: "user", content: `歌曲：${title} / ${artist}` },
+              ],
+              temperature: 0.8,
+              max_tokens: 150,
+            }
+          );
+
+          set((state) => ({
+            backstories: {
+              ...state.backstories,
+              [key]: { content: content || "暂无可用背景信息", timestamp: Date.now() },
+            },
+            isLoading: false,
+          }));
+        } catch (error) {
+          set({ isLoading: false, lastRawResponse: getErrorMessage(error) });
+        }
+      },
+
+      fetchMetaphors: async (title, artist, lyrics, force = false) => {
+        const key = `${artist}-${title}`.toLowerCase();
+        if (get().metaphors[key]?.length > 0 && !force) return;
+        const config = getActiveAIConfig();
+        if (!config?.apiKey) return;
+
+        set({ isLoading: true });
+        try {
+          const rawContent = await requestChatCompletion(
+            getChatCompletionUrl(config.baseUrl),
+            config.apiKey,
+            {
+              model: config.model || "gpt-4o-mini",
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    '你是一位诗学分析专家。只输出 JSON 数组：[ {"term":"...", "meaning":"..."} ]，每项解释一个意象或关键词。',
                 },
                 {
                   role: "user",
@@ -150,18 +209,17 @@ export const useKnowledgeStore = create<KnowledgeState>()(
               ],
               temperature: 0.3,
               max_tokens: 600,
-            }),
-          });
-          const data = await response.json();
-          const rawContent = data.choices[0]?.message?.content || "";
-          const parsedMetaphors = extractJson(rawContent);
+            }
+          );
+          const parsedMetaphors = extractJson(rawContent).filter(isMetaphor);
+
           set((state) => ({
             metaphors: { ...state.metaphors, [key]: parsedMetaphors },
             lastRawResponse: rawContent,
             isLoading: false,
           }));
-        } catch (error: any) {
-          set({ isLoading: false, lastRawResponse: error.message });
+        } catch (error) {
+          set({ isLoading: false, lastRawResponse: getErrorMessage(error) });
         }
       },
 
@@ -171,60 +229,41 @@ export const useKnowledgeStore = create<KnowledgeState>()(
 
         set({ isLoading: true });
         try {
-          const baseUrl = (config.baseUrl || "https://api.openai.com/v1").replace(/\/$/, "");
-          const url = baseUrl.endsWith("/v1")
-            ? `${baseUrl}/chat/completions`
-            : `${baseUrl}/v1/chat/completions`;
-
-          const systemPrompt = `你是一位精通听觉审美与心理学的“审美基因分析师”。
-任务：根据用户的听歌情绪分布和流派偏好，生成一份极具诗意的“听觉基因报告”。
-要求：
-1. 严格输出 JSON 格式：{"archetype": "人格名号", "motto": "核心格言", "genre": "主导流派", "description": "深度解析"}
-2. 语言风格：冷峻、深邃、未来主义。
-3. 名号限制在 8 字以内，格言限制在 20 字以内。`;
-
-          const userMessage = `听歌数据汇总：
-- 总解析歌曲数：${stats.totalSongs || 0}
-- 平均愉悦度 (Valence): ${(stats.averageValence || 0).toFixed(3)}
-- 平均能量度 (Energy): ${(stats.averageEnergy || 0).toFixed(3)}
-- 主导象限：${stats.dominantQuadrant || "未知"}
-- 涉及流派：${(stats.genres || []).slice(0, 5).join(", ")}`;
-
-          const response = await fetch(url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${config.apiKey}`,
-            },
-            body: JSON.stringify({
+          const rawContent = await requestChatCompletion(
+            getChatCompletionUrl(config.baseUrl),
+            config.apiKey,
+            {
               model: config.model || "gpt-4o-mini",
               messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userMessage },
+                {
+                  role: "system",
+                  content:
+                    '你是一位懂音乐心理学的策展人。根据用户听歌统计生成一份音乐 DNA 报告。只输出 JSON：{"archetype":"人格类型", "motto":"核心格言", "genre":"主要气质", "description":"简短说明"}。archetype、motto、genre 均控制在 8 个中文以内，description 控制在 20 个中文以内。',
+                },
+                {
+                  role: "user",
+                  content: `音乐数据汇总：\n- 总收听歌曲数：${stats.totalSongs || 0}\n- 平均愉悦度 (Valence): ${(stats.averageValence || 0).toFixed(3)}\n- 平均能量 (Energy): ${(stats.averageEnergy || 0).toFixed(3)}\n- 主要象限：${stats.dominantQuadrant || "未知"}\n- 涉及流派：${(stats.genres || []).slice(0, 5).join(", ")}`,
+                },
               ],
               temperature: 0.8,
               max_tokens: 800,
-            }),
+            }
+          );
+
+          const parsed = toDNAJournal(extractJson(rawContent)[0]);
+          if (!parsed) throw new Error("Failed to parse DNA Journal");
+
+          set({
+            dnaJournal: {
+              ...parsed,
+              timestamp: Date.now(),
+            },
+            lastRawResponse: rawContent,
+            isLoading: false,
           });
-
-          const data = await response.json();
-          const raw = data.choices[0]?.message?.content;
-          const parsed = extractJson(raw)[0];
-
-          if (parsed) {
-            set({
-              dnaJournal: {
-                ...parsed,
-                timestamp: Date.now(),
-              },
-              isLoading: false,
-            });
-          } else {
-            throw new Error("Failed to parse DNA Journal");
-          }
-        } catch (error: any) {
+        } catch (error) {
           console.error("generateDNAJournal failed:", error);
-          set({ isLoading: false });
+          set({ isLoading: false, lastRawResponse: getErrorMessage(error) });
         }
       },
 

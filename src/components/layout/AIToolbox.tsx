@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -161,7 +161,7 @@ export const AIToolbox: React.FC = () => {
                   <span
                     className={`text-[9px] font-bold uppercase tracking-wider ${isEnabled ? "text-purple-400" : "text-white/20"}`}
                   >
-                    {isEnabled ? "Neural Online" : "Neural Paused"}
+                    {isEnabled ? "神经在线" : "神经暂停"}
                   </span>
                 </div>
               </motion.div>

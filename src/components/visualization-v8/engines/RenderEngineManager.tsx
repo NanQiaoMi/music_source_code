@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
@@ -7,16 +7,24 @@ import {
   EffectPlugin,
   AudioData,
   TransformParams,
+  EffectParameterMap,
+  EffectRuntimeState,
 } from "@/lib/visualization/types";
 import type { VisualizationAudioSnapshot } from "@/lib/visualization/audioSnapshot";
 import { ThreeJSScene } from "@/lib/three/ThreeJSScene";
 import { usePerformanceV8Store } from "@/store/performanceV8Store";
 
+interface PerformanceWithMemory extends Performance {
+  memory?: {
+    usedJSHeapSize: number;
+  };
+}
+
 interface RenderEngineManagerProps {
   engine: RenderEngine;
   effect: EffectPlugin | null;
-  onRender: (ctx: RenderContext, audioData: AudioData, params: Record<string, any>) => void;
-  params?: Record<string, any>;
+  onRender: (ctx: RenderContext, audioData: AudioData, params: EffectParameterMap) => void;
+  params?: EffectParameterMap;
   audioSnapshot?: VisualizationAudioSnapshot;
   width: number;
   height: number;
@@ -36,10 +44,10 @@ export function RenderEngineManager({
   const ctx2DRef = useRef<CanvasRenderingContext2D | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
-  const startTimeRef = useRef<number>(Date.now());
+  const startTimeRef = useRef<number | null>(null);
   const effectRef = useRef<EffectPlugin | null>(null);
   const dprRef = useRef(1);
-  const privateContextRef = useRef<Record<string, any>>({});
+  const privateContextRef = useRef<EffectRuntimeState>({});
   const audioSnapshotRef = useRef(audioSnapshot);
 
   const frequencyDataRef = useRef(new Uint8Array(256));
@@ -56,7 +64,7 @@ export function RenderEngineManager({
 
   const { config, updateStats } = usePerformanceV8Store();
   const frameCountRef = useRef(0);
-  const lastFPSUpdateRef = useRef(Date.now());
+  const lastFPSUpdateRef = useRef(0);
 
   useEffect(() => {
     audioSnapshotRef.current = audioSnapshot;
@@ -287,6 +295,10 @@ export function RenderEngineManager({
   useEffect(() => {
     const render = (timestamp: number) => {
       if (!canvasRef.current) return;
+      startTimeRef.current ??= timestamp;
+      if (lastFPSUpdateRef.current === 0) {
+        lastFPSUpdateRef.current = timestamp;
+      }
 
       if (actualEngine !== "webgl" && !ctx2DRef.current) {
         animationFrameRef.current = requestAnimationFrame(render);
@@ -304,10 +316,10 @@ export function RenderEngineManager({
       const deltaTime = Number.isFinite(elapsed) ? elapsed / 1000 : 0;
       lastTimeRef.current = timestamp;
 
-      const time = (Date.now() - startTimeRef.current) / 1000;
+      const time = (timestamp - startTimeRef.current) / 1000;
 
       frameCountRef.current++;
-      const now = Date.now();
+      const now = timestamp;
       if (now - lastFPSUpdateRef.current >= 1000) {
         const fps = Math.round((frameCountRef.current * 1000) / (now - lastFPSUpdateRef.current));
 
@@ -317,15 +329,15 @@ export function RenderEngineManager({
         if (actualEngine === "webgl" && threeSceneRef.current) {
           const info = threeSceneRef.current.renderer.info;
           drawCalls = info.render.calls;
-          // 估算 GPU 内存占用 (geometries + textures)
-          // 注意：这只是一个近似值，Three.js 的 info.memory 提供的是计数，不是字节数
-          // 但我们可以通过这个计数反映资源占用压力
+          // 浼扮畻 GPU 鍐呭瓨鍗犵敤 (geometries + textures)
+          // 娉ㄦ剰锛氳繖鍙槸涓€涓繎浼煎€硷紝Three.js 鐨?info.memory 鎻愪緵鐨勬槸璁℃暟锛屼笉鏄瓧鑺傛暟
+          // 浣嗘垜浠彲浠ラ€氳繃杩欎釜璁℃暟鍙嶆槧璧勬簮鍗犵敤鍘嬪姏
           gpuMemory = info.memory.geometries + info.memory.textures;
         }
 
-        // 获取 JS 内存占用（如果浏览器支持）
-        const memoryUsage = (performance as any).memory
-          ? (performance as any).memory.usedJSHeapSize / (1024 * 1024)
+        const browserPerformance = performance as PerformanceWithMemory;
+        const memoryUsage = browserPerformance.memory
+          ? browserPerformance.memory.usedJSHeapSize / (1024 * 1024)
           : 0;
 
         updateStats({
@@ -385,11 +397,13 @@ export function RenderEngineManager({
   ]);
 
   useEffect(() => {
+    const canvas = canvasRef.current;
+
     return () => {
-      if (effectRef.current) {
+      if (effectRef.current && canvas) {
         const dimensions = getDisplaySize();
         const cleanupCtx: RenderContext = {
-          canvas: canvasRef.current!,
+          canvas,
           width: dimensions.displayWidth,
           height: dimensions.displayHeight,
           deltaTime: 0,

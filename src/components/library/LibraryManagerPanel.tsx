@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -31,18 +31,18 @@ interface LibraryManagerPanelProps {
 }
 
 const TAB_ITEMS = [
-  { id: "playlists", name: "Saved playlists", icon: ListMusic },
-  { id: "deduplicate", name: "Duplicates", icon: Trash2 },
-  { id: "rename", name: "Rename rules", icon: Wand2 },
-  { id: "scan", name: "Scan filters", icon: Settings2 },
-  { id: "stats", name: "Library stats", icon: BarChart3 },
+  { id: "playlists", name: "已保存播放列表", icon: ListMusic },
+  { id: "deduplicate", name: "重复歌曲", icon: Trash2 },
+  { id: "rename", name: "重命名规则", icon: Wand2 },
+  { id: "scan", name: "扫描筛选", icon: Settings2 },
+  { id: "stats", name: "库统计", icon: BarChart3 },
 ] as const;
 
 type TabId = (typeof TAB_ITEMS)[number]["id"];
 
 export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<TabId>("playlists");
-  const [statusMessage, setStatusMessage] = useState("Saved Smart Mix playlists appear here.");
+  const [statusMessage, setStatusMessage] = useState("已保存的智能混音播放列表将显示在此。");
   const { songs } = usePlaylistStore();
   const playQueue = useAudioStore((state) => state.playQueue);
   const { groups, deleteGroup } = usePlaylistGroupStore();
@@ -75,10 +75,10 @@ export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen
   const handleDeleteDuplicates = useCallback(async () => {
     try {
       await deleteSelectedDuplicates();
-      setStatusMessage("Duplicate cleanup finished.");
+      setStatusMessage("重复清理完成。");
     } catch (error) {
       console.error("Delete duplicates failed:", error);
-      setStatusMessage("Duplicate cleanup failed.");
+      setStatusMessage("重复清理失败。");
     }
   }, [deleteSelectedDuplicates]);
 
@@ -94,7 +94,7 @@ export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen
   const handleDeleteGroup = useCallback(
     (group: PlaylistGroup) => {
       deleteGroup(group.id);
-      setStatusMessage(`Deleted playlist ${group.name}.`);
+      setStatusMessage(`已删除播放列表 ${group.name}.`);
     },
     [deleteGroup]
   );
@@ -123,9 +123,9 @@ export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen
               <Database className="h-6 w-6" />
             </div>
             <div>
-              <h2 className="text-2xl font-semibold text-white">Music Library</h2>
+              <h2 className="text-2xl font-semibold text-white">音乐库</h2>
               <p className="text-sm text-white/55">
-                Manage saved playlists, duplicates, scan rules, and library health basics.
+                管理已保存播放列表、重复歌曲、扫描规则和库健康状态。
               </p>
             </div>
           </div>
@@ -133,7 +133,7 @@ export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen
             type="button"
             onClick={onClose}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
-            aria-label="Close music library"
+            aria-label="关闭音乐库"
           >
             <X className="h-5 w-5" />
           </button>
@@ -141,7 +141,7 @@ export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen
 
         <nav
           className="grid grid-cols-2 border-b border-white/10 md:grid-cols-5"
-          aria-label="Library sections"
+          aria-label="库分区"
         >
           {TAB_ITEMS.map((tab) => {
             const Icon = tab.icon;
@@ -216,9 +216,9 @@ function SavedPlaylistsTab({
     return (
       <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
         <FolderOpen className="mx-auto mb-3 h-8 w-8 text-white/35" />
-        <h3 className="mb-2 text-lg font-semibold text-white">No saved playlists yet</h3>
+        <h3 className="mb-2 text-lg font-semibold text-white">暂无播放列表</h3>
         <p className="text-sm text-white/50">
-          Save a Smart Mix to turn it into a reusable custom playlist.
+          保存智能混音，将其转化为可复用的自定义播放列表。
         </p>
       </div>
     );
@@ -232,7 +232,7 @@ function SavedPlaylistsTab({
             <div className="min-w-0">
               <h3 className="truncate text-base font-semibold text-white">{group.name}</h3>
               <p className="text-sm text-white/45">
-                {group.songs.length} tracks - Updated {formatDate(group.updatedAt)}
+                {group.songs.length} 首曲目 - 更新于 {formatDate(group.updatedAt)}
               </p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-200">
@@ -265,7 +265,7 @@ function SavedPlaylistsTab({
               className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/20 px-3 py-2 text-sm text-emerald-100 transition-colors hover:bg-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Play className="h-4 w-4" />
-              Play
+              播放
             </button>
             <button
               type="button"
@@ -273,7 +273,7 @@ function SavedPlaylistsTab({
               className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm text-white/70 transition-colors hover:bg-red-500/20 hover:text-red-100"
             >
               <Trash2 className="h-4 w-4" />
-              Delete
+              删除
             </button>
           </div>
         </article>
@@ -299,9 +299,9 @@ function DeduplicateTab({
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-white">Duplicate scanner</h3>
+          <h3 className="text-lg font-semibold text-white">重复扫描器</h3>
           <p className="text-sm text-white/50">
-            Find duplicate artist/title pairs and keep one best copy.
+            查找重复的歌手/标题组合，保留最佳副本。
           </p>
         </div>
         <div className="flex gap-2">
@@ -312,7 +312,7 @@ function DeduplicateTab({
             className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm text-white/75 transition-colors hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
             <RefreshCw className={`h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
-            {isScanning ? "Scanning" : "Scan duplicates"}
+            {isScanning ? "扫描中" : "扫描重复歌曲"}
           </button>
           <button
             type="button"
@@ -321,7 +321,7 @@ function DeduplicateTab({
             className="inline-flex items-center gap-2 rounded-xl bg-red-500/20 px-4 py-2 text-sm text-red-100 transition-colors hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Trash2 className="h-4 w-4" />
-            Remove extras
+            移除多余歌曲
           </button>
         </div>
       </div>
@@ -329,7 +329,7 @@ function DeduplicateTab({
       {isScanning && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
           <div className="mb-2 flex items-center justify-between text-sm text-white/65">
-            <span>Scanning library</span>
+            <span>正在扫描库</span>
             <span>{scanProgress}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-white/10">
@@ -345,8 +345,8 @@ function DeduplicateTab({
       {duplicateGroups.length === 0 && !isScanning ? (
         <EmptyState
           icon={<Trash2 className="h-8 w-8" />}
-          title="No duplicate groups"
-          description="Run a scan to find matching artist/title pairs."
+          title="无重复分组"
+          description="运行扫描以查找匹配的歌手/标题对。"
         />
       ) : (
         <div className="space-y-3">
@@ -356,7 +356,7 @@ function DeduplicateTab({
               className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
             >
               <div className="mb-3 text-sm font-semibold text-white">
-                {group.songs[0]?.title || "Untitled"} - {group.songs[0]?.artist || "Unknown"}
+                {group.songs[0]?.title || "未命名"} - {group.songs[0]?.artist || "未知"}
               </div>
               <div className="space-y-2">
                 {group.songs.map((song) => (
@@ -372,7 +372,7 @@ function DeduplicateTab({
                     </div>
                     {song.isRecommended && (
                       <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-xs text-emerald-100">
-                        Keep
+                        保留
                       </span>
                     )}
                   </div>
@@ -406,7 +406,7 @@ function RenameTab({
         >
           <h3 className="text-sm font-semibold text-white">{rule.name}</h3>
           <p className="mt-1 font-mono text-xs text-white/50">{rule.pattern}</p>
-          <p className="mt-2 text-xs text-white/40">Example: {rule.example}</p>
+          <p className="mt-2 text-xs text-white/40">示例：{rule.example}</p>
         </article>
       ))}
     </div>
@@ -416,13 +416,13 @@ function RenameTab({
 function ScanTab({ scanFilters }: { scanFilters: ScanFilter }) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <MetricCard label="Minimum duration" value={`${scanFilters.minDuration || 0}s`} />
+      <MetricCard label="最短时长" value={`${scanFilters.minDuration || 0}s`} />
       <MetricCard
-        label="Maximum duration"
-        value={scanFilters.maxDuration ? `${scanFilters.maxDuration}s` : "No limit"}
+        label="最长时长"
+        value={scanFilters.maxDuration ? `${scanFilters.maxDuration}s` : "无限制"}
       />
-      <MetricCard label="Minimum file size" value={formatBytes(scanFilters.minFileSize || 0)} />
-      <MetricCard label="Formats" value={scanFilters.formats?.join(", ") || "All"} />
+      <MetricCard label="最小文件大小" value={formatBytes(scanFilters.minFileSize || 0)} />
+      <MetricCard label="格式" value={scanFilters.formats?.join(", ") || "全部"} />
     </div>
   );
 }
@@ -430,12 +430,12 @@ function ScanTab({ scanFilters }: { scanFilters: ScanFilter }) {
 function StatsTab({ stats }: { stats: LibraryStats }) {
   return (
     <div className="grid gap-3 md:grid-cols-3">
-      <MetricCard label="Songs" value={String(stats.totalSongs)} />
-      <MetricCard label="Duration" value={formatDuration(stats.totalDuration)} />
-      <MetricCard label="Artists" value={String(stats.artistsCount)} />
-      <MetricCard label="Albums" value={String(stats.albumsCount)} />
-      <MetricCard label="Duplicates" value={String(stats.duplicatesCount)} />
-      <MetricCard label="Library size" value={formatBytes(stats.totalFileSize)} />
+      <MetricCard label="歌曲" value={String(stats.totalSongs)} />
+      <MetricCard label="时长" value={formatDuration(stats.totalDuration)} />
+      <MetricCard label="歌手" value={String(stats.artistsCount)} />
+      <MetricCard label="专辑" value={String(stats.albumsCount)} />
+      <MetricCard label="重复歌曲" value={String(stats.duplicatesCount)} />
+      <MetricCard label="库大小" value={formatBytes(stats.totalFileSize)} />
     </div>
   );
 }
@@ -479,7 +479,7 @@ function formatDuration(seconds: number): string {
 }
 
 function formatDate(timestamp: number): string {
-  if (!Number.isFinite(timestamp) || timestamp <= 0) return "Unknown";
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return "未知";
   return new Intl.DateTimeFormat("en", {
     month: "short",
     day: "2-digit",

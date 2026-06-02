@@ -1,4 +1,4 @@
-﻿import { create } from "zustand";
+import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useQueueStore } from "./queueStore";
 import { useRecommendationStore } from "./recommendationStore";
@@ -7,6 +7,10 @@ import { usePlaylistStore } from "./playlistStore";
 import { useEQStore } from "./eqStore";
 
 import { Song } from "@/types/song";
+import {
+  createMissingAudioSourceError,
+  hasPlayableAudioSource,
+} from "@/lib/audio/playableAudioSource";
 
 export type { Song };
 
@@ -251,6 +255,14 @@ export const useAudioStore = create<AudioState>()(
       dynamicCrossfadeDuration: 3,
 
       setIsPlaying: (playing) => {
+        const currentSong = usePlayerStore.getState().currentSong ?? get().currentSong;
+        if (playing && currentSong && !hasPlayableAudioSource(currentSong)) {
+          usePlayerStore.getState().setIsPlaying(false);
+          usePlayerStore.getState().setIsLoading(false);
+          set({ isPlaying: false, isLoading: false, error: createMissingAudioSourceError() });
+          return;
+        }
+
         usePlayerStore.getState().setIsPlaying(playing);
         set({ isPlaying: playing });
       },
@@ -397,6 +409,17 @@ export const useAudioStore = create<AudioState>()(
       setBufferedRanges: (ranges) => set({ bufferedRanges: ranges }),
 
       playSong: (song) => {
+        if (!hasPlayableAudioSource(song)) {
+          usePlayerStore.getState().setIsPlaying(false);
+          usePlayerStore.getState().setIsLoading(false);
+          set({
+            isPlaying: false,
+            isLoading: false,
+            error: createMissingAudioSourceError(),
+          });
+          return;
+        }
+
         // Auto-populate queue from playlist library so next/prev and auto-advance work
         const playlistSongs = usePlaylistStore.getState().songs;
         const idx = playlistSongs.findIndex((s) => s.id === song.id);
@@ -424,17 +447,28 @@ export const useAudioStore = create<AudioState>()(
       playQueue: (songs, startIndex = 0) => {
         if (songs.length === 0) return;
         const index = Math.max(0, Math.min(startIndex, songs.length - 1));
+        const song = songs[index];
+        if (!hasPlayableAudioSource(song)) {
+          usePlayerStore.getState().setIsPlaying(false);
+          usePlayerStore.getState().setIsLoading(false);
+          set({
+            isPlaying: false,
+            isLoading: false,
+            error: createMissingAudioSourceError(),
+          });
+          return;
+        }
 
         const queueStore = useQueueStore.getState();
         queueStore.setQueue(songs);
         queueStore.setCurrentIndex(index);
-        queueStore.addToHistory(songs[index]);
-        usePlayerStore.getState().setCurrentSong(songs[index]);
+        queueStore.addToHistory(song);
+        usePlayerStore.getState().setCurrentSong(song);
 
         set({
           queue: songs,
           currentIndex: index,
-          currentSong: songs[index],
+          currentSong: song,
           currentTime: 0,
           isPlaying: true,
           isLoading: true,
@@ -509,6 +543,17 @@ export const useAudioStore = create<AudioState>()(
 
       appendSongsAndPlay: (songs: Song[]) => {
         if (!songs || songs.length === 0) return;
+        const firstSong = songs[0];
+        if (!hasPlayableAudioSource(firstSong)) {
+          usePlayerStore.getState().setIsPlaying(false);
+          usePlayerStore.getState().setIsLoading(false);
+          set({
+            isPlaying: false,
+            isLoading: false,
+            error: createMissingAudioSourceError(),
+          });
+          return;
+        }
 
         const { queue } = get();
         const startIndex = queue.length;
@@ -517,13 +562,13 @@ export const useAudioStore = create<AudioState>()(
         const queueStore = useQueueStore.getState();
         queueStore.setQueue(newQueue);
         queueStore.setCurrentIndex(startIndex);
-        queueStore.addToHistory(songs[0]);
-        usePlayerStore.getState().setCurrentSong(songs[0]);
+        queueStore.addToHistory(firstSong);
+        usePlayerStore.getState().setCurrentSong(firstSong);
 
         set({
           queue: newQueue,
           currentIndex: startIndex,
-          currentSong: songs[0],
+          currentSong: firstSong,
           currentTime: 0,
           isPlaying: true,
           isLoading: true,

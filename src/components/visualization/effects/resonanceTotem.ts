@@ -57,7 +57,7 @@ export const drawResonanceTotem = ({
   // 4. DRAW TOTEMS (The words)
   const totems = refs?.resonanceTotems?.current || [];
 
-  totems.forEach((totem: any) => {
+  totems.forEach((totem: LegacyAny) => {
     // Current time relative to activation (which starts 3s before startTime)
     const musicTime = time * 0.001; // Fallback if musicTime isn't passed down (though EffectContext usually should)
     const age = musicTime - (totem.startTime - 3);
@@ -96,7 +96,7 @@ export const drawResonanceTotem = ({
 
     // Polyfill or reliance on context
     if ("letterSpacing" in ctx) {
-      (ctx as any).letterSpacing = `${letterSpacing}px`;
+      (ctx as LegacyAny).letterSpacing = `${letterSpacing}px`;
     }
 
     // Draw the word

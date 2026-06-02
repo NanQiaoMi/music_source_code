@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 export interface BilingualLyricLine {
   time: number;
@@ -19,13 +19,6 @@ export const useBilingualLyricParser = (
   translationLrc?: string,
   transliterationLrc?: string
 ) => {
-  const [lyrics, setLyrics] = useState<BilingualLyrics>({
-    original: [],
-    translation: [],
-    transliteration: [],
-    merged: [],
-  });
-
   const parseLRC = useCallback((lrc: string): BilingualLyricLine[] => {
     if (!lrc || typeof lrc !== "string") return [];
 
@@ -128,19 +121,19 @@ export const useBilingualLyricParser = (
     []
   );
 
-  useEffect(() => {
+  const lyrics = useMemo<BilingualLyrics>(() => {
     const parsedOriginal = originalLrc ? parseLRC(originalLrc) : [];
     const parsedTranslation = translationLrc ? parseLRC(translationLrc) : [];
     const parsedTransliteration = transliterationLrc ? parseLRC(transliterationLrc) : [];
 
     const merged = mergeLyrics(parsedOriginal, parsedTranslation, parsedTransliteration);
 
-    setLyrics({
+    return {
       original: parsedOriginal,
       translation: parsedTranslation,
       transliteration: parsedTransliteration,
       merged,
-    });
+    };
   }, [originalLrc, translationLrc, transliterationLrc, parseLRC, mergeLyrics]);
 
   const getCurrentLyricIndex = useCallback(

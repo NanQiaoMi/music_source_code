@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useKeyboardShortcutsStore } from "@/store/keyboardShortcutsStore";
 import { GlassPanel } from "@/components/shared/Glass";
 import { GlassButton } from "@/components/shared/GlassButton";
@@ -22,14 +22,18 @@ export const KeyboardShortcutsSettings: React.FC<KeyboardShortcutsSettingsProps>
   const [pendingKeys, setPendingKeys] = useState<string[]>([]);
 
   const categories = Array.from(new Set(defaults.map((d) => d.category)));
-  const currentShortcutMap = Object.fromEntries(
-    defaults.map((binding) => [binding.id, getBinding(binding.id)])
+  const currentShortcutMap = useMemo(
+    () => Object.fromEntries(defaults.map((binding) => [binding.id, getBinding(binding.id)])),
+    [defaults, getBinding]
   );
   const globalValidation = validateShortcutMap(currentShortcutMap);
-  const pendingValidation =
-    recordingId && pendingKeys.length > 0
-      ? validateShortcutMap({ ...currentShortcutMap, [recordingId]: pendingKeys })
-      : { valid: true, conflicts: [] };
+  const pendingValidation = useMemo(
+    () =>
+      recordingId && pendingKeys.length > 0
+        ? validateShortcutMap({ ...currentShortcutMap, [recordingId]: pendingKeys })
+        : { valid: true, conflicts: [] },
+    [currentShortcutMap, pendingKeys, recordingId]
+  );
 
   useEffect(() => {
     if (!recordingId) return;

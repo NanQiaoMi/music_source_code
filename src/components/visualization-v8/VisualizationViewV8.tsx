@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
@@ -60,7 +60,12 @@ export function VisualizationViewV8() {
     isInitialized,
   } = useVisualizationV8();
 
-  const totemStore = useTotemStore();
+  const initializeTotemsForSong = useTotemStore((state) => state.initializeForSong);
+  const updateActiveKeywords = useTotemStore((state) => state.updateActiveKeywords);
+  const addPreloadedTexture = useTotemStore((state) => state.addPreloadedTexture);
+  const clearTotems = useTotemStore((state) => state.clear);
+  const allTotemKeywords = useTotemStore((state) => state.allKeywords);
+  const preloadedTotemTextures = useTotemStore((state) => state.preloadedTextures);
   const parsedLyrics = useLyricsSearchStore((state) => state.parsedLyrics);
   const workerRef = useRef<Worker | null>(null);
 
@@ -110,16 +115,16 @@ export function VisualizationViewV8() {
   // Initialize totems for current song
   useEffect(() => {
     if (parsedLyrics.length > 0) {
-      totemStore.initializeForSong(parsedLyrics);
+      initializeTotemsForSong(parsedLyrics);
     } else {
-      totemStore.clear();
+      clearTotems();
     }
-  }, [parsedLyrics]);
+  }, [clearTotems, initializeTotemsForSong, parsedLyrics]);
 
   // Update active totems
   useEffect(() => {
-    totemStore.updateActiveKeywords(currentTime);
-  }, [currentTime]);
+    updateActiveKeywords(currentTime);
+  }, [currentTime, updateActiveKeywords]);
 
   // Manage Texture Worker
   useEffect(() => {
@@ -131,7 +136,7 @@ export function VisualizationViewV8() {
 
     worker.onmessage = (e) => {
       if (e.data.type === "texture-generated") {
-        totemStore.addPreloadedTexture(e.data.id, e.data.bitmap);
+        addPreloadedTexture(e.data.id, e.data.bitmap);
       }
     };
 
@@ -140,14 +145,14 @@ export function VisualizationViewV8() {
     return () => {
       worker.terminate();
     };
-  }, []);
+  }, [addPreloadedTexture]);
 
   // Preload textures when keywords change
   useEffect(() => {
-    if (!workerRef.current || totemStore.allKeywords.length === 0) return;
+    if (!workerRef.current || allTotemKeywords.length === 0) return;
 
-    totemStore.allKeywords.forEach((kw) => {
-      if (!totemStore.preloadedTextures[kw.id]) {
+    allTotemKeywords.forEach((kw) => {
+      if (!preloadedTotemTextures[kw.id]) {
         workerRef.current?.postMessage({
           type: "generate",
           id: kw.id,
@@ -156,7 +161,7 @@ export function VisualizationViewV8() {
         });
       }
     });
-  }, [totemStore.allKeywords]);
+  }, [allTotemKeywords, preloadedTotemTextures]);
 
   useEffect(() => {
     if (currentView !== "visualization") return;
@@ -185,7 +190,7 @@ export function VisualizationViewV8() {
     isPlaying,
   });
   const handleRender = useCallback(
-    (ctx: RenderContext, audioData: AudioData, params: Record<string, any>) => {
+    (ctx: RenderContext, audioData: AudioData, params: Record<string, LegacyAny>) => {
       renderEffect(ctx, audioData, params);
     },
     [renderEffect]
@@ -201,7 +206,7 @@ export function VisualizationViewV8() {
           animate={{ opacity: 1 }}
           className="text-white/60 text-lg"
         >
-          初始化中...
+          鍒濆鍖栦腑...
         </motion.div>
       </div>
     );
@@ -293,13 +298,13 @@ export function VisualizationViewV8() {
                 <Gauge className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="text-base font-semibold text-white">可视化需要恢复</h3>
+                <h3 className="text-base font-semibold text-white">Visualization needs recovery</h3>
                 <p className="mt-1 text-sm text-white/60">
                   {!currentEffect
-                    ? "当前效果未初始化。"
+                    ? "Current effect is not initialized."
                     : currentEffect.preferredEngine === "webgl" && !isWebGLAvailable
-                      ? "当前设备不可用 WebGL，建议切换到 Canvas 效果。"
-                      : `帧率已低于 20 FPS，当前约 ${fps.toFixed(0)} FPS。`}
+                      ? "WebGL is unavailable on this device. Try a Canvas effect."
+                      : `Frame rate is below 20 FPS, currently about ${fps.toFixed(0)} FPS.`}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
@@ -313,25 +318,25 @@ export function VisualizationViewV8() {
                     }}
                     className="rounded-xl bg-white px-3 py-2 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-50"
                   >
-                    切换 Canvas
+                    鍒囨崲 Canvas
                   </button>
                   <button
                     type="button"
                     onClick={() => setPerformanceLevel("low")}
                     className="rounded-xl bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
                   >
-                    降低质量
+                    闄嶄綆璐ㄩ噺
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowControlDrawer(true)}
                     className="rounded-xl bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
                   >
-                    打开控制
+                    鎵撳紑鎺у埗
                   </button>
                 </div>
                 <p className="mt-3 text-xs text-white/35">
-                  CPU {cpuUsage.toFixed(0)}% · Memory {memoryUsage.toFixed(0)} MB
+                  CPU {cpuUsage.toFixed(0)}% 路 Memory {memoryUsage.toFixed(0)} MB
                 </p>
               </div>
             </div>
@@ -352,7 +357,7 @@ export function VisualizationViewV8() {
       <button
         onClick={() => setShowControlDrawer(true)}
         className="absolute bottom-6 right-6 z-30 w-12 h-12 rounded-2xl bg-[#1c1c1e]/70 backdrop-blur-[48px] backdrop-saturate-[200%] border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] flex items-center justify-center hover:bg-[#1c1c1e]/90 transition-all"
-        title="效果控制 (C)"
+        title="鏁堟灉鎺у埗 (C)"
       >
         <Settings className="w-5 h-5 text-white/80" />
       </button>

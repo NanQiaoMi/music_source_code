@@ -199,7 +199,7 @@ export const ResonanceTotemV8: EffectPlugin = {
   resize(_width: number, _height: number) {},
 
   destroy(ctx?: RenderContext) {
-    if (ctx && ctx.private && ctx.private.group) {
+    if (ctx?.scene && ctx.private?.group && ctx.private.meshes instanceof Set) {
       ctx.scene.remove(ctx.private.group);
       ctx.private.meshes.forEach((mesh: THREE.Mesh) => {
         (mesh.material as THREE.ShaderMaterial).dispose();

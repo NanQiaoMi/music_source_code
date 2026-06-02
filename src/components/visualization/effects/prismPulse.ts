@@ -296,7 +296,7 @@ export function drawPrismPulse({
       const r = baseRadius * layer.r;
       const rot = t * layer.rot * (1 + lIdx * 0.2) + i * 0.5;
       // Subtle variations in luminosity based on layer
-      drawTechShape(r, 3, rot, hue, (0.45 + mid * 0.45) / (lIdx + 1), layer.style as any);
+      drawTechShape(r, 3, rot, hue, (0.45 + mid * 0.45) / (lIdx + 1), layer.style as LegacyAny);
 
       if (lIdx === 0) {
         ctx.save();

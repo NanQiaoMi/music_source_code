@@ -2,13 +2,15 @@
 
 import React, { useCallback, useMemo } from "react";
 
+type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
+
 export const ControlGroup = ({
   title,
   icon: Icon,
   children,
 }: {
   title: string;
-  icon: React.ComponentType<any>;
+  icon: IconComponent;
   children: React.ReactNode;
 }) => (
   <div className="space-y-4">
@@ -36,7 +38,7 @@ export const GlassSlider = React.memo(
     step: number;
     onChange: (val: number) => void;
     label?: string;
-    icon?: React.ComponentType<any>;
+    icon?: IconComponent;
   }) => {
     const handleChange = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => onChange(parseFloat(e.target.value)),
@@ -74,3 +76,4 @@ export const GlassSlider = React.memo(
     );
   }
 );
+GlassSlider.displayName = "GlassSlider";

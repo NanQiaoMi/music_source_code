@@ -67,7 +67,7 @@ export const MusicCardStack: React.FC = () => {
 
       cards.push({
         ...displaySongs[displayIndex],
-        displayIndex: index,
+        displayIndex: displayIndex,
         offset: i,
       });
     }

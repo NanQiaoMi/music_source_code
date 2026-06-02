@@ -57,6 +57,7 @@ export default function LyricsSearchPanel({ isOpen, onClose }: LyricsSearchPanel
     return parsedLyrics.slice(0, 4).map((line) => line.text);
   }, [currentLyrics, parsedLyrics]);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- Opening search seeds local query fields from the active song for editing. */
   useEffect(() => {
     if (!isOpen) return;
 
@@ -66,6 +67,7 @@ export default function LyricsSearchPanel({ isOpen, onClose }: LyricsSearchPanel
       setArtistInput(currentSong.artist);
     }
   }, [currentSong, isOpen, setCurrentSongId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();

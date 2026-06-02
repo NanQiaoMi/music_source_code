@@ -1568,7 +1568,7 @@ export const PosterPreview = ({
                 opacity: config.artistOpacity,
               }}
             >
-              // {song.artist}
+              {song.artist}
             </p>
           </div>
           <div

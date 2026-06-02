@@ -43,15 +43,19 @@ const TrackCutter: React.FC<TrackCutterProps> = ({ isOpen, onClose }) => {
 
   const [activeTab, setActiveTab] = useState<"upload" | "tracks" | "settings">("upload");
   const [currentTaskId, setCurrentLocalTaskId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cueInputRef = useRef<HTMLInputElement>(null);
 
   const currentTask = tasks.find((t) => t.id === currentTaskId);
+  const selectedTrackCount = currentTask?.tracks.filter((track) => track.selected).length ?? 0;
 
   const handleFileUpload = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>, isAudioFile: boolean) => {
       const file = e.target.files?.[0];
       if (!file) return;
+
+      setFeedback(null);
 
       if (isAudioFile) {
         const taskId = createTask(file.name, "");
@@ -74,13 +78,16 @@ const TrackCutter: React.FC<TrackCutterProps> = ({ isOpen, onClose }) => {
         const cueContent = await file.text();
         const validation = validateCUEFile(cueContent);
         if (!validation.valid) {
-          alert(`CUE 文件无效: ${validation.error}`);
+          setFeedback(`CUE 文件无效: ${validation.error}`);
           return;
         }
 
         const parsed = parseCUEFile(cueContent);
         if (parsed && currentTaskId) {
           setParsedCUE(currentTaskId, parsed);
+          setFeedback(null);
+        } else if (parsed) {
+          setFeedback("请先上传整轨音频文件，再上传 CUE 分割表文件");
         }
       }
     },
@@ -92,10 +99,11 @@ const TrackCutter: React.FC<TrackCutterProps> = ({ isOpen, onClose }) => {
 
     const selectedTracks = currentTask.tracks.filter((t) => t.selected);
     if (selectedTracks.length === 0) {
-      alert("请选择至少一个要切割的音轨");
+      setFeedback("请选择至少一个要切割的音轨");
       return;
     }
 
+    setFeedback(null);
     updateTaskStatus(currentTask.id, "cutting");
 
     for (const track of selectedTracks) {
@@ -108,7 +116,7 @@ const TrackCutter: React.FC<TrackCutterProps> = ({ isOpen, onClose }) => {
     }
 
     updateTaskStatus(currentTask.id, "completed");
-  }, [currentTask, updateTaskStatus, incrementCut]);
+  }, [currentTask, updateTaskStatus, updateTrackStatus, incrementCut]);
 
   const downloadTrack = useCallback(
     (track: CutTrack) => {
@@ -218,6 +226,15 @@ const TrackCutter: React.FC<TrackCutterProps> = ({ isOpen, onClose }) => {
                   </button>
                 </div>
 
+                {feedback && (
+                  <div
+                    role="alert"
+                    className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+                  >
+                    {feedback}
+                  </div>
+                )}
+
                 {activeTab === "upload" && (
                   <div className="space-y-6">
                     <div
@@ -290,8 +307,7 @@ const TrackCutter: React.FC<TrackCutterProps> = ({ isOpen, onClose }) => {
                       <div>
                         <h3 className="text-white font-medium">{currentTask.sourceFileName}</h3>
                         <p className="text-gray-400 text-xs">
-                          {currentTask.tracks.filter((t) => t.selected).length} /{" "}
-                          {currentTask.tracks.length} 已选择
+                          {selectedTrackCount} / {currentTask.tracks.length} 已选择
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -313,12 +329,18 @@ const TrackCutter: React.FC<TrackCutterProps> = ({ isOpen, onClose }) => {
                     {currentTask.status === "ready" && (
                       <button
                         onClick={startCutting}
-                        disabled={!currentTask.tracks.some((t) => t.selected)}
+                        disabled={selectedTrackCount === 0}
                         className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors text-white font-medium flex items-center justify-center gap-2"
                       >
                         <Scissors className="w-4 h-4" />
                         开始切割 ({currentTask.tracks.filter((t) => t.selected).length})
                       </button>
+                    )}
+
+                    {currentTask.status === "ready" && selectedTrackCount === 0 && (
+                      <p className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-200">
+                        {"请选择至少一个要切割的音轨"}
+                      </p>
                     )}
 
                     <div className="max-h-64 overflow-y-auto space-y-2 pr-2 custom-scrollbar min-h-0">

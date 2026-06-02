@@ -29,7 +29,7 @@ export const drawCyberpunkParticles = ({
   );
   const smoothMid =
     (refs.smoothMid ? refs.smoothMid.current : 0) * 0.88 + (isFinite(rawMid) ? rawMid : 0) * 0.12;
-  if (!refs.smoothMid) (refs as any).smoothMid = { current: smoothMid };
+  if (!refs.smoothMid) (refs as LegacyAny).smoothMid = { current: smoothMid };
   else refs.smoothMid.current = Math.max(0, Math.min(1, smoothMid));
   refs.smoothTreble.current = Math.max(
     0,
@@ -200,7 +200,7 @@ export const drawCyberpunkParticles = ({
 
     // --- NEURAL PARTICLES ---
     const count = Math.min(refs.particles.current.length, effectParams.particleCount || 600);
-    const nodes: any[] = [];
+    const nodes: LegacyAny[] = [];
 
     for (let i = 0; i < count; i++) {
       const p = refs.particles.current[i];

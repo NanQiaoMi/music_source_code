@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -38,7 +38,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
     addToQueue,
     moveToNext,
     clearAfterCurrent,
-    bulkRemove,
+    bulk移除,
     dedupeQueue,
     shuffleAfterCurrent,
   } = useQueueStore();
@@ -138,15 +138,13 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
       const song = queue[index];
       if (!song) return;
 
-      useQueueStore.getState().setCurrentIndex(index);
-      useAudioStore.getState().setCurrentSong(song);
-      useAudioStore.getState().setIsPlaying(true);
+      useAudioStore.getState().playQueue(queue, index);
     },
     [queue]
   );
 
   const handleBulkDelete = () => {
-    bulkRemove(selectedOrderedIds);
+    bulk移除(selectedOrderedIds);
     clearSelection();
   };
 
@@ -188,11 +186,11 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
           </GlassButton>
           <GlassButton size="sm" variant="ghost" onClick={handlePlayNext}>
             <CornerDownRight className="h-3.5 w-3.5" />
-            Play next
+            下一首播放
           </GlassButton>
           <GlassButton size="sm" variant="primary" onClick={handleBulkDelete}>
             <Trash2 className="h-3.5 w-3.5" />
-            Remove
+            移除
           </GlassButton>
         </>
       ) : (
@@ -261,7 +259,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
             {duplicateCount > 0 && (
               <GlassButton size="sm" variant="ghost" onClick={handleDedupeQueue}>
                 <CopyX className="h-3.5 w-3.5" />
-                Remove duplicates ({duplicateCount})
+                移除 duplicates ({duplicateCount})
               </GlassButton>
             )}
             <GlassButton size="sm" variant="ghost" onClick={handleShuffleRemaining}>
@@ -374,7 +372,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                 <div className="min-w-0 flex-1">
                   {isCurrent && (
                     <div className="mb-0.5 text-[9px] font-semibold tracking-[0.18em] text-white/45">
-                      NOW PLAYING
+                      正在播放
                     </div>
                   )}
                   <h4
@@ -394,8 +392,8 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                   }}
                   disabled={index === currentIndex || index === currentIndex + 1}
                   className="p-1 text-white/20 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-20"
-                  title="Play next"
-                  aria-label={`Play ${song.title} next`}
+                  title="下一首播放"
+                  aria-label={`播放下一首 ${song.title}`}
                 >
                   <CornerDownRight className="h-3.5 w-3.5" />
                 </button>
@@ -411,8 +409,8 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                     });
                   }}
                   className="p-1 text-white/20 transition-colors hover:text-red-400"
-                  title="Remove from queue"
-                  aria-label={`Remove ${song.title} from queue`}
+                  title="从队列移除"
+                  aria-label={`从队列移除 ${song.title}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

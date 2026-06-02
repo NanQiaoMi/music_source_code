@@ -4,9 +4,7 @@ import { EffectPlugin, ParameterMode, RenderEngine } from "@/lib/visualization/t
 
 type VisualizationEffectV8 = string;
 
-interface EffectSettingsV8 {
-  [effectId: string]: Record<string, any>;
-}
+type EffectSettingsV8 = Record<string, Record<string, unknown>>;
 
 interface VisualizationV8State {
   currentEffect: VisualizationEffectV8;
@@ -20,7 +18,7 @@ interface VisualizationV8State {
   setCurrentEffect: (effect: VisualizationEffectV8) => void;
   setCurrentEngine: (engine: RenderEngine) => void;
   setParameterMode: (mode: ParameterMode) => void;
-  updateEffectSettings: (effectId: string, settings: Record<string, any>) => void;
+  updateEffectSettings: (effectId: string, settings: Record<string, unknown>) => void;
   resetEffectSettings: (effectId: string) => void;
   registerEffect: (effect: EffectPlugin) => void;
   toggleFavoriteEffect: (effectId: string) => void;

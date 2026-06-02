@@ -4,7 +4,6 @@ import { useGestureStore } from "@/store/gestureStore";
 export const VirtualCursor: React.FC = () => {
   const { cursorPosition, isHandDetected, isPinching } = useGestureStore();
   const [mousePosition, setMousePosition] = useState({ x: 0.5, y: 0.5 });
-  const [useMouse, setUseMouse] = useState(true);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -18,10 +17,7 @@ export const VirtualCursor: React.FC = () => {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  useEffect(() => {
-    setUseMouse(!isHandDetected);
-  }, [isHandDetected]);
-
+  const useMouse = !isHandDetected;
   const position = useMouse ? mousePosition : cursorPosition;
 
   // Clamp position to prevent overflow

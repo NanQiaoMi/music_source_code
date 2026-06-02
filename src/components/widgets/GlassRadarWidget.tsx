@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
 import { Radar } from "lucide-react";
 import { useEmotionStore } from "@/store/emotionStore";
@@ -9,6 +9,7 @@ import { toast } from "@/components/shared/GlassToast";
 
 const DEBOUNCE_TIME = 500;
 const RADAR_SIZE = 200;
+const DEFAULT_EMOTION = { x: 0, y: 0 };
 
 const QUADRANT_GLOW = {
   Q1: "rgba(249, 115, 22, 0.6)",
@@ -28,9 +29,13 @@ export const GlassRadarWidget: React.FC = () => {
   const { globalEmotion, setGlobalEmotion, emotionMap, saveSongEmotion } = useEmotionStore();
   const currentSong = useAudioStore((state) => state.currentSong);
 
-  const currentEmotion = currentSong
-    ? emotionMap[currentSong.id] || { x: 0, y: 0 }
-    : globalEmotion || { x: 0, y: 0 };
+  const currentEmotion = useMemo(
+    () =>
+      currentSong
+        ? emotionMap[currentSong.id] || DEFAULT_EMOTION
+        : globalEmotion || DEFAULT_EMOTION,
+    [currentSong, emotionMap, globalEmotion]
+  );
 
   const [isExpanded, setIsExpanded] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -43,7 +48,7 @@ export const GlassRadarWidget: React.FC = () => {
     y.set(-currentEmotion.y * (RADAR_SIZE / 2));
   }, [currentEmotion, x, y]);
 
-  const glowColor = useTransform([x, y], ([latestX, latestY]: any[]) => {
+  const glowColor = useTransform([x, y], ([latestX = 0, latestY = 0]: number[]) => {
     const valX = latestX / (RADAR_SIZE / 2);
     const valY = -latestY / (RADAR_SIZE / 2);
     const q = getQuadrant(valX, valY);
@@ -61,12 +66,12 @@ export const GlassRadarWidget: React.FC = () => {
         saveSongEmotion(currentSong.id, finalX, finalY);
         const q = getQuadrant(finalX, finalY);
         const labels: Record<string, string> = {
-          Q1: "高亢激昂",
-          Q2: "悲伤阴暗",
+          Q1: "高能明亮",
+          Q2: "忧郁阴影",
           Q3: "平静低沉",
           Q4: "欢快明亮",
         };
-        toast.success(`已标记为「${labels[q]}」区域`);
+        toast.success(`已标记为${labels[q]}`);
       } else {
         setGlobalEmotion({ x: finalX, y: finalY });
         toast.success("已更新全局情绪偏好");
@@ -76,8 +81,8 @@ export const GlassRadarWidget: React.FC = () => {
 
   const currentQuadrant = getQuadrant(currentEmotion.x, currentEmotion.y);
   const quadrantLabels: Record<string, string> = {
-    Q1: "高亢激昂",
-    Q2: "悲伤阴暗",
+    Q1: "高能明亮",
+    Q2: "忧郁阴影",
     Q3: "平静低沉",
     Q4: "欢快明亮",
   };
@@ -149,9 +154,9 @@ export const GlassRadarWidget: React.FC = () => {
 
                 {/* Labels */}
                 <div className="absolute inset-0 p-2 pointer-events-none text-[8px] font-bold tracking-tighter flex flex-col justify-between items-center">
-                  <span className="mt-1 text-orange-400/50">高亢激昂</span>
+                  <span className="mt-1 text-orange-400/50">高能明亮</span>
                   <div className="w-full flex justify-between items-center px-1">
-                    <span className="text-purple-400/50">悲伤阴暗</span>
+                    <span className="text-purple-400/50">忧郁阴影</span>
                     <span className="text-green-400/50">欢快明亮</span>
                   </div>
                   <span className="mb-1 text-blue-400/50">平静低沉</span>

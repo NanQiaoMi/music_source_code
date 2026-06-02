@@ -32,6 +32,7 @@ export const LyricsImportPanel: React.FC<LyricsImportPanelProps> = ({ isOpen, on
     return song.title.toLowerCase().includes(query) || song.artist.toLowerCase().includes(query);
   });
 
+  /* eslint-disable react-hooks/set-state-in-effect -- Opening the importer seeds local editable lyrics from the active song. */
   useEffect(() => {
     if (!isOpen || !currentSong) return;
 
@@ -39,6 +40,7 @@ export const LyricsImportPanel: React.FC<LyricsImportPanelProps> = ({ isOpen, on
     setSelectedSongId((previous) => previous || currentSong.id);
     setLyricsContent((previous) => previous || currentSong.lyrics || "");
   }, [currentSong, isOpen, setCurrentSongId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSelectSong = (songId: string) => {
     const song = songs.find((item) => item.id === songId);

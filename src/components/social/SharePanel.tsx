@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { Clipboard, Check } from "lucide-react";
@@ -91,8 +91,13 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
   const parsedLyrics = useMemo(() => {
     return currentSong?.lyrics
       ? parseLyrics(currentSong.lyrics)
-      : ["在这美好的时光里", "让音乐治愈你的心灵", "每一个音符都是故事", "聆听内心的声音"];
+      : ["还没有可用的歌词", "让音乐继续流动", "每一段旋律都有故事", "写下此刻的心情"];
   }, [currentSong]);
+
+  const effectiveSelectedLyricLines = useMemo(
+    () => selectedLyricLines.slice(0, config.maxLyricLines),
+    [config.maxLyricLines, selectedLyricLines]
+  );
 
   const lyricLineCount = useMemo(() => {
     if (isEditingLyric) {
@@ -102,9 +107,9 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
         .filter(Boolean).length;
     }
 
-    if (selectedLyricLines.length > 0) return selectedLyricLines.length;
+    if (effectiveSelectedLyricLines.length > 0) return effectiveSelectedLyricLines.length;
     return selectedLyric ? 1 : 0;
-  }, [customLyric, isEditingLyric, selectedLyric, selectedLyricLines.length]);
+  }, [customLyric, effectiveSelectedLyricLines.length, isEditingLyric, selectedLyric]);
 
   const exportMeta = useMemo(
     () => getPosterExportMeta(config, resolution, RENDER_WIDTH),
@@ -124,19 +129,13 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
 
   const failedQualityChecks = qualityChecks.filter((check) => !check.passed);
 
-  const updateConfig = useCallback((key: keyof PosterConfig, value: any) => {
+  const updateConfig = useCallback((key: keyof PosterConfig, value: LegacyAny) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
   }, []);
 
   const applyQuickPreset = useCallback((presetId: (typeof POSTER_QUICK_PRESETS)[number]["id"]) => {
     setConfig((prev) => applyPosterPreset(prev, presetId));
   }, []);
-
-  useEffect(() => {
-    setSelectedLyricLines((prev) =>
-      prev.length > config.maxLyricLines ? prev.slice(0, config.maxLyricLines) : prev
-    );
-  }, [config.maxLyricLines]);
 
   const handleSaveImage = async () => {
     if (!posterRef.current || !currentSong) return;
@@ -153,7 +152,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
       link.download = createPosterFileName(currentSong.title, config.template);
       link.href = dataUrl;
       link.click();
-      toast.success("海报已保存！");
+      toast.success("海报已保存");
     } catch (error) {
       console.error("Failed to generate poster:", error);
       toast.error("生成海报失败，请重试");
@@ -175,8 +174,8 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
 
   const displayLyric = isEditingLyric
     ? customLyric
-    : selectedLyricLines.length > 0
-      ? selectedLyricLines.slice(0, config.maxLyricLines).join("\n")
+    : effectiveSelectedLyricLines.length > 0
+      ? effectiveSelectedLyricLines.join("\n")
       : selectedLyric;
 
   if (!isOpen) return null;
@@ -203,7 +202,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
               <Share2 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-white text-xl font-semibold tracking-wide">海报工坊</h2>
+              <h2 className="text-white text-xl font-semibold tracking-wide">分享海报</h2>
               <p className="text-white/50 text-xs">生成专属音乐卡片</p>
             </div>
           </div>
@@ -288,29 +287,27 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
 
                   <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider text-white/35">导出</div>
+                      <div className="text-[10px] uppercase tracking-wider text-white/35">尺寸</div>
                       <div className="mt-1 text-xs font-semibold text-white">
                         {exportMeta.label}
                       </div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider text-white/35">质量</div>
+                      <div className="text-[10px] uppercase tracking-wider text-white/35">像素</div>
                       <div className="mt-1 text-xs font-semibold text-white">
                         {exportMeta.megapixels.toFixed(2)} MP
                       </div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider text-white/35">检查</div>
+                      <div className="text-[10px] uppercase tracking-wider text-white/35">质量</div>
                       <div
                         className={`mt-1 text-xs font-semibold ${
                           failedQualityChecks.length === 0 ? "text-emerald-300" : "text-amber-300"
                         }`}
                       >
                         {failedQualityChecks.length === 0
-                          ? "Ready"
-                          : `${failedQualityChecks.length} issue${
-                              failedQualityChecks.length === 1 ? "" : "s"
-                            }`}
+                          ? "已就绪"
+                          : `${failedQualityChecks.length} 项检查`}
                       </div>
                     </div>
                   </div>
@@ -356,7 +353,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                 </ControlGroup>
 
                 {/* TEMPLATE SELECTION */}
-                <ControlGroup title="模板风格" icon={LayoutTemplate}>
+                <ControlGroup title="模板" icon={LayoutTemplate}>
                   <div className="grid grid-cols-2 gap-3">
                     {POSTER_TEMPLATE_META.map((tpl) => (
                       <button
@@ -418,7 +415,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                     onChange={(v: number) => updateConfig("coverScale", v)}
                   />
                   <GlassSlider
-                    label="垂直位移"
+                    label="垂直位置"
                     value={config.coverYOffset}
                     min={-4}
                     max={4}
@@ -446,7 +443,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                     onChange={(v: number) => updateConfig("titleSize", v)}
                   />
                   <GlassSlider
-                    label="标题垂直位移"
+                    label="标题垂直位置"
                     value={config.titleYOffset}
                     min={-3}
                     max={3}
@@ -454,7 +451,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                     onChange={(v: number) => updateConfig("titleYOffset", v)}
                   />
                   <GlassSlider
-                    label="歌手名透明度"
+                    label="艺人名透明度"
                     value={config.artistOpacity}
                     min={0}
                     max={1}
@@ -473,7 +470,9 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                     <div className="grid grid-cols-2 gap-2">
                       <select
                         value={config.lyricAlignment}
-                        onChange={(e) => updateConfig("lyricAlignment", e.target.value as any)}
+                        onChange={(e) =>
+                          updateConfig("lyricAlignment", e.target.value as LegacyAny)
+                        }
                         className="bg-black/30 text-white/80 text-sm rounded-lg p-2 border border-white/10 outline-none"
                       >
                         <option value="left">左对齐</option>
@@ -482,11 +481,11 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                       </select>
                       <select
                         value={config.lyricFont}
-                        onChange={(e) => updateConfig("lyricFont", e.target.value as any)}
+                        onChange={(e) => updateConfig("lyricFont", e.target.value as LegacyAny)}
                         className="bg-black/30 text-white/80 text-sm rounded-lg p-2 border border-white/10 outline-none"
                       >
-                        <option value="sans">黑体 (无衬线)</option>
-                        <option value="serif">宋体 (衬线)</option>
+                        <option value="sans">现代 (无衬线)</option>
+                        <option value="serif">经典 (衬线)</option>
                         <option value="mono">等宽字体</option>
                         <option value="cursive">手写体</option>
                       </select>
@@ -494,11 +493,11 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                     <div className="grid grid-cols-2 gap-2">
                       <select
                         value={config.textEffect}
-                        onChange={(e) => updateConfig("textEffect", e.target.value as any)}
+                        onChange={(e) => updateConfig("textEffect", e.target.value as LegacyAny)}
                         className="bg-black/30 text-white/80 text-sm rounded-lg p-2 border border-white/10 outline-none"
                       >
                         <option value="none">无文字特效</option>
-                        <option value="shadow">基础阴影</option>
+                        <option value="shadow">柔和阴影</option>
                         <option value="glow">发光 (Glow)</option>
                         <option value="neon">霓虹 (Neon)</option>
                         <option value="stroke">描边 (Stroke)</option>
@@ -534,7 +533,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
 
                 {/* ATMOSPHERE */}
                 {config.template === "apple" && (
-                  <ControlGroup title="滤镜与氛围" icon={Activity}>
+                  <ControlGroup title="氛围滤镜" icon={Activity}>
                     <GlassSlider
                       label="背景模糊"
                       value={config.blurIntensity}
@@ -544,7 +543,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                       onChange={(v: number) => updateConfig("blurIntensity", v)}
                     />
                     <GlassSlider
-                      label="暗角与遮罩"
+                      label="叠加强度"
                       value={config.overlayDepth}
                       min={0}
                       max={1}
@@ -554,9 +553,9 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                   </ControlGroup>
                 )}
 
-                <ControlGroup title="胶片材质" icon={Disc3}>
+                <ControlGroup title="胶片质感" icon={Disc3}>
                   <GlassSlider
-                    label="噪点纹理透明度"
+                    label="颗粒透明度"
                     value={config.noiseOpacity}
                     min={0}
                     max={1}
@@ -584,7 +583,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                         onChange={(e) => updateConfig("showQRCode", e.target.checked)}
                         className="rounded border-white/20 bg-black/20 text-pink-500 focus:ring-pink-500"
                       />
-                      显示二维码徽标
+                      显示二维码占位
                     </label>
                   </div>
                 </ControlGroup>
@@ -595,14 +594,14 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-white/50">
                         {isEditingLyric
-                          ? "手动输入"
+                          ? "手动编辑"
                           : `已选 ${selectedLyricLines.length}/${config.maxLyricLines} 行`}
                       </span>
                       <button
                         onClick={() => setIsEditingLyric(!isEditingLyric)}
                         className="text-xs text-pink-400 hover:text-pink-300 transition-colors"
                       >
-                        {isEditingLyric ? "切换多选模式" : "切换自定义输入"}
+                        {isEditingLyric ? "切换到选择模式" : "切换到自定义歌词"}
                       </button>
                     </div>
 
@@ -610,7 +609,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                       <textarea
                         value={customLyric}
                         onChange={(e) => setCustomLyric(e.target.value)}
-                        placeholder="输入打动你的金句，每行一句..."
+                        placeholder="输入歌词金句，每行一句..."
                         className="w-full h-28 p-3 rounded-xl bg-black/20 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:border-pink-500 resize-none custom-scrollbar"
                       />
                     ) : (
@@ -648,7 +647,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                           })
                         ) : (
                           <p className="text-white/40 text-sm italic py-2">
-                            当前歌曲没有可用的内置歌词
+                            当前歌曲没有可用的歌词
                           </p>
                         )}
                       </div>
@@ -725,7 +724,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                         const blob = await res.blob();
                         await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
                         setCopied(true);
-                        toast.success("已复制到剪贴板！");
+                        toast.success("已复制到剪贴板");
                         setTimeout(() => setCopied(false), 2000);
                       } catch {
                         toast.error("复制失败，请使用下载按钮");
@@ -756,7 +755,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
                       </>
                     ) : (
                       <>
-                        <Download className="w-5 h-5" /> 导出海报
+                        <Download className="w-5 h-5" /> 导出图片
                       </>
                     )}
                   </button>
@@ -767,8 +766,8 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center py-12">
             <Music className="w-16 h-16 text-white/20 mb-4" />
-            <h3 className="text-white font-medium text-lg">暂无音乐</h3>
-            <p className="text-white/40 text-sm mt-2">请先播放一首你喜欢的音乐，再来生成专属卡片</p>
+            <h3 className="text-white font-medium text-lg">暂无播放内容</h3>
+            <p className="text-white/40 text-sm mt-2">先播放一首喜欢的音乐，再生成专属卡片</p>
           </div>
         )}
       </motion.div>

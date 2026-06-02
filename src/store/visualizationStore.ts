@@ -13,11 +13,14 @@ export type VisualizationEffect =
   | "prismPulse"
   | "resonanceTotem";
 
+export type NumericEffectSettings = Record<string, number>;
+export type EffectSettings = Record<VisualizationEffect, NumericEffectSettings>;
+
 export interface VisualizationPreset {
   id: string;
   name: string;
   effect: VisualizationEffect;
-  settings: Record<string, any>;
+  settings: NumericEffectSettings;
 }
 
 interface VisualizationState {
@@ -28,53 +31,7 @@ interface VisualizationState {
   showSongInfo: boolean;
   reactToMusic: boolean;
 
-  effectSettings: {
-    spatialMesh: { blurIntensity: number; speed: number; colorIntensity: number };
-    cyberpunkParticles: {
-      particleCount: number;
-      particleSize: number;
-      speed: number;
-      glowIntensity: number;
-    };
-    organicFluid: { complexity: number; speed: number; colorShift: number };
-    auroraWave: {
-      speed: number;
-      colorIntensity: number;
-      coreComplexity: number;
-      flareAmount: number;
-      hudDetail: number;
-    };
-    spectrumRing: {
-      ringCount: number;
-      rotationSpeed: number;
-      barWidth: number;
-      colorMode: number;
-      glowIntensity: number;
-      haloStyle: number;
-      flareAmount: number;
-      chromaticIntensity: number;
-      hudDetail: number;
-    };
-    nebulaField: {
-      starCount: number;
-      nebulaIntensity: number;
-      speed: number;
-      depth: number;
-      flareAmount: number;
-      hudDetail: number;
-    };
-    vinylGroove: {
-      spinSpeed: number;
-      grooveIntensity: number;
-      glowAmount: number;
-      opticalComplexity: number;
-      chromaticIntensity: number;
-    };
-    cyberMatrix: { speed: number; density: number };
-    gravitationalField: { speed: number; sensitivity: number; coreIntensity: number };
-    prismPulse: { complexity: number; refraction: number; drift: number; speed: number };
-    resonanceTotem: { opacity: number; scanSpeed: number; grainIntensity: number };
-  };
+  effectSettings: EffectSettings;
 
   setCurrentEffect: (effect: VisualizationEffect) => void;
   setIsFullscreen: (isFullscreen: boolean) => void;
@@ -84,10 +41,13 @@ interface VisualizationState {
   savePreset: (name: string) => void;
   loadPreset: (presetId: string) => void;
   deletePreset: (presetId: string) => void;
-  updateEffectSettings: (effect: VisualizationEffect, settings: Record<string, any>) => void;
+  updateEffectSettings: (
+    effect: VisualizationEffect,
+    settings: Partial<NumericEffectSettings>
+  ) => void;
 }
 
-const defaultEffectSettings = {
+const defaultEffectSettings: EffectSettings = {
   spatialMesh: { blurIntensity: 120, speed: 1.0, colorIntensity: 0.8 },
   cyberpunkParticles: { particleCount: 500, particleSize: 2.0, speed: 1.5, glowIntensity: 1.0 },
   organicFluid: { complexity: 1.0, speed: 1.0, colorShift: 0.5 },

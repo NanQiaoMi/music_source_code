@@ -31,19 +31,12 @@ export const useOfflineCache = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCaching, setIsCaching] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadCacheStatus();
-  }, []);
-
   const loadCacheStatus = useCallback(async () => {
     try {
       const stored = localStorage.getItem(CACHE_STATUS_KEY);
-      if (stored) {
-        setCacheStatus(JSON.parse(stored));
-      }
+      const newStatus: Record<string, CacheStatus> = stored ? JSON.parse(stored) : {};
 
       const storedMusic = await getAllStoredMusic();
-      const newStatus: Record<string, CacheStatus> = { ...cacheStatus };
 
       storedMusic.forEach((music) => {
         newStatus[music.id] = {
@@ -58,7 +51,15 @@ export const useOfflineCache = () => {
     } catch (error) {
       console.error("Error loading cache status:", error);
     }
-  }, [cacheStatus]);
+  }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadCacheStatus();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [loadCacheStatus]);
 
   const saveCacheStatus = useCallback((status: Record<string, CacheStatus>) => {
     try {

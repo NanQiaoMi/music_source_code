@@ -1,45 +1,57 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { getAllEffects, getEffectById } from "@/components/visualization-v8/effects";
+import { getAllEffects } from "@/components/visualization-v8/effects";
 import { initAllEffects } from "@/components/visualization-v8/effects/initEffects";
-import { EffectPlugin, RenderContext, AudioData } from "@/lib/visualization/types";
+import {
+  AudioData,
+  EffectParameterMap,
+  EffectParameterSet,
+  EffectParameterValue,
+  EffectPlugin,
+  RenderContext,
+} from "@/lib/visualization/types";
 import { getAudioAnalyser } from "./useAudioPlayer";
 
+interface VisualizationV8InitialState {
+  effects: EffectPlugin[];
+  currentEffectId: string;
+  effectParams: EffectParameterSet;
+}
+
+const createInitialState = (): VisualizationV8InitialState => {
+  initAllEffects();
+  const allEffects = getAllEffects();
+  const effectParams: EffectParameterSet = {};
+
+  allEffects.forEach((effect) => {
+    effectParams[effect.id] = effect.parameters.reduce<EffectParameterMap>(
+      (acc, param) => ({
+        ...acc,
+        [param.id]: param.default,
+      }),
+      {}
+    );
+  });
+
+  return {
+    effects: allEffects,
+    currentEffectId: allEffects[0]?.id ?? "spectrum-v8",
+    effectParams,
+  };
+};
+
 export function useVisualizationV8() {
-  const [effects, setEffects] = useState<EffectPlugin[]>([]);
-  const [currentEffectId, setCurrentEffectId] = useState<string>("spectrum-v8");
-  const [effectParams, setEffectParams] = useState<Record<string, Record<string, any>>>({});
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [initialState] = useState(createInitialState);
+  const [currentEffectId, setCurrentEffectId] = useState<string>(initialState.currentEffectId);
+  const [effectParams, setEffectParams] = useState<EffectParameterSet>(initialState.effectParams);
+  const effects = initialState.effects;
+  const isInitialized = effects.length > 0;
 
   const currentEffectRef = useRef<EffectPlugin | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const bufferLengthRef = useRef<number>(0);
   const analyserRef = useRef<AnalyserNode | null>(null);
-
-  useEffect(() => {
-    initAllEffects();
-    const allEffects = getAllEffects();
-    setEffects(allEffects);
-
-    const initialParams: Record<string, Record<string, any>> = {};
-    allEffects.forEach((effect) => {
-      initialParams[effect.id] = effect.parameters.reduce(
-        (acc, param) => ({
-          ...acc,
-          [param.id]: param.default,
-        }),
-        {}
-      );
-    });
-    setEffectParams(initialParams);
-
-    setIsInitialized(true);
-
-    if (allEffects.length > 0) {
-      setCurrentEffectId(allEffects[0].id);
-    }
-  }, []);
 
   useEffect(() => {
     if (!isInitialized) return;
@@ -53,27 +65,30 @@ export function useVisualizationV8() {
     }
   }, [isInitialized]);
 
-  const currentEffect = getEffectById(currentEffectId);
+  const currentEffect = effects.find((effect) => effect.id === currentEffectId);
 
-  const updateParam = useCallback((effectId: string, paramId: string, value: any) => {
-    setEffectParams((prev) => ({
-      ...prev,
-      [effectId]: {
-        ...prev[effectId],
-        [paramId]: value,
-      },
-    }));
-  }, []);
+  const updateParam = useCallback(
+    (effectId: string, paramId: string, value: EffectParameterValue) => {
+      setEffectParams((prev) => ({
+        ...prev,
+        [effectId]: {
+          ...prev[effectId],
+          [paramId]: value,
+        },
+      }));
+    },
+    []
+  );
 
   const getAudioData = useCallback((): AudioData => {
     let frequencyData = new Uint8Array(256);
     let waveformData = new Uint8Array(256);
 
     if (analyserRef.current && dataArrayRef.current) {
-      analyserRef.current.getByteFrequencyData(dataArrayRef.current as any);
+      analyserRef.current.getByteFrequencyData(dataArrayRef.current as Uint8Array<ArrayBuffer>);
       frequencyData = new Uint8Array(dataArrayRef.current);
 
-      analyserRef.current.getByteTimeDomainData(dataArrayRef.current as any);
+      analyserRef.current.getByteTimeDomainData(dataArrayRef.current as Uint8Array<ArrayBuffer>);
       waveformData = new Uint8Array(dataArrayRef.current);
     }
 
@@ -114,7 +129,7 @@ export function useVisualizationV8() {
   }, []);
 
   const renderEffect = useCallback(
-    (ctx: RenderContext, audioDataParam: AudioData, params: Record<string, any>) => {
+    (ctx: RenderContext, _audioDataParam: AudioData, params: EffectParameterMap) => {
       const audioData = getAudioData();
 
       if (currentEffect) {
@@ -130,7 +145,7 @@ export function useVisualizationV8() {
     [currentEffect, getAudioData]
   );
 
-  const getCurrentParams = useCallback((): Record<string, any> => {
+  const getCurrentParams = useCallback((): EffectParameterMap => {
     return effectParams[currentEffectId] || {};
   }, [effectParams, currentEffectId]);
 

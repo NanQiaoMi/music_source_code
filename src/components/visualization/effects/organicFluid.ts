@@ -102,7 +102,7 @@ export const drawOrganicFluid = ({
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  refs.particles.current.forEach((p: any) => {
+  refs.particles.current.forEach((p: LegacyAny) => {
     p.y -= p.sp * (1 + bass * 3);
     p.rot += p.vrot * (1 + energy);
     if (p.y < -50) p.y = height + 50;

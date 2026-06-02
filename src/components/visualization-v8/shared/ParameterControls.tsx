@@ -1,13 +1,18 @@
 "use client";
 
 import React from "react";
-import { EffectParameterDefinition, ParameterMode } from "@/lib/visualization/types";
+import {
+  EffectParameterDefinition,
+  EffectParameterMap,
+  EffectParameterValue,
+  ParameterMode,
+} from "@/lib/visualization/types";
 import { shouldShowParameterMode } from "@/lib/visualization/parameterMode";
 
 interface ParameterControlProps {
   param: EffectParameterDefinition;
-  value: any;
-  onChange: (value: any) => void;
+  value: EffectParameterValue;
+  onChange: (value: EffectParameterValue) => void;
   currentMode: ParameterMode;
 }
 
@@ -134,8 +139,8 @@ export function ParameterControl({ param, value, onChange, currentMode }: Parame
 
 interface ParameterPanelProps {
   parameters: EffectParameterDefinition[];
-  values: Record<string, any>;
-  onChange: (paramId: string, value: any) => void;
+  values: EffectParameterMap;
+  onChange: (paramId: string, value: EffectParameterValue) => void;
   currentMode: ParameterMode;
 }
 

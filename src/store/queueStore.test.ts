@@ -56,6 +56,24 @@ describe("queueStore", () => {
       expect(parsed.state.queue[0].audioUrl).toBe("stored://heavy-song");
     });
 
+    it("should not persist transient audio URLs", () => {
+      const store = useQueueStore.getState();
+      const transientSong = {
+        ...createMockSong("transient"),
+        audioUrl: `blob:http://localhost:3025/${"a".repeat(5000)}`,
+        cover: "https://example.com/cover.jpg",
+      };
+
+      store.setQueue([transientSong]);
+
+      const persisted = localStorage.getItem("queue-store-v5");
+      expect(persisted).not.toBeNull();
+
+      const parsed = JSON.parse(persisted!);
+      expect(parsed.state.queue[0].audioUrl).toBeUndefined();
+      expect(JSON.stringify(parsed.state.queue[0]).length).toBeLessThan(300);
+    });
+
     it("should persist only minimal queue fields for large queues", () => {
       const store = useQueueStore.getState();
       const songs = Array.from({ length: 200 }, (_, i) => ({

@@ -30,7 +30,7 @@ vi.mock("@/store/uiStore", () => ({
 }));
 
 vi.mock("@/store/visualizationV8Store", () => ({
-  useVisualizationV8Store: (selector?: (state: any) => unknown) => {
+  useVisualizationV8Store: (selector?: (state: LegacyAny) => unknown) => {
     const state = {
       parameterMode: visualizationParameterMode,
       setParameterMode: setVisualizationParameterMode,

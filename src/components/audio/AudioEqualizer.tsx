@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useAudioStore, type EQPreset as AudioEQPreset } from "@/store/audioStore";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
@@ -45,21 +45,8 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose 
   const _setCurrentEQPreset = useAudioStore((state) => state.setCurrentEQPreset);
   const eqBands = useAudioStore((state) => state.eqBands);
   const loadEQPreset = useAudioStore((state) => state.loadEQPreset);
-  const [bands, setBands] = useState<number[]>(
-    eqBands.length === 30 ? eqBands : DEFAULT_EQ_BANDS_30
-  );
-  const [selectedPreset, setSelectedPreset] = useState<AudioEQPreset>(currentEQPreset);
-  const [_isCustom, setIsCustom] = useState(false);
-
-  useEffect(() => {
-    if (audioElement && isOpen) {
-      applyEQToAudio(bands);
-    }
-  }, [bands, audioElement, isOpen]);
-
-  useEffect(() => {
-    setBands(eqBands.length === 30 ? eqBands : DEFAULT_EQ_BANDS_30);
-  }, [eqBands]);
+  const bands = eqBands.length === 30 ? eqBands : DEFAULT_EQ_BANDS_30;
+  const selectedPreset = currentEQPreset;
 
   const applyEQToAudio = useCallback(
     (gainValues: number[]) => {
@@ -69,21 +56,24 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose 
     [setEQBands]
   );
 
+  useEffect(() => {
+    if (audioElement && isOpen) {
+      applyEQToAudio(bands);
+    }
+  }, [applyEQToAudio, bands, audioElement, isOpen]);
+
   const handleBandChange = useCallback(
     (index: number, value: number) => {
       const newBands = [...bands];
       newBands[index] = value;
-      setBands(newBands);
-      setIsCustom(true);
+      applyEQToAudio(newBands);
     },
-    [bands]
+    [applyEQToAudio, bands]
   );
 
   const handlePresetSelect = useCallback(
     (presetId: AudioEQPreset) => {
-      setSelectedPreset(presetId);
       loadEQPreset(presetId);
-      setIsCustom(false);
     },
     [loadEQPreset]
   );
@@ -97,6 +87,15 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose 
   }, [selectedPreset]);
 
   const displayBands = bands.slice(0, 10);
+  const visualizerBars = useMemo(
+    () =>
+      Array.from({ length: 50 }, (_, id) => ({
+        id,
+        heights: [10 + ((id * 17) % 40), 20 + ((id * 29) % 60), 5 + ((id * 11) % 30)],
+        duration: 0.3 + ((id * 7) % 5) / 10,
+      })),
+    []
+  );
 
   if (!isOpen) return null;
 
@@ -228,19 +227,15 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose 
 
         <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden opacity-30">
           <div className="flex items-end justify-center gap-0.5 h-full">
-            {Array.from({ length: 50 }).map((_, i) => (
+            {visualizerBars.map((bar) => (
               <motion.div
-                key={i}
+                key={bar.id}
                 className="w-1 bg-white/40 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.1)]"
                 animate={{
-                  height: [
-                    Math.random() * 40 + 10,
-                    Math.random() * 60 + 20,
-                    Math.random() * 30 + 5,
-                  ],
+                  height: bar.heights,
                 }}
                 transition={{
-                  duration: Math.random() * 0.5 + 0.3,
+                  duration: bar.duration,
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}

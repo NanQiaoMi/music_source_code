@@ -122,12 +122,6 @@ interface BottomTimeDisplayProps {
 }
 
 const BottomTimeDisplay: React.FC<BottomTimeDisplayProps> = ({ currentTime, isPlaying }) => {
-  const [displayTime, setDisplayTime] = useState(currentTime);
-
-  useEffect(() => {
-    setDisplayTime(currentTime);
-  }, [currentTime]);
-
   const formatDisplayTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -145,7 +139,7 @@ const BottomTimeDisplay: React.FC<BottomTimeDisplayProps> = ({ currentTime, isPl
         className="text-5xl font-light tracking-widest text-white/70 tabular-nums"
         style={{ fontVariantNumeric: "tabular-nums" }}
       >
-        {formatDisplayTime(displayTime)}
+        {formatDisplayTime(currentTime)}
       </div>
       <div className="flex items-center gap-2 mt-2">
         <motion.div
@@ -167,22 +161,15 @@ export default function DataManagerPage() {
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const currentTime = useAudioStore((state) => state.currentTime);
   const _duration = useAudioStore((state) => state.duration);
-  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("local");
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showMiniPlayer, setShowMiniPlayer] = useState(false);
+  const [miniPlayerDismissedSongId, setMiniPlayerDismissedSongId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const showMiniPlayer = Boolean(currentSong && miniPlayerDismissedSongId !== currentSong.id);
 
   useEffect(() => {
-    setMounted(true);
     initializePlaylist();
   }, [initializePlaylist]);
-
-  useEffect(() => {
-    if (currentSong) {
-      setShowMiniPlayer(true);
-    }
-  }, [currentSong]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -196,10 +183,6 @@ export default function DataManagerPage() {
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [showMoreMenu]);
-
-  if (!mounted) {
-    return null;
-  }
 
   return (
     <div className="relative min-h-screen bg-[#050505] overflow-hidden font-sans text-white">
@@ -324,7 +307,7 @@ export default function DataManagerPage() {
           >
             <AnimatePresence>
               {showMiniPlayer && currentSong && (
-                <MiniPlayer onClose={() => setShowMiniPlayer(false)} />
+                <MiniPlayer onClose={() => setMiniPlayerDismissedSongId(currentSong.id)} />
               )}
             </AnimatePresence>
 

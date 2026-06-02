@@ -106,13 +106,7 @@ const FluidBlobComponent: React.FC<{
   blob: FluidBlob;
   isActive: boolean;
 }> = ({ blob, isActive }) => {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted || !isActive) return null;
+  if (!isActive) return null;
 
   return (
     <motion.div
@@ -149,26 +143,27 @@ export const Background: React.FC = () => {
   const isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
   const currentSong = useAudioStore((state) => state.currentSong);
   const [extractedColors, setExtractedColors] = useState<ThemeColors | null>(null);
-  const [isActive, setIsActive] = useState(false);
 
   useEffect(() => {
-    if (isDynamicTheme && currentSong?.cover) {
-      extractColorsFromImage(currentSong.cover)
-        .then((colors) => {
-          setExtractedColors(colors);
-          setIsActive(true);
-        })
-        .catch(() => {
-          setExtractedColors(defaultColors);
-          setIsActive(true);
-        });
-    } else {
-      setExtractedColors(themeColors);
-      setIsActive(true);
-    }
+    if (!isDynamicTheme || !currentSong?.cover) return;
+
+    let cancelled = false;
+    extractColorsFromImage(currentSong.cover)
+      .then((colors) => {
+        if (!cancelled) setExtractedColors(colors);
+      })
+      .catch(() => {
+        if (!cancelled) setExtractedColors(defaultColors);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [currentSong?.cover, isDynamicTheme, themeColors]);
 
-  const displayColors = extractedColors || themeColors;
+  const usesExtractedColors = isDynamicTheme && Boolean(currentSong?.cover);
+  const displayColors = usesExtractedColors ? extractedColors || themeColors : themeColors;
+  const isActive = !usesExtractedColors || extractedColors !== null;
 
   const blobs = useMemo(() => generateFluidBlobs(displayColors), [displayColors]);
 

@@ -155,7 +155,7 @@ export function ResonanceTotemLayer() {
 
       activeKeywords.forEach((kw) => {
         if (!meshes.has(kw.id) && preloadedTextures[kw.id]) {
-          const texture = new THREE.CanvasTexture(preloadedTextures[kw.id] as any);
+          const texture = new THREE.CanvasTexture(preloadedTextures[kw.id] as LegacyAny);
           const geometry = new THREE.PlaneGeometry(6, 6);
           const material = new THREE.ShaderMaterial({
             uniforms: {

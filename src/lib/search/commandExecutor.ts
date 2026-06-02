@@ -10,7 +10,7 @@ export interface SearchCommandExecutorDeps {
   clearQueue: () => void;
   shuffleQueue: () => void;
   addToQueue: (song: Song) => void;
-  setCurrentSong: (song: Song) => void;
+  playSong: (song: Song) => void;
   setIsPlaying: (playing: boolean) => void;
   nextSong: () => void;
   prevSong: () => void;
@@ -106,8 +106,7 @@ export function executeSearchCommand(
   }
 
   if (command.kind === "play") {
-    deps.setCurrentSong(matches[0]);
-    deps.setIsPlaying(true);
+    deps.playSong(matches[0]);
     deps.onClose();
     deps.setCommandFeedback(`Playing ${matches[0].title}`);
     return;

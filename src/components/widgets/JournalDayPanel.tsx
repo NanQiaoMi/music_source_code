@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -15,7 +15,7 @@ interface JournalDayPanelProps {
 export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
   const { selectedDate, days, eventsByDate, appendNote } = useListeningJournalStore();
   const songs = usePlaylistStore((state) => state.songs);
-  const [statusMessage, setStatusMessage] = useState("Notes save on blur or Enter.");
+  const [statusMessage, setStatusMessage] = useState("按回车或点击其他区域保存笔记。");
   const dayEvents = eventsByDate[selectedDate];
   const day = days[selectedDate] || {
     date: selectedDate,
@@ -56,7 +56,7 @@ export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
               <BookOpen className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-white">Journal day</h2>
+              <h2 className="text-xl font-semibold text-white">日记详情</h2>
               <p className="text-sm text-white/50">{selectedDate}</p>
             </div>
           </div>
@@ -64,7 +64,7 @@ export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
             type="button"
             onClick={onClose}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
-            aria-label="Close journal day"
+            aria-label="关闭日记详情"
           >
             <X className="h-5 w-5" />
           </button>
@@ -74,25 +74,25 @@ export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
           <div className="grid grid-cols-3 gap-3">
             <Metric
               icon={<Clock className="h-4 w-4" />}
-              label="Minutes"
+              label="分钟"
               value={String(day.totalMinutes)}
             />
             <Metric
               icon={<Music2 className="h-4 w-4" />}
-              label="Top songs"
+              label="热门歌曲"
               value={String(topSongs.length)}
             />
             <Metric
               icon={<Smile className="h-4 w-4" />}
-              label="Mood"
-              value={day.dominantMood || "None"}
+              label="心情"
+              value={day.dominantMood || "无"}
             />
           </div>
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <h3 className="mb-3 text-sm font-medium text-white">Top songs</h3>
+            <h3 className="mb-3 text-sm font-medium text-white">热门歌曲</h3>
             {topSongs.length === 0 ? (
-              <p className="text-sm text-white/45">No songs recorded for this day yet.</p>
+              <p className="text-sm text-white/45">今日暂无听歌记录。</p>
             ) : (
               <div className="space-y-2">
                 {topSongs.map((song, index) => (
@@ -118,8 +118,8 @@ export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
                       </span>
                     )}
                     <span className="shrink-0 text-right text-[11px] text-cyan-100/65">
-                      <span className="block">{song.playCount} plays</span>
-                      <span className="block text-white/35">{song.totalMinutes} min</span>
+                      <span className="block">{song.playCount} 次</span>
+                      <span className="block text-white/35">{song.totalMinutes} 分钟</span>
                     </span>
                   </div>
                 ))}
@@ -128,7 +128,7 @@ export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
           </section>
 
           <label className="block rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <span className="mb-2 block text-sm font-medium text-white">One-line note</span>
+            <span className="mb-2 block text-sm font-medium text-white">一句话笔记</span>
             <input
               key={selectedDate}
               defaultValue={day.note || ""}
@@ -140,7 +140,7 @@ export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
                 }
               }}
               maxLength={120}
-              placeholder="What did this listening day feel like?"
+              placeholder="这一天的听歌感受如何？"
               className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-cyan-300/50"
             />
             <span role="status" aria-live="polite" className="mt-2 block text-xs text-cyan-200/70">

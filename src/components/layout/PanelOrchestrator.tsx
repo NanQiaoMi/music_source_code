@@ -4,7 +4,7 @@ import React, { useEffect } from "react";
 import { useUIStore } from "@/store/uiStore";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/shallow";
-import { LazyPanel, prefetchPanel } from "@/components/shared/LazyPanel";
+import { createLazyPanelComponent, LazyPanel, prefetchPanel } from "@/components/shared/LazyPanel";
 
 // ─── Module Factories (Extracted for prefetching) ─────────────────
 const FACTORIES = {
@@ -70,6 +70,10 @@ const FACTORIES = {
     import("@/components/widgets/ProfessionalModeToggle").then((m) => ({
       default: m.ProfessionalModePanel,
     })),
+  professionalTools: () =>
+    import("@/components/features-v7/ProfessionalToolsPanel").then((m) => ({
+      default: m.ProfessionalToolsPanel,
+    })),
   formatConverter: () => import("@/components/audio/FormatConverter"),
   dsdConverter: () => import("@/components/audio/DSDConverter"),
   trackCutter: () => import("@/components/audio/TrackCutter"),
@@ -90,9 +94,18 @@ const FACTORIES = {
     })),
   smartRandom: () =>
     import("@/components/shared/SmartRandomModal").then((m) => ({ default: m.SmartRandomModal })),
+  dnaJournal: () =>
+    import("@/components/widgets/DNAJournal").then((m) => ({ default: m.DNAJournal })),
   emotionMatrix: () => import("@/components/emotion/EmotionMatrixView"),
   aiSettings: () => import("@/components/settings/AISettingsPanel"),
 };
+
+const PANEL_COMPONENTS = Object.fromEntries(
+  Object.entries(FACTORIES).map(([name, factory]) => [
+    name,
+    createLazyPanelComponent(name, factory),
+  ])
+) as Record<keyof typeof FACTORIES, ReturnType<typeof createLazyPanelComponent>>;
 
 /**
  * PanelOrchestrator - Central controller for all feature panels.
@@ -135,24 +148,24 @@ export function PanelOrchestrator() {
 
   return (
     <>
-      {/* ─── Core Panels ───────────────────────────────────────── */}
+      {/* Core panels */}
       <LazyPanel
         name="queue"
         isOpen={panels.queue}
         onClose={() => closePanel("queue")}
-        factory={FACTORIES.queue}
+        component={PANEL_COMPONENTS.queue}
       />
       <LazyPanel
         name="history"
         isOpen={panels.history}
         onClose={() => closePanel("history")}
-        factory={FACTORIES.history}
+        component={PANEL_COMPONENTS.history}
       />
       <LazyPanel
         name="settings"
         isOpen={panels.settings}
         onClose={() => closePanel("settings")}
-        factory={FACTORIES.settings}
+        component={PANEL_COMPONENTS.settings}
         extraProps={{
           onOpenEQ: () => {
             closePanel("settings");
@@ -168,205 +181,225 @@ export function PanelOrchestrator() {
         name="sleepTimer"
         isOpen={panels.sleepTimer}
         onClose={() => closePanel("sleepTimer")}
-        factory={FACTORIES.sleepTimer}
+        component={PANEL_COMPONENTS.sleepTimer}
       />
       <LazyPanel
         name="search"
         isOpen={panels.search}
         onClose={() => closePanel("search")}
-        factory={FACTORIES.search}
+        component={PANEL_COMPONENTS.search}
       />
 
-      {/* ─── Lyrics Panels ─────────────────────────────────────── */}
+      {/* Lyrics panels */}
       <LazyPanel
         name="lyricSettings"
         isOpen={panels.lyricSettings}
         onClose={() => closePanel("lyricSettings")}
-        factory={FACTORIES.lyricSettings}
+        component={PANEL_COMPONENTS.lyricSettings}
       />
       <LazyPanel
         name="lyricsSearch"
         isOpen={panels.lyricsSearch}
         onClose={() => closePanel("lyricsSearch")}
-        factory={FACTORIES.lyricsSearch}
+        component={PANEL_COMPONENTS.lyricsSearch}
       />
       <LazyPanel
         name="lyricsImport"
         isOpen={panels.lyricsImport}
         onClose={() => closePanel("lyricsImport")}
-        factory={FACTORIES.lyricsImport}
+        component={PANEL_COMPONENTS.lyricsImport}
       />
       <LazyPanel
         name="lyricsCoverEditor"
         isOpen={panels.lyricsCoverEditor}
         onClose={() => closePanel("lyricsCoverEditor")}
-        factory={FACTORIES.lyricsCoverEditor}
+        component={PANEL_COMPONENTS.lyricsCoverEditor}
       />
 
-      {/* ─── Audio & Visual Settings ──────────────────────────── */}
+      {/* Audio and visual settings */}
       <LazyPanel
         name="eq"
         isOpen={panels.eq}
         onClose={() => closePanel("eq")}
-        factory={FACTORIES.eq}
+        component={PANEL_COMPONENTS.eq}
       />
       <LazyPanel
         name="visualSettings"
         isOpen={panels.visualSettings}
         onClose={() => closePanel("visualSettings")}
-        factory={FACTORIES.visualSettings}
+        component={PANEL_COMPONENTS.visualSettings}
       />
 
-      {/* ─── Library & Discovery ──────────────────────────────── */}
+      {/* Library and discovery */}
       <LazyPanel
         name="listeningHistory"
         isOpen={panels.listeningHistory}
         onClose={() => closePanel("listeningHistory")}
-        factory={FACTORIES.listeningHistory}
+        component={PANEL_COMPONENTS.listeningHistory}
       />
       <LazyPanel
         name="listeningJournal"
         isOpen={panels.listeningJournal}
         onClose={() => closePanel("listeningJournal")}
-        factory={FACTORIES.listeningJournal}
+        component={PANEL_COMPONENTS.listeningJournal}
       />
       <LazyPanel
         name="dailyRecommendation"
         isOpen={panels.dailyRecommendation}
         onClose={() => closePanel("dailyRecommendation")}
-        factory={FACTORIES.dailyRecommendation}
+        component={PANEL_COMPONENTS.dailyRecommendation}
       />
       <LazyPanel
         name="libraryManager"
         isOpen={panels.libraryManager}
         onClose={() => closePanel("libraryManager")}
-        factory={FACTORIES.libraryManager}
+        component={PANEL_COMPONENTS.libraryManager}
       />
       <LazyPanel
         name="smartPlaylist"
         isOpen={panels.smartPlaylist}
         onClose={() => closePanel("smartPlaylist")}
-        factory={FACTORIES.smartPlaylist}
+        component={PANEL_COMPONENTS.smartPlaylist}
       />
 
-      {/* ─── Sharing & Customization ──────────────────────────── */}
+      {/* Sharing and customization */}
       <LazyPanel
         name="offlineCache"
         isOpen={panels.offlineCache}
         onClose={() => closePanel("offlineCache")}
-        factory={FACTORIES.offlineCache}
+        component={PANEL_COMPONENTS.offlineCache}
       />
       <LazyPanel
         name="share"
         isOpen={panels.share}
         onClose={() => closePanel("share")}
-        factory={FACTORIES.share}
+        component={PANEL_COMPONENTS.share}
       />
       <LazyPanel
         name="playerSkins"
         isOpen={panels.playerSkins}
         onClose={() => closePanel("playerSkins")}
-        factory={FACTORIES.playerSkins}
+        component={PANEL_COMPONENTS.playerSkins}
       />
       <LazyPanel
         name="keyboardShortcuts"
         isOpen={panels.keyboardShortcuts}
         onClose={() => closePanel("keyboardShortcuts")}
-        factory={FACTORIES.keyboardShortcuts}
+        component={PANEL_COMPONENTS.keyboardShortcuts}
       />
 
-      {/* ─── Data & Stats ─────────────────────────────────────── */}
+      {/* Data and stats */}
       <LazyPanel
         name="backupRestore"
         isOpen={panels.backupRestore}
         onClose={() => closePanel("backupRestore")}
-        factory={FACTORIES.backupRestore}
+        component={PANEL_COMPONENTS.backupRestore}
       />
       <LazyPanel
         name="statsAchievements"
         isOpen={panels.statsAchievements}
         onClose={() => closePanel("statsAchievements")}
-        factory={FACTORIES.statsAchievements}
+        component={PANEL_COMPONENTS.statsAchievements}
       />
 
-      {/* ─── Professional Tools ────────────────────────────────── */}
+      {/* Professional tools */}
       <LazyPanel
         name="professionalMode"
         isOpen={panels.professionalMode}
         onClose={() => closePanel("professionalMode")}
-        factory={FACTORIES.professionalMode}
+        component={PANEL_COMPONENTS.professionalMode}
+      />
+      <LazyPanel
+        name="professionalTools"
+        isOpen={panels.professionalTools}
+        onClose={() => closePanel("professionalTools")}
+        component={PANEL_COMPONENTS.professionalTools}
+        extraProps={{
+          onOpenFormatConverter: () => openPanel("formatConverter"),
+          onOpenTrackCutter: () => openPanel("trackCutter"),
+          onOpenFingerprintScanner: () => openPanel("fingerprintScanner"),
+          onOpenDSDConverter: () => openPanel("dsdConverter"),
+          onOpenCrossfadeMixer: () => openPanel("crossfadeMixer"),
+          onOpenLibraryHealth: () => openPanel("libraryHealth"),
+        }}
       />
       <LazyPanel
         name="formatConverter"
         isOpen={panels.formatConverter}
         onClose={() => closePanel("formatConverter")}
-        factory={FACTORIES.formatConverter}
+        component={PANEL_COMPONENTS.formatConverter}
       />
       <LazyPanel
         name="dsdConverter"
         isOpen={panels.dsdConverter}
         onClose={() => closePanel("dsdConverter")}
-        factory={FACTORIES.dsdConverter}
+        component={PANEL_COMPONENTS.dsdConverter}
       />
       <LazyPanel
         name="trackCutter"
         isOpen={panels.trackCutter}
         onClose={() => closePanel("trackCutter")}
-        factory={FACTORIES.trackCutter}
+        component={PANEL_COMPONENTS.trackCutter}
       />
       <LazyPanel
         name="crossfadeMixer"
         isOpen={panels.crossfadeMixer}
         onClose={() => closePanel("crossfadeMixer")}
-        factory={FACTORIES.crossfadeMixer}
+        component={PANEL_COMPONENTS.crossfadeMixer}
       />
       <LazyPanel
         name="fingerprintScanner"
         isOpen={panels.fingerprintScanner}
         onClose={() => closePanel("fingerprintScanner")}
-        factory={FACTORIES.fingerprintScanner}
+        component={PANEL_COMPONENTS.fingerprintScanner}
       />
       <LazyPanel
         name="libraryHealth"
         isOpen={panels.libraryHealth}
         onClose={() => closePanel("libraryHealth")}
-        factory={FACTORIES.libraryHealth}
+        component={PANEL_COMPONENTS.libraryHealth}
       />
 
-      {/* ─── Mix & Intelligence ────────────────────────────────── */}
+      {/* Mix and intelligence */}
       <LazyPanel
         name="instantMix"
         isOpen={panels.instantMix}
         onClose={() => closePanel("instantMix")}
-        factory={FACTORIES.instantMix}
+        component={PANEL_COMPONENTS.instantMix}
       />
       <LazyPanel
         name="smartMixSession"
         isOpen={panels.smartMixSession}
         onClose={() => closePanel("smartMixSession")}
-        factory={FACTORIES.smartMixSession}
+        component={PANEL_COMPONENTS.smartMixSession}
       />
       <LazyPanel
         name="smartRandom"
         isOpen={panels.smartRandom}
         onClose={() => closePanel("smartRandom")}
-        factory={FACTORIES.smartRandom}
+        component={PANEL_COMPONENTS.smartRandom}
         extraProps={{ currentSong: undefined }}
       />
+      <LazyPanel
+        name="dnaJournal"
+        isOpen={panels.dnaJournal}
+        onClose={() => closePanel("dnaJournal")}
+        component={PANEL_COMPONENTS.dnaJournal}
+      />
 
-      {/* ─── Emotion Matrix (Full Page) ────────────────────────── */}
+      {/* Emotion Matrix */}
       <LazyPanel
         name="emotionMatrix"
         isOpen={panels.emotionMatrix}
         onClose={() => closePanel("emotionMatrix")}
-        factory={FACTORIES.emotionMatrix}
+        component={PANEL_COMPONENTS.emotionMatrix}
       />
 
       <LazyPanel
         name="aiSettings"
         isOpen={panels.aiSettings}
         onClose={() => closePanel("aiSettings")}
-        factory={FACTORIES.aiSettings}
+        component={PANEL_COMPONENTS.aiSettings}
       />
     </>
   );

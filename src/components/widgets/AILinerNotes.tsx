@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +14,7 @@ export const AILinerNotes: React.FC = () => {
   const { points } = useEmotionStore();
   const { isEnabled, activeConfigId } = useAIStore();
   const [displayNote, setDisplayNote] = useState<string | null>(null);
+  const canShowNote = Boolean(currentSong && activeConfigId && isEnabled);
 
   useEffect(() => {
     if (currentSong && activeConfigId && isEnabled) {
@@ -28,12 +29,10 @@ export const AILinerNotes: React.FC = () => {
         setDisplayNote(result);
       };
       fetchNotes();
-    } else {
-      setDisplayNote(null);
     }
-  }, [currentSong?.id, activeConfigId, isEnabled, getNotes, points]);
+  }, [currentSong, activeConfigId, isEnabled, getNotes, points]);
 
-  if (!isEnabled || !activeConfigId || (!displayNote && !isGenerating)) {
+  if (!canShowNote || (!displayNote && !isGenerating)) {
     return null;
   }
 
@@ -51,7 +50,7 @@ export const AILinerNotes: React.FC = () => {
           ) : (
             <Sparkles className="w-3 h-3" />
           )}
-          <span>AI Emotional Insight</span>
+          <span>AI情感洞察</span>
           <button
             onClick={() => {
               if (currentSong && activeConfigId) {

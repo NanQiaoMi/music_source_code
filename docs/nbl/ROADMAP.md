@@ -1,238 +1,119 @@
-## 2026-05-21 Audio Processing Reality Update
+# MIMI Music Player Roadmap
 
-- Phase 2.8 FFmpeg loading is now verified in `audioProcessingStore`: duplicate load calls reuse the same in-flight promise, successful loads set the global `__MIMI_FFMPEG_WASM_LOADED__` capability flag, and failed loads store `ffmpegLoadError` while clearing readiness.
-- Crossfade Mixer now resolves real source audio blobs and renders a WAV preview through `OfflineAudioContext` when the browser supports local rendering; unsupported browsers stay in the explicit `preview-only` state instead of faking completion.
-- Verification: `npm run test -- src/lib/audio/crossfadeRenderer.test.ts src/components/audio/CrossfadeMixer.test.tsx`, `npx tsc --noEmit --incremental false`, and targeted ESLint for the touched audio files passed before browser smoke.
-- Verification: `npm run test -- src/store/audioProcessingStore.test.ts src/lib/audio/processingCapabilities.test.ts`, targeted ESLint for the touched audio processing files, and `npx tsc --noEmit --pretty false --incremental false` passed before full-suite validation.
+This file tracks the current, evidence-based roadmap for MIMI Music Player. Older plans remain in `docs/nbl/plans/` and `docs/nbl/archive/`; this page should reflect the current state rather than historical assumptions.
 
-## 2026-05-20 Phase 1+2 Progress Update
+## 2026-05-25 Search Voice Feedback Follow-up
 
-Active on branch `codex/animation-function-iteration-plan`:
+Completed record: `docs/nbl/plans/2026-05-25-search-voice-feedback-follow-up.md`.
 
-### Phase 1 - Store架构解耦 (5/6完成)
+- Kept protected V7 Home View, Player View, and fullscreen lyrics behavior unchanged; no visual redesign was performed.
+- Preserved existing `localStorage` / IndexedDB keys and persisted shapes; no new dependencies were added.
+- Replaced Search Panel unsupported voice-search `alert()` behavior with visible in-panel feedback in the existing `aria-live` area.
+- Added focused Search Panel regression coverage for browsers without `SpeechRecognition` / `webkitSpeechRecognition`.
+- Verification passed in the required order: `npx eslint src --max-warnings=99999`, `npm run test -- --run` (95 files, 456 tests), `npx tsc --noEmit --incremental false --pretty false`, `node scripts/clean-port.js 3025` (terminated PID `283708`), `npm run build`, `npm run dev` (ready in 312 ms), HTTP smoke for `/` and `/data-manager`, route-level Chrome CDP smoke, and focused Search Panel voice-feedback CDP smoke.
 
-| 任务                                    | 状态 | Commit                |
-| --------------------------------------- | ---- | --------------------- |
-| 1.1 Coordinator类型定义                 | ✅   | `728c8c9`             |
-| 1.2 AudioCoordinator + QueueCoordinator | ✅   | `b2e46e4`             |
-| 1.3 emotionStore解耦                    | ✅   | `d84c745`             |
-| 1.4 消除动态require()                   | ⏭️   | 无动态require         |
-| 1.5 拆分audioStore                      | ⏳   | 待做（需修改158组件） |
-| 1.6 统一Song类型                        | ✅   | 已统一                |
-
-### Phase 2 - P0堵塞修复 (验证中)
-
-| 任务                 | 状态 | 说明                      |
-| -------------------- | ---- | ------------------------- |
-| 2.1 健康检查真实化   | ✅   | 已有真实实现，测试通过    |
-| 2.2 备份恢复真实化   | ✅   | 已有真实实现，测试通过    |
-| 2.3 推荐系统真实化   | ✅   | 已有真实实现              |
-| 2.4 AB循环真实执行   | ✅   | 已有基本实现              |
-| 2.5 收藏功能持久化   | ✅   | 已使用persist中间件       |
-| 2.6 V8效果注册补齐   | ✅   | 28个效果已注册            |
-| 2.7 歌词封面编辑补齐 | ✅   | 已有cropCover/resizeCover |
-| 2.8 FFmpeg加载真实化 | ⏳   | 待验证                    |
-
-### 新增文件
-
-- `src/store/coordinator/types.ts` - Coordinator类型定义
-- `src/store/coordinator/audioCoordinator.ts` - 音频协调器
-- `src/store/coordinator/queueCoordinator.ts` - 队列协调器
-- `src/store/coordinator/index.ts` - 导出入口
-
-### 修改文件
-
-- `src/store/emotionStore.ts` - 移除直接store导入，改用回调
+Remaining risks: focused Search Panel smoke recorded one existing Next Image LCP warning from the Unsplash demo cover; microphone permission prompts were not manually exercised; broader panel-level smoke remains needed for Lyrics, Backup/Restore, Format Converter, DSD, Crossfade, Smart Mix, Listening Journal, and V8 visualization.
 
 ---
 
-## 2026-05-20 Reality Update
+## 2026-05-25 Track Cutter Feedback Follow-up
 
-Completed plan: `docs/nbl/plans/2026-05-20-current-state-update-plan.md`.
+Completed record: `docs/nbl/plans/2026-05-25-track-cutter-feedback-follow-up.md`.
 
-Shipped on branch `codex/animation-function-iteration-plan`:
+- Kept the protected V7 Home View, Player View, and fullscreen lyrics behavior unchanged; no large visual redesign was performed.
+- Preserved existing `localStorage` / IndexedDB keys and persisted shapes; no new dependencies were added.
+- Replaced Track Cutter blocking `alert()` feedback for invalid CUE files with a visible in-panel error message.
+- Added visible Track Cutter guidance when a ready task has 0 selected tracks, so the disabled cut action now explains what the user must do next.
+- Added focused Track Cutter regression coverage for invalid CUE feedback and empty selected-track state.
+- Reconfirmed `uiStore` / `PanelOrchestrator` panel registration coverage after the earlier `PANEL_NAMES` registry test, and formatted that test file to keep the global lint gate clean.
+- Verification passed in the required order: `npx eslint src --max-warnings=99999`, `npm run test -- --run` (95 files, 456 tests), `npx tsc --noEmit --incremental false --pretty false`, `node scripts/clean-port.js 3025` (terminated PID `281968`), `npm run build`, `npm run dev` (ready in 394 ms), HTTP smoke for `/` and `/data-manager`, and system Chrome CDP smoke with 0 console errors/warnings and 0 JavaScript exceptions.
 
-- Smart Playlist usable rule builder and pure rule engine. Commit `3176e35`.
-- Library Health actionable results, ignore flow, and stable export payload. Commit `f8fb272`.
-- Typed Stats dashboard view models. Commit `69b7f8c`.
-- Search `/sleep` command execution through the real sleep timer store. Commit `ca36fb5`.
-- Smart Mix Sessions MVP. Commit `ad66673`.
-- Local Listening Journal with persisted day notes. Commit `b21bf2f`.
-- V8 typed audio snapshot cleanup replacing the `_currentMusicTime` global. Commit `71662d2`.
-- Final build and smoke blockers fixed, including local `noise.svg` asset usage. Commit `96a48a7`.
-- Full-suite stability fix: explicit 10s Vitest test timeout for import-heavy jsdom tests. Commit `d207bc7`.
-
-Verification:
-
-- Targeted tests: `npm run test -- src/lib/smart-playlist src/store/smartPlaylistStore.test.ts src/store/libraryHealthStore.test.ts src/lib/stats src/lib/search src/store/sleepTimerStore.test.ts src/lib/mix src/store/smartMixStore.test.ts src/lib/journal src/store/listeningJournalStore.test.ts src/lib/visualization/audioSnapshot.test.ts` passed; 11 files, 46 tests.
-- Full tests: `npm run test` passed after `d207bc7`; 48 files, 293 tests. jsdom canvas `getContext()` warnings were non-fatal.
-- Build: `npm run build` passed.
-- Local smoke: `http://localhost:3025`, title `MIMI Music Player`; Search panel opened; 0 console errors, 0 page errors, 0 404s.
-- ESLint note: broad targeted ESLint over older touched UI files still reports inherited formatting/debt, so lint was not used as the final gate.
+Remaining risks: Track Cutter still needs a deeper real cutting/source-resolution pass; native file-picker and audible playback were not manually exercised; broader panel-level smoke is still needed for Lyrics, Backup/Restore, Format Converter, DSD, Crossfade, Smart Mix, Listening Journal, and V8 visualization; `audioStore` and V8 effect typing remain incremental architecture/code-health tracks.
 
 ---
 
-## 2026-05-17 Reality Update
+## 2026-05-25 Audio Source Runtime Stability Pass
 
-Active plan: `docs/nbl/plans/2026-05-16-experience-polish-and-design-upgrade.md`.
+Completed record: `docs/nbl/plans/2026-05-25-audio-source-runtime-stability.md`.
 
-Completed on branch `codex/animation-function-iteration-plan`:
+- Kept the project on the current V7 Home View, Player View, and fullscreen lyrics architecture; no large visual redesign was performed.
+- Preserved existing `localStorage` / IndexedDB keys and persisted shapes; no new dependencies were added.
+- Confirmed the missing-audio guard path now keeps unavailable songs out of `currentSong`, player state, and queue writes.
+- Confirmed search, queue clicks, and history replay route through safe audio-store actions instead of writing playback state directly.
+- Confirmed compact playback-history records resolve back to current library songs before replay, with unavailable sources reported instead of queued.
+- Confirmed `AudioEngine` creates `AudioContext` lazily, reducing startup autoplay warnings and keeping graph initialization on the playback path.
+- Confirmed page-visible text in `src/app/page.tsx`, `src/app/data-manager/page.tsx`, and `src/hooks/useMusicLibrarySync.ts` is readable when inspected as UTF-8.
+- Repaired `GlassRadarWidget` visible emotion-matrix title, quadrant labels, and toast feedback, and added a focused regression test for the expanded radar copy.
+- Added a visible Local Music Manager error state for unsupported/non-audio selections so file import failures no longer look like a no-op.
+- Removed the local library directory-upload `@ts-expect-error` comments by narrowing the browser-only `webkitdirectory` / `directory` attributes behind a local typed helper.
+- Repaired this active roadmap and changelog so current docs no longer expose corrupted historical route/changelog text as active guidance.
+- Verification passed in the required order: `npx eslint src --max-warnings=99999`, `npm run test -- --run` (93 files, 452 tests), `npx tsc --noEmit --incremental false --pretty false`, `npm run build`, `npm run dev`, HTTP smoke for `/` and `/data-manager`, and Chrome CDP smoke.
+- Chrome/CDP smoke loaded `/` and `/data-manager` with title `MIMI Music Player`, readable primary DOM markers, Next dev portal present only as the normal empty dev overlay, 0 console errors/warnings, and 0 JavaScript exceptions. The in-app Browser Node bridge returned `unsupported call` in this session, so system Chrome CDP was used without adding dependencies.
+- A real local-file import smoke used an isolated Chrome profile and `scratch/Codex - Smoke.wav` to verify `/data-manager` writes one IndexedDB `VibeMusicDB/localMusic` record, refreshes home with `Smoke` / `Codex`, removes demo songs from the home text, and reports 0 console errors/warnings or JavaScript exceptions.
 
-- Phase 3 queue completion: multi-select queue actions, play-next helper extraction, queue store action wiring. Commit `d2c20f3`.
-- Audio effects preset/morph pass: built-in presets, morph interpolation, safe persisted preset metadata, rebuilt Audio Effects panel. Commit `9547cdd`.
-- Audio processing honesty pass: replaced fake conversion/crossfade blobs with capability detection and preview-only/export-disabled states. Commit `b2ae01e`.
-- Phase 1 coupling pass: `recommendationStore` no longer imports playlist/emotion stores directly; `AudioLiquidV8` no longer uses dynamic `require("@/store/uiStore")`. Commit `f4bd42f`.
-
-Still open from the 2026-05-16 plan:
-
-- Part B design polish tasks for Search, Lyrics, Library, Stats, and Visualization settings.
-- Part C new feature tasks: Smart Mix Sessions, Listening Journal, Now Playing Halo skin pack.
-- Final full `npm run test`, `npm run build`, and local browser smoke on port 3025.
-
----
-
-# MIMI Music Player 迭代路线�?
-
-> **版本**: v1.0 | **创建日期**: 2026-05-10 | **核心理念**: 不修改已�?UI/视觉效果，聚焦功能完善、架构优化、体验提�?
+Remaining risks: native OS file-picker UI was not manually clicked because CDP set the file input directly; headless smoke did not click through actual playback gesture/audio output; `audioStore` remains a broad compatibility hub; V8 effect private state still contains legacy `any`/`eslint-disable` debt; Electron/backend/browser-only boundaries still need a focused pass; old archived docs may still contain mojibake but are no longer the active roadmap source.
 
 ---
 
-## 现状总览
+## 2026-05-24 Runtime Stability And Listening DNA Follow-up
 
-````
-已完成的坚固基础                         待完善的薄弱环节
-┌───────────────────────────�?    ┌────────────────────────────────�?�?32+ 功能面板框架 (Glass)   �?    �?8 �?Store 功能是骨架存�?     �?�?28 �?V8 效果文件          �?    �?11 个效果未注册到系�?         �?�?44 �?Zustand Store        �?    �?动�?require() 循环依赖       �?�?16 个自定义 Hooks          �?    �?重复 Song 类型定义             �?�?完整的玻璃拟�?UI           �?    �?Store 耦合过重                 �?�?Electron 桌面包装           �?    �?批量操作缺失                   �?�?音视频引擎框�?              �?    �?无播放队列持久化               �?�?设计系统 Tokens + Glass �? �?    �?测试覆盖�?~5%                �?�?手势控制 / 快捷�?          �?    �?ESLint 19,790 行问�?         �?└───────────────────────────�?    └────────────────────────────────�?```
+Completed record: `docs/nbl/plans/2026-05-24-runtime-stability-listening-dna-followup.md`.
 
----
+- Reconfirmed the Windows dev-server path on port 3025: `clean-port` runs before startup, `.next` is cleaned before Next starts, and `/` plus `/data-manager` return 200 after first-request compilation.
+- Verified an important runtime constraint: running `npm run clean` while `next dev` is alive deletes `.next/dev` manifests and causes subsequent requests to return 500. Correct order is stop old dev server, clean `.next`, then restart dev.
+- Verified `scripts/clean-port.js` recovered the broken live server by finding and terminating the 3025 listener, after which a fresh `npm run dev` recreated `.next/dev` and both smoke routes returned 200.
+- Fixed the Discover -> Listening DNA path by registering `dnaJournal` in `PanelOrchestrator` and adding a lazy-panel regression test.
+- Reduced a low-risk `uiStore` panel boundary issue by centralizing panel defaults in `PANEL_NAMES` and closing fullscreen lyrics before opening fullscreen tool panels.
+- Repaired visible Listening DNA copy and broken interpolation in `DNAJournal`, replacing corrupted text and misleading fake clipboard feedback with readable states and honest user feedback.
+- Verification passed: `npx eslint src --max-warnings=99999`, `npm run test -- --run` (82 files, 415 tests), `npx tsc --noEmit --incremental false --pretty false`, and `npm run build`.
 
-## 优先级策�?
-````
-
-P0 🔴 堵塞修复 ── 已有框架但功能是空壳/假数据，直接影响用户体验
-P1 🟡 功能增强 ── 新功能或已有功能的重要完善，提升使用价�?P2 🔵 架构优化 ── 代码质量、可维护性、性能提升
-P3 🟢 锦上添花 ── 体验细节打磨
-
-```
+Remaining risks recorded at that time: browser-level console/exception smoke needed stronger automation, `audioStore`/`uiStore` remained broad hubs, and `professionalTools` naming required follow-up boundary review.
 
 ---
 
-## Phase 0 �?基础设施与流程搭建（1-2 天）
+## 2026-05-24 Stability And Code Health Reality Update
 
-**目标**: 建立文档体系、修复格式化问题、激�?CI
+Completed record: `docs/nbl/plans/2026-05-24-stability-code-health-store-coverage.md`.
 
-| 任务 | 描述 | 预计工时 |
-|------|------|---------|
-| 0.1 | 提交文档体系（AGENTS/PROCESS/CODING_STANDARDS/ARCHITECTURE/ROADMAP�?| 2h |
-| 0.2 | Prettier 全项目格式化（修�?18,954 个样式错误） | 1h |
-| 0.3 | 激�?CI 测试步骤 + 设置覆盖率门�?30% | 1h |
-| 0.4 | 更新 PR Template + Changelog 路径 | 0.5h |
+- Windows dev startup on port 3025 was hardened in `scripts/clean-port.js`: System32 `netstat.exe` / `taskkill.exe` discovery, IPv6/wildcard/loopback port probing, and regression tests.
+- Current source ESLint gate is clean: `npx eslint src --max-warnings=99999` exits with 0 errors.
+- Store coverage expanded through grouped tests for processing, visualization/interaction, and business stores, including duplicate-quality behavior in `libraryManagerStore`.
+- Poster workshop/share workflow copy was repaired where tests exposed corrupted strings; `SharePanel` now renders quick presets, quality checks, export labels, cover controls, and resolution labels as readable Chinese.
+- Verification passed: `npm run test -- --run` (80 files, 412 tests), `npx tsc --noEmit --incremental false --pretty false`, and `npm run build`.
+- Local smoke passed by HTTP on `http://127.0.0.1:3025/` and `http://127.0.0.1:3025/data-manager`; system Chrome headless/CDP loaded both routes with title `MIMI Music Player`, visible body text, 0 console errors, 0 JavaScript exceptions, and no visible Next error dialog.
 
----
-
-## Phase 1 �?Store 架构解耦（2-3 天）
-
-**目标**: 消除循环依赖、拆分过大的 Store、建�?Coordinator �?
-| 任务 | 描述 | 类型 |
-|------|------|------|
-| 1.1 | 设计 Coordinator 层接口规�?| P2 |
-| 1.2 | 实现 AudioCoordinator / QueueCoordinator | P2 |
-| 1.3 | 替换 emotionStore 中直�?import �?Coordinator 通信 | P2 |
-| 1.4 | 消除动�?require() 循环依赖 | P2 |
-| 1.5 | 拆分 audioStore（抽�?playerStore + 精简 audioStore�?| P2 |
-| 1.6 | 统一 Song 类型�?`src/types/song.ts` | P2 |
+Remaining architecture risks: `audioStore`/`uiStore` are still broad dependency hubs; V8 effect private state still needs typed boundaries; Electron/backend integration remains a follow-up boundary review.
 
 ---
 
-## Phase 2 �?P0 堵塞修复�?-4 天）
+## Current Priorities
 
-**目标**: 8 �?P0 功能从骨架存根变为真实可�?
-| # | 任务 | 涉及文件 | 描述 |
-|---|------|----------|------|
-| 2.1 | 健康检查真实化 | `healthCheckStore.ts`, `libraryHealthStore.ts` | 集成真实文件扫描 |
-| 2.2 | 备份恢复真实�?| `backupRestoreStore.ts` | JSON Schema 校验 + �?Store 写入 |
-| 2.3 | 推荐系统真实�?| `recommendationStore.ts`, `recommendationLogic.ts` | 播放历史 + 情感标签 + 随机发现 |
-| 2.4 | AB 循环真实执行 | `abLoopStore.ts`, `useAudioPlayer.ts` | rAF 监听 currentTime + seek |
-| 2.5 | 收藏功能持久�?| `favoritesStore.ts` | 添加 Zustand persist |
-| 2.6 | V8 效果注册补齐 | `effects/index.ts` | 11 个未注册效果导入 |
-| 2.7 | 歌词封面编辑补齐 | `lyricsCoverStore.ts` | Canvas 裁剪/缩放 |
-| 2.8 | FFmpeg 加载真实�?| `audioProcessingStore.ts` | 真实加载 FFmpeg.wasm |
+### P0 - Runtime And Playback Integrity
 
----
+- Keep the Windows validation order strict: `eslint -> vitest -> tsc -> build -> clean-port/dev -> HTTP smoke`. Do not run `next build` and bare `tsc` in parallel, and do not clean `.next` while a live dev server is serving requests.
+- Continue hardening local import and refresh recovery: IndexedDB music should rehydrate into the playlist, demo songs should disappear once real music exists, and missing stored sources should produce clear user feedback without corrupting current playback or queue state.
+- Keep all playback entry points on safe audio-store actions: home card, search, queue, history replay, batch play, Smart Mix, and recommendation playback.
 
-## Phase 3 �?P1 功能增强�?-4 天）
+### P1 - Functional Completeness And UX Clarity
 
-| # | 任务 | 描述 |
-|---|------|------|
-| 3.1 | 播放队列系统完善 | 持久�?/ 插入下一�?/ 自动清空 / Fisher-Yates shuffle |
-| 3.2 | 批量操作支持 | 多�?/ 批量播放 / 批量添加到播放列�?/ 批量删除 |
-| 3.3 | 统计数据分析仪表�?| 播放时长 / 分布热力�?/ Top 10 / 品味时间�?|
-| 3.4 | 搜索功能增强 | 分页 / 虚拟滚动 / 过滤�?/ 搜索历史 |
-| 3.5 | 自定义主题导入导�?| JSON 导入导出 / 内置 3-5 个预�?|
-| 3.6 | AB 循环进度条视觉标�?| 进度�?A/B 点标�?+ 拖拽调整 |
+- Cover core real-user paths with manual or automated smoke: home playback, library import/manage, search, queue, lyrics search/import/cover editor, backup/restore, format conversion, DSD, deeper track cutting/source rendering, crossfade, V8 visualization, stats, smart playlists, Smart Mix, Listening Journal, professional tools, and data manager.
+- Add or improve empty, loading, unsupported-browser, and failure states where actions depend on browser APIs, local files, IndexedDB, Web Audio, FFmpeg, or workers.
+- Make operation results visible: import complete, restore failure, missing audio source, unsupported conversion, empty queue/search results, and panel open failures should all have explicit feedback.
 
----
+### P2 - Code Health And Architecture Boundaries
 
-## Phase 4 �?架构优化 + 测试覆盖�?-4 天）
+- Keep `npx eslint src --max-warnings=99999` at 0 errors without expanding ignores.
+- Continue replacing broad `any`, legacy `LegacyAny`, `eslint-disable`, and `@ts-expect-error` in visualization, browser API, Electron, and jsmediatags seams with narrow types or local wrappers.
+- Keep `audioStore` compatibility stable while gradually extracting selectors/coordinators around `playerStore`, `queueStore`, `recommendationStore`, and `eqStore`.
+- Keep `uiStore` and `PanelOrchestrator` panel names aligned; fullscreen panels should remain mutually exclusive with fullscreen lyrics.
+- Preserve all existing persisted keys and backup/restore fields unless a tested migration is explicitly introduced.
 
-| # | 任务 | 类型 |
-|---|------|------|
-| 4.1 | Store 测试覆盖（Top 10 关键 Store�?| P2 |
-| 4.2 | Utils �?AudioEngine 核心层测试补�?| P2 |
-| 4.3 | 事件监听器清理（useAudioPlayer cleanup�?| P2 |
-| 4.4 | 组件 Selector 优化（GlobalPlayerBar / PanelOrchestrator�?| P2 |
-| 4.5 | TypeScript 修复（清�?no-explicit-any + no-unused-vars�?| P2 |
-| 4.6 | 消除重复类型定义 | P2 |
-| 4.7 | 合并两个 HealthIssueType 定义 | P2 |
+### P3 - Test And Documentation Quality
 
----
+- Add focused tests for store state transitions, persisted structures, missing audio sources, import/restore failures, queue-empty behavior, search no-results, browser capability gaps, panel open failures, and V8 effect registration.
+- Reduce noisy Vitest output only when the warning is not useful for real failure diagnosis.
+- Keep active docs readable and evidence-based; archived docs can retain historical context, but active roadmap/changelog/plan index should not contain corrupted text.
 
-## Phase 5 �?视觉打磨 + P3�?-3 天）
+## Historical Baseline Summary
 
-| # | 任务 | 类型 |
-|---|------|------|
-| 5.1 | 缺失通用组件补齐（GlassInput / GlassSelect / GlassToggle / EmptyState / LoadingSkeleton / VirtualList�?| P3 |
-| 5.2 | 快捷键可配置（Store 映射 + UI 面板�?| P3 |
-| 5.3 | 拖拽排序增强（跨列表 / 多选） | P3 |
-| 5.4 | 更多播放列表格式（PLS / XSPF / WPL�?| P3 |
-
----
-
-## 时间线总览
-
-```
-
-Week 1 Week 2 Week 3 Week 4
-┌────────────────�? ┌────────────────�? ┌────────────────�? ┌────────────────�?�?Phase 0 �? �?Phase 2 �? �?Phase 3 �? �?Phase 4+5 �?�?基础设施 + 流程 �? �?P0 堵塞修复 �? �?P1 功能增强 �? �?优化 + 视觉 �?�? �? �? �? �? �? �? �?�?文档体系 �? �? �?健康检�? �? �?队列完善 �? �?Store 测试 �?�?Prettier 格式�?�? �?备份恢复 �? �?批量操作 �? �?TS 修复 �?�?CI 激�? �? �?推荐系统 �? �?统计仪表�? �? �?Glass 组件补全 �?�? �? �?AB循环+收藏 �? �?搜索增强 �? �?快捷键配�? �?�?Phase 1 (并行) �? �?V8 + FFmpeg �? �?主题导入导出 �? �? �?�?Store 解�? �? �?歌词编辑�? �? �? �? �? �?└────────────────�? └────────────────�? └────────────────�? └────────────────�?```
-
----
-
-## 执行原则
-
-- **每个任务 = 独立 `feature/xxx` 分支 �?PR �?Review �?合并**
-- \*_Phase 0 + Phase 1 可并�?_（文�?+ 解耦互不依赖）
-- **Phase 2-3 串行**（功能修复依�?store 解耦完成）
-- \*_Phase 4-5 可并�?_（测�?+ 视觉互不依赖�?
-
----
-
-## 涉及文件变动总览
-
-| Phase | 文件                                                                                         | 操作             |
-| ----- | -------------------------------------------------------------------------------------------- | ---------------- |
-| 0     | `AGENTS.md`, `docs/nbl/*.md`                                                                 | 新建             |
-| 0     | `src/**/*.{ts,tsx,css,json}`                                                                 | Prettier 格式�?  |
-| 0     | `.github/workflows/deploy.yml`                                                               | 取消注释测试步骤 |
-| 0     | `vitest.config.ts`                                                                           | 添加覆盖率阈�?   |
-| 1     | `src/store/coordinator/`                                                                     | 新建目录         |
-| 1     | `src/store/audioStore.ts`                                                                    | 拆分             |
-| 1     | `src/store/playerStore.ts`                                                                   | 新建（抽取）     |
-| 1     | `src/types/song.ts`                                                                          | 合并类型         |
-| 2     | 8 �?store 文件                                                                               | 重构             |
-| 2     | `src/components/visualization-v8/effects/index.ts`                                           | 修改             |
-| 2     | `src/hooks/useAudioPlayer.ts`                                                                | 修改             |
-| 3     | `src/store/queueStore.ts`, `playlistStore.ts`, `searchStore.ts`, `statsAchievementsStore.ts` | 修改             |
-| 3     | `src/components/stats/StatsVisuals.tsx`                                                      | 重构             |
-| 4     | 10+ store 测试文件                                                                           | 新建             |
-| 4     | 多个组件                                                                                     | Selector 优化    |
-| 5     | `src/components/shared/Glass/`                                                               | 新增组件         |
-| 5     | `src/hooks/useKeyboardShortcuts.ts`                                                          | 重构             |
+The original 2026-05-10 roadmap described five broad phases: infrastructure/process setup, store decoupling, P0 feature reality checks, P1 feature enhancement, and architecture/test/UX polish. Its raw lower section was damaged by encoding corruption, so the active guidance above replaces it while retaining the useful intent: stabilize runtime first, preserve user data formats, improve real user paths, and reduce code-health debt incrementally.

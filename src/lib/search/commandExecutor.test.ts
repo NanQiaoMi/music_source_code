@@ -1,4 +1,4 @@
-﻿import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { executeSearchCommand } from "./commandExecutor";
 import type { SearchCommand } from "./commandRouter";
 import type { Song } from "@/types/song";
@@ -33,6 +33,7 @@ function deps() {
     clearQueue: vi.fn(),
     shuffleQueue: vi.fn(),
     addToQueue: vi.fn(),
+    playSong: vi.fn(),
     setCurrentSong: vi.fn(),
     setIsPlaying: vi.fn(),
     nextSong: vi.fn(),
@@ -95,8 +96,9 @@ describe("executeSearchCommand", () => {
       queueDeps
     );
 
-    expect(playDeps.setCurrentSong).toHaveBeenCalledWith(playDeps.songs[0]);
-    expect(playDeps.setIsPlaying).toHaveBeenCalledWith(true);
+    expect(playDeps.playSong).toHaveBeenCalledWith(playDeps.songs[0]);
+    expect(playDeps.setCurrentSong).not.toHaveBeenCalled();
+    expect(playDeps.setIsPlaying).not.toHaveBeenCalledWith(true);
     expect(playDeps.onClose).toHaveBeenCalledOnce();
     expect(queueDeps.addToQueue).toHaveBeenCalledWith(queueDeps.songs[0]);
     expect(queueDeps.setCommandFeedback).toHaveBeenCalledWith("Queued 1 song");

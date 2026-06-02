@@ -1,7 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+
+interface DateTimeSnapshot {
+  time: {
+    hours: string;
+    minutes: string;
+  };
+  dateStr: string;
+}
+
+const EMPTY_DATE_TIME: DateTimeSnapshot = {
+  time: { hours: "--", minutes: "--" },
+  dateStr: "",
+};
 
 const formatTime = (date: Date) => {
   const hours = date.getHours().toString().padStart(2, "0");
@@ -16,25 +29,29 @@ const formatDate = (date: Date) => {
   return `${month}月${day}日 ${weekday}`;
 };
 
-export const AppleDateTime: React.FC = () => {
-  const [time, setTime] = useState<{ hours: string; minutes: string } | null>(null);
-  const [dateStr, setDateStr] = useState<string>("");
-  const [mounted, setMounted] = useState(false);
+const getDateTimeSnapshot = (): DateTimeSnapshot => {
+  const now = new Date();
+  return {
+    time: formatTime(now),
+    dateStr: formatDate(now),
+  };
+};
 
-  const updateDateTime = useCallback(() => {
-    const now = new Date();
-    setTime(formatTime(now));
-    setDateStr(formatDate(now));
-  }, []);
+export const AppleDateTime: React.FC = () => {
+  const [dateTime, setDateTime] = useState<DateTimeSnapshot>(EMPTY_DATE_TIME);
 
   useEffect(() => {
-    setMounted(true);
-    updateDateTime();
-    const interval = setInterval(updateDateTime, 1000);
-    return () => clearInterval(interval);
-  }, [updateDateTime]);
+    const updateDateTime = () => setDateTime(getDateTimeSnapshot());
+    const timeout = window.setTimeout(updateDateTime, 0);
+    const interval = window.setInterval(updateDateTime, 1000);
 
-  if (!mounted || !time) return null;
+    return () => {
+      window.clearTimeout(timeout);
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  const { time, dateStr } = dateTime;
 
   return (
     <motion.div

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
@@ -50,10 +50,10 @@ interface StatsAchievementsPanelProps {
 }
 
 const TAB_ITEMS = [
-  { id: "overview", name: "Overview", icon: BarChart3 },
-  { id: "insights", name: "Insights", icon: Sparkles },
-  { id: "achievements", name: "Achievements", icon: Trophy },
-  { id: "history", name: "History", icon: Calendar },
+  { id: "overview", name: "概览", icon: BarChart3 },
+  { id: "insights", name: "洞察", icon: Sparkles },
+  { id: "achievements", name: "成就", icon: Trophy },
+  { id: "history", name: "历史", icon: Calendar },
 ] as const;
 
 type TabId = (typeof TAB_ITEMS)[number]["id"];
@@ -86,12 +86,12 @@ const metricIcons: Record<string, React.ReactNode> = {
 };
 
 const categoryLabels: Record<Achievement["category"], string> = {
-  listening: "Listening",
-  exploration: "Explore",
-  collection: "Collection",
-  milestone: "Milestone",
-  technical: "Tools",
-  temporal: "Time",
+  listening: "听歌",
+  exploration: "探索",
+  collection: "收藏",
+  milestone: "里程碑",
+  technical: "工具",
+  temporal: "时间",
 };
 
 export const StatsAchievementsPanel: React.FC<StatsAchievementsPanelProps> = ({
@@ -125,16 +125,16 @@ export const StatsAchievementsPanel: React.FC<StatsAchievementsPanelProps> = ({
               <Trophy className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-semibold text-white">Stats and Achievements</h2>
+              <h2 className="text-2xl font-semibold text-white">统计与成就</h2>
               <p className="text-sm text-white/60">
-                Listening overview, insights, progress, and daily history.
+                听歌概览、洞察、进度和每日历史。
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-            aria-label="Close stats and achievements"
+            aria-label="关闭统计与成就"
           >
             <X className="h-5 w-5" />
           </button>
@@ -184,9 +184,9 @@ function OverviewTab({ stats }: { stats: ListeningStats }) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-xl font-semibold text-white">Core metrics</h3>
+        <h3 className="text-xl font-semibold text-white">核心指标</h3>
         <p className="mt-1 text-sm text-white/50">
-          A compact snapshot of listening depth, variety, and completion.
+          听歌深度、多样性和完成度的简要概览。
         </p>
       </div>
 
@@ -212,53 +212,53 @@ function OverviewTab({ stats }: { stats: ListeningStats }) {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <FavoriteCard
-          label="Favorite artist"
+          label="最爱歌手"
           value={stats.favoriteArtist}
-          fallback="No favorite artist yet"
+          fallback="暂无最爱歌手"
         />
         <FavoriteCard
-          label="Favorite song"
+          label="最爱歌曲"
           value={stats.favoriteSong}
-          fallback="No favorite song yet"
+          fallback="暂无最爱歌曲"
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <InsightTile
-          label="Listening trend"
+          label="听歌趋势"
           value={trendLabel(summary.trend)}
-          detail={`Last 7 days versus previous period: ${summary.trendDelta > 0 ? "+" : ""}${summary.trendDelta} plays/day`}
+          detail={`最近7天对比上期：${summary.trendDelta > 0 ? "+" : ""}${summary.trendDelta} 次播放/天`}
         />
         <InsightTile
-          label="Exploration"
+          label="探索度"
           value={`${summary.explorationScore}%`}
-          detail={summary.metrics[1]?.hint || "Not enough listening history yet."}
+          detail={summary.metrics[1]?.hint || "听歌历史不足。"}
         />
         <InsightTile
-          label="Replay bias"
+          label="重播偏好"
           value={`${summary.replayScore}%`}
-          detail={summary.metrics[2]?.hint || "Replay behavior will appear after more plays."}
+          detail={summary.metrics[2]?.hint || "更多播放后将显示重播行为。"}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.08] p-5">
           <div className="mb-2 text-xs uppercase tracking-wider text-amber-200/60">
-            Suggested next step
+            建议下一步
           </div>
           <div className="text-2xl font-semibold text-white">{nextAction}</div>
           <div className="mt-2 text-sm text-white/55">
-            Generated from completion rate, skip rate, exploration, replay, and current trend.
+            基于完成率、跳过率、探索度、重播和当前趋势生成。
           </div>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
           <div className="mb-2 text-xs uppercase tracking-wider text-white/40">
-            Most active hour
+            最活跃时段
           </div>
           <div className="text-2xl font-semibold text-white">{topWindow.label}</div>
           <div className="mt-2 text-sm text-white/50">
-            {topWindow.count} plays in this hour window. Useful for recommendations and default
-            playlist timing.
+            {topWindow.count} 次播放在此时段。可用于推荐和默认
+            播放列表时间安排。
           </div>
         </div>
       </div>
@@ -289,12 +289,12 @@ function WeeklyMomentumCard({
     <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-xs uppercase tracking-wider text-white/40">Weekly momentum</div>
-          <div className="mt-2 text-2xl font-semibold text-white">{totalPlays} plays</div>
-          <div className="mt-1 text-sm text-white/50">{totalMinutes} min this week</div>
+          <div className="text-xs uppercase tracking-wider text-white/40">每周势头</div>
+          <div className="mt-2 text-2xl font-semibold text-white">{totalPlays} 次播放</div>
+          <div className="mt-1 text-sm text-white/50">{totalMinutes} 分钟 本周</div>
         </div>
         <div className="rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-100">
-          7 days
+          7 天
         </div>
       </div>
       <div className="mt-5 flex h-24 items-end gap-2">
@@ -332,7 +332,7 @@ function StreakCard({
 
   return (
     <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
-      <div className="text-xs uppercase tracking-wider text-white/40">Listening streak</div>
+      <div className="text-xs uppercase tracking-wider text-white/40">连续听歌</div>
       <div className="mt-4 flex items-center gap-4">
         <div
           className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
@@ -346,9 +346,9 @@ function StreakCard({
         </div>
         <div className="min-w-0">
           <div className="text-2xl font-semibold text-white">{label}</div>
-          <div className="mt-1 text-sm text-white/50">Best streak: {bestDays} days</div>
+          <div className="mt-1 text-sm text-white/50">最佳连续：{bestDays} 天</div>
           <div className="mt-1 text-xs text-white/35">
-            Last active: {lastActiveDate || "No listening yet"}
+            最近活跃：{lastActiveDate || "暂无听歌记录"}
           </div>
         </div>
       </div>
@@ -426,10 +426,10 @@ function InsightsTab({ stats }: { stats: ListeningStats }) {
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <StatsSection title="Music DNA" caption="Based on genre preference">
+        <StatsSection title="音乐DNA" caption="基于流派偏好">
           <MusicalDNARadar data={genreData} labels={genreLabels} />
         </StatsSection>
-        <StatsSection title="Audio quality" caption="Playback quality mix">
+        <StatsSection title="音频质量" caption="播放质量分布">
           <AudioQualityGauge
             qualityData={stats.audioQualityDistribution || {}}
             total={stats.totalPlayCount || 0}
@@ -438,30 +438,30 @@ function InsightsTab({ stats }: { stats: ListeningStats }) {
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <StatsSection title="24-hour listening clock" caption="Daily activity cycle" compact>
+        <StatsSection title="24小时听歌时钟" caption="每日活动周期" compact>
           <ListeningClock hourlyData={toStringRecord(stats.hourlyDistribution)} />
         </StatsSection>
-        <StatsSection title="Activity trend" caption="Last 30 tracked days" compact>
+        <StatsSection title="活动趋势" caption="最近30天记录" compact>
           <ActivityTrend data={dailyTrend} />
         </StatsSection>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <StatsSection title="Pro tool mastery" caption="Advanced feature usage">
+        <StatsSection title="专业工具掌握" caption="高级功能使用">
           <ProToolMasteryRadar usage={stats.proToolsUsage || {}} />
         </StatsSection>
-        <StatsSection title="Mood flow" caption="Mood sequence from listening tags">
+        <StatsSection title="情绪流动" caption="来自听歌标签的情绪序列">
           <div className="flex min-h-[220px] flex-col justify-center gap-6">
             <MoodFlow moodHistory={moodHistory} />
             <div className="text-center text-[10px] leading-relaxed text-white/30">
-              Built from recorded mood distribution. More emotion tags make this view more precise.
+              基于已记录的情绪分布生成。更多情绪标签可使此视图更精确。
             </div>
           </div>
         </StatsSection>
       </div>
 
       <section className="space-y-4">
-        <SectionHeader title="Hourly activity strength" caption="Detailed distribution by hour" />
+        <SectionHeader title="每小时活动强度" caption="按小时详细分布" />
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
           <ListeningHeatmap hourlyData={toStringRecord(stats.hourlyDistribution)} />
         </div>
@@ -522,25 +522,25 @@ function AchievementsTab({
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <SpotlightCard
-          title="Recently unlocked"
-          empty="No recent unlocks yet."
+          title="最近解锁"
+          empty="暂无最近解锁。"
           achievements={spotlight.unlockedRecently}
         />
         <SpotlightCard
-          title="Nearly there"
-          empty="Play more tracks to surface the next target."
+          title="即将达成"
+          empty="继续播放更多曲目以解锁下一个目标。"
           achievements={spotlight.nearlyUnlocked}
           showProgress
         />
         <SpotlightCard
-          title="Recommended push"
-          empty="No recommendations yet."
+          title="推荐推送"
+          empty="暂无推荐。"
           achievements={spotlight.recommended}
         />
       </div>
 
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
-        <h3 className="text-xl font-semibold text-white">Achievement system</h3>
+        <h3 className="text-xl font-semibold text-white">成就系统</h3>
         <div className="flex flex-wrap gap-2">
           {categories.map(([id, name]) => (
             <button
@@ -642,7 +642,7 @@ function AchievementCard({
             <div className="font-semibold text-white">{title}</div>
             {achievement.unlocked && (
               <span className="rounded bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">
-                Unlocked
+                已解锁
               </span>
             )}
           </div>
@@ -653,7 +653,7 @@ function AchievementCard({
               onClick={() => onUnlockAchievement(achievement.id)}
               className="mt-3 rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/15 hover:text-white"
             >
-              Unlock in dev
+              开发中解锁
             </button>
           )}
         </div>
@@ -667,7 +667,7 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
   return (
     <div className="mt-3">
       <div className="mb-1 text-xs text-white/40">
-        Progress: {current} / {total}
+        进度：{current} / {total}
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-white/10">
         <div
@@ -685,9 +685,9 @@ function DailyHistoryTab({ stats }: { stats: ListeningStats }) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-xl font-semibold text-white">Daily history</h3>
+        <h3 className="text-xl font-semibold text-white">每日历史</h3>
         <p className="mt-1 text-sm text-white/50">
-          Recent listening activity, sorted newest first.
+          最近听歌活动，按最新排序。
         </p>
       </div>
 
@@ -696,8 +696,8 @@ function DailyHistoryTab({ stats }: { stats: ListeningStats }) {
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/5">
             <Calendar className="h-10 w-10 text-white/40" />
           </div>
-          <h3 className="mb-2 font-semibold text-white">No daily data yet</h3>
-          <p className="text-white/60">Start listening and daily stats will appear here.</p>
+          <h3 className="mb-2 font-semibold text-white">暂无每日数据</h3>
+          <p className="text-white/60">开始听歌后，每日统计将显示在此。</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -707,7 +707,7 @@ function DailyHistoryTab({ stats }: { stats: ListeningStats }) {
                 <div>
                   <div className="font-semibold text-white">{data.date}</div>
                   <div className="text-sm text-white/60">
-                    {data.playCount} plays - {data.listenMinutes} minutes
+                    {data.playCount} 次播放 - {data.listenMinutes} 分钟
                   </div>
                 </div>
                 <BarChart3 className="h-5 w-5 text-white/40" />
@@ -721,9 +721,9 @@ function DailyHistoryTab({ stats }: { stats: ListeningStats }) {
 }
 
 function trendLabel(trend: "rising" | "steady" | "cooling"): string {
-  if (trend === "rising") return "Rising";
-  if (trend === "cooling") return "Cooling";
-  return "Steady";
+  if (trend === "rising") return "上升";
+  if (trend === "cooling") return "降温";
+  return "平稳";
 }
 
 function toStringRecord(record: Record<number, number>): Record<string, number> {

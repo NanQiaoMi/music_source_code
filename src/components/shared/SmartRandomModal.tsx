@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useMemo, useDeferredValue } from "react";
-import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
+import { motion, AnimatePresence, useAnimationControls, PanInfo } from "framer-motion";
 import { X, Play, Sparkles } from "lucide-react";
 import { GlassCard } from "@/components/shared/Glass/GlassCard";
 import { GlassButton } from "@/components/shared/GlassButton";
@@ -58,13 +58,16 @@ export const SmartRandomModal: React.FC<SmartRandomModalProps> = ({
     return generateRecommendations(songsWithPlayCount, params, 5);
   }, [songsWithPlayCount, currentSong, deferredPosition]);
 
-  const handleDragEnd = useCallback((event: any, info: any) => {
-    const centerX = GRID_SIZE / 2 - HANDLE_SIZE / 2;
-    const centerY = GRID_SIZE / 2 - HANDLE_SIZE / 2;
-    const newX = Math.max(-1, Math.min(1, (info.point.x - centerX) / (GRID_SIZE / 2)));
-    const newY = Math.max(-1, Math.min(1, (info.point.y - centerY) / (GRID_SIZE / 2)));
-    setPosition({ x: newX, y: newY });
-  }, []);
+  const handleDragEnd = useCallback(
+    (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      const centerX = GRID_SIZE / 2 - HANDLE_SIZE / 2;
+      const centerY = GRID_SIZE / 2 - HANDLE_SIZE / 2;
+      const newX = Math.max(-1, Math.min(1, (info.point.x - centerX) / (GRID_SIZE / 2)));
+      const newY = Math.max(-1, Math.min(1, (info.point.y - centerY) / (GRID_SIZE / 2)));
+      setPosition({ x: newX, y: newY });
+    },
+    []
+  );
 
   const resetPosition = useCallback(() => {
     setPosition({ x: 0, y: 0 });
@@ -97,7 +100,7 @@ export const SmartRandomModal: React.FC<SmartRandomModalProps> = ({
     }
 
     playQueue(allRecommendations as Song[], 0);
-    toast.success("已生成 " + allRecommendations.length + " 首智能推荐");
+    toast.success(`已生成 ${allRecommendations.length} 首智能推荐`);
     onClose();
   }, [position, songsWithPlayCount, currentSong, playQueue, onClose, unlockAchievement]);
 
@@ -152,7 +155,7 @@ export const SmartRandomModal: React.FC<SmartRandomModalProps> = ({
 
             <div className="flex items-center gap-2">
               <div className="text-[10px] font-bold tracking-widest text-white/40 uppercase -rotate-90">
-                极少听
+                少听一点
               </div>
 
               <div
@@ -210,7 +213,7 @@ export const SmartRandomModal: React.FC<SmartRandomModalProps> = ({
               </div>
 
               <div className="text-[10px] font-bold tracking-widest text-white/40 uppercase rotate-90">
-                最常听
+                常听一点
               </div>
             </div>
 

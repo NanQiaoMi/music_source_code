@@ -13,6 +13,12 @@ import { getAudioEffectsManager } from "@/lib/audio/AudioEffectsManager";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
 import { CrossfadeMixer } from "@/lib/audio/CrossfadeMixer";
 import { deriveJournalMood } from "@/lib/journal/listeningJournal";
+import {
+  MISSING_AUDIO_SOURCE_MESSAGE,
+  createAudioElementLoadError,
+  hasPlayableAudioSource,
+  logHandledAudioWarning,
+} from "@/lib/audio/playableAudioSource";
 
 // Module-level shared state to persist across hook unmounts/remounts
 let audioInstance: HTMLAudioElement | null = null;
@@ -69,6 +75,26 @@ function getPlaybackErrorMessage(error: unknown): string {
   return "unknown reason";
 }
 
+function stopForMissingAudioSource(audio: HTMLAudioElement): void {
+  audio.pause();
+  if (currentAudioUrlRef.current?.startsWith("blob:")) {
+    URL.revokeObjectURL(currentAudioUrlRef.current);
+  }
+  currentAudioUrlRef.current = null;
+  currentSongIdRef.current = null;
+  isPlayingRef.current = false;
+  audio.removeAttribute("src");
+  audio.load();
+
+  usePlayerStore.getState().setIsPlaying(false);
+  usePlayerStore.getState().setIsLoading(false);
+  useAudioStore.setState({
+    isPlaying: false,
+    isLoading: false,
+    error: { type: "load", message: MISSING_AUDIO_SOURCE_MESSAGE, timestamp: Date.now() },
+  });
+}
+
 // Stable event handlers outside the hook to prevent duplicate listeners
 // and ensure we can attach them once to each audio element
 const attachListeners = (
@@ -122,18 +148,18 @@ const attachListeners = (
     }
   };
   const onError = (event: Event) => {
-    const error = (event.target as HTMLAudioElement).error;
-    console.error("Audio element error event:", error);
-    if (error) {
-      setError({
-        type: "load",
-        message: `音频错误: ${error.code}`,
-        timestamp: Date.now(),
-      });
+    const audioEl = event.target as HTMLAudioElement;
+    const error = audioEl.error;
+    const hasValidSrc = Boolean(audioEl.currentSrc);
+
+    if (hasValidSrc && error) {
+      const loadError = createAudioElementLoadError(error);
+      logHandledAudioWarning("Audio element load failed", loadError.message);
+      setError(loadError);
+      setIsLoading(false);
+      isPlayingRef.current = false;
+      useAudioStore.getState().setIsPlaying(false);
     }
-    setIsLoading(false);
-    isPlayingRef.current = false;
-    useAudioStore.getState().setIsPlaying(false);
   };
 
   audio.addEventListener("timeupdate", onTimeUpdate);
@@ -172,6 +198,19 @@ const detachListeners = (audio: ManagedAudioElement) => {
   }
 };
 
+async function initializeAudioGraph(audio: HTMLAudioElement): Promise<void> {
+  const engine = AudioEngine.getInstance();
+  engine.init(audio);
+
+  const analyser = engine.getAnalyser();
+  const context = engine.getContext();
+  if (!analyser || !context) return;
+
+  const effectsManager = getAudioEffectsManager();
+  await effectsManager.init();
+  effectsManager.connect(analyser, context.destination, audio);
+}
+
 export const useAudioPlayer = () => {
   const [hookId] = useState(() => Math.random().toString(36).substr(2, 9));
   const [audioElement, setLocalAudioElement] = useState<HTMLAudioElement | null>(() =>
@@ -209,11 +248,10 @@ export const useAudioPlayer = () => {
         message.includes("pause");
 
       if (isAbortError) return;
-
-      console.error("Playback error:", error);
+      logHandledAudioWarning("Playback failed", message);
       setError({
         type: "play",
-        message: `播放失败: ${error.message || "未知原因"}`,
+        message: "Playback failed: " + message,
         timestamp: Date.now(),
       });
       setIsPlaying(false);
@@ -263,20 +301,6 @@ export const useAudioPlayer = () => {
       setCurrentTime(audio.currentTime);
     }
 
-    // Initialize AudioEngine if not done
-    const engine = AudioEngine.getInstance();
-    engine.init(audio);
-
-    // Connect effects
-    const analyser = engine.getAnalyser();
-    const context = engine.getContext();
-    if (analyser && context) {
-      const effectsManager = getAudioEffectsManager();
-      effectsManager.init().then(() => {
-        effectsManager.connect(analyser, context.destination, audio);
-      });
-    }
-
     return () => {
       detachListeners(audio);
       if (secondaryElementRef.current) {
@@ -296,8 +320,14 @@ export const useAudioPlayer = () => {
       isPlayingRef.current = isPlaying;
       const songId = currentSong.id;
 
+      if (!hasPlayableAudioSource(currentSong)) {
+        stopForMissingAudioSource(audio);
+        return;
+      }
+
       if (currentSongIdRef.current === songId) {
         if (isPlaying) {
+          await initializeAudioGraph(audio);
           await AudioEngine.getInstance().resume();
           if (audio.readyState >= 2) {
             audio.play().catch(handlePlayError);
@@ -322,23 +352,30 @@ export const useAudioPlayer = () => {
         lastRecordedSongIdRef.current = null;
       }
 
-      let audioUrl = currentSong.audioUrl;
+      let audioUrl = currentSong.audioUrl?.trim();
       if (audioUrl?.startsWith("stored://")) {
         const id = audioUrl.replace("stored://", "");
         const storedMusic = await getStoredMusic(id);
         if (storedMusic) {
           audioUrl = createBlobUrlFromStoredMusic(storedMusic);
           currentAudioUrlRef.current = audioUrl;
+        } else {
+          audioUrl = undefined;
+          currentAudioUrlRef.current = null;
         }
       }
 
       if (!audioUrl) {
-        setIsLoading(false);
-        setError({ type: "load", message: "无法加载音频", timestamp: Date.now() });
+        stopForMissingAudioSource(audio);
         return;
       }
 
-      if (isEmotionCurveMode && previousSongId && secondaryElementRef.current) {
+      if (isPlaying) {
+        await initializeAudioGraph(audio);
+        await AudioEngine.getInstance().resume();
+      }
+
+      if (isPlaying && isEmotionCurveMode && previousSongId && secondaryElementRef.current) {
         const mixer = CrossfadeMixer.getInstance();
         const duration = mixer.calculateDynamicDuration(previousSongId, songId);
         setDynamicCrossfadeDuration(duration);
@@ -426,7 +463,9 @@ export const useAudioPlayer = () => {
     }
   }, [eqBands, isEQEnabled]);
 
-  const togglePlay = useCallback(() => setIsPlaying(!isPlaying), [isPlaying, setIsPlaying]);
+  const togglePlay = useCallback(() => {
+    useAudioStore.getState().setIsPlaying(!isPlaying);
+  }, [isPlaying]);
 
   const seek = useCallback(
     (time: number) => {

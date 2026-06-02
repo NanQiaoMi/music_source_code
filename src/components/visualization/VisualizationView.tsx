@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useRef, useEffect, useState, memo } from "react";
+import { useCallback, useRef, useEffect, useState, memo } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -82,18 +82,19 @@ export function VisualizationView() {
   const animationFrameRef = useRef<number | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const bufferLengthRef = useRef<number>(0);
-  const particlesRef = useRef<any[]>([]);
-  const nebulaStarsRef = useRef<any[]>([]);
-  const spectrumStarsRef = useRef<any[]>([]);
+  const particlesRef = useRef<unknown[]>([]);
+  const nebulaStarsRef = useRef<unknown[]>([]);
+  const spectrumStarsRef = useRef<unknown[]>([]);
   const matrixDropsRef = useRef<number[]>([]);
   const timeRef = useRef<number>(0);
   const smoothDataRef = useRef<Float32Array>(new Float32Array(128));
   const smoothBassRef = useRef(0);
   const smoothMidRef = useRef(0);
   const smoothTrebleRef = useRef(0);
-  const bokehRef = useRef<any[]>([]);
-  const shockwavesRef = useRef<any[]>([]);
-  const resonanceTotemsRef = useRef<any[]>([]);
+  const bokehRef = useRef<unknown[]>([]);
+  const shockwavesRef = useRef<unknown[]>([]);
+  const resonanceTotemsRef = useRef<unknown[]>([]);
+  const albumArtRef = useRef<HTMLDivElement | null>(null);
 
   // Mouse idle detection for Zen Mode
   useEffect(() => {
@@ -116,9 +117,9 @@ export function VisualizationView() {
     const handleFsChange = () => {
       const isFs = !!(
         document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).mozFullScreenElement ||
-        (document as any).msFullscreenElement
+        (document as LegacyAny).webkitFullscreenElement ||
+        (document as LegacyAny).mozFullScreenElement ||
+        (document as LegacyAny).msFullscreenElement
       );
       setIsFullscreen(isFs);
     };
@@ -136,18 +137,18 @@ export function VisualizationView() {
     };
   }, [setIsFullscreen]);
 
-  const handleToggleFullscreen = () => {
+  const handleToggleFullscreen = useCallback(() => {
     // 1. Try Electron Native Fullscreen first (Best for Desktop)
-    if ((window as any).electronAPI?.toggleFullscreen) {
-      (window as any).electronAPI
+    if ((window as LegacyAny).electronAPI?.toggleFullscreen) {
+      (window as LegacyAny).electronAPI
         .toggleFullscreen()
         .then((result: boolean) => setIsFullscreen(result))
-        .catch((err: any) => console.error("Electron fullscreen failed:", err));
+        .catch((err: LegacyAny) => console.error("Electron fullscreen failed:", err));
       return;
     }
 
     // 2. Fallback to Browser Fullscreen API with vendor prefixes
-    const doc = document as any;
+    const doc = document as LegacyAny;
     const isFs = !!(
       doc.fullscreenElement ||
       doc.webkitFullscreenElement ||
@@ -159,11 +160,11 @@ export function VisualizationView() {
       const elem = containerRef.current || document.documentElement;
       const request =
         elem.requestFullscreen ||
-        (elem as any).webkitRequestFullscreen ||
-        (elem as any).mozRequestFullScreen ||
-        (elem as any).msRequestFullscreen;
+        (elem as LegacyAny).webkitRequestFullscreen ||
+        (elem as LegacyAny).mozRequestFullScreen ||
+        (elem as LegacyAny).msRequestFullscreen;
       if (request) {
-        request.call(elem).catch((err: any) => {
+        request.call(elem).catch((err: LegacyAny) => {
           console.error("Fullscreen request failed:", err);
         });
       }
@@ -174,12 +175,12 @@ export function VisualizationView() {
         doc.mozCancelFullScreen ||
         doc.msExitFullscreen;
       if (exit) {
-        exit.call(doc).catch((err: any) => {
+        exit.call(doc).catch((err: LegacyAny) => {
           console.error("Exit fullscreen failed:", err);
         });
       }
     }
-  };
+  }, [setIsFullscreen]);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -200,7 +201,7 @@ export function VisualizationView() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentView, showSettings, showRecording]);
+  }, [currentView, handleToggleFullscreen, showRecording, showSettings]);
 
   useEffect(() => {
     if (currentView !== "visualization") return;
@@ -219,28 +220,41 @@ export function VisualizationView() {
     };
   }, [currentView]);
 
-  const totemStore = useTotemStore();
+  const initializeTotemsForSong = useTotemStore((state) => state.initializeForSong);
+  const updateActiveKeywords = useTotemStore((state) => state.updateActiveKeywords);
+  const addPreloadedTexture = useTotemStore((state) => state.addPreloadedTexture);
+  const clearTotems = useTotemStore((state) => state.clear);
+  const allTotemKeywords = useTotemStore((state) => state.allKeywords);
+  const activeTotemKeywords = useTotemStore((state) => state.activeKeywords);
+  const preloadedTotemTextures = useTotemStore((state) => state.preloadedTextures);
   const parsedLyrics = useLyricsSearchStore((state) => state.parsedLyrics);
   const workerRef = useRef<Worker | null>(null);
+  const currentTimeRef = useRef(currentTime);
+  const activeTotemKeywordsRef = useRef(activeTotemKeywords);
 
   // Sync music time for shaders
   useEffect(() => {
-    (window as any)._currentMusicTime = currentTime;
+    currentTimeRef.current = currentTime;
+    (window as LegacyAny)._currentMusicTime = currentTime;
   }, [currentTime]);
+
+  useEffect(() => {
+    activeTotemKeywordsRef.current = activeTotemKeywords;
+  }, [activeTotemKeywords]);
 
   // Initialize totems for current song
   useEffect(() => {
     if (parsedLyrics.length > 0) {
-      totemStore.initializeForSong(parsedLyrics);
+      initializeTotemsForSong(parsedLyrics);
     } else {
-      totemStore.clear();
+      clearTotems();
     }
-  }, [parsedLyrics]);
+  }, [clearTotems, initializeTotemsForSong, parsedLyrics]);
 
   // Update active totems
   useEffect(() => {
-    totemStore.updateActiveKeywords(currentTime);
-  }, [currentTime]);
+    updateActiveKeywords(currentTime);
+  }, [currentTime, updateActiveKeywords]);
 
   // Manage Texture Worker
   useEffect(() => {
@@ -252,7 +266,7 @@ export function VisualizationView() {
 
     worker.onmessage = (e) => {
       if (e.data.type === "texture-generated") {
-        totemStore.addPreloadedTexture(e.data.id, e.data.bitmap);
+        addPreloadedTexture(e.data.id, e.data.bitmap);
       }
     };
 
@@ -261,14 +275,14 @@ export function VisualizationView() {
     return () => {
       worker.terminate();
     };
-  }, []);
+  }, [addPreloadedTexture]);
 
   // Preload textures when keywords change
   useEffect(() => {
-    if (!workerRef.current || totemStore.allKeywords.length === 0) return;
+    if (!workerRef.current || allTotemKeywords.length === 0) return;
 
-    totemStore.allKeywords.forEach((kw) => {
-      if (!totemStore.preloadedTextures[kw.id]) {
+    allTotemKeywords.forEach((kw) => {
+      if (!preloadedTotemTextures[kw.id]) {
         workerRef.current?.postMessage({
           type: "generate",
           id: kw.id,
@@ -277,7 +291,7 @@ export function VisualizationView() {
         });
       }
     });
-  }, [totemStore.allKeywords]);
+  }, [allTotemKeywords, preloadedTotemTextures]);
 
   const vizTargetHues = useRef({ primary: 280, secondary: 320, accent: 150 });
   const vizActiveHues = useRef({ primary: 280, secondary: 320, accent: 150 });
@@ -357,7 +371,11 @@ export function VisualizationView() {
 
       const analyser = getAudioAnalyser();
       if (analyser && dataArrayRef.current) {
-        analyser.getByteFrequencyData(dataArrayRef.current as any);
+        analyser.getByteFrequencyData(dataArrayRef.current as LegacyAny);
+        const albumScale = 1 + ((dataArrayRef.current[2] || 0) / 255) * 0.08;
+        if (albumArtRef.current) {
+          albumArtRef.current.style.transform = `scale(${albumScale})`;
+        }
 
         // Smooth data for visualization
         const raw = dataArrayRef.current;
@@ -391,7 +409,7 @@ export function VisualizationView() {
           height: canvas.height,
           data: dataArrayRef.current,
           time: timestamp,
-          musicTime: currentTime,
+          musicTime: currentTimeRef.current,
           params: settings[currentEff] || settings.spatialMesh,
 
           refs: {
@@ -432,7 +450,7 @@ export function VisualizationView() {
         }
 
         // Sync active keywords for Resonance Totem
-        resonanceTotemsRef.current = totemStore.activeKeywords;
+        resonanceTotemsRef.current = activeTotemKeywordsRef.current;
 
         // Call the appropriate effect
 
@@ -497,11 +515,7 @@ export function VisualizationView() {
       shockwavesRef.current = [];
 
       // Clear canvas context if possible (though usually GC'd)
-      if (canvasRef.current) {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext("2d");
-        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
   }, [currentView]);
 
@@ -549,7 +563,7 @@ export function VisualizationView() {
         willChange: "filter",
       };
     }
-    if (currentEffect === ("resonanceTotem" as any)) {
+    if (currentEffect === ("resonanceTotem" as LegacyAny)) {
       return { filter: `saturate(1.2) contrast(1.1)`, transform: "translateZ(0)" };
     }
     return { transform: "translateZ(0)" };
@@ -565,8 +579,8 @@ export function VisualizationView() {
     { id: "vinylGroove", name: "量子空间" },
     { id: "cyberMatrix", name: "赛博矩阵" },
     { id: "prismPulse", name: "棱镜脉冲" },
-    { id: "gravitationalField", name: "重力场 (隐藏)" },
-    { id: "resonanceTotem" as any, name: "共鸣图腾" },
+    { id: "gravitationalField", name: "重力??(隐藏)" },
+    { id: "resonanceTotem" as LegacyAny, name: "共鸣图腾" },
   ];
 
   return (
@@ -600,19 +614,18 @@ export function VisualizationView() {
               className="absolute inset-0 flex items-center justify-center pointer-events-none"
             >
               <div
+                ref={albumArtRef}
                 className={`relative overflow-hidden ${
                   currentEffect === "vinylGroove"
                     ? "w-48 h-48 md:w-72 md:h-72 rounded-full shadow-[0_0_80px_rgba(0,0,0,0.9)]"
                     : "w-[240px] h-[240px] md:w-[360px] md:h-[360px] rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
                 } border border-white/10`}
                 style={{
-                  transform: `scale(${1 + ((dataArrayRef.current?.[2] || 0) / 255) * 0.08})`,
                   willChange: "transform",
                   transition: "transform 0.15s cubic-bezier(0.22, 1, 0.36, 1)",
                 }}
               >
                 {/* Dynamic glow behind the cover */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={currentSong.cover} alt="cover" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 border border-white/20 rounded-[inherit] pointer-events-none mix-blend-overlay" />
 
@@ -676,7 +689,7 @@ export function VisualizationView() {
 
                 <button
                   onClick={handleToggleFullscreen}
-                  title={isFullscreen ? "退出全屏 (F)" : "进入全屏 (F)"}
+                  title={isFullscreen ? "退出全??(F)" : "进入全屏 (F)"}
                   className="w-12 h-12 rounded-full bg-black/20 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-105 transition-all duration-300"
                 >
                   {isFullscreen ? (
@@ -717,7 +730,7 @@ export function VisualizationView() {
                           <span className="px-2 py-0.5 rounded-md bg-white/10 text-xs font-bold uppercase tracking-wider text-white/80">
                             Hires
                           </span>
-                          {currentSong.artist} {currentSong.album ? ` • ${currentSong.album}` : ""}
+                          {currentSong.artist} {currentSong.album ? ` ??${currentSong.album}` : ""}
                         </p>
                       </div>
 

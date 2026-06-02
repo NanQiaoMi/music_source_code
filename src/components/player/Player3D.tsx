@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useAudioStore, LoopMode } from "@/store/audioStore";
+import { MISSING_AUDIO_SOURCE_HELP_TEXT } from "@/lib/audio/playableAudioSource";
 import { useUIStore } from "@/store/uiStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useABLoopStore } from "@/store/abLoopStore";
@@ -536,7 +537,7 @@ export const Player3D: React.FC = () => {
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       const modes: LoopMode[] = ["none", "all", "single"];
-                      const currentIndex = modes.indexOf(loopMode as any);
+                      const currentIndex = modes.indexOf(loopMode);
                       const nextIndex = (currentIndex + 1) % modes.length;
                       useAudioStore.getState().setLoopMode(modes[nextIndex]);
                     }}
@@ -684,7 +685,7 @@ export const Player3D: React.FC = () => {
                 <p className="text-sm text-white/70 mt-1">请检查网络连接后重试</p>
               )}
               {error.type === "load" && (
-                <p className="text-sm text-white/70 mt-1">该歌曲暂无音频文件</p>
+                <p className="text-sm text-white/70 mt-1">{MISSING_AUDIO_SOURCE_HELP_TEXT}</p>
               )}
             </div>
             <div className="flex gap-2">

@@ -36,6 +36,7 @@ export const SongEditForm: React.FC<SongEditFormProps> = ({ song, onSave, onCanc
   const [durationInput, setDurationInput] = useState("0:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- Switching songs must replace the local editable draft fields. */
   useEffect(() => {
     if (song) {
       setFormData(song);
@@ -46,6 +47,7 @@ export const SongEditForm: React.FC<SongEditFormProps> = ({ song, onSave, onCanc
     }
     setErrors([]);
   }, [song]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleChange = (field: keyof Song, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

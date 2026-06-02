@@ -1,4 +1,4 @@
-import * as THREE from "three";
+﻿import * as THREE from "three";
 
 export class ThreeJSScene {
   scene: THREE.Scene;
@@ -99,8 +99,8 @@ export class ThreeJSScene {
 
     // Dispose of textures
     for (const key in material) {
-      if (material.hasOwnProperty(key)) {
-        const value = (material as any)[key];
+      if (Object.prototype.hasOwnProperty.call(material, key)) {
+        const value = (material as LegacyAny)[key];
         if (value instanceof THREE.Texture) {
           value.dispose();
         }
@@ -133,8 +133,8 @@ export class ThreeJSScene {
     }
 
     // Nullify references to break cycles and help GC
-    (this as any).scene = null;
-    (this as any).camera = null;
-    (this as any).renderer = null;
+    (this as LegacyAny).scene = null;
+    (this as LegacyAny).camera = null;
+    (this as LegacyAny).renderer = null;
   }
 }

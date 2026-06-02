@@ -20,8 +20,7 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
   const animationRef = useRef<number | null>(null);
   const [isReady, setIsReady] = useState(false);
 
-  const { isGenerating, generationProgress, showPeaks, waveformColor, backgroundColor } =
-    useWaveformStore();
+  const { isGenerating, generationProgress, waveformColor, backgroundColor } = useWaveformStore();
 
   useEffect(() => {
     const checkReady = () => {
@@ -35,75 +34,78 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
     checkReady();
   }, []);
 
-  const drawWaveform = useCallback(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    const analyser = getAudioAnalyser();
+  const drawWaveform = useCallback(
+    function drawWaveform() {
+      const canvas = canvasRef.current;
+      const container = containerRef.current;
+      const analyser = getAudioAnalyser();
 
-    if (!canvas || !container) return;
+      if (!canvas || !container) return;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    const { width, height } = container.getBoundingClientRect();
+      const { width, height } = container.getBoundingClientRect();
 
-    // 只有在尺寸变化时才重置 canvas 大小
-    const dpr = window.devicePixelRatio || 1;
-    if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
-    }
-
-    ctx.fillStyle = backgroundColor;
-    ctx.fillRect(0, 0, width, height);
-
-    if (!analyser) {
-      animationRef.current = requestAnimationFrame(drawWaveform);
-      return;
-    }
-
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    analyser.getByteTimeDomainData(dataArray);
-
-    ctx.strokeStyle = waveformColor;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-
-    const sliceWidth = width / bufferLength;
-    let x = 0;
-
-    for (let i = 0; i < bufferLength; i++) {
-      const v = dataArray[i] / 128.0;
-      const y = (v * height) / 2;
-
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
+      // 只有在尺寸变化时才重置 canvas 大小
+      const dpr = window.devicePixelRatio || 1;
+      if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        ctx.scale(dpr, dpr);
       }
 
-      x += sliceWidth;
-    }
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(0, 0, width, height);
 
-    ctx.stroke();
+      if (!analyser) {
+        animationRef.current = requestAnimationFrame(drawWaveform);
+        return;
+      }
 
-    if (audioElement) {
-      const currentTime = audioElement.currentTime || 0;
-      const duration = audioElement.duration || 1;
-      const playheadX = (currentTime / duration) * width;
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      analyser.getByteTimeDomainData(dataArray);
 
-      ctx.strokeStyle = "#EF4444";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = waveformColor;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(playheadX, 0);
-      ctx.lineTo(playheadX, height);
-      ctx.stroke();
-    }
 
-    animationRef.current = requestAnimationFrame(drawWaveform);
-  }, [audioElement, waveformColor, backgroundColor, showPeaks, isReady]);
+      const sliceWidth = width / bufferLength;
+      let x = 0;
+
+      for (let i = 0; i < bufferLength; i++) {
+        const v = dataArray[i] / 128.0;
+        const y = (v * height) / 2;
+
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+
+        x += sliceWidth;
+      }
+
+      ctx.stroke();
+
+      if (audioElement) {
+        const currentTime = audioElement.currentTime || 0;
+        const duration = audioElement.duration || 1;
+        const playheadX = (currentTime / duration) * width;
+
+        ctx.strokeStyle = "#EF4444";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(playheadX, 0);
+        ctx.lineTo(playheadX, height);
+        ctx.stroke();
+      }
+
+      animationRef.current = requestAnimationFrame(drawWaveform);
+    },
+    [audioElement, waveformColor, backgroundColor]
+  );
 
   useEffect(() => {
     if (isReady) {

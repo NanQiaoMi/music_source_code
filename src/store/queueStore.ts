@@ -26,6 +26,14 @@ type PersistedQueueSong = Pick<
 
 type MinimalPersistedQueueSong = Pick<PersistedQueueSong, "id" | "title" | "artist" | "duration">;
 
+function sanitizePersistedAudioUrl(audioUrl?: string): string | undefined {
+  const trimmed = audioUrl?.trim();
+  if (!trimmed || trimmed.startsWith("blob:") || trimmed.startsWith("data:")) {
+    return undefined;
+  }
+  return trimmed;
+}
+
 function sanitizePersistedSong(song: Song): PersistedQueueSong {
   const sanitizedCover = song.cover?.startsWith("data:image/") ? "" : song.cover;
 
@@ -37,7 +45,7 @@ function sanitizePersistedSong(song: Song): PersistedQueueSong {
     duration: song.duration,
     cover: sanitizedCover,
     source: song.source,
-    audioUrl: song.audioUrl,
+    audioUrl: sanitizePersistedAudioUrl(song.audioUrl),
   };
 }
 
@@ -55,7 +63,17 @@ function clonePersistedValue(value: unknown) {
 }
 
 function tryPersistQueueState(name: string, value: unknown) {
-  localStorage.setItem(name, JSON.stringify(value));
+  const serialized = JSON.stringify(value);
+  const currentValue = localStorage.getItem(name);
+  if (currentValue && currentValue.length > serialized.length) {
+    localStorage.removeItem(name);
+  }
+  localStorage.setItem(name, serialized);
+}
+
+function retryPersistQueueState(name: string, value: unknown) {
+  localStorage.removeItem(name);
+  tryPersistQueueState(name, value);
 }
 
 function isQuotaExceededError(error: unknown): boolean {
@@ -326,7 +344,7 @@ export const useQueueStore = create<QueueState>()(
                 if (state.state && state.state.history) {
                   state.state.history = state.state.history.slice(0, 5);
                 }
-                tryPersistQueueState(name, state);
+                retryPersistQueueState(name, state);
               } catch {
                 console.warn(
                   "Failed to save even with 5 history items, clearing history and shrinking queue."
@@ -339,7 +357,7 @@ export const useQueueStore = create<QueueState>()(
                       state.state.queue = state.state.queue.map(toMinimalPersistedSong);
                     }
                   }
-                  tryPersistQueueState(name, state);
+                  retryPersistQueueState(name, state);
                 } catch {
                   console.warn(
                     "Failed to save minimized queue store, persisting index only as final fallback."
@@ -351,7 +369,7 @@ export const useQueueStore = create<QueueState>()(
                       state.state.queue = [];
                       state.state.currentIndex = 0;
                     }
-                    tryPersistQueueState(name, state);
+                    retryPersistQueueState(name, state);
                   } catch (finalError) {
                     console.error("Critical storage failure in queue store:", finalError);
                   }

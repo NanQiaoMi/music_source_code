@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { VisualizationToggle } from "./VisualizationToggle";
 import { AudioEnhancementToggle } from "./AudioEnhancementToggle";
 import { ABLoopToggle } from "./ABLoopToggle";
@@ -10,7 +10,7 @@ import { useUIStore } from "@/store/uiStore";
 
 interface FeatureButtonConfig {
   id: string;
-  component: React.ComponentType<any>;
+  component: React.ElementType;
   defaultPosition: number;
 }
 
@@ -40,9 +40,8 @@ export function FeatureButtonsContainer() {
   const [windowHeight, setWindowHeight] = useState(
     typeof window !== "undefined" ? window.innerHeight : 800
   );
-  const [buttonPositions, setButtonPositions] = useState<Record<string, number>>({});
 
-  const calculatePositions = useCallback(() => {
+  const buttonPositions = useMemo(() => {
     const availableHeight = windowHeight - 100; // 减去顶部和底部的余量
     const totalButtonsHeight = buttons.length * BUTTON_HEIGHT;
     const totalSpacingNeeded = (buttons.length - 1) * BUTTON_SPACING;
@@ -55,8 +54,7 @@ export function FeatureButtonsContainer() {
         positions[button.id] = currentBottom;
         currentBottom += BUTTON_HEIGHT + BUTTON_SPACING;
       });
-      setButtonPositions(positions);
-      return;
+      return positions;
     }
 
     const availableSpacing = (availableHeight - totalButtonsHeight) / (buttons.length - 1);
@@ -68,12 +66,8 @@ export function FeatureButtonsContainer() {
       positions[button.id] = currentBottom;
       currentBottom += BUTTON_HEIGHT + actualSpacing;
     });
-    setButtonPositions(positions);
+    return positions;
   }, [windowHeight]);
-
-  useEffect(() => {
-    calculatePositions();
-  }, [calculatePositions]);
 
   useEffect(() => {
     const handleResize = () => {

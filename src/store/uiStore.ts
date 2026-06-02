@@ -4,7 +4,6 @@ import { ThemeColors, defaultColors } from "@/utils/colorExtractor";
 type ViewType = "home" | "player" | "visualization" | "emotion";
 type ThemeMode = "light" | "dark" | "auto";
 
-// ─── Centralized Panel Names ───────────────────────────────────
 export type PanelName =
   | "queue"
   | "history"
@@ -43,8 +42,46 @@ export type PanelName =
   | "aiSettings"
   | "dnaJournal";
 
-// Full-screen panels that should be mutually exclusive
-const FULLSCREEN_PANELS: PanelName[] = [
+export const PANEL_NAMES: readonly PanelName[] = [
+  "queue",
+  "history",
+  "settings",
+  "sleepTimer",
+  "search",
+  "lyricSettings",
+  "eq",
+  "visualSettings",
+  "keyboardShortcuts",
+  "listeningHistory",
+  "listeningJournal",
+  "dailyRecommendation",
+  "lyricsImport",
+  "offlineCache",
+  "share",
+  "playerSkins",
+  "lyricsSearch",
+  "libraryManager",
+  "lyricsCoverEditor",
+  "smartPlaylist",
+  "backupRestore",
+  "statsAchievements",
+  "professionalMode",
+  "formatConverter",
+  "dsdConverter",
+  "trackCutter",
+  "crossfadeMixer",
+  "fingerprintScanner",
+  "libraryHealth",
+  "professionalTools",
+  "instantMix",
+  "smartMixSession",
+  "smartRandom",
+  "emotionMatrix",
+  "aiSettings",
+  "dnaJournal",
+];
+
+const FULLSCREEN_PANELS: readonly PanelName[] = [
   "emotionMatrix",
   "formatConverter",
   "dsdConverter",
@@ -57,49 +94,7 @@ const FULLSCREEN_PANELS: PanelName[] = [
 ];
 
 function createDefaultPanels(): Record<PanelName, boolean> {
-  const panels = {} as Record<PanelName, boolean>;
-  const allNames: PanelName[] = [
-    "queue",
-    "history",
-    "settings",
-    "sleepTimer",
-    "search",
-    "lyricSettings",
-    "eq",
-    "visualSettings",
-    "keyboardShortcuts",
-    "listeningHistory",
-    "listeningJournal",
-    "dailyRecommendation",
-    "lyricsImport",
-    "offlineCache",
-    "share",
-    "playerSkins",
-    "lyricsSearch",
-    "libraryManager",
-    "lyricsCoverEditor",
-    "smartPlaylist",
-    "backupRestore",
-    "statsAchievements",
-    "professionalMode",
-    "formatConverter",
-    "dsdConverter",
-    "trackCutter",
-    "crossfadeMixer",
-    "fingerprintScanner",
-    "libraryHealth",
-    "professionalTools",
-    "instantMix",
-    "smartMixSession",
-    "smartRandom",
-    "emotionMatrix",
-    "aiSettings",
-    "dnaJournal",
-  ];
-  allNames.forEach((name) => {
-    panels[name] = false;
-  });
-  return panels;
+  return Object.fromEntries(PANEL_NAMES.map((name) => [name, false])) as Record<PanelName, boolean>;
 }
 
 export interface ToastMessage {
@@ -118,7 +113,6 @@ interface UIState {
   modalContent: React.ReactNode | null;
   isTransitioning: boolean;
 
-  // ─── Centralized Panel Management ──────────────────────────
   panels: Record<PanelName, boolean>;
   openPanel: (name: PanelName) => void;
   closePanel: (name: PanelName) => void;
@@ -126,34 +120,27 @@ interface UIState {
   closeAllPanels: () => void;
   isPanelOpen: (name: PanelName) => boolean;
 
-  // 全屏歌词
   isFullscreenLyrics: boolean;
   setIsFullscreenLyrics: (isFullscreen: boolean) => void;
   toggleFullscreenLyrics: () => void;
 
-  // 设置面板
   isSettingsOpen: boolean;
   setIsSettingsOpen: (isOpen: boolean) => void;
 
-  // 歌词设置
   isLyricSettingsOpen: boolean;
   setIsLyricSettingsOpen: (isOpen: boolean) => void;
 
-  // Toast 消息
   toasts: ToastMessage[];
   showToast: (message: string, type?: ToastMessage["type"], duration?: number) => void;
   removeToast: (id: string) => void;
 
-  // EQ 面板
   isEQOpen: boolean;
   setIsEQOpen: (isOpen: boolean) => void;
 
-  // 全屏状态
   isFullscreen: boolean;
   setIsFullscreen: (isFullscreen: boolean) => void;
   toggleFullscreen: () => void;
 
-  // 快捷键帮助
   isKeyboardShortcutsOpen: boolean;
   setIsKeyboardShortcutsOpen: (isOpen: boolean) => void;
   showKeyboardShortcuts: () => void;
@@ -177,19 +164,23 @@ export const useUIStore = create<UIState>((set, get) => ({
   modalContent: null,
   isTransitioning: false,
 
-  // ─── Centralized Panel Management ──────────────────────────
   panels: createDefaultPanels(),
   openPanel: (name) =>
     set((state) => {
       const next = { ...state.panels };
-      // If opening a fullscreen panel, close other fullscreen panels
-      if (FULLSCREEN_PANELS.includes(name)) {
-        FULLSCREEN_PANELS.forEach((p) => {
-          next[p] = false;
+      const isFullscreenPanel = FULLSCREEN_PANELS.includes(name);
+
+      if (isFullscreenPanel) {
+        FULLSCREEN_PANELS.forEach((panelName) => {
+          next[panelName] = false;
         });
       }
+
       next[name] = true;
-      return { panels: next };
+      return {
+        panels: next,
+        isFullscreenLyrics: isFullscreenPanel ? false : state.isFullscreenLyrics,
+      };
     }),
   closePanel: (name) =>
     set((state) => ({
@@ -206,20 +197,16 @@ export const useUIStore = create<UIState>((set, get) => ({
   closeAllPanels: () => set({ panels: createDefaultPanels() }),
   isPanelOpen: (name) => get().panels[name],
 
-  // 全屏歌词
   isFullscreenLyrics: false,
   setIsFullscreenLyrics: (isFullscreen) => set({ isFullscreenLyrics: isFullscreen }),
   toggleFullscreenLyrics: () => set((state) => ({ isFullscreenLyrics: !state.isFullscreenLyrics })),
 
-  // 设置面板
   isSettingsOpen: false,
   setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
 
-  // 歌词设置
   isLyricSettingsOpen: false,
   setIsLyricSettingsOpen: (isOpen) => set({ isLyricSettingsOpen: isOpen }),
 
-  // Toast 消息
   toasts: [],
   showToast: (message, type = "info", duration = 3000) => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -239,36 +226,29 @@ export const useUIStore = create<UIState>((set, get) => ({
     }));
   },
 
-  // EQ 面板
   isEQOpen: false,
   setIsEQOpen: (isOpen) => set({ isEQOpen: isOpen }),
 
-  // 全屏状态
   isFullscreen: false,
   setIsFullscreen: (isFullscreen) => set({ isFullscreen }),
   toggleFullscreen: async () => {
-    // If running in Electron, use the IPC call
     const electronAPI = typeof window !== "undefined" ? window.electronAPI : null;
     if (electronAPI?.toggleFullscreen) {
       const newState = await electronAPI.toggleFullscreen();
       set({ isFullscreen: newState });
     } else {
-      // Browser Fallback with real API call
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch((err) => {
           console.error(`Error attempting to enable full-screen mode: ${err.message}`);
         });
         set({ isFullscreen: true });
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-          set({ isFullscreen: false });
-        }
+      } else if (document.exitFullscreen) {
+        document.exitFullscreen();
+        set({ isFullscreen: false });
       }
     }
   },
 
-  // 快捷键帮助
   isKeyboardShortcutsOpen: false,
   setIsKeyboardShortcutsOpen: (isOpen) => set({ isKeyboardShortcutsOpen: isOpen }),
   showKeyboardShortcuts: () => set({ isKeyboardShortcutsOpen: true }),

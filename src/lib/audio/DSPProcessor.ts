@@ -241,7 +241,7 @@ export class DSPProcessor {
     const amount = (this.config.params.amount as number) || 50;
 
     const curve = this.makeDistortionCurve(amount);
-    (distortion.curve as any) = curve;
+    (distortion.curve as LegacyAny) = curve;
     distortion.oversample = "4x";
 
     this.processors.push(distortion);

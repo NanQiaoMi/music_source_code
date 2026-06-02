@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -23,7 +23,7 @@ export function SmartMixSessionCard() {
   const [knobs, setKnobs] = useState<SmartMixKnobs>(DEFAULT_KNOBS);
   const [selectedSeedId, setSelectedSeedId] = useState<string>("");
   const [playlistName, setPlaylistName] = useState("Smart Mix");
-  const [statusMessage, setStatusMessage] = useState("Choose a seed track to shape a Smart Mix.");
+  const [statusMessage, setStatusMessage] = useState("选择一首种子曲目来创建智能混音。");
   const seedSong = useMemo(
     () => songs.find((song) => song.id === selectedSeedId) || songs[0] || null,
     [selectedSeedId, songs]
@@ -46,21 +46,21 @@ export function SmartMixSessionCard() {
       knobs,
     });
     setPlaylistName(`Smart Mix - ${seedSong.title}`);
-    setStatusMessage(`Mix ready: ${session.songs.length} tracks from ${seedSong.title}`);
+    setStatusMessage(`Mix ready: ${session.songs.length} 首曲目 from ${seedSong.title}`);
   };
 
   const handlePlay = () => {
     if (!currentSession || currentSession.songs.length === 0) return;
     commitToQueue();
     playQueue(currentSession.songs, 0);
-    setStatusMessage(`Queued ${currentSession.songs.length} Smart Mix tracks`);
+    setStatusMessage(`Queued ${currentSession.songs.length} Smart Mix 首曲目`);
   };
 
   const handleRegenerate = () => {
     const session = regenerate();
     if (!session) return;
     const seedTitle = session.songs[0]?.title || "the seed track";
-    setStatusMessage(`Regenerated mix: ${session.songs.length} tracks from ${seedTitle}`);
+    setStatusMessage(`Regenerated mix: ${session.songs.length} 首曲目 from ${seedTitle}`);
   };
 
   const handleSave = () => {
@@ -68,7 +68,7 @@ export function SmartMixSessionCard() {
     const groupId = saveCurrentAsPlaylist(playlistName);
     if (!groupId) return;
     setStatusMessage(
-      `Saved ${currentSession.songs.length} tracks to ${playlistName.trim() || "Smart Mix"}`
+      `Saved ${currentSession.songs.length} 首曲目 to ${playlistName.trim() || "Smart Mix"}`
     );
   };
 
@@ -80,14 +80,14 @@ export function SmartMixSessionCard() {
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">Smart Mix Session</h3>
+            <h3 className="text-lg font-semibold text-white">智能混音</h3>
             <p className="text-sm text-white/50">
-              Shape a queue from one seed track and three simple controls.
+              从一首种子曲目和三个简单控制创建播放队列。
             </p>
           </div>
         </div>
         <div className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/55">
-          {sessionSongs.length > 0 ? `${sessionSongs.length} tracks` : "No mix"}
+          {sessionSongs.length > 0 ? `${sessionSongs.length} 首曲目` : "无混音"}
         </div>
       </div>
 
@@ -102,7 +102,7 @@ export function SmartMixSessionCard() {
       <div className="mb-5 grid gap-3 md:grid-cols-[1fr_auto]">
         <label className="block">
           <span className="mb-1 block text-xs uppercase tracking-wider text-white/40">
-            Seed track
+            种子曲目
           </span>
           <select
             value={seedSong?.id || ""}
@@ -110,7 +110,7 @@ export function SmartMixSessionCard() {
             className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-fuchsia-300/50"
           >
             {songs.length === 0 ? (
-              <option value="">Import songs first</option>
+              <option value="">请先导入歌曲</option>
             ) : (
               songs.slice(0, 80).map((song) => (
                 <option key={song.id} value={song.id}>
@@ -132,7 +132,7 @@ export function SmartMixSessionCard() {
 
       <div className="grid gap-3 md:grid-cols-3">
         <KnobSlider
-          label="Energy"
+          label="能量"
           value={knobs.energy}
           min={0}
           max={1}
@@ -141,7 +141,7 @@ export function SmartMixSessionCard() {
           onChange={(value) => updateKnob("energy", value)}
         />
         <KnobSlider
-          label="Familiarity"
+          label="熟悉度"
           value={knobs.familiarity}
           min={0}
           max={1}
@@ -159,7 +159,7 @@ export function SmartMixSessionCard() {
           className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm text-white/70 transition-colors hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           <RefreshCw className="h-4 w-4" />
-          Regenerate
+          重新生成
         </button>
         <button
           onClick={handlePlay}
@@ -167,14 +167,14 @@ export function SmartMixSessionCard() {
           className="inline-flex items-center gap-2 rounded-xl bg-fuchsia-500/20 px-4 py-2 text-sm text-fuchsia-100 transition-colors hover:bg-fuchsia-500/30 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Play className="h-4 w-4" />
-          Play mix
+          播放混音
         </button>
       </div>
 
       <div className="mt-4 grid gap-2 md:grid-cols-[1fr_auto]">
         <label className="block">
           <span className="mb-1 block text-xs uppercase tracking-wider text-white/40">
-            Save as playlist
+            保存为播放列表
           </span>
           <input
             value={playlistName}
@@ -189,7 +189,7 @@ export function SmartMixSessionCard() {
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm text-white/70 transition-colors hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Save className="h-4 w-4" />
-          Save playlist
+          保存播放列表
         </button>
       </div>
 
@@ -203,7 +203,7 @@ export function SmartMixSessionCard() {
         )}
         {sessionSongs.length > 6 && (
           <div className="text-center text-xs text-white/35">
-            +{sessionSongs.length - 6} more tracks in queue
+            +{sessionSongs.length - 6} 队列中还有更多曲目
           </div>
         )}
       </div>
@@ -255,14 +255,14 @@ function LengthStepper({ value, onChange }: { value: number; onChange: (value: n
   return (
     <div className="rounded-xl border border-white/10 bg-black/20 p-3">
       <div className="mb-2 flex items-center justify-between text-xs text-white/55">
-        <span>Length</span>
-        <span>{value} tracks</span>
+        <span>长度</span>
+        <span>{value} 首曲目</span>
       </div>
       <div className="flex items-center gap-2">
         <button
           onClick={() => change(-1)}
           className="h-9 w-9 rounded-lg bg-white/10 text-white/70 hover:bg-white/15"
-          aria-label="Decrease mix length"
+          aria-label="减少混音长度"
         >
           -
         </button>
@@ -277,7 +277,7 @@ function LengthStepper({ value, onChange }: { value: number; onChange: (value: n
         <button
           onClick={() => change(1)}
           className="h-9 w-9 rounded-lg bg-white/10 text-white/70 hover:bg-white/15"
-          aria-label="Increase mix length"
+          aria-label="增加混音长度"
         >
           +
         </button>
@@ -290,7 +290,7 @@ function EmptyMixState() {
   return (
     <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] p-5 text-center">
       <ListMusic className="mx-auto mb-2 h-5 w-5 text-white/35" />
-      <p className="text-sm text-white/50">Start a mix to preview its first tracks.</p>
+      <p className="text-sm text-white/50">开始混音以预览前几首曲目。</p>
     </div>
   );
 }

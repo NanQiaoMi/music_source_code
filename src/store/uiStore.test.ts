@@ -83,6 +83,15 @@ describe("uiStore", () => {
     expect(useUIStore.getState().panels.share).toBe(true);
   });
 
+  it("closes fullscreen lyrics before opening a fullscreen tool panel", () => {
+    const store = useUIStore.getState();
+
+    store.setIsFullscreenLyrics(true);
+    store.openPanel("formatConverter");
+
+    expect(useUIStore.getState().isFullscreenLyrics).toBe(false);
+    expect(useUIStore.getState().panels.formatConverter).toBe(true);
+  });
   it("manages keyboard shortcut modal flags", () => {
     const store = useUIStore.getState();
 

@@ -100,7 +100,6 @@ export const useAlbumTheme = (coverUrl?: string) => {
 
   useEffect(() => {
     if (!coverUrl) {
-      setThemeColors(DEFAULT_COLORS);
       return;
     }
 
@@ -121,7 +120,7 @@ export const useAlbumTheme = (coverUrl?: string) => {
   }, [coverUrl, extractColors]);
 
   return {
-    themeColors,
-    isLoading,
+    themeColors: coverUrl ? themeColors : DEFAULT_COLORS,
+    isLoading: coverUrl ? isLoading : false,
   };
 };

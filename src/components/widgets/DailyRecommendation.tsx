@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -172,7 +172,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
               type="button"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              aria-label="Refresh recommendations"
+              aria-label="刷新推荐"
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-all hover:bg-white/20 disabled:opacity-50"
             >
               <RefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
@@ -180,7 +180,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
             <button
               type="button"
               onClick={clearNegativeFeedback}
-              aria-label="Clear feedback memory"
+              aria-label="清除反馈记录"
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/60 transition-all hover:bg-white/20 hover:text-white"
             >
               <ThumbsDown className="h-4 w-4" />
@@ -188,7 +188,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close daily recommendations"
+              aria-label="关闭每日推荐"
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
             >
               <X className="h-5 w-5" />
@@ -241,7 +241,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-3 font-semibold text-white transition-all hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Play className="h-5 w-5" />
-            Play all
+            全部播放
           </button>
         </div>
 
@@ -269,7 +269,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
                   <Music className="h-8 w-8 text-white/30" />
                 </div>
-                <p className="mb-2 text-white/60">No recommendations yet</p>
+                <p className="mb-2 text-white/60">暂无推荐</p>
                 <p className="text-sm text-white/40">
                   Play more local music so the recommendation model can learn your taste.
                 </p>
@@ -359,11 +359,11 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                       >
                         <div className="mb-2 flex items-center justify-between gap-3">
                           <span className="text-xs font-semibold uppercase tracking-wider text-white/45">
-                            Ranking signals
+                            排名信号
                           </span>
                           {isPinned && (
                             <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/55">
-                              Pinned
+                              已置顶
                             </span>
                           )}
                         </div>
@@ -397,7 +397,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                           className="flex h-8 items-center gap-1 rounded-full bg-white/10 px-3 text-xs text-white transition hover:bg-white/20"
                         >
                           <Play className="h-3.5 w-3.5" />
-                          Play
+                          播放
                         </button>
                         <button
                           type="button"
@@ -408,7 +408,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                           className="flex h-8 items-center gap-1 rounded-full bg-white/10 px-3 text-xs text-white transition hover:bg-white/20"
                         >
                           <Plus className="h-3.5 w-3.5" />
-                          Queue
+                          队列
                         </button>
                         <button
                           type="button"
@@ -419,7 +419,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                           className="flex h-8 items-center gap-1 rounded-full bg-white/10 px-3 text-xs text-white transition hover:bg-white/20"
                         >
                           <ListPlus className="h-3.5 w-3.5" />
-                          Next
+                          下一首
                         </button>
                         <button
                           type="button"

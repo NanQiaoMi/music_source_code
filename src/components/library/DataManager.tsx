@@ -17,6 +17,7 @@ import {
 import { importLocalSongs, LocalImportResult } from "@/utils/localMusicImport";
 import { formatDuration } from "@/utils/songValidation";
 import Image from "next/image";
+import { DIRECTORY_INPUT_PROPS } from "./directoryInputProps";
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
@@ -265,9 +266,7 @@ export const DataManager: React.FC = () => {
             <input
               ref={folderInputRef}
               type="file"
-              // @ts-expect-error - webkitdirectory is not in standard HTMLInputElement
-              webkitdirectory=""
-              directory=""
+              {...DIRECTORY_INPUT_PROPS}
               multiple
               onChange={handleFolderSelect}
               className="hidden"

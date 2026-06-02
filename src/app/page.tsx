@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
@@ -73,14 +73,12 @@ import { bootstrapApp } from "@/lib/bootstrap";
 export default function Home() {
   const { currentView, isTransitioning } = useUIStore();
   const { blurIntensity, animationSpeed } = useVisualSettingsStore();
-  const [mounted, setMounted] = useState(false);
 
   // Initialize Global Services & Hooks
   useDynamicTheme();
   useKeyboardShortcuts();
 
   useEffect(() => {
-    setMounted(true);
     bootstrapApp().then(() => {
       // Prefetch heavy views in background after core is ready
       import("@/components/layout/PlayerView");
@@ -88,8 +86,6 @@ export default function Home() {
       import("@/components/features-v7/FeatureButtonsContainer");
     });
   }, []);
-
-  if (!mounted) return null;
 
   return (
     <main className="relative w-full h-full overflow-hidden bg-black fixed inset-0">

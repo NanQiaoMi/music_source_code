@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Scroll, Sparkles, X, Loader2, Quote, Brain, RotateCcw } from "lucide-react";
 import { useKnowledgeStore } from "@/store/knowledgeStore";
@@ -41,19 +41,22 @@ export const MusicBackstory: React.FC = () => {
         .slice(0, 1200);
     }
     return "";
-  }, [currentSong?.id, currentSong?.lyrics, loadLyric]);
+  }, [currentSong, loadLyric]);
 
   const lyricCount = lyricsText.length;
 
-  const handleFetch = (force = false) => {
-    if (currentSong) {
-      if (activeTab === "backstory") {
-        fetchBackstory(currentSong.title, currentSong.artist, force);
-      } else {
-        fetchMetaphors(currentSong.title, currentSong.artist, lyricsText, force);
+  const handleFetch = useCallback(
+    (force = false) => {
+      if (currentSong) {
+        if (activeTab === "backstory") {
+          fetchBackstory(currentSong.title, currentSong.artist, force);
+        } else {
+          fetchMetaphors(currentSong.title, currentSong.artist, lyricsText, force);
+        }
       }
-    }
-  };
+    },
+    [activeTab, currentSong, fetchBackstory, fetchMetaphors, lyricsText]
+  );
 
   const handleReveal = () => {
     handleFetch();
@@ -61,10 +64,10 @@ export const MusicBackstory: React.FC = () => {
   };
 
   useEffect(() => {
-    if (isVisible && currentSong) {
+    if (isVisible) {
       handleFetch();
     }
-  }, [activeTab, isVisible, currentSong?.id]);
+  }, [handleFetch, isVisible]);
 
   if (!currentSong) return null;
 
@@ -109,7 +112,7 @@ export const MusicBackstory: React.FC = () => {
                   exit={{ opacity: 0, x: -10, width: 0 }}
                   className="text-[11px] font-black tracking-[0.2em] text-white/80 uppercase whitespace-nowrap overflow-hidden"
                 >
-                  {activeTab === "backstory" ? "考古 / ARCHIVE" : "意象 / POETRY"}
+                  {activeTab === "backstory" ? "考古 / 档案" : "意象 / 诗意"}
                 </motion.span>
               )}
             </AnimatePresence>
@@ -177,7 +180,7 @@ export const MusicBackstory: React.FC = () => {
                       <div className="flex items-center gap-2 mb-2">
                         <Scroll className="w-3 h-3 text-purple-400" />
                         <span className="text-[9px] font-black text-purple-400/60 uppercase tracking-widest">
-                          Historical context
+                          历史背景
                         </span>
                       </div>
                       <p className="text-[15px] text-white/90 leading-relaxed font-serif italic">
@@ -190,12 +193,12 @@ export const MusicBackstory: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <Quote className="w-3 h-3 text-blue-400" />
                           <span className="text-[9px] font-black text-blue-400/60 uppercase tracking-widest">
-                            Poetic analysis
+                            诗意分析
                           </span>
                         </div>
                         {lyricCount > 0 && (
                           <span className="text-[8px] text-white/20 font-medium uppercase tracking-tighter">
-                            Linked: {lyricCount} chars
+                            关联： {lyricCount} chars
                           </span>
                         )}
                       </div>
@@ -253,11 +256,11 @@ export const MusicBackstory: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-3 h-3 text-purple-500" />
                     <span className="text-[8px] font-black tracking-widest uppercase text-white">
-                      Mimi Intelligence Protocol
+                      Mimi 智能协议
                     </span>
                   </div>
                   <span className="text-[8px] font-medium tracking-widest uppercase text-white">
-                    ID: {currentKey.slice(0, 8)}
+                    编号： {currentKey.slice(0, 8)}
                   </span>
                 </div>
               </div>

@@ -93,6 +93,47 @@ export const useListeningHistory = () => {
     }
   }, []);
 
+  const updateArtistStats = useCallback((song: Song) => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const data = localStorage.getItem(ARTIST_STATS_KEY);
+      const stats = data ? JSON.parse(data) : {};
+      const artist = song.artist || "Unknown Artist";
+
+      if (!stats[artist]) {
+        stats[artist] = {
+          playCount: 0,
+          totalListenTime: 0,
+          songs: [],
+        };
+      }
+
+      stats[artist].playCount += 1;
+      if (!stats[artist].songs.includes(song.id)) {
+        stats[artist].songs.push(song.id);
+      }
+
+      // Prune artist stats if needed
+      let finalStats = stats;
+      const artistEntries = Object.entries(stats);
+      if (artistEntries.length > MAX_ARTIST_STATS) {
+        finalStats = Object.fromEntries(
+          artistEntries
+            .sort(([, a]: LegacyAny, [, b]: LegacyAny) => b.playCount - a.playCount)
+            .slice(0, MAX_ARTIST_STATS)
+        );
+      }
+
+      localStorage.setItem(ARTIST_STATS_KEY, JSON.stringify(finalStats));
+    } catch (error) {
+      if (error instanceof Error && error.name === "QuotaExceededError") {
+        localStorage.removeItem(ARTIST_STATS_KEY); // Clear it if it's too big
+      }
+      console.error("Failed to update artist stats:", error);
+    }
+  }, []);
+
   const recordPlay = useCallback(
     (song: Song) => {
       if (!song || !song.id) return;
@@ -130,7 +171,7 @@ export const useListeningHistory = () => {
       saveHistoryToStorage(history);
       updateArtistStats(song);
     },
-    [getHistoryFromStorage, saveHistoryToStorage]
+    [getHistoryFromStorage, saveHistoryToStorage, updateArtistStats]
   );
 
   const updateListenTime = useCallback(
@@ -226,47 +267,6 @@ export const useListeningHistory = () => {
     saveHistoryToStorage({});
   }, [saveHistoryToStorage]);
 
-  const updateArtistStats = useCallback((song: Song) => {
-    if (typeof window === "undefined") return;
-
-    try {
-      const data = localStorage.getItem(ARTIST_STATS_KEY);
-      const stats = data ? JSON.parse(data) : {};
-      const artist = song.artist || "Unknown Artist";
-
-      if (!stats[artist]) {
-        stats[artist] = {
-          playCount: 0,
-          totalListenTime: 0,
-          songs: [],
-        };
-      }
-
-      stats[artist].playCount += 1;
-      if (!stats[artist].songs.includes(song.id)) {
-        stats[artist].songs.push(song.id);
-      }
-
-      // Prune artist stats if needed
-      let finalStats = stats;
-      const artistEntries = Object.entries(stats);
-      if (artistEntries.length > MAX_ARTIST_STATS) {
-        finalStats = Object.fromEntries(
-          artistEntries
-            .sort(([, a]: any, [, b]: any) => b.playCount - a.playCount)
-            .slice(0, MAX_ARTIST_STATS)
-        );
-      }
-
-      localStorage.setItem(ARTIST_STATS_KEY, JSON.stringify(finalStats));
-    } catch (error) {
-      if (error instanceof Error && error.name === "QuotaExceededError") {
-        localStorage.removeItem(ARTIST_STATS_KEY); // Clear it if it's too big
-      }
-      console.error("Failed to update artist stats:", error);
-    }
-  }, []);
-
   useEffect(() => {
     if (currentSong && isPlaying) {
       const timeout = setTimeout(() => {
@@ -274,7 +274,7 @@ export const useListeningHistory = () => {
       }, 5000);
       return () => clearTimeout(timeout);
     }
-  }, [currentSong?.id, isPlaying, recordPlay]);
+  }, [currentSong, isPlaying, recordPlay]);
 
   return {
     recordPlay,
