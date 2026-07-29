@@ -114,7 +114,10 @@ export async function processAudio(file: File, modelId: string): Promise<Record<
   );
 }
 
-export async function synthesizeSpeech(text: string, modelId: string): Promise<Record<string, unknown>> {
+export async function synthesizeSpeech(
+  text: string,
+  modelId: string
+): Promise<Record<string, unknown>> {
   return request<Record<string, unknown>>("/api/tts/synthesize", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

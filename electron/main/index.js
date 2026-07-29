@@ -5,6 +5,7 @@ const http = require("node:http");
 const nodeNet = require("node:net");
 const { pathToFileURL } = require("node:url");
 const { spawn } = require("child_process");
+const { resolveStaticPath } = require("./staticPath");
 const pluginManager = require("./pluginManager");
 
 const DEFAULT_BACKEND_HOST = "127.0.0.1";
@@ -34,36 +35,9 @@ let backendState = {
 
 const outDirectory = () => path.join(__dirname, "../../out");
 
-function resolveStaticPath(requestUrl) {
-  const url = new URL(requestUrl);
-  if (url.protocol !== "app:" || url.hostname !== "app") {
-    return null;
-  }
-
-  let pathname;
-  try {
-    pathname = decodeURIComponent(url.pathname);
-  } catch {
-    return null;
-  }
-
-  const routeMap = {
-    "/": "index.html",
-    "/data-manager": "data-manager.html",
-    "/data-manager/": "data-manager.html",
-  };
-  const relativePath = routeMap[pathname] || pathname.replace(/^\/+/, "");
-  if (!relativePath || relativePath.includes("..")) return null;
-
-  const root = path.resolve(outDirectory());
-  const target = path.resolve(root, relativePath);
-  if (target !== root && !target.startsWith(`${root}${path.sep}`)) return null;
-  return target;
-}
-
 async function registerAppProtocol() {
   protocol.handle("app", async (request) => {
-    const target = resolveStaticPath(request.url);
+    const target = resolveStaticPath(request.url, outDirectory());
     if (!target || !fs.existsSync(target) || !fs.statSync(target).isFile()) {
       return new Response("Not found", { status: 404 });
     }
@@ -413,5 +387,3 @@ app.on("before-quit", () => {
   stopBackend();
   tray?.destroy();
 });
-
-module.exports = { resolveStaticPath };
