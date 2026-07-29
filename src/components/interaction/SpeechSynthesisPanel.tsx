@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Mic, Volume2, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
+import { getBackendErrorMessage, synthesizeSpeech } from "@/lib/backendClient";
 
 export const SpeechSynthesisPanel: React.FC = () => {
   const [text, setText] = useState("");
@@ -20,24 +21,15 @@ export const SpeechSynthesisPanel: React.FC = () => {
     setSuccess(false);
 
     try {
-      const response = await fetch("http://localhost:8000/api/tts/synthesize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          model_id: "sambert-zh",
-        }),
-      });
-
-      const data = await response.json();
+      const data = await synthesizeSpeech(text, "sambert-zh");
 
       if (data.success) {
         setSuccess(true);
       } else {
-        setError(data.error_message || "合成失败");
+        setError(getBackendErrorMessage(data.error_message || "合成失败"));
       }
-    } catch {
-      setError("网络错误，请确保后端服务已启动");
+    } catch (requestError) {
+      setError(getBackendErrorMessage(requestError, "网络错误，请确保后端服务已启动"));
     } finally {
       setIsProcessing(false);
     }
@@ -98,7 +90,7 @@ export const SpeechSynthesisPanel: React.FC = () => {
             className="flex items-center gap-3 p-4 rounded-xl bg-pink-500/10 border border-pink-500/20"
           >
             <CheckCircle className="w-5 h-5 text-pink-400" />
-            <span className="text-white font-medium">合成完成！（模拟模式）</span>
+            <span className="text-white font-medium">合成完成</span>
           </motion.div>
         )}
       </div>

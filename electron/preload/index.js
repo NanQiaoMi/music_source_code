@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   saveEmotions: (data) => ipcRenderer.invoke("save-emotions", data),
   loadEmotions: () => ipcRenderer.invoke("load-emotions"),
   toggleFullscreen: () => ipcRenderer.invoke("toggle-fullscreen"),
+  getBackendStatus: () => ipcRenderer.invoke("get-backend-status"),
   // Plugin System
   searchPlugins: (query, page, type) => ipcRenderer.invoke("plugins:search", query, page, type),
   getMediaSource: (musicItem, quality) =>

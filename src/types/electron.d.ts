@@ -1,4 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+export interface BackendStatus {
+  status: "disabled" | "external" | "starting" | "ready" | "stopping" | "error";
+  baseUrl: string | null;
+  error: string | null;
+}
+
 export interface ElectronAPI {
   toggleDesktopLyrics: () => Promise<boolean>;
   isDesktopLyricsOpen: () => Promise<boolean>;
@@ -10,6 +16,7 @@ export interface ElectronAPI {
   ) => Promise<{ success: boolean; error?: string }>;
   loadEmotions: () => Promise<Record<string, { x: number; y: number }>>;
   toggleFullscreen: () => Promise<boolean>;
+  getBackendStatus: () => Promise<BackendStatus>;
   // Plugin System
   searchPlugins: (query: string, page?: number, type?: string) => Promise<any[]>;
   getMediaSource: (musicItem: any, quality?: string) => Promise<any>;

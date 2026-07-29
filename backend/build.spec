@@ -1,39 +1,43 @@
 # -*- mode: python ; coding: utf-8 -*-
-import sys
 from pathlib import Path
 
 block_cipher = None
 backend_dir = Path(SPECPATH)
 
+# The lightweight backend only ships its Python API and configuration. Large AI
+# runtimes remain optional and are intentionally not bundled in this release.
 a = Analysis(
-    [str(backend_dir / 'run.py')],
+    [str(backend_dir / "run.py")],
     pathex=[str(backend_dir)],
     binaries=[],
     datas=[
-        (str(backend_dir / 'api'), 'api'),
-        (str(backend_dir / 'core'), 'core'),
-        (str(backend_dir / 'models'), 'models'),
+        (str(backend_dir / "api"), "api"),
+        (str(backend_dir / "core"), "core"),
+        (str(backend_dir / "models"), "models"),
     ],
     hiddenimports=[
-        'uvicorn.logging',
-        'uvicorn.loops',
-        'uvicorn.loops.auto',
-        'uvicorn.protocols',
-        'uvicorn.protocols.http',
-        'uvicorn.protocols.http.auto',
-        'uvicorn.protocols.websockets',
-        'uvicorn.protocols.websockets.auto',
-        'uvicorn.lifespan',
-        'uvicorn.lifespan.on',
-        'multipart',
+        "api.capabilities",
+        "api.health",
+        "core.config",
+        "core.model_manager",
+        "uvicorn.logging",
+        "uvicorn.loops",
+        "uvicorn.loops.auto",
+        "uvicorn.protocols",
+        "uvicorn.protocols.http",
+        "uvicorn.protocols.http.auto",
+        "uvicorn.protocols.websockets",
+        "uvicorn.protocols.websockets.auto",
+        "uvicorn.lifespan",
+        "uvicorn.lifespan.on",
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'torch', 'tensorflow', 'transformers', 'modelscope',
-        'librosa', 'opencv-python', 'funasr', 'kantts',
-        'matplotlib', 'pillow',
+        "torch", "tensorflow", "transformers", "modelscope",
+        "librosa", "opencv-python", "funasr", "kantts",
+        "matplotlib", "pillow",
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -50,7 +54,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='backend',
+    name="backend",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -63,5 +67,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(backend_dir.parent / 'public' / 'logo.ico') if (backend_dir.parent / 'public' / 'logo.ico').exists() else None,
+    icon=str(backend_dir.parent / "public" / "app-icon.ico"),
 )

@@ -49,7 +49,16 @@
 
 ---
 
-## 🚀 快速上手
+## Windows 桌面端构建（v0.2.1）
+
+Windows x64 桌面构建同时生成 portable EXE 和 NSIS 安装程序。完整构建必须在 Windows PowerShell 执行：
+
+```powershell
+./scripts/build-desktop-win.ps1 -Clean
+```
+
+产物位于 `dist-electron/`，脚本会生成 `SHA256SUMS.txt` 并检查 Electron 包内的 `resources/backend.exe`。本版本不签名，Windows 可能显示 SmartScreen/Unknown Publisher 提示。模型不会随包下载或首次启动自动下载，当前未接入真实 AI 推理运行时的能力会显示为不可用。
+
 
 ### 环境要求
 

@@ -2,8 +2,8 @@
 打包入口文件 - 用于 PyInstaller
 启动 FastAPI 后端服务，隐藏控制台窗口
 """
-import sys
 import os
+import sys
 
 # 设置环境变量
 os.environ["PYINSTALLER_BUILD"] = "1"
@@ -12,10 +12,11 @@ os.environ["PYINSTALLER_BUILD"] = "1"
 def run_server():
     """运行 FastAPI 服务器"""
     import uvicorn
+    from main import app
     from core.config import settings
 
     uvicorn.run(
-        "main:app",
+        app,
         host=settings.host,
         port=settings.port,
         reload=False,
@@ -26,7 +27,6 @@ def run_server():
 
 if __name__ == "__main__":
     # 修复打包后 sys.stdout/stderr 为 None 导致 uvicorn 崩溃的问题
-    # AttributeError: 'NoneType' object has no attribute 'isatty'
     if sys.stdout is None:
         sys.stdout = open(os.devnull, "w")
     if sys.stderr is None:

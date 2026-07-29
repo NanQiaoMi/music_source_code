@@ -3,6 +3,7 @@
 import React, { useState, useRef } from "react";
 import { Music, FileAudio, Upload, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
+import { getBackendErrorMessage, processAudio } from "@/lib/backendClient";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 
 export const AudioProcessingPanel: React.FC = () => {
@@ -40,27 +41,16 @@ export const AudioProcessingPanel: React.FC = () => {
     setResult(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-
-      const response = await fetch(
-        `http://localhost:8000/api/audio/process?model_id=${selectedModel}`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
+      const data = await processAudio(selectedFile, selectedModel);
 
       if (data.success && data.features) {
-        setResult(data.features);
+        setResult(data.features as { genre: string; confidence: number });
         reportUsage("audio_processing");
       } else {
-        setError(data.error_message || "处理失败");
+        setError(getBackendErrorMessage(data.error_message || "处理失败"));
       }
-    } catch {
-      setError("网络错误，请确保后端服务已启动");
+    } catch (requestError) {
+      setError(getBackendErrorMessage(requestError, "网络错误，请确保后端服务已启动"));
     } finally {
       setIsProcessing(false);
     }

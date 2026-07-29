@@ -3,6 +3,7 @@
 import React, { useState, useRef } from "react";
 import { Image, Upload, Loader2, CheckCircle, AlertCircle, Camera } from "lucide-react";
 import { motion } from "framer-motion";
+import { getBackendErrorMessage, processVision } from "@/lib/backendClient";
 
 export const VisionProcessingPanel: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -40,26 +41,22 @@ export const VisionProcessingPanel: React.FC = () => {
     setResult(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-
-      const response = await fetch(
-        `http://localhost:8000/api/vision/process?model_id=${selectedModel}`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
+      const data = await processVision(selectedFile, selectedModel);
 
       if (data.success && data.vision) {
-        setResult(data.vision);
+        setResult(
+          data.vision as {
+            top_label: string;
+            confidence: number;
+            labels: string[];
+            scores: number[];
+          }
+        );
       } else {
-        setError(data.error_message || "处理失败");
+        setError(getBackendErrorMessage(data.error_message || "处理失败"));
       }
-    } catch {
-      setError("网络错误，请确保后端服务已启动");
+    } catch (requestError) {
+      setError(getBackendErrorMessage(requestError, "网络错误，请确保后端服务已启动"));
     } finally {
       setIsProcessing(false);
     }

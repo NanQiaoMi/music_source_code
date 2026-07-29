@@ -30,6 +30,49 @@ jobs:
       - name: Run Tests (Vitest)
         run: npm run test
 
+  desktop-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Install backend build dependencies
+        run: |
+          python -m pip install -r backend/requirements-minimal.txt
+          python -m pip install pyinstaller
+
+      - name: Build Windows desktop artifacts
+        shell: pwsh
+        run: ./scripts/build-desktop-win.ps1 -SkipInstall
+        env:
+          VIBE_SKIP_PYTHON_INSTALL: "1"
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CSC_LINK: ""
+          CSC_KEY_PASSWORD: ""
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mimimusic-windows-x64-v0.2.1
+          path: |
+            dist-electron/*.exe
+            dist-electron/SHA256SUMS.txt
+          if-no-files-found: error
+
   deploy-to-vercel:
     needs: build-and-test
     runs-on: ubuntu-latest
