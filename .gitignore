@@ -88,6 +88,10 @@ next-env.d.ts
 __pycache__/
 *.pyc
 
+# PyInstaller build intermediates and dist output
+/backend/build/
+/backend/dist/
+
 # Local logs and temporary results
 *.log
 eslint-output.txt
