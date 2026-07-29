@@ -224,9 +224,9 @@ export function useDynamicTheme() {
   const extractThemeColors = useCallback(
     async (imageUrl: string | undefined) => {
       if (!isDynamicTheme || !imageUrl) {
-        if (themeColors !== defaultColors) {
-          animateColorTransition(currentColorsRef.current, defaultColors);
-        }
+        // When dynamic theme is disabled, we should not aggressively revert to defaultColors,
+        // because the user might have applied a static custom skin.
+        // We simply stop extracting and let the current UIStore themeColors persist.
         return;
       }
 

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -38,7 +38,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
     addToQueue,
     moveToNext,
     clearAfterCurrent,
-    bulk移除,
+    bulkRemove,
     dedupeQueue,
     shuffleAfterCurrent,
   } = useQueueStore();
@@ -143,8 +143,8 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
     [queue]
   );
 
-  const handleBulkDelete = () => {
-    bulk移除(selectedOrderedIds);
+  const handleBulkRemove = () => {
+    bulkRemove(selectedOrderedIds);
     clearSelection();
   };
 
@@ -188,7 +188,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
             <CornerDownRight className="h-3.5 w-3.5" />
             下一首播放
           </GlassButton>
-          <GlassButton size="sm" variant="primary" onClick={handleBulkDelete}>
+          <GlassButton size="sm" variant="primary" onClick={handleBulkRemove}>
             <Trash2 className="h-3.5 w-3.5" />
             移除
           </GlassButton>

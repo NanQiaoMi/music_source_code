@@ -30,6 +30,11 @@ interface AIState {
   fetchModels: (id: string) => Promise<string[]>;
 }
 
+type PersistedAIState = Pick<AIState, "configs" | "activeConfigId" | "isEnabled">;
+
+export const AI_STORE_KEY = "mimi-ai-store";
+const AI_STORE_VERSION = 1;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -40,6 +45,60 @@ function extractModelIds(payload: unknown): string[] {
   return payload.data
     .map((model) => (isRecord(model) ? model.id : null))
     .filter((id): id is string => typeof id === "string" && id.trim().length > 0);
+}
+
+function isAIConfigStatus(value: unknown): value is AIConfig["status"] {
+  return value === "idle" || value === "testing" || value === "online" || value === "offline";
+}
+
+function normalizePersistedAIConfig(value: unknown): AIConfig | null {
+  if (
+    !isRecord(value) ||
+    typeof value.baseUrl !== "string" ||
+    typeof value.apiKey !== "string" ||
+    typeof value.model !== "string" ||
+    typeof value.name !== "string" ||
+    typeof value.id !== "string"
+  ) {
+    return null;
+  }
+
+  const config: AIConfig = {
+    baseUrl: value.baseUrl,
+    apiKey: value.apiKey,
+    model: value.model,
+    name: value.name,
+    id: value.id,
+    status: isAIConfigStatus(value.status) ? value.status : "idle",
+  };
+
+  if (typeof value.lastTested === "number" && Number.isFinite(value.lastTested)) {
+    config.lastTested = value.lastTested;
+  }
+
+  return config;
+}
+
+function normalizePersistedAIState(value: unknown): PersistedAIState | null {
+  if (!isRecord(value) || !Array.isArray(value.configs)) return null;
+
+  const normalizedConfigs = value.configs
+    .map(normalizePersistedAIConfig)
+    .filter((config): config is AIConfig => config !== null);
+  if (normalizedConfigs.length !== value.configs.length) return null;
+
+  const requestedActiveConfigId =
+    typeof value.activeConfigId === "string" ? value.activeConfigId : null;
+
+  return {
+    configs: normalizedConfigs,
+    activeConfigId:
+      requestedActiveConfigId &&
+      normalizedConfigs.some((config) => config.id === requestedActiveConfigId)
+        ? requestedActiveConfigId
+        : null,
+    isEnabled: typeof value.isEnabled === "boolean" ? value.isEnabled : true,
+  };
 }
 
 export const useAIStore = create<AIState>()(
@@ -128,7 +187,31 @@ export const useAIStore = create<AIState>()(
       },
     }),
     {
-      name: "mimi-ai-store",
+      name: AI_STORE_KEY,
+      version: AI_STORE_VERSION,
+      partialize: (state): PersistedAIState => ({
+        configs: state.configs,
+        activeConfigId: state.activeConfigId,
+        isEnabled: state.isEnabled,
+      }),
+      migrate: (persistedState, version) => {
+        if (version > AI_STORE_VERSION) {
+          throw new Error(
+            `Cannot migrate AI store version ${version} to older version ${AI_STORE_VERSION}`
+          );
+        }
+
+        const normalizedState = normalizePersistedAIState(persistedState);
+        if (!normalizedState) {
+          throw new Error(`Cannot migrate malformed AI store version ${version}`);
+        }
+
+        return normalizedState;
+      },
+      merge: (persistedState, currentState) => {
+        const normalizedState = normalizePersistedAIState(persistedState);
+        return normalizedState ? { ...currentState, ...normalizedState } : currentState;
+      },
     }
   )
 );

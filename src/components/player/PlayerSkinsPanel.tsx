@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   Palette,
@@ -18,6 +18,10 @@ import {
   Droplet,
   Zap,
   Trash2,
+  Paintbrush,
+  Disc,
+  Layout,
+  Plus
 } from "lucide-react";
 import {
   HALO_SKINS,
@@ -29,6 +33,7 @@ import {
 import { usePerformanceV8Store } from "@/store/performanceV8Store";
 import { usePlayerSkinStore } from "@/store/playerSkinStore";
 import { useVisualSettingsStore, type ThemeConfig } from "@/store/visualSettingsStore";
+import { useUIStore } from "@/store/uiStore";
 
 export interface PlayerSkin {
   id: string;
@@ -126,22 +131,39 @@ const BUILT_IN_SKINS: PlayerSkin[] = [
 
 const SKINS_STORAGE_KEY = "player_custom_skins";
 
-function applySkinVariables(skin: PlayerSkin) {
-  document.documentElement.style.setProperty("--theme-primary", skin.primary);
-  document.documentElement.style.setProperty("--theme-secondary", skin.secondary);
-  document.documentElement.style.setProperty("--theme-accent", skin.accent);
-  document.documentElement.style.setProperty("--theme-background", skin.background);
-}
-
 export const usePlayerSkins = () => {
   const activeBaseSkinId = usePlayerSkinStore((state) => state.activeBaseSkinId);
   const setActiveBaseSkinId = usePlayerSkinStore((state) => state.setActiveBaseSkinId);
+  const { setThemeColors, setIsDynamicTheme } = useUIStore();
   const [customSkins, setCustomSkins] = useState<PlayerSkin[]>([]);
-  const currentSkin = React.useMemo(
+
+  const currentSkin = useMemo(
     () =>
       [...BUILT_IN_SKINS, ...customSkins].find((skin) => skin.id === activeBaseSkinId) ??
       BUILT_IN_SKINS[0],
     [activeBaseSkinId, customSkins]
+  );
+
+  const applySkinVariables = useCallback(
+    (skin: PlayerSkin) => {
+      document.documentElement.style.setProperty("--theme-primary", skin.primary);
+      document.documentElement.style.setProperty("--theme-secondary", skin.secondary);
+      document.documentElement.style.setProperty("--theme-accent", skin.accent);
+      document.documentElement.style.setProperty("--theme-background", skin.background);
+
+      setThemeColors({
+        primary: skin.primary,
+        secondary: skin.secondary,
+        accent: skin.accent,
+        background: skin.background,
+        surface: skin.background,
+        complementary: skin.secondary,
+        gradient: [skin.primary, skin.secondary, skin.accent],
+        text: "rgb(255, 255, 255)",
+        textMuted: "rgba(255, 255, 255, 0.6)",
+      });
+    },
+    [setThemeColors]
   );
 
   const loadCustomSkins = useCallback(() => {
@@ -174,27 +196,29 @@ export const usePlayerSkins = () => {
         const newCustomSkins = customSkins.filter((s) => s.id !== skinId);
         setCustomSkins(newCustomSkins);
         localStorage.setItem(SKINS_STORAGE_KEY, JSON.stringify(newCustomSkins));
+        // Reset if active skin is deleted
+        if (activeBaseSkinId === skinId) {
+          setActiveBaseSkinId(BUILT_IN_SKINS[0].id);
+        }
       } catch (error) {
         console.error("Error deleting custom skin:", error);
       }
     },
-    [customSkins]
+    [customSkins, activeBaseSkinId, setActiveBaseSkinId]
   );
 
   const applySkin = useCallback(
     (skin: PlayerSkin) => {
       setActiveBaseSkinId(skin.id);
-      document.documentElement.style.setProperty("--theme-primary", skin.primary);
-      document.documentElement.style.setProperty("--theme-secondary", skin.secondary);
-      document.documentElement.style.setProperty("--theme-accent", skin.accent);
-      document.documentElement.style.setProperty("--theme-background", skin.background);
+      setIsDynamicTheme(false);
+      applySkinVariables(skin);
     },
-    [setActiveBaseSkinId]
+    [setActiveBaseSkinId, setIsDynamicTheme, applySkinVariables]
   );
 
   React.useEffect(() => {
     applySkinVariables(currentSkin);
-  }, [currentSkin]);
+  }, [currentSkin, applySkinVariables]);
 
   return {
     currentSkin,
@@ -223,9 +247,10 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
     applySkin,
   } = usePlayerSkins();
 
+  const [activeTab, setActiveTab] = useState<"skins" | "halo" | "themes">("skins");
   const [showCustomEditor, setShowCustomEditor] = useState(false);
   const [customSkinDraft, setCustomSkinDraft] = useState<Partial<PlayerSkin>>({});
-  const [showThemeManager, setShowThemeManager] = useState(false);
+
   const activeHaloId = usePlayerSkinStore((state) => state.activeHaloId);
   const setActiveHaloId = usePlayerSkinStore((state) => state.setActiveHaloId);
 
@@ -240,6 +265,10 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
   const { config: performanceConfig } = usePerformanceV8Store();
 
   const [builtInThemes] = useState<ThemeConfig[]>(() => getBuiltInThemes());
+
+  React.useEffect(() => {
+    loadCustomSkins();
+  }, [loadCustomSkins]);
 
   const handleExportTheme = () => {
     const json = exportCurrentTheme("自定义主题");
@@ -272,21 +301,9 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
     input.click();
   };
 
-  React.useEffect(() => {
-    loadCustomSkins();
-  }, [loadCustomSkins]);
-
   const handleApplySkin = (skin: PlayerSkin) => {
     applySkin(skin);
   };
-
-  const activeHalo = getHaloSkin(activeHaloId);
-  const haloRenderMode = getHaloRenderMode({
-    targetFps: performanceConfig.targetFPS,
-    reducedMotion:
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true,
-  });
 
   const handleSaveCustomSkin = () => {
     if (customSkinDraft.name && customSkinDraft.primary && customSkinDraft.background) {
@@ -306,6 +323,14 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
     }
   };
 
+  const activeHalo = getHaloSkin(activeHaloId);
+  const haloRenderMode = getHaloRenderMode({
+    targetFps: performanceConfig.targetFPS,
+    reducedMotion:
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true,
+  });
+
   const colorPresets = [
     { icon: Sparkles, color: "rgb(147, 51, 234)", label: "紫色" },
     { icon: Sun, color: "rgb(251, 146, 60)", label: "橙色" },
@@ -320,395 +345,480 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
   if (!isOpen) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
-    >
+    <AnimatePresence>
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-3xl max-h-[85vh] bg-gradient-to-br from-slate-900/90 to-slate-800/90 backdrop-blur-2xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden flex flex-col"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xl"
+        onClick={onClose}
       >
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA2MCAwIEwgMCAwIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30 pointer-events-none" />
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0, y: 10 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.95, opacity: 0, y: 10 }}
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          onClick={(e) => e.stopPropagation()}
+          className="relative flex w-[900px] h-[600px] max-w-[95vw] max-h-[90vh] bg-[#1a1a1f]/80 backdrop-blur-3xl rounded-[32px] border border-white/10 shadow-[0_32px_80px_rgba(0,0,0,0.5)] overflow-hidden"
+        >
+          {/* Subtle noise texture */}
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none mix-blend-overlay" />
 
-        <div className="flex flex-col">
-          <div className="flex items-center justify-between p-6 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center">
-                <Palette className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-white text-xl font-semibold">播放器皮肤</h2>
-                <p className="text-white/40 text-xs">自定义播放器外观主题</p>
-              </div>
+          {/* Sidebar */}
+          <div className="w-[220px] shrink-0 border-r border-white/5 bg-white/[0.02] flex flex-col pt-8 pb-6 px-4">
+            <h2 className="text-xl font-bold text-white px-3 mb-6 tracking-wide">外观设置</h2>
+            <div className="space-y-1">
+              <SidebarItem
+                icon={<Paintbrush className="w-4 h-4" />}
+                label="播放器皮肤"
+                isActive={activeTab === "skins"}
+                onClick={() => setActiveTab("skins")}
+              />
+              <SidebarItem
+                icon={<Disc className="w-4 h-4" />}
+                label="光晕动效 (Halo)"
+                isActive={activeTab === "halo"}
+                onClick={() => setActiveTab("halo")}
+              />
+              <SidebarItem
+                icon={<Layout className="w-4 h-4" />}
+                label="应用主题"
+                isActive={activeTab === "themes"}
+                onClick={() => setActiveTab("themes")}
+              />
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowThemeManager(!showThemeManager)}
-                className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm flex items-center gap-2 transition-colors"
-              >
-                <Palette className="w-4 h-4" />
-                主题
-              </button>
-              <button
-                onClick={() => setShowCustomEditor(true)}
-                className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm flex items-center gap-2 transition-colors"
-              >
-                <Save className="w-4 h-4" />
-                创建皮肤
-              </button>
+
+            <div className="mt-auto">
               <button
                 onClick={onClose}
-                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-white/60 hover:text-white hover:bg-white/10 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
+                <span className="text-sm font-medium">关闭面板</span>
               </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar min-h-0">
-            {showCustomEditor ? (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-white font-semibold">创建自定义皮肤</h3>
-                  <button
-                    onClick={() => {
-                      setShowCustomEditor(false);
-                      setCustomSkinDraft({});
-                    }}
-                    className="text-white/60 hover:text-white text-sm"
-                  >
-                    取消
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-white/60 text-sm mb-2 block">皮肤名称</label>
-                    <input
-                      type="text"
-                      value={customSkinDraft.name || ""}
-                      onChange={(e) =>
-                        setCustomSkinDraft({ ...customSkinDraft, name: e.target.value })
-                      }
-                      placeholder="我的自定义皮肤"
-                      className="w-full px-4 py-3 bg-white/5 rounded-xl text-white placeholder-white/40 outline-none focus:ring-2 focus:ring-purple-500/50"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-white/60 text-sm mb-2 block">主题色</label>
-                    <div className="flex flex-wrap gap-2">
-                      {colorPresets.map((preset) => (
-                        <button
-                          key={preset.label}
-                          onClick={() =>
-                            setCustomSkinDraft({
-                              ...customSkinDraft,
-                              primary: preset.color,
-                              secondary: preset.color,
-                              accent: preset.color,
-                            })
-                          }
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
-                            customSkinDraft.primary === preset.color
-                              ? "ring-2 ring-white scale-110"
-                              : ""
-                          }`}
-                          style={{ backgroundColor: preset.color }}
-                          title={preset.label}
+          {/* Content Area */}
+          <div className="flex-1 relative overflow-y-auto custom-scrollbar p-8">
+            <AnimatePresence mode="wait">
+              {activeTab === "skins" && (
+                <motion.div
+                  key="skins"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-10"
+                >
+                  {/* Built-in Skins */}
+                  <section>
+                    <div className="mb-5 flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-white/90">精选皮肤</h3>
+                      {!showCustomEditor && (
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setShowCustomEditor(true)}
+                          className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 font-medium"
                         >
-                          {customSkinDraft.primary === preset.color && (
-                            <Check className="w-5 h-5 text-white" />
-                          )}
-                        </button>
+                          <Plus className="w-4 h-4" />
+                          自定义皮肤
+                        </motion.button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-4 gap-4">
+                      {builtInSkins.map((skin) => (
+                        <SkinCard
+                          key={skin.id}
+                          skin={skin}
+                          isActive={currentSkin.id === skin.id}
+                          onClick={() => handleApplySkin(skin)}
+                        />
                       ))}
                     </div>
-                  </div>
+                  </section>
 
-                  <div>
-                    <label className="text-white/60 text-sm mb-2 block">背景色</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="color"
-                        value={customSkinDraft.background || "#0f0f23"}
-                        onChange={(e) =>
-                          setCustomSkinDraft({ ...customSkinDraft, background: e.target.value })
-                        }
-                        className="w-14 h-10 rounded-lg cursor-pointer bg-transparent"
-                      />
-                      <input
-                        type="text"
-                        value={customSkinDraft.background || ""}
-                        onChange={(e) =>
-                          setCustomSkinDraft({ ...customSkinDraft, background: e.target.value })
-                        }
-                        placeholder="rgb(15, 15, 35)"
-                        className="flex-1 px-4 py-2 bg-white/5 rounded-xl text-white placeholder-white/40 text-sm outline-none focus:ring-2 focus:ring-purple-500/50"
-                      />
-                    </div>
-                  </div>
+                  {/* Custom Skins */}
+                  {customSkins.length > 0 && (
+                    <section>
+                      <h3 className="text-lg font-semibold text-white/90 mb-5">我的皮肤</h3>
+                      <div className="grid grid-cols-4 gap-4">
+                        {customSkins.map((skin) => (
+                          <SkinCard
+                            key={skin.id}
+                            skin={skin}
+                            isActive={currentSkin.id === skin.id}
+                            onClick={() => handleApplySkin(skin)}
+                            onDelete={() => deleteCustomSkin(skin.id)}
+                            isCustom
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  )}
 
-                  <button
-                    onClick={handleSaveCustomSkin}
-                    disabled={!customSkinDraft.name || !customSkinDraft.primary}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-medium transition-all disabled:opacity-50"
-                  >
-                    保存皮肤
-                  </button>
-                </div>
-              </div>
-            ) : showThemeManager ? (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-white font-semibold">主题管理</h3>
-                  <button
-                    onClick={() => setShowThemeManager(false)}
-                    className="text-white/60 hover:text-white text-sm"
-                  >
-                    返回
-                  </button>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleExportTheme}
-                    className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <Download className="w-4 h-4" />
-                    导出主题
-                  </button>
-                  <button
-                    onClick={handleImportTheme}
-                    className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <Upload className="w-4 h-4" />
-                    导入主题
-                  </button>
-                </div>
-
-                <div>
-                  <h4 className="text-white/80 text-sm font-medium mb-3">内置主题</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    {builtInThemes.map((theme) => (
-                      <button
-                        key={theme.name}
-                        onClick={() => applyTheme(theme)}
-                        className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-left"
+                  {/* Custom Skin Editor Popover */}
+                  <AnimatePresence>
+                    {showCustomEditor && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
                       >
-                        <div className="flex gap-1 mb-2">
-                          <div
-                            className="w-5 h-5 rounded"
-                            style={{ backgroundColor: theme.colors.primary }}
-                          />
-                          <div
-                            className="w-5 h-5 rounded"
-                            style={{ backgroundColor: theme.colors.secondary }}
-                          />
-                          <div
-                            className="w-5 h-5 rounded"
-                            style={{ backgroundColor: theme.colors.accent }}
-                          />
-                          <div
-                            className="w-5 h-5 rounded"
-                            style={{ backgroundColor: theme.colors.surface }}
-                          />
-                          <div
-                            className="w-5 h-5 rounded"
-                            style={{ backgroundColor: theme.colors.background }}
-                          />
-                        </div>
-                        <p className="text-white text-xs">{theme.name}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                        <div className="bg-white/5 border border-white/10 rounded-[24px] p-6 mt-6 backdrop-blur-md">
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-white font-semibold flex items-center gap-2">
+                              <Palette className="w-5 h-5 text-purple-400" />
+                              调配新皮肤
+                            </h3>
+                            <button
+                              onClick={() => {
+                                setShowCustomEditor(false);
+                                setCustomSkinDraft({});
+                              }}
+                              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
 
-                {customThemes.length > 0 && (
-                  <div>
-                    <h4 className="text-white/80 text-sm font-medium mb-3">已保存的主题</h4>
-                    <div className="space-y-2">
-                      {customThemes.map((theme) => (
-                        <div
-                          key={theme.name}
-                          className="flex items-center justify-between p-3 rounded-xl bg-white/5"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex gap-1">
-                              <div
-                                className="w-5 h-5 rounded"
-                                style={{ backgroundColor: theme.colors.primary }}
-                              />
-                              <div
-                                className="w-5 h-5 rounded"
-                                style={{ backgroundColor: theme.colors.secondary }}
-                              />
-                              <div
-                                className="w-5 h-5 rounded"
-                                style={{ backgroundColor: theme.colors.accent }}
+                          <div className="space-y-5">
+                            <div>
+                              <label className="text-white/60 text-sm font-medium mb-2 block">皮肤名称</label>
+                              <input
+                                type="text"
+                                value={customSkinDraft.name || ""}
+                                onChange={(e) =>
+                                  setCustomSkinDraft({ ...customSkinDraft, name: e.target.value })
+                                }
+                                placeholder="输入皮肤名称..."
+                                className="w-full px-4 py-3 bg-black/20 rounded-xl border border-white/5 text-white placeholder-white/30 outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all"
                               />
                             </div>
-                            <span className="text-white text-sm">{theme.name}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => applyTheme(theme)}
-                              className="px-3 py-1 rounded-lg bg-purple-500/50 hover:bg-purple-500 text-white text-xs transition-colors"
-                            >
-                              应用
-                            </button>
-                            <button
-                              onClick={() => deleteCustomTheme(theme.name)}
-                              className="w-7 h-7 rounded-lg bg-red-500/50 hover:bg-red-500 flex items-center justify-center transition-colors"
-                            >
-                              <Trash2 className="w-3 h-3 text-white" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                <div className="mb-6">
-                  <h3 className="text-white font-semibold mb-4">内置皮肤</h3>
-                  <div className="grid grid-cols-4 gap-3">
-                    {builtInSkins.map((skin) => (
-                      <button
-                        key={skin.id}
-                        data-player-skin-id={skin.id}
-                        onClick={() => handleApplySkin(skin)}
-                        className={`relative p-3 rounded-xl transition-all ${
-                          currentSkin.id === skin.id
-                            ? "bg-white/20 ring-2 ring-white/50"
-                            : "bg-white/5 hover:bg-white/10"
-                        }`}
-                      >
-                        <div className="flex gap-1 mb-2">
-                          <div
-                            className="w-6 h-6 rounded"
-                            style={{ backgroundColor: skin.primary }}
-                          />
-                          <div
-                            className="w-6 h-6 rounded"
-                            style={{ backgroundColor: skin.secondary }}
-                          />
-                          <div
-                            className="w-6 h-6 rounded"
-                            style={{ backgroundColor: skin.accent }}
-                          />
-                        </div>
-                        <p className="text-white text-xs truncate">{skin.name}</p>
-                        {currentSkin.id === skin.id && (
-                          <div className="absolute top-2 right-2">
-                            <Check className="w-4 h-4 text-white" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
-                <section className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold text-white">Halo</h3>
-                      <p className="text-xs text-white/45">
-                        Now playing glow: {activeHalo.name} - {haloRenderMode}
-                      </p>
-                    </div>
-                    <HaloPreviewCanvas skin={activeHalo} renderMode={haloRenderMode} />
+                            <div>
+                              <label className="text-white/60 text-sm font-medium mb-2 block">主题调色板</label>
+                              <div className="flex flex-wrap gap-3">
+                                {colorPresets.map((preset) => (
+                                  <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    key={preset.label}
+                                    onClick={() =>
+                                      setCustomSkinDraft({
+                                        ...customSkinDraft,
+                                        primary: preset.color,
+                                        secondary: preset.color,
+                                        accent: preset.color,
+                                      })
+                                    }
+                                    className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-shadow ${
+                                      customSkinDraft.primary === preset.color
+                                        ? "ring-2 ring-white ring-offset-2 ring-offset-[#1a1a1f]"
+                                        : "hover:shadow-xl"
+                                    }`}
+                                    style={{ backgroundColor: preset.color }}
+                                    title={preset.label}
+                                  >
+                                    {customSkinDraft.primary === preset.color && (
+                                      <Check className="w-5 h-5 text-white" />
+                                    )}
+                                  </motion.button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-white/60 text-sm font-medium mb-2 block">深色背景底色</label>
+                              <div className="flex gap-3">
+                                <div className="relative">
+                                  <input
+                                    type="color"
+                                    value={customSkinDraft.background || "#0f0f23"}
+                                    onChange={(e) =>
+                                      setCustomSkinDraft({ ...customSkinDraft, background: e.target.value })
+                                    }
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                  />
+                                  <div 
+                                    className="w-12 h-12 rounded-xl border-2 border-white/20 shadow-inner"
+                                    style={{ backgroundColor: customSkinDraft.background || "#0f0f23" }}
+                                  />
+                                </div>
+                                <input
+                                  type="text"
+                                  value={customSkinDraft.background || ""}
+                                  onChange={(e) =>
+                                    setCustomSkinDraft({ ...customSkinDraft, background: e.target.value })
+                                  }
+                                  placeholder="如: rgb(15, 15, 35) 或 #0f0f23"
+                                  className="flex-1 px-4 py-3 bg-black/20 rounded-xl border border-white/5 text-white placeholder-white/30 text-sm outline-none focus:border-purple-500/50 transition-all"
+                                />
+                              </div>
+                            </div>
+
+                            <motion.button
+                              whileHover={{ scale: 1.01 }}
+                              whileTap={{ scale: 0.99 }}
+                              onClick={handleSaveCustomSkin}
+                              disabled={!customSkinDraft.name || !customSkinDraft.primary}
+                              className="w-full py-3.5 mt-2 rounded-xl bg-white text-black font-semibold shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all disabled:opacity-50 disabled:shadow-none hover:bg-white/90"
+                            >
+                              保存并应用皮肤
+                            </motion.button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+
+              {activeTab === "halo" && (
+                <motion.div
+                  key="halo"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-8 h-full flex flex-col"
+                >
+                  <div className="flex-shrink-0 flex items-center justify-center p-12 bg-black/20 rounded-[32px] border border-white/5 relative overflow-hidden group">
+                     {/* Breathing animated background behind halo */}
+                     <motion.div 
+                        className="absolute inset-0 bg-gradient-to-br opacity-20"
+                        style={{ 
+                          backgroundImage: `radial-gradient(circle at center, ${activeHalo.accent} 0%, transparent 70%)`
+                        }}
+                        animate={{ opacity: [0.1, 0.3, 0.1] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                     />
+                     <div className="relative z-10 transform scale-150 drop-shadow-2xl">
+                       <HaloPreviewCanvas skin={activeHalo} renderMode={haloRenderMode} />
+                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+
+                  <div className="grid grid-cols-2 gap-4 flex-1">
                     {HALO_SKINS.map((halo) => (
-                      <button
+                      <motion.button
                         key={halo.id}
-                        type="button"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => setActiveHaloId(halo.id)}
-                        className={`rounded-xl border p-3 text-left transition-colors ${
+                        className={`relative p-5 rounded-2xl border text-left transition-all overflow-hidden ${
                           activeHalo.id === halo.id
-                            ? "border-white/45 bg-white/15"
-                            : "border-white/10 bg-black/15 hover:bg-white/10"
+                            ? "border-white/30 bg-white/10 shadow-[0_8px_32px_rgba(255,255,255,0.05)]"
+                            : "border-white/5 bg-white/[0.02] hover:bg-white/[0.06]"
                         }`}
-                        aria-pressed={activeHalo.id === halo.id}
                       >
                         <div
-                          className="mb-2 h-2 rounded-full"
+                          className="w-8 h-1 rounded-full mb-4"
                           style={{ background: halo.accent }}
                         />
-                        <p className="text-sm font-semibold text-white">{halo.name}</p>
-                        <p className="mt-1 text-xs text-white/45">{halo.description}</p>
-                      </button>
+                        <h4 className="text-base font-medium text-white mb-1">{halo.name}</h4>
+                        <p className="text-sm text-white/50">{halo.description}</p>
+                        
+                        {activeHalo.id === halo.id && (
+                          <div className="absolute top-5 right-5">
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                            </motion.div>
+                          </div>
+                        )}
+                      </motion.button>
                     ))}
                   </div>
-                </section>
+                </motion.div>
+              )}
 
-                {customSkins.length > 0 && (
+              {activeTab === "themes" && (
+                <motion.div
+                  key="themes"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-8"
+                >
+                  <div className="flex gap-4 mb-2">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleExportTheme}
+                      className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-sm font-medium flex items-center justify-center gap-2 transition-all shadow-sm"
+                    >
+                      <Download className="w-4 h-4" />
+                      导出当前主题
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleImportTheme}
+                      className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-sm font-medium flex items-center justify-center gap-2 transition-all shadow-sm"
+                    >
+                      <Upload className="w-4 h-4" />
+                      导入外部主题
+                    </motion.button>
+                  </div>
+
                   <div>
-                    <h3 className="text-white font-semibold mb-4">自定义皮肤</h3>
-                    <div className="grid grid-cols-4 gap-3">
-                      {customSkins.map((skin) => (
-                        <div
-                          key={skin.id}
-                          className={`relative p-3 rounded-xl ${
-                            currentSkin.id === skin.id
-                              ? "bg-white/20 ring-2 ring-white/50"
-                              : "bg-white/5 hover:bg-white/10"
-                          }`}
+                    <h4 className="text-white/80 text-sm font-medium mb-4 flex items-center gap-2">
+                      <Layout className="w-4 h-4" />
+                      系统内置主题
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      {builtInThemes.map((theme) => (
+                        <motion.button
+                          key={theme.name}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => applyTheme(theme)}
+                          className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] transition-all text-left group"
                         >
-                          <button
-                            data-player-skin-id={skin.id}
-                            onClick={() => handleApplySkin(skin)}
-                            className="w-full text-left"
-                          >
-                            <div className="flex gap-1 mb-2">
-                              <div
-                                className="w-6 h-6 rounded"
-                                style={{ backgroundColor: skin.primary }}
-                              />
-                              <div
-                                className="w-6 h-6 rounded"
-                                style={{ backgroundColor: skin.secondary }}
-                              />
-                              <div
-                                className="w-6 h-6 rounded"
-                                style={{ backgroundColor: skin.accent }}
-                              />
-                            </div>
-                            <p className="text-white text-xs truncate">{skin.name}</p>
-                          </button>
-                          <button
-                            onClick={() => deleteCustomSkin(skin.id)}
-                            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-500/50 hover:bg-red-500 flex items-center justify-center"
-                          >
-                            <X className="w-3 h-3 text-white" />
-                          </button>
-                          {currentSkin.id === skin.id && (
-                            <div className="absolute top-2 left-2">
-                              <Check className="w-4 h-4 text-white" />
-                            </div>
-                          )}
-                        </div>
+                          <div className="flex gap-2 mb-3">
+                            <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: theme.colors.primary }} />
+                            <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: theme.colors.secondary }} />
+                            <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: theme.colors.accent }} />
+                            <div className="w-6 h-6 rounded-full shadow-sm border border-white/10" style={{ backgroundColor: theme.colors.surface }} />
+                            <div className="w-6 h-6 rounded-full shadow-sm border border-white/10" style={{ backgroundColor: theme.colors.background }} />
+                          </div>
+                          <p className="text-white text-sm font-medium">{theme.name}</p>
+                        </motion.button>
                       ))}
                     </div>
                   </div>
-                )}
-              </>
-            )}
+
+                  {customThemes.length > 0 && (
+                    <div>
+                      <h4 className="text-white/80 text-sm font-medium mb-4">我保存的主题</h4>
+                      <div className="space-y-3">
+                        {customThemes.map((theme) => (
+                          <div
+                            key={theme.name}
+                            className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/5 group hover:bg-white/[0.06] transition-all"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="flex -space-x-2">
+                                <div className="w-8 h-8 rounded-full border-2 border-[#1a1a1f]" style={{ backgroundColor: theme.colors.primary }} />
+                                <div className="w-8 h-8 rounded-full border-2 border-[#1a1a1f]" style={{ backgroundColor: theme.colors.secondary }} />
+                                <div className="w-8 h-8 rounded-full border-2 border-[#1a1a1f]" style={{ backgroundColor: theme.colors.accent }} />
+                              </div>
+                              <span className="text-white font-medium">{theme.name}</span>
+                            </div>
+                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => applyTheme(theme)}
+                                className="px-4 py-1.5 rounded-xl bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors shadow-sm"
+                              >
+                                应用
+                              </button>
+                              <button
+                                onClick={() => deleteCustomTheme(theme.name)}
+                                className="w-8 h-8 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        </div>
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </AnimatePresence>
   );
 };
+
+// Extracted Sub-components for Cleaner Code
+
+function SidebarItem({ icon, label, isActive, onClick }: { icon: React.ReactNode, label: string, isActive: boolean, onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl transition-all duration-300 relative ${
+        isActive ? "text-white bg-white/10" : "text-white/60 hover:text-white/90 hover:bg-white/5"
+      }`}
+    >
+      {isActive && (
+        <motion.div 
+          layoutId="sidebar-active-indicator"
+          className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-white rounded-r-full"
+        />
+      )}
+      <div className={`${isActive ? "text-white" : ""}`}>
+        {icon}
+      </div>
+      <span className="text-sm font-medium tracking-wide">{label}</span>
+    </button>
+  );
+}
+
+function SkinCard({ skin, isActive, onClick, onDelete, isCustom }: { skin: PlayerSkin, isActive: boolean, onClick: () => void, onDelete?: () => void, isCustom?: boolean }) {
+  return (
+    <motion.div
+      whileHover={{ scale: 1.03, y: -2 }}
+      whileTap={{ scale: 0.97 }}
+      className="relative group cursor-pointer"
+      onClick={onClick}
+    >
+      {isActive && (
+        <motion.div 
+          className="absolute -inset-2 rounded-3xl opacity-20 blur-xl"
+          style={{ backgroundColor: skin.primary }}
+          animate={{ opacity: [0.15, 0.3, 0.15], scale: [0.95, 1.05, 0.95] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        />
+      )}
+      <div className={`relative h-full p-4 rounded-[20px] transition-all duration-300 border backdrop-blur-md overflow-hidden ${
+        isActive 
+          ? "bg-white/15 border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.2)]" 
+          : "bg-white/[0.04] border-white/10 hover:bg-white/[0.08] hover:border-white/20"
+      }`}>
+        
+        {/* Abstract background blobs for visual flair */}
+        <div className="absolute top-[-20%] right-[-20%] w-[80%] h-[80%] rounded-full opacity-20 blur-2xl pointer-events-none" style={{ backgroundColor: skin.primary }} />
+        <div className="absolute bottom-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full opacity-20 blur-xl pointer-events-none" style={{ backgroundColor: skin.secondary }} />
+
+        <div className="flex gap-1.5 mb-6 relative z-10">
+          <div className="w-8 h-8 rounded-full shadow-lg" style={{ backgroundColor: skin.primary }} />
+          <div className="w-8 h-8 rounded-full shadow-lg -ml-3" style={{ backgroundColor: skin.secondary }} />
+          <div className="w-8 h-8 rounded-full shadow-lg -ml-3 border border-white/20" style={{ backgroundColor: skin.accent }} />
+        </div>
+        
+        <p className="text-white text-sm font-medium tracking-wide relative z-10">{skin.name}</p>
+
+        {isActive && (
+          <motion.div 
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="absolute top-3 right-3 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md z-10"
+          >
+            <Check className="w-3.5 h-3.5 text-black stroke-[3]" />
+          </motion.div>
+        )}
+
+        {isCustom && onDelete && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="absolute top-3 right-3 w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+    </motion.div>
+  );
+}
 
 function HaloPreviewCanvas({
   skin,
@@ -733,9 +843,9 @@ function HaloPreviewCanvas({
   return (
     <canvas
       ref={canvasRef}
-      width={40}
-      height={40}
-      className="h-10 w-10 rounded-full border border-white/15"
+      width={120}
+      height={120}
+      className="h-32 w-32 rounded-full shadow-[0_0_40px_rgba(255,255,255,0.1)] border border-white/10"
       aria-label={`${skin.name} halo preview`}
     />
   );

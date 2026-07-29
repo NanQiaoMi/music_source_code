@@ -1,11 +1,10 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useAudioStore } from "@/store/audioStore";
-import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
 import { useGestureStore } from "@/store/gestureStore";
 import Link from "next/link";
@@ -22,15 +21,7 @@ const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 export const MusicCardStack: React.FC = () => {
   const { songs, recentPlayed, setSelectedSong } = usePlaylistStore();
-  const setCurrentSong = useAudioStore((state) => state.setCurrentSong);
-  const setQueue = useAudioStore((state) => state.setQueue);
-  const setCurrentIndex = useAudioStore((state) => state.setCurrentIndex);
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
-  const {
-    setQueue: setQueueStore,
-    setCurrentIndex: setQueueCurrentIndex,
-    addToHistory,
-  } = useQueueStore();
+  const playQueue = useAudioStore((state) => state.playQueue);
   const { setCurrentView, setIsTransitioning } = useUIStore();
   const { lastGesture, gestureTriggered } = useGestureStore();
 
@@ -86,14 +77,7 @@ export const MusicCardStack: React.FC = () => {
       setIsTransitioning(true);
 
       setSelectedSong(song);
-      setCurrentSong(song);
-      setQueue(displaySongs);
-      setCurrentIndex(index);
-      setIsPlaying(true);
-
-      setQueueStore(displaySongs);
-      setQueueCurrentIndex(index);
-      addToHistory(song);
+      playQueue(displaySongs, index);
 
       requestAnimationFrame(() => {
         setCurrentView("player");
@@ -107,13 +91,7 @@ export const MusicCardStack: React.FC = () => {
     [
       displaySongs,
       setSelectedSong,
-      setCurrentSong,
-      setQueue,
-      setCurrentIndex,
-      setIsPlaying,
-      setQueueStore,
-      setQueueCurrentIndex,
-      addToHistory,
+      playQueue,
       setCurrentView,
       setIsTransitioning,
       selectedCard,

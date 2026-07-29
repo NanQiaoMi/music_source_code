@@ -360,6 +360,9 @@ export const useAudioStore = create<AudioState>()(
         const nextSongItem = queue[nextIndex];
         const _queueStore = useQueueStore.getState();
         usePlayerStore.getState().setCurrentSong(nextSongItem);
+        usePlayerStore.getState().setIsPlaying(true);
+        _queueStore.setCurrentIndex(nextIndex);
+        _queueStore.addToHistory(nextSongItem);
 
         set({
           currentIndex: nextIndex,
@@ -389,6 +392,7 @@ export const useAudioStore = create<AudioState>()(
         queueStore.setCurrentIndex(prevIndex);
         queueStore.addToHistory(prevSongItem);
         usePlayerStore.getState().setCurrentSong(prevSongItem);
+        usePlayerStore.getState().setIsPlaying(true);
 
         set({
           currentIndex: prevIndex,
@@ -431,6 +435,7 @@ export const useAudioStore = create<AudioState>()(
         queueStore.setCurrentIndex(startIdx);
         queueStore.addToHistory(song);
         usePlayerStore.getState().setCurrentSong(song);
+        usePlayerStore.getState().setIsPlaying(true);
 
         set({
           currentSong: song,
@@ -464,6 +469,7 @@ export const useAudioStore = create<AudioState>()(
         queueStore.setCurrentIndex(index);
         queueStore.addToHistory(song);
         usePlayerStore.getState().setCurrentSong(song);
+        usePlayerStore.getState().setIsPlaying(true);
 
         set({
           queue: songs,
@@ -564,6 +570,7 @@ export const useAudioStore = create<AudioState>()(
         queueStore.setCurrentIndex(startIndex);
         queueStore.addToHistory(firstSong);
         usePlayerStore.getState().setCurrentSong(firstSong);
+        usePlayerStore.getState().setIsPlaying(true);
 
         set({
           queue: newQueue,

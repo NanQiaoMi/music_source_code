@@ -42,6 +42,7 @@ import {
 import type { PosterConfig } from "@/utils/posterWorkshop";
 import { PosterPreview, parseLyrics } from "./PosterTemplates";
 import { ControlGroup, GlassSlider } from "./PosterControls";
+import { FabricSharePanel } from "./v2/FabricSharePanel";
 
 interface SharePanelProps {
   isOpen: boolean;
@@ -51,6 +52,7 @@ interface SharePanelProps {
 const RENDER_WIDTH = 800;
 
 export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
+  const [isV2, setIsV2] = useState(false);
   const currentSong = useAudioStore((state) => state.currentSong);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -180,6 +182,10 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
+  if (isV2) {
+    return <FabricSharePanel isOpen={isOpen} onClose={onClose} onSwitchBack={() => setIsV2(false)} />;
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -206,12 +212,21 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
               <p className="text-white/50 text-xs">生成专属音乐卡片</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsV2(true)}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white font-medium shadow-lg shadow-pink-500/20 transition-all flex items-center gap-2"
+            >
+              <Wand2 className="w-4 h-4" />
+              <span>体验次世代引擎 (Beta)</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {currentSong ? (

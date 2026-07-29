@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -164,12 +164,12 @@ export const AuditoryGene: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_12px_#6366f1]" />
                   <span className="text-[11px] font-black tracking-[0.4em] text-indigo-400 uppercase">
-                    浣犳槸 鈥渰dnaJournal.archetype}鈥?
+                    你是 “{dnaJournal.archetype}”
                   </span>
                 </div>
                 <div className="pl-5 border-l-2 border-indigo-500/10">
                   <h3 className="text-2xl md:text-3xl font-serif italic text-white/95 selection:bg-indigo-500/30 leading-snug tracking-tight">
-                    鈥渰dnaJournal.motto}鈥?
+                    “{dnaJournal.motto}”
                   </h3>
                 </div>
               </div>
@@ -270,7 +270,7 @@ export const AuditoryGene: React.FC = () => {
                   </p>
                 </div>
                 <div className="text-[11px] text-white/25 tracking-wide">
-                  瑙ｆ瀽鏃堕棿锛歿formattedDate}
+                  解析时间：{formattedDate}
                 </div>
               </div>
             </motion.div>
