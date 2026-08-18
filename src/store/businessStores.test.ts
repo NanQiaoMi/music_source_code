@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Song } from "@/types/song";
 import { useAIStore } from "./aiStore";
 import { useCrossfadeStore } from "./crossfadeStore";
@@ -193,6 +193,14 @@ describe("business intelligence stores", () => {
 
     useAIStore.getState().setEnabled(false);
     await expect(store.getNotes("Other", "Song")).resolves.toBeNull();
+
+    useAIStore.getState().setEnabled(true);
+    fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await expect(store.getNotes("FailedArtist", "FailedSong")).resolves.toBeNull();
+    expect(useLinerNotesStore.getState().isGenerating).toBe(false);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 
   it("previews and applies metadata batch edits without changing non-targeted songs", () => {

@@ -41,6 +41,9 @@ export const useLinerNotesStore = create<LinerNotesState>()(
 
         set({ isGenerating: true });
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
         try {
           const baseUrl = config.baseUrl.replace(/\/$/, "");
           const url = baseUrl.endsWith("/v1")
@@ -83,12 +86,16 @@ ${lyrics ? `语义残片：${lyrics.substring(0, 400)}` : ""}`;
               frequency_penalty: 0.6, // 减少重复词汇
               max_tokens: 150,
             }),
+            signal: controller.signal,
           });
 
-          if (!response.ok) throw new Error("AI Generation failed");
+          if (!response.ok) {
+            console.warn(`[LinerNotes] AI request failed with status: ${response.status}`);
+            return null;
+          }
 
           const data = await response.json();
-          const result = data.choices[0]?.message?.content?.trim();
+          const result = data.choices?.[0]?.message?.content?.trim();
 
           if (result) {
             set((state) => ({
@@ -97,9 +104,14 @@ ${lyrics ? `语义残片：${lyrics.substring(0, 400)}` : ""}`;
             }));
             return result;
           }
-        } catch (error) {
-          console.error("Failed to generate liner notes:", error);
+        } catch (error: unknown) {
+          if (error instanceof Error && error.name === "AbortError") {
+            console.warn("[LinerNotes] AI request timed out");
+          } else {
+            console.warn("[LinerNotes] Failed to generate liner notes:", error);
+          }
         } finally {
+          clearTimeout(timeoutId);
           set({ isGenerating: false });
         }
 

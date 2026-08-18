@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,20 +17,44 @@ export const AILinerNotes: React.FC = () => {
   const canShowNote = Boolean(currentSong && activeConfigId && isEnabled);
 
   useEffect(() => {
+    let isCancelled = false;
+
     if (currentSong && activeConfigId && isEnabled) {
       const emotionPoint = points.find((p) => p.id === currentSong.id);
       const fetchNotes = async () => {
-        const result = await getNotes(
-          currentSong.artist,
-          currentSong.title,
-          currentSong.lyrics,
-          emotionPoint ? { x: emotionPoint.x, y: emotionPoint.y } : undefined
-        );
-        setDisplayNote(result);
+        try {
+          const result = await getNotes(
+            currentSong.artist,
+            currentSong.title,
+            currentSong.lyrics,
+            emotionPoint ? { x: emotionPoint.x, y: emotionPoint.y } : undefined
+          );
+          if (!isCancelled) {
+            setDisplayNote(result);
+          }
+        } catch {
+          if (!isCancelled) {
+            setDisplayNote(null);
+          }
+        }
       };
       fetchNotes();
+    } else {
+      setDisplayNote(null);
     }
-  }, [currentSong, activeConfigId, isEnabled, getNotes, points]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    currentSong?.id,
+    currentSong?.artist,
+    currentSong?.title,
+    currentSong?.lyrics,
+    activeConfigId,
+    isEnabled,
+    getNotes,
+  ]);
 
   if (!canShowNote || (!displayNote && !isGenerating)) {
     return null;

@@ -181,7 +181,7 @@ export const useAIStore = create<AIState>()(
           const data: unknown = await response.json();
           return extractModelIds(data);
         } catch (error) {
-          console.error("Failed to fetch models:", error);
+          console.warn("Failed to fetch models:", error);
           return [];
         }
       },
