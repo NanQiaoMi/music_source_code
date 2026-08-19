@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,6 +31,7 @@ import {
   Minimize2,
   Dna,
   MousePointer2,
+  Activity,
 } from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
 import { usePlaylistStore } from "@/store/playlistStore";
@@ -271,6 +272,12 @@ export function HeaderToolbar() {
                 label: "音乐库",
                 icon: <Database className="w-4 h-4" />,
                 action: () => openPanel("libraryManager"),
+              },
+              {
+                id: "libraryHealth",
+                label: "歌曲巡检与清理",
+                icon: <Activity className="w-4 h-4" />,
+                action: () => openPanel("libraryHealth"),
               },
               {
                 id: "smartPlaylist",
