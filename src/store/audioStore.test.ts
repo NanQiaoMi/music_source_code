@@ -1,7 +1,7 @@
 import { useAudioStore, registerAudioSeekHandler } from "./audioStore";
 import { usePlayerStore } from "./playerStore";
 import { useQueueStore } from "./queueStore";
-import { vi } from "vitest";
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import { MISSING_AUDIO_SOURCE_MESSAGE } from "@/lib/audio/playableAudioSource";
 
 function createMockSong(id: string) {

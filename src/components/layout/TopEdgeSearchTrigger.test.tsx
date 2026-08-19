@@ -11,26 +11,8 @@ describe("TopEdgeSearchTrigger", () => {
   beforeEach(() => {
     useUIStore.setState({
       panels: {
-        queue: false,
-        history: false,
-        settings: false,
-        sleepTimer: false,
+        ...useUIStore.getState().panels,
         search: false,
-        lyricSettings: false,
-        lyricsSearch: false,
-        lyricsImport: false,
-        lyricsCoverEditor: false,
-        eq: false,
-        visualSettings: false,
-        listeningHistory: false,
-        listeningJournal: false,
-        dailyRecommendation: false,
-        libraryManager: false,
-        smartPlaylist: false,
-        offlineCache: false,
-        share: false,
-        playerSkins: false,
-        keyboardShortcuts: false,
       },
     });
     container = document.createElement("div");
