@@ -70,11 +70,11 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // If clicked on buttons/controls, do not expand
+    // If clicked on buttons/controls, ignore
     if ((e.target as HTMLElement).closest(".control-interactive, button, a, input")) {
       return;
     }
-    // If dragging moved > 5px, do not expand
+    // If dragging moved > 5px, ignore
     const distance = Math.hypot(
       e.clientX - pointerDownPosRef.current.x,
       e.clientY - pointerDownPosRef.current.y
@@ -82,6 +82,15 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
     if (distance > 5) {
       return;
     }
+    // Clicking in this interface returns to the initial state (mini dynamic island)
+    onCollapseToMini?.();
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest(".control-interactive, button, a, input")) {
+      return;
+    }
+    // Double clicking expands to full card
     onExpandFull?.();
   };
 
@@ -93,6 +102,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
       className={`relative select-none group cursor-pointer ${className}`}
       data-floating-state="compact"
       onClick={handleCardClick}
+      onDoubleClick={handleDoubleClick}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
       style={{ touchAction: "none" }}
@@ -104,6 +114,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
         damping: 30,
       }}
     >
+
       {/* 1. Ambient Glow Backing */}
       {showGlow && (
         <FloatingAmbientGlow
@@ -222,8 +233,22 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
 
           {/* Control 5: Favorite Heart Button */}
           <HeartFavoriteButton size={14} className="control-interactive p-1" />
+
+          {/* Expand to Full Card Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onExpandFull?.();
+            }}
+            className="control-interactive w-6 h-6 rounded-full text-white/40 hover:text-white hover:bg-white/15 flex items-center justify-center transition-all ml-0.5 active:scale-90"
+            title="展开为完整卡片 (双击卡片亦可)"
+          >
+            <ChevronUp className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </motion.div>
   );
 };
+

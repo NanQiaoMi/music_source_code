@@ -86,11 +86,12 @@ export interface UseFloatingDragPhysicsReturn {
   isDocked: boolean;
   dragHandlers: DragHandlers;
   springConfig: typeof FLOATING_SPRING_CONFIG;
-  restoreFromDock: (targetState?: "pill" | "expanded") => void;
+  restoreFromDock: (targetState?: FloatingPlayerState) => void;
   snapToDock: (side: "left" | "right") => void;
   setPosition: React.Dispatch<React.SetStateAction<Position>>;
   clampPosition: (pos: Position, state?: FloatingPlayerState) => Position;
 }
+
 
 /**
  * Custom hook for floating window drag dynamics with inertial fling decay,
@@ -261,11 +262,11 @@ export function useFloatingDragPhysics(
    * Smoothly restore floating player from docked state back into view
    */
   const restoreFromDock = useCallback(
-    (targetState: "pill" | "expanded" = "pill") => {
+    (targetState: FloatingPlayerState = "mini") => {
       stopInertiaAnimation();
       const current = positionRef.current;
       const winWidth = typeof window !== "undefined" ? window.innerWidth : 1280;
-      const targetDim = targetState === "expanded" ? expandedDimensions : pillDimensions;
+      const targetDim = getDimensionsForState(targetState);
 
       let targetX = current.x;
       if (playerStateRef.current === "dock-left" || current.x <= safePadding + 20) {
@@ -284,13 +285,13 @@ export function useFloatingDragPhysics(
     [
       clampPosition,
       dockDimensions.width,
-      expandedDimensions,
-      pillDimensions,
+      getDimensionsForState,
       safePadding,
       setPlayerState,
       stopInertiaAnimation,
     ]
   );
+
 
   /**
    * Calculate pointer release velocity using timestamped sliding window

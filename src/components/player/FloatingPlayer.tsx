@@ -18,12 +18,15 @@ export interface FloatingPlayerProps {
   className?: string;
   defaultState?: FloatingPlayerState;
   showDebugHud?: boolean;
+  /** Inactivity timeout in ms to automatically collapse back to minimal state (default: 5000ms) */
+  autoCollapseTimeout?: number;
 }
 
 export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
   className = "",
   defaultState = "mini",
   showDebugHud = true,
+  autoCollapseTimeout = 5000,
 }) => {
   const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
@@ -45,6 +48,47 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
     initialState: defaultState,
     initialPosition: { x: 24, y: 260 },
   });
+
+  const [isHovered, setIsHovered] = React.useState(false);
+  const idleTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Clear idle timer
+  const clearIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+  }, []);
+
+  // Reset idle timer when user is in compact or expanded state
+  const resetIdleTimer = useCallback(() => {
+    clearIdleTimer();
+    // Only auto-collapse if in compact or expanded mode and not hovered / dragging
+    if (
+      (playerState === "compact" || playerState === "expanded" || playerState === "pill") &&
+      !isHovered &&
+      !isDragging &&
+      autoCollapseTimeout > 0
+    ) {
+      idleTimerRef.current = setTimeout(() => {
+        setPlayerState("mini");
+      }, autoCollapseTimeout);
+    }
+  }, [
+    clearIdleTimer,
+    playerState,
+    isHovered,
+    isDragging,
+    autoCollapseTimeout,
+    setPlayerState,
+  ]);
+
+  // Start or reset timer whenever state, hover, or dragging status changes
+  useEffect(() => {
+    resetIdleTimer();
+    return () => clearIdleTimer();
+  }, [resetIdleTimer, clearIdleTimer, playerState, isHovered, isDragging]);
+
 
 
   // Global Keyboard Shortcuts for Floating Player
@@ -117,6 +161,10 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
           touchAction: "none",
           willChange: isDragging ? "left, top, transform" : "auto",
         }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onMouseMove={resetIdleTimer}
+        onClick={resetIdleTimer}
         initial={{ opacity: 0, scale: 0.9, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.85, y: 12 }}
@@ -131,13 +179,13 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
             <FloatingDockState
               key="dock"
               side={playerState === "dock-left" ? "dock-left" : "dock-right"}
-              onRestore={(target = "pill") => setPlayerState(target)}
+              onRestore={(target = "mini") => setPlayerState(target)}
               dragHandlers={dragHandlers}
             />
           ) : playerState === "expanded" ? (
             <FloatingExpandedState
               key="expanded"
-              onCollapse={() => setPlayerState("compact")}
+              onCollapse={() => setPlayerState("mini")}
               dragHandlers={dragHandlers}
             />
           ) : playerState === "compact" ? (
