@@ -107,14 +107,12 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
     let hasActiveSignal = false;
     const time = Date.now() * 0.003;
 
-    // 1. Prepare Multi-stop Plasma Gradient
-    // Cyan (base) -> Pink/Magenta (mid) -> Soft Violet/Purple (top) -> Pure white apex
+    // 1. Prepare Liquid Glass Monochrome White Gradient
     const barGradient = ctx.createLinearGradient(0, canvasHeight, 0, canvasHeight - maxBarHeight);
-    barGradient.addColorStop(0, "rgba(6, 182, 212, 0.85)"); // Electric Cyan #06B6D4
-    barGradient.addColorStop(0.35, "rgba(56, 189, 248, 0.95)"); // Bright Sky #38BDF8
-    barGradient.addColorStop(0.65, "rgba(236, 72, 153, 0.95)"); // Magenta Pink #EC4899
-    barGradient.addColorStop(0.9, "rgba(168, 85, 247, 0.95)"); // Soft Violet #A855F7
-    barGradient.addColorStop(1, "rgba(255, 255, 255, 1.0)"); // Luminous Apex #FFFFFF
+    barGradient.addColorStop(0, "rgba(255, 255, 255, 0.15)");
+    barGradient.addColorStop(0.4, "rgba(255, 255, 255, 0.5)");
+    barGradient.addColorStop(0.8, "rgba(255, 255, 255, 0.85)");
+    barGradient.addColorStop(1, "rgba(255, 255, 255, 1.0)");
 
     for (let i = 0; i < totalBars; i++) {
       let rawNormalized = 0;
@@ -170,23 +168,19 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
       const x = i * (barWidth + barGap);
       const y = canvasHeight - currentHeight;
 
-      // Draw Main Spectrum Plasma Bar with Capsule Corners
+      // Draw Main Spectrum Bar with Liquid Glass Rounded Top
       ctx.save();
       ctx.fillStyle = barGradient;
-      ctx.shadowColor = "rgba(56, 189, 248, 0.45)";
+      ctx.shadowColor = "rgba(255, 255, 255, 0.35)";
       ctx.shadowBlur = 6 * glowIntensity;
 
       const radius = Math.min(barWidth / 2, 3);
       ctx.beginPath();
-      // Rounded top cap
-      ctx.moveTo(x + radius, y);
-      ctx.lineTo(x + barWidth - radius, y);
-      ctx.quadraticCurveTo(x + barWidth, y, x + barWidth, y + radius);
-      ctx.lineTo(x + barWidth, canvasHeight);
-      ctx.lineTo(x, canvasHeight);
-      ctx.lineTo(x, y + radius);
-      ctx.quadraticCurveTo(x, y, x + radius, y);
-      ctx.closePath();
+      if (typeof ctx.roundRect === "function") {
+        ctx.roundRect(x, y, barWidth, currentHeight, [radius, radius, 0, 0]);
+      } else {
+        ctx.rect(x, y, barWidth, currentHeight);
+      }
       ctx.fill();
       ctx.restore();
 
@@ -195,19 +189,20 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
       if (peakY < canvasHeight - 3) {
         ctx.save();
         ctx.fillStyle = "#FFFFFF";
-        ctx.shadowColor = "rgba(236, 72, 153, 0.9)";
-        ctx.shadowBlur = 8 * glowIntensity;
+        ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+        ctx.shadowBlur = 6 * glowIntensity;
 
         ctx.beginPath();
         const peakHeight = 2;
         if (typeof ctx.roundRect === "function") {
-          ctx.roundRect(x, peakY - peakHeight, barWidth, peakHeight, 1.5);
+          ctx.roundRect(x, peakY - peakHeight, barWidth, peakHeight, 1);
         } else {
           ctx.rect(x, peakY - peakHeight, barWidth, peakHeight);
         }
         ctx.fill();
         ctx.restore();
       }
+
     }
 
     ctx.restore();

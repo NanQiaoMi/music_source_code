@@ -258,16 +258,15 @@ export const HeartFavoriteButton: React.FC<HeartFavoriteButtonProps> = ({
       setIsPopActive(true);
       setTimeout(() => setIsPopActive(false), 500);
 
-      // Trigger particle heart burst only when liking
+      // Trigger particle heart burst only when liking (monochrome crystal particles)
       if (nextFavState) {
         const particleCount = 10;
         const colors = [
-          "#f43f5e",
-          "#ec4899",
-          "#fb7185",
-          "#fda4af",
-          "#fde047",
-          "#c084fc",
+          "#FFFFFF",
+          "rgba(255, 255, 255, 0.9)",
+          "rgba(255, 255, 255, 0.75)",
+          "rgba(255, 255, 255, 0.6)",
+          "rgba(255, 255, 255, 0.4)",
         ];
         const newParticles: HeartParticle[] = Array.from({ length: particleCount }).map(
           (_, i) => {
@@ -341,7 +340,7 @@ export const HeartFavoriteButton: React.FC<HeartFavoriteButtonProps> = ({
           style={{ width: size, height: size }}
           className={`transition-colors duration-200 ${
             isFavorite
-              ? "fill-rose-500 text-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]"
+              ? "fill-white text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]"
               : "text-white/60 hover:text-white"
           }`}
         />
@@ -349,6 +348,7 @@ export const HeartFavoriteButton: React.FC<HeartFavoriteButtonProps> = ({
     </div>
   );
 };
+
 
 // ---------------------------------------------------------------------------
 // 4. Jelly Elastic Feedback Button (Squash & Stretch)
@@ -471,7 +471,7 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
           aria-label={`切换循环模式: 当前 ${loopMode}`}
           className={`control-interactive p-2 rounded-full transition-colors ${
             loopMode === "all" || loopMode === "single"
-              ? "text-[#2997ff] bg-[#2997ff]/15"
+              ? "text-white bg-white/20 border border-white/30 shadow-[0_0_8px_rgba(255,255,255,0.25)]"
               : "text-white/45 hover:text-white hover:bg-white/[0.08]"
           }`}
           whileHover={{ scale: 1.12 }}
@@ -523,7 +523,7 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
           aria-label="随机播放"
           className={`control-interactive p-2 rounded-full transition-colors ${
             loopMode === "shuffle"
-              ? "text-[#2997ff] bg-[#2997ff]/15"
+              ? "text-white bg-white/20 border border-white/30 shadow-[0_0_8px_rgba(255,255,255,0.25)]"
               : "text-white/45 hover:text-white hover:bg-white/[0.08]"
           }`}
           whileHover={{ scale: 1.12 }}
@@ -538,6 +538,7 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
           <Shuffle className="w-4 h-4" />
         </motion.button>
       )}
+
 
       {/* 6. Heart Favorite Button */}
       {showFavorite && <HeartFavoriteButton size={compact ? 16 : 18} />}

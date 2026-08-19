@@ -144,11 +144,11 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
       pointsBottom.push({ x, y: centerY + yOffset * 0.65, amp: amplified });
     }
 
-    // 1. Draw glowing background filled area
+    // 1. Draw glowing background filled area (monochrome glass fill)
     const bgGradient = ctx.createLinearGradient(0, 0, width, 0);
-    bgGradient.addColorStop(0, "rgba(56, 189, 248, 0.15)");
-    bgGradient.addColorStop(0.5, "rgba(236, 72, 153, 0.2)");
-    bgGradient.addColorStop(1, "rgba(168, 85, 247, 0.15)");
+    bgGradient.addColorStop(0, "rgba(255, 255, 255, 0.05)");
+    bgGradient.addColorStop(0.5, "rgba(255, 255, 255, 0.08)");
+    bgGradient.addColorStop(1, "rgba(255, 255, 255, 0.05)");
 
     ctx.beginPath();
     ctx.moveTo(pointsTop[0].x, pointsTop[0].y);
@@ -166,15 +166,15 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
     ctx.fillStyle = bgGradient;
     ctx.fill();
 
-    // 2. Draw Top Waveform with Neon Glow Path
+    // 2. Draw Top Waveform with Liquid Glass White Glow Path
     const strokeGradient = ctx.createLinearGradient(0, 0, width, 0);
-    strokeGradient.addColorStop(0, "rgba(56, 189, 248, 0.95)");
-    strokeGradient.addColorStop(0.5, "rgba(236, 72, 153, 0.95)");
-    strokeGradient.addColorStop(1, "rgba(168, 85, 247, 0.95)");
+    strokeGradient.addColorStop(0, "rgba(255, 255, 255, 0.75)");
+    strokeGradient.addColorStop(0.5, "rgba(255, 255, 255, 0.95)");
+    strokeGradient.addColorStop(1, "rgba(255, 255, 255, 0.75)");
 
     ctx.save();
-    ctx.shadowColor = "rgba(56, 189, 248, 0.75)";
-    ctx.shadowBlur = 10 * glowIntensity;
+    ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+    ctx.shadowBlur = 8 * glowIntensity;
     ctx.strokeStyle = strokeGradient;
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
@@ -192,9 +192,9 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
     ctx.stroke();
     ctx.restore();
 
-    // 3. Draw Bottom Mirrored Waveform with subtle fade
+    // 3. Draw Bottom Mirrored Waveform with subtle translucent white
     ctx.save();
-    ctx.strokeStyle = "rgba(168, 85, 247, 0.4)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
     ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(pointsBottom[0].x, pointsBottom[0].y);
@@ -216,7 +216,7 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
     ctx.lineTo(width, centerY);
     ctx.stroke();
 
-    // 5. Draw Realtime Playhead Probe & 12px Lens Flare Highlight
+    // 5. Draw Realtime Playhead Probe & Liquid Glass Lens Flare Highlight
     if (playheadX >= 0 && playheadX <= width) {
       // Find apex point at playhead
       const sampleIndex = Math.min(
@@ -225,17 +225,17 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
       );
       const apexPoint = pointsTop[sampleIndex] || { x: playheadX, y: centerY - 10 };
 
-      // Playhead vertical luminous probe line
+      // Playhead vertical luminous probe line (pure white)
       const probeGradient = ctx.createLinearGradient(0, 0, 0, canvasHeight);
       probeGradient.addColorStop(0, "rgba(255, 255, 255, 0)");
-      probeGradient.addColorStop(0.2, "rgba(56, 189, 248, 0.8)");
+      probeGradient.addColorStop(0.2, "rgba(255, 255, 255, 0.6)");
       probeGradient.addColorStop(0.5, "rgba(255, 255, 255, 1)");
-      probeGradient.addColorStop(0.8, "rgba(236, 72, 153, 0.8)");
+      probeGradient.addColorStop(0.8, "rgba(255, 255, 255, 0.6)");
       probeGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
 
       ctx.save();
-      ctx.shadowColor = "rgba(56, 189, 248, 0.9)";
-      ctx.shadowBlur = 12 * glowIntensity;
+      ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+      ctx.shadowBlur = 10 * glowIntensity;
       ctx.strokeStyle = probeGradient;
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -256,8 +256,10 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
         flareRadius
       );
       flareGrad.addColorStop(0, highlightColor);
-      flareGrad.addColorStop(0.3, "rgba(56, 189, 248, 0.9)");
-      flareGrad.addColorStop(0.7, "rgba(236, 72, 153, 0.4)");
+      flareGrad.addColorStop(0.35, "rgba(255, 255, 255, 0.8)");
+      flareGrad.addColorStop(0.7, "rgba(255, 255, 255, 0.25)");
+      flareGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+
       flareGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
 
       ctx.fillStyle = flareGrad;

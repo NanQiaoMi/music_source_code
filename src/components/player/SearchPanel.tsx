@@ -630,12 +630,13 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                     )}
                   </div>
                 )}
-                </div>
               </div>
-            )}
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+            </div>
+          )}
+        </motion.div>
+      </div>
+    )}
+  </AnimatePresence>
   );
 }
+

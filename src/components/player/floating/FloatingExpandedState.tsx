@@ -97,11 +97,11 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
       initial="hidden"
       animate="visible"
       exit="exit"
-      className={`relative w-[340px] select-none rounded-[36px] bg-[#000000] border border-white/[0.12] shadow-[0_28px_70px_rgba(0,0,0,0.85),inset_0_1px_1.5px_rgba(255,255,255,0.2)] overflow-hidden flex flex-col p-4 gap-3 text-white ${className}`}
+      className={`relative w-[340px] select-none rounded-[36px] bg-neutral-950/75 backdrop-blur-[48px] backdrop-saturate-[180%] border border-white/[0.18] shadow-[0_28px_70px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(255,255,255,0.06)] overflow-hidden flex flex-col p-4 gap-3 text-white ${className}`}
       style={{ touchAction: "none" }}
     >
       {/* Top Edge Specular Glint Highlight */}
-      <div className="absolute top-0 left-8 right-8 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-8 right-8 h-[1px] bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none" />
 
       {/* 1. Header Drag Handle & Top Bar */}
       <motion.div
@@ -111,12 +111,12 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
         onTouchStart={dragHandlers?.onTouchStart}
       >
         {/* Left Lossless Badge */}
-        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.08] border border-white/[0.1] text-[10px] font-medium text-white/70 tracking-tight">
+        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.08] border border-white/[0.14] text-[10px] font-medium text-white/80 tracking-tight shadow-xs">
           <span>Apple Lossless</span>
         </div>
 
         {/* Center Grab Notch */}
-        <div className="w-9 h-1 rounded-full bg-white/30 hover:bg-white/50 transition-colors" />
+        <div className="w-9 h-1 rounded-full bg-white/35 hover:bg-white/55 transition-colors" />
 
         {/* Collapse Action Button */}
         <button
@@ -135,7 +135,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
       {/* 2. Hero Stage: Apple Squircle Album Artwork */}
       <motion.div
         variants={itemVariants}
-        className="relative w-40 h-40 mx-auto rounded-[20px] overflow-hidden bg-neutral-900 shadow-[0_14px_36px_rgba(0,0,0,0.6)] border border-white/10 flex-shrink-0"
+        className="relative w-40 h-40 mx-auto rounded-[20px] overflow-hidden bg-neutral-900 shadow-[0_14px_36px_rgba(0,0,0,0.6)] border border-white/15 flex-shrink-0"
       >
         <Image
           src={currentSong.cover || DEFAULT_COVER_SRC}
@@ -168,7 +168,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
       <motion.div variants={itemVariants} className="flex flex-col gap-1.5 px-0.5">
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-white/40 font-medium">音频动态</span>
-          <div className="flex items-center gap-0.5 p-0.5 rounded-full bg-white/[0.06] border border-white/[0.08]">
+          <div className="flex items-center gap-0.5 p-0.5 rounded-full bg-white/[0.06] border border-white/[0.1]">
             <button
               type="button"
               onClick={() => {
@@ -177,7 +177,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
               }}
               className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${
                 activeVisTab === "waveform"
-                  ? "bg-white/20 text-white shadow-xs"
+                  ? "bg-white/20 text-white shadow-xs border border-white/20"
                   : "text-white/45 hover:text-white"
               }`}
             >
@@ -191,7 +191,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
               }}
               className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${
                 activeVisTab === "spectrum"
-                  ? "bg-white/20 text-white shadow-xs"
+                  ? "bg-white/20 text-white shadow-xs border border-white/20"
                   : "text-white/45 hover:text-white"
               }`}
             >
@@ -200,7 +200,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
           </div>
         </div>
 
-        <div className="rounded-2xl bg-black/40 border border-white/[0.08] p-1 shadow-inner overflow-hidden">
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-1 shadow-inner overflow-hidden">
           {activeVisTab === "waveform" ? (
             <FloatingWaveformGlow height={40} interactive={true} />
           ) : (
@@ -246,7 +246,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={handleExpandFullPlayer}
-        className="control-interactive relative group w-full py-2 px-4 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.1] text-white/80 hover:text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-all shadow-sm"
+        className="control-interactive relative group w-full py-2.5 px-4 rounded-full bg-white/[0.08] hover:bg-white/[0.15] border border-white/[0.12] text-white/90 hover:text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-all shadow-sm"
       >
         <Maximize2 className="w-3.5 h-3.5 text-white/70 group-hover:rotate-45 transition-transform" />
         <span className="tracking-tight">展开沉浸播放器</span>
@@ -254,5 +254,6 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
     </motion.div>
   );
 };
+
 
 

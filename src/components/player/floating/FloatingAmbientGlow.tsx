@@ -131,18 +131,16 @@ export const FloatingAmbientGlow: React.FC<FloatingAmbientGlowProps> = ({
     };
   }, [currentSong?.cover]);
 
-  // Dynamic colors combined with emotion valence shift
+  // Dynamic monochrome liquid glass palettes (strict grayscale, no colors)
   const activePalette = useMemo<[string, string, string]>(() => {
     if (fallbackColors) return fallbackColors;
-    if (extractedColors) return extractedColors;
+    return [
+      "rgba(255, 255, 255, 0.14)",
+      "rgba(255, 255, 255, 0.08)",
+      "rgba(255, 255, 255, 0.03)",
+    ];
+  }, [fallbackColors]);
 
-    const { x, y } = currentEmotion;
-    if (x > 0.3 && y > 0.2) return DEFAULT_GRADIENT_PALETTES.warmJoy;
-    if (x > 0.2 && y <= 0.2) return DEFAULT_GRADIENT_PALETTES.calmSerene;
-    if (x <= -0.1 && y <= 0.1) return DEFAULT_GRADIENT_PALETTES.melancholy;
-    if (y > 0.4) return DEFAULT_GRADIENT_PALETTES.energetic;
-    return DEFAULT_GRADIENT_PALETTES.default;
-  }, [fallbackColors, extractedColors, currentEmotion]);
 
   // Calculate dynamic breathing parameters based on arousal
   const arousal = currentEmotion.y; // -1 to 1

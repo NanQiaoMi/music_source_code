@@ -75,7 +75,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
       onTouchStart={dragHandlers?.onTouchStart}
       style={{ touchAction: "none" }}
     >
-      {/* Outer Glow Halo Pulse */}
+      {/* Outer Monochrome Glow Halo Pulse */}
       <motion.div
         className={`absolute inset-0 -z-10 rounded-full blur-xl pointer-events-none ${
           isLeft ? "-right-4" : "-left-4"
@@ -83,19 +83,19 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
         animate={
           isPlaying
             ? {
-                opacity: [0.35, 0.75, 0.35],
-                scale: [0.95, 1.2, 0.95],
+                opacity: [0.25, 0.45, 0.25],
+                scale: [0.95, 1.15, 0.95],
                 background: [
-                  "radial-gradient(circle, rgba(56,189,248,0.45) 0%, rgba(99,102,241,0.2) 60%, transparent 80%)",
-                  "radial-gradient(circle, rgba(168,85,247,0.55) 0%, rgba(236,72,153,0.25) 60%, transparent 80%)",
-                  "radial-gradient(circle, rgba(56,189,248,0.45) 0%, rgba(99,102,241,0.2) 60%, transparent 80%)",
+                  "radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 60%, transparent 80%)",
+                  "radial-gradient(circle, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 60%, transparent 80%)",
+                  "radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 60%, transparent 80%)",
                 ],
               }
             : {
-                opacity: 0.15,
+                opacity: 0.1,
                 scale: 1,
                 background:
-                  "radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)",
+                  "radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)",
               }
         }
         transition={{
@@ -105,9 +105,9 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
         }}
       />
 
-      {/* Main Crescent / Half-Pill Glass Container */}
+      {/* Main Crescent / Half-Pill Liquid Glass Container */}
       <div
-        className={`relative flex items-center gap-2.5 py-2 px-2.5 bg-[#000000]/92 backdrop-blur-[36px] backdrop-saturate-[190%] border border-white/[0.12] shadow-[0_16px_40px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.2)] transition-all duration-300 ${
+        className={`relative flex items-center gap-2.5 py-2 px-2.5 bg-neutral-950/75 backdrop-blur-[48px] backdrop-saturate-[180%] border border-white/[0.18] shadow-[0_16px_40px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(255,255,255,0.06)] transition-all duration-300 ${
           isLeft
             ? "rounded-r-full rounded-l-none pl-1.5 pr-3 border-l-0"
             : "rounded-l-full rounded-r-none pr-1.5 pl-3 border-r-0 flex-row-reverse"
@@ -119,7 +119,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
       >
         {/* Apple-grade Top Specular Highlight Line */}
         <div
-          className={`absolute top-0 h-[1px] bg-gradient-to-r from-white/30 via-white/10 to-transparent pointer-events-none ${
+          className={`absolute top-0 h-[1px] bg-gradient-to-r from-white/35 via-white/10 to-transparent pointer-events-none ${
             isLeft ? "left-0 right-3" : "left-3 right-0"
           }`}
         />
@@ -182,7 +182,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
             isLeft ? "pr-1" : "pl-1"
           }`}
         >
-          {/* 3 Mini Bouncing Soundwave Bars */}
+          {/* 3 Mini Bouncing Soundwave Bars (Pure White Liquid Glass) */}
           <div className="flex items-end justify-center gap-[2.5px] h-3.5 w-3.5">
             {[0, 1, 2].map((idx) => {
               const delays = [0, 0.22, 0.44];
@@ -195,7 +195,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
               return (
                 <motion.span
                   key={idx}
-                  className="w-[2px] rounded-full bg-[#2997ff]"
+                  className="w-[2px] rounded-full bg-white shadow-[0_0_4px_rgba(255,255,255,0.6)]"
                   animate={
                     isPlaying
                       ? {
@@ -219,6 +219,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
               );
             })}
           </div>
+
 
           {/* Hover Expand Chevron Hint */}
           <motion.div

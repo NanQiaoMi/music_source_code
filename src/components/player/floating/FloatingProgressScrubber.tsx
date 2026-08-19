@@ -226,18 +226,18 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
               isExpandedTrack ? "h-[8px]" : "h-[3px]"
             }`}
           >
-            {/* Filled Active Gradient Track */}
+            {/* Filled Active Monochrome Track */}
             <div
-              className="absolute top-0 left-0 h-full rounded-full bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-indigo-400 transition-all duration-75"
+              className="absolute top-0 left-0 h-full rounded-full bg-white transition-all duration-75"
               style={{
                 width: `${displayProgressPercent}%`,
                 boxShadow: isExpandedTrack
-                  ? "0 0 12px rgba(56, 189, 248, 0.6), 0 0 20px rgba(236, 72, 153, 0.4)"
-                  : "0 0 6px rgba(56, 189, 248, 0.3)",
+                  ? "0 0 12px rgba(255, 255, 255, 0.6)"
+                  : "0 0 5px rgba(255, 255, 255, 0.35)",
               }}
             />
 
-            {/* Glowing Comet Head (发光彗星流光头) */}
+            {/* Pure White Glass Thumb Knob */}
             <div
               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none transition-transform"
               style={{
@@ -247,21 +247,21 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
             >
               {/* Outer Radiant Aura */}
               <div
-                className={`absolute inset-0 rounded-full blur-md bg-cyan-400/80 ${
+                className={`absolute inset-0 rounded-full blur-sm bg-white/40 ${
                   isPlaying ? "animate-pulse" : ""
                 }`}
                 style={{ width: 14, height: 14, margin: -1 }}
               />
 
-              {/* Luminous Solid Core */}
-              <div className="relative w-3.5 h-3.5 rounded-full bg-white shadow-[0_0_10px_2px_rgba(56,189,248,0.9),0_0_18px_4px_rgba(168,85,247,0.7)] ring-2 ring-cyan-200/60" />
+              {/* Luminous Solid White Core */}
+              <div className="relative w-3.5 h-3.5 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.5),0_0_10px_rgba(255,255,255,0.8)] ring-2 ring-white/30" />
             </div>
           </div>
         </div>
 
         {/* Timestamps */}
         <div className="flex items-center justify-between text-[10px] font-mono text-white/50 tracking-wider">
-          <span className="tabular-nums font-medium text-white/70">
+          <span className="tabular-nums font-medium text-white/80">
             {formatTime(currentTime)}
           </span>
           <span className="tabular-nums">
@@ -284,7 +284,7 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
             title={isMuted ? "取消静音" : "静音"}
           >
             {effectiveVolume === 0 ? (
-              <VolumeX className="w-4 h-4 text-rose-400" />
+              <VolumeX className="w-4 h-4 text-white/40" />
             ) : effectiveVolume < 0.5 ? (
               <Volume1 className="w-4 h-4" />
             ) : (
@@ -307,11 +307,12 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
               }`}
             >
               <div
-                className="absolute top-0 left-0 h-full rounded-full bg-gradient-to-r from-white/70 via-cyan-300 to-white transition-all duration-75 shadow-[0_0_8px_rgba(255,255,255,0.4)]"
+                className="absolute top-0 left-0 h-full rounded-full bg-white/85 transition-all duration-75 shadow-[0_0_6px_rgba(255,255,255,0.4)]"
                 style={{ width: `${Math.round(effectiveVolume * 100)}%` }}
               />
             </div>
           </div>
+
 
           {/* Real-time Percentage Badge */}
           <div className="w-8 text-right text-[10px] font-mono text-white/50 tabular-nums">

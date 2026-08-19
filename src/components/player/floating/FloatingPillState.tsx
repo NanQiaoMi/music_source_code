@@ -115,20 +115,20 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
         />
       )}
 
-      {/* 2. Apple Dynamic Island Solid Jet-Black Capsule Shell */}
+      {/* 2. Apple Liquid Frosted Glass Capsule Shell */}
       <div
-        className="drag-handle relative flex items-center justify-between gap-2.5 px-3 py-1.5 bg-[#000000] border border-white/[0.14] rounded-full shadow-[0_16px_40px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.22)] transition-all duration-300"
+        className="drag-handle relative flex items-center justify-between gap-2.5 px-3 py-1.5 bg-neutral-950/75 backdrop-blur-[48px] backdrop-saturate-[180%] border border-white/[0.18] rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(255,255,255,0.06)] transition-all duration-300"
         style={{
-          width: 320,
+          width: 328,
           height: 50,
         }}
       >
         {/* Top Edge Specular Glint Highlight */}
-        <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none" />
 
         {/* 3. Left Section: Apple Squircle Album Artwork + 3-Bar Live Activity Soundwave */}
         <div className="relative flex-shrink-0 flex items-center">
-          <div className="relative w-8 h-8 rounded-[8px] overflow-hidden bg-neutral-900 shadow-sm border border-white/10 flex-shrink-0">
+          <div className="relative w-8 h-8 rounded-[8px] overflow-hidden bg-neutral-900 shadow-sm border border-white/15 flex-shrink-0">
             <Image
               src={currentSong.cover || DEFAULT_COVER_SRC}
               alt={currentSong.title}
@@ -138,12 +138,12 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
             />
           </div>
 
-          {/* 3-Bar Apple Live Activity Soundwave */}
-          <div className="absolute -bottom-0.5 -right-1 flex items-end gap-[1.5px] h-3 px-1 py-0.5 bg-black/90 rounded-full border border-white/20 pointer-events-none">
+          {/* 3-Bar Apple Live Activity Soundwave (Pure White Liquid Glass Glow) */}
+          <div className="absolute -bottom-0.5 -right-1 flex items-end gap-[1.5px] h-3 px-1 py-0.5 bg-black/60 backdrop-blur-md rounded-full border border-white/20 pointer-events-none shadow-sm">
             {[0.4, 0.9, 0.6].map((ratio, i) => (
               <motion.span
                 key={i}
-                className="w-[2px] rounded-full bg-[#2997ff]"
+                className="w-[2px] rounded-full bg-white shadow-[0_0_4px_rgba(255,255,255,0.6)]"
                 animate={
                   isPlaying
                     ? {
@@ -162,7 +162,7 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
                     : { duration: 0.2 }
                 }
                 style={{
-                  opacity: isPlaying ? 1 : 0.4,
+                  opacity: isPlaying ? 0.95 : 0.4,
                 }}
               />
             ))}
@@ -172,13 +172,13 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
         {/* 4. Center Section: SF Pro Clean Typography Marquee */}
         <div
           ref={textContainerRef}
-          className="flex-1 min-w-0 flex flex-col justify-center overflow-hidden cursor-pointer pl-0.5"
+          className="flex-1 min-w-0 flex flex-col justify-center overflow-hidden cursor-pointer pl-1"
           style={{
             maskImage: isOverflowing
-              ? "linear-gradient(to right, transparent, black 6%, black 94%, transparent)"
+              ? "linear-gradient(to right, black 85%, transparent 100%)"
               : "none",
             WebkitMaskImage: isOverflowing
-              ? "linear-gradient(to right, transparent, black 6%, black 94%, transparent)"
+              ? "linear-gradient(to right, black 85%, transparent 100%)"
               : "none",
           }}
         >
@@ -210,6 +210,7 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
             {(currentSong.artist || "未知歌手").replace(/;/g, ", ")}
           </p>
         </div>
+
 
         {/* 5. Right Section: Apple Music Minimalist Controls */}
         <div className="flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
