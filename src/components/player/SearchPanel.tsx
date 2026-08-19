@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   X,
@@ -24,7 +24,6 @@ import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useSleepTimerStore } from "@/store/sleepTimerStore";
 import Image from "next/image";
-import { GlassModal } from "@/components/shared/Glass";
 import { parseSearchCommand, SEARCH_COMMAND_HINTS } from "@/lib/search/commandRouter";
 import { executeSearchCommand } from "@/lib/search/commandExecutor";
 
@@ -102,6 +101,48 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isListening, setIsListening] = useState(false);
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = useCallback(() => {
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    const activeEl = typeof document !== "undefined" ? document.activeElement : null;
+    const isActuallyFocused = isInputFocused || (activeEl !== null && activeEl === inputRef.current);
+    if (isActuallyFocused || query.trim().length > 0) return;
+
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+    }
+    leaveTimeoutRef.current = setTimeout(() => {
+      onClose();
+    }, 300);
+  }, [isInputFocused, query, onClose]);
+
+  useEffect(() => {
+    return () => {
+      if (leaveTimeoutRef.current) {
+        clearTimeout(leaveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -275,6 +316,8 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               ref={inputRef}
               type="text"
               value={query}
+              onFocus={() => setIsInputFocused(true)}
+              onBlur={() => setIsInputFocused(false)}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -301,11 +344,12 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleVoiceSearch}
-            className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
+            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
               isListening
                 ? "bg-red-500/20 text-red-400 border border-red-500/30"
                 : "bg-white/10 text-white/70 hover:bg-white/20"
             }`}
+            title={isListening ? "正在聆听..." : "语音搜索"}
           >
             {isListening ? (
               <motion.div
@@ -317,6 +361,15 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
             ) : (
               <Mic className="w-5 h-5" />
             )}
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onClose}
+            className="w-11 h-11 rounded-xl flex items-center justify-center bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-colors"
+            title="关闭搜索面板 (Esc)"
+          >
+            <X className="w-5 h-5" />
           </motion.button>
         </div>
 
@@ -630,8 +683,42 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   );
 
   return (
-    <GlassModal isOpen={isOpen} onClose={onClose} width="lg">
-      {content}
-    </GlassModal>
+    <AnimatePresence>
+      {isOpen && (
+        <div
+          data-testid="top-search-drawer-container"
+          className="fixed inset-0 z-[100] flex justify-center pointer-events-none"
+        >
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md pointer-events-auto"
+          />
+
+          {/* Top-Edge Slide-Down Glass Drawer */}
+          <motion.div
+            data-testid="top-search-drawer"
+            initial={{ y: "-100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "-100%", opacity: 0 }}
+            transition={{ type: "spring", stiffness: 350, damping: 32 }}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            onPointerEnter={handleMouseEnter}
+            onPointerLeave={handleMouseLeave}
+            className="relative w-[92vw] max-w-3xl max-h-[85vh] flex flex-col rounded-b-[28px] border-b border-x border-white/15 bg-[#0a0c16]/92 backdrop-blur-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] pointer-events-auto overflow-hidden z-10"
+          >
+            {/* Top Micro Accent Glow Line */}
+            <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-white/40 to-transparent shrink-0" />
+
+            {content}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }

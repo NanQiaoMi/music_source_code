@@ -15,6 +15,7 @@ const FloatingPlayer = dynamic(
 import { GestureController } from "@/components/interaction/GestureController";
 import { GestureFeedback } from "@/components/interaction/GestureFeedback";
 import { AILinerNotes } from "@/components/widgets/AILinerNotes";
+import { TopEdgeSearchTrigger } from "@/components/layout/TopEdgeSearchTrigger";
 
 export function GlobalClientComponents() {
   useAudioPlayer();
@@ -23,6 +24,7 @@ export function GlobalClientComponents() {
 
   return (
     <>
+      <TopEdgeSearchTrigger />
       <FloatingPlayer />
       <AchievementToastContainer />
       <GestureController />
