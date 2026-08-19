@@ -501,7 +501,7 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
       <MorphingPlayPauseButton
         isPlaying={isPlaying}
         onToggle={togglePlay}
-        disabled={isLoading}
+        disabled={false}
         size={compact ? "sm" : "md"}
       />
 

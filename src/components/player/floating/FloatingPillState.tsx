@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { motion, useAnimationFrame } from "framer-motion";
+import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { useProfessionalModeStore } from "@/store/professionalModeStore";
 import { Sparkles, Maximize2 } from "lucide-react";
@@ -58,25 +58,6 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
       setIsOverflowing(content.scrollWidth > container.clientWidth);
     }
   }, [currentSong?.title, currentSong?.artist]);
-
-  // Audio Equalizer Bouncing Wave Bars animation state
-  const [waveHeights, setWaveHeights] = useState([30, 60, 45, 80]);
-  useAnimationFrame((time) => {
-    if (!isPlaying) {
-      return;
-    }
-    const t = time / 180;
-    const h1 = 25 + Math.sin(t * 1.3) * 35 + Math.cos(t * 0.7) * 20;
-    const h2 = 30 + Math.cos(t * 1.8) * 45 + Math.sin(t * 0.5) * 15;
-    const h3 = 20 + Math.sin(t * 2.1) * 40 + Math.cos(t * 1.1) * 25;
-    const h4 = 35 + Math.cos(t * 1.5) * 35 + Math.sin(t * 0.9) * 20;
-    setWaveHeights([
-      Math.max(15, Math.min(100, h1)),
-      Math.max(20, Math.min(100, h2)),
-      Math.max(15, Math.min(100, h3)),
-      Math.max(20, Math.min(100, h4)),
-    ]);
-  });
 
   const handleCardClick = (e: React.MouseEvent) => {
     // If clicked on any button or interactive element, ignore expansion
@@ -140,18 +121,35 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
 
           {/* Audio Waveform Indicator in Bottom Corner */}
           <div className="absolute -bottom-0.5 -right-1 flex items-end gap-[2px] h-3.5 px-1 py-0.5 bg-black/75 backdrop-blur-sm rounded-full border border-white/10 pointer-events-none">
-            {waveHeights.map((h, i) => (
-              <span
+            {[0.4, 0.9, 0.6, 0.8].map((baseRatio, i) => (
+              <motion.span
                 key={i}
-                className="w-[2px] rounded-full bg-gradient-to-t from-cyan-400 to-white shadow-[0_0_4px_rgba(56,189,248,0.7)] transition-[height] duration-75"
+                className="w-[2px] rounded-full bg-gradient-to-t from-cyan-400 to-white shadow-[0_0_4px_rgba(56,189,248,0.7)]"
+                animate={
+                  isPlaying
+                    ? {
+                        height: ["20%", `${baseRatio * 100}%`, "25%"],
+                      }
+                    : { height: "20%" }
+                }
+                transition={
+                  isPlaying
+                    ? {
+                        repeat: Infinity,
+                        repeatType: "mirror",
+                        duration: 0.45 + i * 0.12,
+                        ease: "easeInOut",
+                      }
+                    : { duration: 0.2 }
+                }
                 style={{
-                  height: isPlaying ? `${h}%` : "20%",
                   opacity: isPlaying ? 0.95 : 0.4,
                 }}
               />
             ))}
           </div>
         </div>
+
 
         {/* 4. Center Section: Marquee Title & Artist */}
         <div

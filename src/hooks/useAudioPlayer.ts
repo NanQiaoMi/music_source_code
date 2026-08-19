@@ -337,9 +337,7 @@ export const useAudioPlayer = () => {
         if (isPlaying) {
           await initializeAudioGraph(audio);
           await AudioEngine.getInstance().resume();
-          if (audio.readyState >= 2) {
-            audio.play().catch(handlePlayError);
-          }
+          audio.play().catch(handlePlayError);
         } else {
           audio.pause();
         }

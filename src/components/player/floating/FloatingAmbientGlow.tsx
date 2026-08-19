@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useMemo } from "react";
-import { motion, useAnimationFrame } from "framer-motion";
+import React, { useEffect, useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { useEmotionStore } from "@/store/emotionStore";
-import { AudioEngine } from "@/lib/audio/AudioEngine";
 
 export interface FloatingAmbientGlowProps {
   /** Optional container class name */
@@ -145,66 +144,10 @@ export const FloatingAmbientGlow: React.FC<FloatingAmbientGlowProps> = ({
     return DEFAULT_GRADIENT_PALETTES.default;
   }, [fallbackColors, extractedColors, currentEmotion]);
 
-  // Audio bass energy realtime tracking via AudioEngine Analyser
-  const [bassEnergy, setBassEnergy] = useState<number>(0);
-  const freqDataRef = useRef<Uint8Array | null>(null);
-  const smoothBassRef = useRef<number>(0);
-
-  useAnimationFrame(() => {
-    if (!isPlaying) {
-      if (smoothBassRef.current > 0.01) {
-        smoothBassRef.current *= 0.92;
-        setBassEnergy(smoothBassRef.current);
-      }
-      return;
-    }
-
-    try {
-      const analyser = AudioEngine.getInstance().getAnalyser();
-      if (analyser) {
-        if (!freqDataRef.current || freqDataRef.current.length !== analyser.frequencyBinCount) {
-          freqDataRef.current = new Uint8Array(analyser.frequencyBinCount);
-        }
-        analyser.getByteFrequencyData(freqDataRef.current as Uint8Array<ArrayBuffer>);
-
-        // Low frequency band: bins 1 to 8 (~20Hz to 250Hz)
-        let bassSum = 0;
-        const lowBins = Math.min(8, freqDataRef.current.length);
-        for (let i = 1; i <= lowBins; i++) {
-          bassSum += freqDataRef.current[i];
-        }
-        const rawBass = lowBins > 0 ? (bassSum / (lowBins * 255)) : 0;
-
-        // Smooth with organic attack & decay
-        const target = rawBass;
-        if (target > smoothBassRef.current) {
-          smoothBassRef.current += (target - smoothBassRef.current) * 0.4;
-        } else {
-          smoothBassRef.current += (target - smoothBassRef.current) * 0.15;
-        }
-        setBassEnergy(smoothBassRef.current);
-      }
-    } catch {
-      // AudioContext may be suspended or unavailable in background
-    }
-  });
-
-  // Calculate dynamic breathing parameters based on arousal & bass
+  // Calculate dynamic breathing parameters based on arousal
   const arousal = currentEmotion.y; // -1 to 1
-  const breathingDuration = isPlaying ? Math.max(2.2, 5.0 - (arousal + 1) * 1.4 - bassEnergy * 1.5) : 7.0;
-  const glowScale = 1 + (isPlaying ? 0.06 + bassEnergy * 0.16 : 0.02);
-  const glowOpacity = Math.min(1.0, (0.45 + (arousal + 1) * 0.18 + bassEnergy * 0.35) * intensity);
-
-  // Border Beam animation angle
-  const [beamAngle, setBeamAngle] = useState(0);
-  const beamAngleRef = useRef(0);
-
-  useAnimationFrame((_, delta) => {
-    if (!borderBeam) return;
-    const speed = isPlaying ? 0.08 + bassEnergy * 0.12 : 0.02;
-    beamAngleRef.current = (beamAngleRef.current + delta * speed) % 360;
-    setBeamAngle(beamAngleRef.current);
-  });
+  const breathingDuration = isPlaying ? Math.max(2.5, 4.5 - (arousal + 1) * 0.8) : 6.5;
+  const glowOpacity = Math.min(1.0, (0.5 + (arousal + 1) * 0.2) * intensity);
 
   return (
     <div className={`relative pointer-events-none ${className}`}>
@@ -217,8 +160,10 @@ export const FloatingAmbientGlow: React.FC<FloatingAmbientGlowProps> = ({
           willChange: "transform, opacity",
         }}
         animate={{
-          scale: [glowScale * 0.96, glowScale * 1.04, glowScale * 0.96],
-          opacity: [glowOpacity * 0.85, glowOpacity * 1.15, glowOpacity * 0.85],
+          scale: isPlaying ? [0.96, 1.06, 0.96] : [0.98, 1.02, 0.98],
+          opacity: isPlaying
+            ? [glowOpacity * 0.75, glowOpacity * 1.15, glowOpacity * 0.75]
+            : [glowOpacity * 0.45, glowOpacity * 0.65, glowOpacity * 0.45],
         }}
         transition={{
           repeat: Infinity,
@@ -242,14 +187,12 @@ export const FloatingAmbientGlow: React.FC<FloatingAmbientGlowProps> = ({
           }}
         />
 
-        {/* Blob 3 - Center Bass Pulse Accent */}
+        {/* Blob 3 - Center Accent */}
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] rounded-full mix-blend-screen"
           style={{
             background: `radial-gradient(circle at center, ${activePalette[2]} 0%, transparent 60%)`,
-            opacity: 0.4 + bassEnergy * 0.55,
-            transform: `scale(${1 + bassEnergy * 0.25})`,
-            transition: "transform 80ms ease-out, opacity 80ms ease-out",
+            opacity: isPlaying ? 0.6 : 0.25,
           }}
         />
       </motion.div>
@@ -264,13 +207,19 @@ export const FloatingAmbientGlow: React.FC<FloatingAmbientGlowProps> = ({
             maskComposite: "exclude",
           }}
         >
-          <div
+          <motion.div
             className="absolute inset-[-100%] rounded-full"
             style={{
-              background: `conic-gradient(from ${beamAngle}deg, transparent 0deg, transparent 280deg, ${activePalette[0]} 320deg, rgba(255,255,255,0.95) 345deg, ${activePalette[2]} 360deg)`,
+              background: `conic-gradient(from 0deg, transparent 0deg, transparent 280deg, ${activePalette[0]} 320deg, rgba(255,255,255,0.95) 345deg, ${activePalette[2]} 360deg)`,
               transform: "translate3d(0, 0, 0)",
               willChange: "transform",
-              opacity: isPlaying ? 0.85 + bassEnergy * 0.15 : 0.35,
+              opacity: isPlaying ? 0.85 : 0.35,
+            }}
+            animate={borderBeam ? { rotate: [0, 360] } : undefined}
+            transition={{
+              repeat: Infinity,
+              duration: isPlaying ? 4.5 : 8.5,
+              ease: "linear",
             }}
           />
         </div>
@@ -285,3 +234,4 @@ export const FloatingAmbientGlow: React.FC<FloatingAmbientGlowProps> = ({
     </div>
   );
 };
+
