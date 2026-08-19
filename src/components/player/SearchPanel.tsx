@@ -435,9 +435,9 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
 
             {/* Dropdown Body: Only renders when searching or has content */}
             {hasDropdownContent && (
-              <div className="border-t border-white/10 max-h-[52vh] overflow-y-auto custom-scrollbar flex flex-col p-2.5 gap-2">
-                {/* Search Type Filters & Command hints */}
-                <div className="flex items-center justify-between gap-2 overflow-x-auto custom-scrollbar pb-1">
+              <div className="flex flex-col border-t border-white/10 overflow-hidden">
+                {/* Search Type Filters & Dropdowns Header (Fixed, not clipped) */}
+                <div className="flex items-center justify-between gap-2 px-3 py-2 bg-white/[0.02] border-b border-white/[0.08] shrink-0">
                   <div className="flex items-center gap-1 shrink-0">
                     {SEARCH_TYPES.map((type) => (
                       <button
@@ -459,10 +459,10 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                     <select
                       value={filters.type}
                       onChange={(e) => setFilterType(e.target.value as FilterType)}
-                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-0.5 text-[11px] text-white/70 focus:outline-none"
+                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white/80 focus:outline-none cursor-pointer"
                     >
                       {FILTER_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
+                        <option key={opt.value} value={opt.value} className="bg-[#0f111a] text-white">
                           {opt.label}
                         </option>
                       ))}
@@ -473,16 +473,19 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                         const option = durationOptions.find((item) => item.value === e.target.value);
                         setDurationRange(option?.range ?? null);
                       }}
-                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-0.5 text-[11px] text-white/70 focus:outline-none"
+                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white/80 focus:outline-none cursor-pointer"
                     >
                       {durationOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
+                        <option key={opt.value} value={opt.value} className="bg-[#0f111a] text-white">
                           {opt.label}
                         </option>
                       ))}
                     </select>
                   </div>
                 </div>
+
+                {/* Scrollable Results & History Container */}
+                <div className="max-h-[48vh] overflow-y-auto custom-scrollbar flex flex-col p-2.5 gap-2">
 
                 {/* Feedback */}
                 {(voiceFeedback || commandFeedback) && (
@@ -627,6 +630,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                     )}
                   </div>
                 )}
+                </div>
               </div>
             )}
           </motion.div>
