@@ -108,22 +108,22 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
 
       {/* 2. Apple Dynamic Island Liquid Frosted Glass Capsule Shell */}
       <div
-        className="drag-handle relative flex items-center justify-between gap-3 px-3 py-1.5 bg-neutral-950/80 backdrop-blur-[48px] backdrop-saturate-[180%] border border-white/[0.18] rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(255,255,255,0.06)] transition-all duration-300 overflow-hidden"
+        className="drag-handle relative flex items-center justify-between gap-3.5 px-3.5 py-2 bg-neutral-950/80 backdrop-blur-[48px] backdrop-saturate-[180%] border border-white/[0.18] rounded-full shadow-[0_24px_60px_rgba(0,0,0,0.75),inset_0_1px_1.5px_rgba(255,255,255,0.28),inset_0_-1px_1px_rgba(255,255,255,0.06)] transition-all duration-300 overflow-hidden"
         style={{
-          width: 290,
-          height: 48,
+          width: 340,
+          height: 58,
         }}
       >
         {/* Top Edge Specular Glint Highlight */}
-        <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-8 right-8 h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
 
         {/* 3. Left Section: Apple Squircle Album Artwork */}
-        <div className="relative w-8 h-8 rounded-[8px] overflow-hidden bg-neutral-900 shadow-sm border border-white/15 flex-shrink-0">
+        <div className="relative w-10 h-10 rounded-[11px] overflow-hidden bg-neutral-900 shadow-[0_4px_12px_rgba(0,0,0,0.5)] border border-white/20 ring-1 ring-inset ring-white/10 flex-shrink-0">
           <Image
             src={currentSong.cover || DEFAULT_COVER_SRC}
             alt={currentSong.title}
             fill
-            sizes="32px"
+            sizes="40px"
             className="object-cover"
           />
         </div>
@@ -131,7 +131,7 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
         {/* 4. Center Section: Spacious SF Pro Typography (Full Song Title + Artist) */}
         <div
           ref={textContainerRef}
-          className="flex-1 min-w-0 flex flex-col justify-center overflow-hidden pr-1"
+          className="flex-1 min-w-0 flex flex-col justify-center overflow-hidden pr-2"
           style={{
             maskImage: isOverflowing
               ? "linear-gradient(to right, black 85%, transparent 100%)"
@@ -145,7 +145,7 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
           <div className="overflow-hidden whitespace-nowrap">
             <motion.h4
               ref={textContentRef}
-              className="text-white font-medium text-[13.5px] tracking-[-0.016em] leading-tight inline-block"
+              className="text-white font-semibold text-[14px] tracking-[-0.018em] leading-snug inline-block"
               animate={
                 isOverflowing && isPlaying
                   ? {
@@ -165,21 +165,26 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
           </div>
 
           {/* Artist */}
-          <p className="text-[#86868b] text-[11.5px] font-normal tracking-[-0.01em] truncate leading-tight mt-0.5">
+          <p className="text-[#98989d] text-[12px] font-normal tracking-[-0.01em] truncate leading-tight mt-0.5">
             {(currentSong.artist || "未知歌手").replace(/;/g, ", ")}
           </p>
         </div>
 
         {/* 5. Right Section: Apple Dynamic Island Live Audio Equalizer Waveform */}
-        <div className="flex items-end justify-center gap-[2.5px] h-4 px-1.5 flex-shrink-0 pointer-events-none">
-          {[0.35, 0.9, 0.5, 0.85].map((ratio, i) => (
+        <div className="flex items-end justify-center gap-[3px] h-5 px-2 flex-shrink-0 pointer-events-none">
+          {[
+            { ratios: ["25%", "85%", "40%", "75%", "25%"], duration: 0.85, delay: 0 },
+            { ratios: ["40%", "100%", "30%", "90%", "40%"], duration: 0.72, delay: 0.15 },
+            { ratios: ["20%", "70%", "95%", "35%", "20%"], duration: 0.95, delay: 0.08 },
+            { ratios: ["35%", "90%", "50%", "100%", "35%"], duration: 0.78, delay: 0.22 },
+          ].map((config, i) => (
             <motion.span
               key={i}
-              className="w-[2.5px] rounded-full bg-white shadow-[0_0_5px_rgba(255,255,255,0.6)]"
+              className="w-[3px] rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.7)]"
               animate={
                 isPlaying
                   ? {
-                      height: ["20%", `${ratio * 100}%`, "30%"],
+                      height: config.ratios,
                     }
                   : { height: "20%" }
               }
@@ -188,10 +193,11 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
                   ? {
                       repeat: Infinity,
                       repeatType: "mirror",
-                      duration: 0.38 + i * 0.1,
+                      duration: config.duration,
+                      delay: config.delay,
                       ease: "easeInOut",
                     }
-                  : { duration: 0.2 }
+                  : { duration: 0.25 }
               }
               style={{
                 opacity: isPlaying ? 0.95 : 0.35,
@@ -203,5 +209,6 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
     </motion.div>
   );
 };
+
 
 
