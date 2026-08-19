@@ -30,6 +30,8 @@ vi.mock("framer-motion", async () => {
   type MotionProps = {
     children?: React.ReactNode;
     onClick?: React.MouseEventHandler<HTMLElement>;
+    onMouseEnter?: React.MouseEventHandler<HTMLElement>;
+    onMouseLeave?: React.MouseEventHandler<HTMLElement>;
     className?: string;
     style?: React.CSSProperties;
   } & Record<string, unknown>;
@@ -41,8 +43,24 @@ vi.mock("framer-motion", async () => {
     transition: _transition,
     whileHover: _whileHover,
     whileTap: _whileTap,
+    onMouseLeave,
+    onPointerLeave,
     ...props
-  }: MotionProps) => React.createElement("div", props);
+  }: MotionProps & { onPointerLeave?: () => void }) => {
+    const elementRef = React.useRef<HTMLDivElement>(null);
+    React.useEffect(() => {
+      const el = elementRef.current;
+      if (!el) return;
+      const leaveHandler = () => {
+        onMouseLeave?.({} as any);
+        onPointerLeave?.();
+      };
+      el.addEventListener("mouseleave", leaveHandler);
+      return () => el.removeEventListener("mouseleave", leaveHandler);
+    }, [onMouseLeave, onPointerLeave]);
+
+    return <div ref={elementRef} onMouseLeave={onMouseLeave} onPointerLeave={onPointerLeave} {...props} />;
+  };
 
   const MotionButton = ({
     animate: _animate,
@@ -92,7 +110,7 @@ function removeSpeechRecognition() {
 
 function getVoiceButton(container: HTMLElement) {
   const input = container.querySelector(
-    'input[placeholder="Search songs, artists, albums..."]'
+    'input[placeholder="搜索歌曲、歌手、专辑..."]'
   ) as HTMLInputElement | null;
   expect(input).not.toBeNull();
   const button = input?.parentElement?.nextElementSibling;
@@ -111,9 +129,11 @@ describe("SearchPanel", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
+    vi.useFakeTimers();
   });
 
   afterEach(async () => {
+    vi.useRealTimers();
     await act(async () => {
       root.unmount();
     });
@@ -133,7 +153,84 @@ describe("SearchPanel", () => {
     });
 
     expect(window.alert).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("Voice search is not supported in this browser.");
+    expect(container.textContent).toContain("当前浏览器不支持语音搜索。");
     expect(useSearchStore.getState().isVoiceSearch).toBe(false);
+  });
+
+  it("renders top search drawer when open and closes on Escape key", async () => {
+    const { SearchPanel } = await import("./SearchPanel");
+    const onClose = vi.fn();
+
+    await act(async () => {
+      root.render(<SearchPanel isOpen={true} onClose={onClose} />);
+    });
+
+    const drawer = container.querySelector('[data-testid="top-search-drawer"]');
+    expect(drawer).not.toBeNull();
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("auto-closes after delay on mouse leave when input is unfocused and query is empty", async () => {
+    const { SearchPanel } = await import("./SearchPanel");
+    const onClose = vi.fn();
+
+    await act(async () => {
+      root.render(<SearchPanel isOpen={true} onClose={onClose} />);
+    });
+
+    const input = container.querySelector('input[placeholder="搜索歌曲、歌手、专辑..."]') as HTMLInputElement;
+    const drawer = container.querySelector('[data-testid="top-search-drawer"]');
+    expect(drawer).not.toBeNull();
+
+    // Blur the input to simulate unfocused state
+    await act(async () => {
+      input?.blur();
+      input?.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+    });
+
+    await act(async () => {
+      drawer?.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+
+    // Fast-forward 300ms timer
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not auto-close on mouse leave when input is focused", async () => {
+    const { SearchPanel } = await import("./SearchPanel");
+    const onClose = vi.fn();
+
+    await act(async () => {
+      root.render(<SearchPanel isOpen={true} onClose={onClose} />);
+    });
+
+    const input = container.querySelector('input[placeholder="搜索歌曲、歌手、专辑..."]') as HTMLInputElement;
+    const drawer = container.querySelector('[data-testid="top-search-drawer"]');
+
+    await act(async () => {
+      input?.focus();
+      input?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+    });
+
+    await act(async () => {
+      drawer?.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
