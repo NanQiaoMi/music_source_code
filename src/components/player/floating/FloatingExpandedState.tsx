@@ -65,6 +65,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
 }) => {
   const currentSong = useAudioStore((state) => state.currentSong);
   const currentTime = useAudioStore((state) => state.currentTime);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
   const { setCurrentView } = useUIStore();
 
   const visualizerMode = useFloatingDebugStore((state) => state.visualizerMode);
@@ -97,16 +98,50 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
       initial="hidden"
       animate="visible"
       exit="exit"
-      className={`relative w-[340px] select-none rounded-[36px] bg-neutral-950/75 backdrop-blur-[48px] backdrop-saturate-[180%] border border-white/[0.18] shadow-[0_28px_70px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(255,255,255,0.06)] overflow-hidden flex flex-col p-4 gap-3 text-white ${className}`}
+      className={`relative w-[340px] select-none rounded-[36px] bg-neutral-950/80 backdrop-blur-[48px] backdrop-saturate-[180%] border border-white/[0.18] shadow-[0_28px_70px_rgba(0,0,0,0.8),inset_0_1px_1.5px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(255,255,255,0.06)] overflow-visible flex flex-col p-4 gap-3 text-white ${className}`}
       style={{ touchAction: "none" }}
     >
       {/* Top Edge Specular Glint Highlight */}
       <div className="absolute top-0 left-8 right-8 h-[1px] bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none" />
 
+      {/* Breathing Liquid Flowing Light Emanating from Underneath the Card */}
+      <motion.div
+        className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-[92%] h-28 rounded-full -z-20 pointer-events-none blur-[42px] mix-blend-screen"
+        style={{
+          background:
+            "radial-gradient(ellipse at center, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.14) 45%, transparent 75%)",
+          willChange: "transform, opacity",
+        }}
+        animate={{
+          opacity: isPlaying ? [0.45, 0.92, 0.45] : 0.2,
+          scale: isPlaying ? [0.92, 1.15, 0.92] : 0.95,
+          y: isPlaying ? [0, 8, 0] : 0,
+        }}
+        transition={{
+          repeat: Infinity,
+          duration: 3.4,
+          ease: "easeInOut",
+        }}
+      />
+
+      {/* Bottom Specular Curved Edge Flow Glint */}
+      <motion.div
+        className="absolute bottom-0 left-12 right-12 h-[1px] z-10 bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none"
+        animate={{
+          opacity: isPlaying ? [0.35, 0.85, 0.35] : 0.2,
+        }}
+        transition={{
+          repeat: Infinity,
+          duration: 2.8,
+          ease: "easeInOut",
+        }}
+      />
+
       {/* 1. Header Drag Handle & Top Bar */}
       <motion.div
         variants={itemVariants}
         className="drag-handle relative w-full flex items-center justify-between pt-0.5 cursor-grab active:cursor-grabbing z-20"
+
         onMouseDown={dragHandlers?.onMouseDown}
         onTouchStart={dragHandlers?.onTouchStart}
       >

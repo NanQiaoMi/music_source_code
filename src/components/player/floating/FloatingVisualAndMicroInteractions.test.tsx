@@ -12,8 +12,11 @@ import {
   JellyButton,
 } from "./FloatingControls";
 import { FloatingPillState } from "./FloatingPillState";
+import { FloatingMiniState } from "./FloatingMiniState";
+import { FloatingCompactControlsState } from "./FloatingCompactControlsState";
 import { useAudioStore } from "@/store/audioStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
+
 import { useEmotionStore } from "@/store/emotionStore";
 
 type MockImageProps = ImgHTMLAttributes<HTMLImageElement> & {
@@ -321,5 +324,108 @@ describe("FloatingPillState", () => {
     });
     container.remove();
   });
-
 });
+
+describe("FloatingMiniState (Level 1 Minimal Dynamic Island)", () => {
+  beforeEach(() => {
+    useAudioStore.setState({
+      isPlaying: true,
+      isLoading: false,
+      currentSong: {
+        id: "song-mini-1",
+        title: "Tokyo Drift Funk",
+        artist: "Phonk Maestro",
+        album: "Speed Night",
+        cover: "/tokyo.jpg",
+        audioUrl: "/tokyo.mp3",
+        duration: 210,
+        source: "local",
+      },
+    });
+  });
+
+  it("renders minimal dynamic island with cover and live equalizer", async () => {
+    const onExpand = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root: Root = createRoot(container);
+
+    await act(async () => {
+      root.render(<FloatingMiniState onExpand={onExpand} showGlow={true} />);
+    });
+
+    expect(container.innerHTML).toContain('data-floating-state="mini"');
+    const card = container.querySelector('[data-floating-state="mini"]') as HTMLDivElement;
+    expect(card).toBeDefined();
+
+    // Click on mini capsule triggers onExpand to compact state
+    await act(async () => {
+      card.click();
+    });
+    expect(onExpand).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      root.unmount();
+    });
+    container.remove();
+  });
+});
+
+describe("FloatingCompactControlsState (Level 2 Island Controls)", () => {
+  beforeEach(() => {
+    useAudioStore.setState({
+      isPlaying: true,
+      isLoading: false,
+      currentSong: {
+        id: "song-compact-1",
+        title: "Yum Yum Phonk",
+        artist: "LXNGVX, Mc GW",
+        album: "Phonk Season",
+        cover: "/yum.jpg",
+        audioUrl: "/yum.mp3",
+        duration: 180,
+        source: "local",
+      },
+    });
+  });
+
+  it("renders compact controls view with the 5 dedicated controls and metadata", async () => {
+    const onExpandFull = vi.fn();
+    const onCollapseToMini = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root: Root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <FloatingCompactControlsState
+          onExpandFull={onExpandFull}
+          onCollapseToMini={onCollapseToMini}
+          showGlow={true}
+        />
+      );
+    });
+
+    expect(container.innerHTML).toContain('data-floating-state="compact"');
+    expect(container.textContent).toContain("Yum Yum Phonk");
+    expect(container.textContent).toContain("LXNGVX, Mc GW");
+
+    // Has previous, play/pause, next, lyric, favorite
+    expect(container.querySelector('button[title="上一首"]')).toBeDefined();
+    expect(container.querySelector('button[title="下一首"]')).toBeDefined();
+    expect(container.querySelector('button[title="歌词"]')).toBeDefined();
+
+    // Click on card body outside controls triggers onExpandFull to expanded card
+    const card = container.querySelector('[data-floating-state="compact"]') as HTMLDivElement;
+    await act(async () => {
+      card.click();
+    });
+    expect(onExpandFull).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      root.unmount();
+    });
+    container.remove();
+  });
+});
+

@@ -2,7 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 
-export type FloatingPlayerState = "pill" | "expanded" | "dock-left" | "dock-right";
+export type FloatingPlayerState =
+  | "mini"
+  | "compact"
+  | "expanded"
+  | "dock-left"
+  | "dock-right"
+  | "pill";
 
 export interface Position {
   x: number;
@@ -35,7 +41,11 @@ export interface UseFloatingDragPhysicsOptions {
   safePadding?: number;
   /** Inertia fling friction decay coefficient per frame (0 to 1, default: 0.92) */
   friction?: number;
-  /** Dimension preset for pill state */
+  /** Dimension preset for mini state */
+  miniDimensions?: DimensionConfig;
+  /** Dimension preset for compact state */
+  compactDimensions?: DimensionConfig;
+  /** Dimension preset for pill state (backward compatibility) */
   pillDimensions?: DimensionConfig;
   /** Dimension preset for expanded state */
   expandedDimensions?: DimensionConfig;
@@ -53,9 +63,12 @@ export const FLOATING_SPRING_CONFIG = {
   restDelta: 0.5,
 };
 
-const DEFAULT_PILL_DIM: DimensionConfig = { width: 340, height: 72 };
-const DEFAULT_EXPANDED_DIM: DimensionConfig = { width: 360, height: 480 };
-const DEFAULT_DOCK_DIM: DimensionConfig = { width: 60, height: 72 };
+const DEFAULT_MINI_DIM: DimensionConfig = { width: 180, height: 56 };
+const DEFAULT_COMPACT_DIM: DimensionConfig = { width: 360, height: 64 };
+const DEFAULT_PILL_DIM: DimensionConfig = { width: 180, height: 56 };
+const DEFAULT_EXPANDED_DIM: DimensionConfig = { width: 350, height: 480 };
+const DEFAULT_DOCK_DIM: DimensionConfig = { width: 64, height: 64 };
+
 
 interface PointerSample {
   x: number;
@@ -91,7 +104,10 @@ export function useFloatingDragPhysics(
     initialState = "pill",
     edgeSnapThreshold = 40,
     safePadding = 16,
+
     friction = 0.92,
+    miniDimensions = DEFAULT_MINI_DIM,
+    compactDimensions = DEFAULT_COMPACT_DIM,
     pillDimensions = DEFAULT_PILL_DIM,
     expandedDimensions = DEFAULT_EXPANDED_DIM,
     dockDimensions = DEFAULT_DOCK_DIM,
@@ -105,20 +121,25 @@ export function useFloatingDragPhysics(
   const [velocity, setVelocity] = useState<Velocity>({ x: 0, y: 0 });
 
   // Refs for tracking during high-frequency gesture events
-  const playerStateRef = useRef<FloatingPlayerState>(initialState);
   const positionRef = useRef<Position>(initialPosition);
-  const isDraggingRef = useRef(false);
-  const dragStartRef = useRef<{ clientX: number; clientY: number; startX: number; startY: number }>(
-    { clientX: 0, clientY: 0, startX: 0, startY: 0 }
-  );
+  const playerStateRef = useRef<FloatingPlayerState>(initialState);
+  const velocityRef = useRef<Velocity>({ x: 0, y: 0 });
+  const isDraggingRef = useRef<boolean>(false);
+  const dragStartRef = useRef<{ clientX: number; clientY: number; startX: number; startY: number }>({
+    clientX: 0,
+    clientY: 0,
+    startX: 0,
+    startY: 0,
+  });
+  const pointerHistoryRef = useRef<PointerSample[]>([]);
   const samplesRef = useRef<PointerSample[]>([]);
-  const animFrameIdRef = useRef<number | null>(null);
   const prevWindowSizeRef = useRef<{ width: number; height: number }>({
-    width: typeof window !== "undefined" ? window.innerWidth : 1280,
+    width: typeof window !== "undefined" ? window.innerWidth : 1200,
     height: typeof window !== "undefined" ? window.innerHeight : 800,
   });
+  const animFrameIdRef = useRef<number | null>(null);
 
-  // Keep refs synchronized
+  // Keep state and position refs in sync
   useEffect(() => {
     playerStateRef.current = playerState;
   }, [playerState]);
@@ -127,11 +148,14 @@ export function useFloatingDragPhysics(
     positionRef.current = position;
   }, [position]);
 
+
+  // Unified state dispatcher that executes optional onStateChange callback
   const setPlayerState: React.Dispatch<React.SetStateAction<FloatingPlayerState>> = useCallback(
     (action) => {
       setPlayerStateInternal((prev) => {
         const next = typeof action === "function" ? action(prev) : action;
         if (next !== prev) {
+          playerStateRef.current = next;
           onStateChange?.(next);
         }
         return next;
@@ -148,6 +172,10 @@ export function useFloatingDragPhysics(
       switch (state) {
         case "expanded":
           return expandedDimensions;
+        case "compact":
+          return compactDimensions;
+        case "mini":
+          return miniDimensions;
         case "dock-left":
         case "dock-right":
           return dockDimensions;
@@ -156,7 +184,7 @@ export function useFloatingDragPhysics(
           return pillDimensions;
       }
     },
-    [dockDimensions, expandedDimensions, pillDimensions]
+    [compactDimensions, dockDimensions, expandedDimensions, miniDimensions, pillDimensions]
   );
 
   /**
@@ -273,7 +301,7 @@ export function useFloatingDragPhysics(
 
     const now = performance.now();
     // Use samples from the most recent 120ms
-    const recent = samples.filter((s) => now - s.time <= 120);
+    const recent = samples.filter((s: PointerSample) => now - s.time <= 120);
     const validSamples = recent.length >= 2 ? recent : samples.slice(-3);
 
     if (validSamples.length < 2) return { x: 0, y: 0 };

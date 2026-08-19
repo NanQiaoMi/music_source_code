@@ -307,39 +307,55 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
                 <span className="text-[10px] font-mono text-white/50 uppercase tracking-wider">
                   Force State (强制切换形态)
                 </span>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   <button
                     type="button"
                     onClick={() => onStateChange("pill")}
-                    className={`py-1.5 px-2 rounded-xl text-[10px] font-mono font-medium transition-all flex items-center justify-center gap-1 border ${
-                      currentState === "pill"
-                        ? "bg-cyan-500/25 border-cyan-400/40 text-cyan-200 shadow-sm"
+                    className={`py-1.5 px-1 rounded-xl text-[9px] font-mono font-medium transition-all flex items-center justify-center gap-1 border ${
+                      currentState === "mini" || currentState === "pill"
+                        ? "bg-white/25 border-white/40 text-white shadow-sm"
                         : "bg-white/[0.04] border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.08]"
                     }`}
                   >
-                    <Minimize2 className="w-3 h-3" />
+                    <Minimize2 className="w-2.5 h-2.5" />
                     <span>Pill 胶囊</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => onStateChange("expanded")}
-                    className={`py-1.5 px-2 rounded-xl text-[10px] font-mono font-medium transition-all flex items-center justify-center gap-1 border ${
-                      currentState === "expanded"
-                        ? "bg-fuchsia-500/25 border-fuchsia-400/40 text-fuchsia-200 shadow-sm"
+                    onClick={() => onStateChange("compact")}
+                    className={`py-1.5 px-1 rounded-xl text-[9px] font-mono font-medium transition-all flex items-center justify-center gap-1 border ${
+                      currentState === "compact"
+                        ? "bg-white/25 border-white/40 text-white shadow-sm"
                         : "bg-white/[0.04] border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.08]"
                     }`}
                   >
-                    <Maximize className="w-3 h-3" />
-                    <span>Expanded 展开</span>
+                    <Zap className="w-2.5 h-2.5" />
+                    <span>Compact 控制</span>
                   </button>
 
+                  <button
+                    type="button"
+                    onClick={() => onStateChange("expanded")}
+                    className={`py-1.5 px-1 rounded-xl text-[9px] font-mono font-medium transition-all flex items-center justify-center gap-1 border ${
+                      currentState === "expanded"
+                        ? "bg-white/25 border-white/40 text-white shadow-sm"
+                        : "bg-white/[0.04] border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.08]"
+                    }`}
+                  >
+                    <Maximize className="w-2.5 h-2.5" />
+                    <span>Expanded 展开</span>
+                  </button>
+                </div>
+
+
+                <div className="grid grid-cols-2 gap-1.5 mt-1">
                   <button
                     type="button"
                     onClick={() => onStateChange("dock-left")}
                     className={`py-1.5 px-2 rounded-xl text-[10px] font-mono font-medium transition-all flex items-center justify-center gap-1 border ${
                       currentState === "dock-left"
-                        ? "bg-indigo-500/25 border-indigo-400/40 text-indigo-200 shadow-sm"
+                        ? "bg-white/25 border-white/40 text-white shadow-sm"
                         : "bg-white/[0.04] border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.08]"
                     }`}
                   >
@@ -352,7 +368,7 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
                     onClick={() => onStateChange("dock-right")}
                     className={`py-1.5 px-2 rounded-xl text-[10px] font-mono font-medium transition-all flex items-center justify-center gap-1 border ${
                       currentState === "dock-right"
-                        ? "bg-indigo-500/25 border-indigo-400/40 text-indigo-200 shadow-sm"
+                        ? "bg-white/25 border-white/40 text-white shadow-sm"
                         : "bg-white/[0.04] border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.08]"
                     }`}
                   >
@@ -360,6 +376,7 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
                     <span>Dock Right 右侧</span>
                   </button>
                 </div>
+
               </div>
             )}
           </motion.div>

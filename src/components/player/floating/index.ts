@@ -56,6 +56,17 @@ export {
 } from "./FloatingExpandedState";
 
 export {
+  FloatingMiniState,
+  type FloatingMiniStateProps,
+} from "./FloatingMiniState";
+
+export {
+  FloatingCompactControlsState,
+  type FloatingCompactControlsStateProps,
+} from "./FloatingCompactControlsState";
+
+export {
   FloatingDebugHUD,
   type FloatingDebugHUDProps,
 } from "./FloatingDebugHUD";
+

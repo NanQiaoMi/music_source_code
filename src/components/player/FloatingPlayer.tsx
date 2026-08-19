@@ -5,21 +5,24 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import {
   useFloatingDragPhysics,
+  FloatingMiniState,
+  FloatingCompactControlsState,
   FloatingPillState,
   FloatingExpandedState,
   FloatingDockState,
   FloatingDebugHUD,
+  type FloatingPlayerState,
 } from "./floating";
 
 export interface FloatingPlayerProps {
   className?: string;
-  defaultState?: "pill" | "expanded";
+  defaultState?: FloatingPlayerState;
   showDebugHud?: boolean;
 }
 
 export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
   className = "",
-  defaultState = "pill",
+  defaultState = "mini",
   showDebugHud = true,
 }) => {
   const currentSong = useAudioStore((state) => state.currentSong);
@@ -42,6 +45,7 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
     initialState: defaultState,
     initialPosition: { x: 24, y: 260 },
   });
+
 
   // Global Keyboard Shortcuts for Floating Player
   const handleKeyDown = useCallback(
@@ -133,18 +137,32 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
           ) : playerState === "expanded" ? (
             <FloatingExpandedState
               key="expanded"
-              onCollapse={() => setPlayerState("pill")}
+              onCollapse={() => setPlayerState("compact")}
+              dragHandlers={dragHandlers}
+            />
+          ) : playerState === "compact" ? (
+            <FloatingCompactControlsState
+              key="compact"
+              onExpandFull={() => setPlayerState("expanded")}
+              onCollapseToMini={() => setPlayerState("mini")}
+              dragHandlers={dragHandlers}
+            />
+          ) : playerState === "pill" ? (
+            <FloatingPillState
+              key="pill"
+              onExpand={() => setPlayerState("compact")}
               dragHandlers={dragHandlers}
             />
           ) : (
-            <FloatingPillState
-              key="pill"
-              onExpand={() => setPlayerState("expanded")}
+            <FloatingMiniState
+              key="mini"
+              onExpand={() => setPlayerState("compact")}
               dragHandlers={dragHandlers}
             />
           )}
         </AnimatePresence>
       </motion.aside>
+
 
       {/* Real-time Dynamic Spring/Glow Tuning HUD */}
       {showDebugHud && (
