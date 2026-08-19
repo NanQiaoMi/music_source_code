@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { useAudioStore } from "./audioStore";
+import { useAudioStore, registerAudioSeekHandler } from "./audioStore";
 import { usePlayerStore } from "./playerStore";
 import { useQueueStore } from "./queueStore";
+import { vi } from "vitest";
 import { MISSING_AUDIO_SOURCE_MESSAGE } from "@/lib/audio/playableAudioSource";
 
 function createMockSong(id: string) {
@@ -170,5 +170,18 @@ describe("audioStore playback sync", () => {
 
     expect(useAudioStore.getState().currentSong?.id).toBe("2");
     expect(usePlayerStore.getState().currentSong?.id).toBe("2");
+  });
+
+  it("should update both audioStore and playerStore currentTime and call registered audio seek handler", () => {
+    const seekHandler = vi.fn();
+    registerAudioSeekHandler(seekHandler);
+
+    useAudioStore.getState().seekTo(45.5);
+
+    expect(useAudioStore.getState().currentTime).toBe(45.5);
+    expect(usePlayerStore.getState().currentTime).toBe(45.5);
+    expect(seekHandler).toHaveBeenCalledWith(45.5);
+
+    registerAudioSeekHandler(null);
   });
 });
