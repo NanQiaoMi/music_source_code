@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
@@ -10,14 +10,11 @@ import { useVisualizationV8Store } from "@/store/visualizationV8Store";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { Gauge, Settings, X } from "lucide-react";
 import { RenderEngineManager } from "./engines/RenderEngineManager";
-import { ResonanceTotemLayer } from "./ResonanceTotemLayer";
 import { VisualControlDrawer } from "./shared/VisualControlDrawer";
 
 import { useVisualizationV8 } from "@/hooks/useVisualizationV8";
 import { RenderContext, AudioData } from "@/lib/visualization/types";
 import { createAudioSnapshot } from "@/lib/visualization/audioSnapshot";
-import { useTotemStore } from "@/store/totemStore";
-import { useLyricsSearchStore } from "@/store/lyricsSearchStore";
 
 const APPLE_SPRING_CONFIG = {
   type: "spring" as const,
@@ -59,15 +56,6 @@ export function VisualizationViewV8() {
     getCurrentParams,
     isInitialized,
   } = useVisualizationV8();
-
-  const initializeTotemsForSong = useTotemStore((state) => state.initializeForSong);
-  const updateActiveKeywords = useTotemStore((state) => state.updateActiveKeywords);
-  const addPreloadedTexture = useTotemStore((state) => state.addPreloadedTexture);
-  const clearTotems = useTotemStore((state) => state.clear);
-  const allTotemKeywords = useTotemStore((state) => state.allKeywords);
-  const preloadedTotemTextures = useTotemStore((state) => state.preloadedTextures);
-  const parsedLyrics = useLyricsSearchStore((state) => state.parsedLyrics);
-  const workerRef = useRef<Worker | null>(null);
 
   const [showControlDrawer, setShowControlDrawer] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -111,57 +99,6 @@ export function VisualizationViewV8() {
       setWebGLAvailable(false);
     }
   }, [setWebGLAvailable]);
-
-  // Initialize totems for current song
-  useEffect(() => {
-    if (parsedLyrics.length > 0) {
-      initializeTotemsForSong(parsedLyrics);
-    } else {
-      clearTotems();
-    }
-  }, [clearTotems, initializeTotemsForSong, parsedLyrics]);
-
-  // Update active totems
-  useEffect(() => {
-    updateActiveKeywords(currentTime);
-  }, [currentTime, updateActiveKeywords]);
-
-  // Manage Texture Worker
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const worker = new Worker(new URL("../../workers/totemTexture.worker.ts", import.meta.url), {
-      type: "module",
-    });
-
-    worker.onmessage = (e) => {
-      if (e.data.type === "texture-generated") {
-        addPreloadedTexture(e.data.id, e.data.bitmap);
-      }
-    };
-
-    workerRef.current = worker;
-
-    return () => {
-      worker.terminate();
-    };
-  }, [addPreloadedTexture]);
-
-  // Preload textures when keywords change
-  useEffect(() => {
-    if (!workerRef.current || allTotemKeywords.length === 0) return;
-
-    allTotemKeywords.forEach((kw) => {
-      if (!preloadedTotemTextures[kw.id]) {
-        workerRef.current?.postMessage({
-          type: "generate",
-          id: kw.id,
-          text: kw.text,
-          style: "serif",
-        });
-      }
-    });
-  }, [allTotemKeywords, preloadedTotemTextures]);
 
   useEffect(() => {
     if (currentView !== "visualization") return;
@@ -277,8 +214,6 @@ export function VisualizationViewV8() {
       />
 
       <div className="absolute inset-0 opacity-[0.03] bg-[url('/noise.svg')]" />
-
-      <ResonanceTotemLayer />
 
       <RenderEngineManager
         engine={currentEffect?.preferredEngine || "canvas"}
