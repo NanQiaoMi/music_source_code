@@ -11,6 +11,7 @@ import { FloatingControls, HeartFavoriteButton } from "./FloatingControls";
 import { FloatingProgressScrubber } from "./FloatingProgressScrubber";
 import { FloatingWaveformGlow } from "./FloatingWaveformGlow";
 import { FloatingSpectrumGlow } from "./FloatingSpectrumGlow";
+import { LiquidGlassFilter } from "./LiquidGlassFilter";
 import type { DragHandlers } from "./useFloatingDragPhysics";
 import { ChevronDown, Maximize2 } from "lucide-react";
 
@@ -98,11 +99,15 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
       initial="hidden"
       animate="visible"
       exit="exit"
-      className={`relative w-[340px] select-none rounded-[36px] bg-neutral-950/80 backdrop-blur-[48px] backdrop-saturate-[180%] border border-white/[0.18] shadow-[0_28px_70px_rgba(0,0,0,0.8),inset_0_1px_1.5px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(255,255,255,0.06)] overflow-visible flex flex-col p-4 gap-3 text-white ${className}`}
+      className={`relative w-[340px] select-none rounded-[36px] mineradio-liquid-glass overflow-visible flex flex-col p-4 gap-3 text-white ${className}`}
       style={{ touchAction: "none" }}
     >
+      {/* 0. Mineradio Flagship SVG Liquid Glass Dispersion Filter */}
+      <LiquidGlassFilter />
+
       {/* Top Edge Specular Glint Highlight */}
-      <div className="absolute top-0 left-8 right-8 h-[1px] bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none" />
+      <div className="mineradio-glass-specular-glint" />
+      <div className="absolute top-0 left-8 right-8 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
 
       {/* Breathing Liquid Flowing Light Emanating from Underneath the Card */}
       <motion.div

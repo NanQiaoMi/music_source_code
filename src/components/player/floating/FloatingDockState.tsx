@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { Play, Pause, ChevronRight, ChevronLeft } from "lucide-react";
+import { LiquidGlassFilter } from "./LiquidGlassFilter";
 import type { DragHandlers, FloatingPlayerState } from "./useFloatingDragPhysics";
 
 export interface FloatingDockStateProps {
@@ -106,9 +107,12 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
         }}
       />
 
+      {/* 0. Mineradio Flagship SVG Liquid Glass Dispersion Filter */}
+      <LiquidGlassFilter />
+
       {/* Main Crescent / Half-Pill Liquid Glass Container */}
       <div
-        className={`relative flex items-center gap-2.5 py-2 px-2.5 bg-neutral-950/75 backdrop-blur-[48px] backdrop-saturate-[180%] border border-white/[0.18] shadow-[0_16px_40px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(255,255,255,0.06)] transition-all duration-300 ${
+        className={`relative flex items-center gap-2.5 py-2 px-2.5 mineradio-liquid-glass transition-all duration-300 ${
           isLeft
             ? "rounded-r-full rounded-l-none pl-1.5 pr-3 border-l-0"
             : "rounded-l-full rounded-r-none pr-1.5 pl-3 border-r-0 flex-row-reverse"
@@ -119,8 +123,9 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
         }}
       >
         {/* Apple-grade Top Specular Highlight Line */}
+        <div className="mineradio-glass-specular-glint" />
         <div
-          className={`absolute top-0 h-[1px] bg-gradient-to-r from-white/35 via-white/10 to-transparent pointer-events-none ${
+          className={`absolute top-0 h-[1px] bg-gradient-to-r from-white/45 via-white/15 to-transparent pointer-events-none ${
             isLeft ? "left-0 right-3" : "left-3 right-0"
           }`}
         />

@@ -40,7 +40,9 @@ export type PanelName =
   | "smartRandom"
   | "emotionMatrix"
   | "aiSettings"
-  | "dnaJournal";
+  | "dnaJournal"
+  | "shelf3D"
+  | "audioSourceManager";
 
 export const PANEL_NAMES: readonly PanelName[] = [
   "queue",
@@ -79,10 +81,13 @@ export const PANEL_NAMES: readonly PanelName[] = [
   "emotionMatrix",
   "aiSettings",
   "dnaJournal",
+  "shelf3D",
+  "audioSourceManager",
 ];
 
 const FULLSCREEN_PANELS: readonly PanelName[] = [
   "emotionMatrix",
+  "shelf3D",
   "formatConverter",
   "dsdConverter",
   "trackCutter",
@@ -137,6 +142,12 @@ interface UIState {
   isEQOpen: boolean;
   setIsEQOpen: (isOpen: boolean) => void;
 
+  isShelf3DOpen: boolean;
+  setIsShelf3DOpen: (isOpen: boolean) => void;
+  openShelf3D: () => void;
+  closeShelf3D: () => void;
+  toggleShelf3D: () => void;
+
   isFullscreen: boolean;
   setIsFullscreen: (isFullscreen: boolean) => void;
   toggleFullscreen: () => void;
@@ -165,6 +176,17 @@ export const useUIStore = create<UIState>((set, get) => ({
   isTransitioning: false,
 
   panels: createDefaultPanels(),
+  isShelf3DOpen: false,
+  openShelf3D: () => get().openPanel("shelf3D"),
+  closeShelf3D: () => get().closePanel("shelf3D"),
+  toggleShelf3D: () => get().togglePanel("shelf3D"),
+  setIsShelf3DOpen: (isOpen) => {
+    if (isOpen) {
+      get().openPanel("shelf3D");
+    } else {
+      get().closePanel("shelf3D");
+    }
+  },
   openPanel: (name) =>
     set((state) => {
       const next = { ...state.panels };
@@ -180,12 +202,17 @@ export const useUIStore = create<UIState>((set, get) => ({
       return {
         panels: next,
         isFullscreenLyrics: isFullscreenPanel ? false : state.isFullscreenLyrics,
+        isShelf3DOpen: next.shelf3D,
       };
     }),
   closePanel: (name) =>
-    set((state) => ({
-      panels: { ...state.panels, [name]: false },
-    })),
+    set((state) => {
+      const next = { ...state.panels, [name]: false };
+      return {
+        panels: next,
+        isShelf3DOpen: next.shelf3D,
+      };
+    }),
   togglePanel: (name) => {
     const isOpen = get().panels[name];
     if (isOpen) {
@@ -194,7 +221,7 @@ export const useUIStore = create<UIState>((set, get) => ({
       get().openPanel(name);
     }
   },
-  closeAllPanels: () => set({ panels: createDefaultPanels() }),
+  closeAllPanels: () => set({ panels: createDefaultPanels(), isShelf3DOpen: false }),
   isPanelOpen: (name) => get().panels[name],
 
   isFullscreenLyrics: false,

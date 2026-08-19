@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { FloatingAmbientGlow } from "./FloatingAmbientGlow";
+import { LiquidGlassFilter } from "./LiquidGlassFilter";
 import type { DragHandlers } from "./useFloatingDragPhysics";
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
@@ -81,6 +82,9 @@ export const FloatingMiniState: React.FC<FloatingMiniStateProps> = ({
         damping: 30,
       }}
     >
+      {/* 0. Mineradio Flagship SVG Liquid Glass Dispersion Filter */}
+      <LiquidGlassFilter />
+
       {/* 1. Subtle Monochrome Liquid Glass Ambient Glow */}
       {showGlow && (
         <FloatingAmbientGlow
@@ -91,16 +95,17 @@ export const FloatingMiniState: React.FC<FloatingMiniStateProps> = ({
         />
       )}
 
-      {/* 2. Apple Minimal Dynamic Island Capsule (Cover + Equalizer ONLY) */}
+      {/* 2. Mineradio 8-Layer Physical Liquid Glass Dynamic Island Capsule */}
       <div
-        className="drag-handle relative flex items-center justify-between gap-3 px-3 py-1.5 bg-neutral-950/85 backdrop-blur-[48px] backdrop-saturate-[180%] border border-white/[0.18] rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.75),inset_0_1px_1.5px_rgba(255,255,255,0.28),inset_0_-1px_1px_rgba(255,255,255,0.06)] transition-all duration-300 overflow-hidden"
+        className="drag-handle relative flex items-center justify-between gap-3 px-3 py-1.5 mineradio-liquid-glass rounded-full transition-all duration-300 overflow-hidden"
         style={{
           width: 175,
           height: 52,
         }}
       >
         {/* Top Edge Specular Glint Highlight */}
-        <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+        <div className="mineradio-glass-specular-glint" />
+        <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
 
         {/* 3. Left: Apple Squircle Album Artwork */}
         <div className="relative w-9 h-9 rounded-[10px] overflow-hidden bg-neutral-900 shadow-sm border border-white/20 ring-1 ring-inset ring-white/10 flex-shrink-0">

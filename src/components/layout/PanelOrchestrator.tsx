@@ -98,6 +98,12 @@ const FACTORIES = {
     import("@/components/widgets/DNAJournal").then((m) => ({ default: m.DNAJournal })),
   emotionMatrix: () => import("@/components/emotion/EmotionMatrixView"),
   aiSettings: () => import("@/components/settings/AISettingsPanel"),
+  shelf3D: () =>
+    import("@/components/library/Shelf3DView").then((m) => ({ default: m.Shelf3DView })),
+  audioSourceManager: () =>
+    import("@/components/player/AudioSourceManagerModal").then((m) => ({
+      default: m.AudioSourceManagerModal,
+    })),
 };
 
 const PANEL_COMPONENTS = Object.fromEntries(
@@ -400,6 +406,20 @@ export function PanelOrchestrator() {
         isOpen={panels.aiSettings}
         onClose={() => closePanel("aiSettings")}
         component={PANEL_COMPONENTS.aiSettings}
+      />
+
+      <LazyPanel
+        name="shelf3D"
+        isOpen={panels.shelf3D}
+        onClose={() => closePanel("shelf3D")}
+        component={PANEL_COMPONENTS.shelf3D}
+      />
+
+      <LazyPanel
+        name="audioSourceManager"
+        isOpen={panels.audioSourceManager}
+        onClose={() => closePanel("audioSourceManager")}
+        component={PANEL_COMPONENTS.audioSourceManager}
       />
     </>
   );
