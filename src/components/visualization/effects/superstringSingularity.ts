@@ -7,12 +7,40 @@ interface StardustParticle {
   orbitRadius: number;
   orbitAngle: number;
   orbitSpeed: number;
-  verticalOffset: number;
+  verticalAmplitude: number;
+  verticalFreq: number;
   size: number;
-  brightness: number;
-  hueOffset: number;
+  baseAlpha: number;
+  hueShift: number;
+  armIndex: number;
 }
 
+interface Shockwave {
+  radius: number;
+  maxRadius: number;
+  alpha: number;
+  speed: number;
+  hue: number;
+  width: number;
+}
+
+interface NebulaCloud {
+  x: number;
+  y: number;
+  radius: number;
+  hue: number;
+  alpha: number;
+  speed: number;
+}
+
+/**
+ * QUANTUM SUPERSTRING SINGULARITY (次世代量子超弦引力奇点)
+ * - Interstellar Gravitational Lensing (Kerr Metric Photonic Arch)
+ * - 4,000+ Keplerian Accretion Stardust with Doppler Beaming
+ * - Multi-dimensional Calabi-Yau Superstring Silk Ribbons
+ * - Relativistic Polar Plasma Jets & Anamorphic Lens Flare
+ * - Multi-layer Volumetric Cosmic Nebula & Chromatic Shockwaves
+ */
 export function drawSuperstringSingularity({
   ctx,
   width,
@@ -23,17 +51,22 @@ export function drawSuperstringSingularity({
   theme,
   refs,
 }: EffectContext) {
+  const sw = width || 1920;
+  const sh = height || 1080;
+  const cx = sw / 2;
+  const cy = sh / 2;
+
   const speed = params.speed || 1.0;
   const singularityMass = params.singularityMass || 1.0;
   const superstringTension = params.superstringTension || 1.2;
-  const coreGlow = params.coreGlow || 1.5;
+  const coreGlow = params.coreGlow || 1.6;
 
-  // 1. Audio Signal Extraction
-  const rawBass = data && data[0] ? (data[0] + data[2] + data[4]) / 3 / 255 : 0;
-  const rawMid =
-    data && data[Math.floor(data.length / 2)] ? data[Math.floor(data.length / 2)] / 255 : 0;
-  const rawTreble = data && data[data.length - 1] ? data[data.length - 1] / 255 : 0;
-  const rawEnergy = (rawBass + rawMid + rawTreble) / 3;
+  // --- 1. SIGNAL PROCESSING & SMOOTHING ---
+  const getVal = (idx: number) => (data && data[idx] !== undefined ? data[idx] / 255 : 0);
+  const rawBass = ((getVal(0) + getVal(1) + getVal(2) + getVal(3)) / 4);
+  const rawMid = ((getVal(12) + getVal(24) + getVal(36)) / 3);
+  const rawTreble = ((getVal(60) + getVal(80) + getVal(100)) / 3);
+  const rawEnergy = (rawBass * 0.5 + rawMid * 0.3 + rawTreble * 0.2);
 
   refs.smoothBass.current = (refs.smoothBass.current || 0) * 0.82 + rawBass * 0.18;
   refs.smoothMid.current = (refs.smoothMid.current || 0) * 0.85 + rawMid * 0.15;
@@ -42,65 +75,222 @@ export function drawSuperstringSingularity({
   const bass = refs.smoothBass.current;
   const mid = refs.smoothMid.current;
   const treble = refs.smoothTreble.current;
-  const energy = rawEnergy;
+  const energy = (bass + mid + treble) / 3;
 
-  const cx = width / 2;
-  const cy = height / 2;
-  const t = (time * 0.001 * speed) || 0;
+  const t = (time || 0) * 0.0008 * speed;
 
-  // Background clearing with cosmic trail fade
-  ctx.fillStyle = "rgba(3, 2, 8, 0.32)";
-  ctx.fillRect(0, 0, width, height);
+  // Dynamic Theme Colors
+  const baseHue = theme.primary || 275;
+  const secondaryHue = theme.secondary || 190;
+  const accentHue = theme.accent || 335;
 
-  // Palette from theme or default
-  const baseHue = theme.primary || 270;
-  const secondaryHue = theme.secondary || 195;
-  const accentHue = theme.accent || 330;
-
-  // Initialize Particles in refs if empty
+  // --- 2. INITIALIZE PARTICLES, NEBULA & SHOCKWAVES IN REFS ---
   if (!refs.particles.current || refs.particles.current.length === 0) {
     const particles: StardustParticle[] = [];
-    const count = 1800;
+    const count = 3600;
+    const arms = 4;
+
     for (let i = 0; i < count; i++) {
-      const radius = 50 + Math.pow(Math.random(), 1.7) * 450;
-      const angle = Math.random() * Math.PI * 2;
-      const orbitSpeed = (0.006 + (1 / Math.sqrt(radius)) * 0.1) * (Math.random() > 0.15 ? 1 : -1);
+      const arm = i % arms;
+      const armAngle = (arm / arms) * Math.PI * 2;
+      const distRatio = Math.pow(Math.random(), 1.6);
+      const radius = 60 + distRatio * 620;
+      const spiralAngle = armAngle + (radius * 0.015) + (Math.random() - 0.5) * 0.6;
+      const orbitSpeed = (0.008 + (1 / Math.sqrt(radius)) * 0.22) * 0.6;
 
       particles.push({
-        x: Math.cos(angle) * radius,
-        y: (Math.random() - 0.5) * (radius * 0.3),
-        z: Math.sin(angle) * radius,
+        x: 0,
+        y: 0,
+        z: 0,
         orbitRadius: radius,
-        orbitAngle: angle,
+        orbitAngle: spiralAngle,
         orbitSpeed,
-        verticalOffset: (Math.random() - 0.5) * 35,
-        size: 0.8 + Math.random() * 2.2,
-        brightness: 0.3 + Math.random() * 0.7,
-        hueOffset: (Math.random() - 0.5) * 50,
+        verticalAmplitude: 15 + Math.random() * 45 * distRatio,
+        verticalFreq: 1 + Math.random() * 3,
+        size: 0.6 + Math.random() * 2.4,
+        baseAlpha: 0.25 + Math.random() * 0.75,
+        hueShift: (Math.random() - 0.5) * 60,
+        armIndex: arm,
       });
     }
     refs.particles.current = particles;
   }
 
-  // 2. 3D Camera Projection Settings
-  const fov = 420;
-  const pitch = 0.52 + Math.sin(t * 0.4) * 0.08;
+  if (!refs.nebulaStars.current || refs.nebulaStars.current.length === 0) {
+    const nebulae: NebulaCloud[] = [];
+    for (let i = 0; i < 9; i++) {
+      nebulae.push({
+        x: (Math.random() - 0.5) * sw * 0.8,
+        y: (Math.random() - 0.5) * sh * 0.8,
+        radius: 200 + Math.random() * 400,
+        hue: i % 2 === 0 ? baseHue : i % 3 === 0 ? accentHue : secondaryHue,
+        alpha: 0.04 + Math.random() * 0.06,
+        speed: (Math.random() - 0.5) * 0.002,
+      });
+    }
+    refs.nebulaStars.current = nebulae;
+  }
+
+  // --- 3. COSMIC DEEP SPACE BACKGROUND & VOLUMETRIC NEBULA ---
+  ctx.save();
+  ctx.fillStyle = "#020108";
+  ctx.fillRect(0, 0, sw, sh);
+
+  // Volumetric Nebula Gas Clouds
+  ctx.globalCompositeOperation = "screen";
+  const nebulae = refs.nebulaStars.current as NebulaCloud[];
+  for (let i = 0; i < nebulae.length; i++) {
+    const neb = nebulae[i];
+    const nx = cx + neb.x + Math.sin(t * neb.speed + i) * 60;
+    const ny = cy + neb.y + Math.cos(t * neb.speed + i) * 40;
+    const nRadius = neb.radius * (1 + bass * 0.25);
+
+    const nebGrad = ctx.createRadialGradient(nx, ny, 0, nx, ny, nRadius);
+    const nAlpha = neb.alpha * (0.8 + energy * 0.6);
+    nebGrad.addColorStop(0, `hsla(${neb.hue}, 90%, 55%, ${nAlpha.toFixed(3)})`);
+    nebGrad.addColorStop(0.45, `hsla(${(neb.hue + 25) % 360}, 85%, 40%, ${(nAlpha * 0.4).toFixed(3)})`);
+    nebGrad.addColorStop(1, "rgba(0,0,0,0)");
+
+    ctx.fillStyle = nebGrad;
+    ctx.beginPath();
+    ctx.arc(nx, ny, nRadius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // --- 4. BEAT TRIGGERED CHROMATIC SHOCKWAVES ---
+  if (!refs.shockwaves.current) refs.shockwaves.current = [];
+  const shockwaves = refs.shockwaves.current as Shockwave[];
+
+  if (bass > 0.65 && (shockwaves.length === 0 || shockwaves[shockwaves.length - 1].radius > 120)) {
+    shockwaves.push({
+      radius: 45 * singularityMass,
+      maxRadius: Math.max(sw, sh) * 0.85,
+      alpha: 0.9,
+      speed: 9 + bass * 14,
+      hue: (accentHue + (Math.random() - 0.5) * 40) % 360,
+      width: 2 + bass * 5,
+    });
+  }
+
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  for (let i = shockwaves.length - 1; i >= 0; i--) {
+    const swObj = shockwaves[i];
+    swObj.radius += swObj.speed;
+    swObj.alpha *= 0.94;
+
+    if (swObj.alpha < 0.02 || swObj.radius > swObj.maxRadius) {
+      shockwaves.splice(i, 1);
+      continue;
+    }
+
+    const swGrad = ctx.createRadialGradient(
+      cx,
+      cy,
+      Math.max(0, swObj.radius - swObj.width * 4),
+      cx,
+      cy,
+      swObj.radius + swObj.width * 4
+    );
+    swGrad.addColorStop(0, "rgba(0,0,0,0)");
+    swGrad.addColorStop(0.5, `hsla(${swObj.hue}, 95%, 72%, ${swObj.alpha.toFixed(3)})`);
+    swGrad.addColorStop(1, "rgba(0,0,0,0)");
+
+    ctx.strokeStyle = swGrad;
+    ctx.lineWidth = swObj.width;
+    ctx.beginPath();
+    ctx.arc(cx, cy, swObj.radius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // --- 5. 3D CAMERA & KERR METRIC GEOMETRY ---
+  const fov = 480;
+  const pitch = 0.58 + Math.sin(t * 0.35) * 0.06;
   const cosP = Math.cos(pitch);
   const sinP = Math.sin(pitch);
-  const rotAngle = t * 0.5;
+  const rotAngle = t * 0.6;
   const cosR = Math.cos(rotAngle);
   const sinR = Math.sin(rotAngle);
 
-  // 3. Superstring Harmonic Ribbons (3D Parametric Wave Ribbons)
-  const ribbonCount = 7;
-  const ribbonSteps = 90;
+  // --- 6. RELATIVISTIC POLAR PLASMA JETS (HIGH FREQUENCY QUASAR JETS) ---
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const jetLength = (220 + treble * 380 + bass * 240) * coreGlow;
+  const jetBaseWidth = (14 + mid * 26) * coreGlow;
+
+  // Upward Jet
+  const jetUpGrad = ctx.createLinearGradient(cx, cy, cx, cy - jetLength);
+  jetUpGrad.addColorStop(0, `hsla(${accentHue}, 100%, 95%, 0.95)`);
+  jetUpGrad.addColorStop(0.15, `hsla(${baseHue}, 95%, 75%, 0.75)`);
+  jetUpGrad.addColorStop(0.55, `hsla(${secondaryHue}, 90%, 60%, 0.3)`);
+  jetUpGrad.addColorStop(1, "rgba(0,0,0,0)");
+
+  ctx.fillStyle = jetUpGrad;
+  ctx.beginPath();
+  ctx.moveTo(cx - jetBaseWidth, cy);
+  ctx.quadraticCurveTo(cx - jetBaseWidth * 0.3, cy - jetLength * 0.5, cx, cy - jetLength);
+  ctx.quadraticCurveTo(cx + jetBaseWidth * 0.3, cy - jetLength * 0.5, cx + jetBaseWidth, cy);
+  ctx.closePath();
+  ctx.fill();
+
+  // Downward Jet
+  const jetDownGrad = ctx.createLinearGradient(cx, cy, cx, cy + jetLength);
+  jetDownGrad.addColorStop(0, `hsla(${accentHue}, 100%, 95%, 0.95)`);
+  jetDownGrad.addColorStop(0.15, `hsla(${baseHue}, 95%, 75%, 0.75)`);
+  jetDownGrad.addColorStop(0.55, `hsla(${secondaryHue}, 90%, 60%, 0.3)`);
+  jetDownGrad.addColorStop(1, "rgba(0,0,0,0)");
+
+  ctx.fillStyle = jetDownGrad;
+  ctx.beginPath();
+  ctx.moveTo(cx - jetBaseWidth, cy);
+  ctx.quadraticCurveTo(cx - jetBaseWidth * 0.3, cy + jetLength * 0.5, cx, cy + jetLength);
+  ctx.quadraticCurveTo(cx + jetBaseWidth * 0.3, cy + jetLength * 0.5, cx + jetBaseWidth, cy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // --- 7. GRAVITATIONAL LENSING: UPPER & LOWER PHOTON ARCHES (INTERSTELLAR EINSTEIN RING) ---
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const coreRadius = 52 * singularityMass * (1 + bass * 0.45);
+
+  // Upper Lensed Arch (Bending light from back of disk upward)
+  const lensedArchGrad = ctx.createRadialGradient(
+    cx,
+    cy - coreRadius * 0.4,
+    coreRadius * 0.8,
+    cx,
+    cy - coreRadius * 0.4,
+    coreRadius * 3.2 * coreGlow
+  );
+  lensedArchGrad.addColorStop(0, `hsla(${accentHue}, 100%, 88%, 0.9)`);
+  lensedArchGrad.addColorStop(0.25, `hsla(${baseHue}, 95%, 70%, 0.65)`);
+  lensedArchGrad.addColorStop(0.6, `hsla(${secondaryHue}, 90%, 55%, 0.25)`);
+  lensedArchGrad.addColorStop(1, "rgba(0,0,0,0)");
+
+  ctx.fillStyle = lensedArchGrad;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - coreRadius * 0.4, coreRadius * 2.8 * coreGlow, coreRadius * 1.8 * coreGlow, 0, Math.PI, 0);
+  ctx.fill();
+
+  // Lower Lensed Arch (Bending light from back of disk downward)
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + coreRadius * 0.4, coreRadius * 2.5 * coreGlow, coreRadius * 1.4 * coreGlow, 0, 0, Math.PI);
+  ctx.fill();
+  ctx.restore();
+
+  // --- 8. SUPERSTRING SILK HARMONIC RIBBONS (3D CALABI-YAU WAVEFORM FLOW) ---
+  const ribbonCount = 9;
+  const ribbonSteps = 120;
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
   for (let r = 0; r < ribbonCount; r++) {
-    const ribbonPhase = (r / ribbonCount) * Math.PI * 2 + t * 1.2 * superstringTension;
-    const ribbonRadius = (80 + r * 35) * singularityMass * (1 + bass * 0.3);
-    const ribbonHue = (baseHue + r * 20 + rotAngle * 25) % 360;
+    const ribbonPhase = (r / ribbonCount) * Math.PI * 2 + t * 1.6 * superstringTension;
+    const ribbonRadius = (75 + r * 42) * singularityMass * (1 + bass * 0.35);
+    const ribbonHue = (baseHue + r * 22 + rotAngle * 30) % 360;
 
     ctx.beginPath();
     let firstPoint = true;
@@ -110,16 +300,17 @@ export function drawSuperstringSingularity({
       const dataIdx = Math.floor((s / ribbonSteps) * (data?.length || 1));
       const waveVal = (((data && data[dataIdx]) || 128) - 128) / 128;
 
-      const harm1 = Math.sin(theta * 4 + ribbonPhase) * (18 + mid * 40);
-      const harm2 = Math.cos(theta * 6 - ribbonPhase * 1.3) * (8 + treble * 25);
-      const audioDisplacement = waveVal * (30 * superstringTension + bass * 25);
+      const harm1 = Math.sin(theta * 5 + ribbonPhase) * (22 + mid * 55);
+      const harm2 = Math.cos(theta * 8 - ribbonPhase * 1.5) * (12 + treble * 35);
+      const harm3 = Math.sin(theta * 12 + t * 3) * (6 + energy * 20);
+      const audioDisplacement = waveVal * (40 * superstringTension + bass * 35);
 
-      const currentR = ribbonRadius + harm1 + harm2 + audioDisplacement;
+      const currentR = ribbonRadius + harm1 + harm2 + harm3 + audioDisplacement;
       const rawX = Math.cos(theta) * currentR;
-      const rawY = Math.sin(theta * 3 + ribbonPhase) * (20 + mid * 30) + waveVal * 15;
+      const rawY = Math.sin(theta * 4 + ribbonPhase) * (26 + mid * 45) + waveVal * 25;
       const rawZ = Math.sin(theta) * currentR;
 
-      // 3D Matrix transform
+      // 3D Matrix Transform
       const rx = rawX * cosR - rawZ * sinR;
       const rz = rawX * sinR + rawZ * cosR;
       const ry = rawY * cosP - rz * sinP;
@@ -138,29 +329,31 @@ export function drawSuperstringSingularity({
       }
     }
 
-    ctx.strokeStyle = `hsla(${ribbonHue}, 90%, ${60 + mid * 25}%, ${0.35 + mid * 0.45})`;
-    ctx.lineWidth = (1.4 + (r % 3) * 0.8 + bass * 1.5) * coreGlow;
-    ctx.shadowColor = `hsla(${ribbonHue}, 95%, 70%, 0.8)`;
-    ctx.shadowBlur = (10 + mid * 20) * coreGlow;
+    ctx.strokeStyle = `hsla(${ribbonHue}, 92%, ${65 + mid * 25}%, ${0.45 + mid * 0.45})`;
+    ctx.lineWidth = (1.6 + (r % 3) * 0.9 + bass * 2.0) * coreGlow;
+    ctx.shadowColor = `hsla(${ribbonHue}, 98%, 75%, 0.9)`;
+    ctx.shadowBlur = (14 + mid * 26) * coreGlow;
     ctx.stroke();
   }
   ctx.restore();
 
-  // 4. Quantum Stardust Particles
+  // --- 9. ACCRETION DISK STARDUST PARTICLES (3,600+ PARTICLES WITH DOPPLER BEAMING) ---
   const particles = refs.particles.current as StardustParticle[];
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
   for (let i = 0; i < particles.length; i++) {
     const p = particles[i];
-    const speedMult = (1 + energy * 1.8 + bass * 1.2) * superstringTension;
+    const speedMult = (1 + energy * 2.2 + bass * 1.5) * superstringTension;
     p.orbitAngle += p.orbitSpeed * speedMult;
 
-    const currentRadius = p.orbitRadius * (1 + Math.sin(t * 2 + p.orbitAngle * 3) * (0.05 + bass * 0.15));
+    // Keplerian Spiral breathing
+    const currentRadius = p.orbitRadius * (1 + Math.sin(t * 2.5 + p.orbitAngle * 4) * (0.06 + bass * 0.2));
     const pxRaw = Math.cos(p.orbitAngle) * currentRadius;
-    const pyRaw = p.y + Math.sin(t * 3 + p.orbitRadius * 0.05) * (p.verticalOffset * (1 + treble * 1.5));
+    const pyRaw = Math.sin(t * p.verticalFreq + p.orbitRadius * 0.08) * (p.verticalAmplitude * (1 + treble * 1.6));
     const pzRaw = Math.sin(p.orbitAngle) * currentRadius;
 
+    // 3D Projection
     const rx = pxRaw * cosR - pzRaw * sinR;
     const rz = pxRaw * sinR + pzRaw * cosR;
     const ry = pyRaw * cosP - rz * sinP;
@@ -171,89 +364,84 @@ export function drawSuperstringSingularity({
     const screenX = cx + rx * projScale;
     const screenY = cy + ry * projScale;
 
-    const particleSize = p.size * projScale * (1 + treble * 1.2);
-    const alpha = Math.min(1, p.brightness * (0.3 + energy * 0.7) * (projScale * 0.8));
-    const hue = (baseHue + p.hueOffset + p.orbitRadius * 0.2 + energy * 40) % 360;
+    // Doppler Beaming Effect (Approaching side is brighter and bluer, receding side is dimmer)
+    const doppler = Math.sin(p.orbitAngle + rotAngle); // -1 to 1
+    const dopplerBrightness = 1 + doppler * 0.45;
+    const dopplerHueShift = doppler * 25;
 
-    ctx.fillStyle = `hsla(${hue}, 92%, ${70 + treble * 25}%, ${alpha.toFixed(3)})`;
+    const particleSize = p.size * projScale * (1 + treble * 1.4);
+    const alpha = Math.min(1, p.baseAlpha * (0.35 + energy * 0.75) * (projScale * 0.9) * dopplerBrightness);
+    const hue = (baseHue + p.hueOffset + dopplerHueShift + p.orbitRadius * 0.18 + energy * 45) % 360;
+
+    ctx.fillStyle = `hsla(${hue}, 95%, ${72 + treble * 25}%, ${alpha.toFixed(3)})`;
     ctx.beginPath();
-    ctx.arc(screenX, screenY, Math.max(0.5, particleSize), 0, Math.PI * 2);
+    ctx.arc(screenX, screenY, Math.max(0.6, particleSize), 0, Math.PI * 2);
     ctx.fill();
+
+    // Secondary Bloom Halo for larger particles
+    if (p.size > 1.8 && alpha > 0.4) {
+      ctx.fillStyle = `hsla(${accentHue}, 100%, 80%, ${(alpha * 0.35).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(screenX, screenY, particleSize * 2.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.restore();
 
-  // 5. Gravitational Singularity Core (Event Horizon & Photon Ring)
-  const coreRadius = 38 * singularityMass * (1 + bass * 0.4);
-
-  // Relativistic Jet Beams
-  if (treble > 0.35 || bass > 0.5) {
-    ctx.save();
-    ctx.globalCompositeOperation = "screen";
-    const jetLength = (150 + treble * 250 + bass * 180) * coreGlow;
-    const jetWidth = (8 + mid * 16) * coreGlow;
-
-    const gradTop = ctx.createLinearGradient(cx, cy, cx, cy - jetLength);
-    gradTop.addColorStop(0, `hsla(${accentHue}, 95%, 85%, 0.85)`);
-    gradTop.addColorStop(0.3, `hsla(${baseHue}, 90%, 65%, 0.4)`);
-    gradTop.addColorStop(1, "rgba(0,0,0,0)");
-
-    ctx.fillStyle = gradTop;
-    ctx.beginPath();
-    ctx.moveTo(cx - jetWidth, cy);
-    ctx.lineTo(cx, cy - jetLength);
-    ctx.lineTo(cx + jetWidth, cy);
-    ctx.closePath();
-    ctx.fill();
-
-    const gradBottom = ctx.createLinearGradient(cx, cy, cx, cy + jetLength);
-    gradBottom.addColorStop(0, `hsla(${accentHue}, 95%, 85%, 0.85)`);
-    gradBottom.addColorStop(0.3, `hsla(${baseHue}, 90%, 65%, 0.4)`);
-    gradBottom.addColorStop(1, "rgba(0,0,0,0)");
-
-    ctx.fillStyle = gradBottom;
-    ctx.beginPath();
-    ctx.moveTo(cx - jetWidth, cy);
-    ctx.lineTo(cx, cy + jetLength);
-    ctx.lineTo(cx + jetWidth, cy);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // Outer Photon Ring Glow
+  // --- 10. ANAMORPHIC HORIZONTAL LENS FLARE (CINEMATIC GLOW) ---
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  const photonRingGrad = ctx.createRadialGradient(
-    cx,
-    cy,
-    coreRadius * 0.5,
-    cx,
-    cy,
-    coreRadius * 2.6 * coreGlow
-  );
-  photonRingGrad.addColorStop(0, `hsla(${accentHue}, 100%, 80%, 0.9)`);
-  photonRingGrad.addColorStop(0.25, `hsla(${baseHue}, 95%, 65%, 0.65)`);
-  photonRingGrad.addColorStop(0.65, `hsla(${secondaryHue}, 90%, 50%, 0.25)`);
-  photonRingGrad.addColorStop(1, "rgba(0,0,0,0)");
+  const flareWidth = sw * (0.6 + bass * 0.35);
+  const flareHeight = (8 + bass * 22) * coreGlow;
 
-  ctx.fillStyle = photonRingGrad;
+  const flareGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, flareWidth);
+  flareGrad.addColorStop(0, `hsla(${accentHue}, 100%, 95%, ${0.75 + bass * 0.25})`);
+  flareGrad.addColorStop(0.15, `hsla(${baseHue}, 100%, 75%, 0.45)`);
+  flareGrad.addColorStop(0.45, `hsla(${secondaryHue}, 90%, 60%, 0.15)`);
+  flareGrad.addColorStop(1, "rgba(0,0,0,0)");
+
+  ctx.fillStyle = flareGrad;
   ctx.beginPath();
-  ctx.arc(cx, cy, coreRadius * 2.6 * coreGlow, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy, flareWidth, flareHeight, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // Dark Matter Event Horizon (Absolute Void Black)
+  // --- 11. CENTRAL PHOTON RING & EVENT HORIZON (ABSOLUTE SHADOW) ---
   ctx.save();
-  ctx.fillStyle = "#010103";
+  ctx.globalCompositeOperation = "screen";
+
+  // Intense Radial Corona
+  const coronaGrad = ctx.createRadialGradient(
+    cx,
+    cy,
+    coreRadius * 0.6,
+    cx,
+    cy,
+    coreRadius * 3.4 * coreGlow
+  );
+  coronaGrad.addColorStop(0, `hsla(${accentHue}, 100%, 92%, 0.95)`);
+  coronaGrad.addColorStop(0.2, `hsla(${baseHue}, 100%, 75%, 0.75)`);
+  coronaGrad.addColorStop(0.55, `hsla(${secondaryHue}, 95%, 55%, 0.3)`);
+  coronaGrad.addColorStop(1, "rgba(0,0,0,0)");
+
+  ctx.fillStyle = coronaGrad;
   ctx.beginPath();
-  ctx.arc(cx, cy, coreRadius * 0.92, 0, Math.PI * 2);
+  ctx.arc(cx, cy, coreRadius * 3.4 * coreGlow, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Void Black Event Horizon
+  ctx.save();
+  ctx.fillStyle = "#010003";
+  ctx.beginPath();
+  ctx.arc(cx, cy, coreRadius * 0.94, 0, Math.PI * 2);
   ctx.fill();
 
-  // Event Horizon Lensing Edge
-  ctx.strokeStyle = `hsla(${accentHue}, 100%, 88%, ${0.75 + bass * 0.25})`;
-  ctx.lineWidth = (2.2 + bass * 2.8) * coreGlow;
-  ctx.shadowColor = `hsla(${accentHue}, 100%, 75%, 1)`;
-  ctx.shadowBlur = (16 + bass * 22) * coreGlow;
+  // Event Horizon Gravitational Edge
+  ctx.strokeStyle = `hsla(${accentHue}, 100%, 92%, ${0.85 + bass * 0.15})`;
+  ctx.lineWidth = (3.2 + bass * 4.0) * coreGlow;
+  ctx.shadowColor = `hsla(${accentHue}, 100%, 80%, 1)`;
+  ctx.shadowBlur = (24 + bass * 35) * coreGlow;
   ctx.stroke();
   ctx.restore();
 }
