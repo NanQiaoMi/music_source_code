@@ -414,6 +414,9 @@ export function VisualizationView() {
           case "prismPulse":
             Effects.drawPrismPulse(effectCtx);
             break;
+          case "superstringSingularity":
+            Effects.drawSuperstringSingularity(effectCtx);
+            break;
 
           default:
             Effects.drawSpatialMesh(effectCtx);
@@ -489,6 +492,13 @@ export function VisualizationView() {
         willChange: "filter",
       };
     }
+    if (currentEffect === "superstringSingularity") {
+      return {
+        filter: `saturate(1.35) contrast(1.15) brightness(1.1) drop-shadow(0 0 35px rgba(147, 51, 234, 0.2))`,
+        transform: "translateZ(0)",
+        willChange: "filter",
+      };
+    }
     return { transform: "translateZ(0)" };
   };
 
@@ -502,6 +512,7 @@ export function VisualizationView() {
     { id: "vinylGroove", name: "量子空间" },
     { id: "cyberMatrix", name: "赛博矩阵" },
     { id: "prismPulse", name: "棱镜脉冲" },
+    { id: "superstringSingularity", name: "量子超弦奇点" },
     { id: "gravitationalField", name: "重力场 (隐藏)" },
   ];
 
