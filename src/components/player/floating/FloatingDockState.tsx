@@ -110,7 +110,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
       {/* 0. Mineradio Flagship SVG Liquid Glass Dispersion Filter */}
       <LiquidGlassFilter />
 
-      {/* Main Crescent / Half-Pill Liquid Glass Container */}
+      {/* Main Crescent / Half-Pill Liquid Glass Container (Ultra-Transparent) */}
       <div
         className={`relative flex items-center gap-2.5 py-2 px-2.5 mineradio-liquid-glass transition-all duration-300 ${
           isLeft
@@ -120,12 +120,16 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
         style={{
           minWidth: 64,
           height: 64,
+          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.20) 100%)",
+          backdropFilter: "blur(48px) saturate(200%)",
+          WebkitBackdropFilter: "blur(48px) saturate(200%)",
+          border: "1px solid rgba(255, 255, 255, 0.28)",
         }}
       >
         {/* Apple-grade Top Specular Highlight Line */}
         <div className="mineradio-glass-specular-glint" />
         <div
-          className={`absolute top-0 h-[1px] bg-gradient-to-r from-white/45 via-white/15 to-transparent pointer-events-none ${
+          className={`absolute top-0 h-[1px] bg-gradient-to-r from-white/70 via-white/20 to-transparent pointer-events-none ${
             isLeft ? "left-0 right-3" : "left-3 right-0"
           }`}
         />

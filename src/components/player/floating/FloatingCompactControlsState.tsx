@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
@@ -115,7 +115,6 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
         damping: 30,
       }}
     >
-
       {/* 0. Mineradio Flagship SVG Liquid Glass Dispersion Filter */}
       <LiquidGlassFilter />
 
@@ -124,25 +123,29 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
         <FloatingAmbientGlow
           rounded="rounded-full"
           borderBeam={false}
-          intensity={0.7}
-          glowSpread={32}
+          intensity={0.65}
+          glowSpread={28}
         />
       )}
 
-      {/* 2. Mineradio 8-Layer Physical Liquid Glass Capsule Shell */}
+      {/* 2. Mineradio 8-Layer Physical Liquid Glass Capsule Shell (Ultra-Transparent) */}
       <div
         className="drag-handle relative flex items-center justify-between gap-3 px-3.5 py-2 mineradio-liquid-glass rounded-full transition-all duration-300"
         style={{
           width: 360,
           height: 60,
+          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.20) 100%)",
+          backdropFilter: "blur(48px) saturate(200%)",
+          WebkitBackdropFilter: "blur(48px) saturate(200%)",
+          border: "1px solid rgba(255, 255, 255, 0.28)",
         }}
       >
         {/* Top Edge Specular Glint Highlight */}
         <div className="mineradio-glass-specular-glint" />
-        <div className="absolute top-0 left-8 right-8 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-8 right-8 h-[1px] bg-gradient-to-r from-transparent via-white/70 to-transparent pointer-events-none" />
 
         {/* 3. Left Section: Cover Artwork */}
-        <div className="relative w-10 h-10 rounded-[11px] overflow-hidden bg-neutral-900 shadow-md border border-white/20 ring-1 ring-inset ring-white/10 flex-shrink-0">
+        <div className="relative w-10 h-10 rounded-[12px] overflow-hidden bg-white/10 shadow-sm border border-white/30 ring-1 ring-inset ring-white/20 flex-shrink-0">
           <Image
             src={currentSong.cover || DEFAULT_COVER_SRC}
             alt={currentSong.title}
@@ -161,14 +164,14 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
             {currentSong.title}
           </h4>
 
-          <p className="text-[#98989d] text-[11.5px] font-normal tracking-[-0.01em] truncate leading-tight mt-0.5">
+          <p className="text-white/60 text-[11.5px] font-normal tracking-[-0.01em] truncate leading-tight mt-0.5">
             {activeLyric?.original || (currentSong.artist || "未知歌手").replace(/;/g, ", ")}
           </p>
         </div>
 
         {/* 5. Right Section: The 5 Dedicated Controls (Pause/Play, Prev, Next, Lyric, Favorite) */}
         <div
-          className="flex items-center gap-1 flex-shrink-0"
+          className="flex items-center gap-1.5 flex-shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Control 1: Lyric Preview Button */}
@@ -176,10 +179,10 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
             <button
               type="button"
               onClick={() => setShowMiniLyricTooltip((prev) => !prev)}
-              className={`control-interactive w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+              className={`control-interactive w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                 showMiniLyricTooltip || activeLyric
-                  ? "text-white bg-white/15 hover:bg-white/25"
-                  : "text-white/50 hover:text-white hover:bg-white/[0.08]"
+                  ? "text-white bg-white/20 hover:bg-white/30 border border-white/25 shadow-sm"
+                  : "text-white/60 hover:text-white hover:bg-white/15 border border-transparent hover:border-white/15"
               }`}
               title="歌词"
             >
@@ -193,7 +196,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                  className="absolute bottom-full right-0 mb-3 w-56 p-2.5 rounded-2xl bg-neutral-950/90 backdrop-blur-2xl border border-white/20 shadow-2xl text-center z-50 pointer-events-none"
+                  className="absolute bottom-full right-0 mb-3 w-56 p-2.5 rounded-2xl bg-black/60 backdrop-blur-2xl border border-white/20 shadow-2xl text-center z-50 pointer-events-none"
                 >
                   <p className="text-xs font-medium text-white tracking-tight">
                     {activeLyric.original}
@@ -212,7 +215,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
           <button
             type="button"
             onClick={prevSong}
-            className="control-interactive w-7 h-7 rounded-full text-white/70 hover:text-white flex items-center justify-center transition-colors active:scale-90"
+            className="control-interactive w-7 h-7 rounded-full text-white/70 hover:text-white hover:bg-white/15 flex items-center justify-center transition-all active:scale-90"
             title="上一首"
           >
             <SkipBack className="w-3.5 h-3.5" />
@@ -230,14 +233,14 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
           <button
             type="button"
             onClick={nextSong}
-            className="control-interactive w-7 h-7 rounded-full text-white/70 hover:text-white flex items-center justify-center transition-colors active:scale-90"
+            className="control-interactive w-7 h-7 rounded-full text-white/70 hover:text-white hover:bg-white/15 flex items-center justify-center transition-all active:scale-90"
             title="下一首"
           >
             <SkipForward className="w-3.5 h-3.5" />
           </button>
 
           {/* Control 5: Favorite Heart Button */}
-          <HeartFavoriteButton size={14} className="control-interactive p-1" />
+          <HeartFavoriteButton size={14} className="control-interactive p-1 hover:bg-white/15 rounded-full" />
 
           {/* Expand to Full Card Button */}
           <button
@@ -246,7 +249,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
               e.stopPropagation();
               onExpandFull?.();
             }}
-            className="control-interactive w-6 h-6 rounded-full text-white/40 hover:text-white hover:bg-white/15 flex items-center justify-center transition-all ml-0.5 active:scale-90"
+            className="control-interactive w-6 h-6 rounded-full text-white/50 hover:text-white hover:bg-white/15 flex items-center justify-center transition-all ml-0.5 active:scale-90"
             title="展开为完整卡片 (双击卡片亦可)"
           >
             <ChevronUp className="w-3.5 h-3.5" />
@@ -257,3 +260,4 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
   );
 };
 
+export default FloatingCompactControlsState;

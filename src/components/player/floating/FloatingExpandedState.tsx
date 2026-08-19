@@ -100,14 +100,20 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
       animate="visible"
       exit="exit"
       className={`relative w-[340px] select-none rounded-[36px] mineradio-liquid-glass overflow-visible flex flex-col p-4 gap-3 text-white ${className}`}
-      style={{ touchAction: "none" }}
+      style={{
+        touchAction: "none",
+        background: "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.25) 100%)",
+        backdropFilter: "blur(48px) saturate(200%)",
+        WebkitBackdropFilter: "blur(48px) saturate(200%)",
+        border: "1px solid rgba(255, 255, 255, 0.28)",
+      }}
     >
       {/* 0. Mineradio Flagship SVG Liquid Glass Dispersion Filter */}
       <LiquidGlassFilter />
 
       {/* Top Edge Specular Glint Highlight */}
       <div className="mineradio-glass-specular-glint" />
-      <div className="absolute top-0 left-8 right-8 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-8 right-8 h-[1px] bg-gradient-to-r from-transparent via-white/70 to-transparent pointer-events-none" />
 
       {/* Breathing Liquid Flowing Light Emanating from Underneath the Card */}
       <motion.div

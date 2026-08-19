@@ -95,20 +95,24 @@ export const FloatingMiniState: React.FC<FloatingMiniStateProps> = ({
         />
       )}
 
-      {/* 2. Mineradio 8-Layer Physical Liquid Glass Dynamic Island Capsule */}
+      {/* 2. Mineradio 8-Layer Physical Liquid Glass Dynamic Island Capsule (Ultra-Transparent) */}
       <div
         className="drag-handle relative flex items-center justify-between gap-3 px-3 py-1.5 mineradio-liquid-glass rounded-full transition-all duration-300 overflow-hidden"
         style={{
           width: 175,
           height: 52,
+          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.20) 100%)",
+          backdropFilter: "blur(48px) saturate(200%)",
+          WebkitBackdropFilter: "blur(48px) saturate(200%)",
+          border: "1px solid rgba(255, 255, 255, 0.28)",
         }}
       >
         {/* Top Edge Specular Glint Highlight */}
         <div className="mineradio-glass-specular-glint" />
-        <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-white/70 to-transparent pointer-events-none" />
 
         {/* 3. Left: Apple Squircle Album Artwork */}
-        <div className="relative w-9 h-9 rounded-[10px] overflow-hidden bg-neutral-900 shadow-sm border border-white/20 ring-1 ring-inset ring-white/10 flex-shrink-0">
+        <div className="relative w-9 h-9 rounded-[10px] overflow-hidden bg-white/10 shadow-sm border border-white/30 ring-1 ring-inset ring-white/20 flex-shrink-0">
           <Image
             src={currentSong.cover || DEFAULT_COVER_SRC}
             alt={currentSong.title}

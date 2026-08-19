@@ -63,12 +63,12 @@ export const MorphingPlayPauseButton: React.FC<MorphingPlayPauseButtonProps> = (
       }}
       disabled={disabled}
       aria-label={isPlaying ? "暂停播放" : "开始播放"}
-      className={`control-interactive relative ${sizeClasses} rounded-full bg-white text-black flex items-center justify-center shadow-[0_8px_24px_rgba(255,255,255,0.25),inset_0_1px_1px_rgba(255,255,255,0.9)] active:shadow-inner disabled:opacity-40 disabled:cursor-not-allowed select-none group ${className}`}
+      className={`control-interactive relative ${sizeClasses} rounded-full bg-white/90 backdrop-blur-md text-black flex items-center justify-center border border-white/60 shadow-[0_6px_20px_rgba(255,255,255,0.3),inset_0_1px_1.5px_rgba(255,255,255,0.9)] active:shadow-inner disabled:opacity-40 disabled:cursor-not-allowed select-none group ${className}`}
       whileHover={{ scale: 1.08, transition: { type: "spring", stiffness: 450, damping: 20 } }}
       whileTap={{ scale: 0.91, transition: { type: "spring", stiffness: 500, damping: 25 } }}
     >
       {/* Specular sheen ring */}
-      <span className="absolute inset-0 rounded-full ring-1 ring-white/50 pointer-events-none" />
+      <span className="absolute inset-0 rounded-full ring-1 ring-white/60 pointer-events-none" />
 
       <svg
         width={svgSize}
