@@ -95,6 +95,8 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
 
   return (
     <motion.div
+      layout
+      layoutId="floating-player-shell"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -106,6 +108,9 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
         backdropFilter: "blur(48px) saturate(200%)",
         WebkitBackdropFilter: "blur(48px) saturate(200%)",
         border: "1px solid rgba(255, 255, 255, 0.28)",
+      }}
+      transition={{
+        layout: { type: "spring", stiffness: 460, damping: 32, mass: 0.8 },
       }}
     >
       {/* 0. Mineradio Flagship SVG Liquid Glass Dispersion Filter */}

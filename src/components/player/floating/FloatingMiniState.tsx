@@ -65,6 +65,7 @@ export const FloatingMiniState: React.FC<FloatingMiniStateProps> = ({
 
   return (
     <motion.div
+      layout
       layoutId="floating-player-shell"
       className={`relative select-none group cursor-pointer ${className}`}
       data-floating-state="mini"
@@ -77,9 +78,10 @@ export const FloatingMiniState: React.FC<FloatingMiniStateProps> = ({
       whileHover={{ scale: 1.035 }}
       whileTap={{ scale: 0.97 }}
       transition={{
+        layout: { type: "spring", stiffness: 460, damping: 32, mass: 0.8 },
         type: "spring",
-        stiffness: 420,
-        damping: 30,
+        stiffness: 460,
+        damping: 32,
       }}
     >
       {/* 0. Mineradio Flagship SVG Liquid Glass Dispersion Filter */}

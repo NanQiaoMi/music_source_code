@@ -99,6 +99,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
 
   return (
     <motion.div
+      layout
       layoutId="floating-player-shell"
       className={`relative select-none group cursor-pointer ${className}`}
       data-floating-state="compact"
@@ -110,9 +111,10 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.985 }}
       transition={{
+        layout: { type: "spring", stiffness: 460, damping: 32, mass: 0.8 },
         type: "spring",
-        stiffness: 420,
-        damping: 30,
+        stiffness: 460,
+        damping: 32,
       }}
     >
       {/* 0. Mineradio Flagship SVG Liquid Glass Dispersion Filter */}

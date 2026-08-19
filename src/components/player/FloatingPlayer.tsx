@@ -174,7 +174,7 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
           damping: 28,
         }}
       >
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="popLayout" initial={false}>
           {isDocked ? (
             <FloatingDockState
               key="dock"
