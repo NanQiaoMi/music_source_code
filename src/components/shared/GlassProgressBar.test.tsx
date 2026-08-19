@@ -98,6 +98,6 @@ describe("GlassProgressBar component", () => {
 
     expect(html).toContain("0:00");
     expect(html).toContain("animate-pulse");
-    expect(html).toContain("opacity-50 cursor-not-allowed");
+    expect(html).toContain("opacity-40 cursor-not-allowed");
   });
 });

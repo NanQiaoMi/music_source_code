@@ -221,13 +221,13 @@ export const GlassProgressBar: React.FC<GlassProgressBarProps> = memo(
       <div className={`w-full flex flex-col select-none ${className}`}>
         {/* Time Labels */}
         {showTimeLabels && (
-          <div className="flex justify-between items-center text-xs font-mono text-white/60 mb-2 px-0.5">
-            <span className="tabular-nums tracking-wider">{formatTime(displayCurrentTime)}</span>
+          <div className="flex justify-between items-center text-xs font-mono text-white/45 mb-1.5 px-0.5">
+            <span className="tabular-nums tracking-wide">{formatTime(displayCurrentTime)}</span>
             <button
               type="button"
               onClick={toggleTimeDisplayMode}
               disabled={!hasValidDuration}
-              className="tabular-nums tracking-wider hover:text-white/90 active:scale-95 transition-all text-right cursor-pointer"
+              className="tabular-nums tracking-wide hover:text-white/80 active:scale-95 transition-all text-right cursor-pointer"
               title="点击切换总时长 / 剩余倒计时"
             >
               {rightTimeLabel}
@@ -255,22 +255,22 @@ export const GlassProgressBar: React.FC<GlassProgressBarProps> = memo(
             if (!isDragging) setHoverPercent(null);
           }}
           onKeyDown={handleKeyDown}
-          className={`relative w-full py-3.5 cursor-pointer touch-none focus:outline-none group ${
-            disabled || !hasValidDuration ? "opacity-50 cursor-not-allowed" : ""
+          className={`relative w-full py-3 cursor-pointer touch-none focus:outline-none group ${
+            disabled || !hasValidDuration ? "opacity-40 cursor-not-allowed" : ""
           }`}
         >
           {/* Inner Morphing Track */}
           <div
-            className={`w-full relative rounded-full overflow-visible transition-all duration-200 ease-out bg-white/10 backdrop-blur-md ${
-              isHovered || isDragging ? "h-2 bg-white/15" : "h-1"
+            className={`w-full relative rounded-full overflow-visible transition-all duration-200 ease-out bg-white/[0.08] backdrop-blur-sm border border-white/[0.04] ${
+              isHovered || isDragging ? "h-1.5 bg-white/[0.12]" : "h-1"
             }`}
           >
             {/* Loading Breathing Shimmer when Duration is 0 */}
             {!hasValidDuration && (
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
             )}
 
-            {/* Buffered Ranges */}
+            {/* Buffered Ranges (subtle translucent layer) */}
             {hasValidDuration &&
               bufferedRanges.map((range, idx) => {
                 const startPct = Math.max(0, Math.min(100, (range.start / duration) * 100));
@@ -281,7 +281,7 @@ export const GlassProgressBar: React.FC<GlassProgressBarProps> = memo(
                 return (
                   <div
                     key={idx}
-                    className="absolute top-0 bottom-0 rounded-full bg-white/20 transition-all duration-300 pointer-events-none"
+                    className="absolute top-0 bottom-0 rounded-full bg-white/[0.08] transition-all duration-300 pointer-events-none"
                     style={{
                       left: `${startPct}%`,
                       width: `${widthPct}%`,
@@ -293,7 +293,7 @@ export const GlassProgressBar: React.FC<GlassProgressBarProps> = memo(
             {/* AB Loop Highlight Segment */}
             {abLoopEnabled && pointAPercent !== null && pointBPercent !== null && pointBPercent > pointAPercent && (
               <div
-                className="absolute top-0 bottom-0 bg-gradient-to-r from-purple-500/40 via-indigo-500/40 to-purple-500/40 border-x border-white/60 pointer-events-none z-10 rounded-sm"
+                className="absolute top-0 bottom-0 bg-gradient-to-r from-purple-500/30 via-indigo-500/30 to-purple-500/30 border-x border-white/40 pointer-events-none z-10 rounded-sm"
                 style={{
                   left: `${pointAPercent}%`,
                   width: `${pointBPercent - pointAPercent}%`,
@@ -307,8 +307,8 @@ export const GlassProgressBar: React.FC<GlassProgressBarProps> = memo(
                 className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center"
                 style={{ left: `${pointAPercent}%` }}
               >
-                <div className="w-1.5 h-3 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(192,132,252,0.9)]" />
-                <span className="text-[9px] font-bold text-purple-300 -mt-0.5">A</span>
+                <div className="w-1.5 h-2.5 bg-purple-400/90 rounded-full shadow-[0_0_6px_rgba(192,132,252,0.8)]" />
+                <span className="text-[8px] font-bold text-purple-300 -mt-0.5">A</span>
               </div>
             )}
 
@@ -318,30 +318,30 @@ export const GlassProgressBar: React.FC<GlassProgressBarProps> = memo(
                 className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center"
                 style={{ left: `${pointBPercent}%` }}
               >
-                <div className="w-1.5 h-3 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.9)]" />
-                <span className="text-[9px] font-bold text-indigo-300 -mt-0.5">B</span>
+                <div className="w-1.5 h-2.5 bg-indigo-400/90 rounded-full shadow-[0_0_6px_rgba(129,140,248,0.8)]" />
+                <span className="text-[8px] font-bold text-indigo-300 -mt-0.5">B</span>
               </div>
             )}
 
             {/* Hover Ghost Track */}
             {isHovered && !isDragging && hoverPercent !== null && (
               <div
-                className="absolute top-0 bottom-0 left-0 bg-white/20 rounded-full pointer-events-none transition-all duration-75"
+                className="absolute top-0 bottom-0 left-0 bg-white/[0.12] rounded-full pointer-events-none transition-all duration-75"
                 style={{ width: `${hoverPercent}%` }}
               />
             )}
 
             {/* Active Filled Progress Track */}
             <div
-              className="absolute top-0 bottom-0 left-0 rounded-full pointer-events-none"
+              className="absolute top-0 bottom-0 left-0 rounded-full pointer-events-none transition-[width] duration-75"
               style={{
                 width: `${currentPercent}%`,
                 background: accentColor
-                  ? `linear-gradient(90deg, rgba(255,255,255,0.7) 0%, ${accentColor} 100%)`
-                  : "linear-gradient(90deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,1) 100%)",
+                  ? `linear-gradient(90deg, rgba(255,255,255,0.8) 0%, ${accentColor} 100%)`
+                  : "rgba(255, 255, 255, 0.95)",
                 boxShadow: accentColor
-                  ? `0 0 14px ${accentColor}80`
-                  : "0 0 12px rgba(255,255,255,0.6)",
+                  ? `0 0 10px ${accentColor}60`
+                  : "0 1px 3px rgba(0,0,0,0.3)",
               }}
             />
 
@@ -351,32 +351,32 @@ export const GlassProgressBar: React.FC<GlassProgressBarProps> = memo(
                 className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none z-30 flex items-center justify-center"
                 style={{ left: `${currentPercent}%` }}
                 animate={{
-                  scale: isDragging ? 1.3 : isHovered ? 1.15 : 0,
+                  scale: isDragging ? 1.25 : isHovered ? 1.05 : 0,
                   opacity: isDragging || isHovered ? 1 : 0,
                 }}
                 transition={{ type: "spring", stiffness: 450, damping: 28 }}
               >
-                <div className="w-3.5 h-3.5 rounded-full bg-white border border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.5)]" />
+                <div className="w-3 h-3 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.9)]" />
               </motion.div>
             )}
           </div>
 
-          {/* Adaptive Glass Floating Tooltip */}
+          {/* Adaptive Glass Floating Tooltip (shown on drag) */}
           <AnimatePresence>
-            {(isDragging || (isHovered && previewTime !== null)) && previewPercent !== null && (
+            {isDragging && previewPercent !== null && previewTime !== null && (
               <motion.div
-                initial={{ opacity: 0, y: 6, scale: 0.9 }}
-                animate={{ opacity: 1, y: -28, scale: 1 }}
+                initial={{ opacity: 0, y: 4, scale: 0.9 }}
+                animate={{ opacity: 1, y: -22, scale: 1 }}
                 exit={{ opacity: 0, y: 4, scale: 0.9 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
+                transition={{ duration: 0.12, ease: "easeOut" }}
                 className="absolute top-0 -translate-x-1/2 pointer-events-none z-40"
                 style={{
-                  left: `clamp(32px, ${previewPercent}%, calc(100% - 32px))`,
+                  left: `clamp(28px, ${previewPercent}%, calc(100% - 28px))`,
                 }}
               >
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#0a0c16]/90 backdrop-blur-xl border border-white/20 shadow-[0_8px_24px_rgba(0,0,0,0.7)] text-white text-[11px] font-mono whitespace-nowrap">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/85 backdrop-blur-2xl border border-white/20 shadow-[0_6px_20px_rgba(0,0,0,0.6)] text-white text-[11px] font-mono whitespace-nowrap">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                  <span>{formatTime(previewTime ?? 0)}</span>
+                  <span>{formatTime(previewTime)}</span>
                 </div>
               </motion.div>
             )}
