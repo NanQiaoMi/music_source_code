@@ -6,30 +6,31 @@ interface StardustParticle {
   orbitRadius: number;
   orbitAngle: number;
   orbitSpeed: number;
-  verticalAmplitude: number;
+  verticalAmp: number;
   verticalFreq: number;
   size: number;
-  baseAlpha: number;
-  hueShift: number;
-  armIndex: number;
+  alpha: number;
+  hueOffset: number;
+  depth: number;
 }
 
 interface ShockwaveRing {
   radius: number;
   maxRadius: number;
-  opacity: number;
+  alpha: number;
   speed: number;
-  color: string;
-  lineWidth: number;
+  hue: number;
+  energy: number;
 }
 
 interface NebulaCloud {
   x: number;
   y: number;
-  radius: number;
+  r: number;
   hue: number;
   alpha: number;
-  speed: number;
+  vx: number;
+  vy: number;
 }
 
 interface SuperstringState {
@@ -81,7 +82,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       min: 1000,
       max: 8000,
       step: 500,
-      default: 3600,
+      default: 4200,
     },
     {
       id: "chromaticAberration",
@@ -111,7 +112,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       min: 0.2,
       max: 3.0,
       step: 0.1,
-      default: 1.6,
+      default: 1.5,
     },
     {
       id: "colorTheme",
@@ -120,49 +121,50 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       mode: "basic",
       default: "quantum",
       options: [
-        { label: "量子霓虹 (紫蓝粉)", value: "quantum" },
-        { label: "深空极光 (青绿金)", value: "celestial" },
-        { label: "超新星 (赤红琥珀)", value: "supernova" },
-        { label: "暗物质 (冰蓝幽紫)", value: "darkmatter" },
+        { label: "量子极光 (极光蓝/紫/金)", value: "quantum" },
+        { label: "星际深空 (深空青/绿/金)", value: "celestial" },
+        { label: "黑洞原力 (赤红琥珀/金)", value: "supernova" },
+        { label: "暗物质 (冰蓝/钛银/幽紫)", value: "darkmatter" },
       ],
     },
   ],
 
   init(ctx: RenderContext) {
-    const particleCount = 3600;
+    const particleCount = 4200;
     const particles: StardustParticle[] = [];
-    const arms = 4;
+    const arms = 3;
 
     for (let i = 0; i < particleCount; i++) {
       const arm = i % arms;
       const armAngle = (arm / arms) * Math.PI * 2;
-      const distRatio = Math.pow(Math.random(), 1.6);
-      const radius = 60 + distRatio * 620;
-      const spiralAngle = armAngle + radius * 0.015 + (Math.random() - 0.5) * 0.6;
-      const orbitSpeed = (0.008 + (1 / Math.sqrt(radius)) * 0.22) * 0.6;
+      const distRatio = Math.pow(Math.random(), 1.8);
+      const radius = 55 + distRatio * 680;
+      const spiralAngle = armAngle + radius * 0.012 + (Math.random() - 0.5) * 0.5;
+      const orbitSpeed = (0.006 + (1 / Math.sqrt(radius)) * 0.18) * 0.7;
 
       particles.push({
         orbitRadius: radius,
         orbitAngle: spiralAngle,
         orbitSpeed,
-        verticalAmplitude: 15 + Math.random() * 45 * distRatio,
-        verticalFreq: 1 + Math.random() * 3,
-        size: 0.6 + Math.random() * 2.4,
-        baseAlpha: 0.25 + Math.random() * 0.75,
-        hueShift: (Math.random() - 0.5) * 60,
-        armIndex: arm,
+        verticalAmp: 12 + Math.random() * 38 * distRatio,
+        verticalFreq: 1 + Math.random() * 2.5,
+        size: 0.5 + Math.random() * 2.0,
+        alpha: 0.2 + Math.random() * 0.75,
+        hueOffset: (Math.random() - 0.5) * 40,
+        depth: Math.random(),
       });
     }
 
     const nebulae: NebulaCloud[] = [];
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 7; i++) {
       nebulae.push({
-        x: (Math.random() - 0.5) * (ctx.width || 1920) * 0.8,
-        y: (Math.random() - 0.5) * (ctx.height || 1080) * 0.8,
-        radius: 200 + Math.random() * 400,
-        hue: i % 2 === 0 ? 275 : i % 3 === 0 ? 335 : 190,
-        alpha: 0.04 + Math.random() * 0.06,
-        speed: (Math.random() - 0.5) * 0.002,
+        x: (Math.random() - 0.5) * (ctx.width || 1920) * 0.7,
+        y: (Math.random() - 0.5) * (ctx.height || 1080) * 0.6,
+        r: 250 + Math.random() * 350,
+        hue: i % 2 === 0 ? 295 : 192,
+        alpha: 0.035 + Math.random() * 0.045,
+        vx: (Math.random() - 0.5) * 0.08,
+        vy: (Math.random() - 0.5) * 0.05,
       });
     }
 
@@ -194,10 +196,10 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     const {
       singularityMass = 1.0,
       superstringTension = 1.2,
-      stardustDensity = 3600,
+      stardustDensity = 4200,
       chromaticAberration = 0.8,
       burstSensitivity = 1.0,
-      coreGlow = 1.6,
+      coreGlow = 1.5,
       colorTheme = "quantum",
     } = params;
 
@@ -213,9 +215,9 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     const rawTreble = audioData.treble || 0;
     const rawEnergy = audioData.full || 0.2;
 
-    state.smoothedBass += (rawBass - state.smoothedBass) * 0.18;
+    state.smoothedBass += (rawBass - state.smoothedBass) * 0.16;
     state.smoothedMid += (rawMid - state.smoothedMid) * 0.14;
-    state.smoothedTreble += (rawTreble - state.smoothedTreble) * 0.2;
+    state.smoothedTreble += (rawTreble - state.smoothedTreble) * 0.12;
     state.smoothedEnergy += (rawEnergy - state.smoothedEnergy) * 0.15;
 
     const bass = state.smoothedBass;
@@ -223,72 +225,81 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     const treble = state.smoothedTreble;
     const energy = state.smoothedEnergy;
 
-    const t = ctx.time || Date.now() * 0.0008;
+    const t = ctx.time || Date.now() * 0.0006;
 
-    // Background clearing
-    g.fillStyle = "#020108";
-    g.fillRect(0, 0, sw, sh);
-
-    // Color theme palette
-    let baseHue = 275;
-    let secondaryHue = 190;
-    let accentHue = 335;
+    // Palette Configuration
+    let baseHue = 265;
+    let cyanHue = 192;
+    let goldHue = 42;
+    let purpleHue = 295;
 
     if (colorTheme === "celestial") {
       baseHue = 165;
-      secondaryHue = 205;
-      accentHue = 45;
+      cyanHue = 175;
+      goldHue = 48;
+      purpleHue = 210;
     } else if (colorTheme === "supernova") {
-      baseHue = 15;
-      secondaryHue = 345;
-      accentHue = 48;
+      baseHue = 18;
+      cyanHue = 38;
+      goldHue = 48;
+      purpleHue = 345;
     } else if (colorTheme === "darkmatter") {
-      baseHue = 240;
-      secondaryHue = 285;
-      accentHue = 180;
+      baseHue = 230;
+      cyanHue = 200;
+      goldHue = 260;
+      purpleHue = 280;
     }
 
-    // Volumetric Nebula Gas Clouds
+    // 1. Deep Space Obsidian Background & Volumetric Nebula
     g.save();
+    const bgGrad = g.createRadialGradient(cx, cy, 0, cx, cy, Math.max(sw, sh) * 0.85);
+    bgGrad.addColorStop(0, `hsla(${baseHue}, 50%, 6%, 1)`);
+    bgGrad.addColorStop(0.6, `hsla(${baseHue}, 40%, 3%, 1)`);
+    bgGrad.addColorStop(1, "#020105");
+    g.fillStyle = bgGrad;
+    g.fillRect(0, 0, sw, sh);
+
     g.globalCompositeOperation = "screen";
     for (let i = 0; i < state.nebulae.length; i++) {
       const neb = state.nebulae[i];
-      const nx = cx + neb.x + Math.sin(t * neb.speed + i) * 60;
-      const ny = cy + neb.y + Math.cos(t * neb.speed + i) * 40;
-      const nRadius = neb.radius * (1 + bass * 0.25);
+      neb.x += neb.vx;
+      neb.y += neb.vy;
+      const nx = cx + neb.x + Math.sin(t * 0.4 + i) * 50;
+      const ny = cy + neb.y + Math.cos(t * 0.3 + i) * 35;
+      const nRadius = neb.r * (1 + bass * 0.3);
 
-      const nebGrad = g.createRadialGradient(nx, ny, 0, nx, ny, nRadius);
-      const nAlpha = neb.alpha * (0.8 + energy * 0.6);
-      nebGrad.addColorStop(0, `hsla(${baseHue}, 90%, 55%, ${nAlpha.toFixed(3)})`);
-      nebGrad.addColorStop(0.45, `hsla(${(baseHue + 25) % 360}, 85%, 40%, ${(nAlpha * 0.4).toFixed(3)})`);
-      nebGrad.addColorStop(1, "rgba(0,0,0,0)");
+      const nebGrd = g.createRadialGradient(nx, ny, 0, nx, ny, nRadius);
+      const nAlpha = neb.alpha * (0.8 + energy * 0.7);
+      nebGrd.addColorStop(0, `hsla(${neb.hue}, 85%, 55%, ${nAlpha.toFixed(3)})`);
+      nebGrd.addColorStop(0.5, `hsla(${(neb.hue + 30) % 360}, 80%, 35%, ${(nAlpha * 0.35).toFixed(3)})`);
+      nebGrd.addColorStop(1, "rgba(0,0,0,0)");
 
-      g.fillStyle = nebGrad;
+      g.fillStyle = nebGrd;
       g.beginPath();
       g.arc(nx, ny, nRadius, 0, Math.PI * 2);
       g.fill();
     }
     g.restore();
 
-    // Beat impact detection for Shockwaves
+    // 2. Beat Impact & Shockwaves
     const now = ctx.time || Date.now() / 1000;
-    if (audioData.isBeat && now - state.lastBeatTime > 0.22) {
+    if (audioData.isBeat && now - state.lastBeatTime > 0.25) {
       state.lastBeatTime = now;
       state.singularityPulse = 1.0 + (audioData.beatImpact || 0.8) * 0.45 * burstSensitivity;
 
       state.shockwaves.push({
-        radius: 45 * singularityMass,
-        maxRadius: Math.max(sw, sh) * 0.85,
-        opacity: 0.9,
-        speed: 9 + (audioData.beatImpact || 1.0) * 14 * burstSensitivity,
-        color: `hsla(${accentHue + (Math.random() - 0.5) * 30}, 95%, 72%, `,
-        lineWidth: 2 + (audioData.beatImpact || 1.0) * 5,
+        radius: 40 * singularityMass,
+        maxRadius: Math.max(sw, sh) * 0.9,
+        alpha: 0.75,
+        speed: 8 + (audioData.beatImpact || 1.0) * 12 * burstSensitivity,
+        hue: cyanHue,
+        energy: bass,
       });
     } else {
       state.singularityPulse += (1.0 - state.singularityPulse) * 0.08;
     }
 
-    state.rotationAngle += 0.004 + energy * 0.014;
+    state.rotationAngle += 0.003 + energy * 0.01;
 
     // Draw Shockwaves
     g.save();
@@ -296,135 +307,123 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     for (let i = state.shockwaves.length - 1; i >= 0; i--) {
       const swObj = state.shockwaves[i];
       swObj.radius += swObj.speed;
-      swObj.opacity *= 0.94;
+      swObj.alpha *= 0.945;
 
-      if (swObj.opacity < 0.02 || swObj.radius > swObj.maxRadius) {
+      if (swObj.alpha < 0.015 || swObj.radius > swObj.maxRadius) {
         state.shockwaves.splice(i, 1);
         continue;
       }
 
-      const swGrad = g.createRadialGradient(
+      const swGrd = g.createRadialGradient(
         cx,
         cy,
-        Math.max(0, swObj.radius - swObj.lineWidth * 4),
+        Math.max(0, swObj.radius - 35),
         cx,
         cy,
-        swObj.radius + swObj.lineWidth * 4
+        swObj.radius + 35
       );
-      swGrad.addColorStop(0, "rgba(0,0,0,0)");
-      swGrad.addColorStop(0.5, `${swObj.color}${swObj.opacity.toFixed(3)})`);
-      swGrad.addColorStop(1, "rgba(0,0,0,0)");
+      swGrd.addColorStop(0, "rgba(0,0,0,0)");
+      swGrd.addColorStop(0.45, `hsla(${swObj.hue}, 95%, 75%, ${(swObj.alpha * 0.7).toFixed(3)})`);
+      swGrd.addColorStop(0.55, `hsla(${goldHue}, 100%, 85%, ${(swObj.alpha * 0.9).toFixed(3)})`);
+      swGrd.addColorStop(1, "rgba(0,0,0,0)");
 
-      g.strokeStyle = swGrad;
-      g.lineWidth = swObj.lineWidth;
+      g.strokeStyle = swGrd;
+      g.lineWidth = 3 + swObj.energy * 4;
       g.beginPath();
       g.arc(cx, cy, swObj.radius, 0, Math.PI * 2);
       g.stroke();
     }
     g.restore();
 
-    // 3D Camera Projection Settings
-    const fov = 480;
-    const pitch = 0.58 + Math.sin(t * 0.35) * 0.06;
+    // 3. 3D Camera Projection
+    const fov = 520;
+    const pitch = 0.62 + Math.sin(t * 0.3) * 0.05;
     const cosP = Math.cos(pitch);
     const sinP = Math.sin(pitch);
     const cosR = Math.cos(state.rotationAngle);
     const sinR = Math.sin(state.rotationAngle);
 
-    // Relativistic Polar Plasma Jets
+    // 4. Relativistic Polar Plasma Quasar Jets
     g.save();
     g.globalCompositeOperation = "screen";
-    const jetLength = (220 + treble * 380 + bass * 240) * coreGlow;
-    const jetBaseWidth = (14 + mid * 26) * coreGlow;
+    const jetLength = (280 + treble * 450 + bass * 260) * coreGlow;
+    const jetWidth = (10 + mid * 22) * coreGlow;
 
-    // Upward Jet
-    const jetUpGrad = g.createLinearGradient(cx, cy, cx, cy - jetLength);
-    jetUpGrad.addColorStop(0, `hsla(${accentHue}, 100%, 95%, 0.95)`);
-    jetUpGrad.addColorStop(0.15, `hsla(${baseHue}, 95%, 75%, 0.75)`);
-    jetUpGrad.addColorStop(0.55, `hsla(${secondaryHue}, 90%, 60%, 0.3)`);
-    jetUpGrad.addColorStop(1, "rgba(0,0,0,0)");
+    const drawJet = (dir: 1 | -1) => {
+      const targetY = cy + dir * jetLength;
+      const jGrad = g.createLinearGradient(cx, cy, cx, targetY);
+      jGrad.addColorStop(0, `hsla(${goldHue}, 100%, 95%, 0.9)`);
+      jGrad.addColorStop(0.12, `hsla(${cyanHue}, 95%, 80%, 0.7)`);
+      jGrad.addColorStop(0.45, `hsla(${purpleHue}, 90%, 65%, 0.25)`);
+      jGrad.addColorStop(1, "rgba(0,0,0,0)");
 
-    g.fillStyle = jetUpGrad;
-    g.beginPath();
-    g.moveTo(cx - jetBaseWidth, cy);
-    g.quadraticCurveTo(cx - jetBaseWidth * 0.3, cy - jetLength * 0.5, cx, cy - jetLength);
-    g.quadraticCurveTo(cx + jetBaseWidth * 0.3, cy - jetLength * 0.5, cx + jetBaseWidth, cy);
-    g.closePath();
-    g.fill();
+      g.fillStyle = jGrad;
+      g.beginPath();
+      g.moveTo(cx - jetWidth, cy);
+      g.quadraticCurveTo(cx - jetWidth * 0.25, cy + dir * jetLength * 0.5, cx, targetY);
+      g.quadraticCurveTo(cx + jetWidth * 0.25, cy + dir * jetLength * 0.5, cx + jetWidth, cy);
+      g.closePath();
+      g.fill();
+    };
 
-    // Downward Jet
-    const jetDownGrad = g.createLinearGradient(cx, cy, cx, cy + jetLength);
-    jetDownGrad.addColorStop(0, `hsla(${accentHue}, 100%, 95%, 0.95)`);
-    jetDownGrad.addColorStop(0.15, `hsla(${baseHue}, 95%, 75%, 0.75)`);
-    jetDownGrad.addColorStop(0.55, `hsla(${secondaryHue}, 90%, 60%, 0.3)`);
-    jetDownGrad.addColorStop(1, "rgba(0,0,0,0)");
-
-    g.fillStyle = jetDownGrad;
-    g.beginPath();
-    g.moveTo(cx - jetBaseWidth, cy);
-    g.quadraticCurveTo(cx - jetBaseWidth * 0.3, cy + jetLength * 0.5, cx, cy + jetLength);
-    g.quadraticCurveTo(cx + jetBaseWidth * 0.3, cy + jetLength * 0.5, cx + jetBaseWidth, cy);
-    g.closePath();
-    g.fill();
+    drawJet(-1);
+    drawJet(1);
     g.restore();
 
-    // Gravitational Lensing: Upper & Lower Photon Arches
+    // 5. Kerr Metric Gravitational Lensing Arches
+    const coreRadius = 48 * singularityMass * state.singularityPulse * (1 + bass * 0.4);
     g.save();
     g.globalCompositeOperation = "screen";
-    const coreRadius = 52 * singularityMass * state.singularityPulse * (1 + bass * 0.45);
 
-    const lensedArchGrad = g.createRadialGradient(
+    const upperLensedGrad = g.createRadialGradient(
       cx,
-      cy - coreRadius * 0.4,
-      coreRadius * 0.8,
+      cy - coreRadius * 0.35,
+      coreRadius * 0.7,
       cx,
-      cy - coreRadius * 0.4,
-      coreRadius * 3.2 * coreGlow
+      cy - coreRadius * 0.35,
+      coreRadius * 3.6 * coreGlow
     );
-    lensedArchGrad.addColorStop(0, `hsla(${accentHue}, 100%, 88%, 0.9)`);
-    lensedArchGrad.addColorStop(0.25, `hsla(${baseHue}, 95%, 70%, 0.65)`);
-    lensedArchGrad.addColorStop(0.6, `hsla(${secondaryHue}, 90%, 55%, 0.25)`);
-    lensedArchGrad.addColorStop(1, "rgba(0,0,0,0)");
+    upperLensedGrad.addColorStop(0, `hsla(${goldHue}, 100%, 90%, 0.95)`);
+    upperLensedGrad.addColorStop(0.2, `hsla(${cyanHue}, 95%, 75%, 0.7)`);
+    upperLensedGrad.addColorStop(0.55, `hsla(${purpleHue}, 90%, 55%, 0.22)`);
+    upperLensedGrad.addColorStop(1, "rgba(0,0,0,0)");
 
-    g.fillStyle = lensedArchGrad;
+    g.fillStyle = upperLensedGrad;
     g.beginPath();
-    g.ellipse(cx, cy - coreRadius * 0.4, coreRadius * 2.8 * coreGlow, coreRadius * 1.8 * coreGlow, 0, Math.PI, 0);
+    g.ellipse(cx, cy - coreRadius * 0.35, coreRadius * 2.9 * coreGlow, coreRadius * 1.7 * coreGlow, 0, Math.PI, 0);
     g.fill();
 
     g.beginPath();
-    g.ellipse(cx, cy + coreRadius * 0.4, coreRadius * 2.5 * coreGlow, coreRadius * 1.4 * coreGlow, 0, 0, Math.PI);
+    g.ellipse(cx, cy + coreRadius * 0.35, coreRadius * 2.6 * coreGlow, coreRadius * 1.3 * coreGlow, 0, 0, Math.PI);
     g.fill();
     g.restore();
 
-    // Superstring Silk Harmonic Ribbons
-    const ribbonCount = 9;
-    const ribbonSteps = 120;
-    const waveData = audioData.waveformData || new Uint8Array(ribbonSteps);
-
+    // 6. Smooth Calabi-Yau Superstring Waveform Ribbons (Cubic Splines)
+    const ribbonCount = 7;
+    const ribbonSegments = 72;
+    const waveData = audioData.waveformData || new Uint8Array(ribbonSegments);
     g.save();
     g.globalCompositeOperation = "screen";
 
     for (let r = 0; r < ribbonCount; r++) {
-      const ribbonPhase = (r / ribbonCount) * Math.PI * 2 + t * 1.6 * superstringTension;
-      const ribbonRadius = (75 + r * 42) * singularityMass * (1 + bass * 0.35);
-      const ribbonHue = (baseHue + r * 22 + state.rotationAngle * 30) % 360;
+      const ribbonPhase = (r / ribbonCount) * Math.PI * 2 + t * 1.4 * superstringTension;
+      const ribbonRadius = (80 + r * 48) * singularityMass * (1 + bass * 0.32);
+      const ribbonHue = r % 2 === 0 ? (cyanHue + r * 15) % 360 : (purpleHue + r * 10) % 360;
 
-      g.beginPath();
-      let firstPoint = true;
+      const points: { x: number; y: number }[] = [];
 
-      for (let s = 0; s <= ribbonSteps; s++) {
-        const theta = (s / ribbonSteps) * Math.PI * 2;
-        const waveIdx = Math.floor((s / ribbonSteps) * waveData.length);
+      for (let s = 0; s <= ribbonSegments; s++) {
+        const theta = (s / ribbonSegments) * Math.PI * 2;
+        const waveIdx = Math.floor((s / ribbonSegments) * waveData.length);
         const waveVal = ((waveData[waveIdx] || 128) - 128) / 128;
 
-        const harm1 = Math.sin(theta * 5 + ribbonPhase) * (22 + mid * 55);
-        const harm2 = Math.cos(theta * 8 - ribbonPhase * 1.5) * (12 + treble * 35);
-        const harm3 = Math.sin(theta * 12 + t * 3) * (6 + energy * 20);
-        const audioDisplacement = waveVal * (40 * superstringTension + bass * 35);
+        const harm1 = Math.sin(theta * 4 + ribbonPhase) * (18 + mid * 45);
+        const harm2 = Math.cos(theta * 6 - ribbonPhase * 1.2) * (10 + treble * 28);
+        const audioDisp = waveVal * (32 * superstringTension + bass * 26);
 
-        const currentR = ribbonRadius + harm1 + harm2 + harm3 + audioDisplacement;
+        const currentR = ribbonRadius + harm1 + harm2 + audioDisp;
         const rawX = Math.cos(theta) * currentR;
-        const rawY = Math.sin(theta * 4 + ribbonPhase) * (26 + mid * 45) + waveVal * 25;
+        const rawY = Math.sin(theta * 3 + ribbonPhase) * (20 + mid * 36) + waveVal * 18;
         const rawZ = Math.sin(theta) * currentR;
 
         const rx = rawX * cosR - rawZ * sinR;
@@ -434,38 +433,47 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
 
         if (finalZ <= 10) continue;
         const projScale = fov / finalZ;
-        const px = cx + rx * projScale;
-        const py = cy + ry * projScale;
-
-        if (firstPoint) {
-          g.moveTo(px, py);
-          firstPoint = false;
-        } else {
-          g.lineTo(px, py);
-        }
+        points.push({
+          x: cx + rx * projScale,
+          y: cy + ry * projScale,
+        });
       }
 
-      g.strokeStyle = `hsla(${ribbonHue}, 92%, ${65 + mid * 25}%, ${0.45 + mid * 0.45})`;
-      g.lineWidth = (1.6 + (r % 3) * 0.9 + bass * 2.0) * coreGlow;
-      g.shadowColor = `hsla(${ribbonHue}, 98%, 75%, 0.9)`;
-      g.shadowBlur = (14 + mid * 26) * coreGlow;
-      g.stroke();
+      if (points.length > 3) {
+        g.beginPath();
+        g.moveTo(points[0].x, points[0].y);
+
+        for (let p = 0; p < points.length - 1; p++) {
+          const p0 = points[p];
+          const p1 = points[p + 1];
+          const midX = (p0.x + p1.x) / 2;
+          const midY = (p0.y + p1.y) / 2;
+          g.quadraticCurveTo(p0.x, p0.y, midX, midY);
+        }
+        g.closePath();
+
+        g.strokeStyle = `hsla(${ribbonHue}, 95%, ${70 + mid * 20}%, ${0.5 + mid * 0.4})`;
+        g.lineWidth = (1.8 + (r % 3) * 0.8 + bass * 1.6) * coreGlow;
+        g.shadowColor = `hsla(${ribbonHue}, 100%, 75%, 0.85)`;
+        g.shadowBlur = (12 + mid * 20) * coreGlow;
+        g.stroke();
+      }
     }
     g.restore();
 
-    // Accretion Disk Stardust Particles
+    // 7. Accretion Disk Stardust Particles
     const activeCount = Math.min(stardustDensity, state.particles.length);
     g.save();
     g.globalCompositeOperation = "screen";
 
     for (let i = 0; i < activeCount; i++) {
       const p = state.particles[i];
-      const speedMult = (1 + energy * 2.2 + bass * 1.5) * superstringTension;
+      const speedMult = (1 + energy * 2.0 + bass * 1.4) * superstringTension;
       p.orbitAngle += p.orbitSpeed * speedMult;
 
-      const currentRadius = p.orbitRadius * (1 + Math.sin(t * 2.5 + p.orbitAngle * 4) * (0.06 + bass * 0.2));
+      const currentRadius = p.orbitRadius * (1 + Math.sin(t * 2.2 + p.orbitAngle * 3) * (0.05 + bass * 0.18));
       const pxRaw = Math.cos(p.orbitAngle) * currentRadius;
-      const pyRaw = Math.sin(t * p.verticalFreq + p.orbitRadius * 0.08) * (p.verticalAmplitude * (1 + treble * 1.6));
+      const pyRaw = Math.sin(t * p.verticalFreq + p.orbitRadius * 0.06) * (p.verticalAmp * (1 + treble * 1.5));
       const pzRaw = Math.sin(p.orbitAngle) * currentRadius;
 
       const rx = pxRaw * cosR - pzRaw * sinR;
@@ -479,66 +487,64 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       const screenY = cy + ry * projScale;
 
       const doppler = Math.sin(p.orbitAngle + state.rotationAngle);
-      const dopplerBrightness = 1 + doppler * 0.45;
-      const dopplerHueShift = doppler * 25;
+      const dopplerBrightness = 1 + doppler * 0.4;
+      const pHue = doppler > 0 ? (cyanHue + p.hueOffset) % 360 : (purpleHue + p.hueOffset) % 360;
 
-      const particleSize = p.size * projScale * (1 + treble * 1.4);
-      const alpha = Math.min(1, p.baseAlpha * (0.35 + energy * 0.75) * (projScale * 0.9) * dopplerBrightness);
-      const hue = (baseHue + p.hueShift + dopplerHueShift + p.orbitRadius * 0.18 + energy * 45) % 360;
+      const particleSize = p.size * projScale * (1 + treble * 1.2);
+      const alpha = Math.min(1, p.alpha * (0.3 + energy * 0.7) * (projScale * 0.9) * dopplerBrightness);
 
-      g.fillStyle = `hsla(${hue}, 95%, ${72 + treble * 25}%, ${alpha.toFixed(3)})`;
+      g.fillStyle = `hsla(${pHue}, 95%, ${72 + treble * 22}%, ${alpha.toFixed(3)})`;
       g.beginPath();
-      g.arc(screenX, screenY, Math.max(0.6, particleSize), 0, Math.PI * 2);
+      g.arc(screenX, screenY, Math.max(0.5, particleSize), 0, Math.PI * 2);
       g.fill();
 
-      if (chromaticAberration > 0.2 && p.size > 1.6) {
-        const offset = chromaticAberration * 3 * projScale;
-        g.fillStyle = `hsla(${secondaryHue}, 90%, 65%, ${(alpha * 0.45).toFixed(3)})`;
+      if (chromaticAberration > 0.2 && p.size > 1.7) {
+        g.fillStyle = `hsla(${goldHue}, 100%, 85%, ${(alpha * 0.4).toFixed(3)})`;
         g.beginPath();
-        g.arc(screenX + offset, screenY, Math.max(0.4, particleSize * 0.8), 0, Math.PI * 2);
+        g.arc(screenX, screenY, particleSize * 2.4, 0, Math.PI * 2);
         g.fill();
       }
     }
     g.restore();
 
-    // Anamorphic Lens Flare
+    // 8. Anamorphic Horizontal Lens Flare
     g.save();
     g.globalCompositeOperation = "screen";
-    const flareWidth = sw * (0.6 + bass * 0.35);
-    const flareHeight = (8 + bass * 22) * coreGlow;
+    const flareWidth = sw * (0.65 + bass * 0.35);
+    const flareHeight = (12 + bass * 28) * coreGlow;
 
-    const flareGrad = g.createRadialGradient(cx, cy, 0, cx, cy, flareWidth);
-    flareGrad.addColorStop(0, `hsla(${accentHue}, 100%, 95%, ${0.75 + bass * 0.25})`);
-    flareGrad.addColorStop(0.15, `hsla(${baseHue}, 100%, 75%, 0.45)`);
-    flareGrad.addColorStop(0.45, `hsla(${secondaryHue}, 90%, 60%, 0.15)`);
-    flareGrad.addColorStop(1, "rgba(0,0,0,0)");
+    const flareGrd = g.createRadialGradient(cx, cy, 0, cx, cy, flareWidth);
+    flareGrd.addColorStop(0, `hsla(${goldHue}, 100%, 96%, ${0.85 + bass * 0.15})`);
+    flareGrd.addColorStop(0.15, `hsla(${cyanHue}, 95%, 80%, 0.55)`);
+    flareGrd.addColorStop(0.45, `hsla(${purpleHue}, 90%, 65%, 0.18)`);
+    flareGrd.addColorStop(1, "rgba(0,0,0,0)");
 
-    g.fillStyle = flareGrad;
+    g.fillStyle = flareGrd;
     g.beginPath();
     g.ellipse(cx, cy, flareWidth, flareHeight, 0, 0, Math.PI * 2);
     g.fill();
     g.restore();
 
-    // Central Photon Ring & Event Horizon
+    // 9. Central Photon Capture Ring & Event Horizon
     g.save();
     g.globalCompositeOperation = "screen";
 
-    const coronaGrad = g.createRadialGradient(
+    const coronaGrd = g.createRadialGradient(
       cx,
       cy,
-      coreRadius * 0.6,
+      coreRadius * 0.5,
       cx,
       cy,
-      coreRadius * 3.4 * coreGlow
+      coreRadius * 3.5 * coreGlow
     );
-    coronaGrad.addColorStop(0, `hsla(${accentHue}, 100%, 92%, 0.95)`);
-    coronaGrad.addColorStop(0.2, `hsla(${baseHue}, 100%, 75%, 0.75)`);
-    coronaGrad.addColorStop(0.55, `hsla(${secondaryHue}, 95%, 55%, 0.3)`);
-    coronaGrad.addColorStop(1, "rgba(0,0,0,0)");
+    coronaGrd.addColorStop(0, `hsla(${goldHue}, 100%, 95%, 0.95)`);
+    coronaGrd.addColorStop(0.22, `hsla(${cyanHue}, 100%, 75%, 0.75)`);
+    coronaGrd.addColorStop(0.55, `hsla(${purpleHue}, 95%, 55%, 0.28)`);
+    coronaGrd.addColorStop(1, "rgba(0,0,0,0)");
 
-    g.fillStyle = coronaGrad;
+    g.fillStyle = coronaGrd;
     g.beginPath();
-    g.arc(cx, cy, coreRadius * 3.4 * coreGlow, 0, Math.PI * 2);
+    g.arc(cx, cy, coreRadius * 3.5 * coreGlow, 0, Math.PI * 2);
     g.fill();
     g.restore();
 
@@ -546,13 +552,13 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     g.save();
     g.fillStyle = "#010003";
     g.beginPath();
-    g.arc(cx, cy, coreRadius * 0.94, 0, Math.PI * 2);
+    g.arc(cx, cy, coreRadius * 0.95, 0, Math.PI * 2);
     g.fill();
 
-    g.strokeStyle = `hsla(${accentHue}, 100%, 92%, ${0.85 + bass * 0.15})`;
-    g.lineWidth = (3.2 + bass * 4.0) * coreGlow;
-    g.shadowColor = `hsla(${accentHue}, 100%, 80%, 1)`;
-    g.shadowBlur = (24 + bass * 35) * coreGlow;
+    g.strokeStyle = `hsla(${goldHue}, 100%, 92%, ${0.88 + bass * 0.12})`;
+    g.lineWidth = (3.5 + bass * 4.5) * coreGlow;
+    g.shadowColor = `hsla(${cyanHue}, 100%, 80%, 1)`;
+    g.shadowBlur = (26 + bass * 38) * coreGlow;
     g.stroke();
     g.restore();
   },

@@ -260,6 +260,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   // Interaction & Physics refs
   const isDraggingRef = useRef(false);
   const prevMouseXRef = useRef(0);
+  const mouseDownPosRef = useRef({ x: 0, y: 0 });
+  const hasDraggedRef = useRef(false);
   const targetScrollRef = useRef(0);
   const currentScrollRef = useRef(0);
   const lastDetentStepRef = useRef(0);
@@ -276,8 +278,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const cardsGroupRef = useRef<THREE.Group | null>(null);
   const particlesRef = useRef<THREE.Points | null>(null);
   const animFrameRef = useRef<number | null>(null);
-  const pointLightRef = useRef<THREE.PointLight | null>(null);
-  const purpleLightRef = useRef<THREE.PointLight | null>(null);
+  const mainLightRef = useRef<THREE.PointLight | null>(null);
 
   // Virtualized Card Meshes & Canvases
   interface CardSlot {
@@ -301,7 +302,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     });
   }, []);
 
-  // 烘焙单个卡片 CanvasTexture 纹理 (1024×1280 2x Retina 高清分辨率)
+  // 烘焙单个卡片 CanvasTexture 纹理 (Apple 纯净灰度液态玻璃质感)
   const renderCardCanvas = useCallback(
     (
       slot: CardSlot,
@@ -316,60 +317,69 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
       ctx.clearRect(0, 0, w, h);
 
-      // 1. 卡片主体背景 - 极深液态暗场玻璃拟态
+      // 1. 卡片主体背景 - 纯正暗调透明液态玻璃 (无饱和彩色)
       drawRoundedRect(ctx, 24, 24, w - 48, h - 48, 48);
       const bgGrad = ctx.createLinearGradient(0, 0, w, h);
       if (isActive) {
-        bgGrad.addColorStop(0, "rgba(22, 12, 38, 0.96)");
-        bgGrad.addColorStop(0.45, "rgba(10, 5, 22, 0.98)");
-        bgGrad.addColorStop(1, "rgba(3, 1, 8, 0.99)");
+        bgGrad.addColorStop(0, "rgba(28, 28, 34, 0.88)");
+        bgGrad.addColorStop(0.45, "rgba(16, 16, 20, 0.92)");
+        bgGrad.addColorStop(1, "rgba(8, 8, 10, 0.96)");
       } else {
-        bgGrad.addColorStop(0, "rgba(14, 8, 24, 0.88)");
-        bgGrad.addColorStop(0.5, "rgba(6, 3, 12, 0.92)");
-        bgGrad.addColorStop(1, "rgba(2, 1, 5, 0.96)");
+        bgGrad.addColorStop(0, "rgba(18, 18, 22, 0.72)");
+        bgGrad.addColorStop(0.5, "rgba(10, 10, 14, 0.80)");
+        bgGrad.addColorStop(1, "rgba(4, 4, 6, 0.88)");
       }
       ctx.fillStyle = bgGrad;
       ctx.fill();
 
-      // 2. 边框与发光外轮廓 (活跃卡片双色霓虹发光)
+      // 2. 边框与微观高光折射 (纯净白/银高光反射)
       ctx.save();
       drawRoundedRect(ctx, 24, 24, w - 48, h - 48, 48);
       if (isActive) {
-        ctx.strokeStyle = "#00f5ff";
-        ctx.lineWidth = 7;
-        ctx.shadowColor = "rgba(0, 245, 255, 0.85)";
-        ctx.shadowBlur = 32;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+        ctx.lineWidth = 5;
+        ctx.shadowColor = "rgba(255, 255, 255, 0.45)";
+        ctx.shadowBlur = 24;
         ctx.stroke();
 
-        ctx.strokeStyle = "rgba(168, 85, 247, 0.6)";
-        ctx.lineWidth = 3.5;
-        ctx.shadowColor = "rgba(168, 85, 247, 0.7)";
-        ctx.shadowBlur = 18;
+        // 顶边物理切光高光
+        const topGlint = ctx.createLinearGradient(120, 24, w - 120, 24);
+        topGlint.addColorStop(0, "rgba(255, 255, 255, 0)");
+        topGlint.addColorStop(0.5, "rgba(255, 255, 255, 0.95)");
+        topGlint.addColorStop(1, "rgba(255, 255, 255, 0)");
+        ctx.strokeStyle = topGlint;
+        ctx.lineWidth = 4;
         ctx.stroke();
       } else {
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+        ctx.lineWidth = 2.5;
         ctx.shadowColor = "transparent";
         ctx.stroke();
       }
       ctx.restore();
 
-      // 3. 顶部序号徽标胶囊
-      ctx.fillStyle = isActive ? "rgba(0, 245, 255, 0.22)" : "rgba(255, 255, 255, 0.08)";
-      drawRoundedRect(ctx, 64, 60, 160, 54, 27);
+      // 3. 顶部序号徽标胶囊 (灰度玻璃微光)
+      ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.16)" : "rgba(255, 255, 255, 0.06)";
+      drawRoundedRect(ctx, 64, 60, 170, 54, 27);
       ctx.fill();
-      ctx.fillStyle = isActive ? "#00f5ff" : "rgba(255, 255, 255, 0.6)";
-      ctx.font = "bold 24px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.6)";
+      ctx.font = "bold 22px -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(`#${String(indexLabel + 1).padStart(2, "0")} · ${item.tag}`, 144, 87);
+      ctx.fillText(`#${String(indexLabel + 1).padStart(2, "0")} · ${item.tag}`, 149, 87);
 
       // 4. 右上角模式徽章 (PLAYLIST / LOSSLESS)
-      ctx.fillStyle = isActive ? "rgba(168, 85, 247, 0.28)" : "rgba(255, 255, 255, 0.06)";
+      ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.14)" : "rgba(255, 255, 255, 0.05)";
       drawRoundedRect(ctx, w - 240, 60, 176, 54, 27);
       ctx.fill();
-      ctx.fillStyle = isActive ? "#d8b4fe" : "rgba(255, 255, 255, 0.5)";
-      ctx.font = "bold 22px -apple-system, sans-serif";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.45)";
+      ctx.font = "bold 20px -apple-system, sans-serif";
       ctx.fillText(item.type === "playlist" ? "PLAYLIST" : "LOSSLESS", w - 152, 87);
 
       // 5. 封面绘制 (Squircle 圆角图片或同心黑胶质感)
@@ -388,7 +398,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       if (img) {
         ctx.drawImage(img, coverX, coverY, coverSize, coverSize);
       } else {
-        // 质感同心黑胶占位底图
+        // 质感黑胶占位底图
         const vinylGrad = ctx.createRadialGradient(
           w / 2,
           coverY + coverSize / 2,
@@ -397,10 +407,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           coverY + coverSize / 2,
           coverSize / 2
         );
-        vinylGrad.addColorStop(0, "#2c1e4a");
-        vinylGrad.addColorStop(0.3, "#160f28");
-        vinylGrad.addColorStop(0.7, "#0c0818");
-        vinylGrad.addColorStop(1, "#05030a");
+        vinylGrad.addColorStop(0, "#222228");
+        vinylGrad.addColorStop(0.3, "#141418");
+        vinylGrad.addColorStop(0.7, "#0c0c10");
+        vinylGrad.addColorStop(1, "#040406");
         ctx.fillStyle = vinylGrad;
         ctx.fillRect(coverX, coverY, coverSize, coverSize);
 
@@ -412,7 +422,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           ctx.stroke();
         }
 
-        ctx.fillStyle = isActive ? "#00f5ff" : "#a855f7";
+        ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.85)" : "rgba(255, 255, 255, 0.35)";
         ctx.beginPath();
         ctx.arc(w / 2, coverY + coverSize / 2, 54, 0, Math.PI * 2);
         ctx.fill();
@@ -420,14 +430,14 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
       // 封面内阴影与镜面反光渐变
       const coverInnerGrad = ctx.createLinearGradient(coverX, coverY, coverX, coverY + coverSize);
-      coverInnerGrad.addColorStop(0, "rgba(255, 255, 255, 0.18)");
-      coverInnerGrad.addColorStop(0.5, "transparent");
-      coverInnerGrad.addColorStop(1, "rgba(0, 0, 0, 0.75)");
+      coverInnerGrad.addColorStop(0, "rgba(255, 255, 255, 0.22)");
+      coverInnerGrad.addColorStop(0.4, "transparent");
+      coverInnerGrad.addColorStop(1, "rgba(0, 0, 0, 0.8)");
       ctx.fillStyle = coverInnerGrad;
       ctx.fillRect(coverX, coverY, coverSize, coverSize);
       ctx.restore();
 
-      // 6. 律动音频跳动频谱柱
+      // 6. 律动音频跳动频谱柱 (纯白透明度律动)
       if (isActive) {
         const barCount = 9;
         const barWidth = 8;
@@ -439,7 +449,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         for (let b = 0; b < barCount; b++) {
           const speed = isPlaying ? 1.0 : 0.2;
           const hVal = Math.sin(slot.rhythmPhase * speed + b * 0.85) * 22 + 26;
-          ctx.fillStyle = isPlaying ? "#00f5ff" : "rgba(255, 255, 255, 0.4)";
+          ctx.fillStyle = isPlaying ? "rgba(255, 255, 255, 0.95)" : "rgba(255, 255, 255, 0.4)";
           drawRoundedRect(
             ctx,
             startX + b * (barWidth + barGap),
@@ -453,8 +463,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       }
 
       // 7. 卡片大标题
-      ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.88)";
-      ctx.font = "bold 52px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
+      ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.85)";
+      ctx.font = "bold 50px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "alphabetic";
 
@@ -463,13 +473,13 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       ctx.fillText(titleText, w / 2, 875);
 
       // 8. 副标题与曲目计数
-      ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.72)" : "rgba(255, 255, 255, 0.45)";
-      ctx.font = "500 32px -apple-system, sans-serif";
+      ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.70)" : "rgba(255, 255, 255, 0.45)";
+      ctx.font = "500 30px -apple-system, sans-serif";
       const subtitleText =
         item.subtitle.length > 24 ? item.subtitle.slice(0, 23) + "…" : item.subtitle;
       ctx.fillText(subtitleText, w / 2, 940);
 
-      // 9. 底部操作按键 (播放 / 详情)
+      // 9. 底部操作按键 (透明液态玻璃胶囊)
       ctx.save();
       const btnY = 1040;
       const btnW = 440;
@@ -478,20 +488,20 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
       drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 44);
       if (isActive) {
-        const btnGrad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY + btnH);
-        btnGrad.addColorStop(0, "#06b6d4");
-        btnGrad.addColorStop(1, "#9333ea");
-        ctx.fillStyle = btnGrad;
-        ctx.shadowColor = "rgba(6, 182, 212, 0.6)";
-        ctx.shadowBlur = 24;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.18)";
+        ctx.shadowColor = "rgba(255, 255, 255, 0.35)";
+        ctx.shadowBlur = 18;
       } else {
-        ctx.fillStyle = "rgba(255, 255, 255, 0.10)";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
       }
       ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
       // 播放文字
       ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 32px -apple-system, sans-serif";
+      ctx.font = "bold 30px -apple-system, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       const btnText =
@@ -519,7 +529,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
     // 1. Scene
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x05020c, 0.055);
+    scene.fog = new THREE.FogExp2(0x060608, 0.05);
     sceneRef.current = scene;
 
     // 2. Camera
@@ -537,24 +547,23 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMappingExposure = 1.1;
     rendererRef.current = renderer;
 
-    // 4. Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.95);
+    // 4. Lights (纯净白光与柔和环境光)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.1);
     scene.add(ambientLight);
 
-    const pointLight = new THREE.PointLight(0x00f5ff, 3.8, 24);
-    pointLight.position.set(0, 2.8, 4.8);
-    pointLightRef.current = pointLight;
-    scene.add(pointLight);
+    const mainLight = new THREE.PointLight(0xffffff, 3.2, 25);
+    mainLight.position.set(0, 3.0, 5.0);
+    mainLightRef.current = mainLight;
+    scene.add(mainLight);
 
-    const purpleLight = new THREE.PointLight(0xa855f7, 3.0, 20);
-    purpleLight.position.set(-4.0, -0.6, 3.2);
-    purpleLightRef.current = purpleLight;
-    scene.add(purpleLight);
+    const fillLight = new THREE.PointLight(0xe5e7eb, 1.8, 20);
+    fillLight.position.set(-4.0, -0.6, 3.2);
+    scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0x818cf8, 1.4);
+    const rimLight = new THREE.DirectionalLight(0xffffff, 1.2);
     rimLight.position.set(6, 6, -2);
     scene.add(rimLight);
 
@@ -563,19 +572,19 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     cardsGroupRef.current = cardsGroup;
     scene.add(cardsGroup);
 
-    // 6. 反光镜面地面
+    // 6. 暗调黑曜石反光镜面地面
     const floorGeo = new THREE.PlaneGeometry(42, 42, 24, 24);
     const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x040108,
-      roughness: 0.12,
-      metalness: 0.9,
+      color: 0x050507,
+      roughness: 0.08,
+      metalness: 0.95,
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -2.0;
     scene.add(floor);
 
-    // 7. 空间粒子星尘 (350 颗动态星尘)
+    // 7. 空间银白微光粒子星尘 (350 颗微光星尘)
     const particleCount = 350;
     const particleGeo = new THREE.BufferGeometry();
     const particlePos = new Float32Array(particleCount * 3);
@@ -586,10 +595,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     }
     particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePos, 3));
     const particleMat = new THREE.PointsMaterial({
-      color: 0x00f5ff,
-      size: 0.055,
+      color: 0xffffff,
+      size: 0.045,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.35,
       blending: THREE.AdditiveBlending,
     });
     const particles = new THREE.Points(particleGeo, particleMat);
@@ -613,8 +622,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
       const cardMat = new THREE.MeshStandardMaterial({
         map: texture,
-        roughness: 0.16,
-        metalness: 0.28,
+        roughness: 0.14,
+        metalness: 0.20,
         transparent: true,
         side: THREE.DoubleSide,
       });
@@ -680,11 +689,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       // 粒子自转
       if (particlesRef.current) {
         particlesRef.current.rotation.y += 0.0006;
-      }
-
-      // 灯光微呼吸
-      if (pointLightRef.current) {
-        pointLightRef.current.intensity = 3.8 + Math.sin(time * 0.003) * 0.5;
       }
 
       // 虚拟化卡片位置与姿态计算
@@ -815,38 +819,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     []
   );
 
-  // 鼠标手势拖拽
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest(".shelf-hud-interactive, button, input")) {
-      return;
-    }
-    isDraggingRef.current = true;
-    prevMouseXRef.current = e.clientX;
-  }, []);
-
-  const handleMouseMoveParallax = useCallback((e: React.MouseEvent) => {
-    if (isDraggingRef.current) {
-      const deltaX = e.clientX - prevMouseXRef.current;
-      prevMouseXRef.current = e.clientX;
-      targetScrollRef.current -= deltaX * 0.012;
-    }
-
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const nx = (e.clientX - rect.left) / rect.width - 0.5;
-      const ny = (e.clientY - rect.top) / rect.height - 0.5;
-      mouseParallaxRef.current.targetX = nx;
-      mouseParallaxRef.current.targetY = -ny;
-    }
-  }, []);
-
-  const handleMouseUp = useCallback(() => {
-    if (isDraggingRef.current) {
-      isDraggingRef.current = false;
-      targetScrollRef.current = Math.round(targetScrollRef.current);
-    }
-  }, []);
-
   // 播放当前选中的卡片 (歌单模式下整单播放，单曲模式下单曲播放)
   const handlePlayCurrent = useCallback(() => {
     const cur = activeShelfItems[activeIndex];
@@ -878,6 +850,85 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       setTrackSearchQuery("");
     }
   }, [activeShelfItems, activeIndex]);
+
+  // 鼠标手势拖拽与 3D 卡片直接点击 (Raycaster Direct Hit)
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest(".shelf-hud-interactive, button, input")) {
+      return;
+    }
+    isDraggingRef.current = true;
+    hasDraggedRef.current = false;
+    prevMouseXRef.current = e.clientX;
+    mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+  }, []);
+
+  const handleMouseMoveParallax = useCallback((e: React.MouseEvent) => {
+    if (isDraggingRef.current) {
+      const deltaX = e.clientX - prevMouseXRef.current;
+      if (Math.abs(e.clientX - mouseDownPosRef.current.x) > 4) {
+        hasDraggedRef.current = true;
+      }
+      prevMouseXRef.current = e.clientX;
+      targetScrollRef.current -= deltaX * 0.012;
+    }
+
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const nx = (e.clientX - rect.left) / rect.width - 0.5;
+      const ny = (e.clientY - rect.top) / rect.height - 0.5;
+      mouseParallaxRef.current.targetX = nx;
+      mouseParallaxRef.current.targetY = -ny;
+    }
+  }, []);
+
+  const handleMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        targetScrollRef.current = Math.round(targetScrollRef.current);
+      }
+
+      // 如果未发生明显拖拽，则触发 3D 卡片精准 Raycast 射线拾取
+      if (!hasDraggedRef.current && cameraRef.current && cardsGroupRef.current) {
+        const mx = (e.clientX / window.innerWidth) * 2 - 1;
+        const my = -(e.clientY / window.innerHeight) * 2 + 1;
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(new THREE.Vector2(mx, my), cameraRef.current);
+
+        const meshes = cardSlotsRef.current.map((s) => s.mesh);
+        const intersects = raycaster.intersectObjects(meshes, false);
+
+        if (intersects.length > 0) {
+          const hitMesh = intersects[0].object as THREE.Mesh;
+          const slotIdx = hitMesh.userData?.slotIndex;
+          if (slotIdx != null) {
+            const slotRelOffset = slotIdx - HALF_WINDOW;
+            const scrollPos = currentScrollRef.current;
+            const centerVirtualIndex = Math.round(scrollPos);
+            const fractionalOffset = slotRelOffset - (scrollPos - centerVirtualIndex);
+            const absOffset = Math.abs(fractionalOffset);
+
+            if (absOffset < 0.5) {
+              // 点击的是中心活跃卡片
+              const uv = intersects[0].uv;
+              if (uv && uv.y < 0.24) {
+                // 点击在底部操作按钮区
+                handlePlayCurrent();
+              } else {
+                // 点击在卡片主体：直接展开曲目详情
+                handleOpenDetail();
+              }
+            } else {
+              // 点击侧边卡片：平滑滚动到该卡片为中心
+              targetScrollRef.current += Math.round(fractionalOffset);
+              playCardSelectTick();
+            }
+          }
+        }
+      }
+    },
+    [handlePlayCurrent, handleOpenDetail]
+  );
 
   // 详情面板内整单入队
   const handleEnqueueAll = useCallback(() => {
@@ -956,7 +1007,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`fixed inset-0 z-50 w-full h-full min-h-[520px] bg-[#030108] overflow-hidden select-none flex flex-col justify-between p-6 ${className}`}
+      className={`fixed inset-0 z-50 w-full h-full min-h-[520px] bg-[#050507] overflow-hidden select-none flex flex-col justify-between p-6 ${className}`}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMoveParallax}
       onMouseUp={handleMouseUp}
@@ -968,23 +1019,23 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         className="absolute inset-0 w-full h-full pointer-events-auto cursor-grab active:cursor-grabbing"
       />
 
-      {/* ── 顶部控制栏 (Mineradio Liquid Glass Top HUD) ── */}
-      <div className="relative z-20 flex items-center justify-between w-full max-w-7xl mx-auto px-5 py-2.5 bg-neutral-950/80 border border-white/[0.18] rounded-3xl backdrop-blur-[48px] backdrop-saturate-[180%] shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1.5px_rgba(255,255,255,0.25)] shelf-hud-interactive">
+      {/* ── 顶部控制栏 (Apple Monochrome Liquid Glass Top HUD) ── */}
+      <div className="relative z-20 flex items-center justify-between w-full max-w-7xl mx-auto px-5 py-2.5 bg-white/[0.06] border border-white/[0.18] rounded-3xl backdrop-blur-[56px] backdrop-saturate-[180%] shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1.5px_rgba(255,255,255,0.3)] shelf-hud-interactive">
         {/* 左侧标题与模式 */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5 text-white">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.6)]">
+            <div className="w-9 h-9 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)]">
               <Disc3 className="w-4.5 h-4.5 text-white animate-spin-slow" />
             </div>
             <div>
               <h2 className="text-sm font-bold tracking-wide flex items-center gap-1.5 text-white">
                 Mineradio 3D 空间唱片架
-                <span className="text-[10px] uppercase px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-white/15 text-white/90 border border-white/20 font-semibold">
                   v0.2 SPATIAL
                 </span>
               </h2>
-              <p className="text-[11px] text-white/50">
-                双模式空间透视 · 歌单/单曲双模浏览 · PSP 机械齿轮触感
+              <p className="text-[11px] text-white/45">
+                透明液态玻璃 · 歌单/单曲双模 · PSP 机械齿轮触感
               </p>
             </div>
           </div>
@@ -993,10 +1044,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           <button
             type="button"
             onClick={toggleDisplayMode}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-2xl border border-white/15 bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 shadow-sm"
+            className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-2xl border border-white/15 bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]"
             title="按 M 键快速切换展示模式"
           >
-            <Layers className="w-3.5 h-3.5 text-cyan-400" />
+            <Layers className="w-3.5 h-3.5 text-white/90" />
             <span>
               {displayMode === "stage"
                 ? "舞台水平展开 (Stage)"
@@ -1006,7 +1057,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         </div>
 
         {/* 中间主分类与歌单切换器 (Playlists vs Tracks vs Favorites vs Recent) */}
-        <div className="flex items-center gap-1.5 bg-black/50 p-1.5 rounded-2xl border border-white/10">
+        <div className="flex items-center gap-1.5 bg-black/40 p-1.5 rounded-2xl border border-white/10">
           <button
             type="button"
             onClick={() => {
@@ -1016,7 +1067,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             }}
             className={`flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl transition-all ${
               browseType === "playlists"
-                ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold shadow-[0_0_15px_rgba(6,182,212,0.5)]"
+                ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
             }`}
           >
@@ -1033,7 +1084,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             }}
             className={`flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl transition-all ${
               browseType === "tracks"
-                ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold shadow-[0_0_15px_rgba(6,182,212,0.5)]"
+                ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
             }`}
           >
@@ -1050,7 +1101,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             }}
             className={`flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl transition-all ${
               browseType === "favorites"
-                ? "bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold shadow-[0_0_15px_rgba(236,72,153,0.5)]"
+                ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
             }`}
           >
@@ -1067,7 +1118,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             }}
             className={`flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl transition-all ${
               browseType === "recent"
-                ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold shadow-[0_0_15px_rgba(6,182,212,0.5)]"
+                ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
             }`}
           >
@@ -1084,7 +1135,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             }}
             className={`flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl transition-all ${
               browseType === "daily"
-                ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
             }`}
           >
@@ -1102,7 +1153,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               placeholder="搜索歌单或曲目..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-40 focus:w-56 transition-all bg-white/10 border border-white/15 rounded-2xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-cyan-400"
+              className="w-40 focus:w-56 transition-all bg-white/10 border border-white/15 rounded-2xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/40 shadow-[inset_0_1px_1px_rgba(0,0,0,0.3)]"
             />
             {searchQuery && (
               <button
@@ -1125,7 +1176,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                 closePanel("shelf3D");
               }
             }}
-            className="flex items-center gap-1 text-xs text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-2xl border border-white/20 backdrop-blur-md transition-all active:scale-95"
+            className="flex items-center gap-1 text-xs text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-2xl border border-white/20 backdrop-blur-md transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
           >
             <X className="w-3.5 h-3.5" />
             <span>退出</span>
@@ -1135,11 +1186,11 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
       {/* ── 3D 二级曲目详情瀑布流面板 (Mineradio 3D Tracklist Billboard) ── */}
       {showDetailPanel && selectedShelfItem && (
-        <div className="relative z-30 max-w-3xl w-full mx-auto my-auto bg-neutral-950/90 border border-white/[0.22] rounded-[32px] p-6 backdrop-blur-[56px] backdrop-saturate-[200%] shadow-[0_28px_80px_rgba(0,0,0,0.95),inset_0_1px_1.5px_rgba(255,255,255,0.3)] animate-in fade-in zoom-in-95 duration-200 shelf-hud-interactive">
+        <div className="relative z-30 max-w-3xl w-full mx-auto my-auto bg-black/75 border border-white/[0.22] rounded-[36px] p-6 backdrop-blur-[64px] backdrop-saturate-[190%] shadow-[0_32px_90px_rgba(0,0,0,0.95),inset_0_1.5px_2px_rgba(255,255,255,0.35)] animate-in fade-in zoom-in-95 duration-200 shelf-hud-interactive">
           {/* 面板头部 */}
           <div className="flex items-start justify-between border-b border-white/10 pb-5 mb-4">
             <div className="flex items-center gap-5">
-              <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-neutral-900 border border-white/20 shadow-xl flex-shrink-0">
+              <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-white/5 border border-white/20 shadow-xl flex-shrink-0">
                 <img
                   src={selectedShelfItem.cover || "/default-cover.svg"}
                   alt={selectedShelfItem.title}
@@ -1148,7 +1199,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold uppercase">
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/15 text-white/90 border border-white/20 font-semibold uppercase">
                     {selectedShelfItem.tag}
                   </span>
                   <span className="text-[10px] text-white/40">
@@ -1158,7 +1209,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                 <h3 className="text-xl font-bold text-white leading-tight mt-1">
                   {selectedShelfItem.title}
                 </h3>
-                <p className="text-xs text-white/60 mt-1">
+                <p className="text-xs text-white/50 mt-1">
                   {selectedShelfItem.subtitle}
                 </p>
               </div>
@@ -1170,7 +1221,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                 playTactileTick({ type: "snap" });
                 setShowDetailPanel(false);
               }}
-              className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all active:scale-90"
+              className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all active:scale-90 border border-white/10"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1187,27 +1238,27 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                     playSong(selectedShelfItem.songs[0]);
                   }
                 }}
-                className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.5)] transition-all active:scale-95"
+                className="flex items-center gap-2 bg-white text-black hover:bg-white/90 font-bold text-xs px-4 py-2 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.35)] transition-all active:scale-95"
               >
-                <Play className="w-3.5 h-3.5 fill-white" />
+                <Play className="w-3.5 h-3.5 fill-black" />
                 <span>播放整单</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleEnqueueAll}
-                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 text-white/90 font-medium text-xs px-3.5 py-2 rounded-xl border border-white/15 transition-all active:scale-95"
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 text-white/90 font-medium text-xs px-3.5 py-2 rounded-xl border border-white/15 transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
               >
-                <Plus className="w-3.5 h-3.5 text-cyan-400" />
+                <Plus className="w-3.5 h-3.5 text-white" />
                 <span>整单入队</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleShufflePlay}
-                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 text-white/90 font-medium text-xs px-3.5 py-2 rounded-xl border border-white/15 transition-all active:scale-95"
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 text-white/90 font-medium text-xs px-3.5 py-2 rounded-xl border border-white/15 transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
               >
-                <Shuffle className="w-3.5 h-3.5 text-purple-400" />
+                <Shuffle className="w-3.5 h-3.5 text-white/80" />
                 <span>随机播放</span>
               </button>
             </div>
@@ -1219,7 +1270,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                 placeholder="搜索歌单内歌曲..."
                 value={trackSearchQuery}
                 onChange={(e) => setTrackSearchQuery(e.target.value)}
-                className="w-44 focus:w-56 transition-all bg-white/10 border border-white/15 rounded-xl pl-7 pr-3 py-1.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-cyan-400"
+                className="w-44 focus:w-56 transition-all bg-white/10 border border-white/15 rounded-xl pl-7 pr-3 py-1.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/40 shadow-[inset_0_1px_1px_rgba(0,0,0,0.3)]"
               />
             </div>
           </div>
@@ -1243,7 +1294,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                     }}
                     className={`flex items-center justify-between px-3.5 py-2 rounded-2xl border transition-all cursor-pointer ${
                       isCurrent
-                        ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.25)]"
+                        ? "bg-white/20 border-white/40 text-white shadow-[0_0_18px_rgba(255,255,255,0.2),inset_0_1px_1px_rgba(255,255,255,0.35)]"
                         : "bg-white/[0.04] border-white/10 hover:bg-white/[0.08] text-white/80 hover:text-white"
                     }`}
                   >
@@ -1251,7 +1302,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                       <span className="text-xs font-mono opacity-40 w-5 text-right flex-shrink-0">
                         {String(idx + 1).padStart(2, "0")}
                       </span>
-                      <div className="w-9 h-9 rounded-lg overflow-hidden bg-neutral-900 flex-shrink-0 border border-white/10">
+                      <div className="w-9 h-9 rounded-lg overflow-hidden bg-white/5 flex-shrink-0 border border-white/10">
                         <img
                           src={song.cover || "/default-cover.svg"}
                           alt={song.title}
@@ -1262,7 +1313,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                         <p className="text-xs font-semibold leading-tight truncate">
                           {song.title}
                         </p>
-                        <p className="text-[11px] opacity-60 truncate">
+                        <p className="text-[11px] opacity-50 truncate">
                           {song.artist} · {song.album || "Spatial"}
                         </p>
                       </div>
@@ -1276,23 +1327,23 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                           toggleFavorite(song);
                         }}
                         className={`p-1.5 rounded-lg transition-colors ${
-                          isFav ? "text-pink-500" : "text-white/40 hover:text-white"
+                          isFav ? "text-white" : "text-white/40 hover:text-white"
                         }`}
                       >
-                        <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-current" : ""}`} />
+                        <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-white" : ""}`} />
                       </button>
 
                       {isCurrent && isAudioPlaying ? (
-                        <span className="text-[10px] text-cyan-400 animate-pulse font-bold">
+                        <span className="text-[10px] text-white animate-pulse font-bold tracking-wider">
                           PLAYING
                         </span>
                       ) : null}
 
                       <button
                         type="button"
-                        className="p-1.5 rounded-lg bg-white/10 hover:bg-cyan-500 hover:text-black transition-colors"
+                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white hover:text-black transition-colors"
                       >
-                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <Play className="w-3 h-3 fill-current" />
                       </button>
                     </div>
                   </div>
@@ -1307,13 +1358,13 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         </div>
       )}
 
-      {/* ── 底部当前卡片控制器 (Mineradio Floating Glass Player HUD) ── */}
-      <div className="relative z-20 flex items-center justify-between w-full max-w-4xl mx-auto px-8 py-3.5 bg-neutral-950/85 border border-white/[0.18] rounded-full backdrop-blur-[48px] backdrop-saturate-[180%] shadow-[0_24px_60px_rgba(0,0,0,0.9),inset_0_1px_1.5px_rgba(255,255,255,0.28)] shelf-hud-interactive">
+      {/* ── 底部当前卡片控制器 (Apple Liquid Glass Floating HUD) ── */}
+      <div className="relative z-20 flex items-center justify-between w-full max-w-4xl mx-auto px-8 py-3.5 bg-white/[0.07] border border-white/[0.20] rounded-full backdrop-blur-[56px] backdrop-saturate-[180%] shadow-[0_24px_60px_rgba(0,0,0,0.9),inset_0_1.5px_2px_rgba(255,255,255,0.35)] shelf-hud-interactive">
         {/* 左侧上一首按钮 */}
         <button
           type="button"
           onClick={() => scrollToRelative(-1)}
-          className="p-3 rounded-full bg-white/10 hover:bg-cyan-500/20 text-white/80 hover:text-cyan-400 border border-white/15 transition-all active:scale-90"
+          className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/15 transition-all active:scale-90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
           title="上一张 (Left / Up)"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -1322,13 +1373,13 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         {/* 中间信息与播放控制 */}
         <div className="flex items-center gap-6">
           <div className="text-center min-w-[240px]">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-cyan-400">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-white/60">
               {displayMode === "stage" ? "STAGE CENTER FOCUS" : "SIDE SHELF FOCUS"}
             </span>
             <h4 className="text-base font-bold text-white leading-tight mt-0.5 truncate max-w-xs">
               {currentActiveItem?.title || "未知项目"}
             </h4>
-            <p className="text-xs text-white/50 mt-0.5 truncate max-w-xs">
+            <p className="text-xs text-white/45 mt-0.5 truncate max-w-xs">
               {currentActiveItem?.subtitle || "Mineradio Spatial Audio"}
             </p>
           </div>
@@ -1336,18 +1387,18 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           <button
             type="button"
             onClick={handlePlayCurrent}
-            className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-bold text-xs px-6 py-3 rounded-full shadow-[0_0_25px_rgba(6,182,212,0.6)] transition-all active:scale-95"
+            className="flex items-center gap-2 bg-white text-black hover:bg-white/90 font-bold text-xs px-6 py-3 rounded-full shadow-[0_0_25px_rgba(255,255,255,0.35)] transition-all active:scale-95"
           >
             {currentActiveItem?.type === "song" &&
             currentPlayingSong?.id === currentActiveItem.song?.id &&
             isAudioPlaying ? (
               <>
-                <Pause className="w-4 h-4 fill-white" />
+                <Pause className="w-4 h-4 fill-black" />
                 <span>暂停播放</span>
               </>
             ) : (
               <>
-                <Play className="w-4 h-4 fill-white" />
+                <Play className="w-4 h-4 fill-black" />
                 <span>{currentActiveItem?.type === "playlist" ? "播放歌单" : "立即播放"}</span>
               </>
             )}
@@ -1356,9 +1407,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           <button
             type="button"
             onClick={handleOpenDetail}
-            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white border border-white/15 transition-all active:scale-95"
+            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
           >
-            <ListMusic className="w-4 h-4 text-purple-400" />
+            <ListMusic className="w-4 h-4 text-white/80" />
             <span>曲目列表</span>
           </button>
         </div>
@@ -1367,7 +1418,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         <button
           type="button"
           onClick={() => scrollToRelative(1)}
-          className="p-3 rounded-full bg-white/10 hover:bg-cyan-500/20 text-white/80 hover:text-cyan-400 border border-white/15 transition-all active:scale-90"
+          className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/15 transition-all active:scale-90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
           title="下一张 (Right / Down)"
         >
           <ChevronRight className="w-5 h-5" />
