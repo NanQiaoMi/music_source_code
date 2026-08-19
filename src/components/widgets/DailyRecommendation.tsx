@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -143,74 +143,94 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-md"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        initial={{ scale: 0.94, opacity: 0, y: 16 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.95, opacity: 0, y: 10 }}
-        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+        exit={{ scale: 0.96, opacity: 0, y: 10 }}
+        transition={{ type: "spring", damping: 28, stiffness: 320 }}
         onClick={(event) => event.stopPropagation()}
-        className="relative flex max-h-[84vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#1c1c1e]/90 shadow-2xl backdrop-blur-[40px]"
+        className="relative flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#121420]/95 shadow-[0_24px_70px_rgba(0,0,0,0.85)] backdrop-blur-3xl"
       >
-        <div className="flex items-center justify-between border-b border-white/10 p-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-white">Daily Recommendations</h2>
-              <p className="mt-1 text-sm text-white/50">
-                Playable picks with transparent ranking reasons.
-              </p>
-            </div>
-          </div>
+        {/* Header with Subtle Ambient Glow */}
+        <div className="relative overflow-hidden border-b border-white/10 px-6 py-5">
+          <div className="absolute -top-12 -left-12 h-36 w-36 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-600/10 blur-2xl pointer-events-none" />
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              aria-label="刷新推荐"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-all hover:bg-white/20 disabled:opacity-50"
-            >
-              <RefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
-            </button>
-            <button
-              type="button"
-              onClick={clearNegativeFeedback}
-              aria-label="清除反馈记录"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/60 transition-all hover:bg-white/20 hover:text-white"
-            >
-              <ThumbsDown className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="关闭每日推荐"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-            >
-              <X className="h-5 w-5" />
-            </button>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 shadow-[0_4px_16px_rgba(245,158,11,0.35)]">
+                <Sparkles className="h-5 w-5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-white truncate">Daily Recommendations</h2>
+                  {recommendationMode && (
+                    <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-400/15 text-amber-300 border border-amber-400/25">
+                      {recommendationMode.description || recommendationMode.title}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-xs text-white/50 truncate">
+                  Playable picks with transparent ranking reasons.
+                </p>
+              </div>
+            </div>
+
+            {/* Header Right Action Group */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handlePlayAll}
+                disabled={visibleRecommendation.length === 0}
+                className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-black shadow-md transition-all hover:bg-white/90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <Play className="h-3.5 w-3.5 fill-black" />
+                全部播放
+              </button>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                aria-label="刷新推荐"
+                title="换一批推荐"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 transition-all hover:bg-white/20 hover:text-white disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              </button>
+              <button
+                type="button"
+                onClick={clearNegativeFeedback}
+                aria-label="清除反馈记录"
+                title="重置不感兴趣偏好"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/60 transition-all hover:bg-white/20 hover:text-white"
+              >
+                <ThumbsDown className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="关闭每日推荐"
+                title="关闭 (Esc)"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {recommendationMode && (
-          <div className="border-b border-white/10 px-6 py-3 text-sm text-white/50">
-            {recommendationMode.description}
-          </div>
-        )}
-
+        {/* Category Tabs Header */}
         {recommendationGroups.length > 0 && (
-          <div className="flex flex-wrap gap-2 border-b border-white/10 px-4 py-3">
+          <div className="flex items-center gap-2 border-b border-white/[0.08] bg-white/[0.02] px-5 py-2.5 overflow-x-auto custom-scrollbar">
             <button
               type="button"
               onClick={() => setActiveCategory("all")}
               className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
                 activeCategory === "all"
-                  ? "bg-white/20 text-white"
-                  : "bg-white/5 text-white/50 hover:bg-white/10"
+                  ? "bg-white text-black shadow-sm"
+                  : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
               }`}
             >
               All ({recommendation.filter((song) => !dismissedSongIds.has(song.id)).length})
@@ -222,30 +242,18 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                 onClick={() => setActiveCategory(group.category)}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
                   activeCategory === group.category
-                    ? "bg-white/20 text-white"
-                    : "bg-white/5 text-white/50 hover:bg-white/10"
+                    ? "bg-white text-black shadow-sm"
+                    : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
                 }`}
               >
-                {group.title} ({group.songs.filter((song) => !dismissedSongIds.has(song.id)).length}
-                )
+                {group.title} ({group.songs.filter((song) => !dismissedSongIds.has(song.id)).length})
               </button>
             ))}
           </div>
         )}
 
-        <div className="border-b border-white/10 p-4">
-          <button
-            type="button"
-            onClick={handlePlayAll}
-            disabled={visibleRecommendation.length === 0}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-3 font-semibold text-white transition-all hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Play className="h-5 w-5" />
-            全部播放
-          </button>
-        </div>
-
-        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
+        {/* Streamlined Songs List */}
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-3.5">
           <AnimatePresence mode="wait">
             {isLoading ? (
               <motion.div
@@ -255,8 +263,8 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                 exit={{ opacity: 0 }}
                 className="flex flex-col items-center justify-center py-16"
               >
-                <div className="h-12 w-12 rounded-full border-4 border-purple-500/30 border-t-purple-500 animate-spin" />
-                <p className="mt-4 text-white/60">Generating recommendations...</p>
+                <div className="h-10 w-10 rounded-full border-3 border-amber-500/30 border-t-amber-400 animate-spin" />
+                <p className="mt-4 text-xs text-white/60">正在为您生成每日个性化推荐...</p>
               </motion.div>
             ) : !hasRecommendation || visibleRecommendation.length === 0 ? (
               <motion.div
@@ -266,12 +274,12 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                 exit={{ opacity: 0 }}
                 className="flex flex-col items-center justify-center py-16 text-center"
               >
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
-                  <Music className="h-8 w-8 text-white/30" />
+                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5">
+                  <Music className="h-6 w-6 text-white/30" />
                 </div>
-                <p className="mb-2 text-white/60">暂无推荐</p>
-                <p className="text-sm text-white/40">
-                  Play more local music so the recommendation model can learn your taste.
+                <p className="text-sm font-medium text-white/70">暂无更多推荐</p>
+                <p className="mt-1 text-xs text-white/40 max-w-xs">
+                  多听本地歌曲或在曲库中探索，AI 将更快掌握您的音乐品味。
                 </p>
               </motion.div>
             ) : (
@@ -280,7 +288,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="space-y-3"
+                className="space-y-1.5"
               >
                 {visibleRecommendation.map((song, index) => {
                   const reasons = recommendationReasons.get(song.id) || [];
@@ -290,9 +298,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                   return (
                     <motion.div
                       key={song.id}
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.03 }}
+                      transition={{ delay: index * 0.02 }}
                       onClick={() => handlePlaySong(index)}
                       onKeyDown={(event) => {
                         if (event.key === "?") {
@@ -301,14 +309,17 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                           toggleExplanation(song.id);
                         }
                       }}
-                      className="group rounded-2xl border border-white/10 bg-white/5 p-3 transition-all hover:bg-white/10"
+                      className="group relative flex flex-col rounded-2xl border border-white/[0.06] bg-white/[0.03] p-2 transition-all hover:border-white/20 hover:bg-white/[0.08] cursor-pointer"
                     >
+                      {/* Main Single-Line Song Row */}
                       <div className="flex items-center gap-3">
-                        <div className="flex h-6 w-6 items-center justify-center rounded text-xs font-medium text-white/40 group-hover:text-white">
+                        {/* Rank index */}
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center text-xs font-semibold text-white/40 group-hover:text-amber-300 tabular-nums">
                           {index + 1}
                         </div>
 
-                        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-purple-500/40 to-pink-500/40">
+                        {/* Cover Image */}
+                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/30 to-amber-500/30 shadow-sm">
                           {song.cover ? (
                             <img
                               src={song.cover}
@@ -316,22 +327,33 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <Music className="h-5 w-5 text-white/50" />
+                            <Music className="h-4 w-4 text-white/50" />
                           )}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <Play className="h-4 w-4 fill-white text-white" />
+                          </div>
                         </div>
 
+                        {/* Title & Artist */}
                         <div className="min-w-0 flex-1">
-                          <h4 className="truncate font-medium text-white">{song.title}</h4>
-                          <p className="truncate text-sm text-white/50">{song.artist}</p>
+                          <h4 className="truncate text-xs font-medium text-white group-hover:text-amber-200 transition-colors">
+                            {song.title}
+                          </h4>
+                          <p className="truncate text-[11px] text-white/50">
+                            {song.artist}
+                            {song.album ? ` • ${song.album}` : ""}
+                          </p>
                         </div>
 
+                        {/* Duration */}
                         {song.duration > 0 && (
-                          <div className="hidden items-center gap-1 text-xs text-white/35 sm:flex">
+                          <div className="hidden sm:flex items-center gap-1 text-[11px] text-white/35 font-mono tabular-nums shrink-0">
                             <Clock className="h-3 w-3" />
                             {formatDuration(song.duration)}
                           </div>
                         )}
 
+                        {/* Why this badge */}
                         <button
                           type="button"
                           onClick={(event) => {
@@ -341,108 +363,106 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                           aria-expanded={isPinned}
                           aria-controls={explanationId}
                           aria-keyshortcuts="?"
-                          className="flex h-8 items-center gap-1 rounded-full bg-white/10 px-3 text-xs font-medium text-white/70 transition hover:bg-white/20 hover:text-white"
+                          className={`flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium transition-all ${
+                            isPinned
+                              ? "bg-amber-400/20 text-amber-300 border border-amber-400/30"
+                              : "bg-white/5 text-white/60 hover:bg-white/15 hover:text-white"
+                          }`}
+                          title="查看推荐理由 (?)"
                         >
-                          <HelpCircle className="h-3.5 w-3.5" />
+                          <HelpCircle className="h-3 w-3" />
                           Why this
                         </button>
+
+                        {/* Hover Quick Actions */}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              insertNext(song);
+                            }}
+                            title="下一首播放"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
+                          >
+                            <ListPlus className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              addToQueue(song);
+                            }}
+                            title="加入播放队列"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleDismiss(song.id);
+                            }}
+                            aria-label={`Dismiss ${song.title}`}
+                            title="忽略这首"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-colors"
+                          >
+                            <EyeOff className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleNegativeFeedback(song);
+                            }}
+                            aria-label={`Reduce recommendations like ${song.title}`}
+                            title="不感兴趣（减少此类推荐）"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white/60 hover:bg-red-500/25 hover:text-red-300 transition-colors"
+                          >
+                            <ThumbsDown className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
 
+                      {/* Expandable Reasons Accordion */}
                       <div
                         id={explanationId}
                         aria-hidden={!isPinned}
-                        className={`mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/15 transition-all duration-200 ${
+                        className={`overflow-hidden transition-all duration-200 ${
                           isPinned
-                            ? "max-h-64 p-3 opacity-100"
-                            : "max-h-0 p-0 opacity-0 group-hover:max-h-64 group-hover:p-3 group-hover:opacity-100 group-focus-within:max-h-64 group-focus-within:p-3 group-focus-within:opacity-100"
+                            ? "max-h-64 mt-2.5 p-3 rounded-xl border border-white/10 bg-black/30 opacity-100"
+                            : "max-h-0 p-0 opacity-0 group-hover:max-h-64 group-hover:mt-2.5 group-hover:p-3 group-hover:rounded-xl group-hover:border group-hover:border-white/10 group-hover:bg-black/30 group-hover:opacity-100 group-focus-within:max-h-64 group-focus-within:mt-2.5 group-focus-within:p-3 group-focus-within:rounded-xl group-focus-within:border group-focus-within:border-white/10 group-focus-within:bg-black/30 group-focus-within:opacity-100"
                         }`}
                       >
                         <div className="mb-2 flex items-center justify-between gap-3">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-white/45">
-                            排名信号
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-300/80">
+                            AI 推荐偏好匹配
                           </span>
                           {isPinned && (
                             <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/55">
-                              已置顶
+                              已固定
                             </span>
                           )}
                         </div>
-                        <div className="grid gap-2">
+                        <div className="grid gap-1.5">
                           {reasons.map((reason) => (
                             <div
                               key={reason.code}
-                              className="flex items-start justify-between gap-3 rounded-lg bg-white/[0.04] px-3 py-2"
+                              className="flex items-center justify-between gap-3 rounded-lg bg-white/[0.04] px-2.5 py-1.5"
                             >
-                              <div>
-                                <div className="text-sm font-medium text-white/85">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs font-medium text-white/90 truncate">
                                   {reason.label}
                                 </div>
-                                <div className="mt-0.5 text-xs text-white/45">{reason.detail}</div>
+                                <div className="text-[10px] text-white/45 truncate">{reason.detail}</div>
                               </div>
-                              <span className="shrink-0 rounded-full bg-emerald-300/15 px-2 py-0.5 text-xs font-semibold text-emerald-100">
+                              <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
                                 {reason.weightLabel}
                               </span>
                             </div>
                           ))}
                         </div>
-                      </div>
-
-                      <div className="mt-3 flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handlePlaySong(index);
-                          }}
-                          className="flex h-8 items-center gap-1 rounded-full bg-white/10 px-3 text-xs text-white transition hover:bg-white/20"
-                        >
-                          <Play className="h-3.5 w-3.5" />
-                          播放
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            addToQueue(song);
-                          }}
-                          className="flex h-8 items-center gap-1 rounded-full bg-white/10 px-3 text-xs text-white transition hover:bg-white/20"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          队列
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            insertNext(song);
-                          }}
-                          className="flex h-8 items-center gap-1 rounded-full bg-white/10 px-3 text-xs text-white transition hover:bg-white/20"
-                        >
-                          <ListPlus className="h-3.5 w-3.5" />
-                          下一首
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleDismiss(song.id);
-                          }}
-                          aria-label={`Dismiss ${song.title}`}
-                          className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
-                        >
-                          <EyeOff className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleNegativeFeedback(song);
-                          }}
-                          aria-label={`Reduce recommendations like ${song.title}`}
-                          className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-red-500/30"
-                        >
-                          <ThumbsDown className="h-3.5 w-3.5" />
-                        </button>
                       </div>
                     </motion.div>
                   );
