@@ -5,18 +5,19 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { Play, Pause, ChevronRight, ChevronLeft } from "lucide-react";
-import type { DragHandlers } from "./useFloatingDragPhysics";
+import type { DragHandlers, FloatingPlayerState } from "./useFloatingDragPhysics";
 
 export interface FloatingDockStateProps {
   /** Dock side: left edge or right edge */
   side: "dock-left" | "dock-right";
-  /** Triggered to restore the floating player to pill or expanded view */
-  onRestore: (targetState?: "pill" | "expanded") => void;
+  /** Triggered to restore the floating player to mini, compact, pill or expanded view */
+  onRestore: (targetState?: FloatingPlayerState) => void;
   /** Drag handlers to enable dragging directly from the dock */
   dragHandlers?: DragHandlers;
   /** Optional custom class name */
   className?: string;
 }
+
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 

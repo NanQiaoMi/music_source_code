@@ -410,15 +410,23 @@ describe("FloatingCompactControlsState (Level 2 Island Controls)", () => {
     expect(container.textContent).toContain("Yum Yum Phonk");
     expect(container.textContent).toContain("LXNGVX, Mc GW");
 
-    // Has previous, play/pause, next, lyric, favorite
+    // Has previous, play/pause, next, lyric, favorite, expand
     expect(container.querySelector('button[title="上一首"]')).toBeDefined();
     expect(container.querySelector('button[title="下一首"]')).toBeDefined();
     expect(container.querySelector('button[title="歌词"]')).toBeDefined();
+    expect(container.querySelector('button[title*="展开为完整卡片"]')).toBeDefined();
 
-    // Click on card body outside controls triggers onExpandFull to expanded card
+    // 1. Click on card body outside controls triggers onCollapseToMini (returns to initial mini state)
     const card = container.querySelector('[data-floating-state="compact"]') as HTMLDivElement;
     await act(async () => {
       card.click();
+    });
+    expect(onCollapseToMini).toHaveBeenCalledTimes(1);
+
+    // 2. Click on expand button triggers onExpandFull (expands to full card)
+    const expandBtn = container.querySelector('button[title*="展开为完整卡片"]') as HTMLButtonElement;
+    await act(async () => {
+      expandBtn.click();
     });
     expect(onExpandFull).toHaveBeenCalledTimes(1);
 
@@ -428,4 +436,5 @@ describe("FloatingCompactControlsState (Level 2 Island Controls)", () => {
     container.remove();
   });
 });
+
 
