@@ -2,38 +2,40 @@
 
 import { EffectPlugin, RenderContext, AudioData } from "@/lib/visualization/types";
 
-interface PhotonicParticle {
+interface VortexParticle {
   radius: number;
+  baseRadius: number;
   angle: number;
   speed: number;
   height: number;
   size: number;
-  brightness: number;
+  alpha: number;
   arm: number;
-  trailLength: number;
+  twinklePhase: number;
+  twinkleSpeed: number;
 }
 
-interface DeepStar {
+interface DeepBackgroundStar {
   x: number;
   y: number;
   z: number;
   size: number;
   alpha: number;
-  twinkleSpeed: number;
 }
 
-interface WhiteShockwave {
+interface NebulaCloudPuff {
+  x: number;
+  y: number;
   radius: number;
-  maxRadius: number;
   alpha: number;
-  speed: number;
-  lineWidth: number;
+  vx: number;
+  vy: number;
 }
 
 interface SuperstringState {
-  particles: PhotonicParticle[];
-  stars: DeepStar[];
-  shockwaves: WhiteShockwave[];
+  particles: VortexParticle[];
+  stars: DeepBackgroundStar[];
+  nebulae: NebulaCloudPuff[];
   smoothedBass: number;
   smoothedMid: number;
   smoothedTreble: number;
@@ -47,7 +49,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
   id: "superstring-singularity-v8",
   name: "量子超弦奇点",
   category: "space",
-  description: "纯白量子引力奇点黑洞与高维时空曲率塌陷漏斗、4,800+ 颗对数螺旋光子流场的三维空间共振",
+  description: "纯白量子超维星云旋涡与 5,800+ 颗开普勒对数螺旋星尘流场的三维空间共振",
   preferredEngine: "canvas",
 
   parameters: [
@@ -63,7 +65,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     },
     {
       id: "superstringTension",
-      name: "超弦波动张力",
+      name: "旋涡旋转速度",
       type: "number",
       mode: "basic",
       min: 0.2,
@@ -73,13 +75,13 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     },
     {
       id: "stardustDensity",
-      name: "量子光子密度",
+      name: "星尘粒子密度",
       type: "number",
       mode: "professional",
       min: 1000,
       max: 8000,
       step: 500,
-      default: 4800,
+      default: 5800,
     },
     {
       id: "chromaticAberration",
@@ -103,57 +105,72 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     },
     {
       id: "coreGlow",
-      name: "光子环光晕",
+      name: "核心光晕强度",
       type: "number",
       mode: "professional",
       min: 0.2,
       max: 3.0,
       step: 0.1,
-      default: 1.6,
+      default: 1.5,
     },
   ],
 
   init(ctx: RenderContext) {
-    const particleCount = 4800;
-    const particles: PhotonicParticle[] = [];
-    const arms = 4;
+    const particleCount = 5800;
+    const particles: VortexParticle[] = [];
+    const arms = 3;
 
     for (let i = 0; i < particleCount; i++) {
       const arm = i % arms;
       const armAngle = (arm / arms) * Math.PI * 2;
-      const distRatio = Math.pow(Math.random(), 1.6);
-      const radius = 18 + distRatio * 740;
-      const spiralAngle = armAngle + Math.log(radius + 1) * 3.2 + (Math.random() - 0.5) * 0.35;
-      const orbitSpeed = (0.006 + (1 / Math.sqrt(radius)) * 0.32) * 0.8;
+      const distFrac = Math.pow(Math.random(), 2.2);
+      const radius = 12 + distFrac * 680;
+      const spiralAngle = armAngle + Math.log(radius + 1) * 3.6 + (Math.random() - 0.5) * 0.45;
+      const orbitSpeed = (0.008 + (1 / Math.pow(radius, 0.45)) * 0.22) * 0.85;
+      const diskThickness = 6 + (radius / 680) * 35;
+      const height = (Math.random() - 0.5) * diskThickness;
 
       particles.push({
         radius,
+        baseRadius: radius,
         angle: spiralAngle,
         speed: orbitSpeed,
-        height: (Math.random() - 0.5) * (10 + distRatio * 60),
+        height,
         size: 0.4 + Math.random() * 1.8,
-        brightness: 0.35 + Math.random() * 0.65,
+        alpha: 0.25 + Math.random() * 0.75,
         arm,
-        trailLength: 3 + Math.random() * 8,
+        twinklePhase: Math.random() * Math.PI * 2,
+        twinkleSpeed: 1 + Math.random() * 3,
       });
     }
 
-    const stars: DeepStar[] = [];
-    for (let i = 0; i < 400; i++) {
+    const stars: DeepBackgroundStar[] = [];
+    for (let i = 0; i < 450; i++) {
       stars.push({
-        x: (Math.random() - 0.5) * (ctx.width || 1920) * 1.4,
-        y: (Math.random() - 0.5) * (ctx.height || 1080) * 1.4,
-        z: Math.random() * 800 + 100,
-        size: 0.5 + Math.random() * 1.6,
-        alpha: 0.2 + Math.random() * 0.8,
-        twinkleSpeed: 1 + Math.random() * 3,
+        x: (Math.random() - 0.5) * (ctx.width || 1920) * 1.5,
+        y: (Math.random() - 0.5) * (ctx.height || 1080) * 1.5,
+        z: Math.random() * 900 + 100,
+        size: 0.4 + Math.random() * 1.5,
+        alpha: 0.15 + Math.random() * 0.8,
+      });
+    }
+
+    const nebulae: NebulaCloudPuff[] = [];
+    for (let i = 0; i < 6; i++) {
+      nebulae.push({
+        x: (Math.random() - 0.5) * (ctx.width || 1920) * 0.6,
+        y: (Math.random() - 0.5) * (ctx.height || 1080) * 0.5,
+        radius: 260 + Math.random() * 320,
+        alpha: 0.03 + Math.random() * 0.04,
+        vx: (Math.random() - 0.5) * 0.06,
+        vy: (Math.random() - 0.5) * 0.04,
       });
     }
 
     const state: SuperstringState = {
       particles,
       stars,
-      shockwaves: [],
+      nebulae,
       smoothedBass: 0,
       smoothedMid: 0,
       smoothedTreble: 0,
@@ -178,9 +195,8 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     const {
       singularityMass = 1.0,
       superstringTension = 1.2,
-      stardustDensity = 4800,
-      burstSensitivity = 1.0,
-      coreGlow = 1.6,
+      stardustDensity = 5800,
+      coreGlow = 1.5,
     } = params;
 
     let state = ctx.private?.state as SuperstringState | undefined;
@@ -196,7 +212,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     const rawEnergy = audioData.full || 0.2;
 
     state.smoothedBass += (rawBass - state.smoothedBass) * 0.18;
-    state.smoothedMid += (rawMid - state.smoothedMid) * 0.15;
+    state.smoothedMid += (rawMid - state.smoothedMid) * 0.16;
     state.smoothedTreble += (rawTreble - state.smoothedTreble) * 0.14;
     state.smoothedEnergy += (rawEnergy - state.smoothedEnergy) * 0.15;
 
@@ -205,220 +221,81 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     const treble = state.smoothedTreble;
     const energy = state.smoothedEnergy;
 
-    const t = ctx.time || Date.now() * 0.0008;
+    const t = ctx.time || Date.now() * 0.0006;
 
-    // 1. Deep Obsidian Background & 3D Starfield
+    // 1. Obsidian Void Background & Ambient Haze
     g.save();
     g.fillStyle = "#010103";
     g.fillRect(0, 0, sw, sh);
 
     g.globalCompositeOperation = "screen";
-    const bgGrd = g.createRadialGradient(cx, cy, 0, cx, cy, Math.max(sw, sh) * 0.8);
-    bgGrd.addColorStop(0, `rgba(240, 248, 255, ${0.12 + bass * 0.12})`);
-    bgGrd.addColorStop(0.3, `rgba(190, 215, 245, ${0.04 + mid * 0.05})`);
-    bgGrd.addColorStop(0.7, "rgba(100, 130, 170, 0.015)");
+    const bgGrd = g.createRadialGradient(cx, cy, 0, cx, cy, Math.max(sw, sh) * 0.7);
+    bgGrd.addColorStop(0, `rgba(235, 245, 255, ${0.08 + bass * 0.08})`);
+    bgGrd.addColorStop(0.25, `rgba(180, 205, 235, ${0.03 + mid * 0.03})`);
+    bgGrd.addColorStop(0.65, "rgba(80, 110, 150, 0.01)");
     bgGrd.addColorStop(1, "rgba(0,0,0,0)");
     g.fillStyle = bgGrd;
     g.fillRect(0, 0, sw, sh);
 
+    // Volumetric Cosmic Dust Clouds
+    for (let i = 0; i < state.nebulae.length; i++) {
+      const neb = state.nebulae[i];
+      neb.x += neb.vx;
+      neb.y += neb.vy;
+      const nx = cx + neb.x + Math.sin(t * 0.4 + i) * 40;
+      const ny = cy + neb.y + Math.cos(t * 0.3 + i) * 30;
+      const nRadius = neb.radius * (1 + bass * 0.25);
+
+      const nGrd = g.createRadialGradient(nx, ny, 0, nx, ny, nRadius);
+      const nAlpha = neb.alpha * (0.8 + energy * 0.6);
+      nGrd.addColorStop(0, `rgba(220, 235, 255, ${nAlpha.toFixed(3)})`);
+      nGrd.addColorStop(0.5, `rgba(160, 190, 230, ${(nAlpha * 0.35).toFixed(3)})`);
+      nGrd.addColorStop(1, "rgba(0,0,0,0)");
+
+      g.fillStyle = nGrd;
+      g.beginPath();
+      g.arc(nx, ny, nRadius, 0, Math.PI * 2);
+      g.fill();
+    }
+
+    // Deep Starfield
     for (let i = 0; i < state.stars.length; i++) {
       const s = state.stars[i];
-      const sx = cx + (s.x / s.z) * 500;
-      const sy = cy + (s.y / s.z) * 500;
+      const sx = cx + (s.x / s.z) * 520;
+      const sy = cy + (s.y / s.z) * 520;
 
       if (sx >= 0 && sx < sw && sy >= 0 && sy < sh) {
-        const twinkle = Math.sin(t * s.twinkleSpeed + i) * 0.5 + 0.5;
-        const sAlpha = s.alpha * (0.3 + twinkle * 0.7) * (1 - s.z / 1000);
+        const sAlpha = s.alpha * (0.4 + (Math.sin(t * 2 + i) * 0.5 + 0.5) * 0.6) * (1 - s.z / 1100);
         g.fillStyle = `rgba(235, 245, 255, ${sAlpha.toFixed(3)})`;
         g.fillRect(sx, sy, s.size, s.size);
       }
     }
     g.restore();
 
-    // 2. Beat Triggered Shockwaves
-    const now = ctx.time || Date.now() / 1000;
-    if (audioData.isBeat && now - state.lastBeatTime > 0.25) {
-      state.lastBeatTime = now;
-      state.singularityPulse = 1.0 + (audioData.beatImpact || 0.8) * 0.45 * burstSensitivity;
-
-      state.shockwaves.push({
-        radius: 15 * singularityMass,
-        maxRadius: Math.max(sw, sh) * 0.95,
-        alpha: 0.95,
-        speed: 12 + (audioData.beatImpact || 1.0) * 18 * burstSensitivity,
-        lineWidth: 2 + (audioData.beatImpact || 1.0) * 6,
-      });
-    } else {
-      state.singularityPulse += (1.0 - state.singularityPulse) * 0.08;
-    }
-
-    state.rotationAngle += 0.004 + energy * 0.012;
-
-    // 3. 3D Camera Projection
-    const fov = 540;
-    const pitch = 0.65 + Math.sin(t * 0.3) * 0.05;
+    // 2. 3D Camera Projection
+    const fov = 560;
+    const pitch = 0.72 + Math.sin(t * 0.2) * 0.03;
     const cosP = Math.cos(pitch);
     const sinP = Math.sin(pitch);
+    state.rotationAngle += (0.003 + energy * 0.008) * superstringTension;
     const cosR = Math.cos(state.rotationAngle);
     const sinR = Math.sin(state.rotationAngle);
 
-    // 4. 3D Spacetime Curvature Funnel Grid
-    g.save();
-    g.globalCompositeOperation = "screen";
-
-    const gridRings = 20;
-    const gridSpokes = 32;
-    const maxGridRadius = Math.max(sw, sh) * 0.8;
-
-    for (let gr = 1; gr <= gridRings; gr++) {
-      const ringFrac = gr / gridRings;
-      const rRadius = Math.pow(ringFrac, 1.35) * maxGridRadius;
-      const depthWarp = -Math.pow(1 - ringFrac, 2.0) * (220 + bass * 160) * singularityMass;
-      const ringAlpha = (0.025 + ringFrac * 0.08) * (0.7 + energy * 0.5);
-
-      g.beginPath();
-      let first = true;
-      for (let s = 0; s <= 64; s++) {
-        const theta = (s / 64) * Math.PI * 2;
-        const rawX = Math.cos(theta) * rRadius;
-        const rawZ = Math.sin(theta) * rRadius;
-        const rawY = depthWarp;
-
-        const rx = rawX * cosR - rawZ * sinR;
-        const rz = rawX * sinR + rawZ * cosR;
-        const ry = rawY * cosP - rz * sinP;
-        const finalZ = rawY * sinP + rz * cosP + fov;
-
-        if (finalZ <= 10) continue;
-        const scale = fov / finalZ;
-        const px = cx + rx * scale;
-        const py = cy + ry * scale;
-
-        if (first) {
-          g.moveTo(px, py);
-          first = false;
-        } else {
-          g.lineTo(px, py);
-        }
-      }
-      g.strokeStyle = `rgba(215, 235, 255, ${ringAlpha.toFixed(3)})`;
-      g.lineWidth = 0.5;
-      g.stroke();
-    }
-
-    for (let gs = 0; gs < gridSpokes; gs++) {
-      const spokeAngle = (gs / gridSpokes) * Math.PI * 2;
-      g.beginPath();
-      let first = true;
-
-      for (let seg = 1; seg <= 30; seg++) {
-        const ringFrac = seg / 30;
-        const rRadius = Math.pow(ringFrac, 1.35) * maxGridRadius;
-        const depthWarp = -Math.pow(1 - ringFrac, 2.0) * (220 + bass * 160) * singularityMass;
-
-        const rawX = Math.cos(spokeAngle) * rRadius;
-        const rawZ = Math.sin(spokeAngle) * rRadius;
-        const rawY = depthWarp;
-
-        const rx = rawX * cosR - rawZ * sinR;
-        const rz = rawX * sinR + rawZ * cosR;
-        const ry = rawY * cosP - rz * sinP;
-        const finalZ = rawY * sinP + rz * cosP + fov;
-
-        if (finalZ <= 10) continue;
-        const scale = fov / finalZ;
-        const px = cx + rx * scale;
-        const py = cy + ry * scale;
-
-        if (first) {
-          g.moveTo(px, py);
-          first = false;
-        } else {
-          g.lineTo(px, py);
-        }
-      }
-      g.strokeStyle = `rgba(200, 225, 255, ${0.035 + bass * 0.04})`;
-      g.lineWidth = 0.5;
-      g.stroke();
-    }
-    g.restore();
-
-    // 5. 3D Spherical Harmonic Resonance Rings
-    const sphereRings = 10;
-    const ringSegs = 90;
-    const waveData = audioData.waveformData || new Uint8Array(ringSegs);
-    g.save();
-    g.globalCompositeOperation = "screen";
-
-    for (let r = 0; r < sphereRings; r++) {
-      const rRatio = (r + 1) / sphereRings;
-      const baseR = (50 + rRatio * 280) * singularityMass * (1 + bass * 0.28);
-      const ringPhase = t * (1.2 + r * 0.2) * superstringTension;
-      const points: { x: number; y: number }[] = [];
-
-      for (let s = 0; s <= ringSegs; s++) {
-        const theta = (s / ringSegs) * Math.PI * 2;
-        const waveIdx = Math.floor((s / ringSegs) * waveData.length);
-        const waveVal = ((waveData[waveIdx] || 128) - 128) / 128;
-
-        const harm1 = Math.sin(theta * 4 + ringPhase + r) * (15 + mid * 45);
-        const harm2 = Math.cos(theta * 6 - ringPhase * 0.8) * (8 + treble * 25);
-        const audioDisp = waveVal * (25 * superstringTension + bass * 25);
-
-        const curR = baseR + harm1 + harm2 + audioDisp;
-        const rawX = Math.cos(theta) * curR;
-        const rawY = Math.sin(theta * 2 + ringPhase) * (16 + mid * 35) + waveVal * 15;
-        const rawZ = Math.sin(theta) * curR;
-
-        const rx = rawX * cosR - rawZ * sinR;
-        const rz = rawX * sinR + rawZ * cosR;
-        const ry = rawY * cosP - rz * sinP;
-        const finalZ = rawY * sinP + rz * cosP + fov;
-
-        if (finalZ <= 10) continue;
-        const scale = fov / finalZ;
-        points.push({
-          x: cx + rx * scale,
-          y: cy + ry * scale,
-        });
-      }
-
-      if (points.length > 3) {
-        g.beginPath();
-        g.moveTo(points[0].x, points[0].y);
-
-        for (let p = 0; p < points.length - 1; p++) {
-          const p0 = points[p];
-          const p1 = points[p + 1];
-          const midX = (p0.x + p1.x) / 2;
-          const midY = (p0.y + p1.y) / 2;
-          g.quadraticCurveTo(p0.x, p0.y, midX, midY);
-        }
-        g.closePath();
-
-        const alpha = (0.2 + (1 - rRatio) * 0.6) * (0.6 + mid * 0.45);
-        g.strokeStyle = `rgba(240, 248, 255, ${alpha.toFixed(3)})`;
-        g.lineWidth = (1.2 + (r % 3) * 0.6 + bass * 1.5) * coreGlow;
-        g.shadowColor = "rgba(255, 255, 255, 0.85)";
-        g.shadowBlur = (10 + mid * 18) * coreGlow;
-        g.stroke();
-      }
-    }
-    g.restore();
-
-    // 6. 4,800+ Photonic Accretion Particles
+    // 3. 3D Keplerian Vortex Particles (No Hard Lines / Bars)
     const activeCount = Math.min(stardustDensity, state.particles.length);
     g.save();
     g.globalCompositeOperation = "screen";
 
     for (let i = 0; i < activeCount; i++) {
       const p = state.particles[i];
-      const speedMult = (1 + energy * 2.4 + bass * 1.8) * superstringTension;
+      const speedMult = (1 + energy * 1.8 + bass * 1.4);
       p.angle += p.speed * speedMult;
 
-      const curR = p.radius * (1 + Math.sin(t * 2.5 + p.angle * 3) * (0.04 + bass * 0.18));
+      const waveDisplacement = Math.sin(t * 2.5 + p.angle * 3) * (1 + bass * 0.15);
+      const curR = (p.radius + waveDisplacement * 4) * singularityMass;
+
       const pxRaw = Math.cos(p.angle) * curR;
-      const pyRaw = p.height + Math.sin(t * 3 + p.radius * 0.06) * (12 + treble * 30);
+      const pyRaw = p.height + Math.sin(t * 3 + p.radius * 0.08) * (2 + treble * 8);
       const pzRaw = Math.sin(p.angle) * curR;
 
       const rx = pxRaw * cosR - pzRaw * sinR;
@@ -432,15 +309,16 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       const screenY = cy + ry * scale;
 
       const tangentAngle = p.angle + Math.PI / 2;
-      const streakLen = p.trailLength * scale * (1 + bass * 1.6) * (200 / Math.max(20, curR));
-      const streakEndX = screenX + Math.cos(tangentAngle) * streakLen;
-      const streakEndY = screenY + Math.sin(tangentAngle) * streakLen * cosP;
+      const streakLength = Math.max(1.5, (120 / Math.max(15, curR)) * (1 + bass * 1.4) * scale * 2.2);
+      const streakEndX = screenX + Math.cos(tangentAngle) * streakLength;
+      const streakEndY = screenY + Math.sin(tangentAngle) * streakLength * cosP;
 
-      const pAlpha = Math.min(1, p.brightness * (0.4 + energy * 0.75) * (scale * 0.95));
-      const pSize = Math.max(0.6, p.size * scale * (1 + treble * 1.4));
+      const twinkle = Math.sin(t * p.twinkleSpeed + p.twinklePhase) * 0.5 + 0.5;
+      const pAlpha = Math.min(1, p.alpha * (0.35 + energy * 0.65 + twinkle * 0.25) * (scale * 0.95));
+      const pSize = Math.max(0.4, p.size * scale * (1 + treble * 1.2));
 
-      g.strokeStyle = `rgba(235, 245, 255, ${(pAlpha * 0.85).toFixed(3)})`;
-      g.lineWidth = pSize * 0.8;
+      g.strokeStyle = `rgba(235, 245, 255, ${(pAlpha * 0.75).toFixed(3)})`;
+      g.lineWidth = pSize * 0.75;
       g.beginPath();
       g.moveTo(screenX, screenY);
       g.lineTo(streakEndX, streakEndY);
@@ -453,106 +331,34 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     }
     g.restore();
 
-    // 7. Relativistic Polar White Jets
+    // 4. Soft Singularity Core Glow
+    const coreRadius = (22 + bass * 18) * singularityMass * coreGlow;
     g.save();
     g.globalCompositeOperation = "screen";
-    const jetLen = (360 + treble * 580 + bass * 340) * coreGlow;
-    const jetWidth = (12 + mid * 24) * coreGlow;
 
-    const drawWhiteJet = (dir: 1 | -1) => {
-      const targetY = cy + dir * jetLen;
-      const jGrd = g.createLinearGradient(cx, cy, cx, targetY);
-      jGrd.addColorStop(0, "rgba(255, 255, 255, 1.0)");
-      jGrd.addColorStop(0.08, "rgba(240, 248, 255, 0.9)");
-      jGrd.addColorStop(0.35, "rgba(180, 215, 255, 0.35)");
-      jGrd.addColorStop(1, "rgba(255, 255, 255, 0)");
+    const coreGrd = g.createRadialGradient(cx, cy, 0, cx, cy, coreRadius * 3.8);
+    coreGrd.addColorStop(0, `rgba(255, 255, 255, ${0.95 + bass * 0.05})`);
+    coreGrd.addColorStop(0.18, `rgba(240, 248, 255, ${0.8 + bass * 0.2})`);
+    coreGrd.addColorStop(0.45, `rgba(190, 220, 255, ${0.35 + mid * 0.25})`);
+    coreGrd.addColorStop(0.75, "rgba(100, 150, 220, 0.06)");
+    coreGrd.addColorStop(1, "rgba(255, 255, 255, 0)");
 
-      g.fillStyle = jGrd;
-      g.beginPath();
-      g.moveTo(cx - jetWidth, cy);
-      g.quadraticCurveTo(cx - jetWidth * 0.2, cy + dir * jetLen * 0.4, cx, targetY);
-      g.quadraticCurveTo(cx + jetWidth * 0.2, cy + dir * jetLen * 0.4, cx + jetWidth, cy);
-      g.closePath();
-      g.fill();
-    };
-
-    drawWhiteJet(-1);
-    drawWhiteJet(1);
-
-    // 8. Soft Anamorphic Flare
-    const flareW = sw * (0.7 + bass * 0.3);
-    const flareH = (14 + bass * 26) * coreGlow;
-
-    const flareGrd = g.createRadialGradient(cx, cy, 0, cx, cy, flareW);
-    flareGrd.addColorStop(0, `rgba(255, 255, 255, ${0.95 + bass * 0.05})`);
-    flareGrd.addColorStop(0.12, "rgba(235, 245, 255, 0.75)");
-    flareGrd.addColorStop(0.4, "rgba(180, 210, 250, 0.2)");
-    flareGrd.addColorStop(0.7, "rgba(120, 160, 220, 0.05)");
-    flareGrd.addColorStop(1, "rgba(255, 255, 255, 0)");
-
-    g.fillStyle = flareGrd;
+    g.fillStyle = coreGrd;
     g.beginPath();
-    g.ellipse(cx, cy, flareW, flareH, 0, 0, Math.PI * 2);
-    g.fill();
-    g.restore();
-
-    // 9. Shockwaves
-    g.save();
-    g.globalCompositeOperation = "screen";
-    for (let i = state.shockwaves.length - 1; i >= 0; i--) {
-      const swObj = state.shockwaves[i];
-      swObj.radius += swObj.speed;
-      swObj.alpha *= 0.93;
-
-      if (swObj.alpha < 0.015 || swObj.radius > swObj.maxRadius) {
-        state.shockwaves.splice(i, 1);
-        continue;
-      }
-
-      const swGrd = g.createRadialGradient(
-        cx,
-        cy,
-        Math.max(0, swObj.radius - 45),
-        cx,
-        cy,
-        swObj.radius + 45
-      );
-      swGrd.addColorStop(0, "rgba(255,255,255,0)");
-      swGrd.addColorStop(0.5, `rgba(255, 255, 255, ${(swObj.alpha * 0.95).toFixed(3)})`);
-      swGrd.addColorStop(0.7, `rgba(200, 230, 255, ${(swObj.alpha * 0.35).toFixed(3)})`);
-      swGrd.addColorStop(1, "rgba(255,255,255,0)");
-
-      g.strokeStyle = swGrd;
-      g.lineWidth = swObj.lineWidth;
-      g.beginPath();
-      g.arc(cx, cy, swObj.radius, 0, Math.PI * 2);
-      g.stroke();
-    }
-
-    // 10. White-Hot Photonic Core
-    const coreRadius = (18 + bass * 26) * singularityMass * state.singularityPulse * coreGlow;
-
-    const coronaGrd = g.createRadialGradient(cx, cy, 0, cx, cy, coreRadius * 4.8);
-    coronaGrd.addColorStop(0, "rgba(255, 255, 255, 1.0)");
-    coronaGrd.addColorStop(0.18, `rgba(240, 250, 255, ${0.9 + bass * 0.1})`);
-    coronaGrd.addColorStop(0.45, `rgba(185, 220, 255, ${0.45 + mid * 0.3})`);
-    coronaGrd.addColorStop(0.75, "rgba(100, 150, 220, 0.1)");
-    coronaGrd.addColorStop(1, "rgba(255, 255, 255, 0)");
-
-    g.fillStyle = coronaGrd;
-    g.beginPath();
-    g.arc(cx, cy, coreRadius * 4.8, 0, Math.PI * 2);
+    g.arc(cx, cy, coreRadius * 3.8, 0, Math.PI * 2);
     g.fill();
 
     g.fillStyle = "#FFFFFF";
     g.beginPath();
-    g.arc(cx, cy, coreRadius * 0.9, 0, Math.PI * 2);
+    g.arc(cx, cy, coreRadius * 0.75, 0, Math.PI * 2);
     g.fill();
 
-    g.strokeStyle = "rgba(255, 255, 255, 1.0)";
-    g.lineWidth = 3 + bass * 4;
+    g.strokeStyle = "rgba(255, 255, 255, 0.9)";
+    g.lineWidth = 1.8 + bass * 2.2;
     g.shadowColor = "#FFFFFF";
-    g.shadowBlur = 35 * coreGlow;
+    g.shadowBlur = 24 * coreGlow;
+    g.beginPath();
+    g.arc(cx, cy, coreRadius * 0.95, 0, Math.PI * 2);
     g.stroke();
     g.restore();
   },
