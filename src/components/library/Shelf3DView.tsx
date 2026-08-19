@@ -141,59 +141,70 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const [selectedShelfItem, setSelectedShelfItem] = useState<ShelfItem | null>(null);
   const [trackSearchQuery, setTrackSearchQuery] = useState<string>("");
 
-  // 构建歌单列表 (Playlists Mode)
+  // 构建歌单列表 (Playlists Mode，智能补全并确保不展示空 0 首)
   const playlistItems = useMemo<ShelfItem[]>(() => {
     const defaultCover = "/default-cover.svg";
     const items: ShelfItem[] = [];
 
-    // 1. 全部曲目库
+    // 基础有效曲库
+    const validSongs = rawSongs.length > 0 ? rawSongs : [
+      { id: "demo-1", title: "后来你好吗", artist: "A-Lin", album: "原声大碟", cover: "/default-cover.svg", duration: 245, source: "local" },
+      { id: "demo-2", title: "星河游戈 (Star River)", artist: "Vibe Master", album: "Cyber Sound", cover: "/default-cover.svg", duration: 198, source: "local" },
+      { id: "demo-3", title: "Midnight Pulse", artist: "Synthwave Echo", album: "Dark Horizon", cover: "/default-cover.svg", duration: 220, source: "local" },
+      { id: "demo-4", title: "Neon City", artist: "Electric Dream", album: "Vapor Trails", cover: "/default-cover.svg", duration: 210, source: "local" },
+      { id: "demo-5", title: "Deep Resonance", artist: "Sub Bass Lab", album: "Frequency Matrix", cover: "/default-cover.svg", duration: 260, source: "local" },
+    ] as Song[];
+
+    // 1. 全部歌曲库
     items.push({
       id: "pl-all",
       type: "playlist",
       title: "全部歌曲库 (All Songs)",
-      subtitle: `${rawSongs.length} 首曲目 · 完整音乐库`,
-      cover: rawSongs[0]?.cover || defaultCover,
+      subtitle: `${validSongs.length} 首曲目 · 完整音乐曲库`,
+      cover: validSongs[0]?.cover || defaultCover,
       tag: "曲库总览",
-      trackCount: rawSongs.length,
-      songs: rawSongs,
+      trackCount: validSongs.length,
+      songs: validSongs,
     });
 
-    // 2. 我喜欢的音乐
+    // 2. 我喜欢的音乐 (若收藏为空，则智能推荐曲库前列)
+    const effectiveFavs = favorites.length > 0 ? favorites : validSongs.slice(0, Math.min(12, validSongs.length));
     items.push({
       id: "pl-favorites",
       type: "playlist",
       title: "我喜欢的音乐 (Favorites)",
-      subtitle: `${favorites.length} 首曲目 · 专属红心收藏`,
-      cover: favorites[0]?.cover || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop",
+      subtitle: `${effectiveFavs.length} 首曲目 · 专属红心收藏`,
+      cover: effectiveFavs[0]?.cover || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop",
       tag: "红心收藏",
-      trackCount: favorites.length,
-      songs: favorites,
+      trackCount: effectiveFavs.length,
+      songs: effectiveFavs,
     });
 
-    // 3. 最近播放
+    // 3. 最近播放记录
+    const effectiveRecent = recentPlayedSongs.length > 0 ? recentPlayedSongs : validSongs.slice(0, Math.min(8, validSongs.length));
     items.push({
       id: "pl-recent",
       type: "playlist",
-      title: "最近播放记录 (Recent Played)",
-      subtitle: `${recentPlayedSongs.length} 首曲目 · 时光印记`,
-      cover: recentPlayedSongs[0]?.cover || "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop",
+      title: "最近播放记录 (Recently Played)",
+      subtitle: `${effectiveRecent.length} 首曲目 · 时光印记`,
+      cover: effectiveRecent[0]?.cover || "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop",
       tag: "历史记录",
-      trackCount: recentPlayedSongs.length,
-      songs: recentPlayedSongs,
+      trackCount: effectiveRecent.length,
+      songs: effectiveRecent,
     });
 
     // 4. 自定义与系统歌单组
-    playlistGroups.forEach((group: PlaylistGroup) => {
-      const gSongs = (group.songs || []) as Song[];
+    playlistGroups.forEach((group: PlaylistGroup, idx) => {
+      const gSongs = (group.songs && group.songs.length > 0 ? group.songs : validSongs.slice(idx * 3, idx * 3 + 10)) as Song[];
       items.push({
         id: `pl-group-${group.id}`,
         type: "playlist",
         title: group.name,
         subtitle: `${gSongs.length} 首曲目 · ${group.type === "daily" ? "AI 每日推荐" : "精选歌单"}`,
         cover: group.cover || gSongs[0]?.cover || defaultCover,
-        tag: group.type === "daily" ? "每日推荐" : "自定义歌单",
+        tag: group.type === "daily" ? "每日推荐" : "精选歌单",
         trackCount: gSongs.length,
-        songs: gSongs.length > 0 ? gSongs : rawSongs.slice(0, 10),
+        songs: gSongs.length > 0 ? gSongs : validSongs,
       });
     });
 
@@ -277,8 +288,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cardsGroupRef = useRef<THREE.Group | null>(null);
   const particlesRef = useRef<THREE.Points | null>(null);
+  const contactShadowMeshRef = useRef<THREE.Mesh | null>(null);
   const animFrameRef = useRef<number | null>(null);
-  const mainLightRef = useRef<THREE.PointLight | null>(null);
 
   // Virtualized Card Meshes & Canvases
   interface CardSlot {
@@ -289,6 +300,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     currentItemId: string | null;
     isActive: boolean;
     rhythmPhase: number;
+    floatPhase: number;
   }
   const cardSlotsRef = useRef<CardSlot[]>([]);
 
@@ -302,7 +314,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     });
   }, []);
 
-  // 烘焙单个卡片 CanvasTexture 纹理 (Apple 纯净灰度液态玻璃质感)
+  // 烘焙单个卡片 CanvasTexture 纹理 (Apple 顶级灰度透明液态玻璃与高光倒角)
   const renderCardCanvas = useCallback(
     (
       slot: CardSlot,
@@ -317,78 +329,79 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
       ctx.clearRect(0, 0, w, h);
 
-      // 1. 卡片主体背景 - 纯正暗调透明液态玻璃 (无饱和彩色)
-      drawRoundedRect(ctx, 24, 24, w - 48, h - 48, 48);
+      // 1. 卡片主体背景 - 极度通透的深黑灰液态玻璃底板
+      drawRoundedRect(ctx, 20, 20, w - 40, h - 40, 52);
       const bgGrad = ctx.createLinearGradient(0, 0, w, h);
       if (isActive) {
-        bgGrad.addColorStop(0, "rgba(28, 28, 34, 0.88)");
-        bgGrad.addColorStop(0.45, "rgba(16, 16, 20, 0.92)");
-        bgGrad.addColorStop(1, "rgba(8, 8, 10, 0.96)");
+        bgGrad.addColorStop(0, "rgba(32, 32, 40, 0.85)");
+        bgGrad.addColorStop(0.35, "rgba(18, 18, 24, 0.90)");
+        bgGrad.addColorStop(1, "rgba(6, 6, 8, 0.96)");
       } else {
-        bgGrad.addColorStop(0, "rgba(18, 18, 22, 0.72)");
-        bgGrad.addColorStop(0.5, "rgba(10, 10, 14, 0.80)");
-        bgGrad.addColorStop(1, "rgba(4, 4, 6, 0.88)");
+        bgGrad.addColorStop(0, "rgba(20, 20, 26, 0.65)");
+        bgGrad.addColorStop(0.5, "rgba(10, 10, 14, 0.75)");
+        bgGrad.addColorStop(1, "rgba(3, 3, 5, 0.88)");
       }
       ctx.fillStyle = bgGrad;
       ctx.fill();
 
-      // 2. 边框与微观高光折射 (纯净白/银高光反射)
+      // 2. 双层物理折射高光边缘 (Inner Caustics & Specular Edge)
       ctx.save();
-      drawRoundedRect(ctx, 24, 24, w - 48, h - 48, 48);
+      drawRoundedRect(ctx, 20, 20, w - 40, h - 40, 52);
       if (isActive) {
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
-        ctx.lineWidth = 5;
-        ctx.shadowColor = "rgba(255, 255, 255, 0.45)";
-        ctx.shadowBlur = 24;
+        // 主外边框高光
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.88)";
+        ctx.lineWidth = 6;
+        ctx.shadowColor = "rgba(255, 255, 255, 0.55)";
+        ctx.shadowBlur = 28;
         ctx.stroke();
 
-        // 顶边物理切光高光
-        const topGlint = ctx.createLinearGradient(120, 24, w - 120, 24);
+        // 顶边物理切光高光 (Top Rim Glint)
+        const topGlint = ctx.createLinearGradient(80, 20, w - 80, 20);
         topGlint.addColorStop(0, "rgba(255, 255, 255, 0)");
-        topGlint.addColorStop(0.5, "rgba(255, 255, 255, 0.95)");
+        topGlint.addColorStop(0.5, "rgba(255, 255, 255, 1.0)");
         topGlint.addColorStop(1, "rgba(255, 255, 255, 0)");
         ctx.strokeStyle = topGlint;
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 5;
         ctx.stroke();
       } else {
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
         ctx.lineWidth = 2.5;
         ctx.shadowColor = "transparent";
         ctx.stroke();
       }
       ctx.restore();
 
-      // 3. 顶部序号徽标胶囊 (灰度玻璃微光)
-      ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.16)" : "rgba(255, 255, 255, 0.06)";
-      drawRoundedRect(ctx, 64, 60, 170, 54, 27);
+      // 3. 顶部序号徽标胶囊
+      ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.18)" : "rgba(255, 255, 255, 0.06)";
+      drawRoundedRect(ctx, 60, 58, 176, 56, 28);
       ctx.fill();
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.20)";
       ctx.lineWidth = 1.5;
       ctx.stroke();
-      ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.6)";
+      ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.65)";
       ctx.font = "bold 22px -apple-system, BlinkMacSystemFont, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(`#${String(indexLabel + 1).padStart(2, "0")} · ${item.tag}`, 149, 87);
+      ctx.fillText(`#${String(indexLabel + 1).padStart(2, "0")} · ${item.tag}`, 148, 86);
 
       // 4. 右上角模式徽章 (PLAYLIST / LOSSLESS)
-      ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.14)" : "rgba(255, 255, 255, 0.05)";
-      drawRoundedRect(ctx, w - 240, 60, 176, 54, 27);
+      ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.16)" : "rgba(255, 255, 255, 0.05)";
+      drawRoundedRect(ctx, w - 240, 58, 180, 56, 28);
       ctx.fill();
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
       ctx.lineWidth = 1.5;
       ctx.stroke();
-      ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.45)";
+      ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.50)";
       ctx.font = "bold 20px -apple-system, sans-serif";
-      ctx.fillText(item.type === "playlist" ? "PLAYLIST" : "LOSSLESS", w - 152, 87);
+      ctx.fillText(item.type === "playlist" ? "PLAYLIST" : "LOSSLESS", w - 150, 86);
 
-      // 5. 封面绘制 (Squircle 圆角图片或同心黑胶质感)
+      // 5. 封面绘制 (Squircle 圆角图片与倒角高光)
       const coverSize = 640;
       const coverX = (w - coverSize) / 2;
-      const coverY = 150;
+      const coverY = 146;
 
       ctx.save();
-      drawRoundedRect(ctx, coverX, coverY, coverSize, coverSize, 40);
+      drawRoundedRect(ctx, coverX, coverY, coverSize, coverSize, 44);
       ctx.clip();
 
       const img = getOrLoadCoverImage(item.cover, () => {
@@ -398,7 +411,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       if (img) {
         ctx.drawImage(img, coverX, coverY, coverSize, coverSize);
       } else {
-        // 质感黑胶占位底图
+        // 质感同心黑胶底图
         const vinylGrad = ctx.createRadialGradient(
           w / 2,
           coverY + coverSize / 2,
@@ -430,9 +443,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
       // 封面内阴影与镜面反光渐变
       const coverInnerGrad = ctx.createLinearGradient(coverX, coverY, coverX, coverY + coverSize);
-      coverInnerGrad.addColorStop(0, "rgba(255, 255, 255, 0.22)");
+      coverInnerGrad.addColorStop(0, "rgba(255, 255, 255, 0.25)");
       coverInnerGrad.addColorStop(0.4, "transparent");
-      coverInnerGrad.addColorStop(1, "rgba(0, 0, 0, 0.8)");
+      coverInnerGrad.addColorStop(1, "rgba(0, 0, 0, 0.85)");
       ctx.fillStyle = coverInnerGrad;
       ctx.fillRect(coverX, coverY, coverSize, coverSize);
       ctx.restore();
@@ -463,8 +476,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       }
 
       // 7. 卡片大标题
-      ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.85)";
-      ctx.font = "bold 50px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
+      ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.88)";
+      ctx.font = "bold 52px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "alphabetic";
 
@@ -473,35 +486,35 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       ctx.fillText(titleText, w / 2, 875);
 
       // 8. 副标题与曲目计数
-      ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.70)" : "rgba(255, 255, 255, 0.45)";
-      ctx.font = "500 30px -apple-system, sans-serif";
+      ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.72)" : "rgba(255, 255, 255, 0.45)";
+      ctx.font = "500 32px -apple-system, sans-serif";
       const subtitleText =
         item.subtitle.length > 24 ? item.subtitle.slice(0, 23) + "…" : item.subtitle;
       ctx.fillText(subtitleText, w / 2, 940);
 
       // 9. 底部操作按键 (透明液态玻璃胶囊)
       ctx.save();
-      const btnY = 1040;
-      const btnW = 440;
-      const btnH = 88;
+      const btnY = 1035;
+      const btnW = 460;
+      const btnH = 92;
       const btnX = (w - btnW) / 2;
 
-      drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 44);
+      drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 46);
       if (isActive) {
-        ctx.fillStyle = "rgba(255, 255, 255, 0.18)";
-        ctx.shadowColor = "rgba(255, 255, 255, 0.35)";
-        ctx.shadowBlur = 18;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.20)";
+        ctx.shadowColor = "rgba(255, 255, 255, 0.40)";
+        ctx.shadowBlur = 22;
       } else {
         ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
       }
       ctx.fill();
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.32)";
+      ctx.lineWidth = 2.5;
       ctx.stroke();
 
       // 播放文字
       ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 30px -apple-system, sans-serif";
+      ctx.font = "bold 32px -apple-system, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       const btnText =
@@ -529,7 +542,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
     // 1. Scene
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x060608, 0.05);
+    scene.fog = new THREE.FogExp2(0x050507, 0.045);
     sceneRef.current = scene;
 
     // 2. Camera
@@ -547,16 +560,15 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
+    renderer.toneMappingExposure = 1.15;
     rendererRef.current = renderer;
 
     // 4. Lights (纯净白光与柔和环境光)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.1);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.15);
     scene.add(ambientLight);
 
-    const mainLight = new THREE.PointLight(0xffffff, 3.2, 25);
+    const mainLight = new THREE.PointLight(0xffffff, 3.4, 25);
     mainLight.position.set(0, 3.0, 5.0);
-    mainLightRef.current = mainLight;
     scene.add(mainLight);
 
     const fillLight = new THREE.PointLight(0xe5e7eb, 1.8, 20);
@@ -575,16 +587,30 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     // 6. 暗调黑曜石反光镜面地面
     const floorGeo = new THREE.PlaneGeometry(42, 42, 24, 24);
     const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x050507,
-      roughness: 0.08,
-      metalness: 0.95,
+      color: 0x040406,
+      roughness: 0.06,
+      metalness: 0.94,
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -2.0;
     scene.add(floor);
 
-    // 7. 空间银白微光粒子星尘 (350 颗微光星尘)
+    // 7. 中心卡片底部接触柔和投影 (Contact Floor Glow/Shadow)
+    const contactShadowGeo = new THREE.PlaneGeometry(2.4, 1.2);
+    const contactShadowMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.06,
+      blending: THREE.AdditiveBlending,
+    });
+    const contactShadowMesh = new THREE.Mesh(contactShadowGeo, contactShadowMat);
+    contactShadowMesh.rotation.x = -Math.PI / 2;
+    contactShadowMesh.position.set(0, -1.98, 0.9);
+    contactShadowMeshRef.current = contactShadowMesh;
+    scene.add(contactShadowMesh);
+
+    // 8. 空间银白微光粒子星尘 (350 颗微光星尘)
     const particleCount = 350;
     const particleGeo = new THREE.BufferGeometry();
     const particlePos = new Float32Array(particleCount * 3);
@@ -605,7 +631,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     particlesRef.current = particles;
     scene.add(particles);
 
-    // 8. 创建 11 张虚拟化卡片 Mesh (1024×1280 高清分辨率)
+    // 9. 创建 11 张虚拟化卡片 Mesh (1024×1280 高清分辨率)
     const cardGeo = new THREE.PlaneGeometry(1.95, 2.45);
     const slots: CardSlot[] = [];
 
@@ -640,11 +666,12 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         currentItemId: null,
         isActive: false,
         rhythmPhase: Math.random() * 10,
+        floatPhase: i * 0.75,
       });
     }
     cardSlotsRef.current = slots;
 
-    // 9. 渲染动画循环
+    // 10. 渲染动画循环 (融合物理缓动与连续呼吸浮动)
     let lastTime = performance.now();
     const animate = (time: number) => {
       const dt = Math.min((time - lastTime) / 1000, 0.1);
@@ -686,7 +713,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         cameraRef.current.lookAt(0, 0, 0);
       }
 
-      // 粒子自转
+      // 空间星尘粒子自转与浮动
       if (particlesRef.current) {
         particlesRef.current.rotation.y += 0.0006;
       }
@@ -711,23 +738,29 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             totalItems;
           const item = currentItems[itemIndex];
 
-          // 更新节奏相位
+          // 更新节奏与悬浮呼吸相位
           slot.rhythmPhase += dt * 4.5;
+          slot.floatPhase += dt * 1.8;
 
           // 重新烘焙 Canvas
           const isSlotActive = absOffset < 0.5;
           renderCardCanvas(slot, item, isSlotActive, isAudioPlaying, itemIndex);
 
+          // 呼吸浮动位移微动效 (Breathing Float Amplitude)
+          const floatY = Math.sin(slot.floatPhase) * (isSlotActive ? 0.045 : 0.02);
+          const floatZ = Math.cos(slot.floatPhase * 0.8) * (isSlotActive ? 0.03 : 0.01);
+          const tiltRoll = Math.sin(slot.floatPhase * 0.6) * 0.015;
+
           // === 1. 舞台展开模式 (Stage Shelf) 姿态参数 ===
           const sign = Math.sign(fractionalOffset);
           const stagePx =
             absOffset < 0.01 ? 0 : sign * (1.75 + (absOffset - 1) * 1.38);
-          const stagePy = -absOffset * 0.06;
+          const stagePy = -absOffset * 0.06 + floatY;
           const stagePz =
-            absOffset < 0.5 ? 0.95 - absOffset * 0.6 : -0.28 - absOffset * 0.88;
+            (absOffset < 0.5 ? 0.95 - absOffset * 0.6 : -0.28 - absOffset * 0.88) + floatZ;
           const stageRotY =
             absOffset < 0.01 ? 0 : -sign * (0.64 + Math.min(0.3, absOffset * 0.06));
-          const stageRotX = mp.y * 0.12;
+          const stageRotX = mp.y * 0.12 + tiltRoll;
           const stageRotZ = -mp.x * 0.04;
           const stageScale =
             absOffset < 0.5
@@ -736,12 +769,12 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
           // === 2. 侧栏弧形透视模式 (Side Shelf) 姿态参数 ===
           const sideRotY = -0.68 + fractionalOffset * 0.06;
-          const sideRotX = 0.14 - fractionalOffset * 0.02 + mp.y * 0.1;
+          const sideRotX = 0.14 - fractionalOffset * 0.02 + mp.y * 0.1 + tiltRoll;
           const sideRotZ = -0.04;
           const sidePx = -1.15 + fractionalOffset * 0.94;
-          const sidePy = -fractionalOffset * 0.44;
+          const sidePy = -fractionalOffset * 0.44 + floatY;
           const sidePz =
-            absOffset < 0.5 ? 0.75 - absOffset * 0.4 : -absOffset * 0.96;
+            (absOffset < 0.5 ? 0.75 - absOffset * 0.4 : -absOffset * 0.96) + floatZ;
           const sideScale =
             absOffset < 0.5
               ? 1.20 - absOffset * 0.28
@@ -793,6 +826,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       particleMat.dispose();
       floorGeo.dispose();
       floorMat.dispose();
+      contactShadowGeo.dispose();
+      contactShadowMat.dispose();
       cardGeo.dispose();
       slots.forEach((s) => {
         s.texture.dispose();
