@@ -9,32 +9,26 @@ interface VortexParticle {
   size: number;
   alpha: number;
   arm: number;
-  twinklePhase: number;
   twinkleSpeed: number;
+  twinklePhase: number;
+  isBrightStar: boolean;
 }
 
-interface DeepBackgroundStar {
-  x: number;
-  y: number;
-  z: number;
-  size: number;
-  alpha: number;
-}
-
-interface NebulaCloudPuff {
-  x: number;
-  y: number;
+interface NebulaCloud {
+  angle: number;
   radius: number;
+  size: number;
+  speed: number;
   alpha: number;
-  vx: number;
-  vy: number;
 }
 
 /**
  * COSMIC NEBULA VORTEX (超维星云旋涡)
- * Style: Pure White / Titanium Silver / Platinum Monochrome Luxury
- * Physics: 3D Keplerian Logarithmic Spiral Galactic Disk + Gravitational Vortex Flow
- * Aesthetics: Interstellar / Denis Villeneuve / Apple Pro Design (No hard bars, no target rings)
+ * - 4 Rich, Highly Visible Logarithmic Spiral Galactic Arms
+ * - 4,500+ Luminous Titanium-White & Platinum Stardust Particles with Motion Trails
+ * - 3D Flowing Cosmic Dust Streamers & Spiral Gas Nebula
+ * - Compact White-Hot Singularity Core with Delicate Gravitational Photon Rings
+ * - Full-Screen Cosmic Depth & Real-time FFT Harmonics
  */
 export function drawSuperstringSingularity({
   ctx,
@@ -69,27 +63,29 @@ export function drawSuperstringSingularity({
   const treble = refs.smoothTreble.current;
   const energy = bass * 0.5 + mid * 0.3 + treble * 0.2;
 
-  const t = (time || 0) * 0.0006 * speed;
+  const t = (time || 0) * 0.0008 * speed;
 
-  // --- 2. INITIALIZE 6,000+ VORTEX PARTICLES & DEEP STARS IN REFS ---
+  // --- 2. INITIALIZE 4,500+ HIGHLY VISIBLE PARTICLES & NEBULA CLOUDS ---
   if (!refs.particles.current || refs.particles.current.length === 0) {
     const particles: VortexParticle[] = [];
-    const count = 5800;
-    const arms = 3;
+    const count = 4600;
+    const arms = 4;
 
     for (let i = 0; i < count; i++) {
       const arm = i % arms;
       const armAngle = (arm / arms) * Math.PI * 2;
-      // Exponential distribution for high density near core
-      const distFrac = Math.pow(Math.random(), 2.2);
-      const radius = 12 + distFrac * 680;
-      // Logarithmic spiral angle + natural dispersion
-      const spiralAngle = armAngle + Math.log(radius + 1) * 3.6 + (Math.random() - 0.5) * 0.45;
-      // Keplerian orbital speed: faster near core, slower at rim
-      const orbitSpeed = (0.008 + (1 / Math.pow(radius, 0.45)) * 0.22) * 0.85;
-      // Disk vertical thickness increases with radius
-      const diskThickness = 6 + (radius / 680) * 35;
+      // Linear + power blend for balanced full-screen density (30px to 850px)
+      const distFrac = 0.05 + 0.95 * Math.pow(Math.random(), 1.15);
+      const radius = 30 + distFrac * 820;
+
+      // Logarithmic spiral with arm dispersion
+      const spiralAngle = armAngle + Math.log(radius * 0.05 + 1) * 2.8 + (Math.random() - 0.5) * 0.4;
+      // Keplerian orbit speed: fast near core, slow at outer edge
+      const orbitSpeed = (0.006 + (1 / Math.sqrt(radius)) * 0.18) * 0.8;
+      // 3D vertical thickness
+      const diskThickness = 10 + (radius / 820) * 45;
       const height = (Math.random() - 0.5) * diskThickness;
+      const isBrightStar = Math.random() < 0.12;
 
       particles.push({
         radius,
@@ -97,108 +93,152 @@ export function drawSuperstringSingularity({
         angle: spiralAngle,
         speed: orbitSpeed,
         height,
-        size: 0.4 + Math.random() * 1.8,
-        alpha: 0.25 + Math.random() * 0.75,
+        size: isBrightStar ? 1.8 + Math.random() * 2.4 : 0.8 + Math.random() * 1.6,
+        alpha: isBrightStar ? 0.8 + Math.random() * 0.2 : 0.4 + Math.random() * 0.5,
         arm,
+        twinkleSpeed: 1.5 + Math.random() * 4,
         twinklePhase: Math.random() * Math.PI * 2,
-        twinkleSpeed: 1 + Math.random() * 3,
+        isBrightStar,
       });
     }
     refs.particles.current = particles;
   }
 
-  if (!refs.spectrumStars.current || refs.spectrumStars.current.length === 0) {
-    const stars: DeepBackgroundStar[] = [];
-    for (let i = 0; i < 450; i++) {
-      stars.push({
-        x: (Math.random() - 0.5) * sw * 1.5,
-        y: (Math.random() - 0.5) * sh * 1.5,
-        z: Math.random() * 900 + 100,
-        size: 0.4 + Math.random() * 1.5,
-        alpha: 0.15 + Math.random() * 0.8,
-      });
-    }
-    refs.spectrumStars.current = stars;
-  }
-
   if (!refs.nebulaStars.current || refs.nebulaStars.current.length === 0) {
-    const nebulae: NebulaCloudPuff[] = [];
-    for (let i = 0; i < 6; i++) {
+    const nebulae: NebulaCloud[] = [];
+    for (let i = 0; i < 28; i++) {
+      const arm = i % 4;
+      const armAngle = (arm / 4) * Math.PI * 2;
+      const distFrac = 0.1 + (i / 28) * 0.85;
+      const radius = 60 + distFrac * 700;
+      const spiralAngle = armAngle + Math.log(radius * 0.05 + 1) * 2.8;
+
       nebulae.push({
-        x: (Math.random() - 0.5) * sw * 0.6,
-        y: (Math.random() - 0.5) * sh * 0.5,
-        radius: 260 + Math.random() * 320,
-        alpha: 0.03 + Math.random() * 0.04,
-        vx: (Math.random() - 0.5) * 0.06,
-        vy: (Math.random() - 0.5) * 0.04,
+        angle: spiralAngle,
+        radius,
+        size: 90 + Math.random() * 140,
+        speed: (0.005 + (1 / Math.sqrt(radius)) * 0.14) * 0.8,
+        alpha: 0.045 + Math.random() * 0.045,
       });
     }
     refs.nebulaStars.current = nebulae;
   }
 
-  // --- 3. BACKGROUND: OBSIDIAN VOID & VOLUMETRIC MONOCHROME NEBULA ---
+  // --- 3. BACKGROUND: OBSIDIAN COSMIC VOID ---
   ctx.save();
   ctx.fillStyle = "#010103";
   ctx.fillRect(0, 0, sw, sh);
 
   // Soft Ambient Core Glow
   ctx.globalCompositeOperation = "screen";
-  const bgGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(sw, sh) * 0.7);
-  bgGrd.addColorStop(0, `rgba(235, 245, 255, ${0.08 + bass * 0.08})`);
-  bgGrd.addColorStop(0.25, `rgba(180, 205, 235, ${0.03 + mid * 0.03})`);
-  bgGrd.addColorStop(0.65, "rgba(80, 110, 150, 0.01)");
+  const bgGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(sw, sh) * 0.65);
+  bgGrd.addColorStop(0, `rgba(235, 245, 255, ${0.06 + bass * 0.06})`);
+  bgGrd.addColorStop(0.35, `rgba(180, 205, 235, ${0.02 + mid * 0.02})`);
+  bgGrd.addColorStop(0.8, "rgba(80, 110, 150, 0.008)");
   bgGrd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = bgGrd;
   ctx.fillRect(0, 0, sw, sh);
+  ctx.restore();
 
-  // Volumetric Cosmic Dust Clouds
-  const nebulae = refs.nebulaStars.current as NebulaCloudPuff[];
+  // --- 4. 3D CAMERA & GALAXY TILT MATRIX ---
+  const fov = 580;
+  // Cinematic 3D tilt perspective
+  const pitch = 0.70 + Math.sin(t * 0.2) * 0.03;
+  const cosP = Math.cos(pitch);
+  const sinP = Math.sin(pitch);
+  const rotAngle = t * 0.7;
+  const cosR = Math.cos(rotAngle);
+  const sinR = Math.sin(rotAngle);
+
+  // --- 5. 3D FLOWING SPIRAL NEBULA GAS CLOUDS ---
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const nebulae = refs.nebulaStars.current as NebulaCloud[];
+
   for (let i = 0; i < nebulae.length; i++) {
     const neb = nebulae[i];
-    neb.x += neb.vx;
-    neb.y += neb.vy;
-    const nx = cx + neb.x + Math.sin(t * 0.4 + i) * 40;
-    const ny = cy + neb.y + Math.cos(t * 0.3 + i) * 30;
-    const nRadius = neb.radius * (1 + bass * 0.25);
+    neb.angle += neb.speed * (1 + energy * 1.5 + bass * 1.2);
 
-    const nGrd = ctx.createRadialGradient(nx, ny, 0, nx, ny, nRadius);
-    const nAlpha = neb.alpha * (0.8 + energy * 0.6);
-    nGrd.addColorStop(0, `rgba(220, 235, 255, ${nAlpha.toFixed(3)})`);
-    nGrd.addColorStop(0.5, `rgba(160, 190, 230, ${(nAlpha * 0.35).toFixed(3)})`);
+    const curR = neb.radius * singularityMass * (1 + Math.sin(t * 2 + neb.angle * 2) * 0.05);
+    const pxRaw = Math.cos(neb.angle) * curR;
+    const pyRaw = Math.sin(t * 1.5 + neb.radius * 0.02) * 15;
+    const pzRaw = Math.sin(neb.angle) * curR;
+
+    const rx = pxRaw * cosR - pzRaw * sinR;
+    const rz = pxRaw * sinR + pzRaw * cosR;
+    const ry = pyRaw * cosP - rz * sinP;
+    const finalZ = pyRaw * sinP + rz * cosP + fov;
+
+    if (finalZ <= 10) continue;
+    const scale = fov / finalZ;
+    const screenX = cx + rx * scale;
+    const screenY = cy + ry * scale;
+    const nRadius = neb.size * scale * (1 + bass * 0.3);
+
+    const nGrd = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, nRadius);
+    const nAlpha = neb.alpha * (0.8 + energy * 0.6) * scale;
+    nGrd.addColorStop(0, `rgba(235, 245, 255, ${nAlpha.toFixed(3)})`);
+    nGrd.addColorStop(0.45, `rgba(180, 210, 245, ${(nAlpha * 0.4).toFixed(3)})`);
     nGrd.addColorStop(1, "rgba(0,0,0,0)");
 
     ctx.fillStyle = nGrd;
     ctx.beginPath();
-    ctx.arc(nx, ny, nRadius, 0, Math.PI * 2);
+    ctx.arc(screenX, screenY, nRadius, 0, Math.PI * 2);
     ctx.fill();
-  }
-
-  // Deep Background Starfield
-  const stars = refs.spectrumStars.current as DeepBackgroundStar[];
-  for (let i = 0; i < stars.length; i++) {
-    const s = stars[i];
-    const sx = cx + (s.x / s.z) * 520;
-    const sy = cy + (s.y / s.z) * 520;
-
-    if (sx >= 0 && sx < sw && sy >= 0 && sy < sh) {
-      const sAlpha = s.alpha * (0.4 + (Math.sin(t * 2 + i) * 0.5 + 0.5) * 0.6) * (1 - s.z / 1100);
-      ctx.fillStyle = `rgba(235, 245, 255, ${sAlpha.toFixed(3)})`;
-      ctx.fillRect(sx, sy, s.size, s.size);
-    }
   }
   ctx.restore();
 
-  // --- 4. 3D CAMERA & GALAXY DISK TILT MATRIX ---
-  const fov = 560;
-  // Cinematic perspective angle (tilt galaxy disk for high 3D depth)
-  const pitch = 0.72 + Math.sin(t * 0.2) * 0.03;
-  const cosP = Math.cos(pitch);
-  const sinP = Math.sin(pitch);
-  const rotAngle = t * 0.75;
-  const cosR = Math.cos(rotAngle);
-  const sinR = Math.sin(rotAngle);
+  // --- 6. 3D STREAMERS / SPIRAL ARM FILAMENT GUIDES ---
+  const armsCount = 4;
+  const armSteps = 70;
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
 
-  // --- 5. 3D KEPLERIAN VORTEX PARTICLES (5,800+ PARTICLES) ---
+  for (let a = 0; a < armsCount; a++) {
+    const armAngle = (a / armsCount) * Math.PI * 2;
+    ctx.beginPath();
+    let first = true;
+
+    for (let s = 1; s <= armSteps; s++) {
+      const frac = s / armSteps;
+      const radius = 35 + frac * 780 * singularityMass;
+      const spiralA = armAngle + Math.log(radius * 0.05 + 1) * 2.8 + t * 0.4;
+
+      const waveIdx = Math.floor(frac * (data?.length || 1));
+      const waveVal = (((data && data[waveIdx]) || 128) - 128) / 128;
+      const disp = waveVal * (18 + mid * 25);
+
+      const curR = radius + disp;
+      const pxRaw = Math.cos(spiralA) * curR;
+      const pyRaw = Math.sin(spiralA * 3 + t * 2) * (8 + mid * 20) + waveVal * 12;
+      const pzRaw = Math.sin(spiralA) * curR;
+
+      const rx = pxRaw * cosR - pzRaw * sinR;
+      const rz = pxRaw * sinR + pzRaw * cosR;
+      const ry = pyRaw * cosP - rz * sinP;
+      const finalZ = pyRaw * sinP + rz * cosP + fov;
+
+      if (finalZ <= 10) continue;
+      const scale = fov / finalZ;
+      const px = cx + rx * scale;
+      const py = cy + ry * scale;
+
+      if (first) {
+        ctx.moveTo(px, py);
+        first = false;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+
+    const armAlpha = (0.08 + mid * 0.14);
+    ctx.strokeStyle = `rgba(220, 240, 255, ${armAlpha.toFixed(3)})`;
+    ctx.lineWidth = 1.2 * coreGlow;
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // --- 7. 4,600+ HIGHLY VISIBLE 3D VORTEX PARTICLES ---
   const particles = refs.particles.current as VortexParticle[];
   ctx.save();
   ctx.globalCompositeOperation = "screen";
@@ -206,20 +246,20 @@ export function drawSuperstringSingularity({
   for (let i = 0; i < particles.length; i++) {
     const p = particles[i];
 
-    // Angular orbital velocity with audio reactivity
-    const speedMult = (1 + energy * 1.8 + bass * 1.4);
+    // Angular orbital velocity
+    const speedMult = (1 + energy * 2.0 + bass * 1.5);
     p.angle += p.speed * speedMult;
 
-    // Subtle breathing of spiral arms
-    const waveDisplacement = Math.sin(t * 2.5 + p.angle * 3) * (1 + bass * 0.15);
-    const curR = (p.radius + waveDisplacement * 4) * singularityMass;
+    // Harmonic wave breathing
+    const waveDisp = Math.sin(t * 3 + p.angle * 4) * (2 + bass * 8);
+    const curR = (p.radius + waveDisp) * singularityMass;
 
-    // 3D coordinates in galaxy disk space
+    // 3D coordinates in disk space
     const pxRaw = Math.cos(p.angle) * curR;
-    const pyRaw = p.height + Math.sin(t * 3 + p.radius * 0.08) * (2 + treble * 8);
+    const pyRaw = p.height + Math.sin(t * 2.5 + p.radius * 0.05) * (4 + treble * 12);
     const pzRaw = Math.sin(p.angle) * curR;
 
-    // Transform by Camera rotation & tilt
+    // Camera transform
     const rx = pxRaw * cosR - pzRaw * sinR;
     const rz = pxRaw * sinR + pzRaw * cosR;
     const ry = pyRaw * cosP - rz * sinP;
@@ -230,96 +270,96 @@ export function drawSuperstringSingularity({
     const screenX = cx + rx * scale;
     const screenY = cy + ry * scale;
 
-    // Velocity vector for fluid particle streak
+    // Streak vector along orbital tangent
     const tangentAngle = p.angle + Math.PI / 2;
-    // Faster streak near core (high gravity acceleration)
-    const streakLength = Math.max(1.5, (120 / Math.max(15, curR)) * (1 + bass * 1.4) * scale * 2.2);
+    const streakLength = Math.max(2.0, (180 / Math.max(25, curR)) * (1 + bass * 1.5) * scale * 2.5);
     const streakEndX = screenX + Math.cos(tangentAngle) * streakLength;
     const streakEndY = screenY + Math.sin(tangentAngle) * streakLength * cosP;
 
-    // Brightness & size modulation
+    // Particle alpha & twinkle
     const twinkle = Math.sin(t * p.twinkleSpeed + p.twinklePhase) * 0.5 + 0.5;
-    const pAlpha = Math.min(1, p.alpha * (0.35 + energy * 0.65 + twinkle * 0.25) * (scale * 0.95));
-    const pSize = Math.max(0.4, p.size * scale * (1 + treble * 1.2));
+    const pAlpha = Math.min(1, p.alpha * (0.55 + energy * 0.45 + twinkle * 0.35) * (scale * 0.95));
+    const pSize = Math.max(0.7, p.size * scale * (1 + treble * 0.8));
 
-    // Draw Smooth Particle Streak Trail
-    ctx.strokeStyle = `rgba(235, 245, 255, ${(pAlpha * 0.75).toFixed(3)})`;
-    ctx.lineWidth = pSize * 0.75;
+    // Particle Streak Tail
+    ctx.strokeStyle = `rgba(235, 245, 255, ${(pAlpha * 0.85).toFixed(3)})`;
+    ctx.lineWidth = pSize * 0.85;
     ctx.beginPath();
     ctx.moveTo(screenX, screenY);
     ctx.lineTo(streakEndX, streakEndY);
     ctx.stroke();
 
-    // Draw Luminous Particle Core
+    // Particle Luminous Head
     ctx.fillStyle = `rgba(255, 255, 255, ${pAlpha.toFixed(3)})`;
     ctx.beginPath();
     ctx.arc(screenX, screenY, pSize, 0, Math.PI * 2);
     ctx.fill();
 
-    // Specular halo for prominent foreground particles
-    if (p.size > 1.4 && pAlpha > 0.45) {
-      ctx.fillStyle = `rgba(240, 250, 255, ${(pAlpha * 0.3).toFixed(3)})`;
+    // Specular Star Glow for bright stars
+    if (p.isBrightStar && pAlpha > 0.6) {
+      ctx.fillStyle = `rgba(240, 250, 255, ${(pAlpha * 0.45).toFixed(3)})`;
       ctx.beginPath();
-      ctx.arc(screenX, screenY, pSize * 2.5, 0, Math.PI * 2);
+      ctx.arc(screenX, screenY, pSize * 3.2, 0, Math.PI * 2);
       ctx.fill();
     }
   }
   ctx.restore();
 
-  // --- 6. SUBTLE GRAVITATIONAL LENSING HALO (SOFT EINSTEIN LIGHT) ---
-  const coreRadius = (22 + bass * 18) * singularityMass * coreGlow;
+  // --- 8. COMPACT REFINED SINGULARITY CORE & PHOTON RINGS ---
+  // Keep the core compact so it does not block the screen (radius 14px to 22px)
+  const coreRadius = (14 + bass * 12) * singularityMass * coreGlow;
+
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  // Multi-layered Soft Gaussian Photonic Glow (No hard lines or boxes!)
-  const coreGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreRadius * 3.8);
-  coreGrd.addColorStop(0, `rgba(255, 255, 255, ${0.95 + bass * 0.05})`);
-  coreGrd.addColorStop(0.18, `rgba(240, 248, 255, ${0.8 + bass * 0.2})`);
-  coreGrd.addColorStop(0.45, `rgba(190, 220, 255, ${0.35 + mid * 0.25})`);
-  coreGrd.addColorStop(0.75, "rgba(100, 150, 220, 0.06)");
+  // Soft Photonic Glow
+  const coreGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreRadius * 3.5);
+  coreGrd.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+  coreGrd.addColorStop(0.2, `rgba(240, 248, 255, ${0.85 + bass * 0.15})`);
+  coreGrd.addColorStop(0.5, `rgba(180, 215, 255, ${0.35 + mid * 0.25})`);
+  coreGrd.addColorStop(0.8, "rgba(100, 150, 220, 0.05)");
   coreGrd.addColorStop(1, "rgba(255, 255, 255, 0)");
 
   ctx.fillStyle = coreGrd;
   ctx.beginPath();
-  ctx.arc(cx, cy, coreRadius * 3.8, 0, Math.PI * 2);
+  ctx.arc(cx, cy, coreRadius * 3.5, 0, Math.PI * 2);
   ctx.fill();
 
-  // Pure White Singularity Point
+  // Solid Bright Center Dot
   ctx.fillStyle = "#FFFFFF";
   ctx.beginPath();
-  ctx.arc(cx, cy, coreRadius * 0.75, 0, Math.PI * 2);
+  ctx.arc(cx, cy, coreRadius * 0.65, 0, Math.PI * 2);
   ctx.fill();
 
-  // High-Energy Lensing Ring Edge
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-  ctx.lineWidth = 1.8 + bass * 2.2;
+  // Delicate Photon Orbit Ring
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+  ctx.lineWidth = 1.6 + bass * 1.8;
   ctx.shadowColor = "#FFFFFF";
-  ctx.shadowBlur = 24 * coreGlow;
+  ctx.shadowBlur = 18 * coreGlow;
   ctx.beginPath();
   ctx.arc(cx, cy, coreRadius * 0.95, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 
-  // --- 7. REFINED SWISS ASTROPHYSICS HUD TELEMETRY OVERLAY ---
+  // --- 9. SWISS MINIMALIST ASTROPHYSICS HUD ---
   ctx.save();
   ctx.font = "10px 'SF Mono', 'Roboto Mono', monospace";
   ctx.fillStyle = "rgba(215, 230, 255, 0.4)";
   ctx.textBaseline = "top";
 
-  // Top Left: Galactic Metric
-  ctx.fillText("GALACTIC VORTEX // KERR METRIC MATRIX", 32, 32);
-  ctx.fillText(`GRAVITATIONAL ACCEL: ${(14.2 * (1 + bass * 6.5)).toFixed(1)} G`, 32, 48);
-  ctx.fillText(`PHOTON ACCRETION FLUX: ${(5800 * (1 + energy * 0.4)).toFixed(0)} pts/s`, 32, 64);
-  ctx.fillText(`ORBITAL VELOCITY: ${(0.82 * (1 + bass * 0.35)).toFixed(2)} c`, 32, 80);
+  // Top Left
+  ctx.fillText("COSMIC VORTEX // KERR METRIC GALAXY", 32, 32);
+  ctx.fillText(`GRAVITATIONAL INFLOW: ${(18.6 * (1 + bass * 5.2)).toFixed(1)} c`, 32, 48);
+  ctx.fillText(`STAR PARTICLES: ${(4600).toFixed(0)} STARDUST`, 32, 64);
 
-  // Top Right: Realtime Acoustic Harmonics
+  // Top Right
   ctx.textAlign = "right";
   ctx.fillText("ACOUSTIC HARMONICS // REALTIME FFT", sw - 32, 32);
   ctx.fillText(`SUB-BASS [20-150Hz]: ${(bass * 100).toFixed(0)}%`, sw - 32, 48);
   ctx.fillText(`MID-VOX [300-2kHz]: ${(mid * 100).toFixed(0)}%`, sw - 32, 64);
   ctx.fillText(`TREBLE-AIR [2-16kHz]: ${(treble * 100).toFixed(0)}%`, sw - 32, 80);
 
-  // Precision Reticle Corner Marks
+  // Reticle Corner Marks
   ctx.strokeStyle = "rgba(200, 225, 255, 0.25)";
   ctx.lineWidth = 1;
   const markSize = 10;
