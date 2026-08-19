@@ -1,21 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { ReactNode } from "react";
-
-type CapturedHub = {
-  label: string;
-  items: Array<{
-    id: string;
-    label: string;
-    action: () => void;
-  }>;
-};
+import { HeaderToolbar } from "./HeaderToolbar";
 
 const mocks = vi.hoisted(() => ({
   openPanel: vi.fn(),
   toggleFullscreen: vi.fn(),
   toggleGestureEnabled: vi.fn(),
-  capturedHubs: [] as CapturedHub[],
+  setCurrentView: vi.fn(),
 }));
 
 vi.mock("@/store/uiStore", () => ({
@@ -27,12 +18,26 @@ vi.mock("@/store/uiStore", () => ({
     },
     isFullscreen: false,
     toggleFullscreen: mocks.toggleFullscreen,
+    setCurrentView: mocks.setCurrentView,
   }),
 }));
 
 vi.mock("@/store/playlistStore", () => ({
   usePlaylistStore: () => ({
-    songs: [],
+    songs: [{ id: "1", title: "Song 1" }],
+  }),
+}));
+
+vi.mock("@/store/userAccountStore", () => ({
+  useUserAccountStore: () => ({
+    neteaseUser: {
+      userId: 12345,
+      nickname: "猫猫的小毛毛呀",
+      avatarUrl: "https://example.com/avatar.jpg",
+      isVip: true,
+      vipType: 11,
+      cloudSongCount: 128,
+    },
   }),
 }));
 
@@ -47,92 +52,22 @@ vi.mock("@/components/layout/Logo", () => ({
   Logo: () => <div data-testid="logo" />,
 }));
 
-vi.mock("@/components/layout/AIToolbox", () => ({
-  AIToolbox: () => <div data-testid="ai-toolbox" />,
-}));
-
-vi.mock("@/components/layout/HoverHub", () => ({
-  HoverHub: ({
-    label,
-    items,
-  }: {
-    label: string;
-    mainIcon: ReactNode;
-    items: CapturedHub["items"];
-    accentColor?: string;
-  }) => {
-    mocks.capturedHubs.push({ label, items });
-
-    return <div data-hub-label={label}>{items.map((item) => item.id).join(",")}</div>;
-  },
-}));
-
 describe("HeaderToolbar", () => {
   beforeEach(() => {
     mocks.openPanel.mockClear();
     mocks.toggleFullscreen.mockClear();
     mocks.toggleGestureEnabled.mockClear();
-    mocks.capturedHubs.length = 0;
+    mocks.setCurrentView.mockClear();
   });
 
-  it("exposes Listening Journal from the inspiration hub", async () => {
-    const { HeaderToolbar } = await import("./HeaderToolbar");
-
-    renderToStaticMarkup(<HeaderToolbar />);
-
-    const item = mocks.capturedHubs
-      .flatMap((hub) => hub.items)
-      .find((hubItem) => hubItem.id === "listeningJournal");
-
-    expect(item?.label).toBe("Listening Journal");
-
-    item?.action();
-
-    expect(mocks.openPanel).toHaveBeenCalledWith("listeningJournal");
-  });
-
-  it("uses readable labels for the primary navigation hubs", async () => {
-    const { HeaderToolbar } = await import("./HeaderToolbar");
-
+  it("renders header toolbar with logo, library count, and user account capsule", () => {
     const html = renderToStaticMarkup(<HeaderToolbar />);
 
-    expect(html).toContain("Music Library");
-    expect(html).toContain("Import music to begin");
-    expect(html).toContain('title="Quick search"');
-    expect(html).toContain('title="Professional tools"');
-
-    expect(mocks.capturedHubs.map((hub) => hub.label)).toEqual([
-      "Lyrics",
-      "Library",
-      "Discover",
-      "Tools",
-    ]);
-
-    const labelsById = Object.fromEntries(
-      mocks.capturedHubs.flatMap((hub) => hub.items).map((item) => [item.id, item.label])
-    );
-
-    expect(labelsById).toMatchObject({
-      lyricSettings: "Lyric style",
-      lyricsSearch: "Online lyrics",
-      lyricsImport: "Import lyrics",
-      lyricsCoverEditor: "Cover editor",
-      libraryManager: "Music library",
-      smartPlaylist: "Smart playlists",
-      offlineCache: "Offline cache",
-      backupRestore: "Backup and restore",
-      dailyRecommendation: "Daily recommendations",
-      dnaJournal: "Listening DNA",
-      listeningHistory: "Listening history",
-      listeningJournal: "Listening Journal",
-      statsAchievements: "Stats and badges",
-      instantMix: "Instant mix",
-      smartMixSession: "Smart Mix",
-      settings: "Preferences",
-      playerSkins: "Player skins",
-      sleepTimer: "Sleep timer",
-      share: "Share music",
-      keyboardShortcuts: "Keyboard shortcuts",
-    });
+    expect(html).toContain("音乐库");
+    expect(html).toContain("1 首歌曲");
+    expect(html).toContain("猫猫的小毛毛呀");
+    expect(html).toContain("VIP");
+    expect(html).toContain("管理曲库");
+    expect(html).toContain("多平台账号与云端资产");
   });
 });
