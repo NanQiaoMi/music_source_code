@@ -147,7 +147,7 @@ export const FloatingAmbientGlow: React.FC<FloatingAmbientGlowProps> = ({
   // Calculate dynamic breathing parameters based on arousal
   const arousal = currentEmotion.y; // -1 to 1
   const breathingDuration = isPlaying ? Math.max(2.5, 4.5 - (arousal + 1) * 0.8) : 6.5;
-  const glowOpacity = Math.min(1.0, (0.5 + (arousal + 1) * 0.2) * intensity);
+  const glowOpacity = Math.min(0.55, (0.28 + (arousal + 1) * 0.1) * intensity);
 
   return (
     <div className={`relative pointer-events-none ${className}`}>

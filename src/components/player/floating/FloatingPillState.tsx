@@ -105,41 +105,41 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
         damping: 30,
       }}
     >
-      {/* 1. Dynamic Ambient Glow & Border Beam Backing */}
+      {/* 1. Subtle Ambient Glow Backing */}
       {showGlow && (
         <FloatingAmbientGlow
           rounded="rounded-full"
-          borderBeam={showBorderBeam}
-          intensity={0.8}
-          glowSpread={36}
+          borderBeam={false}
+          intensity={0.65}
+          glowSpread={32}
         />
       )}
 
-      {/* 2. Apple Dynamic Island Onyx Glass Capsule Shell */}
+      {/* 2. Apple Dynamic Island Solid Jet-Black Capsule Shell */}
       <div
-        className="drag-handle relative flex items-center justify-between gap-2.5 px-3 py-1.5 bg-[#000000]/92 backdrop-blur-[36px] backdrop-saturate-[190%] border border-white/[0.12] rounded-full shadow-[0_16px_40px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.2)] transition-all duration-300"
+        className="drag-handle relative flex items-center justify-between gap-2.5 px-3 py-1.5 bg-[#000000] border border-white/[0.14] rounded-full shadow-[0_16px_40px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.22)] transition-all duration-300"
         style={{
           width: 320,
-          height: 52,
+          height: 50,
         }}
       >
         {/* Top Edge Specular Glint Highlight */}
-        <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
         {/* 3. Left Section: Apple Squircle Album Artwork + 3-Bar Live Activity Soundwave */}
         <div className="relative flex-shrink-0 flex items-center">
-          <div className="relative w-9 h-9 rounded-[10px] overflow-hidden bg-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.4)] border border-white/10 flex-shrink-0">
+          <div className="relative w-8 h-8 rounded-[8px] overflow-hidden bg-neutral-900 shadow-sm border border-white/10 flex-shrink-0">
             <Image
               src={currentSong.cover || DEFAULT_COVER_SRC}
               alt={currentSong.title}
               fill
-              sizes="36px"
+              sizes="32px"
               className="object-cover"
             />
           </div>
 
           {/* 3-Bar Apple Live Activity Soundwave */}
-          <div className="absolute -bottom-1 -right-1 flex items-end gap-[1.5px] h-3 px-1 py-0.5 bg-black/85 backdrop-blur-md rounded-full border border-white/15 pointer-events-none">
+          <div className="absolute -bottom-0.5 -right-1 flex items-end gap-[1.5px] h-3 px-1 py-0.5 bg-black/90 rounded-full border border-white/20 pointer-events-none">
             {[0.4, 0.9, 0.6].map((ratio, i) => (
               <motion.span
                 key={i}
@@ -207,7 +207,7 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
 
           {/* Artist */}
           <p className="text-[#86868b] text-[11px] font-normal tracking-[-0.01em] truncate leading-tight mt-0.5">
-            {currentSong.artist || "未知歌手"}
+            {(currentSong.artist || "未知歌手").replace(/;/g, ", ")}
           </p>
         </div>
 
@@ -244,18 +244,8 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
           {/* Favorite Heart Button */}
           <HeartFavoriteButton size={13} className="control-interactive p-1" />
         </div>
-
-        {/* Hover Quick Expand Hint */}
-        <motion.div
-          className="absolute -top-7 right-3 px-2 py-0.5 bg-black/80 backdrop-blur-md rounded-full border border-white/10 text-white/70 text-[10px] pointer-events-none flex items-center gap-1 shadow-lg"
-          initial={{ opacity: 0, y: 4 }}
-          animate={isHovered ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
-          transition={{ duration: 0.15 }}
-        >
-          <Maximize2 className="w-2.5 h-2.5" />
-          <span>展开</span>
-        </motion.div>
       </div>
     </motion.div>
   );
 };
+

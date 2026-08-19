@@ -38,7 +38,14 @@ vi.mock("framer-motion", async () => {
 
   const MotionElement = React.forwardRef<
     HTMLDivElement,
-    MotionProps & { onPointerLeave?: () => void }
+    React.HTMLAttributes<HTMLDivElement> & {
+      animate?: unknown;
+      exit?: unknown;
+      initial?: unknown;
+      transition?: unknown;
+      whileHover?: unknown;
+      whileTap?: unknown;
+    }
   >(
     (
       {
@@ -71,7 +78,9 @@ vi.mock("framer-motion", async () => {
         const el = localRef.current;
         if (!el) return;
         const leaveHandler = (e: MouseEvent) => {
-          onMouseLeave?.(e as unknown as React.MouseEvent<HTMLElement>);
+          if (typeof onMouseLeave === "function") {
+            (onMouseLeave as unknown as (e: React.MouseEvent<HTMLElement>) => void)(e as unknown as React.MouseEvent<HTMLElement>);
+          }
         };
         el.addEventListener("mouseleave", leaveHandler);
         return () => el.removeEventListener("mouseleave", leaveHandler);
@@ -87,6 +96,7 @@ vi.mock("framer-motion", async () => {
       );
     }
   );
+
   MotionElement.displayName = "MotionElement";
 
   const MotionButton = ({

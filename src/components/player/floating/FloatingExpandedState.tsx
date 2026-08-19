@@ -97,7 +97,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
       initial="hidden"
       animate="visible"
       exit="exit"
-      className={`relative w-[340px] select-none rounded-[36px] bg-[#000000]/92 backdrop-blur-[44px] backdrop-saturate-[190%] border border-white/[0.12] shadow-[0_28px_70px_rgba(0,0,0,0.8),inset_0_1px_1.5px_rgba(255,255,255,0.2)] overflow-hidden flex flex-col p-4 gap-3 text-white ${className}`}
+      className={`relative w-[340px] select-none rounded-[36px] bg-[#000000] border border-white/[0.12] shadow-[0_28px_70px_rgba(0,0,0,0.85),inset_0_1px_1.5px_rgba(255,255,255,0.2)] overflow-hidden flex flex-col p-4 gap-3 text-white ${className}`}
       style={{ touchAction: "none" }}
     >
       {/* Top Edge Specular Glint Highlight */}
@@ -135,7 +135,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
       {/* 2. Hero Stage: Apple Squircle Album Artwork */}
       <motion.div
         variants={itemVariants}
-        className="relative w-40 h-40 mx-auto rounded-[20px] overflow-hidden bg-white/10 shadow-[0_14px_36px_rgba(0,0,0,0.6)] border border-white/10 flex-shrink-0"
+        className="relative w-40 h-40 mx-auto rounded-[20px] overflow-hidden bg-neutral-900 shadow-[0_14px_36px_rgba(0,0,0,0.6)] border border-white/10 flex-shrink-0"
       >
         <Image
           src={currentSong.cover || DEFAULT_COVER_SRC}
@@ -157,7 +157,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
             {currentSong.title}
           </h3>
           <p className="text-[#86868b] text-[12px] font-normal tracking-[-0.01em] truncate mt-0.5">
-            {currentSong.artist || "未知歌手"}
+            {(currentSong.artist || "未知歌手").replace(/;/g, ", ")}
           </p>
         </div>
 
