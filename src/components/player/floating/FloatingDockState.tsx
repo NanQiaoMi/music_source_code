@@ -107,7 +107,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
 
       {/* Main Crescent / Half-Pill Glass Container */}
       <div
-        className={`relative flex items-center gap-2.5 py-2 px-2.5 bg-black/60 backdrop-blur-2xl backdrop-saturate-[190%] border border-white/20 shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.3)] transition-all duration-300 ${
+        className={`relative flex items-center gap-2.5 py-2 px-2.5 bg-[#000000]/92 backdrop-blur-[36px] backdrop-saturate-[190%] border border-white/[0.12] shadow-[0_16px_40px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.2)] transition-all duration-300 ${
           isLeft
             ? "rounded-r-full rounded-l-none pl-1.5 pr-3 border-l-0"
             : "rounded-l-full rounded-r-none pr-1.5 pl-3 border-r-0 flex-row-reverse"
@@ -119,7 +119,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
       >
         {/* Apple-grade Top Specular Highlight Line */}
         <div
-          className={`absolute top-0 h-[1.5px] bg-gradient-to-r from-white/40 via-white/15 to-transparent pointer-events-none ${
+          className={`absolute top-0 h-[1px] bg-gradient-to-r from-white/30 via-white/10 to-transparent pointer-events-none ${
             isLeft ? "left-0 right-3" : "left-3 right-0"
           }`}
         />
@@ -131,7 +131,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
           onMouseLeave={() => setShowPlayOverlay(false)}
         >
           {/* Inner Cover Container */}
-          <div className="relative w-full h-full rounded-full overflow-hidden shadow-inner ring-1 ring-white/25 bg-neutral-950">
+          <div className="relative w-full h-full rounded-full overflow-hidden shadow-inner ring-1 ring-white/20 bg-neutral-950">
             <div
               className={`absolute inset-0 ${
                 isPlaying ? "animate-spin-slow" : ""
@@ -183,7 +183,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
           }`}
         >
           {/* 3 Mini Bouncing Soundwave Bars */}
-          <div className="flex items-end justify-center gap-[3px] h-4 w-4">
+          <div className="flex items-end justify-center gap-[2.5px] h-3.5 w-3.5">
             {[0, 1, 2].map((idx) => {
               const delays = [0, 0.22, 0.44];
               const heights = [
@@ -195,7 +195,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
               return (
                 <motion.span
                   key={idx}
-                  className="w-[2.5px] rounded-full bg-gradient-to-t from-cyan-400 via-teal-300 to-white shadow-[0_0_8px_rgba(45,212,191,0.65)]"
+                  className="w-[2px] rounded-full bg-[#2997ff]"
                   animate={
                     isPlaying
                       ? {

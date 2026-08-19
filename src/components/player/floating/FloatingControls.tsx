@@ -471,8 +471,8 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
           aria-label={`切换循环模式: 当前 ${loopMode}`}
           className={`control-interactive p-2 rounded-full transition-colors ${
             loopMode === "all" || loopMode === "single"
-              ? "text-cyan-400 bg-cyan-400/10"
-              : "text-white/50 hover:text-white hover:bg-white/[0.08]"
+              ? "text-[#2997ff] bg-[#2997ff]/15"
+              : "text-white/45 hover:text-white hover:bg-white/[0.08]"
           }`}
           whileHover={{ scale: 1.12 }}
           whileTap={{ scale: 0.88 }}
@@ -487,15 +487,15 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
         </motion.button>
       )}
 
-      {/* 2. Previous Song (Jelly nudge left) */}
-      <JellyButton
+      {/* 2. Previous Song */}
+      <button
+        type="button"
         onClick={prevSong}
-        disabled={isLoading}
-        ariaLabel="上一首"
-        nudgeDirection="left"
+        className="control-interactive p-2 rounded-full text-white/70 hover:text-white transition-colors active:scale-90"
+        title="上一首"
       >
         <SkipBack className={compact ? "w-4 h-4" : "w-5 h-5"} />
-      </JellyButton>
+      </button>
 
       {/* 3. Morphing Play/Pause Button */}
       <MorphingPlayPauseButton
@@ -505,15 +505,15 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
         size={compact ? "sm" : "md"}
       />
 
-      {/* 4. Next Song (Jelly nudge right) */}
-      <JellyButton
+      {/* 4. Next Song */}
+      <button
+        type="button"
         onClick={nextSong}
-        disabled={isLoading}
-        ariaLabel="下一首"
-        nudgeDirection="right"
+        className="control-interactive p-2 rounded-full text-white/70 hover:text-white transition-colors active:scale-90"
+        title="下一首"
       >
         <SkipForward className={compact ? "w-4 h-4" : "w-5 h-5"} />
-      </JellyButton>
+      </button>
 
       {/* 5. Shuffle Toggle (Optional in compact) */}
       {showShuffleAndLoop && (
@@ -523,8 +523,8 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
           aria-label="随机播放"
           className={`control-interactive p-2 rounded-full transition-colors ${
             loopMode === "shuffle"
-              ? "text-fuchsia-400 bg-fuchsia-400/10"
-              : "text-white/50 hover:text-white hover:bg-white/[0.08]"
+              ? "text-[#2997ff] bg-[#2997ff]/15"
+              : "text-white/45 hover:text-white hover:bg-white/[0.08]"
           }`}
           whileHover={{ scale: 1.12 }}
           whileTap={{ scale: 0.88 }}

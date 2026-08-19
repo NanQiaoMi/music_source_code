@@ -397,13 +397,9 @@ export function useFloatingDragPhysics(
    */
   const startDrag = useCallback(
     (clientX: number, clientY: number, target: HTMLElement) => {
-      // Must be initiated from a drag handle or the dock container
-      const isDockedState =
-        playerStateRef.current === "dock-left" || playerStateRef.current === "dock-right";
-      const isHandle = target.closest(".drag-handle") !== null;
-      const isDockElement = target.closest(".dock-drag-target") !== null;
-
-      if (!isHandle && !isDockedState && !isDockElement) {
+      // Don't initiate drag on interactive buttons, inputs, sliders
+      const isInteractive = target.closest(".control-interactive, button, input, a, [role='slider']") !== null;
+      if (isInteractive) {
         return;
       }
 
