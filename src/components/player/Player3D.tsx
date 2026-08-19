@@ -10,7 +10,8 @@ import { MISSING_AUDIO_SOURCE_HELP_TEXT } from "@/lib/audio/playableAudioSource"
 import { useUIStore } from "@/store/uiStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useABLoopStore } from "@/store/abLoopStore";
-import { ABLoopProgressMarkers } from "@/components/shared/ABLoopProgressMarkers";
+import { GlassProgressBar } from "@/components/shared/GlassProgressBar";
+import { useAlbumTheme } from "@/hooks/useAlbumTheme";
 import {
   Sparkles,
   Play,
@@ -309,6 +310,8 @@ export const Player3D: React.FC = () => {
   const currentTime = useAudioStore((state) => state.currentTime);
   const duration = useAudioStore((state) => state.duration);
   const currentSong = useAudioStore((state) => state.currentSong);
+  const bufferedRanges = useAudioStore((state) => state.bufferedRanges);
+  const { themeColors } = useAlbumTheme(currentSong?.cover);
   const isLoading = useAudioStore((state) => state.isLoading);
   const error = useAudioStore((state) => state.error);
   const clearError = useAudioStore((state) => state.clearError);
@@ -331,10 +334,6 @@ export const Player3D: React.FC = () => {
 
   const [breathingEffectEnabled] = useState(true);
   const [showFullscreenLyrics, setShowFullscreenLyrics] = useState(false);
-  const progressPercent =
-    duration > 0 && Number.isFinite(duration)
-      ? Math.min(100, Math.max(0, (currentTime / duration) * 100))
-      : 0;
 
   const handleBack = useCallback(() => {
     setIsTransitioning(true);
@@ -477,35 +476,22 @@ export const Player3D: React.FC = () => {
 
             <div className="relative z-10">
               {/* 进度条 */}
-              <div className="mb-6">
-                <div className="flex justify-between text-sm text-white/60 mb-2">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
-                </div>
-                <div
-                  className="relative h-1.5 overflow-hidden rounded-full bg-white/10 cursor-pointer group"
-                  onClick={(e) => {
-                    if (!currentSong) return;
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const percent = (e.clientX - rect.left) / rect.width;
-                    seekTo(duration * percent);
-                  }}
-                >
-                  <ABLoopProgressMarkers
-                    isEnabled={abLoopEnabled}
-                    pointA={pointA}
-                    pointB={pointB}
-                    duration={duration}
-                  />
-                  <motion.div
-                    className="h-full bg-white rounded-full relative shadow-[0_0_12px_rgba(255,255,255,0.6)]"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progressPercent}%` }}
-                    transition={{ duration: 0.1 }}
-                  >
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.8)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </motion.div>
-                </div>
+              <div className="mb-4">
+                <GlassProgressBar
+                  currentTime={currentTime}
+                  duration={duration}
+                  bufferedRanges={bufferedRanges}
+                  abLoopEnabled={abLoopEnabled}
+                  pointA={pointA}
+                  pointB={pointB}
+                  onSeek={seekTo}
+                  accentColor={
+                    themeColors && themeColors.primary !== "rgba(0, 0, 0, 0.9)"
+                      ? themeColors.primary
+                      : undefined
+                  }
+                  disabled={!currentSong}
+                />
               </div>
 
               {/* 控制按钮 */}

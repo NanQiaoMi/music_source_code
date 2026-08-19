@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
-import { useAudioStore } from "@/store/audioStore";
+import { useAudioStore, registerAudioSeekHandler } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useEQStore } from "@/store/eqStore";
 import { getStoredMusic, createBlobUrlFromStoredMusic } from "@/services/localMusicStorage";
@@ -275,6 +275,14 @@ export const useAudioPlayer = () => {
     if (!activeManagerId) {
       activeManagerId = hookId;
     }
+
+    registerAudioSeekHandler((time: number) => {
+      const activeAudio = audioElementRef.current;
+      if (activeAudio && typeof activeAudio.duration === "number" && !isNaN(activeAudio.duration)) {
+        const clamped = Math.max(0, Math.min(time, activeAudio.duration || 0));
+        activeAudio.currentTime = clamped;
+      }
+    });
 
     return () => {
       if (activeManagerId === hookId) {

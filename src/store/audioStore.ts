@@ -198,6 +198,15 @@ const getDefaultEQPreset = (preset: EQPreset): number[] => {
   return presets[preset] || presets.flat;
 };
 
+type AudioSeekHandler = (time: number) => void;
+let globalSeekHandler: AudioSeekHandler | null = null;
+
+export const registerAudioSeekHandler = (handler: AudioSeekHandler | null) => {
+  globalSeekHandler = handler;
+};
+
+export const getAudioSeekHandler = () => globalSeekHandler;
+
 export const useAudioStore = create<AudioState>()(
   persist(
     (set, get) => ({
@@ -582,7 +591,14 @@ export const useAudioStore = create<AudioState>()(
           error: null,
         });
       },
-      seekTo: (time) => set({ currentTime: Math.max(0, time) }),
+      seekTo: (time) => {
+        const clampedTime = Math.max(0, time);
+        usePlayerStore.getState().setCurrentTime(clampedTime);
+        set({ currentTime: clampedTime });
+        if (globalSeekHandler) {
+          globalSeekHandler(clampedTime);
+        }
+      },
     }),
     {
       name: "audio-store-v4",
