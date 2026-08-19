@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useRef, useEffect, useState, memo } from "react";
 import dynamic from "next/dynamic";
@@ -25,7 +25,6 @@ const VisualizationProgressBar = dynamic(
   { ssr: false }
 );
 
-import { useTotemStore } from "@/store/totemStore";
 import { useLyricsSearchStore } from "@/store/lyricsSearchStore";
 import * as Effects from "./effects";
 
@@ -93,7 +92,6 @@ export function VisualizationView() {
   const smoothTrebleRef = useRef(0);
   const bokehRef = useRef<unknown[]>([]);
   const shockwavesRef = useRef<unknown[]>([]);
-  const resonanceTotemsRef = useRef<unknown[]>([]);
   const albumArtRef = useRef<HTMLDivElement | null>(null);
 
   // Mouse idle detection for Zen Mode
@@ -220,78 +218,13 @@ export function VisualizationView() {
     };
   }, [currentView]);
 
-  const initializeTotemsForSong = useTotemStore((state) => state.initializeForSong);
-  const updateActiveKeywords = useTotemStore((state) => state.updateActiveKeywords);
-  const addPreloadedTexture = useTotemStore((state) => state.addPreloadedTexture);
-  const clearTotems = useTotemStore((state) => state.clear);
-  const allTotemKeywords = useTotemStore((state) => state.allKeywords);
-  const activeTotemKeywords = useTotemStore((state) => state.activeKeywords);
-  const preloadedTotemTextures = useTotemStore((state) => state.preloadedTextures);
-  const parsedLyrics = useLyricsSearchStore((state) => state.parsedLyrics);
-  const workerRef = useRef<Worker | null>(null);
   const currentTimeRef = useRef(currentTime);
-  const activeTotemKeywordsRef = useRef(activeTotemKeywords);
 
   // Sync music time for shaders
   useEffect(() => {
     currentTimeRef.current = currentTime;
     (window as LegacyAny)._currentMusicTime = currentTime;
   }, [currentTime]);
-
-  useEffect(() => {
-    activeTotemKeywordsRef.current = activeTotemKeywords;
-  }, [activeTotemKeywords]);
-
-  // Initialize totems for current song
-  useEffect(() => {
-    if (parsedLyrics.length > 0) {
-      initializeTotemsForSong(parsedLyrics);
-    } else {
-      clearTotems();
-    }
-  }, [clearTotems, initializeTotemsForSong, parsedLyrics]);
-
-  // Update active totems
-  useEffect(() => {
-    updateActiveKeywords(currentTime);
-  }, [currentTime, updateActiveKeywords]);
-
-  // Manage Texture Worker
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const worker = new Worker(new URL("../../workers/totemTexture.worker.ts", import.meta.url), {
-      type: "module",
-    });
-
-    worker.onmessage = (e) => {
-      if (e.data.type === "texture-generated") {
-        addPreloadedTexture(e.data.id, e.data.bitmap);
-      }
-    };
-
-    workerRef.current = worker;
-
-    return () => {
-      worker.terminate();
-    };
-  }, [addPreloadedTexture]);
-
-  // Preload textures when keywords change
-  useEffect(() => {
-    if (!workerRef.current || allTotemKeywords.length === 0) return;
-
-    allTotemKeywords.forEach((kw) => {
-      if (!preloadedTotemTextures[kw.id]) {
-        workerRef.current?.postMessage({
-          type: "generate",
-          id: kw.id,
-          text: kw.text,
-          style: "serif",
-        });
-      }
-    });
-  }, [allTotemKeywords, preloadedTotemTextures]);
 
   const vizTargetHues = useRef({ primary: 280, secondary: 320, accent: 150 });
   const vizActiveHues = useRef({ primary: 280, secondary: 320, accent: 150 });
@@ -422,7 +355,6 @@ export function VisualizationView() {
             smoothTreble: smoothTrebleRef,
             bokeh: bokehRef,
             shockwaves: shockwavesRef,
-            resonanceTotems: resonanceTotemsRef,
           },
 
           theme: {
@@ -448,9 +380,6 @@ export function VisualizationView() {
           ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
-
-        // Sync active keywords for Resonance Totem
-        resonanceTotemsRef.current = activeTotemKeywordsRef.current;
 
         // Call the appropriate effect
 
@@ -484,9 +413,6 @@ export function VisualizationView() {
             break;
           case "prismPulse":
             Effects.drawPrismPulse(effectCtx);
-            break;
-          case "resonanceTotem":
-            Effects.drawResonanceTotem(effectCtx);
             break;
 
           default:
@@ -563,9 +489,6 @@ export function VisualizationView() {
         willChange: "filter",
       };
     }
-    if (currentEffect === ("resonanceTotem" as LegacyAny)) {
-      return { filter: `saturate(1.2) contrast(1.1)`, transform: "translateZ(0)" };
-    }
     return { transform: "translateZ(0)" };
   };
 
@@ -579,8 +502,7 @@ export function VisualizationView() {
     { id: "vinylGroove", name: "量子空间" },
     { id: "cyberMatrix", name: "赛博矩阵" },
     { id: "prismPulse", name: "棱镜脉冲" },
-    { id: "gravitationalField", name: "重力??(隐藏)" },
-    { id: "resonanceTotem" as LegacyAny, name: "共鸣图腾" },
+    { id: "gravitationalField", name: "重力场 (隐藏)" },
   ];
 
   return (

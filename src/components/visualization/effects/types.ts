@@ -18,7 +18,6 @@ export interface EffectContext {
     smoothTreble: { current: number };
     bokeh: { current: any[] };
     shockwaves: { current: any[] };
-    resonanceTotems: { current: any[] };
   };
 
   theme: {

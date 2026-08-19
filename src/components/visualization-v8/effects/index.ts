@@ -15,7 +15,7 @@ import { SpringSystemV8Effect } from "./SpringSystemV8";
 import { SpectrumV8Effect } from "./SpectrumV8";
 import { WaveformV8Effect } from "./WaveformV8";
 import { ParticleNebulaV8 } from "./ParticleNebulaV8";
-import { ResonanceTotemV8 } from "./ResonanceTotemV8";
+import { SuperstringSingularityV8Effect } from "./SuperstringSingularityV8";
 import { AudioCrystalV8Effect } from "./AudioCrystalV8";
 import { AudioLiquidV8Effect } from "./AudioLiquidV8";
 import { AudioPaintingV8Effect } from "./AudioPaintingV8";
@@ -29,12 +29,13 @@ import { SpectrumSpiralV8 } from "./SpectrumSpiralV8";
 import { StarFieldV8Effect } from "./StarFieldV8";
 import { TunnelFlightV8Effect } from "./TunnelFlightV8";
 import { VibrationGeometryV8Effect } from "./VibrationGeometryV8";
+import { KineticParticleStageV8Effect } from "./KineticParticleStageV8";
 
 export {
   SpectrumV8Effect,
   WaveformV8Effect,
   ParticleNebulaV8,
-  ResonanceTotemV8,
+  SuperstringSingularityV8Effect,
   AudioCrystalV8Effect,
   AudioLiquidV8Effect,
   AudioPaintingV8Effect,
@@ -48,6 +49,7 @@ export {
   StarFieldV8Effect,
   TunnelFlightV8Effect,
   VibrationGeometryV8Effect,
+  KineticParticleStageV8Effect,
   ParticleBurstEffect,
   ParticleExplosionV8Effect,
   ParticleGravityV8Effect,

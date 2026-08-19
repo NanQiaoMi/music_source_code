@@ -64,10 +64,6 @@ vi.mock("./engines/RenderEngineManager", () => ({
   RenderEngineManager: () => <canvas data-testid="render-engine" />,
 }));
 
-vi.mock("./ResonanceTotemLayer", () => ({
-  ResonanceTotemLayer: () => <div data-testid="totem-layer" />,
-}));
-
 vi.mock("./shared/VisualControlDrawer", () => ({
   VisualControlDrawer: ({ parameterMode }: { parameterMode: string }) => (
     <div data-parameter-mode={parameterMode}>parameter mode: {parameterMode}</div>

@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnimationPreset, AnimationTrack } from "@/lib/visualization/animationTypes";
 import type { EffectPlugin, EffectPreset } from "@/lib/visualization/types";
 import type { LyricLine } from "@/services/lyricsSearchService";
@@ -8,7 +8,6 @@ import { useAnimationStore } from "./animationStore";
 import { useGestureStore } from "./gestureStore";
 import { lyricPresets, useLyricSettingsStore } from "./lyricSettingsStore";
 import { usePresetStore } from "./presetStore";
-import { useTotemStore } from "./totemStore";
 import { useVisualizationStore } from "./visualizationStore";
 import { useVisualizationV8Store } from "./visualizationV8Store";
 
@@ -42,7 +41,6 @@ function resetVisualStores() {
   useGestureStore.setState(useGestureStore.getInitialState(), true);
   useLyricSettingsStore.setState(useLyricSettingsStore.getInitialState(), true);
   usePresetStore.setState(usePresetStore.getInitialState(), true);
-  useTotemStore.setState(useTotemStore.getInitialState(), true);
   useVisualizationStore.setState(useVisualizationStore.getInitialState(), true);
   useVisualizationV8Store.setState(useVisualizationV8Store.getInitialState(), true);
 }
@@ -302,33 +300,6 @@ describe("visual interaction stores", () => {
     store.reset();
     expect(useAnimationStore.getState().tracks).toEqual([]);
     expect(useAnimationStore.getState().syncMode).toBe("audio");
-  });
-
-  it("extracts and activates resonance totem keywords within their timing window", () => {
-    const lyrics: LyricLine[] = [
-      { time: 0, text: "Freedom rings" },
-      { time: 2, text: "quiet" },
-      { time: 8, text: "Burst again" },
-    ];
-    const store = useTotemStore.getState();
-
-    store.initializeForSong(lyrics);
-    expect(useTotemStore.getState().allKeywords.map((keyword) => keyword.text)).toEqual([
-      "Freedom",
-      "Burst",
-    ]);
-
-    store.updateActiveKeywords(1);
-    expect(useTotemStore.getState().activeKeywords.map((keyword) => keyword.text)).toEqual([
-      "Freedom",
-    ]);
-
-    const texture = {} as ImageBitmap;
-    store.addPreloadedTexture("Freedom", texture);
-    expect(useTotemStore.getState().preloadedTextures.Freedom).toBe(texture);
-
-    store.clear();
-    expect(useTotemStore.getState().allKeywords).toEqual([]);
   });
 
   it("manages V8 preset CRUD, export payloads, and system preset loading", () => {

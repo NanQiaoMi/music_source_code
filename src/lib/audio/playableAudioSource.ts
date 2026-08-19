@@ -7,7 +7,7 @@ export const MISSING_AUDIO_SOURCE_HELP_TEXT = "请导入本地音乐，或选择
 
 export const AUDIO_FILE_UNAVAILABLE_MESSAGE = "Audio file is not available.";
 
-type AudioSourceSong = Pick<Song, "audioUrl"> | null | undefined;
+type AudioSourceSong = Partial<Pick<Song, "audioUrl" | "id">> | null | undefined;
 type MediaElementErrorLike = Pick<MediaError, "code" | "message"> | null | undefined;
 
 const MEDIA_ERROR_DESCRIPTIONS: Record<number, string> = {

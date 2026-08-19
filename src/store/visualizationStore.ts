@@ -10,8 +10,7 @@ export type VisualizationEffect =
   | "vinylGroove"
   | "cyberMatrix"
   | "gravitationalField"
-  | "prismPulse"
-  | "resonanceTotem";
+  | "prismPulse";
 
 export type NumericEffectSettings = Record<string, number>;
 export type EffectSettings = Record<VisualizationEffect, NumericEffectSettings>;
@@ -87,7 +86,6 @@ const defaultEffectSettings: EffectSettings = {
   cyberMatrix: { speed: 1.0, density: 1.0 },
   gravitationalField: { speed: 1.0, sensitivity: 1.0, coreIntensity: 1.0 },
   prismPulse: { complexity: 6, refraction: 1.0, drift: 0.5, speed: 1.0 },
-  resonanceTotem: { opacity: 1.0, scanSpeed: 1.0, grainIntensity: 0.05 },
 };
 
 export const useVisualizationStore = create<VisualizationState>((set, get) => ({
