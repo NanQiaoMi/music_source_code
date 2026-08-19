@@ -168,9 +168,10 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                   <h2 className="text-lg font-semibold text-white truncate">Daily Recommendations</h2>
                   {recommendationMode && (
                     <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-400/15 text-amber-300 border border-amber-400/25">
-                      {recommendationMode.description || recommendationMode.title}
+                      {recommendationMode.description || recommendationMode.name}
                     </span>
                   )}
+
                 </div>
                 <p className="mt-0.5 text-xs text-white/50 truncate">
                   Playable picks with transparent ranking reasons.

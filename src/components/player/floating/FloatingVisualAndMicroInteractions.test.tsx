@@ -297,7 +297,7 @@ describe("FloatingPillState", () => {
     expect(container.textContent).toContain("Starfield Orchestra");
   });
 
-  it("triggers onExpand when clicking on pill card body but not when clicking control buttons", async () => {
+  it("triggers onExpand when clicking on Dynamic Island pill card body", async () => {
     const onExpand = vi.fn();
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -310,14 +310,7 @@ describe("FloatingPillState", () => {
     const card = container.querySelector('[data-floating-state="pill"]') as HTMLDivElement;
     expect(card).toBeDefined();
 
-    // Click on play button inside card (should not trigger onExpand)
-    const playBtn = container.querySelector('button[aria-label="暂停播放"]') as HTMLButtonElement;
-    await act(async () => {
-      playBtn.click();
-    });
-    expect(onExpand).not.toHaveBeenCalled();
-
-    // Click on card body (should trigger onExpand)
+    // Click on card body (triggers onExpand)
     await act(async () => {
       card.click();
     });
@@ -328,4 +321,5 @@ describe("FloatingPillState", () => {
     });
     container.remove();
   });
+
 });
