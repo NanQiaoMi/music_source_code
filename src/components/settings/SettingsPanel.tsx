@@ -3,7 +3,9 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { useUIStore } from "@/store/uiStore";
 import { GlassPanel } from "@/components/shared/Glass";
+import { Wrench, Activity, Repeat, Sliders, Type } from "lucide-react";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -35,6 +37,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const stereoEnhance = useAudioStore((state) => state.stereoEnhance);
   const setStereoEnhance = useAudioStore((state) => state.setStereoEnhance);
 
+  const openPanel = useUIStore((state) => state.openPanel);
+  const setCurrentView = useUIStore((state) => state.setCurrentView);
+
   const [fadeInOut, setFadeInOut] = useState(true);
   const [autoPause, setAutoPause] = useState(false);
   const [settingsSearch, setSettingsSearch] = useState("");
@@ -50,7 +55,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       size="sm"
       isOpen={isOpen}
       onClose={onClose}
-      title="音频设置"
+      title="控制与设置中心"
       footer={
         <div className="flex flex-col items-center gap-0.5 opacity-30">
           <div className="flex items-center gap-2">
@@ -58,19 +63,97 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               mimimusic
             </span>
             <span className="w-1 h-1 rounded-full bg-white/30" />
-            <span className="text-white text-[10px] font-medium">V0.1</span>
+            <span className="text-white text-[10px] font-medium">V0.2</span>
           </div>
-          <p className="text-[9px] text-white/80 tracking-[0.15em] uppercase">大咪小咪组</p>
+          <p className="text-[9px] text-white/80 tracking-[0.15em] uppercase">极简沉浸版</p>
         </div>
       }
     >
-      <div className="p-5 space-y-7">
+      <div className="p-5 space-y-6">
         <input
           value={settingsSearch}
           onChange={(e) => setSettingsSearch(e.target.value)}
-          placeholder="搜索设置"
-          className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/30"
+          placeholder="搜索设置、工具与功能..."
+          className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-xs text-white outline-none placeholder:text-white/35 focus:border-white/30"
         />
+
+        {/* Professional & View Tools (Migrated from floating buttons) */}
+        <div
+          className={`space-y-2.5 ${
+            matchesSetting("tools professional visual abloop lyrics 工具 专业 可视化 循环 歌词")
+              ? ""
+              : "hidden"
+          }`}
+        >
+          <h3 className="text-[12px] font-medium text-white/70 uppercase tracking-wider">
+            专业工具与视图
+          </h3>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => {
+                onClose();
+                openPanel("professionalTools");
+              }}
+              className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-colors text-left group"
+            >
+              <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0">
+                <Wrench className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-white/90 truncate">专业工具箱</div>
+                <div className="text-[10px] text-white/40 truncate">剪辑/格式转换/混音</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                onClose();
+                setCurrentView("visualization");
+              }}
+              className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-colors text-left group"
+            >
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">
+                <Activity className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-white/90 truncate">音乐可视化</div>
+                <div className="text-[10px] text-white/40 truncate">V8 动态粒子舞台</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                onClose();
+                openPanel("lyricSettings");
+              }}
+              className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-colors text-left group"
+            >
+              <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
+                <Type className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-white/90 truncate">歌词与桌面</div>
+                <div className="text-[10px] text-white/40 truncate">桌面歌词/样式设置</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                onClose();
+                openPanel("professionalTools");
+              }}
+              className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-colors text-left group"
+            >
+              <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0">
+                <Repeat className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-white/90 truncate">A-B 循环</div>
+                <div className="text-[10px] text-white/40 truncate">片段循环复读</div>
+              </div>
+            </button>
+          </div>
+        </div>
 
         {/* Volume */}
         <div
@@ -185,14 +268,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           >
             <div className="flex items-center gap-3">
               <div className="w-7 h-7 rounded-full bg-white/[0.10] flex items-center justify-center text-white/60">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-                  />
-                </svg>
+                <Sliders className="w-3.5 h-3.5" />
               </div>
               <span className="text-white/80 text-[13px] font-medium">均衡器 (EQ)</span>
             </div>
