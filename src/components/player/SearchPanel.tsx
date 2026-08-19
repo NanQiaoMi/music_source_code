@@ -98,45 +98,48 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const prevSong = useAudioStore((state) => state.prevSong);
   const setVolume = useAudioStore((state) => state.setVolume);
   const setSleepTimer = useSleepTimerStore((state) => state.setTimer);
+
+  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isListening, setIsListening] = useState(false);
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleMouseEnter = useCallback(() => {
-    if (leaveTimeoutRef.current) {
-      clearTimeout(leaveTimeoutRef.current);
-      leaveTimeoutRef.current = null;
-    }
+    // Keep panel open
   }, []);
 
+  // Mouse leave auto-retract: If query is empty, immediately close when mouse leaves the floating pill
   const handleMouseLeave = useCallback(() => {
-    const activeEl = typeof document !== "undefined" ? document.activeElement : null;
-    const isActuallyFocused = isInputFocused || (activeEl !== null && activeEl === inputRef.current);
-    if (isActuallyFocused || query.trim().length > 0) return;
-
-    if (leaveTimeoutRef.current) {
-      clearTimeout(leaveTimeoutRef.current);
-    }
-    leaveTimeoutRef.current = setTimeout(() => {
+    if (!query || !query.trim()) {
+      inputRef.current?.blur();
+      setIsInputFocused(false);
       onClose();
-    }, 300);
-  }, [isInputFocused, query, onClose]);
+    }
+  }, [query, onClose]);
 
+  // Click outside to close
   useEffect(() => {
-    return () => {
-      if (leaveTimeoutRef.current) {
-        clearTimeout(leaveTimeoutRef.current);
+    if (!isOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        inputRef.current?.blur();
+        setIsInputFocused(false);
+        onClose();
       }
     };
-  }, []);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen, onClose]);
 
+  // Escape key to close
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
+        inputRef.current?.blur();
+        setIsInputFocused(false);
         onClose();
       }
     };
@@ -144,12 +147,14 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Focus input on open
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
     }
   }, [isOpen]);
 
+  // Debounced search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (query) {
@@ -202,44 +207,72 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       setIsVoiceSearch(false);
     };
 
-    recognition.start();
-  }, [setQuery, setIsVoiceSearch, songs, search]);
+    try {
+      recognition.start();
+    } catch {
+      setVoiceFeedback("语音搜索启动失败。");
+      setIsListening(false);
+      setIsVoiceSearch(false);
+    }
+  }, [search, setIsVoiceSearch, setQuery, songs]);
 
   const handlePlaySong = useCallback(
     (song: Song) => {
       playSong(song);
+      setIsPlaying(true);
       onClose();
     },
-    [onClose, playSong]
+    [playSong, setIsPlaying, onClose]
   );
 
-  const handleAddToQueue = (song: Song) => {
-    addToQueue(song);
-  };
+  const handleAddNext = useCallback(
+    (e: React.MouseEvent, song: Song) => {
+      e.stopPropagation();
+      insertNext(song);
+    },
+    [insertNext]
+  );
 
-  const handlePlayNext = (song: Song) => {
-    insertNext(song);
-  };
+  const handleAddToQueue = useCallback(
+    (e: React.MouseEvent, song: Song) => {
+      e.stopPropagation();
+      addToQueue(song);
+    },
+    [addToQueue]
+  );
 
-  const handleNarrowSearch = (value: string, type: SearchType) => {
-    setQuery(value);
-    setSearchType(type);
-  };
+  const handleRecentSearchClick = useCallback(
+    (searchQuery: string) => {
+      setQuery(searchQuery);
+      search(songs);
+    },
+    [search, setQuery, songs]
+  );
 
-  const handleRecentSearchClick = (searchQuery: string) => {
-    setQuery(searchQuery);
-    search(songs);
-  };
+  const handleHistoryClick = useCallback(
+    (historyQuery: string) => {
+      setQuery(historyQuery);
+      search(songs);
+    },
+    [search, setQuery, songs]
+  );
 
-  const handleHistoryClick = (searchQuery: string) => {
-    setQuery(searchQuery);
-    search(songs);
+  const formatDuration = (seconds: number): string => {
+    if (isNaN(seconds) || seconds < 0) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const runCommand = useCallback(
-    (value: string) => {
-      const command = parseSearchCommand(value);
-      executeSearchCommand(command, {
+    (commandText: string) => {
+      const parsed = parseSearchCommand(commandText);
+      if (!parsed) {
+        search(songs);
+        return;
+      }
+
+      executeSearchCommand(parsed, {
         songs,
         setQuery,
         search,
@@ -263,13 +296,12 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       clearQueue,
       nextSong,
       onClose,
+      playSong,
       prevSong,
       search,
-      setCommandFeedback,
-      playSong,
       setIsPlaying,
-      setSleepTimer,
       setQuery,
+      setSleepTimer,
       setVolume,
       shuffleQueue,
       songs,
@@ -287,9 +319,9 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
 
   const durationOptions = [
     { label: "任意时长", value: "all", range: null },
-    { label: "短", value: "short", range: { min: 0, max: 180 } },
-    { label: "中", value: "medium", range: { min: 181, max: 360 } },
-    { label: "长", value: "long", range: { min: 361, max: Number.MAX_SAFE_INTEGER } },
+    { label: "短 (<3m)", value: "short", range: { min: 0, max: 180 } },
+    { label: "中 (3-6m)", value: "medium", range: { min: 181, max: 360 } },
+    { label: "长 (>6m)", value: "long", range: { min: 361, max: Number.MAX_SAFE_INTEGER } },
   ];
 
   const sourceOptions = useMemo(() => {
@@ -306,416 +338,297 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       );
     })?.value || "all";
 
-  const content = (
-    <div className="overflow-hidden">
-      <div className="p-4 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onFocus={() => setIsInputFocused(true)}
-              onBlur={() => setIsInputFocused(false)}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  runCommand(query);
-                }
-              }}
-              placeholder="搜索歌曲、歌手、专辑..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-10 text-white placeholder-white/40 focus:outline-none focus:border-white/30 transition-colors"
-            />
-            {query && (
-              <button
-                onClick={() => {
-                  setQuery("");
-                  clearSearch();
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white/50 hover:text-white"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleVoiceSearch}
-            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
-              isListening
-                ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                : "bg-white/10 text-white/70 hover:bg-white/20"
-            }`}
-            title={isListening ? "正在聆听..." : "语音搜索"}
-          >
-            {isListening ? (
-              <motion.div
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ repeat: Infinity, duration: 0.5 }}
-              >
-                <Mic className="w-5 h-5" />
-              </motion.div>
-            ) : (
-              <Mic className="w-5 h-5" />
-            )}
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onClose}
-            className="w-11 h-11 rounded-xl flex items-center justify-center bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-colors"
-            title="关闭搜索面板 (Esc)"
-          >
-            <X className="w-5 h-5" />
-          </motion.button>
-        </div>
-
-        <div
-          className="mt-3 flex flex-wrap items-center gap-2"
-          role="listbox"
-          aria-label="搜索命令"
-        >
-          {SEARCH_COMMAND_HINTS.map((hint) => (
-            <button
-              key={hint}
-              onClick={() => {
-                setQuery(hint.endsWith("m") ? hint : `${hint} `);
-                inputRef.current?.focus();
-              }}
-              className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-white/55 transition-colors hover:bg-white/[0.12] hover:text-white"
-            >
-              {hint}
-            </button>
-          ))}
-        </div>
-
-        <div aria-live="polite" className="mt-2 min-h-4 text-xs">
-          {voiceFeedback ? (
-            <span className="text-yellow-300/90">{voiceFeedback}</span>
-          ) : (
-            <span className="text-emerald-300/80">{commandFeedback}</span>
-          )}
-        </div>
-
-        <div className="flex gap-2 mt-4">
-          {SEARCH_TYPES.map((type) => (
-            <motion.button
-              key={type.value}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setSearchType(type.value)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                searchType === type.value
-                  ? "bg-white text-black"
-                  : "bg-white/10 text-white/70 hover:bg-white/20"
-              }`}
-            >
-              <type.icon className="w-3.5 h-3.5" />
-              {type.label}
-            </motion.button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 mt-3">
-          <span className="text-xs text-white/50">Filter:</span>
-          <select
-            value={filters.type}
-            onChange={(e) => setFilterType(e.target.value as FilterType)}
-            className="bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none focus:border-white/30"
-          >
-            {FILTER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          {filters.type !== "all" && (
-            <button onClick={clearFilters} className="text-xs text-white/40 hover:text-white/70">
-              Clear
-            </button>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2 mt-3">
-          <select
-            value={selectedDuration}
-            onChange={(e) => {
-              const option = durationOptions.find((item) => item.value === e.target.value);
-              setDurationRange(option?.range ?? null);
-            }}
-            className="bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none focus:border-white/30"
-          >
-            {durationOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filters.source}
-            onChange={(e) => setSourceFilter(e.target.value)}
-            className="bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-white/70 focus:outline-none focus:border-white/30"
-          >
-            {sourceOptions.map((source) => (
-              <option key={source} value={source}>
-                {source === "all" ? "所有来源" : source}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="max-h-[60vh] overflow-y-auto custom-scrollbar min-h-0">
-        {!query && recentSearches.length > 0 && (
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-white/60">
-                <Clock className="w-4 h-4" />
-                <span className="text-sm">最近搜索</span>
-              </div>
-              <button
-                onClick={clearRecentSearches}
-                className="text-xs text-white/40 hover:text-white/70 flex items-center gap-1"
-              >
-                <Trash2 className="w-3 h-3" />
-                清除
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {recentSearches.map((searchQuery, index) => (
-                <motion.button
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                  onClick={() => handleRecentSearchClick(searchQuery)}
-                  className="px-3 py-1.5 rounded-lg bg-white/5 text-white/70 text-sm hover:bg-white/10 transition-colors flex items-center gap-2"
-                >
-                  {searchQuery}
-                  <X
-                    className="w-3 h-3 hover:text-white"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeRecentSearch(searchQuery);
-                    }}
-                  />
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!query && searchHistory.length > 0 && (
-          <div className="px-4 pb-2">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-white/40">搜索历史</span>
-              <button
-                onClick={clearHistory}
-                className="text-xs text-white/40 hover:text-white/70 flex items-center gap-1"
-              >
-                <Trash2 className="w-3 h-3" />
-                Clear
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {searchHistory.slice(0, 10).map((item, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleHistoryClick(item)}
-                  className="px-2 py-0.5 rounded bg-white/5 text-white/50 text-xs hover:bg-white/10 transition-colors"
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!query && recentCommands.length > 0 && (
-          <div className="px-4 pb-3">
-            <div className="mb-2 text-xs text-white/40">最近命令</div>
-            <div className="flex flex-wrap gap-1.5">
-              {recentCommands.map((command) => (
-                <button
-                  key={command}
-                  onClick={() => runCommand(command)}
-                  className="rounded bg-white/5 px-2 py-0.5 text-xs text-white/50 transition-colors hover:bg-white/10"
-                >
-                  {command}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {isSearching && (
-          <div className="p-8 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 text-white/50 animate-spin" />
-          </div>
-        )}
-
-        {query && !isSearching && results.length === 0 && (
-          <div className="p-8 text-center">
-            <Search className="w-12 h-12 text-white/20 mx-auto mb-3" />
-            <p className="text-white/50">未找到匹配结果</p>
-          </div>
-        )}
-
-        {results.length > 0 && (
-          <div className="p-4">
-            <div className="flex items-center gap-2 text-white/60 mb-3">
-              <TrendingUp className="w-4 h-4" />
-              <span className="text-sm">搜索结果 ({totalResults})</span>
-            </div>
-            <div className="space-y-2">
-              {results.map((song, index) => (
-                <motion.div
-                  key={song.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  onClick={() => handlePlaySong(song)}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer transition-colors group"
-                >
-                  <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                    <Image
-                      src={song.cover || DEFAULT_COVER_SRC}
-                      alt={song.title}
-                      fill
-                      className="object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Music className="w-5 h-5 text-white" />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-medium truncate">{song.title}</p>
-                    <p className="text-white/50 text-sm truncate">{song.artist}</p>
-                  </div>
-                  {song.album && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleNarrowSearch(song.album || "", "album");
-                      }}
-                      className="text-white/40 hover:text-white text-xs px-2 py-1 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
-                      title="搜索此专辑"
-                    >
-                      {song.album}
-                    </button>
-                  )}
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePlaySong(song);
-                      }}
-                      className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform"
-                      title="立即播放"
-                    >
-                      <Play className="w-3.5 h-3.5" fill="currentColor" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddToQueue(song);
-                      }}
-                      className="w-8 h-8 rounded-full bg-white/10 text-white/70 flex items-center justify-center hover:bg-white/20 hover:text-white transition-colors"
-                      title="添加到队列"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePlayNext(song);
-                      }}
-                      className="w-8 h-8 rounded-full bg-white/10 text-white/70 flex items-center justify-center hover:bg-white/20 hover:text-white transition-colors"
-                      title="下一首播放"
-                    >
-                      <ListPlus className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleNarrowSearch(song.artist, "artist");
-                      }}
-                      className="w-8 h-8 rounded-full bg-white/10 text-white/70 flex items-center justify-center hover:bg-white/20 hover:text-white transition-colors"
-                      title="搜索此歌手"
-                    >
-                      <User className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-3 mt-4 pt-3 border-t border-white/10">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  disabled={page <= 1}
-                  onClick={() => setPage(page - 1)}
-                  className="px-3 py-1 rounded-lg text-xs bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  上一页
-                </motion.button>
-                <span className="text-xs text-white/50">
-                  第 {page} 页 / 共 {totalPages} 页
-                </span>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(page + 1)}
-                  className="px-3 py-1 rounded-lg text-xs bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  下一页
-                </motion.button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  const hasDropdownContent =
+    Boolean(query) ||
+    Boolean(voiceFeedback) ||
+    Boolean(commandFeedback) ||
+    isSearching ||
+    results.length > 0 ||
+    recentSearches.length > 0 ||
+    searchHistory.length > 0 ||
+    recentCommands.length > 0;
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div
           data-testid="top-search-drawer-container"
-          className="fixed inset-0 z-[100] flex justify-center pointer-events-none"
+          className="fixed top-3 left-1/2 -translate-x-1/2 w-[92vw] max-w-[540px] z-[100] pointer-events-none select-none"
         >
-          {/* Backdrop */}
+          {/* Floating Compact Dynamic Island Pill */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-md pointer-events-auto"
-          />
-
-          {/* Top-Edge Slide-Down Glass Drawer */}
-          <motion.div
+            ref={containerRef}
             data-testid="top-search-drawer"
-            initial={{ y: "-100%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "-100%", opacity: 0 }}
-            transition={{ type: "spring", stiffness: 350, damping: 32 }}
+            initial={{ y: -50, opacity: 0, scale: 0.96 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: -50, opacity: 0, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 420, damping: 32 }}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onPointerEnter={handleMouseEnter}
             onPointerLeave={handleMouseLeave}
-            className="relative w-[92vw] max-w-3xl max-h-[85vh] flex flex-col rounded-b-[28px] border-b border-x border-white/15 bg-[#0a0c16]/92 backdrop-blur-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] pointer-events-auto overflow-hidden z-10"
+            className="w-full flex flex-col rounded-2xl border border-white/15 bg-[#0a0c16]/95 backdrop-blur-2xl shadow-[0_16px_50px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.08)] pointer-events-auto overflow-hidden"
           >
-            {/* Top Micro Accent Glow Line */}
-            <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-white/40 to-transparent shrink-0" />
+            {/* Top Micro Accent Glow */}
+            <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-white/35 to-transparent shrink-0" />
 
-            {content}
+            {/* Input Bar */}
+            <div className="flex items-center px-3 py-2 gap-2">
+              <Search className="w-4 h-4 text-white/50 shrink-0 ml-1" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setIsInputFocused(false)}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    runCommand(query);
+                  }
+                }}
+                placeholder="搜索歌曲、歌手、专辑..."
+                className="flex-1 bg-transparent px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none"
+              />
+              {query && (
+                <button
+                  onClick={() => {
+                    setQuery("");
+                    clearSearch();
+                  }}
+                  className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                  title="清空"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleVoiceSearch}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                  isListening
+                    ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                    : "text-white/60 hover:bg-white/10 hover:text-white"
+                }`}
+                title={isListening ? "正在聆听..." : "语音搜索"}
+              >
+                {isListening ? (
+                  <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.5 }}>
+                    <Mic className="w-3.5 h-3.5" />
+                  </motion.div>
+                ) : (
+                  <Mic className="w-3.5 h-3.5" />
+                )}
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onClose}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+                title="关闭 (Esc)"
+              >
+                <X className="w-3.5 h-3.5" />
+              </motion.button>
+            </div>
+
+            {/* Dropdown Body: Only renders when searching or has content */}
+            {hasDropdownContent && (
+              <div className="border-t border-white/10 max-h-[52vh] overflow-y-auto custom-scrollbar flex flex-col p-2.5 gap-2">
+                {/* Search Type Filters & Command hints */}
+                <div className="flex items-center justify-between gap-2 overflow-x-auto custom-scrollbar pb-1">
+                  <div className="flex items-center gap-1 shrink-0">
+                    {SEARCH_TYPES.map((type) => (
+                      <button
+                        key={type.value}
+                        onClick={() => setSearchType(type.value)}
+                        className={`px-2.5 py-1 rounded-full text-xs transition-colors flex items-center gap-1 ${
+                          searchType === type.value
+                            ? "bg-white text-black font-medium shadow-sm"
+                            : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                        }`}
+                      >
+                        <type.icon className="w-3 h-3" />
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <select
+                      value={filters.type}
+                      onChange={(e) => setFilterType(e.target.value as FilterType)}
+                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-0.5 text-[11px] text-white/70 focus:outline-none"
+                    >
+                      {FILTER_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={selectedDuration}
+                      onChange={(e) => {
+                        const option = durationOptions.find((item) => item.value === e.target.value);
+                        setDurationRange(option?.range ?? null);
+                      }}
+                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-0.5 text-[11px] text-white/70 focus:outline-none"
+                    >
+                      {durationOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Feedback */}
+                {(voiceFeedback || commandFeedback) && (
+                  <div className="text-[11px] px-1">
+                    {voiceFeedback ? (
+                      <span className="text-yellow-300/90">{voiceFeedback}</span>
+                    ) : (
+                      <span className="text-emerald-300/80">{commandFeedback}</span>
+                    )}
+                  </div>
+                )}
+
+                {/* History and Commands when no query */}
+                {!query && recentSearches.length > 0 && (
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    <div className="flex items-center justify-between text-[11px] text-white/40 px-1">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        最近搜索
+                      </span>
+                      <button
+                        onClick={clearRecentSearches}
+                        className="hover:text-white/70 transition-colors"
+                      >
+                        清空
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {recentSearches.map((s, idx) => (
+                        <span
+                          key={idx}
+                          onClick={() => handleRecentSearchClick(s)}
+                          className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 text-white/70 text-xs cursor-pointer flex items-center gap-1 transition-colors"
+                        >
+                          {s}
+                          <X
+                            className="w-3 h-3 hover:text-white"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeRecentSearch(s);
+                            }}
+                          />
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Loading state */}
+                {isSearching && (
+                  <div className="py-6 flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 text-white/50 animate-spin" />
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {query && !isSearching && results.length === 0 && (
+                  <div className="py-5 text-center text-xs text-white/40">
+                    未找到与 “{query}” 相关的音乐
+                  </div>
+                )}
+
+                {/* Results List */}
+                {results.length > 0 && (
+                  <div className="flex flex-col gap-1 pt-1">
+                    <div className="text-[11px] text-white/40 px-1 flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3" />
+                      搜索结果 ({totalResults})
+                    </div>
+                    <div className="space-y-1">
+                      {results.map((song) => (
+                        <div
+                          key={song.id}
+                          onClick={() => handlePlaySong(song)}
+                          className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors group"
+                        >
+                          <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-white/5">
+                            <Image
+                              src={song.cover || DEFAULT_COVER_SRC}
+                              alt={song.title}
+                              fill
+                              className="object-cover"
+                              sizes="36px"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <Play className="w-4 h-4 text-white fill-white" />
+                            </div>
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium text-white truncate">{song.title}</div>
+                            <div className="text-[11px] text-white/50 truncate">
+                              {song.artist} {song.album ? `• ${song.album}` : ""}
+                            </div>
+                          </div>
+
+                          <div className="text-[11px] text-white/40 font-mono tabular-nums shrink-0 mr-1">
+                            {formatDuration(song.duration)}
+                          </div>
+
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button
+                              onClick={(e) => handleAddNext(e, song)}
+                              className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+                              title="下一首播放"
+                            >
+                              <ListPlus className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => handleAddToQueue(e, song)}
+                              className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+                              title="添加到队列"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Pagination if multiple pages */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-3 pt-2 mt-1 border-t border-white/10">
+                        <button
+                          disabled={page <= 1}
+                          onClick={() => setPage(page - 1)}
+                          className="px-2.5 py-0.5 rounded text-xs bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                          上一页
+                        </button>
+                        <span className="text-[11px] text-white/40">
+                          {page} / {totalPages}
+                        </span>
+                        <button
+                          disabled={page >= totalPages}
+                          onClick={() => setPage(page + 1)}
+                          className="px-2.5 py-0.5 rounded text-xs bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                          下一页
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </motion.div>
         </div>
       )}

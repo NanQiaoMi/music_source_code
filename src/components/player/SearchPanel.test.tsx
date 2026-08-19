@@ -36,31 +36,58 @@ vi.mock("framer-motion", async () => {
     style?: React.CSSProperties;
   } & Record<string, unknown>;
 
-  const MotionElement = ({
-    animate: _animate,
-    exit: _exit,
-    initial: _initial,
-    transition: _transition,
-    whileHover: _whileHover,
-    whileTap: _whileTap,
-    onMouseLeave,
-    onPointerLeave,
-    ...props
-  }: MotionProps & { onPointerLeave?: () => void }) => {
-    const elementRef = React.useRef<HTMLDivElement>(null);
-    React.useEffect(() => {
-      const el = elementRef.current;
-      if (!el) return;
-      const leaveHandler = () => {
-        onMouseLeave?.({} as any);
-        onPointerLeave?.();
-      };
-      el.addEventListener("mouseleave", leaveHandler);
-      return () => el.removeEventListener("mouseleave", leaveHandler);
-    }, [onMouseLeave, onPointerLeave]);
+  const MotionElement = React.forwardRef<
+    HTMLDivElement,
+    MotionProps & { onPointerLeave?: () => void }
+  >(
+    (
+      {
+        animate: _animate,
+        exit: _exit,
+        initial: _initial,
+        transition: _transition,
+        whileHover: _whileHover,
+        whileTap: _whileTap,
+        onMouseLeave,
+        onPointerLeave,
+        ...props
+      },
+      forwardedRef
+    ) => {
+      const localRef = React.useRef<HTMLDivElement | null>(null);
+      const setRefs = React.useCallback(
+        (node: HTMLDivElement | null) => {
+          localRef.current = node;
+          if (typeof forwardedRef === "function") {
+            forwardedRef(node);
+          } else if (forwardedRef) {
+            (forwardedRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          }
+        },
+        [forwardedRef]
+      );
 
-    return <div ref={elementRef} onMouseLeave={onMouseLeave} onPointerLeave={onPointerLeave} {...props} />;
-  };
+      React.useEffect(() => {
+        const el = localRef.current;
+        if (!el) return;
+        const leaveHandler = (e: MouseEvent) => {
+          onMouseLeave?.(e as unknown as React.MouseEvent<HTMLElement>);
+        };
+        el.addEventListener("mouseleave", leaveHandler);
+        return () => el.removeEventListener("mouseleave", leaveHandler);
+      }, [onMouseLeave]);
+
+      return (
+        <div
+          ref={setRefs}
+          onMouseLeave={onMouseLeave}
+          onPointerLeave={onPointerLeave}
+          {...props}
+        />
+      );
+    }
+  );
+  MotionElement.displayName = "MotionElement";
 
   const MotionButton = ({
     animate: _animate,
@@ -113,8 +140,7 @@ function getVoiceButton(container: HTMLElement) {
     'input[placeholder="搜索歌曲、歌手、专辑..."]'
   ) as HTMLInputElement | null;
   expect(input).not.toBeNull();
-  const button = input?.parentElement?.nextElementSibling;
-  expect(button).toBeInstanceOf(HTMLButtonElement);
+  const button = input?.parentElement?.querySelector('button[title*="语音"]') ?? input?.parentElement?.nextElementSibling;
   return button as HTMLButtonElement;
 }
 
@@ -129,11 +155,9 @@ describe("SearchPanel", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
-    vi.useFakeTimers();
   });
 
   afterEach(async () => {
-    vi.useRealTimers();
     await act(async () => {
       root.unmount();
     });
@@ -148,8 +172,11 @@ describe("SearchPanel", () => {
       root.render(<SearchPanel isOpen={true} onClose={() => undefined} />);
     });
 
+    const voiceBtn = container.querySelector('button[title*="语音搜索"]');
+    expect(voiceBtn).not.toBeNull();
+
     await act(async () => {
-      getVoiceButton(container).dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      voiceBtn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(window.alert).not.toHaveBeenCalled();
@@ -157,7 +184,7 @@ describe("SearchPanel", () => {
     expect(useSearchStore.getState().isVoiceSearch).toBe(false);
   });
 
-  it("renders top search drawer when open and closes on Escape key", async () => {
+  it("renders compact Dynamic Island search pill when open and closes on Escape key", async () => {
     const { SearchPanel } = await import("./SearchPanel");
     const onClose = vi.fn();
 
@@ -175,7 +202,7 @@ describe("SearchPanel", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("auto-closes after delay on mouse leave when input is unfocused and query is empty", async () => {
+  it("auto-closes immediately on mouse leave when query is empty", async () => {
     const { SearchPanel } = await import("./SearchPanel");
     const onClose = vi.fn();
 
@@ -183,52 +210,31 @@ describe("SearchPanel", () => {
       root.render(<SearchPanel isOpen={true} onClose={onClose} />);
     });
 
-    const input = container.querySelector('input[placeholder="搜索歌曲、歌手、专辑..."]') as HTMLInputElement;
     const drawer = container.querySelector('[data-testid="top-search-drawer"]');
     expect(drawer).not.toBeNull();
 
-    // Blur the input to simulate unfocused state
-    await act(async () => {
-      input?.blur();
-      input?.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
-    });
-
     await act(async () => {
       drawer?.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
-    });
-
-    expect(onClose).not.toHaveBeenCalled();
-
-    // Fast-forward 300ms timer
-    act(() => {
-      vi.advanceTimersByTime(350);
     });
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("does not auto-close on mouse leave when input is focused", async () => {
+  it("does not auto-close on mouse leave when query is non-empty", async () => {
     const { SearchPanel } = await import("./SearchPanel");
     const onClose = vi.fn();
+
+    useSearchStore.setState({ query: "Jay Chou" });
 
     await act(async () => {
       root.render(<SearchPanel isOpen={true} onClose={onClose} />);
     });
 
-    const input = container.querySelector('input[placeholder="搜索歌曲、歌手、专辑..."]') as HTMLInputElement;
     const drawer = container.querySelector('[data-testid="top-search-drawer"]');
-
-    await act(async () => {
-      input?.focus();
-      input?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
-    });
+    expect(drawer).not.toBeNull();
 
     await act(async () => {
       drawer?.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(500);
     });
 
     expect(onClose).not.toHaveBeenCalled();
