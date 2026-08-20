@@ -13,6 +13,7 @@ import dynamic from "next/dynamic";
 import { HomeView } from "@/components/layout/HomeView";
 import { Apple3DQueueDrawer } from "@/components/player/Apple3DQueueDrawer";
 import { PanelOrchestrator } from "@/components/layout/PanelOrchestrator";
+import { AmbientFluidMeshBackground } from "@/components/layout/AmbientFluidMeshBackground";
 
 // Heavy Views (Lazy Loaded)
 const PlayerView = dynamic(
@@ -114,52 +115,8 @@ export default function Home() {
         }
       `}</style>
 
-      {/* ─── Global Background Layer ──────────────────────────────── */}
-      <div
-        className="absolute inset-0 transition-all pointer-events-none"
-        style={{
-          background:
-            "linear-gradient(135deg, var(--theme-background) 0%, rgba(0,0,0,0.8) 50%, var(--theme-surface) 100%)",
-          transitionDuration: `${animationSpeed * 800}ms`,
-          backdropFilter: `blur(${blurIntensity}px)`,
-        }}
-      />
-
-      {/* Dynamic radial gradients */}
-      <div
-        className="absolute inset-0 transition-opacity duration-[800ms] ease-out pointer-events-none"
-        style={{
-          background: "radial-gradient(ellipse at top, var(--theme-primary) 0%, transparent 60%)",
-          opacity: 0.15,
-        }}
-      />
-      <div
-        className="absolute inset-0 transition-opacity duration-[800ms] ease-out pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse at bottom right, var(--theme-secondary) 0%, transparent 50%)",
-          opacity: 0.1,
-        }}
-      />
-      <div
-        className="absolute inset-0 transition-all duration-[800ms] ease-out pointer-events-none"
-        style={{
-          background: `
-            radial-gradient(ellipse 120% 80% at 50% -20%, var(--theme-complementary) 0%, transparent 50%),
-            radial-gradient(ellipse 80% 40% at 50% 0%, var(--theme-complementary) 0%, transparent 40%)
-          `,
-          opacity: 0.25,
-        }}
-      />
-      <div
-        className="absolute inset-0 transition-opacity duration-[800ms] ease-out pointer-events-none"
-        style={{
-          background: "radial-gradient(circle at 50% 50%, var(--theme-accent) 0%, transparent 70%)",
-          opacity: 0.05,
-        }}
-      />
-
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('/noise.svg')]" />
+      {/* ─── Global Dynamic Adaptive Ambient Background ───────────── */}
+      <AmbientFluidMeshBackground />
 
       {/* ─── Primary View Content ─────────────────────────────────── */}
       <HomeView />

@@ -62,6 +62,13 @@ export const MusicCardStack: React.FC = () => {
     }
   }, [displaySongs.length, currentSong?.id]);
 
+  // 切换焦点专辑时同步当前选中的歌曲，触发背景流光环境光智能联动
+  useEffect(() => {
+    if (displaySongs.length > 0 && displaySongs[centerIndex]) {
+      setSelectedSong(displaySongs[centerIndex]);
+    }
+  }, [centerIndex, displaySongs, setSelectedSong]);
+
   // 计算当前可视的卡片列表，确保每张卡片拥有唯一的歌曲 ID 以执行空间平滑移动动画
   const visibleCards = useMemo(() => {
     const total = displaySongs.length;

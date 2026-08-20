@@ -14,15 +14,15 @@ export interface ThemeColors {
 const colorCache = new Map<string, ThemeColors>();
 const CACHE_SIZE_LIMIT = 50;
 
-// 默认颜色方案 - 更鲜艳的默认颜色（暗黑模式）
+// 默认颜色方案 - 极夜冷钛极简（Minimalist Pure Titanium & Slate Gray）
 export const defaultColors: ThemeColors = {
-  primary: "rgb(168, 85, 247)",
-  secondary: "rgb(59, 130, 246)",
-  accent: "rgb(236, 72, 153)",
-  complementary: "rgb(72, 236, 153)",
-  background: "rgb(15, 15, 35)",
-  surface: "rgb(30, 30, 60)",
-  gradient: ["rgb(168, 85, 247)", "rgb(59, 130, 246)", "rgb(236, 72, 153)"],
+  primary: "rgb(55, 65, 81)",
+  secondary: "rgb(31, 41, 55)",
+  accent: "rgb(75, 85, 99)",
+  complementary: "rgb(30, 41, 59)",
+  background: "rgb(8, 9, 12)",
+  surface: "rgb(15, 17, 23)",
+  gradient: ["rgb(55, 65, 81)", "rgb(31, 41, 55)", "rgb(75, 85, 99)"],
   text: "rgb(255, 255, 255)",
   textMuted: "rgba(255, 255, 255, 0.6)",
 };

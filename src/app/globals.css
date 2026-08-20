@@ -272,3 +272,66 @@ textarea {
   animation: vinyl-spin 14s linear infinite !important;
   will-change: transform;
 }
+
+/* Ambient Fluid Mesh Orb Floating Animations */
+@keyframes orb-float-1 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(60px, 40px, 0) scale(1.08);
+  }
+  66% {
+    transform: translate3d(-40px, 60px, 0) scale(0.95);
+  }
+}
+
+@keyframes orb-float-2 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(-50px, -40px, 0) scale(0.94);
+  }
+  66% {
+    transform: translate3d(40px, -50px, 0) scale(1.06);
+  }
+}
+
+@keyframes orb-float-3 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-30px, 50px, 0) scale(1.05);
+  }
+}
+
+@keyframes orb-float-4 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(40px, -30px, 0) scale(0.96);
+  }
+}
+
+.animate-orb-1 {
+  animation: orb-float-1 26s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform;
+}
+
+.animate-orb-2 {
+  animation: orb-float-2 22s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform;
+}
+
+.animate-orb-3 {
+  animation: orb-float-3 28s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform;
+}
+
+.animate-orb-4 {
+  animation: orb-float-4 20s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform;
+}
