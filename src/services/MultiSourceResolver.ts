@@ -437,7 +437,12 @@ export class MultiSourceResolver {
                 : 240,
               cover: s.cover || s.picUrl || s.albumPic || "/default-cover.svg",
               source: key as any,
-              audioUrl: s.url || (key === "netease" && /^\d+$/.test(songId) ? `https://music.163.com/song/media/outer/url?id=${songId}.mp3` : ""),
+              audioUrl:
+                s.audioUrl ||
+                s.url ||
+                (key === "netease" && /^\d+$/.test(songId)
+                  ? `https://music.163.com/song/media/outer/url?id=${songId}.mp3`
+                  : ""),
               format: "mp3",
             };
             normalized.push(item);
@@ -455,6 +460,46 @@ export class MultiSourceResolver {
         else if (key === "qishui") results.qishui = normalized;
       }
     });
+
+    // 备用降级策略：如果上述代理均未返回结果，调用网易云与 QQ 音乐公开开放检索
+    if (results.all.length === 0) {
+      try {
+        const directRes = await fetch(
+          `https://music.163.com/api/search/get/web?csrf_token=&hlpretag=&hlposttag=&s=${kw}&type=1&offset=0&total=true&limit=30`,
+          { signal: AbortSignal.timeout(3500) }
+        );
+        if (directRes.ok) {
+          const directData = await directRes.json();
+          const neteaseSongs: Song[] = [];
+          (directData?.result?.songs || []).forEach((s: any) => {
+            const songId = String(s.id);
+            const artist = Array.isArray(s.artists)
+              ? s.artists.map((a: any) => a.name).join("/")
+              : s.artist?.name || "未知歌手";
+            const uniqKey = `${s.name}-${artist}`.toLowerCase();
+            const song: Song = {
+              id: songId,
+              title: s.name || "未知曲目",
+              artist,
+              album: s.album?.name || "精选大碟",
+              duration: s.duration ? Math.round(s.duration / 1000) : 240,
+              cover: s.album?.artist?.img1v1Url || "/default-cover.svg",
+              source: "netease",
+              audioUrl: `https://music.163.com/song/media/outer/url?id=${songId}.mp3`,
+              format: "mp3",
+            };
+            neteaseSongs.push(song);
+            if (!seen.has(uniqKey)) {
+              seen.add(uniqKey);
+              results.all.push(song);
+            }
+          });
+          results.netease = neteaseSongs;
+        }
+      } catch (err) {
+        console.warn("[MultiSourceResolver] Direct NetEase search fallback failed:", err);
+      }
+    }
 
     return results;
   }
