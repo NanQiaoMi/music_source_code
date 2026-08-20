@@ -25,7 +25,7 @@ class TactileSoundEngine {
   private masterGain: GainNode | null = null;
   private volume: number = 0.5;
   private lastTickTime: number = 0;
-  private minIntervalMs: number = 15; // Rate limit to prevent audio clipping on ultra-fast scrolls
+  private minIntervalMs: number = 45; // Rate limit to prevent audio clipping and CPU node saturation on ultra-fast scrolls
 
   constructor() {
     // Lazy initialization on first user interaction

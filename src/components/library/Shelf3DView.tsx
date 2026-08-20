@@ -68,8 +68,8 @@ const HALF_WINDOW = Math.floor(SHELF_MAX_RENDER / 2); // 5
 
 // 封面图片内存缓存
 const coverImageCache = new Map<string, HTMLImageElement>();
-// 离屏卡片静态底板 Canvas 纹理缓存 (按 item.id + active 状态缓存，极大消除高频切歌重绘 CPU 开销)
-const offscreenCardCache = new Map<string, HTMLCanvasElement>();
+// Three.js 显存级持久化 CanvasTexture 缓存 (按 item.id + active 状态缓存，切歌时 0 耗时纹理指针直连，实现真 120 FPS 满帧流转)
+const threeTextureCache = new Map<string, THREE.CanvasTexture>();
 
 function getOrLoadCoverImage(
   url: string | undefined,
@@ -93,6 +93,221 @@ function getOrLoadCoverImage(
   };
   coverImageCache.set(url, img);
   return null;
+}
+
+// 获取或创建持久化卡片 CanvasTexture 纹理 (Apple 顶级灰度透明液态玻璃与高光倒角)
+function getOrCreateCardTexture(
+  item: ShelfItem,
+  isActive: boolean,
+  indexLabel: number
+): THREE.CanvasTexture {
+  const cacheKey = `${item.id}_${item.cover || "none"}_${isActive ? "1" : "0"}_${indexLabel}`;
+  if (threeTextureCache.has(cacheKey)) {
+    return threeTextureCache.get(cacheKey)!;
+  }
+
+  const w = 640;
+  const h = 800;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+
+  // 1. 卡片主体背景 - 极度通透的深黑灰液态玻璃底板
+  drawRoundedRect(ctx, 14, 14, w - 28, h - 28, 36);
+  const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+  if (isActive) {
+    bgGrad.addColorStop(0, "rgba(34, 34, 42, 0.90)");
+    bgGrad.addColorStop(0.35, "rgba(18, 18, 24, 0.94)");
+    bgGrad.addColorStop(1, "rgba(6, 6, 8, 0.98)");
+  } else {
+    bgGrad.addColorStop(0, "rgba(20, 20, 26, 0.68)");
+    bgGrad.addColorStop(0.5, "rgba(10, 10, 14, 0.78)");
+    bgGrad.addColorStop(1, "rgba(3, 3, 5, 0.90)");
+  }
+  ctx.fillStyle = bgGrad;
+  ctx.fill();
+
+  // 2. 双层物理折射高光边缘 (硬件加速矢量双层描边，零 CPU shadowBlur 开销)
+  ctx.save();
+  drawRoundedRect(ctx, 14, 14, w - 28, h - 28, 36);
+  if (isActive) {
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+    ctx.lineWidth = 6;
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.92)";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    const topGlint = ctx.createLinearGradient(50, 14, w - 50, 14);
+    topGlint.addColorStop(0, "rgba(255, 255, 255, 0)");
+    topGlint.addColorStop(0.5, "rgba(255, 255, 255, 1.0)");
+    topGlint.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.strokeStyle = topGlint;
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 3. 顶部序号徽标胶囊
+  ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.18)" : "rgba(255, 255, 255, 0.06)";
+  drawRoundedRect(ctx, 36, 36, 120, 36, 18);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.20)";
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.65)";
+  ctx.font = "bold 14px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`#${String(indexLabel + 1).padStart(2, "0")} · ${item.tag}`, 96, 54);
+
+  // 4. 右上角模式徽章 (PLAYLIST / LOSSLESS)
+  ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.16)" : "rgba(255, 255, 255, 0.05)";
+  drawRoundedRect(ctx, w - 156, 36, 120, 36, 18);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.50)";
+  ctx.font = "bold 13px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif";
+  ctx.fillText(item.type === "playlist" ? "PLAYLIST" : "LOSSLESS", w - 96, 54);
+
+  // 5. 封面绘制 (Squircle 圆角图片与倒角高光)
+  const coverSize = 400;
+  const coverX = (w - coverSize) / 2;
+  const coverY = 92;
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.generateMipmaps = false;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+
+  const img = getOrLoadCoverImage(item.cover, () => {
+    ctx.save();
+    drawRoundedRect(ctx, coverX, coverY, coverSize, coverSize, 28);
+    ctx.clip();
+    const loadedImg = getOrLoadCoverImage(item.cover, () => {});
+    if (loadedImg) {
+      ctx.drawImage(loadedImg, coverX, coverY, coverSize, coverSize);
+      const glassSheen = ctx.createLinearGradient(coverX, coverY, coverX + coverSize, coverY + coverSize);
+      glassSheen.addColorStop(0, "rgba(255, 255, 255, 0.22)");
+      glassSheen.addColorStop(0.3, "rgba(255, 255, 255, 0.05)");
+      glassSheen.addColorStop(0.6, "transparent");
+      glassSheen.addColorStop(1, "rgba(0, 0, 0, 0.65)");
+      ctx.fillStyle = glassSheen;
+      ctx.fillRect(coverX, coverY, coverSize, coverSize);
+    }
+    ctx.restore();
+    texture.needsUpdate = true;
+  });
+
+  ctx.save();
+  drawRoundedRect(ctx, coverX, coverY, coverSize, coverSize, 28);
+  ctx.clip();
+
+  if (img) {
+    ctx.drawImage(img, coverX, coverY, coverSize, coverSize);
+  } else {
+    const vinylGrad = ctx.createRadialGradient(
+      w / 2,
+      coverY + coverSize / 2,
+      12,
+      w / 2,
+      coverY + coverSize / 2,
+      coverSize / 2
+    );
+    vinylGrad.addColorStop(0, "#222228");
+    vinylGrad.addColorStop(0.3, "#141418");
+    vinylGrad.addColorStop(0.7, "#0c0c10");
+    vinylGrad.addColorStop(1, "#040406");
+    ctx.fillStyle = vinylGrad;
+    ctx.fillRect(coverX, coverY, coverSize, coverSize);
+
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.lineWidth = 2;
+    for (let r = 35; r < coverSize / 2; r += 18) {
+      ctx.beginPath();
+      ctx.arc(w / 2, coverY + coverSize / 2, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.85)" : "rgba(255, 255, 255, 0.35)";
+    ctx.beginPath();
+    ctx.arc(w / 2, coverY + coverSize / 2, 36, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 封面斜向镜面折射光
+  const glassSheen = ctx.createLinearGradient(coverX, coverY, coverX + coverSize, coverY + coverSize);
+  glassSheen.addColorStop(0, "rgba(255, 255, 255, 0.22)");
+  glassSheen.addColorStop(0.3, "rgba(255, 255, 255, 0.05)");
+  glassSheen.addColorStop(0.6, "transparent");
+  glassSheen.addColorStop(1, "rgba(0, 0, 0, 0.65)");
+  ctx.fillStyle = glassSheen;
+  ctx.fillRect(coverX, coverY, coverSize, coverSize);
+  ctx.restore();
+
+  // 6. 卡片大标题 (智能字号自适应，优先 Apple/苹方 高清字体栈)
+  ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.88)";
+  if (item.title.length > 24) {
+    ctx.font = "bold 24px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
+  } else if (item.title.length > 16) {
+    ctx.font = "bold 28px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
+  } else {
+    ctx.font = "bold 32px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
+  }
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+
+  const titleText =
+    item.title.length > 28 ? item.title.slice(0, 27) + "…" : item.title;
+  ctx.fillText(titleText, w / 2, 545);
+
+  // 7. 副标题与曲目计数
+  ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.72)" : "rgba(255, 255, 255, 0.45)";
+  ctx.font = "500 18px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
+  const subtitleText =
+    item.subtitle.length > 28 ? item.subtitle.slice(0, 27) + "…" : item.subtitle;
+  ctx.fillText(subtitleText, w / 2, 586);
+
+  // 8. 底部操作按键 (透明液态玻璃胶囊)
+  ctx.save();
+  const btnY = 648;
+  const btnW = 290;
+  const btnH = 58;
+  const btnX = (w - btnW) / 2;
+
+  drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 29);
+  if (isActive) {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.20)";
+  } else {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+  }
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.32)";
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "600 19px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const btnText =
+    item.type === "playlist"
+      ? "▶ 播放歌单 · 点击详情"
+      : "PLAY / 播放";
+  ctx.fillText(btnText, w / 2, btnY + btnH / 2);
+  ctx.restore();
+
+  texture.needsUpdate = true;
+  threeTextureCache.set(cacheKey, texture);
+  return texture;
 }
 
 // 辅助绘制圆角矩形
@@ -321,12 +536,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const contactShadowMeshRef = useRef<THREE.Mesh | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
-  // Virtualized Card Meshes & Canvases
+  // Virtualized Card Meshes
   interface CardSlot {
     mesh: THREE.Mesh;
-    canvas: HTMLCanvasElement;
-    ctx: CanvasRenderingContext2D;
-    texture: THREE.CanvasTexture;
     currentItemId: string | null;
     isActive: boolean;
     rhythmPhase: number;
@@ -343,250 +555,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       return next;
     });
   }, []);
-
-  // 烘焙单个卡片 CanvasTexture 纹理 (Apple 顶级灰度透明液态玻璃与高光倒角，离屏缓存秒级直出)
-  const renderCardCanvas = useCallback(
-    (
-      slot: CardSlot,
-      item: ShelfItem,
-      isActive: boolean,
-      isPlaying: boolean,
-      indexLabel: number
-    ) => {
-      const { ctx, canvas, texture } = slot;
-      const w = canvas.width; // 640
-      const h = canvas.height; // 800
-
-      const cacheKey = `${item.id}_${item.cover || "none"}_${isActive ? "1" : "0"}_${indexLabel}`;
-      let cachedOffscreen = offscreenCardCache.get(cacheKey);
-
-      if (!cachedOffscreen) {
-        // 创建离屏 Canvas 并烘焙静态背景与图文
-        cachedOffscreen = document.createElement("canvas");
-        cachedOffscreen.width = w;
-        cachedOffscreen.height = h;
-        const oCtx = cachedOffscreen.getContext("2d")!;
-
-        // 1. 卡片主体背景 - 极度通透的深黑灰液态玻璃底板
-        drawRoundedRect(oCtx, 14, 14, w - 28, h - 28, 36);
-        const bgGrad = oCtx.createLinearGradient(0, 0, w, h);
-        if (isActive) {
-          bgGrad.addColorStop(0, "rgba(34, 34, 42, 0.90)");
-          bgGrad.addColorStop(0.35, "rgba(18, 18, 24, 0.94)");
-          bgGrad.addColorStop(1, "rgba(6, 6, 8, 0.98)");
-        } else {
-          bgGrad.addColorStop(0, "rgba(20, 20, 26, 0.68)");
-          bgGrad.addColorStop(0.5, "rgba(10, 10, 14, 0.78)");
-          bgGrad.addColorStop(1, "rgba(3, 3, 5, 0.90)");
-        }
-        oCtx.fillStyle = bgGrad;
-        oCtx.fill();
-
-        // 2. 双层物理折射高光边缘 (硬件加速矢量双层描边，零 CPU shadowBlur 开销)
-        oCtx.save();
-        drawRoundedRect(oCtx, 14, 14, w - 28, h - 28, 36);
-        if (isActive) {
-          // 外层柔光描边
-          oCtx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-          oCtx.lineWidth = 6;
-          oCtx.stroke();
-
-          // 内层主高光边框
-          oCtx.strokeStyle = "rgba(255, 255, 255, 0.92)";
-          oCtx.lineWidth = 2.5;
-          oCtx.stroke();
-
-          // 顶边物理切光高光 (Top Rim Glint)
-          const topGlint = oCtx.createLinearGradient(50, 14, w - 50, 14);
-          topGlint.addColorStop(0, "rgba(255, 255, 255, 0)");
-          topGlint.addColorStop(0.5, "rgba(255, 255, 255, 1.0)");
-          topGlint.addColorStop(1, "rgba(255, 255, 255, 0)");
-          oCtx.strokeStyle = topGlint;
-          oCtx.lineWidth = 3.5;
-          oCtx.stroke();
-        } else {
-          oCtx.strokeStyle = "rgba(255, 255, 255, 0.14)";
-          oCtx.lineWidth = 1.8;
-          oCtx.stroke();
-        }
-        oCtx.restore();
-
-        // 3. 顶部序号徽标胶囊
-        oCtx.fillStyle = isActive ? "rgba(255, 255, 255, 0.18)" : "rgba(255, 255, 255, 0.06)";
-        drawRoundedRect(oCtx, 36, 36, 120, 36, 18);
-        oCtx.fill();
-        oCtx.strokeStyle = "rgba(255, 255, 255, 0.20)";
-        oCtx.lineWidth = 1.2;
-        oCtx.stroke();
-        oCtx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.65)";
-        oCtx.font = "bold 14px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif";
-        oCtx.textAlign = "center";
-        oCtx.textBaseline = "middle";
-        oCtx.fillText(`#${String(indexLabel + 1).padStart(2, "0")} · ${item.tag}`, 96, 54);
-
-        // 4. 右上角模式徽章 (PLAYLIST / LOSSLESS)
-        oCtx.fillStyle = isActive ? "rgba(255, 255, 255, 0.16)" : "rgba(255, 255, 255, 0.05)";
-        drawRoundedRect(oCtx, w - 156, 36, 120, 36, 18);
-        oCtx.fill();
-        oCtx.strokeStyle = "rgba(255, 255, 255, 0.18)";
-        oCtx.lineWidth = 1.2;
-        oCtx.stroke();
-        oCtx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.50)";
-        oCtx.font = "bold 13px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif";
-        oCtx.fillText(item.type === "playlist" ? "PLAYLIST" : "LOSSLESS", w - 96, 54);
-
-        // 5. 封面绘制 (Squircle 圆角图片与倒角高光)
-        const coverSize = 400;
-        const coverX = (w - coverSize) / 2;
-        const coverY = 92;
-
-        oCtx.save();
-        drawRoundedRect(oCtx, coverX, coverY, coverSize, coverSize, 28);
-        oCtx.clip();
-
-        const img = getOrLoadCoverImage(item.cover, () => {
-          offscreenCardCache.delete(cacheKey);
-          renderCardCanvas(slot, item, isActive, isPlaying, indexLabel);
-        });
-
-        if (img) {
-          oCtx.drawImage(img, coverX, coverY, coverSize, coverSize);
-        } else {
-          // 质感同心黑胶底图
-          const vinylGrad = oCtx.createRadialGradient(
-            w / 2,
-            coverY + coverSize / 2,
-            12,
-            w / 2,
-            coverY + coverSize / 2,
-            coverSize / 2
-          );
-          vinylGrad.addColorStop(0, "#222228");
-          vinylGrad.addColorStop(0.3, "#141418");
-          vinylGrad.addColorStop(0.7, "#0c0c10");
-          vinylGrad.addColorStop(1, "#040406");
-          oCtx.fillStyle = vinylGrad;
-          oCtx.fillRect(coverX, coverY, coverSize, coverSize);
-
-          oCtx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-          oCtx.lineWidth = 2;
-          for (let r = 35; r < coverSize / 2; r += 18) {
-            oCtx.beginPath();
-            oCtx.arc(w / 2, coverY + coverSize / 2, r, 0, Math.PI * 2);
-            oCtx.stroke();
-          }
-
-          oCtx.fillStyle = isActive ? "rgba(255, 255, 255, 0.85)" : "rgba(255, 255, 255, 0.35)";
-          oCtx.beginPath();
-          oCtx.arc(w / 2, coverY + coverSize / 2, 36, 0, Math.PI * 2);
-          oCtx.fill();
-        }
-
-        // 封面斜向镜面折射光
-        const glassSheen = oCtx.createLinearGradient(coverX, coverY, coverX + coverSize, coverY + coverSize);
-        glassSheen.addColorStop(0, "rgba(255, 255, 255, 0.22)");
-        glassSheen.addColorStop(0.3, "rgba(255, 255, 255, 0.05)");
-        glassSheen.addColorStop(0.6, "transparent");
-        glassSheen.addColorStop(1, "rgba(0, 0, 0, 0.65)");
-        oCtx.fillStyle = glassSheen;
-        oCtx.fillRect(coverX, coverY, coverSize, coverSize);
-        oCtx.restore();
-
-        // 6. 卡片大标题 (智能字号自适应，优先 Apple/苹方 高清字体栈)
-        oCtx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.88)";
-        if (item.title.length > 24) {
-          oCtx.font = "bold 24px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
-        } else if (item.title.length > 16) {
-          oCtx.font = "bold 28px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
-        } else {
-          oCtx.font = "bold 32px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
-        }
-        oCtx.textAlign = "center";
-        oCtx.textBaseline = "alphabetic";
-
-        const titleText =
-          item.title.length > 28 ? item.title.slice(0, 27) + "…" : item.title;
-        oCtx.fillText(titleText, w / 2, 545);
-
-        // 7. 副标题与曲目计数
-        oCtx.fillStyle = isActive ? "rgba(255, 255, 255, 0.72)" : "rgba(255, 255, 255, 0.45)";
-        oCtx.font = "500 18px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
-        const subtitleText =
-          item.subtitle.length > 28 ? item.subtitle.slice(0, 27) + "…" : item.subtitle;
-        oCtx.fillText(subtitleText, w / 2, 586);
-
-        // 8. 底部操作按键 (透明液态玻璃胶囊)
-        oCtx.save();
-        const btnY = 648;
-        const btnW = 290;
-        const btnH = 58;
-        const btnX = (w - btnW) / 2;
-
-        drawRoundedRect(oCtx, btnX, btnY, btnW, btnH, 29);
-        if (isActive) {
-          oCtx.fillStyle = "rgba(255, 255, 255, 0.20)";
-        } else {
-          oCtx.fillStyle = "rgba(255, 255, 255, 0.08)";
-        }
-        oCtx.fill();
-        oCtx.strokeStyle = "rgba(255, 255, 255, 0.32)";
-        oCtx.lineWidth = 1.8;
-        oCtx.stroke();
-
-        // 播放文字
-        oCtx.fillStyle = "#FFFFFF";
-        oCtx.font = "600 19px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
-        oCtx.textAlign = "center";
-        oCtx.textBaseline = "middle";
-        const btnText =
-          item.type === "playlist"
-            ? "▶ 播放歌单 · 点击详情"
-            : isActive && isPlaying
-            ? "PAUSE / 暂停"
-            : "PLAY / 播放";
-        oCtx.fillText(btnText, w / 2, btnY + btnH / 2);
-        oCtx.restore();
-
-        offscreenCardCache.set(cacheKey, cachedOffscreen);
-      }
-
-      // 从离屏缓存直接秒速 Blit 到 Slot Canvas
-      ctx.clearRect(0, 0, w, h);
-      ctx.drawImage(cachedOffscreen, 0, 0);
-
-      // 实时音频跳动律动柱 (仅在中心激活卡片播放时在顶部轻量绘制)
-      if (isActive) {
-        const coverSize = 400;
-        const coverY = 92;
-        const barCount = 9;
-        const barWidth = 5;
-        const barGap = 4;
-        const totalBarW = barCount * barWidth + (barCount - 1) * barGap;
-        const startX = (w - totalBarW) / 2;
-        const barBaseY = coverY + coverSize - 18;
-
-        for (let b = 0; b < barCount; b++) {
-          const speed = isPlaying ? 1.0 : 0.2;
-          const hVal = Math.sin(slot.rhythmPhase * speed + b * 0.85) * 14 + 16;
-          ctx.fillStyle = isPlaying ? "rgba(255, 255, 255, 0.95)" : "rgba(255, 255, 255, 0.4)";
-          drawRoundedRect(
-            ctx,
-            startX + b * (barWidth + barGap),
-            barBaseY - hVal,
-            barWidth,
-            hVal,
-            2.5
-          );
-          ctx.fill();
-        }
-      }
-
-      slot.currentItemId = item.id;
-      slot.isActive = isActive;
-      texture.needsUpdate = true;
-    },
-    []
-  );
 
   // 初始化 Three.js 3D 舞台
   useEffect(() => {
@@ -699,23 +667,12 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     particlesRef.current = particles;
     scene.add(particles);
 
-    // 9. 创建 11 张虚拟化卡片 Mesh (640×800 黄金高刷高清分辨率)
+    // 9. 创建 11 张虚拟化卡片 Mesh (Three.js 显存级持久化纹理直连)
     const cardGeo = new THREE.PlaneGeometry(1.95, 2.45);
     const slots: CardSlot[] = [];
 
     for (let i = 0; i < SHELF_MAX_RENDER; i++) {
-      const cardCanvas = document.createElement("canvas");
-      cardCanvas.width = 640;
-      cardCanvas.height = 800;
-      const ctx = cardCanvas.getContext("2d")!;
-
-      const texture = new THREE.CanvasTexture(cardCanvas);
-      texture.generateMipmaps = false;
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-
       const cardMat = new THREE.MeshStandardMaterial({
-        map: texture,
         roughness: 0.14,
         metalness: 0.20,
         transparent: true,
@@ -728,9 +685,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
       slots.push({
         mesh,
-        canvas: cardCanvas,
-        ctx,
-        texture,
         currentItemId: null,
         isActive: false,
         rhythmPhase: Math.random() * 10,
@@ -825,15 +779,17 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           slot.rhythmPhase += dt * 4.5;
           slot.floatPhase += dt * 1.8;
 
-          // 智能按需烘焙 Canvas (极大减少无谓的 CPU/GPU 绘制负担，保证 120fps 极速响应)
+          // 显存级持久化纹理秒级指针对接 (零 CPU Canvas 栅格化，零显存上载阻塞，真 120 FPS 满帧流转)
           const isSlotActive = absOffset < 0.5;
-          const needsRedraw =
-            slot.currentItemId !== item.id ||
-            slot.isActive !== isSlotActive ||
-            (isSlotActive && isAudioPlaying);
-
-          if (needsRedraw) {
-            renderCardCanvas(slot, item, isSlotActive, isAudioPlaying, itemIndex);
+          if (slot.currentItemId !== item.id || slot.isActive !== isSlotActive) {
+            const targetTex = getOrCreateCardTexture(item, isSlotActive, itemIndex);
+            const mat = slot.mesh.material as THREE.MeshStandardMaterial;
+            if (mat.map !== targetTex) {
+              mat.map = targetTex;
+              mat.needsUpdate = true;
+            }
+            slot.currentItemId = item.id;
+            slot.isActive = isSlotActive;
           }
 
           // 呼吸浮动位移微动效 (Breathing Float Amplitude)
@@ -942,11 +898,12 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       contactShadowMat.dispose();
       cardGeo.dispose();
       slots.forEach((s) => {
-        s.texture.dispose();
         (s.mesh.material as THREE.Material).dispose();
       });
+      threeTextureCache.forEach((tex) => tex.dispose());
+      threeTextureCache.clear();
     };
-  }, [isAudioPlaying, renderCardCanvas]);
+  }, [isAudioPlaying]);
 
   // 相对刻度滚动 (带音效)
   const scrollToRelative = useCallback((delta: number) => {
