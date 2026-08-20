@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useUIStore } from "@/store/uiStore";
 
 interface DateTimeSnapshot {
   time: {
@@ -38,10 +40,23 @@ const getDateTimeSnapshot = (): DateTimeSnapshot => {
 };
 
 export const AppleDateTime: React.FC = () => {
+  const isNavMenuOpen = useUIStore((state) => state.isNavMenuOpen);
   const [dateTime, setDateTime] = useState<DateTimeSnapshot>(EMPTY_DATE_TIME);
 
   useEffect(() => {
-    const updateDateTime = () => setDateTime(getDateTimeSnapshot());
+    const updateDateTime = () => {
+      const next = getDateTimeSnapshot();
+      setDateTime((prev) => {
+        if (
+          prev.time.hours === next.time.hours &&
+          prev.time.minutes === next.time.minutes &&
+          prev.dateStr === next.dateStr
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    };
     const timeout = window.setTimeout(updateDateTime, 0);
     const interval = window.setInterval(updateDateTime, 1000);
 
@@ -55,43 +70,41 @@ export const AppleDateTime: React.FC = () => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col items-center justify-center select-none"
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{
+        opacity: isNavMenuOpen ? 0.08 : 1,
+        scale: isNavMenuOpen ? 0.96 : 1,
+        filter: isNavMenuOpen ? "blur(3px)" : "blur(0px)",
+      }}
+      transition={{ duration: 0.22, ease: "easeOut" }}
+      className="flex flex-col items-center justify-center select-none font-sans"
     >
-      <div className="flex items-baseline gap-2">
-        <span
-          className="text-9xl font-light tracking-tighter text-white/90 italic"
-          style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-        >
+      {/* 统一高奢极细数字时钟 */}
+      <div className="flex items-baseline justify-center tracking-[-0.04em]">
+        <span className="text-[76px] font-extralight text-white/90 drop-shadow-[0_4px_24px_rgba(255,255,255,0.15)]">
           {time.hours}
         </span>
 
         <motion.span
-          animate={{ opacity: [0.1, 0.4, 0.1] }}
-          transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-          className="text-6xl font-extralight text-white/10 mx-2"
+          animate={{ opacity: [0.2, 0.7, 0.2] }}
+          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+          className="text-[64px] font-thin text-white/40 mx-2 select-none"
         >
-          /
+          :
         </motion.span>
 
-        <span
-          className="text-9xl font-light tracking-tighter text-white/90"
-          style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-        >
+        <span className="text-[76px] font-extralight text-white/90 drop-shadow-[0_4px_24px_rgba(255,255,255,0.15)]">
           {time.minutes}
         </span>
       </div>
 
-      <div className="mt-10 flex items-center gap-6">
-        <div className="h-[1px] w-12 bg-gradient-to-l from-white/10 to-transparent" />
-        <span
-          className="text-xs font-black tracking-[0.5em] text-white/30 uppercase italic"
-          style={{ fontFamily: "system-ui" }}
-        >
+      {/* 精致日期与渐变微细线 */}
+      <div className="mt-1 flex items-center gap-4">
+        <div className="h-[1px] w-8 bg-gradient-to-l from-white/20 to-transparent" />
+        <span className="text-[12px] font-medium tracking-[0.2em] text-white/50 uppercase">
           {dateStr}
         </span>
-        <div className="h-[1px] w-12 bg-gradient-to-r from-white/10 to-transparent" />
+        <div className="h-[1px] w-8 bg-gradient-to-r from-white/20 to-transparent" />
       </div>
     </motion.div>
   );

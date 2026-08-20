@@ -73,6 +73,11 @@ vi.mock("framer-motion", async () => {
       button: MotionButton,
       div: MotionDiv,
     },
+    useMotionValue: (initial: any) => ({
+      get: () => initial,
+      set: vi.fn(),
+    }),
+    useSpring: (value: any) => value,
   };
 });
 

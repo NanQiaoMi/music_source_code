@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 
 // Core Layout Modules (Static for fast initial paint)
 import { HomeView } from "@/components/layout/HomeView";
+import { Apple3DQueueDrawer } from "@/components/player/Apple3DQueueDrawer";
 import { PanelOrchestrator } from "@/components/layout/PanelOrchestrator";
 
 // Heavy Views (Lazy Loaded)
@@ -165,29 +166,24 @@ export default function Home() {
       <PlayerView />
 
       {/* ─── Global Visualization & HUD ───────────────────────────── */}
-      <VisualizationView />
+      {currentView === "visualization" && <VisualizationView />}
       <DesktopLyrics />
-      <FeatureButtonsContainer />
+      {currentView === "player" && (
+        <>
+          <FeatureButtonsContainer />
+          <GlassRadarWidget />
+          <MusicBackstory />
+        </>
+      )}
       <VirtualCursor />
       <GlassToastContainer />
-      <GlassRadarWidget />
       <MusicLibrarySyncProvider />
-      <MusicBackstory />
+      <Apple3DQueueDrawer />
 
       {/* ─── Feature Panels Orchestration ──────────────────────────── */}
       <PanelOrchestrator />
 
-      {/* ─── Apple-style hint ─────────────────────────────────────── */}
-      {currentView === "home" && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="absolute bottom-16 left-1/2 -translate-x-1/2 text-white/40 text-xs pointer-events-none"
-        >
-          点击卡片播放音乐
-        </motion.div>
-      )}
+
 
       {/* ─── Transition Overlay ───────────────────────────────────── */}
       {isTransitioning && (

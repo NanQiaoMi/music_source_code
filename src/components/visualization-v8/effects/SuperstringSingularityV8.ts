@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { EffectPlugin, RenderContext, AudioData } from "@/lib/visualization/types";
@@ -32,13 +33,40 @@ interface SuperstringState {
   smoothedTreble: number;
   smoothedEnergy: number;
   rotationAngle: number;
+  nebulaSprite: HTMLCanvasElement | null;
+  starSprite: HTMLCanvasElement | null;
+}
+
+/**
+ * Creates an offscreen sprite canvas with a soft radial glow
+ */
+function createRadialGlowSprite(size: number, colorStops: [number, string][]): HTMLCanvasElement | null {
+  if (typeof document === "undefined") return null;
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx || typeof ctx.createRadialGradient !== "function") return null;
+
+    const center = size / 2;
+    const grd = ctx.createRadialGradient(center, center, 0, center, center, center);
+    if (!grd) return null;
+    colorStops.forEach(([stop, color]) => grd.addColorStop(stop, color));
+
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, size, size);
+    return canvas;
+  } catch {
+    return null;
+  }
 }
 
 export const SuperstringSingularityV8Effect: EffectPlugin = {
   id: "superstring-singularity-v8",
   name: "量子超弦奇点",
   category: "space",
-  description: "纯白量子超维星云旋涡与 4,600+ 颗开普勒对数螺旋星尘流场的三维空间共振",
+  description: "纯白量子超维星云旋涡与 4,600+ 颗开普勒对数螺旋星尘流场的三维空间共振 (60FPS/120FPS 硬件批量渲染)",
   preferredEngine: "canvas",
 
   parameters: [
@@ -153,6 +181,19 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       });
     }
 
+    // 预渲染高性能离屏精灵纹理，杜绝逐帧创建 RadialGradient
+    const nebulaSprite = createRadialGlowSprite(128, [
+      [0, "rgba(235, 245, 255, 1)"],
+      [0.45, "rgba(180, 210, 245, 0.4)"],
+      [1, "rgba(0, 0, 0, 0)"],
+    ]);
+
+    const starSprite = createRadialGlowSprite(64, [
+      [0, "rgba(255, 255, 255, 1)"],
+      [0.25, "rgba(240, 250, 255, 0.6)"],
+      [1, "rgba(240, 250, 255, 0)"],
+    ]);
+
     const state: SuperstringState = {
       particles,
       nebulae,
@@ -161,6 +202,8 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       smoothedTreble: 0,
       smoothedEnergy: 0,
       rotationAngle: 0,
+      nebulaSprite,
+      starSprite,
     };
 
     ctx.private = { state };
@@ -206,7 +249,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
 
     const t = ctx.time || Date.now() * 0.0008;
 
-    // 1. Obsidian Void Background & Soft Ambient Haze
+    // 1. Obsidian Void Background & Ambient Haze
     g.save();
     g.fillStyle = "#010103";
     g.fillRect(0, 0, sw, sh);
@@ -221,7 +264,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     g.fillRect(0, 0, sw, sh);
     g.restore();
 
-    // 2. 3D Camera Projection
+    // 2. 3D Camera Projection Constants
     const fov = 580;
     const pitch = 0.70 + Math.sin(t * 0.2) * 0.03;
     const cosP = Math.cos(pitch);
@@ -230,57 +273,63 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     const cosR = Math.cos(state.rotationAngle);
     const sinR = Math.sin(state.rotationAngle);
 
-    // 3. 3D Flowing Spiral Nebula Gas Clouds
-    g.save();
-    g.globalCompositeOperation = "screen";
-    for (let i = 0; i < state.nebulae.length; i++) {
-      const neb = state.nebulae[i];
-      neb.angle += neb.speed * (1 + energy * 1.5 + bass * 1.2);
+    // 3. 3D Flowing Spiral Nebula Gas Clouds (Blitted via Pre-rendered Sprite)
+    if (state.nebulaSprite) {
+      g.save();
+      g.globalCompositeOperation = "screen";
+      const sprite = state.nebulaSprite;
 
-      const curR = neb.radius * singularityMass * (1 + Math.sin(t * 2 + neb.angle * 2) * 0.05);
-      const pxRaw = Math.cos(neb.angle) * curR;
-      const pyRaw = Math.sin(t * 1.5 + neb.radius * 0.02) * 15;
-      const pzRaw = Math.sin(neb.angle) * curR;
+      for (let i = 0; i < state.nebulae.length; i++) {
+        const neb = state.nebulae[i];
+        neb.angle += neb.speed * (1 + energy * 1.5 + bass * 1.2);
 
-      const rx = pxRaw * cosR - pzRaw * sinR;
-      const rz = pxRaw * sinR + pzRaw * cosR;
-      const ry = pyRaw * cosP - rz * sinP;
-      const finalZ = pyRaw * sinP + rz * cosP + fov;
+        const curR = neb.radius * singularityMass * (1 + Math.sin(t * 2 + neb.angle * 2) * 0.05);
+        const pxRaw = Math.cos(neb.angle) * curR;
+        const pyRaw = Math.sin(t * 1.5 + neb.radius * 0.02) * 15;
+        const pzRaw = Math.sin(neb.angle) * curR;
 
-      if (finalZ <= 10) continue;
-      const scale = fov / finalZ;
-      const screenX = cx + rx * scale;
-      const screenY = cy + ry * scale;
-      const nRadius = neb.size * scale * (1 + bass * 0.3);
+        const rx = pxRaw * cosR - pzRaw * sinR;
+        const rz = pxRaw * sinR + pzRaw * cosR;
+        const ry = pyRaw * cosP - rz * sinP;
+        const finalZ = pyRaw * sinP + rz * cosP + fov;
 
-      const nGrd = g.createRadialGradient(screenX, screenY, 0, screenX, screenY, nRadius);
-      const nAlpha = neb.alpha * (0.8 + energy * 0.6) * scale;
-      nGrd.addColorStop(0, `rgba(235, 245, 255, ${nAlpha.toFixed(3)})`);
-      nGrd.addColorStop(0.45, `rgba(180, 210, 245, ${(nAlpha * 0.4).toFixed(3)})`);
-      nGrd.addColorStop(1, "rgba(0,0,0,0)");
+        if (finalZ <= 10) continue;
+        const scale = fov / finalZ;
+        const screenX = cx + rx * scale;
+        const screenY = cy + ry * scale;
+        const nRadius = neb.size * scale * (1 + bass * 0.3);
+        const nDiameter = nRadius * 2;
+        const nAlpha = Math.min(0.25, neb.alpha * (0.8 + energy * 0.6) * scale);
 
-      g.fillStyle = nGrd;
-      g.beginPath();
-      g.arc(screenX, screenY, nRadius, 0, Math.PI * 2);
-      g.fill();
+        g.globalAlpha = nAlpha;
+        g.drawImage(sprite, screenX - nRadius, screenY - nRadius, nDiameter, nDiameter);
+      }
+      g.restore();
     }
-    g.restore();
 
-    // 4. 4,600+ 3D Keplerian Vortex Particles
+    // 4. 4,600+ Keplerian Vortex Particles (Hardware Batched Path Rendering)
     const activeCount = Math.min(stardustDensity, state.particles.length);
+    const speedMult = 1 + energy * 2.0 + bass * 1.5;
+    const waveAmp = 2 + bass * 8;
+    const vertAmp = 4 + treble * 12;
+
     g.save();
     g.globalCompositeOperation = "screen";
+
+    // 批量收集绘制指令，将数万次 draw calls 压缩为 2 次批量 GPU 渲染
+    g.beginPath();
+    g.strokeStyle = "rgba(235, 245, 255, 0.75)";
+    g.lineWidth = 1.1;
 
     for (let i = 0; i < activeCount; i++) {
       const p = state.particles[i];
-      const speedMult = (1 + energy * 2.0 + bass * 1.5);
       p.angle += p.speed * speedMult;
 
-      const waveDisp = Math.sin(t * 3 + p.angle * 4) * (2 + bass * 8);
+      const waveDisp = Math.sin(t * 3 + p.angle * 4) * waveAmp;
       const curR = (p.radius + waveDisp) * singularityMass;
 
       const pxRaw = Math.cos(p.angle) * curR;
-      const pyRaw = p.height + Math.sin(t * 2.5 + p.radius * 0.05) * (4 + treble * 12);
+      const pyRaw = p.height + Math.sin(t * 2.5 + p.radius * 0.05) * vertAmp;
       const pzRaw = Math.sin(p.angle) * curR;
 
       const rx = pxRaw * cosR - pzRaw * sinR;
@@ -298,29 +347,68 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       const streakEndX = screenX + Math.cos(tangentAngle) * streakLength;
       const streakEndY = screenY + Math.sin(tangentAngle) * streakLength * cosP;
 
-      const twinkle = Math.sin(t * p.twinkleSpeed + p.twinklePhase) * 0.5 + 0.5;
-      const pAlpha = Math.min(1, p.alpha * (0.55 + energy * 0.45 + twinkle * 0.35) * (scale * 0.95));
-      const pSize = Math.max(0.7, p.size * scale * (1 + treble * 0.8));
-
-      g.strokeStyle = `rgba(235, 245, 255, ${(pAlpha * 0.85).toFixed(3)})`;
-      g.lineWidth = pSize * 0.85;
-      g.beginPath();
       g.moveTo(screenX, screenY);
       g.lineTo(streakEndX, streakEndY);
-      g.stroke();
+    }
+    g.stroke();
 
-      g.fillStyle = `rgba(255, 255, 255, ${pAlpha.toFixed(3)})`;
-      g.beginPath();
+    // 批量填充星尘粒子圆点
+    g.beginPath();
+    g.fillStyle = "rgba(255, 255, 255, 0.9)";
+    for (let i = 0; i < activeCount; i++) {
+      const p = state.particles[i];
+      const waveDisp = Math.sin(t * 3 + p.angle * 4) * waveAmp;
+      const curR = (p.radius + waveDisp) * singularityMass;
+
+      const pxRaw = Math.cos(p.angle) * curR;
+      const pyRaw = p.height + Math.sin(t * 2.5 + p.radius * 0.05) * vertAmp;
+      const pzRaw = Math.sin(p.angle) * curR;
+
+      const rx = pxRaw * cosR - pzRaw * sinR;
+      const rz = pxRaw * sinR + pzRaw * cosR;
+      const ry = pyRaw * cosP - rz * sinP;
+      const finalZ = pyRaw * sinP + rz * cosP + fov;
+
+      if (finalZ <= 10) continue;
+      const scale = fov / finalZ;
+      const screenX = cx + rx * scale;
+      const screenY = cy + ry * scale;
+      const pSize = Math.max(0.7, p.size * scale * (1 + treble * 0.8));
+
+      g.moveTo(screenX + pSize, screenY);
       g.arc(screenX, screenY, pSize, 0, Math.PI * 2);
-      g.fill();
+    }
+    g.fill();
 
-      if (p.isBrightStar && pAlpha > 0.6) {
-        g.fillStyle = `rgba(240, 250, 255, ${(pAlpha * 0.45).toFixed(3)})`;
-        g.beginPath();
-        g.arc(screenX, screenY, pSize * 3.2, 0, Math.PI * 2);
-        g.fill();
+    // 亮星高光光晕快速贴图
+    if (state.starSprite) {
+      const starSprite = state.starSprite;
+      for (let i = 0; i < activeCount; i += 7) {
+        const p = state.particles[i];
+        if (!p.isBrightStar) continue;
+
+        const waveDisp = Math.sin(t * 3 + p.angle * 4) * waveAmp;
+        const curR = (p.radius + waveDisp) * singularityMass;
+        const pxRaw = Math.cos(p.angle) * curR;
+        const pyRaw = p.height + Math.sin(t * 2.5 + p.radius * 0.05) * vertAmp;
+        const pzRaw = Math.sin(p.angle) * curR;
+
+        const rx = pxRaw * cosR - pzRaw * sinR;
+        const rz = pxRaw * sinR + pzRaw * cosR;
+        const ry = pyRaw * cosP - rz * sinP;
+        const finalZ = pyRaw * sinP + rz * cosP + fov;
+
+        if (finalZ <= 10) continue;
+        const scale = fov / finalZ;
+        const screenX = cx + rx * scale;
+        const screenY = cy + ry * scale;
+        const glowSize = Math.max(8, p.size * scale * 6);
+
+        g.globalAlpha = 0.45;
+        g.drawImage(starSprite, screenX - glowSize / 2, screenY - glowSize / 2, glowSize, glowSize);
       }
     }
+
     g.restore();
 
     // 5. Compact Singularity Core
@@ -358,7 +446,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
   resize(_width: number, _height: number) {},
 
   destroy(ctx?: RenderContext) {
-    if (ctx?.private?.state) {
+    if (ctx && ctx.private) {
       ctx.private.state = null;
     }
   },
