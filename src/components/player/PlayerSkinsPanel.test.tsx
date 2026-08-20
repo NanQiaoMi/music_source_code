@@ -37,9 +37,13 @@ function installCanvasContextStub() {
 }
 
 vi.mock("framer-motion", () => ({
-  motion: {
-    div: "div",
-  },
+  motion: new Proxy(
+    {},
+    {
+      get: (_target, prop) => (typeof prop === "string" ? prop : "div"),
+    }
+  ),
+  AnimatePresence: ({ children }: any) => children,
 }));
 
 vi.mock("@/store/visualSettingsStore", () => ({

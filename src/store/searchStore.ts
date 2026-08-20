@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { Song } from "@/types/song";
+import { multiSourceResolver, SegmentedSearchResults } from "@/services/MultiSourceResolver";
 
 export type SearchType = "all" | "song" | "artist" | "album";
 
@@ -15,6 +16,7 @@ interface SearchState {
   query: string;
   searchType: SearchType;
   results: Song[];
+  segmentedResults: SegmentedSearchResults;
   recentSearches: string[];
   isSearching: boolean;
   isVoiceSearch: boolean;
@@ -89,10 +91,19 @@ function scoreSong(song: Song, query: string, searchType: SearchType): number {
   return score;
 }
 
+const initialSegmented: SegmentedSearchResults = {
+  netease: [],
+  qq: [],
+  kugou: [],
+  qishui: [],
+  all: [],
+};
+
 export const useSearchStore = create<SearchState>((set, get) => ({
   query: "",
   searchType: "all",
   results: [],
+  segmentedResults: initialSegmented,
   recentSearches: [],
   isSearching: false,
   isVoiceSearch: false,
@@ -109,32 +120,38 @@ export const useSearchStore = create<SearchState>((set, get) => ({
 
   setSearchType: (type) => {
     set({ searchType: type, page: 1 });
-    const { query, search } = get();
+    const { query, search, lastSearchSongs } = get();
     if (query) {
-      search(get().lastSearchSongs);
+      search(lastSearchSongs);
     }
   },
 
   search: (songs) => {
     const { query, searchType, filters, page, pageSize, lastSearchSongs } = get();
-    const corpus = songs.length > 0 ? songs : lastSearchSongs;
+    const localCorpus = songs && songs.length > 0 ? songs : lastSearchSongs;
 
     if (!query.trim()) {
-      set({ results: [], isSearching: false, totalResults: 0 });
+      set({
+        results: [],
+        segmentedResults: initialSegmented,
+        isSearching: false,
+        totalResults: 0,
+        lastSearchSongs: localCorpus,
+      });
       return;
     }
 
-    set({ isSearching: true });
     get().addToHistory(query);
 
     const lowerQuery = query.toLowerCase().trim();
 
-    let filtered = corpus
+    // 1. 本地即时同步匹配与排序 (0ms 极速响应)
+    let localFiltered = localCorpus
       .map((song) => ({ song, score: scoreSong(song, lowerQuery, searchType) }))
       .filter((item) => item.score > 0);
 
     if (filters.type !== "all") {
-      filtered = filtered.filter(({ song }) => {
+      localFiltered = localFiltered.filter(({ song }) => {
         switch (filters.type) {
           case "title":
             return includesValue(song.title, lowerQuery);
@@ -149,27 +166,101 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     }
 
     if (filters.source !== "all") {
-      filtered = filtered.filter(({ song }) => song.source === filters.source);
+      localFiltered = localFiltered.filter(({ song }) => song.source === filters.source);
     }
 
     if (filters.durationRange) {
-      filtered = filtered.filter(({ song }) => {
+      localFiltered = localFiltered.filter(({ song }) => {
         const dur = song.duration;
         return dur >= filters.durationRange!.min && dur <= filters.durationRange!.max;
       });
     }
 
-    const totalResults = filtered.length;
+    const totalResults = localFiltered.length;
     const start = (page - 1) * pageSize;
-    const pagedResults = filtered
+    const pagedResults = localFiltered
       .sort((a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title))
       .slice(start, start + pageSize)
       .map((item) => item.song);
 
-    set({ results: pagedResults, totalResults, isSearching: false, lastSearchSongs: corpus });
+    set({
+      results: pagedResults,
+      totalResults,
+      isSearching: false,
+      lastSearchSongs: localCorpus,
+    });
 
-    if (filtered.length > 0) {
+    if (localFiltered.length > 0) {
       get().addRecentSearch(query);
+    }
+
+    // 2. 浏览器环境下异步拉取全网多源结果并融合
+    if (typeof window !== "undefined") {
+      set({ isSearching: true });
+      multiSourceResolver
+        .searchOnlineMusicSegmented(query)
+        .then((seg) => {
+          if (get().query !== query) return;
+
+          const onlineFiltered = seg.all.map((song) => ({
+            song,
+            score: scoreSong(song, lowerQuery, searchType) || 50,
+          }));
+
+          const combinedMap = new Map<string, { song: Song; score: number }>();
+          localFiltered.forEach((item) => {
+            const key = `${item.song.title}-${item.song.artist}`.toLowerCase();
+            combinedMap.set(key, item);
+          });
+          onlineFiltered.forEach((item) => {
+            const key = `${item.song.title}-${item.song.artist}`.toLowerCase();
+            if (!combinedMap.has(key)) {
+              combinedMap.set(key, item);
+            }
+          });
+
+          let merged = Array.from(combinedMap.values());
+          if (filters.type !== "all") {
+            merged = merged.filter(({ song }) => {
+              switch (filters.type) {
+                case "title":
+                  return includesValue(song.title, lowerQuery);
+                case "artist":
+                  return includesValue(song.artist, lowerQuery);
+                case "album":
+                  return includesValue(song.album, lowerQuery);
+                default:
+                  return true;
+              }
+            });
+          }
+          if (filters.source !== "all") {
+            merged = merged.filter(({ song }) => song.source === filters.source);
+          }
+          if (filters.durationRange) {
+            merged = merged.filter(({ song }) => {
+              const dur = song.duration;
+              return dur >= filters.durationRange!.min && dur <= filters.durationRange!.max;
+            });
+          }
+
+          const newTotal = merged.length;
+          const newStart = (get().page - 1) * get().pageSize;
+          const newPaged = merged
+            .sort((a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title))
+            .slice(newStart, newStart + get().pageSize)
+            .map((item) => item.song);
+
+          set({
+            results: newPaged,
+            segmentedResults: seg,
+            totalResults: newTotal,
+            isSearching: false,
+          });
+        })
+        .catch(() => {
+          set({ isSearching: false });
+        });
     }
   },
 
@@ -177,6 +268,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     set({
       query: "",
       results: [],
+      segmentedResults: initialSegmented,
       isSearching: false,
       isVoiceSearch: false,
       page: 1,
@@ -207,20 +299,22 @@ export const useSearchStore = create<SearchState>((set, get) => ({
 
   removeRecentSearch: (query) => {
     set((state) => ({
-      recentSearches: state.recentSearches.filter((item) => item !== query),
+      recentSearches: state.recentSearches.filter(
+        (item) => item.toLowerCase() !== query.toLowerCase()
+      ),
     }));
   },
 
   setPage: (page) => {
-    set({ page: Math.max(1, page) });
-    const { query, search } = get();
-    if (query) {
-      search(get().lastSearchSongs);
-    }
+    set({ page });
+    const { search, lastSearchSongs } = get();
+    search(lastSearchSongs);
   },
 
   setPageSize: (size) => {
     set({ pageSize: size, page: 1 });
+    const { search, lastSearchSongs } = get();
+    search(lastSearchSongs);
   },
 
   setFilterType: (type) => {
@@ -228,6 +322,8 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       filters: { ...state.filters, type },
       page: 1,
     }));
+    const { search, lastSearchSongs } = get();
+    search(lastSearchSongs);
   },
 
   setDurationRange: (range) => {
@@ -235,6 +331,8 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       filters: { ...state.filters, durationRange: range },
       page: 1,
     }));
+    const { search, lastSearchSongs } = get();
+    search(lastSearchSongs);
   },
 
   setSourceFilter: (source) => {
@@ -242,14 +340,19 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       filters: { ...state.filters, source },
       page: 1,
     }));
+    const { search, lastSearchSongs } = get();
+    search(lastSearchSongs);
   },
 
   clearFilters: () => {
     set({ filters: { ...defaultFilters }, page: 1 });
+    const { search, lastSearchSongs } = get();
+    search(lastSearchSongs);
   },
 
   addToHistory: (query) => {
     if (!query.trim()) return;
+
     set((state) => {
       const filtered = state.searchHistory.filter(
         (item) => item.toLowerCase() !== query.toLowerCase()
@@ -265,14 +368,17 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   },
 
   addRecentCommand: (command) => {
-    if (!command.trim()) return;
-    set((state) => ({
-      recentCommands: [command, ...state.recentCommands.filter((item) => item !== command)].slice(
+    const trimmed = command.trim();
+    if (!trimmed) return;
+
+    set((state) => {
+      const nextCommands = [trimmed, ...state.recentCommands.filter((item) => item !== trimmed)].slice(
         0,
         5
-      ),
-    }));
+      );
+      return { recentCommands: nextCommands };
+    });
   },
 
-  setCommandFeedback: (message) => set({ commandFeedback: message }),
+  setCommandFeedback: (commandFeedback) => set({ commandFeedback }),
 }));

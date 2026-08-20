@@ -440,6 +440,36 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                     </div>
                   </section>
 
+                  {/* Halo Light Packs */}
+                  <section className="pt-4 border-t border-white/5">
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-purple-400" />
+                        <h3 className="text-lg font-semibold text-white/90">Halo 光晕音效与动态光环</h3>
+                      </div>
+                      <HaloPreviewCanvas skin={activeHalo} renderMode={haloRenderMode} />
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      {HALO_SKINS.map((halo) => (
+                        <motion.button
+                          key={halo.id}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => setActiveHaloId(halo.id)}
+                          className={`p-3.5 rounded-2xl border text-left transition-all ${
+                            activeHalo.id === halo.id
+                              ? "border-white/30 bg-white/10 shadow-md"
+                              : "border-white/5 bg-white/[0.02] hover:bg-white/[0.06]"
+                          }`}
+                        >
+                          <div className="w-6 h-1 rounded-full mb-2" style={{ background: halo.accent }} />
+                          <h4 className="text-sm font-medium text-white">{halo.name}</h4>
+                          <p className="text-xs text-white/40 truncate">{halo.description}</p>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </section>
+
                   {/* Custom Skins */}
                   {customSkins.length > 0 && (
                     <section>
@@ -766,6 +796,7 @@ function SidebarItem({ icon, label, isActive, onClick }: { icon: React.ReactNode
 function SkinCard({ skin, isActive, onClick, onDelete, isCustom }: { skin: PlayerSkin, isActive: boolean, onClick: () => void, onDelete?: () => void, isCustom?: boolean }) {
   return (
     <motion.div
+      data-player-skin-id={skin.id}
       whileHover={{ scale: 1.03, y: -2 }}
       whileTap={{ scale: 0.97 }}
       className="relative group cursor-pointer"

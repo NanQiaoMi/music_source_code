@@ -19,6 +19,7 @@ import {
   hasPlayableAudioSource,
   logHandledAudioWarning,
 } from "@/lib/audio/playableAudioSource";
+import { multiSourceResolver } from "@/services/MultiSourceResolver";
 
 // Module-level shared state to persist across hook unmounts/remounts
 let audioInstance: HTMLAudioElement | null = null;
@@ -368,6 +369,43 @@ export const useAudioPlayer = () => {
         } else {
           audioUrl = undefined;
           currentAudioUrlRef.current = null;
+        }
+      }
+
+      // 如果当前歌曲没有 audioUrl，自动调用 MultiSourceResolver 实时解析
+      if (!audioUrl && currentSong) {
+        try {
+          const resolved = await multiSourceResolver.resolvePlayableAudio({
+            id: currentSong.id,
+            title: currentSong.title,
+            artist: currentSong.artist,
+            album: currentSong.album,
+          });
+          if (resolved?.url) {
+            audioUrl = resolved.url;
+            currentSong.audioUrl = resolved.url;
+            currentSong.source = resolved.source;
+            currentAudioUrlRef.current = audioUrl;
+            usePlayerStore.getState().setCurrentSong({ ...currentSong });
+            useAudioStore.setState({ currentSong: { ...currentSong } });
+          }
+        } catch (e) {
+          console.warn("[useAudioPlayer] Failed to auto-resolve playable stream:", e);
+        }
+      }
+
+      // 如果当前歌曲没有歌词，自动拉取在线歌词
+      if (!currentSong.lyrics && currentSong.id) {
+        try {
+          const lrcData = await multiSourceResolver.fetchOnlineLyrics(currentSong.id, currentSong.source);
+          if (lrcData.lyrics) {
+            currentSong.lyrics = lrcData.lyrics;
+            currentSong.translationLyrics = lrcData.translationLyrics;
+            usePlayerStore.getState().setCurrentSong({ ...currentSong });
+            useAudioStore.setState({ currentSong: { ...currentSong } });
+          }
+        } catch (e) {
+          console.warn("[useAudioPlayer] Failed to fetch online lyrics:", e);
         }
       }
 

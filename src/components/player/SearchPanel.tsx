@@ -93,6 +93,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const clearQueue = useQueueStore((state) => state.clearQueue);
   const shuffleQueue = useQueueStore((state) => state.shuffleQueue);
   const playSong = useAudioStore((state) => state.playSong);
+  const playQueue = useAudioStore((state) => state.playQueue);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const nextSong = useAudioStore((state) => state.nextSong);
   const prevSong = useAudioStore((state) => state.prevSong);
@@ -216,13 +217,21 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     }
   }, [search, setIsVoiceSearch, setQuery, songs]);
 
+  const handlePlayAllResults = useCallback(() => {
+    if (results.length > 0) {
+      playQueue(results, 0);
+      onClose();
+    }
+  }, [results, playQueue, onClose]);
+
   const handlePlaySong = useCallback(
     (song: Song) => {
-      playSong(song);
-      setIsPlaying(true);
+      const currentList = results.length > 0 ? results : [song];
+      const idx = currentList.findIndex((s) => s.id === song.id);
+      playQueue(currentList, idx >= 0 ? idx : 0);
       onClose();
     },
-    [playSong, setIsPlaying, onClose]
+    [results, playQueue, onClose]
   );
 
   const handleAddNext = useCallback(
@@ -551,9 +560,20 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                 {/* Results List */}
                 {results.length > 0 && (
                   <div className="flex flex-col gap-1 pt-1">
-                    <div className="text-[11px] text-white/40 px-1 flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3" />
-                      搜索结果 ({totalResults})
+                    <div className="flex items-center justify-between text-[11px] text-white/40 px-1 py-0.5">
+                      <span className="flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3 text-emerald-400" />
+                        搜索结果 ({totalResults})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handlePlayAllResults}
+                        className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
+                        title="播放全部搜索结果并加入播放列表"
+                      >
+                        <Play className="w-3 h-3 fill-white" />
+                        播放全部
+                      </button>
                     </div>
                     <div className="space-y-1">
                       {results.map((song) => (
