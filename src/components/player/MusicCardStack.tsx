@@ -184,9 +184,10 @@ export const MusicCardStack: React.FC = () => {
   // 手势切歌联动
   useEffect(() => {
     if (gestureTriggered && lastGesture) {
-      if (lastGesture.type === "swipe_left") {
+      const gType = typeof lastGesture === "string" ? lastGesture : (lastGesture as any)?.type;
+      if (gType === "swipe_left") {
         handleNext();
-      } else if (lastGesture.type === "swipe_right") {
+      } else if (gType === "swipe_right") {
         handlePrev();
       }
     }
