@@ -9,6 +9,15 @@
 }
 
 html,
+body {
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  inset: 0;
+}
+
+html,
 body,
 button,
 input,
@@ -33,11 +42,6 @@ textarea {
     serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow: hidden;
-  width: 100vw;
-  height: 100vh;
-  position: fixed;
-  inset: 0;
 }
 
 /* Theme Variables - Dark Mode (Default) */
