@@ -8,6 +8,8 @@ import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { usePlaylistGroupStore, PlaylistGroup } from "@/store/playlistGroupStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
+import { useUserAccountStore } from "@/store/userAccountStore";
+import { useIntegratedAudioPipeline } from "@/lib/audio/useIntegratedAudioPipeline";
 import { useUIStore } from "@/store/uiStore";
 import {
   playTactileTick,
@@ -40,6 +42,9 @@ export type ShelfBrowseType = "playlists" | "tracks" | "favorites" | "recent" | 
 interface Shelf3DViewProps {
   isOpen?: boolean;
   className?: string;
+  defaultMode?: ShelfDisplayMode;
+  transparentBg?: boolean;
+  isDrawerMode?: boolean;
   onClose?: () => void;
 }
 
@@ -113,6 +118,9 @@ function drawRoundedRect(
 export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   isOpen = true,
   className = "",
+  defaultMode = "stage",
+  transparentBg = false,
+  isDrawerMode = false,
   onClose,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -128,13 +136,15 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const setQueue = useQueueStore((state) => state.setQueue);
   const addToQueue = useQueueStore((state) => state.addToQueue);
   const playlistGroups = usePlaylistGroupStore((state) => state.groups);
+  const userPlaylists = useUserAccountStore((state) => state.userPlaylists);
   const favorites = useFavoritesStore((state) => state.favorites);
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
   const isFavorite = useFavoritesStore((state) => state.isFavorite);
   const closePanel = useUIStore((state) => state.closePanel);
+  const { playTrackWithPipeline } = useIntegratedAudioPipeline();
 
   // Local state
-  const [displayMode, setDisplayMode] = useState<ShelfDisplayMode>("stage");
+  const [displayMode, setDisplayMode] = useState<ShelfDisplayMode>(defaultMode);
   const [browseType, setBrowseType] = useState<ShelfBrowseType>("playlists");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [showDetailPanel, setShowDetailPanel] = useState<boolean>(false);
@@ -193,6 +203,21 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       songs: effectiveRecent,
     });
 
+    // 3.5 多平台个人云歌单 (网易云/QQ/酷狗等)
+    userPlaylists.forEach((up) => {
+      const platformName = up.source === "netease" ? "网易云" : up.source === "qq" ? "QQ音乐" : up.source === "kugou" ? "酷狗" : "汽水音乐";
+      items.push({
+        id: `cloud-pl-${up.id}`,
+        type: "playlist",
+        title: up.name,
+        subtitle: `${up.trackCount || 0} 首曲目 · ${platformName}云端`,
+        cover: up.coverImgUrl || defaultCover,
+        tag: platformName,
+        trackCount: up.trackCount || 0,
+        songs: validSongs,
+      });
+    });
+
     // 4. 自定义与系统歌单组
     playlistGroups.forEach((group: PlaylistGroup, idx) => {
       const gSongs = (group.songs && group.songs.length > 0 ? group.songs : validSongs.slice(idx * 3, idx * 3 + 10)) as Song[];
@@ -209,7 +234,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     });
 
     return items;
-  }, [rawSongs, favorites, recentPlayedSongs, playlistGroups]);
+  }, [rawSongs, favorites, recentPlayedSongs, playlistGroups, userPlaylists]);
 
   // 构建单曲列表 (Tracks Mode)
   const trackItems = useMemo<ShelfItem[]>(() => {
@@ -476,14 +501,14 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         }
       }
 
-      // 7. 卡片大标题 (智能字号自适应，避免生硬截断)
+      // 7. 卡片大标题 (智能字号自适应，优先 Apple/苹方 高清字体栈)
       ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.88)";
       if (item.title.length > 24) {
-        ctx.font = "bold 38px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
+        ctx.font = "bold 38px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
       } else if (item.title.length > 16) {
-        ctx.font = "bold 44px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
+        ctx.font = "bold 44px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
       } else {
-        ctx.font = "bold 52px -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
+        ctx.font = "bold 52px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
       }
       ctx.textAlign = "center";
       ctx.textBaseline = "alphabetic";
@@ -494,7 +519,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
       // 8. 副标题与曲目计数
       ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.72)" : "rgba(255, 255, 255, 0.45)";
-      ctx.font = "500 30px -apple-system, sans-serif";
+      ctx.font = "500 28px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
       const subtitleText =
         item.subtitle.length > 28 ? item.subtitle.slice(0, 27) + "…" : item.subtitle;
       ctx.fillText(subtitleText, w / 2, 938);
@@ -521,7 +546,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
       // 播放文字
       ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 32px -apple-system, sans-serif";
+      ctx.font = "600 30px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       const btnText =
@@ -883,17 +908,17 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     if (cur.type === "playlist") {
       if (cur.songs && cur.songs.length > 0) {
         setQueue(cur.songs);
-        playSong(cur.songs[0]);
+        playTrackWithPipeline(cur.songs[0]);
       }
     } else if (cur.song) {
       if (currentPlayingSong?.id === cur.song.id) {
         if (togglePlay) togglePlay();
       } else {
-        playSong(cur.song);
         setQueue(activeShelfItems.map((item) => item.song || item.songs[0]).filter(Boolean));
+        playTrackWithPipeline(cur.song);
       }
     }
-  }, [activeShelfItems, activeIndex, currentPlayingSong, playSong, togglePlay, setQueue]);
+  }, [activeShelfItems, activeIndex, currentPlayingSong, playTrackWithPipeline, togglePlay, setQueue]);
 
   // 打开曲目二级详情瀑布流面板
   const handleOpenDetail = useCallback(() => {
@@ -999,7 +1024,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     if (selectedShelfItem?.songs && selectedShelfItem.songs.length > 0) {
       const shuffled = [...selectedShelfItem.songs].sort(() => Math.random() - 0.5);
       setQueue(shuffled);
-      playSong(shuffled[0]);
+      playTrackWithPipeline(shuffled[0]);
     }
   }, [selectedShelfItem, playSong, setQueue]);
 
@@ -1062,7 +1087,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`fixed inset-0 z-50 w-full h-full min-h-[520px] bg-[#050507] overflow-hidden select-none flex flex-col justify-between p-6 ${className}`}
+      className={`fixed inset-0 z-50 w-full h-full min-h-[520px] ${transparentBg ? "bg-transparent pointer-events-none" : "bg-[#050507]"} overflow-hidden select-none flex flex-col justify-between p-6 ${className}`}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMoveParallax}
       onMouseUp={handleMouseUp}
@@ -1075,21 +1100,21 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       />
 
       {/* ── 顶部控制栏 (Apple Monochrome Liquid Glass Top HUD) ── */}
-      <div className="relative z-20 flex items-center justify-between w-full max-w-7xl mx-auto px-5 py-2.5 bg-white/[0.06] border border-white/[0.18] rounded-3xl backdrop-blur-[56px] backdrop-saturate-[180%] shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1.5px_rgba(255,255,255,0.3)] shelf-hud-interactive">
+      <div className="relative z-20 flex items-center justify-between w-full max-w-7xl mx-auto px-5 py-2.5 bg-white/[0.06] border border-white/[0.18] rounded-3xl backdrop-blur-[56px] backdrop-saturate-[180%] shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1.5px_rgba(255,255,255,0.3)] shelf-hud-interactive gap-3.5 overflow-x-auto custom-scrollbar">
         {/* 左侧标题与模式 */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2.5 text-white">
-            <div className="w-9 h-9 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)]">
+        <div className="flex items-center gap-3.5 shrink-0">
+          <div className="flex items-center gap-2.5 text-white shrink-0">
+            <div className="w-9 h-9 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] shrink-0">
               <Disc3 className="w-4.5 h-4.5 text-white animate-spin-slow" />
             </div>
-            <div>
-              <h2 className="text-sm font-bold tracking-wide flex items-center gap-1.5 text-white">
+            <div className="shrink-0">
+              <h2 className="text-[13px] font-bold tracking-tight flex items-center gap-2 text-white whitespace-nowrap">
                 Mineradio 3D 空间唱片架
-                <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-white/15 text-white/90 border border-white/20 font-semibold">
+                <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/15 text-white/90 border border-white/20 font-semibold font-mono">
                   v0.2 SPATIAL
                 </span>
               </h2>
-              <p className="text-[11px] text-white/45">
+              <p className="text-[11px] text-white/45 tracking-tight whitespace-nowrap hidden lg:block">
                 透明液态玻璃 · 歌单/单曲双模 · PSP 机械齿轮触感
               </p>
             </div>
@@ -1099,20 +1124,23 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           <button
             type="button"
             onClick={toggleDisplayMode}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-2xl border border-white/15 bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]"
+            className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-2xl border border-white/15 bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] shrink-0 whitespace-nowrap cursor-pointer"
             title="按 M 键快速切换展示模式"
           >
-            <Layers className="w-3.5 h-3.5 text-white/90" />
+            <Layers className="w-3.5 h-3.5 text-white/90 shrink-0" />
             <span>
               {displayMode === "stage"
-                ? "舞台水平展开 (Stage)"
-                : "侧栏弧形透视 (Side Shelf)"}
+                ? "舞台水平展开"
+                : "侧栏弧形透视"}
+            </span>
+            <span className="text-[10px] text-white/40 font-mono hidden xl:inline">
+              ({displayMode === "stage" ? "Stage" : "Side"})
             </span>
           </button>
         </div>
 
-        {/* 中间主分类与歌单切换器 (Playlists vs Tracks vs Favorites vs Recent) */}
-        <div className="flex items-center gap-1.5 bg-black/40 p-1.5 rounded-2xl border border-white/10">
+        {/* 中间主分类与歌单切换器 (Playlists vs Tracks vs Favorites vs Recent vs Daily) */}
+        <div className="flex items-center gap-1 bg-black/40 p-1 rounded-2xl border border-white/10 shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -1120,13 +1148,13 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               setBrowseType("playlists");
               targetScrollRef.current = 0;
             }}
-            className={`flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl transition-all ${
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "playlists"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
             }`}
           >
-            <FolderHeart className="w-3.5 h-3.5" />
+            <FolderHeart className="w-3.5 h-3.5 shrink-0" />
             <span>全部歌单</span>
           </button>
 
@@ -1137,13 +1165,13 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               setBrowseType("tracks");
               targetScrollRef.current = 0;
             }}
-            className={`flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl transition-all ${
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "tracks"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
             }`}
           >
-            <Music2 className="w-3.5 h-3.5" />
+            <Music2 className="w-3.5 h-3.5 shrink-0" />
             <span>全部单曲</span>
           </button>
 
@@ -1154,13 +1182,13 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               setBrowseType("favorites");
               targetScrollRef.current = 0;
             }}
-            className={`flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl transition-all ${
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "favorites"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
             }`}
           >
-            <Heart className="w-3.5 h-3.5" />
+            <Heart className="w-3.5 h-3.5 shrink-0" />
             <span>我的收藏</span>
           </button>
 
@@ -1171,13 +1199,13 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               setBrowseType("recent");
               targetScrollRef.current = 0;
             }}
-            className={`flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl transition-all ${
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "recent"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
             }`}
           >
-            <Clock className="w-3.5 h-3.5" />
+            <Clock className="w-3.5 h-3.5 shrink-0" />
             <span>最近播放</span>
           </button>
 
@@ -1188,27 +1216,27 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               setBrowseType("daily");
               targetScrollRef.current = 0;
             }}
-            className={`flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-xl transition-all ${
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "daily"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
             <span>每日推荐</span>
           </button>
         </div>
 
         {/* 右侧搜索与退出 */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex items-center">
-            <Search className="w-3.5 h-3.5 text-white/40 absolute left-2.5" />
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="relative flex items-center shrink-0">
+            <Search className="w-3.5 h-3.5 text-white/40 absolute left-2.5 shrink-0 pointer-events-none" />
             <input
               type="text"
               placeholder="搜索歌单或曲目..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-40 focus:w-56 transition-all bg-white/10 border border-white/15 rounded-2xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/40 shadow-[inset_0_1px_1px_rgba(0,0,0,0.3)]"
+              className="w-36 md:w-44 focus:w-56 transition-all bg-white/10 border border-white/15 rounded-2xl pl-8 pr-7 py-1.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/40 shrink-0 shadow-[inset_0_1px_1px_rgba(0,0,0,0.3)]"
             />
             {searchQuery && (
               <button
@@ -1231,9 +1259,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                 closePanel("shelf3D");
               }
             }}
-            className="flex items-center gap-1 text-xs text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-2xl border border-white/20 backdrop-blur-md transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
+            className="flex items-center gap-1 text-xs font-semibold text-white/90 hover:text-white bg-white/10 hover:bg-white/20 px-3.5 py-1.5 rounded-2xl border border-white/20 backdrop-blur-md transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] shrink-0 whitespace-nowrap cursor-pointer"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-3.5 h-3.5 shrink-0" />
             <span>退出</span>
           </button>
         </div>
@@ -1342,10 +1370,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                     key={song.id || idx}
                     onClick={() => {
                       playCardSelectTick();
-                      playSong(song);
                       if (selectedShelfItem.songs) {
                         setQueue(selectedShelfItem.songs);
                       }
+                      playTrackWithPipeline(song);
                     }}
                     className={`flex items-center justify-between px-3.5 py-2 rounded-2xl border transition-all cursor-pointer ${
                       isCurrent
@@ -1426,7 +1454,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         </button>
 
         {/* 中间信息与播放控制 (包含微缩封面、标题与声波) */}
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4 md:gap-5 min-w-0">
           {/* 微缩封面与状态 */}
           <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-white/10 border border-white/20 shadow-md flex-shrink-0">
             <img
@@ -1436,20 +1464,20 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             />
           </div>
 
-          <div className="text-left min-w-[200px] max-w-[280px]">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-white/60">
+          <div className="text-left min-w-0 max-w-[240px] md:max-w-[280px]">
+            <div className="flex items-center gap-1.5 whitespace-nowrap">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-white/60 whitespace-nowrap">
                 {displayMode === "stage" ? "STAGE FOCUS" : "SIDE FOCUS"}
               </span>
               <span className="text-[10px] text-white/35">·</span>
-              <span className="text-[10px] text-white/50 truncate">
+              <span className="text-[10px] text-white/50 truncate whitespace-nowrap">
                 {currentActiveItem?.tag}
               </span>
             </div>
-            <h4 className="text-sm font-bold text-white leading-tight truncate">
+            <h4 className="text-sm font-bold text-white leading-tight truncate whitespace-nowrap">
               {currentActiveItem?.title || "未知项目"}
             </h4>
-            <p className="text-[11px] text-white/45 truncate">
+            <p className="text-[11px] text-white/45 truncate whitespace-nowrap">
               {currentActiveItem?.subtitle || "Mineradio Spatial Audio"}
             </p>
           </div>
@@ -1457,19 +1485,19 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           <button
             type="button"
             onClick={handlePlayCurrent}
-            className="flex items-center gap-2 bg-white text-black hover:bg-white/90 font-bold text-xs px-5 py-2.5 rounded-full shadow-[0_0_25px_rgba(255,255,255,0.35)] transition-all active:scale-95"
+            className="flex items-center gap-2 bg-white text-black hover:bg-white/90 font-bold text-xs px-4 md:px-5 py-2.5 rounded-full shadow-[0_0_25px_rgba(255,255,255,0.35)] transition-all active:scale-95 shrink-0 whitespace-nowrap cursor-pointer"
           >
             {currentActiveItem?.type === "song" &&
             currentPlayingSong?.id === currentActiveItem.song?.id &&
             isAudioPlaying ? (
               <>
-                <Pause className="w-3.5 h-3.5 fill-black" />
-                <span>暂停播放</span>
+                <Pause className="w-3.5 h-3.5 fill-black shrink-0" />
+                <span className="whitespace-nowrap">暂停播放</span>
               </>
             ) : (
               <>
-                <Play className="w-3.5 h-3.5 fill-black" />
-                <span>{currentActiveItem?.type === "playlist" ? "播放歌单" : "立即播放"}</span>
+                <Play className="w-3.5 h-3.5 fill-black shrink-0" />
+                <span className="whitespace-nowrap">{currentActiveItem?.type === "playlist" ? "播放歌单" : "立即播放"}</span>
               </>
             )}
           </button>
@@ -1477,10 +1505,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           <button
             type="button"
             onClick={handleOpenDetail}
-            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
+            className="flex items-center gap-1.5 text-xs font-semibold px-3.5 md:px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] shrink-0 whitespace-nowrap cursor-pointer"
           >
-            <ListMusic className="w-4 h-4 text-white/80" />
-            <span>曲目列表</span>
+            <ListMusic className="w-4 h-4 text-white/80 shrink-0" />
+            <span className="whitespace-nowrap">曲目列表</span>
           </button>
         </div>
 
