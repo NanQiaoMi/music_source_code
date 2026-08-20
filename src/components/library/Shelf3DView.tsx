@@ -1100,21 +1100,21 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       />
 
       {/* ── 顶部控制栏 (Apple Monochrome Liquid Glass Top HUD) ── */}
-      <div className="relative z-20 flex items-center justify-between w-full max-w-7xl mx-auto px-5 py-2.5 bg-white/[0.06] border border-white/[0.18] rounded-3xl backdrop-blur-[56px] backdrop-saturate-[180%] shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1.5px_rgba(255,255,255,0.3)] shelf-hud-interactive gap-3.5 overflow-x-auto custom-scrollbar">
+      <div className="relative z-20 flex items-center justify-between w-full max-w-7xl mx-auto px-3.5 sm:px-5 py-2 bg-white/[0.06] border border-white/[0.18] rounded-3xl backdrop-blur-[56px] backdrop-saturate-[180%] shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1.5px_rgba(255,255,255,0.3)] shelf-hud-interactive gap-2 sm:gap-3 overflow-hidden select-none">
         {/* 左侧标题与模式 */}
-        <div className="flex items-center gap-3.5 shrink-0">
-          <div className="flex items-center gap-2.5 text-white shrink-0">
-            <div className="w-9 h-9 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] shrink-0">
-              <Disc3 className="w-4.5 h-4.5 text-white animate-spin-slow" />
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 text-white shrink-0">
+            <div className="w-8 h-8 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] shrink-0">
+              <Disc3 className="w-4 h-4 text-white animate-spin-slow" />
             </div>
             <div className="shrink-0">
-              <h2 className="text-[13px] font-bold tracking-tight flex items-center gap-2 text-white whitespace-nowrap">
+              <h2 className="text-[13px] font-bold tracking-tight flex items-center gap-1.5 text-white whitespace-nowrap">
                 Mineradio 3D 空间唱片架
-                <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/15 text-white/90 border border-white/20 font-semibold font-mono">
+                <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/15 text-white/90 border border-white/20 font-semibold font-mono">
                   v0.2 SPATIAL
                 </span>
               </h2>
-              <p className="text-[11px] text-white/45 tracking-tight whitespace-nowrap hidden lg:block">
+              <p className="text-[11px] text-white/45 tracking-tight whitespace-nowrap hidden 2xl:block">
                 透明液态玻璃 · 歌单/单曲双模 · PSP 机械齿轮触感
               </p>
             </div>
@@ -1124,14 +1124,14 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           <button
             type="button"
             onClick={toggleDisplayMode}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-2xl border border-white/15 bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] shrink-0 whitespace-nowrap cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-2xl border border-white/15 bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] shrink-0 whitespace-nowrap cursor-pointer"
             title="按 M 键快速切换展示模式"
           >
             <Layers className="w-3.5 h-3.5 text-white/90 shrink-0" />
             <span>
               {displayMode === "stage"
-                ? "舞台水平展开"
-                : "侧栏弧形透视"}
+                ? "舞台展开"
+                : "侧栏透视"}
             </span>
             <span className="text-[10px] text-white/40 font-mono hidden xl:inline">
               ({displayMode === "stage" ? "Stage" : "Side"})
@@ -1140,7 +1140,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         </div>
 
         {/* 中间主分类与歌单切换器 (Playlists vs Tracks vs Favorites vs Recent vs Daily) */}
-        <div className="flex items-center gap-1 bg-black/40 p-1 rounded-2xl border border-white/10 shrink-0">
+        <div className="flex items-center gap-0.5 sm:gap-1 bg-black/40 p-1 rounded-2xl border border-white/10 shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -1148,7 +1148,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               setBrowseType("playlists");
               targetScrollRef.current = 0;
             }}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "playlists"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
@@ -1165,7 +1165,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               setBrowseType("tracks");
               targetScrollRef.current = 0;
             }}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "tracks"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
@@ -1182,7 +1182,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               setBrowseType("favorites");
               targetScrollRef.current = 0;
             }}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "favorites"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
@@ -1199,7 +1199,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               setBrowseType("recent");
               targetScrollRef.current = 0;
             }}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "recent"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
@@ -1216,7 +1216,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               setBrowseType("daily");
               targetScrollRef.current = 0;
             }}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "daily"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
@@ -1228,7 +1228,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         </div>
 
         {/* 右侧搜索与退出 */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <div className="relative flex items-center shrink-0">
             <Search className="w-3.5 h-3.5 text-white/40 absolute left-2.5 shrink-0 pointer-events-none" />
             <input
@@ -1236,7 +1236,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               placeholder="搜索歌单或曲目..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-36 md:w-44 focus:w-56 transition-all bg-white/10 border border-white/15 rounded-2xl pl-8 pr-7 py-1.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/40 shrink-0 shadow-[inset_0_1px_1px_rgba(0,0,0,0.3)]"
+              className="w-28 sm:w-36 md:w-44 focus:w-52 transition-all bg-white/10 border border-white/15 rounded-2xl pl-7 pr-7 py-1.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/40 shrink-0 shadow-[inset_0_1px_1px_rgba(0,0,0,0.3)]"
             />
             {searchQuery && (
               <button
@@ -1259,7 +1259,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                 closePanel("shelf3D");
               }
             }}
-            className="flex items-center gap-1 text-xs font-semibold text-white/90 hover:text-white bg-white/10 hover:bg-white/20 px-3.5 py-1.5 rounded-2xl border border-white/20 backdrop-blur-md transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] shrink-0 whitespace-nowrap cursor-pointer"
+            className="flex items-center gap-1 text-xs font-semibold text-white/90 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-2xl border border-white/20 backdrop-blur-md transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] shrink-0 whitespace-nowrap cursor-pointer"
           >
             <X className="w-3.5 h-3.5 shrink-0" />
             <span>退出</span>
