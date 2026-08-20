@@ -295,6 +295,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
   // Interaction & Physics refs
   const isDraggingRef = useRef(false);
+  const dragVelocityRef = useRef(0);
+  const lastDragTimeRef = useRef(0);
   const prevMouseXRef = useRef(0);
   const mouseDownPosRef = useRef({ x: 0, y: 0 });
   const hasDraggedRef = useRef(false);
@@ -726,8 +728,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       modeBlendRef.current += (targetModeBlendRef.current - modeBlendRef.current) * 0.08;
       const modeBlend = modeBlendRef.current;
 
-      // 滚动位置平滑弹簧衰减
-      currentScrollRef.current += (targetScrollRef.current - currentScrollRef.current) * 0.12;
+      // 滚动位置平滑弹簧衰减 (拖拽时高响应 0.26，释放后丝滑减速 0.14)
+      const lerpSpeed = isDraggingRef.current ? 0.26 : 0.14;
+      currentScrollRef.current += (targetScrollRef.current - currentScrollRef.current) * lerpSpeed;
       const scrollPos = currentScrollRef.current;
       const centerVirtualIndex = Math.round(scrollPos);
 
@@ -763,6 +766,13 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         particlesRef.current.rotation.y += 0.0006;
       }
 
+      // 地面接触光晕动态跟随
+      if (contactShadowMeshRef.current) {
+        const shadowX = THREE.MathUtils.lerp(0, -1.25, modeBlend);
+        contactShadowMeshRef.current.position.x = shadowX;
+        contactShadowMeshRef.current.position.z = THREE.MathUtils.lerp(0.9, 0.8, modeBlend);
+      }
+
       // 虚拟化卡片位置与姿态计算
       const currentItems = shelfItemsRef.current;
       const totalItems = currentItems.length;
@@ -787,43 +797,68 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           slot.rhythmPhase += dt * 4.5;
           slot.floatPhase += dt * 1.8;
 
-          // 重新烘焙 Canvas
+          // 智能按需烘焙 Canvas (极大减少无谓的 CPU/GPU 绘制负担，保证 120fps 极速响应)
           const isSlotActive = absOffset < 0.5;
-          renderCardCanvas(slot, item, isSlotActive, isAudioPlaying, itemIndex);
+          const needsRedraw =
+            slot.currentItemId !== item.id ||
+            slot.isActive !== isSlotActive ||
+            (isSlotActive && isAudioPlaying);
+
+          if (needsRedraw) {
+            renderCardCanvas(slot, item, isSlotActive, isAudioPlaying, itemIndex);
+          }
 
           // 呼吸浮动位移微动效 (Breathing Float Amplitude)
           const floatY = Math.sin(slot.floatPhase) * (isSlotActive ? 0.045 : 0.02);
           const floatZ = Math.cos(slot.floatPhase * 0.8) * (isSlotActive ? 0.03 : 0.01);
           const tiltRoll = Math.sin(slot.floatPhase * 0.6) * 0.015;
 
-          // === 1. 舞台展开模式 (Stage Shelf) 姿态参数 ===
+          // === 1. 舞台展开模式 (Stage Shelf) - 经典 Apple Cover Flow 空间弧面 ===
           const sign = Math.sign(fractionalOffset);
-          const stagePx =
-            absOffset < 0.01 ? 0 : sign * (1.75 + (absOffset - 1) * 1.38);
-          const stagePy = -absOffset * 0.06 + floatY;
-          const stagePz =
-            (absOffset < 0.5 ? 0.95 - absOffset * 0.6 : -0.28 - absOffset * 0.88) + floatZ;
-          const stageRotY =
-            absOffset < 0.01 ? 0 : -sign * (0.64 + Math.min(0.3, absOffset * 0.06));
-          const stageRotX = mp.y * 0.12 + tiltRoll;
-          const stageRotZ = -mp.x * 0.04;
-          const stageScale =
-            absOffset < 0.5
-              ? 1.24 - absOffset * 0.35
-              : Math.max(0.66, 0.95 - absOffset * 0.065);
+          const u = Math.min(absOffset, 1.0); // 核心中心展开区
+          const v = Math.max(0, absOffset - 1.0); // 远端延伸区
 
-          // === 2. 侧栏弧形透视模式 (Side Shelf) 姿态参数 ===
-          const sideRotY = -0.68 + fractionalOffset * 0.06;
-          const sideRotX = 0.14 - fractionalOffset * 0.02 + mp.y * 0.1 + tiltRoll;
-          const sideRotZ = -0.04;
-          const sidePx = -1.15 + fractionalOffset * 0.94;
-          const sidePy = -fractionalOffset * 0.44 + floatY;
-          const sidePz =
-            (absOffset < 0.5 ? 0.75 - absOffset * 0.4 : -absOffset * 0.96) + floatZ;
-          const sideScale =
-            absOffset < 0.5
-              ? 1.20 - absOffset * 0.28
-              : Math.max(0.64, 0.92 - absOffset * 0.06);
+          // X 轴位移：中心卡片固定在0，两侧卡片平滑滑出，保持均称呼吸间距
+          const stagePx = sign * (u * 1.80 + v * 1.15);
+          // Y 轴微下沉与浮动
+          const stagePy = -u * 0.02 - v * 0.03 + floatY;
+          // Z 轴深度：中心突出前置 (Z=1.10)，两侧平滑推入景深
+          const stagePz = (1.10 - u * 0.80 - v * 0.65) + floatZ;
+          // Y 轴旋转：中心 0 度正对，两侧平滑偏转 38 度 (0.66 rad)
+          const stageRotY = -sign * (u * 0.66 + v * 0.04);
+          const stageRotX = mp.y * 0.08 + tiltRoll;
+          const stageRotZ = -mp.x * 0.02;
+          // 缩放：中心 1.22x，两侧自然过渡
+          const stageScale = 1.22 - u * 0.28 - v * 0.055;
+
+          // === 2. 侧栏弧形透视模式 (Side Shelf) - 优雅的左焦点 3D 景深长廊 ===
+          let sidePx = 0;
+          let sidePz = 0;
+          let sideRotY = 0;
+
+          if (fractionalOffset <= 0) {
+            // 左侧（已播放/历史）：向左后方规整收束
+            const leftAbs = Math.abs(fractionalOffset);
+            const lu = Math.min(leftAbs, 1.0);
+            const lv = Math.max(0, leftAbs - 1.0);
+            sidePx = -1.25 - lu * 0.80 - lv * 0.50;
+            sidePz = (1.05 - lu * 0.72 - lv * 0.80) + floatZ;
+            sideRotY = 0.35 + lu * 0.15 + lv * 0.04;
+          } else {
+            // 右侧（未来待播）：沿水平弧形深景深优雅延展
+            const rightOff = fractionalOffset;
+            const ru = Math.min(rightOff, 1.0);
+            const rv = Math.max(0, rightOff - 1.0);
+            sidePx = -1.25 + ru * 1.40 + rv * 1.15;
+            sidePz = (1.05 - ru * 0.62 - rv * 0.72) + floatZ;
+            sideRotY = -0.28 - ru * 0.32 - rv * 0.04;
+          }
+
+          // 保持在统一水平线（彻底告别之前 -0.44 梯形下沉斜坡）
+          const sidePy = -Math.min(absOffset, 1.0) * 0.02 - Math.max(0, absOffset - 1.0) * 0.03 + floatY;
+          const sideRotX = 0.04 + mp.y * 0.08 + tiltRoll;
+          const sideRotZ = -0.01;
+          const sideScale = 1.20 - Math.min(absOffset, 1.0) * 0.26 - Math.max(0, absOffset - 1.0) * 0.05;
 
           // === 3. 混合插值 ===
           const finalPx = THREE.MathUtils.lerp(stagePx, sidePx, modeBlend);
@@ -938,18 +973,29 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     }
     isDraggingRef.current = true;
     hasDraggedRef.current = false;
+    dragVelocityRef.current = 0;
+    lastDragTimeRef.current = performance.now();
     prevMouseXRef.current = e.clientX;
     mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
   }, []);
 
   const handleMouseMoveParallax = useCallback((e: React.MouseEvent) => {
     if (isDraggingRef.current) {
+      const now = performance.now();
+      const dt = Math.max(1, now - lastDragTimeRef.current);
       const deltaX = e.clientX - prevMouseXRef.current;
+      
       if (Math.abs(e.clientX - mouseDownPosRef.current.x) > 4) {
         hasDraggedRef.current = true;
       }
+      
+      // 记录滑动速度 (用于惯性释放)
+      const instantVelocity = (-deltaX * 0.007) / (dt / 16.6);
+      dragVelocityRef.current = dragVelocityRef.current * 0.6 + instantVelocity * 0.4;
+      lastDragTimeRef.current = now;
       prevMouseXRef.current = e.clientX;
-      targetScrollRef.current -= deltaX * 0.012;
+      
+      targetScrollRef.current -= deltaX * 0.0075;
     }
 
     if (containerRef.current) {
@@ -965,7 +1011,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     (e: React.MouseEvent) => {
       if (isDraggingRef.current) {
         isDraggingRef.current = false;
-        targetScrollRef.current = Math.round(targetScrollRef.current);
+        // 惯性释放衰减
+        const fling = Math.max(-2.5, Math.min(2.5, dragVelocityRef.current * 2.2));
+        targetScrollRef.current = Math.round(targetScrollRef.current + fling);
+        dragVelocityRef.current = 0;
       }
 
       // 如果未发生明显拖拽，则触发 3D 卡片精准 Raycast 射线拾取
