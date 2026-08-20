@@ -252,3 +252,23 @@ textarea {
 .animate-shimmer {
   animation: shimmer 1.5s infinite;
 }
+
+/* Turntable Vinyl Spin Animations */
+@keyframes vinyl-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.vinyl-rotating-active {
+  animation: vinyl-spin 6s linear infinite !important;
+  will-change: transform;
+}
+
+.vinyl-rotating-idle {
+  animation: vinyl-spin 14s linear infinite !important;
+  will-change: transform;
+}

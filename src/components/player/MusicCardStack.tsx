@@ -13,12 +13,12 @@ import { useIntegratedAudioPipeline } from "@/lib/audio/useIntegratedAudioPipeli
 import { Song } from "@/types/song";
 import Link from "next/link";
 
-// Apple 顶级 Cover Flow 物理弹簧配置
+// Apple 顶级 Cover Flow 物理弹簧配置 (极速响应 + 丝滑惯性)
 const COVER_FLOW_SPRING = {
   type: "spring" as const,
-  stiffness: 280,
-  damping: 28,
-  mass: 0.8,
+  stiffness: 320,
+  damping: 30,
+  mass: 0.7,
 };
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
@@ -44,7 +44,7 @@ export const MusicCardStack: React.FC = () => {
   // 纯硬件层 Framer Motion 物理弹簧（零 React 重渲染）
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-  const tiltSpringConfig = { stiffness: 350, damping: 32 };
+  const tiltSpringConfig = { stiffness: 380, damping: 35 };
   const smoothTiltX = useSpring(mouseY, tiltSpringConfig);
   const smoothTiltY = useSpring(mouseX, tiltSpringConfig);
 
@@ -65,11 +65,11 @@ export const MusicCardStack: React.FC = () => {
   const visibleCards = useMemo(() => {
     if (displaySongs.length === 0) return [];
     const cards = [];
+    const count = displaySongs.length;
 
     for (let i = -VISIBLE_HALF; i <= VISIBLE_HALF; i++) {
       const targetIndex = centerIndex + i;
-      const displayIndex =
-        ((targetIndex % displaySongs.length) + displaySongs.length) % displaySongs.length;
+      const displayIndex = ((targetIndex % count) + count) % count;
       const song = displaySongs[displayIndex];
 
       if (song) {
@@ -77,6 +77,7 @@ export const MusicCardStack: React.FC = () => {
           ...song,
           displayIndex,
           offset: i,
+          slotKey: `coverflow_slot_${i}`,
         });
       }
     }
@@ -247,13 +248,9 @@ export const MusicCardStack: React.FC = () => {
           const opacity = isCenter ? 1 : Math.max(0.28, 0.72 - absOffset * 0.16);
           const zIndex = 30 - absOffset;
 
-          // 使用稳定 key (曲库丰富时绑定真实歌曲 id 实现流畅跨槽平滑滑动，曲库极少时绑定 slot 保证绝对唯一)
-          const cardKey =
-            displaySongs.length > VISIBLE_HALF * 2 ? card.id : `${card.id}-slot-${card.offset}`;
-
           return (
             <motion.div
-              key={cardKey}
+              key={card.slotKey}
               onClick={() => {
                 if (isCenter) {
                   handlePlayCard(card, card.displayIndex);
@@ -295,7 +292,7 @@ export const MusicCardStack: React.FC = () => {
                 onMouseMove={isCenter ? handleMouseMove : undefined}
                 onMouseLeave={isCenter ? handleMouseLeaveCard : undefined}
               >
-                {/* ─── 1. 实体拟真黑胶唱片 (同轴相对绑定 305x305px, 抽拉 150px) ─── */}
+                {/* ─── 1. 实体拟真黑胶唱片 (同轴相对绑定 305x305px, 抽拉 150px, 居中持续旋转) ─── */}
                 <motion.div
                   initial={false}
                   animate={{
@@ -321,11 +318,16 @@ export const MusicCardStack: React.FC = () => {
                   }}
                   className="rounded-full pointer-events-none"
                 >
-                  {/* 匀速旋转黑胶本体 */}
+                  {/* 唱片持续转动 (播放时 6s 快速旋转，闲置时 14s 优雅转动) */}
                   <div
                     className={`relative w-full h-full rounded-full flex items-center justify-center ${
-                      isPlayingThis ? "animate-[spin_8s_linear_infinite]" : ""
+                      isCenter
+                        ? isPlayingThis
+                          ? "vinyl-rotating-active"
+                          : "vinyl-rotating-idle"
+                        : ""
                     }`}
+                    style={{ willChange: "transform" }}
                   >
                     {/* 同心圆反光凹槽 (Grooves) */}
                     <div className="absolute inset-3 rounded-full border border-white/[0.04]" />
@@ -358,14 +360,12 @@ export const MusicCardStack: React.FC = () => {
                   </div>
                 </motion.div>
 
-                {/* ─── 2. 1:1 正方形黑胶封套 (LP Sleeve Jacket - 带 GPU 原生硬件倒影) ─── */}
+                {/* ─── 2. 1:1 正方形黑胶封套 (LP Sleeve Jacket) ─── */}
                 <div
                   className="relative rounded-[22px] overflow-hidden bg-[#1c1c1e] shadow-[0_32px_80px_rgba(0,0,0,0.85)] border border-white/[0.14] z-10 transition-shadow duration-300 group-hover:shadow-[0_40px_96px_rgba(0,0,0,0.95)]"
                   style={{
                     width: SLEEVE_SIZE,
                     height: SLEEVE_SIZE,
-                    WebkitBoxReflect:
-                      "below 10px linear-gradient(transparent, transparent 55%, rgba(0,0,0,0.45) 100%)",
                   }}
                 >
                   {/* 左侧书脊折光微线 */}
@@ -441,6 +441,26 @@ export const MusicCardStack: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* ─── 3. 焦点卡片 GPU 硬件倒影 (零软件重绘开销) ─── */}
+                {isCenter && (
+                  <div
+                    className="absolute -bottom-[56px] left-2 right-2 h-[50px] rounded-[22px] overflow-hidden opacity-30 pointer-events-none scale-y-[-1] blur-[1px]"
+                    style={{
+                      maskImage: "linear-gradient(to top, rgba(0,0,0,0.85), transparent 75%)",
+                      WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.85), transparent 75%)",
+                    }}
+                  >
+                    <Image
+                      src={card.cover || DEFAULT_COVER_SRC}
+                      alt="reflection"
+                      fill
+                      sizes="360px"
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                )}
               </motion.div>
             </motion.div>
           );
