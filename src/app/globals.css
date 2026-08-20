@@ -335,3 +335,45 @@ textarea {
   animation: orb-float-4 20s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   will-change: transform;
 }
+
+/* Vinyl Specular Conic Light Sweeping */
+@keyframes conic-sweep {
+  0% {
+    transform: rotate(0deg);
+    opacity: 0.28;
+  }
+  50% {
+    transform: rotate(180deg);
+    opacity: 0.36;
+  }
+  100% {
+    transform: rotate(360deg);
+    opacity: 0.28;
+  }
+}
+
+.animate-conic-sweep-active {
+  animation: conic-sweep 6s linear infinite !important;
+  will-change: transform, opacity;
+}
+
+.animate-conic-sweep-idle {
+  animation: conic-sweep 14s linear infinite !important;
+  will-change: transform, opacity;
+}
+
+/* Floor Caustics Water Ripple Shimmer */
+@keyframes caustic-shimmer {
+  0%, 100% {
+    opacity: 0.035;
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    opacity: 0.065;
+    transform: scale(1.04) translateY(-2px);
+  }
+}
+
+.animate-caustic-shimmer {
+  animation: caustic-shimmer 8s ease-in-out infinite;
+}

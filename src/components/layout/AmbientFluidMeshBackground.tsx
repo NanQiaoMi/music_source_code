@@ -148,7 +148,19 @@ export const AmbientFluidMeshBackground: React.FC = () => {
         }}
       />
 
-      {/* ─── 4. Apple Studio 级微粒胶片噪点 (2.5% Film Grain Texture) ─── */}
+      {/* ─── 4. 屏幕四周极光琉璃微溢光 (1.5% Prismatic Screen Bleed) ─── */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-colors duration-[1200ms] ease-out"
+        style={{
+          boxShadow: `
+            inset 0 0 140px 10px rgba(0,0,0,0.85),
+            inset 0 0 32px 1px ${primary}18,
+            inset 0 0 16px 1px ${secondary}12
+          `,
+        }}
+      />
+
+      {/* ─── 5. Apple Studio 级微粒胶片噪点 (2.5% Film Grain Texture) ─── */}
       <div
         className="absolute inset-0 opacity-[0.028] pointer-events-none mix-blend-overlay"
         style={{

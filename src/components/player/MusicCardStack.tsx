@@ -38,6 +38,7 @@ export const MusicCardStack: React.FC = () => {
   }, [songs, recentPlayed]);
 
   const [centerIndex, setCenterIndex] = useState(0);
+  const [isCenterHovered, setIsCenterHovered] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isWheelingRef = useRef(false);
 
@@ -135,7 +136,12 @@ export const MusicCardStack: React.FC = () => {
     mouseY.set(-((y - centerY) / centerY) * 7.5);
   }, [mouseX, mouseY]);
 
+  const handleMouseEnterCard = useCallback(() => {
+    setIsCenterHovered(true);
+  }, []);
+
   const handleMouseLeaveCard = useCallback(() => {
+    setIsCenterHovered(false);
     mouseX.set(0);
     mouseY.set(0);
   }, [mouseX, mouseY]);
@@ -191,10 +197,9 @@ export const MusicCardStack: React.FC = () => {
   // 手势切歌联动
   useEffect(() => {
     if (gestureTriggered && lastGesture) {
-      const gType = typeof lastGesture === "string" ? lastGesture : (lastGesture as any)?.type;
-      if (gType === "swipe_left") {
+      if (lastGesture.type === "swipe_left") {
         handleNext();
-      } else if (gType === "swipe_right") {
+      } else if (lastGesture.type === "swipe_right") {
         handlePrev();
       }
     }
@@ -239,6 +244,11 @@ export const MusicCardStack: React.FC = () => {
       className="relative w-full h-full flex items-center justify-center select-none overflow-visible"
       style={{ perspective: 1200 }}
     >
+      {/* ─── 舞台漫反射水波与极光地底 (Living Specular Stage Floor) ─── */}
+      <div className="absolute -bottom-[80px] w-[900px] h-[200px] rounded-full pointer-events-none overflow-hidden opacity-40 blur-[40px] transform-gpu">
+        <div className="w-full h-full bg-radial-gradient from-white/20 via-white/5 to-transparent animate-caustic-shimmer" />
+      </div>
+
       <div
         className="relative flex items-center justify-center w-full"
         style={{
@@ -256,9 +266,18 @@ export const MusicCardStack: React.FC = () => {
             const x = card.offset * 195;
             const z = isCenter ? 50 : -absOffset * 110;
             const rotateY = isCenter ? 0 : card.offset < 0 ? 38 : -38;
-            const scale = isCenter ? 1.18 : Math.max(0.64, 0.82 - absOffset * 0.08);
+            const scale = isCenter
+              ? isCenterHovered
+                ? 1.20
+                : 1.18
+              : Math.max(0.64, 0.82 - absOffset * 0.08);
             const opacity = isCenter ? 1 : Math.max(0.28, 0.72 - absOffset * 0.16);
             const zIndex = 30 - absOffset;
+
+            // 电影级阶梯景深微虚化 (两翼大光圈虚化 0.8px ~ 2.5px)
+            const depthBlur = isCenter
+              ? "none"
+              : `blur(${Math.min(2.5, absOffset * 0.65).toFixed(1)}px)`;
 
             return (
               <motion.div
@@ -282,6 +301,7 @@ export const MusicCardStack: React.FC = () => {
                   zIndex,
                   transformStyle: "preserve-3d",
                   cursor: "pointer",
+                  filter: depthBlur,
                 }}
                 initial={{
                   x: card.offset > 0 ? x + 100 : x - 100,
@@ -315,13 +335,14 @@ export const MusicCardStack: React.FC = () => {
                     rotateY: isCenter ? smoothTiltY : 0,
                   }}
                   onMouseMove={isCenter ? handleMouseMove : undefined}
+                  onMouseEnter={isCenter ? handleMouseEnterCard : undefined}
                   onMouseLeave={isCenter ? handleMouseLeaveCard : undefined}
                 >
-                  {/* ─── 1. 实体拟真黑胶唱片 (同轴相对绑定 305x305px, 抽拉 150px, 居中持续旋转) ─── */}
+                  {/* ─── 1. 实体拟真黑胶唱片 (305x305px, 悬停抽出 165px, 居中顺时针扫光旋转) ─── */}
                   <motion.div
                     initial={false}
                     animate={{
-                      x: isCenter ? 150 : 0,
+                      x: isCenter ? (isCenterHovered ? 165 : 150) : 0,
                       opacity: isCenter ? 1 : 0,
                       scale: isCenter ? 1 : 0.88,
                     }}
@@ -329,7 +350,7 @@ export const MusicCardStack: React.FC = () => {
                       type: "spring",
                       stiffness: 240,
                       damping: 24,
-                      delay: isCenter ? 0.08 : 0,
+                      delay: isCenter ? 0.06 : 0,
                     }}
                     style={{
                       position: "absolute",
@@ -338,7 +359,7 @@ export const MusicCardStack: React.FC = () => {
                       width: DISC_SIZE,
                       height: DISC_SIZE,
                       zIndex: 0,
-                      boxShadow: "0 18px 48px rgba(0,0,0,0.92), inset 0 0 0 2px rgba(255,255,255,0.06)",
+                      boxShadow: "0 20px 52px rgba(0,0,0,0.94), inset 0 0 0 2px rgba(255,255,255,0.08)",
                       background:
                         "radial-gradient(circle, #1a1a1a 0%, #111111 25%, #222222 26%, #0d0d0d 45%, #1f1f1f 46%, #080808 65%, #1a1a1a 66%, #050505 100%)",
                     }}
@@ -355,24 +376,33 @@ export const MusicCardStack: React.FC = () => {
                       }`}
                       style={{ willChange: "transform" }}
                     >
-                      {/* 同心圆反光凹槽 (Grooves) */}
-                      <div className="absolute inset-3 rounded-full border border-white/[0.04]" />
-                      <div className="absolute inset-8 rounded-full border border-white/[0.03]" />
-                      <div className="absolute inset-14 rounded-full border border-white/[0.04]" />
-                      <div className="absolute inset-20 rounded-full border border-white/[0.03]" />
-                      <div className="absolute inset-28 rounded-full border border-white/[0.05]" />
+                      {/* 超精细 8 圈物理同心折射凹槽 (8-Ring Vinyl Micro-Grooves) */}
+                      <div className="absolute inset-2.5 rounded-full border border-white/[0.045]" />
+                      <div className="absolute inset-6 rounded-full border border-white/[0.03]" />
+                      <div className="absolute inset-10 rounded-full border border-white/[0.04]" />
+                      <div className="absolute inset-15 rounded-full border border-white/[0.035]" />
+                      <div className="absolute inset-20 rounded-full border border-white/[0.05]" />
+                      <div className="absolute inset-25 rounded-full border border-white/[0.03]" />
+                      <div className="absolute inset-30 rounded-full border border-white/[0.04]" />
+                      <div className="absolute inset-36 rounded-full border border-white/[0.06]" />
 
-                      {/* 彩虹反光遮罩 (Specular Conic Shine) */}
+                      {/* 顺时针物理真实多角度彩虹高光扫光 (Specular Conic Light Sweeping) */}
                       <div
-                        className="absolute inset-0 rounded-full opacity-25 pointer-events-none"
+                        className={`absolute inset-0 rounded-full pointer-events-none ${
+                          isCenter
+                            ? isPlayingThis
+                              ? "animate-conic-sweep-active"
+                              : "animate-conic-sweep-idle"
+                            : ""
+                        }`}
                         style={{
                           background:
-                            "conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.35) 60deg, transparent 120deg, transparent 180deg, rgba(255,255,255,0.35) 240deg, transparent 300deg)",
+                            "conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.38) 60deg, transparent 120deg, transparent 180deg, rgba(255,255,255,0.38) 240deg, transparent 300deg)",
                         }}
                       />
 
-                      {/* 黑胶中心圆形专辑贴图 */}
-                      <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-[#1c1c1e] shadow-inner">
+                      {/* 黑胶中心圆形专辑贴图 + 烫银盘芯微圆环 */}
+                      <div className="relative w-28 h-28 rounded-full overflow-hidden border-[3px] border-[#222226] shadow-[0_0_12px_rgba(0,0,0,0.8),inset_0_0_0_1.5px_rgba(255,255,255,0.22)]">
                         <Image
                           src={card.cover || DEFAULT_COVER_SRC}
                           alt="label"
@@ -381,7 +411,7 @@ export const MusicCardStack: React.FC = () => {
                           className="object-cover"
                           unoptimized
                         />
-                        <div className="absolute inset-0 m-auto w-4 h-4 rounded-full bg-[#111] border border-white/20 shadow-md" />
+                        <div className="absolute inset-0 m-auto w-4 h-4 rounded-full bg-[#111] border border-white/30 shadow-md" />
                       </div>
                     </div>
                   </motion.div>
@@ -411,7 +441,7 @@ export const MusicCardStack: React.FC = () => {
                       unoptimized
                     />
 
-                    {/* 焦点封套：底部无感双层渐变 + 歌名/歌手 */}
+                    {/* 焦点封套：底部无感双层渐变 + 高奢方正小标宋排版 */}
                     {isCenter ? (
                       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-6 z-20">
                         {/* 顶部播放波形 与 ↗ 沉浸详情 徽标 */}
@@ -448,9 +478,9 @@ export const MusicCardStack: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* 底部歌名与歌手 */}
+                        {/* 底部歌名与歌手 (方正小标宋高奢排版) */}
                         <div className="min-w-0 text-left">
-                          <h3 className="text-[20px] font-bold text-white tracking-tight truncate leading-snug">
+                          <h3 className="text-[20px] font-bold text-white tracking-tight truncate leading-snug drop-shadow-sm">
                             {card.title}
                           </h3>
                           <p className="text-[13px] text-[#86868b] font-medium truncate mt-0.5">
@@ -468,13 +498,13 @@ export const MusicCardStack: React.FC = () => {
                     )}
                   </div>
 
-                  {/* ─── 3. 焦点卡片 GPU 硬件倒影 (零软件重绘开销) ─── */}
+                  {/* ─── 3. 双层水波磨砂镜面地板倒影 (GPU 硬件加速) ─── */}
                   {isCenter && (
                     <div
-                      className="absolute -bottom-[56px] left-2 right-2 h-[50px] rounded-[22px] overflow-hidden opacity-30 pointer-events-none scale-y-[-1] blur-[1px]"
+                      className="absolute -bottom-[58px] left-2 right-2 h-[52px] rounded-[22px] overflow-hidden opacity-35 pointer-events-none scale-y-[-1] blur-[1.2px]"
                       style={{
-                        maskImage: "linear-gradient(to top, rgba(0,0,0,0.85), transparent 75%)",
-                        WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.85), transparent 75%)",
+                        maskImage: "linear-gradient(to top, rgba(0,0,0,0.9), transparent 75%)",
+                        WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.9), transparent 75%)",
                       }}
                     >
                       <Image
