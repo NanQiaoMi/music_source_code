@@ -393,7 +393,7 @@ export function AppleUnifiedNavIsland() {
               damping: 26,
               mass: 0.75,
             }}
-            className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-[268px] bg-[#1c1c1e]/92 backdrop-blur-3xl rounded-[22px] border border-white/[0.08] shadow-[0_28px_72px_rgba(0,0,0,0.7)] overflow-hidden z-[9999]"
+            className="absolute top-full mt-2.5 left-1/2 -translate-x-1/2 w-[280px] bg-[#141416]/98 backdrop-blur-3xl rounded-[22px] border border-white/[0.14] shadow-[0_32px_84px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.08)] overflow-hidden z-[9999]"
             onMouseEnter={() => {
               if (timeoutRef.current) clearTimeout(timeoutRef.current);
             }}

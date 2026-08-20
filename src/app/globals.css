@@ -9,10 +9,28 @@
 }
 
 html,
-body {
+body,
+button,
+input,
+select,
+textarea {
   font-family:
-    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica,
-    Arial, sans-serif;
+    "FZXiaoBiaoSong-B05S",
+    "FZXiaoBiaoSong-B05",
+    "FZXBSJW",
+    "Fangzheng Xiaobiaosong",
+    "方正小标宋简体",
+    "方正小标宋",
+    "Songti SC",
+    "Noto Serif SC",
+    "Source Han Serif SC",
+    "SimSun",
+    "STSong",
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Display",
+    "SF Pro Text",
+    serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;

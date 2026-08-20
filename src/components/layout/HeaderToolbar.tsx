@@ -25,25 +25,27 @@ export function HeaderToolbar() {
         y: currentView === "home" ? 0 : -8,
       }}
       transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
-      className="absolute top-0 left-0 right-0 z-30 pt-3 pb-3 px-4 md:px-6 lg:px-8 select-none font-sans antialiased pointer-events-none"
+      className="absolute top-0 left-0 right-0 z-50 pt-3 pb-3 px-4 md:px-6 select-none font-sans antialiased pointer-events-none"
       style={{ willChange: "transform, opacity" }}
     >
-      <div className="flex items-center justify-between max-w-[1920px] mx-auto w-full gap-3 md:gap-6 pointer-events-auto">
-        {/* 左侧栏: Logo 与曲库状态 */}
-        <div className="flex items-center gap-3 shrink-0 min-w-0">
-          <Logo size={36} className="drop-shadow-lg shrink-0" />
-          <div className="hidden sm:flex flex-col justify-center min-w-0">
-            <h1 className="text-[16px] font-semibold text-white tracking-tight leading-tight whitespace-nowrap">
-              音乐库
-            </h1>
-            <p className="text-[11.5px] text-[#86868b] font-medium leading-tight whitespace-nowrap mt-0.5">
-              {songs.length > 0 ? `${songs.length} 首歌曲` : "多平台云音乐已就绪"}
-            </p>
+      <div className="flex items-center justify-between max-w-[1800px] mx-auto w-full gap-4 pointer-events-auto">
+        {/* 左侧栏: Apple 磨砂高光 Logo 徽标胶囊 */}
+        <div className="flex items-center justify-start shrink-0 min-w-0">
+          <div className="h-[36px] px-3 rounded-full bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.08] backdrop-blur-xl shadow-sm flex items-center gap-2 transition-all">
+            <Logo size={22} className="shrink-0" />
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <span className="text-[13px] font-semibold text-white tracking-tight leading-none whitespace-nowrap">
+                音乐库
+              </span>
+              <span className="text-[11px] text-[#86868b] font-medium leading-none whitespace-nowrap">
+                {songs.length > 0 ? `${songs.length} 首歌曲` : "多平台云音乐已就绪"}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* 中间栏: 绝对居中的悬浮玻璃岛 */}
-        <div className="flex-1 flex justify-center items-center min-w-0 px-2">
+        <div className="flex-1 flex justify-center items-center min-w-0">
           <AppleUnifiedNavIsland />
         </div>
 
@@ -80,7 +82,7 @@ export function HeaderToolbar() {
             href="/data-manager"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="h-[36px] px-3.5 rounded-full bg-white/[0.08] hover:bg-white/[0.16] border border-white/10 text-white text-[12.5px] font-medium flex items-center gap-1.5 transition-all shadow-sm whitespace-nowrap shrink-0"
+            className="h-[36px] px-3.5 rounded-full bg-white/[0.08] hover:bg-white/[0.16] border border-white/10 text-white text-[12px] font-medium flex items-center gap-1.5 transition-all shadow-sm whitespace-nowrap shrink-0"
             title="导入与管理曲库"
           >
             <Plus className="w-3.5 h-3.5" />
