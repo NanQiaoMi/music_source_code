@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Image from "next/image";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { Play, Pause, Disc, Plus } from "lucide-react";
@@ -16,8 +16,8 @@ import Link from "next/link";
 // Apple 顶级 Cover Flow 物理弹簧配置
 const COVER_FLOW_SPRING = {
   type: "spring" as const,
-  stiffness: 260,
-  damping: 26,
+  stiffness: 280,
+  damping: 28,
   mass: 0.8,
 };
 
@@ -31,7 +31,7 @@ export const MusicCardStack: React.FC = () => {
   const { currentSong, isPlaying, setIsPlaying } = useAudioStore();
   const { lastGesture, gestureTriggered } = useGestureStore();
   const { playTrackWithPipeline } = useIntegratedAudioPipeline();
-  const { setCurrentView, isNavMenuOpen } = useUIStore();
+  const { setCurrentView } = useUIStore();
 
   const displaySongs: Song[] = useMemo(() => {
     return songs.length > 0 ? songs : recentPlayed;
@@ -221,14 +221,9 @@ export const MusicCardStack: React.FC = () => {
   }
 
   return (
-    <motion.div
+    <div
       ref={containerRef}
       onWheel={handleWheel}
-      animate={{
-        opacity: isNavMenuOpen ? 0.45 : 1,
-        scale: isNavMenuOpen ? 0.98 : 1,
-      }}
-      transition={{ duration: 0.22, ease: "easeOut" }}
       className="relative w-full h-full flex items-center justify-center select-none overflow-visible"
       style={{ perspective: 1200 }}
     >
@@ -252,9 +247,13 @@ export const MusicCardStack: React.FC = () => {
           const opacity = isCenter ? 1 : Math.max(0.28, 0.72 - absOffset * 0.16);
           const zIndex = 30 - absOffset;
 
+          // 使用稳定 key (曲库丰富时绑定真实歌曲 id 实现流畅跨槽平滑滑动，曲库极少时绑定 slot 保证绝对唯一)
+          const cardKey =
+            displaySongs.length > VISIBLE_HALF * 2 ? card.id : `${card.id}-slot-${card.offset}`;
+
           return (
             <motion.div
-              key={`${card.id}-${card.offset}-${card.displayIndex}`}
+              key={cardKey}
               onClick={() => {
                 if (isCenter) {
                   handlePlayCard(card, card.displayIndex);
@@ -267,8 +266,6 @@ export const MusicCardStack: React.FC = () => {
                   setCurrentView("player");
                 }
               }}
-              onMouseMove={isCenter ? handleMouseMove : undefined}
-              onMouseLeave={isCenter ? handleMouseLeaveCard : undefined}
               style={{
                 position: "absolute",
                 width: SLEEVE_SIZE,
@@ -276,168 +273,179 @@ export const MusicCardStack: React.FC = () => {
                 zIndex,
                 transformStyle: "preserve-3d",
                 cursor: "pointer",
-                rotateX: isCenter ? smoothTiltX : 0,
-                rotateY: isCenter ? smoothTiltY : rotateY,
               }}
               animate={{
                 x,
                 z,
+                rotateY,
                 scale,
                 opacity,
               }}
               transition={COVER_FLOW_SPRING}
               className="group flex items-center justify-center"
             >
-              {/* ─── 1. 实体拟真黑胶唱片 (同轴相对绑定 305x305px, 抽拉 150px) ─── */}
+              {/* 内层视差与黑胶互动层 */}
               <motion.div
-                initial={false}
-                animate={{
-                  x: isCenter ? 150 : 0,
-                  opacity: isCenter ? 1 : 0,
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 260,
-                  damping: 26,
-                  delay: isCenter ? 0.06 : 0,
-                }}
+                className="relative w-full h-full flex items-center justify-center"
                 style={{
-                  position: "absolute",
-                  top: (SLEEVE_SIZE - DISC_SIZE) / 2,
-                  left: (SLEEVE_SIZE - DISC_SIZE) / 2,
-                  width: DISC_SIZE,
-                  height: DISC_SIZE,
-                  zIndex: 0,
-                  boxShadow: "0 18px 48px rgba(0,0,0,0.92), inset 0 0 0 2px rgba(255,255,255,0.06)",
-                  background:
-                    "radial-gradient(circle, #1a1a1a 0%, #111111 25%, #222222 26%, #0d0d0d 45%, #1f1f1f 46%, #080808 65%, #1a1a1a 66%, #050505 100%)",
+                  transformStyle: "preserve-3d",
+                  rotateX: isCenter ? smoothTiltX : 0,
+                  rotateY: isCenter ? smoothTiltY : 0,
                 }}
-                className="rounded-full pointer-events-none"
+                onMouseMove={isCenter ? handleMouseMove : undefined}
+                onMouseLeave={isCenter ? handleMouseLeaveCard : undefined}
               >
-                {/* 匀速旋转黑胶本体 */}
-                <div
-                  className={`relative w-full h-full rounded-full flex items-center justify-center ${
-                    isPlayingThis ? "animate-[spin_8s_linear_infinite]" : ""
-                  }`}
+                {/* ─── 1. 实体拟真黑胶唱片 (同轴相对绑定 305x305px, 抽拉 150px) ─── */}
+                <motion.div
+                  initial={false}
+                  animate={{
+                    x: isCenter ? 150 : 0,
+                    opacity: isCenter ? 1 : 0,
+                  }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 260,
+                    damping: 26,
+                    delay: isCenter ? 0.06 : 0,
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: (SLEEVE_SIZE - DISC_SIZE) / 2,
+                    left: (SLEEVE_SIZE - DISC_SIZE) / 2,
+                    width: DISC_SIZE,
+                    height: DISC_SIZE,
+                    zIndex: 0,
+                    boxShadow: "0 18px 48px rgba(0,0,0,0.92), inset 0 0 0 2px rgba(255,255,255,0.06)",
+                    background:
+                      "radial-gradient(circle, #1a1a1a 0%, #111111 25%, #222222 26%, #0d0d0d 45%, #1f1f1f 46%, #080808 65%, #1a1a1a 66%, #050505 100%)",
+                  }}
+                  className="rounded-full pointer-events-none"
                 >
-                  {/* 同心圆反光凹槽 (Grooves) */}
-                  <div className="absolute inset-3 rounded-full border border-white/[0.04]" />
-                  <div className="absolute inset-8 rounded-full border border-white/[0.03]" />
-                  <div className="absolute inset-14 rounded-full border border-white/[0.04]" />
-                  <div className="absolute inset-20 rounded-full border border-white/[0.03]" />
-                  <div className="absolute inset-28 rounded-full border border-white/[0.05]" />
-
-                  {/* 彩虹反光遮罩 (Specular Conic Shine) */}
+                  {/* 匀速旋转黑胶本体 */}
                   <div
-                    className="absolute inset-0 rounded-full opacity-25 pointer-events-none"
-                    style={{
-                      background:
-                        "conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.35) 60deg, transparent 120deg, transparent 180deg, rgba(255,255,255,0.35) 240deg, transparent 300deg)",
-                    }}
+                    className={`relative w-full h-full rounded-full flex items-center justify-center ${
+                      isPlayingThis ? "animate-[spin_8s_linear_infinite]" : ""
+                    }`}
+                  >
+                    {/* 同心圆反光凹槽 (Grooves) */}
+                    <div className="absolute inset-3 rounded-full border border-white/[0.04]" />
+                    <div className="absolute inset-8 rounded-full border border-white/[0.03]" />
+                    <div className="absolute inset-14 rounded-full border border-white/[0.04]" />
+                    <div className="absolute inset-20 rounded-full border border-white/[0.03]" />
+                    <div className="absolute inset-28 rounded-full border border-white/[0.05]" />
+
+                    {/* 彩虹反光遮罩 (Specular Conic Shine) */}
+                    <div
+                      className="absolute inset-0 rounded-full opacity-25 pointer-events-none"
+                      style={{
+                        background:
+                          "conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.35) 60deg, transparent 120deg, transparent 180deg, rgba(255,255,255,0.35) 240deg, transparent 300deg)",
+                      }}
+                    />
+
+                    {/* 黑胶中心圆形专辑贴图 */}
+                    <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-[#1c1c1e] shadow-inner">
+                      <Image
+                        src={card.cover || DEFAULT_COVER_SRC}
+                        alt="label"
+                        fill
+                        sizes="112px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                      <div className="absolute inset-0 m-auto w-4 h-4 rounded-full bg-[#111] border border-white/20 shadow-md" />
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* ─── 2. 1:1 正方形黑胶封套 (LP Sleeve Jacket - 带 GPU 原生硬件倒影) ─── */}
+                <div
+                  className="relative rounded-[22px] overflow-hidden bg-[#1c1c1e] shadow-[0_32px_80px_rgba(0,0,0,0.85)] border border-white/[0.14] z-10 transition-shadow duration-300 group-hover:shadow-[0_40px_96px_rgba(0,0,0,0.95)]"
+                  style={{
+                    width: SLEEVE_SIZE,
+                    height: SLEEVE_SIZE,
+                    WebkitBoxReflect:
+                      "below 10px linear-gradient(transparent, transparent 55%, rgba(0,0,0,0.45) 100%)",
+                  }}
+                >
+                  {/* 左侧书脊折光微线 */}
+                  <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-r from-white/25 via-white/10 to-transparent z-20 pointer-events-none" />
+
+                  {/* 右侧开口暗黑内衬阴影 */}
+                  <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-gradient-to-l from-black/80 to-transparent z-20 pointer-events-none" />
+
+                  {/* 专辑封面 */}
+                  <Image
+                    src={card.cover || DEFAULT_COVER_SRC}
+                    alt={card.title}
+                    fill
+                    sizes="360px"
+                    priority={isCenter}
+                    className="object-cover"
+                    unoptimized
                   />
 
-                  {/* 黑胶中心圆形专辑贴图 */}
-                  <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-[#1c1c1e] shadow-inner">
-                    <Image
-                      src={card.cover || DEFAULT_COVER_SRC}
-                      alt="label"
-                      fill
-                      sizes="112px"
-                      className="object-cover"
-                      unoptimized
-                    />
-                    <div className="absolute inset-0 m-auto w-4 h-4 rounded-full bg-[#111] border border-white/20 shadow-md" />
-                  </div>
-                </div>
-              </motion.div>
+                  {/* 焦点封套：底部无感双层渐变 + 歌名/歌手 */}
+                  {isCenter ? (
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-6 z-20">
+                      {/* 顶部播放波形 与 ↗ 沉浸详情 徽标 */}
+                      <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentView("player");
+                          }}
+                          className="px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-[11px] font-medium text-white/90 hover:text-white backdrop-blur-md transition-all active:scale-95 flex items-center gap-1 shadow-sm"
+                          title="双击卡片或点击此按钮进入全屏沉浸播放器详情页"
+                        >
+                          <span>↗ 详情舞台</span>
+                        </button>
 
-              {/* ─── 2. 1:1 正方形黑胶封套 (LP Sleeve Jacket - 带 GPU 原生硬件倒影) ─── */}
-              <div
-                className="relative rounded-[22px] overflow-hidden bg-[#1c1c1e] shadow-[0_32px_80px_rgba(0,0,0,0.85)] border border-white/[0.14] z-10 transition-shadow duration-300 group-hover:shadow-[0_40px_96px_rgba(0,0,0,0.95)]"
-                style={{
-                  width: SLEEVE_SIZE,
-                  height: SLEEVE_SIZE,
-                  WebkitBoxReflect:
-                    "below 10px linear-gradient(transparent, transparent 55%, rgba(0,0,0,0.45) 100%)",
-                }}
-              >
-                {/* 左侧书脊折光微线 */}
-                <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-r from-white/25 via-white/10 to-transparent z-20 pointer-events-none" />
-
-                {/* 右侧开口暗黑内衬阴影 */}
-                <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-gradient-to-l from-black/80 to-transparent z-20 pointer-events-none" />
-
-                {/* 专辑封面 */}
-                <Image
-                  src={card.cover || DEFAULT_COVER_SRC}
-                  alt={card.title}
-                  fill
-                  sizes="360px"
-                  priority={isCenter}
-                  className="object-cover"
-                  unoptimized
-                />
-
-                {/* 焦点封套：底部无感双层渐变 + 歌名/歌手 */}
-                {isCenter ? (
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-6 z-20">
-                    {/* 顶部播放波形 与 ↗ 沉浸详情 徽标 */}
-                    <div className="flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCurrentView("player");
-                        }}
-                        className="px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-[11px] font-medium text-white/90 hover:text-white backdrop-blur-md transition-all active:scale-95 flex items-center gap-1 shadow-sm"
-                        title="双击卡片或点击此按钮进入全屏沉浸播放器详情页"
-                      >
-                        <span>↗ 详情舞台</span>
-                      </button>
-
-                      {isPlayingThis && (
-                        <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-                          <span className="w-1 h-3 bg-[#2997ff] rounded-full animate-[pulse_0.8s_ease-in-out_infinite]" />
-                          <span className="w-1 h-4.5 bg-[#2997ff] rounded-full animate-[pulse_1.2s_ease-in-out_infinite]" />
-                          <span className="w-1 h-2.5 bg-[#2997ff] rounded-full animate-[pulse_0.6s_ease-in-out_infinite]" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 中间播放/暂停触感按钮 (64px 高透磨砂) */}
-                    <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-95 group-hover:scale-100">
-                      <div className="w-16 h-16 rounded-full bg-white/25 hover:bg-white/35 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-2xl">
-                        {isPlayingThis ? (
-                          <Pause className="w-7 h-7 fill-white" />
-                        ) : (
-                          <Play className="w-7 h-7 fill-white ml-1" />
+                        {isPlayingThis && (
+                          <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+                            <span className="w-1 h-3 bg-[#2997ff] rounded-full animate-[pulse_0.8s_ease-in-out_infinite]" />
+                            <span className="w-1 h-4.5 bg-[#2997ff] rounded-full animate-[pulse_1.2s_ease-in-out_infinite]" />
+                            <span className="w-1 h-2.5 bg-[#2997ff] rounded-full animate-[pulse_0.6s_ease-in-out_infinite]" />
+                          </div>
                         )}
                       </div>
-                    </div>
 
-                    {/* 底部歌名与歌手 */}
-                    <div className="min-w-0 text-left">
-                      <h3 className="text-[20px] font-bold text-white tracking-tight truncate leading-snug">
+                      {/* 中间播放/暂停触感按钮 (64px 高透磨砂) */}
+                      <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-95 group-hover:scale-100">
+                        <div className="w-16 h-16 rounded-full bg-white/25 hover:bg-white/35 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-2xl">
+                          {isPlayingThis ? (
+                            <Pause className="w-7 h-7 fill-white" />
+                          ) : (
+                            <Play className="w-7 h-7 fill-white ml-1" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 底部歌名与歌手 */}
+                      <div className="min-w-0 text-left">
+                        <h3 className="text-[20px] font-bold text-white tracking-tight truncate leading-snug">
+                          {card.title}
+                        </h3>
+                        <p className="text-[13px] text-[#86868b] font-medium truncate mt-0.5">
+                          {card.artist}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* 两翼卡片暗化遮罩 */
+                    <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px] flex items-end p-4 z-20">
+                      <p className="text-[11px] text-white/50 truncate font-medium">
                         {card.title}
-                      </h3>
-                      <p className="text-[13px] text-[#86868b] font-medium truncate mt-0.5">
-                        {card.artist}
                       </p>
                     </div>
-                  </div>
-                ) : (
-                  /* 两翼卡片暗化遮罩 */
-                  <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px] flex items-end p-4 z-20">
-                    <p className="text-[11px] text-white/50 truncate font-medium">
-                      {card.title}
-                    </p>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </motion.div>
             </motion.div>
           );
         })}
       </div>
-    </motion.div>
+    </div>
   );
 };
