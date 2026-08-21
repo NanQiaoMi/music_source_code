@@ -1,252 +1,403 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useAudioEffectsStore, AudioEffectType } from "@/store/audioEffectsStore";
+import React, { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
+  Activity,
+  GitCompareArrows,
+  Layers,
+  RotateCcw,
+  Save,
+  Shuffle,
+  Sparkles,
+  Trash2,
   X,
   Zap,
-  Volume2,
-  Waves,
-  Mic,
-  Music,
-  Move,
-  FastForward,
-  Disc,
-  Droplets,
-  Disc3,
-  Radio,
-  Waves as Bass,
-  Headphones,
-  Circle,
-  Mic2,
-  Repeat,
-  RadioTower,
 } from "lucide-react";
+import { AudioEffectType, EFFECT_SCENES, useAudioEffectsStore } from "@/store/audioEffectsStore";
 
 interface AudioEffectsPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const effectIcons: Record<AudioEffectType, React.ComponentType<any>> = {
-  autoPan: Move,
-  reverb: Waves,
-  stereoWidener: Volume2,
-  nightcore: FastForward,
-  vaporwave: Disc,
-  cassette: Disc3,
-  tremolo: Waves,
-  underwater: Droplets,
-  vinyl: Disc3,
-  bitcrusher: Circle,
-  talkie: RadioTower,
-  megaBass: Music,
-  asmr: Headphones,
-  phaser: Repeat,
-  vocalRemove: Mic2,
-  cyberpunkDistortion: Zap,
-  loFiPhone: Radio,
+const effectIcons: Partial<Record<AudioEffectType, React.ComponentType<{ className?: string }>>> = {
+  reverb: Sparkles,
+  stereoWidener: Layers,
+  megaBass: Activity,
+  autoPan: Shuffle,
+  vinyl: RotateCcw,
+  phaser: GitCompareArrows,
 };
 
-const effectColors: Record<AudioEffectType, string> = {
-  autoPan: "from-cyan-500 to-blue-500",
-  reverb: "from-purple-500 to-indigo-500",
-  stereoWidener: "from-blue-500 to-cyan-500",
-  nightcore: "from-pink-500 to-fuchsia-500",
-  vaporwave: "from-violet-500 to-purple-500",
-  cassette: "from-amber-500 to-yellow-500",
-  tremolo: "from-teal-500 to-emerald-500",
-  underwater: "from-blue-400 to-indigo-400",
-  vinyl: "from-orange-500 to-amber-500",
-  bitcrusher: "from-lime-500 to-green-500",
-  talkie: "from-rose-500 to-red-500",
-  megaBass: "from-green-500 to-emerald-500",
-  asmr: "from-fuchsia-500 to-pink-500",
-  phaser: "from-indigo-500 to-violet-500",
-  vocalRemove: "from-pink-500 to-rose-500",
-  cyberpunkDistortion: "from-yellow-400 to-red-500",
-  loFiPhone: "from-stone-500 to-amber-700",
-};
-
-const CATEGORIES = [
-  { id: "环境空间", name: "环境空间" },
-  { id: "时域变换", name: "时域变换" },
-  { id: "音质质感", name: "音质质感" },
-];
+type PanelTab = "presets" | "scenes" | "effects";
 
 export function AudioEffectsPanel({ isOpen, onClose }: AudioEffectsPanelProps) {
-  const { effects, isEnabled, setIsEnabled, toggleEffect, setEffectIntensity, resetAllEffects } =
-    useAudioEffectsStore();
+  const {
+    effects,
+    isEnabled,
+    setIsEnabled,
+    toggleEffect,
+    setEffectIntensity,
+    resetAllEffects,
+    activeScene,
+    applyScene,
+    clearScene,
+    randomize,
+    shuffleIntensity,
+    savedPresets,
+    savePreset,
+    loadPreset,
+    deletePreset,
+    presets,
+    activePresetId,
+    morphState,
+    morphTo,
+    setMorphT,
+  } = useAudioEffectsStore();
 
-  const effectsByCategory = useMemo(() => {
-    const grouped: Record<string, any[]> = {};
-    Object.values(effects).forEach((effect: any) => {
-      if (!grouped[effect.category]) {
-        grouped[effect.category] = [];
-      }
-      grouped[effect.category].push(effect);
-    });
-    return grouped;
-  }, [effects]);
+  const [activeTab, setActiveTab] = useState<PanelTab>("presets");
+  const [presetName, setPresetName] = useState("");
+  const [previousPresetId, setPreviousPresetId] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  const activeEffectCount = useMemo(
+    () => Object.values(effects).filter((effect) => effect.enabled).length,
+    [effects]
+  );
+
+  const visibleEffects = useMemo(
+    () =>
+      Object.values(effects).filter((effect) =>
+        ["reverb", "stereoWidener", "megaBass", "autoPan", "vinyl", "phaser"].includes(effect.id)
+      ),
+    [effects]
+  );
+
+  const handleApplyPreset = (presetId: string) => {
+    if (activePresetId && activePresetId !== presetId) {
+      setPreviousPresetId(activePresetId);
+    }
+    morphTo(presetId, 800);
+  };
+
+  const handleABCompare = () => {
+    if (!previousPresetId) return;
+    const current = activePresetId;
+    morphTo(previousPresetId, 600);
+    setPreviousPresetId(current);
+  };
+
+  const handleSavePreset = () => {
+    const name = presetName.trim();
+    if (!name) return;
+    savePreset(name);
+    setPresetName("");
+  };
+
+  const tabs: { id: PanelTab; label: string }[] = [
+    { id: "presets", label: "Presets" },
+    { id: "scenes", label: "Scenes" },
+    { id: "effects", label: "Effects" },
+  ];
 
   return (
     <AnimatePresence>
-      <>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
-          onClick={onClose}
-        />
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/45 backdrop-blur-sm"
+            onClick={onClose}
+          />
 
-        <motion.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="fixed left-0 right-0 bottom-0 top-16 bg-white/10 backdrop-blur-2xl border-t border-white/20 z-50 flex flex-col"
-        >
-          <div className="p-6 h-full flex flex-col max-w-6xl mx-auto w-full">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <Zap className="w-6 h-6 text-yellow-400" />
-                <h2 className="text-2xl font-bold text-white">音频特效矩阵</h2>
-                {!isEnabled && (
-                  <span className="px-3 py-1 rounded-full bg-white/10 text-white/60 text-xs">
-                    已关闭
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={onClose}
-                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between mb-6 p-4 rounded-xl bg-white/5">
-              <span className="text-white font-medium">全局特效开关</span>
-              <button
-                onClick={() => setIsEnabled(!isEnabled)}
-                className={`w-14 h-7 rounded-full transition-colors relative ${
-                  isEnabled ? "bg-gradient-to-r from-purple-500 to-indigo-500" : "bg-white/20"
-                }`}
-              >
-                <motion.div
-                  animate={{ x: isEnabled ? 32 : 4 }}
-                  className="absolute top-1.5 w-4 h-4 rounded-full bg-white shadow-lg"
-                />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-8 custom-scrollbar pb-8 min-h-0">
-              {CATEGORIES.map((category) => (
-                <div key={category.id} className="space-y-4">
-                  <h3 className="text-lg font-semibold text-white/80 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-400 to-pink-400" />
-                    {category.name}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {effectsByCategory[category.id]?.map((effect) => {
-                      const Icon = effectIcons[effect.id as AudioEffectType];
-                      const colorGradient = effectColors[effect.id as AudioEffectType];
-                      const isDisabled = !isEnabled;
-
-                      return (
-                        <motion.div
-                          key={effect.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`p-5 rounded-2xl transition-all border ${
-                            effect.enabled
-                              ? "bg-white/15 border-white/30 shadow-lg"
-                              : "bg-white/5 border-white/10"
-                          } ${isDisabled ? "opacity-50 pointer-events-none" : ""}`}
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colorGradient} flex items-center justify-center shadow-md`}
-                              >
-                                <Icon className="w-6 h-6 text-white" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="text-white font-semibold text-sm truncate">
-                                  {effect.name}
-                                </h3>
-                                <p className="text-white/40 text-xs mt-0.5 line-clamp-2">
-                                  {effect.description}
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => toggleEffect(effect.id)}
-                              className={`w-12 h-6 rounded-full transition-colors relative flex-shrink-0 ${
-                                effect.enabled ? `bg-gradient-to-r ${colorGradient}` : "bg-white/20"
-                              }`}
-                            >
-                              <motion.div
-                                animate={{ x: effect.enabled ? 28 : 4 }}
-                                className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-md"
-                              />
-                            </button>
-                          </div>
-
-                          {effect.enabled && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              className="mt-3 pt-3 border-t border-white/10"
-                            >
-                              <div className="flex items-center gap-2">
-                                <Volume2 className="w-4 h-4 text-white/40" />
-                                <input
-                                  type="range"
-                                  min="0"
-                                  max="1"
-                                  step="0.01"
-                                  value={effect.intensity}
-                                  onChange={(e) =>
-                                    setEffectIntensity(effect.id, parseFloat(e.target.value))
-                                  }
-                                  disabled={!effect.enabled || isDisabled}
-                                  className="flex-1 h-2 bg-white/10 rounded-full appearance-none cursor-pointer"
-                                  style={{
-                                    background: `linear-gradient(to right, rgba(255,255,255,0.6) ${
-                                      effect.intensity * 100
-                                    }%, rgba(255,255,255,0.1) ${effect.intensity * 100}%)`,
-                                  }}
-                                />
-                                <span className="text-white/50 text-xs font-mono w-10 text-right">
-                                  {Math.round(effect.intensity * 100)}%
-                                </span>
-                              </div>
-                            </motion.div>
-                          )}
-                        </motion.div>
-                      );
-                    })}
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 26, stiffness: 210 }}
+            className="fixed bottom-0 left-0 right-0 top-16 z-50 flex flex-col border-t border-white/15 bg-black/70 backdrop-blur-2xl"
+          >
+            <div className="mx-auto flex h-full w-full max-w-6xl flex-col p-6">
+              <header className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-400/15 text-yellow-300">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-white">Audio Effects</h2>
+                    <p className="text-xs text-white/45">
+                      {activeEffectCount} active effects
+                      {activePresetId
+                        ? ` - ${presets.find((preset) => preset.id === activePresetId)?.name}`
+                        : ""}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
 
-            <div className="mt-6 pt-6 border-t border-white/10">
-              <button
-                onClick={resetAllEffects}
-                className="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                重置所有特效
-              </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsEnabled(!isEnabled)}
+                    className={`relative h-8 w-16 rounded-full transition-colors ${
+                      isEnabled ? "bg-purple-500" : "bg-white/15"
+                    }`}
+                    aria-label={isEnabled ? "Disable audio effects" : "Enable audio effects"}
+                  >
+                    <motion.span
+                      animate={{ x: isEnabled ? 34 : 4 }}
+                      className="absolute top-1 h-6 w-6 rounded-full bg-white shadow-lg"
+                    />
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+                    aria-label="Close audio effects"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </header>
+
+              <nav className="mb-4 grid grid-cols-3 gap-1 rounded-xl bg-white/[0.04] p-1">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`rounded-lg py-2 text-sm font-medium transition-colors ${
+                      activeTab === tab.id
+                        ? "bg-white/15 text-white"
+                        : "text-white/50 hover:text-white"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
+
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {activeTab === "presets" && (
+                  <section className="space-y-5">
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {presets.map((preset) => {
+                        const active = activePresetId === preset.id;
+                        return (
+                          <button
+                            key={preset.id}
+                            onClick={() => handleApplyPreset(preset.id)}
+                            disabled={!isEnabled}
+                            className={`min-w-36 rounded-xl border px-4 py-3 text-left transition-colors disabled:opacity-40 ${
+                              active
+                                ? "border-purple-300/70 bg-purple-400/20 text-white"
+                                : "border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/[0.08]"
+                            }`}
+                          >
+                            <span className="block text-sm font-semibold">{preset.name}</span>
+                            <span className="mt-1 block text-[11px] text-white/40">
+                              Reverb {Math.round(preset.reverb * 100)}% / Width{" "}
+                              {preset.stereoWidth.toFixed(1)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-medium text-white">Morph</h3>
+                          <p className="text-xs text-white/40">
+                            Blend between the previous preset and the selected target.
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleABCompare}
+                          disabled={!previousPresetId}
+                          className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/15 disabled:opacity-35"
+                        >
+                          <GitCompareArrows className="h-3.5 w-3.5" />
+                          A/B
+                        </button>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={morphState?.t ?? (activePresetId ? 1 : 0)}
+                        onChange={(event) => setMorphT(Number(event.target.value))}
+                        disabled={!morphState}
+                        className="h-1.5 w-full appearance-none rounded-full bg-white/10 accent-purple-400 disabled:opacity-40"
+                        aria-label="Morph amount"
+                      />
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <Save className="h-4 w-4 text-white/50" />
+                        <h3 className="text-sm font-medium text-white">User Presets</h3>
+                      </div>
+                      <div className="mb-3 flex gap-2">
+                        <input
+                          value={presetName}
+                          onChange={(event) => setPresetName(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") handleSavePreset();
+                          }}
+                          placeholder="Preset name"
+                          className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-purple-300/60"
+                        />
+                        <button
+                          onClick={handleSavePreset}
+                          className="rounded-xl bg-purple-500 px-4 py-2 text-sm font-medium text-white"
+                        >
+                          Save
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {savedPresets.length === 0 ? (
+                          <p className="py-4 text-center text-sm text-white/35">
+                            No saved presets yet.
+                          </p>
+                        ) : (
+                          savedPresets.map((preset) => (
+                            <div
+                              key={preset.id}
+                              className="flex items-center gap-2 rounded-xl bg-white/[0.04] p-2"
+                            >
+                              <button
+                                onClick={() => loadPreset(preset.id)}
+                                className="min-w-0 flex-1 text-left text-sm text-white/75"
+                              >
+                                {preset.name}
+                              </button>
+                              <button
+                                onClick={() => deletePreset(preset.id)}
+                                className="rounded-lg p-2 text-white/35 transition-colors hover:bg-red-500/15 hover:text-red-300"
+                                aria-label={`Delete ${preset.name}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                )}
+
+                {activeTab === "scenes" && (
+                  <section className="space-y-4">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={randomize}
+                        disabled={!isEnabled}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] py-3 text-sm font-medium text-white disabled:opacity-40"
+                      >
+                        <Shuffle className="h-4 w-4" />
+                        Randomize
+                      </button>
+                      <button
+                        onClick={shuffleIntensity}
+                        disabled={!isEnabled}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] py-3 text-sm font-medium text-white disabled:opacity-40"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        Shuffle intensity
+                      </button>
+                      <button
+                        onClick={clearScene}
+                        className="rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-medium text-white/70"
+                      >
+                        Clear
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                      {EFFECT_SCENES.map((scene) => (
+                        <button
+                          key={scene.id}
+                          onClick={() => applyScene(scene.id)}
+                          disabled={!isEnabled}
+                          className={`rounded-2xl border p-4 text-left transition-colors disabled:opacity-40 ${
+                            activeScene === scene.id
+                              ? "border-purple-300/70 bg-purple-400/20"
+                              : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          <span className="text-xs font-semibold text-white/45">{scene.icon}</span>
+                          <span className="mt-2 block text-sm font-semibold text-white">
+                            {scene.nameZh}
+                          </span>
+                          <span className="mt-1 block text-xs leading-relaxed text-white/45">
+                            {scene.description}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {activeTab === "effects" && (
+                  <section className="space-y-3">
+                    {visibleEffects.map((effect) => {
+                      const Icon = effectIcons[effect.id] ?? Activity;
+                      return (
+                        <div
+                          key={effect.id}
+                          className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                        >
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => toggleEffect(effect.id)}
+                              disabled={!isEnabled}
+                              className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors disabled:opacity-40 ${
+                                effect.enabled
+                                  ? "bg-purple-500 text-white"
+                                  : "bg-white/10 text-white/45"
+                              }`}
+                              aria-label={`${effect.enabled ? "Disable" : "Enable"} ${effect.name}`}
+                            >
+                              <Icon className="h-5 w-5" />
+                            </button>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-sm font-medium text-white">{effect.name}</h3>
+                              <p className="truncate text-xs text-white/40">{effect.description}</p>
+                            </div>
+                            <span className="w-12 text-right text-xs tabular-nums text-white/45">
+                              {Math.round(effect.intensity * 100)}%
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.01}
+                            value={effect.intensity}
+                            onChange={(event) =>
+                              setEffectIntensity(effect.id, Number(event.target.value))
+                            }
+                            disabled={!isEnabled || !effect.enabled}
+                            className="mt-3 h-1.5 w-full appearance-none rounded-full bg-white/10 accent-purple-400 disabled:opacity-35"
+                            aria-label={`${effect.name} intensity`}
+                          />
+                        </div>
+                      );
+                    })}
+
+                    <button
+                      onClick={resetAllEffects}
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 text-sm font-medium text-white/65 transition-colors hover:bg-white/[0.08]"
+                    >
+                      Reset effects
+                    </button>
+                  </section>
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
-      </>
+          </motion.div>
+        </>
+      )}
     </AnimatePresence>
   );
 }

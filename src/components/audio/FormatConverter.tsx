@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import { canExportConvertedAudio, detect } from "@/lib/audio/processingCapabilities";
+import { resolveAudioSourceBlob } from "@/lib/audio/audioSource";
+import { runFormatConversionWorkerTask } from "@/lib/audio/formatConversionWorker";
 import { useFormatConversionStore, ConversionTask } from "@/store/formatConversionStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { motion, AnimatePresence } from "framer-motion";
@@ -42,24 +45,19 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
 
   const [selectedSongs, setSelectedSongs] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"select" | "queue" | "settings">("select");
-  const [worker, setWorker] = useState<Worker | null>(null);
+  const workerRef = useRef<Worker | null>(null);
   const convertingRef = useRef<Map<string, boolean>>(new Map());
+  const capabilities = detect();
+  const exportAvailable = canExportConvertedAudio(capabilities);
 
   useEffect(() => {
     const conversionWorker = new Worker(
       new URL("../../workers/conversion.worker.ts", import.meta.url)
     );
-    setWorker(conversionWorker);
-
-    conversionWorker.onmessage = (event) => {
-      const { type, data } = event.data;
-      if (type === "progress") {
-      } else if (type === "complete") {
-      } else if (type === "error") {
-      }
-    };
+    workerRef.current = conversionWorker;
 
     return () => {
+      workerRef.current = null;
       conversionWorker.terminate();
     };
   }, []);
@@ -94,7 +92,7 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
         title: s.title,
         artist: s.artist,
         path: s.audioUrl || "",
-        format: "mp3",
+        format: s.format || "mp3",
       })),
       settings.targetFormat
     );
@@ -104,7 +102,7 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
   }, [songs, selectedSongs, addConversionTasks, clearSelection, settings.targetFormat]);
 
   const startConversion = useCallback(async () => {
-    if (!worker) return;
+    if (!workerRef.current) return;
 
     const pendingTasks = tasks.filter((t) => t.status === "pending");
     if (pendingTasks.length === 0) return;
@@ -118,18 +116,43 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
       try {
         updateTaskStatus(task.id, "converting");
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        for (let progress = 10; progress <= 100; progress += 10) {
-          updateTaskProgress(task.id, progress);
-          await new Promise((resolve) => setTimeout(resolve, 200));
+        if (!exportAvailable) {
+          updateTaskStatus(
+            task.id,
+            "preview-only",
+            "Local conversion not available in this browser - export disabled"
+          );
+          incrementFailed();
+          continue;
         }
 
-        const mockBlob = new Blob(["mock audio data"], { type: `audio/${task.targetFormat}` });
+        const sourceSong = songs.find((song) => song.id === task.songId);
+        const source = await resolveAudioSourceBlob({
+          id: task.songId,
+          title: task.songTitle,
+          audioUrl: task.sourcePath || sourceSong?.audioUrl,
+          format: task.sourceFormat || sourceSong?.format,
+        });
 
-        updateTaskStatus(task.id, "completed", undefined, mockBlob);
+        const activeWorker = workerRef.current;
+        if (!activeWorker) {
+          throw new Error("Conversion worker is not available");
+        }
+
+        const outputBlob = await runFormatConversionWorkerTask({
+          worker: activeWorker,
+          fileBlob: source.blob,
+          sourceFormat: source.inferredFormat,
+          targetFormat: task.targetFormat,
+          bitrate: settings.bitrate,
+          sampleRate: settings.sampleRate,
+          channels: settings.channels,
+          preserveMetadata: settings.preserveMetadata,
+          onProgress: (progress) => updateTaskProgress(task.id, progress),
+        });
+
+        updateTaskStatus(task.id, "completed", undefined, outputBlob);
         incrementConverted();
-        convertingRef.current.delete(task.id);
       } catch (error) {
         updateTaskStatus(
           task.id,
@@ -137,19 +160,25 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
           error instanceof Error ? error.message : "Conversion failed"
         );
         incrementFailed();
+      } finally {
         convertingRef.current.delete(task.id);
       }
     }
 
     setIsConverting(false);
   }, [
-    worker,
     tasks,
     updateTaskProgress,
     updateTaskStatus,
     incrementConverted,
     incrementFailed,
     setIsConverting,
+    exportAvailable,
+    songs,
+    settings.bitrate,
+    settings.channels,
+    settings.preserveMetadata,
+    settings.sampleRate,
   ]);
 
   const downloadFile = useCallback((task: ConversionTask) => {
@@ -173,6 +202,8 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
         return <Loader2 className="w-4 h-4 animate-spin text-blue-500" />;
       case "completed":
         return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case "preview-only":
+        return <FileAudio className="w-4 h-4 text-yellow-500" />;
       case "error":
         return <XCircle className="w-4 h-4 text-red-500" />;
     }
@@ -255,6 +286,13 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
                     设置
                   </button>
                 </div>
+
+                {!exportAvailable && (
+                  <div className="mb-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-100">
+                    Local conversion not available in this browser - export disabled. Open Settings
+                    to check audio processing support.
+                  </div>
+                )}
 
                 {activeTab === "select" && (
                   <div className="space-y-4">
@@ -403,6 +441,9 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
                                   transition={{ duration: 0.3 }}
                                 />
                               </div>
+                            )}
+                            {task.status === "preview-only" && task.error && (
+                              <div className="text-xs text-yellow-300 mt-2">{task.error}</div>
                             )}
                             {task.status === "error" && task.error && (
                               <div className="text-xs text-red-400 mt-2">{task.error}</div>

@@ -4,12 +4,12 @@ import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useGestureStore, GestureType } from "@/store/gestureStore";
 import { useAudioStore } from "@/store/audioStore";
 
-// Landmark 索引常量
+// Landmark
 const WRIST = 0;
 const THUMB_TIP = 4;
 const INDEX_TIP = 8;
 
-// 手部骨骼连接
+// ֲ
 const HAND_CONNECTIONS = [
   [0, 1],
   [1, 2],
@@ -40,18 +40,27 @@ interface NormalizedLandmark {
   z: number;
 }
 
+interface HandLandmarkerResult {
+  landmarks?: NormalizedLandmark[][];
+}
+
+interface HandLandmarkerInstance {
+  detectForVideo: (video: HTMLVideoElement, timestampMs: number) => HandLandmarkerResult;
+  close: () => void;
+}
+
 export const GestureController: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const handLandmarkerRef = useRef<any>(null);
+  const handLandmarkerRef = useRef<HandLandmarkerInstance | null>(null);
   const animationFrameRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
 
   const [showCamera, setShowCamera] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(true);
-  const [statusText, setStatusText] = useState("正在初始化...");
+  const [statusText, setStatusText] = useState("ڳʼ...");
 
-  // 手势状态 refs（避免闭包问题）
+  // ״̬ refsհ⣩
   const isMouseDownRef = useRef(false);
   const gestureCooldownRef = useRef(false);
   const lastPinchStateRef = useRef(false);
@@ -60,10 +69,10 @@ export const GestureController: React.FC = () => {
   const lastHandTimeRef = useRef<number>(0);
   const swipeHistoryRef = useRef<{ x: number; time: number }[]>([]);
 
-  // 参数
+  //
   const SMOOTH_FACTOR = 0.2;
   const PINCH_THRESHOLD = 0.06;
-  const PINCH_RELEASE_THRESHOLD = 0.08; // 松开时阈值更大，形成滞后区间防抖
+  const PINCH_RELEASE_THRESHOLD = 0.08; // ɿʱֵγͺ
   const SWIPE_MIN_DISTANCE = 0.2;
   const SWIPE_MAX_TIME_MS = 350;
   const HAND_LOST_TIMEOUT_MS = 600;
@@ -71,7 +80,7 @@ export const GestureController: React.FC = () => {
   const isEnabled = useGestureStore((state) => state.isEnabled);
 
   // Use non-reactive getState() for setters called in the hot loop
-  const getGestureActions = useCallback(() => useGestureStore.getState(), []);
+  const _getGestureActions = useCallback(() => useGestureStore.getState(), []);
 
   const setIsCameraActive = useCallback(
     (v: boolean) => useGestureStore.getState().setIsCameraActive(v),
@@ -99,7 +108,7 @@ export const GestureController: React.FC = () => {
     []
   );
 
-  // ============ 手势检测逻辑 ============
+  // ============ Ƽ߼ ============
 
   const getDistance2D = (a: NormalizedLandmark, b: NormalizedLandmark) => {
     return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
@@ -107,7 +116,7 @@ export const GestureController: React.FC = () => {
 
   const isPinch = useCallback((landmarks: NormalizedLandmark[]) => {
     const dist = getDistance2D(landmarks[THUMB_TIP], landmarks[INDEX_TIP]);
-    // 使用滞后区间防止抖动
+    // ʹͺֹ
     if (lastPinchStateRef.current) {
       return dist < PINCH_RELEASE_THRESHOLD;
     }
@@ -118,10 +127,10 @@ export const GestureController: React.FC = () => {
     const wrist = landmarks[WRIST];
     const history = swipeHistoryRef.current;
 
-    // 添加到历史
+    // ӵʷ
     history.push({ x: wrist.x, time: now });
 
-    // 只保留最近500ms的数据
+    // ֻ500ms
     while (history.length > 0 && now - history[0].time > 500) {
       history.shift();
     }
@@ -135,15 +144,15 @@ export const GestureController: React.FC = () => {
 
     if (dt > 50 && dt < SWIPE_MAX_TIME_MS && Math.abs(dx) > SWIPE_MIN_DISTANCE) {
       swipeHistoryRef.current = [];
-      // 注意：摄像头是镜像的，x 已经做了 1-x 翻转
-      // 所以 dx > 0 在原始摄像头坐标中意味着向左，但翻转后是向右
+      // ע⣺ͷǾģx Ѿ 1-x ת
+      //  dx > 0 ԭʼͷζ󣬵ת
       return dx < 0 ? "swipe_right" : "swipe_left";
     }
 
     return null;
   }, []);
 
-  // ============ 绘制骨骼 ============
+  // ============ ƹ ============
 
   const drawSkeleton = useCallback((landmarks: NormalizedLandmark[], canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext("2d");
@@ -152,7 +161,7 @@ export const GestureController: React.FC = () => {
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
 
-    // 连接线
+    //
     ctx.strokeStyle = "rgba(0, 255, 136, 0.7)";
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
@@ -163,7 +172,7 @@ export const GestureController: React.FC = () => {
       ctx.stroke();
     }
 
-    // 关键点
+    // ؼ
     for (let i = 0; i < landmarks.length; i++) {
       const lm = landmarks[i];
       const isKey = i === THUMB_TIP || i === INDEX_TIP;
@@ -173,7 +182,7 @@ export const GestureController: React.FC = () => {
       ctx.fill();
     }
 
-    // 如果在捏合状态，画一条拇指-食指连线
+    // ״̬һĴָ-ʳָ
     const pinchDist = getDistance2D(landmarks[THUMB_TIP], landmarks[INDEX_TIP]);
     if (pinchDist < PINCH_RELEASE_THRESHOLD) {
       ctx.strokeStyle = "rgba(255, 0, 255, 0.9)";
@@ -185,7 +194,7 @@ export const GestureController: React.FC = () => {
     }
   }, []);
 
-  // ============ 派发鼠标事件 ============
+  // ============ ɷ¼ ============
 
   const dispatchSyntheticEvent = useCallback((type: string, x: number, y: number) => {
     const el = document.elementFromPoint(x, y);
@@ -208,22 +217,22 @@ export const GestureController: React.FC = () => {
     el.dispatchEvent(event);
   }, []);
 
-  // ============ 处理一帧手势结果 ============
+  // ============ һ֡ƽ ============
 
   const processFrame = useCallback(
     (landmarks: NormalizedLandmark[]) => {
       const now = Date.now();
       lastHandTimeRef.current = now;
 
-      // 1. 计算光标位置（食指尖和拇指尖的中点）
+      // 1. λãʳָĴָе㣩
       const midX = (landmarks[INDEX_TIP].x + landmarks[THUMB_TIP].x) / 2;
       const midY = (landmarks[INDEX_TIP].y + landmarks[THUMB_TIP].y) / 2;
 
-      // 镜像翻转 X
+      // ת X
       const rawX = 1 - midX;
       const rawY = midY;
 
-      // 平滑
+      // ƽ
       smoothPositionRef.current = {
         x: smoothPositionRef.current.x + (rawX - smoothPositionRef.current.x) * SMOOTH_FACTOR,
         y: smoothPositionRef.current.y + (rawY - smoothPositionRef.current.y) * SMOOTH_FACTOR,
@@ -238,31 +247,31 @@ export const GestureController: React.FC = () => {
       const screenX = sx * window.innerWidth;
       const screenY = sy * window.innerHeight;
 
-      // 2. 捏合检测
+      // 2. ϼ
       const pinching = isPinch(landmarks);
       const wasPinching = lastPinchStateRef.current;
       lastPinchStateRef.current = pinching;
       setIsPinching(pinching);
 
       if (pinching && !wasPinching) {
-        // 刚开始捏合 → pointerdown
+        // տʼ  pointerdown
         isMouseDownRef.current = true;
         pinchHoldStartRef.current = now;
         dispatchSyntheticEvent("pointerdown", screenX, screenY);
       } else if (!pinching && wasPinching) {
-        // 松开捏合 → pointerup + click
+        // ɿ  pointerup + click
         isMouseDownRef.current = false;
         dispatchSyntheticEvent("pointerup", screenX, screenY);
-        // 只有短按才触发 click（长按视为拖拽）
+        // ֻж̰Ŵ clickΪק
         if (now - pinchHoldStartRef.current < 500) {
           dispatchSyntheticEvent("click", screenX, screenY);
         }
       }
 
-      // 3. 持续移动事件（hover / drag）
+      // 3. ƶ¼hover / drag
       dispatchSyntheticEvent("pointermove", screenX, screenY);
 
-      // 4. 挥动切歌（仅在非捏合时）
+      // 4. Ӷи裨ڷʱ
       if (!pinching) {
         const swipe = detectSwipe(landmarks, now);
         if (swipe && !gestureCooldownRef.current) {
@@ -296,12 +305,11 @@ export const GestureController: React.FC = () => {
     ]
   );
 
-  // ============ 主 Effect：初始化 HandLandmarker ============
+  // ============  Effectʼ HandLandmarker ============
 
   useEffect(() => {
     if (!isEnabled) {
       setIsCameraActive(false);
-      setStatusText("已关闭");
       return;
     }
 
@@ -321,7 +329,7 @@ export const GestureController: React.FC = () => {
     document.addEventListener("keydown", handleKeyDown);
 
     const init = async () => {
-      setStatusText("加载模型中...");
+      setStatusText("ģ...");
 
       try {
         const vision = await import("@mediapipe/tasks-vision");
@@ -329,16 +337,16 @@ export const GestureController: React.FC = () => {
 
         if (cancelled) return;
 
-        // 初始化 WASM 运行时
+        // ʼ WASM ʱ
         const wasmFileset = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
         );
 
         if (cancelled) return;
 
-        setStatusText("创建 HandLandmarker...");
+        setStatusText(" HandLandmarker...");
 
-        // 创建 HandLandmarker（使用 CDN 上的模型）
+        //  HandLandmarkerʹ CDN ϵģͣ
         const handLandmarker = await HandLandmarker.createFromOptions(wasmFileset, {
           baseOptions: {
             modelAssetPath:
@@ -359,9 +367,9 @@ export const GestureController: React.FC = () => {
 
         handLandmarkerRef.current = handLandmarker;
 
-        setStatusText("打开摄像头...");
+        setStatusText("ͷ...");
 
-        // 打开摄像头
+        // ͷ
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user", width: 640, height: 480 },
         });
@@ -381,9 +389,9 @@ export const GestureController: React.FC = () => {
         await video.play();
 
         setIsCameraActive(true);
-        setStatusText("运行中 ✓");
+        setStatusText(" ?");
 
-        // 启动检测循环
+        // ѭ
         let lastTimestamp = -1;
 
         const loop = () => {
@@ -400,15 +408,15 @@ export const GestureController: React.FC = () => {
               if (result.landmarks && result.landmarks.length > 0) {
                 const landmarks: NormalizedLandmark[] = result.landmarks[0];
 
-                // 绘制骨骼
+                // ƹ
                 if (canvasRef.current && showSkeleton) {
                   drawSkeleton(landmarks, canvasRef.current);
                 }
 
-                // 处理手势
+                //
                 processFrame(landmarks);
               } else {
-                // 手部丢失
+                // ֲʧ
                 const now = Date.now();
                 if (
                   lastHandTimeRef.current &&
@@ -431,7 +439,7 @@ export const GestureController: React.FC = () => {
                 }
               }
             } catch (err) {
-              // 偶发帧处理错误不中断循环
+              // ż֡жѭ
               console.warn("Frame processing error:", err);
             }
           }
@@ -441,8 +449,8 @@ export const GestureController: React.FC = () => {
 
         animationFrameRef.current = requestAnimationFrame(loop);
       } catch (error) {
-        console.error("HandLandmarker 初始化失败:", error);
-        setStatusText("初始化失败 ✗");
+        console.error("HandLandmarker ʼʧ:", error);
+        setStatusText("ʼʧ ?");
         setIsCameraActive(false);
       }
     };
@@ -465,7 +473,9 @@ export const GestureController: React.FC = () => {
       if (handLandmarkerRef.current) {
         try {
           handLandmarkerRef.current.close();
-        } catch (_) {}
+        } catch {
+          /* ignore */
+        }
         handLandmarkerRef.current = null;
       }
 
@@ -485,38 +495,40 @@ export const GestureController: React.FC = () => {
     showSkeleton,
   ]);
 
-  // ============ 渲染 ============
+  // ============ Ⱦ ============
+
+  const displayStatusText = isEnabled ? statusText : "ѹر";
 
   if (!isEnabled) return null;
 
   return (
     <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-auto">
-      {/* 控制按钮 */}
+      {/* ưť */}
       <div className="flex gap-2 mb-1">
         <button
           onClick={() => setShowCamera((p) => !p)}
           className="px-3 py-1.5 bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs rounded-full hover:bg-white/20 transition-colors cursor-pointer select-none"
         >
-          {showCamera ? "隐藏摄像头" : "显示摄像头"}
+          {showCamera ? "ͷ" : "ʾͷ"}
         </button>
         <button
           onClick={() => setShowSkeleton((p) => !p)}
           className="px-3 py-1.5 bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs rounded-full hover:bg-white/20 transition-colors cursor-pointer select-none"
         >
-          {showSkeleton ? "隐藏骨骼" : "显示骨骼"}
+          {showSkeleton ? "ع" : "ʾ"}
         </button>
         <button
           onClick={() => setIsEnabled(false)}
           className="px-3 py-1.5 bg-red-500/30 backdrop-blur-md border border-red-400/20 text-red-200 text-xs rounded-full hover:bg-red-500/50 transition-colors cursor-pointer select-none"
         >
-          关闭手势
+          ر
         </button>
       </div>
 
-      {/* 状态指示 */}
-      <div className="text-white/60 text-[10px] px-1">{statusText}</div>
+      {/* ״ָ̬ʾ */}
+      <div className="text-white/60 text-[10px] px-1">{displayStatusText}</div>
 
-      {/* 摄像头画面 */}
+      {/* ͷ */}
       {showCamera && (
         <div className="relative pointer-events-none">
           <video
@@ -541,15 +553,15 @@ export const GestureController: React.FC = () => {
         </div>
       )}
 
-      {/* 隐藏的 video 元素（当摄像头画面隐藏时仍需运行） */}
+      {/* ص video ԪأͷʱУ */}
       {!showCamera && (
         <video ref={videoRef} className="w-0 h-0 absolute opacity-0" playsInline muted />
       )}
 
-      {/* 快捷键提示 */}
+      {/* ݼʾ */}
       <div className="text-white/40 text-[10px] leading-relaxed px-1 mt-1">
-        <p>ESC/G 关闭 · C 摄像头 · S 骨骼</p>
-        <p>捏合=点击 · 挥手=切歌</p>
+        <p>ESC/G ر C ͷ S </p>
+        <p>= =и</p>
       </div>
     </div>
   );

@@ -12,7 +12,6 @@ import {
   BrainCircuit,
   Activity,
   Share2,
-  Download,
   X,
 } from "lucide-react";
 import { useKnowledgeStore } from "@/store/knowledgeStore";
@@ -25,7 +24,7 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { points } = useEmotionStore();
   const { showToast } = useGlassToast();
   const { isEnabled } = useAIStore();
-  const [isHovered, setIsHovered] = useState(false);
+  const [_isHovered, setIsHovered] = useState(false);
 
   const handleGenerate = () => {
     if (!isEnabled) {
@@ -81,7 +80,7 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
       <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
 
       <div className="relative p-10 rounded-[40px] bg-black/60 backdrop-blur-3xl border border-white/10 overflow-hidden shadow-2xl">
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] pointer-events-none mix-blend-overlay" />
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.15] pointer-events-none mix-blend-overlay" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)]" />
 
         {/* Header Section */}
@@ -94,7 +93,7 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
               </span>
             </div>
             <span className="text-[10px] font-medium tracking-[0.2em] text-white/20 uppercase italic">
-              NEURAL IDENTITY JOURNAL
+              神经身份日志
             </span>
           </div>
           <div className="flex gap-2">
@@ -143,7 +142,7 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
               </div>
               <div className="text-center space-y-2">
                 <div className="text-[10px] font-black tracking-[0.6em] text-white/40 uppercase">
-                  Decoding Neural Signals...
+                  解码神经信号...
                 </div>
                 <div className="text-[8px] font-mono text-white/20 uppercase tracking-widest italic">
                   Aesthetic DNA Matrix Initialization
@@ -163,7 +162,7 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
                   onClick={handleGenerate}
                   className="px-8 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-600/20 active:scale-95"
                 >
-                  开启初始化协议 (RE-SYNC)
+                  开启初始化协议 (重新同步)
                 </button>
               </div>
             </div>
@@ -191,7 +190,7 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
                 <div className="flex items-center gap-3 opacity-40">
                   <BrainCircuit className="w-4 h-4 text-indigo-400" />
                   <span className="text-[9px] font-black tracking-[0.4em] uppercase text-white/60">
-                    深度解构 / NEURAL ANALYSIS
+                    深度解构 / 神经分析
                   </span>
                 </div>
                 <p className="text-[13px] text-white/50 leading-relaxed font-medium italic selection:bg-indigo-500/30 pl-1">
@@ -227,7 +226,7 @@ export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
             <div className="flex items-center gap-2.5">
               <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
               <span className="text-[9px] font-black tracking-[0.4em] uppercase text-white/20 italic">
-                Neural Identity Protocol v1.0
+                神经身份协议 v1.0
               </span>
             </div>
             {dnaJournal && (

@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Fingerprint, Search, Trash2, Music, CheckCircle, AlertCircle } from "lucide-react";
+import { Fingerprint, Trash2, Music, AlertCircle } from "lucide-react";
 import { useFingerprintStore } from "@/store/fingerprintStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 

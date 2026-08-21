@@ -25,14 +25,14 @@ export interface HiResState {
   setShowDetailedInfo: (show: boolean) => void;
   setAutoDetect: (auto: boolean) => void;
 
-  detectQuality: (sampleRate: number, bitDepth: number, channels: number) => AudioQuality;
+  detectQuality: (sampleRate: number, bitDepth: number, _channels: number) => AudioQuality;
   getQualityBadge: (quality: AudioQuality) => string;
   getQualityColor: (quality: AudioQuality) => string;
 }
 
 export const useHiResStore = create<HiResState>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       currentQuality: null,
       showQualityBadge: true,
       showDetailedInfo: false,
@@ -54,7 +54,7 @@ export const useHiResStore = create<HiResState>()(
         set({ autoDetect: auto });
       },
 
-      detectQuality: (sampleRate, bitDepth, channels) => {
+      detectQuality: (sampleRate, bitDepth, _channels) => {
         if (sampleRate >= 2822400 || sampleRate >= 11289600) {
           return "DSD";
         }

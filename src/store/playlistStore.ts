@@ -1,12 +1,7 @@
 import { create } from "zustand";
 import { songsData, searchSongs, filterSongsByArtist, filterSongsByAlbum } from "@/data/songsData";
 import { getAllStoredMusic } from "@/services/localMusicStorage";
-import {
-  getCoverFromCache,
-  saveCoverToCache,
-  deleteCoverFromCache,
-  preloadCovers,
-} from "@/services/coverCache";
+import { getCoverFromCache, saveCoverToCache, deleteCoverFromCache } from "@/services/coverCache";
 import { useAudioStore } from "./audioStore";
 import { Song } from "@/types/song";
 
@@ -79,7 +74,7 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
       console.error("Error loading stored music:", error);
     }
 
-    const allSongs = [...demoSongs, ...storedSongs];
+    const allSongs = storedSongs.length > 0 ? storedSongs : demoSongs;
 
     // Optimization: Immediately set songs before doing heavy cover cache checks
     // This allows the UI to show the list instantly with default covers
@@ -115,13 +110,17 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
 
         set((state) => {
           const newSongs = [...state.songs];
-          chunkWithCovers.forEach((song, idx) => {
-            newSongs[i + idx] = song;
+          chunkWithCovers.forEach((song) => {
+            const existingIndex = newSongs.findIndex((existingSong) => existingSong.id === song.id);
+            if (existingIndex !== -1) {
+              newSongs[existingIndex] = song;
+            }
           });
+          const recentPlayed = newRecentPlayedSync(newSongs, state.recentPlayed);
           return {
             songs: newSongs,
             filteredSongs: newSongs,
-            recentPlayed: newRecentPlayedSync(newSongs, state.recentPlayed),
+            recentPlayed: hasRealSongs(newSongs) ? withoutDemoSongs(recentPlayed) : recentPlayed,
           };
         });
 
@@ -132,10 +131,18 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   },
 
   addSong: (song) =>
-    set((state) => ({
-      songs: [...state.songs, song],
-      filteredSongs: [...state.songs, song],
-    })),
+    set((state) => {
+      const existingSongs = isDemoSong(song) ? state.songs : withoutDemoSongs(state.songs);
+      const newSongs = [...existingSongs, song];
+      const recentPlayed = isDemoSong(song)
+        ? state.recentPlayed
+        : withoutDemoSongs(state.recentPlayed);
+      return {
+        songs: newSongs,
+        filteredSongs: newSongs,
+        recentPlayed,
+      };
+    }),
 
   removeSong: (songId) =>
     set((state) => {
@@ -195,11 +202,16 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
 
   importSongs: (newSongs) =>
     set((state) => {
-      const merged = [...state.songs, ...newSongs];
+      const importsContainRealSongs = hasRealSongs(newSongs);
+      const existingSongs = importsContainRealSongs ? withoutDemoSongs(state.songs) : state.songs;
+      const existingRecentPlayed = importsContainRealSongs
+        ? withoutDemoSongs(state.recentPlayed)
+        : state.recentPlayed;
+      const merged = [...existingSongs, ...newSongs];
       const unique = merged.filter(
         (song, index, self) => index === self.findIndex((s) => s.id === song.id)
       );
-      const newRecentPlayed = [...newSongs, ...state.recentPlayed].filter(
+      const newRecentPlayed = [...newSongs, ...existingRecentPlayed].filter(
         (song, index, self) => index === self.findIndex((s) => s.id === song.id)
       );
       return {
@@ -261,6 +273,18 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
     audioStore.playQueue(selected, 0);
   },
 }));
+
+function isDemoSong(song: Song) {
+  return song.source === "demo";
+}
+
+function withoutDemoSongs(songs: Song[]) {
+  return songs.filter((song) => !isDemoSong(song));
+}
+
+function hasRealSongs(songs: Song[]) {
+  return songs.some((song) => !isDemoSong(song));
+}
 
 function newRecentPlayedSync(allSongs: Song[], recentPlayed: Song[]) {
   const songMap = new Map(allSongs.map((s) => [s.id, s]));

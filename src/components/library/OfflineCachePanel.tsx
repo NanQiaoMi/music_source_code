@@ -14,7 +14,6 @@ import {
   Loader2,
   HardDrive,
   Music,
-  RefreshCw,
 } from "lucide-react";
 
 interface OfflineCachePanelProps {
@@ -24,7 +23,7 @@ interface OfflineCachePanelProps {
 
 export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({ isOpen, onClose }) => {
   const {
-    cacheStatus,
+    cacheStatus: _cacheStatus,
     isLoading,
     isCaching,
     cacheSong,
@@ -76,7 +75,7 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({ isOpen, on
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-3xl max-h-[80vh] bg-[#1c1c1e]/90 backdrop-blur-[40px] rounded-[24px] border border-white/10 shadow-2xl overflow-hidden flex flex-col"
       >
-        <div className="relative z-10 flex flex-col h-full">
+        <div className="flex flex-col">
           <div className="flex items-center justify-between p-6 border-b border-white/10">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center">

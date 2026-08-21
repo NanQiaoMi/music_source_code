@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 
 export const usePlugins = () => {
-  const [plugins, setPlugins] = useState<any[]>([]);
+  const [plugins, setPlugins] = useState<LegacyAny[]>([]);
   const [loading, setLoading] = useState(false);
 
   const loadPlugins = useCallback(async () => {
@@ -33,7 +33,7 @@ export const usePlugins = () => {
     return [];
   }, []);
 
-  const getMediaSource = useCallback(async (musicItem: any, quality = "standard") => {
+  const getMediaSource = useCallback(async (musicItem: LegacyAny, quality = "standard") => {
     if (window.electronAPI) {
       try {
         return await window.electronAPI.getMediaSource(musicItem, quality);
@@ -45,7 +45,7 @@ export const usePlugins = () => {
     return null;
   }, []);
 
-  const getLyric = useCallback(async (musicItem: any) => {
+  const getLyric = useCallback(async (musicItem: LegacyAny) => {
     if (window.electronAPI) {
       try {
         return await window.electronAPI.getLyric(musicItem);

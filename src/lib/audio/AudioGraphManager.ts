@@ -227,7 +227,7 @@ export class AudioGraphManager {
     const nodeInfo = this.nodes.get(id);
     if (!nodeInfo) return false;
 
-    const node = nodeInfo.node as any;
+    const node = nodeInfo.node as LegacyAny;
 
     for (const [key, value] of Object.entries(params)) {
       if (node[key] && node[key] instanceof AudioParam) {

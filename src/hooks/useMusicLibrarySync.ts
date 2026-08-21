@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useQueueStore, HistorySong } from "@/store/queueStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
@@ -90,7 +90,7 @@ export const useMusicLibrarySync = () => {
   const syncDailyPlayData = useCallback(() => {
     if (songs.length === 0) return;
 
-    const validSongIds = new Set(songs.map((s) => s.id));
+    const _validSongIds = new Set(songs.map((s) => s.id));
 
     const newDailyPlayData = listeningStats.dailyPlayData.map((dayData) => {
       return dayData;

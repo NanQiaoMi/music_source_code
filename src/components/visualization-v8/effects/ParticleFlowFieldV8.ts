@@ -1,14 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { EffectPlugin, RenderContext, AudioData } from "@/lib/visualization/types";
-
-interface FlowFieldParticle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  maxLife: number;
-  hue: number;
-}
 
 export const ParticleFlowFieldV8: EffectPlugin = {
   id: "particle-flow-field",
@@ -232,7 +223,7 @@ export const ParticleFlowFieldV8: EffectPlugin = {
     context.restore();
   },
 
-  resize(width: number, height: number) {},
+  resize(_width: number, _height: number) {},
 
   destroy() {
     (this as any).particles = [];

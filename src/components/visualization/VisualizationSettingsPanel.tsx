@@ -85,6 +85,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
   };
 
   const effectLabels: Record<string, string> = {
+    cinematicSilkAurora: "流金丝绸极光 (电影感)",
     spatialMesh: "流光幻境",
     cyberpunkParticles: "神经之网",
     organicFluid: "生命流体",
@@ -93,6 +94,8 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
     nebulaField: "星海漫游",
     vinylGroove: "量子空间",
     cyberMatrix: "赛博矩阵",
+    prismPulse: "棱镜脉冲",
+    superstringSingularity: "量子超弦奇点",
   };
 
   return (
@@ -133,6 +136,75 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
               <Sparkles className="w-3 h-3" /> 效果参数
             </h3>
 
+                        {currentEffect === "cinematicSilkAurora" && (
+              <div className="space-y-4">
+                <SettingSlider
+                  label="丝绸流体层数"
+                  value={effectSettings.cinematicSilkAurora?.silkCount ?? 6}
+                  min={3}
+                  max={8}
+                  step={1}
+                  onChange={(v) => updateEffectSettings("cinematicSilkAurora", { silkCount: v })}
+                />
+                <SettingSlider
+                  label="流体涌动速率"
+                  value={effectSettings.cinematicSilkAurora?.flowSpeed ?? 1.0}
+                  min={0.2}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cinematicSilkAurora", { flowSpeed: v })}
+                />
+                <SettingSlider
+                  label="次表面辉光强度"
+                  value={effectSettings.cinematicSilkAurora?.glowIntensity ?? 1.2}
+                  min={0.5}
+                  max={2.2}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cinematicSilkAurora", { glowIntensity: v })}
+                />
+                <SettingSlider
+                  label="大光圈光斑密度"
+                  value={effectSettings.cinematicSilkAurora?.bokehDensity ?? 1.0}
+                  min={0.3}
+                  max={2.0}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cinematicSilkAurora", { bokehDensity: v })}
+                />
+                <SettingSlider
+                  label="逸散流萤微火数量"
+                  value={effectSettings.cinematicSilkAurora?.firefliesCount ?? 25}
+                  min={10}
+                  max={50}
+                  step={5}
+                  onChange={(v) => updateEffectSettings("cinematicSilkAurora", { firefliesCount: v })}
+                />
+                <SettingSlider
+                  label="电影体积光束强度"
+                  value={effectSettings.cinematicSilkAurora?.godRaysIntensity ?? 1.0}
+                  min={0.0}
+                  max={2.0}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cinematicSilkAurora", { godRaysIntensity: v })}
+                />
+                <SettingSlider
+                  label="3D 空间纵深跨度"
+                  value={effectSettings.cinematicSilkAurora?.spatialDepth ?? 1.2}
+                  min={0.5}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cinematicSilkAurora", { spatialDepth: v })}
+                />
+                <SettingSlider
+                  label="宽银幕变形耀斑"
+                  value={effectSettings.cinematicSilkAurora?.anamorphicFlare ?? 1.0}
+                  min={0.0}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cinematicSilkAurora", { anamorphicFlare: v })}
+                />
+              </div>
+            )}
+
             {currentEffect === "spatialMesh" && (
               <div className="space-y-4">
                 <SettingSlider
@@ -168,31 +240,63 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
             {currentEffect === "cyberpunkParticles" && (
               <div className="space-y-4">
                 <SettingSlider
-                  label="粒子数量"
+                  label="星尘微粒数量"
                   value={effectSettings.cyberpunkParticles.particleCount}
-                  min={100}
-                  max={2000}
+                  min={200}
+                  max={1800}
                   step={50}
                   onChange={(v) => updateEffectSettings("cyberpunkParticles", { particleCount: v })}
                 />
                 <SettingSlider
-                  label="粒子大小"
+                  label="神经元尺寸"
                   value={effectSettings.cyberpunkParticles.particleSize}
                   min={0.5}
-                  max={10.0}
-                  step={0.5}
+                  max={6.0}
+                  step={0.2}
                   onChange={(v) => updateEffectSettings("cyberpunkParticles", { particleSize: v })}
                 />
                 <SettingSlider
-                  label="发射速度"
+                  label="星系演化速度"
                   value={effectSettings.cyberpunkParticles.speed}
-                  min={0.1}
-                  max={5.0}
+                  min={0.2}
+                  max={4.0}
                   step={0.1}
                   onChange={(v) => updateEffectSettings("cyberpunkParticles", { speed: v })}
                 />
                 <SettingSlider
-                  label="发光强度"
+                  label="引力透镜强度"
+                  value={effectSettings.cyberpunkParticles.gravityLens ?? 1.0}
+                  min={0.1}
+                  max={3.0}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cyberpunkParticles", { gravityLens: v })}
+                />
+                <SettingSlider
+                  label="动作电位流光速度"
+                  value={effectSettings.cyberpunkParticles.pulseSpeed ?? 1.2}
+                  min={0.2}
+                  max={3.0}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cyberpunkParticles", { pulseSpeed: v })}
+                />
+                <SettingSlider
+                  label="吸积盘自转率"
+                  value={effectSettings.cyberpunkParticles.accretionSpin ?? 1.0}
+                  min={0.2}
+                  max={3.0}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cyberpunkParticles", { accretionSpin: v })}
+                />
+                <SettingSlider
+                  label="焦外散景光斑强度"
+                  value={effectSettings.cyberpunkParticles.bokehAmount ?? 1.0}
+                  min={0.0}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cyberpunkParticles", { bokehAmount: v })}
+                />
+                <SettingSlider
+                  label="量子辉光强度"
                   value={effectSettings.cyberpunkParticles.glowIntensity}
                   min={0.0}
                   max={3.0}

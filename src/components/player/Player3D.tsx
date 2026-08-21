@@ -1,13 +1,18 @@
 "use client";
 
-import React, { useState, useCallback, memo } from "react";
+import React, { useState, useCallback, memo, useEffect, useRef } from "react";
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useAudioStore, LoopMode } from "@/store/audioStore";
+import { MISSING_AUDIO_SOURCE_HELP_TEXT } from "@/lib/audio/playableAudioSource";
 import { useUIStore } from "@/store/uiStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
+import { useABLoopStore } from "@/store/abLoopStore";
+import { GlassProgressBar } from "@/components/shared/GlassProgressBar";
+import { useAlbumTheme } from "@/hooks/useAlbumTheme";
+import { AppleAudioSourceIndicator } from "@/components/player/AppleAudioSourceIndicator";
 import {
   Sparkles,
   Play,
@@ -19,15 +24,53 @@ import {
   Shuffle,
   Volume2,
   VolumeX,
+  ListMusic,
 } from "lucide-react";
+
+const CHUNK_RETRY_PREFIX = "dynamic-import-retry:";
+
+const loadWithChunkRetry = async <T,>(importer: () => Promise<T>, retryKey: string): Promise<T> => {
+  try {
+    return await importer();
+  } catch (error) {
+    const shouldRetry =
+      typeof window !== "undefined" &&
+      error instanceof Error &&
+      /ChunkLoadError|Loading chunk .* failed/i.test(error.message);
+
+    if (!shouldRetry) {
+      throw error;
+    }
+
+    const storageKey = `${CHUNK_RETRY_PREFIX}${retryKey}`;
+    const hasRetried = window.sessionStorage.getItem(storageKey) === "1";
+
+    if (!hasRetried) {
+      window.sessionStorage.setItem(storageKey, "1");
+      window.location.reload();
+    } else {
+      window.sessionStorage.removeItem(storageKey);
+    }
+
+    throw error;
+  }
+};
 
 // Lazy Load Sub-components
 const LyricVisualizer = dynamic(
-  () => import("@/components/lyrics/LyricVisualizer").then((m) => m.LyricVisualizer),
+  () =>
+    loadWithChunkRetry(
+      () => import("@/components/lyrics/LyricVisualizer").then((m) => m.LyricVisualizer),
+      "lyric-visualizer"
+    ),
   { ssr: false }
 );
 const FullscreenLyrics = dynamic(
-  () => import("@/components/lyrics/FullscreenLyrics").then((m) => m.FullscreenLyrics),
+  () =>
+    loadWithChunkRetry(
+      () => import("@/components/lyrics/FullscreenLyrics").then((m) => m.FullscreenLyrics),
+      "fullscreen-lyrics"
+    ),
   { ssr: false }
 );
 
@@ -132,26 +175,59 @@ const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(
   ({ cover, title, isPlaying, albumId }) => {
+    const shouldReduceMotion = useReducedMotion();
     const [tilt, setTilt] = useState({ x: 0, y: 0 });
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+    const pointerFrameRef = useRef<number | null>(null);
+    const nextPointerStateRef = useRef({
+      tilt: { x: 0, y: 0 },
+      mousePosition: { x: 0, y: 0 },
+    });
 
-    const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+    const handleMouseMove = useCallback(
+      (e: React.MouseEvent<HTMLDivElement>) => {
+        if (shouldReduceMotion) return;
 
-      const rotateX = ((mouseY - centerY) / centerY) * -8;
-      const rotateY = ((mouseX - centerX) / centerX) * 8;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
 
-      setTilt({ x: rotateX, y: rotateY });
-      setMousePosition({ x: (mouseX - centerX) / centerX, y: (mouseY - centerY) / centerY });
-    }, []);
+        const rotateX = ((mouseY - centerY) / centerY) * -8;
+        const rotateY = ((mouseX - centerX) / centerX) * 8;
+
+        nextPointerStateRef.current = {
+          tilt: { x: rotateX, y: rotateY },
+          mousePosition: { x: (mouseX - centerX) / centerX, y: (mouseY - centerY) / centerY },
+        };
+
+        if (pointerFrameRef.current !== null) return;
+
+        pointerFrameRef.current = requestAnimationFrame(() => {
+          setTilt(nextPointerStateRef.current.tilt);
+          setMousePosition(nextPointerStateRef.current.mousePosition);
+          pointerFrameRef.current = null;
+        });
+      },
+      [shouldReduceMotion]
+    );
 
     const handleMouseLeave = useCallback(() => {
+      nextPointerStateRef.current = {
+        tilt: { x: 0, y: 0 },
+        mousePosition: { x: 0, y: 0 },
+      };
       setTilt({ x: 0, y: 0 });
       setMousePosition({ x: 0, y: 0 });
+    }, []);
+
+    useEffect(() => {
+      return () => {
+        if (pointerFrameRef.current !== null) {
+          cancelAnimationFrame(pointerFrameRef.current);
+        }
+      };
     }, []);
 
     return (
@@ -159,9 +235,9 @@ const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(
         layoutId={albumId ? `album-cover-${albumId}` : undefined}
         className="relative w-full max-w-[500px] mx-auto"
         animate={{
-          rotateX: tilt.x,
-          rotateY: tilt.y,
-          scale: isPlaying ? 1 : 0.95,
+          rotateX: shouldReduceMotion ? 0 : tilt.x,
+          rotateY: shouldReduceMotion ? 0 : tilt.y,
+          scale: isPlaying || shouldReduceMotion ? 1 : 0.95,
         }}
         transition={APPLE_SPRING_CONFIG}
         style={{
@@ -173,10 +249,12 @@ const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(
         <motion.div
           className="relative w-full aspect-square"
           animate={{
-            scale: isPlaying ? [1, 1.02, 1] : 1,
+            scale: isPlaying && !shouldReduceMotion ? [1, 1.018, 1] : 1,
           }}
           transition={
-            isPlaying ? { duration: 4, repeat: Infinity, ease: "easeInOut" } : { duration: 0.5 }
+            isPlaying && !shouldReduceMotion
+              ? { duration: 4.8, repeat: Infinity, ease: "easeInOut" }
+              : { duration: 0.5 }
           }
         >
           <div
@@ -205,9 +283,9 @@ const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(
 
             <motion.div
               className="absolute inset-0 rounded-[2rem] bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0"
-              animate={{ opacity: isPlaying ? [0, 0.4, 0] : 0 }}
+              animate={{ opacity: isPlaying && !shouldReduceMotion ? [0, 0.32, 0] : 0 }}
               transition={{
-                duration: 3,
+                duration: 3.8,
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
@@ -229,14 +307,21 @@ const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(
 CoverWith3DEffect.displayName = "CoverWith3DEffect";
 
 export const Player3D: React.FC = () => {
+  const shouldReduceMotion = useReducedMotion();
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const currentTime = useAudioStore((state) => state.currentTime);
   const duration = useAudioStore((state) => state.duration);
   const currentSong = useAudioStore((state) => state.currentSong);
+  const bufferedRanges = useAudioStore((state) => state.bufferedRanges);
+  const { themeColors } = useAlbumTheme(currentSong?.cover);
   const isLoading = useAudioStore((state) => state.isLoading);
   const error = useAudioStore((state) => state.error);
   const clearError = useAudioStore((state) => state.clearError);
-  const { setCurrentView, setIsTransitioning } = useUIStore();
+  const abLoopEnabled = useABLoopStore((state) => state.isEnabled);
+  const pointA = useABLoopStore((state) => state.pointA);
+  const pointB = useABLoopStore((state) => state.pointB);
+  const { setCurrentView, setIsTransitioning, panels, togglePanel } = useUIStore();
+  const isQueueOpen = Boolean(panels?.queue);
   const { isFavorite, toggleFavorite } = useFavoritesStore();
   const {
     setIsPlaying,
@@ -273,7 +358,11 @@ export const Player3D: React.FC = () => {
 
   return (
     <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-      <BreathingBorder isPlaying={isPlaying} isEnabled={breathingEffectEnabled} intensity={1} />
+      <BreathingBorder
+        isPlaying={isPlaying}
+        isEnabled={breathingEffectEnabled && !shouldReduceMotion}
+        intensity={1}
+      />
 
       <div className="w-full max-w-7xl mx-auto h-[90vh] px-8 lg:px-16 flex flex-col">
         {/* 主要内容区域 */}
@@ -313,6 +402,9 @@ export const Player3D: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
+                <div className="px-4 mb-3 flex justify-center lg:justify-start">
+                  <AppleAudioSourceIndicator />
+                </div>
                 <h2 className="text-3xl font-bold text-white tracking-tight mb-3 truncate px-4">
                   {currentSong?.title || "未选择歌曲"}
                 </h2>
@@ -390,29 +482,22 @@ export const Player3D: React.FC = () => {
 
             <div className="relative z-10">
               {/* 进度条 */}
-              <div className="mb-6">
-                <div className="flex justify-between text-sm text-white/60 mb-2">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
-                </div>
-                <div
-                  className="h-1.5 bg-white/10 rounded-full cursor-pointer group"
-                  onClick={(e) => {
-                    if (!currentSong) return;
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const percent = (e.clientX - rect.left) / rect.width;
-                    seekTo(duration * percent);
-                  }}
-                >
-                  <motion.div
-                    className="h-full bg-white rounded-full relative shadow-[0_0_12px_rgba(255,255,255,0.6)]"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(currentTime / duration) * 100}%` }}
-                    transition={{ duration: 0.1 }}
-                  >
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.8)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </motion.div>
-                </div>
+              <div className="mb-4">
+                <GlassProgressBar
+                  currentTime={currentTime}
+                  duration={duration}
+                  bufferedRanges={bufferedRanges}
+                  abLoopEnabled={abLoopEnabled}
+                  pointA={pointA}
+                  pointB={pointB}
+                  onSeek={seekTo}
+                  accentColor={
+                    themeColors && themeColors.primary !== "rgba(0, 0, 0, 0.9)"
+                      ? themeColors.primary
+                      : undefined
+                  }
+                  disabled={!currentSong}
+                />
               </div>
 
               {/* 控制按钮 */}
@@ -444,7 +529,7 @@ export const Player3D: React.FC = () => {
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       const modes: LoopMode[] = ["none", "all", "single"];
-                      const currentIndex = modes.indexOf(loopMode as any);
+                      const currentIndex = modes.indexOf(loopMode);
                       const nextIndex = (currentIndex + 1) % modes.length;
                       useAudioStore.getState().setLoopMode(modes[nextIndex]);
                     }}
@@ -486,7 +571,9 @@ export const Player3D: React.FC = () => {
                     whileTap={{ scale: 0.9 }}
                     onClick={() => setIsPlaying(!isPlaying)}
                     disabled={!currentSong}
-                    className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-black shadow-[0_0_25px_rgba(255,255,255,0.4)] hover:shadow-[0_0_40px_rgba(255,255,255,0.6)] transition-all disabled:opacity-30"
+                    className={`w-16 h-16 rounded-full bg-white flex items-center justify-center text-black shadow-[0_0_25px_rgba(255,255,255,0.4)] hover:shadow-[0_0_40px_rgba(255,255,255,0.6)] transition-all disabled:opacity-30 ${
+                      isLoading ? "animate-pulse" : ""
+                    }`}
                   >
                     {isPlaying ? (
                       <Pause className="w-8 h-8" fill="currentColor" />
@@ -529,6 +616,20 @@ export const Player3D: React.FC = () => {
                     onChange={(e) => setVolume(parseFloat(e.target.value))}
                     className="w-24 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg"
                   />
+
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => togglePanel("queue")}
+                    className={`p-2 rounded-full transition-all ml-1 ${
+                      isQueueOpen
+                        ? "text-white bg-white/25 shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                        : "text-white/60 hover:text-white hover:bg-white/10"
+                    }`}
+                    title="播放队列 / 歌单列表"
+                  >
+                    <ListMusic className="w-5 h-5" />
+                  </motion.button>
                 </div>
               </div>
             </div>
@@ -590,7 +691,7 @@ export const Player3D: React.FC = () => {
                 <p className="text-sm text-white/70 mt-1">请检查网络连接后重试</p>
               )}
               {error.type === "load" && (
-                <p className="text-sm text-white/70 mt-1">该歌曲暂无音频文件</p>
+                <p className="text-sm text-white/70 mt-1">{MISSING_AUDIO_SOURCE_HELP_TEXT}</p>
               )}
             </div>
             <div className="flex gap-2">

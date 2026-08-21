@@ -4,6 +4,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { Music2 } from "lucide-react";
 import { motion } from "framer-motion";
+import type { EmotionPoint } from "@/types/emotion";
 
 const SAFE_PADDING = 80;
 
@@ -69,11 +70,13 @@ const EmotionVisualizer: React.FC = () => {
 
   const isDraggingRef = useRef(false);
   const startPosRef = useRef({ x: 0, y: 0 });
-  const [hoveredPoint, setHoveredPoint] = useState<any>(null);
+  const [hoveredPoint, setHoveredPoint] = useState<EmotionPoint | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [canvasMetrics, setCanvasMetrics] = useState({ width: 0, height: 0, clientWidth: 0 });
 
   const { playSong: audioPlaySong, currentSong: audioCurrentSong } = useAudioStore();
   const { songs } = usePlaylistStore();
-  const { points, selectedIds, searchResults } = useEmotionStore();
+  const { points, selectedIds, searchResults: _searchResults } = useEmotionStore();
 
   const getPixelPos = (p: { x: number; y: number }, w: number, h: number) => {
     const innerW = w - SAFE_PADDING * 2;
@@ -92,6 +95,11 @@ const EmotionVisualizer: React.FC = () => {
     return { x: wx, y: wy };
   };
 
+  const setDraggingState = (dragging: boolean) => {
+    isDraggingRef.current = dragging;
+    setIsDragging(dragging);
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -101,9 +109,12 @@ const EmotionVisualizer: React.FC = () => {
     const handleResize = () => {
       const parent = canvas.parentElement;
       if (parent) {
-        canvas.width = parent.clientWidth * window.devicePixelRatio;
-        canvas.height = parent.clientHeight * window.devicePixelRatio;
+        const width = parent.clientWidth;
+        const height = parent.clientHeight;
+        canvas.width = width * window.devicePixelRatio;
+        canvas.height = height * window.devicePixelRatio;
         ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        setCanvasMetrics({ width, height, clientWidth: width });
       }
     };
 
@@ -124,7 +135,7 @@ const EmotionVisualizer: React.FC = () => {
         hoveredPointId,
       } = state;
 
-      const deltaTime = (time - lastTimeRef.current) / 1000;
+      const _deltaTime = (time - lastTimeRef.current) / 1000;
       lastTimeRef.current = time;
       timeRef.current = time * 0.001;
       const t = timeRef.current;
@@ -372,7 +383,7 @@ const EmotionVisualizer: React.FC = () => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    isDraggingRef.current = true;
+    setDraggingState(true);
     startPosRef.current = { x, y };
 
     if (selectionMode === "lasso") setLassoPath([{ x, y }]);
@@ -425,22 +436,22 @@ const EmotionVisualizer: React.FC = () => {
       const width = canvas.width / window.devicePixelRatio;
       const height = canvas.height / window.devicePixelRatio;
       let minD = 20;
-      let near: any = null;
-      points.forEach((p: any) => {
+      let near: EmotionPoint | null = null;
+      for (const p of points) {
         const pos = getPixelPos(p, width, height);
         const d = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
         if (d < minD) {
           minD = d;
           near = p;
         }
-      });
+      }
       setHoveredPoint(near);
       setHoveredPointId(near?.id || null);
     }
   };
 
   const handleMouseUp = () => {
-    isDraggingRef.current = false;
+    setDraggingState(false);
     const {
       selectionMode,
       marqueeRect,
@@ -504,30 +515,22 @@ const EmotionVisualizer: React.FC = () => {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={() => {
-          isDraggingRef.current = false;
+          setDraggingState(false);
           setHoveredPoint(null);
           useEmotionStore.getState().setHoveredPointId(null);
         }}
         className="w-full h-full cursor-crosshair"
       />
-      {hoveredPoint && !isDraggingRef.current && (
+      {hoveredPoint && !isDragging && (
         <div
           className="absolute z-[100] pointer-events-none px-6 py-4 bg-black/80 backdrop-blur-3xl rounded-[32px] border border-white/10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all min-w-[240px]"
           style={{
             left: Math.min(
-              getPixelPos(
-                hoveredPoint,
-                canvasRef.current?.width ? canvasRef.current.width / window.devicePixelRatio : 0,
-                canvasRef.current?.height ? canvasRef.current.height / window.devicePixelRatio : 0
-              ).x + 30,
-              (canvasRef.current?.clientWidth || 0) - 260
+              getPixelPos(hoveredPoint, canvasMetrics.width, canvasMetrics.height).x + 30,
+              canvasMetrics.clientWidth - 260
             ),
             top: Math.max(
-              getPixelPos(
-                hoveredPoint,
-                canvasRef.current?.width ? canvasRef.current.width / window.devicePixelRatio : 0,
-                canvasRef.current?.height ? canvasRef.current.height / window.devicePixelRatio : 0
-              ).y - 120,
+              getPixelPos(hoveredPoint, canvasMetrics.width, canvasMetrics.height).y - 120,
               20
             ),
           }}
@@ -560,7 +563,7 @@ const EmotionVisualizer: React.FC = () => {
                   情绪意境 archeology
                 </div>
                 <div className="text-[11px] text-white/70 italic leading-relaxed font-medium">
-                  "{hoveredPoint.description}"
+                  &quot;{hoveredPoint.description}&quot;
                 </div>
               </div>
             )}
@@ -581,7 +584,7 @@ const EmotionVisualizer: React.FC = () => {
       )}
       {selectedIds.length === 1 &&
         !hoveredPoint &&
-        !isDraggingRef.current &&
+        !isDragging &&
         (() => {
           const p = points.find((p) => p.id === selectedIds[0]);
           if (!p || !p.description) return null;
@@ -615,7 +618,7 @@ const EmotionVisualizer: React.FC = () => {
                     transition={{ duration: 1 }}
                     className="text-sm text-white/90 font-medium italic leading-relaxed tracking-tight"
                   >
-                    "{p.description}"
+                    &quot;{p.description}&quot;
                   </motion.div>
 
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">

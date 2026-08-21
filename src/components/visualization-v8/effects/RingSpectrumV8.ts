@@ -69,7 +69,7 @@ export const RingSpectrumV8Effect: EffectPlugin = {
     },
   ],
 
-  init: (ctx) => {
+  init: (_ctx) => {
     console.log("RingSpectrumV8 effect initialized");
   },
 
@@ -141,7 +141,7 @@ export const RingSpectrumV8Effect: EffectPlugin = {
     console.log(`RingSpectrumV8 resized to ${width}x${height}`);
   },
 
-  destroy: (ctx) => {
+  destroy: (_ctx) => {
     console.log("RingSpectrumV8 effect destroyed");
   },
 };

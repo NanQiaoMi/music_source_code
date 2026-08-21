@@ -1,73 +1,179 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require("electron");
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, protocol, net, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const http = require("node:http");
+const nodeNet = require("node:net");
+const { pathToFileURL } = require("node:url");
 const { spawn } = require("child_process");
+const { resolveStaticPath } = require("./staticPath");
 const pluginManager = require("./pluginManager");
+
+const DEFAULT_BACKEND_HOST = "127.0.0.1";
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "app",
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+    },
+  },
+]);
 
 let mainWindow = null;
 let desktopLyricsWindow = null;
 let tray = null;
 let backendProcess = null;
+let backendState = {
+  status: "disabled",
+  baseUrl: null,
+  error: null,
+};
 
-function startBackend() {
-  const isDev = process.env.NODE_ENV === "development";
+const outDirectory = () => path.join(__dirname, "../../out");
 
-  if (isDev) {
-    console.log("开发模式：跳过后端启动，请手动启动后端");
-    return;
-  }
-
-  // 生产模式：启动打包后的后端
-  const backendPath = path.join(process.resourcesPath, "backend.exe");
-
-  // 检查后端文件是否存在
-  if (!fs.existsSync(backendPath)) {
-    // 尝试从应用目录查找
-    const altPath = path.join(app.getAppPath(), "backend.exe");
-    if (fs.existsSync(altPath)) {
-      console.log("启动后端服务:", altPath);
-      backendProcess = spawn(altPath, [], {
-        detached: true,
-        stdio: "ignore",
-        windowsHide: true,
-      });
-    } else {
-      console.warn("后端可执行文件不存在，部分功能可能不可用");
-      return;
+async function registerAppProtocol() {
+  protocol.handle("app", async (request) => {
+    const target = resolveStaticPath(request.url, outDirectory());
+    if (!target || !fs.existsSync(target) || !fs.statSync(target).isFile()) {
+      return new Response("Not found", { status: 404 });
     }
-  } else {
-    console.log("启动后端服务:", backendPath);
-    backendProcess = spawn(backendPath, [], {
-      detached: true,
-      stdio: "ignore",
-      windowsHide: true,
+
+    return net.fetch(pathToFileURL(target).toString());
+  });
+}
+
+function findAvailablePort() {
+  return new Promise((resolve, reject) => {
+    const server = nodeNet.createServer();
+    server.once("error", reject);
+    server.listen(0, DEFAULT_BACKEND_HOST, () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : null;
+      server.close(() => (port ? resolve(port) : reject(new Error("无法分配后端端口"))));
     });
+  });
+}
+
+function checkBackendHealth(baseUrl) {
+  return new Promise((resolve) => {
+    const request = http.get(`${baseUrl}/api/health`, (response) => {
+      response.resume();
+      resolve(response.statusCode === 200);
+    });
+    request.setTimeout(1000, () => {
+      request.destroy();
+      resolve(false);
+    });
+    request.on("error", () => resolve(false));
+  });
+}
+
+async function waitForBackend(baseUrl, timeoutMs = 30000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await checkBackendHealth(baseUrl)) return true;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return false;
+}
+
+async function startBackend() {
+  if (!app.isPackaged) {
+    backendState = { status: "external", baseUrl: `http://${DEFAULT_BACKEND_HOST}:8000`, error: null };
+    console.log("开发模式：跳过内置后端启动，请运行 npm run backend");
+    return true;
   }
 
-  backendProcess.unref();
+  const backendPath = path.join(process.resourcesPath, "backend.exe");
+  if (!fs.existsSync(backendPath)) {
+    backendState = {
+      status: "error",
+      baseUrl: null,
+      error: `未找到内置后端：${backendPath}`,
+    };
+    console.error(backendState.error);
+    return false;
+  }
 
-  backendProcess.on("error", (err) => {
-    console.error("后端启动失败:", err);
+  const port = await findAvailablePort();
+  const baseUrl = `http://${DEFAULT_BACKEND_HOST}:${port}`;
+  backendState = { status: "starting", baseUrl, error: null };
+
+  backendProcess = spawn(backendPath, [], {
+    cwd: path.dirname(backendPath),
+    env: {
+      ...process.env,
+      VIBE_HOST: DEFAULT_BACKEND_HOST,
+      VIBE_PORT: String(port),
+      VIBE_MODELS_DIR: path.join(app.getPath("userData"), "models"),
+    },
+    stdio: "ignore",
+    windowsHide: true,
   });
 
-  backendProcess.on("exit", (code) => {
-    console.log("后端进程退出，代码:", code);
+  backendProcess.once("error", (error) => {
+    backendState = { status: "error", baseUrl: null, error: error.message };
+    console.error("后端启动失败:", error);
+  });
+  backendProcess.once("exit", (code) => {
+    if (backendState.status !== "stopping") {
+      backendState = {
+        status: "error",
+        baseUrl: null,
+        error: `后端进程已退出（代码 ${code ?? "unknown"}）`,
+      };
+    }
     backendProcess = null;
   });
 
-  console.log("后端服务启动中...");
+  if (!(await waitForBackend(baseUrl))) {
+    backendState = {
+      status: "error",
+      baseUrl: null,
+      error: "内置后端未能在 30 秒内通过健康检查，请检查端口占用或安全软件拦截。",
+    };
+    stopBackend();
+    console.error(backendState.error);
+    return false;
+  }
+
+  backendState = { status: "ready", baseUrl, error: null };
+  console.log("内置后端已就绪:", baseUrl);
+  return true;
 }
 
 function stopBackend() {
-  if (backendProcess) {
-    console.log("停止后端服务...");
-    try {
-      backendProcess.kill();
-    } catch (err) {
-      console.error("停止后端失败:", err);
-    }
-    backendProcess = null;
+  if (!backendProcess) return;
+  backendState = { ...backendState, status: "stopping" };
+  try {
+    backendProcess.kill();
+  } catch (error) {
+    console.error("停止后端失败:", error);
   }
+  backendProcess = null;
+}
+
+function configureWindowSecurity(window) {
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith("app://app/")) {
+      return { action: "allow" };
+    }
+    if (url.startsWith("https://") || url.startsWith("http://")) {
+      void shell.openExternal(url);
+    }
+    return { action: "deny" };
+  });
+
+  window.webContents.on("will-navigate", (event, url) => {
+    const isDevelopment = !app.isPackaged && url.startsWith("http://localhost:3025");
+    if (!url.startsWith("app://app/") && !isDevelopment) {
+      event.preventDefault();
+    }
+  });
 }
 
 function createMainWindow() {
@@ -84,14 +190,15 @@ function createMainWindow() {
       nodeIntegration: false,
       contextIsolation: true,
     },
-    icon: path.join(__dirname, "../../public/logo.svg"),
+    icon: path.join(__dirname, "../../public/app-icon.ico"),
   });
+  configureWindowSecurity(mainWindow);
 
-  if (process.env.NODE_ENV === "development") {
+  if (app.isPackaged) {
+    mainWindow.loadURL("app://app/");
+  } else {
     mainWindow.loadURL("http://localhost:3025");
     mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.loadFile(path.join(__dirname, "../../out/index.html"));
   }
 
   mainWindow.on("closed", () => {
@@ -99,9 +206,7 @@ function createMainWindow() {
     if (desktopLyricsWindow && !desktopLyricsWindow.isDestroyed()) {
       desktopLyricsWindow.close();
     }
-    if (process.platform !== "darwin") {
-      app.quit();
-    }
+    if (process.platform !== "darwin") app.quit();
   });
 }
 
@@ -125,15 +230,13 @@ function createDesktopLyricsWindow() {
       contextIsolation: true,
     },
   });
-
   desktopLyricsWindow.setIgnoreMouseEvents(true, { forward: true });
+  configureWindowSecurity(desktopLyricsWindow);
 
-  if (process.env.NODE_ENV === "development") {
-    desktopLyricsWindow.loadURL("http://localhost:3025?desktop-lyrics=true");
+  if (app.isPackaged) {
+    desktopLyricsWindow.loadURL("app://app/?desktop-lyrics=true");
   } else {
-    desktopLyricsWindow.loadFile(path.join(__dirname, "../../out/index.html"), {
-      query: { "desktop-lyrics": "true" },
-    });
+    desktopLyricsWindow.loadURL("http://localhost:3025?desktop-lyrics=true");
   }
 
   desktopLyricsWindow.on("closed", () => {
@@ -142,9 +245,8 @@ function createDesktopLyricsWindow() {
 }
 
 function createTray() {
-  const iconPath = path.join(__dirname, "../../public/logo.svg");
+  const iconPath = path.join(__dirname, "../../public/app-icon.ico");
   const trayIcon = nativeImage.createFromPath(iconPath);
-
   tray = new Tray(trayIcon.resize({ width: 16, height: 16 }));
 
   const contextMenu = Menu.buildFromTemplate([
@@ -162,55 +264,32 @@ function createTray() {
       type: "checkbox",
       checked: desktopLyricsWindow && !desktopLyricsWindow.isDestroyed(),
       click: (menuItem) => {
-        if (menuItem.checked) {
-          createDesktopLyricsWindow();
-        } else if (desktopLyricsWindow) {
-          desktopLyricsWindow.close();
-        }
+        if (menuItem.checked) createDesktopLyricsWindow();
+        else if (desktopLyricsWindow) desktopLyricsWindow.close();
       },
     },
     { type: "separator" },
     {
       label: "播放/暂停",
-      click: () => {
-        if (mainWindow) {
-          mainWindow.webContents.send("toggle-play");
-        }
-      },
+      click: () => mainWindow?.webContents.send("toggle-play"),
     },
     {
       label: "上一首",
-      click: () => {
-        if (mainWindow) {
-          mainWindow.webContents.send("prev-song");
-        }
-      },
+      click: () => mainWindow?.webContents.send("prev-song"),
     },
     {
       label: "下一首",
-      click: () => {
-        if (mainWindow) {
-          mainWindow.webContents.send("next-song");
-        }
-      },
+      click: () => mainWindow?.webContents.send("next-song"),
     },
     { type: "separator" },
-    {
-      label: "退出",
-      click: () => {
-        app.quit();
-      },
-    },
+    { label: "退出", click: () => app.quit() },
   ]);
 
   tray.setToolTip("Vibe Music Player");
   tray.setContextMenu(contextMenu);
-
   tray.on("double-click", () => {
-    if (mainWindow) {
-      mainWindow.show();
-      mainWindow.focus();
-    }
+    mainWindow?.show();
+    mainWindow?.focus();
   });
 }
 
@@ -218,49 +297,35 @@ ipcMain.handle("toggle-desktop-lyrics", () => {
   if (desktopLyricsWindow && !desktopLyricsWindow.isDestroyed()) {
     desktopLyricsWindow.close();
     return false;
-  } else {
-    createDesktopLyricsWindow();
-    return true;
   }
+  createDesktopLyricsWindow();
+  return true;
 });
 
-ipcMain.handle("is-desktop-lyrics-open", () => {
-  return desktopLyricsWindow && !desktopLyricsWindow.isDestroyed();
-});
-
+ipcMain.handle("is-desktop-lyrics-open", () => Boolean(desktopLyricsWindow && !desktopLyricsWindow.isDestroyed()));
+ipcMain.handle("get-backend-status", () => backendState);
 ipcMain.handle("update-lyrics", (event, lyrics) => {
   if (desktopLyricsWindow && !desktopLyricsWindow.isDestroyed()) {
     desktopLyricsWindow.webContents.send("update-lyrics", lyrics);
   }
 });
-
 ipcMain.handle("update-song-info", (event, songInfo) => {
-  if (tray) {
-    tray.setToolTip(`${songInfo.title} - ${songInfo.artist}`);
-  }
+  if (tray) tray.setToolTip(`${songInfo.title} - ${songInfo.artist}`);
   if (desktopLyricsWindow && !desktopLyricsWindow.isDestroyed()) {
     desktopLyricsWindow.webContents.send("update-song-info", songInfo);
   }
 });
-
 ipcMain.handle("set-always-on-top", (event, alwaysOnTop) => {
-  if (mainWindow) {
-    mainWindow.setAlwaysOnTop(alwaysOnTop);
-  }
+  mainWindow?.setAlwaysOnTop(alwaysOnTop);
 });
-
 ipcMain.handle("toggle-fullscreen", () => {
-  if (mainWindow) {
-    const isFullScreen = mainWindow.isFullScreen();
-    mainWindow.setFullScreen(!isFullScreen);
-    return !isFullScreen;
-  }
-  return false;
+  if (!mainWindow) return false;
+  const isFullScreen = mainWindow.isFullScreen();
+  mainWindow.setFullScreen(!isFullScreen);
+  return !isFullScreen;
 });
 
-// Emotion Data Persistence
 const EMOTIONS_FILE_PATH = path.join(app.getPath("userData"), ".vibe_emotions.json");
-
 ipcMain.handle("save-emotions", async (event, data) => {
   try {
     await fs.promises.writeFile(EMOTIONS_FILE_PATH, JSON.stringify(data, null, 2), "utf-8");
@@ -270,64 +335,55 @@ ipcMain.handle("save-emotions", async (event, data) => {
     return { success: false, error: error.message };
   }
 });
-
 ipcMain.handle("load-emotions", async () => {
   try {
-    if (!fs.existsSync(EMOTIONS_FILE_PATH)) {
-      return {};
-    }
-    const content = await fs.promises.readFile(EMOTIONS_FILE_PATH, "utf-8");
-    return JSON.parse(content);
+    if (!fs.existsSync(EMOTIONS_FILE_PATH)) return {};
+    return JSON.parse(await fs.promises.readFile(EMOTIONS_FILE_PATH, "utf-8"));
   } catch (error) {
     console.error("Error loading emotions:", error);
     return {};
   }
 });
 
-// Plugin System IPC Handlers
-ipcMain.handle("plugins:search", async (event, query, page, type) => {
-  return await pluginManager.search(query, page, type);
-});
-
-ipcMain.handle("plugins:getMediaSource", async (event, musicItem, quality) => {
-  return await pluginManager.getMediaSource(musicItem, quality);
-});
-
-ipcMain.handle("plugins:getLyric", async (event, musicItem) => {
-  return await pluginManager.getLyric(musicItem);
-});
-
-ipcMain.handle("plugins:list", async () => {
-  return pluginManager.listPlugins();
-});
-
+ipcMain.handle("plugins:search", async (event, query, page, type) =>
+  pluginManager.search(query, page, type)
+);
+ipcMain.handle("plugins:getMediaSource", async (event, musicItem, quality) =>
+  pluginManager.getMediaSource(musicItem, quality)
+);
+ipcMain.handle("plugins:getLyric", async (event, musicItem) => pluginManager.getLyric(musicItem));
+ipcMain.handle("plugins:list", async () => pluginManager.listPlugins());
 ipcMain.handle("plugins:load", async () => {
   await pluginManager.loadPlugins();
   return pluginManager.listPlugins();
 });
 
-app.whenReady().then(async () => {
-  await pluginManager.loadPlugins();
-  startBackend();
-  createMainWindow();
-  createTray();
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow();
-    }
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    mainWindow?.show();
+    mainWindow?.focus();
   });
-});
+
+  app.whenReady().then(async () => {
+    await registerAppProtocol();
+    await pluginManager.loadPlugins();
+    await startBackend();
+    createMainWindow();
+    createTray();
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
+    });
+  });
+}
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  if (process.platform !== "darwin") app.quit();
 });
 
 app.on("before-quit", () => {
   stopBackend();
-  if (tray) {
-    tray.destroy();
-  }
+  tray?.destroy();
 });

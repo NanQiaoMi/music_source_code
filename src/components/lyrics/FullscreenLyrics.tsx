@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useCallback, useState, memo } from "react";
+import React, { useEffect, useRef, useCallback, useState } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { useBilingualLyricParser } from "@/hooks/useBilingualLyricParser";
@@ -20,13 +20,13 @@ interface FullscreenLyricsProps {
 }
 
 // 动画变体配置 - 优化版
-const getAnimationVariants = (
+const _getAnimationVariants = (
   type: string,
   speed: number,
   intensity: number
 ): { container: Variants; item: Variants } => {
   const duration = 0.6 / speed;
-  const scaleIntensity = 1 + 0.08 * intensity;
+  const _scaleIntensity = 1 + 0.08 * intensity;
 
   switch (type) {
     case "scroll":
@@ -137,25 +137,25 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
 }) => {
   const currentTime = useAudioStore((state) => state.currentTime);
   const currentSong = useAudioStore((state) => state.currentSong);
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const _isPlaying = useAudioStore((state) => state.isPlaying);
   const duration = useAudioStore((state) => state.duration);
 
   const { themeColors } = useAlbumTheme(currentSong?.cover);
 
-  const { audioElement } = useAudioPlayer();
+  const { audioElement: _audioElement } = useAudioPlayer();
 
   const {
     showTranslation,
     showTransliteration,
     fontSize,
-    lineHeight,
+    lineHeight: _lineHeight,
     fontFamily,
     fontWeight,
     opacity,
     alignment,
-    animationType,
-    animationSpeed,
-    animationIntensity,
+    animationType: _animationType,
+    animationSpeed: _animationSpeed,
+    animationIntensity: _animationIntensity,
     currentLineColor,
     inactiveLineColor,
     translationColor,
@@ -399,7 +399,7 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
               {lyrics.merged.map((lyric, idx) => {
                 const isCurrent = idx === currentIndex;
                 const distance = Math.abs(idx - currentIndex);
-                const isPast = idx < currentIndex;
+                const _isPast = idx < currentIndex;
                 const isNear = distance <= 3;
 
                 return (

@@ -25,8 +25,8 @@ export const useHandGesture = () => {
     return smoothPosition.current;
   }, []);
 
-  const checkFistGesture = useCallback((landmarks: any[]) => {
-    const thumbTip = landmarks[4];
+  const checkFistGesture = useCallback((landmarks: LegacyAny[]) => {
+    const _thumbTip = landmarks[4];
     const indexTip = landmarks[8];
     const middleTip = landmarks[12];
     const ringTip = landmarks[16];
@@ -46,7 +46,7 @@ export const useHandGesture = () => {
     return isFist;
   }, []);
 
-  const checkSwipeGesture = useCallback((hand: any[]) => {
+  const checkSwipeGesture = useCallback((hand: LegacyAny[]) => {
     const palmBase = hand[0];
     const currentPosition = { x: palmBase.x, y: palmBase.y };
 
@@ -94,7 +94,7 @@ export const useHandGesture = () => {
   }, [setIsCameraActive]);
 
   const updateCursorPosition = useCallback(
-    (hand: any[]) => {
+    (hand: LegacyAny[]) => {
       const palmBase = hand[0];
       const rawX = 1 - palmBase.x;
       const rawY = palmBase.y;

@@ -89,6 +89,25 @@ describe("backupRestoreStore", () => {
       expect(data.playlists).toBeUndefined();
       expect(data.library).toBeUndefined();
     });
+
+    it("should expose a preview of stores included in a backup", async () => {
+      localStorageStore.set("playlist-store", '{"items":["song1"]}');
+      localStorageStore.set("playlist-group-store-v1", '{"groups":["mix1"]}');
+
+      const item = await useBackupRestoreStore
+        .getState()
+        .createBackup("playlists", "playlist-preview");
+      const preview = useBackupRestoreStore.getState().getBackupPreview(item.id);
+
+      expect(preview?.schemaVersion).toBe("4.0.0");
+      expect(preview?.includedStores).toEqual([
+        "playlist-store",
+        "playlist-group-store-v1",
+        "queue-store",
+        "recommendation-store",
+      ]);
+      expect(preview?.canRestore).toBe(true);
+    });
   });
 
   describe("restoreBackup", () => {
@@ -107,13 +126,16 @@ describe("backupRestoreStore", () => {
 
     it("should restore playlist data to localStorage", async () => {
       localStorageStore.set("playlist-store", '{"items":["song1"]}');
+      localStorageStore.set("playlist-group-store-v1", '{"groups":["mix1"]}');
       const backupItem = await useBackupRestoreStore.getState().createBackup("playlists");
 
       localStorageStore.set("playlist-store", '{"items":[]}');
+      localStorageStore.set("playlist-group-store-v1", '{"groups":[]}');
 
       await useBackupRestoreStore.getState().restoreBackup(backupItem.id);
 
       expect(localStorageStore.get("playlist-store")).toBe('{"items":["song1"]}');
+      expect(localStorageStore.get("playlist-group-store-v1")).toBe('{"groups":["mix1"]}');
     });
 
     it("should restore library data to localStorage", async () => {
@@ -131,6 +153,24 @@ describe("backupRestoreStore", () => {
       await useBackupRestoreStore.getState().restoreBackup("nonexistent");
       expect(useBackupRestoreStore.getState().isRestoring).toBe(false);
       expect(useBackupRestoreStore.getState().restoreProgress).toBe(0);
+    });
+
+    it("should reject backups from an unknown major schema version", async () => {
+      const backupItem = await useBackupRestoreStore.getState().createBackup("settings");
+      localStorageStore.set(
+        `backup-data-${backupItem.id}`,
+        JSON.stringify({
+          version: "99.0.0",
+          createdAt: Date.now(),
+          type: "settings",
+          settings: {},
+        })
+      );
+
+      await expect(useBackupRestoreStore.getState().restoreBackup(backupItem.id)).rejects.toThrow(
+        "Unsupported backup schema"
+      );
+      expect(useBackupRestoreStore.getState().restoreError).toContain("Unsupported backup schema");
     });
 
     it("should set restoring state correctly", async () => {

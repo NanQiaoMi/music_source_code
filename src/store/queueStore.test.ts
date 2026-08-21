@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+﻿import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { useQueueStore } from "./queueStore";
 
 function createMockSong(id: string) {
@@ -14,6 +14,10 @@ describe("queueStore", () => {
       playThroughMode: "normal",
     });
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe("persistence", () => {
@@ -50,6 +54,24 @@ describe("queueStore", () => {
       expect(parsed.state.queue[0].cover).toBe("");
       expect(parsed.state.queue[0].lyrics).toBeUndefined();
       expect(parsed.state.queue[0].audioUrl).toBe("stored://heavy-song");
+    });
+
+    it("should not persist transient audio URLs", () => {
+      const store = useQueueStore.getState();
+      const transientSong = {
+        ...createMockSong("transient"),
+        audioUrl: `blob:http://localhost:3025/${"a".repeat(5000)}`,
+        cover: "https://example.com/cover.jpg",
+      };
+
+      store.setQueue([transientSong]);
+
+      const persisted = localStorage.getItem("queue-store-v5");
+      expect(persisted).not.toBeNull();
+
+      const parsed = JSON.parse(persisted!);
+      expect(parsed.state.queue[0].audioUrl).toBeUndefined();
+      expect(JSON.stringify(parsed.state.queue[0]).length).toBeLessThan(300);
     });
 
     it("should persist only minimal queue fields for large queues", () => {
@@ -94,6 +116,131 @@ describe("queueStore", () => {
       expect(parsed.state.queue[0].transliterationLyrics).toBeUndefined();
       expect(parsed.state.queue[0].filePath).toBeUndefined();
       expect(parsed.state.queue[0].bitRate).toBeUndefined();
+    });
+
+    it("should drop persisted queue when quota is still exceeded after clearing history", () => {
+      const store = useQueueStore.getState();
+      const originalSetItem = Storage.prototype.setItem;
+
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+        this: Storage,
+        key: string,
+        value: string
+      ) {
+        if (key === "queue-store-v5" && value.length > 600) {
+          throw new DOMException("Quota exceeded", "QuotaExceededError");
+        }
+
+        return originalSetItem.call(this, key, value);
+      });
+
+      const songs = Array.from({ length: 25 }, (_, i) => ({
+        ...createMockSong(String(i)),
+        audioUrl: `stored://${String(i).padStart(2, "0")}/${"a".repeat(120)}`,
+      }));
+
+      expect(() => store.setQueue(songs)).not.toThrow();
+
+      const persisted = localStorage.getItem("queue-store-v5");
+      expect(persisted).not.toBeNull();
+
+      const parsed = JSON.parse(persisted!);
+      expect(parsed.state.queue).toEqual([]);
+      expect(parsed.state.currentIndex).toBe(0);
+    });
+
+    it("should persist play-through mode with the queue state", () => {
+      const store = useQueueStore.getState();
+
+      store.setPlayThroughMode("play-through");
+
+      const persisted = localStorage.getItem("queue-store-v5");
+      expect(persisted).not.toBeNull();
+
+      const parsed = JSON.parse(persisted!);
+      expect(parsed.state.playThroughMode).toBe("play-through");
+    });
+  });
+
+  describe("queue invariants", () => {
+    it("should clamp currentIndex when set beyond queue bounds", () => {
+      const store = useQueueStore.getState();
+      store.setQueue([createMockSong("1"), createMockSong("2")]);
+
+      store.setCurrentIndex(99);
+
+      expect(useQueueStore.getState().currentIndex).toBe(1);
+    });
+
+    it("should keep currentIndex within queue bounds after removing the current song", () => {
+      const songs = [createMockSong("a"), createMockSong("b"), createMockSong("c")];
+      const store = useQueueStore.getState();
+
+      store.setQueue(songs);
+      store.setCurrentIndex(2);
+      store.removeFromQueue(2);
+
+      expect(useQueueStore.getState().currentIndex).toBe(1);
+      expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual(["a", "b"]);
+    });
+
+    it("should move a later queue item directly after the current song", () => {
+      const store = useQueueStore.getState();
+      store.setQueue([
+        createMockSong("current"),
+        createMockSong("next"),
+        createMockSong("later"),
+        createMockSong("last"),
+      ]);
+      store.setCurrentIndex(0);
+
+      store.moveToNext(2);
+
+      expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual([
+        "current",
+        "later",
+        "next",
+        "last",
+      ]);
+      expect(useQueueStore.getState().currentIndex).toBe(0);
+    });
+
+    it("should clear played queue items and keep the active song at index zero", () => {
+      const store = useQueueStore.getState();
+      store.setQueue([
+        createMockSong("played-1"),
+        createMockSong("played-2"),
+        createMockSong("current"),
+        createMockSong("next"),
+      ]);
+      store.setCurrentIndex(2);
+
+      store.clearPlayed();
+
+      expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual(["current", "next"]);
+      expect(useQueueStore.getState().currentIndex).toBe(0);
+    });
+
+    it("should remove duplicate queue items while keeping the active song selected", () => {
+      const store = useQueueStore.getState();
+      store.setQueue([
+        createMockSong("intro"),
+        createMockSong("repeat"),
+        createMockSong("middle"),
+        createMockSong("repeat"),
+        createMockSong("outro"),
+      ]);
+      store.setCurrentIndex(3);
+
+      store.dedupeQueue();
+
+      expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual([
+        "intro",
+        "repeat",
+        "middle",
+        "outro",
+      ]);
+      expect(useQueueStore.getState().currentIndex).toBe(1);
     });
   });
 

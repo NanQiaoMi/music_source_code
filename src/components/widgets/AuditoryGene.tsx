@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Fingerprint,
   Zap,
-  Calendar,
   ShieldCheck,
   RefreshCcw,
   Loader2,
@@ -14,15 +13,50 @@ import {
 } from "lucide-react";
 import { useKnowledgeStore } from "@/store/knowledgeStore";
 import { useEmotionStore } from "@/store/emotionStore";
+import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
+import { summarizeListeningStats } from "@/utils/listeningInsights";
 
 export const AuditoryGene: React.FC = () => {
   const { dnaJournal, isLoading, generateDNAJournal } = useKnowledgeStore();
   const { points } = useEmotionStore();
-  const [isHovered, setIsHovered] = useState(false);
+  const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
+  const [_isHovered, setIsHovered] = useState(false);
+  const summary = summarizeListeningStats(listeningStats);
 
   const handleGenerate = () => {
     const taggedPoints = points.filter((p) => p.isTagged);
-    if (taggedPoints.length === 0) return;
+
+    if (taggedPoints.length === 0) {
+      const genres = (listeningStats.genreDistribution || [])
+        .slice()
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5)
+        .map((item) => item.genre);
+
+      const hourlyDistribution = listeningStats.hourlyDistribution || {};
+      const dominantHour = Number(
+        Object.entries(hourlyDistribution).sort((a, b) => Number(b[1]) - Number(a[1]))[0]?.[0] ?? 21
+      );
+
+      const qualityDistribution = listeningStats.audioQualityDistribution || {};
+      const hiResCount = (qualityDistribution["hi-res"] || 0) + (qualityDistribution.lossless || 0);
+      const avgV = summary.replayScore >= 50 ? -0.15 : 0.2;
+      const avgE = dominantHour >= 18 || dominantHour < 2 ? 0.35 : -0.05;
+
+      let dominantQuadrant = "Q1";
+      if (avgV < 0 && avgE >= 0) dominantQuadrant = "Q2";
+      else if (avgV < 0 && avgE < 0) dominantQuadrant = "Q3";
+      else if (avgV >= 0 && avgE < 0) dominantQuadrant = "Q4";
+
+      generateDNAJournal({
+        totalSongs: listeningStats.uniqueSongs || listeningStats.totalPlayCount || 0,
+        averageValence: avgV,
+        averageEnergy: avgE + (hiResCount > 0 ? 0.1 : 0),
+        dominantQuadrant,
+        genres,
+      });
+      return;
+    }
 
     const totalSongs = taggedPoints.length;
     const avgV = taggedPoints.reduce((acc, p) => acc + (p.x || 0), 0) / totalSongs;
@@ -62,7 +96,7 @@ export const AuditoryGene: React.FC = () => {
 
       <div className="relative p-10 rounded-[40px] bg-black/60 backdrop-blur-3xl border border-white/10 overflow-hidden shadow-2xl">
         {/* Grainy Texture & Grid */}
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] pointer-events-none mix-blend-overlay" />
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.15] pointer-events-none mix-blend-overlay" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)]" />
 
         {/* Header Section */}
@@ -71,11 +105,11 @@ export const AuditoryGene: React.FC = () => {
             <div className="flex items-center gap-2 mb-1">
               <Activity className="w-3 h-3 text-indigo-400 animate-pulse" />
               <span className="text-[10px] font-black tracking-[0.5em] text-white/80 uppercase">
-                听觉基因解构
+                鍚鍩哄洜瑙ｆ瀯
               </span>
             </div>
             <span className="text-[10px] font-medium tracking-[0.2em] text-white/20 uppercase italic">
-              NEURAL IDENTITY JOURNAL
+              神经身份日志
             </span>
           </div>
           <motion.button
@@ -113,13 +147,13 @@ export const AuditoryGene: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <div className="text-sm font-black text-white/40 uppercase tracking-widest italic">
-                  暂未建立神经连接
+                  鏆傛湭寤虹珛绁炵粡杩炴帴
                 </div>
                 <button
                   onClick={handleGenerate}
                   className="text-[10px] font-black text-indigo-400 hover:text-indigo-300 underline underline-offset-8 uppercase tracking-widest"
                 >
-                  点击开启初始化协议
+                  鐐瑰嚮寮€鍚垵濮嬪寲鍗忚
                 </button>
               </div>
             </div>
@@ -145,31 +179,98 @@ export const AuditoryGene: React.FC = () => {
                 <div className="flex items-center gap-3 opacity-30">
                   <BrainCircuit className="w-3.5 h-3.5" />
                   <span className="text-[9px] font-black tracking-[0.3em] uppercase">
-                    深度解构 / NEURAL ANALYSIS
+                    娣卞害瑙ｆ瀯 / NEURAL ANALYSIS
                   </span>
                 </div>
                 <p className="text-[13px] text-white/50 leading-relaxed font-medium italic selection:bg-white/10 pl-1">
-                  {dnaJournal.description || "正在通过情感星图分析你的审美偏好..."}
+                  {dnaJournal.description || "姝ｅ湪閫氳繃鎯呮劅鏄熷浘鍒嗘瀽浣犵殑瀹＄編鍋忓ソ..."}
                 </p>
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-10 pt-8 border-t border-white/5">
-                <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-4 pt-8 border-t border-white/5">
+                <div className="space-y-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                   <div className="text-[8px] font-black tracking-widest uppercase text-white/20">
-                    主导流派 / DOMINANCE
+                    涓诲娴佹淳 / DOMINANCE
                   </div>
                   <div className="text-[12px] font-bold tracking-[0.1em] text-white/70 uppercase truncate">
                     {dnaJournal.genre}
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                   <div className="text-[8px] font-black tracking-widest uppercase text-white/20">
-                    解析时间 / TIMESTAMP
+                    娲昏穬鏃舵 / RHYTHM
                   </div>
                   <div className="text-[12px] font-bold tracking-[0.1em] text-white/70">
-                    {formattedDate}
+                    {summary.dominantPeriod}
                   </div>
+                </div>
+                <div className="space-y-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+                  <div className="text-[8px] font-black tracking-widest uppercase text-white/20">
+                    鎺㈢储鍊惧悜 / DISCOVERY
+                  </div>
+                  <div className="text-[12px] font-bold tracking-[0.1em] text-white/70">
+                    {summary.explorationScore}%
+                  </div>
+                </div>
+                <div className="space-y-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
+                  <div className="text-[8px] font-black tracking-widest uppercase text-white/20">
+                    瀹屾暣鍚畬鐜?/ FOCUS
+                  </div>
+                  <div className="text-[12px] font-bold tracking-[0.1em] text-white/70">
+                    {summary.completionRate}%
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center gap-3 opacity-30">
+                  <Zap className="w-3.5 h-3.5" />
+                  <span className="text-[9px] font-black tracking-[0.3em] uppercase">
+                    鍒ゆ柇璇佹嵁 / 证据
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {summary.metrics.map((metric) => (
+                    <div
+                      key={metric.label}
+                      className="rounded-2xl border border-white/5 bg-white/[0.02] p-4"
+                    >
+                      <div className="text-[10px] font-black tracking-[0.2em] uppercase text-white/25">
+                        {metric.label}
+                      </div>
+                      <div className="mt-2 text-lg font-semibold text-white/90">{metric.value}</div>
+                      <div className="mt-1 text-[11px] leading-relaxed text-white/40">
+                        {metric.hint}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-2xl border border-indigo-500/10 bg-indigo-500/[0.04] p-4">
+                  <div className="text-[9px] font-black tracking-[0.3em] text-indigo-300/70 uppercase">
+                    鐢诲儚缁撹 / 画像摘要
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-white/65">
+                    浣犵殑鏀跺惉涔犳儻鏇村亸鍚?
+                    <span className="text-white"> {summary.dominantPeriod} </span>
+                    鑺傚緥锛屼富瀵奸鏍奸泦涓湪
+                    <span className="text-white">
+                      {" "}
+                      {summary.dominantGenres.join(" / ") || dnaJournal.genre}{" "}
+                    </span>
+                    锛岃繎鏈熸暣浣撶儹搴?
+                    <span className="text-white">
+                      {summary.trend === "rising"
+                        ? " 姝ｅ湪涓婂崌"
+                        : summary.trend === "cooling"
+                          ? " 姝ｅ湪闄嶆俯"
+                          : " 淇濇寔绋冲畾"}
+                    </span>
+                    銆?
+                  </p>
+                </div>
+                <div className="text-[11px] text-white/25 tracking-wide">
+                  解析时间：{formattedDate}
                 </div>
               </div>
             </motion.div>
@@ -182,7 +283,7 @@ export const AuditoryGene: React.FC = () => {
             <div className="flex items-center gap-2.5">
               <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
               <span className="text-[9px] font-black tracking-[0.4em] uppercase text-white/20 italic">
-                Neural Identity Protocol v1.0
+                神经身份协议 v1.0
               </span>
             </div>
             <button
@@ -193,7 +294,7 @@ export const AuditoryGene: React.FC = () => {
               <RefreshCcw
                 className={`w-3 h-3 ${isLoading ? "animate-spin" : "group-hover/ref:rotate-180 transition-transform duration-500"}`}
               />
-              RE-SYNC NEURAL DATA
+              重新同步神经数据
             </button>
           </div>
           <div className="flex gap-1.5 h-3 items-end">

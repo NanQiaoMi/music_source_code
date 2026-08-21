@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import * as Effects from "./index";
 import { registerEffect } from "./index";

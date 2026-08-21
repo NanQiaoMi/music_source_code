@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { useUIStore } from "./uiStore";
+import { validateShortcutMap } from "@/hooks/useKeyboardShortcuts";
 
 const initialState = useUIStore.getInitialState();
 
@@ -24,6 +25,27 @@ describe("uiStore", () => {
     expect(useUIStore.getState().isPanelOpen("queue")).toBe(false);
   });
 
+  it("registers the listening journal panel", () => {
+    const store = useUIStore.getState();
+
+    expect(store.panels.listeningJournal).toBe(false);
+
+    store.openPanel("listeningJournal");
+    expect(useUIStore.getState().isPanelOpen("listeningJournal")).toBe(true);
+
+    useUIStore.getState().closePanel("listeningJournal");
+    expect(useUIStore.getState().isPanelOpen("listeningJournal")).toBe(false);
+  });
+
+  it("registers the smart mix session panel", () => {
+    const store = useUIStore.getState();
+
+    expect(store.panels.smartMixSession).toBe(false);
+
+    store.openPanel("smartMixSession");
+    expect(useUIStore.getState().isPanelOpen("smartMixSession")).toBe(true);
+  });
+
   it("toggles a panel on and off", () => {
     const store = useUIStore.getState();
     store.togglePanel("search");
@@ -41,7 +63,9 @@ describe("uiStore", () => {
 
     useUIStore.getState().closeAllPanels();
 
-    expect(Object.values(useUIStore.getState().panels).every((isOpen) => isOpen === false)).toBe(true);
+    expect(Object.values(useUIStore.getState().panels).every((isOpen) => isOpen === false)).toBe(
+      true
+    );
   });
 
   it("keeps fullscreen panels mutually exclusive while preserving non-fullscreen panels", () => {
@@ -59,6 +83,15 @@ describe("uiStore", () => {
     expect(useUIStore.getState().panels.share).toBe(true);
   });
 
+  it("closes fullscreen lyrics before opening a fullscreen tool panel", () => {
+    const store = useUIStore.getState();
+
+    store.setIsFullscreenLyrics(true);
+    store.openPanel("formatConverter");
+
+    expect(useUIStore.getState().isFullscreenLyrics).toBe(false);
+    expect(useUIStore.getState().panels.formatConverter).toBe(true);
+  });
   it("manages keyboard shortcut modal flags", () => {
     const store = useUIStore.getState();
 
@@ -119,5 +152,15 @@ describe("uiStore", () => {
 
     useUIStore.getState().toggleTheme();
     expect(useUIStore.getState().themeMode).toBe("dark");
+  });
+
+  it("rejects duplicate shortcut assignments", () => {
+    const result = validateShortcutMap({
+      playPause: "Space",
+      openSearch: "Space",
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.conflicts).toEqual([["playPause", "openSearch"]]);
   });
 });

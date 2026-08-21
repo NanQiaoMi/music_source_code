@@ -1,43 +1,95 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ListMusic, Plus, Download, Upload, Sparkles, Play } from "lucide-react";
-import { useSmartPlaylistStore } from "@/store/smartPlaylistStore";
-import { usePlaylistStore } from "@/store/playlistStore";
-import type { Song } from "@/types/song";
-import type {
-  SmartPlaylist,
-  SmartPlaylistType,
-  SmartPlaylistRule,
-  PlaylistExportFormat,
-} from "@/store/smartPlaylistStore";
-import { useQueueStore } from "@/store/queueStore";
+import {
+  Download,
+  FileInput,
+  ListMusic,
+  Play,
+  Plus,
+  Save,
+  Sparkles,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
+import { useEmotionStore } from "@/store/emotionStore";
+import { usePlaylistStore } from "@/store/playlistStore";
+import { useQueueStore } from "@/store/queueStore";
+import {
+  useSmartPlaylistStore,
+  type PlaylistExportFormat,
+  type SmartPlaylist,
+  type SmartPlaylistRule,
+  type SmartPlaylistType,
+} from "@/store/smartPlaylistStore";
 import { toast } from "@/components/shared/GlassToast";
+import {
+  buildSmartPlaylistRule,
+  DEFAULT_SMART_PLAYLIST_RULE_DRAFT,
+  getSmartPlaylistOperatorOptions,
+  normalizeSmartPlaylistOperator,
+  SMART_PLAYLIST_FIELD_OPTIONS,
+} from "@/lib/library/smartPlaylistRules";
+import { evaluateSmartPlaylistRules } from "@/lib/smart-playlist/ruleEngine";
+import type { Song } from "@/types/song";
 
 interface SmartPlaylistPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const TAB_ITEMS = [
-  { id: "system", name: "系统歌单", icon: "🎵" },
-  { id: "custom", name: "自定义规则", icon: "⚙️" },
-  { id: "import", name: "导入导出", icon: "📦" },
-] as const;
+type TabId = "system" | "custom" | "import";
 
-type TabId = (typeof TAB_ITEMS)[number]["id"];
+type RuleField = SmartPlaylistRule["field"];
+
+const TAB_ITEMS: { id: TabId; label: string }[] = [
+  { id: "system", label: "System" },
+  { id: "custom", label: "Rules" },
+  { id: "import", label: "Import / Export" },
+];
+
+const FORMAT_OPTIONS: { value: PlaylistExportFormat; label: string; ext: string; type: string }[] =
+  [
+    { value: "m3u", label: "M3U", ext: "m3u", type: "audio/x-mpegurl" },
+    { value: "m3u8", label: "M3U8", ext: "m3u8", type: "audio/x-mpegurl" },
+    { value: "pls", label: "PLS", ext: "pls", type: "audio/x-scpls" },
+    { value: "xspf", label: "XSPF", ext: "xspf", type: "application/xspf+xml" },
+    { value: "wpl", label: "WPL", ext: "wpl", type: "application/vnd.ms-wpl" },
+    { value: "txt", label: "TXT", ext: "txt", type: "text/plain" },
+  ];
+
+function nextRuleId() {
+  return `rule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function playlistSummary(playlist: SmartPlaylist) {
+  if (playlist.rules.length === 0) return "No rules";
+  return `${playlist.rules.length} rule${playlist.rules.length === 1 ? "" : "s"}`;
+}
+
+function playSongs(songs: Song[]) {
+  if (songs.length === 0) {
+    toast.info("No matching songs");
+    return;
+  }
+  useQueueStore.getState().setQueue(songs);
+  useAudioStore.getState().playQueue(songs, 0);
+  toast.success(`Queued ${songs.length} songs`);
+}
 
 export const SmartPlaylistPanel: React.FC<SmartPlaylistPanelProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<TabId>("system");
   const { songs } = usePlaylistStore();
-
+  const emotionMap = useEmotionStore((state) => state.emotionMap);
   const {
-    smartPlaylists,
     customPlaylists,
     createSmartPlaylist,
     deleteSmartPlaylist,
+    addRule,
+    deleteRule,
     generatePlaylist,
     exportPlaylist,
     importPlaylist,
@@ -51,77 +103,83 @@ export const SmartPlaylistPanel: React.FC<SmartPlaylistPanelProps> = ({ isOpen, 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-md"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
+        initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-5xl max-h-[85vh] flex flex-col bg-[#1c1c1e]/90 backdrop-blur-[40px] rounded-[24px] border border-white/10 shadow-2xl overflow-hidden"
+        exit={{ scale: 0.98, opacity: 0 }}
+        transition={{ type: "spring", damping: 26, stiffness: 300 }}
+        onClick={(event) => event.stopPropagation()}
+        className="relative flex max-h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/92 shadow-2xl backdrop-blur-2xl"
       >
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
+        <header className="flex items-center justify-between border-b border-white/10 p-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-500/30 to-rose-500/30 flex items-center justify-center">
-              <ListMusic className="w-6 h-6 text-white" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/15 text-rose-200">
+              <ListMusic className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-white text-2xl font-semibold">智能歌单</h2>
-              <p className="text-white/60 text-sm">系统歌单、自定义规则、多格式导入导出</p>
+              <h2 className="text-xl font-semibold text-white">Smart Playlists</h2>
+              <p className="text-sm text-white/50">
+                Generate queues from system lists, custom rules, and playlist files.
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+            aria-label="Close smart playlists"
           >
-            ✕
+            <X className="h-5 w-5" />
           </button>
-        </div>
+        </header>
 
-        <div className="flex border-b border-white/10">
+        <nav className="flex border-b border-white/10">
           {TAB_ITEMS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-4 px-4 text-sm font-medium transition-all duration-200 ${
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.id
-                  ? "text-white border-b-2 border-pink-500 bg-white/5"
-                  : "text-white/60 hover:text-white/80 hover:bg-white/5"
+                  ? "border-b-2 border-rose-400 bg-white/5 text-white"
+                  : "text-white/55 hover:bg-white/5 hover:text-white"
               }`}
             >
-              <span className="mr-2">{tab.icon}</span>
-              {tab.name}
+              {tab.label}
             </button>
           ))}
-        </div>
+        </nav>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 min-h-0">
+        <main className="min-h-0 flex-1 overflow-y-auto p-5 custom-scrollbar">
           {activeTab === "system" && (
             <SystemPlaylistsTab
               songs={songs}
-              onGeneratePlaylist={generatePlaylist}
+              emotionMap={emotionMap}
+              generatePlaylist={generatePlaylist}
               getDefaultPlaylists={getDefaultSmartPlaylists}
             />
           )}
-
           {activeTab === "custom" && (
             <CustomRulesTab
+              songs={songs}
+              emotionMap={emotionMap}
               playlists={customPlaylists}
-              onCreatePlaylist={createSmartPlaylist}
-              onDeletePlaylist={deleteSmartPlaylist}
+              createSmartPlaylist={createSmartPlaylist}
+              deleteSmartPlaylist={deleteSmartPlaylist}
+              addRule={addRule}
+              deleteRule={deleteRule}
+              generatePlaylist={generatePlaylist}
             />
           )}
-
           {activeTab === "import" && (
             <ImportExportTab
               songs={songs}
-              onExportPlaylist={exportPlaylist}
-              onImportPlaylist={importPlaylist}
+              exportPlaylist={exportPlaylist}
+              importPlaylist={importPlaylist}
             />
           )}
-        </div>
+        </main>
       </motion.div>
     </motion.div>
   );
@@ -129,246 +187,473 @@ export const SmartPlaylistPanel: React.FC<SmartPlaylistPanelProps> = ({ isOpen, 
 
 function SystemPlaylistsTab({
   songs,
-  onGeneratePlaylist,
+  emotionMap,
+  generatePlaylist,
   getDefaultPlaylists,
 }: {
   songs: Song[];
-  onGeneratePlaylist: (playlist: SmartPlaylist, songs: Song[]) => Song[];
+  emotionMap: Record<string, { x: number; y: number } | undefined>;
+  generatePlaylist: (
+    playlist: SmartPlaylist,
+    songs: Song[],
+    inputs?: { emotions?: typeof emotionMap }
+  ) => Song[];
   getDefaultPlaylists: () => SmartPlaylist[];
 }) {
-  const defaultPlaylists = getDefaultPlaylists();
-  const queueStore = useQueueStore();
-  // No reactive subscription needed - only used in click handlers
-
-  const handleGeneratePlaylist = (playlist: SmartPlaylist) => {
-    const generatedSongs = onGeneratePlaylist(playlist, songs);
-
-    if (generatedSongs.length > 0) {
-      queueStore.setQueue(generatedSongs);
-      if (generatedSongs[0]) {
-        useAudioStore.getState().playQueue(generatedSongs, 0);
-      }
-
-      toast.success(`已生成歌单「${playlist.name}」，共 ${generatedSongs.length} 首歌曲！`);
-    } else {
-      toast.info("未找到符合条件的歌曲");
-    }
-  };
+  const playlists = getDefaultPlaylists();
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-white text-xl font-semibold">系统歌单</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {defaultPlaylists.map((playlist) => (
-          <div key={playlist.id} className="p-5 rounded-2xl bg-white/5 border border-white/10">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500/30 to-rose-500/30 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-white" />
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-white">System lists</h3>
+          <p className="text-sm text-white/50">
+            Ready-made playlists based on library, queue history, stats, and emotion tags.
+          </p>
+        </div>
+        <div className="rounded-lg bg-white/5 px-3 py-2 text-sm text-white/60">
+          {songs.length} songs
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {playlists.map((playlist) => {
+          const preview = generatePlaylist(playlist, songs, { emotions: emotionMap });
+          return (
+            <section
+              key={playlist.id}
+              className="rounded-xl border border-white/10 bg-white/[0.04] p-4"
+            >
+              <div className="mb-4 flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-500/15 text-rose-200">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="truncate font-semibold text-white">{playlist.name}</h4>
+                  <p className="mt-1 text-sm text-white/50">{playlist.description}</p>
+                </div>
               </div>
-              <div>
-                <div className="text-white font-semibold">{playlist.name}</div>
-                <div className="text-white/60 text-sm">{playlist.description}</div>
+              <div className="mb-4 flex items-center justify-between rounded-lg bg-black/20 px-3 py-2 text-sm text-white/60">
+                <span>Preview count</span>
+                <span className="font-semibold text-white">{preview.length}</span>
               </div>
-            </div>
-            <div className="flex gap-2">
               <button
-                onClick={() => handleGeneratePlaylist(playlist)}
-                className="flex-1 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-all duration-200"
+                onClick={() => playSongs(preview)}
+                disabled={preview.length === 0}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-400 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/40"
               >
-                生成歌单
+                <Play className="h-4 w-4" />
+                Play now
               </button>
-              <button
-                onClick={() => {
-                  const generatedSongs = onGeneratePlaylist(playlist, songs);
-                  if (generatedSongs.length > 0) {
-                    useAudioStore.getState().playQueue(generatedSongs, 0);
-                  }
-                }}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-sm font-medium transition-all duration-200 flex items-center justify-center"
-              >
-                <Play className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ))}
+            </section>
+          );
+        })}
       </div>
     </div>
   );
 }
 
 function CustomRulesTab({
+  songs,
+  emotionMap,
   playlists,
-  onCreatePlaylist,
-  onDeletePlaylist,
+  createSmartPlaylist,
+  deleteSmartPlaylist,
+  addRule,
+  deleteRule,
+  generatePlaylist,
 }: {
+  songs: Song[];
+  emotionMap: Record<string, { x: number; y: number } | undefined>;
   playlists: SmartPlaylist[];
-  onCreatePlaylist: (
+  createSmartPlaylist: (
     name: string,
     type: SmartPlaylistType,
     rules?: SmartPlaylistRule[]
   ) => SmartPlaylist;
-  onDeletePlaylist: (id: string) => void;
+  deleteSmartPlaylist: (id: string) => void;
+  addRule: (playlistId: string, rule: SmartPlaylistRule) => void;
+  deleteRule: (playlistId: string, ruleId: string) => void;
+  generatePlaylist: (
+    playlist: SmartPlaylist,
+    songs: Song[],
+    inputs?: { emotions?: typeof emotionMap }
+  ) => Song[];
 }) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-white text-xl font-semibold">自定义规则歌单</h3>
-        <button
-          onClick={() => onCreatePlaylist("新歌单", "custom")}
-          className="px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-medium hover:from-pink-600 hover:to-rose-600 transition-all duration-200 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          新建歌单
-        </button>
-      </div>
+  const [newPlaylistName, setNewPlaylistName] = useState("Focus mix");
+  const [selectedId, setSelectedId] = useState<string | null>(playlists[0]?.id ?? null);
+  const [draftRule, setDraftRule] = useState<Omit<SmartPlaylistRule, "id">>(
+    DEFAULT_SMART_PLAYLIST_RULE_DRAFT
+  );
 
-      {playlists.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-3xl bg-white/5 flex items-center justify-center">
-            <ListMusic className="w-10 h-10 text-white/40" />
+  const selectedPlaylist =
+    playlists.find((playlist) => playlist.id === selectedId) || playlists[0] || null;
+  const preview = useMemo(
+    () =>
+      selectedPlaylist ? generatePlaylist(selectedPlaylist, songs, { emotions: emotionMap }) : [],
+    [emotionMap, generatePlaylist, selectedPlaylist, songs]
+  );
+  const draftPreviewCount = useMemo(() => {
+    const normalizedDraft = buildSmartPlaylistRule("draft-rule", draftRule);
+
+    return songs.filter((song) => evaluateSmartPlaylistRules(song, [normalizedDraft], emotionMap))
+      .length;
+  }, [draftRule, emotionMap, songs]);
+
+  const createPlaylist = () => {
+    const name = newPlaylistName.trim();
+    if (!name) {
+      toast.warning("Enter a playlist name");
+      return;
+    }
+    const playlist = createSmartPlaylist(name, "custom");
+    setSelectedId(playlist.id);
+    setNewPlaylistName("");
+    toast.success("Smart playlist created");
+  };
+
+  const updateDraftField = (field: RuleField) => {
+    setDraftRule((current) => ({
+      ...current,
+      field,
+      operator: normalizeSmartPlaylistOperator(field, current.operator),
+      value: field === "emotion" ? "Q1" : current.value,
+    }));
+  };
+
+  const saveRule = () => {
+    if (!selectedPlaylist) {
+      toast.warning("Create a playlist first");
+      return;
+    }
+    if (draftRule.value === "") {
+      toast.warning("Enter a rule value");
+      return;
+    }
+    addRule(selectedPlaylist.id, buildSmartPlaylistRule(nextRuleId(), draftRule));
+    setDraftRule(DEFAULT_SMART_PLAYLIST_RULE_DRAFT);
+    toast.success("Rule saved");
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[280px_1fr]">
+      <aside className="space-y-4">
+        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-white/45">
+            New playlist
+          </label>
+          <div className="flex gap-2">
+            <input
+              value={newPlaylistName}
+              onChange={(event) => setNewPlaylistName(event.target.value)}
+              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-rose-300/60"
+              placeholder="Playlist name"
+            />
+            <button
+              onClick={createPlaylist}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-500 text-white hover:bg-rose-400"
+              aria-label="Create smart playlist"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
           </div>
-          <h3 className="text-white font-semibold mb-2">暂无自定义歌单</h3>
-          <p className="text-white/60">点击上方按钮创建</p>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {playlists.map((playlist) => (
-            <div key={playlist.id} className="p-5 rounded-2xl bg-white/5 border border-white/10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-white font-semibold">{playlist.name}</div>
-                  <div className="text-white/60 text-sm">{playlist.songCount} 首歌曲</div>
-                </div>
+
+        <div className="space-y-2">
+          {playlists.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/15 p-5 text-center text-sm text-white/45">
+              No custom playlists yet.
+            </div>
+          ) : (
+            playlists.map((playlist) => (
+              <button
+                key={playlist.id}
+                onClick={() => setSelectedId(playlist.id)}
+                className={`w-full rounded-xl border p-3 text-left transition-colors ${
+                  selectedPlaylist?.id === playlist.id
+                    ? "border-rose-300/50 bg-rose-500/10"
+                    : "border-white/10 bg-white/[0.04] hover:bg-white/[0.07]"
+                }`}
+              >
+                <div className="font-medium text-white">{playlist.name}</div>
+                <div className="mt-1 text-xs text-white/45">{playlistSummary(playlist)}</div>
+              </button>
+            ))
+          )}
+        </div>
+      </aside>
+
+      <section className="space-y-5">
+        {!selectedPlaylist ? (
+          <div className="rounded-xl border border-dashed border-white/15 p-8 text-center text-white/50">
+            Create a playlist to start adding rules.
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white">{selectedPlaylist.name}</h3>
+                <p className="text-sm text-white/50">
+                  {preview.length} matching songs from {songs.length} total
+                </p>
+              </div>
+              <div className="flex gap-2">
                 <button
-                  onClick={() => onDeletePlaylist(playlist.id)}
-                  className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm"
+                  onClick={() => playSongs(preview)}
+                  disabled={preview.length === 0}
+                  className="inline-flex items-center gap-2 rounded-lg bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-400 disabled:bg-white/10 disabled:text-white/40"
                 >
-                  删除
+                  <Play className="h-4 w-4" />
+                  Play now
+                </button>
+                <button
+                  onClick={() => {
+                    deleteSmartPlaylist(selectedPlaylist.id);
+                    setSelectedId(null);
+                    toast.success("Playlist deleted");
+                  }}
+                  className="inline-flex items-center gap-2 rounded-lg bg-red-500/15 px-3 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/25"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
                 </button>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <Save className="h-4 w-4 text-rose-200" />
+                  Add rule
+                </div>
+                <div className="rounded-lg border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-right">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-rose-100/70">
+                    Draft preview
+                  </div>
+                  <div className="text-sm font-semibold text-white">
+                    {draftPreviewCount} songs would match this rule
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]">
+                <select
+                  value={draftRule.field}
+                  onChange={(event) => updateDraftField(event.target.value as RuleField)}
+                  className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-rose-300/60"
+                >
+                  {SMART_PLAYLIST_FIELD_OPTIONS.map((field) => (
+                    <option key={field.value} value={field.value}>
+                      {field.label}
+                    </option>
+                  ))}
+                </select>
+                {draftRule.field === "emotion" ? (
+                  <select
+                    value={String(draftRule.value)}
+                    onChange={(event) =>
+                      setDraftRule((current) => ({ ...current, value: event.target.value }))
+                    }
+                    className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-rose-300/60"
+                  >
+                    <option value="Q1">Q1 positive / energetic</option>
+                    <option value="Q2">Q2 tense / energetic</option>
+                    <option value="Q3">Q3 tense / calm</option>
+                    <option value="Q4">Q4 positive / calm</option>
+                  </select>
+                ) : (
+                  <input
+                    value={String(draftRule.value)}
+                    onChange={(event) =>
+                      setDraftRule((current) => ({ ...current, value: event.target.value }))
+                    }
+                    className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-rose-300/60"
+                    placeholder="Value"
+                  />
+                )}
+                <button
+                  onClick={saveRule}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/15"
+                >
+                  <Plus className="h-4 w-4" />
+                  Save rule
+                </button>
+              </div>
+              <div className="mt-4">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/45">
+                  Operator chips
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {getSmartPlaylistOperatorOptions(draftRule.field).map((operator) => (
+                    <button
+                      key={operator.value}
+                      type="button"
+                      onClick={() =>
+                        setDraftRule((current) => ({ ...current, operator: operator.value }))
+                      }
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        normalizeSmartPlaylistOperator(draftRule.field, draftRule.operator) ===
+                        operator.value
+                          ? "border-rose-300/60 bg-rose-500/20 text-rose-50"
+                          : "border-white/10 bg-white/5 text-white/55 hover:bg-white/10 hover:text-white"
+                      }`}
+                      aria-pressed={
+                        normalizeSmartPlaylistOperator(draftRule.field, draftRule.operator) ===
+                        operator.value
+                      }
+                    >
+                      {operator.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {selectedPlaylist.rules.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/15 p-5 text-center text-sm text-white/45">
+                  This playlist has no rules. It will match every song until you add one.
+                </div>
+              ) : (
+                selectedPlaylist.rules.map((rule) => (
+                  <div
+                    key={rule.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3"
+                  >
+                    <div className="min-w-0 text-sm text-white/75">
+                      <span className="font-semibold text-white">{rule.field}</span> {rule.operator}{" "}
+                      <span className="font-semibold text-white">{String(rule.value)}</span>
+                    </div>
+                    <button
+                      onClick={() => deleteRule(selectedPlaylist.id, rule.id)}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-500/15 text-red-200 hover:bg-red-500/25"
+                      aria-label="Delete rule"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
+      </section>
     </div>
   );
 }
 
 function ImportExportTab({
   songs,
-  onExportPlaylist,
-  onImportPlaylist,
+  exportPlaylist,
+  importPlaylist,
 }: {
   songs: Song[];
-  onExportPlaylist: (songs: Song[], format: PlaylistExportFormat) => string;
-  onImportPlaylist: (content: string, format: PlaylistExportFormat, songs: Song[]) => Song[];
+  exportPlaylist: (songs: Song[], format: PlaylistExportFormat) => string;
+  importPlaylist: (content: string, format: PlaylistExportFormat, songs: Song[]) => Song[];
 }) {
-  const [importText, setImportText] = useState("");
-  const [importFormat, setImportFormat] = useState<PlaylistExportFormat>("m3u");
   const [exportFormat, setExportFormat] = useState<PlaylistExportFormat>("m3u");
+  const [importFormat, setImportFormat] = useState<PlaylistExportFormat>("m3u");
+  const [importText, setImportText] = useState("");
+  const [importedCount, setImportedCount] = useState<number | null>(null);
 
-  const formatOptions: {
-    value: PlaylistExportFormat;
-    label: string;
-    ext: string;
-    type: string;
-  }[] = [
-    { value: "m3u", label: "M3U", ext: "m3u", type: "audio/x-mpegurl" },
-    { value: "pls", label: "PLS", ext: "pls", type: "audio/x-scpls" },
-    { value: "xspf", label: "XSPF", ext: "xspf", type: "application/xspf+xml" },
-    { value: "wpl", label: "WPL", ext: "wpl", type: "application/vnd.ms-wpl" },
-    { value: "txt", label: "TXT", ext: "txt", type: "text/plain" },
-  ];
-
-  const handleExport = () => {
-    const fmt = formatOptions.find((f) => f.value === exportFormat) || formatOptions[0];
-    const content = onExportPlaylist(songs, exportFormat);
-    const blob = new Blob([content], { type: fmt.type });
+  const exportCurrent = () => {
+    const format = FORMAT_OPTIONS.find((item) => item.value === exportFormat) || FORMAT_OPTIONS[0];
+    const content = exportPlaylist(songs, exportFormat);
+    const blob = new Blob([content], { type: format.type });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `playlist.${fmt.ext}`;
-    a.click();
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `playlist.${format.ext}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${format.label}`);
   };
 
-  const handleImport = () => {
-    if (importText) {
-      onImportPlaylist(importText, importFormat, songs);
-      setImportText("");
+  const previewImport = () => {
+    const matched = importPlaylist(importText, importFormat, songs);
+    setImportedCount(matched.length);
+    if (matched.length > 0) {
+      useQueueStore.getState().setQueue(matched);
+      toast.success(`Imported ${matched.length} songs into the queue`);
+    } else {
+      toast.info("No library songs matched the imported playlist");
     }
   };
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-white text-xl font-semibold">播放列表导入导出</h3>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <h4 className="text-white font-semibold">导出歌单</h4>
-          <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
-            <p className="text-white/60 text-sm">导出当前所有歌曲</p>
-            <div className="flex gap-2">
-              {formatOptions.map((f) => (
-                <button
-                  key={f.value}
-                  onClick={() => setExportFormat(f.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    exportFormat === f.value
-                      ? "bg-pink-500/30 text-pink-300 border border-pink-500/40"
-                      : "bg-white/10 text-white/60 hover:bg-white/20 border border-transparent"
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={handleExport}
-              className="w-full px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-medium hover:from-pink-600 hover:to-rose-600 transition-all duration-200 flex items-center justify-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              导出 {formatOptions.find((f) => f.value === exportFormat)?.label}
-            </button>
-          </div>
+    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+      <section className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+        <div className="mb-4 flex items-center gap-2">
+          <Download className="h-4 w-4 text-rose-200" />
+          <h3 className="font-semibold text-white">Export library</h3>
         </div>
-
-        <div className="space-y-4">
-          <h4 className="text-white font-semibold">导入歌单</h4>
-          <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
-            <div className="flex gap-2">
-              {formatOptions
-                .filter((f) => f.value !== "txt")
-                .map((f) => (
-                  <button
-                    key={f.value}
-                    onClick={() => setImportFormat(f.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      importFormat === f.value
-                        ? "bg-pink-500/30 text-pink-300 border border-pink-500/40"
-                        : "bg-white/10 text-white/60 hover:bg-white/20 border border-transparent"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-            </div>
-            <textarea
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-              placeholder={`粘贴${formatOptions.find((f) => f.value === importFormat)?.label}内容...`}
-              className="w-full h-32 p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-pink-500 mb-4"
-            />
+        <p className="mb-4 text-sm text-white/50">
+          Export the current library list in a playlist format.
+        </p>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {FORMAT_OPTIONS.map((format) => (
             <button
-              onClick={handleImport}
-              disabled={!importText}
-              className="w-full px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              key={format.value}
+              onClick={() => setExportFormat(format.value)}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                exportFormat === format.value
+                  ? "border-rose-300/50 bg-rose-500/15 text-rose-100"
+                  : "border-white/10 bg-white/5 text-white/55 hover:bg-white/10"
+              }`}
             >
-              <Upload className="w-4 h-4" />
-              导入 {formatOptions.find((f) => f.value === importFormat)?.label}
+              {format.label}
             </button>
-          </div>
+          ))}
         </div>
-      </div>
+        <button
+          onClick={exportCurrent}
+          disabled={songs.length === 0}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-400 disabled:bg-white/10 disabled:text-white/40"
+        >
+          <FileInput className="h-4 w-4" />
+          Export {songs.length} songs
+        </button>
+      </section>
+
+      <section className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+        <div className="mb-4 flex items-center gap-2">
+          <Upload className="h-4 w-4 text-rose-200" />
+          <h3 className="font-semibold text-white">Import playlist text</h3>
+        </div>
+        <div className="mb-3 flex flex-wrap gap-2">
+          {FORMAT_OPTIONS.filter((format) => format.value !== "txt").map((format) => (
+            <button
+              key={format.value}
+              onClick={() => setImportFormat(format.value)}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                importFormat === format.value
+                  ? "border-rose-300/50 bg-rose-500/15 text-rose-100"
+                  : "border-white/10 bg-white/5 text-white/55 hover:bg-white/10"
+              }`}
+            >
+              {format.label}
+            </button>
+          ))}
+        </div>
+        <textarea
+          value={importText}
+          onChange={(event) => setImportText(event.target.value)}
+          className="mb-3 h-36 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-rose-300/60"
+          placeholder="Paste playlist contents here"
+        />
+        <button
+          onClick={previewImport}
+          disabled={!importText.trim()}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/15 disabled:cursor-not-allowed disabled:text-white/35"
+        >
+          <Upload className="h-4 w-4" />
+          Match and queue songs
+        </button>
+        {importedCount !== null && (
+          <p className="mt-3 text-sm text-white/50">Last import matched {importedCount} songs.</p>
+        )}
+      </section>
     </div>
   );
 }

@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const VibrationGeometryV8Effect: EffectPlugin = {
   id: "vibration-geometry-v8",
@@ -137,7 +138,7 @@ export const VibrationGeometryV8Effect: EffectPlugin = {
     time: 0,
     shapes: [],
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.time = 0;
     (this as any).private.shapes = [];
   },
@@ -261,8 +262,8 @@ function rgbToHsl(r: number, g: number, b: number) {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   let h = 0,
-    s,
-    l = (max + min) / 2;
+    s;
+  const l = (max + min) / 2;
 
   if (max === min) {
     h = s = 0;

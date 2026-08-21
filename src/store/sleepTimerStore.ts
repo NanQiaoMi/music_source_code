@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { useAudioStore } from "./audioStore";
 
-type SleepTimerOption = 15 | 30 | 45 | 60 | 90 | null;
+export type SleepTimerOption = number | null;
 
 interface SleepTimerState {
   minutes: SleepTimerOption;
@@ -18,6 +18,12 @@ interface SleepTimerState {
   tick: () => void;
 }
 
+export function normalizeSleepMinutes(minutes: SleepTimerOption): SleepTimerOption {
+  if (minutes === null) return null;
+  if (!Number.isFinite(minutes)) return null;
+  return Math.max(1, Math.round(minutes));
+}
+
 export const useSleepTimerStore = create<SleepTimerState>((set, get) => ({
   minutes: null,
   remainingSeconds: 0,
@@ -29,10 +35,12 @@ export const useSleepTimerStore = create<SleepTimerState>((set, get) => ({
     const { cancelTimer } = get();
     cancelTimer();
 
-    if (minutes) {
+    const normalizedMinutes = normalizeSleepMinutes(minutes);
+
+    if (normalizedMinutes) {
       set({
-        minutes,
-        remainingSeconds: minutes * 60,
+        minutes: normalizedMinutes,
+        remainingSeconds: normalizedMinutes * 60,
         isActive: false,
         endTime: null,
       });
@@ -84,7 +92,7 @@ export const useSleepTimerStore = create<SleepTimerState>((set, get) => ({
   },
 
   resumeTimer: () => {
-    const { remainingSeconds, startTimer } = get();
+    const { remainingSeconds } = get();
 
     if (remainingSeconds > 0) {
       const endTime = Date.now() + remainingSeconds * 1000;

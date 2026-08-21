@@ -599,7 +599,7 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
         get().checkAchievements(get().listeningStats);
       },
 
-      calculateStats: async (songs, timeRange = "all") => {
+      calculateStats: async (songs, _timeRange = "all") => {
         set({ isCalculating: true });
 
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -683,7 +683,7 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
         get().checkAchievements(get().listeningStats);
       },
 
-      getStatsForPeriod: (period) => {
+      getStatsForPeriod: (_period) => {
         return get().listeningStats;
       },
 
@@ -863,7 +863,7 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
 
       getPlayTimeStats: () => {
         const stats = get().listeningStats;
-        const now = Date.now();
+        const _now = Date.now();
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
         const weekStart = new Date();

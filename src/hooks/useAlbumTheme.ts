@@ -17,7 +17,7 @@ const DEFAULT_COLORS: ThemeColors = {
 export const useAlbumTheme = (coverUrl?: string) => {
   const [themeColors, setThemeColors] = useState<ThemeColors>(DEFAULT_COLORS);
   const [isLoading, setIsLoading] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const _canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const extractColors = useCallback((url: string) => {
     return new Promise<ThemeColors>((resolve) => {
@@ -100,7 +100,6 @@ export const useAlbumTheme = (coverUrl?: string) => {
 
   useEffect(() => {
     if (!coverUrl) {
-      setThemeColors(DEFAULT_COLORS);
       return;
     }
 
@@ -121,7 +120,7 @@ export const useAlbumTheme = (coverUrl?: string) => {
   }, [coverUrl, extractColors]);
 
   return {
-    themeColors,
-    isLoading,
+    themeColors: coverUrl ? themeColors : DEFAULT_COLORS,
+    isLoading: coverUrl ? isLoading : false,
   };
 };

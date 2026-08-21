@@ -3,6 +3,11 @@
  * Centrally manages the global AudioContext and the main audio graph.
  * This class exists outside the React lifecycle to prevent audio glitches during re-renders.
  */
+type AudioContextConstructor = new () => AudioContext;
+type AudioEngineWindow = Window & {
+  webkitAudioContext?: AudioContextConstructor;
+};
+
 export class AudioEngine {
   private static instance: AudioEngine;
   private context: AudioContext | null = null;
@@ -18,10 +23,7 @@ export class AudioEngine {
   ];
 
   private constructor() {
-    // Private constructor for singleton
-    if (typeof window !== "undefined") {
-      this.initContext();
-    }
+    // Private constructor for singleton. AudioContext is created lazily after a playback path asks for it.
   }
 
   public static getInstance(): AudioEngine {
@@ -31,10 +33,18 @@ export class AudioEngine {
     return AudioEngine.instance;
   }
 
-  private initContext(): void {
-    if (this.context || typeof window === "undefined") return;
+  private getAudioContextConstructor(): AudioContextConstructor | null {
+    if (typeof window === "undefined") return null;
+    return window.AudioContext || (window as AudioEngineWindow).webkitAudioContext || null;
+  }
 
-    this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
+  private initContext(): AudioContext | null {
+    if (this.context) return this.context;
+
+    const ContextConstructor = this.getAudioContextConstructor();
+    if (!ContextConstructor) return null;
+
+    this.context = new ContextConstructor();
 
     // Create master nodes
     this.masterGain = this.context.createGain();
@@ -46,7 +56,7 @@ export class AudioEngine {
     this.initEQNodes();
 
     // Connect EQ chain
-    if (this.eqNodes.length > 0) {
+    if (this.eqNodes.length > 0 && this.masterGain) {
       for (let i = 0; i < this.eqNodes.length - 1; i++) {
         this.eqNodes[i].connect(this.eqNodes[i + 1]);
       }
@@ -55,6 +65,12 @@ export class AudioEngine {
 
     this.masterGain.connect(this.analyser);
     this.analyser.connect(this.context.destination);
+
+    return this.context;
+  }
+
+  public ensureContext(): AudioContext | null {
+    return this.initContext();
   }
 
   private initEQNodes(): void {
@@ -88,11 +104,12 @@ export class AudioEngine {
    * Ensures that createMediaElementSource is only called once per element.
    */
   public init(audioElement: HTMLAudioElement): void {
-    if (!this.context || !audioElement) return;
+    const context = this.initContext();
+    if (!context || !audioElement) return;
 
     if (!this.sourceNodes.has(audioElement)) {
       try {
-        const sourceNode = this.context.createMediaElementSource(audioElement);
+        const sourceNode = context.createMediaElementSource(audioElement);
         this.sourceNodes.set(audioElement, sourceNode);
         const entry = this.getEQChainEntry();
         if (entry) {
@@ -110,12 +127,13 @@ export class AudioEngine {
    * Returns an existing MediaElementSourceNode or creates a new one safely.
    */
   public createMediaSource(audioElement: HTMLAudioElement): MediaElementAudioSourceNode | null {
-    if (!this.context || !audioElement) return null;
+    const context = this.initContext();
+    if (!context || !audioElement) return null;
 
     let sourceNode = this.sourceNodes.get(audioElement);
     if (!sourceNode) {
       try {
-        sourceNode = this.context.createMediaElementSource(audioElement);
+        sourceNode = context.createMediaElementSource(audioElement);
         this.sourceNodes.set(audioElement, sourceNode);
       } catch (e) {
         console.warn("AudioEngine: Could not create media source", e);
@@ -126,9 +144,6 @@ export class AudioEngine {
   }
 
   public getContext(): AudioContext | null {
-    if (!this.context && typeof window !== "undefined") {
-      this.initContext();
-    }
     return this.context;
   }
 
@@ -141,7 +156,7 @@ export class AudioEngine {
   }
 
   public updateEQ(bands: number[]): void {
-    if (!this.eqNodes.length) return;
+    if (!this.eqNodes.length || !this.context) return;
 
     this.eqNodes.forEach((filter, i) => {
       if (bands[i] !== undefined) {
@@ -157,8 +172,9 @@ export class AudioEngine {
   }
 
   public async resume(): Promise<void> {
-    if (this.context && this.context.state === "suspended") {
-      await this.context.resume();
+    const context = this.initContext();
+    if (context && context.state === "suspended") {
+      await context.resume();
     }
   }
 

@@ -1,18 +1,8 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Sparkles,
-  ChevronDown,
-  Activity,
-  Trash2,
-  Brain,
-  Dice1,
-  Settings,
-  Pause,
-  Play,
-} from "lucide-react";
+import { ChevronDown, Activity, Trash2, Brain, Dice1, Settings, Pause, Play } from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
 import { useLinerNotesStore } from "@/store/linerNotesStore";
 import { useGlassToast } from "@/components/shared/GlassToast";
@@ -171,7 +161,7 @@ export const AIToolbox: React.FC = () => {
                   <span
                     className={`text-[9px] font-bold uppercase tracking-wider ${isEnabled ? "text-purple-400" : "text-white/20"}`}
                   >
-                    {isEnabled ? "Neural Online" : "Neural Paused"}
+                    {isEnabled ? "神经在线" : "神经暂停"}
                   </span>
                 </div>
               </motion.div>

@@ -15,10 +15,10 @@ def run_command(cmd, description):
     print(f"{'='*60}")
     try:
         subprocess.check_call(cmd, shell=True)
-        print(f"✅ {description} 完成")
+        print(f"[OK] {description} 完成")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ {description} 失败: {e}")
+        print(f"[ERROR] {description} 失败: {e}")
         return False
 
 
@@ -31,9 +31,9 @@ def main():
     try:
         subprocess.check_output([sys.executable, "-m", "pip", "--version"], 
                                stderr=subprocess.STDOUT)
-        print("✅ pip 检查通过")
+        print("[OK] pip 检查通过")
     except Exception as e:
-        print(f"❌ pip 检查失败: {e}")
+        print(f"[ERROR] pip 检查失败: {e}")
         print("\n请先确保 Python 和 pip 已正确安装")
         return 1
     
@@ -60,9 +60,9 @@ def main():
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT
             )
-            print(f"  ✅ {req}")
+            print(f"  [OK] {req}")
         except subprocess.CalledProcessError:
-            print(f"  ⚠️ {req} 安装失败，继续...")
+            print(f"  [WARN] {req} 安装失败，继续...")
     
     # 创建 requirements.txt（如果不存在）
     req_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
@@ -84,7 +84,7 @@ python-multipart>=0.0.6
 # numpy>=1.24.0
 # pillow>=10.0.0
 """)
-        print("✅ requirements.txt 已创建")
+        print("[OK] requirements.txt 已创建")
     
     print("\n" + "="*60)
     print("后端依赖安装完成！")

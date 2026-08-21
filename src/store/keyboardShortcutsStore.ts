@@ -271,11 +271,15 @@ export const useKeyboardShortcutsStore = create<KeyboardShortcutsState>()(
           }
         }
 
+        if (conflicts.length > 0) {
+          return { success: false, conflicts };
+        }
+
         set((s) => ({
           overrides: [...s.overrides.filter((o) => o.id !== id), { id, keys }],
         }));
 
-        return { success: conflicts.length === 0, conflicts };
+        return { success: true, conflicts };
       },
 
       resetBinding: (id) => {

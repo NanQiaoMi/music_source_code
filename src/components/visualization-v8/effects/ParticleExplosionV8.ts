@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const ParticleExplosionV8Effect: EffectPlugin = {
   id: "particle-explosion-v8",
@@ -100,7 +101,7 @@ export const ParticleExplosionV8Effect: EffectPlugin = {
     lastBassValue: 0,
     time: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.particles = [];
     (this as any).private.lastBassValue = 0;
     (this as any).private.time = 0;

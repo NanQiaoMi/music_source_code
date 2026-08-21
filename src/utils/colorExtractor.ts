@@ -14,15 +14,15 @@ export interface ThemeColors {
 const colorCache = new Map<string, ThemeColors>();
 const CACHE_SIZE_LIMIT = 50;
 
-// 默认颜色方案 - 更鲜艳的默认颜色（暗黑模式）
+// 默认颜色方案 - 极夜冷钛极简（Minimalist Pure Titanium & Slate Gray）
 export const defaultColors: ThemeColors = {
-  primary: "rgb(168, 85, 247)",
-  secondary: "rgb(59, 130, 246)",
-  accent: "rgb(236, 72, 153)",
-  complementary: "rgb(72, 236, 153)",
-  background: "rgb(15, 15, 35)",
-  surface: "rgb(30, 30, 60)",
-  gradient: ["rgb(168, 85, 247)", "rgb(59, 130, 246)", "rgb(236, 72, 153)"],
+  primary: "rgb(55, 65, 81)",
+  secondary: "rgb(31, 41, 55)",
+  accent: "rgb(75, 85, 99)",
+  complementary: "rgb(30, 41, 59)",
+  background: "rgb(8, 9, 12)",
+  surface: "rgb(15, 17, 23)",
+  gradient: ["rgb(55, 65, 81)", "rgb(31, 41, 55)", "rgb(75, 85, 99)"],
   text: "rgb(255, 255, 255)",
   textMuted: "rgba(255, 255, 255, 0.6)",
 };
@@ -46,68 +46,75 @@ export const lightModeColors: ThemeColors = {
  */
 export function extractColorsFromImage(imageUrl: string): Promise<ThemeColors> {
   return new Promise((resolve) => {
+    // 快速过滤空值、默认封面或本地伪协议
+    if (
+      !imageUrl ||
+      typeof imageUrl !== "string" ||
+      !imageUrl.trim() ||
+      imageUrl === "/default-cover.svg" ||
+      imageUrl.startsWith("stored://") ||
+      imageUrl.startsWith("local://")
+    ) {
+      resolve(defaultColors);
+      return;
+    }
+
     // 检查缓存
     if (colorCache.has(imageUrl)) {
       resolve(colorCache.get(imageUrl)!);
       return;
     }
 
+    // 运行环境检查
+    if (typeof window === "undefined" || typeof Image === "undefined") {
+      resolve(defaultColors);
+      return;
+    }
+
     const img = new Image();
     img.crossOrigin = "anonymous";
+
+    let isSettled = false;
+    const finish = (colors: ThemeColors) => {
+      if (isSettled) return;
+      isSettled = true;
+      clearTimeout(timeout);
+
+      // 缓存结果以避免重复请求失效图片
+      if (colorCache.size >= CACHE_SIZE_LIMIT) {
+        const firstKey = colorCache.keys().next().value;
+        if (firstKey !== undefined) {
+          colorCache.delete(firstKey);
+        }
+      }
+      colorCache.set(imageUrl, colors);
+      resolve(colors);
+    };
+
+    // 设置 3 秒超时快速降级
+    const timeout = setTimeout(() => {
+      finish(defaultColors);
+    }, 3000);
 
     img.onload = () => {
       try {
         const colors = performColorExtraction(img);
-
-        // 缓存结果
-        // 缓存结果
-        if (colorCache.size >= CACHE_SIZE_LIMIT) {
-          const firstKey = colorCache.keys().next().value;
-          if (firstKey !== undefined) {
-            colorCache.delete(firstKey);
-          }
-        }
-        colorCache.set(imageUrl, colors);
-
-        resolve(colors);
-      } catch (error) {
-        console.error("Color extraction failed:", error);
-        resolve(defaultColors);
+        finish(colors);
+      } catch {
+        finish(defaultColors);
       }
     };
 
     img.onerror = () => {
-      console.error("Failed to load image for color extraction");
-      resolve(defaultColors);
+      // 跨域或加载失败时静默降级为默认钛灰配色，不触发控制台致命错误
+      finish(defaultColors);
     };
 
-    // 设置超时
-    const timeout = setTimeout(() => {
-      console.warn("Color extraction timeout, using default colors");
-      resolve(defaultColors);
-    }, 5000);
-
-    img.onload = () => {
-      clearTimeout(timeout);
-      try {
-        const colors = performColorExtraction(img);
-
-        if (colorCache.size >= CACHE_SIZE_LIMIT) {
-          const firstKey = colorCache.keys().next().value;
-          if (firstKey !== undefined) {
-            colorCache.delete(firstKey);
-          }
-        }
-        colorCache.set(imageUrl, colors);
-
-        resolve(colors);
-      } catch (error) {
-        console.error("Color extraction failed:", error);
-        resolve(defaultColors);
-      }
-    };
-
-    img.src = imageUrl;
+    try {
+      img.src = imageUrl;
+    } catch {
+      finish(defaultColors);
+    }
   });
 }
 
@@ -115,133 +122,139 @@ export function extractColorsFromImage(imageUrl: string): Promise<ThemeColors> {
  * 执行颜色提取的核心算法
  */
 function performColorExtraction(img: HTMLImageElement): ThemeColors {
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  try {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
-  if (!ctx) {
+    if (!ctx) {
+      return defaultColors;
+    }
+
+    // 降低分辨率以提高性能
+    const imgWidth = img.naturalWidth || img.width || 100;
+    const imgHeight = img.naturalHeight || img.height || 100;
+    const maxSize = 150;
+    const scale = Math.min(1, maxSize / Math.max(imgWidth, imgHeight));
+    canvas.width = Math.max(1, Math.round(imgWidth * scale));
+    canvas.height = Math.max(1, Math.round(imgHeight * scale));
+
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+
+    // 采样像素（步长为4，提高性能）
+    const samples: { r: number; g: number; b: number; count: number }[] = [];
+    const sampleStep = 4;
+
+    for (let i = 0; i < pixels.length; i += 4 * sampleStep) {
+      const r = pixels[i];
+      const g = pixels[i + 1];
+      const b = pixels[i + 2];
+      const a = pixels[i + 3];
+
+      // 跳过透明像素
+      if (a < 128) continue;
+
+      // 计算亮度，跳过过暗或过亮的像素
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      if (brightness < 20 || brightness > 235) continue;
+
+      // 颜色量化（减少颜色数量）
+      const quantizedR = Math.round(r / 32) * 32;
+      const quantizedG = Math.round(g / 32) * 32;
+      const quantizedB = Math.round(b / 32) * 32;
+
+      // 查找相似颜色
+      const existingIndex = samples.findIndex(
+        (s) =>
+          Math.abs(s.r - quantizedR) < 32 &&
+          Math.abs(s.g - quantizedG) < 32 &&
+          Math.abs(s.b - quantizedB) < 32
+      );
+
+      if (existingIndex >= 0) {
+        samples[existingIndex].count++;
+      } else {
+        samples.push({ r: quantizedR, g: quantizedG, b: quantizedB, count: 1 });
+      }
+    }
+
+    if (samples.length === 0) {
+      return defaultColors;
+    }
+
+    // 按出现频率排序
+    samples.sort((a, b) => b.count - a.count);
+
+    // 选择主色调（排除过于相似的颜色）
+    const dominantColors: { r: number; g: number; b: number }[] = [];
+    for (const sample of samples) {
+      if (dominantColors.length >= 5) break;
+
+      // 检查是否与已选颜色过于相似
+      const isSimilar = dominantColors.some((c) => colorDistance(c, sample) < 60);
+
+      if (!isSimilar) {
+        dominantColors.push({ r: sample.r, g: sample.g, b: sample.b });
+      }
+    }
+
+    // 确保至少有3种颜色
+    while (dominantColors.length < 3) {
+      dominantColors.push(dominantColors[0] || { r: 147, g: 51, b: 234 });
+    }
+
+    // 生成主题色
+    const primary = dominantColors[0];
+    const secondary = dominantColors[1];
+    const accent = dominantColors[2];
+
+    // 调整颜色以适合UI使用
+    const adjustedPrimary = adjustForUI(primary, 1.2);
+    const adjustedSecondary = adjustForUI(secondary, 1.0);
+    const adjustedAccent = adjustForUI(accent, 1.1);
+
+    // 生成背景色（基于主色调的暗色版本，但保留更多色彩信息）
+    const background = {
+      r: Math.round(Math.max(10, primary.r * 0.2)),
+      g: Math.round(Math.max(10, primary.g * 0.2)),
+      b: Math.round(Math.max(10, primary.b * 0.25)),
+    };
+
+    // 生成表面色（更明显的色彩）
+    const surface = {
+      r: Math.round(Math.max(20, primary.r * 0.35)),
+      g: Math.round(Math.max(20, primary.g * 0.35)),
+      b: Math.round(Math.max(20, primary.b * 0.4)),
+    };
+
+    // 计算互补色（用于顶部光晕）
+    const complementary = calculateComplementaryColor(adjustedPrimary);
+
+    // 计算文字颜色（根据背景亮度）
+    const bgBrightness = (background.r * 299 + background.g * 587 + background.b * 114) / 1000;
+    const textColor = bgBrightness > 128 ? "rgb(30, 30, 30)" : "rgb(255, 255, 255)";
+    const textMutedColor = bgBrightness > 128 ? "rgba(30, 30, 30, 0.6)" : "rgba(255, 255, 255, 0.6)";
+
+    return {
+      primary: `rgb(${adjustedPrimary.r}, ${adjustedPrimary.g}, ${adjustedPrimary.b})`,
+      secondary: `rgb(${adjustedSecondary.r}, ${adjustedSecondary.g}, ${adjustedSecondary.b})`,
+      accent: `rgb(${adjustedAccent.r}, ${adjustedAccent.g}, ${adjustedAccent.b})`,
+      complementary: `rgb(${complementary.r}, ${complementary.g}, ${complementary.b})`,
+      background: `rgb(${background.r}, ${background.g}, ${background.b})`,
+      surface: `rgb(${surface.r}, ${surface.g}, ${surface.b})`,
+      gradient: [
+        `rgb(${adjustedPrimary.r}, ${adjustedPrimary.g}, ${adjustedPrimary.b})`,
+        `rgb(${adjustedSecondary.r}, ${adjustedSecondary.g}, ${adjustedSecondary.b})`,
+        `rgb(${adjustedAccent.r}, ${adjustedAccent.g}, ${adjustedAccent.b})`,
+      ],
+      text: textColor,
+      textMuted: textMutedColor,
+    };
+  } catch {
     return defaultColors;
   }
-
-  // 降低分辨率以提高性能
-  const maxSize = 150;
-  const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
-  canvas.width = img.width * scale;
-  canvas.height = img.height * scale;
-
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const pixels = imageData.data;
-
-  // 采样像素（步长为4，提高性能）
-  const samples: { r: number; g: number; b: number; count: number }[] = [];
-  const sampleStep = 4;
-
-  for (let i = 0; i < pixels.length; i += 4 * sampleStep) {
-    const r = pixels[i];
-    const g = pixels[i + 1];
-    const b = pixels[i + 2];
-    const a = pixels[i + 3];
-
-    // 跳过透明像素
-    if (a < 128) continue;
-
-    // 计算亮度，跳过过暗或过亮的像素
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    if (brightness < 20 || brightness > 235) continue;
-
-    // 颜色量化（减少颜色数量）
-    const quantizedR = Math.round(r / 32) * 32;
-    const quantizedG = Math.round(g / 32) * 32;
-    const quantizedB = Math.round(b / 32) * 32;
-
-    // 查找相似颜色
-    const existingIndex = samples.findIndex(
-      (s) =>
-        Math.abs(s.r - quantizedR) < 32 &&
-        Math.abs(s.g - quantizedG) < 32 &&
-        Math.abs(s.b - quantizedB) < 32
-    );
-
-    if (existingIndex >= 0) {
-      samples[existingIndex].count++;
-    } else {
-      samples.push({ r: quantizedR, g: quantizedG, b: quantizedB, count: 1 });
-    }
-  }
-
-  if (samples.length === 0) {
-    return defaultColors;
-  }
-
-  // 按出现频率排序
-  samples.sort((a, b) => b.count - a.count);
-
-  // 选择主色调（排除过于相似的颜色）
-  const dominantColors: { r: number; g: number; b: number }[] = [];
-  for (const sample of samples) {
-    if (dominantColors.length >= 5) break;
-
-    // 检查是否与已选颜色过于相似
-    const isSimilar = dominantColors.some((c) => colorDistance(c, sample) < 60);
-
-    if (!isSimilar) {
-      dominantColors.push({ r: sample.r, g: sample.g, b: sample.b });
-    }
-  }
-
-  // 确保至少有3种颜色
-  while (dominantColors.length < 3) {
-    dominantColors.push(dominantColors[0] || { r: 147, g: 51, b: 234 });
-  }
-
-  // 生成主题色
-  const primary = dominantColors[0];
-  const secondary = dominantColors[1];
-  const accent = dominantColors[2];
-
-  // 调整颜色以适合UI使用
-  const adjustedPrimary = adjustForUI(primary, 1.2);
-  const adjustedSecondary = adjustForUI(secondary, 1.0);
-  const adjustedAccent = adjustForUI(accent, 1.1);
-
-  // 生成背景色（基于主色调的暗色版本，但保留更多色彩信息）
-  const background = {
-    r: Math.round(Math.max(10, primary.r * 0.2)),
-    g: Math.round(Math.max(10, primary.g * 0.2)),
-    b: Math.round(Math.max(10, primary.b * 0.25)),
-  };
-
-  // 生成表面色（更明显的色彩）
-  const surface = {
-    r: Math.round(Math.max(20, primary.r * 0.35)),
-    g: Math.round(Math.max(20, primary.g * 0.35)),
-    b: Math.round(Math.max(20, primary.b * 0.4)),
-  };
-
-  // 计算互补色（用于顶部光晕）
-  const complementary = calculateComplementaryColor(adjustedPrimary);
-
-  // 计算文字颜色（根据背景亮度）
-  const bgBrightness = (background.r * 299 + background.g * 587 + background.b * 114) / 1000;
-  const textColor = bgBrightness > 128 ? "rgb(30, 30, 30)" : "rgb(255, 255, 255)";
-  const textMutedColor = bgBrightness > 128 ? "rgba(30, 30, 30, 0.6)" : "rgba(255, 255, 255, 0.6)";
-
-  return {
-    primary: `rgb(${adjustedPrimary.r}, ${adjustedPrimary.g}, ${adjustedPrimary.b})`,
-    secondary: `rgb(${adjustedSecondary.r}, ${adjustedSecondary.g}, ${adjustedSecondary.b})`,
-    accent: `rgb(${adjustedAccent.r}, ${adjustedAccent.g}, ${adjustedAccent.b})`,
-    complementary: `rgb(${complementary.r}, ${complementary.g}, ${complementary.b})`,
-    background: `rgb(${background.r}, ${background.g}, ${background.b})`,
-    surface: `rgb(${surface.r}, ${surface.g}, ${surface.b})`,
-    gradient: [
-      `rgb(${adjustedPrimary.r}, ${adjustedPrimary.g}, ${adjustedPrimary.b})`,
-      `rgb(${adjustedSecondary.r}, ${adjustedSecondary.g}, ${adjustedSecondary.b})`,
-      `rgb(${adjustedAccent.r}, ${adjustedAccent.g}, ${adjustedAccent.b})`,
-    ],
-    text: textColor,
-    textMuted: textMutedColor,
-  };
 }
 
 /**

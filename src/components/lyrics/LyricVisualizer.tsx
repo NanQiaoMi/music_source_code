@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { FileText, Search } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
 import { useBilingualLyricParser } from "@/hooks/useBilingualLyricParser";
 import { useLyricSettingsStore } from "@/store/lyricSettingsStore";
+import { useUIStore } from "@/store/uiStore";
 
 interface LyricVisualizerProps {
   lyrics?: string;
@@ -19,6 +21,8 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
 }) => {
   const currentTime = useAudioStore((state) => state.currentTime);
   const currentSong = useAudioStore((state) => state.currentSong);
+  const openPanel = useUIStore((state) => state.openPanel);
+  const shouldReduceMotion = useReducedMotion();
   const {
     showTranslation,
     showTransliteration,
@@ -54,7 +58,7 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
   const [containerHeight, setContainerHeight] = useState(0);
   const currentIndex = getCurrentLyricIndex(currentTime);
 
-  const alignmentClass = React.useMemo(() => {
+  const alignmentClass = useMemo(() => {
     switch (alignment) {
       case "left":
         return "items-start text-left";
@@ -65,7 +69,7 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
     }
   }, [alignment]);
 
-  const fontFamilyClass = React.useMemo(() => {
+  const fontFamilyClass = useMemo(() => {
     switch (fontFamily) {
       case "serif":
         return "font-serif";
@@ -99,14 +103,13 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
       const elementTop = element!.offsetTop;
       const elementHeight = element!.offsetHeight;
 
-      const targetY = containerHeight / 2 - elementTop - elementHeight / 2;
-      setOffsetY(targetY);
+      setOffsetY(containerHeight / 2 - elementTop - elementHeight / 2);
     } else if (currentIndex === -1 || containerHeight === 0) {
       setOffsetY(0);
     }
   }, [currentIndex, lyrics.merged, containerHeight]);
 
-  const scrollTransition = React.useMemo(
+  const scrollTransition = useMemo(
     () => ({
       type: "spring" as const,
       stiffness: 80,
@@ -129,16 +132,44 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
       }}
     >
       {!hasLyrics ? (
-        <div
-          className={`w-full h-full flex flex-col justify-center items-center ${alignmentClass} px-12 text-center opacity-40`}
+        <motion.div
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: shouldReduceMotion ? 0 : 0.35 }}
+          className={`w-full h-full flex flex-col justify-center ${alignmentClass} px-4 sm:px-12 text-center`}
         >
-          <p className="text-xl font-medium text-white mb-2">暂无歌词同步</p>
-          <p className="text-sm text-white/50">该歌曲暂未找到匹配的歌词数据</p>
-        </div>
+          <p className="text-xs uppercase tracking-[0.18em] text-white/35 mb-3">No synced lyrics</p>
+          <p className="text-xl font-medium text-white mb-2">
+            {currentSong?.title || "暂无歌词同步"}
+          </p>
+          <p className="text-sm text-white/55 mb-5">
+            {currentSong?.artist
+              ? `${currentSong.artist} 还没有可用歌词`
+              : "当前歌曲还没有可用歌词"}
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => openPanel("lyricsSearch")}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors"
+            >
+              <Search className="w-4 h-4" />
+              搜索歌词
+            </button>
+            <button
+              type="button"
+              onClick={() => openPanel("lyricsImport")}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              手动导入
+            </button>
+          </div>
+        </motion.div>
       ) : (
         <motion.div
           animate={{ y: offsetY }}
-          transition={scrollTransition}
+          transition={shouldReduceMotion ? { duration: 0 } : scrollTransition}
           className={`absolute top-0 left-0 right-0 flex flex-col ${alignmentClass} space-y-10 max-w-full mx-auto w-full`}
           style={{
             paddingTop: containerHeight / 2,
@@ -163,11 +194,13 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
                   scale: isCurrent ? 1.05 : 1,
                   filter: isCurrent ? "blur(0px)" : `blur(${Math.min(distance * 0.5, 4)}px)`,
                 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
+                transition={
+                  shouldReduceMotion ? { duration: 0 } : { duration: 0.5, ease: "easeOut" }
+                }
                 className={`flex flex-col ${alignmentClass} transition-colors duration-500`}
               >
                 <p
-                  className={`${fontFamilyClass} leading-snug tracking-tight`}
+                  className={`${fontFamilyClass} leading-snug`}
                   style={{
                     fontSize: isCurrent ? `${fontSize + 12}px` : `${fontSize}px`,
                     lineHeight: 1.2,
@@ -182,6 +215,28 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
                   }}
                 >
                   {lyric.original}
+                  {isCurrent && (
+                    <motion.span
+                      aria-hidden="true"
+                      className="mx-auto mt-2 block h-0.5 rounded-full"
+                      initial={shouldReduceMotion ? false : { scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.45 }}
+                      style={{
+                        width: "56%",
+                        transformOrigin:
+                          alignment === "right"
+                            ? "right"
+                            : alignment === "left"
+                              ? "left"
+                              : "center",
+                        background: currentLineColor,
+                        boxShadow: textShadow
+                          ? `0 0 ${Math.max(8, textShadowBlur / 2)}px ${currentLineColor}`
+                          : "none",
+                      }}
+                    />
+                  )}
                 </p>
 
                 {showTranslation && lyric.translation && (

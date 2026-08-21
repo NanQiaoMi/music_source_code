@@ -36,7 +36,7 @@ export interface CrossfadeQueueItem {
   fromBPM: number;
   toBPM: number;
   bpmMatchScore: number;
-  status: "pending" | "processing" | "completed" | "error";
+  status: "pending" | "processing" | "completed" | "error" | "preview-only";
   progress: number;
   outputBlob?: Blob;
   error?: string;
@@ -186,7 +186,7 @@ export const useCrossfadeStore = create<CrossfadeState>()(
         for (let i = 0; i < numWindows; i++) {
           const start = i * hopSize;
           let energy = 0;
-          let prevEnergy = i > 0 ? onsetStrengths[i - 1] : 0;
+          const prevEnergy = i > 0 ? onsetStrengths[i - 1] : 0;
 
           for (let j = 0; j < windowSize; j++) {
             energy += downsampled[start + j] * downsampled[start + j];
@@ -325,9 +325,6 @@ export const useCrossfadeStore = create<CrossfadeState>()(
 
       calculateBPMMatchScore: (bpm1: number, bpm2: number): number => {
         const diff = Math.abs(bpm1 - bpm2);
-        const ratio = Math.min(bpm1, bpm2) / Math.max(bpm1, bpm2);
-        const beatRatio = Math.abs(1 - ratio);
-
         if (diff < 2) return 100;
         if (diff < 5) return 90;
         if (diff < 10) return 70;

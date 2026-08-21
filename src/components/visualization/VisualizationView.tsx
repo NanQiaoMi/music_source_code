@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState, memo } from "react";
+import { useCallback, useRef, useEffect, useState, memo } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -25,8 +25,6 @@ const VisualizationProgressBar = dynamic(
   { ssr: false }
 );
 
-import { useTotemStore } from "@/store/totemStore";
-import { useLyricsSearchStore } from "@/store/lyricsSearchStore";
 import * as Effects from "./effects";
 
 const PlayIcon = memo(() => (
@@ -63,7 +61,7 @@ export function VisualizationView() {
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const themeColors = useUIStore((state) => state.themeColors);
-  const isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
+  const _isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
   const currentTime = useAudioStore((state) => state.currentTime);
   const duration = useAudioStore((state) => state.duration);
   const bufferedRanges = useAudioStore((state) => state.bufferedRanges);
@@ -71,7 +69,7 @@ export function VisualizationView() {
   const nextSong = useAudioStore((state) => state.nextSong);
   const { currentEffect, setCurrentEffect, isFullscreen, setIsFullscreen, effectSettings } =
     useVisualizationStore();
-  const { currentTheme } = useVisualSettingsStore();
+  const { currentTheme: _currentTheme } = useVisualSettingsStore();
   const { seek } = useAudioPlayer();
   const [showSettings, setShowSettings] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
@@ -82,18 +80,19 @@ export function VisualizationView() {
   const animationFrameRef = useRef<number | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const bufferLengthRef = useRef<number>(0);
-  const particlesRef = useRef<any[]>([]);
-  const nebulaStarsRef = useRef<any[]>([]);
-  const spectrumStarsRef = useRef<any[]>([]);
+  const particlesRef = useRef<unknown[]>([]);
+  const nebulaStarsRef = useRef<unknown[]>([]);
+  const spectrumStarsRef = useRef<unknown[]>([]);
   const matrixDropsRef = useRef<number[]>([]);
   const timeRef = useRef<number>(0);
   const smoothDataRef = useRef<Float32Array>(new Float32Array(128));
   const smoothBassRef = useRef(0);
   const smoothMidRef = useRef(0);
   const smoothTrebleRef = useRef(0);
-  const bokehRef = useRef<any[]>([]);
-  const shockwavesRef = useRef<any[]>([]);
-  const resonanceTotemsRef = useRef<any[]>([]);
+  const bokehRef = useRef<unknown[]>([]);
+  const shockwavesRef = useRef<unknown[]>([]);
+  const albumArtRef = useRef<HTMLDivElement | null>(null);
+  const lastEffectRef = useRef<string | null>(null);
 
   // Mouse idle detection for Zen Mode
   useEffect(() => {
@@ -116,9 +115,9 @@ export function VisualizationView() {
     const handleFsChange = () => {
       const isFs = !!(
         document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).mozFullScreenElement ||
-        (document as any).msFullscreenElement
+        (document as LegacyAny).webkitFullscreenElement ||
+        (document as LegacyAny).mozFullScreenElement ||
+        (document as LegacyAny).msFullscreenElement
       );
       setIsFullscreen(isFs);
     };
@@ -136,18 +135,18 @@ export function VisualizationView() {
     };
   }, [setIsFullscreen]);
 
-  const handleToggleFullscreen = () => {
+  const handleToggleFullscreen = useCallback(() => {
     // 1. Try Electron Native Fullscreen first (Best for Desktop)
-    if ((window as any).electronAPI?.toggleFullscreen) {
-      (window as any).electronAPI
+    if ((window as LegacyAny).electronAPI?.toggleFullscreen) {
+      (window as LegacyAny).electronAPI
         .toggleFullscreen()
         .then((result: boolean) => setIsFullscreen(result))
-        .catch((err: any) => console.error("Electron fullscreen failed:", err));
+        .catch((err: LegacyAny) => console.error("Electron fullscreen failed:", err));
       return;
     }
 
     // 2. Fallback to Browser Fullscreen API with vendor prefixes
-    const doc = document as any;
+    const doc = document as LegacyAny;
     const isFs = !!(
       doc.fullscreenElement ||
       doc.webkitFullscreenElement ||
@@ -159,11 +158,11 @@ export function VisualizationView() {
       const elem = containerRef.current || document.documentElement;
       const request =
         elem.requestFullscreen ||
-        (elem as any).webkitRequestFullscreen ||
-        (elem as any).mozRequestFullScreen ||
-        (elem as any).msRequestFullscreen;
+        (elem as LegacyAny).webkitRequestFullscreen ||
+        (elem as LegacyAny).mozRequestFullScreen ||
+        (elem as LegacyAny).msRequestFullscreen;
       if (request) {
-        request.call(elem).catch((err: any) => {
+        request.call(elem).catch((err: LegacyAny) => {
           console.error("Fullscreen request failed:", err);
         });
       }
@@ -174,12 +173,12 @@ export function VisualizationView() {
         doc.mozCancelFullScreen ||
         doc.msExitFullscreen;
       if (exit) {
-        exit.call(doc).catch((err: any) => {
+        exit.call(doc).catch((err: LegacyAny) => {
           console.error("Exit fullscreen failed:", err);
         });
       }
     }
-  };
+  }, [setIsFullscreen]);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -200,7 +199,7 @@ export function VisualizationView() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentView, showSettings, showRecording]);
+  }, [currentView, handleToggleFullscreen, showRecording, showSettings]);
 
   useEffect(() => {
     if (currentView !== "visualization") return;
@@ -219,65 +218,13 @@ export function VisualizationView() {
     };
   }, [currentView]);
 
-  const totemStore = useTotemStore();
-  const parsedLyrics = useLyricsSearchStore((state) => state.parsedLyrics);
-  const workerRef = useRef<Worker | null>(null);
+  const currentTimeRef = useRef(currentTime);
 
   // Sync music time for shaders
   useEffect(() => {
-    (window as any)._currentMusicTime = currentTime;
+    currentTimeRef.current = currentTime;
+    (window as LegacyAny)._currentMusicTime = currentTime;
   }, [currentTime]);
-
-  // Initialize totems for current song
-  useEffect(() => {
-    if (parsedLyrics.length > 0) {
-      totemStore.initializeForSong(parsedLyrics);
-    } else {
-      totemStore.clear();
-    }
-  }, [parsedLyrics]);
-
-  // Update active totems
-  useEffect(() => {
-    totemStore.updateActiveKeywords(currentTime);
-  }, [currentTime]);
-
-  // Manage Texture Worker
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const worker = new Worker(new URL("../../workers/totemTexture.worker.ts", import.meta.url), {
-      type: "module",
-    });
-
-    worker.onmessage = (e) => {
-      if (e.data.type === "texture-generated") {
-        totemStore.addPreloadedTexture(e.data.id, e.data.bitmap);
-      }
-    };
-
-    workerRef.current = worker;
-
-    return () => {
-      worker.terminate();
-    };
-  }, []);
-
-  // Preload textures when keywords change
-  useEffect(() => {
-    if (!workerRef.current || totemStore.allKeywords.length === 0) return;
-
-    totemStore.allKeywords.forEach((kw) => {
-      if (!totemStore.preloadedTextures[kw.id]) {
-        workerRef.current?.postMessage({
-          type: "generate",
-          id: kw.id,
-          text: kw.text,
-          style: "serif",
-        });
-      }
-    });
-  }, [totemStore.allKeywords]);
 
   const vizTargetHues = useRef({ primary: 280, secondary: 320, accent: 150 });
   const vizActiveHues = useRef({ primary: 280, secondary: 320, accent: 150 });
@@ -324,7 +271,7 @@ export function VisualizationView() {
       initParticles(canvas.width, canvas.height);
     };
 
-    const initParticles = (w: number, h: number) => {
+    const initParticles = (_w: number, _h: number) => {
       particlesRef.current = [];
       const count = 1000;
       for (let i = 0; i < count; i++) {
@@ -341,7 +288,7 @@ export function VisualizationView() {
     resize();
     window.addEventListener("resize", resize);
 
-    const lerpHue = (current: number, target: number, factor: number) => {
+    const _lerpHue = (current: number, target: number, factor: number) => {
       let diff = target - current;
       while (diff > 180) diff -= 360;
       while (diff < -180) diff += 360;
@@ -355,9 +302,24 @@ export function VisualizationView() {
       const currentEff = state.currentEffect;
       const settings = state.effectSettings;
 
+      // 切换效果时彻底清理粒子池与引用，避免跨效果数据结构冲突
+      if (lastEffectRef.current !== currentEff) {
+        lastEffectRef.current = currentEff;
+        particlesRef.current = [];
+        nebulaStarsRef.current = [];
+        spectrumStarsRef.current = [];
+        matrixDropsRef.current = [];
+        bokehRef.current = [];
+        shockwavesRef.current = [];
+      }
+
       const analyser = getAudioAnalyser();
       if (analyser && dataArrayRef.current) {
-        analyser.getByteFrequencyData(dataArrayRef.current as any);
+        analyser.getByteFrequencyData(dataArrayRef.current as LegacyAny);
+        const albumScale = 1 + ((dataArrayRef.current[2] || 0) / 255) * 0.08;
+        if (albumArtRef.current) {
+          albumArtRef.current.style.transform = `scale(${albumScale})`;
+        }
 
         // Smooth data for visualization
         const raw = dataArrayRef.current;
@@ -391,7 +353,7 @@ export function VisualizationView() {
           height: canvas.height,
           data: dataArrayRef.current,
           time: timestamp,
-          musicTime: currentTime,
+          musicTime: currentTimeRef.current,
           params: settings[currentEff] || settings.spatialMesh,
 
           refs: {
@@ -404,7 +366,6 @@ export function VisualizationView() {
             smoothTreble: smoothTrebleRef,
             bokeh: bokehRef,
             shockwaves: shockwavesRef,
-            resonanceTotems: resonanceTotemsRef,
           },
 
           theme: {
@@ -430,9 +391,6 @@ export function VisualizationView() {
           ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
-
-        // Sync active keywords for Resonance Totem
-        resonanceTotemsRef.current = totemStore.activeKeywords;
 
         // Call the appropriate effect
 
@@ -467,8 +425,11 @@ export function VisualizationView() {
           case "prismPulse":
             Effects.drawPrismPulse(effectCtx);
             break;
-          case "resonanceTotem":
-            Effects.drawResonanceTotem(effectCtx);
+          case "superstringSingularity":
+            Effects.drawSuperstringSingularity(effectCtx);
+            break;
+          case "cinematicSilkAurora":
+            Effects.drawCinematicSilkAurora(effectCtx);
             break;
 
           default:
@@ -476,13 +437,32 @@ export function VisualizationView() {
         }
       }
 
-      animationFrameRef.current = requestAnimationFrame(draw);
+      if (document.visibilityState === "visible") {
+        animationFrameRef.current = requestAnimationFrame(draw);
+      } else {
+        animationFrameRef.current = null;
+      }
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        if (!animationFrameRef.current) {
+          animationFrameRef.current = requestAnimationFrame(draw);
+        }
+      } else {
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     animationFrameRef.current = requestAnimationFrame(draw);
 
     return () => {
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
@@ -497,11 +477,7 @@ export function VisualizationView() {
       shockwavesRef.current = [];
 
       // Clear canvas context if possible (though usually GC'd)
-      if (canvasRef.current) {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext("2d");
-        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
   }, [currentView]);
 
@@ -549,13 +525,23 @@ export function VisualizationView() {
         willChange: "filter",
       };
     }
-    if (currentEffect === ("resonanceTotem" as any)) {
-      return { filter: `saturate(1.2) contrast(1.1)`, transform: "translateZ(0)" };
+    if (currentEffect === "superstringSingularity") {
+      return {
+        filter: `saturate(1.35) contrast(1.15) brightness(1.1) drop-shadow(0 0 35px rgba(147, 51, 234, 0.2))`,
+        transform: "translateZ(0)",
+        willChange: "filter",
+      };
+    }
+    if (currentEffect === "cinematicSilkAurora") {
+      return {
+        transform: "translateZ(0)",
+      };
     }
     return { transform: "translateZ(0)" };
   };
 
   const effectsList: { id: VisualizationEffect; name: string }[] = [
+    { id: "cinematicSilkAurora", name: "流金丝绸极光 (电影感)" },
     { id: "spatialMesh", name: "流光幻境" },
     { id: "cyberpunkParticles", name: "神经之网" },
     { id: "organicFluid", name: "生命流体" },
@@ -565,8 +551,8 @@ export function VisualizationView() {
     { id: "vinylGroove", name: "量子空间" },
     { id: "cyberMatrix", name: "赛博矩阵" },
     { id: "prismPulse", name: "棱镜脉冲" },
+    { id: "superstringSingularity", name: "量子超弦奇点" },
     { id: "gravitationalField", name: "重力场 (隐藏)" },
-    { id: "resonanceTotem" as any, name: "共鸣图腾" },
   ];
 
   return (
@@ -600,19 +586,18 @@ export function VisualizationView() {
               className="absolute inset-0 flex items-center justify-center pointer-events-none"
             >
               <div
+                ref={albumArtRef}
                 className={`relative overflow-hidden ${
                   currentEffect === "vinylGroove"
                     ? "w-48 h-48 md:w-72 md:h-72 rounded-full shadow-[0_0_80px_rgba(0,0,0,0.9)]"
                     : "w-[240px] h-[240px] md:w-[360px] md:h-[360px] rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
                 } border border-white/10`}
                 style={{
-                  transform: `scale(${1 + ((dataArrayRef.current?.[2] || 0) / 255) * 0.08})`,
                   willChange: "transform",
                   transition: "transform 0.15s cubic-bezier(0.22, 1, 0.36, 1)",
                 }}
               >
                 {/* Dynamic glow behind the cover */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={currentSong.cover} alt="cover" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 border border-white/20 rounded-[inherit] pointer-events-none mix-blend-overlay" />
 
@@ -676,7 +661,7 @@ export function VisualizationView() {
 
                 <button
                   onClick={handleToggleFullscreen}
-                  title={isFullscreen ? "退出全屏 (F)" : "进入全屏 (F)"}
+                  title={isFullscreen ? "退出全??(F)" : "进入全屏 (F)"}
                   className="w-12 h-12 rounded-full bg-black/20 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-105 transition-all duration-300"
                 >
                   {isFullscreen ? (
@@ -717,7 +702,7 @@ export function VisualizationView() {
                           <span className="px-2 py-0.5 rounded-md bg-white/10 text-xs font-bold uppercase tracking-wider text-white/80">
                             Hires
                           </span>
-                          {currentSong.artist} {currentSong.album ? ` • ${currentSong.album}` : ""}
+                          {currentSong.artist} {currentSong.album ? ` ??${currentSong.album}` : ""}
                         </p>
                       </div>
 

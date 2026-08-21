@@ -6,8 +6,11 @@ import Image from "next/image";
 import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { Volume2, VolumeX, Music2, Maximize2 } from "lucide-react";
+import { NowPlayingHalo } from "@/components/player/NowPlayingHalo";
 import { GlassRadarWidget } from "@/components/widgets/GlassRadarWidget";
 import { useABLoopStore } from "@/store/abLoopStore";
+import { ABLoopProgressMarkers } from "@/components/shared/ABLoopProgressMarkers";
+import { useNetworkAudioCache } from "@/hooks/useNetworkAudioCache";
 
 export const APPLE_SPRING_CONFIG = {
   type: "spring" as const,
@@ -47,6 +50,8 @@ export const GlobalPlayerBar: React.FC = () => {
   const toggleMute = useAudioStore((state) => state.toggleMute);
 
   const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const { isCached } = useNetworkAudioCache();
+  const isSongCached = currentSong ? isCached(currentSong.id, currentSong.source) : false;
 
   const [isHoveringProgress, setIsHoveringProgress] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
@@ -117,30 +122,47 @@ export const GlobalPlayerBar: React.FC = () => {
         <div className="flex items-center gap-4 min-w-0 flex-1">
           <motion.div
             layoutId={currentSong ? `album-cover-${currentSong.id}` : undefined}
-            className="relative w-12 h-12 rounded-md overflow-hidden shadow-md flex-shrink-0 cursor-pointer"
+            className="relative w-12 h-12 flex-shrink-0 cursor-pointer"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             transition={APPLE_SPRING_CONFIG}
             onClick={() => setCurrentView("player")}
           >
-            <Image
-              src={currentSong.cover || DEFAULT_COVER_SRC}
-              alt={currentSong.title}
-              fill
-              className="object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = "/default-cover.svg";
-              }}
-              unoptimized
+            <NowPlayingHalo
+              currentTime={currentTime}
+              isPlaying={isPlaying}
+              level={isMuted ? 0 : volume}
+              size={76}
+              className="opacity-85"
             />
-            <div className="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-md" />
+            <div className="relative z-10 h-full w-full overflow-hidden rounded-md shadow-md">
+              <Image
+                src={currentSong.cover || DEFAULT_COVER_SRC}
+                alt={currentSong.title}
+                fill
+                className="object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = "/default-cover.svg";
+                }}
+                unoptimized
+              />
+              <div className="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-md" />
+            </div>
           </motion.div>
 
           <div className="min-w-0 flex-1 max-w-[200px]">
-            <p className="text-sm font-semibold tracking-tight text-white line-clamp-1">
-              {currentSong.title}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-semibold tracking-tight text-white line-clamp-1">
+                {currentSong.title}
+              </p>
+              {isSongCached && (
+                <span className="shrink-0 text-[9px] px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-medium flex items-center gap-0.5">
+                  <span className="w-1 h-1 rounded-full bg-cyan-400 animate-pulse" />
+                  已离线
+                </span>
+              )}
+            </div>
             <p className="text-xs font-medium text-white/60 line-clamp-1">{currentSong.artist}</p>
           </div>
         </div>
@@ -220,25 +242,12 @@ export const GlobalPlayerBar: React.FC = () => {
                 }}
               />
 
-              {abLoopEnabled && pointA !== null && pointB !== null && (
-                <>
-                  <div
-                    className="absolute top-0 w-0.5 h-full bg-blue-400 z-10"
-                    style={{ left: `${(pointA / duration) * 100}%` }}
-                  />
-                  <div
-                    className="absolute top-0 w-0.5 h-full bg-red-400 z-10"
-                    style={{ left: `${(pointB / duration) * 100}%` }}
-                  />
-                  <div
-                    className="absolute top-0 h-full bg-blue-400/20 z-10"
-                    style={{
-                      left: `${(pointA / duration) * 100}%`,
-                      width: `${((pointB - pointA) / duration) * 100}%`,
-                    }}
-                  />
-                </>
-              )}
+              <ABLoopProgressMarkers
+                isEnabled={abLoopEnabled}
+                pointA={pointA}
+                pointB={pointB}
+                duration={duration}
+              />
             </div>
 
             <AnimatePresence>

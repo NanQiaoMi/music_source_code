@@ -1,5 +1,5 @@
 import { Song } from "@/types/song";
-import { generateSongId, formatDuration } from "./songValidation";
+import { generateSongId } from "./songValidation";
 
 export interface FolderImportResult {
   success: boolean;

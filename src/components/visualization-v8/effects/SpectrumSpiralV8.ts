@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { EffectPlugin, RenderContext, AudioData } from "@/lib/visualization/types";
 
 export const SpectrumSpiralV8: EffectPlugin = {
@@ -73,7 +74,7 @@ export const SpectrumSpiralV8: EffectPlugin = {
     },
   ],
 
-  init(ctx: RenderContext) {
+  init(_ctx: RenderContext) {
     (this as any).time = 0;
     (this as any).history = [];
   },
@@ -226,7 +227,7 @@ export const SpectrumSpiralV8: EffectPlugin = {
     context.restore();
   },
 
-  resize(width: number, height: number) {},
+  resize(_width: number, _height: number) {},
 
   destroy() {
     (this as any).history = [];

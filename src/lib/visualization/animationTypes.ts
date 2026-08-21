@@ -3,7 +3,7 @@ export type AnimationSyncMode = "audio" | "timeline" | "mixed";
 export interface AnimationKeyframe {
   id: string;
   time: number;
-  value: any;
+  value: unknown;
   easing?: [number, number, number, number];
 }
 

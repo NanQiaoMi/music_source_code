@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { Song } from "@/types/song";
+import { createSafeStorage, sanitizeSongForStorage } from "@/lib/storage/safeStorage";
 
 interface FavoritesState {
   favorites: Song[];
@@ -23,7 +24,7 @@ export const useFavoritesStore = create<FavoritesState>()(
           if (state.favorites.some((s) => s.id === song.id)) {
             return state;
           }
-          return { favorites: [...state.favorites, song] };
+          return { favorites: [...state.favorites, sanitizeSongForStorage(song)] };
         }),
 
       removeFromFavorites: (songId) =>
@@ -48,6 +49,10 @@ export const useFavoritesStore = create<FavoritesState>()(
     }),
     {
       name: "favorites-store",
+      storage: createJSONStorage(() => createSafeStorage("favorites-store")),
+      partialize: (state) => ({
+        favorites: (state.favorites || []).map(sanitizeSongForStorage),
+      }),
     }
   )
 );

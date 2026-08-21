@@ -11,13 +11,17 @@ export type VisualizationEffect =
   | "cyberMatrix"
   | "gravitationalField"
   | "prismPulse"
-  | "resonanceTotem";
+  | "superstringSingularity"
+  | "cinematicSilkAurora";
+
+export type NumericEffectSettings = Record<string, number>;
+export type EffectSettings = Record<VisualizationEffect, NumericEffectSettings>;
 
 export interface VisualizationPreset {
   id: string;
   name: string;
   effect: VisualizationEffect;
-  settings: Record<string, any>;
+  settings: NumericEffectSettings;
 }
 
 interface VisualizationState {
@@ -28,53 +32,7 @@ interface VisualizationState {
   showSongInfo: boolean;
   reactToMusic: boolean;
 
-  effectSettings: {
-    spatialMesh: { blurIntensity: number; speed: number; colorIntensity: number };
-    cyberpunkParticles: {
-      particleCount: number;
-      particleSize: number;
-      speed: number;
-      glowIntensity: number;
-    };
-    organicFluid: { complexity: number; speed: number; colorShift: number };
-    auroraWave: {
-      speed: number;
-      colorIntensity: number;
-      coreComplexity: number;
-      flareAmount: number;
-      hudDetail: number;
-    };
-    spectrumRing: {
-      ringCount: number;
-      rotationSpeed: number;
-      barWidth: number;
-      colorMode: number;
-      glowIntensity: number;
-      haloStyle: number;
-      flareAmount: number;
-      chromaticIntensity: number;
-      hudDetail: number;
-    };
-    nebulaField: {
-      starCount: number;
-      nebulaIntensity: number;
-      speed: number;
-      depth: number;
-      flareAmount: number;
-      hudDetail: number;
-    };
-    vinylGroove: {
-      spinSpeed: number;
-      grooveIntensity: number;
-      glowAmount: number;
-      opticalComplexity: number;
-      chromaticIntensity: number;
-    };
-    cyberMatrix: { speed: number; density: number };
-    gravitationalField: { speed: number; sensitivity: number; coreIntensity: number };
-    prismPulse: { complexity: number; refraction: number; drift: number; speed: number };
-    resonanceTotem: { opacity: number; scanSpeed: number; grainIntensity: number };
-  };
+  effectSettings: EffectSettings;
 
   setCurrentEffect: (effect: VisualizationEffect) => void;
   setIsFullscreen: (isFullscreen: boolean) => void;
@@ -84,12 +42,24 @@ interface VisualizationState {
   savePreset: (name: string) => void;
   loadPreset: (presetId: string) => void;
   deletePreset: (presetId: string) => void;
-  updateEffectSettings: (effect: VisualizationEffect, settings: Record<string, any>) => void;
+  updateEffectSettings: (
+    effect: VisualizationEffect,
+    settings: Partial<NumericEffectSettings>
+  ) => void;
 }
 
-const defaultEffectSettings = {
+const defaultEffectSettings: EffectSettings = {
   spatialMesh: { blurIntensity: 120, speed: 1.0, colorIntensity: 0.8 },
-  cyberpunkParticles: { particleCount: 500, particleSize: 2.0, speed: 1.5, glowIntensity: 1.0 },
+  cyberpunkParticles: {
+    particleCount: 240,
+    particleSize: 1.2,
+    speed: 1.0,
+    glowIntensity: 1.0,
+    gravityLens: 1.0,
+    pulseSpeed: 1.0,
+    accretionSpin: 1.0,
+    bokehAmount: 0.6,
+  },
   organicFluid: { complexity: 1.0, speed: 1.0, colorShift: 0.5 },
   auroraWave: {
     speed: 1.0,
@@ -127,13 +97,75 @@ const defaultEffectSettings = {
   cyberMatrix: { speed: 1.0, density: 1.0 },
   gravitationalField: { speed: 1.0, sensitivity: 1.0, coreIntensity: 1.0 },
   prismPulse: { complexity: 6, refraction: 1.0, drift: 0.5, speed: 1.0 },
-  resonanceTotem: { opacity: 1.0, scanSpeed: 1.0, grainIntensity: 0.05 },
+  superstringSingularity: { speed: 1.0, singularityMass: 1.0, superstringTension: 1.2, coreGlow: 1.5 },
+  cinematicSilkAurora: { silkCount: 6, flowSpeed: 1.0, glowIntensity: 1.15, bokehDensity: 1.0, firefliesCount: 25, godRaysIntensity: 1.0, spatialDepth: 1.2, anamorphicFlare: 1.0 },
 };
 
 export const useVisualizationStore = create<VisualizationState>((set, get) => ({
   currentEffect: "spatialMesh",
   isFullscreen: false,
-  presets: [],
+  presets: [
+    {
+      id: "preset-astro-blackhole",
+      name: "深空黑洞 (Sagittarius A*)",
+      effect: "cyberpunkParticles",
+      settings: {
+        particleCount: 1200,
+        particleSize: 2.2,
+        speed: 1.8,
+        glowIntensity: 1.2,
+        gravityLens: 1.8,
+        pulseSpeed: 1.5,
+        accretionSpin: 1.6,
+        bokehAmount: 1.2,
+      },
+    },
+    {
+      id: "preset-astro-supernova",
+      name: "超新星遗迹 (Supernova Remnant)",
+      effect: "cyberpunkParticles",
+      settings: {
+        particleCount: 1500,
+        particleSize: 2.6,
+        speed: 2.0,
+        glowIntensity: 2.2,
+        gravityLens: 1.2,
+        pulseSpeed: 2.0,
+        accretionSpin: 1.2,
+        bokehAmount: 1.8,
+      },
+    },
+    {
+      id: "preset-astro-synapse",
+      name: "量子突触中枢 (Quantum Synapse)",
+      effect: "cyberpunkParticles",
+      settings: {
+        particleCount: 800,
+        particleSize: 1.8,
+        speed: 1.4,
+        glowIntensity: 1.0,
+        gravityLens: 0.8,
+        pulseSpeed: 2.4,
+        accretionSpin: 0.8,
+        bokehAmount: 0.6,
+      },
+    },
+    {
+      id: "preset-astro-aurora",
+      name: "电离极光纤维 (Ionized Lattice)",
+      effect: "cyberpunkParticles",
+      settings: {
+        particleCount: 1000,
+        particleSize: 2.0,
+        speed: 1.0,
+        glowIntensity: 1.6,
+        gravityLens: 0.6,
+        pulseSpeed: 1.0,
+        accretionSpin: 0.9,
+        bokehAmount: 0.9,
+      },
+    },
+  ],
   currentPresetId: null,
   showSongInfo: true,
   reactToMusic: true,

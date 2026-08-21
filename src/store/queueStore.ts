@@ -1,5 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import {
+  bulkRemove,
+  clearAfterCurrent,
+  dedupe,
+  playNext,
+  shuffleAfter,
+} from "@/lib/queue/queueActions";
 import { Song } from "@/types/song";
 
 export interface HistorySong {
@@ -17,6 +24,16 @@ type PersistedQueueSong = Pick<
   "id" | "title" | "artist" | "album" | "duration" | "cover" | "source" | "audioUrl"
 >;
 
+type MinimalPersistedQueueSong = Pick<PersistedQueueSong, "id" | "title" | "artist" | "duration">;
+
+function sanitizePersistedAudioUrl(audioUrl?: string): string | undefined {
+  const trimmed = audioUrl?.trim();
+  if (!trimmed || trimmed.startsWith("blob:") || trimmed.startsWith("data:")) {
+    return undefined;
+  }
+  return trimmed;
+}
+
 function sanitizePersistedSong(song: Song): PersistedQueueSong {
   const sanitizedCover = song.cover?.startsWith("data:image/") ? "" : song.cover;
 
@@ -28,8 +45,49 @@ function sanitizePersistedSong(song: Song): PersistedQueueSong {
     duration: song.duration,
     cover: sanitizedCover,
     source: song.source,
-    audioUrl: song.audioUrl,
+    audioUrl: sanitizePersistedAudioUrl(song.audioUrl),
   };
+}
+
+function toMinimalPersistedSong(song: PersistedQueueSong): MinimalPersistedQueueSong {
+  return {
+    id: song.id,
+    title: song.title,
+    artist: song.artist,
+    duration: song.duration,
+  };
+}
+
+function clonePersistedValue(value: unknown) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function tryPersistQueueState(name: string, value: unknown) {
+  const serialized = JSON.stringify(value);
+  const currentValue = localStorage.getItem(name);
+  if (currentValue && currentValue.length > serialized.length) {
+    localStorage.removeItem(name);
+  }
+  localStorage.setItem(name, serialized);
+}
+
+function retryPersistQueueState(name: string, value: unknown) {
+  localStorage.removeItem(name);
+  tryPersistQueueState(name, value);
+}
+
+function isQuotaExceededError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    error.name === "QuotaExceededError"
+  );
+}
+
+function clampQueueIndex(index: number, length: number): number {
+  if (length <= 0) return 0;
+  return Math.max(0, Math.min(index, length - 1));
 }
 
 interface QueueState {
@@ -42,11 +100,18 @@ interface QueueState {
   setCurrentIndex: (index: number) => void;
   addToQueue: (song: Song) => void;
   insertNext: (song: Song) => void;
+  playNext: (song: Song) => void;
+  clearAfterCurrent: () => void;
+  bulkRemove: (ids: string[]) => void;
+  dedupeQueue: () => void;
+  shuffleAfterCurrent: () => void;
+  moveToNext: (index: number) => void;
   removeFromQueue: (index: number) => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
   removeFromQueueById: (id: string) => void;
   removeMultipleFromQueue: (indices: number[]) => void;
   clearQueue: () => void;
+  clearPlayed: () => void;
   addToHistory: (song: Song) => void;
   clearHistory: () => void;
 
@@ -65,9 +130,16 @@ export const useQueueStore = create<QueueState>()(
       history: [],
       playThroughMode: "normal",
 
-      setQueue: (songs) => set({ queue: songs }),
+      setQueue: (songs) =>
+        set((state) => ({
+          queue: songs,
+          currentIndex: clampQueueIndex(state.currentIndex, songs.length),
+        })),
 
-      setCurrentIndex: (index) => set({ currentIndex: index }),
+      setCurrentIndex: (index) =>
+        set((state) => ({
+          currentIndex: clampQueueIndex(index, state.queue.length),
+        })),
 
       addToQueue: (song) =>
         set((state) => ({
@@ -76,28 +148,72 @@ export const useQueueStore = create<QueueState>()(
 
       insertNext: (song) =>
         set((state) => {
-          if (state.queue.length === 0) {
-            return { queue: [song] };
+          const next = playNext(state, song);
+          return { queue: next.queue, currentIndex: next.currentIndex };
+        }),
+
+      playNext: (song) =>
+        set((state) => {
+          const next = playNext(state, song);
+          return { queue: next.queue, currentIndex: next.currentIndex };
+        }),
+
+      clearAfterCurrent: () =>
+        set((state) => {
+          const next = clearAfterCurrent(state);
+          return { queue: next.queue, currentIndex: next.currentIndex };
+        }),
+
+      bulkRemove: (ids) =>
+        set((state) => {
+          const next = bulkRemove(state, ids);
+          return { queue: next.queue, currentIndex: next.currentIndex };
+        }),
+
+      dedupeQueue: () =>
+        set((state) => {
+          const next = dedupe(state);
+          return { queue: next.queue, currentIndex: next.currentIndex };
+        }),
+
+      shuffleAfterCurrent: () =>
+        set((state) => {
+          const next = shuffleAfter(state);
+          return { queue: next.queue, currentIndex: next.currentIndex };
+        }),
+
+      moveToNext: (index) =>
+        set((state) => {
+          if (
+            index < 0 ||
+            index >= state.queue.length ||
+            index === state.currentIndex ||
+            index === state.currentIndex + 1
+          ) {
+            return {};
           }
-          const newQueue = [...state.queue];
-          newQueue.splice(state.currentIndex + 1, 0, song);
-          return { queue: newQueue };
+
+          const currentSong = state.queue[state.currentIndex];
+          const songToMove = state.queue[index];
+          const newQueue = state.queue.filter((_, itemIndex) => itemIndex !== index);
+          const currentIndexAfterRemoval = newQueue.findIndex((song) => song.id === currentSong.id);
+          const insertAt = Math.min(currentIndexAfterRemoval + 1, newQueue.length);
+
+          newQueue.splice(insertAt, 0, songToMove);
+
+          return {
+            queue: newQueue,
+            currentIndex: newQueue.findIndex((song) => song.id === currentSong.id),
+          };
         }),
 
       removeFromQueue: (index) =>
         set((state) => {
-          const newQueue = [...state.queue];
-          newQueue.splice(index, 1);
+          const target = state.queue[index];
+          if (!target) return {};
 
-          // Adjust current index if needed
-          let newIndex = state.currentIndex;
-          if (index < state.currentIndex) {
-            newIndex = Math.max(0, state.currentIndex - 1);
-          } else if (index === state.currentIndex && newQueue.length > 0) {
-            newIndex = Math.min(state.currentIndex, newQueue.length - 1);
-          }
-
-          return { queue: newQueue, currentIndex: newIndex };
+          const next = bulkRemove(state, [target.id]);
+          return { queue: next.queue, currentIndex: next.currentIndex };
         }),
 
       reorderQueue: (fromIndex, toIndex) =>
@@ -106,7 +222,6 @@ export const useQueueStore = create<QueueState>()(
           const [moved] = newQueue.splice(fromIndex, 1);
           newQueue.splice(toIndex, 0, moved);
 
-          // Adjust current index
           let newCurrentIndex = state.currentIndex;
           if (fromIndex === state.currentIndex) {
             newCurrentIndex = toIndex;
@@ -121,35 +236,29 @@ export const useQueueStore = create<QueueState>()(
 
       clearQueue: () => set({ queue: [], currentIndex: 0 }),
 
+      clearPlayed: () =>
+        set((state) => {
+          if (state.currentIndex <= 0) return {};
+
+          return {
+            queue: state.queue.slice(state.currentIndex),
+            currentIndex: 0,
+          };
+        }),
+
       removeFromQueueById: (id) =>
         set((state) => {
-          const index = state.queue.findIndex((s) => s.id === id);
-          if (index === -1) return {};
-          const newQueue = [...state.queue];
-          newQueue.splice(index, 1);
-          let newIndex = state.currentIndex;
-          if (index < state.currentIndex) {
-            newIndex = Math.max(0, state.currentIndex - 1);
-          } else if (index === state.currentIndex && newQueue.length > 0) {
-            newIndex = Math.min(state.currentIndex, newQueue.length - 1);
-          }
-          return { queue: newQueue, currentIndex: newIndex };
+          const next = bulkRemove(state, [id]);
+          return { queue: next.queue, currentIndex: next.currentIndex };
         }),
 
       removeMultipleFromQueue: (indices) =>
         set((state) => {
-          const sorted = [...indices].sort((a, b) => b - a);
-          const newQueue = [...state.queue];
-          for (const i of sorted) {
-            newQueue.splice(i, 1);
-          }
-          return {
-            queue: newQueue,
-            currentIndex: Math.min(
-              state.currentIndex,
-              newQueue.length - 1 >= 0 ? newQueue.length - 1 : 0
-            ),
-          };
+          const ids = indices
+            .map((index) => state.queue[index]?.id)
+            .filter((id): id is string => Boolean(id));
+          const next = bulkRemove(state, ids);
+          return { queue: next.queue, currentIndex: next.currentIndex };
         }),
 
       addToHistory: (song) =>
@@ -210,9 +319,10 @@ export const useQueueStore = create<QueueState>()(
     {
       name: "queue-store-v5",
       partialize: (state) => ({
-        queue: state.queue.map(sanitizePersistedSong),
-        currentIndex: state.currentIndex,
-        history: state.history,
+        queue: state.queue.slice(0, 200).map(sanitizePersistedSong),
+        currentIndex: Math.min(state.currentIndex, 199),
+        history: state.history.slice(0, 30),
+        playThroughMode: state.playThroughMode,
       }),
       storage: {
         getItem: (name) => {
@@ -225,27 +335,44 @@ export const useQueueStore = create<QueueState>()(
         },
         setItem: (name, value) => {
           try {
-            localStorage.setItem(name, JSON.stringify(value));
+            tryPersistQueueState(name, value);
           } catch (_error) {
-            if (_error instanceof Error && _error.name === "QuotaExceededError") {
+            if (isQuotaExceededError(_error)) {
               console.warn("Queue store quota exceeded, aggressively clearing history...");
               try {
-                const state = JSON.parse(JSON.stringify(value));
+                const state = clonePersistedValue(value);
                 if (state.state && state.state.history) {
-                  // Try reducing to 5 items first
                   state.state.history = state.state.history.slice(0, 5);
                 }
-                localStorage.setItem(name, JSON.stringify(state));
+                retryPersistQueueState(name, state);
               } catch {
-                console.warn("Failed to save even with 5 history items, clearing all history.");
+                console.warn(
+                  "Failed to save even with 5 history items, clearing history and shrinking queue."
+                );
                 try {
-                  const state = JSON.parse(JSON.stringify(value));
+                  const state = clonePersistedValue(value);
                   if (state.state) {
                     state.state.history = [];
+                    if (Array.isArray(state.state.queue)) {
+                      state.state.queue = state.state.queue.map(toMinimalPersistedSong);
+                    }
                   }
-                  localStorage.setItem(name, JSON.stringify(state));
-                } catch (finalError) {
-                  console.error("Critical storage failure in queue store:", finalError);
+                  retryPersistQueueState(name, state);
+                } catch {
+                  console.warn(
+                    "Failed to save minimized queue store, persisting index only as final fallback."
+                  );
+                  try {
+                    const state = clonePersistedValue(value);
+                    if (state.state) {
+                      state.state.history = [];
+                      state.state.queue = [];
+                      state.state.currentIndex = 0;
+                    }
+                    retryPersistQueueState(name, state);
+                  } catch (finalError) {
+                    console.error("Critical storage failure in queue store:", finalError);
+                  }
                 }
               }
             } else {

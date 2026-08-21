@@ -1,13 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { EffectPlugin, RenderContext, AudioData } from "@/lib/visualization/types";
-
-interface TrailParticle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  trail: { x: number; y: number; alpha: number }[];
-  hue: number;
-}
 
 export const ParticleTrailV8: EffectPlugin = {
   id: "particle-trail",
@@ -202,7 +194,7 @@ export const ParticleTrailV8: EffectPlugin = {
     context.restore();
   },
 
-  resize(width: number, height: number) {},
+  resize(_width: number, _height: number) {},
 
   destroy() {
     (this as any).particles = [];

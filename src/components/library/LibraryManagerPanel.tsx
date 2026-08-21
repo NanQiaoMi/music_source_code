@@ -1,11 +1,31 @@
-"use client";
+﻿"use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Database, Trash2, FileScan, Settings, BarChart3, RefreshCw } from "lucide-react";
-import { useLibraryManagerStore } from "@/store/libraryManagerStore";
+import {
+  BarChart3,
+  Database,
+  FolderOpen,
+  ListMusic,
+  Play,
+  RefreshCw,
+  Settings2,
+  Trash2,
+  Wand2,
+  X,
+} from "lucide-react";
+import {
+  useLibraryManagerStore,
+  type DuplicateGroup,
+  type LibraryStats,
+  type RenameRule,
+  type ScanFilter,
+} from "@/store/libraryManagerStore";
+import { useAudioStore } from "@/store/audioStore";
+import { usePlaylistGroupStore, type PlaylistGroup } from "@/store/playlistGroupStore";
 import { usePlaylistStore } from "@/store/playlistStore";
-import type { Song } from "@/types/song";
+import { CloudMusicPanel } from "@/components/library/CloudMusicPanel";
+import { Heart } from "lucide-react";
 
 interface LibraryManagerPanelProps {
   isOpen: boolean;
@@ -13,17 +33,22 @@ interface LibraryManagerPanelProps {
 }
 
 const TAB_ITEMS = [
-  { id: "deduplicate", name: "智能去重", icon: "♻️" },
-  { id: "rename", name: "批量重命名", icon: "📝" },
-  { id: "scan", name: "扫描设置", icon: "🔍" },
-  { id: "stats", name: "统计分析", icon: "📊" },
+  { id: "cloud", name: "我的云音乐", icon: Heart },
+  { id: "playlists", name: "已保存播放列表", icon: ListMusic },
+  { id: "deduplicate", name: "重复歌曲", icon: Trash2 },
+  { id: "rename", name: "重命名规则", icon: Wand2 },
+  { id: "scan", name: "扫描筛选", icon: Settings2 },
+  { id: "stats", name: "库统计", icon: BarChart3 },
 ] as const;
 
 type TabId = (typeof TAB_ITEMS)[number]["id"];
 
 export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<TabId>("deduplicate");
+  const [activeTab, setActiveTab] = useState<TabId>("playlists");
+  const [statusMessage, setStatusMessage] = useState("已保存的智能混音播放列表将显示在此。");
   const { songs } = usePlaylistStore();
+  const playQueue = useAudioStore((state) => state.playQueue);
+  const { groups, deleteGroup } = usePlaylistGroupStore();
 
   const {
     duplicateGroups,
@@ -35,13 +60,10 @@ export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen
     libraryStats,
     findDuplicates,
     deleteSelectedDuplicates,
-    addRenameRule,
-    updateRenameRule,
-    deleteRenameRule,
-    setSelectedRenameRule,
-    setScanFilters,
     updateLibraryStats,
   } = useLibraryManagerStore();
+
+  const customGroups = useMemo(() => groups.filter((group) => group.type === "custom"), [groups]);
 
   useEffect(() => {
     if (isOpen) {
@@ -50,8 +72,35 @@ export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen
   }, [isOpen, songs, updateLibraryStats]);
 
   const handleFindDuplicates = useCallback(() => {
-    findDuplicates(songs);
+    void findDuplicates(songs);
   }, [findDuplicates, songs]);
+
+  const handleDeleteDuplicates = useCallback(async () => {
+    try {
+      await deleteSelectedDuplicates();
+      setStatusMessage("重复清理完成。");
+    } catch (error) {
+      console.error("Delete duplicates failed:", error);
+      setStatusMessage("重复清理失败。");
+    }
+  }, [deleteSelectedDuplicates]);
+
+  const handlePlayGroup = useCallback(
+    (group: PlaylistGroup) => {
+      if (group.songs.length === 0) return;
+      playQueue(group.songs, 0);
+      setStatusMessage(`Playing ${group.name} with ${group.songs.length} tracks.`);
+    },
+    [playQueue]
+  );
+
+  const handleDeleteGroup = useCallback(
+    (group: PlaylistGroup) => {
+      deleteGroup(group.id);
+      setStatusMessage(`已删除播放列表 ${group.name}.`);
+    },
+    [deleteGroup]
+  );
 
   if (!isOpen) return null;
 
@@ -60,77 +109,97 @@ export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
+        initial={{ scale: 0.94, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.96, opacity: 0, y: 12 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-5xl bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
+        onClick={(event) => event.stopPropagation()}
+        className="relative flex max-h-[86vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-zinc-950/92 shadow-2xl backdrop-blur-2xl"
       >
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
+        <header className="flex items-center justify-between border-b border-white/10 p-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500/30 to-purple-500/30 flex items-center justify-center">
-              <Database className="w-6 h-6 text-white" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-200">
+              <Database className="h-6 w-6" />
             </div>
             <div>
-              <h2 className="text-white text-2xl font-semibold">智能音乐库管理</h2>
-              <p className="text-white/60 text-sm">去重、重命名、扫描、统计分析</p>
+              <h2 className="text-2xl font-semibold text-white">音乐库</h2>
+              <p className="text-sm text-white/55">
+                管理已保存播放列表、重复歌曲、扫描规则和库健康状态。
+              </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+            aria-label="关闭音乐库"
           >
-            ✕
+            <X className="h-5 w-5" />
           </button>
-        </div>
+        </header>
 
-        <div className="flex border-b border-white/10">
-          {TAB_ITEMS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-4 px-4 text-sm font-medium transition-all duration-200 ${
-                activeTab === tab.id
-                  ? "text-white border-b-2 border-violet-500 bg-white/5"
-                  : "text-white/60 hover:text-white/80 hover:bg-white/5"
-              }`}
-            >
-              <span className="mr-2">{tab.icon}</span>
-              {tab.name}
-            </button>
-          ))}
-        </div>
+        <nav
+          className="grid grid-cols-2 border-b border-white/10 md:grid-cols-5"
+          aria-label="库分区"
+        >
+          {TAB_ITEMS.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center justify-center gap-2 px-3 py-3 text-sm font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? "bg-white/10 text-white"
+                    : "text-white/55 hover:bg-white/5 hover:text-white/85"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.name}
+              </button>
+            );
+          })}
+        </nav>
 
-        <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar min-h-0">
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-4 rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100"
+          >
+            {statusMessage}
+          </div>
+
+          {activeTab === "cloud" && <CloudMusicPanel />}
+
+          {activeTab === "playlists" && (
+            <SavedPlaylistsTab
+              groups={customGroups}
+              onPlayGroup={handlePlayGroup}
+              onDeleteGroup={handleDeleteGroup}
+            />
+          )}
+
           {activeTab === "deduplicate" && (
             <DeduplicateTab
               duplicateGroups={duplicateGroups}
               isScanning={isScanningDuplicates}
               scanProgress={duplicateScanProgress}
               onFindDuplicates={handleFindDuplicates}
-              onDeleteDuplicates={deleteSelectedDuplicates}
+              onDeleteDuplicates={handleDeleteDuplicates}
             />
           )}
 
           {activeTab === "rename" && (
-            <RenameTab
-              renameRules={renameRules}
-              selectedRule={selectedRenameRule}
-              onAddRule={addRenameRule}
-              onUpdateRule={updateRenameRule}
-              onDeleteRule={deleteRenameRule}
-              onSelectRule={setSelectedRenameRule}
-            />
+            <RenameTab renameRules={renameRules} selectedRule={selectedRenameRule} />
           )}
 
-          {activeTab === "scan" && (
-            <ScanTab scanFilters={scanFilters} onSetFilters={setScanFilters} />
-          )}
+          {activeTab === "scan" && <ScanTab scanFilters={scanFilters} />}
 
           {activeTab === "stats" && <StatsTab stats={libraryStats} />}
         </div>
@@ -139,6 +208,85 @@ export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen
   );
 };
 
+function SavedPlaylistsTab({
+  groups,
+  onPlayGroup,
+  onDeleteGroup,
+}: {
+  groups: PlaylistGroup[];
+  onPlayGroup: (group: PlaylistGroup) => void;
+  onDeleteGroup: (group: PlaylistGroup) => void;
+}) {
+  if (groups.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
+        <FolderOpen className="mx-auto mb-3 h-8 w-8 text-white/35" />
+        <h3 className="mb-2 text-lg font-semibold text-white">暂无播放列表</h3>
+        <p className="text-sm text-white/50">
+          保存智能混音，将其转化为可复用的自定义播放列表。
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      {groups.map((group) => (
+        <article key={group.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="truncate text-base font-semibold text-white">{group.name}</h3>
+              <p className="text-sm text-white/45">
+                {group.songs.length} 首曲目 - 更新于 {formatDate(group.updatedAt)}
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-200">
+              <ListMusic className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="mb-4 space-y-2">
+            {group.songs.slice(0, 3).map((song, index) => (
+              <div
+                key={song.id}
+                className="flex items-center gap-2 rounded-xl bg-black/20 px-3 py-2"
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/10 text-xs text-white/50">
+                  {index + 1}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm text-white/80">{song.title}</span>
+                  <span className="block truncate text-xs text-white/40">{song.artist}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onPlayGroup(group)}
+              disabled={group.songs.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/20 px-3 py-2 text-sm text-emerald-100 transition-colors hover:bg-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Play className="h-4 w-4" />
+              播放
+            </button>
+            <button
+              type="button"
+              onClick={() => onDeleteGroup(group)}
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm text-white/70 transition-colors hover:bg-red-500/20 hover:text-red-100"
+            >
+              <Trash2 className="h-4 w-4" />
+              删除
+            </button>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function DeduplicateTab({
   duplicateGroups,
   isScanning,
@@ -146,104 +294,96 @@ function DeduplicateTab({
   onFindDuplicates,
   onDeleteDuplicates,
 }: {
-  duplicateGroups: any[];
+  duplicateGroups: DuplicateGroup[];
   isScanning: boolean;
   scanProgress: number;
   onFindDuplicates: () => void;
-  onDeleteDuplicates: () => Promise<void>;
+  onDeleteDuplicates: () => void;
 }) {
-  const handleDelete = async () => {
-    try {
-      await onDeleteDuplicates();
-    } catch (error) {
-      console.error("Delete duplicates failed:", error);
-    }
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-white text-xl font-semibold">智能去重</h3>
-        <button
-          onClick={onFindDuplicates}
-          disabled={isScanning}
-          className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-purple-500 text-white font-medium hover:from-violet-600 hover:to-purple-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${isScanning ? "animate-spin" : ""}`} />
-          {isScanning ? "扫描中..." : "扫描重复歌曲"}
-        </button>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-semibold text-white">重复扫描器</h3>
+          <p className="text-sm text-white/50">
+            查找重复的歌手/标题组合，保留最佳副本。
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onFindDuplicates}
+            disabled={isScanning}
+            className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm text-white/75 transition-colors hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <RefreshCw className={`h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
+            {isScanning ? "扫描中" : "扫描重复歌曲"}
+          </button>
+          <button
+            type="button"
+            onClick={onDeleteDuplicates}
+            disabled={duplicateGroups.length === 0}
+            className="inline-flex items-center gap-2 rounded-xl bg-red-500/20 px-4 py-2 text-sm text-red-100 transition-colors hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Trash2 className="h-4 w-4" />
+            移除多余歌曲
+          </button>
+        </div>
       </div>
 
       {isScanning && (
-        <div className="p-6 rounded-2xl bg-violet-500/10 border border-violet-500/20">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-violet-300 font-semibold">正在扫描...</div>
-            <div className="text-violet-300">{scanProgress}%</div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div className="mb-2 flex items-center justify-between text-sm text-white/65">
+            <span>正在扫描库</span>
+            <span>{scanProgress}%</span>
           </div>
-          <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-2 overflow-hidden rounded-full bg-white/10">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${scanProgress}%` }}
-              className="h-full bg-gradient-to-r from-violet-500 to-purple-500"
+              className="h-full bg-emerald-300"
             />
           </div>
         </div>
       )}
 
-      {duplicateGroups.length === 0 && !isScanning && (
-        <div className="text-center py-12">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-3xl bg-white/5 flex items-center justify-center">
-            <Trash2 className="w-10 h-10 text-white/40" />
-          </div>
-          <h3 className="text-white font-semibold mb-2">暂无重复歌曲</h3>
-          <p className="text-white/60">点击扫描按钮查找重复歌曲</p>
-        </div>
-      )}
-
-      {duplicateGroups.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="text-white/80 font-medium">
-              找到 {duplicateGroups.length} 组重复歌曲
-            </div>
-            <button
-              onClick={handleDelete}
-              className="px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 font-medium transition-all duration-200"
-            >
-              删除选中的重复项
-            </button>
-          </div>
+      {duplicateGroups.length === 0 && !isScanning ? (
+        <EmptyState
+          icon={<Trash2 className="h-8 w-8" />}
+          title="无重复分组"
+          description="运行扫描以查找匹配的歌手/标题对。"
+        />
+      ) : (
+        <div className="space-y-3">
           {duplicateGroups.map((group) => (
-            <div key={group.groupId} className="p-5 rounded-2xl bg-white/5 border border-white/10">
-              <div className="text-white font-semibold mb-3">
-                {group.songs[0]?.title} - {group.songs[0]?.artist}
+            <article
+              key={group.groupId}
+              className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+            >
+              <div className="mb-3 text-sm font-semibold text-white">
+                {group.songs[0]?.title || "未命名"} - {group.songs[0]?.artist || "未知"}
               </div>
               <div className="space-y-2">
-                {group.songs.map((song: any) => (
+                {group.songs.map((song) => (
                   <div
                     key={song.id}
-                    className={`flex items-center justify-between p-3 rounded-lg ${
-                      song.isRecommended
-                        ? "bg-emerald-500/10 border border-emerald-500/20"
-                        : "bg-white/5"
-                    }`}
+                    className="flex items-center justify-between gap-3 rounded-xl bg-black/20 px-3 py-2"
                   >
-                    <div>
-                      <div className="text-white text-sm">{song.title}</div>
-                      <div className="text-white/60 text-xs">
-                        {song.artist} · {Math.round(song.duration / 60)}:
-                        {(song.duration % 60).toString().padStart(2, "0")}
+                    <div className="min-w-0">
+                      <div className="truncate text-sm text-white/80">{song.title}</div>
+                      <div className="truncate text-xs text-white/40">
+                        {formatDuration(song.duration)}
                       </div>
                     </div>
                     {song.isRecommended && (
-                      <span className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 text-xs">
-                        推荐保留
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-xs text-emerald-100">
+                        保留
                       </span>
                     )}
                   </div>
                 ))}
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
@@ -254,130 +394,106 @@ function DeduplicateTab({
 function RenameTab({
   renameRules,
   selectedRule,
-  onAddRule,
-  onUpdateRule,
-  onDeleteRule,
-  onSelectRule,
 }: {
-  renameRules: any[];
+  renameRules: RenameRule[];
   selectedRule: string;
-  onAddRule: (rule: any) => void;
-  onUpdateRule: (id: string, rule: Partial<any>) => void;
-  onDeleteRule: (id: string) => void;
-  onSelectRule: (id: string) => void;
 }) {
   return (
-    <div className="space-y-6">
-      <h3 className="text-white text-xl font-semibold">批量重命名规则</h3>
-      <div className="space-y-3">
-        {renameRules.map((rule) => (
-          <div
-            key={rule.id}
-            className={`p-5 rounded-2xl transition-all duration-200 ${
-              selectedRule === rule.id
-                ? "bg-violet-500/20 border border-violet-500/30"
-                : "bg-white/5 border border-white/10 hover:bg-white/10"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-white font-semibold">{rule.name}</div>
-                <div className="text-white/60 text-sm mt-1">{rule.pattern}</div>
-                <div className="text-white/40 text-xs mt-1">示例：{rule.example}</div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => onSelectRule(rule.id)}
-                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm"
-                >
-                  选择
-                </button>
-                <button
-                  onClick={() => onDeleteRule(rule.id)}
-                  className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm"
-                >
-                  删除
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="space-y-3">
+      {renameRules.map((rule) => (
+        <article
+          key={rule.id}
+          className={`rounded-2xl border p-4 ${
+            selectedRule === rule.id
+              ? "border-emerald-300/30 bg-emerald-500/10"
+              : "border-white/10 bg-white/[0.04]"
+          }`}
+        >
+          <h3 className="text-sm font-semibold text-white">{rule.name}</h3>
+          <p className="mt-1 font-mono text-xs text-white/50">{rule.pattern}</p>
+          <p className="mt-2 text-xs text-white/40">示例：{rule.example}</p>
+        </article>
+      ))}
     </div>
   );
 }
 
-function ScanTab({
-  scanFilters,
-  onSetFilters,
+function ScanTab({ scanFilters }: { scanFilters: ScanFilter }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <MetricCard label="最短时长" value={`${scanFilters.minDuration || 0}s`} />
+      <MetricCard
+        label="最长时长"
+        value={scanFilters.maxDuration ? `${scanFilters.maxDuration}s` : "无限制"}
+      />
+      <MetricCard label="最小文件大小" value={formatBytes(scanFilters.minFileSize || 0)} />
+      <MetricCard label="格式" value={scanFilters.formats?.join(", ") || "全部"} />
+    </div>
+  );
+}
+
+function StatsTab({ stats }: { stats: LibraryStats }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-3">
+      <MetricCard label="歌曲" value={String(stats.totalSongs)} />
+      <MetricCard label="时长" value={formatDuration(stats.totalDuration)} />
+      <MetricCard label="歌手" value={String(stats.artistsCount)} />
+      <MetricCard label="专辑" value={String(stats.albumsCount)} />
+      <MetricCard label="重复歌曲" value={String(stats.duplicatesCount)} />
+      <MetricCard label="库大小" value={formatBytes(stats.totalFileSize)} />
+    </div>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <div className="mb-2 text-xs uppercase tracking-wide text-white/35">{label}</div>
+      <div className="truncate text-xl font-semibold text-white">{value}</div>
+    </div>
+  );
+}
+
+function EmptyState({
+  icon,
+  title,
+  description,
 }: {
-  scanFilters: any;
-  onSetFilters: (filters: Partial<any>) => void;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
 }) {
   return (
-    <div className="space-y-6">
-      <h3 className="text-white text-xl font-semibold">扫描设置</h3>
-      <div className="space-y-4">
-        <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-          <div className="text-white font-semibold mb-4">文件过滤</div>
-          <div className="text-white/60 text-sm">
-            <div>最小时长: {scanFilters.minDuration || 0}秒</div>
-            <div>最大时长: {scanFilters.maxDuration || "无限"}秒</div>
-            <div>格式: {scanFilters.formats?.join(", ") || "全部"}</div>
-          </div>
-        </div>
+    <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
+      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-white/35">
+        {icon}
       </div>
+      <h3 className="mb-2 text-lg font-semibold text-white">{title}</h3>
+      <p className="text-sm text-white/50">{description}</p>
     </div>
   );
 }
 
-function StatsTab({ stats }: { stats: any }) {
-  const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}小时${minutes}分钟`;
-  };
+function formatDuration(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.round(seconds || 0));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  if (minutes < 60) return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${minutes % 60}m`;
+}
 
-  const formatFileSize = (bytes: number) => {
-    const gb = bytes / (1024 * 1024 * 1024);
-    return `${gb.toFixed(2)} GB`;
-  };
+function formatDate(timestamp: number): string {
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return "未知";
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "2-digit",
+  }).format(new Date(timestamp));
+}
 
-  return (
-    <div className="space-y-6">
-      <h3 className="text-white text-xl font-semibold">音乐库统计</h3>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div className="p-6 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-500/30 text-center">
-          <div className="text-3xl font-bold text-white">{stats.totalSongs}</div>
-          <div className="text-white/60 text-sm mt-1">首歌曲</div>
-        </div>
-
-        <div className="p-6 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 text-center">
-          <div className="text-3xl font-bold text-white">{formatDuration(stats.totalDuration)}</div>
-          <div className="text-white/60 text-sm mt-1">总时长</div>
-        </div>
-
-        <div className="p-6 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-center">
-          <div className="text-3xl font-bold text-white">{formatFileSize(stats.totalFileSize)}</div>
-          <div className="text-white/60 text-sm mt-1">总大小</div>
-        </div>
-
-        <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30 text-center">
-          <div className="text-3xl font-bold text-white">{stats.artistsCount}</div>
-          <div className="text-white/60 text-sm mt-1">位歌手</div>
-        </div>
-
-        <div className="p-6 rounded-2xl bg-gradient-to-br from-pink-500/20 to-rose-500/20 border border-pink-500/30 text-center">
-          <div className="text-3xl font-bold text-white">{stats.albumsCount}</div>
-          <div className="text-white/60 text-sm mt-1">张专辑</div>
-        </div>
-
-        <div className="p-6 rounded-2xl bg-gradient-to-br from-red-500/20 to-rose-500/20 border border-red-500/30 text-center">
-          <div className="text-3xl font-bold text-white">{stats.duplicatesCount}</div>
-          <div className="text-white/60 text-sm mt-1">重复歌曲</div>
-        </div>
-      </div>
-    </div>
-  );
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 MB";
+  const mb = bytes / (1024 * 1024);
+  if (mb < 1024) return `${mb.toFixed(1)} MB`;
+  return `${(mb / 1024).toFixed(2)} GB`;
 }

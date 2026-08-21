@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const ParticleVortexV8Effect: EffectPlugin = {
   id: "particle-vortex-v8",
@@ -99,7 +100,7 @@ export const ParticleVortexV8Effect: EffectPlugin = {
     particles: [],
     time: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.particles = [];
     (this as any).private.time = 0;
   },

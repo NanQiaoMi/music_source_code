@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface EffectContext {
   ctx: CanvasRenderingContext2D;
   width: number;
@@ -17,7 +18,6 @@ export interface EffectContext {
     smoothTreble: { current: number };
     bokeh: { current: any[] };
     shockwaves: { current: any[] };
-    resonanceTotems: { current: any[] };
   };
 
   theme: {

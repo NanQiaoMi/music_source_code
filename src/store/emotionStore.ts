@@ -1,11 +1,32 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { saveSongEmotions, loadSongEmotions } from "@/services/metadataStorage";
 import { EmotionPoint, EmotionCoordinate } from "@/types/emotion";
-import { useSmartPlaylistStore } from "./smartPlaylistStore";
-import { usePlaylistStore } from "./playlistStore";
-import { useAIStore } from "./aiStore";
 import { toast } from "@/components/shared/GlassToast";
+import type { Song } from "@/types/song";
+
+interface AIConfig {
+  id: string;
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+}
+
+interface EmotionCallbacks {
+  getSongs: () => Song[];
+  getAIConfig: () => { isEnabled: boolean; config: AIConfig | null };
+  onEmotionSaved: (songId: string) => void;
+}
+
+let emotionCallbacks: EmotionCallbacks = {
+  getSongs: () => [],
+  getAIConfig: () => ({ isEnabled: false, config: null }),
+  onEmotionSaved: () => {},
+};
+
+export function setEmotionCallbacks(callbacks: Partial<EmotionCallbacks>) {
+  emotionCallbacks = { ...emotionCallbacks, ...callbacks };
+}
 
 interface EmotionState {
   realtimeCoordinates: { x: number; y: number } | null;
@@ -30,7 +51,7 @@ interface EmotionState {
   saveSongEmotion: (songId: string, x: number, y: number, description?: string) => void;
   setEmotionMap: (map: Record<string, EmotionCoordinate>) => void;
   initializeEmotions: () => Promise<void>;
-  initializePoints: (songs: any[]) => void;
+  initializePoints: (songs: Song[]) => void;
 
   setViewMode: (mode: "matrix" | "heatmap") => void;
   setSelectionMode: (mode: "lasso" | "marquee" | "brush" | "none") => void;
@@ -70,12 +91,12 @@ interface EmotionState {
   clearSelection: () => void;
 }
 
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
+function debounce<TArgs extends unknown[]>(
+  func: (...args: TArgs) => void | Promise<void>,
   wait: number
-): (...args: Parameters<T>) => void {
+): (...args: TArgs) => void {
   let timeout: NodeJS.Timeout | null = null;
-  return (...args: Parameters<T>) => {
+  return (...args: TArgs) => {
     if (timeout) clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
   };
@@ -93,10 +114,10 @@ function getQuadrant(x: number, y: number): string {
 }
 
 const QUADRANT_LABELS: Record<string, string> = {
-  Q1: "高亢激昂",
-  Q2: "悲伤阴暗",
-  Q3: "平静低沉",
-  Q4: "欢快明亮",
+  Q1: "楂樿兘鏄庝寒",
+  Q2: "鎮蹭激闃存殫",
+  Q3: "骞抽潤浣庢矇",
+  Q4: "娆㈠揩鏄庝寒",
 };
 
 export const useEmotionStore = create<EmotionState>()(
@@ -157,8 +178,7 @@ export const useEmotionStore = create<EmotionState>()(
 
         setTimeout(() => {
           try {
-            const allSongs = usePlaylistStore.getState().songs;
-            useSmartPlaylistStore.getState().generateAllPlaylists(allSongs);
+            emotionCallbacks.onEmotionSaved(songId);
           } catch (e) {
             console.warn("Could not trigger smart playlist generation:", e);
           }
@@ -204,7 +224,7 @@ export const useEmotionStore = create<EmotionState>()(
             .sort((a, b) => (b.isTagged ? 1 : 0) - (a.isTagged ? 1 : 0));
 
           const pointCache = new Map(newPoints.map((p) => [p.id, { x: p.x, y: p.y }]));
-          (get() as any)._pointCache = pointCache;
+          (get() as LegacyAny)._pointCache = pointCache;
 
           set({ points: newPoints });
         } catch (error) {
@@ -260,36 +280,28 @@ export const useEmotionStore = create<EmotionState>()(
 
       autoTagSong: async (songId, signal) => {
         try {
-          const aiStore = useAIStore.getState();
-          if (!aiStore.isEnabled) return;
-          const config = aiStore.configs.find((c: any) => c.id === aiStore.activeConfigId);
-          const { songs } = usePlaylistStore.getState();
-          const song = songs.find((s: any) => s.id === songId);
+          const { isEnabled, config } = emotionCallbacks.getAIConfig();
+          if (!isEnabled || !config) return;
+          const songs = emotionCallbacks.getSongs();
+          const song = songs.find((s) => s.id === songId);
 
-          if (!song || !config || !config.apiKey) {
+          if (!song || !config.apiKey) {
             console.error("Missing song, config or API key", { song, config });
-            if (!config || !config.apiKey) toast.warning("未配置有效的 AI 接口");
+            if (!config.apiKey) toast.warning("鏈厤缃湁鏁堢殑 AI 鎺ュ彛");
             return;
           }
 
-          const prompt = `你是一位资深的音乐考古学家与情感计算专家。
-          请为这首音乐作品生成精确且【空间分布均衡】的情感坐标。
-          
-          作品信息：
-          - 标题：${song.title}
-          - 艺术家：${song.artist}
-          
-          坐标轴定义：
-          1. Valence (v): [-1.0 到 1.0] 情感正向度。
-          2. Energy (e): [-1.0 到 1.0] 物理能量强度。
-          
-          分布策略（追求自然均衡）：
-          - 全空间利用：请务必利用好从中心 (0,0) 到角落 (1,1) 的所有空间。
-          - 拒绝堆积：不要只给中间值，也不要只给极端值。
-          - 情感匹配：如果歌曲情感平和、中立，请将其放在中心区域；如果情感强烈，请大胆推向边缘。
-          - 视觉平衡：你的目标是让数千首歌在星图上形成一个自然的、充满活力的散点图，而不是一个实心的球或一个空心的环。
-          
-          输出 JSON 格式：{"v": float, "e": float, "d": string(12字以内描述)}`;
+          const prompt = `Analyze this song and return an emotion coordinate as JSON only.
+Song: ${song.title}
+Artist: ${song.artist}
+
+Coordinate rules:
+- v/valence: -1.0 to 1.0
+- e/energy: -1.0 to 1.0
+- d/description: concise label within 12 characters
+
+Use the full coordinate space naturally and avoid clustering every song near the center.
+Return format: {"v": number, "e": number, "d": string}`;
 
           const baseUrl = config.baseUrl.replace(/\/$/, "");
           const url = baseUrl.endsWith("/v1")
@@ -315,7 +327,7 @@ export const useEmotionStore = create<EmotionState>()(
           if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
           const data = await response.json();
-          let rawContent = data.choices[0].message.content.trim();
+          const rawContent = data.choices[0].message.content.trim();
 
           try {
             const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
@@ -329,18 +341,15 @@ export const useEmotionStore = create<EmotionState>()(
               description?: string;
             };
 
-            // 2. 自然分布：直接使用 AI 产出的数值，保持其原始的情感比例
-            // 不再进行强制对比度拉伸，以允许中间区域自然存在点位
             let v = Number(result.v ?? result.valence ?? 0);
             let e = Number(result.e ?? result.energy ?? 0);
 
             if (isNaN(v)) v = 0;
             if (isNaN(e)) e = 0;
-            const d = String(result.d ?? result.description ?? "AI 暂无描述");
+            const d = String(result.d ?? result.description ?? "AI 鏆傛棤鎻忚堪");
 
             const { points } = get();
 
-            // 3. 智能避让：略微增加避让间距，防止点位看起来“堆在一起”
             const minDistance = 0.08;
             let iteration = 0;
             const idHash = songId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -365,19 +374,20 @@ export const useEmotionStore = create<EmotionState>()(
 
             get().saveSongEmotion(songId, v, e, d);
           } catch (parseError) {
-            if ((parseError as any).name === "AbortError") return;
+            if ((parseError as LegacyAny).name === "AbortError") return;
             console.warn("Parse Failed:", rawContent);
           }
         } catch (error) {
-          if ((error as any).name === "AbortError") return;
+          if ((error as LegacyAny).name === "AbortError") return;
           console.error("Auto-tagging failed:", error);
         }
       },
 
       autoTagBatch: async (songIds) => {
-        if (!useAIStore.getState().isEnabled) return;
+        const { isEnabled } = emotionCallbacks.getAIConfig();
+        if (!isEnabled) return;
 
-        const { songs } = usePlaylistStore.getState();
+        const songs = emotionCallbacks.getSongs();
         const abortController = new AbortController();
         set({
           taggingStatus: { current: 0, total: songIds.length, currentTitle: "" },
@@ -393,8 +403,7 @@ export const useEmotionStore = create<EmotionState>()(
           while (index < songIds.length && !get()._isStopRequested) {
             const currentIndex = index++;
             const songId = songIds[currentIndex];
-            const { songs } = usePlaylistStore.getState();
-            const song = songs.find((s: any) => s.id === songId);
+            const song = songs.find((s) => s.id === songId);
 
             if (!song) {
               finished++;
@@ -449,7 +458,7 @@ export const useEmotionStore = create<EmotionState>()(
           }))
           .sort((a, b) => a.distance - b.distance)
           .slice(0, maxResults)
-          .map(({ distance, ...p }) => p);
+          .map(({ distance: _distance, ...p }) => p);
       },
 
       getQuadrantStats: () => {
@@ -490,7 +499,7 @@ export const useEmotionStore = create<EmotionState>()(
 
       calculateDistance: (id1, id2) => {
         const { emotionMap, points } = get();
-        const cache = (get() as any)._pointCache;
+        const cache = (get() as LegacyAny)._pointCache;
 
         const p1 = emotionMap[id1] || cache?.get(id1) || points.find((p) => p.id === id1);
         const p2 = emotionMap[id2] || cache?.get(id2) || points.find((p) => p.id === id2);

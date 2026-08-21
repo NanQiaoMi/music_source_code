@@ -1,4 +1,4 @@
-import { Song } from "@/types/song";
+﻿import { Song } from "@/types/song";
 
 export interface SongWithPlayCount extends Song {
   playCount: number;
@@ -18,6 +18,25 @@ export interface SongWithScore extends SongWithPlayCount {
   _similarityScore: number;
   _diversityScore: number;
   _finalScore: number;
+}
+
+export interface RecommendationReason {
+  code: "artist-match" | "genre-match" | "fresh-discovery" | "replay-friendly" | "skip-avoidance";
+  label: string;
+  weight: number;
+}
+
+export interface RecommendationContext {
+  recentSongs: Song[];
+  topArtists: string[];
+  topGenres: string[];
+  skippedSongIds: Set<string>;
+}
+
+export interface ScoredRecommendation {
+  song: SongWithPlayCount;
+  score: number;
+  reasons: RecommendationReason[];
 }
 
 export function getMaxPlayCount(songs: SongWithPlayCount[]): number {
@@ -118,11 +137,11 @@ export function calculateSimilarity(songA: Song, songB: Song): number {
 
     if (hasKeywordA || hasKeywordB) {
       const cleanTitleA = titleA
-        .replace(/[\(\[\{].*?[\)\]\}]/g, "")
+        .replace(/[[(){}].*?[\])}]/g, "")
         .replace(/remix|mix|edit|version|cover|live|acoustic|demo|radio/gi, "")
         .trim();
       const cleanTitleB = titleB
-        .replace(/[\(\[\{].*?[\)\]\}]/g, "")
+        .replace(/[[(){}].*?[\])}]/g, "")
         .replace(/remix|mix|edit|version|cover|live|acoustic|demo|radio/gi, "")
         .trim();
 
@@ -236,7 +255,7 @@ export function generateRecommendations(
   if (songs.length === 0) return [];
 
   const maxPlayCount = getMaxPlayCount(songs);
-  const { currentSong, x, y } = params;
+  const { currentSong } = params;
 
   const availableSongs = songs.filter((song) => !currentSong || song.id !== currentSong.id);
 
@@ -253,10 +272,7 @@ export function generateRecommendations(
   for (let i = 0; i < Math.min(limit, availableSongs.length); i++) {
     const candidates = preScoredSongs
       .filter((item) => !usedSongIds.has(item.song.id))
-      .map((item) => {
-        const updatedScore = getSmartScore(item.song, maxPlayCount, params, selectedSongs);
-        return updatedScore;
-      });
+      .map((item) => getSmartScore(item.song, maxPlayCount, params, selectedSongs));
 
     if (candidates.length === 0) break;
 
@@ -271,4 +287,195 @@ export function generateRecommendations(
   }
 
   return selectedSongs;
+}
+
+export function scoreSongForRecommendation(
+  song: SongWithPlayCount,
+  context: RecommendationContext
+): ScoredRecommendation {
+  const reasons: RecommendationReason[] = [];
+  let score = 50;
+  const recentIds = new Set(context.recentSongs.map((recentSong) => recentSong.id));
+
+  if (context.topArtists.includes(song.artist)) {
+    reasons.push({ code: "artist-match", label: "常听歌手", weight: 24 });
+    score += 24;
+  }
+
+  if (song.genre && context.topGenres.includes(song.genre)) {
+    reasons.push({ code: "genre-match", label: "偏好风格", weight: 18 });
+    score += 18;
+  }
+
+  if ((song.playCount || 0) >= 3) {
+    reasons.push({ code: "replay-friendly", label: "适合复听", weight: 14 });
+    score += 14;
+  }
+
+  if (!recentIds.has(song.id) && (song.playCount || 0) <= 1) {
+    reasons.push({ code: "fresh-discovery", label: "新鲜发现", weight: 12 });
+    score += 12;
+  }
+
+  if (!context.skippedSongIds.has(song.id)) {
+    reasons.push({ code: "skip-avoidance", label: "低跳过风险", weight: 8 });
+    score += 8;
+  } else {
+    score -= 20;
+  }
+
+  if (reasons.length === 0) {
+    reasons.push({ code: "fresh-discovery", label: "新鲜发现", weight: 8 });
+    score += 8;
+  }
+
+  return {
+    song,
+    score: Math.max(0, score),
+    reasons,
+  };
+}
+
+export function generateExplainableRecommendations(
+  songs: SongWithPlayCount[],
+  context: RecommendationContext,
+  limit: number = 20,
+  dismissedSongIds: string[] = []
+): ScoredRecommendation[] {
+  const dismissed = new Set(dismissedSongIds);
+
+  return songs
+    .filter((song) => !dismissed.has(song.id))
+    .map((song) => scoreSongForRecommendation(song, context))
+    .sort((a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title))
+    .slice(0, limit);
+}
+
+export interface DailyRecommendationMode {
+  name: string;
+  hour: number;
+  targetFamiliarity: number;
+  targetFreshness: number;
+  description: string;
+}
+
+export interface DailyRecommendationGroup {
+  category: "familiar" | "extend" | "discover";
+  title: string;
+  description: string;
+  songs: SongWithPlayCount[];
+  reasons: Map<string, RecommendationReason[]>;
+}
+
+export interface DailyRecommendationResult {
+  groups: DailyRecommendationGroup[];
+  orderedSongs: SongWithPlayCount[];
+  mode: DailyRecommendationMode;
+  generatedAt: number;
+}
+
+export function getDailyRecommendationMode(hour?: number): DailyRecommendationMode {
+  const h = hour ?? new Date().getHours();
+  if (h >= 5 && h < 11)
+    return {
+      name: "早间活力",
+      hour: h,
+      targetFamiliarity: 0.55,
+      targetFreshness: 0.45,
+      description: "充满活力的早间推荐",
+    };
+  if (h >= 11 && h < 14)
+    return {
+      name: "午间放松",
+      hour: h,
+      targetFamiliarity: 0.5,
+      targetFreshness: 0.5,
+      description: "舒缓的午间推荐",
+    };
+  if (h >= 14 && h < 17)
+    return {
+      name: "下午专注",
+      hour: h,
+      targetFamiliarity: 0.6,
+      targetFreshness: 0.4,
+      description: "专注工作的下午推荐",
+    };
+  if (h >= 17 && h < 21)
+    return {
+      name: "傍晚平衡",
+      hour: h,
+      targetFamiliarity: 0.45,
+      targetFreshness: 0.55,
+      description: "平衡的傍晚推荐",
+    };
+  return {
+    name: "深夜沉浸",
+    hour: h,
+    targetFamiliarity: 0.7,
+    targetFreshness: 0.3,
+    description: "适合夜晚的沉浸推荐",
+  };
+}
+
+export function generateDailyRecommendationGroups(
+  songs: SongWithPlayCount[],
+  context: RecommendationContext,
+  mode: DailyRecommendationMode = getDailyRecommendationMode(),
+  perGroupLimit: number = 6
+): DailyRecommendationResult {
+  const scored = songs.map((song) => scoreSongForRecommendation(song, context));
+  const byScore = [...scored].sort(
+    (a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title)
+  );
+
+  const familiar = byScore
+    .filter((item) => (item.song.playCount || 0) >= 3)
+    .slice(0, perGroupLimit);
+  const discover = byScore
+    .filter((item) => (item.song.playCount || 0) <= 1)
+    .slice(0, perGroupLimit);
+  const familiarIds = new Set(familiar.map((item) => item.song.id));
+  const discoverIds = new Set(discover.map((item) => item.song.id));
+  const extend = byScore
+    .filter((item) => !familiarIds.has(item.song.id) && !discoverIds.has(item.song.id))
+    .slice(0, perGroupLimit);
+
+  const makeGroup = (
+    category: DailyRecommendationGroup["category"],
+    title: string,
+    description: string,
+    items: ScoredRecommendation[]
+  ): DailyRecommendationGroup => ({
+    category,
+    title,
+    description,
+    songs: items.map((item) => item.song),
+    reasons: new Map(items.map((item) => [item.song.id, item.reasons])),
+  });
+
+  const groups = [
+    makeGroup("familiar", "常听延续", "从你的高频播放里挑选", familiar),
+    makeGroup("extend", "相邻探索", "沿着当前偏好向外扩展", extend),
+    makeGroup("discover", "新鲜发现", "降低重复度，补充新鲜感", discover),
+  ].filter((group) => group.songs.length > 0);
+
+  const orderedSongs: SongWithPlayCount[] = [];
+  const usedIds = new Set<string>();
+  const rounds = Math.max(...groups.map((group) => group.songs.length), 0);
+  for (let index = 0; index < rounds; index++) {
+    for (const group of groups) {
+      const song = group.songs[index];
+      if (song && !usedIds.has(song.id)) {
+        orderedSongs.push(song);
+        usedIds.add(song.id);
+      }
+    }
+  }
+
+  return {
+    groups,
+    orderedSongs,
+    mode,
+    generatedAt: Date.now(),
+  };
 }

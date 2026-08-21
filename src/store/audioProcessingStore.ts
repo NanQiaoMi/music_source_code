@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Song } from "@/types/song";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
 
 export type DSPMode = "bypass" | "eq" | "compressor" | "limiter" | "reverb";
@@ -19,6 +18,7 @@ export interface AudioProcessingState {
 
   ffmpegLoaded: boolean;
   ffmpegLoading: boolean;
+  ffmpegLoadError: string | null;
 
   dspEnabled: boolean;
   dspProcessors: DSPProcessor[];
@@ -116,6 +116,19 @@ export interface SpectrumData {
   timestamp: number;
 }
 
+let ffmpegLoadPromise: Promise<void> | null = null;
+
+function setFFmpegReadyFlag(ready: boolean): void {
+  const scope = globalThis as typeof globalThis & {
+    __MIMI_FFMPEG_WASM_LOADED__?: boolean;
+  };
+  scope.__MIMI_FFMPEG_WASM_LOADED__ = ready;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Failed to load FFmpeg";
+}
+
 export const useAudioProcessingStore = create<AudioProcessingState>()(
   persist(
     (set, get) => ({
@@ -125,6 +138,7 @@ export const useAudioProcessingStore = create<AudioProcessingState>()(
 
       ffmpegLoaded: false,
       ffmpegLoading: false,
+      ffmpegLoadError: null,
 
       dspEnabled: true,
       dspProcessors: [],
@@ -177,37 +191,67 @@ export const useAudioProcessingStore = create<AudioProcessingState>()(
         set({ masterCompressorEnabled: !state.masterCompressorEnabled });
       },
 
-      loadFFmpeg: async () => {
-        set({ ffmpegLoading: true });
-        try {
-          console.log("FFmpeg.wasm loading...");
-
-          const { FFmpeg } = await import("@ffmpeg/ffmpeg");
-          const { toBlobURL } = await import("@ffmpeg/util");
-
-          const ffmpeg = new FFmpeg();
-
-          ffmpeg.on("log", ({ message }) => {
-            console.log("FFmpeg:", message);
-          });
-
-          ffmpeg.on("progress", ({ progress }) => {
-            set({ processingProgress: Math.round(progress * 100) });
-          });
-
-          const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
-
-          await ffmpeg.load({
-            coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-            wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-          });
-
-          console.log("FFmpeg.wasm loaded successfully");
-          set({ ffmpegLoaded: true, ffmpegLoading: false, processingProgress: 0 });
-        } catch (error) {
-          console.error("Failed to load FFmpeg:", error);
-          set({ ffmpegLoading: false, processingProgress: 0 });
+      loadFFmpeg: () => {
+        const state = get();
+        if (state.ffmpegLoaded) {
+          setFFmpegReadyFlag(true);
+          return Promise.resolve();
         }
+
+        if (ffmpegLoadPromise) {
+          return ffmpegLoadPromise;
+        }
+
+        set({ ffmpegLoading: true, ffmpegLoadError: null, processingProgress: 0 });
+
+        ffmpegLoadPromise = (async () => {
+          try {
+            console.log("FFmpeg.wasm loading...");
+
+            const { FFmpeg } = await import("@ffmpeg/ffmpeg");
+            const { toBlobURL } = await import("@ffmpeg/util");
+
+            const ffmpeg = new FFmpeg();
+
+            ffmpeg.on("log", ({ message }) => {
+              console.log("FFmpeg:", message);
+            });
+
+            ffmpeg.on("progress", ({ progress }) => {
+              set({ processingProgress: Math.round(progress * 100) });
+            });
+
+            const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+
+            await ffmpeg.load({
+              coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+              wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+            });
+
+            console.log("FFmpeg.wasm loaded successfully");
+            setFFmpegReadyFlag(true);
+            set({
+              ffmpegLoaded: true,
+              ffmpegLoading: false,
+              ffmpegLoadError: null,
+              processingProgress: 0,
+            });
+          } catch (error) {
+            const message = getErrorMessage(error);
+            console.error("Failed to load FFmpeg:", error);
+            setFFmpegReadyFlag(false);
+            set({
+              ffmpegLoaded: false,
+              ffmpegLoading: false,
+              ffmpegLoadError: message,
+              processingProgress: 0,
+            });
+          } finally {
+            ffmpegLoadPromise = null;
+          }
+        })();
+
+        return ffmpegLoadPromise;
       },
 
       addConversionJob: (job) => {

@@ -140,27 +140,6 @@ export function useDynamicTheme() {
   const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentColorsRef = useRef<ThemeColors>(defaultColors);
 
-  const extractThemeColors = useCallback(
-    async (imageUrl: string | undefined) => {
-      if (!isDynamicTheme || !imageUrl) {
-        if (themeColors !== defaultColors) {
-          animateColorTransition(currentColorsRef.current, defaultColors);
-        }
-        return;
-      }
-
-      try {
-        const colors = await extractColorsFromImage(imageUrl);
-        const vibrantColors = boostVibrantColors(colors);
-        animateColorTransition(currentColorsRef.current, vibrantColors);
-      } catch (error) {
-        console.error("Failed to extract theme colors:", error);
-        animateColorTransition(currentColorsRef.current, defaultColors);
-      }
-    },
-    [isDynamicTheme, themeColors]
-  );
-
   const animateColorTransition = useCallback(
     (fromColors: ThemeColors, toColors: ThemeColors) => {
       const startTime = Date.now();
@@ -240,6 +219,27 @@ export function useDynamicTheme() {
       requestAnimationFrame(animate);
     },
     [setThemeColors]
+  );
+
+  const extractThemeColors = useCallback(
+    async (imageUrl: string | undefined) => {
+      if (!isDynamicTheme || !imageUrl) {
+        // When dynamic theme is disabled, we should not aggressively revert to defaultColors,
+        // because the user might have applied a static custom skin.
+        // We simply stop extracting and let the current UIStore themeColors persist.
+        return;
+      }
+
+      try {
+        const colors = await extractColorsFromImage(imageUrl);
+        const vibrantColors = boostVibrantColors(colors);
+        animateColorTransition(currentColorsRef.current, vibrantColors);
+      } catch (error) {
+        console.error("Failed to extract theme colors:", error);
+        animateColorTransition(currentColorsRef.current, defaultColors);
+      }
+    },
+    [animateColorTransition, isDynamicTheme, themeColors]
   );
 
   useEffect(() => {

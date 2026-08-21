@@ -1,43 +1,57 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+
+interface TimedLyricLine {
+  time: number;
+  text: string;
+}
+
+function isTimedLyricLine(value: unknown): value is TimedLyricLine {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as TimedLyricLine).time === "number" &&
+    typeof (value as TimedLyricLine).text === "string"
+  );
+}
 
 export function DesktopLyrics() {
   const currentSong = useAudioStore((state) => state.currentSong);
   const currentTime = useAudioStore((state) => state.currentTime);
-  const [currentLyric, setCurrentLyric] = useState<string>("");
 
   useEffect(() => {
     if (!window.isDesktopLyricsMode) return;
   }, []);
 
-  useEffect(() => {
+  const currentLyric = useMemo(() => {
     const lyrics = currentSong?.lyrics;
     if (!lyrics) {
-      setCurrentLyric(currentSong?.title || "");
-      return;
+      return currentSong?.title || "";
     }
 
     try {
-      const lyricArray = typeof lyrics === "string" ? JSON.parse(lyrics) : lyrics;
-      if (!Array.isArray(lyricArray) || lyricArray.length === 0) {
-        setCurrentLyric(currentSong?.title || "");
-        return;
+      const parsedLyrics: unknown = typeof lyrics === "string" ? JSON.parse(lyrics) : lyrics;
+      const lyricArray = Array.isArray(parsedLyrics) ? parsedLyrics.filter(isTimedLyricLine) : [];
+      if (lyricArray.length === 0) {
+        return currentSong?.title || "";
       }
 
-      const activeLyric = lyricArray.find((l: any, i: number) => {
+      const activeLyric = lyricArray.find((l, i) => {
         const next = lyricArray[i + 1];
         return currentTime >= l.time && (!next || currentTime < next.time);
       });
 
       if (activeLyric) {
-        setCurrentLyric(activeLyric.text);
+        return activeLyric.text;
       }
     } catch {
-      setCurrentLyric(currentSong?.title || "");
+      return currentSong?.title || "";
     }
+
+    return currentSong?.title || "";
   }, [currentTime, currentSong]);
 
   if (!window.isDesktopLyricsMode) return null;

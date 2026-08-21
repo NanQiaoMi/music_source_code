@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -42,7 +42,7 @@ interface AppleMusicVisualizerProps {
 }
 
 export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ config }) => {
-  const { audioElement } = useAudioPlayer();
+  const { audioElement: _audioElement } = useAudioPlayer();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const prevDataRef = useRef<Uint8Array | null>(null);
@@ -117,17 +117,19 @@ export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ conf
           case "mono":
             ctx.fillStyle = config.primaryColor;
             break;
-          case "spectrum":
+          case "spectrum": {
             const hue = (i / barCount) * 360;
             ctx.fillStyle = `hsla(${hue}, 80%, 60%, ${config.opacity})`;
             break;
+          }
           case "gradient":
-          default:
+          default: {
             const gradient = ctx.createLinearGradient(x, y + barHeight, x, y);
             gradient.addColorStop(0, config.secondaryColor);
             gradient.addColorStop(1, config.primaryColor);
             ctx.fillStyle = gradient;
             break;
+          }
         }
 
         ctx.globalAlpha = config.opacity;

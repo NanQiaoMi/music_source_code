@@ -10,30 +10,53 @@ import { useEmotionStore } from "@/store/emotionStore";
 
 export const AILinerNotes: React.FC = () => {
   const currentSong = useAudioStore((state) => state.currentSong);
-  const { notes, getNotes, isGenerating, clearCache } = useLinerNotesStore();
+  const { notes: _notes, getNotes, isGenerating, clearCache: _clearCache } = useLinerNotesStore();
   const { points } = useEmotionStore();
   const { isEnabled, activeConfigId } = useAIStore();
   const [displayNote, setDisplayNote] = useState<string | null>(null);
+  const canShowNote = Boolean(currentSong && activeConfigId && isEnabled);
 
   useEffect(() => {
+    let isCancelled = false;
+
     if (currentSong && activeConfigId && isEnabled) {
       const emotionPoint = points.find((p) => p.id === currentSong.id);
       const fetchNotes = async () => {
-        const result = await getNotes(
-          currentSong.artist,
-          currentSong.title,
-          currentSong.lyrics,
-          emotionPoint ? { x: emotionPoint.x, y: emotionPoint.y } : undefined
-        );
-        setDisplayNote(result);
+        try {
+          const result = await getNotes(
+            currentSong.artist,
+            currentSong.title,
+            currentSong.lyrics,
+            emotionPoint ? { x: emotionPoint.x, y: emotionPoint.y } : undefined
+          );
+          if (!isCancelled) {
+            setDisplayNote(result);
+          }
+        } catch {
+          if (!isCancelled) {
+            setDisplayNote(null);
+          }
+        }
       };
       fetchNotes();
     } else {
       setDisplayNote(null);
     }
-  }, [currentSong?.id, activeConfigId, isEnabled, getNotes, points]);
 
-  if (!isEnabled || !activeConfigId || (!displayNote && !isGenerating)) {
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    currentSong?.id,
+    currentSong?.artist,
+    currentSong?.title,
+    currentSong?.lyrics,
+    activeConfigId,
+    isEnabled,
+    getNotes,
+  ]);
+
+  if (!canShowNote || (!displayNote && !isGenerating)) {
     return null;
   }
 
@@ -51,7 +74,7 @@ export const AILinerNotes: React.FC = () => {
           ) : (
             <Sparkles className="w-3 h-3" />
           )}
-          <span>AI Emotional Insight</span>
+          <span>AI情感洞察</span>
           <button
             onClick={() => {
               if (currentSong && activeConfigId) {

@@ -1,26 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { DataManager } from "@/components/library/DataManager";
 import { LocalMusicManager } from "@/components/library/LocalMusicManager";
-import { GlassCard } from "@/components/shared/Glass/GlassCard";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
-import {
-  Search,
-  Plus,
-  Settings,
-  ChevronDown,
-  Home,
-  Music2,
-  ListMusic,
-  Upload,
-  Database,
-} from "lucide-react";
+import { Search, Settings, Home, Music2, ListMusic, Database } from "lucide-react";
 
 type TabType = "local" | "data";
 
@@ -35,7 +24,7 @@ interface MiniPlayerProps {
   onClose: () => void;
 }
 
-const MiniPlayer: React.FC<MiniPlayerProps> = ({ onClose }) => {
+const MiniPlayer: React.FC<MiniPlayerProps> = ({ onClose: _onClose }) => {
   const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const currentTime = useAudioStore((state) => state.currentTime);
@@ -133,12 +122,6 @@ interface BottomTimeDisplayProps {
 }
 
 const BottomTimeDisplay: React.FC<BottomTimeDisplayProps> = ({ currentTime, isPlaying }) => {
-  const [displayTime, setDisplayTime] = useState(currentTime);
-
-  useEffect(() => {
-    setDisplayTime(currentTime);
-  }, [currentTime]);
-
   const formatDisplayTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -156,7 +139,7 @@ const BottomTimeDisplay: React.FC<BottomTimeDisplayProps> = ({ currentTime, isPl
         className="text-5xl font-light tracking-widest text-white/70 tabular-nums"
         style={{ fontVariantNumeric: "tabular-nums" }}
       >
-        {formatDisplayTime(displayTime)}
+        {formatDisplayTime(currentTime)}
       </div>
       <div className="flex items-center gap-2 mt-2">
         <motion.div
@@ -177,23 +160,16 @@ export default function DataManagerPage() {
   const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const currentTime = useAudioStore((state) => state.currentTime);
-  const duration = useAudioStore((state) => state.duration);
-  const [mounted, setMounted] = useState(false);
+  const _duration = useAudioStore((state) => state.duration);
   const [activeTab, setActiveTab] = useState<TabType>("local");
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showMiniPlayer, setShowMiniPlayer] = useState(false);
+  const [miniPlayerDismissedSongId, setMiniPlayerDismissedSongId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const showMiniPlayer = Boolean(currentSong && miniPlayerDismissedSongId !== currentSong.id);
 
   useEffect(() => {
-    setMounted(true);
     initializePlaylist();
   }, [initializePlaylist]);
-
-  useEffect(() => {
-    if (currentSong) {
-      setShowMiniPlayer(true);
-    }
-  }, [currentSong]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -207,10 +183,6 @@ export default function DataManagerPage() {
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [showMoreMenu]);
-
-  if (!mounted) {
-    return null;
-  }
 
   return (
     <div className="relative min-h-screen bg-[#050505] overflow-hidden font-sans text-white">
@@ -335,7 +307,7 @@ export default function DataManagerPage() {
           >
             <AnimatePresence>
               {showMiniPlayer && currentSong && (
-                <MiniPlayer onClose={() => setShowMiniPlayer(false)} />
+                <MiniPlayer onClose={() => setMiniPlayerDismissedSongId(currentSong.id)} />
               )}
             </AnimatePresence>
 

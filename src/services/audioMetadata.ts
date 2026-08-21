@@ -1,8 +1,7 @@
 // Audio Metadata Extraction and Cache Service
 // Extracts and caches metadata from audio files (MP3, FLAC, WAV, etc.)
 
-// @ts-ignore - jsmediatags doesn't have proper types
-import jsmediatags from "jsmediatags";
+import jsmediatags, { type MediaTags, type MediaTagResult } from "jsmediatags";
 
 export interface AudioMetadata {
   id: string;
@@ -26,6 +25,15 @@ export interface MetadataExtractionResult {
   success: boolean;
   metadata?: AudioMetadata;
   error?: string;
+}
+
+const UNKNOWN_ARTIST = "\u672a\u77e5\u827a\u672f\u5bb6";
+const UNKNOWN_ALBUM = "\u672a\u77e5\u4e13\u8f91";
+const UNKNOWN_ERROR = "\u672a\u77e5\u9519\u8bef";
+
+function getLyricText(source: MediaTags["USLT"]): string | undefined {
+  if (typeof source === "string") return source;
+  return source?.data;
 }
 
 // Supported audio formats
@@ -56,15 +64,13 @@ export function isSupportedAudioFile(file: File): boolean {
  * Extract lyrics from metadata tags
  * Supports: ID3v2 USLT (Unsynchronized Lyrics), SYLT (Synchronized Lyrics)
  */
-function extractLyrics(tags: any): string | undefined {
+function extractLyrics(tags: MediaTags): string | undefined {
   if (!tags) return undefined;
 
   // Try different lyric tag formats
   const lyricSources = [
-    tags.USLT?.data, // ID3v2.4 Unsynchronized Lyrics
-    tags.USLT, // Direct access
-    tags.SYLT?.data, // ID3v2.4 Synchronized Lyrics
-    tags.SYLT,
+    getLyricText(tags.USLT), // ID3v2.4 Unsynchronized Lyrics
+    getLyricText(tags.SYLT), // ID3v2.4 Synchronized Lyrics
     tags.lyrics, // Some formats use 'lyrics'
     tags.LYRICS,
   ];
@@ -81,7 +87,9 @@ function extractLyrics(tags: any): string | undefined {
 /**
  * Extract cover image from metadata tags
  */
-function extractCoverImage(tags: any): { data: string; format: string } | undefined {
+async function extractCoverImage(
+  tags: MediaTags
+): Promise<{ data: string; format: string } | undefined> {
   if (!tags || !tags.picture) return undefined;
 
   try {
@@ -103,8 +111,8 @@ function extractCoverImage(tags: any): { data: string; format: string } | undefi
       };
       reader.onerror = () => resolve(undefined);
       reader.readAsDataURL(blob);
-    }) as any;
-  } catch (error) {
+    });
+  } catch (error: unknown) {
     console.error("Error extracting cover image:", error);
     return undefined;
   }
@@ -117,21 +125,26 @@ function getAudioDuration(file: File): Promise<number> {
   return new Promise((resolve) => {
     const audio = new Audio();
     const url = URL.createObjectURL(file);
+    let settled = false;
+    function finish(duration: number) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      URL.revokeObjectURL(url);
+      resolve(duration);
+    }
 
     audio.addEventListener("loadedmetadata", () => {
-      URL.revokeObjectURL(url);
-      resolve(audio.duration || 0);
+      finish(audio.duration || 0);
     });
 
     audio.addEventListener("error", () => {
-      URL.revokeObjectURL(url);
-      resolve(0);
+      finish(0);
     });
 
     // Timeout after 10 seconds
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-      resolve(0);
+    const timeoutId = setTimeout(() => {
+      finish(0);
     }, 10000);
 
     audio.src = url;
@@ -144,22 +157,18 @@ function getAudioDuration(file: File): Promise<number> {
 function parseFilename(fileName: string): { title: string; artist: string } {
   const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
 
-  // Try to split by common separators: " - ", " – ", " — ", "-"
-  const separators = [/\s+-\s+/, /\s+–\s+/, /\s+—\s+/];
-
-  for (const separator of separators) {
-    const parts = nameWithoutExt.split(separator);
-    if (parts.length >= 2) {
-      return {
-        artist: parts[0].trim(),
-        title: parts[1].trim(),
-      };
-    }
+  // Common local music names use artist/title separators such as -, en dash, or em dash.
+  const parts = nameWithoutExt.split(/\s+[-\u2013\u2014]\s+/);
+  if (parts.length >= 2) {
+    return {
+      artist: parts[0].trim() || UNKNOWN_ARTIST,
+      title: parts.slice(1).join(" - ").trim() || nameWithoutExt.trim(),
+    };
   }
 
   // No separator found, use entire filename as title
   return {
-    artist: "未知艺术家",
+    artist: UNKNOWN_ARTIST,
     title: nameWithoutExt.trim(),
   };
 }
@@ -174,7 +183,7 @@ export async function extractAudioMetadata(
   if (!isSupportedAudioFile(file)) {
     return {
       success: false,
-      error: `不支持的音频格式: ${file.type || file.name}`,
+      error: `\u4e0d\u652f\u6301\u7684\u97f3\u9891\u683c\u5f0f: ${file.type || file.name}`,
     };
   }
 
@@ -183,9 +192,9 @@ export async function extractAudioMetadata(
     const durationPromise = getAudioDuration(file);
 
     // Extract metadata using jsmediatags
-    const metadataResult = await new Promise<AudioMetadata>((resolve, reject) => {
+    const metadataResult = await new Promise<AudioMetadata>((resolve) => {
       jsmediatags.read(file, {
-        onSuccess: async (tag: any) => {
+        onSuccess: async (tag: MediaTagResult) => {
           const tags = tag.tags || {};
 
           // Parse filename as fallback
@@ -199,10 +208,10 @@ export async function extractAudioMetadata(
             id: id || generateMetadataId(file),
             title: tags.title || parsedFilename.title,
             artist: tags.artist || parsedFilename.artist,
-            album: tags.album || "未知专辑",
+            album: tags.album || UNKNOWN_ALBUM,
             year: tags.year?.toString(),
             genre: tags.genre,
-            track: tags.track ? parseInt(tags.track, 10) : undefined,
+            track: tags.track ? parseInt(String(tags.track), 10) : undefined,
             duration: await durationPromise,
             lyrics: extractLyrics(tags),
             coverData: coverResult?.data,
@@ -215,7 +224,7 @@ export async function extractAudioMetadata(
 
           resolve(metadata);
         },
-        onError: async (error: any) => {
+        onError: async () => {
           // Fallback to filename parsing if metadata extraction fails
           const parsedFilename = parseFilename(file.name);
           const duration = await durationPromise;
@@ -224,7 +233,7 @@ export async function extractAudioMetadata(
             id: id || generateMetadataId(file),
             title: parsedFilename.title,
             artist: parsedFilename.artist,
-            album: "未知专辑",
+            album: UNKNOWN_ALBUM,
             duration: duration,
             fileName: file.name,
             fileType: file.type || getMimeTypeFromExtension(file.name),
@@ -239,10 +248,10 @@ export async function extractAudioMetadata(
       success: true,
       metadata: metadataResult,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     return {
       success: false,
-      error: `元数据提取失败: ${error instanceof Error ? error.message : "未知错误"}`,
+      error: `\u5143\u6570\u636e\u8bfb\u53d6\u5931\u8d25: ${error instanceof Error ? error.message : UNKNOWN_ERROR}`,
     };
   }
 }
@@ -291,7 +300,7 @@ export async function batchExtractMetadata(
     if (!isSupportedAudioFile(file)) {
       results.push({
         success: false,
-        error: `跳过不支持的文件: ${file.name}`,
+        error: `\u6587\u4ef6\u4e0d\u53d7\u652f\u6301: ${file.name}`,
       });
       continue;
     }

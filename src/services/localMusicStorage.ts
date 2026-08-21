@@ -67,14 +67,28 @@ export const getAllStoredMusic = async (): Promise<StoredMusic[]> => {
 };
 
 // Get a single music file
-export const getStoredMusic = async (id: string): Promise<StoredMusic | null> => {
+export const getStoredMusic = async (id: string | number): Promise<StoredMusic | null> => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], "readonly");
     const store = transaction.objectStore(STORE_NAME);
-    const request = store.get(id);
+    const strId = String(id);
+    const request = store.get(strId);
 
-    request.onsuccess = () => resolve(request.result || null);
+    request.onsuccess = () => {
+      if (request.result) {
+        resolve(request.result);
+      } else {
+        const numId = Number(id);
+        if (!isNaN(numId) && String(numId) !== strId) {
+          const fallbackReq = store.get(numId);
+          fallbackReq.onsuccess = () => resolve(fallbackReq.result || null);
+          fallbackReq.onerror = () => resolve(null);
+        } else {
+          resolve(null);
+        }
+      }
+    };
     request.onerror = () => reject(request.error);
   });
 };
@@ -107,6 +121,13 @@ export const clearAllStoredMusic = async (): Promise<void> => {
 
 // Create blob URL from stored music
 export const createBlobUrlFromStoredMusic = (music: StoredMusic): string => {
-  const blob = new Blob([music.fileData], { type: music.fileType });
-  return URL.createObjectURL(blob);
+  if (!music || !music.fileData) return "";
+  try {
+    const mimeType = music.fileType || "audio/mpeg";
+    const blob = music.fileData instanceof Blob ? music.fileData : new Blob([music.fileData], { type: mimeType });
+    return URL.createObjectURL(blob);
+  } catch (e) {
+    console.error("Failed to create blob URL from stored music:", e);
+    return "";
+  }
 };

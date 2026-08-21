@@ -6,6 +6,7 @@ import {
   calculateFreshnessScore,
   calculateSimilarity,
   generateRecommendations,
+  scoreSongForRecommendation,
   getMaxPlayCount,
   getNormalizedPlay,
   type SongWithPlayCount,
@@ -13,9 +14,7 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const createSong = (
-  overrides: Partial<SongWithPlayCount> = {}
-): SongWithPlayCount => ({
+const createSong = (overrides: Partial<SongWithPlayCount> = {}): SongWithPlayCount => ({
   id: overrides.id ?? "song-1",
   title: overrides.title ?? "Test Song",
   artist: overrides.artist ?? "Test Artist",
@@ -70,8 +69,15 @@ describe("recommendationLogic", () => {
     it("should keep familiarity scores in the 0-1 range and boost recent songs", () => {
       vi.spyOn(Date, "now").mockReturnValue(10 * DAY_MS);
 
-      const recentSong = createSong({ playCount: 8, lastPlayedAt: 10 * DAY_MS - 12 * 60 * 60 * 1000 });
-      const olderSong = createSong({ id: "song-2", playCount: 8, lastPlayedAt: 10 * DAY_MS - 10 * DAY_MS });
+      const recentSong = createSong({
+        playCount: 8,
+        lastPlayedAt: 10 * DAY_MS - 12 * 60 * 60 * 1000,
+      });
+      const olderSong = createSong({
+        id: "song-2",
+        playCount: 8,
+        lastPlayedAt: 10 * DAY_MS - 10 * DAY_MS,
+      });
 
       expect(calculateFamiliarityScore(recentSong, 10)).toBe(1);
       expect(calculateFamiliarityScore(olderSong, 10)).toBe(0.8);
@@ -82,20 +88,34 @@ describe("recommendationLogic", () => {
   describe("calculateSimilarity", () => {
     it("should weight exact artist matches strongly", () => {
       const baseSong: Song = createSong({ title: "Base", artist: "Daft Punk", album: undefined });
-      const sameArtist: Song = createSong({ id: "song-2", title: "Other", artist: "Daft Punk", album: undefined });
+      const sameArtist: Song = createSong({
+        id: "song-2",
+        title: "Other",
+        artist: "Daft Punk",
+        album: undefined,
+      });
 
       expect(calculateSimilarity(baseSong, sameArtist)).toBeCloseTo(2 / 3);
     });
 
     it("should weight exact album matches when artists differ", () => {
       const songA: Song = createSong({ title: "Alpha", artist: "Artist A", album: "Discovery" });
-      const songB: Song = createSong({ id: "song-2", title: "Beta", artist: "Artist B", album: "Discovery" });
+      const songB: Song = createSong({
+        id: "song-2",
+        title: "Beta",
+        artist: "Artist B",
+        album: "Discovery",
+      });
 
       expect(calculateSimilarity(songA, songB)).toBeCloseTo(0.6);
     });
 
     it("should detect remix-style title similarity", () => {
-      const songA: Song = createSong({ title: "Midnight City (Live)", artist: "Artist A", album: undefined });
+      const songA: Song = createSong({
+        title: "Midnight City (Live)",
+        artist: "Artist A",
+        album: undefined,
+      });
       const songB: Song = createSong({
         id: "song-2",
         title: "Midnight City Acoustic",
@@ -154,6 +174,30 @@ describe("recommendationLogic", () => {
       ];
 
       expect(generateRecommendations(songs, { x: 0, y: 0 }, 10)).toHaveLength(2);
+    });
+  });
+
+  describe("scoreSongForRecommendation", () => {
+    it("adds reason codes for matching artist, genre, and replay pattern", () => {
+      const candidateSong = createSong({
+        id: "candidate",
+        artist: "Candidate Artist",
+        genre: "Electronic",
+        playCount: 4,
+      });
+      const recentSong = createSong({ id: "recent", artist: "Other Artist", genre: "Pop" });
+
+      const result = scoreSongForRecommendation(candidateSong, {
+        recentSongs: [recentSong],
+        topArtists: ["Candidate Artist"],
+        topGenres: ["Electronic"],
+        skippedSongIds: new Set(),
+      });
+
+      expect(result.reasons.map((reason) => reason.code)).toEqual(
+        expect.arrayContaining(["artist-match", "genre-match", "replay-friendly"])
+      );
+      expect(result.score).toBeGreaterThan(50);
     });
   });
 });

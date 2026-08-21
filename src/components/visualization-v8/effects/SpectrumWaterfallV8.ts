@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { EffectPlugin } from "@/lib/visualization/types";
 
@@ -73,7 +73,7 @@ export const SpectrumWaterfallV8Effect: EffectPlugin = {
     },
   ],
 
-  init: (ctx) => {
+  init: (_ctx) => {
     history = [];
     console.log("SpectrumWaterfallV8 effect initialized");
   },
@@ -85,7 +85,7 @@ export const SpectrumWaterfallV8Effect: EffectPlugin = {
     const context = ctx.ctx;
     const {
       barCount = 64,
-      scrollSpeed = 3,
+      scrollSpeed: _scrollSpeed = 3,
       intensityMultiplier = 1.5,
       colorScheme = "rainbow",
       glowIntensity = 0.3,
@@ -127,21 +127,25 @@ export const SpectrumWaterfallV8Effect: EffectPlugin = {
         const normalizedValue = Math.min(1, value / 255);
 
         switch (colorScheme) {
-          case "fire":
+          case "fire": {
             const fireHue = 0 + normalizedValue * 60;
             color = `hsla(${fireHue}, 100%, ${50 + normalizedValue * 30}%, ${alpha})`;
             break;
-          case "ocean":
+          }
+          case "ocean": {
             const oceanHue = 180 + normalizedValue * 60;
             color = `hsla(${oceanHue}, 80%, ${40 + normalizedValue * 40}%, ${alpha})`;
             break;
-          case "neon":
+          }
+          case "neon": {
             const neonHue = 280 + normalizedValue * 80;
             color = `hsla(${neonHue}, 100%, 60%, ${alpha})`;
             break;
-          default:
+          }
+          default: {
             const hue = (i / barCount) * 360;
             color = `hsla(${hue}, 80%, ${50 + normalizedValue * 30}%, ${alpha})`;
+          }
         }
 
         context.shadowColor = color;
@@ -158,7 +162,7 @@ export const SpectrumWaterfallV8Effect: EffectPlugin = {
     console.log(`SpectrumWaterfallV8 resized to ${width}x${height}`);
   },
 
-  destroy: (ctx) => {
+  destroy: (_ctx) => {
     history = [];
     console.log("SpectrumWaterfallV8 effect destroyed");
   },

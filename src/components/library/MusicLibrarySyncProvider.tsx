@@ -7,15 +7,16 @@ import { usePlaylistStore } from "@/store/playlistStore";
 export const MusicLibrarySyncProvider: React.FC = () => {
   const { songs } = usePlaylistStore();
   const { syncAllData, hasInvalidData } = useMusicLibrarySync();
+  const hasSongs = songs.length > 0;
 
   useEffect(() => {
-    if (songs.length > 0) {
+    if (hasSongs) {
       if (hasInvalidData()) {
         console.log("🔍 发现无效数据，开始同步清理...");
         syncAllData();
       }
     }
-  }, [songs.length > 0]);
+  }, [hasSongs, hasInvalidData, syncAllData]);
 
   return null;
 };

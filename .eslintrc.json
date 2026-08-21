@@ -1,7 +1,11 @@
 {
   "root": true,
   "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint", "react", "prettier"],
+  "plugins": [
+    "@typescript-eslint",
+    "react",
+    "prettier"
+  ],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
@@ -16,6 +20,26 @@
   },
   "rules": {
     "react/react-in-jsx-scope": "off",
-    "prettier/prettier": "error"
+    "prettier/prettier": "error",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
+    "react/prop-types": "off",
+    "react/no-unknown-property": [
+      "error",
+      {
+        "ignore": [
+          "directory",
+          "webkitdirectory",
+          "jsx",
+          "global"
+        ]
+      }
+    ]
   }
 }

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,9 +14,10 @@ import {
   readFileAsText,
   ImportResult,
 } from "@/utils/dataIO";
-import { importLocalSongs, LocalImportResult, formatFileSize } from "@/utils/localMusicImport";
+import { importLocalSongs, LocalImportResult } from "@/utils/localMusicImport";
 import { formatDuration } from "@/utils/songValidation";
 import Image from "next/image";
+import { DIRECTORY_INPUT_PROPS } from "./directoryInputProps";
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
@@ -150,7 +151,7 @@ export const DataManager: React.FC = () => {
       if (result.success && result.songs.length > 0) {
         importSongs(result.songs);
       }
-    } catch (error) {
+    } catch {
       setImportResult({
         success: false,
         songs: [],
@@ -265,9 +266,7 @@ export const DataManager: React.FC = () => {
             <input
               ref={folderInputRef}
               type="file"
-              // @ts-ignore - webkitdirectory is not in standard HTMLInputElement
-              webkitdirectory=""
-              directory=""
+              {...DIRECTORY_INPUT_PROPS}
               multiple
               onChange={handleFolderSelect}
               className="hidden"

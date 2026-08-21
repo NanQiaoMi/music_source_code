@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const AudioPaintingV8Effect: EffectPlugin = {
   id: "audio-painting-v8",
@@ -134,7 +135,7 @@ export const AudioPaintingV8Effect: EffectPlugin = {
     brushes: [],
     time: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.brushes = [];
     (this as any).private.time = 0;
   },
@@ -244,17 +245,20 @@ function getColor(scheme: string, index: number, total: number, time: number): s
   switch (scheme) {
     case "neon":
       return `hsl(${hue}, 100%, 60%)`;
-    case "warm":
+    case "warm": {
       const warmHue = (hue % 90) + 10;
       return `hsl(${warmHue}, 80%, 55%)`;
-    case "cool":
+    }
+    case "cool": {
       const coolHue = (hue % 120) + 180;
       return `hsl(${coolHue}, 80%, 55%)`;
+    }
     case "rainbow":
       return `hsl(${hue}, 100%, 60%)`;
-    case "grayscale":
+    case "grayscale": {
       const gray = 30 + (index / total) * 40;
       return `hsl(0, 0%, ${gray}%)`;
+    }
     default:
       return `hsl(${hue}, 100%, 60%)`;
   }
@@ -265,8 +269,8 @@ function drawBrush(
   type: string,
   size: number,
   bass: number,
-  mid: number,
-  treble: number
+  _mid: number,
+  _treble: number
 ) {
   const audioSize = size * (1 + bass * 0.5);
 
@@ -282,7 +286,7 @@ function drawBrush(
     case "star":
       drawStar(ctx, 0, 0, audioSize / 2, audioSize / 4, 5);
       break;
-    case "blur":
+    case "blur": {
       const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, audioSize);
       gradient.addColorStop(0, ctx.fillStyle as string);
       gradient.addColorStop(1, "transparent");
@@ -291,6 +295,7 @@ function drawBrush(
       ctx.arc(0, 0, audioSize, 0, Math.PI * 2);
       ctx.fill();
       break;
+    }
   }
 }
 

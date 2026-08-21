@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const FractalGeometryV8Effect: EffectPlugin = {
   id: "fractal-geometry-v8",
@@ -121,7 +122,7 @@ export const FractalGeometryV8Effect: EffectPlugin = {
     time: 0,
     baseRotation: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.time = 0;
     (this as any).private.baseRotation = 0;
   },

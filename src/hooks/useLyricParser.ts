@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 export interface LyricLine {
   time: number;
@@ -6,8 +6,6 @@ export interface LyricLine {
 }
 
 export const useLyricParser = (lrcContent?: string) => {
-  const [lyrics, setLyrics] = useState<LyricLine[]>([]);
-
   const parseLRC = useCallback((lrc: string): LyricLine[] => {
     if (!lrc || typeof lrc !== "string") return [];
 
@@ -59,14 +57,7 @@ export const useLyricParser = (lrcContent?: string) => {
     return uniqueLyrics.sort((a, b) => a.time - b.time);
   }, []);
 
-  useEffect(() => {
-    if (lrcContent) {
-      const parsed = parseLRC(lrcContent);
-      setLyrics(parsed);
-    } else {
-      setLyrics([]);
-    }
-  }, [lrcContent, parseLRC]);
+  const lyrics = useMemo(() => (lrcContent ? parseLRC(lrcContent) : []), [lrcContent, parseLRC]);
 
   const getCurrentLyricIndex = useCallback(
     (currentTime: number): number => {

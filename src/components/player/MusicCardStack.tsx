@@ -1,240 +1,239 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, useMotionValue, useSpring, AnimatePresence } from "framer-motion";
+import { Play, Pause, Disc, Plus } from "lucide-react";
 import { usePlaylistStore } from "@/store/playlistStore";
-import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
+import { useAudioStore } from "@/store/audioStore";
 import { useGestureStore } from "@/store/gestureStore";
+import { Song } from "@/types/song";
 import Link from "next/link";
 
-const APPLE_SPRING_CONFIG = {
+// Apple 顶级 Cover Flow 物理弹簧配置 (电影级弹性与平滑惯性轨迹)
+const COVER_FLOW_SPRING = {
   type: "spring" as const,
-  stiffness: 400,
-  damping: 35,
-  mass: 1,
-  bounce: 0,
+  stiffness: 260,
+  damping: 25,
+  mass: 0.8,
 };
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
+const SLEEVE_SIZE = 360;
+const DISC_SIZE = 305;
+const MAX_VISIBLE_HALF = 4; // 左右最多各显示 4 张
 
 export const MusicCardStack: React.FC = () => {
   const { songs, recentPlayed, setSelectedSong } = usePlaylistStore();
-  const setCurrentSong = useAudioStore((state) => state.setCurrentSong);
-  const setQueue = useAudioStore((state) => state.setQueue);
-  const setCurrentIndex = useAudioStore((state) => state.setCurrentIndex);
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
-  const {
-    setQueue: setQueueStore,
-    setCurrentIndex: setQueueCurrentIndex,
-    addToHistory,
-  } = useQueueStore();
-  const { setCurrentView, setIsTransitioning } = useUIStore();
+  const queue = useQueueStore((state) => state.queue);
+  const { currentSong, isPlaying, setIsPlaying } = useAudioStore();
   const { lastGesture, gestureTriggered } = useGestureStore();
+  const { setCurrentView } = useUIStore();
+
+  const displaySongs: Song[] = useMemo(() => {
+    if (queue && queue.length > 0) return queue;
+    if (songs && songs.length > 0) return songs;
+    return recentPlayed;
+  }, [queue, songs, recentPlayed]);
 
   const [centerIndex, setCenterIndex] = useState(0);
-
-  // 初始化时随机居中一张卡片
-  useEffect(() => {
-    if (songs.length > 0 || recentPlayed.length > 0) {
-      const targetLength = songs.length > 0 ? songs.length : recentPlayed.length;
-      setCenterIndex(Math.floor(Math.random() * targetLength));
-    }
-  }, [songs.length, recentPlayed.length]);
-  const [selectedCard, setSelectedCard] = useState<number | null>(null);
+  const [isCenterHovered, setIsCenterHovered] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isWheelingRef = useRef(false);
+  const prevSongIdRef = useRef<string | null>(null);
 
-  const animatingRef = useRef(false);
+  // 纯硬件层 Framer Motion 物理弹簧（零 React 重渲染）
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const tiltSpringConfig = { stiffness: 350, damping: 32 };
+  const smoothTiltX = useSpring(mouseY, tiltSpringConfig);
+  const smoothTiltY = useSpring(mouseX, tiltSpringConfig);
 
-  const NORMAL_CARD_WIDTH = 160;
-  const NORMAL_CARD_HEIGHT = 220;
-  const CENTER_CARD_WIDTH = 340;
-  const CENTER_CARD_HEIGHT = 460;
-  const VISIBLE_CARDS = Math.max(7, songs.length > 0 ? Math.min(songs.length, 15) : 7);
+  // 仅在真实切歌 (currentSong.id 变化) 或初次加载时将卡片自动聚焦到当前曲目，绝不在用户手动翻看卡片时强行切回去
+  useEffect(() => {
+    if (!currentSong || displaySongs.length === 0) return;
+    if (prevSongIdRef.current === currentSong.id) return;
+    prevSongIdRef.current = currentSong.id;
 
-  const displaySongs = songs.length > 0 ? songs : recentPlayed;
+    const foundIdx = displaySongs.findIndex((s) => s.id === currentSong.id);
+    if (foundIdx >= 0) {
+      setCenterIndex(foundIdx);
+    }
+  }, [currentSong?.id, displaySongs]);
 
-  const visibleCards = React.useMemo(() => {
+  // 切换焦点专辑时同步当前选中的歌曲，触发背景流光环境光智能联动
+  useEffect(() => {
+    if (displaySongs.length > 0 && displaySongs[centerIndex]) {
+      setSelectedSong(displaySongs[centerIndex]);
+    }
+  }, [centerIndex, displaySongs, setSelectedSong]);
+
+  // 计算当前可视的卡片列表，确保每张卡片拥有唯一的歌曲 ID 以执行空间平滑移动动画
+  const visibleCards = useMemo(() => {
+    const total = displaySongs.length;
+    if (total === 0) return [];
+
+    // 根据曲库总数自适应可视半径，确保所有可视卡片 ID 绝对唯一，触发连续平滑位移动画
+    const half = Math.min(MAX_VISIBLE_HALF, Math.floor((total - 1) / 2));
     const cards = [];
-    const halfVisible = Math.floor(VISIBLE_CARDS / 2);
 
-    for (let i = -halfVisible; i <= halfVisible; i++) {
-      const index = centerIndex + i;
-      const displayIndex =
-        ((index % displaySongs.length) + displaySongs.length) % displaySongs.length;
+    for (let i = -half; i <= half; i++) {
+      const targetIndex = centerIndex + i;
+      const displayIndex = ((targetIndex % total) + total) % total;
+      const song = displaySongs[displayIndex];
 
-      cards.push({
-        ...displaySongs[displayIndex],
-        displayIndex: index,
-        offset: i,
-      });
+      if (song) {
+        cards.push({
+          ...song,
+          displayIndex,
+          offset: i,
+        });
+      }
     }
 
     return cards;
   }, [centerIndex, displaySongs]);
 
-  const handleCardClick = useCallback(
-    (index: number) => {
-      if (animatingRef.current || selectedCard !== null) return;
-
-      const song = displaySongs[index];
-      if (!song) return;
-
-      setSelectedCard(index);
-      setIsTransitioning(true);
-
-      setSelectedSong(song);
-      setCurrentSong(song);
-      setQueue(displaySongs);
-      setCurrentIndex(index);
-      setIsPlaying(true);
-
-      setQueueStore(displaySongs);
-      setQueueCurrentIndex(index);
-      addToHistory(song);
-
-      requestAnimationFrame(() => {
-        setCurrentView("player");
-
-        setTimeout(() => {
-          setIsTransitioning(false);
-          setSelectedCard(null);
-        }, 600);
-      });
-    },
-    [
-      displaySongs,
-      setSelectedSong,
-      setCurrentSong,
-      setQueue,
-      setCurrentIndex,
-      setIsPlaying,
-      setQueueStore,
-      setQueueCurrentIndex,
-      addToHistory,
-      setCurrentView,
-      setIsTransitioning,
-      selectedCard,
-    ]
-  );
-
   const handlePrev = useCallback(() => {
-    if (animatingRef.current || selectedCard !== null) return;
-    animatingRef.current = true;
-    setCenterIndex((prev) => prev - 1);
-
-    setTimeout(() => {
-      animatingRef.current = false;
-    }, 300);
-  }, [selectedCard]);
+    if (displaySongs.length <= 1) return;
+    setCenterIndex((prev) => (prev - 1 + displaySongs.length) % displaySongs.length);
+  }, [displaySongs.length]);
 
   const handleNext = useCallback(() => {
-    if (animatingRef.current || selectedCard !== null) return;
-    animatingRef.current = true;
-    setCenterIndex((prev) => prev + 1);
+    if (displaySongs.length <= 1) return;
+    setCenterIndex((prev) => (prev + 1) % displaySongs.length);
+  }, [displaySongs.length]);
 
-    setTimeout(() => {
-      animatingRef.current = false;
-    }, 300);
-  }, [selectedCard]);
+  const handlePlayCard = useCallback(
+    (song: Song, _index: number) => {
+      if (!song.audioUrl && song.id.startsWith("demo")) {
+        useUIStore
+          .getState()
+          .showToast("这首示例歌曲没有音频文件，请先到数据管理页导入本地音乐。", "warning");
+        return;
+      }
+      setSelectedSong(song);
+      if (currentSong?.id === song.id && isPlaying) {
+        setIsPlaying(false);
+      } else {
+        // 点击卡片自动将当前全部曲库/列表整单载入播放队列，支持连续切歌与自动连播，无需逐一点击
+        const targetQueue = displaySongs.length > 0 ? displaySongs : [song];
+        const targetIdx = targetQueue.findIndex((s) => s.id === song.id);
+        useAudioStore.getState().playQueue(targetQueue, targetIdx >= 0 ? targetIdx : _index);
+      }
+    },
+    [currentSong?.id, isPlaying, setIsPlaying, setSelectedSong, displaySongs]
+  );
 
+  // 鼠标在焦点封套上的硬件级 3D 视差计算（不触发任何 React setState）
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    mouseX.set(((x - centerX) / centerX) * 7.5);
+    mouseY.set(-((y - centerY) / centerY) * 7.5);
+  }, [mouseX, mouseY]);
+
+  const handleMouseEnterCard = useCallback(() => {
+    setIsCenterHovered(true);
+  }, []);
+
+  const handleMouseLeaveCard = useCallback(() => {
+    setIsCenterHovered(false);
+    mouseX.set(0);
+    mouseY.set(0);
+  }, [mouseX, mouseY]);
+
+  // 滚轮横向轻拨连续切歌 (120ms 弹性防抖)
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      if (isWheelingRef.current) return;
+      if (Math.abs(e.deltaX) > 15 || Math.abs(e.deltaY) > 15) {
+        isWheelingRef.current = true;
+        if (e.deltaX > 0 || e.deltaY > 0) {
+          handleNext();
+        } else {
+          handlePrev();
+        }
+        setTimeout(() => {
+          isWheelingRef.current = false;
+        }, 120);
+      }
+    },
+    [handleNext, handlePrev]
+  );
+
+  // 键盘快捷键 ← / → / Space
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (selectedCard !== null) return;
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA"
+      ) {
+        return;
+      }
 
-      switch (e.key) {
-        case "ArrowLeft":
-          e.preventDefault();
-          handlePrev();
-          break;
-        case "ArrowRight":
-          e.preventDefault();
-          handleNext();
-          break;
-        case "Enter":
-          e.preventDefault();
-          const centerCardIndex = visibleCards.find((card) => card.offset === 0)?.displayIndex;
-          if (centerCardIndex !== undefined) {
-            handleCardClick(centerCardIndex);
-          }
-          break;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        handlePrev();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        handleNext();
+      } else if (e.key === " ") {
+        e.preventDefault();
+        const centerSong = displaySongs[centerIndex];
+        if (centerSong) {
+          handlePlayCard(centerSong, centerIndex);
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handlePrev, handleNext, handleCardClick, selectedCard, visibleCards]);
+  }, [centerIndex, displaySongs, handleNext, handlePrev, handlePlayCard]);
 
+  // 手势切歌联动
   useEffect(() => {
-    if (!lastGesture || selectedCard !== null) return;
-
-    switch (lastGesture) {
-      case "swipe_left":
+    if (gestureTriggered && lastGesture) {
+      if ((lastGesture as any) === "swipe_left" || (lastGesture as any)?.type === "swipe_left") {
         handleNext();
-        break;
-      case "swipe_right":
+      } else if ((lastGesture as any) === "swipe_right" || (lastGesture as any)?.type === "swipe_right") {
         handlePrev();
-        break;
-      case "fist":
-        const centerCardIndex = visibleCards.find((card) => card.offset === 0)?.displayIndex;
-        if (centerCardIndex !== undefined) {
-          handleCardClick(centerCardIndex);
-        }
-        break;
+      }
     }
-  }, [
-    lastGesture,
-    gestureTriggered,
-    handleNext,
-    handlePrev,
-    handleCardClick,
-    selectedCard,
-    visibleCards,
-  ]);
+  }, [gestureTriggered, lastGesture, handleNext, handlePrev]);
 
+  // 空曲库占位展示
   if (displaySongs.length === 0) {
     return (
-      <div
-        ref={containerRef}
-        className="relative w-full h-full flex items-center justify-center overflow-hidden"
-      >
+      <div className="relative w-full h-full flex flex-col items-center justify-center select-none">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+          className="flex flex-col items-center text-center p-8 max-w-md"
         >
-          <div
-            className="w-48 h-48 mx-auto mb-6 flex items-center justify-center rounded-3xl backdrop-blur-[24px]"
-            style={{
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-            }}
-          >
-            <svg
-              className="w-16 h-16 text-white/30"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-              />
-            </svg>
+          <div className="w-24 h-24 rounded-full bg-white/[0.04] border border-white/10 flex items-center justify-center mb-6 shadow-2xl backdrop-blur-xl">
+            <Disc className="w-12 h-12 text-white/40 animate-[spin_12s_linear_infinite]" />
           </div>
-          <h2 className="text-[21px] font-semibold mb-2 text-white">暂无音乐</h2>
-          <p className="text-[15px] mb-6 text-white/50">导入您的音乐开始聆听</p>
+          <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">曲库暂无音乐</h2>
+          <p className="text-sm text-[#86868b] mb-8 leading-relaxed">
+            导入本地音频文件或文件夹，开启 3D 实体黑胶唱片体验
+          </p>
           <Link href="/data-manager">
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="px-6 py-3 rounded-full font-medium backdrop-blur-[20px] saturate-[180%] border border-white/[0.08] text-white bg-white/[0.08] hover:bg-white/[0.15] transition-all"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="px-6 py-2.5 rounded-full bg-white/[0.08] hover:bg-white/[0.16] border border-white/10 text-white text-[13px] font-medium tracking-tight shadow-md transition-all flex items-center gap-2"
             >
-              导入音乐
+              <Plus className="w-4 h-4" />
+              <span>导入音乐或文件夹</span>
             </motion.button>
           </Link>
         </motion.div>
@@ -245,164 +244,284 @@ export const MusicCardStack: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full flex items-center justify-center overflow-hidden"
+      onWheel={handleWheel}
+      className="relative w-full h-full flex items-center justify-center select-none overflow-visible"
+      style={{ perspective: 1200 }}
     >
+      {/* ─── 舞台漫反射水波与极光地底 (Living Specular Stage Floor) ─── */}
+      <div className="absolute -bottom-[80px] w-[900px] h-[200px] rounded-full pointer-events-none overflow-hidden opacity-40 blur-[40px] transform-gpu">
+        <div className="w-full h-full bg-radial-gradient from-white/20 via-white/5 to-transparent animate-caustic-shimmer" />
+      </div>
+
       <div
-        className="relative flex items-center justify-center"
-        style={{ width: "100%", height: CENTER_CARD_HEIGHT + 120, perspective: 1500 }}
+        className="relative flex items-center justify-center w-full"
+        style={{
+          height: SLEEVE_SIZE + 160,
+          transformStyle: "preserve-3d",
+        }}
       >
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence initial={false}>
           {visibleCards.map((card) => {
             const isCenter = card.offset === 0;
-            const isSelected = selectedCard === card.displayIndex;
-            const hasSelection = selectedCard !== null;
-            const isOtherCard = hasSelection && !isSelected;
-
             const absOffset = Math.abs(card.offset);
+            const isPlayingThis = isCenter && isPlaying && currentSong?.id === card.id;
 
-            const cardWidth = isCenter ? CENTER_CARD_WIDTH : NORMAL_CARD_WIDTH;
-            const cardHeight = isCenter ? CENTER_CARD_HEIGHT : NORMAL_CARD_HEIGHT;
+            // 黄金两翼展布参数：间距 195px, 侧转倾角 38°
+            const x = card.offset * 195;
+            const z = isCenter ? 50 : -absOffset * 110;
+            const rotateY = isCenter ? 0 : card.offset < 0 ? 38 : -38;
+            const scale = isCenter
+              ? isCenterHovered
+                ? 1.20
+                : 1.18
+              : Math.max(0.64, 0.82 - absOffset * 0.08);
+            const opacity = isCenter ? 1 : Math.max(0.28, 0.72 - absOffset * 0.16);
+            const zIndex = 30 - absOffset;
 
-            let x = 0;
-            if (!isCenter) {
-              const centerHalfWidth = CENTER_CARD_WIDTH / 2;
-              const normalHalfWidth = NORMAL_CARD_WIDTH / 2;
-              const gap = 48;
-
-              if (card.offset < 0) {
-                x = -(
-                  centerHalfWidth +
-                  normalHalfWidth +
-                  gap +
-                  absOffset * (NORMAL_CARD_WIDTH + gap * 0.4)
-                );
-              } else {
-                x =
-                  centerHalfWidth +
-                  normalHalfWidth +
-                  gap +
-                  absOffset * (NORMAL_CARD_WIDTH + gap * 0.4);
-              }
-            }
-
-            const scale = isCenter ? 1 : Math.max(0.65, 1 - absOffset * 0.12);
-            const zIndex = 10 - absOffset;
-            const rotateY = isCenter ? 0 : card.offset < 0 ? 15 : -15;
+            // 电影级阶梯景深微虚化 (两翼大光圈虚化 0.8px ~ 2.5px)
+            const depthBlur = isCenter
+              ? "none"
+              : `blur(${Math.min(2.5, absOffset * 0.65).toFixed(1)}px)`;
 
             return (
               <motion.div
-                key={`${card.id}-${card.displayIndex}`}
-                layoutId={`album-cover-${card.id}`}
-                className="absolute cursor-pointer"
+                key={card.id}
+                onClick={() => {
+                  if (isCenter) {
+                    handlePlayCard(card, card.displayIndex);
+                  } else {
+                    setCenterIndex(card.displayIndex);
+                  }
+                }}
+                onDoubleClick={() => {
+                  if (isCenter) {
+                    setCurrentView("player");
+                  }
+                }}
                 style={{
-                  width: cardWidth,
-                  height: cardHeight,
+                  position: "absolute",
+                  width: SLEEVE_SIZE,
+                  height: SLEEVE_SIZE,
                   zIndex,
-                  perspective: 1200,
+                  transformStyle: "preserve-3d",
+                  cursor: "pointer",
+                  filter: depthBlur,
                 }}
                 initial={{
-                  x,
-                  scale: isCenter ? 0.8 : scale * 0.8,
-                  rotateY: isCenter ? 0 : card.offset < 0 ? -25 : 25,
+                  x: card.offset > 0 ? x + 100 : x - 100,
                   opacity: 0,
+                  scale: scale * 0.9,
+                  rotateY,
+                  z,
                 }}
                 animate={{
                   x,
-                  scale: isOtherCard ? 0.65 : isSelected ? 1.05 : scale,
-                  rotateY: isSelected ? 0 : rotateY,
-                  opacity: isOtherCard ? 0.15 : isCenter ? 1 : 0.3,
-                  filter: isCenter
-                    ? "brightness(1) contrast(1) drop-shadow(0 40px 80px rgba(0,0,0,0.5))"
-                    : `brightness(${0.35 + (1 - absOffset * 0.1) * 0.3}) contrast(${0.8 + (1 - absOffset * 0.1) * 0.2})`,
-                  z: isCenter ? 0 : -absOffset * 80,
+                  z,
+                  rotateY,
+                  scale,
+                  opacity,
                 }}
                 exit={{
+                  x: card.offset > 0 ? x + 100 : x - 100,
                   opacity: 0,
-                  scale: 0.5,
-                  transition: { duration: 0.2 },
+                  scale: scale * 0.9,
+                  transition: { duration: 0.25 },
                 }}
-                transition={APPLE_SPRING_CONFIG}
-                onClick={() => {
-                  if (isCenter) {
-                    handleCardClick(card.displayIndex);
-                  } else {
-                    setCenterIndex(centerIndex + card.offset);
-                    handleCardClick(card.displayIndex);
-                  }
-                }}
+                transition={COVER_FLOW_SPRING}
+                className="group flex items-center justify-center"
               >
-                <div
-                  className="w-full h-full overflow-hidden"
+                {/* 内层视差与黑胶互动层 */}
+                <motion.div
+                  className="relative w-full h-full flex items-center justify-center"
                   style={{
-                    borderRadius: isCenter ? "2rem" : "1.25rem",
-                    boxShadow: isCenter
-                      ? `0 60px 100px rgba(0,0,0,0.6), 0 30px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.15), inset 0 1px 1px rgba(255,255,255,0.1)`
-                      : `0 12px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05)`,
+                    transformStyle: "preserve-3d",
+                    rotateX: isCenter ? smoothTiltX : 0,
+                    rotateY: isCenter ? smoothTiltY : 0,
                   }}
+                  onMouseMove={isCenter ? handleMouseMove : undefined}
+                  onMouseEnter={isCenter ? handleMouseEnterCard : undefined}
+                  onMouseLeave={isCenter ? handleMouseLeaveCard : undefined}
                 >
-                  <div className="relative w-full h-full">
+                  {/* ─── 1. 实体拟真黑胶唱片 (305x305px, 悬停抽出 165px, 居中顺时针扫光旋转) ─── */}
+                  <motion.div
+                    initial={false}
+                    animate={{
+                      x: isCenter ? (isCenterHovered ? 165 : 150) : 0,
+                      opacity: isCenter ? 1 : 0,
+                      scale: isCenter ? 1 : 0.88,
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 240,
+                      damping: 24,
+                      delay: isCenter ? 0.06 : 0,
+                    }}
+                    style={{
+                      position: "absolute",
+                      top: (SLEEVE_SIZE - DISC_SIZE) / 2,
+                      left: (SLEEVE_SIZE - DISC_SIZE) / 2,
+                      width: DISC_SIZE,
+                      height: DISC_SIZE,
+                      zIndex: 0,
+                      boxShadow: "0 20px 52px rgba(0,0,0,0.94), inset 0 0 0 2px rgba(255,255,255,0.08)",
+                      background:
+                        "radial-gradient(circle, #1a1a1a 0%, #111111 25%, #222222 26%, #0d0d0d 45%, #1f1f1f 46%, #080808 65%, #1a1a1a 66%, #050505 100%)",
+                    }}
+                    className="rounded-full pointer-events-none"
+                  >
+                    {/* 唱片持续转动 (播放时 6s 快速旋转，闲置时 14s 优雅转动) */}
                     <div
-                      className="relative w-full h-full overflow-hidden"
-                      style={{ borderRadius: isCenter ? "2rem" : "1.25rem" }}
+                      className={`relative w-full h-full rounded-full flex items-center justify-center ${
+                        isCenter
+                          ? isPlayingThis
+                            ? "vinyl-rotating-active"
+                            : "vinyl-rotating-idle"
+                          : ""
+                      }`}
+                      style={{ willChange: "transform" }}
                     >
-                      <Image
-                        src={card.cover || DEFAULT_COVER_SRC}
-                        alt={card.title}
-                        fill
-                        className="object-cover"
-                        priority={isCenter}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = "/default-cover.svg";
-                        }}
-                        unoptimized
-                      />
+                      {/* 超精细 8 圈物理同心折射凹槽 (8-Ring Vinyl Micro-Grooves) */}
+                      <div className="absolute inset-2.5 rounded-full border border-white/[0.045]" />
+                      <div className="absolute inset-6 rounded-full border border-white/[0.03]" />
+                      <div className="absolute inset-10 rounded-full border border-white/[0.04]" />
+                      <div className="absolute inset-15 rounded-full border border-white/[0.035]" />
+                      <div className="absolute inset-20 rounded-full border border-white/[0.05]" />
+                      <div className="absolute inset-25 rounded-full border border-white/[0.03]" />
+                      <div className="absolute inset-30 rounded-full border border-white/[0.04]" />
+                      <div className="absolute inset-36 rounded-full border border-white/[0.06]" />
 
-                      {!isCenter && (
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-[3px]" />
-                      )}
-
+                      {/* 顺时针物理真实多角度彩虹高光扫光 (Specular Conic Light Sweeping) */}
                       <div
-                        className="absolute inset-0"
-                        style={{
-                          background: isCenter
-                            ? "linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.85) 100%)"
-                            : "linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.75) 100%)",
-                          borderRadius: isCenter ? "2rem" : "1.25rem",
-                        }}
-                      />
-
-                      <div
-                        className="absolute inset-0 pointer-events-none"
+                        className={`absolute inset-0 rounded-full pointer-events-none ${
+                          isCenter
+                            ? isPlayingThis
+                              ? "animate-conic-sweep-active"
+                              : "animate-conic-sweep-idle"
+                            : ""
+                        }`}
                         style={{
                           background:
-                            "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%)",
-                          borderRadius: isCenter ? "2rem" : "1.25rem",
+                            "conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.38) 60deg, transparent 120deg, transparent 180deg, rgba(255,255,255,0.38) 240deg, transparent 300deg)",
                         }}
                       />
+
+                      {/* 黑胶中心圆形专辑贴图 + 烫银盘芯微圆环 */}
+                      <div className="relative w-28 h-28 rounded-full overflow-hidden border-[3px] border-[#222226] shadow-[0_0_12px_rgba(0,0,0,0.8),inset_0_0_0_1.5px_rgba(255,255,255,0.22)]">
+                        <Image
+                          src={card.cover || DEFAULT_COVER_SRC}
+                          alt="label"
+                          fill
+                          sizes="112px"
+                          className="object-cover"
+                          unoptimized
+                        />
+                        <div className="absolute inset-0 m-auto w-4 h-4 rounded-full bg-[#111] border border-white/30 shadow-md" />
+                      </div>
                     </div>
+                  </motion.div>
 
-                    {isCenter && (
-                      <motion.div
-                        className="absolute bottom-0 left-0 right-0 p-8"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.15, duration: 0.4 }}
-                      >
-                        <h3 className="text-2xl font-bold mb-2 tracking-tight text-white truncate">
+                  {/* ─── 2. 1:1 正方形黑胶封套 (LP Sleeve Jacket) ─── */}
+                  <div
+                    className="relative rounded-[22px] overflow-hidden bg-[#1c1c1e] shadow-[0_32px_80px_rgba(0,0,0,0.85)] border border-white/[0.14] z-10 transition-shadow duration-300 group-hover:shadow-[0_40px_96px_rgba(0,0,0,0.95)]"
+                    style={{
+                      width: SLEEVE_SIZE,
+                      height: SLEEVE_SIZE,
+                    }}
+                  >
+                    {/* 左侧书脊折光微线 */}
+                    <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-r from-white/25 via-white/10 to-transparent z-20 pointer-events-none" />
+
+                    {/* 右侧开口暗黑内衬阴影 */}
+                    <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-gradient-to-l from-black/80 to-transparent z-20 pointer-events-none" />
+
+                    {/* 专辑封面 */}
+                    <Image
+                      src={card.cover || DEFAULT_COVER_SRC}
+                      alt={card.title}
+                      fill
+                      sizes="360px"
+                      priority={isCenter}
+                      className="object-cover"
+                      unoptimized
+                    />
+
+                    {/* 焦点封套：底部无感双层渐变 + 高奢方正小标宋排版 */}
+                    {isCenter ? (
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-6 z-20">
+                        {/* 顶部播放波形 与 ↗ 沉浸详情 徽标 */}
+                        <div className="flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCurrentView("player");
+                            }}
+                            className="px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-[11px] font-medium text-white/90 hover:text-white backdrop-blur-md transition-all active:scale-95 flex items-center gap-1 shadow-sm"
+                            title="双击卡片或点击此按钮进入全屏沉浸播放器详情页"
+                          >
+                            <span>↗ 详情舞台</span>
+                          </button>
+
+                          {isPlayingThis && (
+                            <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+                              <span className="w-1 h-3 bg-[#2997ff] rounded-full animate-[pulse_0.8s_ease-in-out_infinite]" />
+                              <span className="w-1 h-4.5 bg-[#2997ff] rounded-full animate-[pulse_1.2s_ease-in-out_infinite]" />
+                              <span className="w-1 h-2.5 bg-[#2997ff] rounded-full animate-[pulse_0.6s_ease-in-out_infinite]" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 中间播放/暂停触感按钮 (64px 高透磨砂) */}
+                        <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-95 group-hover:scale-100">
+                          <div className="w-16 h-16 rounded-full bg-white/25 hover:bg-white/35 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-2xl">
+                            {isPlayingThis ? (
+                              <Pause className="w-7 h-7 fill-white" />
+                            ) : (
+                              <Play className="w-7 h-7 fill-white ml-1" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 底部歌名与歌手 (方正小标宋高奢排版) */}
+                        <div className="min-w-0 text-left">
+                          <h3 className="text-[20px] font-bold text-white tracking-tight truncate leading-snug drop-shadow-sm">
+                            {card.title}
+                          </h3>
+                          <p className="text-[13px] text-[#86868b] font-medium truncate mt-0.5">
+                            {card.artist}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      /* 两翼卡片暗化遮罩 */
+                      <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px] flex items-end p-4 z-20">
+                        <p className="text-[11px] text-white/50 truncate font-medium">
                           {card.title}
-                        </h3>
-                        <p className="text-base text-white/60 truncate">{card.artist}</p>
-                      </motion.div>
-                    )}
-
-                    {!isCenter && (
-                      <div className="absolute bottom-0 left-0 right-0 p-5">
-                        <p className="text-xs text-white/40 truncate font-medium">{card.title}</p>
+                        </p>
                       </div>
                     )}
                   </div>
-                </div>
+
+                  {/* ─── 3. 双层水波磨砂镜面地板倒影 (GPU 硬件加速) ─── */}
+                  {isCenter && (
+                    <div
+                      className="absolute -bottom-[58px] left-2 right-2 h-[52px] rounded-[22px] overflow-hidden opacity-35 pointer-events-none scale-y-[-1] blur-[1.2px]"
+                      style={{
+                        maskImage: "linear-gradient(to top, rgba(0,0,0,0.9), transparent 75%)",
+                        WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.9), transparent 75%)",
+                      }}
+                    >
+                      <Image
+                        src={card.cover || DEFAULT_COVER_SRC}
+                        alt="reflection"
+                        fill
+                        sizes="360px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
+                  )}
+                </motion.div>
               </motion.div>
             );
           })}

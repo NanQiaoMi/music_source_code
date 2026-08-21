@@ -117,7 +117,7 @@ export const InstantMix: React.FC<InstantMixProps> = ({ isOpen, onClose }) => {
         playQueue(selectedSongs, 0);
         toast.success(`已生成 ${selectedSongs.length} 首灵感歌单`);
         onClose();
-      } catch (error) {
+      } catch {
         toast.error("生成歌单失败，请重试");
       } finally {
         setIsGenerating(false);
@@ -158,7 +158,7 @@ export const InstantMix: React.FC<InstantMixProps> = ({ isOpen, onClose }) => {
               </div>
               <div>
                 <h3 className="text-white text-lg font-semibold">灵感瞬间</h3>
-                <p className="text-white/60 text-sm">Instant Mix</p>
+                <p className="text-white/60 text-sm">即时混音</p>
               </div>
             </div>
             <button

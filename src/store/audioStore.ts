@@ -3,9 +3,14 @@ import { persist } from "zustand/middleware";
 import { useQueueStore } from "./queueStore";
 import { useRecommendationStore } from "./recommendationStore";
 import { usePlayerStore } from "./playerStore";
+import { usePlaylistStore } from "./playlistStore";
 import { useEQStore } from "./eqStore";
 
 import { Song } from "@/types/song";
+import {
+  createMissingAudioSourceError,
+  hasPlayableAudioSource,
+} from "@/lib/audio/playableAudioSource";
 
 export type { Song };
 
@@ -193,6 +198,15 @@ const getDefaultEQPreset = (preset: EQPreset): number[] => {
   return presets[preset] || presets.flat;
 };
 
+type AudioSeekHandler = (time: number) => void;
+let globalSeekHandler: AudioSeekHandler | null = null;
+
+export const registerAudioSeekHandler = (handler: AudioSeekHandler | null) => {
+  globalSeekHandler = handler;
+};
+
+export const getAudioSeekHandler = () => globalSeekHandler;
+
 export const useAudioStore = create<AudioState>()(
   persist(
     (set, get) => ({
@@ -250,6 +264,14 @@ export const useAudioStore = create<AudioState>()(
       dynamicCrossfadeDuration: 3,
 
       setIsPlaying: (playing) => {
+        const currentSong = usePlayerStore.getState().currentSong ?? get().currentSong;
+        if (playing && currentSong && !hasPlayableAudioSource(currentSong)) {
+          usePlayerStore.getState().setIsPlaying(false);
+          usePlayerStore.getState().setIsLoading(false);
+          set({ isPlaying: false, isLoading: false, error: createMissingAudioSourceError() });
+          return;
+        }
+
         usePlayerStore.getState().setIsPlaying(playing);
         set({ isPlaying: playing });
       },
@@ -300,6 +322,7 @@ export const useAudioStore = create<AudioState>()(
         if (queue.length === 0) {
           const queueStore = useQueueStore.getState();
           if (queueStore.playThroughMode === "play-through") {
+            usePlayerStore.getState().setCurrentSong(null);
             set({ currentSong: null, isPlaying: false });
             return;
           }
@@ -309,6 +332,7 @@ export const useAudioStore = create<AudioState>()(
               queueStore.setQueue(recs);
               queueStore.setCurrentIndex(0);
               queueStore.addToHistory(recs[0]);
+              usePlayerStore.getState().setCurrentSong(recs[0]);
               set({
                 queue: recs,
                 currentIndex: 0,
@@ -319,9 +343,11 @@ export const useAudioStore = create<AudioState>()(
                 error: null,
               });
             } else {
+              usePlayerStore.getState().setCurrentSong(null);
               set({ currentSong: null, isPlaying: false });
             }
           } else {
+            usePlayerStore.getState().setCurrentSong(null);
             set({ currentSong: null, isPlaying: false });
           }
           return;
@@ -331,15 +357,21 @@ export const useAudioStore = create<AudioState>()(
 
         if (loopMode === "shuffle") {
           nextIndex = Math.floor(Math.random() * queue.length);
+        } else if (loopMode === "none" && currentIndex >= queue.length - 1) {
+          // End of queue with no loop: stop playback
+          usePlayerStore.getState().setCurrentSong(null);
+          useQueueStore.getState().setCurrentIndex(0);
+          set({ currentSong: null, isPlaying: false, currentTime: 0 });
+          return;
         } else {
           nextIndex = (currentIndex + 1) % queue.length;
         }
-
         const nextSongItem = queue[nextIndex];
-
-        const queueStore = useQueueStore.getState();
-        queueStore.setCurrentIndex(nextIndex);
-        queueStore.addToHistory(nextSongItem);
+        const _queueStore = useQueueStore.getState();
+        usePlayerStore.getState().setCurrentSong(nextSongItem);
+        usePlayerStore.getState().setIsPlaying(true);
+        _queueStore.setCurrentIndex(nextIndex);
+        _queueStore.addToHistory(nextSongItem);
 
         set({
           currentIndex: nextIndex,
@@ -368,6 +400,8 @@ export const useAudioStore = create<AudioState>()(
         const queueStore = useQueueStore.getState();
         queueStore.setCurrentIndex(prevIndex);
         queueStore.addToHistory(prevSongItem);
+        usePlayerStore.getState().setCurrentSong(prevSongItem);
+        usePlayerStore.getState().setIsPlaying(true);
 
         set({
           currentIndex: prevIndex,
@@ -388,10 +422,48 @@ export const useAudioStore = create<AudioState>()(
       setBufferedRanges: (ranges) => set({ bufferedRanges: ranges }),
 
       playSong: (song) => {
+        if (!hasPlayableAudioSource(song)) {
+          usePlayerStore.getState().setIsPlaying(false);
+          usePlayerStore.getState().setIsLoading(false);
+          set({
+            isPlaying: false,
+            isLoading: false,
+            error: createMissingAudioSourceError(),
+          });
+          return;
+        }
+
+        // 检查当前播放队列中是否已有该歌曲（如正在播放网络歌单或搜索结果列表）
         const queueStore = useQueueStore.getState();
-        queueStore.setQueue([song]);
-        queueStore.setCurrentIndex(0);
+        const currentQueue = queueStore.queue;
+        const queueIdx = currentQueue.findIndex((s) => s.id === song.id);
+
+        let fullQueue: Song[];
+        let startIdx: number;
+
+        if (queueIdx >= 0) {
+          // 当前播放队列中已有这首歌，保留完整队列，仅切换当前索引
+          fullQueue = currentQueue;
+          startIdx = queueIdx;
+        } else {
+          // 否则尝试从本地曲库匹配
+          const playlistSongs = usePlaylistStore.getState().songs;
+          const idx = playlistSongs.findIndex((s) => s.id === song.id);
+          if (idx >= 0) {
+            fullQueue = playlistSongs;
+            startIdx = idx;
+          } else {
+            // 如果既不在当前队列也不在本地曲库，将该歌曲追加到当前队列或创建单曲队列
+            fullQueue = currentQueue.length > 0 ? [...currentQueue, song] : [song];
+            startIdx = fullQueue.length - 1;
+          }
+        }
+
+        queueStore.setQueue(fullQueue);
+        queueStore.setCurrentIndex(startIdx);
         queueStore.addToHistory(song);
+        usePlayerStore.getState().setCurrentSong(song);
+        usePlayerStore.getState().setIsPlaying(true);
 
         set({
           currentSong: song,
@@ -399,8 +471,8 @@ export const useAudioStore = create<AudioState>()(
           isPlaying: true,
           isLoading: true,
           error: null,
-          queue: [song],
-          currentIndex: 0,
+          queue: fullQueue,
+          currentIndex: startIdx,
           isEmotionCurveMode: false,
         });
       },
@@ -408,16 +480,29 @@ export const useAudioStore = create<AudioState>()(
       playQueue: (songs, startIndex = 0) => {
         if (songs.length === 0) return;
         const index = Math.max(0, Math.min(startIndex, songs.length - 1));
+        const song = songs[index];
+        if (!hasPlayableAudioSource(song)) {
+          usePlayerStore.getState().setIsPlaying(false);
+          usePlayerStore.getState().setIsLoading(false);
+          set({
+            isPlaying: false,
+            isLoading: false,
+            error: createMissingAudioSourceError(),
+          });
+          return;
+        }
 
         const queueStore = useQueueStore.getState();
         queueStore.setQueue(songs);
         queueStore.setCurrentIndex(index);
-        queueStore.addToHistory(songs[index]);
+        queueStore.addToHistory(song);
+        usePlayerStore.getState().setCurrentSong(song);
+        usePlayerStore.getState().setIsPlaying(true);
 
         set({
           queue: songs,
           currentIndex: index,
-          currentSong: songs[index],
+          currentSong: song,
           currentTime: 0,
           isPlaying: true,
           isLoading: true,
@@ -492,6 +577,17 @@ export const useAudioStore = create<AudioState>()(
 
       appendSongsAndPlay: (songs: Song[]) => {
         if (!songs || songs.length === 0) return;
+        const firstSong = songs[0];
+        if (!hasPlayableAudioSource(firstSong)) {
+          usePlayerStore.getState().setIsPlaying(false);
+          usePlayerStore.getState().setIsLoading(false);
+          set({
+            isPlaying: false,
+            isLoading: false,
+            error: createMissingAudioSourceError(),
+          });
+          return;
+        }
 
         const { queue } = get();
         const startIndex = queue.length;
@@ -500,19 +596,28 @@ export const useAudioStore = create<AudioState>()(
         const queueStore = useQueueStore.getState();
         queueStore.setQueue(newQueue);
         queueStore.setCurrentIndex(startIndex);
-        queueStore.addToHistory(songs[0]);
+        queueStore.addToHistory(firstSong);
+        usePlayerStore.getState().setCurrentSong(firstSong);
+        usePlayerStore.getState().setIsPlaying(true);
 
         set({
           queue: newQueue,
           currentIndex: startIndex,
-          currentSong: songs[0],
+          currentSong: firstSong,
           currentTime: 0,
           isPlaying: true,
           isLoading: true,
           error: null,
         });
       },
-      seekTo: (time) => set({ currentTime: Math.max(0, time) }),
+      seekTo: (time) => {
+        const clampedTime = Math.max(0, time);
+        usePlayerStore.getState().setCurrentTime(clampedTime);
+        set({ currentTime: clampedTime });
+        if (globalSeekHandler) {
+          globalSeekHandler(clampedTime);
+        }
+      },
     }),
     {
       name: "audio-store-v4",

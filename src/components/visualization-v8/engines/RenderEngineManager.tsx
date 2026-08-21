@@ -7,15 +7,27 @@ import {
   EffectPlugin,
   AudioData,
   TransformParams,
+  EffectParameterMap,
+  EffectRuntimeState,
 } from "@/lib/visualization/types";
+import type { VisualizationAudioSnapshot } from "@/lib/visualization/audioSnapshot";
 import { ThreeJSScene } from "@/lib/three/ThreeJSScene";
 import { usePerformanceV8Store } from "@/store/performanceV8Store";
+import { useAudioStore } from "@/store/audioStore";
+import { useAudioSourceStore } from "@/store/audioSourceStore";
+
+interface PerformanceWithMemory extends Performance {
+  memory?: {
+    usedJSHeapSize: number;
+  };
+}
 
 interface RenderEngineManagerProps {
   engine: RenderEngine;
   effect: EffectPlugin | null;
-  onRender: (ctx: RenderContext, audioData: AudioData, params: Record<string, any>) => void;
-  params?: Record<string, any>;
+  onRender: (ctx: RenderContext, audioData: AudioData, params: EffectParameterMap) => void;
+  params?: EffectParameterMap;
+  audioSnapshot?: VisualizationAudioSnapshot;
   width: number;
   height: number;
 }
@@ -25,6 +37,7 @@ export function RenderEngineManager({
   effect,
   onRender,
   params = {},
+  audioSnapshot,
   width,
   height,
 }: RenderEngineManagerProps) {
@@ -33,10 +46,11 @@ export function RenderEngineManager({
   const ctx2DRef = useRef<CanvasRenderingContext2D | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
-  const startTimeRef = useRef<number>(Date.now());
+  const startTimeRef = useRef<number | null>(null);
   const effectRef = useRef<EffectPlugin | null>(null);
-  const dprRef = useRef(window.devicePixelRatio || 1);
-  const privateContextRef = useRef<Record<string, any>>({});
+  const dprRef = useRef(1);
+  const privateContextRef = useRef<EffectRuntimeState>({});
+  const audioSnapshotRef = useRef(audioSnapshot);
 
   const frequencyDataRef = useRef(new Uint8Array(256));
   const waveformDataRef = useRef(new Uint8Array(256));
@@ -52,7 +66,33 @@ export function RenderEngineManager({
 
   const { config, updateStats } = usePerformanceV8Store();
   const frameCountRef = useRef(0);
-  const lastFPSUpdateRef = useRef(Date.now());
+  const lastFPSUpdateRef = useRef(0);
+
+  useEffect(() => {
+    audioSnapshotRef.current = audioSnapshot;
+  }, [audioSnapshot]);
+
+  const getDisplaySize = useCallback(() => {
+    const fallbackWidth = typeof window !== "undefined" ? window.innerWidth : 0;
+    const fallbackHeight = typeof window !== "undefined" ? window.innerHeight : 0;
+
+    return {
+      displayWidth: width || canvasRef.current?.clientWidth || fallbackWidth,
+      displayHeight: height || canvasRef.current?.clientHeight || fallbackHeight,
+    };
+  }, [height, width]);
+
+  const getQualityDpr = useCallback(() => {
+    const rawDpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const maxDprByQuality = {
+      low: 1,
+      medium: 1.5,
+      high: 1.75,
+      ultra: 2,
+    }[config.webglQuality];
+
+    return Math.max(1, Math.min(rawDpr, maxDprByQuality));
+  }, [config.webglQuality]);
 
   const selectActualEngine = useCallback(
     (preferred: RenderEngine): RenderEngine => {
@@ -73,17 +113,19 @@ export function RenderEngineManager({
     if (!canvasRef.current) return null;
 
     const canvas = canvasRef.current;
-    const dpr = dprRef.current;
+    const { displayWidth, displayHeight } = getDisplaySize();
+    const dpr = getQualityDpr();
 
-    canvas.width = window.innerWidth * dpr;
-    canvas.height = window.innerHeight * dpr;
+    dprRef.current = dpr;
+    canvas.width = Math.max(1, Math.floor(displayWidth * dpr));
+    canvas.height = Math.max(1, Math.floor(displayHeight * dpr));
 
     if (ctx2DRef.current) {
       ctx2DRef.current.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
-    return { displayWidth: window.innerWidth, displayHeight: window.innerHeight };
-  }, []);
+    return { displayWidth, displayHeight };
+  }, [getDisplaySize, getQualityDpr]);
 
   const applyTransform = useCallback(
     (
@@ -127,6 +169,7 @@ export function RenderEngineManager({
         height: displayHeight,
         deltaTime,
         time,
+        audioSnapshot: audioSnapshotRef.current,
         private: privateContextRef.current,
       };
 
@@ -143,19 +186,66 @@ export function RenderEngineManager({
     [actualEngine]
   );
 
-  const createAudioData = useCallback(
-    (): AudioData => ({
+  const createAudioData = useCallback((): AudioData => {
+    const audioState = useAudioStore.getState();
+    const sourceSettings = useAudioSourceStore.getState();
+    const currentBeatMap = sourceSettings.currentBeatMap;
+    const currentTime = audioState.currentTime || 0;
+
+    let isDownbeat = false;
+    let beatImpact = 0;
+    let lowEnergy = 0;
+    let snapEnergy = 0;
+    let beatPhase = 0;
+    const bpm = currentBeatMap?.bpm || 120;
+
+    if (currentBeatMap && sourceSettings.enableBeatAnalysis) {
+      const gridStep = currentBeatMap.gridStep || 0.5;
+      beatPhase = (currentTime % gridStep) / gridStep;
+
+      // 强拍检测 (±0.06s 窗口)
+      if (currentBeatMap.downbeats) {
+        for (let i = 0; i < currentBeatMap.downbeats.length; i++) {
+          const dbTime = currentBeatMap.downbeats[i];
+          if (Math.abs(currentTime - dbTime) <= 0.06) {
+            isDownbeat = true;
+            break;
+          }
+          if (dbTime > currentTime + 0.1) break;
+        }
+      }
+
+      // 瞬态打击能量匹配
+      if (currentBeatMap.beats && currentBeatMap.beats.length > 0) {
+        for (let i = 0; i < currentBeatMap.beats.length; i++) {
+          const b = currentBeatMap.beats[i];
+          if (Math.abs(currentTime - b.time) <= 0.08) {
+            beatImpact = b.impact * (sourceSettings.beatSensitivity || 1.0);
+            lowEnergy = b.low;
+            snapEnergy = b.snap;
+            break;
+          }
+          if (b.time > currentTime + 0.1) break;
+        }
+      }
+    }
+
+    return {
       frequencyData: frequencyDataRef.current,
       waveformData: waveformDataRef.current,
-      bass: 0,
+      bass: lowEnergy > 0 ? lowEnergy : 0,
       mid: 0,
-      treble: 0,
+      treble: snapEnergy > 0 ? snapEnergy : 0,
       full: 0,
-      isBeat: false,
-      bpm: 120,
-    }),
-    []
-  );
+      isBeat: isDownbeat || beatImpact > 0.5,
+      bpm,
+      isDownbeat,
+      beatImpact,
+      lowEnergy,
+      snapEnergy,
+      beatPhase,
+    };
+  }, []);
 
   const getTransformParams = useCallback(
     (): TransformParams => ({
@@ -184,13 +274,13 @@ export function RenderEngineManager({
       if (!ctx2DRef.current) {
         ctx2DRef.current = canvas.getContext("2d", {
           alpha: true,
+          desynchronized: true,
         });
       }
       setupCanvas();
     }
 
     const handleResize = () => {
-      dprRef.current = window.devicePixelRatio || 1;
       const dimensions = setupCanvas();
 
       if (dimensions && actualEngine === "webgl" && threeSceneRef.current) {
@@ -206,10 +296,11 @@ export function RenderEngineManager({
 
     if (effect && effect !== effectRef.current) {
       if (effectRef.current) {
+        const dimensions = getDisplaySize();
         const cleanupCtx: RenderContext = {
           canvas,
-          width: window.innerWidth,
-          height: window.innerHeight,
+          width: dimensions.displayWidth,
+          height: dimensions.displayHeight,
           deltaTime: 0,
           time: 0,
           ctx: ctx2DRef.current || undefined,
@@ -248,19 +339,36 @@ export function RenderEngineManager({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [actualEngine, isWebGLAvailable, effect, setupCanvas]);
+  }, [actualEngine, isWebGLAvailable, effect, setupCanvas, getDisplaySize]);
 
   useEffect(() => {
     const render = (timestamp: number) => {
-      if (!canvasRef.current || !ctx2DRef.current) return;
+      if (!canvasRef.current) return;
+      startTimeRef.current ??= timestamp;
+      if (lastFPSUpdateRef.current === 0) {
+        lastFPSUpdateRef.current = timestamp;
+      }
 
-      const deltaTime = lastTimeRef.current ? (timestamp - lastTimeRef.current) / 1000 : 0;
+      if (actualEngine !== "webgl" && !ctx2DRef.current) {
+        animationFrameRef.current = requestAnimationFrame(render);
+        return;
+      }
+
+      const elapsed = lastTimeRef.current ? timestamp - lastTimeRef.current : Infinity;
+      const frameInterval = 1000 / Math.max(1, config.targetFPS);
+
+      if (elapsed < frameInterval) {
+        animationFrameRef.current = requestAnimationFrame(render);
+        return;
+      }
+
+      const deltaTime = Number.isFinite(elapsed) ? elapsed / 1000 : 0;
       lastTimeRef.current = timestamp;
 
-      const time = (Date.now() - startTimeRef.current) / 1000;
+      const time = (timestamp - startTimeRef.current) / 1000;
 
       frameCountRef.current++;
-      const now = Date.now();
+      const now = timestamp;
       if (now - lastFPSUpdateRef.current >= 1000) {
         const fps = Math.round((frameCountRef.current * 1000) / (now - lastFPSUpdateRef.current));
 
@@ -270,15 +378,15 @@ export function RenderEngineManager({
         if (actualEngine === "webgl" && threeSceneRef.current) {
           const info = threeSceneRef.current.renderer.info;
           drawCalls = info.render.calls;
-          // 估算 GPU 内存占用 (geometries + textures)
-          // 注意：这只是一个近似值，Three.js 的 info.memory 提供的是计数，不是字节数
-          // 但我们可以通过这个计数反映资源占用压力
+          // 浼扮畻 GPU 鍐呭瓨鍗犵敤 (geometries + textures)
+          // 娉ㄦ剰锛氳繖鍙槸涓€涓繎浼煎€硷紝Three.js 鐨?info.memory 鎻愪緵鐨勬槸璁℃暟锛屼笉鏄瓧鑺傛暟
+          // 浣嗘垜浠彲浠ラ€氳繃杩欎釜璁℃暟鍙嶆槧璧勬簮鍗犵敤鍘嬪姏
           gpuMemory = info.memory.geometries + info.memory.textures;
         }
 
-        // 获取 JS 内存占用（如果浏览器支持）
-        const memoryUsage = (performance as any).memory
-          ? (performance as any).memory.usedJSHeapSize / (1024 * 1024)
+        const browserPerformance = performance as PerformanceWithMemory;
+        const memoryUsage = browserPerformance.memory
+          ? browserPerformance.memory.usedJSHeapSize / (1024 * 1024)
           : 0;
 
         updateStats({
@@ -292,8 +400,7 @@ export function RenderEngineManager({
         lastFPSUpdateRef.current = now;
       }
 
-      const displayWidth = window.innerWidth;
-      const displayHeight = window.innerHeight;
+      const { displayWidth, displayHeight } = getDisplaySize();
       const dpr = dprRef.current;
 
       const ctx = createRenderContext(displayWidth, displayHeight, deltaTime, time);
@@ -335,15 +442,19 @@ export function RenderEngineManager({
     getTransformParams,
     applyTransform,
     restoreTransform,
+    getDisplaySize,
   ]);
 
   useEffect(() => {
+    const canvas = canvasRef.current;
+
     return () => {
-      if (effectRef.current) {
+      if (effectRef.current && canvas) {
+        const dimensions = getDisplaySize();
         const cleanupCtx: RenderContext = {
-          canvas: canvasRef.current!,
-          width: window.innerWidth,
-          height: window.innerHeight,
+          canvas,
+          width: dimensions.displayWidth,
+          height: dimensions.displayHeight,
           deltaTime: 0,
           time: 0,
           ctx: ctx2DRef.current || undefined,
@@ -359,7 +470,13 @@ export function RenderEngineManager({
         threeSceneRef.current = null;
       }
     };
-  }, []);
+  }, [getDisplaySize]);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 w-full h-full"
+      style={{ transform: "translateZ(0)" }}
+    />
+  );
 }

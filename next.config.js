@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  output: process.env.STATIC_EXPORT ? "export" : undefined,
   reactStrictMode: true,
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   typescript: {
     ignoreBuildErrors: false,
   },
@@ -9,29 +10,29 @@ const nextConfig = {
     // ... webpack config (preserving existing)
     if (isServer) {
       config.externals = config.externals || [];
-      config.externals.push('@xenova/transformers');
-      config.externals.push('onnxruntime-node');
-      config.externals.push('sharp');
+      config.externals.push("@xenova/transformers");
+      config.externals.push("onnxruntime-node");
+      config.externals.push("sharp");
     }
-    
+
     config.resolve = config.resolve || {};
     config.resolve.fallback = config.resolve.fallback || {};
     config.resolve.fallback.fs = false;
-    config.resolve.fallback['react-native-fs'] = false;
+    config.resolve.fallback["react-native-fs"] = false;
     config.resolve.fallback.sharp = false;
-    config.resolve.fallback['onnxruntime-node'] = false;
-    
+    config.resolve.fallback["onnxruntime-node"] = false;
+
     // Performance optimization: minimize the number of chunks
     if (!isServer) {
       config.optimization.splitChunks = {
-        chunks: 'all',
+        chunks: "all",
         minSize: 20000,
         maxSize: 244000,
         cacheGroups: {
           vendor: {
             test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
+            name: "vendors",
+            chunks: "all",
           },
         },
       };
@@ -56,28 +57,28 @@ const nextConfig = {
     unoptimized: true,
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'i.scdn.co',
+        protocol: "https",
+        hostname: "i.scdn.co",
       },
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
+        protocol: "https",
+        hostname: "images.unsplash.com",
       },
       {
-        protocol: 'https',
-        hostname: 'p1.music.126.net',
+        protocol: "https",
+        hostname: "p1.music.126.net",
       },
       {
-        protocol: 'https',
-        hostname: 'p2.music.126.net',
+        protocol: "https",
+        hostname: "p2.music.126.net",
       },
       {
-        protocol: 'https',
-        hostname: 'p3.music.126.net',
+        protocol: "https",
+        hostname: "p3.music.126.net",
       },
       {
-        protocol: 'https',
-        hostname: 'p4.music.126.net',
+        protocol: "https",
+        hostname: "p4.music.126.net",
       },
     ],
   },

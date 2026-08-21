@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { EffectPlugin, RenderContext, AudioData } from "@/lib/visualization/types";
 
 export const KaleidoscopeV8: EffectPlugin = {
@@ -73,7 +74,7 @@ export const KaleidoscopeV8: EffectPlugin = {
     },
   ],
 
-  init(ctx: RenderContext) {
+  init(_ctx: RenderContext) {
     (this as any).time = 0;
   },
 
@@ -158,7 +159,7 @@ export const KaleidoscopeV8: EffectPlugin = {
           context.beginPath();
 
           switch (shapeType) {
-            case 0:
+            case 0: {
               const points = 6 + depth;
               for (let p = 0; p <= points; p++) {
                 const angle = (p / points) * Math.PI * 2 + t * 0.5;
@@ -172,17 +173,19 @@ export const KaleidoscopeV8: EffectPlugin = {
                 }
               }
               break;
+            }
 
             case 1:
               context.arc(0, 0, size, 0, Math.PI * 2);
               break;
 
-            case 2:
+            case 2: {
               const sqSize = size * 0.8;
               context.rect(-sqSize, -sqSize, sqSize * 2, sqSize * 2);
               break;
+            }
 
-            case 3:
+            case 3: {
               const spiralTurns = 2 + depth;
               for (let s = 0; s <= spiralTurns * 20; s++) {
                 const angle = (s / 20) * Math.PI * 2 + t;
@@ -196,6 +199,7 @@ export const KaleidoscopeV8: EffectPlugin = {
                 }
               }
               break;
+            }
           }
 
           context.closePath();
@@ -221,7 +225,7 @@ export const KaleidoscopeV8: EffectPlugin = {
     context.restore();
   },
 
-  resize(width: number, height: number) {},
+  resize(_width: number, _height: number) {},
 
   destroy() {
     (this as any).time = 0;

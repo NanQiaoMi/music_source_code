@@ -1,20 +1,20 @@
 "use client";
 
-import React, { useRef, useEffect, useState, useCallback, memo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
+import { usePerformanceV8Store } from "@/store/performanceV8Store";
+import { useVisualizationV8Store } from "@/store/visualizationV8Store";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
-import { Settings, X } from "lucide-react";
+import { Gauge, Settings, X } from "lucide-react";
 import { RenderEngineManager } from "./engines/RenderEngineManager";
-import { ResonanceTotemLayer } from "./ResonanceTotemLayer";
 import { VisualControlDrawer } from "./shared/VisualControlDrawer";
 
 import { useVisualizationV8 } from "@/hooks/useVisualizationV8";
 import { RenderContext, AudioData } from "@/lib/visualization/types";
-import { useTotemStore } from "@/store/totemStore";
-import { useLyricsSearchStore } from "@/store/lyricsSearchStore";
+import { createAudioSnapshot } from "@/lib/visualization/audioSnapshot";
 
 const APPLE_SPRING_CONFIG = {
   type: "spring" as const,
@@ -26,15 +26,25 @@ const APPLE_SPRING_CONFIG = {
 export function VisualizationViewV8() {
   const { currentView, setCurrentView, isTransitioning, setIsTransitioning } = useUIStore();
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const _currentSong = useAudioStore((state) => state.currentSong);
   const currentTime = useAudioStore((state) => state.currentTime);
   const duration = useAudioStore((state) => state.duration);
-  const bufferedRanges = useAudioStore((state) => state.bufferedRanges);
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
-  const prevSong = useAudioStore((state) => state.prevSong);
-  const nextSong = useAudioStore((state) => state.nextSong);
-  const { currentTheme, blurIntensity, animationSpeed } = useVisualSettingsStore();
-  const { seek } = useAudioPlayer();
+  const _bufferedRanges = useAudioStore((state) => state.bufferedRanges);
+  const _setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const _prevSong = useAudioStore((state) => state.prevSong);
+  const _nextSong = useAudioStore((state) => state.nextSong);
+  const { currentTheme: _currentTheme, blurIntensity, animationSpeed } = useVisualSettingsStore();
+  const {
+    fps,
+    cpuUsage,
+    memoryUsage,
+    isWebGLAvailable,
+    needsRecovery,
+    setPerformanceLevel,
+    setWebGLAvailable,
+    resetRecoveryState,
+  } = usePerformanceV8Store();
+  const { seek: _seek } = useAudioPlayer();
   const {
     effects,
     currentEffectId,
@@ -47,18 +57,21 @@ export function VisualizationViewV8() {
     isInitialized,
   } = useVisualizationV8();
 
-  const totemStore = useTotemStore();
-  const parsedLyrics = useLyricsSearchStore((state) => state.parsedLyrics);
-  const workerRef = useRef<Worker | null>(null);
-
   const [showControlDrawer, setShowControlDrawer] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [parameterMode, setParameterMode] = useState<"basic" | "professional" | "expert">("basic");
-  const [performanceStats, setPerformanceStats] = useState<{
-    fps: number;
-    cpu: number;
-    memory: number;
-  } | null>(null);
+  const parameterMode = useVisualizationV8Store((state) => state.parameterMode);
+  const setParameterMode = useVisualizationV8Store((state) => state.setParameterMode);
+
+  const firstCanvasEffectId = effects.find((effect) => effect.preferredEngine !== "webgl")?.id;
+  const performanceStats = {
+    fps,
+    cpu: cpuUsage,
+    memory: memoryUsage,
+  };
+  const shouldShowRecovery =
+    !currentEffect ||
+    (currentEffect.preferredEngine === "webgl" && !isWebGLAvailable) ||
+    needsRecovery;
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -76,97 +89,16 @@ export function VisualizationViewV8() {
     };
   }, []);
 
-  // Sync music time for shaders
   useEffect(() => {
-    (window as any)._currentMusicTime = currentTime;
-  }, [currentTime]);
+    if (typeof document === "undefined") return;
 
-  // Initialize totems for current song
-  useEffect(() => {
-    if (parsedLyrics.length > 0) {
-      totemStore.initializeForSong(parsedLyrics);
-    } else {
-      totemStore.clear();
+    try {
+      const canvas = document.createElement("canvas");
+      setWebGLAvailable(!!(canvas.getContext("webgl") || canvas.getContext("experimental-webgl")));
+    } catch {
+      setWebGLAvailable(false);
     }
-  }, [parsedLyrics]);
-
-  // Update active totems
-  useEffect(() => {
-    totemStore.updateActiveKeywords(currentTime);
-  }, [currentTime]);
-
-  // Manage Texture Worker
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const worker = new Worker(new URL("../../workers/totemTexture.worker.ts", import.meta.url), {
-      type: "module",
-    });
-
-    worker.onmessage = (e) => {
-      if (e.data.type === "texture-generated") {
-        totemStore.addPreloadedTexture(e.data.id, e.data.bitmap);
-      }
-    };
-
-    workerRef.current = worker;
-
-    return () => {
-      worker.terminate();
-    };
-  }, []);
-
-  // Preload textures when keywords change
-  useEffect(() => {
-    if (!workerRef.current || totemStore.allKeywords.length === 0) return;
-
-    totemStore.allKeywords.forEach((kw) => {
-      if (!totemStore.preloadedTextures[kw.id]) {
-        workerRef.current?.postMessage({
-          type: "generate",
-          id: kw.id,
-          text: kw.text,
-          style: "serif",
-        });
-      }
-    });
-  }, [totemStore.allKeywords]);
-
-  useEffect(() => {
-    let animationFrame: number;
-    let lastTime = performance.now();
-    let frameCount = 0;
-    let fps = 0;
-
-    const updatePerformance = () => {
-      frameCount++;
-      const currentTime = performance.now();
-      if (currentTime - lastTime >= 1000) {
-        fps = frameCount;
-        frameCount = 0;
-        lastTime = currentTime;
-
-        if (currentView === "visualization") {
-          setPerformanceStats({
-            fps,
-            cpu: Math.random() * 30 + 10,
-            memory: Math.random() * 100 + 50,
-          });
-        }
-      }
-      animationFrame = requestAnimationFrame(updatePerformance);
-    };
-
-    if (currentView === "visualization") {
-      animationFrame = requestAnimationFrame(updatePerformance);
-    }
-
-    return () => {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-      }
-    };
-  }, [currentView]);
+  }, [setWebGLAvailable]);
 
   useEffect(() => {
     if (currentView !== "visualization") return;
@@ -189,8 +121,13 @@ export function VisualizationViewV8() {
     });
   }, [setCurrentView, setIsTransitioning]);
 
+  const audioSnapshot = createAudioSnapshot({
+    currentTime,
+    duration,
+    isPlaying,
+  });
   const handleRender = useCallback(
-    (ctx: RenderContext, audioData: AudioData, params: Record<string, any>) => {
+    (ctx: RenderContext, audioData: AudioData, params: Record<string, LegacyAny>) => {
       renderEffect(ctx, audioData, params);
     },
     [renderEffect]
@@ -206,7 +143,7 @@ export function VisualizationViewV8() {
           animate={{ opacity: 1 }}
           className="text-white/60 text-lg"
         >
-          初始化中...
+          鍒濆鍖栦腑...
         </motion.div>
       </div>
     );
@@ -276,18 +213,71 @@ export function VisualizationViewV8() {
         }}
       />
 
-      <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-
-      <ResonanceTotemLayer />
+      <div className="absolute inset-0 opacity-[0.03] bg-[url('/noise.svg')]" />
 
       <RenderEngineManager
         engine={currentEffect?.preferredEngine || "canvas"}
         effect={currentEffect || null}
         onRender={handleRender}
         params={getCurrentParams()}
+        audioSnapshot={audioSnapshot}
         width={dimensions.width}
         height={dimensions.height}
       />
+
+      {shouldShowRecovery && (
+        <div className="absolute inset-x-0 top-24 z-40 flex justify-center px-4 pointer-events-none">
+          <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-white/15 bg-black/70 backdrop-blur-2xl p-5 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/15 text-amber-200">
+                <Gauge className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-semibold text-white">Visualization needs recovery</h3>
+                <p className="mt-1 text-sm text-white/60">
+                  {!currentEffect
+                    ? "Current effect is not initialized."
+                    : currentEffect.preferredEngine === "webgl" && !isWebGLAvailable
+                      ? "WebGL is unavailable on this device. Try a Canvas effect."
+                      : `Frame rate is below 20 FPS, currently about ${fps.toFixed(0)} FPS.`}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={!firstCanvasEffectId}
+                    onClick={() => {
+                      if (firstCanvasEffectId) {
+                        setCurrentEffectId(firstCanvasEffectId);
+                      }
+                      resetRecoveryState();
+                    }}
+                    className="rounded-xl bg-white px-3 py-2 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-50"
+                  >
+                    鍒囨崲 Canvas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPerformanceLevel("low")}
+                    className="rounded-xl bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+                  >
+                    闄嶄綆璐ㄩ噺
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowControlDrawer(true)}
+                    className="rounded-xl bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+                  >
+                    鎵撳紑鎺у埗
+                  </button>
+                </div>
+                <p className="mt-3 text-xs text-white/35">
+                  CPU {cpuUsage.toFixed(0)}% 路 Memory {memoryUsage.toFixed(0)} MB
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <motion.button
         onClick={handleBack}
@@ -302,7 +292,7 @@ export function VisualizationViewV8() {
       <button
         onClick={() => setShowControlDrawer(true)}
         className="absolute bottom-6 right-6 z-30 w-12 h-12 rounded-2xl bg-[#1c1c1e]/70 backdrop-blur-[48px] backdrop-saturate-[200%] border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] flex items-center justify-center hover:bg-[#1c1c1e]/90 transition-all"
-        title="效果控制 (C)"
+        title="鏁堟灉鎺у埗 (C)"
       >
         <Settings className="w-5 h-5 text-white/80" />
       </button>
@@ -317,7 +307,7 @@ export function VisualizationViewV8() {
         onParamChange={updateParam}
         parameterMode={parameterMode}
         onParameterModeChange={setParameterMode}
-        performanceStats={performanceStats ?? undefined}
+        performanceStats={performanceStats}
       />
 
       {isTransitioning && <div className="absolute inset-0 bg-black/50 z-50 pointer-events-none" />}

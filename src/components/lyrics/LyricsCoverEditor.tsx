@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, Image, Upload, Edit3 } from "lucide-react";
-import { useLyricsCoverStore } from "@/store/lyricsCoverStore";
+import { Edit3, FileText, Image, Upload, X } from "lucide-react";
+import { CoverData, LyricData, useLyricsCoverStore } from "@/store/lyricsCoverStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import type { Song } from "@/types/song";
 
@@ -13,8 +13,8 @@ interface LyricsCoverEditorProps {
 }
 
 const TAB_ITEMS = [
-  { id: "lyrics", name: "歌词编辑器", icon: "📝" },
-  { id: "cover", name: "封面管理", icon: "🖼️" },
+  { id: "lyrics", name: "Lyrics" },
+  { id: "cover", name: "Cover" },
 ] as const;
 
 type TabId = (typeof TAB_ITEMS)[number]["id"];
@@ -52,24 +52,25 @@ export const LyricsCoverEditor: React.FC<LyricsCoverEditorProps> = ({ isOpen, on
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-5xl max-h-[85vh] flex flex-col bg-[#1c1c1e]/90 backdrop-blur-[40px] rounded-[24px] border border-white/10 shadow-2xl overflow-hidden"
+        onClick={(event) => event.stopPropagation()}
+        className="relative flex max-h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-[24px] border border-white/10 bg-[#1c1c1e]/90 shadow-2xl backdrop-blur-[40px]"
       >
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
+        <div className="flex items-center justify-between border-b border-white/10 p-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/30 to-cyan-500/30 flex items-center justify-center">
-              <Edit3 className="w-6 h-6 text-white" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/30 to-cyan-500/30">
+              <Edit3 className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h2 className="text-white text-2xl font-semibold">歌词与封面编辑器</h2>
-              <p className="text-white/60 text-sm">编辑歌词和管理歌曲封面</p>
+              <h2 className="text-2xl font-semibold text-white">Lyrics & Cover Editor</h2>
+              <p className="text-sm text-white/60">Edit LRC lyrics and manage cover images</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            aria-label="Close editor"
           >
-            ✕
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -78,19 +79,18 @@ export const LyricsCoverEditor: React.FC<LyricsCoverEditorProps> = ({ isOpen, on
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-4 px-4 text-sm font-medium transition-all duration-200 ${
+              className={`flex-1 px-4 py-4 text-sm font-medium transition-all duration-200 ${
                 activeTab === tab.id
-                  ? "text-white border-b-2 border-blue-500 bg-white/5"
-                  : "text-white/60 hover:text-white/80 hover:bg-white/5"
+                  ? "border-b-2 border-blue-500 bg-white/5 text-white"
+                  : "text-white/60 hover:bg-white/5 hover:text-white/80"
               }`}
             >
-              <span className="mr-2">{tab.icon}</span>
               {tab.name}
             </button>
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 min-h-0">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6 custom-scrollbar">
           {activeTab === "lyrics" && (
             <LyricsTab
               songs={songs}
@@ -126,27 +126,27 @@ function LyricsTab({
   songs,
   selectedSong,
   onSelectSong,
-  lyrics,
+  lyrics: _lyrics,
   currentLyric,
   onLoadLyric,
-  onSaveLyric,
+  onSaveLyric: _onSaveLyric,
   onImportLRC,
   onExportLRC,
 }: {
   songs: Song[];
   selectedSong: Song | null;
   onSelectSong: (song: Song | null) => void;
-  lyrics: any[];
-  currentLyric: any;
-  onLoadLyric: (songId: string) => any;
-  onSaveLyric: (lyric: any) => void;
-  onImportLRC: (songId: string, lrcText: string) => any;
+  lyrics: LyricData[];
+  currentLyric: LyricData | null;
+  onLoadLyric: (songId: string) => unknown;
+  onSaveLyric: (lyric: LyricData) => void;
+  onImportLRC: (songId: string, lrcText: string) => unknown;
   onExportLRC: (songId: string) => string;
 }) {
   const [lrcText, setLrcText] = useState("");
 
   const handleImport = () => {
-    if (selectedSong && lrcText) {
+    if (selectedSong && lrcText.trim()) {
       onImportLRC(selectedSong.id, lrcText);
       setLrcText("");
     }
@@ -154,55 +154,39 @@ function LyricsTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1">
-          <h3 className="text-white font-semibold mb-4">选择歌曲</h3>
-          <div className="space-y-2 max-h-80 overflow-y-auto min-h-0">
-            {songs.map((song) => (
-              <button
-                key={song.id}
-                onClick={() => {
-                  onSelectSong(song);
-                  onLoadLyric(song.id);
-                }}
-                className={`w-full p-3 rounded-xl text-left transition-all duration-200 ${
-                  selectedSong?.id === song.id
-                    ? "bg-blue-500/20 border border-blue-500/30"
-                    : "bg-white/5 border border-white/10 hover:bg-white/10"
-                }`}
-              >
-                <div className="text-white text-sm font-medium truncate">{song.title}</div>
-                <div className="text-white/60 text-xs truncate">{song.artist}</div>
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <SongPicker
+          songs={songs}
+          selectedSong={selectedSong}
+          onSelectSong={onSelectSong}
+          onLoad={onLoadLyric}
+        />
 
         <div className="md:col-span-2">
-          <h3 className="text-white font-semibold mb-4">
-            {selectedSong ? `编辑: ${selectedSong.title}` : "请选择歌曲"}
+          <h3 className="mb-4 font-semibold text-white">
+            {selectedSong ? `Editing: ${selectedSong.title}` : "Select a song"}
           </h3>
 
           {selectedSong && (
             <div className="space-y-4">
               <div>
-                <label className="text-white/80 text-sm mb-2 block">LRC歌词文本</label>
+                <label className="mb-2 block text-sm text-white/80">LRC text</label>
                 <textarea
                   value={lrcText}
-                  onChange={(e) => setLrcText(e.target.value)}
-                  placeholder="粘贴LRC格式歌词..."
-                  className="w-full h-40 p-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
+                  onChange={(event) => setLrcText(event.target.value)}
+                  placeholder="Paste LRC lyrics here..."
+                  className="h-40 w-full rounded-xl border border-white/10 bg-white/5 p-4 text-white placeholder-white/40 focus:border-blue-500 focus:outline-none"
                 />
               </div>
 
               <div className="flex gap-3">
                 <button
                   onClick={handleImport}
-                  disabled={!lrcText}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  disabled={!lrcText.trim()}
+                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 px-4 py-2 font-medium text-white transition-all duration-200 hover:from-blue-600 hover:to-cyan-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <FileText className="w-4 h-4" />
-                  导入LRC
+                  <FileText className="h-4 w-4" />
+                  Import LRC
                 </button>
 
                 {currentLyric && (
@@ -211,15 +195,16 @@ function LyricsTab({
                       const lrc = onExportLRC(selectedSong.id);
                       const blob = new Blob([lrc], { type: "text/plain" });
                       const url = URL.createObjectURL(blob);
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = `${selectedSong.title}.lrc`;
-                      a.click();
+                      const anchor = document.createElement("a");
+                      anchor.href = url;
+                      anchor.download = `${selectedSong.title}.lrc`;
+                      anchor.click();
+                      URL.revokeObjectURL(url);
                     }}
-                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-all duration-200 flex items-center gap-2"
+                    className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-white/20"
                   >
-                    <FileText className="w-4 h-4" />
-                    导出LRC
+                    <FileText className="h-4 w-4" />
+                    Export LRC
                   </button>
                 )}
               </div>
@@ -235,25 +220,25 @@ function CoverTab({
   songs,
   selectedSong,
   onSelectSong,
-  covers,
+  covers: _covers,
   onLoadCover,
-  onSaveCover,
+  onSaveCover: _onSaveCover,
   onImportCover,
 }: {
   songs: Song[];
   selectedSong: Song | null;
   onSelectSong: (song: Song | null) => void;
-  covers: any[];
-  onLoadCover: (songId: string) => any;
-  onSaveCover: (cover: any) => void;
-  onImportCover: (songId: string, imageData: string, format: string) => any;
+  covers: CoverData[];
+  onLoadCover: (songId: string) => CoverData | null;
+  onSaveCover: (cover: CoverData) => void;
+  onImportCover: (songId: string, imageData: string, format: string) => unknown;
 }) {
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (selectedSong && e.target.files?.[0]) {
-      const file = e.target.files[0];
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (selectedSong && event.target.files?.[0]) {
+      const file = event.target.files[0];
       const reader = new FileReader();
-      reader.onload = (event) => {
-        const imageData = event.target?.result as string;
+      reader.onload = (readerEvent) => {
+        const imageData = readerEvent.target?.result as string;
         const format = file.type.includes("png") ? "png" : "jpg";
         onImportCover(selectedSong.id, imageData, format);
       };
@@ -263,55 +248,39 @@ function CoverTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1">
-          <h3 className="text-white font-semibold mb-4">选择歌曲</h3>
-          <div className="space-y-2 max-h-80 overflow-y-auto min-h-0">
-            {songs.map((song) => (
-              <button
-                key={song.id}
-                onClick={() => {
-                  onSelectSong(song);
-                  onLoadCover(song.id);
-                }}
-                className={`w-full p-3 rounded-xl text-left transition-all duration-200 ${
-                  selectedSong?.id === song.id
-                    ? "bg-blue-500/20 border border-blue-500/30"
-                    : "bg-white/5 border border-white/10 hover:bg-white/10"
-                }`}
-              >
-                <div className="text-white text-sm font-medium truncate">{song.title}</div>
-                <div className="text-white/60 text-xs truncate">{song.artist}</div>
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <SongPicker
+          songs={songs}
+          selectedSong={selectedSong}
+          onSelectSong={onSelectSong}
+          onLoad={onLoadCover}
+        />
 
         <div className="md:col-span-2">
-          <h3 className="text-white font-semibold mb-4">
-            {selectedSong ? `封面: ${selectedSong.title}` : "请选择歌曲"}
+          <h3 className="mb-4 font-semibold text-white">
+            {selectedSong ? `Cover: ${selectedSong.title}` : "Select a song"}
           </h3>
 
           {selectedSong && (
             <div className="space-y-4">
               <div className="flex items-center justify-center">
-                <div className="w-48 h-48 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
-                  {selectedSong?.cover ? (
+                <div className="flex h-48 w-48 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                  {selectedSong.cover ? (
                     <img
                       src={selectedSong.cover}
                       alt={selectedSong.title}
-                      className="w-full h-full object-cover"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
-                    <Image className="w-16 h-16 text-white/40" />
+                    <Image className="h-16 w-16 text-white/40" />
                   )}
                 </div>
               </div>
 
               <div className="text-center">
-                <label className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 cursor-pointer inline-flex items-center gap-2">
-                  <Upload className="w-4 h-4" />
-                  上传封面
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-3 font-medium text-white transition-all duration-200 hover:from-blue-600 hover:to-cyan-600">
+                  <Upload className="h-4 w-4" />
+                  Upload cover
                   <input
                     type="file"
                     accept="image/*"
@@ -323,6 +292,43 @@ function CoverTab({
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SongPicker({
+  songs,
+  selectedSong,
+  onSelectSong,
+  onLoad,
+}: {
+  songs: Song[];
+  selectedSong: Song | null;
+  onSelectSong: (song: Song | null) => void;
+  onLoad: (songId: string) => unknown;
+}) {
+  return (
+    <div className="md:col-span-1">
+      <h3 className="mb-4 font-semibold text-white">Select song</h3>
+      <div className="max-h-80 min-h-0 space-y-2 overflow-y-auto">
+        {songs.map((song) => (
+          <button
+            key={song.id}
+            onClick={() => {
+              onSelectSong(song);
+              onLoad(song.id);
+            }}
+            className={`w-full rounded-xl p-3 text-left transition-all duration-200 ${
+              selectedSong?.id === song.id
+                ? "border border-blue-500/30 bg-blue-500/20"
+                : "border border-white/10 bg-white/5 hover:bg-white/10"
+            }`}
+          >
+            <div className="truncate text-sm font-medium text-white">{song.title}</div>
+            <div className="truncate text-xs text-white/60">{song.artist}</div>
+          </button>
+        ))}
       </div>
     </div>
   );

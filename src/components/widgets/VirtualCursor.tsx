@@ -1,36 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useGestureStore } from "@/store/gestureStore";
 
 export const VirtualCursor: React.FC = () => {
-  const { cursorPosition, isHandDetected, isPinching } = useGestureStore();
-  const [mousePosition, setMousePosition] = useState({ x: 0.5, y: 0.5 });
-  const [useMouse, setUseMouse] = useState(true);
+  const isHandDetected = useGestureStore((state) => state.isHandDetected);
+  const cursorPosition = useGestureStore((state) => state.cursorPosition);
+  const isPinching = useGestureStore((state) => state.isPinching);
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({
-        x: e.clientX / window.innerWidth,
-        y: e.clientY / window.innerHeight,
-      });
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
-
-  useEffect(() => {
-    setUseMouse(!isHandDetected);
-  }, [isHandDetected]);
-
-  const position = useMouse ? mousePosition : cursorPosition;
+  // 当未使用手势控制时，完全不挂载 DOM 与事件监听，零开销
+  if (!isHandDetected) return null;
 
   // Clamp position to prevent overflow
   const clampedPosition = {
-    x: Math.max(0.01, Math.min(0.99, position.x)),
-    y: Math.max(0.01, Math.min(0.99, position.y)),
+    x: Math.max(0.01, Math.min(0.99, cursorPosition.x)),
+    y: Math.max(0.01, Math.min(0.99, cursorPosition.y)),
   };
-
-  if (useMouse) return null; // Don't show virtual cursor when using mouse
 
   return (
     <div
@@ -39,7 +22,6 @@ export const VirtualCursor: React.FC = () => {
         left: `${clampedPosition.x * 100}%`,
         top: `${clampedPosition.y * 100}%`,
         transform: "translate(-50%, -50%)",
-        willChange: "left, top",
       }}
     >
       <div

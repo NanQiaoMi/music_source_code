@@ -1,36 +1,48 @@
-"use client";
+﻿"use client";
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
-import { useDSDProcessingStore, DSDTask, formatDSDRate } from "@/store/dsdProcessingStore";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import {
+  useDSDProcessingStore,
+  DSDRate,
+  DSDTask,
+  formatDSDRate,
+  getDSDRateFromFormat,
+} from "@/store/dsdProcessingStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
+import { resolveDSDSourceBlob } from "@/lib/audio/dsdSource";
+import type { Song } from "@/types/song";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Cpu,
-  Settings,
-  Trash2,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Download,
-  FileAudio,
-  Zap,
-} from "lucide-react";
+import { Cpu, Trash2, CheckCircle, XCircle, Loader2, Download, FileAudio, Zap } from "lucide-react";
 
 interface DSDConverterProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+type DSDSongOption = Pick<Song, "id" | "title" | "artist" | "audioUrl"> & {
+  format: string;
+  sourceRate: DSDRate;
+};
+
+type DSDWorkerPayload = {
+  type?: "progress" | "complete" | "error";
+  data?: {
+    progress?: number;
+    outputBlob?: Blob;
+    error?: string;
+  };
+};
+
 const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
   const { songs } = usePlaylistStore();
   const {
-    isEnabled,
+    isEnabled: _isEnabled,
     settings,
     tasks,
     totalProcessed,
     totalFailed,
-    setEnabled,
+    setEnabled: _setEnabled,
     setSettings,
     addTask,
     updateTaskProgress,
@@ -44,42 +56,50 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
 
   const [selectedSongs, setSelectedSongs] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"select" | "queue" | "settings">("select");
-  const [worker, setWorker] = useState<Worker | null>(null);
-  const [dsdSongs, setDsdSongs] = useState<
-    Array<{ id: string; title: string; artist: string; format: string }>
-  >([]);
+  const workerRef = useRef<Worker | null>(null);
   const processingRef = useRef<Map<string, boolean>>(new Map());
 
-  useEffect(() => {
-    const dsdWorker = new Worker(new URL("../../workers/dsd.worker.ts", import.meta.url));
-    setWorker(dsdWorker);
+  const dsdSongs = useMemo<DSDSongOption[]>(() => {
+    return songs.flatMap((song) => {
+      const format = song.format || "";
+      const lowerFormat = format.toLowerCase();
+      const detectedRate = getDSDRateFromFormat(format);
+      const isDSD =
+        detectedRate ||
+        lowerFormat.includes("dsd") ||
+        lowerFormat.includes("dsf") ||
+        lowerFormat.includes("dff");
 
-    dsdWorker.onmessage = (event) => {
-      const { type, data } = event.data;
-      if (type === "progress") {
-      } else if (type === "complete") {
-      } else if (type === "error") {
+      if (!isDSD) {
+        return [];
       }
-    };
 
-    const detectedDsdSongs = songs
-      .filter((song) => {
-        const format = (song as { format?: string }).format?.toLowerCase() || "";
-        return format.includes("dsd") || format.includes("dsf") || format.includes("dff");
-      })
-      .map((song) => ({
-        id: song.id,
-        title: song.title,
-        artist: song.artist,
-        format: (song as { format?: string }).format || "DSD",
-      }));
+      return [
+        {
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          audioUrl: song.audioUrl,
+          format: format || "DSD",
+          sourceRate: detectedRate || "dsd64",
+        },
+      ];
+    });
+  }, [songs]);
 
-    setDsdSongs(detectedDsdSongs);
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const activeProcessing = processingRef.current;
 
     return () => {
-      dsdWorker.terminate();
+      workerRef.current?.terminate();
+      workerRef.current = null;
+      activeProcessing.clear();
     };
-  }, [songs]);
+  }, [isOpen]);
 
   const toggleSongSelection = useCallback((songId: string) => {
     setSelectedSongs((prev) => {
@@ -106,7 +126,7 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
     if (songsToAdd.length === 0) return;
 
     songsToAdd.forEach((song) => {
-      addTask(song.id, song.title, "dsd64");
+      addTask(song.id, song.title, song.sourceRate);
     });
 
     clearSelection();
@@ -114,53 +134,90 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
   }, [dsdSongs, selectedSongs, addTask, clearSelection]);
 
   const startConversion = useCallback(async () => {
-    if (!worker) return;
+    if (!isOpen) return;
 
     const pendingTasks = tasks.filter((t) => t.status === "pending");
     if (pendingTasks.length === 0) return;
 
+    let activeWorker = workerRef.current;
+    if (!activeWorker) {
+      activeWorker = new Worker(new URL("../../workers/dsd.worker.ts", import.meta.url));
+      workerRef.current = activeWorker;
+    }
+
     for (const task of pendingTasks) {
       if (processingRef.current.get(task.id)) continue;
-      processingRef.current.set(task.id, true);
 
+      const sourceSong = dsdSongs.find((song) => song.id === task.songId);
+      if (!sourceSong) {
+        updateTaskStatus(
+          task.id,
+          "error",
+          undefined,
+          `DSD source song missing for ${task.songTitle}`
+        );
+        incrementFailed();
+        continue;
+      }
+
+      processingRef.current.set(task.id, true);
       try {
         updateTaskStatus(task.id, "converting");
+        const { blob } = await resolveDSDSourceBlob(sourceSong);
 
-        const blob = new Blob([new ArrayBuffer(1024)], { type: "audio/dsd" });
-
-        worker.postMessage({
-          type: "convertDSD",
-          data: {
-            fileBlob: blob,
-            sourceRate: task.sourceRate,
-            targetSampleRate: settings.targetSampleRate,
-            outputMode: settings.outputMode,
-            dsdQuality: settings.dsdQuality,
-            filterType: settings.filterType,
-            dithering: settings.dithering,
-          },
-        });
-
-        const workerHandler = (event: MessageEvent) => {
-          const { type, data } = event.data;
-
-          if (type === "progress") {
-            updateTaskProgress(task.id, data.progress);
-          } else if (type === "complete") {
-            updateTaskStatus(task.id, "completed", data.outputBlob);
-            incrementProcessed();
-            reportUsage("dsd_conv");
+        await new Promise<void>((resolve, reject) => {
+          const cleanup = () => {
             processingRef.current.delete(task.id);
-            worker.removeEventListener("message", workerHandler);
-          } else if (type === "error") {
-            updateTaskStatus(task.id, "error", undefined, data.error);
+            activeWorker.removeEventListener("message", workerHandler);
+          };
+
+          const workerHandler = (event: MessageEvent<DSDWorkerPayload>) => {
+            const { type, data = {} } = event.data || {};
+
+            if (type === "progress") {
+              updateTaskProgress(task.id, data.progress ?? 0);
+              return;
+            }
+
+            cleanup();
+
+            if (type === "complete" && data.outputBlob) {
+              updateTaskStatus(task.id, "completed", data.outputBlob);
+              incrementProcessed();
+              reportUsage("dsd_conv");
+              resolve();
+              return;
+            }
+
+            const message =
+              type === "complete"
+                ? "DSD worker completed without output"
+                : data.error || "DSD conversion failed";
+            updateTaskStatus(task.id, "error", undefined, message);
             incrementFailed();
-            processingRef.current.delete(task.id);
-            worker.removeEventListener("message", workerHandler);
-          }
-        };
+            resolve();
+          };
 
-        worker.addEventListener("message", workerHandler);
+          activeWorker.addEventListener("message", workerHandler);
+
+          try {
+            activeWorker.postMessage({
+              type: "convertDSD",
+              data: {
+                fileBlob: blob,
+                sourceRate: task.sourceRate,
+                targetSampleRate: settings.targetSampleRate,
+                outputMode: settings.outputMode,
+                dsdQuality: settings.dsdQuality,
+                filterType: settings.filterType,
+                dithering: settings.dithering,
+              },
+            });
+          } catch (error) {
+            cleanup();
+            reject(error);
+          }
+        });
       } catch (error) {
         updateTaskStatus(
           task.id,
@@ -173,13 +230,15 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
       }
     }
   }, [
-    worker,
+    isOpen,
     tasks,
+    dsdSongs,
     settings,
     updateTaskProgress,
     updateTaskStatus,
     incrementProcessed,
     incrementFailed,
+    reportUsage,
   ]);
 
   const downloadFile = useCallback((task: DSDTask) => {

@@ -1,0 +1,319 @@
+"use client";
+
+import React, { useState } from "react";
+import Image from "next/image";
+import { motion, type Variants } from "framer-motion";
+import { useAudioStore } from "@/store/audioStore";
+import { useUIStore } from "@/store/uiStore";
+import { useFloatingDebugStore } from "@/store/floatingDebugStore";
+import { useBilingualLyricParser } from "@/hooks/useBilingualLyricParser";
+import { FloatingControls, HeartFavoriteButton } from "./FloatingControls";
+import { FloatingProgressScrubber } from "./FloatingProgressScrubber";
+import { FloatingWaveformGlow } from "./FloatingWaveformGlow";
+import { FloatingSpectrumGlow } from "./FloatingSpectrumGlow";
+import { LiquidGlassFilter } from "./LiquidGlassFilter";
+import type { DragHandlers } from "./useFloatingDragPhysics";
+import { ChevronDown, Maximize2, HardDriveDownload } from "lucide-react";
+import { useNetworkAudioCache } from "@/hooks/useNetworkAudioCache";
+
+const DEFAULT_COVER_SRC = "/default-cover.svg";
+
+export interface FloatingExpandedStateProps {
+  /** Callback fired to collapse back to pill or dock */
+  onCollapse: () => void;
+  /** Optional drag handlers to enable moving the card */
+  dragHandlers?: DragHandlers;
+  /** Custom class name */
+  className?: string;
+}
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.94, y: 12 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      duration: 0.35,
+      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
+      staggerChildren: 0.035,
+      delayChildren: 0.02,
+    },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.94,
+    y: 8,
+    transition: { duration: 0.2 },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.3,
+      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
+    },
+  },
+};
+
+export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
+  onCollapse,
+  dragHandlers,
+  className = "",
+}) => {
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentTime = useAudioStore((state) => state.currentTime);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const { setCurrentView } = useUIStore();
+  const { isCached } = useNetworkAudioCache();
+  const isSongCached = currentSong ? isCached(currentSong.id, currentSong.source) : false;
+
+  const visualizerMode = useFloatingDebugStore((state) => state.visualizerMode);
+  const setVisualizerMode = useFloatingDebugStore((state) => state.setVisualizerMode);
+  const [activeVisTab, setActiveVisTab] = useState<"waveform" | "spectrum">(
+    visualizerMode === "spectrum" ? "spectrum" : "waveform"
+  );
+
+  // Parse lyrics for subtle one-line live preview
+  const { lyrics, getCurrentLyricIndex } = useBilingualLyricParser(
+    currentSong?.lyrics,
+    currentSong?.translationLyrics,
+    currentSong?.transliterationLyrics
+  );
+
+  const lyricList = lyrics.merged;
+  const currentLyricIndex = getCurrentLyricIndex(currentTime);
+  const activeLyric = currentLyricIndex >= 0 ? lyricList[currentLyricIndex] : (lyricList[0] || null);
+
+  const handleExpandFullPlayer = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentView("player");
+  };
+
+  if (!currentSong) return null;
+
+  return (
+    <motion.div
+      layout
+      layoutId="floating-player-shell"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      className={`relative w-[340px] select-none rounded-[36px] mineradio-liquid-glass overflow-visible flex flex-col p-4 gap-3 text-white ${className}`}
+      style={{
+        touchAction: "none",
+        background: "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.25) 100%)",
+        backdropFilter: "blur(48px) saturate(200%)",
+        WebkitBackdropFilter: "blur(48px) saturate(200%)",
+        border: "1px solid rgba(255, 255, 255, 0.28)",
+      }}
+      transition={{
+        layout: { type: "spring", stiffness: 460, damping: 32, mass: 0.8 },
+      }}
+    >
+      {/* 0. Mineradio Flagship SVG Liquid Glass Dispersion Filter */}
+      <LiquidGlassFilter />
+
+      {/* Top Edge Specular Glint Highlight */}
+      <div className="mineradio-glass-specular-glint" />
+      <div className="absolute top-0 left-8 right-8 h-[1px] bg-gradient-to-r from-transparent via-white/70 to-transparent pointer-events-none" />
+
+      {/* Breathing Liquid Flowing Light Emanating from Underneath the Card */}
+      <motion.div
+        className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-[92%] h-28 rounded-full -z-20 pointer-events-none blur-[42px] mix-blend-screen"
+        style={{
+          background:
+            "radial-gradient(ellipse at center, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.14) 45%, transparent 75%)",
+          willChange: "transform, opacity",
+        }}
+        animate={{
+          opacity: isPlaying ? [0.45, 0.92, 0.45] : 0.2,
+          scale: isPlaying ? [0.92, 1.15, 0.92] : 0.95,
+          y: isPlaying ? [0, 8, 0] : 0,
+        }}
+        transition={{
+          repeat: Infinity,
+          duration: 3.4,
+          ease: "easeInOut",
+        }}
+      />
+
+      {/* Bottom Specular Curved Edge Flow Glint */}
+      <motion.div
+        className="absolute bottom-0 left-12 right-12 h-[1px] z-10 bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none"
+        animate={{
+          opacity: isPlaying ? [0.35, 0.85, 0.35] : 0.2,
+        }}
+        transition={{
+          repeat: Infinity,
+          duration: 2.8,
+          ease: "easeInOut",
+        }}
+      />
+
+      {/* 1. Header Drag Handle & Top Bar */}
+      <motion.div
+        variants={itemVariants}
+        className="drag-handle relative w-full flex items-center justify-between pt-0.5 cursor-grab active:cursor-grabbing z-20"
+
+        onMouseDown={dragHandlers?.onMouseDown}
+        onTouchStart={dragHandlers?.onTouchStart}
+      >
+        {/* Left Lossless & Offline Cache Badge */}
+        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.08] border border-white/[0.14] text-[10px] font-medium text-white/80 tracking-tight shadow-xs">
+          <span>{currentSong?.format?.toUpperCase() || "FLAC"}</span>
+          {isSongCached && (
+            <span className="flex items-center gap-1 text-cyan-300 font-semibold pl-1 border-l border-white/10">
+              <HardDriveDownload className="w-2.5 h-2.5 text-cyan-400" />
+              <span>已离线</span>
+            </span>
+          )}
+        </div>
+
+        {/* Center Grab Notch */}
+        <div className="w-9 h-1 rounded-full bg-white/35 hover:bg-white/55 transition-colors" />
+
+        {/* Collapse Action Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCollapse();
+          }}
+          className="control-interactive w-7 h-7 rounded-full bg-white/[0.08] hover:bg-white/[0.18] text-white/70 hover:text-white flex items-center justify-center transition-all focus:outline-none active:scale-90"
+          title="收起为灵动岛"
+        >
+          <ChevronDown className="w-4 h-4" />
+        </button>
+      </motion.div>
+
+      {/* 2. Hero Stage: Apple Squircle Album Artwork */}
+      <motion.div
+        variants={itemVariants}
+        className="relative w-40 h-40 mx-auto rounded-[20px] overflow-hidden bg-neutral-900 shadow-[0_14px_36px_rgba(0,0,0,0.6)] border border-white/15 flex-shrink-0"
+      >
+        <Image
+          src={currentSong.cover || DEFAULT_COVER_SRC}
+          alt={currentSong.title}
+          fill
+          priority
+          sizes="160px"
+          className="object-cover"
+        />
+      </motion.div>
+
+      {/* 3. Metadata & Heart Action */}
+      <motion.div variants={itemVariants} className="flex items-center justify-between gap-2 px-1">
+        <div className="flex-1 min-w-0">
+          <h3
+            className="text-white font-semibold text-[15px] leading-tight truncate tracking-[-0.016em]"
+            title={currentSong.title}
+          >
+            {currentSong.title}
+          </h3>
+          <p className="text-[#86868b] text-[12px] font-normal tracking-[-0.01em] truncate mt-0.5">
+            {(currentSong.artist || "未知歌手").replace(/;/g, ", ")}
+          </p>
+        </div>
+
+        <HeartFavoriteButton size={17} className="control-interactive p-1 flex-shrink-0" />
+      </motion.div>
+
+      {/* 4. Apple Segmented Visualizer Tab & View */}
+      <motion.div variants={itemVariants} className="flex flex-col gap-1.5 px-0.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-white/40 font-medium">音频动态</span>
+          <div className="flex items-center gap-0.5 p-0.5 rounded-full bg-white/[0.06] border border-white/[0.1]">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveVisTab("waveform");
+                setVisualizerMode("waveform");
+              }}
+              className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${
+                activeVisTab === "waveform"
+                  ? "bg-white/20 text-white shadow-xs border border-white/20"
+                  : "text-white/45 hover:text-white"
+              }`}
+            >
+              波形
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveVisTab("spectrum");
+                setVisualizerMode("spectrum");
+              }}
+              className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-all ${
+                activeVisTab === "spectrum"
+                  ? "bg-white/20 text-white shadow-xs border border-white/20"
+                  : "text-white/45 hover:text-white"
+              }`}
+            >
+              频谱
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-1 shadow-inner overflow-hidden">
+          {activeVisTab === "waveform" ? (
+            <FloatingWaveformGlow height={40} interactive={true} />
+          ) : (
+            <FloatingSpectrumGlow height={40} barCount={28} />
+          )}
+        </div>
+      </motion.div>
+
+      {/* 5. Subtle Synced Lyric Preview (Apple Music Subtitle Style) */}
+      {activeLyric && (
+        <motion.div
+          variants={itemVariants}
+          className="px-1 text-center -mt-0.5 cursor-pointer"
+          onClick={handleExpandFullPlayer}
+        >
+          <p className="text-xs text-white/50 italic truncate tracking-tight">
+            {activeLyric.original}
+          </p>
+        </motion.div>
+      )}
+
+      {/* 6. Sleek Apple Progress & Volume Scrubber */}
+      <motion.div variants={itemVariants} className="px-1">
+        <FloatingProgressScrubber showVolume={false} />
+      </motion.div>
+
+      {/* 7. Playback Controls Bar with FloatingControls */}
+      <motion.div
+        variants={itemVariants}
+        className="flex items-center justify-center px-1"
+      >
+        <FloatingControls
+          showShuffleAndLoop={true}
+          showFavorite={false}
+          compact={false}
+        />
+      </motion.div>
+
+      {/* 8. Quick "Expand Full Immersive Player" Frosted Pill */}
+      <motion.button
+        variants={itemVariants}
+        type="button"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={handleExpandFullPlayer}
+        className="control-interactive relative group w-full py-2.5 px-4 rounded-full bg-white/[0.08] hover:bg-white/[0.15] border border-white/[0.12] text-white/90 hover:text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-all shadow-sm"
+      >
+        <Maximize2 className="w-3.5 h-3.5 text-white/70 group-hover:rotate-45 transition-transform" />
+        <span className="tracking-tight">展开沉浸播放器</span>
+      </motion.button>
+    </motion.div>
+  );
+};
+
+
+

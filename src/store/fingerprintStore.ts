@@ -22,27 +22,26 @@ export interface FingerprintState {
   scanProgress: number;
   scannedCount: number;
   totalCount: number;
-
   autoGenerate: boolean;
   matchThreshold: number;
 
   setFingerprint: (songId: string, fingerprint: AudioFingerprint) => void;
   getFingerprint: (songId: string) => AudioFingerprint | undefined;
   hasFingerprint: (songId: string) => boolean;
-
   matchFingerprint: (fingerprint: number[]) => FingerprintMatch[];
-
   setScanning: (scanning: boolean) => void;
   setScanProgress: (progress: number) => void;
   setScannedCount: (count: number) => void;
   setTotalCount: (count: number) => void;
-
   setAutoGenerate: (auto: boolean) => void;
   setMatchThreshold: (threshold: number) => void;
-
   clearFingerprints: () => void;
   removeFingerprint: (songId: string) => void;
 }
+
+type PersistedFingerprintState = Partial<FingerprintState> & {
+  fingerprints?: Record<string, AudioFingerprint>;
+};
 
 export const useFingerprintStore = create<FingerprintState>()(
   persist(
@@ -52,77 +51,42 @@ export const useFingerprintStore = create<FingerprintState>()(
       scanProgress: 0,
       scannedCount: 0,
       totalCount: 0,
-
       autoGenerate: true,
       matchThreshold: 0.85,
 
-      setFingerprint: (songId: string, fingerprint: AudioFingerprint) => {
-        set((state: FingerprintState) => {
-          const newMap = new Map(state.fingerprints);
-          newMap.set(songId, fingerprint);
-          return { fingerprints: newMap };
+      setFingerprint: (songId, fingerprint) => {
+        set((state) => {
+          const fingerprints = new Map(state.fingerprints);
+          fingerprints.set(songId, fingerprint);
+          return { fingerprints };
         });
       },
-
-      getFingerprint: (songId: string) => {
-        return get().fingerprints.get(songId);
-      },
-
-      hasFingerprint: (songId: string) => {
-        return get().fingerprints.has(songId);
-      },
-
-      matchFingerprint: (fingerprint: number[]) => {
-        const state = get();
+      getFingerprint: (songId) => get().fingerprints.get(songId),
+      hasFingerprint: (songId) => get().fingerprints.has(songId),
+      matchFingerprint: (fingerprint) => {
         const matches: FingerprintMatch[] = [];
-
-        state.fingerprints.forEach((fp: AudioFingerprint, songId: string) => {
-          const confidence = calculateFingerprintSimilarity(fingerprint, fp.fingerprint);
-          if (confidence >= state.matchThreshold) {
-            matches.push({
-              songId,
-              confidence,
-              offset: 0,
-            });
+        const { fingerprints, matchThreshold } = get();
+        fingerprints.forEach((stored, songId) => {
+          const confidence = calculateFingerprintSimilarity(fingerprint, stored.fingerprint);
+          if (confidence >= matchThreshold) {
+            matches.push({ songId, confidence, offset: 0 });
           }
         });
-
         return matches.sort((a, b) => b.confidence - a.confidence);
       },
-
-      setScanning: (scanning: boolean) => {
-        set({ isScanning: scanning });
-      },
-
-      setScanProgress: (progress: number) => {
-        set({ scanProgress: Math.min(100, Math.max(0, progress)) });
-      },
-
-      setScannedCount: (count: number) => {
-        set({ scannedCount: count });
-      },
-
-      setTotalCount: (count: number) => {
-        set({ totalCount: count });
-      },
-
-      setAutoGenerate: (auto: boolean) => {
-        set({ autoGenerate: auto });
-      },
-
-      setMatchThreshold: (threshold: number) => {
-        set({ matchThreshold: Math.min(1, Math.max(0, threshold)) });
-      },
-
-      clearFingerprints: () => {
-        set({ fingerprints: new Map() });
-      },
-
-      removeFingerprint: (songId: string) => {
-        set((state: FingerprintState) => {
-          const newMap = new Map(state.fingerprints);
-          newMap.delete(songId);
-          return { fingerprints: newMap };
+      setScanning: (isScanning) => set({ isScanning }),
+      setScanProgress: (progress) => set({ scanProgress: Math.min(100, Math.max(0, progress)) }),
+      setScannedCount: (scannedCount) => set({ scannedCount }),
+      setTotalCount: (totalCount) => set({ totalCount }),
+      setAutoGenerate: (autoGenerate) => set({ autoGenerate }),
+      setMatchThreshold: (threshold) =>
+        set({ matchThreshold: Math.min(1, Math.max(0, threshold)) }),
+      clearFingerprints: () => set({ fingerprints: new Map() }),
+      removeFingerprint: (songId) => {
+        set((state) => {
+          const fingerprints = new Map(state.fingerprints);
+          fingerprints.delete(songId);
+          return { fingerprints };
         });
       },
     }),
@@ -133,25 +97,23 @@ export const useFingerprintStore = create<FingerprintState>()(
         autoGenerate: state.autoGenerate,
         matchThreshold: state.matchThreshold,
       }),
-      merge: (persistedState: any) => ({
-        ...persistedState,
-        fingerprints: new Map(Object.entries(persistedState.fingerprints || {})),
-      }),
+      merge: (persistedState: unknown, currentState) => {
+        const persisted = persistedState as PersistedFingerprintState | undefined;
+        return {
+          ...currentState,
+          ...persisted,
+          fingerprints: new Map(Object.entries(persisted?.fingerprints ?? {})),
+        };
+      },
     }
   )
 );
 
 function calculateFingerprintSimilarity(fp1: number[], fp2: number[]): number {
-  if (fp1.length !== fp2.length) {
-    return 0;
-  }
-
+  if (fp1.length === 0 || fp1.length !== fp2.length) return 0;
   let matches = 0;
   for (let i = 0; i < fp1.length; i++) {
-    if (fp1[i] === fp2[i]) {
-      matches++;
-    }
+    if (fp1[i] === fp2[i]) matches++;
   }
-
   return matches / fp1.length;
 }

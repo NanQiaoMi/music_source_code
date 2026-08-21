@@ -22,7 +22,7 @@ interface HealthCheckPanelProps {
 
 const severityColors: Record<
   HealthIssue["severity"],
-  { bg: string; text: string; border: string; icon: any }
+  { bg: string; text: string; border: string; icon: React.ElementType }
 > = {
   low: { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/30", icon: Eye },
   medium: {

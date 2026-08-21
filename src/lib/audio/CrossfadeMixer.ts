@@ -1,5 +1,4 @@
 import { AudioEngine } from "./AudioEngine";
-import { useAudioStore } from "@/store/audioStore";
 import { useEmotionStore } from "@/store/emotionStore";
 
 /**
@@ -38,7 +37,9 @@ export class CrossfadeMixer {
       if (source) {
         try {
           source.disconnect();
-        } catch (e) {}
+        } catch {
+          /* ignore */
+        }
         source.connect(gainNode);
         const entry = AudioEngine.getInstance().getEQChainEntry();
         if (entry) {
@@ -79,7 +80,7 @@ export class CrossfadeMixer {
 
     const now = this.context.currentTime;
 
-    // Cancel any ongoing ramps on BOTH nodes to prevent overlaps
+    // Cancel LegacyAny ongoing ramps on BOTH nodes to prevent overlaps
     fromGain.gain.cancelScheduledValues(now);
     toGain.gain.cancelScheduledValues(now);
 
@@ -90,7 +91,7 @@ export class CrossfadeMixer {
 
     try {
       await toAudio.play();
-    } catch (e: any) {
+    } catch (e: LegacyAny) {
       const isAbort =
         e.name === "AbortError" || e.code === 20 || e.message?.includes("interrupted");
       if (!isAbort) {
@@ -114,7 +115,9 @@ export class CrossfadeMixer {
             fromAudio.currentTime = 0;
             fromGain.gain.setValueAtTime(1, this.context!.currentTime);
           }
-        } catch (e) {}
+        } catch {
+          /* ignore */
+        }
       },
       duration * 1000 + 100
     );

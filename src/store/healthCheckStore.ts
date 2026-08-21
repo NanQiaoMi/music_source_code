@@ -34,7 +34,7 @@ interface HealthCheckState {
   dismissIssue: (issueId: string) => void;
 }
 
-const issueTypeNames: Record<HealthIssueType, string> = {
+const issueTypeNames: Partial<Record<HealthIssueType, string>> = {
   missing_file: "文件缺失",
   corrupt_file: "文件损坏",
   corrupted_file: "文件损坏",
@@ -80,6 +80,7 @@ export const useHealthCheckStore = create<HealthCheckState>((set, get) => ({
       duplicate: "duplicate",
       "low-quality": "low_quality",
       "unknown-format": "unsupported_format",
+      oversized_cover: "oversized_cover",
     };
 
     const songMap = new Map(songs.map((s) => [s.id, s]));
@@ -88,13 +89,17 @@ export const useHealthCheckStore = create<HealthCheckState>((set, get) => ({
       const song = songMap.get(issue.songId);
       return {
         id: `hc-${issue.id}`,
-        type: typeMap[issue.type] || "missing_metadata",
+        type: typeMap[issue.type] || issue.type,
         songId: issue.songId,
         title: song?.title || "未知歌曲",
         artist: song?.artist || "未知艺术家",
         filePath: issue.songId,
         severity:
-          issue.severity === "high" ? "high" : issue.severity === "medium" ? "medium" : "low",
+          issue.severity === "critical"
+            ? "critical"
+            : issue.severity === "warning"
+              ? "medium"
+              : "low",
         description: issue.description,
         canAutoFix: true,
       };

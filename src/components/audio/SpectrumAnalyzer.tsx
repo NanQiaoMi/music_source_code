@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef, useCallback, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSpectrumStore } from "@/store/spectrumStore";
-import { getAudioAnalyser, getAudioContext } from "@/hooks/useAudioPlayer";
+import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
 
 interface SpectrumAnalyzerProps {
@@ -11,7 +11,7 @@ interface SpectrumAnalyzerProps {
 }
 
 export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
-  audioElement,
+  audioElement: _audioElement,
   className = "",
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,81 +34,82 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
     checkReady();
   }, []);
 
-  const drawSpectrum = useCallback(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    const analyser = getAudioAnalyser();
+  useEffect(() => {
+    if (!isSpectrumEnabled || !isReady) return;
 
-    if (!canvas || !container) return;
+    function drawSpectrum() {
+      const canvas = canvasRef.current;
+      const container = containerRef.current;
+      const analyser = getAudioAnalyser();
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+      if (!canvas || !container) return;
 
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    canvas.width = width * window.devicePixelRatio;
-    canvas.height = height * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      const width = container.clientWidth;
+      const height = container.clientHeight;
 
-    ctx.fillStyle = backgroundColor;
-    ctx.fillRect(0, 0, width, height);
+      canvas.width = width * window.devicePixelRatio;
+      canvas.height = height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
-    if (!analyser) {
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(0, 0, width, height);
+
+      if (!analyser) {
+        animationRef.current = requestAnimationFrame(drawSpectrum);
+        return;
+      }
+
+      const engine = AudioEngine.getInstance();
+      const frequencyBinCount = engine.frequencyBinCount;
+
+      // Use a persistent array to avoid allocations
+      if (!dataArrayRef.current || dataArrayRef.current.length !== frequencyBinCount) {
+        dataArrayRef.current = new Uint8Array(frequencyBinCount);
+      }
+
+      const dataArray = dataArrayRef.current;
+      engine.getByteFrequencyData(dataArray);
+
+      ctx.strokeStyle = gridColor;
+      ctx.lineWidth = 1;
+
+      for (let i = 0; i < 5; i++) {
+        const y = (height / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      const barWidth = width / Math.min(frequencyBinCount, 128);
+      const numBars = Math.min(frequencyBinCount, 128);
+
+      ctx.fillStyle = barColor;
+
+      for (let i = 0; i < numBars; i++) {
+        const value = dataArray[i];
+        const percent = value / 255;
+        const barHeight = percent * height;
+
+        const x = (i / numBars) * width;
+        ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
+      }
+
       animationRef.current = requestAnimationFrame(drawSpectrum);
-      return;
-    }
-
-    const engine = AudioEngine.getInstance();
-    const frequencyBinCount = engine.frequencyBinCount;
-
-    // Use a persistent array to avoid allocations
-    if (!dataArrayRef.current || dataArrayRef.current.length !== frequencyBinCount) {
-      dataArrayRef.current = new Uint8Array(frequencyBinCount);
-    }
-
-    const dataArray = dataArrayRef.current;
-    engine.getByteFrequencyData(dataArray);
-
-    ctx.strokeStyle = gridColor;
-    ctx.lineWidth = 1;
-
-    for (let i = 0; i < 5; i++) {
-      const y = (height / 5) * i;
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
-
-    const barWidth = width / Math.min(frequencyBinCount, 128);
-    const numBars = Math.min(frequencyBinCount, 128);
-
-    ctx.fillStyle = barColor;
-
-    for (let i = 0; i < numBars; i++) {
-      const value = dataArray[i];
-      const percent = value / 255;
-      const barHeight = percent * height;
-
-      const x = (i / numBars) * width;
-      ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
     }
 
     animationRef.current = requestAnimationFrame(drawSpectrum);
-  }, [isSpectrumEnabled, barColor, backgroundColor, gridColor, isReady]);
-
-  useEffect(() => {
-    if (isSpectrumEnabled && isReady) {
-      animationRef.current = requestAnimationFrame(drawSpectrum);
-    }
 
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
     };
-  }, [isSpectrumEnabled, isReady, drawSpectrum]);
+  }, [backgroundColor, barColor, gridColor, isReady, isSpectrumEnabled]);
 
   if (!isSpectrumEnabled) {
     return (

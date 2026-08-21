@@ -1,5 +1,5 @@
 import { Song } from "@/types/song";
-import { validateSongsBatch, ValidationResult } from "./songValidation";
+import { validateSongsBatch } from "./songValidation";
 
 export interface ImportResult {
   success: boolean;
@@ -50,11 +50,7 @@ export const exportSongsToCSV = (songs: Song[]): string => {
 
   const escapeCSV = (value: string | undefined): string => {
     const normalized = value ?? "";
-    if (
-      normalized.includes(",") ||
-      normalized.includes('"') ||
-      normalized.includes("\n")
-    ) {
+    if (normalized.includes(",") || normalized.includes('"') || normalized.includes("\n")) {
       return `"${normalized.replace(/"/g, '""')}"`;
     }
     return normalized;
@@ -122,7 +118,7 @@ export const importSongsFromCSV = (csvString: string): ImportResult => {
       return result;
     }
 
-    const headers = parseCSVLine(lines[0]);
+    const _headers = parseCSVLine(lines[0]);
     const songs: Partial<Song>[] = [];
 
     for (let i = 1; i < lines.length; i++) {

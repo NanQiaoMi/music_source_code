@@ -6,8 +6,8 @@
 
 在启动项目之前，请确保您的系统中已安装以下环境：
 
-1.  **Node.js**: 建议版本 v18.x 或更高
-2.  **Python**: 建议版本 3.8 或更高（用于后端 API 服务）
+1.  **Node.js**: v20.x 或更高
+2.  **Python**: 3.10 或更高（用于后端 API 服务和 Windows 打包）
 3.  **Git**: 用于版本管理
 
 ## 📦 安装依赖
@@ -35,9 +35,7 @@ cd ..
 
 ### 1. 快速启动（推荐）
 
-如果您是在 Windows 环境下，可以直接运行根目录下的脚本：
-
-- **`start-full.bat`**: 一键启动后端 Python 服务和前端 Next.js 服务。
+如果您是在 Windows 环境下，可以使用 `npm run dev:full` 启动前端和后端。
 
 ### 2. 分步启动
 
@@ -68,11 +66,16 @@ npm run dev:electron
 npm run build
 ```
 
-### 打包 Windows 桌面版程序 (.exe)
-```bash
-npm run build:electron:win
+### Windows x64 桌面构建（v0.2.1）
+
+在 Windows PowerShell 执行：
+
+```powershell
+./scripts/build-desktop-win.ps1 -Clean
 ```
-打包后的文件将生成在 `dist-electron/` 目录下。
+
+该脚本按后端 → Next.js → Electron 的顺序构建 portable EXE 和 NSIS 安装程序，检查 `resources/backend.exe` 并生成 `dist-electron/SHA256SUMS.txt`。本版本没有代码签名，可能出现 SmartScreen/Unknown Publisher 提示。模型不会随包预置或首次启动自动下载；未接入真实运行时的能力会明确显示为不可用。
+
 
 ## 📂 项目结构说明
 

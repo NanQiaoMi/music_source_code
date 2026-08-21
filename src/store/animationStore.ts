@@ -4,7 +4,6 @@ import {
   AnimationTrack,
   AnimationKeyframe,
   AnimationSyncMode,
-  DEFAULT_ANIMATION_PRESETS,
   AnimationPreset,
 } from "@/lib/visualization/animationTypes";
 
@@ -50,7 +49,7 @@ const DEFAULT_STATE: AnimationState = {
   },
 };
 
-export const useAnimationStore = create<AnimationStore>((set, get) => ({
+export const useAnimationStore = create<AnimationStore>((set, _get) => ({
   ...DEFAULT_STATE,
 
   setSyncMode: (mode) => set({ syncMode: mode }),

@@ -201,7 +201,9 @@ export const useLibraryManagerStore = create<LibraryManagerState>()(
             artist: song.artist,
             album: song.album,
             duration: song.duration,
-            fileSize: 0,
+            fileSize: song.fileSize ?? 0,
+            bitrate: song.bitRate,
+            format: song.format,
             qualityScore: 0,
             isRecommended: false,
           };
@@ -376,9 +378,10 @@ export const useLibraryManagerStore = create<LibraryManagerState>()(
         let totalFileSize = 0;
 
         for (const song of songs) {
-          artists.add(song.artist);
-          if (song.album) albums.add(song.album);
+          artists.add(song.artist.trim().toLowerCase());
+          if (song.album) albums.add(song.album.trim().toLowerCase());
           totalDuration += song.duration;
+          totalFileSize += song.fileSize ?? 0;
         }
 
         set({

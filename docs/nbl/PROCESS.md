@@ -290,3 +290,5 @@ npm run lint
 # 构建
 npm run build
 ```
+
+Existing feature iterations should run `docs/nbl/checklists/existing-feature-release-checklist.md` before handoff.

@@ -67,7 +67,35 @@ python main.py
 - API 文档: <http://localhost:8000/docs>
 - 健康检查: <http://localhost:8000/api/health>
 
-## API 接口
+## Windows 桌面运行时
+
+Electron 打包版本会启动 `resources/backend.exe`，并通过环境变量传入：
+
+- `VIBE_HOST`：默认 `127.0.0.1`
+- `VIBE_PORT`：Electron 分配的本地端口
+- `VIBE_MODELS_DIR`：用户数据目录中的可写模型目录
+
+生产模式关闭 debug/reload。模型文件不会自动下载。
+
+当前源码真实注册的接口只有：
+
+- `GET /api/health`
+- `GET /api/capabilities`
+- `POST /api/audio/process`
+- `POST /api/tts/synthesize`
+- `POST /api/vision/process`
+
+后三个可选能力在轻量发布包中返回 HTTP 501 `CAPABILITY_UNAVAILABLE`，因为真实推理运行时尚未随包提供。旧文档中的模型、speech、translation 路径属于历史设计，不应作为当前发布能力使用。
+
+### 运行配置
+
+```powershell
+$env:VIBE_HOST = "127.0.0.1"
+$env:VIBE_PORT = "8000"
+$env:VIBE_MODELS_DIR = "$env:LOCALAPPDATA\MIMI Music Player\models"
+python -m uvicorn main:app --port 8000
+```
+
 
 ### 健康检查
 

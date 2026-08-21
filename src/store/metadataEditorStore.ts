@@ -58,39 +58,55 @@ export interface MetadataEditorState {
   setLastOperation: (timestamp: number | null) => void;
 }
 
+type EditableSongRecord = Record<string, string | number | null | undefined>;
+
+type PersistedMetadataEditorState = Partial<MetadataEditorState> & {
+  customPatterns?: Record<string, string>;
+};
+
+const DEFAULT_REGEX_PRESETS: RegexPreset[] = [
+  {
+    name: "曲目号 - 歌曲",
+    pattern: "^(\\d+)\\s*[-–—]\\s*(.+)$",
+    fields: [
+      { field: "trackNumber", group: 1 },
+      { field: "title", group: 2 },
+    ],
+  },
+  {
+    name: "艺术家 - 歌曲",
+    pattern: "^(.+?)\\s*[-–—]\\s*(.+)$",
+    fields: [
+      { field: "artist", group: 1 },
+      { field: "title", group: 2 },
+    ],
+  },
+  {
+    name: "艺术家 - 专辑 - 歌曲",
+    pattern: "^(.+?)\\s*[-–—]\\s*(.+?)\\s*[-–—]\\s*(.+)$",
+    fields: [
+      { field: "artist", group: 1 },
+      { field: "album", group: 2 },
+      { field: "title", group: 3 },
+    ],
+  },
+];
+
+function getEditableSongValue(song: Song, field: string) {
+  return (song as unknown as EditableSongRecord)[field];
+}
+
+function setEditableSongValue(changes: Partial<Song>, field: string, value: string | null) {
+  (changes as unknown as EditableSongRecord)[field] = value;
+}
+
 export const useMetadataEditorStore = create<MetadataEditorState>()(
   persist(
     (set, get) => ({
       selectedSongs: [],
       operations: [],
 
-      regexPresets: [
-        {
-          name: "曲目号 - 歌曲名",
-          pattern: "^(\\d+)\\s*[-–—]\\s*(.+)$",
-          fields: [
-            { field: "trackNumber", group: 1 },
-            { field: "title", group: 2 },
-          ],
-        },
-        {
-          name: "艺术家 - 歌曲名",
-          pattern: "^(.+?)\\s*[-–—]\\s*(.+)$",
-          fields: [
-            { field: "artist", group: 1 },
-            { field: "title", group: 2 },
-          ],
-        },
-        {
-          name: "艺术家 - 专辑 - 歌曲名",
-          pattern: "^(.+?)\\s*[-–—]\\s*(.+?)\\s*[-–—]\\s*(.+)$",
-          fields: [
-            { field: "artist", group: 1 },
-            { field: "album", group: 2 },
-            { field: "title", group: 3 },
-          ],
-        },
-      ],
+      regexPresets: DEFAULT_REGEX_PRESETS,
 
       customPatterns: new Map(),
       previewMode: true,
@@ -153,30 +169,33 @@ export const useMetadataEditorStore = create<MetadataEditorState>()(
           const songChanges: Partial<Song> = {};
 
           state.operations.forEach((op: BatchEditOperation) => {
-            if (op.applyToSelected || op.selectedSongIds.includes(song.id)) {
-              switch (op.type) {
-                case "set":
-                  (songChanges as any)[op.field] = op.value;
-                  break;
-                case "clear":
-                  (songChanges as any)[op.field] = null;
-                  break;
-                case "replace":
-                  if (op.searchValue && (song as any)[op.field]) {
-                    (songChanges as any)[op.field] = (song as any)[op.field].replace(
-                      new RegExp(op.searchValue, "g"),
-                      op.value
-                    );
-                  }
-                  break;
-                case "append":
-                  if ((song as any)[op.field]) {
-                    (songChanges as any)[op.field] = (song as any)[op.field] + op.value;
-                  } else {
-                    (songChanges as any)[op.field] = op.value;
-                  }
-                  break;
-              }
+            if (!op.applyToSelected && !op.selectedSongIds.includes(song.id)) return;
+
+            const currentValue = getEditableSongValue(song, op.field);
+
+            switch (op.type) {
+              case "set":
+                setEditableSongValue(songChanges, op.field, op.value);
+                break;
+              case "clear":
+                setEditableSongValue(songChanges, op.field, null);
+                break;
+              case "replace":
+                if (op.searchValue && typeof currentValue === "string") {
+                  setEditableSongValue(
+                    songChanges,
+                    op.field,
+                    currentValue.replace(new RegExp(op.searchValue, "g"), op.value)
+                  );
+                }
+                break;
+              case "append":
+                setEditableSongValue(
+                  songChanges,
+                  op.field,
+                  typeof currentValue === "string" ? currentValue + op.value : op.value
+                );
+                break;
             }
           });
 
@@ -216,10 +235,15 @@ export const useMetadataEditorStore = create<MetadataEditorState>()(
         customPatterns: Object.fromEntries(state.customPatterns),
         previewMode: state.previewMode,
       }),
-      merge: (persistedState: any) => ({
-        ...persistedState,
-        customPatterns: new Map(Object.entries(persistedState.customPatterns || {})),
-      }),
+      merge: (persistedState: unknown, currentState) => {
+        const persisted = persistedState as PersistedMetadataEditorState | undefined;
+        return {
+          ...currentState,
+          ...persisted,
+          regexPresets: persisted?.regexPresets ?? currentState.regexPresets,
+          customPatterns: new Map(Object.entries(persisted?.customPatterns ?? {})),
+        };
+      },
     }
   )
 );

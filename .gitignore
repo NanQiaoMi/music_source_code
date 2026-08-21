@@ -83,3 +83,25 @@ next-env.d.ts
 /win-unpacked/
 *.exe
 *.asar
+
+# Python cache
+__pycache__/
+*.pyc
+
+# PyInstaller build intermediates and dist output
+/backend/build/
+/backend/dist/
+
+# Local logs and temporary results
+*.log
+eslint-output.txt
+test-results/
+
+# Scratch & temporary scripts
+scratch/
+fix-*.js
+mimimusic-promo/
+
+# Local worktrees and assistant session state
+.worktrees/
+.zcode/

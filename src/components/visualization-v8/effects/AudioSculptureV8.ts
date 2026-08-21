@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { EffectPlugin, EffectParameterDefinition } from "@/lib/visualization/types";
+import { EffectPlugin } from "@/lib/visualization/types";
 
 export const AudioSculptureV8Effect: EffectPlugin = {
   id: "audio-sculpture-v8",
@@ -111,7 +112,7 @@ export const AudioSculptureV8Effect: EffectPlugin = {
   private: {
     time: 0,
   },
-  init(ctx) {
+  init(_ctx) {
     (this as any).private.time = 0;
   },
   render(ctx, audioData, params) {
@@ -173,14 +174,15 @@ export const AudioSculptureV8Effect: EffectPlugin = {
             y = Math.sign(Math.sin(u)) * 0.5;
             z = Math.cos(v) * 0.5;
             break;
-          case "torus":
+          case "torus": {
             const torusR = 0.7;
             const torusr = 0.3;
             x = (torusR + torusr * Math.cos(v)) * Math.cos(u);
             y = (torusR + torusr * Math.cos(v)) * Math.sin(u);
             z = torusr * Math.sin(v);
             break;
-          case "star":
+          }
+          case "star": {
             const starR = 1;
             const starr = 0.4;
             const starAngle = (u * 5) % (Math.PI * 2);
@@ -189,6 +191,7 @@ export const AudioSculptureV8Effect: EffectPlugin = {
             y = starRadius * Math.sin(u) * Math.sin(v);
             z = Math.cos(v);
             break;
+          }
         }
 
         const originalX = x;
@@ -295,15 +298,15 @@ export const AudioSculptureV8Effect: EffectPlugin = {
 };
 
 function rotate3D(x: number, y: number, z: number, rotX: number, rotY: number) {
-  let cosX = Math.cos(rotX);
-  let sinX = Math.sin(rotX);
-  let cosY = Math.cos(rotY);
-  let sinY = Math.sin(rotY);
+  const cosX = Math.cos(rotX);
+  const sinX = Math.sin(rotX);
+  const cosY = Math.cos(rotY);
+  const sinY = Math.sin(rotY);
 
-  let y1 = y * cosX - z * sinX;
-  let z1 = y * sinX + z * cosX;
-  let x2 = x * cosY + z1 * sinY;
-  let z2 = -x * sinY + z1 * cosY;
+  const y1 = y * cosX - z * sinX;
+  const z1 = y * sinX + z * cosX;
+  const x2 = x * cosY + z1 * sinY;
+  const z2 = -x * sinY + z1 * cosY;
 
   return { x: x2, y: y1, z: z2 };
 }

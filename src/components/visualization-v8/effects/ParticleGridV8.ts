@@ -87,7 +87,7 @@ export const ParticleGridV8Effect: EffectPlugin = {
     },
   ],
 
-  init: (ctx) => {
+  init: (_ctx) => {
     particles = [];
     console.log("ParticleGridV8 effect initialized");
   },
@@ -203,7 +203,7 @@ export const ParticleGridV8Effect: EffectPlugin = {
     console.log(`ParticleGridV8 resized to ${width}x${height}`);
   },
 
-  destroy: (ctx) => {
+  destroy: (_ctx) => {
     particles = [];
     console.log("ParticleGridV8 effect destroyed");
   },

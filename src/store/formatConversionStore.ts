@@ -9,7 +9,7 @@ export interface ConversionTask {
   sourcePath: string;
   sourceFormat: string;
   targetFormat: string;
-  status: "pending" | "converting" | "completed" | "error";
+  status: "pending" | "converting" | "completed" | "error" | "preview-only";
   progress: number;
   error?: string;
   outputPath?: string;

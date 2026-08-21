@@ -4,7 +4,6 @@
 import { useCallback, useState } from "react";
 import {
   extractAudioMetadata,
-  batchExtractMetadata,
   AudioMetadata,
   MetadataExtractionResult,
   isSupportedAudioFile,

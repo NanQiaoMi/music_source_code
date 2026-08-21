@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
-import { usePlaylistStore } from "@/store/playlistStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
-import { useEmotionStore } from "@/store/emotionStore";
 import { useDynamicTheme } from "@/hooks/useDynamicTheme";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
@@ -13,7 +11,9 @@ import dynamic from "next/dynamic";
 
 // Core Layout Modules (Static for fast initial paint)
 import { HomeView } from "@/components/layout/HomeView";
+import { Apple3DQueueDrawer } from "@/components/player/Apple3DQueueDrawer";
 import { PanelOrchestrator } from "@/components/layout/PanelOrchestrator";
+import { AmbientFluidMeshBackground } from "@/components/layout/AmbientFluidMeshBackground";
 
 // Heavy Views (Lazy Loaded)
 const PlayerView = dynamic(
@@ -75,14 +75,12 @@ import { bootstrapApp } from "@/lib/bootstrap";
 export default function Home() {
   const { currentView, isTransitioning } = useUIStore();
   const { blurIntensity, animationSpeed } = useVisualSettingsStore();
-  const [mounted, setMounted] = useState(false);
 
   // Initialize Global Services & Hooks
   useDynamicTheme();
   useKeyboardShortcuts();
 
   useEffect(() => {
-    setMounted(true);
     bootstrapApp().then(() => {
       // Prefetch heavy views in background after core is ready
       import("@/components/layout/PlayerView");
@@ -90,8 +88,6 @@ export default function Home() {
       import("@/components/features-v7/FeatureButtonsContainer");
     });
   }, []);
-
-  if (!mounted) return null;
 
   return (
     <main className="relative w-full h-full overflow-hidden bg-black fixed inset-0">
@@ -119,81 +115,32 @@ export default function Home() {
         }
       `}</style>
 
-      {/* ─── Global Background Layer ──────────────────────────────── */}
-      <div
-        className="absolute inset-0 transition-all pointer-events-none"
-        style={{
-          background:
-            "linear-gradient(135deg, var(--theme-background) 0%, rgba(0,0,0,0.8) 50%, var(--theme-surface) 100%)",
-          transitionDuration: `${animationSpeed * 800}ms`,
-          backdropFilter: `blur(${blurIntensity}px)`,
-        }}
-      />
-
-      {/* Dynamic radial gradients */}
-      <div
-        className="absolute inset-0 transition-opacity duration-[800ms] ease-out pointer-events-none"
-        style={{
-          background: "radial-gradient(ellipse at top, var(--theme-primary) 0%, transparent 60%)",
-          opacity: 0.15,
-        }}
-      />
-      <div
-        className="absolute inset-0 transition-opacity duration-[800ms] ease-out pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse at bottom right, var(--theme-secondary) 0%, transparent 50%)",
-          opacity: 0.1,
-        }}
-      />
-      <div
-        className="absolute inset-0 transition-all duration-[800ms] ease-out pointer-events-none"
-        style={{
-          background: `
-            radial-gradient(ellipse 120% 80% at 50% -20%, var(--theme-complementary) 0%, transparent 50%),
-            radial-gradient(ellipse 80% 40% at 50% 0%, var(--theme-complementary) 0%, transparent 40%)
-          `,
-          opacity: 0.25,
-        }}
-      />
-      <div
-        className="absolute inset-0 transition-opacity duration-[800ms] ease-out pointer-events-none"
-        style={{
-          background: "radial-gradient(circle at 50% 50%, var(--theme-accent) 0%, transparent 70%)",
-          opacity: 0.05,
-        }}
-      />
-
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+      {/* ─── Global Dynamic Adaptive Ambient Background ───────────── */}
+      <AmbientFluidMeshBackground />
 
       {/* ─── Primary View Content ─────────────────────────────────── */}
       <HomeView />
       <PlayerView />
 
       {/* ─── Global Visualization & HUD ───────────────────────────── */}
-      <VisualizationView />
+      {currentView === "visualization" && <VisualizationView />}
       <DesktopLyrics />
-      <FeatureButtonsContainer />
+      {currentView === "player" && (
+        <>
+          <FeatureButtonsContainer />
+          <GlassRadarWidget />
+          <MusicBackstory />
+        </>
+      )}
       <VirtualCursor />
       <GlassToastContainer />
-      <GlassRadarWidget />
       <MusicLibrarySyncProvider />
-      <MusicBackstory />
+      <Apple3DQueueDrawer />
 
       {/* ─── Feature Panels Orchestration ──────────────────────────── */}
       <PanelOrchestrator />
 
-      {/* ─── Apple-style hint ─────────────────────────────────────── */}
-      {currentView === "home" && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="absolute bottom-16 left-1/2 -translate-x-1/2 text-white/40 text-xs pointer-events-none"
-        >
-          点击卡片播放音乐
-        </motion.div>
-      )}
+
 
       {/* ─── Transition Overlay ───────────────────────────────────── */}
       {isTransitioning && (

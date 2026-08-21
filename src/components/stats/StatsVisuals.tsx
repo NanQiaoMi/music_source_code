@@ -41,7 +41,12 @@ export const MusicalDNARadar: React.FC<RadarProps> = ({ data, labels }) => {
           strokeWidth={1}
         />
       ))}
-      <polygon points={points.join(" ")} fill="rgba(120,80,255,0.2)" stroke="rgba(120,80,255,0.6)" strokeWidth={2} />
+      <polygon
+        points={points.join(" ")}
+        fill="rgba(120,80,255,0.2)"
+        stroke="rgba(120,80,255,0.6)"
+        strokeWidth={2}
+      />
       {labels.map((label, i) => (
         <text
           key={label}
@@ -69,7 +74,7 @@ export const ListeningHeatmap: React.FC<HeatmapProps> = ({ hourlyData }) => {
   const max = Math.max(...hours.map((h) => hourlyData[h] || 0), 1);
   const cellSize = 16;
   const gap = 2;
-  const width = hours.length * (cellSize + gap);
+  const _width = hours.length * (cellSize + gap);
 
   return (
     <div className="flex flex-wrap gap-1">
@@ -143,13 +148,7 @@ export const ActivityTrend: React.FC<TrendProps> = ({ data }) => {
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
       <polyline points={points} fill="none" stroke="rgba(120,80,255,0.6)" strokeWidth={2} />
       {data.map((v, i) => (
-        <circle
-          key={i}
-          cx={i * 8}
-          cy={h - (v / max) * h}
-          r={2}
-          fill="rgba(120,80,255,0.8)"
-        />
+        <circle key={i} cx={i * 8} cy={h - (v / max) * h} r={2} fill="rgba(120,80,255,0.8)" />
       ))}
     </svg>
   );
