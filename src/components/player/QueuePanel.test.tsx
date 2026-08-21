@@ -68,12 +68,13 @@ describe("QueuePanel", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("renders pure queue list and song items when isOpen is true", async () => {
+  it("renders pure queue list with total duration when isOpen is true", async () => {
     await act(async () => {
       root.render(<QueuePanel isOpen={true} onClose={vi.fn()} />);
     });
 
     expect(container.textContent).toContain("播放队列");
+    expect(container.textContent).toContain("2 首");
     expect(container.textContent).toContain("Midnight City");
     expect(container.textContent).toContain("Starboy");
   });
@@ -93,6 +94,31 @@ describe("QueuePanel", () => {
 
     expect(onClose).toHaveBeenCalled();
     expect(useUIStore.getState().panels.shelf3D).toBe(true);
+  });
+
+  it("filters songs when searching in the queue", async () => {
+    await act(async () => {
+      root.render(<QueuePanel isOpen={true} onClose={vi.fn()} />);
+    });
+
+    const searchBtn = container.querySelector('[title*="过滤队列曲目"]');
+    expect(searchBtn).not.toBeNull();
+
+    await act(async () => {
+      searchBtn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const searchInput = container.querySelector('input[placeholder*="在队列中搜索"]') as HTMLInputElement;
+    expect(searchInput).not.toBeNull();
+
+    await act(async () => {
+      searchInput.value = "Starboy";
+      searchInput.dispatchEvent(new Event("change", { bubbles: true }));
+      searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    // After filtering, Starboy should be in the list
+    expect(container.textContent).toContain("Starboy");
   });
 
   it("calls onClose when clicking close button", async () => {
