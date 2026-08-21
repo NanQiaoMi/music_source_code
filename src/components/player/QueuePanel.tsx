@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ListMusic, Box, X, Play, Trash2, Volume2 } from "lucide-react";
+import { ListMusic, Box, X, Play, Trash2, Volume2, Sparkles } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
-import { Shelf3DView } from "@/components/library/Shelf3DView";
+import { useUIStore } from "@/store/uiStore";
 import { formatTime } from "@/utils/formatTime";
 import Image from "next/image";
 
@@ -28,7 +28,7 @@ interface QueuePanelProps {
 export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
   const { queue, currentIndex, removeFromQueue, clearQueue } = useQueueStore();
   const { currentSong, isPlaying } = useAudioStore();
-  const [drawerMode, setDrawerMode] = useState<"2d" | "3d">("2d");
+  const openPanel = useUIStore((state) => state.openPanel);
 
   // Global ESC key listener to close drawer
   useEffect(() => {
@@ -54,6 +54,11 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
       audioStore.setCurrentIndex(index);
       audioStore.setIsPlaying(true);
     }
+  };
+
+  const handleOpen3DShelf = () => {
+    onClose();
+    openPanel("shelf3D");
   };
 
   if (!isOpen) return null;
@@ -93,37 +98,21 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
-            {/* Header Controls: 2D/3D Mode Switch + Close */}
+            {/* Header Controls: Open Fullscreen 3D Spatial Shelf + Clear + Close */}
             <div className="flex items-center gap-2">
-              {/* Mode Toggle Button */}
-              <div className="flex items-center p-0.5 rounded-xl bg-white/10 border border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setDrawerMode("2d")}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                    drawerMode === "2d"
-                      ? "bg-[#0071e3] text-white shadow-sm"
-                      : "text-white/60 hover:text-white"
-                  }`}
-                >
-                  列表
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDrawerMode("3d")}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition-all ${
-                    drawerMode === "3d"
-                      ? "bg-[#0071e3] text-white shadow-sm"
-                      : "text-white/60 hover:text-white"
-                  }`}
-                >
-                  <Box className="w-3 h-3" />
-                  3D
-                </button>
-              </div>
+              {/* Fullscreen 3D Spatial Shelf Trigger Button */}
+              <button
+                type="button"
+                onClick={handleOpen3DShelf}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-r from-[#0071e3]/25 to-cyan-500/20 border border-cyan-400/30 text-cyan-300 hover:text-white hover:border-cyan-400/60 hover:shadow-[0_0_15px_rgba(6,182,212,0.35)] transition-all text-xs font-medium group"
+                title="进入全屏 Mineradio 3D 空间唱片架"
+              >
+                <Box className="w-3.5 h-3.5 text-cyan-400 group-hover:rotate-12 transition-transform" />
+                <span>3D 唱片架</span>
+              </button>
 
               {/* Clear Queue Button */}
-              {queue.length > 0 && drawerMode === "2d" && (
+              {queue.length > 0 && (
                 <button
                   type="button"
                   onClick={clearQueue}
@@ -146,118 +135,104 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          {/* Drawer Main Content */}
+          {/* Drawer Main Content (Pure 2D Queue List) */}
           <div className="flex-1 min-h-0 relative">
-            {drawerMode === "2d" ? (
-              /* ─── 2D Minimalist Pure Queue List ─── */
-              queue.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center p-8 text-center text-white/40">
-                  <div className="w-16 h-16 rounded-3xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-4 text-white/20">
-                    <ListMusic className="w-8 h-8" />
-                  </div>
-                  <p className="text-sm font-medium text-white/60">播放队列为空</p>
-                  <p className="text-xs text-white/30 mt-1 max-w-[200px]">
-                    在曲库或搜索中点击歌曲开始播放
-                  </p>
+            {queue.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center text-white/40">
+                <div className="w-16 h-16 rounded-3xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-4 text-white/20">
+                  <ListMusic className="w-8 h-8" />
                 </div>
-              ) : (
-                <div className="h-full overflow-y-auto custom-scrollbar p-3 space-y-1.5">
-                  {queue.map((song, index) => {
-                    const isCurrent =
-                      (currentSong && currentSong.id === song.id) || currentIndex === index;
-                    const coverSrc = song.cover && song.cover.trim() ? song.cover : DEFAULT_COVER_SRC;
-
-                    return (
-                      <div
-                        key={`${song.id}-${index}`}
-                        onClick={() => handleTrackClick(index)}
-                        className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-2xl cursor-pointer transition-all border ${
-                          isCurrent
-                            ? "bg-white/[0.12] border-white/20 shadow-md shadow-black/40 text-white"
-                            : "bg-white/[0.03] hover:bg-white/[0.08] border-transparent text-white/70 hover:text-white"
-                        }`}
-                      >
-                        {/* Playing Status Indicator / Index */}
-                        <div className="w-5 shrink-0 flex items-center justify-center">
-                          {isCurrent ? (
-                            isPlaying ? (
-                              <div className="flex items-end gap-0.5 h-3.5">
-                                <span className="w-0.5 bg-[#2997ff] animate-[bounce_1s_infinite_100ms] h-full" />
-                                <span className="w-0.5 bg-[#2997ff] animate-[bounce_1s_infinite_300ms] h-2/3" />
-                                <span className="w-0.5 bg-[#2997ff] animate-[bounce_1s_infinite_200ms] h-4/5" />
-                              </div>
-                            ) : (
-                              <Volume2 className="w-3.5 h-3.5 text-[#2997ff]" />
-                            )
-                          ) : (
-                            <span className="text-xs font-mono text-white/35 group-hover:hidden">
-                              {index + 1}
-                            </span>
-                          )}
-                          {!isCurrent && (
-                            <Play className="w-3.5 h-3.5 text-white/70 hidden group-hover:block" />
-                          )}
-                        </div>
-
-                        {/* Cover Thumbnail */}
-                        <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-white/5 shrink-0 border border-white/10">
-                          <Image
-                            src={coverSrc}
-                            alt={song.title}
-                            fill
-                            sizes="40px"
-                            className="object-cover"
-                            unoptimized={coverSrc.startsWith("data:") || coverSrc.startsWith("blob:")}
-                          />
-                        </div>
-
-                        {/* Track Metadata */}
-                        <div className="flex-1 min-w-0 pr-2">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`text-sm font-medium truncate ${
-                                isCurrent ? "text-[#2997ff] font-semibold" : "text-white/90"
-                              }`}
-                            >
-                              {song.title}
-                            </span>
-                          </div>
-                          <p className="text-xs text-white/45 truncate mt-0.5">{song.artist}</p>
-                        </div>
-
-                        {/* Duration / Actions */}
-                        <div className="shrink-0 flex items-center gap-2">
-                          <span className="text-[11px] font-mono text-white/40">
-                            {formatTime(song.duration || 0)}
-                          </span>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeFromQueue(index);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-300 flex items-center justify-center transition-all"
-                            title="移出队列"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )
+                <p className="text-sm font-medium text-white/60">播放队列为空</p>
+                <p className="text-xs text-white/30 mt-1 max-w-[200px]">
+                  在曲库或搜索中点击歌曲开始播放
+                </p>
+              </div>
             ) : (
-              /* ─── 3D Space Shelf WebGL Mode (Zero GC lifecycle) ─── */
-              <div className="w-full h-full relative">
-                <Shelf3DView
-                  isOpen={true}
-                  defaultMode="side"
-                  transparentBg={true}
-                  isDrawerMode={true}
-                  onClose={onClose}
-                />
+              <div className="h-full overflow-y-auto custom-scrollbar p-3 space-y-1.5">
+                {queue.map((song, index) => {
+                  const isCurrent =
+                    (currentSong && currentSong.id === song.id) || currentIndex === index;
+                  const coverSrc = song.cover && song.cover.trim() ? song.cover : DEFAULT_COVER_SRC;
+
+                  return (
+                    <div
+                      key={`${song.id}-${index}`}
+                      onClick={() => handleTrackClick(index)}
+                      className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-2xl cursor-pointer transition-all border ${
+                        isCurrent
+                          ? "bg-white/[0.12] border-white/20 shadow-md shadow-black/40 text-white"
+                          : "bg-white/[0.03] hover:bg-white/[0.08] border-transparent text-white/70 hover:text-white"
+                      }`}
+                    >
+                      {/* Playing Status Indicator / Index */}
+                      <div className="w-5 shrink-0 flex items-center justify-center">
+                        {isCurrent ? (
+                          isPlaying ? (
+                            <div className="flex items-end gap-0.5 h-3.5">
+                              <span className="w-0.5 bg-[#2997ff] animate-[bounce_1s_infinite_100ms] h-full" />
+                              <span className="w-0.5 bg-[#2997ff] animate-[bounce_1s_infinite_300ms] h-2/3" />
+                              <span className="w-0.5 bg-[#2997ff] animate-[bounce_1s_infinite_200ms] h-4/5" />
+                            </div>
+                          ) : (
+                            <Volume2 className="w-3.5 h-3.5 text-[#2997ff]" />
+                          )
+                        ) : (
+                          <span className="text-xs font-mono text-white/35 group-hover:hidden">
+                            {index + 1}
+                          </span>
+                        )}
+                        {!isCurrent && (
+                          <Play className="w-3.5 h-3.5 text-white/70 hidden group-hover:block" />
+                        )}
+                      </div>
+
+                      {/* Cover Thumbnail */}
+                      <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-white/5 shrink-0 border border-white/10">
+                        <Image
+                          src={coverSrc}
+                          alt={song.title}
+                          fill
+                          sizes="40px"
+                          className="object-cover"
+                          unoptimized={coverSrc.startsWith("data:") || coverSrc.startsWith("blob:")}
+                        />
+                      </div>
+
+                      {/* Track Metadata */}
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`text-sm font-medium truncate ${
+                              isCurrent ? "text-[#2997ff] font-semibold" : "text-white/90"
+                            }`}
+                          >
+                            {song.title}
+                          </span>
+                        </div>
+                        <p className="text-xs text-white/45 truncate mt-0.5">{song.artist}</p>
+                      </div>
+
+                      {/* Duration / Actions */}
+                      <div className="shrink-0 flex items-center gap-2">
+                        <span className="text-[11px] font-mono text-white/40">
+                          {formatTime(song.duration || 0)}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFromQueue(index);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-300 flex items-center justify-center transition-all"
+                          title="移出队列"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -265,7 +240,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
           {/* Drawer Footer Status */}
           <div className="px-6 py-3 border-t border-white/[0.06] bg-black/40 flex items-center justify-between text-[11px] text-white/40 font-mono">
             <span>快捷键: Q 唤出 / 收起 · ESC 退出</span>
-            <span>{drawerMode === "2d" ? "极简 2D 队列" : "3D 空间唱片架"}</span>
+            <span className="text-cyan-400/80">点击右上角进入全屏 3D 唱片架</span>
           </div>
         </motion.div>
       </div>

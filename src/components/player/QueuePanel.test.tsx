@@ -4,6 +4,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { QueuePanel } from "./QueuePanel";
 import { useQueueStore } from "@/store/queueStore";
 import { useAudioStore } from "@/store/audioStore";
+import { useUIStore } from "@/store/uiStore";
 
 vi.mock("framer-motion", () => ({
   motion: new Proxy(
@@ -15,10 +16,6 @@ vi.mock("framer-motion", () => ({
     }
   ),
   AnimatePresence: ({ children }: any) => <>{children}</>,
-}));
-
-vi.mock("@/components/library/Shelf3DView", () => ({
-  Shelf3DView: () => <div data-testid="shelf3d-view">3D Shelf View</div>,
 }));
 
 vi.mock("next/image", () => ({
@@ -33,6 +30,13 @@ describe("QueuePanel", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
+
+    useUIStore.setState({
+      panels: {
+        queue: false,
+        shelf3D: false,
+      } as any,
+    });
 
     useQueueStore.setState({
       queue: [
@@ -74,23 +78,24 @@ describe("QueuePanel", () => {
     expect(container.textContent).toContain("Starboy");
   });
 
-  it("switches to 3D mode when clicking 3D toggle button", async () => {
+  it("opens full-screen shelf3D panel when clicking 3D button", async () => {
+    const onClose = vi.fn();
     await act(async () => {
-      root.render(<QueuePanel isOpen={true} onClose={vi.fn()} />);
+      root.render(<QueuePanel isOpen={true} onClose={onClose} />);
     });
 
-    const buttons = Array.from(container.querySelectorAll("button"));
-    const btn3D = buttons.find((b) => b.textContent?.includes("3D"));
-    expect(btn3D).toBeDefined();
+    const btn3D = container.querySelector('[title*="进入全屏 Mineradio 3D 空间唱片架"]');
+    expect(btn3D).not.toBeNull();
 
     await act(async () => {
       btn3D?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(container.querySelector('[data-testid="shelf3d-view"]')).not.toBeNull();
+    expect(onClose).toHaveBeenCalled();
+    expect(useUIStore.getState().panels.shelf3D).toBe(true);
   });
 
-  it("calls onClose when clicking close button or Escape", async () => {
+  it("calls onClose when clicking close button", async () => {
     const onClose = vi.fn();
     await act(async () => {
       root.render(<QueuePanel isOpen={true} onClose={onClose} />);
