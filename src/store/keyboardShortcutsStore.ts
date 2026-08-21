@@ -149,6 +149,13 @@ const DEFAULT_SHORTCUTS: ShortcutBinding[] = [
     description: "返回主页或关闭面板",
   },
   {
+    id: "toggle-queue",
+    label: "播放列表",
+    category: "界面切换",
+    keys: ["Q"],
+    description: "展开或收起播放列表抽屉",
+  },
+  {
     id: "speed-up",
     label: "加速播放",
     category: "播放控制",

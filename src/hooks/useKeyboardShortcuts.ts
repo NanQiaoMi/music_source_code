@@ -204,6 +204,16 @@ export const useKeyboardShortcuts = () => {
         return;
       }
 
+      if (
+        matchKeys(e, bind("toggle-queue")) ||
+        ((e.key === "q" || e.key === "Q") && !e.ctrlKey && !e.metaKey && !e.altKey) ||
+        ((e.metaKey || e.ctrlKey) && (e.key === "l" || e.key === "L"))
+      ) {
+        e.preventDefault();
+        uiStore.togglePanel("queue");
+        return;
+      }
+
       if (matchKeys(e, bind("speed-up"))) {
         e.preventDefault();
         audioStore.setPlaybackRate(Math.min(2.0, audioStore.playbackRate + 0.25));
