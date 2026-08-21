@@ -321,7 +321,7 @@ export const Player3D: React.FC = () => {
   const pointA = useABLoopStore((state) => state.pointA);
   const pointB = useABLoopStore((state) => state.pointB);
   const { setCurrentView, setIsTransitioning, panels, togglePanel } = useUIStore();
-  const isQueueOpen = Boolean(panels?.queue);
+  const isQueueOpen = Boolean(panels?.shelf3D || panels?.queue);
   const { isFavorite, toggleFavorite } = useFavoritesStore();
   const {
     setIsPlaying,
@@ -620,13 +620,13 @@ export const Player3D: React.FC = () => {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => togglePanel("queue")}
+                    onClick={() => togglePanel("shelf3D")}
                     className={`p-2 rounded-full transition-all ml-1 ${
                       isQueueOpen
                         ? "text-white bg-white/25 shadow-[0_0_15px_rgba(255,255,255,0.3)]"
                         : "text-white/60 hover:text-white hover:bg-white/10"
                     }`}
-                    title="播放队列 / 歌单列表"
+                    title="3D 空间唱片架 (快捷键 Q / ⌘L)"
                   >
                     <ListMusic className="w-5 h-5" />
                   </motion.button>

@@ -55,26 +55,26 @@ describe("Apple3DQueueDrawer", () => {
       root.render(<Apple3DQueueDrawer />);
     });
 
-    const handle = container.querySelector('[title*="点击或停驻呼出播放列表"]');
+    const handle = container.querySelector('[title*="点击或停驻呼出 3D 空间唱片架"]');
     expect(handle).not.toBeNull();
   });
 
-  it("opens the drawer when clicking the handle", async () => {
+  it("directly opens the 3D shelf when clicking the handle", async () => {
     await act(async () => {
       root.render(<Apple3DQueueDrawer />);
     });
 
-    const handle = container.querySelector('[title*="点击或停驻呼出播放列表"]');
+    const handle = container.querySelector('[title*="点击或停驻呼出 3D 空间唱片架"]');
     expect(handle).not.toBeNull();
 
     await act(async () => {
       handle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(useUIStore.getState().panels.queue).toBe(true);
+    expect(useUIStore.getState().panels.shelf3D).toBe(true);
   });
 
-  it("toggles the drawer when pressing Q shortcut", async () => {
+  it("toggles the 3D shelf when pressing Q shortcut", async () => {
     await act(async () => {
       root.render(<Apple3DQueueDrawer />);
     });
@@ -83,18 +83,18 @@ describe("Apple3DQueueDrawer", () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "q", bubbles: true }));
     });
 
-    expect(useUIStore.getState().panels.queue).toBe(true);
+    expect(useUIStore.getState().panels.shelf3D).toBe(true);
 
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "q", bubbles: true }));
     });
 
-    expect(useUIStore.getState().panels.queue).toBe(false);
+    expect(useUIStore.getState().panels.shelf3D).toBe(false);
   });
 
-  it("closes the drawer when pressing Escape", async () => {
+  it("closes the 3D shelf when pressing Escape", async () => {
     useUIStore.setState({
-      panels: { queue: true, shelf3D: false } as any,
+      panels: { queue: false, shelf3D: true } as any,
     });
 
     await act(async () => {
@@ -105,6 +105,6 @@ describe("Apple3DQueueDrawer", () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
 
-    expect(useUIStore.getState().panels.queue).toBe(false);
+    expect(useUIStore.getState().panels.shelf3D).toBe(false);
   });
 });
