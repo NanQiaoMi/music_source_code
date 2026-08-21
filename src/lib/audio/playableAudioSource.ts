@@ -7,7 +7,7 @@ export const MISSING_AUDIO_SOURCE_HELP_TEXT = "请导入本地音乐，或选择
 
 export const AUDIO_FILE_UNAVAILABLE_MESSAGE = "Audio file is not available.";
 
-type AudioSourceSong = Partial<Pick<Song, "audioUrl" | "id">> | null | undefined;
+type AudioSourceSong = (Partial<Pick<Song, "audioUrl" | "id" | "title">> & { source?: string }) | null | undefined;
 type MediaElementErrorLike = Pick<MediaError, "code" | "message"> | null | undefined;
 
 const MEDIA_ERROR_DESCRIPTIONS: Record<number, string> = {
@@ -18,7 +18,13 @@ const MEDIA_ERROR_DESCRIPTIONS: Record<number, string> = {
 };
 
 export function hasPlayableAudioSource(song: AudioSourceSong): boolean {
-  return Boolean(song?.audioUrl?.trim());
+  if (!song) return false;
+  if (song.audioUrl && song.audioUrl.trim().length > 0) return true;
+  // 在线平台音源（netease, qq, kugou, kuwo, qishui, cross_matched 等）支持在播放时动态嗅探解析真实母带流
+  if (song.source && song.source !== "local" && song.source !== "demo") {
+    return Boolean((song.id && String(song.id).trim().length > 0) || (song.title && song.title.trim().length > 0));
+  }
+  return false;
 }
 
 export function describeMediaElementError(error: MediaElementErrorLike): string {

@@ -80,13 +80,13 @@ describe("LibraryManagerPanel", () => {
       root.render(<LibraryManagerPanel isOpen={true} onClose={() => undefined} />);
     });
 
-    expect(container.textContent).toContain("Music Library");
-    expect(container.textContent).toContain("Saved playlists");
+    expect(container.textContent).toContain("音乐库");
+    expect(container.textContent).toContain("已保存播放列表");
     expect(container.textContent).toContain("Road mix");
     expect(container.textContent).toContain("Midnight City");
 
     const playButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent?.trim() === "Play"
+      (button) => button.textContent?.trim() === "播放"
     );
 
     await act(async () => {
@@ -99,7 +99,7 @@ describe("LibraryManagerPanel", () => {
     );
 
     const deleteButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent?.trim() === "Delete"
+      (button) => button.textContent?.trim() === "删除"
     );
 
     await act(async () => {
@@ -108,7 +108,7 @@ describe("LibraryManagerPanel", () => {
 
     expect(usePlaylistGroupStore.getState().groups).toHaveLength(0);
     expect(container.querySelector('[role="status"]')?.textContent).toContain(
-      "Deleted playlist Road mix."
+      "已删除播放列表 Road mix."
     );
 
     await act(async () => {

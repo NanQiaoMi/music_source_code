@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useRef } from "react";
@@ -5,12 +6,13 @@ import { motion, AnimatePresence, Variants } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { PanelName } from "@/store/uiStore";
 
-interface HubItem {
+export interface HubItem {
   id: PanelName | string;
   label: string;
   icon: React.ReactNode;
   action: () => void;
   desc?: string;
+  badge?: string;
 }
 
 interface HoverHubProps {
@@ -20,41 +22,46 @@ interface HoverHubProps {
   accentColor?: string;
 }
 
-// Apple-style spring configuration
+// Apple-style spring physics
 const HUB_TRANSITION = {
-  duration: 0.3,
-  ease: [0.23, 1, 0.32, 1] as const,
+  type: "spring" as const,
+  stiffness: 350,
+  damping: 28,
+  mass: 0.8,
 };
 
 const CONTAINER_VARIANTS: Variants = {
   hidden: {
     opacity: 0,
-    y: 8,
+    y: 6,
+    scale: 0.97,
   },
   visible: {
     opacity: 1,
     y: 0,
+    scale: 1,
     transition: {
       ...HUB_TRANSITION,
-      staggerChildren: 0.03,
+      staggerChildren: 0.02,
       delayChildren: 0.01,
     },
   },
   exit: {
     opacity: 0,
     y: 4,
+    scale: 0.98,
     transition: {
-      duration: 0.15,
+      duration: 0.12,
       ease: [0.16, 1, 0.3, 1],
     },
   },
 };
 
 const ITEM_VARIANTS: Variants = {
-  hidden: { opacity: 0, y: 5 },
+  hidden: { opacity: 0, x: -4 },
   visible: {
     opacity: 1,
-    y: 0,
+    x: 0,
     transition: HUB_TRANSITION,
   },
 };
@@ -76,47 +83,48 @@ export const HoverHub: React.FC<HoverHubProps> = ({
   const handleMouseLeave = () => {
     timeoutRef.current = setTimeout(() => {
       setIsOpen(false);
-    }, 200);
+    }, 150);
   };
 
   return (
-    <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+    <div className="relative flex-shrink-0" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       <button
-        className="h-10 px-3 rounded-lg flex items-center gap-2 transition-all duration-500 group relative"
+        type="button"
+        className="h-9 px-3 rounded-xl flex items-center gap-2 transition-all duration-300 group relative whitespace-nowrap flex-shrink-0 select-none text-left"
         style={{
-          background: isOpen ? "rgba(255, 255, 255, 0.1)" : "transparent",
-          color: isOpen ? "#fff" : "var(--theme-text-secondary)",
+          background: isOpen ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.04)",
+          border: isOpen ? "1px solid rgba(255, 255, 255, 0.15)" : "1px solid rgba(255, 255, 255, 0.05)",
+          color: isOpen ? "#ffffff" : "rgba(255, 255, 255, 0.75)",
         }}
       >
         <motion.div
-          animate={{ rotate: isOpen ? 5 : 0, scale: isOpen ? 1.1 : 1 }}
-          className="relative flex items-center justify-center"
+          animate={{ scale: isOpen ? 1.08 : 1 }}
+          transition={HUB_TRANSITION}
+          className="relative flex items-center justify-center shrink-0"
         >
           {mainIcon}
           {isOpen && (
             <motion.div
               layoutId={`hub-glow-${label}`}
-              className="absolute inset-0 blur-xl rounded-full -z-10 opacity-40"
+              className="absolute inset-0 blur-lg rounded-full -z-10 opacity-50"
               style={{ background: accentColor }}
               initial={{ scale: 0 }}
-              animate={{ scale: 1.5 }}
+              animate={{ scale: 1.4 }}
             />
           )}
         </motion.div>
-        <span className="text-[13px] font-medium tracking-tight opacity-80 group-hover:opacity-100 transition-opacity">
+
+        <span className="text-[13px] font-medium tracking-tight whitespace-nowrap flex-shrink-0 group-hover:text-white transition-colors">
           {label}
         </span>
-        <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={HUB_TRANSITION}>
-          <ChevronDown className="w-3.5 h-3.5 opacity-20" />
-        </motion.div>
 
-        {isOpen && (
-          <motion.div
-            layoutId={`hub-underline-${label}`}
-            className="absolute bottom-1 left-3 right-3 h-[2px] rounded-full"
-            style={{ background: accentColor }}
-          />
-        )}
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={HUB_TRANSITION}
+          className="opacity-40 group-hover:opacity-80 shrink-0"
+        >
+          <ChevronDown className="w-3.5 h-3.5" />
+        </motion.div>
       </button>
 
       <AnimatePresence>
@@ -126,47 +134,52 @@ export const HoverHub: React.FC<HoverHubProps> = ({
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="absolute left-0 top-full mt-2 w-64 bg-black/70 backdrop-blur-3xl rounded-2xl border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden z-[9999]"
+            className="absolute left-0 top-full mt-2 w-[256px] bg-[#1c1c1e]/95 backdrop-blur-2xl rounded-2xl border border-white/[0.08] shadow-[0_24px_64px_rgba(0,0,0,0.65)] overflow-hidden z-[9999] select-none font-sans"
             style={{
               willChange: "transform, opacity",
-              backfaceVisibility: "hidden",
               transformOrigin: "top left",
             }}
           >
-            <div className="p-2.5 space-y-0.5">
+            <div className="p-2 space-y-0.5">
               {items.map((item) => (
                 <motion.button
                   key={item.id}
+                  type="button"
                   variants={ITEM_VARIANTS}
-                  whileHover={{ x: 4, backgroundColor: "rgba(255, 255, 255, 0.05)" }}
+                  whileHover={{ x: 4, backgroundColor: "rgba(255, 255, 255, 0.08)" }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => {
                     item.action();
                     setIsOpen(false);
                   }}
-                  className="w-full group flex items-start gap-3.5 p-2.5 rounded-xl transition-all text-left"
+                  className="w-full group flex items-start gap-3 p-2.5 rounded-xl transition-all text-left"
                 >
-                  <div className="mt-0.5 p-2 rounded-lg bg-white/5 group-hover:bg-white/10 group-hover:scale-110 transition-all text-white/40 group-hover:text-white">
+                  <div className="mt-0.5 p-1.5 rounded-lg bg-white/[0.06] group-hover:bg-white/15 transition-all text-white/80 group-hover:text-white shrink-0">
                     {item.icon}
                   </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-white/90 group-hover:text-white transition-colors">
-                      {item.label}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="text-[13px] font-medium text-white tracking-tight truncate group-hover:text-white transition-colors">
+                        {item.label}
+                      </span>
+                      {item.badge && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-white/10 text-white/70">
+                          {item.badge}
+                        </span>
+                      )}
                     </div>
                     {item.desc && (
-                      <div className="text-[10px] text-white/20 leading-relaxed mt-0.5">
+                      <p className="text-[11px] text-[#86868b] leading-tight mt-0.5 truncate group-hover:text-white/60 transition-colors">
                         {item.desc}
-                      </div>
+                      </p>
                     )}
                   </div>
                 </motion.button>
               ))}
             </div>
 
-            <motion.div
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              className="h-[1px] w-full origin-left opacity-30"
+            <div
+              className="h-[1px] w-full opacity-30"
               style={{
                 background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`,
               }}

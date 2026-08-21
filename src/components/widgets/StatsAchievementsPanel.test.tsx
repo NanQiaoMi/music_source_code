@@ -65,11 +65,11 @@ describe("StatsAchievementsPanel", () => {
       <StatsAchievementsPanel isOpen={true} onClose={() => undefined} />
     );
 
-    expect(html).toContain("Weekly momentum");
-    expect(html).toContain("21 plays");
-    expect(html).toContain("87 min");
-    expect(html).toContain("Listening streak");
+    expect(html).toContain("每周势头");
+    expect(html).toContain("21 次播放");
+    expect(html).toContain("87 分钟 本周");
+    expect(html).toContain("连续听歌");
     expect(html).toContain("3-day streak");
-    expect(html).toContain("Best streak: 3 days");
+    expect(html).toContain("最佳连续：3 天");
   });
 });

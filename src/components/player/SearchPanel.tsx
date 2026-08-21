@@ -17,7 +17,8 @@ import {
   Play,
   Plus,
 } from "lucide-react";
-import { useSearchStore, SearchType, FilterType } from "@/store/searchStore";
+import { useSearchStore, SearchType, FilterType, SourceTabType } from "@/store/searchStore";
+import { useSourceConfigStore } from "@/store/sourceConfigStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
@@ -26,6 +27,7 @@ import { useSleepTimerStore } from "@/store/sleepTimerStore";
 import Image from "next/image";
 import { parseSearchCommand, SEARCH_COMMAND_HINTS } from "@/lib/search/commandRouter";
 import { executeSearchCommand } from "@/lib/search/commandExecutor";
+import { Settings2, Sliders, Check } from "lucide-react";
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
@@ -56,11 +58,70 @@ const SEARCH_TYPES: { value: SearchType; label: string; icon: typeof Music }[] =
   { value: "album", label: "专辑", icon: Disc },
 ];
 
+const SOURCE_TABS = [
+  { key: "all", label: "全网聚合" },
+  { key: "netease", label: "网易云" },
+  { key: "qq", label: "QQ 音乐" },
+  { key: "kugou", label: "酷狗" },
+  { key: "kuwo", label: "酷我" },
+];
+
+const getSourceBadge = (source?: string) => {
+  switch (source) {
+    case "netease":
+      return (
+        <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30 shrink-0">
+          网易云
+        </span>
+      );
+    case "qq":
+      return (
+        <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+          QQ 音乐
+        </span>
+      );
+    case "kugou":
+      return (
+        <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30 shrink-0">
+          酷狗
+        </span>
+      );
+    case "kuwo":
+      return (
+        <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+          酷我
+        </span>
+      );
+    case "qishui":
+      return (
+        <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
+          汽水
+        </span>
+      );
+    case "local":
+      return (
+        <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/30 shrink-0">
+          本地
+        </span>
+      );
+    case "lx_custom":
+      return (
+        <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shrink-0">
+          洛雪源
+        </span>
+      );
+    default:
+      return null;
+  }
+};
+
 export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const {
     query,
     searchType,
+    activeSourceTab,
     results,
+    segmentedResults,
     recentSearches,
     isSearching,
     page,
@@ -72,6 +133,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     commandFeedback,
     setQuery,
     setSearchType,
+    setActiveSourceTab,
     search,
     clearSearch,
     removeRecentSearch,
@@ -87,6 +149,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     setCommandFeedback,
   } = useSearchStore();
 
+  const { sources: sourceMatrix, toggleSource, openManagementModal } = useSourceConfigStore();
   const { songs } = usePlaylistStore();
   const addToQueue = useQueueStore((state) => state.addToQueue);
   const insertNext = useQueueStore((state) => state.insertNext);
@@ -105,6 +168,42 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const [isListening, setIsListening] = useState(false);
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [showSourceQuickToggle, setShowSourceQuickToggle] = useState(false);
+
+  const enabledSources = useMemo(() => {
+    return Object.values(sourceMatrix).filter((s) => s.enabled);
+  }, [sourceMatrix]);
+
+  const dynamicSourceTabs = useMemo(() => {
+    const tabs: { key: SourceTabType; label: string; dotColor: string; count: number }[] = [
+      {
+        key: "all",
+        label: "全网聚合",
+        dotColor: "bg-blue-400",
+        count: segmentedResults.all.length || totalResults,
+      },
+    ];
+
+    enabledSources.forEach((src) => {
+      let count = 0;
+      if (src.id === "netease") count = segmentedResults.netease.length;
+      else if (src.id === "qq") count = segmentedResults.qq.length;
+      else if (src.id === "kugou") count = segmentedResults.kugou.length;
+      else if (src.id === "kuwo") count = segmentedResults.kuwo.length;
+      else if (src.id === "qishui") count = segmentedResults.qishui.length;
+      else if (src.id === "local") count = segmentedResults.local.length;
+      else if (src.id === "lx_custom") count = segmentedResults.lx_custom.length;
+
+      tabs.push({
+        key: src.id,
+        label: src.name,
+        dotColor: src.dotColor,
+        count,
+      });
+    });
+
+    return tabs;
+  }, [enabledSources, segmentedResults, totalResults]);
 
   const handleMouseEnter = useCallback(() => {
     // Keep panel open
@@ -434,6 +533,19 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                onClick={() => setShowSourceQuickToggle((v) => !v)}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                  showSourceQuickToggle
+                    ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                    : "text-white/60 hover:bg-white/10 hover:text-white"
+                }`}
+                title="音源快速配置与管理"
+              >
+                <Settings2 className="w-3.5 h-3.5" />
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={onClose}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-colors"
                 title="关闭 (Esc)"
@@ -442,17 +554,65 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               </motion.button>
             </div>
 
+            {/* Quick Source Toggle Dropdown Popover */}
+            {showSourceQuickToggle && (
+              <div className="px-3.5 py-3 bg-[#0d101d] border-t border-b border-white/10 flex flex-col gap-2 shrink-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                    <Sliders className="w-3 h-3 text-cyan-400" />
+                    音源即时开闭
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSourceQuickToggle(false);
+                      openManagementModal();
+                    }}
+                    className="text-[10px] text-cyan-400 hover:text-cyan-300 font-medium transition-colors cursor-pointer"
+                  >
+                    进入完整管理中心 →
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.values(sourceMatrix).map((src) => (
+                    <button
+                      key={src.id}
+                      type="button"
+                      onClick={() => toggleSource(src.id)}
+                      className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all flex items-center gap-1.5 border cursor-pointer ${
+                        src.enabled
+                          ? "bg-white/15 text-white border-white/20 shadow-sm"
+                          : "bg-white/5 text-white/40 border-transparent opacity-60"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${src.dotColor}`} />
+                      <span>{src.badgeName}</span>
+                      {src.enabled && <Check className="w-2.5 h-2.5 text-cyan-400" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Dropdown Body: Only renders when searching or has content */}
             {hasDropdownContent && (
               <div className="flex flex-col border-t border-white/10 overflow-hidden">
                 {/* Search Type Filters & Dropdowns Header (Fixed, not clipped) */}
-                <div className="flex items-center justify-between gap-2 px-3 py-2 bg-white/[0.02] border-b border-white/[0.08] shrink-0">
+                <div
+                  className="flex items-center justify-between gap-2 px-3.5 py-2 bg-white/[0.03] border-b border-white/[0.08] shrink-0 overflow-x-auto no-scrollbar scrollbar-hide"
+                  style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                  onWheel={(e) => {
+                    if (e.deltaY !== 0) {
+                      e.currentTarget.scrollLeft += e.deltaY;
+                    }
+                  }}
+                >
                   <div className="flex items-center gap-1 shrink-0">
                     {SEARCH_TYPES.map((type) => (
                       <button
                         key={type.value}
                         onClick={() => setSearchType(type.value)}
-                        className={`px-2.5 py-1 rounded-full text-xs transition-colors flex items-center gap-1 ${
+                        className={`px-2.5 py-1 rounded-full text-xs transition-all flex items-center gap-1 cursor-pointer select-none ${
                           searchType === type.value
                             ? "bg-white text-black font-medium shadow-sm"
                             : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
@@ -468,7 +628,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                     <select
                       value={filters.type}
                       onChange={(e) => setFilterType(e.target.value as FilterType)}
-                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white/80 focus:outline-none cursor-pointer"
+                      className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white/80 focus:outline-none cursor-pointer transition-colors"
                     >
                       {FILTER_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value} className="bg-[#0f111a] text-white">
@@ -482,7 +642,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                         const option = durationOptions.find((item) => item.value === e.target.value);
                         setDurationRange(option?.range ?? null);
                       }}
-                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white/80 focus:outline-none cursor-pointer"
+                      className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white/80 focus:outline-none cursor-pointer transition-colors"
                     >
                       {durationOptions.map((opt) => (
                         <option key={opt.value} value={opt.value} className="bg-[#0f111a] text-white">
@@ -492,6 +652,45 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                     </select>
                   </div>
                 </div>
+
+                {/* Multi-source Dynamic Tabs Bar */}
+                {Boolean(query) && (
+                  <div
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-black/20 border-b border-white/[0.06] overflow-x-auto no-scrollbar scrollbar-hide shrink-0 select-none"
+                    style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                    onWheel={(e) => {
+                      if (e.deltaY !== 0) {
+                        e.currentTarget.scrollLeft += e.deltaY;
+                      }
+                    }}
+                  >
+                    <span className="text-[10px] text-white/40 uppercase font-mono tracking-wider mr-0.5 shrink-0 select-none">
+                      音源:
+                    </span>
+                    {dynamicSourceTabs.map((tab) => {
+                      const isSelected = activeSourceTab === tab.key;
+
+                      return (
+                        <button
+                          key={tab.key}
+                          type="button"
+                          onClick={() => setActiveSourceTab(tab.key)}
+                          className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex items-center gap-1.5 shrink-0 cursor-pointer select-none ${
+                            isSelected
+                              ? "bg-white/20 text-white border border-white/30 shadow-[0_0_12px_rgba(255,255,255,0.12)]"
+                              : "bg-white/[0.04] text-white/60 hover:bg-white/10 hover:text-white border border-white/5"
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${tab.dotColor}`} />
+                          <span>{tab.label}</span>
+                          {tab.count > 0 && (
+                            <span className="text-[10px] opacity-60 font-mono">({tab.count})</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* Scrollable Results & History Container */}
                 <div className="max-h-[48vh] overflow-y-auto custom-scrollbar flex flex-col p-2.5 gap-2">
@@ -596,8 +795,11 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                           </div>
 
                           <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium text-white truncate">{song.title}</div>
-                            <div className="text-[11px] text-white/50 truncate">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-white truncate">{song.title}</span>
+                              {getSourceBadge(song.source)}
+                            </div>
+                            <div className="text-[11px] text-white/50 truncate mt-0.5">
                               {song.artist} {song.album ? `• ${song.album}` : ""}
                             </div>
                           </div>

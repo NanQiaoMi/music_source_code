@@ -89,12 +89,12 @@ describe("DNAJournal", () => {
       root.render(<DNAJournal />);
     });
 
-    expect(container.textContent).toContain("Listening DNA Report");
-    expect(container.textContent).toContain("No listening DNA yet");
-    expect(container.textContent).toContain("Start DNA analysis");
+    expect(container.textContent).toContain("听觉基因解构报告");
+    expect(container.textContent).toContain("暂未建立神经连接");
+    expect(container.textContent).toContain("开启初始化协议 (重新同步)");
 
     const generateButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Start DNA analysis")
+      button.textContent?.includes("开启初始化协议")
     );
 
     await act(async () => {
@@ -103,7 +103,7 @@ describe("DNAJournal", () => {
 
     const toasts = useUIStore.getState().toasts;
     expect(toasts[toasts.length - 1]).toMatchObject({
-      message: "AI analysis is disabled. Enable AI settings before generating Listening DNA.",
+      message: "AI 功能已暂停",
       type: "warning",
     });
   });

@@ -90,19 +90,19 @@ describe("SmartMixSessionCard", () => {
     });
 
     const status = container.querySelector('[role="status"]');
-    expect(status?.textContent).toContain("Mix ready: 3 tracks from Midnight City");
+    expect(status?.textContent).toContain("Mix ready: 3 首曲目 from Midnight City");
     expect(container.textContent).toContain("Midnight City");
     expect(container.textContent).toContain("A Real Hero");
 
     const playButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Play mix")
+      button.textContent?.includes("播放混音")
     );
 
     await act(async () => {
       playButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(status?.textContent).toContain("Queued 3 Smart Mix tracks");
+    expect(status?.textContent).toContain("Queued 3 Smart Mix 首曲目");
     expect(mocks.playQueue).toHaveBeenCalledWith(expect.any(Array), 0);
 
     await act(async () => {
@@ -130,7 +130,7 @@ describe("SmartMixSessionCard", () => {
     });
 
     const regenerateButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Regenerate")
+      button.textContent?.includes("重新生成")
     );
 
     await act(async () => {
@@ -138,7 +138,7 @@ describe("SmartMixSessionCard", () => {
     });
 
     const status = container.querySelector('[role="status"]');
-    expect(status?.textContent).toContain("Regenerated mix: 3 tracks from Midnight City");
+    expect(status?.textContent).toContain("Regenerated mix: 3 首曲目 from Midnight City");
 
     await act(async () => {
       root.unmount();
@@ -166,7 +166,7 @@ describe("SmartMixSessionCard", () => {
     });
 
     const saveButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Save playlist")
+      button.textContent?.includes("保存播放列表")
     );
 
     await act(async () => {
@@ -178,7 +178,7 @@ describe("SmartMixSessionCard", () => {
       .getState()
       .groups.find((group) => group.name.includes("Midnight City"));
 
-    expect(status?.textContent).toContain("Saved 3 tracks to Smart Mix - Midnight City");
+    expect(status?.textContent).toContain("Saved 3 首曲目 to Smart Mix - Midnight City");
     expect(savedGroup?.type).toBe("custom");
     expect(savedGroup?.songs.map((song) => song.id)).toEqual(["seed", "track-3", "track-2"]);
 

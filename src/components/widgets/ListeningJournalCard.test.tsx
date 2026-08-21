@@ -57,8 +57,8 @@ describe("ListeningJournalCard", () => {
     );
     expect(ribbon).not.toBeNull();
     expect(ribbon?.querySelectorAll("button")).toHaveLength(7);
-    expect(container.textContent).toContain("2/7 active");
-    expect(container.textContent).toContain("60 min this week");
+    expect(container.textContent).toContain("2/7 天活跃");
+    expect(container.textContent).toContain("60 本周分钟");
 
     const todayButton = Array.from(container.querySelectorAll("button")).find((button) =>
       button.getAttribute("aria-label")?.startsWith("2026-05-20:")

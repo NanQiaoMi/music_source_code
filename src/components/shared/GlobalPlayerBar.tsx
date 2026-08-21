@@ -10,6 +10,7 @@ import { NowPlayingHalo } from "@/components/player/NowPlayingHalo";
 import { GlassRadarWidget } from "@/components/widgets/GlassRadarWidget";
 import { useABLoopStore } from "@/store/abLoopStore";
 import { ABLoopProgressMarkers } from "@/components/shared/ABLoopProgressMarkers";
+import { useNetworkAudioCache } from "@/hooks/useNetworkAudioCache";
 
 export const APPLE_SPRING_CONFIG = {
   type: "spring" as const,
@@ -49,6 +50,8 @@ export const GlobalPlayerBar: React.FC = () => {
   const toggleMute = useAudioStore((state) => state.toggleMute);
 
   const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const { isCached } = useNetworkAudioCache();
+  const isSongCached = currentSong ? isCached(currentSong.id, currentSong.source) : false;
 
   const [isHoveringProgress, setIsHoveringProgress] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
@@ -149,9 +152,17 @@ export const GlobalPlayerBar: React.FC = () => {
           </motion.div>
 
           <div className="min-w-0 flex-1 max-w-[200px]">
-            <p className="text-sm font-semibold tracking-tight text-white line-clamp-1">
-              {currentSong.title}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-semibold tracking-tight text-white line-clamp-1">
+                {currentSong.title}
+              </p>
+              {isSongCached && (
+                <span className="shrink-0 text-[9px] px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-medium flex items-center gap-0.5">
+                  <span className="w-1 h-1 rounded-full bg-cyan-400 animate-pulse" />
+                  已离线
+                </span>
+              )}
+            </div>
             <p className="text-xs font-medium text-white/60 line-clamp-1">{currentSong.artist}</p>
           </div>
         </div>

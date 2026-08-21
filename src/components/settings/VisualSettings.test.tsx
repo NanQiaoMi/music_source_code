@@ -1,10 +1,17 @@
+import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 vi.mock("framer-motion", () => ({
-  motion: {
-    div: "div",
-  },
+  motion: new Proxy(
+    {},
+    {
+      get: (_, prop: string) => {
+        return ({ children, ...props }: any) => React.createElement(prop, props, children);
+      },
+    }
+  ),
+  AnimatePresence: ({ children }: any) => <>{children}</>,
 }));
 
 describe("VisualSettingsPanel", () => {
@@ -18,11 +25,11 @@ describe("VisualSettingsPanel", () => {
       <VisualSettingsPanel isOpen={true} onClose={() => undefined} />
     );
 
-    expect(html).toContain("Performance presets");
-    expect(html).toContain("Cinematic");
-    expect(html).toContain("Balanced");
-    expect(html).toContain("Battery");
-    expect(html).toContain("Target FPS");
-    expect(html).toContain("Particle budget");
+    expect(html).toContain("渲染引擎性能档位");
+    expect(html).toContain("电影画质");
+    expect(html).toContain("均衡体验");
+    expect(html).toContain("省电模式");
+    expect(html).toContain("目标渲染帧率");
+    expect(html).toContain("粒子计算预算");
   });
 });

@@ -40,8 +40,11 @@ export const CloudMusicPanel: React.FC<CloudMusicPanelProps> = ({
     isLoadingPlaylists,
     activePlaylistSongs,
     isLoadingTracks,
+    hasMoreTracks,
+    trackTotalCount,
     fetchUserPlaylists,
     fetchPlaylistTracks,
+    loadMorePlaylistTracks,
     setIsAccountModalOpen,
   } = useUserAccountStore();
 
@@ -405,6 +408,22 @@ export const CloudMusicPanel: React.FC<CloudMusicPanelProps> = ({
                   </div>
                 );
               })}
+
+              {hasMoreTracks && (
+                <div className="p-4 flex items-center justify-center border-t border-white/5">
+                  <button
+                    type="button"
+                    disabled={isLoadingTracks}
+                    onClick={() => loadMorePlaylistTracks()}
+                    className="px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-[12px] font-medium transition-all flex items-center gap-2 cursor-pointer active:scale-95 shadow-sm"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingTracks ? "animate-spin" : ""}`} />
+                    {isLoadingTracks
+                      ? "正在加载后续歌曲..."
+                      : `加载更多歌曲 (已加载 ${activePlaylistSongs.length} / 总计 ${trackTotalCount} 首)`}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

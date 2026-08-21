@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
@@ -13,6 +13,8 @@ import {
 import type { VisualizationAudioSnapshot } from "@/lib/visualization/audioSnapshot";
 import { ThreeJSScene } from "@/lib/three/ThreeJSScene";
 import { usePerformanceV8Store } from "@/store/performanceV8Store";
+import { useAudioStore } from "@/store/audioStore";
+import { useAudioSourceStore } from "@/store/audioSourceStore";
 
 interface PerformanceWithMemory extends Performance {
   memory?: {
@@ -184,19 +186,66 @@ export function RenderEngineManager({
     [actualEngine]
   );
 
-  const createAudioData = useCallback(
-    (): AudioData => ({
+  const createAudioData = useCallback((): AudioData => {
+    const audioState = useAudioStore.getState();
+    const sourceSettings = useAudioSourceStore.getState();
+    const currentBeatMap = sourceSettings.currentBeatMap;
+    const currentTime = audioState.currentTime || 0;
+
+    let isDownbeat = false;
+    let beatImpact = 0;
+    let lowEnergy = 0;
+    let snapEnergy = 0;
+    let beatPhase = 0;
+    const bpm = currentBeatMap?.bpm || 120;
+
+    if (currentBeatMap && sourceSettings.enableBeatAnalysis) {
+      const gridStep = currentBeatMap.gridStep || 0.5;
+      beatPhase = (currentTime % gridStep) / gridStep;
+
+      // 强拍检测 (±0.06s 窗口)
+      if (currentBeatMap.downbeats) {
+        for (let i = 0; i < currentBeatMap.downbeats.length; i++) {
+          const dbTime = currentBeatMap.downbeats[i];
+          if (Math.abs(currentTime - dbTime) <= 0.06) {
+            isDownbeat = true;
+            break;
+          }
+          if (dbTime > currentTime + 0.1) break;
+        }
+      }
+
+      // 瞬态打击能量匹配
+      if (currentBeatMap.beats && currentBeatMap.beats.length > 0) {
+        for (let i = 0; i < currentBeatMap.beats.length; i++) {
+          const b = currentBeatMap.beats[i];
+          if (Math.abs(currentTime - b.time) <= 0.08) {
+            beatImpact = b.impact * (sourceSettings.beatSensitivity || 1.0);
+            lowEnergy = b.low;
+            snapEnergy = b.snap;
+            break;
+          }
+          if (b.time > currentTime + 0.1) break;
+        }
+      }
+    }
+
+    return {
       frequencyData: frequencyDataRef.current,
       waveformData: waveformDataRef.current,
-      bass: 0,
+      bass: lowEnergy > 0 ? lowEnergy : 0,
       mid: 0,
-      treble: 0,
+      treble: snapEnergy > 0 ? snapEnergy : 0,
       full: 0,
-      isBeat: false,
-      bpm: 120,
-    }),
-    []
-  );
+      isBeat: isDownbeat || beatImpact > 0.5,
+      bpm,
+      isDownbeat,
+      beatImpact,
+      lowEnergy,
+      snapEnergy,
+      beatPhase,
+    };
+  }, []);
 
   const getTransformParams = useCallback(
     (): TransformParams => ({

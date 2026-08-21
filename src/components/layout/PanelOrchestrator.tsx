@@ -5,6 +5,7 @@ import { useUIStore } from "@/store/uiStore";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/shallow";
 import { createLazyPanelComponent, LazyPanel, prefetchPanel } from "@/components/shared/LazyPanel";
+import { SourceManagementModal } from "@/components/sources/SourceManagementModal";
 
 // ─── Module Factories (Extracted for prefetching) ─────────────────
 const FACTORIES = {
@@ -103,6 +104,14 @@ const FACTORIES = {
   audioSourceManager: () =>
     import("@/components/player/AudioSourceManagerModal").then((m) => ({
       default: m.AudioSourceManagerModal,
+    })),
+  cloudMusic: () =>
+    import("@/components/library/CloudMusicPanel").then((m) => ({
+      default: m.CloudMusicPanel,
+    })),
+  accountCenter: () =>
+    import("@/components/account/MultiPlatformAccountModal").then((m) => ({
+      default: m.MultiPlatformAccountModal,
     })),
 };
 
@@ -421,6 +430,19 @@ export function PanelOrchestrator() {
         onClose={() => closePanel("audioSourceManager")}
         component={PANEL_COMPONENTS.audioSourceManager}
       />
+      <LazyPanel
+        name="cloudMusic"
+        isOpen={panels.cloudMusic}
+        onClose={() => closePanel("cloudMusic")}
+        component={PANEL_COMPONENTS.cloudMusic}
+      />
+      <LazyPanel
+        name="accountCenter"
+        isOpen={panels.accountCenter}
+        onClose={() => closePanel("accountCenter")}
+        component={PANEL_COMPONENTS.accountCenter}
+      />
+      <SourceManagementModal />
     </>
   );
 }

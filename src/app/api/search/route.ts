@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const keywords = searchParams.get("keywords") || searchParams.get("s") || "";
-  const limit = parseInt(searchParams.get("limit") || "30", 10);
+  const limit = parseInt(searchParams.get("limit") || "40", 10);
   const offset = parseInt(searchParams.get("offset") || "0", 10);
 
   if (!keywords.trim()) {
@@ -31,6 +31,8 @@ export async function GET(request: NextRequest) {
           ? s.artists.map((a: any) => a.name).join("/")
           : s.artist?.name || "未知歌手";
         const cover =
+          s.album?.picUrl ||
+          s.album?.blurPicUrl ||
           s.album?.artist?.img1v1Url ||
           s.artists?.[0]?.img1v1Url ||
           (s.album?.picId ? `https://music.163.com/api/album/img?id=${s.album.picId}` : "");

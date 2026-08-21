@@ -66,8 +66,8 @@ describe("JournalDayPanel", () => {
 
     const noteInput = container.querySelector("input");
     expect(noteInput).not.toBeNull();
-    expect(container.textContent).toContain("2 plays");
-    expect(container.textContent).toContain("2 min");
+    expect(container.textContent).toContain("2 次");
+    expect(container.textContent).toContain("2 分钟");
 
     await act(async () => {
       noteInput!.value = "Late night listening";

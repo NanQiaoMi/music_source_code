@@ -13,7 +13,8 @@ import { FloatingWaveformGlow } from "./FloatingWaveformGlow";
 import { FloatingSpectrumGlow } from "./FloatingSpectrumGlow";
 import { LiquidGlassFilter } from "./LiquidGlassFilter";
 import type { DragHandlers } from "./useFloatingDragPhysics";
-import { ChevronDown, Maximize2 } from "lucide-react";
+import { ChevronDown, Maximize2, HardDriveDownload } from "lucide-react";
+import { useNetworkAudioCache } from "@/hooks/useNetworkAudioCache";
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
@@ -68,6 +69,8 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
   const currentTime = useAudioStore((state) => state.currentTime);
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const { setCurrentView } = useUIStore();
+  const { isCached } = useNetworkAudioCache();
+  const isSongCached = currentSong ? isCached(currentSong.id, currentSong.source) : false;
 
   const visualizerMode = useFloatingDebugStore((state) => state.visualizerMode);
   const setVisualizerMode = useFloatingDebugStore((state) => state.setVisualizerMode);
@@ -161,9 +164,15 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
         onMouseDown={dragHandlers?.onMouseDown}
         onTouchStart={dragHandlers?.onTouchStart}
       >
-        {/* Left Lossless Badge */}
+        {/* Left Lossless & Offline Cache Badge */}
         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.08] border border-white/[0.14] text-[10px] font-medium text-white/80 tracking-tight shadow-xs">
-          <span>Apple Lossless</span>
+          <span>{currentSong?.format?.toUpperCase() || "FLAC"}</span>
+          {isSongCached && (
+            <span className="flex items-center gap-1 text-cyan-300 font-semibold pl-1 border-l border-white/10">
+              <HardDriveDownload className="w-2.5 h-2.5 text-cyan-400" />
+              <span>已离线</span>
+            </span>
+          )}
         </div>
 
         {/* Center Grab Notch */}

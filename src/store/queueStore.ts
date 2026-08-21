@@ -319,9 +319,9 @@ export const useQueueStore = create<QueueState>()(
     {
       name: "queue-store-v5",
       partialize: (state) => ({
-        queue: state.queue.map(sanitizePersistedSong),
-        currentIndex: state.currentIndex,
-        history: state.history,
+        queue: state.queue.slice(0, 200).map(sanitizePersistedSong),
+        currentIndex: Math.min(state.currentIndex, 199),
+        history: state.history.slice(0, 30),
         playThroughMode: state.playThroughMode,
       }),
       storage: {

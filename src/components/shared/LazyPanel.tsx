@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Suspense, lazy, ComponentType } from "react";
+import { PanelErrorBoundary } from "./PanelErrorBoundary";
 
 type PanelComponent = ComponentType<LegacyAny>;
 type PanelFactory = () => Promise<{ default: PanelComponent }>;
@@ -40,7 +41,7 @@ export function createLazyPanelComponent(name: string, factory: PanelFactory) {
 }
 
 export function LazyPanel({
-  name: _name,
+  name,
   isOpen,
   onClose,
   component: LazyComponent,
@@ -49,19 +50,21 @@ export function LazyPanel({
   if (!isOpen) return null;
 
   return (
-    <Suspense
-      fallback={
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
-            <span className="text-white/40 text-xs uppercase tracking-widest font-bold">
-              Loading...
-            </span>
+    <PanelErrorBoundary panelName={name} onClose={onClose}>
+      <Suspense
+        fallback={
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-10 h-10 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+              <span className="text-white/40 text-xs uppercase tracking-widest font-bold">
+                Loading...
+              </span>
+            </div>
           </div>
-        </div>
-      }
-    >
-      <LazyComponent isOpen={isOpen} onClose={onClose} {...extraProps} />
-    </Suspense>
+        }
+      >
+        <LazyComponent isOpen={isOpen} onClose={onClose} {...extraProps} />
+      </Suspense>
+    </PanelErrorBoundary>
   );
 }

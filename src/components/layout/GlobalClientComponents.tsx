@@ -1,11 +1,12 @@
 "use client";
 
+import React, { useEffect } from "react";
 import dynamic from "next/dynamic";
 import { AchievementToastContainer } from "@/components/shared/AchievementToast";
-
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { useMediaSession } from "@/hooks/useMediaSession";
 import { useElectron } from "@/hooks/useElectron";
+import { compactExistingStorage } from "@/lib/storage/safeStorage";
 
 const FloatingPlayer = dynamic(
   () => import("@/components/player/FloatingPlayer").then((mod) => mod.FloatingPlayer),
@@ -21,6 +22,11 @@ export function GlobalClientComponents() {
   useAudioPlayer();
   useMediaSession();
   useElectron();
+
+  // 应用初始化时自动自愈清理历史膨胀存储
+  useEffect(() => {
+    compactExistingStorage();
+  }, []);
 
   return (
     <>

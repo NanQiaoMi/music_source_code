@@ -54,8 +54,7 @@ describe("songPurgeService", () => {
 
     useQueueStore.setState({
       queue: [validSong, brokenSong],
-      insertNextList: [ghostSong],
-      history: [brokenSong],
+      history: [{ ...brokenSong, playedAt: Date.now() }],
     });
 
     useAudioStore.setState({
@@ -107,7 +106,6 @@ describe("songPurgeService", () => {
 
     const queue = useQueueStore.getState();
     expect(queue.queue).toEqual([validSong]);
-    expect(queue.insertNextList).toEqual([]);
     expect(queue.history).toEqual([]);
 
     const audio = useAudioStore.getState();

@@ -12,6 +12,7 @@ import { useFavoritesStore } from "@/store/favoritesStore";
 import { useABLoopStore } from "@/store/abLoopStore";
 import { GlassProgressBar } from "@/components/shared/GlassProgressBar";
 import { useAlbumTheme } from "@/hooks/useAlbumTheme";
+import { AppleAudioSourceIndicator } from "@/components/player/AppleAudioSourceIndicator";
 import {
   Sparkles,
   Play,
@@ -23,6 +24,7 @@ import {
   Shuffle,
   Volume2,
   VolumeX,
+  ListMusic,
 } from "lucide-react";
 
 const CHUNK_RETRY_PREFIX = "dynamic-import-retry:";
@@ -318,7 +320,8 @@ export const Player3D: React.FC = () => {
   const abLoopEnabled = useABLoopStore((state) => state.isEnabled);
   const pointA = useABLoopStore((state) => state.pointA);
   const pointB = useABLoopStore((state) => state.pointB);
-  const { setCurrentView, setIsTransitioning } = useUIStore();
+  const { setCurrentView, setIsTransitioning, panels, togglePanel } = useUIStore();
+  const isQueueOpen = Boolean(panels?.queue);
   const { isFavorite, toggleFavorite } = useFavoritesStore();
   const {
     setIsPlaying,
@@ -399,6 +402,9 @@ export const Player3D: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
+                <div className="px-4 mb-3 flex justify-center lg:justify-start">
+                  <AppleAudioSourceIndicator />
+                </div>
                 <h2 className="text-3xl font-bold text-white tracking-tight mb-3 truncate px-4">
                   {currentSong?.title || "未选择歌曲"}
                 </h2>
@@ -610,6 +616,20 @@ export const Player3D: React.FC = () => {
                     onChange={(e) => setVolume(parseFloat(e.target.value))}
                     className="w-24 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg"
                   />
+
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => togglePanel("queue")}
+                    className={`p-2 rounded-full transition-all ml-1 ${
+                      isQueueOpen
+                        ? "text-white bg-white/25 shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                        : "text-white/60 hover:text-white hover:bg-white/10"
+                    }`}
+                    title="播放队列 / 歌单列表"
+                  >
+                    <ListMusic className="w-5 h-5" />
+                  </motion.button>
                 </div>
               </div>
             </div>

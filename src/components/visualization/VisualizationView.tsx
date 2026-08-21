@@ -25,7 +25,6 @@ const VisualizationProgressBar = dynamic(
   { ssr: false }
 );
 
-import { useLyricsSearchStore } from "@/store/lyricsSearchStore";
 import * as Effects from "./effects";
 
 const PlayIcon = memo(() => (
@@ -93,6 +92,7 @@ export function VisualizationView() {
   const bokehRef = useRef<unknown[]>([]);
   const shockwavesRef = useRef<unknown[]>([]);
   const albumArtRef = useRef<HTMLDivElement | null>(null);
+  const lastEffectRef = useRef<string | null>(null);
 
   // Mouse idle detection for Zen Mode
   useEffect(() => {
@@ -302,6 +302,17 @@ export function VisualizationView() {
       const currentEff = state.currentEffect;
       const settings = state.effectSettings;
 
+      // 切换效果时彻底清理粒子池与引用，避免跨效果数据结构冲突
+      if (lastEffectRef.current !== currentEff) {
+        lastEffectRef.current = currentEff;
+        particlesRef.current = [];
+        nebulaStarsRef.current = [];
+        spectrumStarsRef.current = [];
+        matrixDropsRef.current = [];
+        bokehRef.current = [];
+        shockwavesRef.current = [];
+      }
+
       const analyser = getAudioAnalyser();
       if (analyser && dataArrayRef.current) {
         analyser.getByteFrequencyData(dataArrayRef.current as LegacyAny);
@@ -417,19 +428,41 @@ export function VisualizationView() {
           case "superstringSingularity":
             Effects.drawSuperstringSingularity(effectCtx);
             break;
+          case "cinematicSilkAurora":
+            Effects.drawCinematicSilkAurora(effectCtx);
+            break;
 
           default:
             Effects.drawSpatialMesh(effectCtx);
         }
       }
 
-      animationFrameRef.current = requestAnimationFrame(draw);
+      if (document.visibilityState === "visible") {
+        animationFrameRef.current = requestAnimationFrame(draw);
+      } else {
+        animationFrameRef.current = null;
+      }
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        if (!animationFrameRef.current) {
+          animationFrameRef.current = requestAnimationFrame(draw);
+        }
+      } else {
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     animationFrameRef.current = requestAnimationFrame(draw);
 
     return () => {
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
@@ -499,10 +532,16 @@ export function VisualizationView() {
         willChange: "filter",
       };
     }
+    if (currentEffect === "cinematicSilkAurora") {
+      return {
+        transform: "translateZ(0)",
+      };
+    }
     return { transform: "translateZ(0)" };
   };
 
   const effectsList: { id: VisualizationEffect; name: string }[] = [
+    { id: "cinematicSilkAurora", name: "流金丝绸极光 (电影感)" },
     { id: "spatialMesh", name: "流光幻境" },
     { id: "cyberpunkParticles", name: "神经之网" },
     { id: "organicFluid", name: "生命流体" },

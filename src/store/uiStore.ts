@@ -42,7 +42,9 @@ export type PanelName =
   | "aiSettings"
   | "dnaJournal"
   | "shelf3D"
-  | "audioSourceManager";
+  | "audioSourceManager"
+  | "cloudMusic"
+  | "accountCenter";
 
 export const PANEL_NAMES: readonly PanelName[] = [
   "queue",
@@ -83,6 +85,8 @@ export const PANEL_NAMES: readonly PanelName[] = [
   "dnaJournal",
   "shelf3D",
   "audioSourceManager",
+  "cloudMusic",
+  "accountCenter",
 ];
 
 const FULLSCREEN_PANELS: readonly PanelName[] = [
@@ -117,6 +121,8 @@ interface UIState {
   showModal: boolean;
   modalContent: React.ReactNode | null;
   isTransitioning: boolean;
+  isNavMenuOpen: boolean;
+  setIsNavMenuOpen: (open: boolean) => void;
 
   panels: Record<PanelName, boolean>;
   openPanel: (name: PanelName) => void;
@@ -166,14 +172,30 @@ interface UIState {
   setIsTransitioning: (transitioning: boolean) => void;
 }
 
+function getInitialView(): ViewType {
+  if (typeof window !== "undefined") {
+    try {
+      const saved = sessionStorage.getItem("mimimusic_active_view");
+      if (saved === "home" || saved === "player" || saved === "visualization" || saved === "emotion") {
+        return saved;
+      }
+    } catch {
+      // Ignore SSR / restricted environments
+    }
+  }
+  return "home";
+}
+
 export const useUIStore = create<UIState>((set, get) => ({
-  currentView: "home",
+  currentView: getInitialView(),
   themeMode: "dark",
   themeColors: defaultColors,
   isDynamicTheme: true,
   showModal: false,
   modalContent: null,
   isTransitioning: false,
+  isNavMenuOpen: false,
+  setIsNavMenuOpen: (open) => set({ isNavMenuOpen: open }),
 
   panels: createDefaultPanels(),
   isShelf3DOpen: false,
@@ -279,8 +301,16 @@ export const useUIStore = create<UIState>((set, get) => ({
   isKeyboardShortcutsOpen: false,
   setIsKeyboardShortcutsOpen: (isOpen) => set({ isKeyboardShortcutsOpen: isOpen }),
   showKeyboardShortcuts: () => set({ isKeyboardShortcutsOpen: true }),
-
-  setCurrentView: (view) => set({ currentView: view }),
+  setCurrentView: (view) => {
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("mimimusic_active_view", view);
+      } catch {
+        // Ignored
+      }
+    }
+    set({ currentView: view, isNavMenuOpen: false });
+  },
   setThemeMode: (mode) => set({ themeMode: mode }),
   setThemeColors: (colors) => set({ themeColors: colors }),
   setIsDynamicTheme: (enabled) => set({ isDynamicTheme: enabled }),

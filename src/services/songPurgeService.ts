@@ -129,7 +129,6 @@ export async function purgeInvalidSongs(songIds: string[]): Promise<PurgeReport>
 
     useQueueStore.setState({
       queue: newQueue,
-      insertNextList: (queueState.insertNextList || []).filter((s) => !targetIdSet.has(s.id)),
       history: (queueState.history || []).filter((s) => !targetIdSet.has(s.id)),
     });
   } catch (error) {

@@ -1,18 +1,18 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Trash2, RefreshCcw, Globe, Key, Activity, Zap } from "lucide-react";
+import { X, Plus, Trash2, RefreshCcw, Sparkles, Key, Zap, Check, ChevronDown } from "lucide-react";
 import { useAIStore } from "@/store/aiStore";
 import { useGlassToast } from "@/components/shared/GlassToast";
-import { GlassCard } from "@/components/shared/Glass/GlassCard";
 
 interface AISettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) => {
+export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) => {
   const {
     configs,
     activeConfigId,
@@ -28,7 +28,7 @@ const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) =>
 
   const [newConfig, setNewConfig] = useState({
     name: "",
-    baseUrl: "https://api.mnapi.com/v1",
+    baseUrl: "https://api.openai.com/v1",
     apiKey: "",
     model: "",
   });
@@ -43,19 +43,18 @@ const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) =>
       return;
     }
     addConfig(newConfig);
-    setNewConfig({ name: "", baseUrl: "https://api.openai.com", apiKey: "", model: "" });
+    setNewConfig({ name: "", baseUrl: "https://api.openai.com/v1", apiKey: "", model: "" });
     setIsAdding(false);
-    showToast("已添加新配置", "success");
+    showToast("已添加新 AI 配置", "success");
   };
 
   const handleTest = async (id: string) => {
     const success = await testConfig(id);
     if (success) {
       showToast("连接成功！", "success");
-      // If successful, automatically try to fetch models
       handleFetchModels(id);
     } else {
-      showToast("连接失败，请检查配置", "error");
+      showToast("连接失败，请检查端点与密钥", "error");
     }
   };
 
@@ -67,7 +66,6 @@ const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) =>
 
     if (models.length > 0) {
       showToast(`已发现 ${models.length} 个可用模型`, "info");
-      // If current model is empty, select the first one
       const config = configs.find((c) => c.id === id);
       if (config && !config.model) {
         updateConfig(id, { model: models[0] });
@@ -78,233 +76,203 @@ const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) =>
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-md"
-          onClick={onClose}
-        />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/65 backdrop-blur-md select-none font-sans antialiased">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 12 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        className="relative w-full max-w-xl bg-[#1c1c1e]/95 rounded-[24px] shadow-[0_24px_80px_rgba(0,0,0,0.6)] border border-white/[0.08] overflow-hidden flex flex-col max-h-[88vh] text-[#f5f5f7]"
+      >
+        {/* 顶部标题栏 */}
+        <div className="flex items-center justify-between px-6 py-4.5 border-b border-white/[0.06] bg-white/[0.02]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-sm">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-[16px] font-semibold text-white tracking-[-0.016em] leading-tight">
+                AI 模型与接口设置
+              </h3>
+              <p className="text-[12px] text-[#86868b] mt-0.5 tracking-tight">
+                配置大语言模型端点、API 密钥与智能分析服务
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="关闭"
+            className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex items-center justify-center transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          className="relative w-full max-w-2xl max-h-[85vh] flex flex-col"
-        >
-          <GlassCard className="flex flex-col overflow-hidden border-white/20">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
-                  <Activity className="w-5 h-5 text-purple-400" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">AI 接口管理</h2>
-                  <p className="text-sm text-white/50">管理您的模型分发与连通性</p>
-                </div>
-              </div>
+        {/* 主体滚动区 */}
+        <div className="p-6 overflow-y-auto space-y-4 flex-1 text-left">
+          {/* 配置列表 */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[12px] font-semibold text-[#86868b] uppercase tracking-wider">
+                已配置的服务端点 ({configs.length})
+              </span>
               <button
-                onClick={onClose}
-                className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all"
+                type="button"
+                onClick={() => setIsAdding(!isAdding)}
+                className="inline-flex items-center gap-1 text-[12px] font-medium text-[#2997ff] hover:text-white transition-colors"
               >
-                <X className="w-5 h-5" />
+                <Plus className="w-3.5 h-3.5" />
+                {isAdding ? "收起添加" : "添加端点"}
               </button>
             </div>
 
-            {/* Content */}
-            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
-              {/* Config List */}
-              <div className="space-y-4">
-                {configs.map((config) => (
-                  <motion.div
-                    key={config.id}
-                    layout
-                    className={`p-4 rounded-2xl border transition-all ${
-                      activeConfigId === config.id
-                        ? "bg-white/10 border-purple-500/50"
-                        : "bg-white/5 border-white/10"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            config.status === "online"
-                              ? "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
-                              : config.status === "offline"
-                                ? "bg-red-500"
-                                : config.status === "testing"
-                                  ? "bg-yellow-500 animate-pulse"
-                                  : "bg-white/20"
-                          }`}
-                        />
-                        <div>
-                          <h3 className="text-white font-medium flex items-center gap-2">
-                            {config.name}
-                            {activeConfigId === config.id && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/30 text-purple-300 border border-purple-500/30">
-                                当前使用
-                              </span>
-                            )}
-                          </h3>
-                          <p className="text-xs text-white/40 font-mono truncate max-w-[200px]">
-                            {config.baseUrl}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleTest(config.id)}
-                          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
-                          title="测试连通性"
-                        >
-                          <RefreshCcw
-                            className={`w-4 h-4 ${config.status === "testing" ? "animate-spin" : ""}`}
-                          />
-                        </button>
-                        <button
-                          onClick={() => setActiveConfig(config.id)}
-                          className={`p-2 rounded-lg transition-all ${
-                            activeConfigId === config.id
-                              ? "bg-purple-500 text-white"
-                              : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
-                          }`}
-                        >
-                          <Zap className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => removeConfig(config.id)}
-                          className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400 transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] text-white/30 uppercase">所选模型</label>
-                        <select
-                          value={config.model}
-                          onChange={(e) => updateConfig(config.id, { model: e.target.value })}
-                          className="bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/80 focus:outline-none"
-                        >
-                          {!config.model && <option value="">未选择模型</option>}
-                          {config.model && <option value={config.model}>{config.model}</option>}
-                          {availableModels
-                            .filter((m) => m !== config.model)
-                            .map((m) => (
-                              <option key={m} value={m}>
-                                {m}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] text-white/30 uppercase">最后检测</label>
-                        <div className="px-2 py-1.5 text-xs text-white/60">
-                          {config.lastTested
-                            ? new Date(config.lastTested).toLocaleTimeString()
-                            : "从未测试"}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-
-                {configs.length === 0 && !isAdding && (
-                  <div className="py-12 text-center">
-                    <Activity className="w-12 h-12 text-white/10 mx-auto mb-4" />
-                    <p className="text-white/40">暂无 API 配置，点击下方按钮添加</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Add Form */}
-              {isAdding ? (
+            {/* 新增端点表单 */}
+            <AnimatePresence>
+              {isAdding && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-4"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] space-y-3 overflow-hidden"
                 >
-                  <div className="space-y-4">
-                    <div>
-                      <label className="flex items-center gap-2 text-sm text-white/60 mb-2">
-                        <Activity className="w-4 h-4" /> 配置名称
-                      </label>
-                      <input
-                        type="text"
-                        value={newConfig.name}
-                        onChange={(e) => setNewConfig({ ...newConfig, name: e.target.value })}
-                        placeholder="例如: OpenAI 官方"
-                        className="w-full px-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-white placeholder-white/20 focus:border-purple-500/50 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="flex items-center gap-2 text-sm text-white/60 mb-2">
-                        <Globe className="w-4 h-4" /> API 地址 (Base URL)
-                      </label>
-                      <input
-                        type="text"
-                        value={newConfig.baseUrl}
-                        onChange={(e) => setNewConfig({ ...newConfig, baseUrl: e.target.value })}
-                        placeholder="https://api.openai.com"
-                        className="w-full px-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-white placeholder-white/20 focus:border-purple-500/50 outline-none font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="flex items-center gap-2 text-sm text-white/60 mb-2">
-                        <Key className="w-4 h-4" /> API Key
-                      </label>
-                      <input
-                        type="password"
-                        value={newConfig.apiKey}
-                        onChange={(e) => setNewConfig({ ...newConfig, apiKey: e.target.value })}
-                        placeholder="sk-..."
-                        className="w-full px-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-white placeholder-white/20 focus:border-purple-500/50 outline-none font-mono"
-                      />
-                    </div>
+                  <div className="text-[13px] font-semibold text-white">新增服务配置</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      placeholder="配置名称 (如 OpenAI)"
+                      value={newConfig.name}
+                      onChange={(e) => setNewConfig({ ...newConfig, name: e.target.value })}
+                      className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[12px] text-white outline-none focus:border-[#0071e3]"
+                    />
+                    <input
+                      placeholder="Base URL"
+                      value={newConfig.baseUrl}
+                      onChange={(e) => setNewConfig({ ...newConfig, baseUrl: e.target.value })}
+                      className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[12px] text-white outline-none focus:border-[#0071e3]"
+                    />
                   </div>
-                  <div className="flex gap-3">
+                  <input
+                    type="password"
+                    placeholder="API Key (sk-...)"
+                    value={newConfig.apiKey}
+                    onChange={(e) => setNewConfig({ ...newConfig, apiKey: e.target.value })}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[12px] text-white outline-none focus:border-[#0071e3]"
+                  />
+                  <div className="flex justify-end gap-2 pt-1">
                     <button
+                      type="button"
                       onClick={() => setIsAdding(false)}
-                      className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-all"
+                      className="px-4 py-1.5 rounded-full bg-white/10 text-white/70 text-[12px]"
                     >
                       取消
                     </button>
                     <button
+                      type="button"
                       onClick={handleAdd}
-                      className="flex-1 py-2.5 rounded-xl bg-purple-500 hover:bg-purple-600 text-white font-medium transition-all shadow-lg shadow-purple-500/20"
+                      className="px-5 py-1.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-[12px] font-semibold shadow-sm"
                     >
-                      保存配置
+                      保存端点
                     </button>
                   </div>
                 </motion.div>
-              ) : (
-                <button
-                  onClick={() => setIsAdding(true)}
-                  className="w-full py-4 border-2 border-dashed border-white/10 rounded-2xl flex items-center justify-center gap-2 text-white/40 hover:text-white/60 hover:border-white/20 transition-all group"
-                >
-                  <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span>添加新的接口渠道</span>
-                </button>
               )}
-            </div>
+            </AnimatePresence>
 
-            {/* Footer */}
-            <div className="p-4 bg-white/5 border-t border-white/10">
-              <div className="flex items-center justify-between text-[10px] text-white/30 uppercase tracking-widest px-2">
-                <span>Mimimusic AI Core v1.0</span>
-                <span>Powered by OpenAI Compatible Protocol</span>
-              </div>
+            {/* 端点卡片列表 */}
+            <div className="space-y-2.5">
+              {configs.map((config) => {
+                const isActive = activeConfigId === config.id;
+                return (
+                  <div
+                    key={config.id}
+                    className={`p-4 rounded-2xl border transition-all ${
+                      isActive
+                        ? "bg-[#0071e3]/10 border-[#0071e3] shadow-[0_2px_12px_rgba(0,113,227,0.15)]"
+                        : "bg-white/[0.04] border-white/[0.06]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            config.status === "online"
+                              ? "bg-[#34c759] shadow-[0_0_8px_rgba(52,199,89,0.6)]"
+                              : config.status === "offline"
+                                ? "bg-rose-500"
+                                : "bg-white/30"
+                          }`}
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-[14px] font-semibold text-white tracking-tight">
+                              {config.name}
+                            </h4>
+                            {isActive && (
+                              <span className="px-2 py-0.2 rounded text-[10px] font-bold bg-[#0071e3]/20 text-[#2997ff] border border-[#0071e3]/30">
+                                当前启用
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] font-mono text-[#86868b] truncate max-w-[240px] mt-0.5">
+                            {config.baseUrl}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleTest(config.id)}
+                          className="p-2 rounded-lg bg-white/[0.06] hover:bg-white/15 text-white/70 hover:text-white transition-colors"
+                          title="测试连通性"
+                        >
+                          <RefreshCcw
+                            className={`w-3.5 h-3.5 ${config.status === "testing" ? "animate-spin" : ""}`}
+                          />
+                        </button>
+                        {!isActive ? (
+                          <button
+                            type="button"
+                            onClick={() => setActiveConfig(config.id)}
+                            className="px-3 py-1 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-[11px] font-medium transition-transform active:scale-[0.96]"
+                          >
+                            启用
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#2997ff] px-2.5 py-1 rounded-full bg-[#0071e3]/15">
+                            <Check className="w-3 h-3" />
+                            使用中
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeConfig(config.id)}
+                          className="p-2 rounded-lg bg-white/[0.06] hover:bg-rose-500/20 text-white/50 hover:text-rose-400 transition-colors"
+                          title="删除配置"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </GlassCard>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+          </div>
+        </div>
+
+        {/* 底部操作栏 */}
+        <div className="px-6 py-4 border-t border-white/[0.06] bg-white/[0.02] flex items-center justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-[13px] font-semibold tracking-tight shadow-sm transition-transform active:scale-[0.96]"
+          >
+            完成
+          </button>
+        </div>
+      </motion.div>
+    </div>
   );
 };
 

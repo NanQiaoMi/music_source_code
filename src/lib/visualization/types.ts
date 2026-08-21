@@ -50,6 +50,11 @@ export interface AudioData {
   full: number;
   isBeat: boolean;
   bpm: number;
+  isDownbeat?: boolean;
+  beatImpact?: number;
+  lowEnergy?: number;
+  snapEnergy?: number;
+  beatPhase?: number;
 }
 
 export interface RenderContext {

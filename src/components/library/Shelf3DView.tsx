@@ -332,6 +332,25 @@ function drawRoundedRect(
   ctx.closePath();
 }
 
+// 烘焙 128x128 径向高斯柔焦微光贴图 (中心聚光、边缘平滑衰减，彻底消除方块感)
+function createBokehTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d")!;
+  const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+  grad.addColorStop(0.2, "rgba(255, 255, 255, 0.85)");
+  grad.addColorStop(0.45, "rgba(240, 248, 255, 0.35)");
+  grad.addColorStop(0.75, "rgba(210, 230, 255, 0.08)");
+  grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 128, 128);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   isOpen = true,
   className = "",
@@ -373,13 +392,13 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     const defaultCover = "/default-cover.svg";
     const items: ShelfItem[] = [];
 
-    // 基础有效曲库
+    // 基础有效曲库 (采用真实全网多源热门高音质曲目)
     const validSongs = rawSongs.length > 0 ? rawSongs : [
-      { id: "demo-1", title: "后来你好吗", artist: "A-Lin", album: "原声大碟", cover: "/default-cover.svg", duration: 245, source: "local" },
-      { id: "demo-2", title: "星河游戈 (Star River)", artist: "Vibe Master", album: "Cyber Sound", cover: "/default-cover.svg", duration: 198, source: "local" },
-      { id: "demo-3", title: "Midnight Pulse", artist: "Synthwave Echo", album: "Dark Horizon", cover: "/default-cover.svg", duration: 220, source: "local" },
-      { id: "demo-4", title: "Neon City", artist: "Electric Dream", album: "Vapor Trails", cover: "/default-cover.svg", duration: 210, source: "local" },
-      { id: "demo-5", title: "Deep Resonance", artist: "Sub Bass Lab", album: "Frequency Matrix", cover: "/default-cover.svg", duration: 260, source: "local" },
+      { id: "186016", title: "晴天", artist: "周杰伦", album: "叶惠美", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop", duration: 269, source: "netease" },
+      { id: "185706", title: "七里香", artist: "周杰伦", album: "七里香", cover: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop", duration: 299, source: "netease" },
+      { id: "1330348068", title: "起风了", artist: "买辣椒也用券", album: "起风了", cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop", duration: 325, source: "netease" },
+      { id: "186015", title: "三年二班", artist: "周杰伦", album: "叶惠美", cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=600&h=600&fit=crop", duration: 280, source: "netease" },
+      { id: "185827", title: "稻香", artist: "周杰伦", album: "魔杰座", cover: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=600&fit=crop", duration: 223, source: "netease" },
     ] as Song[];
 
     // 1. 全部歌曲库
@@ -388,33 +407,42 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       type: "playlist",
       title: "全部歌曲库 (All Songs)",
       subtitle: `${validSongs.length} 首曲目 · 完整音乐曲库`,
-      cover: validSongs[0]?.cover || defaultCover,
+      cover:
+        validSongs[0]?.cover && validSongs[0]?.cover !== defaultCover
+          ? validSongs[0].cover
+          : "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&h=800&fit=crop",
       tag: "曲库总览",
       trackCount: validSongs.length,
       songs: validSongs,
     });
 
-    // 2. 我喜欢的音乐 (若收藏为空，则智能推荐曲库前列)
+    // 2. 我喜欢的音乐 (专属红心浪漫光晕艺术封面)
     const effectiveFavs = favorites.length > 0 ? favorites : validSongs.slice(0, Math.min(12, validSongs.length));
     items.push({
       id: "pl-favorites",
       type: "playlist",
       title: "我喜欢的音乐 (Favorites)",
       subtitle: `${effectiveFavs.length} 首曲目 · 专属红心收藏`,
-      cover: effectiveFavs[0]?.cover || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop",
+      cover:
+        favorites[0]?.cover && favorites[0]?.cover !== defaultCover
+          ? favorites[0].cover
+          : "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=800&h=800&fit=crop",
       tag: "红心收藏",
       trackCount: effectiveFavs.length,
       songs: effectiveFavs,
     });
 
-    // 3. 最近播放记录
+    // 3. 最近播放记录 (时光唱片金色光影封面)
     const effectiveRecent = recentPlayedSongs.length > 0 ? recentPlayedSongs : validSongs.slice(0, Math.min(8, validSongs.length));
     items.push({
       id: "pl-recent",
       type: "playlist",
       title: "最近播放记录 (Recent)",
       subtitle: `${effectiveRecent.length} 首曲目 · 时光印记`,
-      cover: effectiveRecent[0]?.cover || "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop",
+      cover:
+        recentPlayedSongs[0]?.cover && recentPlayedSongs[0]?.cover !== defaultCover
+          ? recentPlayedSongs[0].cover
+          : "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&h=800&fit=crop",
       tag: "历史记录",
       trackCount: effectiveRecent.length,
       songs: effectiveRecent,
@@ -428,22 +456,26 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         type: "playlist",
         title: up.name,
         subtitle: `${up.trackCount || 0} 首曲目 · ${platformName}云端`,
-        cover: up.coverImgUrl || defaultCover,
+        cover: up.coverImgUrl || "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=800&fit=crop",
         tag: platformName,
         trackCount: up.trackCount || 0,
         songs: validSongs,
       });
     });
 
-    // 4. 自定义与系统歌单组
+    // 4. 自定义与系统歌单组 (每日推荐与精选)
     playlistGroups.forEach((group: PlaylistGroup, idx) => {
       const gSongs = (group.songs && group.songs.length > 0 ? group.songs : validSongs.slice(idx * 3, idx * 3 + 10)) as Song[];
+      const defaultGroupCover =
+        group.type === "daily"
+          ? "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800&h=800&fit=crop"
+          : "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=800&h=800&fit=crop";
       items.push({
         id: `pl-group-${group.id}`,
         type: "playlist",
         title: group.name,
         subtitle: `${gSongs.length} 首曲目 · ${group.type === "daily" ? "AI 每日推荐" : "精选歌单"}`,
-        cover: group.cover || gSongs[0]?.cover || defaultCover,
+        cover: group.cover || defaultGroupCover,
         tag: group.type === "daily" ? "每日推荐" : "精选歌单",
         trackCount: gSongs.length,
         songs: gSongs.length > 0 ? gSongs : validSongs,
@@ -467,11 +499,11 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
     if (sourceSongs.length === 0) {
       sourceSongs = [
-        { id: "demo-1", title: "后来你好吗", artist: "A-Lin", album: "原声大碟", cover: "/default-cover.svg", duration: 245, source: "local" },
-        { id: "demo-2", title: "星河游戈 (Star River)", artist: "Vibe Master", album: "Cyber Sound", cover: "/default-cover.svg", duration: 198, source: "local" },
-        { id: "demo-3", title: "Midnight Pulse", artist: "Synthwave Echo", album: "Dark Horizon", cover: "/default-cover.svg", duration: 220, source: "local" },
-        { id: "demo-4", title: "Neon City", artist: "Electric Dream", album: "Vapor Trails", cover: "/default-cover.svg", duration: 210, source: "local" },
-        { id: "demo-5", title: "Deep Resonance", artist: "Sub Bass Lab", album: "Frequency Matrix", cover: "/default-cover.svg", duration: 260, source: "local" },
+        { id: "186016", title: "晴天", artist: "周杰伦", album: "叶惠美", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop", duration: 269, source: "netease" },
+        { id: "185706", title: "七里香", artist: "周杰伦", album: "七里香", cover: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop", duration: 299, source: "netease" },
+        { id: "1330348068", title: "起风了", artist: "买辣椒也用券", album: "起风了", cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop", duration: 325, source: "netease" },
+        { id: "186015", title: "三年二班", artist: "周杰伦", album: "叶惠美", cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=600&h=600&fit=crop", duration: 280, source: "netease" },
+        { id: "185827", title: "稻香", artist: "周杰伦", album: "魔杰座", cover: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=600&fit=crop", duration: 223, source: "netease" },
       ];
     }
 
@@ -586,19 +618,19 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     renderer.toneMappingExposure = 1.15;
     rendererRef.current = renderer;
 
-    // 4. Lights (纯净白光与柔和环境光)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.15);
+    // 4. Lights (纯净白光、柔和环境光与聚光焦点灯)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.25);
     scene.add(ambientLight);
 
-    const mainLight = new THREE.PointLight(0xffffff, 3.4, 25);
-    mainLight.position.set(0, 3.0, 5.0);
+    const mainLight = new THREE.PointLight(0xffffff, 3.6, 25);
+    mainLight.position.set(0, 3.2, 5.2);
     scene.add(mainLight);
 
-    const fillLight = new THREE.PointLight(0xe5e7eb, 1.8, 20);
-    fillLight.position.set(-4.0, -0.6, 3.2);
+    const fillLight = new THREE.PointLight(0x93c5fd, 2.2, 22);
+    fillLight.position.set(-4.5, -0.4, 3.5);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    const rimLight = new THREE.DirectionalLight(0xe0e7ff, 1.4);
     rimLight.position.set(6, 6, -2);
     scene.add(rimLight);
 
@@ -607,10 +639,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     cardsGroupRef.current = cardsGroup;
     scene.add(cardsGroup);
 
-    // 6. 暗调黑曜石反光镜面地面
-    const floorGeo = new THREE.PlaneGeometry(42, 42, 24, 24);
+    // 6. 空灵黑曜石镜面反射地面与隐形全息地网 (Gloss: 0.94, Grid: 0.08)
+    const floorGeo = new THREE.PlaneGeometry(50, 50, 24, 24);
     const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x040406,
+      color: 0x06060a,
       roughness: 0.06,
       metalness: 0.94,
     });
@@ -619,21 +651,30 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     floor.position.y = -2.0;
     scene.add(floor);
 
+    // 舞台全息流光透视地网 (0.08 隐形微线)
+    const grid = new THREE.GridHelper(36, 28, 0x3d4a6b, 0x121524);
+    grid.position.y = -1.99;
+    if (grid.material instanceof THREE.Material) {
+      grid.material.transparent = true;
+      grid.material.opacity = 0.08;
+    }
+    scene.add(grid);
+
     // 7. 高斯径向渐变柔和地面微光投影 (Smooth Gaussian Radial Contact Halo)
     const shadowCanvas = document.createElement("canvas");
     shadowCanvas.width = 512;
     shadowCanvas.height = 512;
     const sCtx = shadowCanvas.getContext("2d")!;
     const sGrad = sCtx.createRadialGradient(256, 256, 10, 256, 256, 240);
-    sGrad.addColorStop(0, "rgba(255, 255, 255, 0.20)");
-    sGrad.addColorStop(0.3, "rgba(255, 255, 255, 0.08)");
-    sGrad.addColorStop(0.65, "rgba(255, 255, 255, 0.02)");
+    sGrad.addColorStop(0, "rgba(255, 255, 255, 0.28)");
+    sGrad.addColorStop(0.3, "rgba(255, 255, 255, 0.10)");
+    sGrad.addColorStop(0.65, "rgba(255, 255, 255, 0.03)");
     sGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
     sCtx.fillStyle = sGrad;
     sCtx.fillRect(0, 0, 512, 512);
 
     const shadowTexture = new THREE.CanvasTexture(shadowCanvas);
-    const contactShadowGeo = new THREE.PlaneGeometry(4.8, 3.0);
+    const contactShadowGeo = new THREE.PlaneGeometry(5.2, 3.2);
     const contactShadowMat = new THREE.MeshBasicMaterial({
       map: shadowTexture,
       transparent: true,
@@ -646,26 +687,57 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     contactShadowMeshRef.current = contactShadowMesh;
     scene.add(contactShadowMesh);
 
-    // 8. 空间银白微光粒子星尘 (350 颗微光星尘)
-    const particleCount = 350;
+    // 8. 空间柔焦微光星尘 (150 颗超低密度高斯圆形光斑，彻底消除方块感)
+    const particleCount = 150;
     const particleGeo = new THREE.BufferGeometry();
     const particlePos = new Float32Array(particleCount * 3);
-    for (let p = 0; p < particleCount * 3; p += 3) {
-      particlePos[p] = (Math.random() - 0.5) * 24;
-      particlePos[p + 1] = (Math.random() - 0.5) * 14;
-      particlePos[p + 2] = (Math.random() - 0.5) * 18;
+    for (let p = 0; p < particleCount; p++) {
+      const idx = p * 3;
+      particlePos[idx] = (Math.random() - 0.5) * 26;
+      particlePos[idx + 1] = (Math.random() - 0.5) * 14 + 1.0;
+      particlePos[idx + 2] = (Math.random() - 0.5) * 18;
     }
     particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePos, 3));
+
+    const bokehTexture = createBokehTexture();
     const particleMat = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.045,
+      size: 0.18,
+      map: bokehTexture,
       transparent: true,
-      opacity: 0.35,
+      opacity: 0.45,
       blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      color: 0xffffff,
     });
     const particles = new THREE.Points(particleGeo, particleMat);
     particlesRef.current = particles;
     scene.add(particles);
+
+    // 8.1 3D 深邃极光星云背景板 (Z: -14)
+    const nebulaCanvas = document.createElement("canvas");
+    nebulaCanvas.width = 512;
+    nebulaCanvas.height = 512;
+    const nCtx = nebulaCanvas.getContext("2d")!;
+    const nGrad = nCtx.createRadialGradient(256, 256, 20, 256, 256, 256);
+    nGrad.addColorStop(0, "rgba(70, 95, 160, 0.40)");
+    nGrad.addColorStop(0.35, "rgba(30, 45, 90, 0.22)");
+    nGrad.addColorStop(0.70, "rgba(12, 18, 40, 0.08)");
+    nGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+    nCtx.fillStyle = nGrad;
+    nCtx.fillRect(0, 0, 512, 512);
+    const nebulaTexture = new THREE.CanvasTexture(nebulaCanvas);
+
+    const nebulaGeo = new THREE.PlaneGeometry(38, 26);
+    const nebulaMat = new THREE.MeshBasicMaterial({
+      map: nebulaTexture,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      color: new THREE.Color(0x384c7a),
+    });
+    const nebulaMesh = new THREE.Mesh(nebulaGeo, nebulaMat);
+    nebulaMesh.position.set(0, 2.0, -14);
+    scene.add(nebulaMesh);
 
     // 9. 创建 11 张虚拟化卡片 Mesh (Three.js 显存级持久化纹理直连)
     const cardGeo = new THREE.PlaneGeometry(1.95, 2.45);
@@ -703,11 +775,16 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       modeBlendRef.current += (targetModeBlendRef.current - modeBlendRef.current) * 0.08;
       const modeBlend = modeBlendRef.current;
 
-      // 滚动位置平滑弹簧衰减 (拖拽时高响应 0.26，释放后丝滑减速 0.14)
-      const lerpSpeed = isDraggingRef.current ? 0.26 : 0.14;
+      // 滚动位置平滑弹簧衰减 (拖拽时高响应 0.28，释放后丝滑减速 0.16)
+      const lerpSpeed = isDraggingRef.current ? 0.28 : 0.16;
       currentScrollRef.current += (targetScrollRef.current - currentScrollRef.current) * lerpSpeed;
       const scrollPos = currentScrollRef.current;
       const centerVirtualIndex = Math.round(scrollPos);
+      const scrollVelocity = targetScrollRef.current - currentScrollRef.current;
+
+      // 动态速度倾角与转弯侧倾微动效 (Dynamic Velocity Bank & Yaw)
+      const dynamicBankRoll = Math.max(-0.15, Math.min(0.15, scrollVelocity * 0.04));
+      const dynamicYawLead = Math.max(-0.12, Math.min(0.12, scrollVelocity * 0.03));
 
       // 检测是否跨越刻度并发出 PSP 机械齿轮咔哒音效
       if (centerVirtualIndex !== lastDetentStepRef.current) {
@@ -727,25 +804,29 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             reactUpdateTimerRef.current = setTimeout(() => {
               reactUpdateTimerRef.current = null;
               setActiveIndex(activeIndexRef.current);
-            }, 45);
+            }, 40);
           }
         }
       }
 
-      // 鼠标视差平滑
+      // 鼠标视差与模式切换镜头景深推拉 (Camera Dolly Push/Pull on Mode Switch)
       const mp = mouseParallaxRef.current;
       mp.x += (mp.targetX - mp.x) * 0.05;
       mp.y += (mp.targetY - mp.y) * 0.05;
 
       if (cameraRef.current) {
+        const dollyZ = Math.sin(modeBlend * Math.PI) * 0.28;
         cameraRef.current.position.x = mp.x * 0.65;
         cameraRef.current.position.y = 0.35 + mp.y * 0.4;
+        cameraRef.current.position.z = 6.6 - dollyZ;
         cameraRef.current.lookAt(0, 0, 0);
       }
 
-      // 空间星尘粒子自转与浮动
+      // 空间星尘粒子自转与音律呼吸微动效
       if (particlesRef.current) {
-        particlesRef.current.rotation.y += 0.0006;
+        particlesRef.current.rotation.y += 0.0003;
+        const pulseScale = 1.0 + Math.sin(time * 0.002) * 0.05;
+        particlesRef.current.scale.set(pulseScale, pulseScale, pulseScale);
       }
 
       // 地面接触光晕动态跟随
@@ -808,13 +889,14 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           const stagePy = -u * 0.02 - v * 0.03 + floatY;
           // Z 轴深度：中心突出前置 (Z=1.12)，两侧平滑推入景深
           const stagePz = (1.12 - u * 0.82 - v * 0.65) + floatZ;
-          // Y 轴旋转：精准向心偏转，面朝中央主视线
+          // Y 轴旋转：精准向心偏转 + 动态转向侧倾
           const stageFocalZ = 3.6;
-          const stageRotY = -Math.atan2(stagePx, stageFocalZ - stagePz) * 1.28;
+          const stageRotY = -Math.atan2(stagePx, stageFocalZ - stagePz) * 1.28 + dynamicYawLead;
           const stageRotX = mp.y * 0.08 + tiltRoll;
-          const stageRotZ = -mp.x * 0.02;
-          // 缩放：中心 1.22x，两侧自然过渡
-          const stageScale = 1.22 - u * 0.28 - v * 0.055;
+          const stageRotZ = -mp.x * 0.02 + dynamicBankRoll;
+          // 缩放：中心 1.22x + 磁吸微突
+          const centerOvershoot = Math.max(0, 1.0 - absOffset * 2.0);
+          const stageScale = 1.22 - u * 0.28 - v * 0.055 + centerOvershoot * 0.025;
 
           // === 2. 侧栏弧形透视模式 (Side Shelf) - 优雅环形向心长廊，全卡片面朝中央 ===
           let sidePx = 0;
@@ -838,11 +920,11 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
           // 核心：精准计算向心偏转角，所有卡片面朝中央主视线聚焦点 (0, 0, 4.2)
           const sideFocalZ = 4.2;
-          const sideRotY = -Math.atan2(sidePx, sideFocalZ - sidePz) * 1.15;
+          const sideRotY = -Math.atan2(sidePx, sideFocalZ - sidePz) * 1.15 + dynamicYawLead * 0.8;
           const sidePy = -Math.min(absOffset, 1.0) * 0.02 - Math.max(0, absOffset - 1.0) * 0.03 + floatY;
           const sideRotX = 0.04 + mp.y * 0.08 + tiltRoll;
-          const sideRotZ = -mp.x * 0.015;
-          const sideScale = 1.22 - Math.min(absOffset, 1.0) * 0.26 - Math.max(0, absOffset - 1.0) * 0.05;
+          const sideRotZ = -mp.x * 0.015 + dynamicBankRoll * 0.8;
+          const sideScale = 1.22 - Math.min(absOffset, 1.0) * 0.26 - Math.max(0, absOffset - 1.0) * 0.05 + centerOvershoot * 0.02;
 
           // === 3. 混合插值 ===
           const finalPx = THREE.MathUtils.lerp(stagePx, sidePx, modeBlend);
@@ -925,7 +1007,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
   // 播放当前选中的卡片 (歌单模式下整单播放，单曲模式下单曲播放)
   const handlePlayCurrent = useCallback(() => {
-    const cur = activeShelfItems[activeIndex];
+    const curIdx = activeIndexRef.current ?? activeIndex;
+    const cur = activeShelfItems[curIdx] || activeShelfItems[activeIndex];
     if (!cur) return;
     playCardSelectTick();
 
@@ -947,7 +1030,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   // 打开曲目二级详情瀑布流面板
   const handleOpenDetail = useCallback(() => {
     playCardSelectTick();
-    const cur = activeShelfItems[activeIndex];
+    const curIdx = activeIndexRef.current ?? activeIndex;
+    const cur = activeShelfItems[curIdx] || activeShelfItems[activeIndex];
     if (cur) {
       setSelectedShelfItem(cur);
       setShowDetailPanel(true);
@@ -1125,20 +1209,44 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`fixed inset-0 z-50 w-full h-full min-h-[520px] ${transparentBg ? "bg-transparent pointer-events-none" : "bg-[#050507]"} overflow-hidden select-none flex flex-col justify-between p-6 ${className}`}
+      className={`fixed inset-0 z-50 w-full h-full min-h-[520px] ${transparentBg ? "bg-transparent pointer-events-none" : "bg-[#040407]"} overflow-hidden select-none flex flex-col justify-between p-6 ${className}`}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMoveParallax}
       onMouseUp={handleMouseUp}
       onWheel={handleWheel}
     >
+      {/* ── 动态自适应极光与舞台弥散流光背景 (Atmospheric Aurora Mesh) ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
+        {/* 顶部主舞台氛围光 */}
+        <div
+          className="absolute -top-[20%] left-1/2 -translate-x-1/2 w-[1100px] h-[700px] rounded-full blur-[140px] opacity-35 transition-all duration-1000"
+          style={{
+            background:
+              browseType === "favorites"
+                ? "radial-gradient(circle, rgba(244,63,94,0.45) 0%, rgba(168,85,247,0.25) 45%, transparent 70%)"
+                : browseType === "recent"
+                ? "radial-gradient(circle, rgba(245,158,11,0.45) 0%, rgba(239,68,68,0.25) 45%, transparent 70%)"
+                : browseType === "daily"
+                ? "radial-gradient(circle, rgba(16,185,129,0.45) 0%, rgba(6,182,212,0.25) 45%, transparent 70%)"
+                : "radial-gradient(circle, rgba(59,130,246,0.45) 0%, rgba(147,51,234,0.25) 45%, transparent 70%)",
+          }}
+        />
+        {/* 底部舞台地面反光泛光 */}
+        <div className="absolute -bottom-24 left-0 right-0 h-[360px] bg-gradient-to-t from-cyan-900/15 via-indigo-950/15 to-transparent blur-3xl opacity-60 pointer-events-none" />
+        
+        {/* 顶部流光细线 */}
+        <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+      </div>
+
       {/* 3D WebGL Canvas */}
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-auto cursor-grab active:cursor-grabbing"
+        className="absolute inset-0 w-full h-full pointer-events-auto cursor-grab active:cursor-grabbing z-10"
       />
 
       {/* ── 顶部控制栏 (Apple Monochrome Liquid Glass Top HUD) ── */}
       <div className="relative z-20 flex items-center justify-between w-full max-w-7xl mx-auto px-3.5 sm:px-5 py-2 bg-white/[0.06] border border-white/[0.18] rounded-3xl backdrop-blur-[56px] backdrop-saturate-[180%] shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1.5px_rgba(255,255,255,0.3)] shelf-hud-interactive gap-2 sm:gap-3 overflow-hidden select-none">
+        <div className="mineradio-glass-specular-glint" />
         {/* 左侧标题与模式 */}
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
           <div className="flex items-center gap-2 text-white shrink-0">
@@ -1480,7 +1588,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       )}
 
       {/* ── 底部当前卡片控制器 (Apple Liquid Glass Floating HUD) ── */}
-      <div className="relative z-20 flex items-center justify-between w-full max-w-4xl mx-auto px-6 py-3 bg-white/[0.07] border border-white/[0.20] rounded-full backdrop-blur-[56px] backdrop-saturate-[180%] shadow-[0_24px_60px_rgba(0,0,0,0.9),inset_0_1.5px_2px_rgba(255,255,255,0.35)] shelf-hud-interactive">
+      <div className="relative z-20 flex items-center justify-between w-full max-w-4xl mx-auto px-6 py-3 bg-white/[0.07] border border-white/[0.20] rounded-full backdrop-blur-[56px] backdrop-saturate-[180%] shadow-[0_24px_60px_rgba(0,0,0,0.9),inset_0_1.5px_2px_rgba(255,255,255,0.35)] shelf-hud-interactive overflow-hidden">
+        <div className="mineradio-glass-specular-glint" />
         {/* 左侧上一首按钮 */}
         <button
           type="button"

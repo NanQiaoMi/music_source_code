@@ -433,13 +433,32 @@ export const useAudioStore = create<AudioState>()(
           return;
         }
 
-        // Auto-populate queue from playlist library so next/prev and auto-advance work
-        const playlistSongs = usePlaylistStore.getState().songs;
-        const idx = playlistSongs.findIndex((s) => s.id === song.id);
-        const fullQueue = idx >= 0 ? playlistSongs : [song];
-        const startIdx = idx >= 0 ? idx : 0;
-
+        // 检查当前播放队列中是否已有该歌曲（如正在播放网络歌单或搜索结果列表）
         const queueStore = useQueueStore.getState();
+        const currentQueue = queueStore.queue;
+        const queueIdx = currentQueue.findIndex((s) => s.id === song.id);
+
+        let fullQueue: Song[];
+        let startIdx: number;
+
+        if (queueIdx >= 0) {
+          // 当前播放队列中已有这首歌，保留完整队列，仅切换当前索引
+          fullQueue = currentQueue;
+          startIdx = queueIdx;
+        } else {
+          // 否则尝试从本地曲库匹配
+          const playlistSongs = usePlaylistStore.getState().songs;
+          const idx = playlistSongs.findIndex((s) => s.id === song.id);
+          if (idx >= 0) {
+            fullQueue = playlistSongs;
+            startIdx = idx;
+          } else {
+            // 如果既不在当前队列也不在本地曲库，将该歌曲追加到当前队列或创建单曲队列
+            fullQueue = currentQueue.length > 0 ? [...currentQueue, song] : [song];
+            startIdx = fullQueue.length - 1;
+          }
+        }
+
         queueStore.setQueue(fullQueue);
         queueStore.setCurrentIndex(startIdx);
         queueStore.addToHistory(song);

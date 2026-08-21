@@ -6,10 +6,10 @@ import Image from "next/image";
 import { motion, useMotionValue, useSpring, AnimatePresence } from "framer-motion";
 import { Play, Pause, Disc, Plus } from "lucide-react";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useGestureStore } from "@/store/gestureStore";
-import { useIntegratedAudioPipeline } from "@/lib/audio/useIntegratedAudioPipeline";
 import { Song } from "@/types/song";
 import Link from "next/link";
 
@@ -28,19 +28,22 @@ const MAX_VISIBLE_HALF = 4; // 左右最多各显示 4 张
 
 export const MusicCardStack: React.FC = () => {
   const { songs, recentPlayed, setSelectedSong } = usePlaylistStore();
+  const queue = useQueueStore((state) => state.queue);
   const { currentSong, isPlaying, setIsPlaying } = useAudioStore();
   const { lastGesture, gestureTriggered } = useGestureStore();
-  const { playTrackWithPipeline } = useIntegratedAudioPipeline();
   const { setCurrentView } = useUIStore();
 
   const displaySongs: Song[] = useMemo(() => {
-    return songs.length > 0 ? songs : recentPlayed;
-  }, [songs, recentPlayed]);
+    if (queue && queue.length > 0) return queue;
+    if (songs && songs.length > 0) return songs;
+    return recentPlayed;
+  }, [queue, songs, recentPlayed]);
 
   const [centerIndex, setCenterIndex] = useState(0);
   const [isCenterHovered, setIsCenterHovered] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isWheelingRef = useRef(false);
+  const prevSongIdRef = useRef<string | null>(null);
 
   // 纯硬件层 Framer Motion 物理弹簧（零 React 重渲染）
   const mouseX = useMotionValue(0);
@@ -49,19 +52,17 @@ export const MusicCardStack: React.FC = () => {
   const smoothTiltX = useSpring(mouseY, tiltSpringConfig);
   const smoothTiltY = useSpring(mouseX, tiltSpringConfig);
 
-  // 初始化居中当前正在播放的歌曲或第一首
+  // 仅在真实切歌 (currentSong.id 变化) 或初次加载时将卡片自动聚焦到当前曲目，绝不在用户手动翻看卡片时强行切回去
   useEffect(() => {
-    if (displaySongs.length > 0) {
-      if (currentSong) {
-        const foundIdx = displaySongs.findIndex((s) => s.id === currentSong.id);
-        if (foundIdx >= 0) {
-          setCenterIndex(foundIdx);
-          return;
-        }
-      }
-      setCenterIndex(0);
+    if (!currentSong || displaySongs.length === 0) return;
+    if (prevSongIdRef.current === currentSong.id) return;
+    prevSongIdRef.current = currentSong.id;
+
+    const foundIdx = displaySongs.findIndex((s) => s.id === currentSong.id);
+    if (foundIdx >= 0) {
+      setCenterIndex(foundIdx);
     }
-  }, [displaySongs.length, currentSong?.id]);
+  }, [currentSong?.id, displaySongs]);
 
   // 切换焦点专辑时同步当前选中的歌曲，触发背景流光环境光智能联动
   useEffect(() => {
@@ -118,10 +119,13 @@ export const MusicCardStack: React.FC = () => {
       if (currentSong?.id === song.id && isPlaying) {
         setIsPlaying(false);
       } else {
-        playTrackWithPipeline(song);
+        // 点击卡片自动将当前全部曲库/列表整单载入播放队列，支持连续切歌与自动连播，无需逐一点击
+        const targetQueue = displaySongs.length > 0 ? displaySongs : [song];
+        const targetIdx = targetQueue.findIndex((s) => s.id === song.id);
+        useAudioStore.getState().playQueue(targetQueue, targetIdx >= 0 ? targetIdx : _index);
       }
     },
-    [currentSong?.id, isPlaying, playTrackWithPipeline, setIsPlaying, setSelectedSong]
+    [currentSong?.id, isPlaying, setIsPlaying, setSelectedSong, displaySongs]
   );
 
   // 鼠标在焦点封套上的硬件级 3D 视差计算（不触发任何 React setState）
@@ -197,9 +201,9 @@ export const MusicCardStack: React.FC = () => {
   // 手势切歌联动
   useEffect(() => {
     if (gestureTriggered && lastGesture) {
-      if (lastGesture.type === "swipe_left") {
+      if ((lastGesture as any) === "swipe_left" || (lastGesture as any)?.type === "swipe_left") {
         handleNext();
-      } else if (lastGesture.type === "swipe_right") {
+      } else if ((lastGesture as any) === "swipe_right" || (lastGesture as any)?.type === "swipe_right") {
         handlePrev();
       }
     }

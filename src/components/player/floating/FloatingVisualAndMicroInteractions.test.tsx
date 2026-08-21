@@ -414,7 +414,7 @@ describe("FloatingCompactControlsState (Level 2 Island Controls)", () => {
     expect(container.querySelector('button[title="上一首"]')).toBeDefined();
     expect(container.querySelector('button[title="下一首"]')).toBeDefined();
     expect(container.querySelector('button[title="歌词"]')).toBeDefined();
-    expect(container.querySelector('button[title*="展开为完整卡片"]')).toBeDefined();
+    expect(container.querySelector('button[title*="展开"]')).toBeDefined();
 
     // 1. Click on card body outside controls triggers onCollapseToMini (returns to initial mini state)
     const card = container.querySelector('[data-floating-state="compact"]') as HTMLDivElement;
@@ -424,7 +424,7 @@ describe("FloatingCompactControlsState (Level 2 Island Controls)", () => {
     expect(onCollapseToMini).toHaveBeenCalledTimes(1);
 
     // 2. Click on expand button triggers onExpandFull (expands to full card)
-    const expandBtn = container.querySelector('button[title*="展开为完整卡片"]') as HTMLButtonElement;
+    const expandBtn = container.querySelector('button[title*="展开"]') as HTMLButtonElement;
     await act(async () => {
       expandBtn.click();
     });

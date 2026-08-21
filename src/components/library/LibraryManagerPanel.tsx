@@ -24,6 +24,8 @@ import {
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistGroupStore, type PlaylistGroup } from "@/store/playlistGroupStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { CloudMusicPanel } from "@/components/library/CloudMusicPanel";
+import { Heart } from "lucide-react";
 
 interface LibraryManagerPanelProps {
   isOpen: boolean;
@@ -31,6 +33,7 @@ interface LibraryManagerPanelProps {
 }
 
 const TAB_ITEMS = [
+  { id: "cloud", name: "我的云音乐", icon: Heart },
   { id: "playlists", name: "已保存播放列表", icon: ListMusic },
   { id: "deduplicate", name: "重复歌曲", icon: Trash2 },
   { id: "rename", name: "重命名规则", icon: Wand2 },
@@ -171,6 +174,8 @@ export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen
           >
             {statusMessage}
           </div>
+
+          {activeTab === "cloud" && <CloudMusicPanel />}
 
           {activeTab === "playlists" && (
             <SavedPlaylistsTab

@@ -3,11 +3,12 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Crown, Plus } from "lucide-react";
+import { Crown, Plus, Radio } from "lucide-react";
 import Image from "next/image";
 import { useUIStore } from "@/store/uiStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useUserAccountStore } from "@/store/userAccountStore";
+import { useSourceConfigStore } from "@/store/sourceConfigStore";
 
 import { Logo } from "@/components/layout/Logo";
 import { AppleUnifiedNavIsland } from "@/components/layout/AppleUnifiedNavIsland";
@@ -16,6 +17,7 @@ export function HeaderToolbar() {
   const { currentView, openPanel } = useUIStore();
   const { songs } = usePlaylistStore();
   const { neteaseUser } = useUserAccountStore();
+  const { openManagementModal } = useSourceConfigStore();
 
   return (
     <motion.header
@@ -28,9 +30,9 @@ export function HeaderToolbar() {
       className="absolute top-0 left-0 right-0 z-50 pt-3 pb-3 px-4 md:px-6 select-none font-sans antialiased pointer-events-none"
       style={{ willChange: "transform, opacity" }}
     >
-      <div className="flex items-center justify-between max-w-[1800px] mx-auto w-full gap-4 pointer-events-auto">
+      <div className="relative flex items-center justify-between max-w-[1800px] mx-auto w-full min-h-[44px] pointer-events-auto">
         {/* 左侧栏: Apple 磨砂高光 Logo 徽标胶囊 */}
-        <div className="flex items-center justify-start shrink-0 min-w-0">
+        <div className="flex items-center justify-start shrink-0 min-w-0 z-10">
           <div className="h-[36px] px-3 rounded-full bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.08] backdrop-blur-xl shadow-sm flex items-center gap-2 transition-all">
             <Logo size={22} className="shrink-0" />
             <div className="flex items-baseline gap-1.5 min-w-0">
@@ -44,13 +46,27 @@ export function HeaderToolbar() {
           </div>
         </div>
 
-        {/* 中间栏: 绝对居中的悬浮玻璃岛 */}
-        <div className="flex-1 flex justify-center items-center min-w-0">
+        {/* 中间栏: 绝对居中在视口中央的悬浮玻璃岛 (绝对几何对称) */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex justify-center items-center pointer-events-auto">
           <AppleUnifiedNavIsland />
         </div>
 
-        {/* 右侧栏: 多平台账号胶囊 + 管理曲库 */}
-        <div className="flex items-center justify-end gap-2.5 shrink-0">
+        {/* 右侧栏: 音源管理 + 多平台账号胶囊 + 管理曲库 */}
+        <div className="flex items-center justify-end gap-2.5 shrink-0 z-10 ml-auto">
+          {/* 音源管理中心入口 */}
+          <button
+            type="button"
+            onClick={() => openManagementModal()}
+            className="h-[36px] px-3 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] shadow-sm flex items-center gap-1.5 transition-all active:scale-[0.98] group shrink-0"
+            title="全网多音源矩阵与扩展管理中心"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+            <Radio className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-[12px] font-medium text-white/90 group-hover:text-white whitespace-nowrap">
+              音源管理
+            </span>
+          </button>
+
           {/* Apple ID 风格多平台账号胶囊 */}
           <button
             type="button"
