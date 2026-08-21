@@ -3,13 +3,13 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
-import { ListMusic } from "lucide-react";
+import { Disc3, Box } from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
 import { useQueueStore } from "@/store/queueStore";
 
 export function Apple3DQueueDrawer() {
   const { panels, openPanel, closePanel, togglePanel } = useUIStore();
-  const isOpen = Boolean(panels.queue || panels.shelf3D);
+  const isOpen = Boolean(panels.shelf3D);
 
   const { queue } = useQueueStore();
   const [isHandleHovered, setIsHandleHovered] = useState(false);
@@ -30,10 +30,10 @@ export function Apple3DQueueDrawer() {
   }, []);
 
   const handleToggle = useCallback(() => {
-    togglePanel("queue");
+    togglePanel("shelf3D");
   }, [togglePanel]);
 
-  // Global Keyboard Shortcuts (Esc to close, Q / Cmd+L to toggle)
+  // Global Keyboard Shortcuts (Esc to close, Q / Cmd+L to toggle 3D Spatial Shelf)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing in form inputs
@@ -47,7 +47,6 @@ export function Apple3DQueueDrawer() {
 
       if (e.key === "Escape" && isOpen) {
         e.preventDefault();
-        closePanel("queue");
         closePanel("shelf3D");
       } else if (e.key === "q" || e.key === "Q") {
         if (!e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -108,7 +107,7 @@ export function Apple3DQueueDrawer() {
     // Start 400ms deliberate dwell timer
     if (!dwellTimerRef.current && !isOpen) {
       dwellTimerRef.current = setTimeout(() => {
-        openPanel("queue");
+        openPanel("shelf3D");
         dwellTimerRef.current = null;
       }, 400);
     }
@@ -124,12 +123,12 @@ export function Apple3DQueueDrawer() {
           onMouseMove={handleHandleMouseMove}
           onClick={handleToggle}
           className="fixed top-1/2 -translate-y-1/2 right-0 z-40 h-36 flex items-center justify-end pointer-events-auto cursor-pointer select-none group"
-          title="点击或停驻呼出播放列表 (快捷键 Q / ⌘L)"
+          title="点击或停驻呼出 3D 空间唱片架 (快捷键 Q / ⌘L)"
         >
           {/* Subtle micro-glow translucent pill */}
           <motion.div
             animate={{
-              width: isHandleHovered ? 40 : 5,
+              width: isHandleHovered ? 44 : 5,
               height: isHandleHovered ? 120 : 64,
               opacity: isHandleHovered ? 1 : 0.45,
               x: 0,
@@ -137,7 +136,7 @@ export function Apple3DQueueDrawer() {
             transition={{ type: "spring", stiffness: 400, damping: 28 }}
             className={`rounded-l-2xl border-y border-l flex items-center justify-center overflow-hidden transition-colors ${
               isHandleHovered
-                ? "bg-black/80 backdrop-blur-2xl border-white/20 shadow-[0_0_24px_rgba(41,151,255,0.4)]"
+                ? "bg-black/85 backdrop-blur-2xl border-cyan-400/40 shadow-[0_0_28px_rgba(6,182,212,0.5)]"
                 : "bg-white/20 border-white/10 hover:bg-white/30"
             }`}
           >
@@ -147,9 +146,9 @@ export function Apple3DQueueDrawer() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="flex flex-col items-center gap-1.5 text-white/90"
               >
-                <ListMusic className="w-4 h-4 text-[#2997ff]" />
-                <span className="text-[10px] font-mono font-bold leading-none text-white/80">
-                  {queue.length}
+                <Box className="w-4 h-4 text-cyan-400 animate-pulse" />
+                <span className="text-[9px] font-mono font-bold leading-none text-cyan-200">
+                  3D
                 </span>
               </motion.div>
             )}

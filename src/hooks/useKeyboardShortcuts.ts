@@ -210,7 +210,7 @@ export const useKeyboardShortcuts = () => {
         ((e.metaKey || e.ctrlKey) && (e.key === "l" || e.key === "L"))
       ) {
         e.preventDefault();
-        uiStore.togglePanel("queue");
+        uiStore.togglePanel("shelf3D");
         return;
       }
 
