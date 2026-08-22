@@ -898,17 +898,26 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           const centerOvershoot = Math.max(0, 1.0 - absOffset * 2.0);
           const stageScale = 1.22 - u * 0.26 - v * 0.05 + centerOvershoot * 0.025;
 
-          // === 2. 侧栏弧形透视模式 (Side Shelf) - 连续平滑环形向心弧面 (C1 连续消除折角突变) ===
-          const sidePx = sign * (u * 1.65 + v * 1.15) - 0.40;
-          const sidePz = (1.05 - u * 0.70 - v * 0.60) + floatZ;
-          const sideFocalZ = 4.2;
-          const sideRotY = -Math.atan2(sidePx + 0.40, sideFocalZ - sidePz) * 1.18 + dynamicYawLead * 0.8;
-          const sidePy = -u * 0.02 - v * 0.03 + floatY;
-          const sideRotX = 0.04 + mp.y * 0.08 + tiltRoll;
-          const sideRotZ = -mp.x * 0.015 + dynamicBankRoll * 0.8;
-          const sideScale = 1.20 - u * 0.25 - v * 0.05 + centerOvershoot * 0.02;
+          // === 2. 侧栏透视模式 (Side Shelf) - 经典 Apple 偏左侧向 Cover Flow 尊享立体阵列 ===
+          const sideCenterX = -0.32; // 当前激活卡片偏左黄金分割点
+          // 左右非对称侧向梯级步进（左侧紧凑收拢，右侧展开深远透视通道）
+          const sideStepX = sign < 0
+            ? (u * 1.45 + v * 0.60) // 左侧紧凑向左展开
+            : (u * 1.65 + v * 0.72); // 右侧开阔向右延伸
+          const sidePx = sideCenterX + sign * sideStepX;
+          const sidePy = -u * 0.015 - v * 0.025 + floatY;
+          const sidePz = (1.20 - u * 0.55 - v * 0.40) + floatZ;
 
-          // === 3. 混合插值 ===
+          // Smoothstep S 型翻转过渡：在 [-0.85, 0.85] 范围内平滑旋转，两侧锁定在黄金 55° 侧倾角
+          const flipProgress = Math.max(-1.0, Math.min(1.0, fractionalOffset / 0.85));
+          const smoothFlip = Math.sign(flipProgress) * Math.pow(Math.abs(flipProgress), 0.75);
+          const sideTargetRotY = -smoothFlip * THREE.MathUtils.degToRad(55);
+          const sideRotY = sideTargetRotY + dynamicYawLead * 0.6;
+          const sideRotX = 0.03 + mp.y * 0.07 + tiltRoll;
+          const sideRotZ = -mp.x * 0.015 + dynamicBankRoll * 0.6;
+          const sideScale = 1.20 - u * 0.24 - v * 0.05 + centerOvershoot * 0.02;
+
+          // === 3. 模式平滑形变插值 (Stage <-> Side 400ms Morphing) ===
           const finalPx = THREE.MathUtils.lerp(stagePx, sidePx, modeBlend);
           const finalPy = THREE.MathUtils.lerp(stagePy, sidePy, modeBlend);
           const finalPz = THREE.MathUtils.lerp(stagePz, sidePz, modeBlend);
@@ -921,8 +930,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           slot.mesh.rotation.set(finalRotX, finalRotY, finalRotZ);
           slot.mesh.scale.set(finalScale, finalScale, finalScale);
 
-          // 远端淡出与透明度衰减
-          const opacity = Math.max(0, Math.min(1, 1.0 - (absOffset - 2.8) * 0.4));
+          // 远端平滑景深消隐与雾化衰减
+          const opacity = Math.max(0, Math.min(1, 1.0 - Math.max(0, absOffset - 3.2) * 0.35));
           const mat = slot.mesh.material as THREE.MeshStandardMaterial;
           mat.opacity = opacity;
           slot.mesh.visible = opacity > 0.01;
