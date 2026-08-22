@@ -50,14 +50,27 @@ export interface NavHubConfig {
   items: NavHubSubItem[];
 }
 
-export function AppleUnifiedNavIsland() {
-  const { openPanel, isFullscreen, toggleFullscreen } = useUIStore();
+export interface AppleUnifiedNavIslandProps {
+  isSearchOpen?: boolean;
+}
+
+export function AppleUnifiedNavIsland({ isSearchOpen: isSearchOpenProp }: AppleUnifiedNavIslandProps = {}) {
+  const { openPanel, isFullscreen, toggleFullscreen, panels } = useUIStore();
+  const storeSearchOpen = panels?.search ?? false;
+  const isSearchOpen = isSearchOpenProp ?? storeSearchOpen;
   const { isEnabled: isGestureEnabled, toggleGestureEnabled } = useGestureStore();
 
   const [activeHubId, setActiveHubId] = useState<string | null>(null);
   const [hoveredHubId, setHoveredHubId] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const islandRef = useRef<HTMLDivElement>(null);
+
+  // 当全局搜索打开时，自动收起展开中的导航子菜单，保持界面整洁下移
+  useEffect(() => {
+    if (isSearchOpen && activeHubId !== null) {
+      setActiveHubId(null);
+    }
+  }, [isSearchOpen, activeHubId]);
 
   // 1. 四大核心 Hub 配置
   const hubs: NavHubConfig[] = [
@@ -279,13 +292,35 @@ export function AppleUnifiedNavIsland() {
   };
 
   return (
-    <div
+    <motion.div
       ref={islandRef}
+      data-testid="apple-unified-nav-island"
+      data-search-avoidance={isSearchOpen ? "shifted" : "idle"}
       onMouseLeave={handleMouseLeaveIsland}
+      animate={{
+        y: isSearchOpen ? 56 : 0,
+        scale: isSearchOpen ? 0.99 : 1,
+      }}
+      transition={{
+        type: "spring",
+        stiffness: 380,
+        damping: 32,
+        mass: 0.8,
+      }}
+      style={{
+        transform: "translate3d(0, 0, 0)",
+        willChange: "transform",
+      }}
       className="relative flex items-center select-none z-50 font-sans"
     >
       {/* 核心玻璃岛胶囊 (Mac Style Monolithic Capsule) */}
-      <div className="relative h-[42px] px-2.5 rounded-full bg-[#16161a]/90 border border-white/[0.14] backdrop-blur-[40px] backdrop-saturate-[190%] shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.22)] flex items-center gap-1 transition-all duration-300">
+      <div
+        className={`relative h-[42px] px-2.5 rounded-full bg-[#16161a]/90 border border-white/[0.14] backdrop-blur-[40px] backdrop-saturate-[190%] flex items-center gap-1 transition-all duration-300 ${
+          isSearchOpen
+            ? "shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.25)]"
+            : "shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.22)]"
+        }`}
+      >
         <div className="mineradio-glass-specular-glint rounded-full" />
         {/* 1. 四大核心 Hub 导航 */}
         {hubs.map((hub, index) => {
@@ -453,6 +488,6 @@ export function AppleUnifiedNavIsland() {
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
