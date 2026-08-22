@@ -878,53 +878,35 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           const floatZ = Math.cos(slot.floatPhase * 0.8) * (isSlotActive ? 0.03 : 0.01);
           const tiltRoll = Math.sin(slot.floatPhase * 0.6) * 0.015;
 
-          // === 1. 舞台展开模式 (Stage Shelf) - 经典 Apple Cover Flow 空间向心弧面 ===
+          // === 1. 舞台展开模式 (Stage Shelf) - 经典 Apple Cover Flow 空间对称向心弧面 ===
           const sign = Math.sign(fractionalOffset);
-          const u = Math.min(absOffset, 1.0); // 核心中心展开区
-          const v = Math.max(0, absOffset - 1.0); // 远端延伸区
+          const u = Math.min(absOffset, 1.0); // 核心中心展开区 (0..1)
+          const v = Math.max(0, absOffset - 1.0); // 远端延伸区 (>1)
 
-          // X 轴位移：中心卡片固定在0，两侧卡片平滑滑出，保持均称呼吸间距
-          const stagePx = sign * (u * 1.82 + v * 1.18);
-          // Y 轴微下沉与浮动
-          const stagePy = -u * 0.02 - v * 0.03 + floatY;
-          // Z 轴深度：中心突出前置 (Z=1.12)，两侧平滑推入景深
-          const stagePz = (1.12 - u * 0.82 - v * 0.65) + floatZ;
+          // X 轴位移：中心卡片精准固定在 x=0，两侧卡片平滑对称展开，消除任何偏移错位
+          const stagePx = sign * (u * 1.90 + v * 1.22);
+          // Y 轴微下沉与呼吸浮动
+          const stagePy = -u * 0.015 - v * 0.025 + floatY;
+          // Z 轴深度：中心突出前置 (Z=1.15)，两侧平滑推入景深
+          const stagePz = (1.15 - u * 0.85 - v * 0.65) + floatZ;
           // Y 轴旋转：精准向心偏转 + 动态转向侧倾
-          const stageFocalZ = 3.6;
-          const stageRotY = -Math.atan2(stagePx, stageFocalZ - stagePz) * 1.28 + dynamicYawLead;
+          const stageFocalZ = 4.0;
+          const stageRotY = -Math.atan2(stagePx, stageFocalZ - stagePz) * 1.25 + dynamicYawLead;
           const stageRotX = mp.y * 0.08 + tiltRoll;
           const stageRotZ = -mp.x * 0.02 + dynamicBankRoll;
           // 缩放：中心 1.22x + 磁吸微突
           const centerOvershoot = Math.max(0, 1.0 - absOffset * 2.0);
-          const stageScale = 1.22 - u * 0.28 - v * 0.055 + centerOvershoot * 0.025;
+          const stageScale = 1.22 - u * 0.26 - v * 0.05 + centerOvershoot * 0.025;
 
-          // === 2. 侧栏弧形透视模式 (Side Shelf) - 优雅环形向心长廊，全卡片面朝中央 ===
-          let sidePx = 0;
-          let sidePz = 0;
-
-          if (fractionalOffset <= 0) {
-            // 左侧（历史项）：向左后方优雅收束
-            const leftAbs = Math.abs(fractionalOffset);
-            const lu = Math.min(leftAbs, 1.0);
-            const lv = Math.max(0, leftAbs - 1.0);
-            sidePx = -1.20 - lu * 0.95 - lv * 0.65;
-            sidePz = (1.10 - lu * 0.65 - lv * 0.75) + floatZ;
-          } else {
-            // 右侧（未来项）：沿向心环形弧线向右侧展开并向景深推入
-            const rightOff = fractionalOffset;
-            const ru = Math.min(rightOff, 1.0);
-            const rv = Math.max(0, rightOff - 1.0);
-            sidePx = -1.20 + ru * 1.55 + rv * 1.25;
-            sidePz = (1.10 - ru * 0.55 - rv * 0.70) + floatZ;
-          }
-
-          // 核心：精准计算向心偏转角，所有卡片面朝中央主视线聚焦点 (0, 0, 4.2)
+          // === 2. 侧栏弧形透视模式 (Side Shelf) - 连续平滑环形向心弧面 (C1 连续消除折角突变) ===
+          const sidePx = sign * (u * 1.65 + v * 1.15) - 0.40;
+          const sidePz = (1.05 - u * 0.70 - v * 0.60) + floatZ;
           const sideFocalZ = 4.2;
-          const sideRotY = -Math.atan2(sidePx, sideFocalZ - sidePz) * 1.15 + dynamicYawLead * 0.8;
-          const sidePy = -Math.min(absOffset, 1.0) * 0.02 - Math.max(0, absOffset - 1.0) * 0.03 + floatY;
+          const sideRotY = -Math.atan2(sidePx + 0.40, sideFocalZ - sidePz) * 1.18 + dynamicYawLead * 0.8;
+          const sidePy = -u * 0.02 - v * 0.03 + floatY;
           const sideRotX = 0.04 + mp.y * 0.08 + tiltRoll;
           const sideRotZ = -mp.x * 0.015 + dynamicBankRoll * 0.8;
-          const sideScale = 1.22 - Math.min(absOffset, 1.0) * 0.26 - Math.max(0, absOffset - 1.0) * 0.05 + centerOvershoot * 0.02;
+          const sideScale = 1.20 - u * 0.25 - v * 0.05 + centerOvershoot * 0.02;
 
           // === 3. 混合插值 ===
           const finalPx = THREE.MathUtils.lerp(stagePx, sidePx, modeBlend);
