@@ -170,24 +170,11 @@ interface UIState {
   showModalComponent: (content: React.ReactNode) => void;
   hideModal: () => void;
   setIsTransitioning: (transitioning: boolean) => void;
-}
-
-function getInitialView(): ViewType {
-  if (typeof window !== "undefined") {
-    try {
-      const saved = sessionStorage.getItem("mimimusic_active_view");
-      if (saved === "home" || saved === "player" || saved === "visualization" || saved === "emotion") {
-        return saved;
-      }
-    } catch {
-      // Ignore SSR / restricted environments
-    }
-  }
-  return "home";
+  restorePersistedView: () => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
-  currentView: getInitialView(),
+  currentView: "home",
   themeMode: "dark",
   themeColors: defaultColors,
   isDynamicTheme: true,
@@ -196,6 +183,19 @@ export const useUIStore = create<UIState>((set, get) => ({
   isTransitioning: false,
   isNavMenuOpen: false,
   setIsNavMenuOpen: (open) => set({ isNavMenuOpen: open }),
+
+  restorePersistedView: () => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = sessionStorage.getItem("mimimusic_active_view") as ViewType;
+        if (saved && (saved === "home" || saved === "player" || saved === "visualization" || saved === "emotion")) {
+          set({ currentView: saved });
+        }
+      } catch {
+        // Ignore SSR / storage errors
+      }
+    }
+  },
 
   panels: createDefaultPanels(),
   isShelf3DOpen: false,

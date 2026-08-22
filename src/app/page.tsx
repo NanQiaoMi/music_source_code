@@ -81,6 +81,7 @@ export default function Home() {
   useKeyboardShortcuts();
 
   useEffect(() => {
+    useUIStore.getState().restorePersistedView();
     bootstrapApp().then(() => {
       // Prefetch heavy views in background after core is ready
       import("@/components/layout/PlayerView");
