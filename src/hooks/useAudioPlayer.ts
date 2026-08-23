@@ -571,8 +571,7 @@ export const useAudioPlayer = () => {
         currentSongIdRef.current === songId &&
         audio.src &&
         currentAudioUrlRef.current &&
-        !audio.error &&
-        audio.readyState >= 1
+        !audio.error
       ) {
         if (targetPlaying) {
           if (audio.paused) {
@@ -598,13 +597,13 @@ export const useAudioPlayer = () => {
       setIsLoading(true);
       setError(null);
 
-      if (currentAudioUrlRef.current?.startsWith("blob:")) {
-        URL.revokeObjectURL(currentAudioUrlRef.current);
-      }
-
       const previousSongId = currentSongIdRef.current;
       currentSongIdRef.current = songId;
       if (previousSongId !== songId) {
+        if (currentAudioUrlRef.current?.startsWith("blob:")) {
+          URL.revokeObjectURL(currentAudioUrlRef.current);
+          currentAudioUrlRef.current = null;
+        }
         lastRecordedSongIdRef.current = null;
         lastToastSongIdRef.current = null;
         rescueInProgressRef.current = false;
