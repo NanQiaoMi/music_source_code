@@ -31,6 +31,7 @@ export const CloudAssetsTab: React.FC = () => {
     userPlaylists,
     fetchUserPlaylists,
     fetchPlaylistTracks,
+    fetchAllPlaylistTracks,
   } = useUserAccountStore();
   const { openManagementModal } = useSourceConfigStore();
   const { songs } = usePlaylistStore();
@@ -274,11 +275,12 @@ export const CloudAssetsTab: React.FC = () => {
                     <button
                       type="button"
                       onClick={async () => {
-                        const tracks = await fetchPlaylistTracks(pl.id, pl.source);
+                        setSyncFeedback(`⏳ 正在拉取「${pl.name}」全部曲目详情...`);
+                        const tracks = await fetchAllPlaylistTracks(pl.id, pl.source);
                         if (tracks && tracks.length > 0) {
                           addBatchDownloads(tracks);
-                          setSyncFeedback(`🚀 已将「${pl.name}」(${tracks.length} 首) 加入下载队列！`);
-                          setTimeout(() => setSyncFeedback(null), 3000);
+                          setSyncFeedback(`🚀 已将「${pl.name}」全部 ${tracks.length} 首歌曲加入离线下载队列！`);
+                          setTimeout(() => setSyncFeedback(null), 3500);
                         }
                       }}
                       className="p-1.5 rounded-xl bg-white/10 hover:bg-cyan-500 hover:text-black text-white/80 transition-all active:scale-95 cursor-pointer shadow-sm"
@@ -290,7 +292,7 @@ export const CloudAssetsTab: React.FC = () => {
                     <button
                       type="button"
                       onClick={async () => {
-                        const tracks = await fetchPlaylistTracks(pl.id, pl.source);
+                        const tracks = await fetchAllPlaylistTracks(pl.id, pl.source);
                         if (tracks && tracks.length > 0) {
                           playSong(tracks[0]);
                         }
@@ -336,7 +338,7 @@ export const CloudAssetsTab: React.FC = () => {
 
         {/* 歌曲列表 */}
         <div className="max-h-80 overflow-y-auto space-y-1.5 pr-2 custom-scrollbar">
-          {filteredSongs.slice(0, 100).map((song, idx) => {
+          {filteredSongs.slice(0, 1000).map((song, idx) => {
             const isOffline = isSongOffline(song.id);
             return (
               <div

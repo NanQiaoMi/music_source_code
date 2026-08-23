@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const headerCookie = request.headers.get("x-netease-cookie") || request.headers.get("cookie") || "";
   const cookie = queryCookie || headerCookie;
   const offset = Math.max(0, parseInt(searchParams.get("offset") || "0", 10));
-  const limit = Math.min(500, Math.max(1, parseInt(searchParams.get("limit") || "100", 10)));
+  const limit = Math.min(2000, Math.max(1, parseInt(searchParams.get("limit") || "100", 10)));
 
   if (!id) {
     return NextResponse.json({ code: 400, message: "Missing playlist id", songs: [] }, { status: 400 });
@@ -37,16 +37,32 @@ export async function GET(request: NextRequest) {
     } else if (allTrackIds.length > 0) {
       const targetIds = allTrackIds.slice(offset, offset + limit);
       if (targetIds.length > 0) {
-        try {
-          const songDetailRes = await neteaseWeApiRequest(
-            "/api/v3/song/detail",
-            {
-              c: JSON.stringify(targetIds.map((tid: string) => ({ id: tid }))),
-            },
-            { cookie }
-          );
-          rawTracks = songDetailRes.body?.songs || [];
-        } catch {
+        // Chunk targetIds in batches of 400 to support large playlists (e.g. 1000+ tracks)
+        const CHUNK_SIZE = 400;
+        const chunks: string[][] = [];
+        for (let i = 0; i < targetIds.length; i += CHUNK_SIZE) {
+          chunks.push(targetIds.slice(i, i + CHUNK_SIZE));
+        }
+
+        const chunkResults = await Promise.all(
+          chunks.map(async (batch) => {
+            try {
+              const songDetailRes = await neteaseWeApiRequest(
+                "/api/v3/song/detail",
+                {
+                  c: JSON.stringify(batch.map((tid: string) => ({ id: tid }))),
+                },
+                { cookie }
+              );
+              return songDetailRes.body?.songs || [];
+            } catch {
+              return [];
+            }
+          })
+        );
+
+        rawTracks = chunkResults.flat();
+        if (rawTracks.length === 0 && Array.isArray(playlist?.tracks)) {
           rawTracks = (playlist?.tracks || []).slice(offset, offset + limit);
         }
       }

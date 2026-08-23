@@ -75,6 +75,7 @@ interface UserAccountState {
   logout: (platform: PlatformType) => Promise<void>;
   fetchUserPlaylists: () => Promise<void>;
   fetchPlaylistTracks: (playlistId: string, source?: PlatformType, offset?: number, limit?: number) => Promise<Song[]>;
+  fetchAllPlaylistTracks: (playlistId: string, source?: PlatformType) => Promise<Song[]>;
   loadMorePlaylistTracks: () => Promise<Song[]>;
 }
 
@@ -438,6 +439,24 @@ export const useUserAccountStore = create<UserAccountState>()(
           set({ isLoadingTracks: false });
           return [];
         }
+      },
+
+      fetchAllPlaylistTracks: async (playlistId: string, source: PlatformType = "netease") => {
+        // First batch (up to 1000 songs)
+        const firstBatch = await get().fetchPlaylistTracks(playlistId, source, 0, 1000);
+        let allSongs = [...firstBatch];
+        let offset = firstBatch.length;
+        const total = get().trackTotalCount || firstBatch.length;
+
+        // Loop to fetch remaining tracks if playlist has > 1000 songs
+        while (offset < total && firstBatch.length > 0) {
+          const nextBatch = await get().fetchPlaylistTracks(playlistId, source, offset, 1000);
+          if (nextBatch.length === 0) break;
+          allSongs = [...allSongs, ...nextBatch];
+          offset += nextBatch.length;
+        }
+
+        return allSongs;
       },
 
       loadMorePlaylistTracks: async () => {
