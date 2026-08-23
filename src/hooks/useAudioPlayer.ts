@@ -436,6 +436,10 @@ export const useAudioPlayer = () => {
             album: currentSong.album,
           });
           if (rescued?.url) {
+            const streamUrl = getPlayableStreamUrl(rescued.url);
+            rescuedUrlsRef.current.add(streamUrl);
+            audio.src = streamUrl;
+            currentAudioUrlRef.current = streamUrl;
             currentSong.audioUrl = rescued.url;
             currentSong.source = rescued.source;
             useAudioStore.setState({ error: null });
