@@ -459,9 +459,35 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         cover: up.coverImgUrl || "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=800&fit=crop",
         tag: platformName,
         trackCount: up.trackCount || 0,
-        songs: validSongs,
+        songs: [],
       });
     });
+
+    // 3.8 本地创建与下载的离线歌单
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("vibe_custom_playlists_v1");
+        if (saved) {
+          const customLists = JSON.parse(saved);
+          if (Array.isArray(customLists)) {
+            customLists.forEach((cp: any) => {
+              if (cp.id !== "default-favorites" && cp.songs && cp.songs.length > 0) {
+                items.push({
+                  id: cp.id,
+                  type: "playlist",
+                  title: cp.title,
+                  subtitle: `${cp.songs.length} 首曲目 · 本地自建`,
+                  cover: cp.cover || cp.songs[0]?.cover || defaultCover,
+                  tag: cp.title.startsWith("[离线]") ? "离线歌单" : "本地歌单",
+                  trackCount: cp.songs.length,
+                  songs: cp.songs,
+                });
+              }
+            });
+          }
+        }
+      } catch {}
+    }
 
     // 4. 自定义与系统歌单组 (每日推荐与精选)
     playlistGroups.forEach((group: PlaylistGroup, idx) => {
@@ -997,13 +1023,28 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   );
 
   // 播放当前选中的卡片 (歌单模式下整单播放，单曲模式下单曲播放)
-  const handlePlayCurrent = useCallback(() => {
+  const handlePlayCurrent = useCallback(async () => {
     const curIdx = activeIndexRef.current ?? activeIndex;
     const cur = activeShelfItems[curIdx] || activeShelfItems[activeIndex];
     if (!cur) return;
     playCardSelectTick();
 
     if (cur.type === "playlist") {
+      if (cur.id.startsWith("cloud-pl-")) {
+        const realId = cur.id.replace("cloud-pl-", "");
+        try {
+          const res = await fetch(`/api/playlist/tracks?id=${encodeURIComponent(realId)}&limit=500`);
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.songs) && data.songs.length > 0) {
+              setQueue(data.songs);
+              playTrackWithPipeline(data.songs[0]);
+              return;
+            }
+          }
+        } catch {}
+      }
+
       if (cur.songs && cur.songs.length > 0) {
         setQueue(cur.songs);
         playTrackWithPipeline(cur.songs[0]);
@@ -1027,6 +1068,20 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       setSelectedShelfItem(cur);
       setShowDetailPanel(true);
       setTrackSearchQuery("");
+
+      if (cur.id.startsWith("cloud-pl-")) {
+        const realId = cur.id.replace("cloud-pl-", "");
+        fetch(`/api/playlist/tracks?id=${encodeURIComponent(realId)}&limit=500`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (Array.isArray(data.songs) && data.songs.length > 0) {
+              setSelectedShelfItem((prev) =>
+                prev && prev.id === cur.id ? { ...prev, songs: data.songs, trackCount: data.songs.length } : prev
+              );
+            }
+          })
+          .catch(() => {});
+      }
     }
   }, [activeShelfItems, activeIndex]);
 
@@ -1452,13 +1507,28 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
+                  if (selectedShelfItem.id.startsWith("cloud-pl-")) {
+                    const realId = selectedShelfItem.id.replace("cloud-pl-", "");
+                    try {
+                      const res = await fetch(`/api/playlist/tracks?id=${encodeURIComponent(realId)}&limit=500`);
+                      if (res.ok) {
+                        const data = await res.json();
+                        if (Array.isArray(data.songs) && data.songs.length > 0) {
+                          setQueue(data.songs);
+                          playSong(data.songs[0]);
+                          return;
+                        }
+                      }
+                    } catch {}
+                  }
+
                   if (selectedShelfItem.songs && selectedShelfItem.songs.length > 0) {
                     setQueue(selectedShelfItem.songs);
                     playSong(selectedShelfItem.songs[0]);
                   }
                 }}
-                className="flex items-center gap-2 bg-white text-black hover:bg-white/90 font-bold text-xs px-4 py-2 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.35)] transition-all active:scale-95"
+                className="flex items-center gap-2 bg-white text-black hover:bg-white/90 font-bold text-xs px-4 py-2 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.35)] transition-all active:scale-95 cursor-pointer"
               >
                 <Play className="w-3.5 h-3.5 fill-black" />
                 <span>播放整单</span>
