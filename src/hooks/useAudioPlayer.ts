@@ -4,7 +4,12 @@ import { useEffect, useCallback, useState } from "react";
 import { useAudioStore, registerAudioSeekHandler } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useEQStore } from "@/store/eqStore";
-import { getStoredMusic, createBlobUrlFromStoredMusic, getOfflineAudio } from "@/services/localMusicStorage";
+import {
+  getStoredMusic,
+  createBlobUrlFromStoredMusic,
+  getOfflineAudio,
+  saveOfflineAudio,
+} from "@/services/localMusicStorage";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { useListeningJournalStore } from "@/store/listeningJournalStore";
 import { useEmotionStore } from "@/store/emotionStore";
@@ -709,41 +714,56 @@ export const useAudioPlayer = () => {
 
       if (playbackRequestIdRef.current !== requestId) return;
 
-      // 4. 歌词与封面：如果已通过离线读取，则无需再去网络请求
-      if (!isOfflineDirectHit) {
-        // 异步获取歌词（后台拉取，不阻塞主音频加载）
-        if (!currentSong.lyrics && (currentSong.id || currentSong.title)) {
-          multiSourceResolver.fetchOnlineLyrics(
-            currentSong.id || "",
-            currentSong.source,
-            {
-              id: currentSong.id,
-              title: currentSong.title,
-              artist: currentSong.artist,
-              album: currentSong.album,
-            }
-          ).then((lrcData) => {
-            if (lrcData.lyrics && currentSongIdRef.current === songId) {
-              currentSong.lyrics = lrcData.lyrics;
-              currentSong.translationLyrics = lrcData.translationLyrics;
-            }
-          }).catch(() => {});
-        }
-
-        // 异步获取高清封面（后台拉取，不阻塞主音频加载）
-        if ((!currentSong.cover || currentSong.cover.includes("default-cover")) && currentSong.title) {
-          multiSourceResolver.fetchOnlineCover({
-            id: currentSong.id,
+      // 4. 歌词与封面：若本地尚未缓存歌词或封面，后台静默拉取并自动持久化固化至本地离线数据库
+      if (!currentSong.lyrics && (currentSong.id || currentSong.title)) {
+        multiSourceResolver.fetchOnlineLyrics(
+          String(currentSong.id || ""),
+          currentSong.source,
+          {
+            id: String(currentSong.id || ""),
             title: currentSong.title,
             artist: currentSong.artist,
-            source: currentSong.source,
-          }).then((coverUrl) => {
-            if (coverUrl && currentSongIdRef.current === songId) {
-              currentSong.cover = coverUrl;
-              usePlayerStore.getState().updateCurrentSongCover(coverUrl);
-            }
-          }).catch(() => {});
-        }
+            album: currentSong.album,
+          }
+        ).then(async (lrcData) => {
+          if (lrcData.lyrics && currentSongIdRef.current === songId) {
+            currentSong.lyrics = lrcData.lyrics;
+            currentSong.translationLyrics = lrcData.translationLyrics;
+            usePlayerStore.getState().updateCurrentSongLyrics(lrcData.lyrics);
+
+            // 如果当前曲目在本地离线数据库中，自动持久化更新离线歌词
+            try {
+              const offlineRec = await getOfflineAudio(String(songId));
+              if (offlineRec && !offlineRec.lyrics) {
+                offlineRec.lyrics = lrcData.lyrics;
+                offlineRec.translationLyrics = lrcData.translationLyrics;
+                await saveOfflineAudio(offlineRec);
+              }
+            } catch {}
+          }
+        }).catch(() => {});
+      }
+
+      if ((!currentSong.cover || currentSong.cover.includes("default-cover")) && currentSong.title) {
+        multiSourceResolver.fetchOnlineCover({
+          id: String(currentSong.id || ""),
+          title: currentSong.title,
+          artist: currentSong.artist,
+          source: currentSong.source,
+        }).then(async (coverUrl) => {
+          if (coverUrl && currentSongIdRef.current === songId) {
+            currentSong.cover = coverUrl;
+            usePlayerStore.getState().updateCurrentSongCover(coverUrl);
+
+            try {
+              const offlineRec = await getOfflineAudio(String(songId));
+              if (offlineRec && (!offlineRec.cover || offlineRec.cover === "/default-cover.svg")) {
+                offlineRec.cover = coverUrl;
+                await saveOfflineAudio(offlineRec);
+              }
+            } catch {}
+          }
+        }).catch(() => {});
       }
 
       if (!audioUrl) {

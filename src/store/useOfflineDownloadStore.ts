@@ -8,6 +8,7 @@ import {
   clearAllOfflineAudios,
   OfflineAudioRecord,
 } from "@/services/localMusicStorage";
+import { multiSourceResolver } from "@/services/MultiSourceResolver";
 
 export type DownloadStatus =
   | "pending"
@@ -293,6 +294,31 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
     quality: string
   ) => {
     const songId = String(song.id);
+
+    // 优先拉取并固化高品质 LRC 歌词与翻译歌词
+    let lrc = song.lyrics;
+    let transLrc = (song as any).translationLyrics;
+    if (!lrc && (song.id || song.title)) {
+      try {
+        const lrcRes = await multiSourceResolver.fetchOnlineLyrics(
+          String(song.id),
+          song.source || "netease",
+          {
+            id: String(song.id),
+            title: song.title,
+            artist: song.artist,
+            album: song.album,
+          }
+        );
+        if (lrcRes && lrcRes.lyrics) {
+          lrc = lrcRes.lyrics;
+          transLrc = lrcRes.translationLyrics;
+        }
+      } catch (e) {
+        console.warn("[OfflineDownload] Failed to fetch lyrics during download:", e);
+      }
+    }
+
     const record: OfflineAudioRecord = {
       id: songId,
       songId: songId,
@@ -301,7 +327,9 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
       album: song.album || "云端下载",
       duration: song.duration || 0,
       cover: song.cover,
-      lyrics: song.lyrics,
+      lyrics: lrc,
+      translationLyrics: transLrc,
+      format: (song as any).format,
       source: song.source || "online",
       quality: quality || "lossless",
       mimeType: mimeType || "audio/mpeg",
@@ -502,6 +530,39 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
         const records = await getAllOfflineAudios();
         const ids = new Set(records.map((r) => String(r.songId)));
         set({ offlineRecords: records, offlineSongIds: ids, isLoadingRecords: false });
+
+        // 静默后台为缺失歌词的历史离线歌曲补全 LRC 歌词与翻译歌词
+        const missingLyricsRecords = records.filter((r) => !r.lyrics);
+        if (missingLyricsRecords.length > 0) {
+          setTimeout(async () => {
+            let updatedCount = 0;
+            for (const rec of missingLyricsRecords) {
+              try {
+                const lrcRes = await multiSourceResolver.fetchOnlineLyrics(
+                  rec.songId,
+                  rec.source || "netease",
+                  {
+                    id: rec.songId,
+                    title: rec.title,
+                    artist: rec.artist,
+                    album: rec.album,
+                  }
+                );
+                if (lrcRes && lrcRes.lyrics) {
+                  rec.lyrics = lrcRes.lyrics;
+                  rec.translationLyrics = lrcRes.translationLyrics;
+                  await saveOfflineAudio(rec);
+                  updatedCount++;
+                }
+              } catch {}
+            }
+            if (updatedCount > 0) {
+              const refreshed = await getAllOfflineAudios();
+              set({ offlineRecords: refreshed });
+              console.info(`[useOfflineDownloadStore] ✨ 已自动为 ${updatedCount} 首历史离线歌曲静默补全并固化 LRC 歌词！`);
+            }
+          }, 800);
+        }
       } catch (err) {
         console.error("Failed to load offline records:", err);
         set({ isLoadingRecords: false });
