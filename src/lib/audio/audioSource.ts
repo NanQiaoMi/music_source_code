@@ -1,5 +1,5 @@
 import type { Song } from "@/types/song";
-import { getStoredMusic } from "@/services/localMusicStorage";
+import { getStoredMusic, getOfflineAudio } from "@/services/localMusicStorage";
 import { getFileFromStorage } from "@/services/localMusicService";
 
 export interface AudioSourceBlob {
@@ -51,6 +51,20 @@ function assertReadableBlob(blob: Blob, songTitle: string): Blob {
 export async function resolveAudioSourceBlob(
   song: Pick<Song, "id" | "title" | "audioUrl" | "format">
 ): Promise<AudioSourceBlob> {
+  // 0. 优先检查离线下载缓存 (Instant offline blob playback)
+  try {
+    const offline = await getOfflineAudio(String(song.id));
+    if (offline && offline.fileData && offline.fileData.byteLength > 1000) {
+      return {
+        blob: assertReadableBlob(new Blob([offline.fileData], { type: offline.mimeType || "audio/mpeg" }), song.title),
+        sourceLabel: `offline://${song.id}`,
+        inferredFormat: inferFormat(song.format, undefined, offline.mimeType, "offline"),
+      };
+    }
+  } catch {
+    // Fallback to standard flow
+  }
+
   const audioUrl = song.audioUrl?.trim();
 
   if (!audioUrl) {

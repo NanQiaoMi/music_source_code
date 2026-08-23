@@ -24,6 +24,16 @@ export interface Song {
   key?: string;
 }
 
+export interface Playlist {
+  id: string;
+  title: string;
+  cover?: string;
+  songs: Song[];
+  description?: string;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
 export type HealthIssueType =
   | "missing_file"
   | "corrupt_file"

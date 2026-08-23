@@ -113,6 +113,10 @@ const FACTORIES = {
     import("@/components/account/MultiPlatformAccountModal").then((m) => ({
       default: m.MultiPlatformAccountModal,
     })),
+  dataManager: () =>
+    import("@/components/library/UnifiedDataManagerHub").then((m) => ({
+      default: m.UnifiedDataManagerHub,
+    })),
 };
 
 const PANEL_COMPONENTS = Object.fromEntries(
@@ -441,6 +445,12 @@ export function PanelOrchestrator() {
         isOpen={panels.accountCenter}
         onClose={() => closePanel("accountCenter")}
         component={PANEL_COMPONENTS.accountCenter}
+      />
+      <LazyPanel
+        name="dataManager"
+        isOpen={panels.dataManager}
+        onClose={() => closePanel("dataManager")}
+        component={PANEL_COMPONENTS.dataManager}
       />
       <SourceManagementModal />
     </>
