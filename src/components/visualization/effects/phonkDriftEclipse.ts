@@ -1,17 +1,32 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EffectContext } from "./types";
 
-interface KeplerianStar {
+// ─── 数据结构定义 ───
+interface KeplerianInfallPhoton {
   radius: number;
+  baseRadius: number;
   angle: number;
   speed: number;
   height: number;
   size: number;
   alpha: number;
   hue: number;
+  arm: number;
 }
 
-interface SpeedLaser {
+interface KerrQuantumPhoton {
+  x: number;
+  y: number;
+  radius: number;
+  alpha: number;
+  vx: number;
+  vy: number;
+  pulsePhase: number;
+  pulseSpeed: number;
+  hue: number;
+}
+
+interface SpeedWarpLaser {
   x: number;
   y: number;
   z: number;
@@ -19,10 +34,10 @@ interface SpeedLaser {
   speed: number;
   alpha: number;
   hue: number;
-  length: number;
+  size: number;
 }
 
-interface BokehOrb {
+interface CinematicBokehOrb {
   x: number;
   y: number;
   radius: number;
@@ -30,15 +45,37 @@ interface BokehOrb {
   vx: number;
   vy: number;
   hue: number;
+  phase: number;
 }
 
-// 模块级静态缓存与对象池 (0 GC 性能优化)
-let accretionStars: KeplerianStar[] = [];
-let speedLasers: SpeedLaser[] = [];
-let bokehOrbs: BokehOrb[] = [];
+interface ConcentricShockwave {
+  z: number;
+  radius: number;
+  maxRadius: number;
+  alpha: number;
+  speed: number;
+  color: string;
+}
+
+interface CowbellElectricArc {
+  startAngle: number;
+  endAngle: number;
+  radius: number;
+  alpha: number;
+  life: number;
+  maxLife: number;
+}
+
+// ─── 模块级高性能静态对象池与单例缓存（0 GC 垃圾回收零卡顿） ───
+let infallPhotons: KeplerianInfallPhoton[] = [];
+let kerrQuantumPhotons: KerrQuantumPhoton[] = [];
+let speedWarpLasers: SpeedWarpLaser[] = [];
+let cinematicBokehOrbs: CinematicBokehOrb[] = [];
+let activeShockwaves: ConcentricShockwave[] = [];
+let electricArcs: CowbellElectricArc[] = [];
 
 let cachedGlowSprite: HTMLCanvasElement | null = null;
-let cachedNebulaSprite: HTMLCanvasElement | null = null;
+let cachedSoftPlasmaSprite: HTMLCanvasElement | null = null;
 let filmGrainCanvas: HTMLCanvasElement | null = null;
 let filmGrainPattern: CanvasPattern | null = null;
 
@@ -49,12 +86,16 @@ let prevSuperBass = 0;
 let roadScroll = 0;
 let accretionRotation = 0;
 let breathLFO = 0;
+let lastCanvasW = 0;
+let lastCanvasH = 0;
 
-const STAR_COUNT = 1600;
-const LASER_COUNT = 450;
+const PHOTON_COUNT = 2200;
+const QUANTUM_COUNT = 55;
+const LASER_COUNT = 520;
 const BOKEH_COUNT = 36;
+const ARC_MAX = 8;
 
-// 高性能 Sprite 预生成
+// 高清柔和羽化光斑预烘焙
 function getOrCreateSprites() {
   if (typeof document === "undefined") return;
   if (!cachedGlowSprite) {
@@ -64,21 +105,21 @@ function getOrCreateSprites() {
     const g = cachedGlowSprite.getContext("2d")!;
     const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
     grd.addColorStop(0, "rgba(255, 255, 255, 1)");
-    grd.addColorStop(0.25, "rgba(100, 240, 255, 0.7)");
-    grd.addColorStop(0.65, "rgba(255, 60, 180, 0.2)");
+    grd.addColorStop(0.2, "rgba(120, 240, 255, 0.75)");
+    grd.addColorStop(0.55, "rgba(255, 60, 180, 0.22)");
     grd.addColorStop(1, "rgba(0, 0, 0, 0)");
     g.fillStyle = grd;
     g.fillRect(0, 0, 128, 128);
   }
-  if (!cachedNebulaSprite) {
-    cachedNebulaSprite = document.createElement("canvas");
-    cachedNebulaSprite.width = 128;
-    cachedNebulaSprite.height = 128;
-    const g = cachedNebulaSprite.getContext("2d")!;
+  if (!cachedSoftPlasmaSprite) {
+    cachedSoftPlasmaSprite = document.createElement("canvas");
+    cachedSoftPlasmaSprite.width = 128;
+    cachedSoftPlasmaSprite.height = 128;
+    const g = cachedSoftPlasmaSprite.getContext("2d")!;
     const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    grd.addColorStop(0, "rgba(255, 200, 255, 0.8)");
-    grd.addColorStop(0.35, "rgba(255, 80, 160, 0.35)");
-    grd.addColorStop(0.7, "rgba(60, 180, 255, 0.08)");
+    grd.addColorStop(0, "rgba(255, 240, 255, 0.85)");
+    grd.addColorStop(0.3, "rgba(240, 70, 160, 0.40)");
+    grd.addColorStop(0.7, "rgba(40, 160, 255, 0.10)");
     grd.addColorStop(1, "rgba(0, 0, 0, 0)");
     g.fillStyle = grd;
     g.fillRect(0, 0, 128, 128);
@@ -99,7 +140,7 @@ function getOrCreateFilmGrain(ctx: CanvasRenderingContext2D): CanvasPattern | nu
       buf[i] = val;
       buf[i + 1] = val;
       buf[i + 2] = val;
-      buf[i + 3] = 4; // 1.5% 电影胶片颗粒
+      buf[i + 3] = 3; // 1.2% 超细腻 35mm 电影胶片质感
     }
     gCtx.putImageData(imgData, 0, 0);
     filmGrainPattern = ctx.createPattern(filmGrainCanvas, "repeat");
@@ -108,65 +149,89 @@ function getOrCreateFilmGrain(ctx: CanvasRenderingContext2D): CanvasPattern | nu
 }
 
 function initPools(width: number, height: number) {
-  if (accretionStars.length >= STAR_COUNT) return;
+  if (infallPhotons.length >= PHOTON_COUNT && Math.abs(lastCanvasW - width) < 40) return;
+  lastCanvasW = width;
+  lastCanvasH = height;
   getOrCreateSprites();
 
-  // 1. 开普勒物理向心吸积盘粒子群
-  accretionStars = [];
+  // 1. 2,200+ 开普勒向心光纤粒子束 (Keplerian Infall Photons)
+  infallPhotons = [];
   const arms = 4;
-  for (let i = 0; i < STAR_COUNT; i++) {
+  for (let i = 0; i < PHOTON_COUNT; i++) {
     const arm = i % arms;
     const armAngle = (arm / arms) * Math.PI * 2;
-    const distFrac = Math.pow(Math.random(), 1.4);
-    const r = 40 + distFrac * (Math.min(width, height) * 0.48);
-    const spiralAngle = armAngle + Math.log(r * 0.05 + 1) * 3.6 + (Math.random() - 0.5) * 0.35;
-    const speed = (0.012 + (1 / Math.sqrt(r + 5)) * 0.42);
-    const heightSpread = (Math.random() - 0.5) * (4 + (r / 350) * 16);
+    // 幂律分布：靠近事件视界处高度密集，向外平滑稀疏
+    const distFrac = Math.pow(Math.random(), 1.6);
+    const r = 38 + distFrac * (Math.min(width, height) * 0.46);
+    const spiralAngle = armAngle + Math.log(r * 0.05 + 1) * 3.8 + (Math.random() - 0.5) * 0.3;
+    const speed = 0.014 + (1 / Math.sqrt(r + 5)) * 0.44;
+    const heightSpread = (Math.random() - 0.5) * (4 + (r / 350) * 15);
 
-    accretionStars.push({
+    infallPhotons.push({
       radius: r,
+      baseRadius: r,
       angle: spiralAngle,
       speed,
       height: heightSpread,
-      size: Math.random() * 2.2 + 0.8,
+      size: Math.random() * 1.8 + 0.7,
       alpha: Math.random() * 0.7 + 0.3,
-      hue: Math.random() > 0.4 ? 185 : 315,
+      hue: Math.random() > 0.45 ? 185 : 315,
+      arm,
     });
   }
 
-  // 2. 高速穿梭光轨
-  speedLasers = [];
+  // 2. 克尔黑洞内视界量子微粒回响 (Kerr Quantum Photons inside Singularity Void)
+  kerrQuantumPhotons = [];
+  for (let i = 0; i < QUANTUM_COUNT; i++) {
+    const r = Math.pow(Math.random(), 1.5) * (Math.min(width, height) * 0.09);
+    const ang = Math.random() * Math.PI * 2;
+    kerrQuantumPhotons.push({
+      x: Math.cos(ang) * r,
+      y: Math.sin(ang) * r,
+      radius: Math.random() * 1.6 + 0.6,
+      alpha: Math.random() * 0.28 + 0.08,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      pulsePhase: Math.random() * Math.PI * 2,
+      pulseSpeed: Math.random() * 0.04 + 0.02,
+      hue: Math.random() > 0.5 ? 275 : 195,
+    });
+  }
+
+  // 3. 高速穿梭光轨 (Speed Warp Lasers)
+  speedWarpLasers = [];
   for (let i = 0; i < LASER_COUNT; i++) {
-    speedLasers.push({
-      x: (Math.random() - 0.5) * width * 2.6,
+    speedWarpLasers.push({
+      x: (Math.random() - 0.5) * width * 2.5,
       y: (Math.random() - 0.5) * height * 1.6,
       z: Math.random() * 1000 + 10,
       prevZ: 0,
       speed: Math.random() * 2.2 + 1.2,
       alpha: Math.random() * 0.7 + 0.3,
       hue: Math.random() > 0.5 ? 330 : 190,
-      length: Math.random() * 25 + 10,
+      size: Math.random() * 1.8 + 0.7,
     });
   }
 
-  // 3. 漂移光斑与流光微粒
-  bokehOrbs = [];
+  // 4. 电影级柔焦失焦光斑 (Cinematic Bokeh Orbs)
+  cinematicBokehOrbs = [];
   for (let i = 0; i < BOKEH_COUNT; i++) {
-    bokehOrbs.push({
+    cinematicBokehOrbs.push({
       x: Math.random() * width,
-      y: height * 0.45 + Math.random() * height * 0.55,
-      radius: Math.random() * 24 + 10,
-      alpha: Math.random() * 0.16 + 0.05,
-      vx: (Math.random() - 0.5) * 0.8,
-      vy: -Math.random() * 0.6 - 0.2,
+      y: height * 0.42 + Math.random() * height * 0.58,
+      radius: Math.random() * 26 + 10,
+      alpha: Math.random() * 0.14 + 0.04,
+      vx: (Math.random() - 0.5) * 0.6,
+      vy: -Math.random() * 0.5 - 0.15,
       hue: Math.random() > 0.5 ? 185 : 320,
+      phase: Math.random() * Math.PI * 2,
     });
   }
 }
 
 /**
- * 赛博漂移 · 电影级日蚀特异点 (Phonk Drift Eclipse 11.0 - Master Cinema Prestige)
- * 极致全貌 3D 《星际穿越》卡冈图雅黑洞、开普勒向心引力吸积流、午夜东京湿润沥青倒影
+ * 赛博漂移 · 电影级日蚀特异点 (Phonk Drift Eclipse 12.0 - Ultimate Cyber Singularity Prestige Edition)
+ * 极致全貌 3D 《星际穿越》克尔黑洞、爱因斯坦-罗森重力井网格无缝吸入、相对论开普勒光纤流、2.39:1 电影宽银幕光学
  */
 export function drawPhonkDriftEclipse({
   ctx,
@@ -182,7 +247,7 @@ export function drawPhonkDriftEclipse({
   const cruiseSpeed = params?.cruiseSpeed ?? 1.35;
   const colorMode = params?.colorMode ?? 0;
 
-  // 1. Phonk 专项音频频段分析
+  // ─── 1. Phonk 专业音频频段解耦与瞬态平滑 ───
   let subBassRaw = 0;
   for (let i = 1; i <= 3; i++) subBassRaw += data[i] || 0;
   subBassRaw = subBassRaw / (3 * 255);
@@ -191,29 +256,56 @@ export function drawPhonkDriftEclipse({
   for (let i = 4; i <= 8; i++) bassRaw += data[i] || 0;
   bassRaw = bassRaw / (5 * 255);
 
-  let midRaw = 0;
-  for (let i = 9; i <= 28; i++) midRaw += data[i] || 0;
-  midRaw = midRaw / (20 * 255);
+  let cowbellMidRaw = 0;
+  for (let i = 9; i <= 28; i++) cowbellMidRaw += data[i] || 0;
+  cowbellMidRaw = cowbellMidRaw / (20 * 255);
 
-  let trebleRaw = 0;
-  for (let i = 35; i <= 95; i++) trebleRaw += data[i] || 0;
-  trebleRaw = trebleRaw / (61 * 255);
+  let hihatTrebleRaw = 0;
+  for (let i = 35; i <= 95; i++) hihatTrebleRaw += data[i] || 0;
+  hihatTrebleRaw = hihatTrebleRaw / (61 * 255);
 
+  // Attack / Decay 双速动态平滑阻尼
   const superBass = subBassRaw > prevSuperBass ? prevSuperBass * 0.08 + subBassRaw * 0.92 : prevSuperBass * 0.94 + subBassRaw * 0.06;
   prevSuperBass = superBass;
 
   const bass = bassRaw > prevBass ? prevBass * 0.10 + bassRaw * 0.90 : prevBass * 0.94 + bassRaw * 0.06;
   prevBass = bass;
 
-  const mid = midRaw > prevMid ? prevMid * 0.14 + midRaw * 0.86 : prevMid * 0.92 + midRaw * 0.08;
+  const mid = cowbellMidRaw > prevMid ? prevMid * 0.14 + cowbellMidRaw * 0.86 : prevMid * 0.92 + cowbellMidRaw * 0.08;
   prevMid = mid;
 
-  const treble = trebleRaw > prevTreble ? prevTreble * 0.18 + trebleRaw * 0.82 : prevTreble * 0.88 + trebleRaw * 0.12;
+  const treble = hihatTrebleRaw > prevTreble ? prevTreble * 0.18 + hihatTrebleRaw * 0.82 : prevTreble * 0.88 + hihatTrebleRaw * 0.12;
   prevTreble = treble;
 
   breathLFO += 0.015;
   const organicBreath = Math.sin(breathLFO) * 0.5 + 0.5;
 
+  // 牛铃触发视界等离子放电电弧
+  if (mid > 0.62 && Math.random() < 0.35 && electricArcs.length < ARC_MAX) {
+    const startA = Math.random() * Math.PI * 2;
+    electricArcs.push({
+      startAngle: startA,
+      endAngle: startA + (Math.random() * 0.8 + 0.4),
+      radius: 1.0 + Math.random() * 0.25,
+      alpha: 0.95,
+      life: 0,
+      maxLife: Math.random() * 12 + 8,
+    });
+  }
+
+  // 808 重低音爆发全屏同心引力激波
+  if (superBass > 0.78 && Math.random() < 0.32 && activeShockwaves.length < 5) {
+    activeShockwaves.push({
+      z: 0.01,
+      radius: 20,
+      maxRadius: Math.max(width, height) * 0.95,
+      alpha: 0.85,
+      speed: 0.024 + superBass * 0.018,
+      color: colorMode === 2 ? "#ff3366" : colorMode === 3 ? "#ffd700" : "#00f0ff",
+    });
+  }
+
+  // 主题色彩映射
   let primaryHue = theme?.primary ?? 295;
   let secondaryHue = theme?.secondary ?? 185;
   let accentHue = theme?.accent ?? 335;
@@ -232,7 +324,8 @@ export function drawPhonkDriftEclipse({
     accentHue = 55;
   }
 
-  // 镜头震荡与漂移晃动
+  // 镜头 Z 轴弹性推拉震颤与漂移摆幅
+  const zPunch = superBass > 0.6 ? (superBass - 0.6) * 16 * bassIntensity : 0;
   const cameraSway = Math.sin(breathLFO * 0.55) * 0.014 * (1 + superBass * 0.4);
   let shakeX = 0;
   let shakeY = 0;
@@ -244,34 +337,65 @@ export function drawPhonkDriftEclipse({
 
   const cx = width * 0.5 + shakeX;
   const horizonY = height * 0.47 + shakeY;
-  const blackHoleY = horizonY - height * 0.06; // 黄金分割悬浮位置
+  const blackHoleY = horizonY - height * 0.055 - zPunch * 0.5;
 
   // 黑洞事件视界物理半径与 3D 旋转
   const eventHorizonR = Math.min(width, height) * (0.125 + superBass * 0.045 * bassIntensity + organicBreath * 0.006);
-  accretionRotation += (0.010 + cruiseSpeed * 0.005 + superBass * 0.015);
+  accretionRotation += (0.011 + cruiseSpeed * 0.005 + superBass * 0.016);
 
   ctx.save();
 
-  // ─── 0. 底层深邃曜石黑虚空 ───
+  // ─── 0. 底层深邃曜石黑纯黑虚空 ───
   ctx.fillStyle = "#010103";
   ctx.fillRect(0, 0, width, height);
 
-  // ─── 1. 深空全域大气色阶与星云光晕 (Volumetric Sky Nebula) ───
+  // ─── 1. 深空全域大气色阶与天鹅绒柔和流体极光幕 (Volumetric Sky Nebula & Silk Aurora) ───
   ctx.save();
   ctx.globalCompositeOperation = "screen";
+
+  // 大气渐变
   const skyGrd = ctx.createRadialGradient(cx, blackHoleY, eventHorizonR * 0.8, cx, blackHoleY, Math.max(width, height) * 0.88);
-  skyGrd.addColorStop(0, `hsla(${primaryHue}, 95%, 65%, ${0.25 + superBass * 0.18})`);
+  skyGrd.addColorStop(0, `hsla(${primaryHue}, 95%, 65%, ${0.26 + superBass * 0.18})`);
   skyGrd.addColorStop(0.28, `hsla(${secondaryHue}, 85%, 50%, ${0.12 + mid * 0.08})`);
   skyGrd.addColorStop(0.65, `hsla(${accentHue}, 90%, 35%, 0.04)`);
   skyGrd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = skyGrd;
   ctx.fillRect(0, 0, width, height);
+
+  // 天鹅绒流体极光幕 (连续多正弦波柔和光幕)
+  const numAuroraWaves = 4;
+  for (let w = 0; w < numAuroraWaves; w++) {
+    const wavePhase = breathLFO * 0.8 + (w * Math.PI) / numAuroraWaves;
+    const waveAmp = (35 + w * 22) * (1 + mid * 0.7);
+    const waveHue = w % 2 === 0 ? secondaryHue : primaryHue;
+    const waveAlpha = (0.04 + (data[10 + w * 7] || 0) / 255 * 0.07 + superBass * 0.04) * (0.7 + organicBreath * 0.3);
+
+    const auroraGrd = ctx.createLinearGradient(0, 0, 0, horizonY);
+    auroraGrd.addColorStop(0, `hsla(${waveHue}, 100%, 75%, 0)`);
+    auroraGrd.addColorStop(0.4, `hsla(${waveHue}, 90%, 65%, ${waveAlpha * 0.5})`);
+    auroraGrd.addColorStop(0.85, `hsla(${waveHue}, 95%, 70%, ${waveAlpha})`);
+    auroraGrd.addColorStop(1, `hsla(${accentHue}, 100%, 80%, 0)`);
+
+    ctx.fillStyle = auroraGrd;
+    ctx.beginPath();
+    ctx.moveTo(0, horizonY);
+    const waveSteps = 24;
+    for (let s = 0; s <= waveSteps; s++) {
+      const wx = (s / waveSteps) * width;
+      const wy = horizonY - (Math.sin((s / waveSteps) * Math.PI * 3 + wavePhase) * waveAmp + (height * 0.30));
+      ctx.lineTo(wx, wy);
+    }
+    ctx.lineTo(width, horizonY);
+    ctx.closePath();
+    ctx.fill();
+  }
   ctx.restore();
 
-  // ─── 2. 远景东京赛博大厦剪影天际线 (Tokyo Cyber Skyline) ───
+  // ─── 2. 远景东京赛博大厦微光天际线 (Tokyo Cyber Skyline) ───
+  // 分布在地平线远景两侧，中心完全留给黑洞重力井
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
-  const bCount = 38;
+  const bCount = 40;
   const bStep = width / bCount;
   ctx.fillStyle = "#030307";
   ctx.beginPath();
@@ -279,10 +403,11 @@ export function drawPhonkDriftEclipse({
   for (let i = 0; i <= bCount; i++) {
     const bx = i * bStep;
     const distRatio = Math.abs(bx - cx) / (width * 0.5);
-    const isBuilding = i % 2 === 0 && distRatio > 0.25;
+    // 中心 28% 区域让位给黑洞与重力井
+    const isBuilding = i % 2 === 0 && distRatio > 0.28;
     const bHeight = isBuilding
-      ? (34 + Math.sin(i * 3.7) * 28) * Math.pow(distRatio, 1.15)
-      : (Math.sin(i * 1.5 + breathLFO * 0.2) * 0.5 + 0.5) * 28 * Math.pow(distRatio, 1.35);
+      ? (36 + Math.sin(i * 3.7) * 28) * Math.pow(distRatio, 1.2)
+      : (Math.sin(i * 1.5 + breathLFO * 0.2) * 0.5 + 0.5) * 25 * Math.pow(distRatio, 1.4);
     ctx.lineTo(bx, horizonY - bHeight);
     if (isBuilding) {
       ctx.lineTo(bx + bStep * 0.85, horizonY - bHeight);
@@ -292,13 +417,50 @@ export function drawPhonkDriftEclipse({
   ctx.closePath();
   ctx.fill();
 
-  ctx.strokeStyle = `hsla(${primaryHue}, 85%, 65%, ${0.18 + mid * 0.20})`;
-  ctx.lineWidth = 0.9;
+  // 建筑顶部微光与红色航空指示灯
+  for (let i = 0; i <= bCount; i++) {
+    const bx = i * bStep;
+    const distRatio = Math.abs(bx - cx) / (width * 0.5);
+    if (i % 2 === 0 && distRatio > 0.28) {
+      const bHeight = (36 + Math.sin(i * 3.7) * 28) * Math.pow(distRatio, 1.2);
+      ctx.fillStyle = "#ff1133";
+      ctx.globalAlpha = Math.sin(breathLFO * 3 + i) > 0.2 ? 0.85 : 0.2;
+      ctx.beginPath();
+      ctx.arc(bx + bStep * 0.42, horizonY - bHeight - 3, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.strokeStyle = `hsla(${primaryHue}, 85%, 65%, ${0.16 + mid * 0.20})`;
+  ctx.lineWidth = 0.85;
   ctx.stroke();
   ctx.restore();
 
-  // ─── 3. 真实《星际穿越》卡冈图雅 3D 物理引力黑洞 (Gargantua Singularity Engine) ───
-  // 3D 投影参数：俯角 0.38 rad
+  // ─── 3. 垂直超相对论等离子喷流 (Polar Relativistic Plasma Jets) ───
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const jetH = height * (0.62 + superBass * 0.40);
+  const jetW = 3.2 + superBass * 4.0;
+
+  // 上喷流
+  const topJetGrd = ctx.createLinearGradient(cx, blackHoleY, cx, blackHoleY - jetH);
+  topJetGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 94%, ${0.92 + superBass * 0.08})`);
+  topJetGrd.addColorStop(0.2, `hsla(${primaryHue}, 95%, 75%, 0.65)`);
+  topJetGrd.addColorStop(0.65, `hsla(${accentHue}, 85%, 55%, 0.15)`);
+  topJetGrd.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = topJetGrd;
+  ctx.fillRect(cx - jetW * 0.5, blackHoleY - jetH, jetW, jetH);
+
+  // 下喷流
+  const btmJetGrd = ctx.createLinearGradient(cx, blackHoleY, cx, blackHoleY + jetH * 0.4);
+  btmJetGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 92%, 0.85)`);
+  btmJetGrd.addColorStop(0.4, `hsla(${primaryHue}, 90%, 65%, 0.35)`);
+  btmJetGrd.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = btmJetGrd;
+  ctx.fillRect(cx - jetW * 0.5, blackHoleY, jetW, jetH * 0.4);
+  ctx.restore();
+
+  // ─── 4. 真实《星际穿越》卡冈图雅 3D 克尔黑洞引力光陷阱 (Gargantua Singularity Engine) ───
   const diskPitch = 0.38 + Math.sin(breathLFO * 0.5) * 0.02;
   const cosP = Math.cos(diskPitch);
   const sinP = Math.sin(diskPitch);
@@ -309,25 +471,25 @@ export function drawPhonkDriftEclipse({
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  // A. 顶部引力透镜弯曲光弧 (Upper Lensing Halo: 后方吸积盘被引力拉扯到上方的像)
-  // 多层柔和高斯光带，左侧多普勒蓝移白青色，右侧红移暗淡
+  // A. 顶部引力透镜柔和光晕 (Upper Lensing Halo: 8 层连续柔和高斯光带，无任何生硬同心线)
   const haloBands = 8;
   for (let b = 0; b < haloBands; b++) {
-    const bandR = eventHorizonR * (1.20 + b * 0.05 + superBass * 0.20);
+    const bandR = eventHorizonR * (1.18 + b * 0.055 + superBass * 0.20);
     const bandGrd = ctx.createLinearGradient(cx - bandR, blackHoleY, cx + bandR, blackHoleY);
+    // 多普勒效应：左侧旋转迎面高速奔向观察者，白青蓝移；右侧暗红渐隐
     bandGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 88%, ${0.80 - b * 0.08 + superBass * 0.15})`);
     bandGrd.addColorStop(0.35, `hsla(${primaryHue}, 95%, 72%, ${0.70 - b * 0.07})`);
     bandGrd.addColorStop(1, `hsla(${accentHue}, 90%, 55%, ${0.30 - b * 0.03})`);
 
     ctx.strokeStyle = bandGrd;
-    ctx.lineWidth = Math.max(1.2, 7.0 - b * 0.6 + superBass * 4.0);
+    ctx.lineWidth = Math.max(1.2, 7.5 - b * 0.6 + superBass * 4.0);
     ctx.beginPath();
     ctx.arc(cx, blackHoleY, bandR, Math.PI * 0.95, Math.PI * 2.05);
     ctx.stroke();
   }
 
   // B. 下部引力透镜微光弧 (Lower Lensing Halo)
-  const btmHaloR = eventHorizonR * (1.18 + superBass * 0.15);
+  const btmHaloR = eventHorizonR * (1.16 + superBass * 0.15);
   const btmGrd = ctx.createLinearGradient(cx - btmHaloR, blackHoleY, cx + btmHaloR, blackHoleY);
   btmGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 80%, ${0.45 + superBass * 0.2})`);
   btmGrd.addColorStop(0.5, `hsla(${primaryHue}, 90%, 65%, 0.35)`);
@@ -338,21 +500,21 @@ export function drawPhonkDriftEclipse({
   ctx.arc(cx, blackHoleY, btmHaloR, 0, Math.PI);
   ctx.stroke();
 
-  // C. 1,600+ 物理级向心坍缩开普勒光子微粒流 (Keplerian Infall Photons)
-  const photonSpeedMult = 1.0 + superBass * 2.4 + treble * 1.4;
+  // C. 2,200+ 相对论开普勒向心光纤流束 (Keplerian Infall Fiber Photons)
+  const photonSpeedMult = 1.0 + superBass * 2.5 + treble * 1.5;
   ctx.lineWidth = 1.1;
 
-  for (let i = 0; i < accretionStars.length; i++) {
-    const p = accretionStars[i];
+  for (let i = 0; i < infallPhotons.length; i++) {
+    const p = infallPhotons[i];
     // 越接近事件视界，角速度和向心速度越呈指数级剧增 (Relativistic Orbital Acceleration)
     const normalizedDist = Math.max(0.04, (p.radius - eventHorizonR) / (width * 0.42));
-    const speedFactor = 1.0 + (1.0 / normalizedDist) * 0.65;
+    const speedFactor = 1.0 + (1.0 / normalizedDist) * 0.68;
     p.angle += p.speed * speedFactor * photonSpeedMult;
-    p.radius -= (0.35 + (1.0 / normalizedDist) * 0.22 + superBass * 1.2);
+    p.radius -= (0.36 + (1.0 / normalizedDist) * 0.24 + superBass * 1.25);
 
     // 穿过事件视界后在外围重新生成被捕获
     if (p.radius <= eventHorizonR * 0.98) {
-      p.radius = eventHorizonR * (1.5 + Math.random() * 2.6);
+      p.radius = eventHorizonR * (1.55 + Math.random() * 2.6);
       p.angle = Math.random() * Math.PI * 2;
     }
 
@@ -370,7 +532,7 @@ export function drawPhonkDriftEclipse({
     const screenX = cx + rx * scale;
     const screenY = blackHoleY + ry * scale;
 
-    // 遮挡检查：处于黑洞后方且在投影半径内的粒子被遮挡
+    // 遮挡检查：处于黑洞后方且在投影半径内的粒子被视界吞噬遮挡
     const distToCenter = Math.hypot(screenX - cx, screenY - blackHoleY);
     if (rz < 0 && distToCenter < eventHorizonR * 0.95) continue;
 
@@ -396,12 +558,29 @@ export function drawPhonkDriftEclipse({
     }
   }
 
-  // D. 经典光子球面高能临界光环 (Blazing Photon Sphere Rim)
+  // D. 牛铃中频触发的视界电光电弧 (Cowbell Electric Arcs)
+  for (let i = electricArcs.length - 1; i >= 0; i--) {
+    const arc = electricArcs[i];
+    arc.life++;
+    if (arc.life >= arc.maxLife) {
+      electricArcs.splice(i, 1);
+      continue;
+    }
+    const arcProgress = 1 - arc.life / arc.maxLife;
+    const arcR = eventHorizonR * (arc.radius + (1 - arcProgress) * 0.15);
+    ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 90%, ${arc.alpha * arcProgress})`;
+    ctx.lineWidth = 1.8 * arcProgress;
+    ctx.beginPath();
+    ctx.arc(cx, blackHoleY, arcR, arc.startAngle, arc.endAngle);
+    ctx.stroke();
+  }
+
+  // E. 经典光子球面高能临界光环 (Blazing Photon Sphere Rim)
   const photonSphereR = eventHorizonR * (1.04 + superBass * 0.06);
   const photonGrd = ctx.createLinearGradient(cx - photonSphereR, blackHoleY, cx + photonSphereR, blackHoleY);
-  photonGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 92%, ${0.95 + superBass * 0.05})`);
-  photonGrd.addColorStop(0.35, `hsla(${primaryHue}, 95%, 75%, 0.85)`);
-  photonGrd.addColorStop(1, `hsla(${accentHue}, 90%, 60%, 0.40)`);
+  photonGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 94%, ${0.96 + superBass * 0.04})`);
+  photonGrd.addColorStop(0.35, `hsla(${primaryHue}, 95%, 78%, 0.88)`);
+  photonGrd.addColorStop(1, `hsla(${accentHue}, 90%, 62%, 0.42)`);
 
   ctx.strokeStyle = photonGrd;
   ctx.lineWidth = 3.6 + superBass * 4.2;
@@ -409,12 +588,12 @@ export function drawPhonkDriftEclipse({
   ctx.arc(cx, blackHoleY, photonSphereR, 0, Math.PI * 2);
   ctx.stroke();
 
-  // E. 宽银幕变形水平耀斑 (Anamorphic Streak Flare)
-  const flareW = width * (0.92 + superBass * 0.35);
+  // F. 2.39:1 变形宽银幕水平蓝橙耀斑 (Panavision Anamorphic Streak)
+  const flareW = width * (0.94 + superBass * 0.35);
   const flareH = 14 + superBass * 18;
   const flareGrd = ctx.createRadialGradient(cx, blackHoleY, 0, cx, blackHoleY, flareW * 0.5);
-  flareGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 90%, ${0.85 + mid * 0.15})`);
-  flareGrd.addColorStop(0.2, `hsla(${primaryHue}, 90%, 65%, 0.45)`);
+  flareGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 92%, ${0.85 + mid * 0.15})`);
+  flareGrd.addColorStop(0.18, `hsla(${primaryHue}, 90%, 65%, 0.45)`);
   flareGrd.addColorStop(0.6, `hsla(${accentHue}, 85%, 50%, 0.12)`);
   flareGrd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = flareGrd;
@@ -422,28 +601,70 @@ export function drawPhonkDriftEclipse({
 
   ctx.restore();
 
-  // F. 事件视界绝对纯黑吞噬内核 (Absolute Pure Black Singularity Void)
+  // G. 事件视界绝对纯黑吞噬内核 + 克尔量子微粒回响 (Kerr Quantum Horizon Echo)
+  ctx.save();
   ctx.globalCompositeOperation = "source-over";
   ctx.fillStyle = "#010103";
   ctx.beginPath();
   ctx.arc(cx, blackHoleY, eventHorizonR, 0, Math.PI * 2);
   ctx.fill();
 
-  // ─── 4. 湿润沥青赛博漂移高速路与倒影系统 (Wet Asphalt Midnight Highway) ───
+  // 克尔量子微粒漂移浮动
+  ctx.globalCompositeOperation = "screen";
+  for (let i = 0; i < kerrQuantumPhotons.length; i++) {
+    const qp = kerrQuantumPhotons[i];
+    qp.pulsePhase += qp.pulseSpeed;
+    qp.x += qp.vx;
+    qp.y += qp.vy;
+    const dist = Math.hypot(qp.x, qp.y);
+    if (dist > eventHorizonR * 0.88) {
+      qp.vx = -qp.vx;
+      qp.vy = -qp.vy;
+    }
+    const pulseAlpha = qp.alpha * (0.6 + Math.sin(qp.pulsePhase) * 0.4) * (0.7 + superBass * 0.3);
+    ctx.fillStyle = `hsla(${qp.hue}, 90%, 75%, ${pulseAlpha})`;
+    ctx.beginPath();
+    ctx.arc(cx + qp.x, blackHoleY + qp.y, qp.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // ─── 5. 808 低音同心超声速引力激波环 (Concentric Gravity Shockwaves) ───
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  for (let i = activeShockwaves.length - 1; i >= 0; i--) {
+    const sw = activeShockwaves[i];
+    sw.z += sw.speed;
+    sw.alpha *= 0.96;
+    if (sw.alpha < 0.02 || sw.z > 1.0) {
+      activeShockwaves.splice(i, 1);
+      continue;
+    }
+    const curR = sw.radius + (sw.maxRadius - sw.radius) * Math.pow(sw.z, 1.3);
+    ctx.strokeStyle = sw.color;
+    ctx.globalAlpha = sw.alpha * 0.70;
+    ctx.lineWidth = 2.0 + sw.z * 3.5;
+    ctx.beginPath();
+    ctx.ellipse(cx, horizonY + sw.z * (height - horizonY) * 0.85, curR, curR * 0.35, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // ─── 6. 爱因斯坦-罗森重力井网格公路 (Einstein Gravity Well Highway - 3D 漏斗无缝吸入) ───
   ctx.save();
   const roadHeight = height - horizonY;
   roadScroll += (0.016 + superBass * 0.024) * cruiseSpeed;
 
-  // 地面自然连续底色 (无缝深空渐变)
-  const groundGrd = ctx.createLinearGradient(0, horizonY - 10, 0, height);
+  // 地面自然平滑深空渐变底色
+  const groundGrd = ctx.createLinearGradient(0, horizonY - 15, 0, height);
   groundGrd.addColorStop(0, `hsla(${primaryHue}, 75%, 8%, 0.35)`);
   groundGrd.addColorStop(0.12, `hsla(${primaryHue}, 70%, 6%, 0.95)`);
   groundGrd.addColorStop(0.65, `hsla(${secondaryHue}, 65%, 4%, 0.98)`);
   groundGrd.addColorStop(1, "#010103");
   ctx.fillStyle = groundGrd;
-  ctx.fillRect(0, horizonY - 10, width, roadHeight + 10);
+  ctx.fillRect(0, horizonY - 15, width, roadHeight + 15);
 
-  // 湿润路面高斯漫反射倒影锥 (Specular Floor Reflection)
+  // 湿润沥青路面高斯镜面漫反射倒影锥 (Specular Floor Reflection)
   ctx.globalCompositeOperation = "screen";
   const floorReflectGrd = ctx.createRadialGradient(
     cx,
@@ -460,18 +681,18 @@ export function drawPhonkDriftEclipse({
   ctx.fillStyle = floorReflectGrd;
   ctx.fillRect(0, horizonY, width, roadHeight);
 
-  // 3D 弯道网格与引力漩涡拉扯
-  const LAT_LINES = 24;
-  const LONG_LINES = 20;
+  // 3D 弯道与重力井漏斗拉扯
+  const LAT_LINES = 26;
+  const LONG_LINES = 22;
   const roadHalfW = width * 1.08;
-  const gravitySink = superBass * 42 * bassIntensity;
-  const driftOffset = Math.sin(breathLFO * 0.7) * (width * 0.07) * (1 + bass * 0.4);
+  const gravityFunnelSink = superBass * 45 * bassIntensity;
+  const driftOffset = Math.sin(breathLFO * 0.7) * (width * 0.075) * (1 + bass * 0.4);
 
-  // 横向车道线 (双层柔光渲染)
+  // 横向车道线 (随深度弯曲下陷)
   for (let i = 0; i < LAT_LINES; i++) {
     const rawProgress = ((i / LAT_LINES + (roadScroll % (1 / LAT_LINES))) % 1.0);
     const pZ = Math.pow(rawProgress, 2.3);
-    if (pZ < 0.02) continue;
+    if (pZ < 0.015) continue;
 
     const lineY = horizonY + roadHeight * pZ;
     const spanW = roadHalfW * Math.pow(rawProgress, 1.45);
@@ -479,20 +700,21 @@ export function drawPhonkDriftEclipse({
 
     const swirlOffset = Math.pow(1 - pZ, 2.5) * (superBass * 28);
     const curveX = Math.sin(pZ * Math.PI) * driftOffset + swirlOffset;
-    const depthAlpha = Math.min(1.0, Math.pow((pZ - 0.02) * 4.0, 1.2));
+    const depthAlpha = Math.min(1.0, Math.pow((pZ - 0.015) * 4.2, 1.2));
     const lineAlpha = Math.min(1.0, pZ * 1.4) * (0.28 + superBass * 0.32) * depthAlpha;
 
-    const centerDip = Math.sin(pZ * Math.PI) * gravitySink;
+    // 靠近黑洞时重力井向下凹陷拉伸
+    const centerDip = Math.sin(pZ * Math.PI) * gravityFunnelSink - Math.pow(1 - pZ, 2.2) * (superBass * 25);
 
     // 底层霓虹晕染
     ctx.strokeStyle = `hsla(${primaryHue}, 90%, 65%, ${lineAlpha * 0.35})`;
-    ctx.lineWidth = Math.max(2.0, pZ * 4.6);
+    ctx.lineWidth = Math.max(2.0, pZ * 4.8);
     ctx.beginPath();
     ctx.moveTo(cx + curveX - spanW, lineY);
     ctx.quadraticCurveTo(cx + curveX, lineY + centerDip, cx + curveX + spanW, lineY);
     ctx.stroke();
 
-    // 顶层平滑核心
+    // 顶层激光核心
     ctx.strokeStyle = `hsla(${primaryHue}, 85%, ${55 + pZ * 22}%, ${lineAlpha})`;
     ctx.lineWidth = Math.max(0.7, pZ * 2.0);
     ctx.beginPath();
@@ -501,7 +723,7 @@ export function drawPhonkDriftEclipse({
     ctx.stroke();
   }
 
-  // 纵向延伸车道线
+  // 纵向延伸车道线 (3D 漏斗曲率向上弯曲直接卷入黑洞视界下沿，零水平断层硬切)
   for (let j = 0; j <= LONG_LINES; j++) {
     const normX = (j / LONG_LINES - 0.5) * 2;
     const isCenterLane = Math.abs(normX) < 0.08;
@@ -515,7 +737,7 @@ export function drawPhonkDriftEclipse({
     // 底层柔光
     const bGrd = ctx.createLinearGradient(0, horizonY, 0, height);
     bGrd.addColorStop(0, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, 0)`);
-    bGrd.addColorStop(0.2, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.12})`);
+    bGrd.addColorStop(0.18, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.12})`);
     bGrd.addColorStop(0.6, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.32})`);
     bGrd.addColorStop(1, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.42})`);
 
@@ -523,23 +745,24 @@ export function drawPhonkDriftEclipse({
     ctx.lineWidth = isCenterLane ? 4.8 : isOuterRail ? 3.8 : 2.0;
 
     const endX = cx + normX * roadHalfW;
-    const controlDip = isCenterLane ? gravitySink * 0.8 : gravitySink * 0.3 * (1 - Math.abs(normX));
+    const controlDip = isCenterLane ? gravityFunnelSink * 0.8 : gravityFunnelSink * 0.3 * (1 - Math.abs(normX));
     const laneSwirl = Math.sin(normX * Math.PI) * (superBass * 18);
 
+    // 消失点平滑汇聚至黑洞视界下沿 (Smooth Infall into Event Horizon)
     ctx.beginPath();
-    ctx.moveTo(cx + normX * (eventHorizonR * 0.2), horizonY);
+    ctx.moveTo(cx + normX * (eventHorizonR * 0.18), blackHoleY + eventHorizonR * 0.95);
     ctx.quadraticCurveTo(
       cx + normX * (roadHalfW * 0.36) + driftOffset * 0.7 + laneSwirl,
-      horizonY + roadHeight * 0.5 + controlDip,
+      horizonY + roadHeight * 0.45 + controlDip,
       endX,
       height
     );
     ctx.stroke();
 
-    // 顶层核心
+    // 顶层核心激光
     const cGrd = ctx.createLinearGradient(0, horizonY, 0, height);
     cGrd.addColorStop(0, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, 0)`);
-    cGrd.addColorStop(0.2, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.18})`);
+    cGrd.addColorStop(0.18, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.18})`);
     cGrd.addColorStop(0.6, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.65})`);
     cGrd.addColorStop(1, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha})`);
 
@@ -547,17 +770,17 @@ export function drawPhonkDriftEclipse({
     ctx.lineWidth = isCenterLane ? 2.0 : isOuterRail ? 1.6 : 0.85;
 
     ctx.beginPath();
-    ctx.moveTo(cx + normX * (eventHorizonR * 0.2), horizonY);
+    ctx.moveTo(cx + normX * (eventHorizonR * 0.18), blackHoleY + eventHorizonR * 0.95);
     ctx.quadraticCurveTo(
       cx + normX * (roadHalfW * 0.36) + driftOffset * 0.7 + laneSwirl,
-      horizonY + roadHeight * 0.5 + controlDip,
+      horizonY + roadHeight * 0.45 + controlDip,
       endX,
       height
     );
     ctx.stroke();
   }
 
-  // 地平线深空羽化薄雾
+  // 地平线深空羽化薄雾 (Seamless Horizon Mist)
   const mistRadialGrd = ctx.createRadialGradient(
     cx,
     horizonY,
@@ -574,21 +797,21 @@ export function drawPhonkDriftEclipse({
 
   ctx.restore();
 
-  // ─── 5. 极速漂移光轨与流光光斑 (Hyper-Speed Drift Lasers) ───
+  // ─── 7. 极速穿梭光轨与电影级失焦光斑 (Speed Warp Lasers & Bokeh Orbs) ───
   ctx.save();
   ctx.globalCompositeOperation = "screen";
   const speedMult = (1.0 + treble * 3.0 + superBass * 2.0) * cruiseSpeed;
 
-  for (let i = 0; i < speedLasers.length; i++) {
-    const st = speedLasers[i];
+  for (let i = 0; i < speedWarpLasers.length; i++) {
+    const st = speedWarpLasers[i];
     st.prevZ = st.z;
     st.z -= st.speed * 8.5 * speedMult;
 
     if (st.z <= 1) {
       st.z = 1000;
       st.prevZ = 1000;
-      st.x = (Math.random() - 0.5) * width * 2.4;
-      st.y = (Math.random() - 0.5) * height * 1.8;
+      st.x = (Math.random() - 0.5) * width * 2.5;
+      st.y = (Math.random() - 0.5) * height * 1.6;
     }
 
     const cosS = Math.cos(cameraSway);
@@ -617,7 +840,7 @@ export function drawPhonkDriftEclipse({
 
     if (speedMult > 1.6) {
       ctx.strokeStyle = `hsla(${st.hue}, 100%, 80%, ${alpha})`;
-      ctx.lineWidth = Math.max(0.85, 1.5 * scale * 1.5);
+      ctx.lineWidth = Math.max(0.85, st.size * scale * 1.5);
       ctx.beginPath();
       ctx.moveTo(prevX, prevY);
       ctx.lineTo(screenX, screenY);
@@ -625,14 +848,15 @@ export function drawPhonkDriftEclipse({
     } else {
       ctx.fillStyle = `hsla(${st.hue}, 95%, 85%, ${alpha})`;
       ctx.beginPath();
-      ctx.arc(screenX, screenY, 1.2 * (0.5 + scale * 1.2), 0, Math.PI * 2);
+      ctx.arc(screenX, screenY, st.size * (0.5 + scale * 1.2), 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  // 漂移失焦光斑 (Bokeh Orbs)
-  for (let i = 0; i < bokehOrbs.length; i++) {
-    const orb = bokehOrbs[i];
+  // 漂移失焦霓虹光斑 (Cinematic Bokeh Orbs)
+  for (let i = 0; i < cinematicBokehOrbs.length; i++) {
+    const orb = cinematicBokehOrbs[i];
+    orb.phase += 0.02;
     orb.x += orb.vx * (1 + superBass * 1.2);
     orb.y += orb.vy * (1 + superBass * 0.8);
     if (orb.y < horizonY - 50) {
@@ -643,8 +867,9 @@ export function drawPhonkDriftEclipse({
     if (orb.x > width + 30) orb.x = -30;
 
     const orbGrd = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.radius);
-    orbGrd.addColorStop(0, `hsla(${orb.hue}, 100%, 75%, ${orb.alpha * (1 + superBass * 0.8)})`);
-    orbGrd.addColorStop(0.5, `hsla(${orb.hue}, 90%, 55%, ${orb.alpha * 0.35})`);
+    const orbAlpha = orb.alpha * (0.7 + Math.sin(orb.phase) * 0.3) * (1 + superBass * 0.6);
+    orbGrd.addColorStop(0, `hsla(${orb.hue}, 100%, 75%, ${orbAlpha})`);
+    orbGrd.addColorStop(0.5, `hsla(${orb.hue}, 90%, 55%, ${orbAlpha * 0.35})`);
     orbGrd.addColorStop(1, "rgba(0,0,0,0)");
 
     ctx.fillStyle = orbGrd;
@@ -655,7 +880,7 @@ export function drawPhonkDriftEclipse({
 
   ctx.restore();
 
-  // ─── 6. 35mm 电影胶片质感与 2.39:1 柔和暗角 ───
+  // ─── 8. 35mm 电影胶片质感与 2.39:1 柔和暗角 ───
   ctx.save();
   const grain = getOrCreateFilmGrain(ctx);
   if (grain) {
