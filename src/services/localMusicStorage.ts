@@ -30,6 +30,8 @@ export interface OfflineAudioRecord {
   duration: number;
   cover?: string;
   lyrics?: string;
+  translationLyrics?: string;
+  format?: string;
   source: string;
   quality: string; // "lossless" | "hires" | "320k" | "128k"
   bitrate?: number;
