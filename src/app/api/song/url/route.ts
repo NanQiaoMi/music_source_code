@@ -180,6 +180,31 @@ export async function GET(request: NextRequest) {
   const numericId = id.replace(/^[a-zA-Z_-]+/, "");
   const effectiveId = numericId || id;
 
+  // 0. 如果已有明确的酷我 RID，直接快速尝试 Kuwo convert_url
+  if (id && (/^\d+$/.test(id) || id.startsWith("MUSIC_"))) {
+    try {
+      const rid = id.replace("MUSIC_", "");
+      const directRes = await fetch(
+        `http://antiserver.kuwo.cn/anti.s?type=convert_url&rid=${rid}&format=mp3&response=url`,
+        { signal: AbortSignal.timeout(2500) }
+      );
+      if (directRes.ok) {
+        const streamUrl = (await directRes.text()).trim();
+        if (streamUrl && streamUrl.startsWith("http")) {
+          return NextResponse.json({
+            url: streamUrl,
+            level: "lossless",
+            br: 320000,
+            source: "kuwo",
+            code: 200,
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   // 1. 如果有明确的网易云 ID，首先尝试网易云官方 WeAPI 获取原版真流
   if (/^\d+$/.test(effectiveId)) {
     try {

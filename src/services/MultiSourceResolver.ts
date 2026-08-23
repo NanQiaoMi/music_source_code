@@ -158,47 +158,43 @@ export class MultiSourceResolver {
    * 聚合解析核心入口：按照用户设定的优先级队列自动检索与多级降级熔断
    */
   public async resolvePlayableAudio(query: SongMetadataQuery): Promise<ResolvedAudioSource | null> {
-    // 0. 如果明确指定了音源类型，优先调用该音源的原生直连解析 (试听片段自动跳过，优先寻找完整母带)
-    if (query.source === "kuwo") {
-      try {
-        const res = await this.resolveKuwo(query);
-        if (res && res.url && !res.isTrial) return res;
-      } catch {
-        // ignore
+    const platformToLX: Record<string, string> = {
+      kuwo: "kw",
+      kw: "kw",
+      kugou: "kg",
+      kg: "kg",
+      qq: "tx",
+      tx: "tx",
+      netease: "wy",
+      wy: "wy",
+      migu: "mg",
+      mg: "mg",
+    };
+
+    const targetPlatform = platformToLX[query.source || ""] || "";
+
+    // 0. 特别优先：使用内置落雪特供脚本 (全豆要 9.3 等) 针对当前 ID/平台或全平台嗅探解析
+    try {
+      const lxScripts = typeof window !== "undefined" ? useSourceConfigStore.getState().lxScripts : [];
+      const defaultScript = {
+        id: "aggregate_special_v9",
+        name: "全豆要[聚合音源] 9.3特供版",
+        author: "全豆要",
+        version: "9.3.0",
+        description: "",
+        scriptUrl: "/api/sources/builtin?id=aggregate_special_v9",
+        enabled: true,
+        lastUpdated: Date.now(),
+        supportedActions: ["search" as const, "songUrl" as const],
+      };
+      const enabledScripts = (lxScripts.length > 0 ? lxScripts : [defaultScript]).filter((s) => s.enabled);
+      if (!enabledScripts.some((s) => s.id === "aggregate_special_v9")) {
+        enabledScripts.unshift(defaultScript);
       }
-    } else if (query.source === "qq") {
-      try {
-        const res = await this.resolveQQMusic(query);
-        if (res && res.url && !res.isTrial) return res;
-      } catch {
-        // ignore
-      }
-    } else if (query.source === "kugou") {
-      try {
-        const res = await this.resolveKugou(query);
-        if (res && res.url && !res.isTrial) return res;
-      } catch {
-        // ignore
-      }
-    } else if (query.source === "qishui") {
-      try {
-        const res = await this.resolveQishui(query);
-        if (res && res.url && !res.isTrial) return res;
-      } catch {
-        // ignore
-      }
-    } else if (query.source === "netease") {
-      try {
-        const res = await this.resolveNetease(query.id || "", query);
-        if (res && res.url && !res.isTrial) return res;
-      } catch {
-        // ignore
-      }
-    } else if (query.source === "lx_custom") {
-      try {
-        const lxScripts = typeof window !== "undefined" ? useSourceConfigStore.getState().lxScripts : [];
-        const enabledScripts = lxScripts.filter((s) => s.enabled);
-        for (const script of enabledScripts) {
+
+      for (const script of enabledScripts) {
+        const candidatePlatforms = Array.from(new Set([targetPlatform, "kw", "tx", "wy", "kg", "mg"].filter(Boolean)));
+        for (const p of candidatePlatforms) {
           const songObj: Song = {
             id: query.id || "",
             title: query.title,
@@ -206,29 +202,53 @@ export class MultiSourceResolver {
             album: query.album || "",
             duration: query.duration || 240,
             cover: "/default-cover.svg",
-            source: (query.source as any) || "wy",
+            source: p as any,
             audioUrl: "",
             format: "mp3",
           };
-          const lxUrlResult = await LXRunner.getMusicUrl(script, songObj, "320k");
-          if (lxUrlResult?.url && lxUrlResult.url.startsWith("http")) {
-            return {
-              url: lxUrlResult.url,
-              source: "lx_custom",
-              quality: (lxUrlResult.quality as any) || "lossless",
-              format: lxUrlResult.url.includes(".flac") ? "flac" : "mp3",
-              bitrate: 320000,
-              isTrial: false,
-              name: `${query.title || "未知曲目"} (${script.name})`,
-            };
+          try {
+            const lxUrlResult = await LXRunner.getMusicUrl(script, songObj, "320k");
+            if (lxUrlResult?.url && lxUrlResult.url.startsWith("http")) {
+              return {
+                url: lxUrlResult.url,
+                source: "lx_custom",
+                quality: (lxUrlResult.quality as any) || "lossless",
+                format: lxUrlResult.url.includes(".flac") ? "flac" : "mp3",
+                bitrate: 320000,
+                isTrial: false,
+                name: `${query.title || "未知曲目"} (${script.name} / ${p})`,
+              };
+            }
+          } catch {
+            // continue next
           }
         }
-      } catch (e) {
-        console.warn("[MultiSourceResolver] LXRunner script resolve error:", e);
+      }
+    } catch (e) {
+      console.warn("[MultiSourceResolver] LXRunner script resolve error:", e);
+    }
+
+    // 1. 酷我高解析直通源
+    if (query.source === "kuwo" || !query.source) {
+      try {
+        const res = await this.resolveKuwo(query);
+        if (res && res.url && !res.isTrial) return res;
+      } catch {
+        // ignore
       }
     }
 
-    // 1. 服务端跨源智能嗅探 (支持网易云、酷我、QQ 音乐等自动版权突破与直通流提取)
+    // 2. 网易云原生直连
+    if (query.source === "netease" || !query.source) {
+      try {
+        const res = await this.resolveNetease(query.id || "", query);
+        if (res && res.url && !res.isTrial) return res;
+      } catch {
+        // ignore
+      }
+    }
+
+    // 3. 服务端跨源智能嗅探 (支持全平台版权突破与直通流提取)
     if (query.title || query.id) {
       try {
         const params = new URLSearchParams({
@@ -236,6 +256,7 @@ export class MultiSourceResolver {
           artist: query.artist || "",
           album: query.album || "",
           id: query.id || "",
+          source: query.source || "",
         });
         const serverRes = await fetch(`${getApiBase()}/api/song/url?${params.toString()}`, {
           signal: AbortSignal.timeout(3500),
@@ -259,7 +280,7 @@ export class MultiSourceResolver {
       }
     }
 
-    // 2. 酷我高解析直通流直接嗅探 (支持绝大部分全网版权歌曲)
+    // 4. 酷我智能关键词匹配兜底
     if (query.title) {
       try {
         const kuwoResult = await this.resolveKuwo(query);
@@ -267,6 +288,19 @@ export class MultiSourceResolver {
       } catch {
         // ignore
       }
+    }
+
+    // 5. 纯净数字 ID 直连兜底
+    if (query.id && /^\d+$/.test(query.id)) {
+      return {
+        url: `https://music.163.com/song/media/outer/url?id=${query.id}.mp3`,
+        source: "netease",
+        quality: "high",
+        format: "mp3",
+        bitrate: 320000,
+        isTrial: false,
+        name: "网易云音乐 (CDN 直通流)",
+      };
     }
 
     // 3. QQ 音乐 / 酷狗音乐 / 汽水音乐

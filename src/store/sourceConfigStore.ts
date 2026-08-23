@@ -202,17 +202,6 @@ interface SourceConfigState {
 
 export const DEFAULT_BUILTIN_LX_SCRIPTS: LXCustomScript[] = [
   {
-    id: "exclusive_v4",
-    name: "[独家音源] v4.0 (洛雪科技)",
-    author: "洛雪科技",
-    version: "4.0.0",
-    description: "独家 v4.0 逆向音源，支持全平台 (wy/tx/kg/kw/mg) 无损母带",
-    scriptUrl: "/api/sources/builtin?id=exclusive_v4",
-    enabled: true,
-    lastUpdated: Date.now(),
-    supportedActions: ["search", "songUrl", "lyric", "pic"],
-  },
-  {
     id: "aggregate_special_v9",
     name: "全豆要[聚合音源] 9.3特供版",
     author: "全豆要 / DeepSeek优化",
@@ -242,6 +231,17 @@ export const DEFAULT_BUILTIN_LX_SCRIPTS: LXCustomScript[] = [
     description: "野花专属 API 节点，高可用全网主流曲库解析",
     scriptUrl: "/api/sources/builtin?id=yehua_v1",
     enabled: true,
+    lastUpdated: Date.now(),
+    supportedActions: ["search", "songUrl", "lyric", "pic"],
+  },
+  {
+    id: "exclusive_v4",
+    name: "[独家音源] v4.0 (洛雪科技)",
+    author: "洛雪科技",
+    version: "4.0.0",
+    description: "独家 v4.0 逆向音源，支持全平台 (wy/tx/kg/kw/mg) 无损母带",
+    scriptUrl: "/api/sources/builtin?id=exclusive_v4",
+    enabled: false,
     lastUpdated: Date.now(),
     supportedActions: ["search", "songUrl", "lyric", "pic"],
   },
