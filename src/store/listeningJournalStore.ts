@@ -137,7 +137,7 @@ export const useListeningJournalStore = create<ListeningJournalState>()(
 
       trimToLast90Days: () =>
         set((state) => {
-          const cutoff = getIsoDate(-14);
+          const cutoff = getIsoDate(-90);
           return {
             days: Object.fromEntries(
               Object.entries(state.days).filter(([date]) => date.localeCompare(cutoff) >= 0)
