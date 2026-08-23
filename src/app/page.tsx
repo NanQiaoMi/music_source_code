@@ -13,9 +13,15 @@ import dynamic from "next/dynamic";
 import { HomeView } from "@/components/layout/HomeView";
 import { Apple3DQueueDrawer } from "@/components/player/Apple3DQueueDrawer";
 import { PanelOrchestrator } from "@/components/layout/PanelOrchestrator";
-import { AmbientFluidMeshBackground } from "@/components/layout/AmbientFluidMeshBackground";
 
-// Heavy Views (Lazy Loaded)
+// Heavy Views & Dynamic Ambient (Lazy Loaded)
+const AmbientFluidMeshBackground = dynamic(
+  () =>
+    import("@/components/layout/AmbientFluidMeshBackground").then(
+      (m) => m.AmbientFluidMeshBackground
+    ),
+  { ssr: false }
+);
 const PlayerView = dynamic(
   () => import("@/components/layout/PlayerView").then((m) => m.PlayerView),
   { ssr: false }

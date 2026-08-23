@@ -27,10 +27,15 @@ export const AmbientFluidMeshBackground: React.FC = () => {
   const coverUrl = activeSong?.cover || DEFAULT_COVER;
 
   const [colors, setColors] = useState<ThemeColors>(defaultColors);
-  const [activeCover, setActiveCover] = useState<string>(coverUrl);
-  const [prevCover, setPrevCover] = useState<string>(coverUrl);
+  const [activeCover, setActiveCover] = useState<string>(DEFAULT_COVER);
+  const [prevCover, setPrevCover] = useState<string>(DEFAULT_COVER);
   const [isCrossfading, setIsCrossfading] = useState<boolean>(false);
+  const [mounted, setMounted] = useState<boolean>(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // 150ms 终点吸附智能防抖色彩与封面提取
   useEffect(() => {
