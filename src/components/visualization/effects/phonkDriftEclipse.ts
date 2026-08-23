@@ -318,8 +318,7 @@ export function drawPhonkDriftEclipse({
   ctx.restore();
 
   // ─── 4. 真实《星际穿越》数学一体化闭合相对论流体吸积盘 (Unified Relativistic Accretion Engine) ───
-  // 彻底告别分离式粗硬色块与粉红蘑菇盖！
-  // 采用广义相对论引力透镜连续映射：背光拱与前主盘在左右翼梢自然闭合为一个有机整体！
+  // 采用广义相对论引力透镜连续映射：多重高斯羽化与丝滑等离子流光
   const diskTilt = 0.22; // 倾角
   const NUM_RINGS = 95;
   const ANGULAR_STEPS = 64;
@@ -329,33 +328,72 @@ export function drawPhonkDriftEclipse({
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
+  // ─── 4.0 底层超柔引力透镜天鹅绒漫射光晕 (Soft Relativistic Atmosphere) ───
+  const softHaloGrd = ctx.createRadialGradient(
+    cx,
+    blackHoleY - eventHorizonR * 0.3,
+    eventHorizonR * 0.9,
+    cx,
+    blackHoleY - eventHorizonR * 0.3,
+    eventHorizonR * 2.8
+  );
+  softHaloGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 85%, ${0.18 + superBass * 0.08})`);
+  softHaloGrd.addColorStop(0.35, `hsla(${primaryHue}, 90%, 65%, ${0.10 + mid * 0.05})`);
+  softHaloGrd.addColorStop(0.75, `hsla(${accentHue}, 85%, 50%, 0.03)`);
+  softHaloGrd.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = softHaloGrd;
+  ctx.fillRect(cx - maxR, blackHoleY - maxR, maxR * 2, maxR * 2);
+
   // ─── 4.1 绘制吸积盘背部引力透镜光拱 (Back Half: Lensed Upper Arch) ───
+  // 双 Pass 渲染：底层宽幅高斯漫射羽化 + 顶层丝滑柔光流体
   for (let k = 0; k < NUM_RINGS; k++) {
     const frac = k / (NUM_RINGS - 1);
-    const r = minR + Math.pow(frac, 1.15) * (maxR - minR);
-    const ringSpeed = (0.012 + (1 / Math.sqrt(r * 2)) * 0.28) * (1 + superBass * 2.0);
-    const ringRot = diskRotation * ringSpeed * 40;
+    const r = minR + Math.pow(frac, 1.18) * (maxR - minR);
+    const ringSpeed = (0.010 + (1 / Math.sqrt(r * 2)) * 0.24) * (1 + superBass * 1.8);
+    const ringRot = diskRotation * ringSpeed * 36;
 
-    // 相对论径向衰减与等离子波动
-    const baseAlpha = (1 - frac * 0.75) * (0.28 + superBass * 0.22);
-    const waveMod = Math.sin(ringRot * 2 + k * 0.25) * 0.15;
+    // 柔和边缘羽化：外圈以平方平滑衰减，无生硬边界
+    const edgeFade = Math.pow(1 - frac, 1.4);
+    const baseAlpha = edgeFade * (0.22 + superBass * 0.16);
+    const waveMod = Math.sin(ringRot * 2 + k * 0.25) * 0.08;
 
+    const ringHue = frac < 0.25 ? secondaryHue : frac < 0.65 ? primaryHue : accentHue;
+    const ringLight = frac < 0.15 ? 90 : frac < 0.5 ? 72 : 52;
+    const alphaVal = Math.max(0, baseAlpha + waveMod);
+
+    // Pass 1: 底层宽幅漫射高斯羽化 (Soft Glow Bloom)
+    if (k % 2 === 0 && alphaVal > 0.02) {
+      ctx.beginPath();
+      let p1Started = false;
+      for (let j = 0; j <= ANGULAR_STEPS / 2; j++) {
+        const theta = Math.PI + (j / (ANGULAR_STEPS / 2)) * Math.PI;
+        const curR = r + Math.sin(theta * 4 + ringRot) * (1.5 + superBass * 2.0);
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+        const px = cx + curR * cosT;
+        const lensedY = blackHoleY - Math.abs(sinT) * curR * (0.82 - 0.24 * (eventHorizonR / curR));
+        if (!p1Started) {
+          ctx.moveTo(px, lensedY);
+          p1Started = true;
+        } else {
+          ctx.lineTo(px, lensedY);
+        }
+      }
+      ctx.strokeStyle = `hsla(${ringHue}, 95%, ${ringLight}%, ${alphaVal * 0.22})`;
+      ctx.lineWidth = Math.max(2.5, (1 - frac) * 9.0 + superBass * 3.5);
+      ctx.stroke();
+    }
+
+    // Pass 2: 顶层丝滑柔光流纤 (Silky Filament)
     ctx.beginPath();
     let started = false;
-
-    // 后半周：从 \pi (左翼梢) 到 2\pi (右翼梢)，光线被黑洞强引力弯曲折射到视界上方！
     for (let j = 0; j <= ANGULAR_STEPS / 2; j++) {
-      const theta = Math.PI + (j / (ANGULAR_STEPS / 2)) * Math.PI; // \pi -> 2\pi
-      const plasmaTurbulence = Math.sin(theta * 5 + ringRot) * (1.2 + superBass * 2.0);
-      const curR = r + plasmaTurbulence;
-
+      const theta = Math.PI + (j / (ANGULAR_STEPS / 2)) * Math.PI;
+      const curR = r + Math.sin(theta * 4 + ringRot) * (1.5 + superBass * 2.0);
       const cosT = Math.cos(theta);
-      const sinT = Math.sin(theta); // 负值
-
+      const sinT = Math.sin(theta);
       const px = cx + curR * cosT;
-      // 广义相对论引力透镜上拱方程：越靠近视界折射越剧烈，左右翼梢平滑收束至水平面
       const lensedY = blackHoleY - Math.abs(sinT) * curR * (0.82 - 0.24 * (eventHorizonR / curR));
-
       if (!started) {
         ctx.moveTo(px, lensedY);
         started = true;
@@ -363,12 +401,8 @@ export function drawPhonkDriftEclipse({
         ctx.lineTo(px, lensedY);
       }
     }
-
-    // 颜色渐变：内圈炽热白青，外圈深邃霓虹红洋红；左侧迎光面多普勒强反差
-    const ringHue = frac < 0.25 ? secondaryHue : frac < 0.65 ? primaryHue : accentHue;
-    const ringLight = frac < 0.15 ? 92 : frac < 0.5 ? 75 : 55;
-    ctx.strokeStyle = `hsla(${ringHue}, 100%, ${ringLight}%, ${Math.max(0, baseAlpha + waveMod)})`;
-    ctx.lineWidth = Math.max(0.75, (1 - frac) * 3.2 + superBass * 2.0);
+    ctx.strokeStyle = `hsla(${ringHue}, 100%, ${ringLight}%, ${alphaVal * 0.80})`;
+    ctx.lineWidth = Math.max(0.65, (1 - frac) * 2.4 + superBass * 1.4);
     ctx.stroke();
   }
 
@@ -377,7 +411,7 @@ export function drawPhonkDriftEclipse({
   ctx.globalCompositeOperation = "source-over";
   const voidGrd = ctx.createRadialGradient(cx, blackHoleY, 0, cx, blackHoleY, eventHorizonR);
   voidGrd.addColorStop(0, "#010103");
-  voidGrd.addColorStop(0.90, "#010103");
+  voidGrd.addColorStop(0.92, "#010103");
   voidGrd.addColorStop(0.98, "#040308");
   voidGrd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = voidGrd;
@@ -387,32 +421,54 @@ export function drawPhonkDriftEclipse({
   ctx.restore();
 
   // ─── 4.3 绘制吸积盘前部倾斜主光盘 (Front Half: Tilted Equatorial Disk) ───
-  // 前半部自然横穿黑洞视界下半部前方，在左右翼梢与背光拱完美闭合！
+  // 双 Pass 渲染：底层柔光漫射 + 顶层丝滑前倾光流
   for (let k = 0; k < NUM_RINGS; k++) {
     const frac = k / (NUM_RINGS - 1);
-    const r = minR + Math.pow(frac, 1.15) * (maxR - minR);
-    const ringSpeed = (0.012 + (1 / Math.sqrt(r * 2)) * 0.28) * (1 + superBass * 2.0);
-    const ringRot = diskRotation * ringSpeed * 40;
+    const r = minR + Math.pow(frac, 1.18) * (maxR - minR);
+    const ringSpeed = (0.010 + (1 / Math.sqrt(r * 2)) * 0.24) * (1 + superBass * 1.8);
+    const ringRot = diskRotation * ringSpeed * 36;
 
-    const baseAlpha = (1 - frac * 0.70) * (0.35 + superBass * 0.25);
-    const waveMod = Math.sin(ringRot * 2 + k * 0.25) * 0.15;
+    const edgeFade = Math.pow(1 - frac, 1.35);
+    const baseAlpha = edgeFade * (0.26 + superBass * 0.18);
+    const waveMod = Math.sin(ringRot * 2 + k * 0.25) * 0.08;
 
+    const ringHue = frac < 0.25 ? secondaryHue : frac < 0.65 ? primaryHue : accentHue;
+    const ringLight = frac < 0.15 ? 92 : frac < 0.5 ? 76 : 56;
+    const alphaVal = Math.max(0, baseAlpha + waveMod);
+
+    // Pass 1: 底层漫射柔光 (Soft Glow)
+    if (k % 2 === 0 && alphaVal > 0.02) {
+      ctx.beginPath();
+      let p1Started = false;
+      for (let j = 0; j <= ANGULAR_STEPS / 2; j++) {
+        const theta = (j / (ANGULAR_STEPS / 2)) * Math.PI;
+        const curR = r + Math.sin(theta * 4 + ringRot) * (1.5 + superBass * 2.0);
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+        const px = cx + curR * cosT;
+        const frontY = blackHoleY + sinT * curR * diskTilt;
+        if (!p1Started) {
+          ctx.moveTo(px, frontY);
+          p1Started = true;
+        } else {
+          ctx.lineTo(px, frontY);
+        }
+      }
+      ctx.strokeStyle = `hsla(${ringHue}, 95%, ${ringLight}%, ${alphaVal * 0.24})`;
+      ctx.lineWidth = Math.max(3.0, (1 - frac) * 10.0 + superBass * 4.0);
+      ctx.stroke();
+    }
+
+    // Pass 2: 顶层柔光流纤
     ctx.beginPath();
     let started = false;
-
-    // 前半周：从 0 (右翼梢) 到 \pi (左翼梢)
     for (let j = 0; j <= ANGULAR_STEPS / 2; j++) {
-      const theta = (j / (ANGULAR_STEPS / 2)) * Math.PI; // 0 -> \pi
-      const plasmaTurbulence = Math.sin(theta * 5 + ringRot) * (1.2 + superBass * 2.0);
-      const curR = r + plasmaTurbulence;
-
+      const theta = (j / (ANGULAR_STEPS / 2)) * Math.PI;
+      const curR = r + Math.sin(theta * 4 + ringRot) * (1.5 + superBass * 2.0);
       const cosT = Math.cos(theta);
-      const sinT = Math.sin(theta); // 正值
-
+      const sinT = Math.sin(theta);
       const px = cx + curR * cosT;
-      // 倾斜投影
       const frontY = blackHoleY + sinT * curR * diskTilt;
-
       if (!started) {
         ctx.moveTo(px, frontY);
         started = true;
@@ -420,41 +476,38 @@ export function drawPhonkDriftEclipse({
         ctx.lineTo(px, frontY);
       }
     }
-
-    const ringHue = frac < 0.25 ? secondaryHue : frac < 0.65 ? primaryHue : accentHue;
-    const ringLight = frac < 0.15 ? 95 : frac < 0.5 ? 78 : 58;
-    ctx.strokeStyle = `hsla(${ringHue}, 100%, ${ringLight}%, ${Math.max(0, baseAlpha + waveMod)})`;
-    ctx.lineWidth = Math.max(0.85, (1 - frac) * 3.8 + superBass * 2.5);
+    ctx.strokeStyle = `hsla(${ringHue}, 100%, ${ringLight}%, ${alphaVal * 0.85})`;
+    ctx.lineWidth = Math.max(0.70, (1 - frac) * 2.8 + superBass * 1.6);
     ctx.stroke();
   }
 
-  // ─── 4.4 极细 1.5px 纯正光子球临界薄环 (Sharp Photon Sphere Rim) ───
+  // ─── 4.4 极细柔和光子球临界薄环 (Soft Photon Sphere Rim) ───
   const photonSphereR = eventHorizonR * 1.02;
-  ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 96%, ${0.94 + superBass * 0.06})`;
-  ctx.lineWidth = 1.6 + superBass * 1.6;
-  ctx.shadowColor = `hsla(${primaryHue}, 100%, 75%, 0.8)`;
-  ctx.shadowBlur = 14;
+  ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 94%, ${0.85 + superBass * 0.10})`;
+  ctx.lineWidth = 1.2 + superBass * 1.2;
+  ctx.shadowColor = `hsla(${primaryHue}, 100%, 75%, 0.65)`;
+  ctx.shadowBlur = 18;
   ctx.beginPath();
   ctx.arc(cx, blackHoleY, photonSphereR, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.shadowBlur = 0; // 重置阴影避免污染其他图元
 
-  // ─── 4.5 2.39:1 变形宽银幕水平纤细拉丝耀斑 (Anamorphic Streak Flare) ───
-  // 左右两侧延伸，中心镂空避开黑洞内部
-  const flareW = width * (0.90 + superBass * 0.30);
-  const flareH = 6 + superBass * 8;
-  const leftFlareGrd = ctx.createLinearGradient(cx - flareW * 0.5, blackHoleY, cx - eventHorizonR * 1.05, blackHoleY);
+  // ─── 4.5 2.39:1 变形宽银幕柔和水平拉丝耀斑 (Silky Anamorphic Flare) ───
+  const flareW = width * (0.88 + superBass * 0.25);
+  const flareH = 8 + superBass * 10;
+  const leftFlareGrd = ctx.createLinearGradient(cx - flareW * 0.5, blackHoleY, cx - eventHorizonR * 1.04, blackHoleY);
   leftFlareGrd.addColorStop(0, "rgba(0,0,0,0)");
-  leftFlareGrd.addColorStop(0.7, `hsla(${secondaryHue}, 100%, 85%, 0.45)`);
-  leftFlareGrd.addColorStop(1, `hsla(${secondaryHue}, 100%, 98%, 0.95)`);
+  leftFlareGrd.addColorStop(0.5, `hsla(${secondaryHue}, 100%, 85%, 0.20)`);
+  leftFlareGrd.addColorStop(1, `hsla(${secondaryHue}, 100%, 96%, 0.75)`);
   ctx.fillStyle = leftFlareGrd;
-  ctx.fillRect(cx - flareW * 0.5, blackHoleY - flareH * 0.5, flareW * 0.5 - eventHorizonR * 1.05, flareH);
+  ctx.fillRect(cx - flareW * 0.5, blackHoleY - flareH * 0.5, flareW * 0.5 - eventHorizonR * 1.04, flareH);
 
-  const rightFlareGrd = ctx.createLinearGradient(cx + eventHorizonR * 1.05, blackHoleY, cx + flareW * 0.5, blackHoleY);
-  rightFlareGrd.addColorStop(0, `hsla(${accentHue}, 90%, 85%, 0.75)`);
-  rightFlareGrd.addColorStop(0.3, `hsla(${primaryHue}, 85%, 65%, 0.35)`);
+  const rightFlareGrd = ctx.createLinearGradient(cx + eventHorizonR * 1.04, blackHoleY, cx + flareW * 0.5, blackHoleY);
+  rightFlareGrd.addColorStop(0, `hsla(${accentHue}, 90%, 82%, 0.55)`);
+  rightFlareGrd.addColorStop(0.5, `hsla(${primaryHue}, 85%, 65%, 0.18)`);
   rightFlareGrd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = rightFlareGrd;
-  ctx.fillRect(cx + eventHorizonR * 1.05, blackHoleY - flareH * 0.5, flareW * 0.5 - eventHorizonR * 1.05, flareH);
+  ctx.fillRect(cx + eventHorizonR * 1.04, blackHoleY - flareH * 0.5, flareW * 0.5 - eventHorizonR * 1.04, flareH);
 
   ctx.restore();
 
