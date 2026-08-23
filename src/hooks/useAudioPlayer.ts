@@ -594,15 +594,14 @@ export const useAudioPlayer = () => {
         currentAudioUrlRef.current &&
         !audio.error
       ) {
-        // 如果当前音频已播放至末尾，确保重置进度至起始位置
-        if (audio.ended || (audio.duration && audio.currentTime >= audio.duration - 0.5)) {
-          audio.currentTime = 0;
-          useAudioStore.getState().setCurrentTime(0);
-          usePlayerStore.getState().setCurrentTime(0);
-        }
-
         if (targetPlaying) {
           if (audio.paused) {
+            // 仅当音频已播放至末尾且用户明确要求恢复播放时，才重置进度归零
+            if (audio.ended) {
+              audio.currentTime = 0;
+              useAudioStore.getState().setCurrentTime(0);
+              usePlayerStore.getState().setCurrentTime(0);
+            }
             try {
               await initializeAudioGraph(audio);
               await AudioEngine.getInstance().resume();
