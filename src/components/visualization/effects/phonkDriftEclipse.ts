@@ -193,6 +193,9 @@ export function drawPhonkDriftEclipse({
     accentHue = 55;
   }
 
+  // 优雅温润高光色相：柔和香槟紫罗兰，告别刺眼电光青蓝
+  const softHighlightHue = (primaryHue + 20) % 360;
+
   // 镜头 Z 轴弹性推拉震颤与漂移摆幅
   const zPunch = superBass > 0.6 ? (superBass - 0.6) * 16 * bassIntensity : 0;
   const cameraSway = Math.sin(breathLFO * 0.55) * 0.014 * (1 + superBass * 0.4);
@@ -302,19 +305,45 @@ export function drawPhonkDriftEclipse({
   ctx.stroke();
   ctx.restore();
 
-  // ─── 3. 垂直超相对论等离子喷流 (Polar Relativistic Plasma Jets) ───
+  // ─── 3. 垂直超相对论等离子柔光天柱 (Volumetric Polar Relativistic Plasma Beam) ───
+  // 彻底告别生硬细长矩形条！采用双层大角度羽化体积光锥，向高空平滑漫射消隐
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  const jetH = height * (0.60 + superBass * 0.35);
-  const jetW = 2.8 + superBass * 3.5;
+  const jetH = height * (0.65 + superBass * 0.25);
+  const jetBaseHalfW = 8 + superBass * 12;
+  const jetTopHalfW = 28 + superBass * 32;
 
-  const topJetGrd = ctx.createLinearGradient(cx, blackHoleY, cx, blackHoleY - jetH);
-  topJetGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 94%, ${0.90 + superBass * 0.08})`);
-  topJetGrd.addColorStop(0.2, `hsla(${primaryHue}, 95%, 75%, 0.60)`);
-  topJetGrd.addColorStop(0.65, `hsla(${accentHue}, 85%, 55%, 0.12)`);
-  topJetGrd.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = topJetGrd;
-  ctx.fillRect(cx - jetW * 0.5, blackHoleY - jetH, jetW, jetH);
+  // Pass 1: 宽幅超柔漫射体积柱
+  const jetVolGrd = ctx.createLinearGradient(cx, blackHoleY - eventHorizonR * 0.9, cx, blackHoleY - jetH);
+  jetVolGrd.addColorStop(0, `hsla(${softHighlightHue}, 80%, 75%, ${0.20 + superBass * 0.10})`);
+  jetVolGrd.addColorStop(0.3, `hsla(${primaryHue}, 75%, 55%, ${0.10 + mid * 0.05})`);
+  jetVolGrd.addColorStop(0.75, `hsla(${accentHue}, 70%, 40%, 0.02)`);
+  jetVolGrd.addColorStop(1, "rgba(0,0,0,0)");
+
+  ctx.fillStyle = jetVolGrd;
+  ctx.beginPath();
+  ctx.moveTo(cx - jetBaseHalfW * 2.2, blackHoleY - eventHorizonR * 0.85);
+  ctx.lineTo(cx - jetTopHalfW * 1.8, blackHoleY - jetH);
+  ctx.lineTo(cx + jetTopHalfW * 1.8, blackHoleY - jetH);
+  ctx.lineTo(cx + jetBaseHalfW * 2.2, blackHoleY - eventHorizonR * 0.85);
+  ctx.closePath();
+  ctx.fill();
+
+  // Pass 2: 核心温润柔和等离子光束
+  const jetCoreGrd = ctx.createLinearGradient(cx, blackHoleY - eventHorizonR * 0.9, cx, blackHoleY - jetH * 0.8);
+  jetCoreGrd.addColorStop(0, `hsla(${softHighlightHue}, 85%, 85%, ${0.35 + superBass * 0.15})`);
+  jetCoreGrd.addColorStop(0.25, `hsla(${primaryHue}, 80%, 65%, 0.16)`);
+  jetCoreGrd.addColorStop(0.7, `hsla(${accentHue}, 75%, 45%, 0.03)`);
+  jetCoreGrd.addColorStop(1, "rgba(0,0,0,0)");
+
+  ctx.fillStyle = jetCoreGrd;
+  ctx.beginPath();
+  ctx.moveTo(cx - jetBaseHalfW * 0.8, blackHoleY - eventHorizonR * 0.85);
+  ctx.lineTo(cx - jetTopHalfW * 0.7, blackHoleY - jetH * 0.8);
+  ctx.lineTo(cx + jetTopHalfW * 0.7, blackHoleY - jetH * 0.8);
+  ctx.lineTo(cx + jetBaseHalfW * 0.8, blackHoleY - eventHorizonR * 0.85);
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
 
   // ─── 4. 真实《星际穿越》数学一体化闭合相对论流体吸积盘 (Unified Relativistic Accretion Engine) ───
@@ -324,9 +353,6 @@ export function drawPhonkDriftEclipse({
   const ANGULAR_STEPS = 64;
   const minR = eventHorizonR * 1.05;
   const maxR = eventHorizonR * (3.3 + superBass * 0.5);
-
-  // 优雅温润高光色相：柔和香槟紫罗兰，告别刺眼电光青蓝
-  const softHighlightHue = (primaryHue + 20) % 360;
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";
@@ -497,22 +523,60 @@ export function drawPhonkDriftEclipse({
   ctx.stroke();
   ctx.shadowBlur = 0; // 重置阴影避免污染其他图元
 
-  // ─── 4.5 2.39:1 变形宽银幕柔和水平拉丝耀斑 (Silky Anamorphic Flare) ───
-  const flareW = width * (0.85 + superBass * 0.20);
-  const flareH = 6 + superBass * 8;
-  const leftFlareGrd = ctx.createLinearGradient(cx - flareW * 0.5, blackHoleY, cx - eventHorizonR * 1.04, blackHoleY);
-  leftFlareGrd.addColorStop(0, "rgba(0,0,0,0)");
-  leftFlareGrd.addColorStop(0.5, `hsla(${softHighlightHue}, 80%, 75%, 0.15)`);
-  leftFlareGrd.addColorStop(1, `hsla(${softHighlightHue}, 85%, 88%, 0.55)`);
-  ctx.fillStyle = leftFlareGrd;
-  ctx.fillRect(cx - flareW * 0.5, blackHoleY - flareH * 0.5, flareW * 0.5 - eventHorizonR * 1.04, flareH);
+  // ─── 4.5 2.39:1 变形宽银幕全向 360° 高斯羽化透镜光梭 (Elliptical Gaussian Lens Flare Spindles) ───
+  // 彻底告别生硬矩形！采用纺锤形双向高斯羽化渐变椭圆光梭，边缘 100% 丝滑融入深空！
+  const flareRadiusX = width * (0.42 + superBass * 0.12);
+  const flareRadiusY = 12 + superBass * 14;
 
-  const rightFlareGrd = ctx.createLinearGradient(cx + eventHorizonR * 1.04, blackHoleY, cx + flareW * 0.5, blackHoleY);
-  rightFlareGrd.addColorStop(0, `hsla(${accentHue}, 85%, 75%, 0.45)`);
-  rightFlareGrd.addColorStop(0.5, `hsla(${primaryHue}, 80%, 60%, 0.14)`);
-  rightFlareGrd.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = rightFlareGrd;
-  ctx.fillRect(cx + eventHorizonR * 1.04, blackHoleY - flareH * 0.5, flareW * 0.5 - eventHorizonR * 1.04, flareH);
+  // (4.5.1) 左侧迎光面温润光梭
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, cx - eventHorizonR * 1.02, height); // 遮罩排除黑洞视界内部
+  ctx.clip();
+
+  const leftSpindleGrd = ctx.createRadialGradient(
+    cx - eventHorizonR * 1.05,
+    blackHoleY,
+    0,
+    cx - eventHorizonR * 1.05,
+    blackHoleY,
+    flareRadiusX
+  );
+  leftSpindleGrd.addColorStop(0, `hsla(${softHighlightHue}, 85%, 85%, ${0.45 + superBass * 0.15})`);
+  leftSpindleGrd.addColorStop(0.25, `hsla(${softHighlightHue}, 80%, 70%, 0.18)`);
+  leftSpindleGrd.addColorStop(0.65, `hsla(${primaryHue}, 75%, 55%, 0.04)`);
+  leftSpindleGrd.addColorStop(1, "rgba(0,0,0,0)");
+
+  ctx.fillStyle = leftSpindleGrd;
+  ctx.beginPath();
+  ctx.ellipse(cx - eventHorizonR * 1.05 - flareRadiusX * 0.45, blackHoleY, flareRadiusX * 0.55, flareRadiusY, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // (4.5.2) 右侧背光面温润光梭
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(cx + eventHorizonR * 1.02, 0, width, height); // 遮罩排除黑洞视界内部
+  ctx.clip();
+
+  const rightSpindleGrd = ctx.createRadialGradient(
+    cx + eventHorizonR * 1.05,
+    blackHoleY,
+    0,
+    cx + eventHorizonR * 1.05,
+    blackHoleY,
+    flareRadiusX * 0.85
+  );
+  rightSpindleGrd.addColorStop(0, `hsla(${accentHue}, 80%, 75%, ${0.35 + superBass * 0.12})`);
+  rightSpindleGrd.addColorStop(0.3, `hsla(${primaryHue}, 75%, 60%, 0.12)`);
+  rightSpindleGrd.addColorStop(0.7, `hsla(${accentHue}, 70%, 45%, 0.02)`);
+  rightSpindleGrd.addColorStop(1, "rgba(0,0,0,0)");
+
+  ctx.fillStyle = rightSpindleGrd;
+  ctx.beginPath();
+  ctx.ellipse(cx + eventHorizonR * 1.05 + flareRadiusX * 0.40, blackHoleY, flareRadiusX * 0.50, flareRadiusY * 0.85, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 
   ctx.restore();
 
@@ -529,8 +593,8 @@ export function drawPhonkDriftEclipse({
     }
     const curR = sw.radius + (sw.maxRadius - sw.radius) * Math.pow(sw.z, 1.3);
     ctx.strokeStyle = sw.color;
-    ctx.globalAlpha = sw.alpha * 0.55;
-    ctx.lineWidth = 1.6 + sw.z * 2.8;
+    ctx.globalAlpha = sw.alpha * 0.45;
+    ctx.lineWidth = 1.4 + sw.z * 2.4;
     ctx.beginPath();
     ctx.ellipse(cx, horizonY + sw.z * (height - horizonY) * 0.85, curR, curR * 0.35, 0, 0, Math.PI * 2);
     ctx.stroke();
@@ -542,14 +606,14 @@ export function drawPhonkDriftEclipse({
   const roadHeight = height - horizonY;
   roadScroll += (0.016 + superBass * 0.024) * cruiseSpeed;
 
-  // 地面自然平滑深空渐变底色
-  const groundGrd = ctx.createLinearGradient(0, horizonY - 20, 0, height);
-  groundGrd.addColorStop(0, `hsla(${primaryHue}, 75%, 8%, 0.35)`);
-  groundGrd.addColorStop(0.12, `hsla(${primaryHue}, 70%, 6%, 0.95)`);
-  groundGrd.addColorStop(0.65, `hsla(${accentHue}, 65%, 4%, 0.98)`);
+  // 地面全域无缝天体融合底色（彻底消除地平线生硬水平切面色块）
+  const groundGrd = ctx.createLinearGradient(0, horizonY - 60, 0, height);
+  groundGrd.addColorStop(0, "rgba(1, 1, 3, 0)");
+  groundGrd.addColorStop(0.25, `hsla(${primaryHue}, 70%, 6%, 0.60)`);
+  groundGrd.addColorStop(0.7, `hsla(${accentHue}, 65%, 4%, 0.95)`);
   groundGrd.addColorStop(1, "#010103");
   ctx.fillStyle = groundGrd;
-  ctx.fillRect(0, horizonY - 20, width, roadHeight + 20);
+  ctx.fillRect(0, horizonY - 60, width, roadHeight + 60);
 
   // 湿润沥青路面高斯镜面漫反射倒影锥 (Specular Floor Reflection)
   ctx.globalCompositeOperation = "screen";
@@ -561,9 +625,9 @@ export function drawPhonkDriftEclipse({
     horizonY + roadHeight * 0.5,
     Math.max(width * 0.45, roadHeight * 0.9)
   );
-  floorReflectGrd.addColorStop(0, `hsla(${softHighlightHue}, 85%, 70%, ${0.30 + superBass * 0.18})`);
-  floorReflectGrd.addColorStop(0.3, `hsla(${primaryHue}, 80%, 50%, ${0.15 + mid * 0.10})`);
-  floorReflectGrd.addColorStop(0.7, `hsla(${accentHue}, 75%, 35%, 0.03)`);
+  floorReflectGrd.addColorStop(0, `hsla(${softHighlightHue}, 85%, 70%, ${0.25 + superBass * 0.15})`);
+  floorReflectGrd.addColorStop(0.3, `hsla(${primaryHue}, 80%, 50%, ${0.12 + mid * 0.08})`);
+  floorReflectGrd.addColorStop(0.7, `hsla(${accentHue}, 75%, 35%, 0.02)`);
   floorReflectGrd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = floorReflectGrd;
   ctx.fillRect(0, horizonY, width, roadHeight);
