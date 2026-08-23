@@ -228,7 +228,33 @@ export class MultiSourceResolver {
       console.warn("[MultiSourceResolver] LXRunner script resolve error:", e);
     }
 
-    // 1. 酷我高解析直通源
+    // 1. 如果指定了酷狗或 ID 为 32 位 Hash，优先调用酷狗专属母带直连
+    if (query.source === "kugou" || (query.id && /^[a-fA-F0-9]{32}$/.test(query.id))) {
+      try {
+        const kgRes = await fetch(
+          `${getApiBase()}/api/kugou/song/url?hash=${query.id || ""}&title=${encodeURIComponent(query.title)}&artist=${encodeURIComponent(query.artist || "")}`,
+          { signal: AbortSignal.timeout(3000) }
+        );
+        if (kgRes.ok) {
+          const kgData = await kgRes.json();
+          if (kgData?.url && kgData.url.startsWith("http")) {
+            return {
+              url: kgData.url,
+              source: "kugou",
+              quality: "lossless",
+              format: "mp3",
+              bitrate: 320000,
+              isTrial: false,
+              name: `${query.title} (酷狗高解析母带)`,
+            };
+          }
+        }
+      } catch {
+        // fallback
+      }
+    }
+
+    // 2. 酷我高解析直通源
     if (query.source === "kuwo" || !query.source) {
       try {
         const res = await this.resolveKuwo(query);
@@ -637,7 +663,7 @@ export class MultiSourceResolver {
 
         if (bestSong?.id) {
           const urlRes = await fetch(
-            `${getApiBase()}/api/kugou/song/url?hash=${bestSong.id}&albumAudioId=${bestSong.albumAudioId || ""}&quality=lossless`,
+            `${getApiBase()}/api/kugou/song/url?hash=${bestSong.id}&title=${encodeURIComponent(query.title)}&artist=${encodeURIComponent(query.artist || "")}&quality=lossless`,
             { signal: AbortSignal.timeout(3500) }
           );
           if (urlRes.ok) {
@@ -917,8 +943,8 @@ export class MultiSourceResolver {
       if (query?.title) {
         url += `&title=${encodeURIComponent(query.title)}&artist=${encodeURIComponent(query.artist || "")}`;
       }
-      if (source === "qq") url = `${getApiBase()}/api/qq/lyric?mid=${encodeURIComponent(effectiveId)}`;
-      else if (source === "kugou") url = `${getApiBase()}/api/kugou/lyric?hash=${encodeURIComponent(effectiveId)}`;
+      if (source === "qq") url = `${getApiBase()}/api/lyric?mid=${encodeURIComponent(effectiveId)}&title=${encodeURIComponent(query?.title || "")}&artist=${encodeURIComponent(query?.artist || "")}`;
+      else if (source === "kugou") url = `${getApiBase()}/api/lyric?hash=${encodeURIComponent(effectiveId)}&title=${encodeURIComponent(query?.title || "")}&artist=${encodeURIComponent(query?.artist || "")}`;
       else if (source === "qishui") url = `${getApiBase()}/api/qishui/lyric?id=${encodeURIComponent(effectiveId)}`;
 
       const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
