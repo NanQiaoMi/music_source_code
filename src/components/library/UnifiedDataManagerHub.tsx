@@ -129,8 +129,8 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
           </div>
         </div>
 
-        {/* 中间：6 大分类 Tab Pills */}
-        <div className="hidden lg:flex items-center gap-1 p-1 rounded-2xl bg-black/50 border border-white/10 shadow-inner">
+        {/* 中间：6 大分类 Tab Pills (带 Apple 弹簧物理滑动胶囊) */}
+        <div className="hidden lg:flex items-center gap-1 p-1 rounded-2xl bg-black/50 border border-white/10 shadow-inner backdrop-blur-md">
           {navTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -139,16 +139,23 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id as HubTabKey)}
-                className={`relative flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-                  isActive
-                    ? "bg-white/20 text-white shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-white/20"
-                    : "text-white/60 hover:text-white hover:bg-white/5"
+                className={`relative flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-xl transition-colors cursor-pointer whitespace-nowrap z-10 select-none ${
+                  isActive ? "text-white font-bold" : "text-white/60 hover:text-white/90"
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
+                {isActive && (
+                  <motion.div
+                    layoutId="activeHubTabPill"
+                    className="absolute inset-0 bg-white/20 border border-white/25 rounded-xl shadow-[0_4px_16px_rgba(255,255,255,0.18),inset_0_1px_1px_rgba(255,255,255,0.45)] backdrop-blur-lg -z-10"
+                    transition={{ type: "spring", stiffness: 450, damping: 32, mass: 0.6 }}
+                  />
+                )}
+                <Icon className={`w-3.5 h-3.5 transition-colors ${isActive ? "text-cyan-300 scale-105" : "text-white/60"}`} />
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className="text-[9px] font-mono px-1 rounded-full bg-cyan-500/30 text-cyan-200 border border-cyan-400/30 font-bold">
+                  <span className={`text-[9px] font-mono px-1 rounded-full border font-bold transition-all ${
+                    isActive ? "bg-cyan-400 text-black border-cyan-300" : "bg-white/10 text-cyan-200 border-cyan-400/30"
+                  }`}>
                     {tab.badge}
                   </span>
                 )}
@@ -185,20 +192,25 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id as HubTabKey)}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap ${
-                isActive
-                  ? "bg-white/20 text-white border border-white/20"
-                  : "bg-white/5 text-white/60"
+              className={`relative flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap cursor-pointer z-10 transition-colors ${
+                isActive ? "text-white font-bold" : "bg-white/5 text-white/60"
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
+              {isActive && (
+                <motion.div
+                  layoutId="activeMobileHubTabPill"
+                  className="absolute inset-0 bg-white/20 border border-white/25 rounded-xl shadow-sm -z-10"
+                  transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                />
+              )}
+              <Icon className={`w-3.5 h-3.5 ${isActive ? "text-cyan-300" : ""}`} />
               <span>{tab.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* ── 核心工作区主视口 ── */}
+      {/* ── 核心工作区主视口 (GPU 硬件加速与毫秒级即时响应) ── */}
       <main
         className={`relative z-10 flex-1 overflow-y-auto p-4 md:p-6 w-full custom-scrollbar transition-all ${
           activeTab === "lx_search" || activeTab === "cloud" || activeTab === "downloads"
@@ -206,13 +218,19 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
             : "max-w-7xl mx-auto"
         }`}
       >
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
+            initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -6, filter: "blur(2px)" }}
+            transition={{
+              type: "spring",
+              stiffness: 420,
+              damping: 30,
+              mass: 0.6,
+            }}
+            className="will-change-[transform,opacity,filter] transform-gpu"
           >
             {activeTab === "dashboard" && (
               <DataDashboardTab
