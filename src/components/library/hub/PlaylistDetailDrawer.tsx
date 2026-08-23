@@ -22,6 +22,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useUserAccountStore } from "@/store/userAccountStore";
+import { usePlaylistStore } from "@/store/playlistStore";
 
 export interface DrawerPlaylistInfo {
   id: string;
@@ -48,11 +49,18 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
   const [tracks, setTracks] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   const { playQueue, playSong } = useAudioStore();
   const { addToQueue } = useQueueStore();
   const { addBatchDownloads, isSongOffline } = useOfflineDownloadStore();
   const { fetchAllPlaylistTracks } = useUserAccountStore();
+  const { importSongs } = usePlaylistStore();
+
+  const showNotice = (msg: string) => {
+    setActionNotice(msg);
+    setTimeout(() => setActionNotice(null), 3000);
+  };
 
   useEffect(() => {
     if (!isOpen || !playlist) {
@@ -66,19 +74,21 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
 
     const loadTracks = async () => {
       try {
+        // 1. 优先使用全网通用高可用接口拉取歌单完整曲目 (免登录即可解析网易云公开歌单)
+        const res = await fetch(`/api/playlist/tracks?id=${encodeURIComponent(playlist.id)}&limit=500`);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && Array.isArray(data.songs) && data.songs.length > 0) {
+            setTracks(data.songs);
+            return;
+          }
+        }
+
+        // 2. 兜底尝试用户登录账户接口
         if (playlist.source === "netease") {
           const songs = await fetchAllPlaylistTracks(playlist.id);
-          if (isMounted) {
+          if (isMounted && Array.isArray(songs) && songs.length > 0) {
             setTracks(songs);
-          }
-        } else {
-          // QQ 或其他音源歌单通过通用接口获取
-          const res = await fetch(`/api/playlist/tracks?id=${playlist.id}&limit=500`);
-          if (res.ok) {
-            const data = await res.json();
-            if (isMounted && Array.isArray(data.songs)) {
-              setTracks(data.songs);
-            }
           }
         }
       } catch (err) {
@@ -115,15 +125,63 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
   const handlePlayAll = () => {
     if (tracks.length > 0) {
       playQueue(tracks, 0);
+      showNotice(`▶ 开始播放歌单《${playlist?.name}》(${tracks.length}首)`);
+    }
+  };
+
+  // 1. 导入为本地歌单 (并在“歌单编排”中立即可见)
+  const handleSaveAsLocalPlaylist = () => {
+    if (!playlist || tracks.length === 0) return;
+    try {
+      const STORAGE_KEY = "vibe_custom_playlists_v1";
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const list = saved ? JSON.parse(saved) : [];
+      const newPl = {
+        id: `pl-${Date.now()}`,
+        title: playlist.name,
+        cover: playlist.coverImgUrl || "/default-cover.svg",
+        songs: tracks,
+        createdAt: Date.now(),
+      };
+      const next = [newPl, ...list];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      importSongs(tracks);
+      showNotice(`⭐ 已将《${playlist.name}》创建为本地歌单，可在【歌单编排】中随时管理！`);
+    } catch {
+      showNotice("导入歌单异常，请重试");
+    }
+  };
+
+  // 2. 一键下载并自动创建离线歌单
+  const handleDownloadAndCreateOfflinePlaylist = () => {
+    if (!playlist) return;
+    const toDownload = selectedIds.size > 0 ? tracks.filter((t) => selectedIds.has(t.id)) : tracks;
+    if (toDownload.length === 0) return;
+
+    addBatchDownloads(toDownload, "lossless");
+
+    try {
+      const STORAGE_KEY = "vibe_custom_playlists_v1";
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const list = saved ? JSON.parse(saved) : [];
+      const newPl = {
+        id: `offline-${Date.now()}`,
+        title: `[离线] ${playlist.name}`,
+        cover: playlist.coverImgUrl || "/default-cover.svg",
+        songs: toDownload,
+        createdAt: Date.now(),
+      };
+      const next = [newPl, ...list];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      importSongs(toDownload);
+      showNotice(`📥 已开始下载 ${toDownload.length} 首歌曲，并创建了离线歌单《${playlist.name}》！可在【歌单编排】与【离线下载】中直接畅听！`);
+    } catch {
+      showNotice(`已提交 ${toDownload.length} 首歌曲下载任务`);
     }
   };
 
   const handleDownloadSelected = () => {
-    const toDownload =
-      selectedIds.size > 0 ? tracks.filter((t) => selectedIds.has(t.id)) : tracks;
-    if (toDownload.length > 0) {
-      addBatchDownloads(toDownload, "lossless");
-    }
+    handleDownloadAndCreateOfflinePlaylist();
   };
 
   const formatDuration = (seconds: number): string => {
@@ -226,10 +284,20 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
                   <button
                     onClick={handleDownloadSelected}
                     disabled={tracks.length === 0}
-                    className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-medium active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-medium active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    title="下载选中的母带曲目并自动在本地生成离线歌单"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    {selectedIds.size > 0 ? `下载已选 (${selectedIds.size})` : "一键下载整单"}
+                    {selectedIds.size > 0 ? `下载并存歌单 (${selectedIds.size})` : "📥 一键下载整单"}
+                  </button>
+                  <button
+                    onClick={handleSaveAsLocalPlaylist}
+                    disabled={tracks.length === 0}
+                    className="px-3.5 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 text-xs font-medium active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    title="将该网络歌单收录至本地【歌单编排】"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    ⭐ 存为本地歌单
                   </button>
                   <button
                     onClick={handleSelectAll}
@@ -248,6 +316,21 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
                     )}
                   </button>
                 </div>
+
+                {/* 操作通知反馈横幅 */}
+                <AnimatePresence>
+                  {actionNotice && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      className="mt-3 px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium flex items-center gap-2"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>{actionNotice}</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 

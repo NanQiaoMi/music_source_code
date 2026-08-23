@@ -53,6 +53,20 @@ export const PlaylistHubTab: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
+  // 挂载时重新同步 localStorage 最新的歌单列表
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setPlaylists(parsed);
+          setActivePlaylistId((prev) => (parsed.some((p: Playlist) => p.id === prev) ? prev : parsed[0].id));
+        }
+      }
+    } catch {}
+  }, []);
+
   // Sync library songs into default playlist if empty
   useEffect(() => {
     if (playlists.length === 1 && playlists[0].id === "default-favorites" && playlists[0].songs.length === 0 && librarySongs.length > 0) {
