@@ -67,6 +67,8 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
       album: r.album || "离线母带",
       duration: r.duration || 240,
       cover: r.cover || DEFAULT_COVER_SRC,
+      lyrics: r.lyrics,
+      translationLyrics: r.translationLyrics,
       source: (r.source as any) || "offline",
       audioUrl: `offline://${r.songId}`,
       format: (r as any).format || "mp3",

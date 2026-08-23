@@ -301,8 +301,9 @@ export const OfflineDownloadsTab: React.FC = () => {
                 duration: record.duration,
                 cover: record.cover,
                 lyrics: record.lyrics,
-                audioUrl: `stored://${record.songId}`,
-                source: "local",
+                translationLyrics: record.translationLyrics,
+                audioUrl: `offline://${record.songId}`,
+                source: (record.source as any) || "offline",
               };
 
               return (

@@ -624,10 +624,11 @@ export const useAudioPlayer = () => {
             if (offlineRecord.lyrics && !currentSong.lyrics) {
               currentSong.lyrics = offlineRecord.lyrics;
               currentSong.translationLyrics = offlineRecord.translationLyrics;
+              useAudioStore.getState().updateCurrentSongLyrics(offlineRecord.lyrics, offlineRecord.translationLyrics);
             }
             if (offlineRecord.cover && (!currentSong.cover || currentSong.cover === "/default-cover.svg")) {
               currentSong.cover = offlineRecord.cover;
-              usePlayerStore.getState().updateCurrentSongCover(offlineRecord.cover);
+              useAudioStore.getState().updateCurrentSongCover(offlineRecord.cover);
             }
 
             console.info(`[useAudioPlayer] 🚀 命中本地离线母带文件 (0ms 纯本地直读秒播): 《${currentSong.title}》- ${(offlineRecord.fileSize / 1024 / 1024).toFixed(2)}MB`);
@@ -729,7 +730,7 @@ export const useAudioPlayer = () => {
           if (lrcData.lyrics && currentSongIdRef.current === songId) {
             currentSong.lyrics = lrcData.lyrics;
             currentSong.translationLyrics = lrcData.translationLyrics;
-            usePlayerStore.getState().updateCurrentSongLyrics(lrcData.lyrics);
+            useAudioStore.getState().updateCurrentSongLyrics(lrcData.lyrics, lrcData.translationLyrics);
 
             // 如果当前曲目在本地离线数据库中，自动持久化更新离线歌词
             try {
@@ -753,7 +754,7 @@ export const useAudioPlayer = () => {
         }).then(async (coverUrl) => {
           if (coverUrl && currentSongIdRef.current === songId) {
             currentSong.cover = coverUrl;
-            usePlayerStore.getState().updateCurrentSongCover(coverUrl);
+            useAudioStore.getState().updateCurrentSongCover(coverUrl);
 
             try {
               const offlineRec = await getOfflineAudio(String(songId));

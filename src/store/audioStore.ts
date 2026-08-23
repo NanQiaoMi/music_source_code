@@ -118,6 +118,8 @@ interface AudioState {
   setError: (error: AudioError | null) => void;
   clearError: () => void;
   setBufferedRanges: (ranges: { start: number; end: number }[]) => void;
+  updateCurrentSongLyrics: (lyrics: string, translationLyrics?: string) => void;
+  updateCurrentSongCover: (cover: string) => void;
   playSong: (song: Song) => void;
   playQueue: (songs: Song[], startIndex?: number) => void;
 
@@ -312,6 +314,33 @@ export const useAudioStore = create<AudioState>()(
       setCurrentSong: (song) => {
         usePlayerStore.getState().setCurrentSong(song);
         set({ currentSong: song });
+      },
+      updateCurrentSongLyrics: (lyrics, translationLyrics) => {
+        usePlayerStore.getState().updateCurrentSongLyrics(lyrics, translationLyrics);
+        set((state) =>
+          state.currentSong
+            ? {
+                currentSong: {
+                  ...state.currentSong,
+                  lyrics,
+                  translationLyrics: translationLyrics || state.currentSong.translationLyrics,
+                },
+              }
+            : {}
+        );
+      },
+      updateCurrentSongCover: (cover) => {
+        usePlayerStore.getState().updateCurrentSongCover(cover);
+        set((state) =>
+          state.currentSong
+            ? {
+                currentSong: {
+                  ...state.currentSong,
+                  cover,
+                },
+              }
+            : {}
+        );
       },
       setQueue: (songs) => set({ queue: songs }),
       setCurrentIndex: (index) => set({ currentIndex: index }),

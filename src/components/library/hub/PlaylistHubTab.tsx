@@ -37,6 +37,8 @@ export const PlaylistHubTab: React.FC = () => {
       album: r.album || "离线母带",
       duration: r.duration || 240,
       cover: r.cover || "/default-cover.svg",
+      lyrics: r.lyrics,
+      translationLyrics: r.translationLyrics,
       source: (r.source as any) || "offline",
       audioUrl: `offline://${r.songId}`,
       format: (r as any).format || "mp3",
