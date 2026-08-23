@@ -18,6 +18,7 @@ import { GestureFeedback } from "@/components/interaction/GestureFeedback";
 import { AILinerNotes } from "@/components/widgets/AILinerNotes";
 import { TopEdgeSearchTrigger } from "@/components/layout/TopEdgeSearchTrigger";
 import { SourceManagementModal } from "@/components/sources/SourceManagementModal";
+import { GlassToastContainer } from "@/components/shared/GlassToast";
 
 export function GlobalClientComponents() {
   useAudioPlayer();
@@ -34,6 +35,7 @@ export function GlobalClientComponents() {
       <TopEdgeSearchTrigger />
       <FloatingPlayer />
       <AchievementToastContainer />
+      <GlassToastContainer />
       <GestureController />
       <GestureFeedback />
       <AILinerNotes />

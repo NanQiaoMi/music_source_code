@@ -29,6 +29,7 @@ import {
 import { triggerBackgroundCache } from "@/hooks/useNetworkAudioCache";
 import { audioPrefetcher } from "@/lib/audio/audioPrefetcher";
 import { useQueueStore } from "@/store/queueStore";
+import { useUIStore } from "@/store/uiStore";
 
 // Module-level shared state to persist across hook unmounts/remounts
 let audioInstance: HTMLAudioElement | null = null;
@@ -137,6 +138,7 @@ function stopForMissingAudioSource(audio: HTMLAudioElement): void {
   audio.removeAttribute("src");
   audio.src = "";
 
+  const currentSong = usePlayerStore.getState().currentSong;
   usePlayerStore.getState().setIsPlaying(false);
   usePlayerStore.getState().setIsLoading(false);
   useAudioStore.setState({
@@ -144,6 +146,7 @@ function stopForMissingAudioSource(audio: HTMLAudioElement): void {
     isLoading: false,
     error: { type: "load", message: MISSING_AUDIO_SOURCE_MESSAGE, timestamp: Date.now() },
   });
+  useUIStore.getState().showToast(`⚠️ 无法播放: 《${currentSong?.title || "该歌曲"}》没有可用音频直链，请导入本地文件或切换音源`, "warning", 4000);
 }
 
 // Stable event handlers outside the hook to prevent duplicate listeners
@@ -240,8 +243,12 @@ const attachListeners = (
   const onWaiting = () => setIsLoading(true);
   const onPlaying = () => {
     setIsLoading(false);
-    // 播放成功后，对网络歌曲触发后台缓存（不阻塞播放）
+    // 播放成功后弹出高品质 Toast 提示
     const playingSong = usePlayerStore.getState().currentSong;
+    if (playingSong && playingSong.title) {
+      useUIStore.getState().showToast(`▶ 正在播放: 《${playingSong.title}》· ${playingSong.artist || "未知歌手"}`, "success", 2500);
+    }
+    // 对网络歌曲触发后台缓存（不阻塞播放）
     const currentSrc = audio.src;
     if (
       playingSong &&
@@ -335,6 +342,7 @@ const attachListeners = (
       isPlayingRef.current = false;
       useAudioStore.getState().setIsPlaying(false);
       usePlayerStore.getState().setIsPlaying(false);
+      useUIStore.getState().showToast(`❌ 播放失败: 无法解析《${currentSong?.title || "此歌曲"}》的音频流，请尝试更换音源`, "error", 4000);
     }
   };
 
@@ -686,6 +694,7 @@ export const useAudioPlayer = () => {
       const isRiskyOuterUrl = Boolean(audioUrl && audioUrl.includes("music.163.com/song/media/outer/url"));
       const isInvalidUrl = !audioUrl || (!audioUrl.startsWith("http") && !audioUrl.startsWith("blob:") && !audioUrl.startsWith("data:"));
       if ((isInvalidUrl || isRiskyOuterUrl) && currentSong) {
+        useUIStore.getState().showToast(`⚡ 正在通过音源引擎嗅探直链: 《${currentSong.title}》...`, "info", 2000);
         try {
           const resolved = await multiSourceResolver.resolvePlayableAudio({
             id: currentSong.id,
