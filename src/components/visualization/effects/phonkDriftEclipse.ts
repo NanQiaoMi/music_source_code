@@ -66,9 +66,9 @@ let accretionRotation = 0;
 let orbitalRingAngle = 0;
 let breathLFO = 0;
 
-const PARTICLE_COUNT = 800;
-const SMOKE_COUNT = 32;
-const SPARK_COUNT = 75;
+const PARTICLE_COUNT = 750;
+const SMOKE_COUNT = 30;
+const SPARK_COUNT = 70;
 const HORIZON_RATIO = 0.44; // 地平线黄金分割比例
 
 // 预烘焙 128x128 电影 35mm 质感胶片纹理 (1.8% 极微底片颗粒，柔化画面)
@@ -109,11 +109,11 @@ function initParticlePool(width: number, height: number) {
       y: (Math.random() - 0.5) * height * 2.4,
       z: Math.random() * 1000 + 10,
       prevZ: 0,
-      size: Math.random() * 2.4 + 0.8,
-      speed: Math.random() * 1.6 + 0.8,
-      alpha: Math.random() * 0.75 + 0.25,
+      size: Math.random() * 2.2 + 0.8,
+      speed: Math.random() * 1.5 + 0.8,
+      alpha: Math.random() * 0.7 + 0.25,
       hue: Math.random() > 0.45 ? 295 : 185,
-      isStreak: Math.random() > 0.3,
+      isStreak: Math.random() > 0.35,
     });
   }
 
@@ -148,8 +148,8 @@ function initParticlePool(width: number, height: number) {
 }
 
 /**
- * 赛博漂移 · 电影级日蚀特异点 (Phonk Drift Eclipse 5.0 - Ultimate Drift Edition)
- * 极致硬核 Phonk 氛围：动态 S 弯道、赛车遥测 HUD 转速表、实时波形激光与星际等离子喷流
+ * 赛博漂移 · 电影级日蚀特异点 (Phonk Drift Eclipse 6.0 - Cinematic Flow Edition)
+ * 全场景高定柔光、时空引力弯折扭曲、日冕等离子撕裂与有机呼吸
  */
 export function drawPhonkDriftEclipse({
   ctx,
@@ -165,7 +165,7 @@ export function drawPhonkDriftEclipse({
   const cruiseSpeed = params?.cruiseSpeed ?? 1.35;
   const colorMode = params?.colorMode ?? 0; // 0: 自适应流光, 1: 极夜霓虹, 2: 暗红狂暴, 3: 黑金奢华
 
-  // 1. Phonk 专项音频解耦 (Sub-bass 808, Bassline, Cowbell mid, Snare/Hi-hat treble)
+  // 1. Phonk 专项音频解耦
   let subBassRaw = 0;
   for (let i = 1; i <= 3; i++) subBassRaw += data[i] || 0;
   subBassRaw = subBassRaw / (3 * 255);
@@ -207,15 +207,15 @@ export function drawPhonkDriftEclipse({
       : prevTrebleEnergy * 0.88 + hihatTrebleRaw * 0.12;
   prevTrebleEnergy = trebleEnergy;
 
-  // 有机多频呼吸时钟与漂移弯道偏角 (Drift Curvature Swerve)
+  // 有机多频呼吸时钟与漂移弯道偏角
   breathLFO += 0.014;
-  const organicBreath = Math.sin(breathLFO) * 0.5 + 0.5; // 0 ~ 1 慢速深呼吸
+  const organicBreath = Math.sin(breathLFO) * 0.5 + 0.5;
   const harmonicPulse = Math.sin(breathLFO * 2.4) * 0.5 + 0.5;
 
-  // 漂移弯道横向摆幅（随音乐节奏自然 S 型压弯）
-  driftCurveOffset = Math.sin(breathLFO * 0.7) * (width * 0.08) * (1 + bassEnergy * 0.5);
+  // 漂移弯道横向摆幅
+  driftCurveOffset = Math.sin(breathLFO * 0.7) * (width * 0.075) * (1 + bassEnergy * 0.45);
 
-  // 808 重低音瞬态平滑扩张冲击波
+  // 808 瞬态平滑扩张冲击波
   if (superBass > 0.76 && Math.random() < 0.35) {
     activeShockwaves.push({
       z: 0.01,
@@ -228,17 +228,17 @@ export function drawPhonkDriftEclipse({
     });
   }
 
-  // 镜头微动与节奏漂移倾角 (Cinematic Drift Sway & Camera Breathing)
-  cameraSwayAngle = Math.sin(breathLFO * 0.7) * 0.018 * (1 + superBass * 0.6);
+  // 镜头微动与节奏漂移倾角
+  cameraSwayAngle = Math.sin(breathLFO * 0.7) * 0.016 * (1 + superBass * 0.5);
   let shakeX = 0;
   let shakeY = 0;
   if (superBass > 0.55) {
-    const shakeMag = (superBass - 0.55) * 16 * bassIntensity;
+    const shakeMag = (superBass - 0.55) * 15 * bassIntensity;
     shakeX = (Math.random() - 0.5) * shakeMag;
-    shakeY = (Math.random() - 0.5) * shakeMag * 0.65;
+    shakeY = (Math.random() - 0.5) * shakeMag * 0.6;
   }
 
-  // 色相主题映射 (Tokyo Noir Palette)
+  // 色相主题映射
   let primaryHue = theme?.primary ?? 290;
   let secondaryHue = theme?.secondary ?? 185;
   let accentHue = theme?.accent ?? 335;
@@ -258,7 +258,7 @@ export function drawPhonkDriftEclipse({
   }
 
   // 视口基准点
-  const dollyOffset = (superBass * 9 + organicBreath * 5) * bassIntensity;
+  const dollyOffset = (superBass * 8 + organicBreath * 5) * bassIntensity;
   const horizonY = height * HORIZON_RATIO + shakeY - dollyOffset * 0.25;
   const centerX = width * 0.5 + shakeX;
 
@@ -277,7 +277,7 @@ export function drawPhonkDriftEclipse({
   ctx.fillStyle = skyGrd;
   ctx.fillRect(0, 0, width, horizonY);
 
-  // ─── 1. 远景东京赛博大厦与数字山脉天际线 (Tokyo Cyber Skyline & Mountains) ───
+  // ─── 1. 远景东京赛博大厦与数字山脉天际线 (Soft Feathered Skyline) ───
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
   const skylineBuildingCount = 28;
@@ -289,7 +289,6 @@ export function drawPhonkDriftEclipse({
   for (let i = 0; i <= skylineBuildingCount; i++) {
     const bx = i * bStep;
     const distFromCenter = Math.abs(bx - centerX) / (width * 0.5);
-    // 两侧是高耸的赛博大厦与山峦，中间让出给日蚀
     const isBuilding = i % 2 === 0 && distFromCenter > 0.35;
     const bHeight = isBuilding
       ? (35 + Math.sin(i * 3.7) * 25) * Math.pow(distFromCenter, 1.2)
@@ -303,9 +302,9 @@ export function drawPhonkDriftEclipse({
   ctx.closePath();
   ctx.fill();
 
-  // 天际线霓虹发光描边
-  ctx.strokeStyle = `hsla(${primaryHue}, 90%, 65%, ${0.28 + midEnergy * 0.35})`;
-  ctx.lineWidth = 1.4;
+  // 柔和羽化天际线微光
+  ctx.strokeStyle = `hsla(${primaryHue}, 90%, 65%, ${0.22 + midEnergy * 0.28})`;
+  ctx.lineWidth = 1.0;
   ctx.stroke();
   ctx.restore();
 
@@ -413,7 +412,7 @@ export function drawPhonkDriftEclipse({
   ctx.save();
   ctx.translate(centerX, horizonY);
 
-  // 弯曲光环（向上隆起包围黑洞的引力透镜光弧）
+  // 弯曲光环底层柔光
   const lensHaloR = eclipseRadius * (1.35 + superBass * 0.25);
   const lensGrd = ctx.createLinearGradient(-lensHaloR, 0, lensHaloR, 0);
   lensGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 80%, ${0.68 + superBass * 0.25})`);
@@ -421,32 +420,31 @@ export function drawPhonkDriftEclipse({
   lensGrd.addColorStop(1, `hsla(${accentHue}, 90%, 60%, ${0.48 + midEnergy * 0.2})`);
 
   ctx.strokeStyle = lensGrd;
-  ctx.lineWidth = 5.0 + superBass * 6.0;
+  ctx.lineWidth = 4.0 + superBass * 5.0;
   ctx.beginPath();
   ctx.arc(0, 0, lensHaloR, Math.PI * 0.95, Math.PI * 2.05);
   ctx.stroke();
 
   // ─── 时空测地线与自旋拖拽对数螺旋弦丝 (Spacetime Geodesic Filaments & Relativistic Swirl) ───
   accretionRotation += 0.010 * (1 + cruiseSpeed * 0.5 + superBass * 0.7);
-  const spiralCount = 22;
+  const spiralCount = 20;
   for (let sp = 0; sp < spiralCount; sp++) {
     const baseAngle = (sp / spiralCount) * Math.PI * 2 + accretionRotation;
     const isMajorSpiral = sp % 3 === 0;
 
-    const spAlpha = (isMajorSpiral ? 0.6 : 0.3) * (0.7 + superBass * 0.5);
+    const spAlpha = (isMajorSpiral ? 0.5 : 0.25) * (0.6 + superBass * 0.4);
     ctx.strokeStyle = isMajorSpiral
       ? `hsla(${secondaryHue}, 100%, 85%, ${spAlpha})`
       : `hsla(${primaryHue}, 90%, 65%, ${spAlpha})`;
-    ctx.lineWidth = isMajorSpiral ? 2.0 + superBass * 1.4 : 1.1;
+    ctx.lineWidth = isMajorSpiral ? 1.8 + superBass * 1.2 : 0.9;
 
     ctx.beginPath();
-    // 对数螺旋线向中心事件视界加速塌缩并面条化拉伸
     for (let step = 0; step <= 18; step++) {
-      const stepProg = step / 18; // 0 (outer accretion) to 1 (inner photon sphere)
+      const stepProg = step / 18;
       const curRadius = eclipseRadius * (2.4 - stepProg * 1.38);
-      const curAngle = baseAngle + Math.pow(stepProg, 1.4) * 2.2; // 强引力自旋拖拽
+      const curAngle = baseAngle + Math.pow(stepProg, 1.4) * 2.2;
       const spX = Math.cos(curAngle) * curRadius;
-      const spY = Math.sin(curAngle) * (curRadius * 0.40); // 倾斜视界椭圆
+      const spY = Math.sin(curAngle) * (curRadius * 0.40);
 
       if (step === 0) {
         ctx.moveTo(spX, spY);
@@ -457,57 +455,42 @@ export function drawPhonkDriftEclipse({
     ctx.stroke();
   }
 
-  // ─── 高能分支时空电浆裂隙 (Branching Spacetime Fracture Lightning Rifts) ───
-  if (superBass > 0.55) {
-    const riftCount = Math.floor(5 + (superBass - 0.55) * 14);
-    for (let rf = 0; rf < riftCount; rf++) {
-      const rfAngle = (rf / riftCount) * Math.PI * 2 + Math.sin(Date.now() * 0.003 + rf) * 0.3;
-      const startR = eclipseRadius * (0.96 + Math.random() * 0.06);
-      const endR = eclipseRadius * (1.3 + Math.random() * 0.55 * superBass);
+  // ─── 柔和日冕电浆磁力环与时空撕裂弧线 (Smooth Coronal Loops & Spacetime Arc Filaments) ───
+  // 彻底废除生硬粗糙的折线，改用平滑贝塞尔曲线日珥电浆环
+  if (superBass > 0.52) {
+    const loopCount = Math.floor(4 + (superBass - 0.52) * 10);
+    for (let lp = 0; lp < loopCount; lp++) {
+      const loopAngle = (lp / loopCount) * Math.PI * 2 + Math.sin(Date.now() * 0.002 + lp) * 0.3;
+      const loopSpan = 0.35 + Math.random() * 0.35;
+      const p1R = eclipseRadius * (1.0 + Math.random() * 0.08);
+      const p2R = eclipseRadius * (1.3 + Math.random() * 0.55 * superBass);
+      const p3R = eclipseRadius * (1.02 + Math.random() * 0.08);
 
-      // 外层霓虹辉光
-      ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 75%, ${0.5 + superBass * 0.4})`;
-      ctx.lineWidth = 3.2;
+      const p1x = Math.cos(loopAngle) * p1R;
+      const p1y = Math.sin(loopAngle) * p1R * 0.45;
+
+      const midAngle = loopAngle + loopSpan * 0.5;
+      const cpx = Math.cos(midAngle) * p2R;
+      const cpy = Math.sin(midAngle) * p2R * 0.45;
+
+      const p3x = Math.cos(loopAngle + loopSpan) * p3R;
+      const p3y = Math.sin(loopAngle + loopSpan) * p3R * 0.45;
+
+      // 外层柔和辉光
+      ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 75%, ${0.45 + superBass * 0.35})`;
+      ctx.lineWidth = 3.0;
       ctx.beginPath();
-      let curX = Math.cos(rfAngle) * startR;
-      let curY = Math.sin(rfAngle) * startR;
-      ctx.moveTo(curX, curY);
-
-      const segments = 5;
-      const points: { x: number; y: number }[] = [{ x: curX, y: curY }];
-      for (let sg = 1; sg <= segments; sg++) {
-        const segR = startR + (endR - startR) * (sg / segments);
-        const segAngle = rfAngle + (Math.random() - 0.5) * 0.22;
-        curX = Math.cos(segAngle) * segR;
-        curY = Math.sin(segAngle) * segR;
-        ctx.lineTo(curX, curY);
-        points.push({ x: curX, y: curY });
-      }
+      ctx.moveTo(p1x, p1y);
+      ctx.quadraticCurveTo(cpx, cpy, p3x, p3y);
       ctx.stroke();
 
-      // 内层超亮白色裂隙电芯
+      // 内层超亮电芯
       ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 1.4;
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (let pIdx = 1; pIdx < points.length; pIdx++) {
-        ctx.lineTo(points[pIdx].x, points[pIdx].y);
-      }
+      ctx.moveTo(p1x, p1y);
+      ctx.quadraticCurveTo(cpx, cpy, p3x, p3y);
       ctx.stroke();
-
-      // 分支微型电弧 (Branchlets)
-      if (rf % 2 === 0 && points.length > 2) {
-        const branchPt = points[Math.floor(points.length / 2)];
-        ctx.strokeStyle = `hsla(${primaryHue}, 100%, 80%, ${0.7 * superBass})`;
-        ctx.lineWidth = 1.0;
-        ctx.beginPath();
-        ctx.moveTo(branchPt.x, branchPt.y);
-        ctx.lineTo(
-          branchPt.x + (Math.random() - 0.5) * 18,
-          branchPt.y + (Math.random() - 0.5) * 18
-        );
-        ctx.stroke();
-      }
     }
   }
 
@@ -523,13 +506,13 @@ export function drawPhonkDriftEclipse({
   diskGrd.addColorStop(1, "rgba(0,0,0,0)");
 
   ctx.strokeStyle = diskGrd;
-  ctx.lineWidth = 14 + superBass * 18;
+  ctx.lineWidth = 12 + superBass * 16;
   ctx.beginPath();
   ctx.arc(0, 0, diskR * 0.85, 0, Math.PI * 2);
   ctx.stroke();
 
   // 吸积盘等离子流微粒 (Smooth Accretion Streams)
-  const streamCount = 52;
+  const streamCount = 48;
   for (let s = 0; s < streamCount; s++) {
     const sAngle = (s / streamCount) * Math.PI * 2 + accretionRotation;
     const sRadius = eclipseRadius * (1.05 + ((s * 7) % 19) / 22);
@@ -538,47 +521,52 @@ export function drawPhonkDriftEclipse({
     const isApproaching = Math.sin(sAngle) > 0;
     ctx.fillStyle = isApproaching ? `hsla(${secondaryHue}, 100%, 85%, 0.9)` : `hsla(${primaryHue}, 95%, 70%, 0.7)`;
     ctx.beginPath();
-    ctx.arc(sX, sY, Math.random() * 2.2 + 1.0, 0, Math.PI * 2);
+    ctx.arc(sX, sY, Math.random() * 2.0 + 1.0, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
 
-  // ─── 4. Phonk 专属：赛车遥测 HUD 转速表弧 (Cyber Tachometer HUD) ───
-  // 顶部半环形音频峰值转速表 (Audio Peak RPM Tachometer Arc)
-  const tachRadius = eclipseRadius * 1.45;
-  const tachSegments = 32;
+  // ─── 4. Phonk 专属：连续等离子转速弧光带 (Continuous Plasma RPM Ribbon) ───
+  // 彻底废除生硬的刻度齿牙，改为丝滑柔和的发光能量带
+  const tachRadius = eclipseRadius * 1.42;
   const tachStartAngle = Math.PI * 1.08;
   const tachEndAngle = Math.PI * 1.92;
   const currentRPMProgress = Math.min(1.0, superBass * 1.25);
+  const currentAngle = tachStartAngle + currentRPMProgress * (tachEndAngle - tachStartAngle);
 
-  ctx.lineWidth = 2.0;
-  for (let t = 0; t < tachSegments; t++) {
-    const tProgress = t / (tachSegments - 1);
-    const tAngle = tachStartAngle + tProgress * (tachEndAngle - tachStartAngle);
-    const isActive = tProgress <= currentRPMProgress;
-    const isRedline = tProgress > 0.75;
-
-    const innerR = tachRadius - (t % 4 === 0 ? 7 : 3.5);
-    const outerR = tachRadius;
-
-    ctx.strokeStyle = isActive
-      ? isRedline
-        ? "#ff3344"
-        : `hsla(${secondaryHue}, 100%, 75%, 0.9)`
-      : `hsla(${primaryHue}, 60%, 30%, 0.25)`;
-
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(tAngle) * innerR, Math.sin(tAngle) * innerR);
-    ctx.lineTo(Math.cos(tAngle) * outerR, Math.sin(tAngle) * outerR);
-    ctx.stroke();
-  }
-
-  // 转速表外圈细圆环
-  ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 70%, 0.2)`;
-  ctx.lineWidth = 1.0;
+  // 基础底色能量槽
+  ctx.strokeStyle = `hsla(${primaryHue}, 60%, 30%, 0.25)`;
+  ctx.lineWidth = 2.4;
   ctx.beginPath();
-  ctx.arc(0, 0, tachRadius + 3, tachStartAngle, tachEndAngle);
+  ctx.arc(0, 0, tachRadius, tachStartAngle, tachEndAngle);
   ctx.stroke();
+
+  // 动态充能发光能量带
+  if (currentRPMProgress > 0.02) {
+    const powerGrd = ctx.createLinearGradient(
+      -tachRadius,
+      0,
+      tachRadius,
+      0
+    );
+    powerGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 75%, 0.9)`);
+    powerGrd.addColorStop(0.7, `hsla(${primaryHue}, 100%, 70%, 0.95)`);
+    powerGrd.addColorStop(1, "#ff3344"); // 红线区
+
+    ctx.strokeStyle = powerGrd;
+    ctx.lineWidth = 3.2 + superBass * 2.0;
+    ctx.beginPath();
+    ctx.arc(0, 0, tachRadius, tachStartAngle, currentAngle);
+    ctx.stroke();
+
+    // 能量指针端点发光圆珠
+    const tipX = Math.cos(currentAngle) * tachRadius;
+    const tipY = Math.sin(currentAngle) * tachRadius;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, 3.5 + superBass * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // 等离子音波几何轨道环 (Harmonic Orbital Rings)
   orbitalRingAngle += 0.005 * (1 + midEnergy * 1.2);
@@ -587,8 +575,8 @@ export function drawPhonkDriftEclipse({
   ctx.scale(1.0, 0.42);
 
   const ringRadius = eclipseRadius * (2.15 + midEnergy * 0.5);
-  ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 75%, ${0.28 + midEnergy * 0.35})`;
-  ctx.lineWidth = 1.8;
+  ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 75%, ${0.25 + midEnergy * 0.30})`;
+  ctx.lineWidth = 1.4;
   ctx.beginPath();
   ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
   ctx.stroke();
@@ -601,7 +589,7 @@ export function drawPhonkDriftEclipse({
     const nEnergy = data[nFreqIdx] / 255;
     const nx = Math.cos(nAngle) * (ringRadius + nEnergy * 20);
     const ny = Math.sin(nAngle) * (ringRadius + nEnergy * 20);
-    const nodeSize = 2.0 + nEnergy * 4.0;
+    const nodeSize = 1.8 + nEnergy * 3.5;
 
     ctx.fillStyle = n % 2 === 0 ? "#ffffff" : `hsla(${primaryHue}, 100%, 80%, 0.85)`;
     ctx.beginPath();
@@ -621,42 +609,27 @@ export function drawPhonkDriftEclipse({
 
   // 光子球面等离子电光边缘 (Sharp Photon Sphere Rim)
   ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 80%, ${0.8 + superBass * 0.18})`;
-  ctx.lineWidth = 3.2 + superBass * 3.0;
+  ctx.lineWidth = 3.0 + superBass * 2.5;
   ctx.beginPath();
   ctx.arc(centerX, horizonY, eclipseRadius, 0, Math.PI * 2);
   ctx.stroke();
 
   ctx.restore();
 
-  // ─── 5. 地平线精密赛博标尺与经纬 HUD 刻度 (Precision HUD Reticle) ───
+  // ─── 5. 地平线精密赛博标尺与实时示波器激光 ───
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  const hudTickCount = 28;
-  const hudSpan = width * 0.62;
-  const hudStep = hudSpan / hudTickCount;
-  ctx.strokeStyle = `hsla(${secondaryHue}, 90%, 70%, ${0.2 + harmonicPulse * 0.12})`;
-  ctx.lineWidth = 1.0;
-  for (let h = 0; h <= hudTickCount; h++) {
-    const hx = centerX - hudSpan * 0.5 + h * hudStep;
-    if (Math.abs(hx - centerX) < eclipseRadius * 1.15) continue;
-    const isMajor = h % 4 === 0;
-    const tickLen = isMajor ? 7 : 3.5;
-    ctx.beginPath();
-    ctx.moveTo(hx, horizonY - tickLen);
-    ctx.lineTo(hx, horizonY + tickLen);
-    ctx.stroke();
-  }
 
-  // 地平线实时音频示波器激光线 (Real-Time Oscilloscope Laser Line)
-  ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 78%, ${0.45 + superBass * 0.35})`;
-  ctx.lineWidth = 1.5;
+  // 地平线实时音频示波器激光线 (柔和发光)
+  ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 78%, ${0.40 + superBass * 0.30})`;
+  ctx.lineWidth = 1.4;
   ctx.beginPath();
   const oscStep = 6;
   let firstOsc = true;
   for (let ox = 0; ox <= width; ox += oscStep) {
     if (Math.abs(ox - centerX) < eclipseRadius * 1.1) continue;
     const oscIdx = Math.floor((ox / width) * 45) + 5;
-    const oscAmp = ((data[oscIdx] || 0) / 255 - 0.5) * 16 * superBass;
+    const oscAmp = ((data[oscIdx] || 0) / 255 - 0.5) * 14 * superBass;
     const oy = horizonY + oscAmp;
     if (firstOsc) {
       ctx.moveTo(ox, oy);
@@ -684,8 +657,8 @@ export function drawPhonkDriftEclipse({
 
     const currentRadius = sw.radius + (sw.maxRadius - sw.radius) * Math.pow(sw.z, 1.3);
     ctx.strokeStyle = sw.color;
-    ctx.globalAlpha = sw.alpha * 0.8;
-    ctx.lineWidth = sw.width * (1 + sw.z * 2.2);
+    ctx.globalAlpha = sw.alpha * 0.75;
+    ctx.lineWidth = sw.width * (1 + sw.z * 2.0);
 
     ctx.beginPath();
     ctx.ellipse(centerX, horizonY + sw.z * (height - horizonY) * 0.9, currentRadius, currentRadius * 0.32, 0, 0, Math.PI * 2);
@@ -730,12 +703,12 @@ export function drawPhonkDriftEclipse({
   const roadHalfWidth = width * 1.05;
   const gravitySink = superBass * 48 * bassIntensity;
 
-  // 绘制横向透视网格 (带有远景深度雾平滑消隐，杜绝尽头粗糙生硬挤压)
+  // 绘制横向透视网格 (双层柔光渲染：底层 Bloom 晕染 + 顶层微光)
   for (let i = 0; i < LATITUDE_LINES; i++) {
     const rawProgress = ((i / LATITUDE_LINES + (roadScrollOffset % (1 / LATITUDE_LINES))) % 1.0);
     const perspectiveZ = Math.pow(rawProgress, 2.3);
 
-    // 忽略过于贴近地平线产生密集摩尔纹的极小线条
+    // 远景平滑消隐
     if (perspectiveZ < 0.035) continue;
 
     const lineY = horizonY + roadHeight * perspectiveZ;
@@ -744,22 +717,32 @@ export function drawPhonkDriftEclipse({
 
     // 弯道水平偏移随深度扩散
     const curveXOffset = Math.sin(perspectiveZ * Math.PI) * driftCurveOffset;
-    // 远景深度平滑淡入：消除尽头生硬切线
     const depthFogAlpha = Math.min(1.0, (perspectiveZ - 0.035) * 5.0);
-    const lineAlpha = Math.min(1.0, perspectiveZ * 1.4) * (0.35 + superBass * 0.4) * depthFogAlpha;
+    const lineAlpha = Math.min(1.0, perspectiveZ * 1.4) * (0.32 + superBass * 0.38) * depthFogAlpha;
 
-    ctx.strokeStyle = `hsla(${primaryHue}, 85%, ${50 + perspectiveZ * 22}%, ${lineAlpha})`;
-    ctx.lineWidth = Math.max(1.0, perspectiveZ * 3.2);
-
-    ctx.beginPath();
     const waveUndulation = Math.sin(perspectiveZ * 10 - roadScrollOffset * 7) * (superBass * 12 * perspectiveZ);
-    const centerDip = Math.sin(perspectiveZ * Math.PI) * gravitySink + waveUndulation;
+    // 奇点引力拉扯：靠近奇点的路面网格中心向上凹陷拉入黑洞视界
+    const gravityPullUp = (1 - perspectiveZ) * (superBass * 25);
+    const centerDip = Math.sin(perspectiveZ * Math.PI) * gravitySink + waveUndulation - gravityPullUp;
+
+    // 1. 底层柔和霓虹 Bloom 辉光
+    ctx.strokeStyle = `hsla(${primaryHue}, 90%, 65%, ${lineAlpha * 0.45})`;
+    ctx.lineWidth = Math.max(2.5, perspectiveZ * 5.5);
+    ctx.beginPath();
+    ctx.moveTo(centerX + curveXOffset - spanWidth, lineY);
+    ctx.quadraticCurveTo(centerX + curveXOffset, lineY + centerDip, centerX + curveXOffset + spanWidth, lineY);
+    ctx.stroke();
+
+    // 2. 顶层平滑核心线条
+    ctx.strokeStyle = `hsla(${primaryHue}, 85%, ${55 + perspectiveZ * 22}%, ${lineAlpha})`;
+    ctx.lineWidth = Math.max(0.9, perspectiveZ * 2.4);
+    ctx.beginPath();
     ctx.moveTo(centerX + curveXOffset - spanWidth, lineY);
     ctx.quadraticCurveTo(centerX + curveXOffset, lineY + centerDip, centerX + curveXOffset + spanWidth, lineY);
     ctx.stroke();
   }
 
-  // 绘制纵向车道延伸线 (尽头渐变消隐：使用纵向透明度渐变，消除地平线汇聚处粗糙针刺感)
+  // 绘制纵向车道延伸线 (双层柔光与渐变消隐)
   for (let j = 0; j <= LONGITUDE_LINES; j++) {
     const normX = (j / LONGITUDE_LINES - 0.5) * 2;
     const isCenterLane = Math.abs(normX) < 0.08;
@@ -771,26 +754,46 @@ export function drawPhonkDriftEclipse({
       ? 0.75 + midEnergy * 0.22
       : (0.3 + (1 - Math.abs(normX)) * 0.35) * (0.6 + superBass * 0.35);
 
-    // 为每条纵向线构建从地平线透明到近景明亮的平滑渐变
-    const lineGrd = ctx.createLinearGradient(0, horizonY, 0, height);
     const laneHue = isCenterLane ? secondaryHue : isOuterRail ? accentHue : primaryHue;
-    const laneSat = isCenterLane || isOuterRail ? 100 : 80;
+    const laneSat = isCenterLane || isOuterRail ? 100 : 85;
     const laneLight = isCenterLane ? 80 : isOuterRail ? 72 : 55;
 
-    lineGrd.addColorStop(0, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, 0)`); // 尽头完全透明
-    lineGrd.addColorStop(0.12, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.18})`);
-    lineGrd.addColorStop(0.4, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.65})`);
-    lineGrd.addColorStop(1, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha})`);
+    // 1. 底层柔和 Bloom 辉光
+    const bloomGrd = ctx.createLinearGradient(0, horizonY, 0, height);
+    bloomGrd.addColorStop(0, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, 0)`);
+    bloomGrd.addColorStop(0.15, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.15})`);
+    bloomGrd.addColorStop(0.5, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.35})`);
+    bloomGrd.addColorStop(1, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.45})`);
 
-    ctx.strokeStyle = lineGrd;
-    ctx.lineWidth = isCenterLane ? 3.0 : isOuterRail ? 2.5 : 1.2;
-
-    ctx.beginPath();
-    ctx.moveTo(centerX + normX * (eclipseRadius * 0.22), horizonY);
+    ctx.strokeStyle = bloomGrd;
+    ctx.lineWidth = isCenterLane ? 5.5 : isOuterRail ? 4.5 : 2.5;
 
     const endX = centerX + normX * roadHalfWidth;
     const endY = height;
     const controlDip = isCenterLane ? gravitySink * 0.8 : gravitySink * 0.3 * (1 - Math.abs(normX));
+
+    ctx.beginPath();
+    ctx.moveTo(centerX + normX * (eclipseRadius * 0.22), horizonY);
+    ctx.quadraticCurveTo(
+      centerX + normX * (roadHalfWidth * 0.36) + driftCurveOffset * 0.7,
+      horizonY + roadHeight * 0.5 + controlDip,
+      endX,
+      endY
+    );
+    ctx.stroke();
+
+    // 2. 顶层核心线条
+    const coreGrd = ctx.createLinearGradient(0, horizonY, 0, height);
+    coreGrd.addColorStop(0, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, 0)`);
+    coreGrd.addColorStop(0.15, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.2})`);
+    coreGrd.addColorStop(0.5, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.7})`);
+    coreGrd.addColorStop(1, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha})`);
+
+    ctx.strokeStyle = coreGrd;
+    ctx.lineWidth = isCenterLane ? 2.4 : isOuterRail ? 2.0 : 1.0;
+
+    ctx.beginPath();
+    ctx.moveTo(centerX + normX * (eclipseRadius * 0.22), horizonY);
     ctx.quadraticCurveTo(
       centerX + normX * (roadHalfWidth * 0.36) + driftCurveOffset * 0.7,
       horizonY + roadHeight * 0.5 + controlDip,
@@ -805,7 +808,7 @@ export function drawPhonkDriftEclipse({
   for (let k = 0; k < pillarCount; k++) {
     const pProgress = ((k / pillarCount + (roadScrollOffset * 0.6 % (1 / pillarCount))) % 1.0);
     const pZ = Math.pow(pProgress, 1.85);
-    if (pZ < 0.05) continue; // 远景深度消隐
+    if (pZ < 0.05) continue;
 
     const pY = horizonY + roadHeight * pZ;
     const pSpan = roadHalfWidth * Math.pow(pProgress, 1.4) * 1.02;
@@ -832,7 +835,7 @@ export function drawPhonkDriftEclipse({
     ctx.stroke();
   }
 
-  // 地平线柔和霓虹深空薄雾 (Radial Horizon Mist - 彻底消解生硬横向色块)
+  // 地平线柔和霓虹深空薄雾 (Radial Horizon Mist)
   const mistRadialGrd = ctx.createRadialGradient(
     centerX,
     horizonY,
