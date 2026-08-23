@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -248,7 +248,7 @@ function SavedPlaylistsTab({
           <div className="mb-4 space-y-2">
             {group.songs.slice(0, 3).map((song, index) => (
               <div
-                key={song.id}
+                key={`${song.id}-${index}`}
                 className="flex items-center gap-2 rounded-xl bg-black/20 px-3 py-2"
               >
                 <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/10 text-xs text-white/50">
@@ -364,9 +364,9 @@ function DeduplicateTab({
                 {group.songs[0]?.title || "未命名"} - {group.songs[0]?.artist || "未知"}
               </div>
               <div className="space-y-2">
-                {group.songs.map((song) => (
+                {group.songs.map((song, songIdx) => (
                   <div
-                    key={song.id}
+                    key={`${song.id}-${songIdx}`}
                     className="flex items-center justify-between gap-3 rounded-xl bg-black/20 px-3 py-2"
                   >
                     <div className="min-w-0">

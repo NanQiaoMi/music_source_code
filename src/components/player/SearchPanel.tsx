@@ -775,9 +775,9 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                       </button>
                     </div>
                     <div className="space-y-1">
-                      {results.map((song) => (
+                      {results.map((song, idx) => (
                         <div
-                          key={song.id}
+                          key={`${song.source || "src"}-${song.id || "id"}-${idx}`}
                           onClick={() => handlePlaySong(song)}
                           className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors group"
                         >
