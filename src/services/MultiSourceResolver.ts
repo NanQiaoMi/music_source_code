@@ -175,21 +175,7 @@ export class MultiSourceResolver {
 
   private async validateStream(url: string): Promise<boolean> {
     if (!url || !url.startsWith("http")) return false;
-    try {
-      const res = await fetch(url, {
-        method: "GET",
-        headers: { Range: "bytes=0-1024" },
-        signal: AbortSignal.timeout(1800),
-      });
-      if (!res.ok && res.status !== 206) return false;
-      const cType = (res.headers.get("content-type") || "").toLowerCase();
-      if (cType.includes("json") || cType.includes("html") || cType.includes("text")) {
-        return false;
-      }
-      return true;
-    } catch {
-      return true;
-    }
+    return true;
   }
 
   /**

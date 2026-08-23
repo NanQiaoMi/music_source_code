@@ -12,6 +12,10 @@ export async function OPTIONS() {
   });
 }
 
+export async function HEAD(request: NextRequest) {
+  return GET(request);
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const targetUrl = searchParams.get("url");
@@ -29,8 +33,6 @@ export async function GET(request: NextRequest) {
 
   if (targetUrl.includes("kuwo.cn")) {
     upstreamHeaders["Referer"] = "http://www.kuwo.cn/";
-  } else if (targetUrl.includes("music.163.com") || targetUrl.includes("126.net")) {
-    upstreamHeaders["Referer"] = "https://music.163.com/";
   } else if (targetUrl.includes("qq.com")) {
     upstreamHeaders["Referer"] = "https://y.qq.com/";
   } else if (targetUrl.includes("kugou.com")) {

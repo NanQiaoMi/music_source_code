@@ -20,10 +20,17 @@ const MEDIA_ERROR_DESCRIPTIONS: Record<number, string> = {
 export function hasPlayableAudioSource(song: AudioSourceSong): boolean {
   if (!song) return false;
   if (song.audioUrl && song.audioUrl.trim().length > 0) return true;
-  if (song.source === "demo" || (song.id && String(song.id).startsWith("demo-"))) return false;
-  if (song.source === "local" || song.source === "upload" || !song.source) return false;
+  if (song.source === "demo" || (song.id && String(song.id).startsWith("demo-"))) {
+    return false;
+  }
+  if (song.source === "local" || song.source === "upload") {
+    return false;
+  }
   // 在线平台音源（netease, qq, kugou, kuwo, qishui, lx_custom 等）支持在播放时动态嗅探解析真实音频流
-  return Boolean((song.id && String(song.id).trim().length > 0) || (song.title && song.title.trim().length > 0));
+  return Boolean(
+    (song.source && song.source !== "local" && song.source !== "upload" && song.source !== "demo") ||
+    (song.id && String(song.id).trim().length > 0 && !String(song.id).startsWith("demo-"))
+  );
 }
 
 export function describeMediaElementError(error: MediaElementErrorLike): string {
