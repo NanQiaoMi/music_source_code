@@ -69,13 +69,19 @@ vi.mock("@/lib/sources/lxRunner", () => ({
   },
 }));
 
-vi.mock("@/store/sourceConfigStore", () => ({
-  useSourceConfigStore: {
-    getState: () => ({
-      lxScripts: [],
-    }),
-  },
-}));
+vi.mock("@/store/sourceConfigStore", () => {
+  const fn: any = () => ({
+    lxScripts: [],
+    openManagementModal: vi.fn(),
+  });
+  fn.getState = () => ({
+    lxScripts: [],
+    openManagementModal: vi.fn(),
+  });
+  return {
+    useSourceConfigStore: fn,
+  };
+});
 
 describe("LxMusicSearchTab", () => {
   let container: HTMLDivElement;

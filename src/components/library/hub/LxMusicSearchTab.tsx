@@ -21,6 +21,8 @@ import {
   Plus,
   Flame,
   Check,
+  SlidersHorizontal,
+  Settings2,
 } from "lucide-react";
 import type { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
@@ -90,10 +92,13 @@ export const LxMusicSearchTab: React.FC = () => {
   } | null>(null);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [selectedScriptId, setSelectedScriptId] = useState<string>("aggregate_special_v9");
 
   const { playSong, playQueue } = useAudioStore();
   const { addToQueue, insertNext } = useQueueStore();
   const { addBatchDownloads, isSongOffline } = useOfflineDownloadStore();
+  const { addSong, importSongs } = usePlaylistStore();
+  const { lxScripts, openManagementModal } = useSourceConfigStore();
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -116,16 +121,19 @@ export const LxMusicSearchTab: React.FC = () => {
             setSongResults(seg.all);
           } else if (targetTab === "lx_custom") {
             const lxScripts = useSourceConfigStore.getState().lxScripts;
-            const activeScript = lxScripts.find((s) => s.enabled) || {
-              id: "exclusive_v4",
-              name: "独家音源",
-              author: "LX",
-              version: "4.0",
-              description: "",
-              enabled: true,
-              lastUpdated: Date.now(),
-              supportedActions: ["search" as const],
-            };
+            const activeScript =
+              lxScripts.find((s) => s.id === selectedScriptId && s.enabled) ||
+              lxScripts.find((s) => s.enabled) || {
+                id: "aggregate_special_v9",
+                name: "全豆要[聚合音源] 9.3特供版",
+                author: "全豆要",
+                version: "9.3.0",
+                description: "",
+                scriptUrl: "/api/sources/builtin?id=aggregate_special_v9",
+                enabled: true,
+                lastUpdated: Date.now(),
+                supportedActions: ["search" as const],
+              };
             const list = await LXRunner.search(activeScript, q, 1, 100);
             setSongResults(list);
           } else {
@@ -471,7 +479,7 @@ export const LxMusicSearchTab: React.FC = () => {
           </div>
         </div>
 
-        {/* 第二行：多音源切换 Tab 栏 & 热门推荐 */}
+        {/* 第二行：多音源切换 Tab 栏 & 音源管理配置快捷入口 */}
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pt-1 border-t border-white/[0.08]">
           {/* 多音源切换 Tab 栏 */}
           <div className="flex flex-wrap items-center gap-2">
@@ -496,6 +504,17 @@ export const LxMusicSearchTab: React.FC = () => {
                 </button>
               );
             })}
+
+            {/* 音源矩阵与脚本配置中枢入口 */}
+            <button
+              type="button"
+              onClick={() => openManagementModal("lx_scripts")}
+              className="px-3 py-1.5 rounded-2xl bg-white/[0.04] hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ml-1"
+              title="管理自定义落雪音源与配置多音源优先级"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-400" />
+              <span>音源管理</span>
+            </button>
           </div>
 
           {/* 热门搜索标签 */}
@@ -518,6 +537,40 @@ export const LxMusicSearchTab: React.FC = () => {
             ))}
           </div>
         </div>
+
+        {/* 当选择「落雪母带」Tab 时，展示已安装的特供音源二级切换器 */}
+        {activeTab === "lx_custom" && (
+          <div className="flex items-center gap-2 pt-2 border-t border-purple-500/20 text-xs">
+            <span className="text-purple-300 font-semibold flex items-center gap-1 shrink-0">
+              <Sparkles className="w-3.5 h-3.5 text-purple-400" /> 当前可用特供脚本:
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {lxScripts
+                .filter((s) => s.enabled)
+                .map((script) => {
+                  const isSelected = selectedScriptId === script.id;
+                  return (
+                    <button
+                      key={script.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedScriptId(script.id);
+                        handleSearch(keyword, "lx_custom", searchMode);
+                        showToast(`已切换至音源: ${script.name}`);
+                      }}
+                      className={`px-3 py-1 rounded-xl text-xs font-medium transition-all border ${
+                        isSelected
+                          ? "bg-purple-500/25 text-purple-200 border-purple-400/50 shadow-md shadow-purple-500/20 font-bold"
+                          : "bg-white/5 text-white/60 hover:text-white border-white/10"
+                      }`}
+                    >
+                      {script.name}
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── 主体展示区 (全宽度、高呼吸感表格与卡片) ── */}
