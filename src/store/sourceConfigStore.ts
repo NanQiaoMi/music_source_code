@@ -8,6 +8,7 @@ import {
   SourceCredentials,
   QualityTier,
   PresetScheme,
+  ResolutionMode,
 } from "@/types/sourceConfig";
 import { LXRunner } from "@/lib/sources/lxRunner";
 
@@ -169,10 +170,12 @@ interface SourceConfigState {
   sources: Record<MusicSourceId, SingleSourceConfig>;
   lxScripts: LXCustomScript[];
   activePreset: string | null;
+  resolutionMode: ResolutionMode;
   isManagementModalOpen: boolean;
   activeManagementTab: "matrix" | "lx_scripts" | "diagnostics" | "backup" | "offline_cache";
 
   // Actions
+  setResolutionMode: (mode: ResolutionMode) => void;
   toggleSource: (id: MusicSourceId) => void;
   setSourceConfig: (id: MusicSourceId, partial: Partial<SingleSourceConfig>) => void;
   setSourceQuality: (id: MusicSourceId, quality: QualityTier) => void;
@@ -275,8 +278,11 @@ export const useSourceConfigStore = create<SourceConfigState>()(
       sources: { ...DEFAULT_SOURCES },
       lxScripts: DEFAULT_BUILTIN_LX_SCRIPTS,
       activePreset: "high_quality",
+      resolutionMode: "hybrid_racing",
       isManagementModalOpen: false,
       activeManagementTab: "matrix",
+
+      setResolutionMode: (mode: ResolutionMode) => set({ resolutionMode: mode }),
 
       toggleSource: (id) => {
         set((state) => {

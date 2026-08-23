@@ -53,8 +53,10 @@ export function SourceManagementModal() {
     sources,
     lxScripts,
     activePreset,
+    resolutionMode,
     isManagementModalOpen,
     activeManagementTab,
+    setResolutionMode,
     toggleSource,
     setSourceConfig,
     setSourceQuality,
@@ -278,7 +280,47 @@ export function SourceManagementModal() {
           <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
             {/* TAB 1: 音源矩阵控制台 */}
             {activeManagementTab === "matrix" && (
-              <div className="space-y-4">
+              <div className="space-y-5">
+                {/* 🚀 解析链路通道选择器 */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/30 to-purple-950/30 border border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-inner">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-cyan-400" />
+                      <span className="text-sm font-bold text-white">核心播放链路模式</span>
+                    </div>
+                    <p className="text-xs text-white/50 mt-1">
+                      选择歌曲播放时的底层音源嗅探与解析策略
+                    </p>
+                  </div>
+
+                  <div className="flex items-center bg-black/50 border border-white/10 p-1 rounded-2xl shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setResolutionMode("hybrid_racing")}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        resolutionMode === "hybrid_racing"
+                          ? "bg-gradient-to-r from-cyan-500/80 to-blue-500/80 text-white shadow-md shadow-cyan-500/25 border border-cyan-400/40"
+                          : "text-white/60 hover:text-white"
+                      }`}
+                    >
+                      <span>⚡</span>
+                      <span>通道一：全网智能聚合竞速</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResolutionMode("lx_only")}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        resolutionMode === "lx_only"
+                          ? "bg-gradient-to-r from-purple-500/80 to-pink-500/80 text-white shadow-md shadow-purple-500/25 border border-purple-400/40"
+                          : "text-white/60 hover:text-white"
+                      }`}
+                    >
+                      <span>📜</span>
+                      <span>通道二：纯粹落雪音源专属</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-white/50 font-medium">
                     已启用 {sourceList.filter((s) => s.enabled).length} / {sourceList.length} 个音源通道

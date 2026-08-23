@@ -337,7 +337,22 @@ export class MultiSourceResolver {
       return null;
     };
 
-    // 🚀 并发竞速：哪个最快返回可用直链就立即采用
+    const resolutionMode = typeof window !== "undefined" ? useSourceConfigStore.getState().resolutionMode : "hybrid_racing";
+
+    // 模式 2: 纯粹落雪音源模式 (100% 纯净调用落雪音源脚本，不走任何第三方/本地跨源)
+    if (resolutionMode === "lx_only") {
+      const lxResult = await lxTask();
+      if (lxResult?.url) {
+        MultiSourceResolver.resolvedUrlCache.set(cacheKey, {
+          result: lxResult,
+          expiry: Date.now() + 1800000,
+        });
+        return lxResult;
+      }
+      return null;
+    }
+
+    // 模式 1: 全网智能聚合竞速模式 (双通道并发抢跑 + 自动降级熔断)
     try {
       const raceResult = await Promise.race([
         directTask().then((res) => (res?.url ? res : Promise.reject())),

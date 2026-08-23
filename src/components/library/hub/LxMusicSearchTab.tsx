@@ -100,7 +100,7 @@ export const LxMusicSearchTab: React.FC = () => {
   const { addToQueue, insertNext } = useQueueStore();
   const { addBatchDownloads, isSongOffline } = useOfflineDownloadStore();
   const { addSong, importSongs } = usePlaylistStore();
-  const { lxScripts, openManagementModal } = useSourceConfigStore();
+  const { lxScripts, openManagementModal, resolutionMode, setResolutionMode } = useSourceConfigStore();
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -463,8 +463,44 @@ export const LxMusicSearchTab: React.FC = () => {
             </div>
           </div>
 
-          {/* 右侧功能组：歌曲/歌单切换 & 音质过滤 */}
-          <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-end shrink-0">
+          {/* 右侧功能组：解析通道模式 & 歌曲/歌单切换 & 音质过滤 */}
+          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-between lg:justify-end shrink-0">
+            {/* 🚀 解析链路通道选择器：全网智能聚合 vs 纯落雪音源 */}
+            <div className="flex items-center bg-black/40 border border-white/10 p-1 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setResolutionMode("hybrid_racing");
+                  showToast("已切换为【通道一：全网智能聚合竞速模式】");
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  resolutionMode === "hybrid_racing"
+                    ? "bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 shadow-md shadow-cyan-500/20"
+                    : "text-white/50 hover:text-white"
+                }`}
+                title="通道一：本地母带直连 + 落雪自定义脚本并发竞速抢答，速度最快，自动容灾兜底"
+              >
+                <span>⚡</span>
+                <span>智能聚合竞速</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setResolutionMode("lx_only");
+                  showToast("已切换为【通道二：纯粹落雪音源模式】");
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  resolutionMode === "lx_only"
+                    ? "bg-purple-500/30 text-purple-300 border border-purple-400/40 shadow-md shadow-purple-500/20"
+                    : "text-white/50 hover:text-white"
+                }`}
+                title="通道二：100% 仅调用已启用的落雪自定义音源脚本解析，免 VIP 验证，纯净无外部依赖"
+              >
+                <span>📜</span>
+                <span>纯落雪音源</span>
+              </button>
+            </div>
+
             {/* 歌曲 / 歌单模式切换 */}
             <div className="flex items-center bg-black/40 border border-white/10 p-1 rounded-2xl">
               <button

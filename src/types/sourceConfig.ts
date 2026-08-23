@@ -9,6 +9,8 @@ export type MusicSourceId =
 
 export type QualityTier = "auto" | "128k" | "320k" | "flac" | "hires";
 
+export type ResolutionMode = "hybrid_racing" | "lx_only";
+
 export interface SourceHealthStatus {
   status: "normal" | "degraded" | "error" | "untested";
   latencyMs: number;
