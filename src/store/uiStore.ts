@@ -44,7 +44,8 @@ export type PanelName =
   | "shelf3D"
   | "audioSourceManager"
   | "cloudMusic"
-  | "accountCenter";
+  | "accountCenter"
+  | "dataManager";
 
 export const PANEL_NAMES: readonly PanelName[] = [
   "queue",
@@ -87,6 +88,7 @@ export const PANEL_NAMES: readonly PanelName[] = [
   "audioSourceManager",
   "cloudMusic",
   "accountCenter",
+  "dataManager",
 ];
 
 const FULLSCREEN_PANELS: readonly PanelName[] = [
