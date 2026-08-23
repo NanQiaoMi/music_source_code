@@ -415,6 +415,10 @@ export const useSourceConfigStore = create<SourceConfigState>()(
               data.sources.forEach((builtin: any) => {
                 const existing = existingMap.get(builtin.id);
                 if (existing) {
+                  existing.name = builtin.name;
+                  existing.version = builtin.version;
+                  existing.description = builtin.description;
+                  existing.author = builtin.author;
                   existing.lastUpdated = Date.now();
                 } else {
                   updatedList.push({
