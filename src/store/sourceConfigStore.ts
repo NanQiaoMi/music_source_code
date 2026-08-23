@@ -202,6 +202,17 @@ interface SourceConfigState {
 
 export const DEFAULT_BUILTIN_LX_SCRIPTS: LXCustomScript[] = [
   {
+    id: "exclusive_v5",
+    name: "[独家音源] v5.0 (洛雪科技)",
+    author: "洛雪科技",
+    version: "5.0.0",
+    description: "官方最新 v5.0 逆向音源，支持全网主流平台母带与 Hi-Res 24bit 直链",
+    scriptUrl: "/api/sources/builtin?id=exclusive_v5",
+    enabled: true,
+    lastUpdated: Date.now(),
+    supportedActions: ["search", "songUrl", "lyric", "pic"],
+  },
+  {
     id: "aggregate_special_v9",
     name: "全豆要[聚合音源] 9.3特供版",
     author: "全豆要 / DeepSeek优化",

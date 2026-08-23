@@ -92,7 +92,7 @@ export const LxMusicSearchTab: React.FC = () => {
   } | null>(null);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [selectedScriptId, setSelectedScriptId] = useState<string>("aggregate_special_v9");
+  const [selectedScriptId, setSelectedScriptId] = useState<string>("exclusive_v5");
 
   const { playSong, playQueue } = useAudioStore();
   const { addToQueue, insertNext } = useQueueStore();

@@ -14,13 +14,13 @@ interface BuiltinSourceMeta {
 
 const BUILTIN_LIST: BuiltinSourceMeta[] = [
   {
-    id: "exclusive_v4",
-    name: "[独家音源] v4.0",
+    id: "exclusive_v5",
+    name: "[独家音源] v5.0 (洛雪科技)",
     author: "洛雪科技",
-    version: "4.0.0",
-    description: "多平台逆向母带解析，覆盖全网主流曲库与无损音轨",
-    fileName: "exclusive_v4.js",
-    sizeBytes: 114852,
+    version: "5.0.0",
+    description: "官方最新 v5.0 逆向音源，支持全网主流平台母带与 Hi-Res 24bit 直链",
+    fileName: "exclusive_v5.js",
+    sizeBytes: 62829,
   },
   {
     id: "aggregate_special_v9",
