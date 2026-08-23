@@ -17,6 +17,9 @@ vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: any) => <>{children}</>,
 }));
 
+vi.mock("./hub/LxMusicSearchTab", () => ({
+  LxMusicSearchTab: () => <div data-testid="lx-search-tab">LxMusicSearchTab Mock</div>,
+}));
 vi.mock("./hub/DataDashboardTab", () => ({
   DataDashboardTab: () => <div data-testid="dashboard-tab">DataDashboardTab Mock</div>,
 }));
@@ -89,6 +92,7 @@ describe("UnifiedDataManagerHub", () => {
 
     expect(container.textContent).toContain("资料库资产管理中枢");
     expect(container.textContent).toContain("全景看板");
+    expect(container.textContent).toContain("全网聚搜");
     expect(container.textContent).toContain("云端曲库");
     expect(container.textContent).toContain("离线下载");
     expect(container.textContent).toContain("歌单编排");

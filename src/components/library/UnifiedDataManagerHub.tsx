@@ -20,14 +20,17 @@ import {
 } from "lucide-react";
 
 import { DataDashboardTab } from "./hub/DataDashboardTab";
+import { LxMusicSearchTab } from "./hub/LxMusicSearchTab";
 import { CloudAssetsTab } from "./hub/CloudAssetsTab";
 import { OfflineDownloadsTab } from "./hub/OfflineDownloadsTab";
 import { PlaylistHubTab } from "./hub/PlaylistHubTab";
 import { HealthStorageTab } from "./hub/HealthStorageTab";
 import { LocalMusicManager } from "./LocalMusicManager";
+import { Sparkles } from "lucide-react";
 
 export type HubTabKey =
   | "dashboard"
+  | "lx_search"
   | "cloud"
   | "downloads"
   | "playlists"
@@ -71,6 +74,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
 
   const navTabs = [
     { id: "dashboard", label: "全景看板", icon: LayoutDashboard, badge: null },
+    { id: "lx_search", label: "全网聚搜", icon: Sparkles, badge: "多源" },
     { id: "cloud", label: "云端曲库", icon: Cloud, badge: "5源" },
     { id: "downloads", label: "离线下载", icon: Download, badge: activeCount > 0 ? `${activeCount}` : null },
     { id: "playlists", label: "歌单编排", icon: FolderHeart, badge: null },
@@ -208,6 +212,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
                 onNavigateTab={(tab) => setActiveTab(tab as HubTabKey)}
               />
             )}
+            {activeTab === "lx_search" && <LxMusicSearchTab />}
             {activeTab === "cloud" && <CloudAssetsTab />}
             {activeTab === "downloads" && <OfflineDownloadsTab />}
             {activeTab === "playlists" && <PlaylistHubTab />}

@@ -205,8 +205,14 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
             }}
           />
 
-          <div className="text-[11px] text-white/40 mt-3 p-2.5 rounded-2xl bg-amber-500/[0.06] border border-amber-500/20 text-center">
-            💡 支持在「离线下载」与「曲库自愈」中一键将低码率歌曲批量升级为无损 FLAC。
+          <div className="flex items-center justify-between text-[11px] text-white/60 mt-3 p-2.5 rounded-2xl bg-emerald-500/[0.08] border border-emerald-500/20">
+            <span>✨ 想寻找更多未收录高解析母带？可使用全新「全网聚搜」探索落雪特供源与六大平台。</span>
+            <button
+              onClick={() => onNavigateTab("lx_search")}
+              className="px-2.5 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-semibold border border-emerald-500/30 transition-all shrink-0 ml-2"
+            >
+              即刻探索 ➔
+            </button>
           </div>
         </div>
       </div>
