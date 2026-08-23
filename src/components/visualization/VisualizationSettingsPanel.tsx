@@ -85,7 +85,6 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
   };
 
   const effectLabels: Record<string, string> = {
-    phonkDriftEclipse: "赛博漂移 · 日蚀特异点 (Phonk Drift)",
     cinematicSilkAurora: "流金丝绸极光 (电影感)",
     spatialMesh: "流光幻境",
     cyberpunkParticles: "神经之网",
@@ -136,43 +135,6 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
             <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-3 h-3" /> 效果参数
             </h3>
-
-            {currentEffect === "phonkDriftEclipse" && (
-              <div className="space-y-4">
-                <SettingSlider
-                  label="808 低音震荡烈度"
-                  value={effectSettings.phonkDriftEclipse?.bassIntensity ?? 1.2}
-                  min={0.2}
-                  max={2.5}
-                  step={0.1}
-                  onChange={(v) => updateEffectSettings("phonkDriftEclipse", { bassIntensity: v })}
-                />
-                <SettingSlider
-                  label="极速推进航速"
-                  value={effectSettings.phonkDriftEclipse?.cruiseSpeed ?? 1.3}
-                  min={0.5}
-                  max={3.0}
-                  step={0.1}
-                  onChange={(v) => updateEffectSettings("phonkDriftEclipse", { cruiseSpeed: v })}
-                />
-                <SettingSlider
-                  label="故障色散烈度 (Glitch)"
-                  value={effectSettings.phonkDriftEclipse?.glitchAberration ?? 1.0}
-                  min={0.0}
-                  max={2.0}
-                  step={0.1}
-                  onChange={(v) => updateEffectSettings("phonkDriftEclipse", { glitchAberration: v })}
-                />
-                <SettingSlider
-                  label="色彩主题模式 (0自适应/1霓虹/2暗红/3黑金)"
-                  value={effectSettings.phonkDriftEclipse?.colorMode ?? 0}
-                  min={0}
-                  max={3}
-                  step={1}
-                  onChange={(v) => updateEffectSettings("phonkDriftEclipse", { colorMode: v })}
-                />
-              </div>
-            )}
 
             {currentEffect === "cinematicSilkAurora" && (
               <div className="space-y-4">

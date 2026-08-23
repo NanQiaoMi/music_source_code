@@ -431,9 +431,6 @@ export function VisualizationView() {
           case "cinematicSilkAurora":
             Effects.drawCinematicSilkAurora(effectCtx);
             break;
-          case "phonkDriftEclipse":
-            Effects.drawPhonkDriftEclipse(effectCtx);
-            break;
 
           default:
             Effects.drawSpatialMesh(effectCtx);
@@ -535,13 +532,6 @@ export function VisualizationView() {
         willChange: "filter",
       };
     }
-    if (currentEffect === "phonkDriftEclipse") {
-      return {
-        filter: "contrast(1.08) brightness(1.04)",
-        transform: "translateZ(0)",
-        willChange: "filter",
-      };
-    }
     if (currentEffect === "cinematicSilkAurora") {
       return {
         transform: "translateZ(0)",
@@ -551,7 +541,6 @@ export function VisualizationView() {
   };
 
   const effectsList: { id: VisualizationEffect; name: string }[] = [
-    { id: "phonkDriftEclipse", name: "赛博漂移 · 日蚀特异点 (Phonk Drift)" },
     { id: "cinematicSilkAurora", name: "流金丝绸极光 (电影感)" },
     { id: "spatialMesh", name: "流光幻境" },
     { id: "cyberpunkParticles", name: "神经之网" },
