@@ -14,7 +14,7 @@ interface PhonkParticle {
 }
 
 interface PhonkShockwave {
-  z: number; // 0 (horizon) to 1 (near camera)
+  z: number;
   radius: number;
   maxRadius: number;
   alpha: number;
@@ -63,15 +63,15 @@ let roadScrollOffset = 0;
 let driftCurveOffset = 0;
 let cameraSwayAngle = 0;
 let accretionRotation = 0;
-let orbitalRingAngle = 0;
+let godRayAngle = 0;
 let breathLFO = 0;
 
-const PARTICLE_COUNT = 700;
+const PARTICLE_COUNT = 720;
 const SMOKE_COUNT = 28;
 const SPARK_COUNT = 65;
 const HORIZON_RATIO = 0.44; // 地平线黄金分割比例
 
-// 预烘焙 128x128 电影 35mm 质感胶片纹理 (1.8% 极微底片颗粒，柔化画面)
+// 预烘焙 128x128 电影 35mm 质感胶片纹理 (1.8% 极微底片颗粒)
 let filmGrainCanvas: HTMLCanvasElement | null = null;
 let filmGrainPattern: CanvasPattern | null = null;
 
@@ -148,8 +148,8 @@ function initParticlePool(width: number, height: number) {
 }
 
 /**
- * 赛博漂移 · 电影级日蚀特异点 (Phonk Drift Eclipse 7.0 - Relativistic Gargantua Edition)
- * 极致星际穿越级立体吸积盘、全域引力透镜空间拉扯撕裂、超柔双层高斯流光
+ * 赛博漂移 · 电影级日蚀特异点 (Phonk Drift Eclipse 8.0 - Master Cinema Horizon)
+ * 极致好莱坞宽银幕光学、量子日冕丁达尔光束、时空漏斗引力阱、立体吸积盘与超相对论公转热斑
  */
 export function drawPhonkDriftEclipse({
   ctx,
@@ -207,7 +207,7 @@ export function drawPhonkDriftEclipse({
       : prevTrebleEnergy * 0.88 + hihatTrebleRaw * 0.12;
   prevTrebleEnergy = trebleEnergy;
 
-  // 有机多频呼吸时钟与漂移弯道偏角
+  // 有机多频呼吸时钟
   breathLFO += 0.014;
   const organicBreath = Math.sin(breathLFO) * 0.5 + 0.5;
 
@@ -276,7 +276,42 @@ export function drawPhonkDriftEclipse({
   ctx.fillStyle = skyGrd;
   ctx.fillRect(0, 0, width, horizonY);
 
-  // ─── 1. 远景东京赛博大厦与引力下陷天际线 (Gravitational Depressed Skyline) ───
+  // ─── 1. 日蚀量子丁达尔光束 (Volumetric God Rays behind Eclipse) ───
+  godRayAngle += 0.003 * (1 + midEnergy * 0.5);
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const numGodRays = 14;
+  const rayMaxRadius = Math.max(width, height) * 0.85;
+  const eclipseRadius = Math.min(width, height) * (0.13 + superBass * 0.05 * bassIntensity + organicBreath * 0.008);
+
+  for (let r = 0; r < numGodRays; r++) {
+    const rayAngle = (r / numGodRays) * Math.PI * 2 + godRayAngle;
+    const rayWidth = (Math.sin(rayAngle * 3 + breathLFO) * 0.08 + 0.12) * (1 + superBass * 0.5);
+    const rSample = data[Math.min(data.length - 1, 8 + r * 4)] / 255;
+    const rayAlpha = (0.06 + rSample * 0.15 + superBass * 0.12) * (0.6 + organicBreath * 0.4);
+
+    const rayGrd = ctx.createRadialGradient(
+      centerX,
+      horizonY,
+      eclipseRadius * 0.9,
+      centerX,
+      horizonY,
+      rayMaxRadius
+    );
+    rayGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 80%, ${rayAlpha * 1.5})`);
+    rayGrd.addColorStop(0.35, `hsla(${primaryHue}, 90%, 65%, ${rayAlpha})`);
+    rayGrd.addColorStop(1, "rgba(0,0,0,0)");
+
+    ctx.fillStyle = rayGrd;
+    ctx.beginPath();
+    ctx.moveTo(centerX, horizonY);
+    ctx.arc(centerX, horizonY, rayMaxRadius, rayAngle - rayWidth, rayAngle + rayWidth);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // ─── 2. 远景东京赛博大厦与引力下陷天际线 ───
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
   const skylineBuildingCount = 28;
@@ -289,7 +324,6 @@ export function drawPhonkDriftEclipse({
     const bx = i * bStep;
     const distFromCenter = Math.abs(bx - centerX) / (width * 0.5);
     const isBuilding = i % 2 === 0 && distFromCenter > 0.35;
-    // 奇点引力使得靠近中心的山脉/天际线受到空间向下凹陷拉扯
     const gravitySinkSky = Math.pow(Math.max(0, 1 - distFromCenter), 2) * (18 * superBass);
     const bHeight = (isBuilding
       ? (35 + Math.sin(i * 3.7) * 25) * Math.pow(distFromCenter, 1.2)
@@ -308,10 +342,47 @@ export function drawPhonkDriftEclipse({
   ctx.stroke();
   ctx.restore();
 
-  // ─── 2. 电影光学胶片光晕 (Film Halation Soft Orange Fringe) ───
+  // ─── 3. 电影变形镜头水平光晕与彩虹鬼影 (Anamorphic Streak & Lens Flare Ghosts) ───
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  const eclipseRadius = Math.min(width, height) * (0.13 + superBass * 0.05 * bassIntensity + organicBreath * 0.008);
+
+  // 宽银幕水平变形耀斑 (Anamorphic Streak Flare)
+  const flareWidth = width * (0.95 + superBass * 0.35);
+  const flareHeight = 16 + superBass * 22;
+  const flareGrd = ctx.createRadialGradient(
+    centerX,
+    horizonY,
+    0,
+    centerX,
+    horizonY,
+    flareWidth * 0.5
+  );
+  flareGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 88%, ${0.85 + midEnergy * 0.15})`);
+  flareGrd.addColorStop(0.18, `hsla(${primaryHue}, 90%, 65%, 0.55)`);
+  flareGrd.addColorStop(0.55, `hsla(${accentHue}, 85%, 50%, 0.20)`);
+  flareGrd.addColorStop(1, "rgba(0,0,0,0)");
+
+  ctx.fillStyle = flareGrd;
+  ctx.fillRect(centerX - flareWidth * 0.5, horizonY - flareHeight * 0.5, flareWidth, flareHeight);
+
+  // 电影镜头水平轴向椭圆鬼影反射 (Anamorphic Lens Ghosts)
+  const ghostDistances = [-0.35, -0.18, 0.22, 0.42, 0.65];
+  for (let g = 0; g < ghostDistances.length; g++) {
+    const gx = centerX + ghostDistances[g] * width * 0.4;
+    const gRadius = (16 + g * 12) * (1 + superBass * 0.4);
+    const ghostGrd = ctx.createRadialGradient(gx, horizonY, 0, gx, horizonY, gRadius);
+    const gHue = g % 2 === 0 ? secondaryHue : primaryHue;
+    ghostGrd.addColorStop(0, `hsla(${gHue}, 100%, 75%, ${0.15 + superBass * 0.12})`);
+    ghostGrd.addColorStop(0.7, `hsla(${gHue}, 90%, 55%, 0.05)`);
+    ghostGrd.addColorStop(1, "rgba(0,0,0,0)");
+
+    ctx.fillStyle = ghostGrd;
+    ctx.beginPath();
+    ctx.ellipse(gx, horizonY, gRadius, gRadius * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 电影底片光晕 (Film Halation Soft Orange Fringe)
   const halationRadius = eclipseRadius * (2.4 + superBass * 0.5);
   const halationGrd = ctx.createRadialGradient(
     centerX,
@@ -328,34 +399,10 @@ export function drawPhonkDriftEclipse({
   ctx.beginPath();
   ctx.arc(centerX, horizonY, halationRadius, 0, Math.PI * 2);
   ctx.fill();
-  ctx.restore();
 
-  // ─── 3. 《星际穿越》卡冈图雅立体双环吸积盘与时空引力透镜 (Interstellar Gargantua Lensing System) ───
-  ctx.save();
-  ctx.globalCompositeOperation = "screen";
-
-  // 宽银幕变形镜头柔和水平耀斑
-  const flareWidth = width * (0.92 + superBass * 0.35);
-  const flareHeight = 14 + superBass * 20;
-  const flareGrd = ctx.createRadialGradient(
-    centerX,
-    horizonY,
-    0,
-    centerX,
-    horizonY,
-    flareWidth * 0.5
-  );
-  flareGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 88%, ${0.85 + midEnergy * 0.15})`);
-  flareGrd.addColorStop(0.2, `hsla(${primaryHue}, 90%, 65%, 0.52)`);
-  flareGrd.addColorStop(0.55, `hsla(${accentHue}, 85%, 50%, 0.18)`);
-  flareGrd.addColorStop(1, "rgba(0,0,0,0)");
-
-  ctx.fillStyle = flareGrd;
-  ctx.fillRect(centerX - flareWidth * 0.5, horizonY - flareHeight * 0.5, flareWidth, flareHeight);
-
-  // 两极高能相对论等离子喷流 (Polar Relativistic Plasma Jets)
+  // 两极相对论等离子喷流 (Polar Relativistic Jets)
   const jetHeight = height * (0.60 + superBass * 0.38);
-  const jetWidth = 3.2 + superBass * 4.2;
+  const jetWidth = 3.4 + superBass * 4.4;
   const jetGrd = ctx.createLinearGradient(centerX, horizonY, centerX, horizonY - jetHeight);
   jetGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 92%, ${0.95 + superBass * 0.05})`);
   jetGrd.addColorStop(0.2, `hsla(${primaryHue}, 95%, 72%, 0.65)`);
@@ -365,34 +412,14 @@ export function drawPhonkDriftEclipse({
   ctx.fillStyle = jetGrd;
   ctx.fillRect(centerX - jetWidth * 0.5, horizonY - jetHeight, jetWidth, jetHeight);
 
-  // 大气日冕扩散发光环
-  const coronaGrd = ctx.createRadialGradient(
-    centerX,
-    horizonY,
-    eclipseRadius * 0.75,
-    centerX,
-    horizonY,
-    eclipseRadius * (3.0 + organicBreath * 0.3)
-  );
-  coronaGrd.addColorStop(0, `hsla(${primaryHue}, 95%, 65%, ${0.58 + superBass * 0.25})`);
-  coronaGrd.addColorStop(0.35, `hsla(${secondaryHue}, 85%, 55%, 0.32)`);
-  coronaGrd.addColorStop(0.7, `hsla(${accentHue}, 90%, 45%, 0.12)`);
-  coronaGrd.addColorStop(1, "rgba(0,0,0,0)");
-
-  ctx.fillStyle = coronaGrd;
-  ctx.beginPath();
-  ctx.arc(centerX, horizonY, eclipseRadius * (3.0 + organicBreath * 0.3), 0, Math.PI * 2);
-  ctx.fill();
-
-  // ─── 立体双环爱因斯坦引力透镜弯曲光弧 (Top & Bottom Lensing Halos with Doppler Shift) ───
+  // ─── 4. 《星际穿越》卡冈图雅立体双环吸积盘与超相对论公转热斑 ───
   accretionRotation += 0.012 * (1 + cruiseSpeed * 0.5 + superBass * 0.8);
   ctx.save();
   ctx.translate(centerX, horizonY);
 
-  // 1. 上弧环 (Upper Lensing Halo: 背景吸积盘被引力拉扯到黑洞上方的弯折成像)
+  // 1. 上弧环 (Upper Lensing Halo)
   const topHaloR = eclipseRadius * (1.38 + superBass * 0.28);
   const topHaloGrd = ctx.createLinearGradient(-topHaloR, 0, topHaloR, 0);
-  // 多普勒效应：左侧迎光面为炽热电光青蓝，右侧背光面为深绯红
   topHaloGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 85%, ${0.85 + superBass * 0.15})`);
   topHaloGrd.addColorStop(0.4, `hsla(${primaryHue}, 95%, 72%, 0.80)`);
   topHaloGrd.addColorStop(1, `hsla(${accentHue}, 90%, 55%, ${0.45 + midEnergy * 0.2})`);
@@ -416,7 +443,7 @@ export function drawPhonkDriftEclipse({
   ctx.arc(0, 0, btmHaloR, 0, Math.PI);
   ctx.stroke();
 
-  // 3. 时空测地线与自旋拖拽对数螺旋弦丝 (Spacetime Geodesic Filaments)
+  // 3. 时空测地线与自旋拖拽对数螺旋弦丝
   const spiralCount = 24;
   for (let sp = 0; sp < spiralCount; sp++) {
     const baseAngle = (sp / spiralCount) * Math.PI * 2 + accretionRotation;
@@ -479,12 +506,11 @@ export function drawPhonkDriftEclipse({
     }
   }
 
-  // 5. 赤道主吸积盘 (Volumetric Equatorial Accretion Disk with Lensing Warp)
+  // 5. 赤道主吸积盘与超相对论公转热斑 (Equatorial Disk & Relativistic Hotspots)
   const diskR = eclipseRadius * (1.85 + superBass * 0.35);
   ctx.save();
   ctx.scale(1.0, 0.36);
 
-  // 炽热吸积盘多层等离子光带
   const diskGrd = ctx.createRadialGradient(0, 0, eclipseRadius * 0.92, 0, 0, diskR);
   diskGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 90%, ${0.95 + superBass * 0.05})`);
   diskGrd.addColorStop(0.35, `hsla(${primaryHue}, 95%, 70%, 0.80)`);
@@ -497,7 +523,29 @@ export function drawPhonkDriftEclipse({
   ctx.arc(0, 0, diskR * 0.85, 0, Math.PI * 2);
   ctx.stroke();
 
-  // 吸积盘高速等离子旋流微粒 (Accretion Infall Streams)
+  // 超相对论公转高能热斑 (Relativistic Orbital Hotspots with Doppler Beaming)
+  const numHotspots = 4;
+  for (let h = 0; h < numHotspots; h++) {
+    const hAngle = accretionRotation * 1.6 + (h / numHotspots) * Math.PI * 2;
+    const hRadius = eclipseRadius * (1.15 + (h % 2) * 0.4);
+    const hX = Math.cos(hAngle) * hRadius;
+    const hY = Math.sin(hAngle) * hRadius;
+    // 多普勒蓝移：靠近观察者侧（左侧）亮度激增
+    const dopplerMult = Math.cos(hAngle) < 0 ? 1.8 : 0.45;
+    const hSize = (4.5 + superBass * 4.0) * dopplerMult;
+
+    const spotGrd = ctx.createRadialGradient(hX, hY, 0, hX, hY, hSize * 2.5);
+    spotGrd.addColorStop(0, "#ffffff");
+    spotGrd.addColorStop(0.35, `hsla(${secondaryHue}, 100%, 80%, ${0.9 * dopplerMult})`);
+    spotGrd.addColorStop(1, "rgba(0,0,0,0)");
+
+    ctx.fillStyle = spotGrd;
+    ctx.beginPath();
+    ctx.arc(hX, hY, hSize * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 吸积盘高速等离子旋流微粒
   const streamCount = 56;
   for (let s = 0; s < streamCount; s++) {
     const sAngle = (s / streamCount) * Math.PI * 2 + accretionRotation;
@@ -514,14 +562,14 @@ export function drawPhonkDriftEclipse({
 
   ctx.restore();
 
-  // 黑洞事件视界绝对纯黑内核 (Black Hole Singularity Core)
+  // 黑洞事件视界绝对纯黑内核
   ctx.globalCompositeOperation = "source-over";
   ctx.fillStyle = "#030305";
   ctx.beginPath();
   ctx.arc(centerX, horizonY, eclipseRadius, 0, Math.PI * 2);
   ctx.fill();
 
-  // 光子球面高能电光边缘 (Blazing Photon Sphere Rim)
+  // 光子球面高能电光边缘
   ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 82%, ${0.85 + superBass * 0.15})`;
   ctx.lineWidth = 3.2 + superBass * 2.8;
   ctx.beginPath();
@@ -530,7 +578,7 @@ export function drawPhonkDriftEclipse({
 
   ctx.restore();
 
-  // ─── 4. 地平线精密实时示波器激光 ───
+  // ─── 5. 地平线精密实时示波器激光 ───
   ctx.save();
   ctx.globalCompositeOperation = "screen";
   ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 78%, ${0.38 + superBass * 0.28})`;
@@ -553,7 +601,7 @@ export function drawPhonkDriftEclipse({
   ctx.stroke();
   ctx.restore();
 
-  // ─── 5. 808 低音同心超声速激波 ───
+  // ─── 6. 808 低音同心超声速激波 ───
   ctx.save();
   ctx.globalCompositeOperation = "screen";
   for (let i = activeShockwaves.length - 1; i >= 0; i--) {
@@ -577,7 +625,7 @@ export function drawPhonkDriftEclipse({
   }
   ctx.restore();
 
-  // ─── 6. 湿润沥青公路与时空引力漩涡弯折网格 (Wet Asphalt with Gravitational Space-Warp Grid) ───
+  // ─── 7. 湿润沥青公路与时空漏斗深渊引力网格 (Spacetime Wormhole Funnel Road Grid) ───
   ctx.save();
   const roadHeight = height - horizonY;
   roadScrollOffset += (0.015 + superBass * 0.024) * cruiseSpeed;
@@ -625,14 +673,13 @@ export function drawPhonkDriftEclipse({
     const spanWidth = roadHalfWidth * Math.pow(rawProgress, 1.45);
     if (spanWidth < 6) continue;
 
-    // 弯道水平偏移 + 靠近奇点时的自旋引力漩涡拉扯 (Frame-Dragging Vortex Swirl)
     const swirlFactor = Math.pow(1 - perspectiveZ, 2.5) * (superBass * 32);
     const curveXOffset = Math.sin(perspectiveZ * Math.PI) * driftCurveOffset + swirlFactor;
     const depthFogAlpha = Math.min(1.0, (perspectiveZ - 0.035) * 5.0);
     const lineAlpha = Math.min(1.0, perspectiveZ * 1.4) * (0.30 + superBass * 0.35) * depthFogAlpha;
 
     const waveUndulation = Math.sin(perspectiveZ * 10 - roadScrollOffset * 7) * (superBass * 12 * perspectiveZ);
-    // 奇点引力拉扯上扬
+    // 奇点漏斗式拉扯：中心向上卷入事件视界
     const gravityPullUp = Math.pow(1 - perspectiveZ, 2.2) * (superBass * 36);
     const centerDip = Math.sin(perspectiveZ * Math.PI) * gravitySink + waveUndulation - gravityPullUp;
 
@@ -762,7 +809,7 @@ export function drawPhonkDriftEclipse({
 
   ctx.restore();
 
-  // ─── 7. 漂移橙金火花与低空烟雾 ───
+  // ─── 8. 漂移橙金火花与低空烟雾 ───
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
@@ -816,7 +863,7 @@ export function drawPhonkDriftEclipse({
 
   ctx.restore();
 
-  // ─── 8. 全域引力透镜偏折星尘粒子流 (Gravitational Lensing Deflected Stardust) ───
+  // ─── 9. 全域引力透镜偏折星尘粒子流 ───
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
@@ -840,12 +887,11 @@ export function drawPhonkDriftEclipse({
     let rotX = p.x * cosS - p.y * sinS;
     let rotY = p.x * sinS + p.y * cosS;
 
-    // 奇点引力透镜弯曲全屏星尘空间坐标 (Gravitational Light Deflection)
+    // 奇点引力透镜弯曲全屏星尘空间坐标
     const distToCenter = Math.hypot(rotX, rotY);
     if (distToCenter > 10) {
       const deflectionAngle = Math.atan2(rotY, rotX);
       const deflectionForce = (eclipseRadius * 450) / (distToCenter + 120);
-      // 切线爱因斯坦环弯折拉扯
       rotX += Math.cos(deflectionAngle + Math.PI * 0.5) * (deflectionForce * 0.25 * (1 + superBass));
       rotY += Math.sin(deflectionAngle + Math.PI * 0.5) * (deflectionForce * 0.25 * (1 + superBass));
     }
@@ -876,7 +922,7 @@ export function drawPhonkDriftEclipse({
   }
   ctx.restore();
 
-  // ─── 9. 电影 35mm 胶片颗粒与 2.39:1 柔和变形暗角 ───
+  // ─── 10. 电影 35mm 胶片颗粒与 2.39:1 柔和变形暗角 ───
   ctx.save();
 
   // 胶片颗粒
