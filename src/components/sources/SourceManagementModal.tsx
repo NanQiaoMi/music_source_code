@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -65,6 +65,7 @@ export function SourceManagementModal() {
     updateLXScript,
     removeLXScript,
     toggleLXScript,
+    syncBuiltinDesktopSources,
     applyPreset,
     exportConfigJson,
     importConfigJson,
@@ -72,6 +73,10 @@ export function SourceManagementModal() {
     closeManagementModal,
     setActiveManagementTab,
   } = useSourceConfigStore();
+
+  useEffect(() => {
+    syncBuiltinDesktopSources();
+  }, [syncBuiltinDesktopSources]);
 
   // Local states
   const [isDiagnosing, setIsDiagnosing] = useState(false);
@@ -398,20 +403,41 @@ export function SourceManagementModal() {
             {/* TAB 2: 洛雪 / 自定义脚本 */}
             {activeManagementTab === "lx_scripts" && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-white">洛雪 / 自定义 JS 脚本扩展引擎</h3>
-                    <p className="text-xs text-white/50">
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                      洛雪 / 自定义 JS 脚本扩展引擎
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                        {lxScripts.length} 个音源
+                      </span>
+                    </h3>
+                    <p className="text-xs text-white/50 mt-0.5">
                       支持执行洛雪 (LX Music) 自定义源脚本与标准 JavaScript 解析器
                     </p>
                   </div>
-                  <button
-                    onClick={() => setShowAddScript(true)}
-                    className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/20 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>添加扩展源</span>
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await syncBuiltinDesktopSources();
+                        alert("🎉 已成功载入并同步本地桌面 4 套音源库（独家v4.0、聚合9.3特供版、野草、野花）！");
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm"
+                      title="从桌面音源目录一键刷新并载入最新脚本"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>同步本地 4 大音源</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowAddScript(true)}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/20 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>添加扩展源</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Script Add Modal */}

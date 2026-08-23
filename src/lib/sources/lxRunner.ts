@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import CryptoJS from "crypto-js";
 import { Song } from "@/types/song";
 import { LXCustomScript } from "@/types/sourceConfig";
 
@@ -6,6 +7,100 @@ import { LXCustomScript } from "@/types/sourceConfig";
  * 洛雪 (LX Music) 与自定义 JavaScript 音源脚本解析执行引擎
  */
 export class LXRunner {
+  /**
+   * 构造标准 LX 运行环境与沙箱
+   */
+  private static createSandbox(
+    script: { name?: string; version?: string },
+    onEvent?: (event: string, data: any) => void
+  ) {
+    const handlers: Record<string, (info: any) => Promise<any> | any> = {};
+
+    const lxEnvironment = {
+      EVENT_NAMES: {
+        request: "request",
+        inited: "inited",
+        updateAlert: "updateAlert",
+      },
+      env: "desktop",
+      version: "2.0.0",
+      currentScriptInfo: {
+        name: script.name || "LX Music Source",
+        version: script.version || "1.0.0",
+      },
+      on: (eventName: string, handler: (info: any) => any) => {
+        handlers[eventName] = handler;
+        if (onEvent) onEvent("on:" + eventName, handler);
+      },
+      send: (eventName: string, data: any) => {
+        if (onEvent) onEvent("send:" + eventName, data);
+      },
+      request: (url: string, options: any, callback: (err: any, resp: any) => void) => {
+        const method = options?.method || "GET";
+        const headers = options?.headers || {};
+        const body = options?.body;
+
+        fetch(url, {
+          method,
+          headers,
+          body: typeof body === "object" ? JSON.stringify(body) : body,
+          signal: AbortSignal.timeout(8000),
+        })
+          .then(async (res) => {
+            let resBody: any;
+            const text = await res.text();
+            try {
+              resBody = JSON.parse(text);
+            } catch {
+              resBody = text;
+            }
+
+            const headerEntries: Record<string, string> = {};
+            res.headers.forEach((v, k) => {
+              headerEntries[k] = v;
+            });
+
+            callback(null, {
+              statusCode: res.status,
+              body: resBody,
+              headers: headerEntries,
+            });
+          })
+          .catch((err) => {
+            callback(err, null);
+          });
+      },
+      utils: {
+        buffer: {
+          from: (data: any, encoding?: string) => {
+            if (typeof data === "string") {
+              if (encoding === "hex") return CryptoJS.enc.Hex.parse(data);
+              if (encoding === "base64") return CryptoJS.enc.Base64.parse(data);
+              return CryptoJS.enc.Utf8.parse(data);
+            }
+            return data;
+          },
+          bufToString: (buf: any, encoding?: string) => {
+            if (typeof buf === "string") return buf;
+            if (encoding === "hex") return CryptoJS.enc.Hex.stringify(buf);
+            if (encoding === "base64") return CryptoJS.enc.Base64.stringify(buf);
+            return CryptoJS.enc.Utf8.stringify(buf);
+          },
+        },
+        crypto: {
+          md5: (str: string) => CryptoJS.MD5(str).toString(),
+          sha256: (str: string) => CryptoJS.SHA256(str).toString(),
+          base64: {
+            encode: (str: string) => CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(str)),
+            decode: (str: string) => CryptoJS.enc.Base64.parse(str).toString(CryptoJS.enc.Utf8),
+          },
+        },
+      },
+    };
+
+    return { lxEnvironment, handlers };
+  }
+
   /**
    * 测试执行脚本有效性与语法
    */
@@ -17,44 +112,49 @@ export class LXRunner {
     }
 
     try {
-      // 构造基础模拟执行沙箱
       const sandboxModule: any = { exports: {} };
-      const sandboxGlobal = {
+      let initedInfo: any = null;
+
+      const { lxEnvironment, handlers } = this.createSandbox(
+        { name: "Test Script", version: "1.0" },
+        (event, data) => {
+          if (event.includes("inited")) initedInfo = data;
+        }
+      );
+
+      const fn = new Function("module", "exports", "console", "globalThis", scriptContent);
+
+      const fakeGlobal: any = {
+        lx: lxEnvironment,
         module: sandboxModule,
         exports: sandboxModule.exports,
         console: {
-          log: (...args: any[]) => console.log("[LXRunner Sandbox]", ...args),
-          warn: (...args: any[]) => console.warn("[LXRunner Sandbox]", ...args),
-          error: (...args: any[]) => console.error("[LXRunner Sandbox]", ...args),
+          log: () => {},
+          warn: () => {},
+          error: () => {},
         },
       };
 
-      const fn = new Function(
-        "module",
-        "exports",
-        "console",
-        `
-        try {
-          ${scriptContent}
-        } catch(e) {
-          throw e;
-        }
-      `
-      );
+      fn(sandboxModule, sandboxModule.exports, fakeGlobal.console, fakeGlobal);
 
-      fn(sandboxGlobal.module, sandboxGlobal.exports, sandboxGlobal.console);
+      const hasRequestHandler = Boolean(handlers["request"]);
+      const hasExportSearch = typeof sandboxModule.exports?.search === "function";
+      const hasExportUrl = typeof sandboxModule.exports?.url === "function" || typeof sandboxModule.exports?.getMusicUrl === "function";
 
-      const target =
-        Object.keys(sandboxModule.exports).length > 0
-          ? sandboxModule.exports
-          : (globalThis as any).lx_custom_source || sandboxModule;
+      const isValid = hasRequestHandler || hasExportSearch || hasExportUrl || Boolean(initedInfo);
 
       return {
-        success: true,
-        message: "脚本解析与语法编译成功，支持多源数据解析",
+        success: isValid,
+        message: isValid
+          ? "脚本解析与语法编译成功，已识别 LX 音源协议与请求分发管道"
+          : "脚本已编译，但未检测到标准 lx.on(EVENT_NAMES.request) 或导出方法",
         details: {
-          hasSearch: typeof target.search === "function" || typeof target.musicSearch === "function",
-          hasUrl: typeof target.url === "function" || typeof target.getMusicUrl === "function",
+          hasSearch: hasExportSearch || hasRequestHandler,
+          hasUrl: hasExportUrl || hasRequestHandler,
+          hasRequestHandler,
+          hasExportSearch,
+          hasExportUrl,
+          initedInfo,
         },
       };
     } catch (err: any) {
@@ -63,6 +163,84 @@ export class LXRunner {
         message: `脚本语法执行异常: ${err.message || String(err)}`,
       };
     }
+  }
+
+  /**
+   * 解析指定歌曲的音频直链
+   */
+  public static async getMusicUrl(
+    script: LXCustomScript,
+    song: Song,
+    quality: string = "320k"
+  ): Promise<{ url: string; quality?: string; format?: string } | null> {
+    if (!script.enabled || !script.scriptContent) return null;
+
+    try {
+      const { lxEnvironment, handlers } = this.createSandbox(script);
+      const sandboxModule: any = { exports: {} };
+
+      const fn = new Function("module", "exports", "console", "globalThis", script.scriptContent);
+      const fakeGlobal: any = {
+        lx: lxEnvironment,
+        module: sandboxModule,
+        exports: sandboxModule.exports,
+        console,
+      };
+
+      fn(sandboxModule, sandboxModule.exports, console, fakeGlobal);
+
+      // 1. 标准 LX request handler
+      if (handlers["request"]) {
+        const platformMap: Record<string, string> = {
+          netease: "wy",
+          qq: "tx",
+          kugou: "kg",
+          kuwo: "kw",
+          migu: "mg",
+          wy: "wy",
+          tx: "tx",
+          kg: "kg",
+          kw: "kw",
+          mg: "mg",
+        };
+
+        const targetSource = platformMap[song.source || "wy"] || "wy";
+        const result = await handlers["request"]({
+          source: targetSource,
+          action: "musicUrl",
+          info: {
+            type: quality === "hires" ? "24bit" : quality,
+            musicInfo: {
+              id: song.id,
+              songmid: song.id,
+              name: song.title,
+              title: song.title,
+              artist: song.artist,
+              singer: song.artist,
+              album: song.album,
+              hash: song.id,
+            },
+          },
+        });
+
+        if (result && typeof result === "string" && result.startsWith("http")) {
+          return { url: result, quality };
+        } else if (result?.url && typeof result.url === "string" && result.url.startsWith("http")) {
+          return { url: result.url, quality: result.quality || quality };
+        }
+      }
+
+      // 2. 导出方法降级
+      const engine = sandboxModule.exports;
+      if (typeof engine?.getMusicUrl === "function") {
+        const res = await engine.getMusicUrl(song, quality);
+        if (res?.url) return res;
+      }
+    } catch (e) {
+      console.warn(`[LXRunner] getMusicUrl failed for script ${script.name}:`, e);
+    }
+
+    return null;
   }
 
   /**
@@ -77,11 +255,18 @@ export class LXRunner {
     if (!script.enabled) return [];
 
     try {
-      // 优先从本地代码中执行
       if (script.scriptContent) {
         const sandboxModule: any = { exports: {} };
-        const fn = new Function("module", "exports", script.scriptContent);
-        fn(sandboxModule, sandboxModule.exports);
+        const { lxEnvironment } = this.createSandbox(script);
+        const fakeGlobal: any = {
+          lx: lxEnvironment,
+          module: sandboxModule,
+          exports: sandboxModule.exports,
+          console,
+        };
+
+        const fn = new Function("module", "exports", "console", "globalThis", script.scriptContent);
+        fn(sandboxModule, sandboxModule.exports, console, fakeGlobal);
         const engine = sandboxModule.exports;
 
         if (typeof engine.search === "function") {
@@ -95,7 +280,7 @@ export class LXRunner {
       console.warn(`[LXRunner] Search failed for script ${script.name}:`, err);
     }
 
-    // 默认内置高音质扩展源兼容通道：自动并发检索多源母带与扩展音轨
+    // 默认内置高音质扩展源兼容通道
     try {
       const kw = encodeURIComponent(keyword.trim());
       const fallbackRes = await fetch(
@@ -137,31 +322,7 @@ export class LXRunner {
       // ignore
     }
 
-    // 基础兜底列表
-    return [
-      {
-        id: `lx-${encodeURIComponent(keyword)}-flac`,
-        title: `${keyword} (无损母带音轨)`,
-        artist: "全球无损共享库",
-        album: "LX Hi-Res Master Collection",
-        duration: 254,
-        cover: "/default-cover.svg",
-        source: "lx_custom",
-        audioUrl: "",
-        format: "flac",
-      },
-      {
-        id: `lx-${encodeURIComponent(keyword)}-remix`,
-        title: `${keyword} (高品质重置版)`,
-        artist: "精选高品音源",
-        album: "Audiophile Master Series",
-        duration: 236,
-        cover: "/default-cover.svg",
-        source: "lx_custom",
-        audioUrl: "",
-        format: "mp3",
-      },
-    ];
+    return [];
   }
 
   /**

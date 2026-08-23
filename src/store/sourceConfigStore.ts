@@ -185,6 +185,7 @@ interface SourceConfigState {
   updateLXScript: (id: string, partial: Partial<LXCustomScript>) => void;
   removeLXScript: (id: string) => void;
   toggleLXScript: (id: string) => void;
+  syncBuiltinDesktopSources: () => Promise<void>;
 
   // Preset & Backup
   applyPreset: (presetId: string) => void;
@@ -198,23 +199,69 @@ interface SourceConfigState {
   setActiveManagementTab: (tab: "matrix" | "lx_scripts" | "diagnostics" | "backup" | "offline_cache") => void;
 }
 
+export const DEFAULT_BUILTIN_LX_SCRIPTS: LXCustomScript[] = [
+  {
+    id: "exclusive_v4",
+    name: "[独家音源] v4.0 (洛雪科技)",
+    author: "洛雪科技",
+    version: "4.0.0",
+    description: "独家 v4.0 逆向音源，支持全平台 (wy/tx/kg/kw/mg) 无损母带",
+    scriptUrl: "/api/sources/builtin?id=exclusive_v4",
+    enabled: true,
+    lastUpdated: Date.now(),
+    supportedActions: ["search", "songUrl", "lyric", "pic"],
+  },
+  {
+    id: "aggregate_special_v9",
+    name: "全豆要[聚合音源] 9.3特供版",
+    author: "全豆要 / DeepSeek优化",
+    version: "9.3.0",
+    description: "聚合 星海/溯音/念心/长青/汽水VIP 等多链路自动回退，全平台 24bit/FLAC/320k",
+    scriptUrl: "/api/sources/builtin?id=aggregate_special_v9",
+    enabled: true,
+    lastUpdated: Date.now(),
+    supportedActions: ["search", "songUrl", "lyric", "pic"],
+  },
+  {
+    id: "yecao_v1",
+    name: "野草🌾 音源 v1.0",
+    author: "野草",
+    version: "1.0.0",
+    description: "野草专属 API 节点，支持 wy/tx/kw/kg 128k/320k/flac 解析",
+    scriptUrl: "/api/sources/builtin?id=yecao_v1",
+    enabled: true,
+    lastUpdated: Date.now(),
+    supportedActions: ["search", "songUrl", "lyric", "pic"],
+  },
+  {
+    id: "yehua_v1",
+    name: "野花🌷 音源 v1.0",
+    author: "野花",
+    version: "1.0.0",
+    description: "野花专属 API 节点，高可用全网主流曲库解析",
+    scriptUrl: "/api/sources/builtin?id=yehua_v1",
+    enabled: true,
+    lastUpdated: Date.now(),
+    supportedActions: ["search", "songUrl", "lyric", "pic"],
+  },
+  {
+    id: "lx-builtin-default",
+    name: "Six-Audio 开源六音公共解析源",
+    author: "LX Community",
+    version: "2.1.0",
+    description: "内置开源多音源聚合解析通道，支持标准与高品音质",
+    scriptUrl: "https://raw.githubusercontent.com/lyswhut/lx-music-desktop/master/custom_source.js",
+    enabled: false,
+    lastUpdated: Date.now(),
+    supportedActions: ["search", "songUrl", "lyric", "pic"],
+  },
+];
+
 export const useSourceConfigStore = create<SourceConfigState>()(
   persist(
     (set, get) => ({
       sources: { ...DEFAULT_SOURCES },
-      lxScripts: [
-        {
-          id: "lx-builtin-default",
-          name: "Six-Audio 开源六音公共解析源",
-          author: "LX Community",
-          version: "2.1.0",
-          description: "内置开源多音源聚合解析通道，支持标准与高品音质",
-          scriptUrl: "https://raw.githubusercontent.com/lyswhut/lx-music-desktop/master/custom_source.js",
-          enabled: true,
-          lastUpdated: Date.now(),
-          supportedActions: ["search", "songUrl", "lyric", "pic"],
-        },
-      ],
+      lxScripts: DEFAULT_BUILTIN_LX_SCRIPTS,
       activePreset: "high_quality",
       isManagementModalOpen: false,
       activeManagementTab: "matrix",
@@ -346,6 +393,45 @@ export const useSourceConfigStore = create<SourceConfigState>()(
             item.id === id ? { ...item, enabled: !item.enabled } : item
           ),
         }));
+      },
+
+      syncBuiltinDesktopSources: async () => {
+        try {
+          const res = await fetch("/api/sources/builtin");
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data && Array.isArray(data.sources)) {
+            set((state) => {
+              const existingMap = new Map(state.lxScripts.map((s) => [s.id, s]));
+              const updatedList: LXCustomScript[] = [...state.lxScripts];
+
+              data.sources.forEach((builtin: any) => {
+                const existing = existingMap.get(builtin.id);
+                if (existing) {
+                  existing.scriptContent = builtin.content || existing.scriptContent;
+                  existing.lastUpdated = Date.now();
+                } else {
+                  updatedList.push({
+                    id: builtin.id,
+                    name: builtin.name,
+                    author: builtin.author,
+                    version: builtin.version,
+                    description: builtin.description,
+                    scriptContent: builtin.content,
+                    scriptUrl: `/api/sources/builtin?id=${builtin.id}`,
+                    enabled: true,
+                    lastUpdated: Date.now(),
+                    supportedActions: ["search", "songUrl", "lyric", "pic"],
+                  });
+                }
+              });
+
+              return { lxScripts: updatedList };
+            });
+          }
+        } catch (e) {
+          console.warn("[sourceConfigStore] syncBuiltinDesktopSources error:", e);
+        }
       },
 
       applyPreset: (presetId) => {
