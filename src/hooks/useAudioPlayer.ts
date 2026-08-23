@@ -45,6 +45,7 @@ const currentAudioUrlRef: { current: string | null } = { current: null };
 const isPlayingRef: { current: boolean } = { current: false };
 const currentSongIdRef: { current: string | null } = { current: null };
 const lastRecordedSongIdRef: { current: string | null } = { current: null };
+const lastToastSongIdRef: { current: string | null } = { current: null };
 const rescueInProgressRef: { current: boolean } = { current: false };
 const rescuedUrlsRef: { current: Set<string> } = { current: new Set() };
 const playbackRequestIdRef: { current: number } = { current: 0 };
@@ -248,10 +249,14 @@ const attachListeners = (
   const onWaiting = () => setIsLoading(true);
   const onPlaying = () => {
     setIsLoading(false);
-    // 播放成功后弹出高品质 Toast 提示
+    // 仅在切歌或新曲目初次播放成功时弹出 Toast 提示（杜绝快进/倒退/拖动进度条 seek 时重复刷屏）
     const playingSong = usePlayerStore.getState().currentSong;
     if (playingSong && playingSong.title) {
-      useUIStore.getState().showToast(`▶ 正在播放: 《${playingSong.title}》· ${playingSong.artist || "未知歌手"}`, "success", 2500);
+      const songKey = `${playingSong.id || playingSong.title}`;
+      if (lastToastSongIdRef.current !== songKey) {
+        lastToastSongIdRef.current = songKey;
+        useUIStore.getState().showToast(`▶ 正在播放: 《${playingSong.title}》· ${playingSong.artist || "未知歌手"}`, "success", 2500);
+      }
     }
     // 对网络歌曲触发后台缓存（不阻塞播放）
     const currentSrc = audio.src;
@@ -601,6 +606,7 @@ export const useAudioPlayer = () => {
       currentSongIdRef.current = songId;
       if (previousSongId !== songId) {
         lastRecordedSongIdRef.current = null;
+        lastToastSongIdRef.current = null;
         rescueInProgressRef.current = false;
         rescuedUrlsRef.current.clear();
       }
