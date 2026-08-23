@@ -695,23 +695,23 @@ export class MultiSourceResolver {
     const endpoints: { key: string; url: string }[] = [];
     if (isEnabled("netease")) {
       const base = sourceConfigs?.netease?.customApiBase || getApiBase();
-      endpoints.push({ key: "netease", url: `${base}/api/search?keywords=${kw}&limit=50` });
+      endpoints.push({ key: "netease", url: `${base}/api/search?keywords=${kw}&limit=100` });
     }
     if (isEnabled("qq")) {
       const base = sourceConfigs?.qq?.customApiBase || getApiBase();
-      endpoints.push({ key: "qq", url: `${base}/api/qq/search?keywords=${kw}&limit=50` });
+      endpoints.push({ key: "qq", url: `${base}/api/qq/search?keywords=${kw}&limit=100` });
     }
     if (isEnabled("kugou")) {
       const base = sourceConfigs?.kugou?.customApiBase || getApiBase();
-      endpoints.push({ key: "kugou", url: `${base}/api/kugou/search?keywords=${kw}&limit=50` });
+      endpoints.push({ key: "kugou", url: `${base}/api/kugou/search?keywords=${kw}&limit=100` });
     }
     if (isEnabled("kuwo")) {
       const base = sourceConfigs?.kuwo?.customApiBase || getApiBase();
-      endpoints.push({ key: "kuwo", url: `${base}/api/kuwo/search?keywords=${kw}&limit=50` });
+      endpoints.push({ key: "kuwo", url: `${base}/api/kuwo/search?keywords=${kw}&limit=100` });
     }
     if (isEnabled("qishui")) {
       const base = sourceConfigs?.qishui?.customApiBase || getApiBase();
-      endpoints.push({ key: "qishui", url: `${base}/api/qishui/search?keywords=${kw}&limit=30` });
+      endpoints.push({ key: "qishui", url: `${base}/api/qishui/search?keywords=${kw}&limit=60` });
     }
 
     const results: SegmentedSearchResults = {
@@ -727,7 +727,7 @@ export class MultiSourceResolver {
 
     const fetchTasks = endpoints.map(async (ep) => {
       try {
-        const r = await fetch(ep.url, { signal: AbortSignal.timeout(4000) });
+        const r = await fetch(ep.url, { signal: AbortSignal.timeout(5000) });
         if (!r.ok) return { key: ep.key, songs: [] };
         const data = await r.json();
         return { key: ep.key, songs: Array.isArray(data.songs) ? data.songs : [] };
@@ -750,7 +750,7 @@ export class MultiSourceResolver {
           lastUpdated: Date.now(),
           supportedActions: ["search" as const],
         };
-        const lxSongs = await LXRunner.search(activeScript, keywords.trim(), 1, 30);
+        const lxSongs = await LXRunner.search(activeScript, keywords.trim(), 1, 100);
         return { key: "lx_custom", songs: lxSongs };
       } catch {
         return { key: "lx_custom", songs: [] };

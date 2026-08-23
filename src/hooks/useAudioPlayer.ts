@@ -672,9 +672,10 @@ export const useAudioPlayer = () => {
 
       if (playbackRequestIdRef.current !== requestId) return;
 
-      // 如果当前歌曲没有 audioUrl，或者 audioUrl 是可能 404 的网易云静态外链，自动调用 MultiSourceResolver 实时解析真流
+      // 如果当前歌曲没有有效 audioUrl，或者 audioUrl 是可能 404 的网易云静态外链，自动调用 MultiSourceResolver 实时解析真流
       const isRiskyOuterUrl = Boolean(audioUrl && audioUrl.includes("music.163.com/song/media/outer/url"));
-      if ((!audioUrl || isRiskyOuterUrl) && currentSong) {
+      const isInvalidUrl = !audioUrl || (!audioUrl.startsWith("http") && !audioUrl.startsWith("blob:") && !audioUrl.startsWith("data:"));
+      if ((isInvalidUrl || isRiskyOuterUrl) && currentSong) {
         try {
           const resolved = await multiSourceResolver.resolvePlayableAudio({
             id: currentSong.id,

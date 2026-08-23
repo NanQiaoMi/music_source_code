@@ -231,7 +231,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   isSearching: false,
   isVoiceSearch: false,
   page: 1,
-  pageSize: 50,
+  pageSize: 100,
   totalResults: 0,
   filters: { ...defaultFilters },
   searchHistory: [],

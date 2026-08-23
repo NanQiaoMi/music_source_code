@@ -20,8 +20,8 @@ const MEDIA_ERROR_DESCRIPTIONS: Record<number, string> = {
 export function hasPlayableAudioSource(song: AudioSourceSong): boolean {
   if (!song) return false;
   if (song.audioUrl && song.audioUrl.trim().length > 0) return true;
-  // 在线平台音源（netease, qq, kugou, kuwo, qishui, cross_matched 等）支持在播放时动态嗅探解析真实母带流
-  if (song.source && song.source !== "local" && song.source !== "demo") {
+  // 在线平台音源（netease, qq, kugou, kuwo, qishui, lx_custom 等）支持在播放时动态嗅探解析真实音频流
+  if (song.source && song.source !== "local" && song.source !== "demo" && song.source !== "upload") {
     return Boolean((song.id && String(song.id).trim().length > 0) || (song.title && song.title.trim().length > 0));
   }
   return false;

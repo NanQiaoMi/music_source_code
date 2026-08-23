@@ -40,34 +40,45 @@ export class LXRunner {
         const headers = options?.headers || {};
         const body = options?.body;
 
-        fetch(url, {
-          method,
-          headers,
-          body: typeof body === "object" ? JSON.stringify(body) : body,
-          signal: AbortSignal.timeout(8000),
-        })
-          .then(async (res) => {
-            let resBody: any;
-            const text = await res.text();
-            try {
-              resBody = JSON.parse(text);
-            } catch {
-              resBody = text;
-            }
+        const executeFetch = async (targetUrl: string) => {
+          const res = await fetch(targetUrl, {
+            method,
+            headers,
+            body: typeof body === "object" ? JSON.stringify(body) : body,
+            signal: AbortSignal.timeout(8000),
+          });
 
-            const headerEntries: Record<string, string> = {};
-            res.headers.forEach((v, k) => {
-              headerEntries[k] = v;
-            });
+          let resBody: any;
+          const text = await res.text();
+          try {
+            resBody = JSON.parse(text);
+          } catch {
+            resBody = text;
+          }
 
-            callback(null, {
-              statusCode: res.status,
-              body: resBody,
-              headers: headerEntries,
-            });
-          })
+          const headerEntries: Record<string, string> = {};
+          res.headers.forEach((v, k) => {
+            headerEntries[k] = v;
+          });
+
+          return {
+            statusCode: res.status,
+            body: resBody,
+            headers: headerEntries,
+          };
+        };
+
+        executeFetch(url)
+          .then((resp) => callback(null, resp))
           .catch((err) => {
-            callback(err, null);
+            if (typeof window !== "undefined" && url.startsWith("http")) {
+              const proxyUrl = `/api/audio/proxy?url=${encodeURIComponent(url)}`;
+              executeFetch(proxyUrl)
+                .then((resp) => callback(null, resp))
+                .catch((proxyErr) => callback(proxyErr, null));
+            } else {
+              callback(err, null);
+            }
           });
       },
       utils: {
@@ -250,29 +261,37 @@ export class LXRunner {
           mg: "mg",
         };
 
-        const targetSource = platformMap[song.source || "wy"] || "wy";
-        const result = await handlers["request"]({
-          source: targetSource,
-          action: "musicUrl",
-          info: {
-            type: quality === "hires" ? "24bit" : quality,
-            musicInfo: {
-              id: song.id,
-              songmid: song.id,
-              name: song.title,
-              title: song.title,
-              artist: song.artist,
-              singer: song.artist,
-              album: song.album,
-              hash: song.id,
-            },
-          },
-        });
+        const primaryPlatform = platformMap[song.source || "wy"] || "wy";
+        const candidatePlatforms = Array.from(new Set([primaryPlatform, "wy", "tx", "kw", "kg", "mg"]));
 
-        if (result && typeof result === "string" && result.startsWith("http")) {
-          return { url: result, quality };
-        } else if (result?.url && typeof result.url === "string" && result.url.startsWith("http")) {
-          return { url: result.url, quality: result.quality || quality };
+        for (const platform of candidatePlatforms) {
+          try {
+            const result = await handlers["request"]({
+              source: platform,
+              action: "musicUrl",
+              info: {
+                type: quality === "hires" ? "24bit" : quality,
+                musicInfo: {
+                  id: song.id,
+                  songmid: song.id,
+                  name: song.title,
+                  title: song.title,
+                  artist: song.artist,
+                  singer: song.artist,
+                  album: song.album,
+                  hash: song.id,
+                },
+              },
+            });
+
+            if (result && typeof result === "string" && result.startsWith("http")) {
+              return { url: result, quality };
+            } else if (result?.url && typeof result.url === "string" && result.url.startsWith("http")) {
+              return { url: result.url, quality: result.quality || quality };
+            }
+          } catch {
+            // continue next platform
+          }
         }
       }
 

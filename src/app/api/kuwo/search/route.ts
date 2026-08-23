@@ -14,7 +14,7 @@ function decodeEntities(str: string): string {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const keywords = searchParams.get("keywords") || searchParams.get("s") || "";
-  const limit = parseInt(searchParams.get("limit") || "40", 10);
+  const limit = parseInt(searchParams.get("limit") || "100", 10);
   const page = parseInt(searchParams.get("page") || "0", 10);
 
   if (!keywords.trim()) {
