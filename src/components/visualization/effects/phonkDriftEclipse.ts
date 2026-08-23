@@ -318,12 +318,15 @@ export function drawPhonkDriftEclipse({
   ctx.restore();
 
   // ─── 4. 真实《星际穿越》数学一体化闭合相对论流体吸积盘 (Unified Relativistic Accretion Engine) ───
-  // 采用广义相对论引力透镜连续映射：多重高斯羽化与丝滑等离子流光
+  // 采用广义相对论引力透镜连续映射：多重高斯羽化与丝滑等离子温润流光
   const diskTilt = 0.22; // 倾角
   const NUM_RINGS = 95;
   const ANGULAR_STEPS = 64;
   const minR = eventHorizonR * 1.05;
   const maxR = eventHorizonR * (3.3 + superBass * 0.5);
+
+  // 优雅温润高光色相：柔和香槟紫罗兰，告别刺眼电光青蓝
+  const softHighlightHue = (primaryHue + 20) % 360;
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";
@@ -337,28 +340,29 @@ export function drawPhonkDriftEclipse({
     blackHoleY - eventHorizonR * 0.3,
     eventHorizonR * 2.8
   );
-  softHaloGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 85%, ${0.18 + superBass * 0.08})`);
-  softHaloGrd.addColorStop(0.35, `hsla(${primaryHue}, 90%, 65%, ${0.10 + mid * 0.05})`);
-  softHaloGrd.addColorStop(0.75, `hsla(${accentHue}, 85%, 50%, 0.03)`);
+  softHaloGrd.addColorStop(0, `hsla(${softHighlightHue}, 85%, 75%, ${0.12 + superBass * 0.06})`);
+  softHaloGrd.addColorStop(0.35, `hsla(${primaryHue}, 80%, 60%, ${0.08 + mid * 0.04})`);
+  softHaloGrd.addColorStop(0.75, `hsla(${accentHue}, 75%, 45%, 0.02)`);
   softHaloGrd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = softHaloGrd;
   ctx.fillRect(cx - maxR, blackHoleY - maxR, maxR * 2, maxR * 2);
 
   // ─── 4.1 绘制吸积盘背部引力透镜光拱 (Back Half: Lensed Upper Arch) ───
-  // 双 Pass 渲染：底层宽幅高斯漫射羽化 + 顶层丝滑柔光流体
+  // 双 Pass 渲染：底层宽幅漫射羽化 + 顶层丝滑温润流体
   for (let k = 0; k < NUM_RINGS; k++) {
     const frac = k / (NUM_RINGS - 1);
     const r = minR + Math.pow(frac, 1.18) * (maxR - minR);
-    const ringSpeed = (0.010 + (1 / Math.sqrt(r * 2)) * 0.24) * (1 + superBass * 1.8);
+    const ringSpeed = (0.009 + (1 / Math.sqrt(r * 2)) * 0.20) * (1 + superBass * 1.6);
     const ringRot = diskRotation * ringSpeed * 36;
 
-    // 柔和边缘羽化：外圈以平方平滑衰减，无生硬边界
+    // 柔和边缘羽化：外圈平滑消隐
     const edgeFade = Math.pow(1 - frac, 1.4);
-    const baseAlpha = edgeFade * (0.22 + superBass * 0.16);
-    const waveMod = Math.sin(ringRot * 2 + k * 0.25) * 0.08;
+    const baseAlpha = edgeFade * (0.18 + superBass * 0.14);
+    const waveMod = Math.sin(ringRot * 2 + k * 0.25) * 0.06;
 
-    const ringHue = frac < 0.25 ? secondaryHue : frac < 0.65 ? primaryHue : accentHue;
-    const ringLight = frac < 0.15 ? 90 : frac < 0.5 ? 72 : 52;
+    const ringHue = frac < 0.22 ? softHighlightHue : frac < 0.65 ? primaryHue : accentHue;
+    const ringSat = frac < 0.22 ? 80 : 85;
+    const ringLight = frac < 0.15 ? 82 : frac < 0.5 ? 68 : 48;
     const alphaVal = Math.max(0, baseAlpha + waveMod);
 
     // Pass 1: 底层宽幅漫射高斯羽化 (Soft Glow Bloom)
@@ -367,7 +371,7 @@ export function drawPhonkDriftEclipse({
       let p1Started = false;
       for (let j = 0; j <= ANGULAR_STEPS / 2; j++) {
         const theta = Math.PI + (j / (ANGULAR_STEPS / 2)) * Math.PI;
-        const curR = r + Math.sin(theta * 4 + ringRot) * (1.5 + superBass * 2.0);
+        const curR = r + Math.sin(theta * 4 + ringRot) * (1.2 + superBass * 1.6);
         const cosT = Math.cos(theta);
         const sinT = Math.sin(theta);
         const px = cx + curR * cosT;
@@ -379,8 +383,8 @@ export function drawPhonkDriftEclipse({
           ctx.lineTo(px, lensedY);
         }
       }
-      ctx.strokeStyle = `hsla(${ringHue}, 95%, ${ringLight}%, ${alphaVal * 0.22})`;
-      ctx.lineWidth = Math.max(2.5, (1 - frac) * 9.0 + superBass * 3.5);
+      ctx.strokeStyle = `hsla(${ringHue}, ${ringSat}%, ${ringLight}%, ${alphaVal * 0.18})`;
+      ctx.lineWidth = Math.max(2.5, (1 - frac) * 8.0 + superBass * 3.0);
       ctx.stroke();
     }
 
@@ -389,7 +393,7 @@ export function drawPhonkDriftEclipse({
     let started = false;
     for (let j = 0; j <= ANGULAR_STEPS / 2; j++) {
       const theta = Math.PI + (j / (ANGULAR_STEPS / 2)) * Math.PI;
-      const curR = r + Math.sin(theta * 4 + ringRot) * (1.5 + superBass * 2.0);
+      const curR = r + Math.sin(theta * 4 + ringRot) * (1.2 + superBass * 1.6);
       const cosT = Math.cos(theta);
       const sinT = Math.sin(theta);
       const px = cx + curR * cosT;
@@ -401,8 +405,8 @@ export function drawPhonkDriftEclipse({
         ctx.lineTo(px, lensedY);
       }
     }
-    ctx.strokeStyle = `hsla(${ringHue}, 100%, ${ringLight}%, ${alphaVal * 0.80})`;
-    ctx.lineWidth = Math.max(0.65, (1 - frac) * 2.4 + superBass * 1.4);
+    ctx.strokeStyle = `hsla(${ringHue}, ${ringSat}%, ${ringLight}%, ${alphaVal * 0.65})`;
+    ctx.lineWidth = Math.max(0.60, (1 - frac) * 2.0 + superBass * 1.2);
     ctx.stroke();
   }
 
@@ -421,19 +425,20 @@ export function drawPhonkDriftEclipse({
   ctx.restore();
 
   // ─── 4.3 绘制吸积盘前部倾斜主光盘 (Front Half: Tilted Equatorial Disk) ───
-  // 双 Pass 渲染：底层柔光漫射 + 顶层丝滑前倾光流
+  // 温润柔光前倾盘，告别刺眼蓝光，柔和通透
   for (let k = 0; k < NUM_RINGS; k++) {
     const frac = k / (NUM_RINGS - 1);
     const r = minR + Math.pow(frac, 1.18) * (maxR - minR);
-    const ringSpeed = (0.010 + (1 / Math.sqrt(r * 2)) * 0.24) * (1 + superBass * 1.8);
+    const ringSpeed = (0.009 + (1 / Math.sqrt(r * 2)) * 0.20) * (1 + superBass * 1.6);
     const ringRot = diskRotation * ringSpeed * 36;
 
     const edgeFade = Math.pow(1 - frac, 1.35);
-    const baseAlpha = edgeFade * (0.26 + superBass * 0.18);
-    const waveMod = Math.sin(ringRot * 2 + k * 0.25) * 0.08;
+    const baseAlpha = edgeFade * (0.20 + superBass * 0.14);
+    const waveMod = Math.sin(ringRot * 2 + k * 0.25) * 0.06;
 
-    const ringHue = frac < 0.25 ? secondaryHue : frac < 0.65 ? primaryHue : accentHue;
-    const ringLight = frac < 0.15 ? 92 : frac < 0.5 ? 76 : 56;
+    const ringHue = frac < 0.22 ? softHighlightHue : frac < 0.65 ? primaryHue : accentHue;
+    const ringSat = frac < 0.22 ? 80 : 85;
+    const ringLight = frac < 0.15 ? 84 : frac < 0.5 ? 70 : 50;
     const alphaVal = Math.max(0, baseAlpha + waveMod);
 
     // Pass 1: 底层漫射柔光 (Soft Glow)
@@ -442,7 +447,7 @@ export function drawPhonkDriftEclipse({
       let p1Started = false;
       for (let j = 0; j <= ANGULAR_STEPS / 2; j++) {
         const theta = (j / (ANGULAR_STEPS / 2)) * Math.PI;
-        const curR = r + Math.sin(theta * 4 + ringRot) * (1.5 + superBass * 2.0);
+        const curR = r + Math.sin(theta * 4 + ringRot) * (1.2 + superBass * 1.6);
         const cosT = Math.cos(theta);
         const sinT = Math.sin(theta);
         const px = cx + curR * cosT;
@@ -454,8 +459,8 @@ export function drawPhonkDriftEclipse({
           ctx.lineTo(px, frontY);
         }
       }
-      ctx.strokeStyle = `hsla(${ringHue}, 95%, ${ringLight}%, ${alphaVal * 0.24})`;
-      ctx.lineWidth = Math.max(3.0, (1 - frac) * 10.0 + superBass * 4.0);
+      ctx.strokeStyle = `hsla(${ringHue}, ${ringSat}%, ${ringLight}%, ${alphaVal * 0.20})`;
+      ctx.lineWidth = Math.max(2.5, (1 - frac) * 8.5 + superBass * 3.2);
       ctx.stroke();
     }
 
@@ -464,7 +469,7 @@ export function drawPhonkDriftEclipse({
     let started = false;
     for (let j = 0; j <= ANGULAR_STEPS / 2; j++) {
       const theta = (j / (ANGULAR_STEPS / 2)) * Math.PI;
-      const curR = r + Math.sin(theta * 4 + ringRot) * (1.5 + superBass * 2.0);
+      const curR = r + Math.sin(theta * 4 + ringRot) * (1.2 + superBass * 1.6);
       const cosT = Math.cos(theta);
       const sinT = Math.sin(theta);
       const px = cx + curR * cosT;
@@ -476,35 +481,35 @@ export function drawPhonkDriftEclipse({
         ctx.lineTo(px, frontY);
       }
     }
-    ctx.strokeStyle = `hsla(${ringHue}, 100%, ${ringLight}%, ${alphaVal * 0.85})`;
-    ctx.lineWidth = Math.max(0.70, (1 - frac) * 2.8 + superBass * 1.6);
+    ctx.strokeStyle = `hsla(${ringHue}, ${ringSat}%, ${ringLight}%, ${alphaVal * 0.68})`;
+    ctx.lineWidth = Math.max(0.65, (1 - frac) * 2.2 + superBass * 1.3);
     ctx.stroke();
   }
 
   // ─── 4.4 极细柔和光子球临界薄环 (Soft Photon Sphere Rim) ───
   const photonSphereR = eventHorizonR * 1.02;
-  ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 94%, ${0.85 + superBass * 0.10})`;
-  ctx.lineWidth = 1.2 + superBass * 1.2;
-  ctx.shadowColor = `hsla(${primaryHue}, 100%, 75%, 0.65)`;
-  ctx.shadowBlur = 18;
+  ctx.strokeStyle = `hsla(${softHighlightHue}, 85%, 82%, ${0.72 + superBass * 0.08})`;
+  ctx.lineWidth = 1.1 + superBass * 1.0;
+  ctx.shadowColor = `hsla(${primaryHue}, 90%, 65%, 0.50)`;
+  ctx.shadowBlur = 15;
   ctx.beginPath();
   ctx.arc(cx, blackHoleY, photonSphereR, 0, Math.PI * 2);
   ctx.stroke();
   ctx.shadowBlur = 0; // 重置阴影避免污染其他图元
 
   // ─── 4.5 2.39:1 变形宽银幕柔和水平拉丝耀斑 (Silky Anamorphic Flare) ───
-  const flareW = width * (0.88 + superBass * 0.25);
-  const flareH = 8 + superBass * 10;
+  const flareW = width * (0.85 + superBass * 0.20);
+  const flareH = 6 + superBass * 8;
   const leftFlareGrd = ctx.createLinearGradient(cx - flareW * 0.5, blackHoleY, cx - eventHorizonR * 1.04, blackHoleY);
   leftFlareGrd.addColorStop(0, "rgba(0,0,0,0)");
-  leftFlareGrd.addColorStop(0.5, `hsla(${secondaryHue}, 100%, 85%, 0.20)`);
-  leftFlareGrd.addColorStop(1, `hsla(${secondaryHue}, 100%, 96%, 0.75)`);
+  leftFlareGrd.addColorStop(0.5, `hsla(${softHighlightHue}, 80%, 75%, 0.15)`);
+  leftFlareGrd.addColorStop(1, `hsla(${softHighlightHue}, 85%, 88%, 0.55)`);
   ctx.fillStyle = leftFlareGrd;
   ctx.fillRect(cx - flareW * 0.5, blackHoleY - flareH * 0.5, flareW * 0.5 - eventHorizonR * 1.04, flareH);
 
   const rightFlareGrd = ctx.createLinearGradient(cx + eventHorizonR * 1.04, blackHoleY, cx + flareW * 0.5, blackHoleY);
-  rightFlareGrd.addColorStop(0, `hsla(${accentHue}, 90%, 82%, 0.55)`);
-  rightFlareGrd.addColorStop(0.5, `hsla(${primaryHue}, 85%, 65%, 0.18)`);
+  rightFlareGrd.addColorStop(0, `hsla(${accentHue}, 85%, 75%, 0.45)`);
+  rightFlareGrd.addColorStop(0.5, `hsla(${primaryHue}, 80%, 60%, 0.14)`);
   rightFlareGrd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = rightFlareGrd;
   ctx.fillRect(cx + eventHorizonR * 1.04, blackHoleY - flareH * 0.5, flareW * 0.5 - eventHorizonR * 1.04, flareH);
@@ -524,8 +529,8 @@ export function drawPhonkDriftEclipse({
     }
     const curR = sw.radius + (sw.maxRadius - sw.radius) * Math.pow(sw.z, 1.3);
     ctx.strokeStyle = sw.color;
-    ctx.globalAlpha = sw.alpha * 0.70;
-    ctx.lineWidth = 2.0 + sw.z * 3.5;
+    ctx.globalAlpha = sw.alpha * 0.55;
+    ctx.lineWidth = 1.6 + sw.z * 2.8;
     ctx.beginPath();
     ctx.ellipse(cx, horizonY + sw.z * (height - horizonY) * 0.85, curR, curR * 0.35, 0, 0, Math.PI * 2);
     ctx.stroke();
@@ -541,7 +546,7 @@ export function drawPhonkDriftEclipse({
   const groundGrd = ctx.createLinearGradient(0, horizonY - 20, 0, height);
   groundGrd.addColorStop(0, `hsla(${primaryHue}, 75%, 8%, 0.35)`);
   groundGrd.addColorStop(0.12, `hsla(${primaryHue}, 70%, 6%, 0.95)`);
-  groundGrd.addColorStop(0.65, `hsla(${secondaryHue}, 65%, 4%, 0.98)`);
+  groundGrd.addColorStop(0.65, `hsla(${accentHue}, 65%, 4%, 0.98)`);
   groundGrd.addColorStop(1, "#010103");
   ctx.fillStyle = groundGrd;
   ctx.fillRect(0, horizonY - 20, width, roadHeight + 20);
@@ -556,9 +561,9 @@ export function drawPhonkDriftEclipse({
     horizonY + roadHeight * 0.5,
     Math.max(width * 0.45, roadHeight * 0.9)
   );
-  floorReflectGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 75%, ${0.40 + superBass * 0.25})`);
-  floorReflectGrd.addColorStop(0.3, `hsla(${primaryHue}, 85%, 55%, ${0.20 + mid * 0.12})`);
-  floorReflectGrd.addColorStop(0.7, `hsla(${accentHue}, 80%, 40%, 0.05)`);
+  floorReflectGrd.addColorStop(0, `hsla(${softHighlightHue}, 85%, 70%, ${0.30 + superBass * 0.18})`);
+  floorReflectGrd.addColorStop(0.3, `hsla(${primaryHue}, 80%, 50%, ${0.15 + mid * 0.10})`);
+  floorReflectGrd.addColorStop(0.7, `hsla(${accentHue}, 75%, 35%, 0.03)`);
   floorReflectGrd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = floorReflectGrd;
   ctx.fillRect(0, horizonY, width, roadHeight);
@@ -583,21 +588,21 @@ export function drawPhonkDriftEclipse({
     const swirlOffset = Math.pow(1 - pZ, 2.5) * (superBass * 28);
     const curveX = Math.sin(pZ * Math.PI) * driftOffset + swirlOffset;
     const depthAlpha = Math.min(1.0, Math.pow((pZ - 0.015) * 4.2, 1.2));
-    const lineAlpha = Math.min(1.0, pZ * 1.4) * (0.28 + superBass * 0.32) * depthAlpha;
+    const lineAlpha = Math.min(1.0, pZ * 1.4) * (0.24 + superBass * 0.26) * depthAlpha;
 
     const centerDip = Math.sin(pZ * Math.PI) * gravityFunnelSink - Math.pow(1 - pZ, 2.2) * (superBass * 25);
 
     // 底层霓虹晕染
-    ctx.strokeStyle = `hsla(${primaryHue}, 90%, 65%, ${lineAlpha * 0.35})`;
-    ctx.lineWidth = Math.max(2.0, pZ * 4.8);
+    ctx.strokeStyle = `hsla(${primaryHue}, 85%, 60%, ${lineAlpha * 0.30})`;
+    ctx.lineWidth = Math.max(2.0, pZ * 4.2);
     ctx.beginPath();
     ctx.moveTo(cx + curveX - spanW, lineY);
     ctx.quadraticCurveTo(cx + curveX, lineY + centerDip, cx + curveX + spanW, lineY);
     ctx.stroke();
 
     // 顶层激光核心
-    ctx.strokeStyle = `hsla(${primaryHue}, 85%, ${55 + pZ * 22}%, ${lineAlpha})`;
-    ctx.lineWidth = Math.max(0.7, pZ * 2.0);
+    ctx.strokeStyle = `hsla(${primaryHue}, 80%, ${50 + pZ * 20}%, ${lineAlpha * 0.85})`;
+    ctx.lineWidth = Math.max(0.65, pZ * 1.8);
     ctx.beginPath();
     ctx.moveTo(cx + curveX - spanW, lineY);
     ctx.quadraticCurveTo(cx + curveX, lineY + centerDip, cx + curveX + spanW, lineY);
@@ -610,20 +615,20 @@ export function drawPhonkDriftEclipse({
     const isCenterLane = Math.abs(normX) < 0.08;
     const isOuterRail = Math.abs(normX) > 0.88;
 
-    const baseAlpha = isCenterLane ? 0.82 + superBass * 0.15 : isOuterRail ? 0.72 + mid * 0.20 : (0.28 + (1 - Math.abs(normX)) * 0.32) * (0.55 + superBass * 0.35);
-    const laneHue = isCenterLane ? secondaryHue : isOuterRail ? accentHue : primaryHue;
-    const laneSat = isCenterLane || isOuterRail ? 100 : 85;
-    const laneLight = isCenterLane ? 80 : isOuterRail ? 72 : 55;
+    const baseAlpha = isCenterLane ? 0.72 + superBass * 0.12 : isOuterRail ? 0.65 + mid * 0.16 : (0.24 + (1 - Math.abs(normX)) * 0.28) * (0.50 + superBass * 0.30);
+    const laneHue = isCenterLane ? softHighlightHue : isOuterRail ? accentHue : primaryHue;
+    const laneSat = isCenterLane || isOuterRail ? 85 : 80;
+    const laneLight = isCenterLane ? 75 : isOuterRail ? 68 : 52;
 
     // 底层柔光
     const bGrd = ctx.createLinearGradient(0, horizonY, 0, height);
     bGrd.addColorStop(0, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, 0)`);
-    bGrd.addColorStop(0.18, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.12})`);
-    bGrd.addColorStop(0.6, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.32})`);
-    bGrd.addColorStop(1, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.42})`);
+    bGrd.addColorStop(0.18, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.10})`);
+    bGrd.addColorStop(0.6, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.28})`);
+    bGrd.addColorStop(1, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.38})`);
 
     ctx.strokeStyle = bGrd;
-    ctx.lineWidth = isCenterLane ? 4.8 : isOuterRail ? 3.8 : 2.0;
+    ctx.lineWidth = isCenterLane ? 4.2 : isOuterRail ? 3.4 : 1.8;
 
     const endX = cx + normX * roadHalfW;
     const controlDip = isCenterLane ? gravityFunnelSink * 0.8 : gravityFunnelSink * 0.3 * (1 - Math.abs(normX));
@@ -643,12 +648,12 @@ export function drawPhonkDriftEclipse({
     // 顶层核心激光
     const cGrd = ctx.createLinearGradient(0, horizonY, 0, height);
     cGrd.addColorStop(0, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, 0)`);
-    cGrd.addColorStop(0.18, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.18})`);
-    cGrd.addColorStop(0.6, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.65})`);
-    cGrd.addColorStop(1, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha})`);
+    cGrd.addColorStop(0.18, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.15})`);
+    cGrd.addColorStop(0.6, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.55})`);
+    cGrd.addColorStop(1, `hsla(${laneHue}, ${laneSat}%, ${laneLight}%, ${baseAlpha * 0.85})`);
 
     ctx.strokeStyle = cGrd;
-    ctx.lineWidth = isCenterLane ? 2.0 : isOuterRail ? 1.6 : 0.85;
+    ctx.lineWidth = isCenterLane ? 1.6 : isOuterRail ? 1.3 : 0.75;
 
     ctx.beginPath();
     ctx.moveTo(cx + normX * (eventHorizonR * 0.18), blackHoleY + eventHorizonR * 0.95);
@@ -670,8 +675,8 @@ export function drawPhonkDriftEclipse({
     horizonY,
     Math.max(width * 0.55, 260)
   );
-  mistRadialGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 70%, ${0.20 + superBass * 0.10})`);
-  mistRadialGrd.addColorStop(0.4, `hsla(${primaryHue}, 85%, 40%, ${0.10 + superBass * 0.05})`);
+  mistRadialGrd.addColorStop(0, `hsla(${softHighlightHue}, 85%, 65%, ${0.16 + superBass * 0.08})`);
+  mistRadialGrd.addColorStop(0.4, `hsla(${primaryHue}, 80%, 35%, ${0.08 + superBass * 0.04})`);
   mistRadialGrd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = mistRadialGrd;
   ctx.fillRect(0, horizonY - 35, width, 75);
