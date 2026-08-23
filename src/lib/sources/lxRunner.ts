@@ -101,6 +101,15 @@ export class LXRunner {
         crypto: {
           md5: (str: string) => CryptoJS.MD5(str).toString(),
           sha256: (str: string) => CryptoJS.SHA256(str).toString(),
+          aesEncrypt: (data: any, mode: any, key: any, iv: any) => {
+            const enc = CryptoJS.AES.encrypt(data, CryptoJS.enc.Utf8.parse(key), {
+              iv: CryptoJS.enc.Utf8.parse(iv || ""),
+              mode: CryptoJS.mode.CBC,
+              padding: CryptoJS.pad.Pkcs7,
+            });
+            return enc.toString();
+          },
+          rsaEncrypt: (data: any) => data,
           base64: {
             encode: (str: string) => CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(str)),
             decode: (str: string) => CryptoJS.enc.Base64.parse(str).toString(CryptoJS.enc.Utf8),
@@ -133,7 +142,10 @@ export class LXRunner {
         }
       );
 
-      const fn = new Function("module", "exports", "console", "globalThis", scriptContent);
+      (globalThis as any).lx = lxEnvironment;
+      if (typeof window !== "undefined") (window as any).lx = lxEnvironment;
+
+      const fn = new Function("module", "exports", "console", "globalThis", "window", "process", scriptContent);
 
       const fakeGlobal: any = {
         lx: lxEnvironment,
@@ -146,7 +158,7 @@ export class LXRunner {
         },
       };
 
-      fn(sandboxModule, sandboxModule.exports, fakeGlobal.console, fakeGlobal);
+      fn(sandboxModule, sandboxModule.exports, fakeGlobal.console, fakeGlobal, fakeGlobal, undefined);
 
       const hasRequestHandler = Boolean(handlers["request"]);
       const hasExportSearch = typeof sandboxModule.exports?.search === "function";
@@ -236,7 +248,10 @@ export class LXRunner {
       const { lxEnvironment, handlers } = this.createSandbox(script);
       const sandboxModule: any = { exports: {} };
 
-      const fn = new Function("module", "exports", "console", "globalThis", rawCode);
+      (globalThis as any).lx = lxEnvironment;
+      if (typeof window !== "undefined") (window as any).lx = lxEnvironment;
+
+      const fn = new Function("module", "exports", "console", "globalThis", "window", "process", rawCode);
       const fakeGlobal: any = {
         lx: lxEnvironment,
         module: sandboxModule,
@@ -244,7 +259,7 @@ export class LXRunner {
         console,
       };
 
-      fn(sandboxModule, sandboxModule.exports, console, fakeGlobal);
+      fn(sandboxModule, sandboxModule.exports, console, fakeGlobal, fakeGlobal, undefined);
 
       // 1. 标准 LX request handler
       if (handlers["request"]) {
@@ -324,6 +339,10 @@ export class LXRunner {
       if (rawCode) {
         const sandboxModule: any = { exports: {} };
         const { lxEnvironment } = this.createSandbox(script);
+
+        (globalThis as any).lx = lxEnvironment;
+        if (typeof window !== "undefined") (window as any).lx = lxEnvironment;
+
         const fakeGlobal: any = {
           lx: lxEnvironment,
           module: sandboxModule,
@@ -331,8 +350,8 @@ export class LXRunner {
           console,
         };
 
-        const fn = new Function("module", "exports", "console", "globalThis", rawCode);
-        fn(sandboxModule, sandboxModule.exports, console, fakeGlobal);
+        const fn = new Function("module", "exports", "console", "globalThis", "window", "process", rawCode);
+        fn(sandboxModule, sandboxModule.exports, console, fakeGlobal, fakeGlobal, undefined);
         const engine = sandboxModule.exports;
 
         if (typeof engine.search === "function") {

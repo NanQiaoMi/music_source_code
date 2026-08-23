@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   }
 
   const encoded = encodeURIComponent(keywords.trim());
-  const kuwoUrl = `http://search.kuwo.cn/r.s?all=${encoded}&ft=music&itemset=web_2013&client=kt&pn=${page}&rn=${limit}&rformat=json&encoding=utf8`;
+  const kuwoUrl = `http://search.kuwo.cn/r.s?client=kt&all=${encoded}&pn=${page}&rn=${limit}&uid=794766028&ver=kwplayer_ar_9.2.2.1&vipver=1&show_copyright_off=1&newver=1&ft=music&cluster=0&strategy=2012&encoding=utf8&rformat=json`;
 
   try {
     const res = await fetch(kuwoUrl, {

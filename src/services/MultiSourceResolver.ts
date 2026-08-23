@@ -98,20 +98,33 @@ function calculateMatchScore(
 
   if (!normTargetTitle || !normCandTitle) return 0;
 
+  // 杜绝拼接串烧
+  if (!targetTitle.includes("+") && !targetTitle.includes("＋") && (candidateTitle.includes("+") || candidateTitle.includes("＋"))) {
+    return -100;
+  }
+
+  // 杜绝超长标题拼接
+  if (normCandTitle.length > normTargetTitle.length * 2.2 && normTargetTitle.length <= 6) {
+    return -50;
+  }
+
   let score = 0;
 
+  // 1. 歌名匹配
   if (normTargetTitle === normCandTitle) {
-    score += 60;
+    score += 80;
+  } else if (normCandTitle.startsWith(normTargetTitle) || normTargetTitle.startsWith(normCandTitle)) {
+    score += 45;
   } else if (normCandTitle.includes(normTargetTitle) || normTargetTitle.includes(normCandTitle)) {
-    score += 35;
+    score += 25;
   } else {
-    return 0;
+    return 0; // 歌名不匹配，直接淘汰
   }
 
   // 2. 歌手匹配
   if (normTargetArtist) {
     if (normTargetArtist === normCandArtist) {
-      score += 40;
+      score += 50;
     } else if (normCandArtist.includes(normTargetArtist) || normTargetArtist.includes(normCandArtist)) {
       score += 35;
     } else if (normCandTitle.includes(normTargetArtist)) {
@@ -120,7 +133,7 @@ function calculateMatchScore(
       (normTargetArtist.includes("beyond") && (normCandArtist.includes("黄家驹") || normCandTitle.includes("黄家驹"))) ||
       (normTargetArtist.includes("黄家驹") && (normCandArtist.includes("beyond") || normCandTitle.includes("beyond")))
     ) {
-      score += 35; // 乐队主唱关联匹配
+      score += 40; // 乐队主唱关联匹配
     } else if (normTargetArtist === "未知歌手" || normCandArtist === "未知歌手") {
       score += 10;
     } else {
@@ -131,7 +144,7 @@ function calculateMatchScore(
   }
 
   if (!candidateTitle.includes("(") && !candidateTitle.includes("（")) {
-    score += 10;
+    score += 15;
   }
 
   return score;
@@ -158,6 +171,25 @@ export class MultiSourceResolver {
 
   public static clearCache() {
     this.resolvedUrlCache.clear();
+  }
+
+  private async validateStream(url: string): Promise<boolean> {
+    if (!url || !url.startsWith("http")) return false;
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { Range: "bytes=0-1024" },
+        signal: AbortSignal.timeout(1800),
+      });
+      if (!res.ok && res.status !== 206) return false;
+      const cType = (res.headers.get("content-type") || "").toLowerCase();
+      if (cType.includes("json") || cType.includes("html") || cType.includes("text")) {
+        return false;
+      }
+      return true;
+    } catch {
+      return true;
+    }
   }
 
   /**
@@ -200,7 +232,7 @@ export class MultiSourceResolver {
           );
           if (kgRes.ok) {
             const kgData = await kgRes.json();
-            if (kgData?.url && kgData.url.startsWith("http")) {
+            if (kgData?.url && kgData.url.startsWith("http") && (await this.validateStream(kgData.url))) {
               return {
                 url: kgData.url,
                 source: "kugou",
@@ -224,7 +256,7 @@ export class MultiSourceResolver {
           );
           if (qqRes.ok) {
             const qqData = await qqRes.json();
-            if (qqData?.url && qqData.url.startsWith("http")) {
+            if (qqData?.url && qqData.url.startsWith("http") && (await this.validateStream(qqData.url))) {
               return {
                 url: qqData.url,
                 source: "qq",
@@ -253,7 +285,7 @@ export class MultiSourceResolver {
         });
         if (serverRes.ok) {
           const data = await serverRes.json();
-          if (data && data.url && data.url.startsWith("http")) {
+          if (data && data.url && data.url.startsWith("http") && (await this.validateStream(data.url))) {
             return {
               url: data.url,
               source: data.source || "cross_matched",
@@ -290,7 +322,7 @@ export class MultiSourceResolver {
         };
 
         const lxUrlResult = await LXRunner.getMusicUrl(activeScript, songObj, "320k");
-        if (lxUrlResult?.url && lxUrlResult.url.startsWith("http")) {
+        if (lxUrlResult?.url && lxUrlResult.url.startsWith("http") && (await this.validateStream(lxUrlResult.url))) {
           return {
             url: lxUrlResult.url,
             source: "lx_custom",
@@ -455,7 +487,7 @@ export class MultiSourceResolver {
 
           for (const s of songs) {
             const score = calculateMatchScore(query.title, query.artist || "", s.title || "", s.artist || "");
-            if (score > highestScore && score >= 50) {
+            if (score > highestScore && score >= 70) {
               highestScore = score;
               bestSong = s;
             }

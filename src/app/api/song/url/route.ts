@@ -48,13 +48,25 @@ function calculateMatchScore(
 
   if (!normTargetTitle || !normCandTitle) return 0;
 
+  // 杜绝拼接串烧
+  if (!targetTitle.includes("+") && !targetTitle.includes("＋") && (candidateTitle.includes("+") || candidateTitle.includes("＋"))) {
+    return -100;
+  }
+
+  // 杜绝超长标题拼接
+  if (normCandTitle.length > normTargetTitle.length * 2.2 && normTargetTitle.length <= 6) {
+    return -50;
+  }
+
   let score = 0;
 
   // 1. 歌名匹配
   if (normTargetTitle === normCandTitle) {
-    score += 60;
+    score += 80;
+  } else if (normCandTitle.startsWith(normTargetTitle) || normTargetTitle.startsWith(normCandTitle)) {
+    score += 45;
   } else if (normCandTitle.includes(normTargetTitle) || normTargetTitle.includes(normCandTitle)) {
-    score += 35;
+    score += 25;
   } else {
     return 0; // 歌名不匹配，直接淘汰
   }
@@ -62,7 +74,7 @@ function calculateMatchScore(
   // 2. 歌手匹配
   if (normTargetArtist) {
     if (normTargetArtist === normCandArtist) {
-      score += 40;
+      score += 50;
     } else if (normCandArtist.includes(normTargetArtist) || normTargetArtist.includes(normCandArtist)) {
       score += 35;
     } else if (normCandTitle.includes(normTargetArtist)) {
@@ -71,7 +83,7 @@ function calculateMatchScore(
       (normTargetArtist.includes("beyond") && (normCandArtist.includes("黄家驹") || normCandTitle.includes("黄家驹"))) ||
       (normTargetArtist.includes("黄家驹") && (normCandArtist.includes("beyond") || normCandTitle.includes("beyond")))
     ) {
-      score += 35; // 传奇乐队主唱别名关联匹配
+      score += 40; // 传奇乐队主唱别名关联匹配
     } else if (normTargetArtist === "未知歌手" || normCandArtist === "未知歌手") {
       score += 10;
     } else {
@@ -83,7 +95,7 @@ function calculateMatchScore(
 
   // 原版加分：标题无额外修饰括号
   if (!candidateTitle.includes("(") && !candidateTitle.includes("（")) {
-    score += 10;
+    score += 15;
   }
 
   return score;
@@ -126,7 +138,7 @@ async function resolveCrossSourceAudio(title: string, artist: string): Promise<{
 
   for (const query of Array.from(searchQueries)) {
     try {
-      const kuwoSearch = `http://search.kuwo.cn/r.s?all=${encodeURIComponent(query)}&ft=music&itemset=web_2013&client=kt&pn=0&rn=30&rformat=json&encoding=utf8`;
+      const kuwoSearch = `http://search.kuwo.cn/r.s?client=kt&all=${encodeURIComponent(query)}&pn=0&rn=30&uid=794766028&ver=kwplayer_ar_9.2.2.1&vipver=1&show_copyright_off=1&newver=1&ft=music&cluster=0&strategy=2012&encoding=utf8&rformat=json`;
       const kwRes = await fetch(kuwoSearch, { signal: AbortSignal.timeout(3000) });
       if (kwRes.ok) {
         const text = await kwRes.text();
@@ -146,7 +158,7 @@ async function resolveCrossSourceAudio(title: string, artist: string): Promise<{
           const songName = item.SONGNAME || item.NAME || "";
           const artistName = item.ARTIST || item.AARTIST || "";
           const score = calculateMatchScore(title, artist, songName, artistName);
-          if (score > highestScore && score >= 50) {
+          if (score > highestScore && score >= 70) {
             highestScore = score;
             bestRid = String(item.DC_TARGETID || item.MUSICRID || "").replace("MUSIC_", "");
           }
