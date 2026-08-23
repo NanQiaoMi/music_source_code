@@ -114,6 +114,7 @@ interface QueueState {
   clearPlayed: () => void;
   addToHistory: (song: Song) => void;
   clearHistory: () => void;
+  updateSong: (songId: string, updates: Partial<Song>) => void;
 
   nextSong: () => Song | null;
   prevSong: () => Song | null;
@@ -129,6 +130,13 @@ export const useQueueStore = create<QueueState>()(
       currentIndex: 0,
       history: [],
       playThroughMode: "normal",
+
+      updateSong: (songId, updates) =>
+        set((state) => ({
+          queue: state.queue.map((song) =>
+            song.id === songId ? { ...song, ...updates } : song
+          ),
+        })),
 
       setQueue: (songs) =>
         set((state) => ({

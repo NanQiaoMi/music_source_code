@@ -9,7 +9,11 @@ import { usePlaylistStore } from "@/store/playlistStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
+import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useGestureStore } from "@/store/gestureStore";
+import { getCoverFromCache, saveCoverToCache } from "@/services/coverCache";
+import { multiSourceResolver } from "@/services/MultiSourceResolver";
+import { getStoredMusic } from "@/services/localMusicStorage";
 import { Song } from "@/types/song";
 import Link from "next/link";
 
@@ -29,15 +33,30 @@ const MAX_VISIBLE_HALF = 4; // 左右最多各显示 4 张
 export const MusicCardStack: React.FC = () => {
   const { songs, recentPlayed, setSelectedSong } = usePlaylistStore();
   const queue = useQueueStore((state) => state.queue);
+  const { offlineRecords } = useOfflineDownloadStore();
   const { currentSong, isPlaying, setIsPlaying } = useAudioStore();
   const { lastGesture, gestureTriggered } = useGestureStore();
   const { setCurrentView } = useUIStore();
 
   const displaySongs: Song[] = useMemo(() => {
-    if (queue && queue.length > 0) return queue;
-    if (songs && songs.length > 0) return songs;
-    return recentPlayed;
-  }, [queue, songs, recentPlayed]);
+    const rawList = queue && queue.length > 0 ? queue : songs && songs.length > 0 ? songs : recentPlayed;
+    const playlistCoverMap = new Map(songs.map((s) => [s.id, s.cover]));
+    const offlineCoverMap = new Map(offlineRecords.map((r) => [String(r.songId), r.cover]));
+
+    return rawList.map((song) => {
+      let cover = song.cover;
+      if (!cover || cover === DEFAULT_COVER_SRC || cover.includes("default-cover")) {
+        if (currentSong?.id === song.id && currentSong.cover && !currentSong.cover.includes("default-cover")) {
+          cover = currentSong.cover;
+        } else if (playlistCoverMap.get(song.id) && !playlistCoverMap.get(song.id)!.includes("default-cover")) {
+          cover = playlistCoverMap.get(song.id);
+        } else if (offlineCoverMap.get(String(song.id)) && !offlineCoverMap.get(String(song.id))!.includes("default-cover")) {
+          cover = offlineCoverMap.get(String(song.id));
+        }
+      }
+      return cover && cover !== song.cover ? { ...song, cover } : song;
+    });
+  }, [queue, songs, recentPlayed, currentSong, offlineRecords]);
 
   const [centerIndex, setCenterIndex] = useState(0);
   const [isCenterHovered, setIsCenterHovered] = useState(false);
@@ -96,6 +115,51 @@ export const MusicCardStack: React.FC = () => {
 
     return cards;
   }, [centerIndex, displaySongs]);
+
+  // 针对当前可视区域内的所有 3D 黑胶封套，后台异步智能补齐与缓存高清封面
+  useEffect(() => {
+    visibleCards.forEach(async (card) => {
+      if (!card.cover || card.cover === DEFAULT_COVER_SRC || card.cover.includes("default-cover")) {
+        // 1. 尝试从本地缓存 / IndexedDB 读取
+        const cached = await getCoverFromCache(card.id);
+        if (cached) {
+          usePlaylistStore.getState().updateSong(card.id, { cover: cached });
+          useQueueStore.getState().updateSong(card.id, { cover: cached });
+          return;
+        }
+
+        // 2. 尝试从本地存储音频读取
+        if (card.source === "local" || card.id) {
+          try {
+            const stored = await getStoredMusic(card.id);
+            if (stored?.coverData) {
+              usePlaylistStore.getState().updateSong(card.id, { cover: stored.coverData });
+              useQueueStore.getState().updateSong(card.id, { cover: stored.coverData });
+              saveCoverToCache(card.id, stored.coverData, stored.coverData).catch(() => {});
+              return;
+            }
+          } catch {}
+        }
+
+        // 3. 尝试全网多源嗅探高清封面
+        if (card.title) {
+          try {
+            const onlineCover = await multiSourceResolver.fetchOnlineCover({
+              id: String(card.id || ""),
+              title: card.title,
+              artist: card.artist,
+              source: card.source,
+            });
+            if (onlineCover) {
+              usePlaylistStore.getState().updateSong(card.id, { cover: onlineCover });
+              useQueueStore.getState().updateSong(card.id, { cover: onlineCover });
+              saveCoverToCache(card.id, onlineCover, onlineCover).catch(() => {});
+            }
+          } catch {}
+        }
+      }
+    });
+  }, [visibleCards]);
 
   const handlePrev = useCallback(() => {
     if (displaySongs.length <= 1) return;

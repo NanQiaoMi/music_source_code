@@ -317,30 +317,44 @@ export const useAudioStore = create<AudioState>()(
       },
       updateCurrentSongLyrics: (lyrics, translationLyrics) => {
         usePlayerStore.getState().updateCurrentSongLyrics(lyrics, translationLyrics);
-        set((state) =>
-          state.currentSong
+        const songId = get().currentSong?.id;
+        if (songId) {
+          useQueueStore.getState().updateSong(songId, { lyrics, translationLyrics });
+        }
+        set((state) => ({
+          currentSong: state.currentSong
             ? {
-                currentSong: {
-                  ...state.currentSong,
-                  lyrics,
-                  translationLyrics: translationLyrics || state.currentSong.translationLyrics,
-                },
+                ...state.currentSong,
+                lyrics,
+                translationLyrics: translationLyrics || state.currentSong.translationLyrics,
               }
-            : {}
-        );
+            : null,
+          queue: state.queue.map((s) =>
+            s.id === songId
+              ? {
+                  ...s,
+                  lyrics,
+                  translationLyrics: translationLyrics || s.translationLyrics,
+                }
+              : s
+          ),
+        }));
       },
       updateCurrentSongCover: (cover) => {
         usePlayerStore.getState().updateCurrentSongCover(cover);
-        set((state) =>
-          state.currentSong
+        const songId = get().currentSong?.id;
+        if (songId) {
+          useQueueStore.getState().updateSong(songId, { cover });
+        }
+        set((state) => ({
+          currentSong: state.currentSong
             ? {
-                currentSong: {
-                  ...state.currentSong,
-                  cover,
-                },
+                ...state.currentSong,
+                cover,
               }
-            : {}
-        );
+            : null,
+          queue: state.queue.map((s) => (s.id === songId ? { ...s, cover } : s)),
+        }));
       },
       setQueue: (songs) => set({ queue: songs }),
       setCurrentIndex: (index) => set({ currentIndex: index }),
