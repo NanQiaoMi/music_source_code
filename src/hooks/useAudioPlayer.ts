@@ -299,7 +299,15 @@ const attachListeners = (
       triggerBackgroundCache(endedSong, currentSrc).catch(() => {});
     }
 
-    if (useAudioStore.getState().loopMode === "single") {
+    const currentLoopMode = useAudioStore.getState().loopMode || usePlayerStore.getState().loopMode;
+
+    if (currentLoopMode === "single") {
+      console.info("[useAudioPlayer] 🔁 触发单曲循环重播:", endedSong?.title);
+      useAudioStore.getState().setCurrentTime(0);
+      usePlayerStore.getState().setCurrentTime(0);
+      useAudioStore.getState().setIsPlaying(true);
+      usePlayerStore.getState().setIsPlaying(true);
+      isPlayingRef.current = true;
       audio.currentTime = 0;
       audio.play().catch(handlePlayError);
     } else {
@@ -420,6 +428,7 @@ export const useAudioPlayer = () => {
   const eqBands = useEQStore((state) => state.eqBands);
   const isEQEnabled = useEQStore((state) => state.isEQEnabled);
   const isEmotionCurveMode = useAudioStore((state) => state.isEmotionCurveMode);
+  const loopMode = usePlayerStore((state) => state.loopMode);
 
   const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
   const setCurrentTime = usePlayerStore((state) => state.setCurrentTime);
@@ -551,6 +560,17 @@ export const useAudioPlayer = () => {
     };
   }, [audioElement, handlePlayError, setDuration, setCurrentTime]);
 
+  // 同步原生 HTMLAudioElement 的 loop 属性与单曲循环状态
+  useEffect(() => {
+    const audio = audioElementRef.current;
+    if (audio) {
+      audio.loop = loopMode === "single";
+    }
+    if (secondaryElementRef.current) {
+      secondaryElementRef.current.loop = loopMode === "single";
+    }
+  }, [loopMode]);
+
   // Playback Management Effect (Only run by the manager instance)
   useEffect(() => {
     if (!isLeader(hookId)) return;
@@ -574,6 +594,13 @@ export const useAudioPlayer = () => {
         currentAudioUrlRef.current &&
         !audio.error
       ) {
+        // 如果当前音频已播放至末尾，确保重置进度至起始位置
+        if (audio.ended || (audio.duration && audio.currentTime >= audio.duration - 0.5)) {
+          audio.currentTime = 0;
+          useAudioStore.getState().setCurrentTime(0);
+          usePlayerStore.getState().setCurrentTime(0);
+        }
+
         if (targetPlaying) {
           if (audio.paused) {
             try {

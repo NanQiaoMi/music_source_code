@@ -34,6 +34,12 @@ export async function bootstrapApp() {
       console.log(`[Bootstrap] 📋 已恢复上次播放队列: ${restoredQueue.length} 首歌曲`);
     }
 
+    const restoredLoopMode = usePlayerStore.getState().loopMode;
+    if (restoredLoopMode) {
+      useAudioStore.setState({ loopMode: restoredLoopMode });
+      console.log(`[Bootstrap] 🔁 已恢复播放循环模式: ${restoredLoopMode}`);
+    }
+
     await usePlaylistStore.getState().initializePlaylist();
     console.log("[Bootstrap] Playlist initialized.");
 

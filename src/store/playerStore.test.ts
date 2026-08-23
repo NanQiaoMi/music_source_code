@@ -96,13 +96,15 @@ describe("playerStore", () => {
 
     const parsed = JSON.parse(saved!);
     expect(parsed.state).toEqual({
+      currentSong: mockSong,
+      currentTime: 99,
+      duration: 240,
       volume: 0.2,
       isMuted: true,
       playbackRate: 1.4,
       loopMode: "single",
     });
-    expect(parsed.state.currentSong).toBeUndefined();
     expect(parsed.state.isPlaying).toBeUndefined();
-    expect(parsed.state.currentTime).toBeUndefined();
+    expect(parsed.state.isLoading).toBeUndefined();
   });
 });
