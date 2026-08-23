@@ -12,7 +12,8 @@ export type VisualizationEffect =
   | "gravitationalField"
   | "prismPulse"
   | "superstringSingularity"
-  | "cinematicSilkAurora";
+  | "cinematicSilkAurora"
+  | "phonkDriftEclipse";
 
 export type NumericEffectSettings = Record<string, number>;
 export type EffectSettings = Record<VisualizationEffect, NumericEffectSettings>;
@@ -99,17 +100,26 @@ const defaultEffectSettings: EffectSettings = {
   prismPulse: { complexity: 6, refraction: 1.0, drift: 0.5, speed: 1.0 },
   superstringSingularity: { speed: 1.0, singularityMass: 1.0, superstringTension: 1.2, coreGlow: 1.5 },
   cinematicSilkAurora: { silkCount: 6, flowSpeed: 1.0, glowIntensity: 1.15, bokehDensity: 1.0, firefliesCount: 25, godRaysIntensity: 1.0, spatialDepth: 1.2, anamorphicFlare: 1.0 },
+  phonkDriftEclipse: { bassIntensity: 1.2, cruiseSpeed: 1.3, glitchAberration: 1.0, colorMode: 0 },
 };
 
-export const useVisualizationStore = create<VisualizationState>((set, get) => ({
-  currentEffect: "spatialMesh",
-  isFullscreen: false,
-  presets: [
-    {
-      id: "preset-astro-blackhole",
-      name: "深空黑洞 (Sagittarius A*)",
-      effect: "cyberpunkParticles",
-      settings: {
+const defaultPresets: VisualizationPreset[] = [
+  {
+    id: "preset-phonk-tokyo-drift",
+    name: "赛博漂移 · 日蚀特异点 (Phonk Drift)",
+    effect: "phonkDriftEclipse",
+    settings: {
+      bassIntensity: 1.3,
+      cruiseSpeed: 1.4,
+      glitchAberration: 1.0,
+      colorMode: 0,
+    },
+  },
+  {
+    id: "preset-astro-blackhole",
+    name: "深空黑洞 (Sagittarius A*)",
+    effect: "cyberpunkParticles",
+    settings: {
         particleCount: 1200,
         particleSize: 2.2,
         speed: 1.8,
@@ -165,8 +175,13 @@ export const useVisualizationStore = create<VisualizationState>((set, get) => ({
         bokehAmount: 0.9,
       },
     },
-  ],
-  currentPresetId: null,
+  ];
+
+export const useVisualizationStore = create<VisualizationState>((set, get) => ({
+  currentEffect: "phonkDriftEclipse",
+  isFullscreen: false,
+  presets: defaultPresets,
+  currentPresetId: "preset-phonk-tokyo-drift",
   showSongInfo: true,
   reactToMusic: true,
   effectSettings: defaultEffectSettings,

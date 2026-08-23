@@ -11,3 +11,4 @@ export * from "./gravitationalField";
 export * from "./prismPulse";
 export * from "./superstringSingularity";
 export * from "./cinematicSilkAurora";
+export * from "./phonkDriftEclipse";
