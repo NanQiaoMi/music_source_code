@@ -302,12 +302,27 @@ export class MultiSourceResolver {
       return null;
     };
 
-    // 2. 快速通道 2: 落雪音源引擎解析 (优先当前已启用的脚本)
+    // 2. 快速通道 2: 落雪音源引擎解析 (遍历已启用的落雪脚本集群)
     const lxTask = async (): Promise<ResolvedAudioSource | null> => {
       try {
         const lxScripts = typeof window !== "undefined" ? useSourceConfigStore.getState().lxScripts : [];
-        const activeScript = lxScripts.find((s) => s.enabled);
-        if (!activeScript) return null;
+        const enabledScripts = lxScripts.filter((s) => s.enabled);
+        if (enabledScripts.length === 0) {
+          enabledScripts.push({
+            id: "aggregate_special_v9",
+            name: "全豆要[聚合音源] 9.3特供版",
+            author: "全豆要",
+            version: "9.3.0",
+            description: "",
+            scriptUrl: "/api/sources/builtin?id=aggregate_special_v9",
+            enabled: true,
+            lastUpdated: Date.now(),
+            supportedActions: ["search" as const, "songUrl" as const],
+          });
+        }
+
+        // 优先将稳定可用的特供脚本置顶
+        enabledScripts.sort((a, b) => (a.id === "aggregate_special_v9" ? -1 : b.id === "aggregate_special_v9" ? 1 : 0));
 
         const songObj: Song = {
           id: query.id || "",
@@ -316,22 +331,26 @@ export class MultiSourceResolver {
           album: query.album || "",
           duration: query.duration || 240,
           cover: "/default-cover.svg",
-          source: (targetPlatform || "kw") as any,
+          source: (targetPlatform || "wy") as any,
           audioUrl: "",
           format: "mp3",
         };
 
-        const lxUrlResult = await LXRunner.getMusicUrl(activeScript, songObj, "320k");
-        if (lxUrlResult?.url && lxUrlResult.url.startsWith("http") && (await this.validateStream(lxUrlResult.url))) {
-          return {
-            url: lxUrlResult.url,
-            source: "lx_custom",
-            quality: (lxUrlResult.quality as any) || "lossless",
-            format: lxUrlResult.url.includes(".flac") ? "flac" : "mp3",
-            bitrate: 320000,
-            isTrial: false,
-            name: `${query.title || "未知曲目"} (${activeScript.name})`,
-          };
+        for (const script of enabledScripts) {
+          try {
+            const lxUrlResult = await LXRunner.getMusicUrl(script, songObj, "320k");
+            if (lxUrlResult?.url && lxUrlResult.url.startsWith("http") && (await this.validateStream(lxUrlResult.url))) {
+              return {
+                url: lxUrlResult.url,
+                source: "lx_custom",
+                quality: (lxUrlResult.quality as any) || "lossless",
+                format: lxUrlResult.url.includes(".flac") ? "flac" : "mp3",
+                bitrate: 320000,
+                isTrial: false,
+                name: `${query.title || "未知曲目"} (${script.name})`,
+              };
+            }
+          } catch {}
         }
       } catch {}
       return null;
