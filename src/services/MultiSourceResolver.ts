@@ -194,6 +194,38 @@ export class MultiSourceResolver {
       } catch {
         // ignore
       }
+    } else if (query.source === "lx_custom") {
+      try {
+        const lxScripts = typeof window !== "undefined" ? useSourceConfigStore.getState().lxScripts : [];
+        const enabledScripts = lxScripts.filter((s) => s.enabled);
+        for (const script of enabledScripts) {
+          const songObj: Song = {
+            id: query.id || "",
+            title: query.title,
+            artist: query.artist || "",
+            album: query.album || "",
+            duration: query.duration || 240,
+            cover: "/default-cover.svg",
+            source: (query.source as any) || "wy",
+            audioUrl: "",
+            format: "mp3",
+          };
+          const lxUrlResult = await LXRunner.getMusicUrl(script, songObj, "320k");
+          if (lxUrlResult?.url && lxUrlResult.url.startsWith("http")) {
+            return {
+              url: lxUrlResult.url,
+              source: "lx_custom",
+              quality: (lxUrlResult.quality as any) || "lossless",
+              format: lxUrlResult.url.includes(".flac") ? "flac" : "mp3",
+              bitrate: 320000,
+              isTrial: false,
+              name: `${query.title || "未知曲目"} (${script.name})`,
+            };
+          }
+        }
+      } catch (e) {
+        console.warn("[MultiSourceResolver] LXRunner script resolve error:", e);
+      }
     }
 
     // 1. 服务端跨源智能嗅探 (支持网易云、酷我、QQ 音乐等自动版权突破与直通流提取)

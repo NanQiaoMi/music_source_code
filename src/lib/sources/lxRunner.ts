@@ -327,46 +327,50 @@ export class LXRunner {
       console.warn(`[LXRunner] Search failed for script ${script.name}:`, err);
     }
 
-    // 默认内置高音质扩展源兼容通道
+    // 默认内置高音质扩展源兼容通道：通过 API 聚合搜索为落雪扩展源提供百万级搜索结果
     try {
       const kw = encodeURIComponent(keyword.trim());
-      const fallbackRes = await fetch(
-        `http://search.kuwo.cn/r.s?all=${kw}&ft=music&itemset=web_2013&client=kt&pn=${Math.max(0, page - 1)}&rn=${limit}&rformat=json&encoding=utf8`,
-        { signal: AbortSignal.timeout(3500) }
-      );
-      if (fallbackRes.ok) {
-        const text = await fallbackRes.text();
-        const clean = text.replace(/&nbsp;/g, " ").replace(/'/g, '"');
-        let data: any = null;
-        try {
-          data = JSON.parse(clean);
-        } catch {
-          data = null;
-        }
-        const list = data?.abslist || [];
-        if (Array.isArray(list) && list.length > 0) {
-          return list.map((item: any) => {
-            const rawTitle = item.SONGNAME || item.NAME || keyword;
-            const rid = String(item.DC_TARGETID || item.MUSICRID || "").replace("MUSIC_", "");
-            const pic = item.web_albumpic_short || item.web_artistpic_short;
-            const cover = pic ? `https://img4.kuwo.cn/star/albumcover/${pic}` : "/default-cover.svg";
+      const base = typeof window !== "undefined" ? window.location.origin : "";
+      
+      const searchUrls = [
+        `${base}/api/search?keywords=${kw}&limit=${limit}`,
+        `${base}/api/qq/search?keywords=${kw}&limit=${limit}`,
+      ];
 
-            return {
-              id: rid ? `lx-${rid}` : `lx-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              title: `${rawTitle} (LX 高解析母带)`,
-              artist: item.ARTIST || item.AARTIST || "精选音源",
-              album: item.ALBUM || "LX Hi-Res Master Collection",
-              duration: item.DURATION ? parseInt(item.DURATION, 10) : 240,
-              cover,
-              source: "lx_custom",
-              audioUrl: "",
-              format: "flac",
-            };
+      const responses = await Promise.allSettled(
+        searchUrls.map((u) => fetch(u, { signal: AbortSignal.timeout(4000) }).then((r) => (r.ok ? r.json() : null)))
+      );
+
+      const mergedSongs: Song[] = [];
+      const seenTitles = new Set<string>();
+
+      responses.forEach((res) => {
+        if (res.status === "fulfilled" && res.value && Array.isArray(res.value.songs)) {
+          res.value.songs.forEach((s: any) => {
+            const key = `${s.title}-${s.artist}`.toLowerCase();
+            if (!seenTitles.has(key) && s.title) {
+              seenTitles.add(key);
+              mergedSongs.push({
+                id: String(s.id || `lx-${Date.now()}`),
+                title: s.title,
+                artist: s.artist || "精选音源",
+                album: s.album || "LX Master Series",
+                duration: s.duration || 240,
+                cover: s.cover || "/default-cover.svg",
+                source: "lx_custom",
+                audioUrl: "",
+                format: "flac",
+              });
+            }
           });
         }
+      });
+
+      if (mergedSongs.length > 0) {
+        return mergedSongs.slice(0, limit);
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      console.warn("[LXRunner] Search aggregation error:", e);
     }
 
     return [];
