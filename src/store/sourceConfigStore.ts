@@ -409,7 +409,9 @@ export const useSourceConfigStore = create<SourceConfigState>()(
 
       syncBuiltinDesktopSources: async () => {
         try {
-          const res = await fetch("/api/sources/builtin");
+          if (typeof window === "undefined" || !window.location?.origin || window.location.origin === "null") return;
+          const origin = window.location.origin;
+          const res = await fetch(`${origin}/api/sources/builtin`);
           if (!res.ok) return;
           const data = await res.json();
           if (data && Array.isArray(data.sources)) {

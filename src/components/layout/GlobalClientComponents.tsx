@@ -17,6 +17,7 @@ import { GestureController } from "@/components/interaction/GestureController";
 import { GestureFeedback } from "@/components/interaction/GestureFeedback";
 import { AILinerNotes } from "@/components/widgets/AILinerNotes";
 import { TopEdgeSearchTrigger } from "@/components/layout/TopEdgeSearchTrigger";
+import { SourceManagementModal } from "@/components/sources/SourceManagementModal";
 
 export function GlobalClientComponents() {
   useAudioPlayer();
@@ -36,6 +37,7 @@ export function GlobalClientComponents() {
       <GestureController />
       <GestureFeedback />
       <AILinerNotes />
+      <SourceManagementModal />
     </>
   );
 }
