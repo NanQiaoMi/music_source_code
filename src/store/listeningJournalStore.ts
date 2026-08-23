@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
 import {
   getIsoDate,
   rollupDay,
@@ -34,6 +34,39 @@ function getWeekDates(anchorDate: string): string[] {
   return Array.from({ length: 7 }, (_, index) => getIsoDate(index - 6, anchor));
 }
 
+const safeStateStorage: StateStorage = {
+  getItem: (name: string): string | null => {
+    try {
+      if (typeof window === "undefined") return null;
+      return localStorage.getItem(name);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (name: string, value: string): void => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.setItem(name, value);
+    } catch (e: any) {
+      if (e?.name === "QuotaExceededError" || e?.code === 22) {
+        try {
+          // 配额超限时自动清理旧版缓存
+          localStorage.removeItem("journal-store-v1");
+          localStorage.setItem(name, value);
+        } catch {
+          // 降级内存运行
+        }
+      }
+    }
+  },
+  removeItem: (name: string): void => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.removeItem(name);
+    } catch {}
+  },
+};
+
 export const useListeningJournalStore = create<ListeningJournalState>()(
   persist(
     (set, get) => ({
@@ -44,19 +77,32 @@ export const useListeningJournalStore = create<ListeningJournalState>()(
       recordPlay: (event) =>
         set((state) => {
           const date = getIsoDate(0, new Date(event.playedAt));
-          const events = [...(state.eventsByDate[date] || []), event];
+          // 限制当天事件最大记录数（防无界膨胀）
+          const existingEvents = state.eventsByDate[date] || [];
+          const events = [...existingEvents.slice(-25), event];
           const current = state.days[date] || emptyDay(date);
           const day = rollupDay(date, events, current.note);
 
+          // 保留最近 14 天数据，自动清理历史旧日志
+          const cutoff = getIsoDate(-14);
+          const newDays: Record<string, JournalDay> = { [date]: day };
+          const newEvents: Record<string, JournalPlayEvent[]> = { [date]: events };
+
+          Object.entries(state.days).forEach(([d, v]) => {
+            if (d.localeCompare(cutoff) >= 0 && d !== date) {
+              newDays[d] = v;
+            }
+          });
+
+          Object.entries(state.eventsByDate).forEach(([d, v]) => {
+            if (d.localeCompare(cutoff) >= 0 && d !== date) {
+              newEvents[d] = v.slice(-25);
+            }
+          });
+
           return {
-            days: {
-              ...state.days,
-              [date]: day,
-            },
-            eventsByDate: {
-              ...state.eventsByDate,
-              [date]: events,
-            },
+            days: newDays,
+            eventsByDate: newEvents,
           };
         }),
 
@@ -91,7 +137,7 @@ export const useListeningJournalStore = create<ListeningJournalState>()(
 
       trimToLast90Days: () =>
         set((state) => {
-          const cutoff = getIsoDate(-89);
+          const cutoff = getIsoDate(-14);
           return {
             days: Object.fromEntries(
               Object.entries(state.days).filter(([date]) => date.localeCompare(cutoff) >= 0)
@@ -106,6 +152,7 @@ export const useListeningJournalStore = create<ListeningJournalState>()(
     }),
     {
       name: "journal-store-v1",
+      storage: createJSONStorage(() => safeStateStorage),
       partialize: (state) => ({
         days: state.days,
         eventsByDate: state.eventsByDate,

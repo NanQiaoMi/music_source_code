@@ -188,96 +188,143 @@ export async function GET(request: NextRequest) {
   const id = searchParams.get("id") || "";
   const title = searchParams.get("name") || searchParams.get("title") || "";
   const artist = searchParams.get("artist") || "";
+  const source = (searchParams.get("source") || "").toLowerCase();
 
   const numericId = id.replace(/^[a-zA-Z_-]+/, "");
   const effectiveId = numericId || id;
 
-  // 0. 如果已有明确的酷我 RID，直接快速尝试 Kuwo convert_url
-  if (id && (/^\d+$/.test(id) || id.startsWith("MUSIC_"))) {
-    try {
-      const rid = id.replace("MUSIC_", "");
-      const directRes = await fetch(
-        `http://antiserver.kuwo.cn/anti.s?type=convert_url&rid=${rid}&format=mp3&response=url`,
-        { signal: AbortSignal.timeout(2500) }
-      );
-      if (directRes.ok) {
-        const streamUrl = (await directRes.text()).trim();
-        if (streamUrl && streamUrl.startsWith("http")) {
+  // 1. 酷我专区 (仅在明确指定 kuwo 或以 MUSIC_ 开头时调用)
+  if (source === "kuwo" || source === "kw" || id.startsWith("MUSIC_") || id.startsWith("kw_")) {
+    if (id) {
+      try {
+        const rid = id.replace(/^(MUSIC_|kw_)/, "");
+        const directRes = await fetch(
+          `http://antiserver.kuwo.cn/anti.s?type=convert_url&rid=${rid}&format=mp3&response=url`,
+          { signal: AbortSignal.timeout(2500) }
+        );
+        if (directRes.ok) {
+          const streamUrl = (await directRes.text()).trim();
+          if (streamUrl && streamUrl.startsWith("http")) {
+            return NextResponse.json({
+              url: streamUrl,
+              level: "lossless",
+              br: 320000,
+              source: "kuwo",
+              code: 200,
+            });
+          }
+        }
+      } catch {}
+    }
+
+    if (title) {
+      const kuwoRes = await resolveCrossSourceAudio(title, artist);
+      if (kuwoRes?.url) {
+        return NextResponse.json({
+          url: kuwoRes.url,
+          level: "lossless",
+          br: 320000,
+          source: "kuwo",
+          code: 200,
+        });
+      }
+    }
+
+    return NextResponse.json({ url: "", code: 404, message: "Kuwo audio not found" });
+  }
+
+  // 2. 网易云专区 (仅从网易云自身官方 WeAPI、外链 CDN 及官方接口中提取，严禁串到其他平台)
+  if (source === "netease" || source === "wy" || (!source && /^\d+$/.test(effectiveId))) {
+    // 2.1 网易云官方 WeAPI 获取原版真流
+    if (/^\d+$/.test(effectiveId)) {
+      try {
+        const cookie = request.headers.get("x-netease-cookie") || request.headers.get("cookie") || "";
+        const weRes = await neteaseWeApiRequest(
+          "/api/song/enhance/player/url/v1",
+          {
+            ids: JSON.stringify([effectiveId]),
+            level: "standard",
+            encodeType: "mp3",
+          },
+          { cookie }
+        );
+        const songData = weRes.body?.data?.[0];
+        const isTrial =
+          Boolean(songData?.freeTrialInfo && (songData.freeTrialInfo.start > 0 || songData.freeTrialInfo.end > 0)) ||
+          Boolean(songData?.fee === 1 && (!cookie || cookie.length < 10)) ||
+          Boolean(songData?.time && songData.time <= 95000);
+
+        if (songData?.url && songData.url.startsWith("http") && (songData.code === 200 || !songData.code) && !isTrial) {
           return NextResponse.json({
-            url: streamUrl,
-            level: "lossless",
-            br: 320000,
-            source: "kuwo",
+            url: songData.url,
+            level: songData.level || "standard",
+            br: songData.br || 320000,
+            source: "netease",
             code: 200,
           });
         }
-      }
-    } catch {
-      // ignore
+      } catch {}
+
+      // 2.2 网易云官方外链 CDN 校验
+      try {
+        const directUrl = `https://music.163.com/song/media/outer/url?id=${effectiveId}.mp3`;
+        const headCheck = await fetch(directUrl, {
+          method: "HEAD",
+          redirect: "manual",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            Referer: "https://music.163.com",
+          },
+          signal: AbortSignal.timeout(3000),
+        });
+
+        const location = headCheck.headers.get("location");
+        if (headCheck.status === 200 || (location && !location.includes("/404") && location.startsWith("http"))) {
+          return NextResponse.json({
+            url: location || directUrl,
+            level: "high",
+            br: 320000,
+            source: "netease",
+            code: 200,
+          });
+        }
+      } catch {}
+
+      // 2.3 Meting NetEase 专属通道
+      try {
+        const metingRes = await fetch(
+          `https://api.injahow.cn/meting/?type=url&id=${effectiveId}&server=netease`,
+          { signal: AbortSignal.timeout(3500) }
+        );
+        if (metingRes.ok) {
+          const text = await metingRes.text();
+          let streamUrl = "";
+          try {
+            const parsed = JSON.parse(text);
+            streamUrl = parsed.url || parsed.data?.url || "";
+          } catch {
+            if (text.startsWith("http")) streamUrl = text.trim();
+          }
+          if (streamUrl && !streamUrl.includes("/404")) {
+            return NextResponse.json({
+              url: streamUrl,
+              level: "high",
+              br: 320000,
+              source: "netease",
+              code: 200,
+            });
+          }
+        }
+      } catch {}
+    }
+
+    if (source === "netease" || source === "wy") {
+      // 纯网易云请求，不跨源到其他平台
+      return NextResponse.json({ url: "", code: 404, message: "NetEase audio stream not found" });
     }
   }
 
-  // 1. 如果有明确的网易云 ID，首先尝试网易云官方 WeAPI 获取原版真流
-  if (/^\d+$/.test(effectiveId)) {
-    try {
-      const cookie = request.headers.get("x-netease-cookie") || request.headers.get("cookie") || "";
-      const weRes = await neteaseWeApiRequest(
-        "/api/song/enhance/player/url/v1",
-        {
-          ids: JSON.stringify([effectiveId]),
-          level: "standard",
-          encodeType: "mp3",
-        },
-        { cookie }
-      );
-      const songData = weRes.body?.data?.[0];
-      const isTrial =
-        Boolean(songData?.freeTrialInfo && (songData.freeTrialInfo.start > 0 || songData.freeTrialInfo.end > 0)) ||
-        Boolean(songData?.fee === 1 && (!cookie || cookie.length < 10)) ||
-        Boolean(songData?.time && songData.time <= 95000);
-
-      if (songData?.url && songData.url.startsWith("http") && (songData.code === 200 || !songData.code) && !isTrial) {
-        return NextResponse.json({
-          url: songData.url,
-          level: songData.level || "standard",
-          br: songData.br || 320000,
-          source: "netease",
-          code: 200,
-        });
-      }
-    } catch {
-      // ignore & fallback
-    }
-
-    // 尝试网易云官方外链 CDN 校验
-    try {
-      const directUrl = `https://music.163.com/song/media/outer/url?id=${effectiveId}.mp3`;
-      const headCheck = await fetch(directUrl, {
-        method: "HEAD",
-        redirect: "manual",
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-          Referer: "https://music.163.com",
-        },
-        signal: AbortSignal.timeout(3000),
-      });
-
-      const location = headCheck.headers.get("location");
-      if (headCheck.status === 200 || (location && !location.includes("/404") && location.startsWith("http"))) {
-        return NextResponse.json({
-          url: location || directUrl,
-          level: "high",
-          br: 320000,
-          source: "netease",
-          code: 200,
-        });
-      }
-    } catch {
-      // ignore & fallback
-    }
-  }
-
-  // 2. 原版受限（VIP 404 等）或无 ID 时，触发精准防串歌跨源匹配
+  // 3. 通用未指明来源时的兜底搜索
   if (title) {
     const crossResult = await resolveCrossSourceAudio(title, artist);
     if (crossResult?.url) {
@@ -288,37 +335,6 @@ export async function GET(request: NextRequest) {
         source: crossResult.source,
         code: 200,
       });
-    }
-  }
-
-  // 3. 兜底尝试 Meting 解析
-  if (/^\d+$/.test(effectiveId)) {
-    try {
-      const metingRes = await fetch(
-        `https://api.injahow.cn/meting/?type=url&id=${effectiveId}&server=netease`,
-        { signal: AbortSignal.timeout(3500) }
-      );
-      if (metingRes.ok) {
-        const text = await metingRes.text();
-        let streamUrl = "";
-        try {
-          const parsed = JSON.parse(text);
-          streamUrl = parsed.url || parsed.data?.url || "";
-        } catch {
-          if (text.startsWith("http")) streamUrl = text.trim();
-        }
-        if (streamUrl && !streamUrl.includes("/404")) {
-          return NextResponse.json({
-            url: streamUrl,
-            level: "high",
-            br: 320000,
-            source: "netease",
-            code: 200,
-          });
-        }
-      }
-    } catch {
-      // ignore
     }
   }
 

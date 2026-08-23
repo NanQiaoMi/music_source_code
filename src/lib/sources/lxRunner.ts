@@ -277,7 +277,8 @@ export class LXRunner {
         };
 
         const primaryPlatform = platformMap[song.source || "wy"] || "wy";
-        const candidatePlatforms = Array.from(new Set([primaryPlatform, "wy", "tx", "kw", "kg", "mg"]));
+        // 严格单源隔离：每个播放源只从自己的源解析，绝不跨源传 ID 导致错乱与串歌
+        const candidatePlatforms = [primaryPlatform];
 
         for (const platform of candidatePlatforms) {
           try {
