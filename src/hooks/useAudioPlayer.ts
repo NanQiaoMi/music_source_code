@@ -545,7 +545,13 @@ export const useAudioPlayer = () => {
       isPlayingRef.current = targetPlaying;
 
       // 1. 同一首歌曲且已有音频流时：仅做播放/暂停状态同步，绝不重复加载或重置管道
-      if (currentSongIdRef.current === songId && audio.src && currentAudioUrlRef.current) {
+      if (
+        currentSongIdRef.current === songId &&
+        audio.src &&
+        currentAudioUrlRef.current &&
+        !audio.error &&
+        audio.readyState >= 1
+      ) {
         if (targetPlaying) {
           if (audio.paused) {
             try {

@@ -254,7 +254,9 @@ export const LxMusicSearchTab: React.FC = () => {
   // 播放与队列
   const handlePlaySingle = (song: Song) => {
     const list = processedSongs.length > 0 ? processedSongs : [song];
-    const idx = list.findIndex((s) => s.id === song.id);
+    const idx = list.findIndex(
+      (s) => s.id === song.id && (!song.source || s.source === song.source)
+    );
     playQueue(list, idx >= 0 ? idx : 0);
     showToast(`正在播放: ${song.title}`);
   };
@@ -602,6 +604,7 @@ export const LxMusicSearchTab: React.FC = () => {
                   return (
                     <div
                       key={`${song.source || "src"}-${song.id || idx}-${idx}`}
+                      onClick={() => handlePlaySingle(song)}
                       onDoubleClick={() => handlePlaySingle(song)}
                       onContextMenu={(e) => handleContextMenu(e, song)}
                       className={`group flex items-center px-2 py-3 rounded-2xl transition-all cursor-pointer select-none ${
