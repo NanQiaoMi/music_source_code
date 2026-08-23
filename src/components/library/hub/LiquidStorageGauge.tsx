@@ -29,8 +29,14 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
     let step = 0;
     const targetFill = Math.max(0.08, Math.min(0.98, usagePercent / 100));
     let currentFill = 0.05;
+    let isMounted = true;
 
     const render = () => {
+      if (!isMounted) return;
+      if (!canvas.offsetParent) {
+        animRef.current = requestAnimationFrame(render);
+        return;
+      }
       step += 0.035;
       currentFill += (targetFill - currentFill) * 0.04;
 
