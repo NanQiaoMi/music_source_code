@@ -154,10 +154,25 @@ export class MultiSourceResolver {
     return MultiSourceResolver.instance;
   }
 
+  private static resolvedUrlCache = new Map<string, { result: ResolvedAudioSource; expiry: number }>();
+
+  public static clearCache() {
+    this.resolvedUrlCache.clear();
+  }
+
   /**
-   * 聚合解析核心入口：按照用户设定的优先级队列自动检索与多级降级熔断
+   * 聚合解析核心入口：极速并发竞速 + LRU 高速缓存 (毫秒级响应)
    */
   public async resolvePlayableAudio(query: SongMetadataQuery): Promise<ResolvedAudioSource | null> {
+    if (!query.title && !query.id) return null;
+
+    const cacheKey = `${query.source || ""}-${query.id || ""}-${query.title || ""}-${query.artist || ""}`.toLowerCase();
+    const now = Date.now();
+    const cached = MultiSourceResolver.resolvedUrlCache.get(cacheKey);
+    if (cached && cached.expiry > now && cached.result?.url) {
+      return cached.result;
+    }
+
     const platformToLX: Record<string, string> = {
       kuwo: "kw",
       kw: "kw",
@@ -172,110 +187,59 @@ export class MultiSourceResolver {
     };
 
     const targetPlatform = platformToLX[query.source || ""] || "";
+    const base = getApiBase();
 
-    // 0. 特别优先：使用内置落雪特供脚本 (全豆要 9.3 等) 针对当前 ID/平台或全平台嗅探解析
-    try {
-      const lxScripts = typeof window !== "undefined" ? useSourceConfigStore.getState().lxScripts : [];
-      const defaultScript = {
-        id: "aggregate_special_v9",
-        name: "全豆要[聚合音源] 9.3特供版",
-        author: "全豆要",
-        version: "9.3.0",
-        description: "",
-        scriptUrl: "/api/sources/builtin?id=aggregate_special_v9",
-        enabled: true,
-        lastUpdated: Date.now(),
-        supportedActions: ["search" as const, "songUrl" as const],
-      };
-      const enabledScripts = (lxScripts.length > 0 ? lxScripts : [defaultScript]).filter((s) => s.enabled);
-      if (!enabledScripts.some((s) => s.id === "aggregate_special_v9")) {
-        enabledScripts.unshift(defaultScript);
-      }
-
-      for (const script of enabledScripts) {
-        const candidatePlatforms = Array.from(new Set([targetPlatform, "kw", "tx", "wy", "kg", "mg"].filter(Boolean)));
-        for (const p of candidatePlatforms) {
-          const songObj: Song = {
-            id: query.id || "",
-            title: query.title,
-            artist: query.artist || "",
-            album: query.album || "",
-            duration: query.duration || 240,
-            cover: "/default-cover.svg",
-            source: p as any,
-            audioUrl: "",
-            format: "mp3",
-          };
-          try {
-            const lxUrlResult = await LXRunner.getMusicUrl(script, songObj, "320k");
-            if (lxUrlResult?.url && lxUrlResult.url.startsWith("http")) {
+    // 1. 快速通道 1: 后端高可用母带秒级直出 (Kuwo RID / Kugou Hash / QQ MID / NetEase)
+    const directTask = async (): Promise<ResolvedAudioSource | null> => {
+      // 酷狗专属
+      if (query.source === "kugou" || (query.id && /^[a-fA-F0-9]{32}$/.test(query.id))) {
+        try {
+          const kgRes = await fetch(
+            `${base}/api/kugou/song/url?hash=${query.id || ""}&title=${encodeURIComponent(query.title || "")}&artist=${encodeURIComponent(query.artist || "")}`,
+            { signal: AbortSignal.timeout(2500) }
+          );
+          if (kgRes.ok) {
+            const kgData = await kgRes.json();
+            if (kgData?.url && kgData.url.startsWith("http")) {
               return {
-                url: lxUrlResult.url,
-                source: "lx_custom",
-                quality: (lxUrlResult.quality as any) || "lossless",
-                format: lxUrlResult.url.includes(".flac") ? "flac" : "mp3",
+                url: kgData.url,
+                source: "kugou",
+                quality: "lossless",
+                format: "mp3",
                 bitrate: 320000,
                 isTrial: false,
-                name: `${query.title || "未知曲目"} (${script.name} / ${p})`,
+                name: `${query.title} (酷狗高解析母带)`,
               };
             }
-          } catch {
-            // continue next
           }
-        }
+        } catch {}
       }
-    } catch (e) {
-      console.warn("[MultiSourceResolver] LXRunner script resolve error:", e);
-    }
 
-    // 1. 如果指定了酷狗或 ID 为 32 位 Hash，优先调用酷狗专属母带直连
-    if (query.source === "kugou" || (query.id && /^[a-fA-F0-9]{32}$/.test(query.id))) {
-      try {
-        const kgRes = await fetch(
-          `${getApiBase()}/api/kugou/song/url?hash=${query.id || ""}&title=${encodeURIComponent(query.title)}&artist=${encodeURIComponent(query.artist || "")}`,
-          { signal: AbortSignal.timeout(3000) }
-        );
-        if (kgRes.ok) {
-          const kgData = await kgRes.json();
-          if (kgData?.url && kgData.url.startsWith("http")) {
-            return {
-              url: kgData.url,
-              source: "kugou",
-              quality: "lossless",
-              format: "mp3",
-              bitrate: 320000,
-              isTrial: false,
-              name: `${query.title} (酷狗高解析母带)`,
-            };
+      // QQ 专属
+      if (query.source === "qq" || (query.id && query.id.startsWith("00"))) {
+        try {
+          const qqRes = await fetch(
+            `${base}/api/qq/song/url?mid=${query.id || ""}&title=${encodeURIComponent(query.title || "")}&artist=${encodeURIComponent(query.artist || "")}`,
+            { signal: AbortSignal.timeout(2500) }
+          );
+          if (qqRes.ok) {
+            const qqData = await qqRes.json();
+            if (qqData?.url && qqData.url.startsWith("http")) {
+              return {
+                url: qqData.url,
+                source: "qq",
+                quality: "lossless",
+                format: "mp3",
+                bitrate: 320000,
+                isTrial: false,
+                name: `${query.title} (QQ 音乐高解析母带)`,
+              };
+            }
           }
-        }
-      } catch {
-        // fallback
+        } catch {}
       }
-    }
 
-    // 2. 酷我高解析直通源
-    if (query.source === "kuwo" || !query.source) {
-      try {
-        const res = await this.resolveKuwo(query);
-        if (res && res.url && !res.isTrial) return res;
-      } catch {
-        // ignore
-      }
-    }
-
-    // 2. 网易云原生直连
-    if (query.source === "netease" || !query.source) {
-      try {
-        const res = await this.resolveNetease(query.id || "", query);
-        if (res && res.url && !res.isTrial) return res;
-      } catch {
-        // ignore
-      }
-    }
-
-    // 3. 服务端跨源智能嗅探 (支持全平台版权突破与直通流提取)
-    if (query.title || query.id) {
+      // 通用高可用母带集群解析 (支持 Kuwo, NetEase 与跨源调度)
       try {
         const params = new URLSearchParams({
           name: query.title || "",
@@ -284,8 +248,8 @@ export class MultiSourceResolver {
           id: query.id || "",
           source: query.source || "",
         });
-        const serverRes = await fetch(`${getApiBase()}/api/song/url?${params.toString()}`, {
-          signal: AbortSignal.timeout(3500),
+        const serverRes = await fetch(`${base}/api/song/url?${params.toString()}`, {
+          signal: AbortSignal.timeout(2800),
         });
         if (serverRes.ok) {
           const data = await serverRes.json();
@@ -301,9 +265,78 @@ export class MultiSourceResolver {
             };
           }
         }
-      } catch (e) {
-        console.warn("[MultiSourceResolver] Server cross-matching fallback:", e);
+      } catch {}
+
+      return null;
+    };
+
+    // 2. 快速通道 2: 落雪音源引擎解析 (优先当前已启用的脚本)
+    const lxTask = async (): Promise<ResolvedAudioSource | null> => {
+      try {
+        const lxScripts = typeof window !== "undefined" ? useSourceConfigStore.getState().lxScripts : [];
+        const activeScript = lxScripts.find((s) => s.enabled);
+        if (!activeScript) return null;
+
+        const songObj: Song = {
+          id: query.id || "",
+          title: query.title,
+          artist: query.artist || "",
+          album: query.album || "",
+          duration: query.duration || 240,
+          cover: "/default-cover.svg",
+          source: (targetPlatform || "kw") as any,
+          audioUrl: "",
+          format: "mp3",
+        };
+
+        const lxUrlResult = await LXRunner.getMusicUrl(activeScript, songObj, "320k");
+        if (lxUrlResult?.url && lxUrlResult.url.startsWith("http")) {
+          return {
+            url: lxUrlResult.url,
+            source: "lx_custom",
+            quality: (lxUrlResult.quality as any) || "lossless",
+            format: lxUrlResult.url.includes(".flac") ? "flac" : "mp3",
+            bitrate: 320000,
+            isTrial: false,
+            name: `${query.title || "未知曲目"} (${activeScript.name})`,
+          };
+        }
+      } catch {}
+      return null;
+    };
+
+    // 🚀 并发竞速：哪个最快返回可用直链就立即采用
+    try {
+      const raceResult = await Promise.race([
+        directTask().then((res) => (res?.url ? res : Promise.reject())),
+        lxTask().then((res) => (res?.url ? res : Promise.reject())),
+      ]);
+      if (raceResult?.url) {
+        MultiSourceResolver.resolvedUrlCache.set(cacheKey, {
+          result: raceResult,
+          expiry: Date.now() + 1800000, // 30 分钟缓存
+        });
+        return raceResult;
       }
+    } catch {}
+
+    // 如果竞速都未立即成功，顺序执行直接通道与保底降级
+    const directFallback = await directTask();
+    if (directFallback?.url) {
+      MultiSourceResolver.resolvedUrlCache.set(cacheKey, {
+        result: directFallback,
+        expiry: Date.now() + 1800000,
+      });
+      return directFallback;
+    }
+
+    const lxFallback = await lxTask();
+    if (lxFallback?.url) {
+      MultiSourceResolver.resolvedUrlCache.set(cacheKey, {
+        result: lxFallback,
+        expiry: Date.now() + 1800000,
+      });
+      return lxFallback;
     }
 
     // 4. 酷我智能关键词匹配兜底
@@ -740,15 +773,25 @@ export class MultiSourceResolver {
     return null;
   }
 
+  private static searchCache = new Map<string, { data: SegmentedSearchResults; expiry: number }>();
+
   /**
-   * 全网分平台在线歌曲深度并发搜索 (支持本地后端与公开接口全自动降级)
+   * 全网分平台在线歌曲深度并发搜索 (支持本地后端与公开接口全自动降级 + 高性能内存缓存)
    */
   public async searchOnlineMusicSegmented(keywords: string): Promise<SegmentedSearchResults> {
     if (!keywords || !keywords.trim()) {
       return { netease: [], qq: [], kugou: [], kuwo: [], qishui: [], local: [], lx_custom: [], all: [] };
     }
 
-    const kw = encodeURIComponent(keywords.trim());
+    const trimmed = keywords.trim();
+    const cacheKey = trimmed.toLowerCase();
+    const now = Date.now();
+    const cached = MultiSourceResolver.searchCache.get(cacheKey);
+    if (cached && cached.expiry > now) {
+      return cached.data;
+    }
+
+    const kw = encodeURIComponent(trimmed);
     const sourceConfigs = typeof window !== "undefined" ? useSourceConfigStore.getState().sources : null;
     const isEnabled = (id: string) => (sourceConfigs ? (sourceConfigs as Record<string, any>)[id]?.enabled !== false : true);
 
@@ -759,7 +802,7 @@ export class MultiSourceResolver {
     }
     if (isEnabled("qq")) {
       const base = sourceConfigs?.qq?.customApiBase || getApiBase();
-      endpoints.push({ key: "qq", url: `${base}/api/qq/search?keywords=${kw}&limit=100` });
+      endpoints.push({ key: "qq", url: `${base}/api/qq/search?keywords=${kw}&limit=50` });
     }
     if (isEnabled("kugou")) {
       const base = sourceConfigs?.kugou?.customApiBase || getApiBase();
@@ -787,7 +830,7 @@ export class MultiSourceResolver {
 
     const fetchTasks = endpoints.map(async (ep) => {
       try {
-        const r = await fetch(ep.url, { signal: AbortSignal.timeout(5000) });
+        const r = await fetch(ep.url, { signal: AbortSignal.timeout(2800) });
         if (!r.ok) return { key: ep.key, songs: [] };
         const data = await r.json();
         return { key: ep.key, songs: Array.isArray(data.songs) ? data.songs : [] };
@@ -919,6 +962,13 @@ export class MultiSourceResolver {
       } catch (err) {
         console.warn("[MultiSourceResolver] Direct NetEase search fallback failed:", err);
       }
+    }
+
+    if (results.all.length > 0) {
+      MultiSourceResolver.searchCache.set(cacheKey, {
+        data: results,
+        expiry: Date.now() + 1200000, // 20 分钟缓存
+      });
     }
 
     return results;

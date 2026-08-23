@@ -65,6 +65,8 @@ const HOT_SEARCH_TAGS = [
   "ACG 纯音",
 ];
 
+const searchMemoryCache = new Map<string, Song[]>();
+
 export const LxMusicSearchTab: React.FC = () => {
   const [keyword, setKeyword] = useState("周杰伦");
   const [activeTab, setActiveTab] = useState<SearchSourceTab>("all");
@@ -111,6 +113,13 @@ export const LxMusicSearchTab: React.FC = () => {
       const q = (queryText !== undefined ? queryText : keyword).trim();
       if (!q) return;
 
+      const cacheKey = `${targetMode}-${targetTab}-${q}`.toLowerCase();
+      if (targetMode === "songs" && searchMemoryCache.has(cacheKey)) {
+        setSongResults(searchMemoryCache.get(cacheKey)!);
+        setSelectedIds(new Set());
+        return;
+      }
+
       setIsSearching(true);
       setSelectedIds(new Set());
 
@@ -119,6 +128,7 @@ export const LxMusicSearchTab: React.FC = () => {
           if (targetTab === "all") {
             const seg = await multiSourceResolver.searchOnlineMusicSegmented(q);
             setSongResults(seg.all);
+            searchMemoryCache.set(cacheKey, seg.all);
           } else if (targetTab === "lx_custom") {
             const lxScripts = useSourceConfigStore.getState().lxScripts;
             const activeScript =
@@ -136,6 +146,7 @@ export const LxMusicSearchTab: React.FC = () => {
               };
             const list = await LXRunner.search(activeScript, q, 1, 100);
             setSongResults(list);
+            searchMemoryCache.set(cacheKey, list);
           } else {
             const base = typeof window !== "undefined" ? window.location.origin : "";
             const epMap: Record<string, string> = {
@@ -149,7 +160,9 @@ export const LxMusicSearchTab: React.FC = () => {
             const res = await fetch(targetUrl);
             if (res.ok) {
               const data = await res.json();
-              setSongResults(Array.isArray(data.songs) ? data.songs : []);
+              const songs = Array.isArray(data.songs) ? data.songs : [];
+              setSongResults(songs);
+              searchMemoryCache.set(cacheKey, songs);
             } else {
               setSongResults([]);
             }
@@ -171,7 +184,7 @@ export const LxMusicSearchTab: React.FC = () => {
         setIsSearching(false);
       }
     },
-    [keyword, activeTab, searchMode, showToast]
+    [keyword, activeTab, searchMode, selectedScriptId, showToast]
   );
 
   // 初始加载一次默认搜索
