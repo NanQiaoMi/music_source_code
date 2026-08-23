@@ -174,7 +174,9 @@ const attachListeners = (
   } = useAudioStore.getState();
 
   const onTimeUpdate = () => {
-    setCurrentTime(audio.currentTime);
+    const t = audio.currentTime;
+    useAudioStore.getState().setCurrentTime(t);
+    usePlayerStore.getState().setCurrentTime(t);
 
     const abState = useABLoopStore.getState();
     if (abState.isEnabled && abState.pointA !== null && abState.pointB !== null) {
@@ -197,8 +199,13 @@ const attachListeners = (
     }
   };
   const onLoadedMetadata = () => {
-    setDuration(audio.duration);
-    setIsLoading(false);
+    const d = audio.duration;
+    if (d && !isNaN(d)) {
+      useAudioStore.getState().setDuration(d);
+      usePlayerStore.getState().setDuration(d);
+    }
+    useAudioStore.getState().setIsLoading(false);
+    usePlayerStore.getState().setIsLoading(false);
 
     // 智能防试听截断：若加载出的流时长 <= 95s (如 30s/60s VIP试听)，自动抢救全网完整母带
     // 使用防重入标志避免抢救后 audio.load() 再次触发 onLoadedMetadata 形成死循环
@@ -239,17 +246,31 @@ const attachListeners = (
       });
     }
   };
-  const onDurationChange = () => setDuration(audio.duration);
-  const onLoadStart = () => setIsLoading(true);
+  const onDurationChange = () => {
+    const d = audio.duration;
+    if (d && !isNaN(d)) {
+      useAudioStore.getState().setDuration(d);
+      usePlayerStore.getState().setDuration(d);
+    }
+  };
+  const onLoadStart = () => {
+    useAudioStore.getState().setIsLoading(true);
+    usePlayerStore.getState().setIsLoading(true);
+  };
   const onCanPlay = () => {
-    setIsLoading(false);
+    useAudioStore.getState().setIsLoading(false);
+    usePlayerStore.getState().setIsLoading(false);
     if (isPlayingRef.current) {
       audio.play().catch(handlePlayError);
     }
   };
-  const onWaiting = () => setIsLoading(true);
+  const onWaiting = () => {
+    useAudioStore.getState().setIsLoading(true);
+    usePlayerStore.getState().setIsLoading(true);
+  };
   const onPlaying = () => {
-    setIsLoading(false);
+    useAudioStore.getState().setIsLoading(false);
+    usePlayerStore.getState().setIsLoading(false);
     // 仅在切歌或新曲目初次播放成功时弹出 Toast 提示（杜绝快进/倒退/拖动进度条 seek 时重复刷屏）
     const playingSong = usePlayerStore.getState().currentSong;
     if (playingSong && playingSong.title) {
@@ -523,9 +544,12 @@ export const useAudioPlayer = () => {
 
     registerAudioSeekHandler((time: number) => {
       const activeAudio = audioElementRef.current;
-      if (activeAudio && typeof activeAudio.duration === "number" && !isNaN(activeAudio.duration)) {
-        const clamped = Math.max(0, Math.min(time, activeAudio.duration || 0));
-        activeAudio.currentTime = clamped;
+      if (activeAudio) {
+        try {
+          const maxTime = Number.isFinite(activeAudio.duration) && activeAudio.duration > 0 ? activeAudio.duration : time;
+          const clamped = Math.max(0, Math.min(time, maxTime));
+          activeAudio.currentTime = clamped;
+        } catch {}
       }
     });
 
@@ -547,9 +571,11 @@ export const useAudioPlayer = () => {
     // Sync current values if already loaded
     if (audio.duration && !isNaN(audio.duration)) {
       setDuration(audio.duration);
+      useAudioStore.getState().setDuration(audio.duration);
     }
     if (audio.currentTime) {
       setCurrentTime(audio.currentTime);
+      useAudioStore.getState().setCurrentTime(audio.currentTime);
     }
 
     return () => {
