@@ -33,8 +33,10 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
   const { activeCount, totalSpeedFormatted } = useOfflineDownloadStore();
 
   useEffect(() => {
-    refreshAnalytics(songs);
-  }, [songs, refreshAnalytics]);
+    if (storageDetails.totalUsageBytes === 0 && songs.length > 0) {
+      refreshAnalytics(songs);
+    }
+  }, [songs, refreshAnalytics, storageDetails.totalUsageBytes]);
 
   const summaryCards = [
     {

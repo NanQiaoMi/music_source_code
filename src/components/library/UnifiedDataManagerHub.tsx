@@ -55,6 +55,17 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
   const { songs } = usePlaylistStore();
 
   const [activeTab, setActiveTab] = useState<HubTabKey>(initialTab);
+  const [visitedTabs, setVisitedTabs] = useState<Set<HubTabKey>>(new Set([initialTab]));
+
+  const handleSelectTab = (tab: HubTabKey) => {
+    setActiveTab(tab);
+    setVisitedTabs((prev) => {
+      if (prev.has(tab)) return prev;
+      const next = new Set(prev);
+      next.add(tab);
+      return next;
+    });
+  };
 
   useEffect(() => {
     refreshAnalytics(songs);
@@ -138,7 +149,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id as HubTabKey)}
+                onClick={() => handleSelectTab(tab.id as HubTabKey)}
                 className={`relative flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-xl transition-colors cursor-pointer whitespace-nowrap z-10 select-none ${
                   isActive ? "text-white font-bold" : "text-white/60 hover:text-white/90"
                 }`}
@@ -147,7 +158,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
                   <motion.div
                     layoutId="activeHubTabPill"
                     className="absolute inset-0 bg-white/20 border border-white/25 rounded-xl shadow-[0_4px_16px_rgba(255,255,255,0.18),inset_0_1px_1px_rgba(255,255,255,0.45)] backdrop-blur-lg -z-10"
-                    transition={{ type: "spring", stiffness: 450, damping: 32, mass: 0.6 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 35, mass: 0.5 }}
                   />
                 )}
                 <Icon className={`w-3.5 h-3.5 transition-colors ${isActive ? "text-cyan-300 scale-105" : "text-white/60"}`} />
@@ -191,7 +202,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id as HubTabKey)}
+              onClick={() => handleSelectTab(tab.id as HubTabKey)}
               className={`relative flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap cursor-pointer z-10 transition-colors ${
                 isActive ? "text-white font-bold" : "bg-white/5 text-white/60"
               }`}
@@ -200,7 +211,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
                 <motion.div
                   layoutId="activeMobileHubTabPill"
                   className="absolute inset-0 bg-white/20 border border-white/25 rounded-xl shadow-sm -z-10"
-                  transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
                 />
               )}
               <Icon className={`w-3.5 h-3.5 ${isActive ? "text-cyan-300" : ""}`} />
@@ -210,45 +221,85 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
         })}
       </div>
 
-      {/* ── 核心工作区主视口 (GPU 硬件加速与毫秒级即时响应) ── */}
+      {/* ── 核心工作区主视口 (Keep-Alive 瞬态热切换与 120fps 满帧性能) ── */}
       <main
-        className={`relative z-10 flex-1 overflow-y-auto p-4 md:p-6 w-full custom-scrollbar transition-all ${
+        className={`relative z-10 flex-1 overflow-y-auto p-4 md:p-6 w-full custom-scrollbar ${
           activeTab === "lx_search" || activeTab === "cloud" || activeTab === "downloads"
             ? "max-w-[1720px] mx-auto"
             : "max-w-7xl mx-auto"
         }`}
       >
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -6, filter: "blur(2px)" }}
-            transition={{
-              type: "spring",
-              stiffness: 420,
-              damping: 30,
-              mass: 0.6,
-            }}
-            className="will-change-[transform,opacity,filter] transform-gpu"
+        {visitedTabs.has("dashboard") && (
+          <div
+            className={`w-full transition-opacity duration-150 transform-gpu ${
+              activeTab === "dashboard" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
+            }`}
           >
-            {activeTab === "dashboard" && (
-              <DataDashboardTab
-                onNavigateTab={(tab) => setActiveTab(tab as HubTabKey)}
-              />
-            )}
-            {activeTab === "lx_search" && <LxMusicSearchTab />}
-            {activeTab === "cloud" && <CloudAssetsTab />}
-            {activeTab === "downloads" && <OfflineDownloadsTab />}
-            {activeTab === "playlists" && <PlaylistHubTab />}
-            {activeTab === "local" && (
-              <div className="space-y-4">
-                <LocalMusicManager />
-              </div>
-            )}
-            {activeTab === "health_storage" && <HealthStorageTab />}
-          </motion.div>
-        </AnimatePresence>
+            <DataDashboardTab onNavigateTab={(tab) => handleSelectTab(tab as HubTabKey)} />
+          </div>
+        )}
+
+        {visitedTabs.has("lx_search") && (
+          <div
+            className={`w-full transition-opacity duration-150 transform-gpu ${
+              activeTab === "lx_search" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
+            }`}
+          >
+            <LxMusicSearchTab />
+          </div>
+        )}
+
+        {visitedTabs.has("cloud") && (
+          <div
+            className={`w-full transition-opacity duration-150 transform-gpu ${
+              activeTab === "cloud" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
+            }`}
+          >
+            <CloudAssetsTab />
+          </div>
+        )}
+
+        {visitedTabs.has("downloads") && (
+          <div
+            className={`w-full transition-opacity duration-150 transform-gpu ${
+              activeTab === "downloads" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
+            }`}
+          >
+            <OfflineDownloadsTab />
+          </div>
+        )}
+
+        {visitedTabs.has("playlists") && (
+          <div
+            className={`w-full transition-opacity duration-150 transform-gpu ${
+              activeTab === "playlists" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
+            }`}
+          >
+            <PlaylistHubTab />
+          </div>
+        )}
+
+        {visitedTabs.has("local") && (
+          <div
+            className={`w-full transition-opacity duration-150 transform-gpu ${
+              activeTab === "local" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
+            }`}
+          >
+            <div className="space-y-4">
+              <LocalMusicManager />
+            </div>
+          </div>
+        )}
+
+        {visitedTabs.has("health_storage") && (
+          <div
+            className={`w-full transition-opacity duration-150 transform-gpu ${
+              activeTab === "health_storage" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
+            }`}
+          >
+            <HealthStorageTab />
+          </div>
+        )}
       </main>
 
       {/* 音源矩阵与脚本配置全局模态框 */}
