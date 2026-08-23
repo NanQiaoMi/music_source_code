@@ -9,6 +9,7 @@ import {
   QualityTier,
   PresetScheme,
 } from "@/types/sourceConfig";
+import { LXRunner } from "@/lib/sources/lxRunner";
 
 const DEFAULT_SOURCES: Record<MusicSourceId, SingleSourceConfig> = {
   netease: {
@@ -401,6 +402,12 @@ export const useSourceConfigStore = create<SourceConfigState>()(
           if (!res.ok) return;
           const data = await res.json();
           if (data && Array.isArray(data.sources)) {
+            data.sources.forEach((builtin: any) => {
+              if (builtin.content) {
+                LXRunner.cacheScriptCode(builtin.id, builtin.content);
+              }
+            });
+
             set((state) => {
               const existingMap = new Map(state.lxScripts.map((s) => [s.id, s]));
               const updatedList: LXCustomScript[] = [...state.lxScripts];
@@ -408,7 +415,6 @@ export const useSourceConfigStore = create<SourceConfigState>()(
               data.sources.forEach((builtin: any) => {
                 const existing = existingMap.get(builtin.id);
                 if (existing) {
-                  existing.scriptContent = builtin.content || existing.scriptContent;
                   existing.lastUpdated = Date.now();
                 } else {
                   updatedList.push({
@@ -417,7 +423,6 @@ export const useSourceConfigStore = create<SourceConfigState>()(
                     author: builtin.author,
                     version: builtin.version,
                     description: builtin.description,
-                    scriptContent: builtin.content,
                     scriptUrl: `/api/sources/builtin?id=${builtin.id}`,
                     enabled: true,
                     lastUpdated: Date.now(),
@@ -462,7 +467,7 @@ export const useSourceConfigStore = create<SourceConfigState>()(
           timestamp: Date.now(),
           activePreset,
           sources,
-          lxScripts,
+          lxScripts: lxScripts.map(({ scriptContent, ...meta }) => meta),
         };
         return JSON.stringify(exportData, null, 2);
       },
@@ -505,10 +510,32 @@ export const useSourceConfigStore = create<SourceConfigState>()(
     }),
     {
       name: "vibe_source_config_v1",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => ({
+        getItem: (name) => {
+          try {
+            return localStorage.getItem(name);
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, value);
+          } catch (e) {
+            console.warn("[safeLocalStorage] setItem failed or quota exceeded:", e);
+          }
+        },
+        removeItem: (name) => {
+          try {
+            localStorage.removeItem(name);
+          } catch {
+            // ignore
+          }
+        },
+      })),
       partialize: (state) => ({
         sources: state.sources,
-        lxScripts: state.lxScripts,
+        lxScripts: state.lxScripts.map(({ scriptContent, ...meta }) => meta),
         activePreset: state.activePreset,
       }),
     }

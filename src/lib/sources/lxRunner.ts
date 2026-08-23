@@ -165,6 +165,49 @@ export class LXRunner {
     }
   }
 
+  private static scriptCodeCache = new Map<string, string>();
+
+  public static cacheScriptCode(scriptId: string, code: string) {
+    if (scriptId && code) {
+      this.scriptCodeCache.set(scriptId, code);
+    }
+  }
+
+  public static async ensureScriptContent(script: LXCustomScript): Promise<string> {
+    if (script.scriptContent && script.scriptContent.trim()) {
+      this.scriptCodeCache.set(script.id, script.scriptContent);
+      return script.scriptContent;
+    }
+
+    if (this.scriptCodeCache.has(script.id)) {
+      return this.scriptCodeCache.get(script.id)!;
+    }
+
+    if (script.scriptUrl) {
+      try {
+        const res = await fetch(script.scriptUrl);
+        if (res.ok) {
+          let code = "";
+          const text = await res.text();
+          try {
+            const parsed = JSON.parse(text);
+            code = parsed.content || "";
+          } catch {
+            code = text;
+          }
+          if (code) {
+            this.scriptCodeCache.set(script.id, code);
+            return code;
+          }
+        }
+      } catch (e) {
+        console.warn(`[LXRunner] Failed to load script ${script.name} from ${script.scriptUrl}:`, e);
+      }
+    }
+
+    return "";
+  }
+
   /**
    * 解析指定歌曲的音频直链
    */
@@ -173,13 +216,16 @@ export class LXRunner {
     song: Song,
     quality: string = "320k"
   ): Promise<{ url: string; quality?: string; format?: string } | null> {
-    if (!script.enabled || !script.scriptContent) return null;
+    if (!script.enabled) return null;
+
+    const rawCode = await this.ensureScriptContent(script);
+    if (!rawCode) return null;
 
     try {
       const { lxEnvironment, handlers } = this.createSandbox(script);
       const sandboxModule: any = { exports: {} };
 
-      const fn = new Function("module", "exports", "console", "globalThis", script.scriptContent);
+      const fn = new Function("module", "exports", "console", "globalThis", rawCode);
       const fakeGlobal: any = {
         lx: lxEnvironment,
         module: sandboxModule,
@@ -255,7 +301,8 @@ export class LXRunner {
     if (!script.enabled) return [];
 
     try {
-      if (script.scriptContent) {
+      const rawCode = await this.ensureScriptContent(script);
+      if (rawCode) {
         const sandboxModule: any = { exports: {} };
         const { lxEnvironment } = this.createSandbox(script);
         const fakeGlobal: any = {
@@ -265,7 +312,7 @@ export class LXRunner {
           console,
         };
 
-        const fn = new Function("module", "exports", "console", "globalThis", script.scriptContent);
+        const fn = new Function("module", "exports", "console", "globalThis", rawCode);
         fn(sandboxModule, sandboxModule.exports, console, fakeGlobal);
         const engine = sandboxModule.exports;
 
