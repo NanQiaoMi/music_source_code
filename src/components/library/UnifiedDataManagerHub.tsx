@@ -75,8 +75,8 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
 
   const navTabs = [
     { id: "dashboard", label: "全景看板", icon: LayoutDashboard, badge: null },
-    { id: "lx_search", label: "全网聚搜", icon: Sparkles, badge: "多源" },
-    { id: "cloud", label: "云端曲库", icon: Cloud, badge: "5源" },
+    { id: "lx_search", label: "全网聚搜", icon: Sparkles, badge: "✦" },
+    { id: "cloud", label: "云端曲库", icon: Cloud, badge: "☁" },
     { id: "downloads", label: "离线下载", icon: Download, badge: activeCount > 0 ? `${activeCount}` : null },
     { id: "playlists", label: "歌单编排", icon: FolderHeart, badge: null },
     { id: "local", label: "本地导入", icon: HardDriveDownload, badge: `${storageDetails.localMusicCount}` },
@@ -118,8 +118,8 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
             <div>
               <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-1.5 leading-tight">
                 资料库资产管理中枢
-                <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded-full bg-white/10 text-white/80 border border-white/15 font-semibold">
-                  v0.2 HUB
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/10 text-cyan-300 border border-white/15 font-medium">
+                  ✦ 全景中枢
                 </span>
               </h2>
               <p className="text-[10px] text-white/40 leading-none mt-0.5">

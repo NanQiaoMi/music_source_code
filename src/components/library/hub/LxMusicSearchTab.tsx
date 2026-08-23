@@ -41,14 +41,14 @@ type SortField = "index" | "title" | "artist" | "album" | "duration";
 type SortOrder = "asc" | "desc";
 type QualityFilter = "all" | "24bit" | "flac";
 
-const SOURCE_TABS: { id: SearchSourceTab; label: string; tag: string; dotColor: string; activeBorder: string; badgeStyle: string }[] = [
-  { id: "all", label: "聚合大会", tag: "ALL", dotColor: "bg-cyan-400", activeBorder: "border-cyan-400/50 shadow-cyan-500/10", badgeStyle: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" },
-  { id: "kuwo", label: "酷我音乐", tag: "kw", dotColor: "bg-emerald-400", activeBorder: "border-emerald-400/50 shadow-emerald-500/10", badgeStyle: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" },
-  { id: "kugou", label: "酷狗音乐", tag: "kg", dotColor: "bg-blue-400", activeBorder: "border-blue-400/50 shadow-blue-500/10", badgeStyle: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
-  { id: "qq", label: "QQ 音乐", tag: "tx", dotColor: "bg-teal-400", activeBorder: "border-teal-400/50 shadow-teal-500/10", badgeStyle: "bg-teal-500/20 text-teal-300 border-teal-500/30" },
-  { id: "netease", label: "网易云", tag: "wy", dotColor: "bg-rose-400", activeBorder: "border-rose-400/50 shadow-rose-500/10", badgeStyle: "bg-rose-500/20 text-rose-300 border-rose-500/30" },
-  { id: "migu", label: "咪咕音乐", tag: "mg", dotColor: "bg-amber-400", activeBorder: "border-amber-400/50 shadow-amber-500/10", badgeStyle: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
-  { id: "lx_custom", label: "落雪母带", tag: "lx", dotColor: "bg-purple-400", activeBorder: "border-purple-400/50 shadow-purple-500/10", badgeStyle: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
+const SOURCE_TABS: { id: SearchSourceTab; label: string; symbol: string; dotColor: string; activeBorder: string; badgeStyle: string }[] = [
+  { id: "all", label: "全网聚合", symbol: "✦", dotColor: "bg-cyan-400", activeBorder: "border-cyan-400/50 shadow-cyan-500/10", badgeStyle: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" },
+  { id: "kuwo", label: "酷我音乐", symbol: "◈", dotColor: "bg-emerald-400", activeBorder: "border-emerald-400/50 shadow-emerald-500/10", badgeStyle: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" },
+  { id: "kugou", label: "酷狗音乐", symbol: "◆", dotColor: "bg-blue-400", activeBorder: "border-blue-400/50 shadow-blue-500/10", badgeStyle: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
+  { id: "qq", label: "QQ 音乐", symbol: "✧", dotColor: "bg-teal-400", activeBorder: "border-teal-400/50 shadow-teal-500/10", badgeStyle: "bg-teal-500/20 text-teal-300 border-teal-500/30" },
+  { id: "netease", label: "网易云", symbol: "●", dotColor: "bg-rose-400", activeBorder: "border-rose-400/50 shadow-rose-500/10", badgeStyle: "bg-rose-500/20 text-rose-300 border-rose-500/30" },
+  { id: "migu", label: "咪咕音乐", symbol: "◉", dotColor: "bg-amber-400", activeBorder: "border-amber-400/50 shadow-amber-500/10", badgeStyle: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
+  { id: "lx_custom", label: "落雪母带", symbol: "⚡", dotColor: "bg-purple-400", activeBorder: "border-purple-400/50 shadow-purple-500/10", badgeStyle: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
 ];
 
 const HOT_SEARCH_TAGS = [
@@ -338,37 +338,74 @@ export const LxMusicSearchTab: React.FC = () => {
   const getSourceBadge = (source?: string) => {
     const s = (source || "all").toLowerCase();
     if (s === "kuwo" || s === "kw") {
-      return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">kw</span>;
+      return (
+        <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-emerald-500/15 text-emerald-300 font-medium border border-emerald-500/30 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+          <span>酷我</span>
+        </span>
+      );
     }
     if (s === "kugou" || s === "kg") {
-      return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-blue-500/15 text-blue-400 font-bold border border-blue-500/30">kg</span>;
+      return (
+        <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-blue-500/15 text-blue-300 font-medium border border-blue-500/30 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
+          <span>酷狗</span>
+        </span>
+      );
     }
     if (s === "qq" || s === "tx") {
-      return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-teal-500/15 text-teal-400 font-bold border border-teal-500/30">tx</span>;
+      return (
+        <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-teal-500/15 text-teal-300 font-medium border border-teal-500/30 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shadow-[0_0_6px_rgba(45,212,191,0.8)]" />
+          <span>企鹅</span>
+        </span>
+      );
     }
     if (s === "netease" || s === "wy") {
-      return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-rose-500/15 text-rose-400 font-bold border border-rose-500/30">wy</span>;
+      return (
+        <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-rose-500/15 text-rose-300 font-medium border border-rose-500/30 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.8)]" />
+          <span>云村</span>
+        </span>
+      );
     }
     if (s === "migu" || s === "mg") {
-      return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-amber-500/15 text-amber-400 font-bold border border-amber-500/30">mg</span>;
+      return (
+        <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-amber-500/15 text-amber-300 font-medium border border-amber-500/30 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]" />
+          <span>咪咕</span>
+        </span>
+      );
     }
     if (s === "lx_custom" || s === "lx") {
-      return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-purple-500/15 text-purple-400 font-bold border border-purple-500/30">lx</span>;
+      return (
+        <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-purple-500/15 text-purple-300 font-medium border border-purple-500/30 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_rgba(192,132,252,0.8)]" />
+          <span>母带</span>
+        </span>
+      );
     }
-    return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-white/10 text-white/70">src</span>;
+    return (
+      <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-white/10 text-white/70 flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
+        <span>音源</span>
+      </span>
+    );
   };
 
   const getQualityBadge = (song: Song) => {
     if (song.title.includes("24bit") || song.format === "flac") {
       return (
-        <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.15)]">
-          24bit
+        <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.15)] flex items-center gap-1 font-medium">
+          <span>💎</span>
+          <span>高解析</span>
         </span>
       );
     }
     return (
-      <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)]">
-        SQ
+      <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)] flex items-center gap-1 font-medium">
+        <span>✦</span>
+        <span>无损</span>
       </span>
     );
   };
@@ -460,7 +497,7 @@ export const LxMusicSearchTab: React.FC = () => {
                         qualityFilter === q ? "bg-white/15 text-white shadow-sm" : "hover:text-white"
                       }`}
                     >
-                      {q === "all" ? "全部" : q === "24bit" ? "Hi-Res 24bit" : "SQ 无损"}
+                      {q === "all" ? "全部" : q === "24bit" ? "💎 高解析" : "✦ 无损"}
                     </button>
                   ))}
                 </div>
@@ -498,8 +535,8 @@ export const LxMusicSearchTab: React.FC = () => {
                 >
                   <span className={`w-2 h-2 rounded-full ${tab.dotColor}`} />
                   <span>{tab.label}</span>
-                  <span className={`px-1.5 py-0.2 text-[9px] font-mono font-bold rounded ${tab.badgeStyle}`}>
-                    {tab.tag}
+                  <span className="text-[11px] opacity-80 leading-none">
+                    {tab.symbol}
                   </span>
                 </button>
               );

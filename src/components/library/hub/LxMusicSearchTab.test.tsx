@@ -105,7 +105,7 @@ describe("LxMusicSearchTab", () => {
       root.render(<LxMusicSearchTab />);
     });
 
-    expect(container.textContent).toContain("聚合大会");
+    expect(container.textContent).toContain("全网聚合");
     expect(container.textContent).toContain("酷我音乐");
     expect(container.textContent).toContain("QQ 音乐");
     expect(container.textContent).toContain("网易云");
