@@ -58,6 +58,9 @@ describe("listeningJournalStore", () => {
   });
 
   it("trims journal data to the last 90 days", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-20T12:00:00Z"));
+
     useListeningJournalStore.getState().upsertDay(day("2026-02-01", 1));
     useListeningJournalStore.getState().upsertDay(day("2026-02-20", 2));
     useListeningJournalStore.getState().upsertDay(day("2026-05-20", 3));
@@ -75,6 +78,8 @@ describe("listeningJournalStore", () => {
     expect(useListeningJournalStore.getState().days["2026-05-20"]).toBeDefined();
     expect(useListeningJournalStore.getState().eventsByDate["2026-02-01"]).toBeUndefined();
     expect(useListeningJournalStore.getState().eventsByDate["2026-02-20"]).toHaveLength(1);
+
+    vi.useRealTimers();
   });
 
   it("records play events into the daily journal rollup", () => {
