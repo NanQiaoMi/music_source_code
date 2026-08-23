@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Song } from "@/types/song";
+import { PlaylistDetailDrawer, DrawerPlaylistInfo } from "./PlaylistDetailDrawer";
 
 export const CloudAssetsTab: React.FC = () => {
   const {
@@ -36,11 +37,28 @@ export const CloudAssetsTab: React.FC = () => {
   const { openManagementModal } = useSourceConfigStore();
   const { songs } = usePlaylistStore();
   const { addBatchDownloads, addDownload, isSongOffline } = useOfflineDownloadStore();
-  const { playSong } = useAudioStore();
+  const { playSong, playQueue } = useAudioStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+
+  const [selectedDrawerPlaylist, setSelectedDrawerPlaylist] = useState<DrawerPlaylistInfo | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const handleOpenPlaylistDetail = (pl: any) => {
+    setSelectedDrawerPlaylist({
+      id: String(pl.id),
+      name: pl.name || "云端歌单",
+      coverImgUrl: pl.coverImgUrl || "/default-cover.svg",
+      creatorName: pl.source === "netease" ? "网易云音乐" : pl.source === "qq" ? "QQ音乐" : "云端资产",
+      playCount: pl.playCount || 0,
+      trackCount: pl.trackCount || 0,
+      source: pl.source || "netease",
+      description: pl.description || "多平台已授权同步云歌单",
+    });
+    setIsDrawerOpen(true);
+  };
 
   const platforms = [
     {
@@ -251,10 +269,11 @@ export const CloudAssetsTab: React.FC = () => {
               return (
                 <div
                   key={pl.id}
-                  className="p-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 transition-all flex items-center justify-between gap-3 group"
+                  onClick={() => handleOpenPlaylistDetail(pl)}
+                  className="p-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-cyan-400/40 transition-all flex items-center justify-between gap-3 group cursor-pointer shadow-md hover:shadow-cyan-500/10 active:scale-[0.99]"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-11 h-11 rounded-xl overflow-hidden bg-white/10 border border-white/15 shrink-0 shadow-md">
+                    <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-white/10 border border-white/15 shrink-0 shadow-md">
                       <img
                         src={pl.coverImgUrl || "/default-cover.svg"}
                         alt={pl.name || "Playlist"}
@@ -262,7 +281,7 @@ export const CloudAssetsTab: React.FC = () => {
                       />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-white truncate leading-tight">
+                      <p className="text-xs font-bold text-white truncate leading-tight group-hover:text-cyan-300 transition-colors">
                         {pl.name || "未命名歌单"}
                       </p>
                       <p className="text-[11px] text-white/40 truncate mt-0.5">
@@ -271,12 +290,20 @@ export const CloudAssetsTab: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
-                      onClick={async () => {
+                      onClick={async (e) => {
+                        e.stopPropagation();
                         setSyncFeedback(`⏳ 正在拉取「${pl.name}」全部曲目详情...`);
-                        const tracks = await fetchAllPlaylistTracks(pl.id, pl.source);
+                        let tracks = await fetchAllPlaylistTracks(pl.id, pl.source);
+                        if (!tracks || tracks.length === 0) {
+                          const res = await fetch(`/api/playlist/tracks?id=${encodeURIComponent(pl.id)}&limit=500`);
+                          if (res.ok) {
+                            const d = await res.json();
+                            tracks = d.songs || [];
+                          }
+                        }
                         if (tracks && tracks.length > 0) {
                           addBatchDownloads(tracks);
                           setSyncFeedback(`🚀 已将「${pl.name}」全部 ${tracks.length} 首歌曲加入离线下载队列！`);
@@ -291,14 +318,25 @@ export const CloudAssetsTab: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={async () => {
-                        const tracks = await fetchAllPlaylistTracks(pl.id, pl.source);
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        setSyncFeedback(`⏳ 正在准备播放「${pl.name}」...`);
+                        let tracks = await fetchAllPlaylistTracks(pl.id, pl.source);
+                        if (!tracks || tracks.length === 0) {
+                          const res = await fetch(`/api/playlist/tracks?id=${encodeURIComponent(pl.id)}&limit=500`);
+                          if (res.ok) {
+                            const d = await res.json();
+                            tracks = d.songs || [];
+                          }
+                        }
                         if (tracks && tracks.length > 0) {
-                          playSong(tracks[0]);
+                          playQueue(tracks, 0);
+                          setSyncFeedback(`▶ 开始播放歌单《${pl.name}》(${tracks.length}首)`);
+                          setTimeout(() => setSyncFeedback(null), 3000);
                         }
                       }}
                       className="p-1.5 rounded-xl bg-white/10 hover:bg-white hover:text-black text-white/80 transition-all active:scale-95 cursor-pointer shadow-sm"
-                      title="播放此歌单"
+                      title="播放此歌单整单"
                     >
                       <Play className="w-3.5 h-3.5 fill-current" />
                     </button>
@@ -400,6 +438,13 @@ export const CloudAssetsTab: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* ── 歌单曲目详情与选歌/全量播放抽屉 (Playlist Detail Drawer) ── */}
+      <PlaylistDetailDrawer
+        isOpen={isDrawerOpen}
+        playlist={selectedDrawerPlaylist}
+        onClose={() => setIsDrawerOpen(false)}
+      />
     </div>
   );
 };
