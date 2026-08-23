@@ -9,6 +9,7 @@ import { useQueueStore } from "@/store/queueStore";
 import { usePlaylistGroupStore, PlaylistGroup } from "@/store/playlistGroupStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useUserAccountStore } from "@/store/userAccountStore";
+import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useIntegratedAudioPipeline } from "@/lib/audio/useIntegratedAudioPipeline";
 import { useUIStore } from "@/store/uiStore";
 import {
@@ -34,10 +35,11 @@ import {
   FolderHeart,
   Clock,
   Sparkles,
+  Download,
 } from "lucide-react";
 
-export type ShelfDisplayMode = "side" | "stage"; // 侧栏弧形透视 (Side Shelf) | 舞台水平展开 (Stage Shelf)
-export type ShelfBrowseType = "playlists" | "tracks" | "favorites" | "recent" | "daily";
+export type ShelfDisplayMode = "side" | "stage";
+export type ShelfBrowseType = "playlists" | "tracks" | "favorites" | "recent" | "daily" | "offline";
 
 interface Shelf3DViewProps {
   isOpen?: boolean;
@@ -379,6 +381,30 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const closePanel = useUIStore((state) => state.closePanel);
   const { playTrackWithPipeline } = useIntegratedAudioPipeline();
 
+  // 离线曲库数据
+  const offlineRecords = useOfflineDownloadStore((state) => state.offlineRecords);
+  const loadOfflineRecords = useOfflineDownloadStore((state) => state.loadOfflineRecords);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadOfflineRecords();
+    }
+  }, [isOpen, loadOfflineRecords]);
+
+  const offlineSongs = useMemo<Song[]>(() => {
+    return (offlineRecords || []).map((r) => ({
+      id: r.songId,
+      title: r.title || "离线曲目",
+      artist: r.artist || "未知歌手",
+      album: r.album || "离线母带",
+      duration: r.duration || 240,
+      cover: r.cover || "/default-cover.svg",
+      source: (r.source as any) || "offline",
+      audioUrl: `offline://${r.songId}`,
+      format: (r as any).format || "mp3",
+    }));
+  }, [offlineRecords]);
+
   // Local state
   const [displayMode, setDisplayMode] = useState<ShelfDisplayMode>(defaultMode);
   const [browseType, setBrowseType] = useState<ShelfBrowseType>("playlists");
@@ -416,7 +442,24 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       songs: validSongs,
     });
 
-    // 2. 我喜欢的音乐 (专属红心浪漫光晕艺术封面)
+    // 2. 离线下载专属 3D 唱片架 (当有离线曲目时自动呈现专属离线唱片卡)
+    if (offlineSongs.length > 0) {
+      items.push({
+        id: "pl-offline-vault",
+        type: "playlist",
+        title: "离线下载曲库 (Offline Vault)",
+        subtitle: `${offlineSongs.length} 首母带 · 本地沙盒 0 流量秒播`,
+        cover:
+          offlineSongs[0]?.cover && offlineSongs[0]?.cover !== defaultCover
+            ? offlineSongs[0].cover
+            : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&h=800&fit=crop",
+        tag: "离线母带",
+        trackCount: offlineSongs.length,
+        songs: offlineSongs,
+      });
+    }
+
+    // 2.5 我喜欢的音乐 (专属红心浪漫光晕艺术封面)
     const effectiveFavs = favorites.length > 0 ? favorites : validSongs.slice(0, Math.min(12, validSongs.length));
     items.push({
       id: "pl-favorites",
@@ -509,13 +552,15 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     });
 
     return items;
-  }, [rawSongs, favorites, recentPlayedSongs, playlistGroups, userPlaylists]);
+  }, [rawSongs, favorites, recentPlayedSongs, playlistGroups, userPlaylists, offlineSongs]);
 
   // 构建单曲列表 (Tracks Mode)
   const trackItems = useMemo<ShelfItem[]>(() => {
     let sourceSongs: Song[] = rawSongs;
     if (browseType === "favorites") {
       sourceSongs = favorites.length > 0 ? favorites : rawSongs;
+    } else if (browseType === "offline") {
+      sourceSongs = offlineSongs.length > 0 ? offlineSongs : rawSongs;
     } else if (browseType === "recent") {
       sourceSongs = recentPlayedSongs.length > 0 ? recentPlayedSongs : rawSongs;
     } else if (browseType === "daily") {
@@ -1399,6 +1444,23 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           >
             <Clock className="w-3.5 h-3.5 shrink-0" />
             <span>最近播放</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              playTactileTick({ type: "snap" });
+              setBrowseType("offline");
+              targetScrollRef.current = 0;
+            }}
+            className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
+              browseType === "offline"
+                ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
+                : "text-white/60 hover:text-white"
+            }`}
+          >
+            <Download className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+            <span>离线曲库 {offlineSongs.length > 0 ? `(${offlineSongs.length})` : ""}</span>
           </button>
 
           <button

@@ -16,10 +16,13 @@ import {
   CornerDownRight,
   Music2,
   Clock,
+  Download,
 } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
+import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
+import { Song } from "@/types/song";
 import { formatTime } from "@/utils/formatTime";
 import Image from "next/image";
 
@@ -42,10 +45,35 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
   const { queue, currentIndex, removeFromQueue, clearQueue, moveToNext } = useQueueStore();
   const { currentSong, isPlaying } = useAudioStore();
   const openPanel = useUIStore((state) => state.openPanel);
+  const { offlineRecords, loadOfflineRecords } = useOfflineDownloadStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const activeItemRef = useRef<HTMLDivElement | null>(null);
+
+  // Sync offline records
+  useEffect(() => {
+    if (isOpen) {
+      loadOfflineRecords();
+    }
+  }, [isOpen, loadOfflineRecords]);
+
+  const handlePlayOfflineLibrary = () => {
+    if (!offlineRecords || offlineRecords.length === 0) return;
+    const offlineSongs: Song[] = offlineRecords.map((r) => ({
+      id: r.songId,
+      title: r.title || "离线曲目",
+      artist: r.artist || "未知歌手",
+      album: r.album || "离线母带",
+      duration: r.duration || 240,
+      cover: r.cover || DEFAULT_COVER_SRC,
+      source: (r.source as any) || "offline",
+      audioUrl: `offline://${r.songId}`,
+      format: (r as any).format || "mp3",
+    }));
+    useQueueStore.getState().setQueue(offlineSongs);
+    useAudioStore.getState().playSong(offlineSongs[0]);
+  };
 
   // Global ESC key listener
   useEffect(() => {
@@ -87,30 +115,21 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
   // Total duration calculation
   const totalDurationText = useMemo(() => {
     const totalSecs = queue.reduce((acc, song) => acc + (song.duration || 0), 0);
-    const hours = Math.floor(totalSecs / 3600);
-    const minutes = Math.floor((totalSecs % 3600) / 60);
-    if (hours > 0) {
-      return `${hours} 小时 ${minutes} 分`;
-    }
-    return `${minutes} 分钟`;
+    return formatTime(totalSecs);
   }, [queue]);
 
-  const handleTrackClick = useCallback((index: number) => {
-    const targetSong = queue[index];
-    if (targetSong) {
-      const audioStore = useAudioStore.getState();
-      const queueStore = useQueueStore.getState();
-      queueStore.setCurrentIndex(index);
-      audioStore.setCurrentSong(targetSong);
-      audioStore.setCurrentIndex(index);
-      audioStore.setIsPlaying(true);
+  const handleTrackClick = (originalIndex: number) => {
+    const song = queue[originalIndex];
+    if (song) {
+      useAudioStore.getState().playSong(song);
+      useQueueStore.getState().setCurrentIndex(originalIndex);
     }
-  }, [queue]);
+  };
 
-  const handleOpen3DShelf = useCallback(() => {
+  const handleOpen3DShelf = () => {
     onClose();
     openPanel("shelf3D");
-  }, [onClose, openPanel]);
+  };
 
   if (!isOpen) return null;
 
@@ -166,8 +185,24 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Right: 3D Spatial Shelf Button + Action Icons */}
-              <div className="flex items-center gap-2">
+              {/* Right: 3D Spatial Shelf Button + Offline Button + Action Icons */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {/* Offline Vault Quick Play Button */}
+                {offlineRecords.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handlePlayOfflineLibrary}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-cyan-300 text-xs font-medium transition-all active:scale-95 cursor-pointer shadow-sm"
+                    title="一键载入并播放所有离线缓存歌曲"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">离线</span>
+                    <span className="text-[10px] font-mono px-1 rounded bg-cyan-400/20 text-cyan-200">
+                      {offlineRecords.length}
+                    </span>
+                  </button>
+                )}
+
                 {/* Fullscreen 3D Spatial Shelf Trigger Button */}
                 <button
                   type="button"
@@ -177,7 +212,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
                   <Box className="w-3.5 h-3.5 text-cyan-400 group-hover:rotate-12 group-hover:scale-110 transition-transform" />
-                  <span className="tracking-wide">3D 唱片架</span>
+                  <span className="tracking-wide hidden sm:inline">3D 唱片架</span>
                 </button>
 
                 {/* Search Toggle */}
@@ -265,6 +300,16 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                 <p className="text-xs text-white/30 mt-1 max-w-[220px]">
                   {searchQuery ? "请尝试其他关键词过滤" : "在曲库或搜索中点击歌曲开始播放"}
                 </p>
+                {offlineRecords.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handlePlayOfflineLibrary}
+                    className="mt-4 flex items-center gap-2 px-4 py-2 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-lg"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>载入并播放离线下载歌曲 ({offlineRecords.length} 首)</span>
+                  </button>
+                )}
               </div>
             ) : (
               filteredQueue.map(({ song, originalIndex }) => {

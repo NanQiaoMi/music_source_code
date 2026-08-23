@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
@@ -23,7 +23,25 @@ const STORAGE_KEY = "vibe_custom_playlists_v1";
 export const PlaylistHubTab: React.FC = () => {
   const { songs: librarySongs } = usePlaylistStore();
   const { playSong } = useAudioStore();
-  const { addBatchDownloads, isSongOffline } = useOfflineDownloadStore();
+  const { addBatchDownloads, isSongOffline, offlineRecords, loadOfflineRecords } = useOfflineDownloadStore();
+
+  useEffect(() => {
+    loadOfflineRecords();
+  }, [loadOfflineRecords]);
+
+  const offlineSongs = useMemo<Song[]>(() => {
+    return (offlineRecords || []).map((r) => ({
+      id: r.songId,
+      title: r.title || "离线曲目",
+      artist: r.artist || "未知歌手",
+      album: r.album || "离线母带",
+      duration: r.duration || 240,
+      cover: r.cover || "/default-cover.svg",
+      source: (r.source as any) || "offline",
+      audioUrl: `offline://${r.songId}`,
+      format: (r as any).format || "mp3",
+    }));
+  }, [offlineRecords]);
 
   const [playlists, setPlaylists] = useState<Playlist[]>(() => {
     if (typeof window === "undefined") return [];
@@ -43,6 +61,26 @@ export const PlaylistHubTab: React.FC = () => {
       },
     ];
   });
+
+  const allPlaylists = useMemo<Playlist[]>(() => {
+    const list: Playlist[] = [...playlists];
+    if (offlineSongs.length > 0) {
+      const exists = list.some((p) => p.id === "offline-downloads-vault");
+      if (!exists) {
+        list.splice(1, 0, {
+          id: "offline-downloads-vault",
+          title: "📥 离线下载曲库",
+          cover:
+            offlineSongs[0]?.cover && offlineSongs[0]?.cover !== "/default-cover.svg"
+              ? offlineSongs[0].cover
+              : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&h=800&fit=crop",
+          songs: offlineSongs,
+          createdAt: Date.now(),
+        });
+      }
+    }
+    return list;
+  }, [playlists, offlineSongs]);
 
   const [activePlaylistId, setActivePlaylistId] = useState<string>(
     playlists[0]?.id || "default-favorites"
@@ -84,9 +122,10 @@ export const PlaylistHubTab: React.FC = () => {
 
   // Persist playlists to localStorage
   const savePlaylists = (newLists: Playlist[]) => {
-    setPlaylists(newLists);
+    const persistable = newLists.filter((p) => p.id !== "offline-downloads-vault");
+    setPlaylists(persistable);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newLists));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(persistable));
     } catch {
       // Ignore
     }
@@ -106,6 +145,7 @@ export const PlaylistHubTab: React.FC = () => {
   };
 
   const deletePlaylist = (id: string) => {
+    if (id === "offline-downloads-vault" || id === "default-favorites") return;
     const next = playlists.filter((p: Playlist) => p.id !== id);
     savePlaylists(next);
     if (activePlaylistId === id && next.length > 0) {
@@ -114,6 +154,7 @@ export const PlaylistHubTab: React.FC = () => {
   };
 
   const removeSongFromPlaylist = (playlistId: string, songId: string) => {
+    if (playlistId === "offline-downloads-vault") return;
     const next = playlists.map((p: Playlist) => {
       if (p.id !== playlistId) return p;
       return {
@@ -124,7 +165,7 @@ export const PlaylistHubTab: React.FC = () => {
     savePlaylists(next);
   };
 
-  const activePlaylist = playlists.find((p: Playlist) => p.id === activePlaylistId) || playlists[0];
+  const activePlaylist = allPlaylists.find((p: Playlist) => p.id === activePlaylistId) || allPlaylists[0];
   const playlistSongs: Song[] = activePlaylist?.songs || [];
 
   const filteredSongs = playlistSongs.filter((s: Song) => {
@@ -249,13 +290,14 @@ export const PlaylistHubTab: React.FC = () => {
         {/* 左侧歌单列表 (4 栅格) */}
         <div className="lg:col-span-4 p-4 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] space-y-2">
           <div className="flex items-center justify-between px-2 mb-2">
-            <span className="text-xs font-bold text-white/70">所有歌单 ({playlists.length})</span>
+            <span className="text-xs font-bold text-white/70">所有歌单 ({allPlaylists.length})</span>
           </div>
 
           <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
-            {playlists.map((pl: Playlist) => {
+            {allPlaylists.map((pl: Playlist) => {
               const isActive = pl.id === activePlaylistId;
               const count = pl.songs ? pl.songs.length : 0;
+              const isOfflineVault = pl.id === "offline-downloads-vault";
 
               return (
                 <div
@@ -266,7 +308,11 @@ export const PlaylistHubTab: React.FC = () => {
                   }}
                   className={`flex items-center justify-between p-2.5 rounded-2xl border transition-all cursor-pointer group ${
                     isActive
-                      ? "bg-white/15 border-white/30 text-white shadow-sm ring-1 ring-white/20"
+                      ? isOfflineVault
+                        ? "bg-cyan-500/20 border-cyan-400/50 text-white shadow-sm ring-1 ring-cyan-400/30"
+                        : "bg-white/15 border-white/30 text-white shadow-sm ring-1 ring-white/20"
+                      : isOfflineVault
+                      ? "bg-cyan-950/20 border-cyan-500/20 hover:bg-cyan-900/30 text-cyan-200"
                       : "bg-white/[0.02] border-white/5 hover:bg-white/[0.06] text-white/70 hover:text-white"
                   }`}
                 >
@@ -279,17 +325,24 @@ export const PlaylistHubTab: React.FC = () => {
                       />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold truncate leading-tight">
-                        {pl.title || "未命名歌单"}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-bold truncate leading-tight">
+                          {pl.title || "未命名歌单"}
+                        </p>
+                        {isOfflineVault && (
+                          <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-cyan-400/20 text-cyan-300 border border-cyan-400/40">
+                            母带
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-white/40 truncate mt-0.5">
-                        {count} 首曲目
+                        {count} 首曲目 {isOfflineVault ? "· 本地沙盒" : ""}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {pl.id !== "default-favorites" && (
+                    {pl.id !== "default-favorites" && pl.id !== "offline-downloads-vault" && (
                       <button
                         type="button"
                         onClick={(e) => {
