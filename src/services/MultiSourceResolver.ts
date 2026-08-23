@@ -877,7 +877,7 @@ export class MultiSourceResolver {
     if (results.all.length === 0) {
       try {
         const directRes = await fetch(
-          `https://music.163.com/api/search/get/web?csrf_token=&hlpretag=&hlposttag=&s=${kw}&type=1&offset=0&total=true&limit=50`,
+          `https://music.163.com/api/cloudsearch/pc?s=${kw}&type=1&offset=0&limit=50`,
           { signal: AbortSignal.timeout(4000) }
         );
         if (directRes.ok) {
@@ -885,17 +885,25 @@ export class MultiSourceResolver {
           const neteaseSongs: Song[] = [];
           (directData?.result?.songs || []).forEach((s: any) => {
             const songId = String(s.id);
-            const artist = Array.isArray(s.artists)
+            const artist = Array.isArray(s.ar)
+              ? s.ar.map((a: any) => a.name).join("/")
+              : Array.isArray(s.artists)
               ? s.artists.map((a: any) => a.name).join("/")
               : s.artist?.name || "未知歌手";
             const uniqKey = `${s.name}-${artist}`.toLowerCase();
+            const cover =
+              s.al?.picUrl ||
+              s.album?.picUrl ||
+              s.album?.blurPicUrl ||
+              s.album?.artist?.img1v1Url ||
+              "/default-cover.svg";
             const song: Song = {
               id: songId,
               title: s.name || "未知曲目",
               artist,
-              album: s.album?.name || "精选大碟",
-              duration: s.duration ? Math.round(s.duration / 1000) : 240,
-              cover: s.album?.artist?.img1v1Url || "/default-cover.svg",
+              album: s.al?.name || s.album?.name || "精选大碟",
+              duration: s.dt ? Math.round(s.dt / 1000) : (s.duration ? Math.round(s.duration / 1000) : 240),
+              cover,
               source: "netease",
               audioUrl: `https://music.163.com/song/media/outer/url?id=${songId}.mp3`,
               format: "mp3",
@@ -914,6 +922,70 @@ export class MultiSourceResolver {
     }
 
     return results;
+  }
+
+  /**
+   * 自动全网嗅探获取高清专辑封面 (支持网易云、QQ音乐、酷狗、酷我多重降级)
+   */
+  public async fetchOnlineCover(query: {
+    id?: string;
+    title: string;
+    artist?: string;
+    source?: string;
+  }): Promise<string | null> {
+    if (!query.title) return null;
+    const kw = encodeURIComponent(`${query.title} ${query.artist || ""}`.trim());
+    const base = getApiBase();
+
+    // 优先 1: 网易云 CloudSearch 高清大图
+    try {
+      const res = await fetch(`${base}/api/search?keywords=${kw}&limit=3`, {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const songs = data.songs || [];
+        for (const s of songs) {
+          if (s.cover && s.cover.startsWith("http") && !s.cover.includes("default-cover")) {
+            return s.cover;
+          }
+        }
+      }
+    } catch {}
+
+    // 优先 2: QQ 音乐 300x300 高清图
+    try {
+      const res = await fetch(`${base}/api/qq/search?keywords=${kw}&limit=3`, {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const songs = data.songs || [];
+        for (const s of songs) {
+          if (s.cover && s.cover.startsWith("http") && !s.cover.includes("default-cover")) {
+            return s.cover;
+          }
+        }
+      }
+    } catch {}
+
+    // 优先 3: 酷狗 400x400 高清大图
+    try {
+      const res = await fetch(`${base}/api/kugou/search?keywords=${kw}&limit=3`, {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const songs = data.songs || [];
+        for (const s of songs) {
+          if (s.cover && s.cover.startsWith("http") && !s.cover.includes("default-cover")) {
+            return s.cover;
+          }
+        }
+      }
+    } catch {}
+
+    return null;
   }
 
   /**

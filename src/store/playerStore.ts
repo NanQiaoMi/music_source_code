@@ -24,6 +24,7 @@ interface PlayerState {
   setIsMuted: (muted: boolean) => void;
   setPlaybackRate: (rate: number) => void;
   setLoopMode: (mode: LoopMode) => void;
+  updateCurrentSongCover: (cover: string) => void;
   togglePlay: () => void;
   toggleMute: () => void;
   nextSong: () => void;
@@ -44,6 +45,8 @@ export const usePlayerStore = create<PlayerState>()(
       loopMode: "none",
 
       setCurrentSong: (song) => set({ currentSong: song }),
+      updateCurrentSongCover: (cover) =>
+        set((state) => (state.currentSong ? { currentSong: { ...state.currentSong, cover } } : {})),
       setIsPlaying: (playing) => set({ isPlaying: playing }),
       setCurrentTime: (time) => set({ currentTime: Math.max(0, time) }),
       setDuration: (duration) => set({ duration }),

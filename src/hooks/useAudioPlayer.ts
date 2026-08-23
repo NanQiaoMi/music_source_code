@@ -736,6 +736,21 @@ export const useAudioPlayer = () => {
         }).catch(() => {});
       }
 
+      // 异步获取高清封面（后台拉取，不阻塞主音频加载）
+      if ((!currentSong.cover || currentSong.cover.includes("default-cover")) && currentSong.title) {
+        multiSourceResolver.fetchOnlineCover({
+          id: currentSong.id,
+          title: currentSong.title,
+          artist: currentSong.artist,
+          source: currentSong.source,
+        }).then((coverUrl) => {
+          if (coverUrl && currentSongIdRef.current === songId) {
+            currentSong.cover = coverUrl;
+            usePlayerStore.getState().updateCurrentSongCover(coverUrl);
+          }
+        }).catch(() => {});
+      }
+
       if (!audioUrl) {
         stopForMissingAudioSource(audio);
         return;

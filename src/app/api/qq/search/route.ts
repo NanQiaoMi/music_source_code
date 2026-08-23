@@ -11,31 +11,46 @@ function decodeEntities(str: string): string {
     .replace(/&#39;/g, "'");
 }
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const keywords = searchParams.get("keywords") || searchParams.get("s") || "";
-  const limit = parseInt(searchParams.get("limit") || "100", 10);
-  const page = parseInt(searchParams.get("page") || "1", 10);
+  const rawLimit = parseInt(searchParams.get("limit") || "50", 10);
+  const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 50 : rawLimit), 60);
+  const rawPage = parseInt(searchParams.get("page") || "1", 10);
+  const page = Math.max(1, isNaN(rawPage) ? 1 : rawPage);
 
   if (!keywords.trim()) {
     return NextResponse.json({ songs: [], code: 200, count: 0, source: "qq" });
   }
 
   const encoded = encodeURIComponent(keywords.trim());
-  const qqUrl = `https://c.y.qq.com/soso/fcgi-bin/client_search_cp?p=${page}&n=${limit}&w=${encoded}&format=json`;
+  const qqUrl = `https://c.y.qq.com/soso/fcgi-bin/client_search_cp?p=${page}&n=${limit}&w=${encoded}&format=json&ct=24&qqmusic_ver=1298`;
 
   try {
     const res = await fetch(qqUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        Referer: "https://y.qq.com",
+        Referer: "https://y.qq.com/",
       },
-      next: { revalidate: 300 },
+      cache: "no-store",
     });
 
     if (res.ok) {
-      const data = await res.json();
-      const rawList = data?.data?.song?.list || [];
+      const text = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        const clean = text.replace(/^callback\(|^MusicJsonCallback\(|\)$/g, "").trim();
+        data = JSON.parse(clean);
+      }
+
+      const rawList = data?.data?.song?.list || data?.song?.list || data?.data?.list || [];
+      if (rawList.length === 0) {
+        console.warn("[api/qq/search] rawList empty. data preview:", JSON.stringify(data).slice(0, 300));
+      }
       const songs = rawList.map((s: any) => {
         const songmid = String(s.songmid || s.songid || "");
         const artist = Array.isArray(s.singer)

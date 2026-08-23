@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const keywords = searchParams.get("keywords") || searchParams.get("s") || "";
@@ -11,15 +13,15 @@ export async function GET(request: NextRequest) {
   }
 
   const encoded = encodeURIComponent(keywords.trim());
-  const neteaseUrl = `https://music.163.com/api/search/get/web?csrf_token=&hlpretag=&hlposttag=&s=${encoded}&type=1&offset=${offset}&total=true&limit=${limit}`;
+  const cloudSearchUrl = `https://music.163.com/api/cloudsearch/pc?s=${encoded}&type=1&offset=${offset}&limit=${limit}`;
 
   try {
-    const res = await fetch(neteaseUrl, {
+    const res = await fetch(cloudSearchUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         Referer: "https://music.163.com",
       },
-      next: { revalidate: 300 },
+      cache: "no-store",
     });
 
     if (res.ok) {
@@ -27,22 +29,25 @@ export async function GET(request: NextRequest) {
       const rawSongs = data?.result?.songs || [];
       const songs = rawSongs.map((s: any) => {
         const songId = String(s.id);
-        const artist = Array.isArray(s.artists)
+        const artist = Array.isArray(s.ar)
+          ? s.ar.map((a: any) => a.name).join("/")
+          : Array.isArray(s.artists)
           ? s.artists.map((a: any) => a.name).join("/")
           : s.artist?.name || "未知歌手";
         const cover =
+          s.al?.picUrl ||
           s.album?.picUrl ||
           s.album?.blurPicUrl ||
           s.album?.artist?.img1v1Url ||
           s.artists?.[0]?.img1v1Url ||
-          (s.album?.picId ? `https://music.163.com/api/album/img?id=${s.album.picId}` : "");
+          (s.al?.pic_str ? `https://p1.music.126.net/${s.al.pic_str}.jpg` : "");
 
         return {
           id: songId,
           title: s.name || "未知曲目",
           artist,
-          album: s.album?.name || "精选大碟",
-          duration: s.duration ? Math.round(s.duration / 1000) : 240,
+          album: s.al?.name || s.album?.name || "精选大碟",
+          duration: s.dt ? Math.round(s.dt / 1000) : (s.duration ? Math.round(s.duration / 1000) : 240),
           cover: cover || "/default-cover.svg",
           source: "netease",
           audioUrl: `https://music.163.com/song/media/outer/url?id=${songId}.mp3`,
@@ -53,7 +58,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ songs, code: 200, count: songs.length });
     }
   } catch (err) {
-    console.error("[api/search] NetEase search error:", err);
+    console.error("[api/search] NetEase cloudsearch error:", err);
   }
 
   return NextResponse.json({ songs: [], code: 500, message: "Search failed" });

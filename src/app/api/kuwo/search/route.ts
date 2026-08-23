@@ -11,6 +11,8 @@ function decodeEntities(str: string): string {
     .replace(/&#39;/g, "'");
 }
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const keywords = searchParams.get("keywords") || searchParams.get("s") || "";
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       },
-      next: { revalidate: 300 },
+      cache: "no-store",
     });
 
     if (res.ok) {
@@ -46,9 +48,10 @@ export async function GET(request: NextRequest) {
         const duration = s.DURATION ? parseInt(s.DURATION, 10) : 240;
 
         let cover = "/default-cover.svg";
-        const picShort = s.web_albumpic_short || s.web_artistpic_short;
-        if (picShort && typeof picShort === "string" && picShort.length > 3) {
-          cover = `https://img4.kuwo.cn/star/albumcover/${picShort}`;
+        if (s.web_albumpic_short && typeof s.web_albumpic_short === "string" && s.web_albumpic_short.length > 3) {
+          cover = `http://img1.kuwo.cn/star/albumcover/${s.web_albumpic_short}`;
+        } else if (s.web_artistpic_short && typeof s.web_artistpic_short === "string" && s.web_artistpic_short.length > 3) {
+          cover = `http://img1.kuwo.cn/star/starheads/${s.web_artistpic_short}`;
         } else if (s.hts_MVPIC && typeof s.hts_MVPIC === "string" && s.hts_MVPIC.startsWith("http")) {
           cover = s.hts_MVPIC;
         } else if (s.MVPIC && typeof s.MVPIC === "string" && s.MVPIC.startsWith("http")) {
