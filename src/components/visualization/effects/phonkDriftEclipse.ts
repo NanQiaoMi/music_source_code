@@ -2,14 +2,26 @@
 import { EffectContext } from "./types";
 
 // ─── 数据结构定义 ───
-interface AccretionGasPuff {
+interface AccretionParticle {
+  radius: number;
+  baseRadius: number;
+  angle: number;
+  speed: number;
+  height: number;
+  size: number;
+  alpha: number;
+  arm: number;
+  isBright: boolean;
+  colorType: number; // 0: cyan-white (doppler approach), 1: neon-magenta, 2: purple-blue
+}
+
+interface VolumetricGasNebula {
   radius: number;
   angle: number;
   speed: number;
   size: number;
   alpha: number;
-  hueOffset: number;
-  layer: "top" | "front" | "bottom";
+  isCyan: boolean;
 }
 
 interface SpeedWarpLaser {
@@ -44,13 +56,15 @@ interface ConcentricShockwave {
 }
 
 // ─── 模块级高性能静态对象池与单例缓存（0 GC 垃圾回收零卡顿） ───
-let accretionGasPuffs: AccretionGasPuff[] = [];
+let accretionParticles: AccretionParticle[] = [];
+let gasNebulae: VolumetricGasNebula[] = [];
 let speedWarpLasers: SpeedWarpLaser[] = [];
 let cinematicBokehOrbs: CinematicBokehOrb[] = [];
 let activeShockwaves: ConcentricShockwave[] = [];
 
-let cachedPlasmaGlowSprite: HTMLCanvasElement | null = null;
-let cachedHotCoreSprite: HTMLCanvasElement | null = null;
+let cachedCyanGasSprite: HTMLCanvasElement | null = null;
+let cachedMagentaGasSprite: HTMLCanvasElement | null = null;
+let cachedStarGlowSprite: HTMLCanvasElement | null = null;
 let filmGrainCanvas: HTMLCanvasElement | null = null;
 let filmGrainPattern: CanvasPattern | null = null;
 
@@ -64,38 +78,52 @@ let breathLFO = 0;
 let lastCanvasW = 0;
 let lastCanvasH = 0;
 
-const GAS_PUFF_COUNT = 96;
-const LASER_COUNT = 480;
+const PARTICLE_COUNT = 3200;
+const GAS_COUNT = 64;
+const LASER_COUNT = 450;
 const BOKEH_COUNT = 36;
 
 // 高清柔光等离子气团 Sprite 预烘焙
 function getOrCreateSprites() {
   if (typeof document === "undefined") return;
-  if (!cachedPlasmaGlowSprite) {
-    cachedPlasmaGlowSprite = document.createElement("canvas");
-    cachedPlasmaGlowSprite.width = 128;
-    cachedPlasmaGlowSprite.height = 128;
-    const g = cachedPlasmaGlowSprite.getContext("2d")!;
+  if (!cachedCyanGasSprite) {
+    cachedCyanGasSprite = document.createElement("canvas");
+    cachedCyanGasSprite.width = 128;
+    cachedCyanGasSprite.height = 128;
+    const g = cachedCyanGasSprite.getContext("2d")!;
     const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    grd.addColorStop(0, "rgba(255, 255, 255, 0.95)");
-    grd.addColorStop(0.25, "rgba(100, 240, 255, 0.65)");
-    grd.addColorStop(0.6, "rgba(255, 60, 180, 0.20)");
+    grd.addColorStop(0, "rgba(235, 250, 255, 0.95)");
+    grd.addColorStop(0.25, "rgba(80, 220, 255, 0.55)");
+    grd.addColorStop(0.65, "rgba(40, 140, 240, 0.15)");
     grd.addColorStop(1, "rgba(0, 0, 0, 0)");
     g.fillStyle = grd;
     g.fillRect(0, 0, 128, 128);
   }
-  if (!cachedHotCoreSprite) {
-    cachedHotCoreSprite = document.createElement("canvas");
-    cachedHotCoreSprite.width = 128;
-    cachedHotCoreSprite.height = 128;
-    const g = cachedHotCoreSprite.getContext("2d")!;
+  if (!cachedMagentaGasSprite) {
+    cachedMagentaGasSprite = document.createElement("canvas");
+    cachedMagentaGasSprite.width = 128;
+    cachedMagentaGasSprite.height = 128;
+    const g = cachedMagentaGasSprite.getContext("2d")!;
     const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    grd.addColorStop(0, "rgba(255, 255, 255, 1)");
-    grd.addColorStop(0.35, "rgba(255, 220, 180, 0.75)");
-    grd.addColorStop(0.7, "rgba(255, 100, 60, 0.18)");
+    grd.addColorStop(0, "rgba(255, 240, 250, 0.95)");
+    grd.addColorStop(0.25, "rgba(255, 70, 180, 0.55)");
+    grd.addColorStop(0.65, "rgba(180, 40, 220, 0.15)");
     grd.addColorStop(1, "rgba(0, 0, 0, 0)");
     g.fillStyle = grd;
     g.fillRect(0, 0, 128, 128);
+  }
+  if (!cachedStarGlowSprite) {
+    cachedStarGlowSprite = document.createElement("canvas");
+    cachedStarGlowSprite.width = 64;
+    cachedStarGlowSprite.height = 64;
+    const g = cachedStarGlowSprite.getContext("2d")!;
+    const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grd.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+    grd.addColorStop(0.3, "rgba(180, 240, 255, 0.65)");
+    grd.addColorStop(0.7, "rgba(255, 100, 200, 0.18)");
+    grd.addColorStop(1, "rgba(0, 0, 0, 0)");
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 64, 64);
   }
 }
 
@@ -122,29 +150,53 @@ function getOrCreateFilmGrain(ctx: CanvasRenderingContext2D): CanvasPattern | nu
 }
 
 function initPools(width: number, height: number) {
-  if (accretionGasPuffs.length >= GAS_PUFF_COUNT && Math.abs(lastCanvasW - width) < 40) return;
+  if (accretionParticles.length >= PARTICLE_COUNT && Math.abs(lastCanvasW - width) < 40) return;
   lastCanvasW = width;
   lastCanvasH = height;
   getOrCreateSprites();
 
-  // 1. 柔光吸积盘流体等离子气团 (Volumetric Soft Accretion Gas Puffs)
-  accretionGasPuffs = [];
-  for (let i = 0; i < GAS_PUFF_COUNT; i++) {
-    const layer = i % 3 === 0 ? "top" : i % 3 === 1 ? "front" : "bottom";
-    const distFrac = Math.pow(Math.random(), 1.2);
-    const baseR = 1.15 + distFrac * 1.6;
-    accretionGasPuffs.push({
-      radius: baseR,
-      angle: Math.random() * Math.PI * 2,
-      speed: (0.008 + (1 / Math.sqrt(baseR * 50)) * 0.15),
-      size: 45 + Math.random() * 65,
-      alpha: 0.12 + Math.random() * 0.16,
-      hueOffset: (Math.random() - 0.5) * 30,
-      layer,
+  // 1. 3,200+ 3D 相对论开普勒吸积盘微粒群
+  accretionParticles = [];
+  const arms = 4;
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const arm = i % arms;
+    const armAngle = (arm / arms) * Math.PI * 2;
+    const distFrac = 0.05 + 0.95 * Math.pow(Math.random(), 1.35);
+    const r = 45 + distFrac * (Math.min(width, height) * 0.45);
+    const spiralAngle = armAngle + Math.log(r * 0.05 + 1) * 3.8 + (Math.random() - 0.5) * 0.28;
+    const speed = 0.012 + (1 / Math.sqrt(r + 10)) * 0.38;
+    const heightSpread = (Math.random() - 0.5) * (3 + (r / 300) * 12);
+
+    accretionParticles.push({
+      radius: r,
+      baseRadius: r,
+      angle: spiralAngle,
+      speed,
+      height: heightSpread,
+      size: Math.random() * 1.5 + 0.6,
+      alpha: Math.random() * 0.7 + 0.3,
+      arm,
+      isBright: Math.random() < 0.12,
+      colorType: Math.random() < 0.4 ? 0 : Math.random() < 0.8 ? 1 : 2,
     });
   }
 
-  // 2. 高速穿梭光轨 (Speed Warp Lasers)
+  // 2. 64 团 3D 流体气体等离子云
+  gasNebulae = [];
+  for (let i = 0; i < GAS_COUNT; i++) {
+    const distFrac = 0.08 + 0.92 * Math.pow(Math.random(), 1.25);
+    const r = 50 + distFrac * (Math.min(width, height) * 0.42);
+    gasNebulae.push({
+      radius: r,
+      angle: Math.random() * Math.PI * 2,
+      speed: 0.006 + (1 / Math.sqrt(r + 15)) * 0.22,
+      size: 40 + Math.random() * 60,
+      alpha: 0.18 + Math.random() * 0.22,
+      isCyan: Math.random() < 0.5,
+    });
+  }
+
+  // 3. 高速穿梭光轨 (Speed Warp Lasers)
   speedWarpLasers = [];
   for (let i = 0; i < LASER_COUNT; i++) {
     speedWarpLasers.push({
@@ -159,7 +211,7 @@ function initPools(width: number, height: number) {
     });
   }
 
-  // 3. 电影级柔焦失焦光斑 (Cinematic Bokeh Orbs)
+  // 4. 电影级柔焦失焦光斑 (Cinematic Bokeh Orbs)
   cinematicBokehOrbs = [];
   for (let i = 0; i < BOKEH_COUNT; i++) {
     cinematicBokehOrbs.push({
@@ -176,8 +228,8 @@ function initPools(width: number, height: number) {
 }
 
 /**
- * 赛博漂移 · 电影级日蚀特异点 (Phonk Drift Eclipse 13.0 - Grand Volumetric Accretion Cinema Edition)
- * 真实好莱坞《星际穿越》卡冈图雅双向柔光吸积盘、爱因斯坦-罗森重力井、无粒子颗粒感、2.39:1 宽银幕光学
+ * 赛博漂移 · 电影级日蚀特异点 (Phonk Drift Eclipse 14.0 - True Gargantua Cinema Edition)
+ * 真实 3D 摄像机矩阵相对论流体吸积盘、爱因斯坦-罗森重力井、无生硬色块、2.39:1 宽银幕光学
  */
 export function drawPhonkDriftEclipse({
   ctx,
@@ -272,8 +324,8 @@ export function drawPhonkDriftEclipse({
   const blackHoleY = horizonY - height * 0.055 - zPunch * 0.5;
 
   // 黑洞事件视界物理半径与 3D 旋转
-  const eventHorizonR = Math.min(width, height) * (0.125 + superBass * 0.045 * bassIntensity + organicBreath * 0.006);
-  diskRotation += (0.009 + cruiseSpeed * 0.004 + superBass * 0.012);
+  const eventHorizonR = Math.min(width, height) * (0.118 + superBass * 0.038 * bassIntensity + organicBreath * 0.005);
+  diskRotation += (0.010 + cruiseSpeed * 0.004 + superBass * 0.015);
 
   ctx.save();
 
@@ -286,9 +338,9 @@ export function drawPhonkDriftEclipse({
   ctx.globalCompositeOperation = "screen";
 
   const skyGrd = ctx.createRadialGradient(cx, blackHoleY, eventHorizonR * 0.8, cx, blackHoleY, Math.max(width, height) * 0.88);
-  skyGrd.addColorStop(0, `hsla(${primaryHue}, 95%, 65%, ${0.28 + superBass * 0.18})`);
-  skyGrd.addColorStop(0.28, `hsla(${secondaryHue}, 85%, 50%, ${0.14 + mid * 0.08})`);
-  skyGrd.addColorStop(0.65, `hsla(${accentHue}, 90%, 35%, 0.04)`);
+  skyGrd.addColorStop(0, `hsla(${primaryHue}, 95%, 65%, ${0.24 + superBass * 0.16})`);
+  skyGrd.addColorStop(0.28, `hsla(${secondaryHue}, 85%, 50%, ${0.12 + mid * 0.08})`);
+  skyGrd.addColorStop(0.65, `hsla(${accentHue}, 90%, 35%, 0.03)`);
   skyGrd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = skyGrd;
   ctx.fillRect(0, 0, width, height);
@@ -368,177 +420,244 @@ export function drawPhonkDriftEclipse({
   // ─── 3. 垂直超相对论等离子喷流 (Polar Relativistic Plasma Jets) ───
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  const jetH = height * (0.62 + superBass * 0.40);
-  const jetW = 3.2 + superBass * 4.0;
+  const jetH = height * (0.60 + superBass * 0.35);
+  const jetW = 2.8 + superBass * 3.5;
 
   const topJetGrd = ctx.createLinearGradient(cx, blackHoleY, cx, blackHoleY - jetH);
-  topJetGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 94%, ${0.92 + superBass * 0.08})`);
-  topJetGrd.addColorStop(0.2, `hsla(${primaryHue}, 95%, 75%, 0.65)`);
-  topJetGrd.addColorStop(0.65, `hsla(${accentHue}, 85%, 55%, 0.15)`);
+  topJetGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 94%, ${0.90 + superBass * 0.08})`);
+  topJetGrd.addColorStop(0.2, `hsla(${primaryHue}, 95%, 75%, 0.60)`);
+  topJetGrd.addColorStop(0.65, `hsla(${accentHue}, 85%, 55%, 0.12)`);
   topJetGrd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = topJetGrd;
   ctx.fillRect(cx - jetW * 0.5, blackHoleY - jetH, jetW, jetH);
   ctx.restore();
 
-  // ─── 4. 真实好莱坞《星际穿越》双向柔光吸积盘 (Volumetric Soft-Glow Accretion System) ───
-  // 彻底告别粗硬同心线条与噪点粒子，采用高斯柔光辐射与多普勒强反差流体渲染！
+  // ─── 4. 真实好莱坞《星际穿越》3D 相对论吸积盘引擎 (3D Relativistic Accretion Engine) ───
+  // 采用 3D 摄像机矩阵投影 ($pitch \approx 38^\circ, fov = 580$)
+  const fov = 580;
+  const pitch = 0.66 + Math.sin(breathLFO * 0.4) * 0.02;
+  const cosP = Math.cos(pitch);
+  const sinP = Math.sin(pitch);
+  const cosR = Math.cos(diskRotation);
+  const sinR = Math.sin(diskRotation);
+
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  const topArchInnerR = eventHorizonR * 1.06;
-  const topArchOuterR = eventHorizonR * (2.4 + superBass * 0.4);
+  // A. 【背景上/下爱因斯坦引力透镜双光拱 (Upper/Lower Gravitational Lensing Halos)】
+  const lensingR = eventHorizonR * (1.28 + superBass * 0.18);
+  const lensingH = lensingR * 0.86;
 
-  // A. 【吸积盘上透镜光拱（Upper Gravitational Lensing Arch）】
-  // 后方吸积盘被强引力弯曲到黑洞上方的柔光光带
-  const upperArchGrd = ctx.createRadialGradient(cx, blackHoleY, topArchInnerR, cx, blackHoleY, topArchOuterR);
-  // 多普勒蓝移强反差：左侧迎光面白炽高亮，右侧暗红
-  upperArchGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 95%, ${0.95 + superBass * 0.05})`);
-  upperArchGrd.addColorStop(0.25, `hsla(${primaryHue}, 95%, 72%, ${0.80 + superBass * 0.15})`);
-  upperArchGrd.addColorStop(0.6, `hsla(${accentHue}, 88%, 52%, ${0.45 + mid * 0.15})`);
-  upperArchGrd.addColorStop(1, "rgba(0,0,0,0)");
-
-  ctx.fillStyle = upperArchGrd;
-  ctx.beginPath();
-  // 绘制圆润平滑的向上引力透镜半月拱
-  ctx.arc(cx, blackHoleY, topArchOuterR, Math.PI * 0.98, Math.PI * 2.02, false);
-  ctx.arc(cx, blackHoleY, topArchInnerR, Math.PI * 2.02, Math.PI * 0.98, true);
-  ctx.closePath();
-  ctx.fill();
-
-  // 上光拱多普勒亮度补偿（左侧迎光面加倍白炽 Bloom）
-  const upperDopplerGrd = ctx.createRadialGradient(
-    cx - eventHorizonR * 1.2,
-    blackHoleY - eventHorizonR * 0.8,
-    0,
-    cx - eventHorizonR * 1.2,
-    blackHoleY - eventHorizonR * 0.8,
-    eventHorizonR * 1.6
+  // (A.1) 上部弯曲引力透镜主光拱
+  const upperGrd = ctx.createRadialGradient(
+    cx,
+    blackHoleY - lensingH * 0.35,
+    lensingR * 0.35,
+    cx,
+    blackHoleY - lensingH * 0.35,
+    lensingR * 1.55
   );
-  upperDopplerGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 95%, ${0.75 + superBass * 0.25})`);
-  upperDopplerGrd.addColorStop(0.4, `hsla(${primaryHue}, 90%, 75%, 0.4)`);
-  upperDopplerGrd.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = upperDopplerGrd;
-  ctx.fillRect(cx - topArchOuterR, blackHoleY - topArchOuterR, topArchOuterR * 1.2, topArchOuterR);
+  upperGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 92%, ${0.85 + superBass * 0.15})`);
+  upperGrd.addColorStop(0.35, `hsla(${primaryHue}, 95%, 72%, ${0.55 + mid * 0.25})`);
+  upperGrd.addColorStop(0.75, `hsla(${accentHue}, 88%, 52%, 0.15)`);
+  upperGrd.addColorStop(1, "rgba(0,0,0,0)");
 
-  // B. 【吸积盘下透镜微光拱（Lower Lensing Arch）】
-  const btmArchInnerR = eventHorizonR * 1.05;
-  const btmArchOuterR = eventHorizonR * (1.75 + superBass * 0.25);
-  const lowerArchGrd = ctx.createRadialGradient(cx, blackHoleY, btmArchInnerR, cx, blackHoleY, btmArchOuterR);
-  lowerArchGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 85%, 0.65)`);
-  lowerArchGrd.addColorStop(0.4, `hsla(${primaryHue}, 90%, 65%, 0.45)`);
-  lowerArchGrd.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = lowerArchGrd;
+  ctx.fillStyle = upperGrd;
   ctx.beginPath();
-  ctx.arc(cx, blackHoleY, btmArchOuterR, 0, Math.PI, false);
-  ctx.arc(cx, blackHoleY, btmArchInnerR, Math.PI, 0, true);
-  ctx.closePath();
+  ctx.ellipse(cx, blackHoleY - lensingH * 0.42, lensingR * 1.35, lensingH * 0.92, 0, Math.PI * 0.92, Math.PI * 2.08);
   ctx.fill();
 
-  // C. 【柔光气团漫游（Volumetric Gas Nebula Filaments）】
-  if (cachedPlasmaGlowSprite) {
-    for (let i = 0; i < accretionGasPuffs.length; i++) {
-      const puff = accretionGasPuffs[i];
-      puff.angle += puff.speed * (1 + superBass * 1.8 + mid * 0.8);
-      const curR = puff.radius * eventHorizonR;
+  // (A.2) 下部弯曲引力透镜副光拱
+  const lowerGrd = ctx.createRadialGradient(
+    cx,
+    blackHoleY + lensingH * 0.35,
+    lensingR * 0.35,
+    cx,
+    blackHoleY + lensingH * 0.35,
+    lensingR * 1.40
+  );
+  lowerGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 88%, ${0.65 + superBass * 0.20})`);
+  lowerGrd.addColorStop(0.4, `hsla(${primaryHue}, 90%, 65%, ${0.38 + mid * 0.20})`);
+  lowerGrd.addColorStop(0.8, `hsla(${accentHue}, 85%, 50%, 0.08)`);
+  lowerGrd.addColorStop(1, "rgba(0,0,0,0)");
 
-      let px = 0;
-      let py = 0;
-      if (puff.layer === "top") {
-        px = cx + Math.cos(puff.angle) * curR;
-        py = blackHoleY - Math.abs(Math.sin(puff.angle)) * curR * 0.85;
-      } else if (puff.layer === "front") {
-        px = cx + Math.cos(puff.angle) * (curR * 1.55);
-        py = blackHoleY + Math.sin(puff.angle) * (curR * 0.36) + eventHorizonR * 0.25;
-      } else {
-        px = cx + Math.cos(puff.angle) * curR;
-        py = blackHoleY + Math.abs(Math.sin(puff.angle)) * curR * 0.65;
-      }
+  ctx.fillStyle = lowerGrd;
+  ctx.beginPath();
+  ctx.ellipse(cx, blackHoleY + lensingH * 0.38, lensingR * 1.25, lensingH * 0.75, 0, 0, Math.PI);
+  ctx.fill();
 
-      // 多普勒增强：左侧气团极亮，右侧柔和
-      const isLeft = px < cx;
-      const dopplerBoost = isLeft ? 1.4 : 0.65;
-      const puffSize = puff.size * (0.8 + superBass * 0.4);
-      const puffAlpha = puff.alpha * dopplerBoost * (0.7 + superBass * 0.4);
+  // B. 【3D 流体气体等离子云 (Volumetric Relativistic Gas Clouds)】
+  if (cachedCyanGasSprite && cachedMagentaGasSprite) {
+    for (let i = 0; i < gasNebulae.length; i++) {
+      const neb = gasNebulae[i];
+      neb.angle += neb.speed * (1 + superBass * 2.2 + mid * 1.2);
 
-      ctx.globalAlpha = Math.min(0.5, puffAlpha);
-      ctx.drawImage(cachedPlasmaGlowSprite, px - puffSize * 0.5, py - puffSize * 0.5, puffSize, puffSize);
+      const curR = (neb.radius / (width * 0.25)) * eventHorizonR * 2.4;
+      const pxRaw = Math.cos(neb.angle) * curR;
+      const pyRaw = Math.sin(breathLFO * 2 + neb.radius * 0.02) * 8;
+      const pzRaw = Math.sin(neb.angle) * curR;
+
+      const rx = pxRaw * cosR - pzRaw * sinR;
+      const rz = pxRaw * sinR + pzRaw * cosR;
+      const ry = pyRaw * cosP - rz * sinP;
+      const finalZ = pyRaw * sinP + rz * cosP + fov;
+
+      if (finalZ <= 10) continue;
+      const scale = fov / finalZ;
+      const screenX = cx + rx * scale;
+      const screenY = blackHoleY + ry * scale;
+
+      // 遮挡检查：黑洞后方且在投影半径内的气体被事件视界遮挡
+      const distToHole = Math.hypot(screenX - cx, screenY - blackHoleY);
+      if (rz < 0 && distToHole < eventHorizonR * 0.92) continue;
+
+      const nDiameter = neb.size * scale * (0.8 + superBass * 0.4);
+      // 多普勒增强：左侧（迎面运动）更亮且偏向青蓝
+      const isApproaching = rx < 0;
+      const sprite = isApproaching ? cachedCyanGasSprite : cachedMagentaGasSprite;
+      const nAlpha = Math.min(0.35, neb.alpha * (isApproaching ? 1.3 : 0.7) * (0.8 + superBass * 0.5));
+
+      ctx.globalAlpha = nAlpha;
+      ctx.drawImage(sprite, screenX - nDiameter * 0.5, screenY - nDiameter * 0.5, nDiameter, nDiameter);
+    }
+  }
+
+  // C. 【3,200+ 3D 相对论开普勒吸积盘微粒流场 (Keplerian Magnetic Streamlines)】
+  const speedMult = 1 + superBass * 2.4 + treble * 1.5;
+  const particleScaleBase = (1 + superBass * 0.3);
+
+  // 1. 批量绘制高速切向磁光丝 (Filaments)
+  ctx.beginPath();
+  ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 88%, ${0.65 + superBass * 0.25})`;
+  ctx.lineWidth = 1.15;
+
+  for (let i = 0; i < accretionParticles.length; i++) {
+    const p = accretionParticles[i];
+    p.angle += p.speed * speedMult;
+
+    const curR = (p.radius / (width * 0.25)) * eventHorizonR * 2.4;
+    const pxRaw = Math.cos(p.angle) * curR;
+    const pyRaw = p.height + Math.sin(breathLFO * 2.5 + p.radius * 0.05) * 6;
+    const pzRaw = Math.sin(p.angle) * curR;
+
+    const rx = pxRaw * cosR - pzRaw * sinR;
+    const rz = pxRaw * sinR + pzRaw * cosR;
+    const ry = pyRaw * cosP - rz * sinP;
+    const finalZ = pyRaw * sinP + rz * cosP + fov;
+
+    if (finalZ <= 10) continue;
+    const scale = fov / finalZ;
+    const screenX = cx + rx * scale;
+    const screenY = blackHoleY + ry * scale;
+
+    // 视界遮挡：黑洞后方粒子被吞噬
+    const distToHole = Math.hypot(screenX - cx, screenY - blackHoleY);
+    if (rz < 0 && distToHole < eventHorizonR * 0.94) continue;
+
+    const tangentAngle = p.angle + Math.PI * 0.5;
+    const streakLen = Math.max(1.6, (140 / Math.max(20, curR)) * (1 + superBass * 1.5) * scale * 2.2);
+    const endX = screenX + Math.cos(tangentAngle) * streakLen;
+    const endY = screenY + Math.sin(tangentAngle) * streakLen * cosP;
+
+    ctx.moveTo(screenX, screenY);
+    ctx.lineTo(endX, endY);
+  }
+  ctx.stroke();
+
+  // 2. 批量绘制星尘微粒点
+  ctx.beginPath();
+  ctx.fillStyle = `hsla(${secondaryHue}, 100%, 92%, 0.88)`;
+  for (let i = 0; i < accretionParticles.length; i++) {
+    const p = accretionParticles[i];
+    const curR = (p.radius / (width * 0.25)) * eventHorizonR * 2.4;
+    const pxRaw = Math.cos(p.angle) * curR;
+    const pyRaw = p.height + Math.sin(breathLFO * 2.5 + p.radius * 0.05) * 6;
+    const pzRaw = Math.sin(p.angle) * curR;
+
+    const rx = pxRaw * cosR - pzRaw * sinR;
+    const rz = pxRaw * sinR + pzRaw * cosR;
+    const ry = pyRaw * cosP - rz * sinP;
+    const finalZ = pyRaw * sinP + rz * cosP + fov;
+
+    if (finalZ <= 10) continue;
+    const scale = fov / finalZ;
+    const screenX = cx + rx * scale;
+    const screenY = blackHoleY + ry * scale;
+
+    const distToHole = Math.hypot(screenX - cx, screenY - blackHoleY);
+    if (rz < 0 && distToHole < eventHorizonR * 0.94) continue;
+
+    const pSize = Math.max(0.65, p.size * scale * particleScaleBase);
+    ctx.moveTo(screenX + pSize, screenY);
+    ctx.arc(screenX, screenY, pSize, 0, Math.PI * 2);
+  }
+  ctx.fill();
+
+  // 3. 高亮亮星与光子闪烁
+  if (cachedStarGlowSprite) {
+    for (let i = 0; i < accretionParticles.length; i += 8) {
+      const p = accretionParticles[i];
+      if (!p.isBright) continue;
+
+      const curR = (p.radius / (width * 0.25)) * eventHorizonR * 2.4;
+      const pxRaw = Math.cos(p.angle) * curR;
+      const pyRaw = p.height + Math.sin(breathLFO * 2.5 + p.radius * 0.05) * 6;
+      const pzRaw = Math.sin(p.angle) * curR;
+
+      const rx = pxRaw * cosR - pzRaw * sinR;
+      const rz = pxRaw * sinR + pzRaw * cosR;
+      const ry = pyRaw * cosP - rz * sinP;
+      const finalZ = pyRaw * sinP + rz * cosP + fov;
+
+      if (finalZ <= 10) continue;
+      const scale = fov / finalZ;
+      const screenX = cx + rx * scale;
+      const screenY = blackHoleY + ry * scale;
+
+      const distToHole = Math.hypot(screenX - cx, screenY - blackHoleY);
+      if (rz < 0 && distToHole < eventHorizonR * 0.94) continue;
+
+      const glowSize = Math.max(8, p.size * scale * 7.0);
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(cachedStarGlowSprite, screenX - glowSize * 0.5, screenY - glowSize * 0.5, glowSize, glowSize);
     }
   }
 
   ctx.restore();
 
-  // D. 【事件视界绝对纯黑吞噬内核（Event Horizon Void）】
-  // 位于背景透镜光拱与前景倾斜吸积盘之间
+  // D. 【事件视界绝对纯黑吞噬内核 (Pure Black Event Horizon Core)】
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = "#010103";
+  const voidGrd = ctx.createRadialGradient(cx, blackHoleY, 0, cx, blackHoleY, eventHorizonR);
+  voidGrd.addColorStop(0, "#010103");
+  voidGrd.addColorStop(0.85, "#010103");
+  voidGrd.addColorStop(0.96, "#080612");
+  voidGrd.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = voidGrd;
   ctx.beginPath();
   ctx.arc(cx, blackHoleY, eventHorizonR, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // E. 【吸积盘前景倾斜横贯主光盘（Foreground Equatorial Accretion Disk）】
-  // 横向横穿黑洞下半部分，形成完美的 Interstellar 经典 3D 环绕形态！
+  // E. 【极细 1.5px 纯正光子球临界薄环 (Sharp Photon Sphere Rim)】
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-
-  const frontDiskMajorR = eventHorizonR * (3.1 + superBass * 0.5);
-  const frontDiskMinorR = eventHorizonR * (0.68 + superBass * 0.15);
-  const frontCenterY = blackHoleY + eventHorizonR * 0.20;
-
-  // 1. 底层大范围柔光等离子晕
-  const frontGlowGrd = ctx.createRadialGradient(
-    cx - eventHorizonR * 0.8,
-    frontCenterY,
-    0,
-    cx,
-    frontCenterY,
-    frontDiskMajorR
-  );
-  frontGlowGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 95%, ${0.95 + superBass * 0.05})`);
-  frontGlowGrd.addColorStop(0.28, `hsla(${primaryHue}, 95%, 72%, ${0.82 + mid * 0.15})`);
-  frontGlowGrd.addColorStop(0.68, `hsla(${accentHue}, 88%, 50%, 0.35)`);
-  frontGlowGrd.addColorStop(1, "rgba(0,0,0,0)");
-
-  ctx.fillStyle = frontGlowGrd;
-  ctx.beginPath();
-  ctx.ellipse(cx, frontCenterY, frontDiskMajorR, frontDiskMinorR, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // 2. 核心白炽炽热光纤流带（Hot Molten Plasma Core）
-  const frontCoreMajorR = eventHorizonR * (2.5 + superBass * 0.3);
-  const frontCoreMinorR = eventHorizonR * 0.32;
-  const frontCoreGrd = ctx.createLinearGradient(cx - frontCoreMajorR, frontCenterY, cx + frontCoreMajorR, frontCenterY);
-  frontCoreGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 98%, ${0.98 + superBass * 0.02})`);
-  frontCoreGrd.addColorStop(0.35, `hsla(${primaryHue}, 95%, 82%, 0.88)`);
-  frontCoreGrd.addColorStop(0.75, `hsla(${accentHue}, 90%, 65%, 0.55)`);
-  frontCoreGrd.addColorStop(1, "rgba(0,0,0,0)");
-
-  ctx.fillStyle = frontCoreGrd;
-  ctx.beginPath();
-  ctx.ellipse(cx, frontCenterY, frontCoreMajorR, frontCoreMinorR, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // F. 【光子球面高能临界捕获环（Photon Sphere Rim）】
-  const photonSphereR = eventHorizonR * (1.04 + superBass * 0.06);
-  const photonGrd = ctx.createLinearGradient(cx - photonSphereR, blackHoleY, cx + photonSphereR, blackHoleY);
-  photonGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 96%, ${0.96 + superBass * 0.04})`);
-  photonGrd.addColorStop(0.35, `hsla(${primaryHue}, 95%, 80%, 0.88)`);
-  photonGrd.addColorStop(1, `hsla(${accentHue}, 90%, 62%, 0.42)`);
-
-  ctx.strokeStyle = photonGrd;
-  ctx.lineWidth = 3.6 + superBass * 4.2;
+  const photonSphereR = eventHorizonR * 0.98;
+  ctx.strokeStyle = `hsla(${secondaryHue}, 100%, 95%, ${0.92 + superBass * 0.08})`;
+  ctx.lineWidth = 1.6 + superBass * 1.5;
+  ctx.shadowColor = `hsla(${primaryHue}, 100%, 75%, 0.8)`;
+  ctx.shadowBlur = 14;
   ctx.beginPath();
   ctx.arc(cx, blackHoleY, photonSphereR, 0, Math.PI * 2);
   ctx.stroke();
 
-  // G. 【2.39:1 变形宽银幕水平耀斑（Panavision Anamorphic Streak）】
-  const flareW = width * (0.94 + superBass * 0.35);
-  const flareH = 14 + superBass * 18;
+  // F. 【2.39:1 变形宽银幕水平纤细拉丝耀斑 (Anamorphic Streak Flare)】
+  const flareW = width * (0.90 + superBass * 0.30);
+  const flareH = 8 + superBass * 12;
   const flareGrd = ctx.createRadialGradient(cx, blackHoleY, 0, cx, blackHoleY, flareW * 0.5);
-  flareGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 92%, ${0.85 + mid * 0.15})`);
-  flareGrd.addColorStop(0.18, `hsla(${primaryHue}, 90%, 65%, 0.45)`);
-  flareGrd.addColorStop(0.6, `hsla(${accentHue}, 85%, 50%, 0.12)`);
+  flareGrd.addColorStop(0, `hsla(${secondaryHue}, 100%, 95%, ${0.85 + mid * 0.15})`);
+  flareGrd.addColorStop(0.18, `hsla(${primaryHue}, 90%, 70%, 0.40)`);
+  flareGrd.addColorStop(0.6, `hsla(${accentHue}, 85%, 50%, 0.10)`);
   flareGrd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = flareGrd;
   ctx.fillRect(cx - flareW * 0.5, blackHoleY - flareH * 0.5, flareW, flareH);
@@ -715,13 +834,13 @@ export function drawPhonkDriftEclipse({
   // ─── 7. 极速穿梭光轨与电影级失焦光斑 (Speed Warp Lasers & Bokeh Orbs) ───
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  const speedMult = (1.0 + treble * 3.0 + superBass * 2.0) * cruiseSpeed;
-  const fov = 480;
+  const speedMultLaser = (1.0 + treble * 3.0 + superBass * 2.0) * cruiseSpeed;
+  const laserFov = 480;
 
   for (let i = 0; i < speedWarpLasers.length; i++) {
     const st = speedWarpLasers[i];
     st.prevZ = st.z;
-    st.z -= st.speed * 8.5 * speedMult;
+    st.z -= st.speed * 8.5 * speedMultLaser;
 
     if (st.z <= 1) {
       st.z = 1000;
@@ -743,17 +862,17 @@ export function drawPhonkDriftEclipse({
       rotY += Math.sin(deflectionAngle + Math.PI * 0.5) * (deflectionForce * 0.22 * (1 + superBass));
     }
 
-    const screenX = cx + (rotX / st.z) * fov;
-    const screenY = horizonY + (rotY / st.z) * fov;
-    const prevX = cx + (rotX / st.prevZ) * fov;
-    const prevY = horizonY + (rotY / st.prevZ) * fov;
+    const screenX = cx + (rotX / st.z) * laserFov;
+    const screenY = horizonY + (rotY / st.z) * laserFov;
+    const prevX = cx + (rotX / st.prevZ) * laserFov;
+    const prevY = horizonY + (rotY / st.prevZ) * laserFov;
 
     if (screenX < -50 || screenX > width + 50 || screenY < -50 || screenY > height + 50) continue;
 
     const scale = (1000 - st.z) / 1000;
     const alpha = st.alpha * Math.pow(scale, 1.2) * (0.55 + treble * 0.35);
 
-    if (speedMult > 1.6) {
+    if (speedMultLaser > 1.6) {
       ctx.strokeStyle = `hsla(${st.hue}, 100%, 80%, ${alpha})`;
       ctx.lineWidth = Math.max(0.85, st.size * scale * 1.5);
       ctx.beginPath();
@@ -818,6 +937,5 @@ export function drawPhonkDriftEclipse({
   ctx.fillStyle = vigGrd;
   ctx.fillRect(0, 0, width, height);
   ctx.restore();
-
-  ctx.restore();
 }
+
