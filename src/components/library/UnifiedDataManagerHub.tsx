@@ -198,7 +198,13 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
       </div>
 
       {/* ── 核心工作区主视口 ── */}
-      <main className="relative z-10 flex-1 overflow-y-auto p-4 md:p-8 max-w-7xl mx-auto w-full custom-scrollbar">
+      <main
+        className={`relative z-10 flex-1 overflow-y-auto p-4 md:p-6 w-full custom-scrollbar transition-all ${
+          activeTab === "lx_search" || activeTab === "cloud" || activeTab === "downloads"
+            ? "max-w-[1720px] mx-auto"
+            : "max-w-7xl mx-auto"
+        }`}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}

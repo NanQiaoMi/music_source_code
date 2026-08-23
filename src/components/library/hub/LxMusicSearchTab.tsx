@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
@@ -9,26 +9,18 @@ import {
   Play,
   Download,
   ListPlus,
-  Heart,
   MoreHorizontal,
-  FolderPlus,
   Copy,
   Sparkles,
-  Layers,
   ArrowUpDown,
   CheckSquare,
   Square,
-  Check,
   Music2,
   FolderHeart,
-  Radio,
-  ExternalLink,
-  ChevronDown,
   Loader2,
-  RotateCcw,
-  SlidersHorizontal,
-  Headphones,
-  FileCode,
+  Plus,
+  Flame,
+  Check,
 } from "lucide-react";
 import type { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
@@ -45,16 +37,16 @@ type SearchSourceTab = "all" | "kuwo" | "kugou" | "qq" | "netease" | "migu" | "l
 type SearchMode = "songs" | "playlists";
 type SortField = "index" | "title" | "artist" | "album" | "duration";
 type SortOrder = "asc" | "desc";
-type QualityFilter = "all" | "24bit" | "flac" | "320k";
+type QualityFilter = "all" | "24bit" | "flac";
 
-const SOURCE_TABS: { id: SearchSourceTab; label: string; tag: string; color: string; badgeBg: string }[] = [
-  { id: "all", label: "聚合大会", tag: "ALL", color: "text-cyan-400", badgeBg: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" },
-  { id: "kuwo", label: "酷我音乐", tag: "kw", color: "text-emerald-400", badgeBg: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" },
-  { id: "kugou", label: "酷狗音乐", tag: "kg", color: "text-blue-400", badgeBg: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
-  { id: "qq", label: "QQ 音乐", tag: "tx", color: "text-teal-400", badgeBg: "bg-teal-500/20 text-teal-300 border-teal-500/30" },
-  { id: "netease", label: "网易云", tag: "wy", color: "text-rose-400", badgeBg: "bg-rose-500/20 text-rose-300 border-rose-500/30" },
-  { id: "migu", label: "咪咕音乐", tag: "mg", color: "text-amber-400", badgeBg: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
-  { id: "lx_custom", label: "落雪母带", tag: "lx", color: "text-purple-400", badgeBg: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
+const SOURCE_TABS: { id: SearchSourceTab; label: string; tag: string; dotColor: string; activeBorder: string; badgeStyle: string }[] = [
+  { id: "all", label: "聚合大会", tag: "ALL", dotColor: "bg-cyan-400", activeBorder: "border-cyan-400/50 shadow-cyan-500/10", badgeStyle: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" },
+  { id: "kuwo", label: "酷我音乐", tag: "kw", dotColor: "bg-emerald-400", activeBorder: "border-emerald-400/50 shadow-emerald-500/10", badgeStyle: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" },
+  { id: "kugou", label: "酷狗音乐", tag: "kg", dotColor: "bg-blue-400", activeBorder: "border-blue-400/50 shadow-blue-500/10", badgeStyle: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
+  { id: "qq", label: "QQ 音乐", tag: "tx", dotColor: "bg-teal-400", activeBorder: "border-teal-400/50 shadow-teal-500/10", badgeStyle: "bg-teal-500/20 text-teal-300 border-teal-500/30" },
+  { id: "netease", label: "网易云", tag: "wy", dotColor: "bg-rose-400", activeBorder: "border-rose-400/50 shadow-rose-500/10", badgeStyle: "bg-rose-500/20 text-rose-300 border-rose-500/30" },
+  { id: "migu", label: "咪咕音乐", tag: "mg", dotColor: "bg-amber-400", activeBorder: "border-amber-400/50 shadow-amber-500/10", badgeStyle: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
+  { id: "lx_custom", label: "落雪母带", tag: "lx", dotColor: "bg-purple-400", activeBorder: "border-purple-400/50 shadow-purple-500/10", badgeStyle: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
 ];
 
 const HOT_SEARCH_TAGS = [
@@ -66,7 +58,8 @@ const HOT_SEARCH_TAGS = [
   "七里香",
   "晴天",
   "海阔天空",
-  "华语金曲",
+  "起风了",
+  "华语经典",
   "ACG 纯音",
 ];
 
@@ -79,7 +72,6 @@ export const LxMusicSearchTab: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [songResults, setSongResults] = useState<Song[]>([]);
   const [playlistResults, setPlaylistResults] = useState<OnlinePlaylistResult[]>([]);
-  const [searchHistory, setSearchHistory] = useState<string[]>(["周杰伦", "晴天", "七里香"]);
 
   // 表格排序与多选
   const [sortField, setSortField] = useState<SortField>("index");
@@ -102,7 +94,6 @@ export const LxMusicSearchTab: React.FC = () => {
   const { playSong, playQueue } = useAudioStore();
   const { addToQueue, insertNext } = useQueueStore();
   const { addBatchDownloads, isSongOffline } = useOfflineDownloadStore();
-  const { addSong, importSongs } = usePlaylistStore();
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -117,9 +108,6 @@ export const LxMusicSearchTab: React.FC = () => {
 
       setIsSearching(true);
       setSelectedIds(new Set());
-
-      // 记录历史
-      setSearchHistory((prev) => Array.from(new Set([q, ...prev])).slice(0, 10));
 
       try {
         if (targetMode === "songs") {
@@ -340,51 +328,51 @@ export const LxMusicSearchTab: React.FC = () => {
   const getSourceBadge = (source?: string) => {
     const s = (source || "all").toLowerCase();
     if (s === "kuwo" || s === "kw") {
-      return <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">kw</span>;
+      return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">kw</span>;
     }
     if (s === "kugou" || s === "kg") {
-      return <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30">kg</span>;
+      return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-blue-500/15 text-blue-400 font-bold border border-blue-500/30">kg</span>;
     }
     if (s === "qq" || s === "tx") {
-      return <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-teal-500/20 text-teal-300 font-bold border border-teal-500/30">tx</span>;
+      return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-teal-500/15 text-teal-400 font-bold border border-teal-500/30">tx</span>;
     }
     if (s === "netease" || s === "wy") {
-      return <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30">wy</span>;
+      return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-rose-500/15 text-rose-400 font-bold border border-rose-500/30">wy</span>;
     }
     if (s === "migu" || s === "mg") {
-      return <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">mg</span>;
+      return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-amber-500/15 text-amber-400 font-bold border border-amber-500/30">mg</span>;
     }
     if (s === "lx_custom" || s === "lx") {
-      return <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">lx</span>;
+      return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-purple-500/15 text-purple-400 font-bold border border-purple-500/30">lx</span>;
     }
-    return <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-white/10 text-white/70">src</span>;
+    return <span className="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-white/10 text-white/70">src</span>;
   };
 
   const getQualityBadge = (song: Song) => {
     if (song.title.includes("24bit") || song.format === "flac") {
       return (
-        <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
+        <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.15)]">
           24bit
         </span>
       );
     }
     return (
-      <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30">
+      <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)]">
         SQ
       </span>
     );
   };
 
   return (
-    <div className="relative w-full h-full flex flex-col overflow-hidden select-none">
-      {/* 顶部控制中枢 */}
-      <div className="p-4 md:p-6 border-b border-white/10 bg-white/[0.02] backdrop-blur-xl flex flex-col gap-4 shrink-0">
-        {/* 1. 搜索框与模式切换 */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+    <div className="relative w-full h-full flex flex-col gap-5 select-none font-sans">
+      {/* ── 顶部控制中枢 Bento ── */}
+      <div className="p-5 md:p-6 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] flex flex-col gap-4">
+        {/* 第一行：搜索框 + 模式胶囊切换 + 音质过滤与播放全部 */}
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
           {/* 搜索框 */}
-          <div className="relative flex-1 w-full max-w-2xl flex items-center">
-            <div className="relative w-full flex items-center bg-white/[0.07] hover:bg-white/[0.1] focus-within:bg-white/[0.12] border border-white/15 focus-within:border-emerald-400/60 rounded-2xl px-4 py-2.5 transition-all shadow-inner">
-              <Search className="w-4 h-4 text-emerald-400 shrink-0 mr-3" />
+          <div className="relative flex-1 w-full flex items-center">
+            <div className="relative w-full flex items-center bg-white/[0.06] hover:bg-white/[0.09] focus-within:bg-white/[0.12] border border-white/15 focus-within:border-emerald-400/70 rounded-2xl px-4 py-2.5 transition-all shadow-inner group">
+              <Search className="w-4 h-4 text-emerald-400 shrink-0 mr-3 group-focus-within:scale-110 transition-transform" />
               <input
                 type="text"
                 value={keyword}
@@ -392,11 +380,12 @@ export const LxMusicSearchTab: React.FC = () => {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSearch();
                 }}
-                placeholder="搜索全网海量歌曲、歌手、专辑或落雪母带源..."
+                placeholder="搜索全网海量歌曲、歌手、专辑或落雪特供母带..."
                 className="w-full bg-transparent text-sm text-white placeholder-white/40 focus:outline-none"
               />
               {keyword && (
                 <button
+                  type="button"
                   onClick={() => setKeyword("")}
                   className="w-6 h-6 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors"
                 >
@@ -404,64 +393,102 @@ export const LxMusicSearchTab: React.FC = () => {
                 </button>
               )}
               <button
+                type="button"
                 onClick={() => handleSearch()}
                 disabled={isSearching}
-                className="ml-2 px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-semibold hover:brightness-110 active:scale-95 transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                className="ml-3 px-5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-emerald-500/25 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "检索"}
               </button>
             </div>
           </div>
 
-          {/* 右侧：单曲 / 歌单模式切换 */}
-          <div className="flex items-center bg-black/40 border border-white/10 p-1 rounded-2xl shrink-0">
-            <button
-              onClick={() => handleModeChange("songs")}
-              className={`px-4 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                searchMode === "songs"
-                  ? "bg-gradient-to-r from-emerald-500/80 to-teal-500/80 text-white shadow-md shadow-emerald-500/20"
-                  : "text-white/60 hover:text-white"
-              }`}
-            >
-              <span className="flex items-center gap-1.5">
-                <Music2 className="w-3.5 h-3.5" />
-                歌曲搜索
-              </span>
-            </button>
-            <button
-              onClick={() => handleModeChange("playlists")}
-              className={`px-4 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                searchMode === "playlists"
-                  ? "bg-gradient-to-r from-emerald-500/80 to-teal-500/80 text-white shadow-md shadow-emerald-500/20"
-                  : "text-white/60 hover:text-white"
-              }`}
-            >
-              <span className="flex items-center gap-1.5">
-                <FolderHeart className="w-3.5 h-3.5" />
-                歌单搜索
-              </span>
-            </button>
+          {/* 右侧功能组：歌曲/歌单切换 & 音质过滤 */}
+          <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-end shrink-0">
+            {/* 歌曲 / 歌单模式切换 */}
+            <div className="flex items-center bg-black/40 border border-white/10 p-1 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => handleModeChange("songs")}
+                className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  searchMode === "songs"
+                    ? "bg-gradient-to-r from-emerald-500/90 to-teal-500/90 text-white shadow-md shadow-emerald-500/20"
+                    : "text-white/60 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Music2 className="w-3.5 h-3.5" />
+                  歌曲搜索
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange("playlists")}
+                className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  searchMode === "playlists"
+                    ? "bg-gradient-to-r from-emerald-500/90 to-teal-500/90 text-white shadow-md shadow-emerald-500/20"
+                    : "text-white/60 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <FolderHeart className="w-3.5 h-3.5" />
+                  歌单搜索
+                </span>
+              </button>
+            </div>
+
+            {/* 音质过滤 & 播放全部 */}
+            {searchMode === "songs" && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-black/30 border border-white/10 rounded-2xl p-1 text-xs text-white/60">
+                  {(["all", "24bit", "flac"] as QualityFilter[]).map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => setQualityFilter(q)}
+                      className={`px-3 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                        qualityFilter === q ? "bg-white/15 text-white shadow-sm" : "hover:text-white"
+                      }`}
+                    >
+                      {q === "all" ? "全部" : q === "24bit" ? "Hi-Res 24bit" : "SQ 无损"}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handlePlayAll}
+                  disabled={processedSongs.length === 0}
+                  className="px-4 py-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 shadow-sm"
+                >
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  播放全部
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* 2. 多音源切换 Tab 栏 */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+        {/* 第二行：多音源切换 Tab 栏 & 热门推荐 */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pt-1 border-t border-white/[0.08]">
+          {/* 多音源切换 Tab 栏 */}
           <div className="flex flex-wrap items-center gap-2">
             {SOURCE_TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => handleTabChange(tab.id)}
-                  className={`relative px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 border ${
+                  className={`px-3.5 py-1.5 rounded-2xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 border ${
                     isActive
-                      ? "bg-white/15 text-white border-white/20 shadow-sm"
+                      ? `bg-white/15 text-white ${tab.activeBorder} shadow-md`
                       : "bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/[0.08] border-white/10"
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${tab.color.replace("text-", "bg-")}`} />
+                  <span className={`w-2 h-2 rounded-full ${tab.dotColor}`} />
                   <span>{tab.label}</span>
-                  <span className={`px-1 py-0.2 text-[9px] font-mono rounded ${tab.badgeBg}`}>
+                  <span className={`px-1.5 py-0.2 text-[9px] font-mono font-bold rounded ${tab.badgeStyle}`}>
                     {tab.tag}
                   </span>
                 </button>
@@ -469,248 +496,233 @@ export const LxMusicSearchTab: React.FC = () => {
             })}
           </div>
 
-          {/* 音质筛选与全选播放 */}
-          {searchMode === "songs" && (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-0.5 text-xs text-white/60">
-                {(["all", "24bit", "flac"] as QualityFilter[]).map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => setQualityFilter(q)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                      qualityFilter === q ? "bg-white/15 text-white" : "hover:text-white"
-                    }`}
-                  >
-                    {q === "all" ? "全部音质" : q === "24bit" ? "Hi-Res 24bit" : "SQ 无损"}
-                  </button>
-                ))}
-              </div>
-
+          {/* 热门搜索标签 */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar text-xs text-white/40 shrink-0">
+            <span className="shrink-0 flex items-center gap-1 text-xs font-semibold text-amber-400/90">
+              <Flame className="w-3.5 h-3.5 text-amber-400" /> 热搜:
+            </span>
+            {HOT_SEARCH_TAGS.map((tag) => (
               <button
-                onClick={handlePlayAll}
-                disabled={processedSongs.length === 0}
-                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                key={tag}
+                type="button"
+                onClick={() => {
+                  setKeyword(tag);
+                  handleSearch(tag);
+                }}
+                className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-white/10 text-white/60 hover:text-white text-xs transition-colors shrink-0 cursor-pointer"
               >
-                <Play className="w-3.5 h-3.5 fill-white" />
-                播放全部
+                {tag}
               </button>
-            </div>
-          )}
-        </div>
-
-        {/* 3. 热门推荐标签 */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar text-xs text-white/40 pt-1">
-          <span className="shrink-0 flex items-center gap-1 text-[11px] text-white/50">
-            <Sparkles className="w-3 h-3 text-amber-400" /> 热搜:
-          </span>
-          {HOT_SEARCH_TAGS.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => {
-                setKeyword(tag);
-                handleSearch(tag);
-              }}
-              className="px-2.5 py-0.5 rounded-lg bg-white/[0.04] hover:bg-white/10 text-white/60 hover:text-white text-[11px] transition-colors shrink-0"
-            >
-              {tag}
-            </button>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* 主体展示区 */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6">
+      {/* ── 主体展示区 (全宽度、高呼吸感表格与卡片) ── */}
+      <div className="flex-1 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col">
         {isSearching ? (
           <div className="h-96 flex flex-col items-center justify-center text-white/40 gap-3">
             <Loader2 className="w-10 h-10 animate-spin text-emerald-400" />
-            <p className="text-sm">正在检索全网高解析音乐资源...</p>
+            <p className="text-sm font-medium">正在全网检索高保真母带音频资源...</p>
           </div>
         ) : searchMode === "songs" ? (
           /* 单曲模式表格 */
           processedSongs.length === 0 ? (
             <div className="h-96 flex flex-col items-center justify-center text-white/40 gap-3">
               <Music2 className="w-12 h-12 opacity-30" />
-              <p className="text-sm">未检索到相关曲目，请更换关键词或切换音源</p>
+              <p className="text-sm">未检索到相关曲目，请尝试更换关键词或切换音源</p>
             </div>
           ) : (
-            <div className="w-full overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-white/10 text-white/40 text-[11px] select-none">
-                    <th className="py-2.5 px-3 w-10">
-                      <button onClick={handleSelectAll} className="hover:text-white">
-                        {selectedIds.size === processedSongs.length && processedSongs.length > 0 ? (
-                          <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />
-                        ) : (
-                          <Square className="w-3.5 h-3.5 text-white/30" />
-                        )}
-                      </button>
-                    </th>
-                    <th
-                      onClick={() => handleSortToggle("index")}
-                      className="py-2.5 px-2 w-12 cursor-pointer hover:text-white"
-                    >
-                      #
-                    </th>
-                    <th
-                      onClick={() => handleSortToggle("title")}
-                      className="py-2.5 px-3 cursor-pointer hover:text-white"
-                    >
-                      <span className="flex items-center gap-1">
-                        歌曲名
-                        <ArrowUpDown className="w-3 h-3 opacity-40" />
-                      </span>
-                    </th>
-                    <th
-                      onClick={() => handleSortToggle("artist")}
-                      className="py-2.5 px-3 cursor-pointer hover:text-white"
-                    >
-                      <span className="flex items-center gap-1">
-                        艺术家
-                        <ArrowUpDown className="w-3 h-3 opacity-40" />
-                      </span>
-                    </th>
-                    <th
-                      onClick={() => handleSortToggle("album")}
-                      className="py-2.5 px-3 cursor-pointer hover:text-white"
-                    >
-                      <span className="flex items-center gap-1">
-                        专辑名
-                        <ArrowUpDown className="w-3 h-3 opacity-40" />
-                      </span>
-                    </th>
-                    <th
-                      onClick={() => handleSortToggle("duration")}
-                      className="py-2.5 px-3 w-20 cursor-pointer hover:text-white text-right"
-                    >
-                      <span className="flex items-center justify-end gap-1">
-                        时长
-                        <ArrowUpDown className="w-3 h-3 opacity-40" />
-                      </span>
-                    </th>
-                    <th className="py-2.5 px-3 w-32 text-right">操作</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.04]">
-                  {processedSongs.map((song, idx) => {
-                    const isSelected = selectedIds.has(song.id);
-                    const isDownloaded = isSongOffline(song.id);
+            <div className="w-full flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+              {/* 表头 */}
+              <div className="sticky top-0 bg-[#0c0e17]/95 backdrop-blur-2xl z-20 border-b border-white/10 text-white/50 text-xs font-semibold px-4 py-3 flex items-center select-none">
+                {/* 勾选框 & 序号 */}
+                <div className="w-16 shrink-0 flex items-center justify-center gap-2">
+                  <button type="button" onClick={handleSelectAll} className="hover:text-white cursor-pointer">
+                    {selectedIds.size === processedSongs.length && processedSongs.length > 0 ? (
+                      <CheckSquare className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <Square className="w-4 h-4 text-white/30" />
+                    )}
+                  </button>
+                  <span
+                    onClick={() => handleSortToggle("index")}
+                    className="cursor-pointer hover:text-white font-mono"
+                  >
+                    #
+                  </span>
+                </div>
 
-                    return (
-                      <tr
-                        key={`${song.source || "src"}-${song.id || idx}-${idx}`}
-                        onDoubleClick={() => handlePlaySingle(song)}
-                        onContextMenu={(e) => handleContextMenu(e, song)}
-                        className={`group transition-all select-none cursor-pointer ${
-                          isSelected
-                            ? "bg-emerald-500/15"
-                            : "hover:bg-white/[0.05]"
-                        }`}
+                {/* 歌曲名 */}
+                <div
+                  onClick={() => handleSortToggle("title")}
+                  className="flex-[4] min-w-[240px] px-3 flex items-center gap-1.5 cursor-pointer hover:text-white"
+                >
+                  <span>歌曲名</span>
+                  <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />
+                </div>
+
+                {/* 艺术家 */}
+                <div
+                  onClick={() => handleSortToggle("artist")}
+                  className="flex-[2.5] min-w-[150px] px-3 flex items-center gap-1.5 cursor-pointer hover:text-white"
+                >
+                  <span>艺术家</span>
+                  <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />
+                </div>
+
+                {/* 专辑名 */}
+                <div
+                  onClick={() => handleSortToggle("album")}
+                  className="flex-[3] min-w-[160px] px-3 flex items-center gap-1.5 cursor-pointer hover:text-white"
+                >
+                  <span>专辑名</span>
+                  <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />
+                </div>
+
+                {/* 时长 */}
+                <div
+                  onClick={() => handleSortToggle("duration")}
+                  className="w-24 shrink-0 px-2 text-right flex items-center justify-end gap-1 cursor-pointer hover:text-white"
+                >
+                  <span>时长</span>
+                  <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />
+                </div>
+
+                {/* 操作列 */}
+                <div className="w-36 shrink-0 text-right pr-4">操作</div>
+              </div>
+
+              {/* 表体行 */}
+              <div className="divide-y divide-white/[0.04] p-2">
+                {processedSongs.map((song, idx) => {
+                  const isSelected = selectedIds.has(song.id);
+                  const isDownloaded = isSongOffline(song.id);
+
+                  return (
+                    <div
+                      key={`${song.source || "src"}-${song.id || idx}-${idx}`}
+                      onDoubleClick={() => handlePlaySingle(song)}
+                      onContextMenu={(e) => handleContextMenu(e, song)}
+                      className={`group flex items-center px-2 py-3 rounded-2xl transition-all cursor-pointer select-none ${
+                        isSelected
+                          ? "bg-emerald-500/15 border border-emerald-500/30"
+                          : "hover:bg-white/[0.06] border border-transparent"
+                      }`}
+                    >
+                      {/* 勾选框 & 序号 */}
+                      <div
+                        className="w-16 shrink-0 flex items-center justify-center gap-2"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        {/* 勾选框 */}
-                        <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={() => handleToggleSelect(song.id)}
-                            className="text-white/40 hover:text-white"
-                          >
-                            {isSelected ? (
-                              <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />
-                            ) : (
-                              <Square className="w-3.5 h-3.5 text-white/30" />
-                            )}
-                          </button>
-                        </td>
-
-                        {/* 序号 */}
-                        <td className="py-2.5 px-2 font-mono text-white/30 tabular-nums">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSelect(song.id)}
+                          className="text-white/40 hover:text-white cursor-pointer"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="w-4 h-4 text-emerald-400" />
+                          ) : (
+                            <Square className="w-4 h-4 text-white/30" />
+                          )}
+                        </button>
+                        <span className="font-mono text-white/30 text-xs tabular-nums w-4 text-center">
                           {idx + 1}
-                        </td>
+                        </span>
+                      </div>
 
-                        {/* 歌曲名 + 音质/来源徽标 */}
-                        <td className="py-2.5 px-3 font-medium text-white/90">
-                          <div className="flex items-center gap-2">
-                            <span className="truncate max-w-xs">{song.title}</span>
-                            <div className="flex items-center gap-1 shrink-0">
-                              {getQualityBadge(song)}
-                              {getSourceBadge(song.source)}
-                              {isDownloaded && (
-                                <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-cyan-500/20 text-cyan-300">
-                                  已离线
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
+                      {/* 歌曲名 + 徽标 */}
+                      <div className="flex-[4] min-w-[240px] px-3 flex items-center gap-2.5 overflow-hidden">
+                        <span className="font-semibold text-white/90 text-sm truncate">
+                          {song.title}
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {getQualityBadge(song)}
+                          {getSourceBadge(song.source)}
+                          {isDownloaded && (
+                            <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                              已离线
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                        {/* 艺术家 */}
-                        <td className="py-2.5 px-3 text-white/60">
+                      {/* 艺术家 */}
+                      <div className="flex-[2.5] min-w-[150px] px-3 overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setKeyword(song.artist);
+                            handleSearch(song.artist);
+                          }}
+                          className="text-xs text-white/60 hover:text-emerald-400 truncate hover:underline transition-colors text-left"
+                        >
+                          {song.artist}
+                        </button>
+                      </div>
+
+                      {/* 专辑名 */}
+                      <div className="flex-[3] min-w-[160px] px-3 overflow-hidden text-xs text-white/40 truncate">
+                        {song.album || "精选大碟"}
+                      </div>
+
+                      {/* 时长 */}
+                      <div className="w-24 shrink-0 px-2 text-right font-mono text-xs text-white/40 tabular-nums">
+                        {formatDuration(song.duration)}
+                      </div>
+
+                      {/* 操作按钮组 (专享 144px 独立区域，永不遮挡时长) */}
+                      <div
+                        className="w-36 shrink-0 flex items-center justify-end gap-1.5 pr-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setKeyword(song.artist);
-                              handleSearch(song.artist);
-                            }}
-                            className="truncate max-w-xs hover:text-emerald-400 hover:underline transition-colors text-left"
+                            type="button"
+                            onClick={() => handlePlaySingle(song)}
+                            className="w-8 h-8 rounded-xl bg-white/10 hover:bg-emerald-500 hover:text-white flex items-center justify-center text-white/80 transition-all active:scale-90 shadow-sm"
+                            title="立即播放"
                           >
-                            {song.artist}
+                            <Play className="w-3.5 h-3.5 fill-current" />
                           </button>
-                        </td>
-
-                        {/* 专辑名 */}
-                        <td className="py-2.5 px-3 text-white/40 truncate max-w-xs">
-                          {song.album || "精选大碟"}
-                        </td>
-
-                        {/* 时长 */}
-                        <td className="py-2.5 px-3 text-right font-mono text-white/40 tabular-nums">
-                          {formatDuration(song.duration)}
-                        </td>
-
-                        {/* 快捷悬浮动作 */}
-                        <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => handlePlaySingle(song)}
-                              className="w-7 h-7 rounded-lg bg-white/10 hover:bg-emerald-500 hover:text-white flex items-center justify-center text-white/70 transition-colors"
-                              title="立即播放"
-                            >
-                              <Play className="w-3.5 h-3.5 fill-current" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                insertNext(song);
-                                showToast(`已将《${song.title}》设置为下一首播放`);
-                              }}
-                              className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
-                              title="下一首播放"
-                            >
-                              <ListPlus className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                addBatchDownloads([song], "lossless");
-                                showToast(`已添加《${song.title}》至离线下载队列`);
-                              }}
-                              disabled={isDownloaded}
-                              className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors disabled:opacity-40"
-                              title={isDownloaded ? "已离线" : "离线缓存最高音质"}
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={(e) => handleContextMenu(e, song)}
-                              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-colors"
-                              title="更多操作"
-                            >
-                              <MoreHorizontal className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              insertNext(song);
+                              showToast(`已将《${song.title}》设置为下一首播放`);
+                            }}
+                            className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-all active:scale-90 shadow-sm"
+                            title="下一首播放"
+                          >
+                            <ListPlus className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              addBatchDownloads([song], "lossless");
+                              showToast(`已添加《${song.title}》至离线下载队列`);
+                            }}
+                            disabled={isDownloaded}
+                            className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-all active:scale-90 shadow-sm disabled:opacity-40"
+                            title={isDownloaded ? "已离线" : "离线下载最高母带音质"}
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleContextMenu(e, song)}
+                            className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all active:scale-90 shadow-sm"
+                            title="更多操作"
+                          >
+                            <MoreHorizontal className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )
         ) : (
@@ -718,34 +730,34 @@ export const LxMusicSearchTab: React.FC = () => {
           playlistResults.length === 0 ? (
             <div className="h-96 flex flex-col items-center justify-center text-white/40 gap-3">
               <FolderHeart className="w-12 h-12 opacity-30" />
-              <p className="text-sm">未检索到相关歌单，请更换关键词</p>
+              <p className="text-sm">未检索到相关歌单，请尝试更换关键词</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
               {playlistResults.map((p, idx) => (
                 <div
                   key={`${p.source}-${p.id}-${idx}`}
                   onClick={() => handleOpenPlaylist(p)}
-                  className="group flex flex-col rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-3 transition-all hover:scale-[1.02] cursor-pointer"
+                  className="group flex flex-col rounded-3xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-3.5 transition-all hover:scale-[1.03] hover:border-emerald-400/40 cursor-pointer shadow-lg"
                 >
-                  <div className="relative w-full aspect-square rounded-xl overflow-hidden shadow-lg mb-2.5 bg-black/40">
+                  <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-xl mb-3 bg-black/40">
                     <Image
                       src={p.coverImgUrl || "/default-cover.svg"}
                       alt={p.name}
                       fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="200px"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      sizes="240px"
                     />
-                    <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] text-white/80 font-mono">
+                    <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[10px] text-white/90 font-mono font-semibold border border-white/10">
                       {p.source === "netease" ? "网易云" : "QQ音乐"}
                     </div>
                   </div>
-                  <h4 className="text-xs font-semibold text-white/90 line-clamp-2 leading-snug">
+                  <h4 className="text-xs font-bold text-white/90 line-clamp-2 leading-snug">
                     {p.name}
                   </h4>
-                  <div className="flex items-center justify-between text-[10px] text-white/40 mt-2">
+                  <div className="flex items-center justify-between text-[11px] text-white/40 mt-2">
                     <span className="truncate">{p.creatorName}</span>
-                    <span>{p.trackCount} 首</span>
+                    <span className="font-mono">{p.trackCount} 首</span>
                   </div>
                 </div>
               ))}
@@ -754,39 +766,43 @@ export const LxMusicSearchTab: React.FC = () => {
         )}
       </div>
 
-      {/* 底部批量操作悬浮条 */}
+      {/* ── 底部批量操作悬浮胶囊 ── */}
       <AnimatePresence>
         {selectedIds.size > 0 && (
           <motion.div
             initial={{ y: 80, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 80, opacity: 0 }}
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#161a26]/95 border border-white/20 backdrop-blur-2xl rounded-2xl px-6 py-3 shadow-2xl flex items-center gap-4 text-xs"
+            transition={{ type: "spring", stiffness: 350, damping: 28 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 bg-[#161a28]/95 border border-emerald-500/40 backdrop-blur-3xl rounded-3xl px-6 py-3.5 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex items-center gap-4 text-xs"
           >
-            <div className="flex items-center gap-2 pr-2 border-r border-white/15">
+            <div className="flex items-center gap-2 pr-3 border-r border-white/15">
               <CheckSquare className="w-4 h-4 text-emerald-400" />
-              <span className="font-semibold text-white">已选择 {selectedIds.size} 首歌曲</span>
+              <span className="font-bold text-white text-sm">已选择 {selectedIds.size} 首歌曲</span>
             </div>
 
             <button
+              type="button"
               onClick={handleDownloadSelected}
-              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium hover:brightness-110 active:scale-95 transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-500/20"
+              className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold hover:brightness-110 active:scale-95 transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-500/25 cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5" />
-              一键下载已选 (最高音质)
+              <Download className="w-4 h-4" />
+              一键下载已选 (最高母带音质)
             </button>
 
             <button
+              type="button"
               onClick={handleBatchAddToQueue}
-              className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium active:scale-95 transition-all flex items-center gap-1.5"
+              className="px-4 py-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-semibold active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <ListPlus className="w-3.5 h-3.5" />
+              <ListPlus className="w-4 h-4" />
               批量加入队列
             </button>
 
             <button
+              type="button"
               onClick={() => setSelectedIds(new Set())}
-              className="px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+              className="px-3 py-2 rounded-2xl hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer"
             >
               取消选择
             </button>
@@ -794,28 +810,30 @@ export const LxMusicSearchTab: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* 右键上下文菜单 */}
+      {/* ── 右键上下文菜单 ── */}
       {contextMenu && contextMenu.song && (
         <div
           style={{ top: contextMenu.y, left: contextMenu.x }}
-          className="fixed z-50 min-w-[200px] bg-[#1a1d29]/95 border border-white/15 backdrop-blur-2xl rounded-2xl p-1.5 shadow-2xl text-xs text-white"
+          className="fixed z-50 min-w-[210px] bg-[#1a1d2c]/95 border border-white/15 backdrop-blur-3xl rounded-2xl p-2 shadow-2xl text-xs text-white"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="px-3 py-1.5 border-b border-white/10 font-semibold text-white/90 truncate max-w-[220px]">
+          <div className="px-3 py-1.5 border-b border-white/10 font-bold text-white/90 truncate max-w-[220px]">
             {contextMenu.song.title}
           </div>
           <div className="py-1 space-y-0.5">
             <button
+              type="button"
               onClick={() => {
                 if (contextMenu.song) handlePlaySingle(contextMenu.song);
                 setContextMenu(null);
               }}
-              className="w-full px-3 py-1.5 rounded-lg hover:bg-emerald-500 hover:text-white flex items-center gap-2 text-left transition-colors"
+              className="w-full px-3 py-1.5 rounded-xl hover:bg-emerald-500 hover:text-white flex items-center gap-2.5 text-left transition-colors font-medium"
             >
               <Play className="w-3.5 h-3.5" />
               立即播放
             </button>
             <button
+              type="button"
               onClick={() => {
                 if (contextMenu.song) {
                   insertNext(contextMenu.song);
@@ -823,12 +841,13 @@ export const LxMusicSearchTab: React.FC = () => {
                 }
                 setContextMenu(null);
               }}
-              className="w-full px-3 py-1.5 rounded-lg hover:bg-white/10 flex items-center gap-2 text-left transition-colors"
+              className="w-full px-3 py-1.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5 text-left transition-colors"
             >
               <ListPlus className="w-3.5 h-3.5" />
               下一首播放
             </button>
             <button
+              type="button"
               onClick={() => {
                 if (contextMenu.song) {
                   addToQueue(contextMenu.song);
@@ -836,12 +855,13 @@ export const LxMusicSearchTab: React.FC = () => {
                 }
                 setContextMenu(null);
               }}
-              className="w-full px-3 py-1.5 rounded-lg hover:bg-white/10 flex items-center gap-2 text-left transition-colors"
+              className="w-full px-3 py-1.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5 text-left transition-colors"
             >
               <Music2 className="w-3.5 h-3.5" />
               加入播放队列
             </button>
             <button
+              type="button"
               onClick={() => {
                 if (contextMenu.song) {
                   addBatchDownloads([contextMenu.song], "lossless");
@@ -849,13 +869,14 @@ export const LxMusicSearchTab: React.FC = () => {
                 }
                 setContextMenu(null);
               }}
-              className="w-full px-3 py-1.5 rounded-lg hover:bg-white/10 flex items-center gap-2 text-left transition-colors"
+              className="w-full px-3 py-1.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5 text-left transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
               离线缓存最高音质
             </button>
             <div className="h-[1px] bg-white/10 my-1" />
             <button
+              type="button"
               onClick={() => {
                 if (contextMenu.song) {
                   navigator.clipboard.writeText(`${contextMenu.song.title} - ${contextMenu.song.artist}`);
@@ -863,7 +884,7 @@ export const LxMusicSearchTab: React.FC = () => {
                 }
                 setContextMenu(null);
               }}
-              className="w-full px-3 py-1.5 rounded-lg hover:bg-white/10 flex items-center gap-2 text-left transition-colors"
+              className="w-full px-3 py-1.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5 text-left transition-colors"
             >
               <Copy className="w-3.5 h-3.5" />
               复制歌曲名称与艺术家
@@ -872,23 +893,23 @@ export const LxMusicSearchTab: React.FC = () => {
         </div>
       )}
 
-      {/* 歌单详情抽屉 */}
+      {/* ── 歌单详情抽屉 ── */}
       <PlaylistDetailDrawer
         isOpen={isDrawerOpen}
         playlist={selectedPlaylist}
         onClose={() => setIsDrawerOpen(false)}
       />
 
-      {/* Toast 悬浮提示 */}
+      {/* ── Toast 悬浮提示 ── */}
       <AnimatePresence>
         {toastMessage && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed top-8 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-black/80 backdrop-blur-xl border border-emerald-500/30 text-emerald-300 text-xs font-medium shadow-2xl flex items-center gap-2"
+            className="fixed top-8 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-2xl bg-black/85 backdrop-blur-2xl border border-emerald-500/40 text-emerald-300 text-xs font-semibold shadow-2xl flex items-center gap-2"
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
             {toastMessage}
           </motion.div>
         )}
