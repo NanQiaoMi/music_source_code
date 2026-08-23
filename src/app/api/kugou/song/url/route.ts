@@ -7,12 +7,13 @@ export async function GET(request: NextRequest) {
   const artist = searchParams.get("artist") || "";
 
   const cleanHash = hash.trim();
+  const origin = request.nextUrl.origin || "http://127.0.0.1:3025";
 
   // 1. 如果有标题/歌手，优先通过高可用全网母带集群秒级匹配真实播放流
   if (title) {
     try {
       const crossRes = await fetch(
-        `http://127.0.0.1:3025/api/song/url?name=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`,
+        `${origin}/api/song/url?name=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`,
         { signal: AbortSignal.timeout(3500) }
       );
       if (crossRes.ok) {

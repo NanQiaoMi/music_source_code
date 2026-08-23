@@ -6,11 +6,13 @@ export async function GET(request: NextRequest) {
   const title = searchParams.get("title") || searchParams.get("name") || "";
   const artist = searchParams.get("artist") || "";
 
+  const origin = request.nextUrl.origin || "http://127.0.0.1:3025";
+
   // 1. 如果有标题+歌手，走跨源母带匹配
   if (title) {
     try {
       const crossRes = await fetch(
-        `http://localhost:3025/api/song/url?name=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}&id=${mid}`,
+        `${origin}/api/song/url?name=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}&id=${mid}`,
         { signal: AbortSignal.timeout(3000) }
       );
       if (crossRes.ok) {

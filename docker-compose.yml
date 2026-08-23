@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  mimi-music:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mimi-music-player
+    restart: always
+    ports:
+      - "3025:3025"
+    environment:
+      - NODE_ENV=production
+      - PORT=3025
+    deploy:
+      resources:
+        limits:
+          memory: 350M
