@@ -78,33 +78,45 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
 
-  const { playQueue, playSong } = useAudioStore();
-  const currentPlayingSong = useAudioStore((state) => state.currentSong) || usePlayerStore((state) => state.currentSong);
-  const isAudioPlaying = useAudioStore((state) => state.isPlaying) || usePlayerStore((state) => state.isPlaying);
-  const { addToQueue, addToNext } = useQueueStore();
-  const { addBatchDownloads, isSongOffline } = useOfflineDownloadStore();
-  const { isFavorite, toggleFavorite } = useFavoritesStore();
-  const { fetchAllPlaylistTracks, fetchPlaylistTracks } = useUserAccountStore();
-  const { importSongs } = usePlaylistStore();
-  const { showToast } = useUIStore();
-
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Unconditionally call store hooks
+  const audioCurrentSong = useAudioStore((state) => state.currentSong);
+  const playerCurrentSong = usePlayerStore((state) => state.currentSong);
+  const currentPlayingSong = audioCurrentSong || playerCurrentSong;
+
+  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
+  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
+  const isAudioPlaying = audioIsPlaying || playerIsPlaying;
+
+  const playQueue = useAudioStore((state) => state.playQueue);
+  const playSong = useAudioStore((state) => state.playSong);
+  const addToQueue = useQueueStore((state) => state.addToQueue);
+  const addToNext = useQueueStore((state) => state.addToNext);
+  const addBatchDownloads = useOfflineDownloadStore((state) => state.addBatchDownloads);
+  const isSongOffline = useOfflineDownloadStore((state) => state.isSongOffline);
+  const isFavorite = useFavoritesStore((state) => state.isFavorite);
+  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
+  const importSongs = usePlaylistStore((state) => state.importSongs);
 
   const showNotice = useCallback((msg: string) => {
     setActionNotice(msg);
-    showToast(msg, "info", 2500);
+    useUIStore.getState().showToast(msg, "info", 2500);
     setTimeout(() => setActionNotice(null), 3000);
-  }, [showToast]);
+  }, []);
+
+  const playlistId = playlist?.id;
+  const playlistSource = playlist?.source;
 
   // 1. 加载歌单全部曲目（支持多级降级与大歌单分批）
   const loadTracks = useCallback(async () => {
-    if (!playlist?.id) return;
+    if (!playlistId) return;
     setIsLoading(true);
     setLoadingProgress("正在连接云端解析接口...");
 
     try {
       // 方式 A: 优先调用本地 API Proxy (支持超大歌单分批与公共免密代理)
-      const res = await fetch(`/api/playlist/tracks?id=${encodeURIComponent(playlist.id)}&limit=1000`);
+      const res = await fetch(`/api/playlist/tracks?id=${encodeURIComponent(playlistId)}&limit=1000`);
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.songs) && data.songs.length > 0) {
@@ -116,12 +128,13 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
 
       // 方式 B: 调用用户账号 Store 的全量解析通道
       setLoadingProgress("正在通过已授权账号解析全量曲目...");
-      const songs = await fetchAllPlaylistTracks(playlist.id, (playlist.source as any) || "netease");
+      const accountStore = useUserAccountStore.getState();
+      const songs = await accountStore.fetchAllPlaylistTracks(playlistId, (playlistSource as any) || "netease");
       if (Array.isArray(songs) && songs.length > 0) {
         setTracks(songs);
       } else {
         // 方式 C: 单页 500 首保底
-        const singleBatch = await fetchPlaylistTracks(playlist.id, (playlist.source as any) || "netease", 0, 500);
+        const singleBatch = await accountStore.fetchPlaylistTracks(playlistId, (playlistSource as any) || "netease", 0, 500);
         if (Array.isArray(singleBatch) && singleBatch.length > 0) {
           setTracks(singleBatch);
         }
@@ -133,7 +146,7 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
       setIsLoading(false);
       setLoadingProgress("");
     }
-  }, [playlist, fetchAllPlaylistTracks, fetchPlaylistTracks, showNotice]);
+  }, [playlistId, playlistSource, showNotice]);
 
   useEffect(() => {
     if (isOpen && playlist) {
