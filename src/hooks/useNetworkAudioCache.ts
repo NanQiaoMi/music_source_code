@@ -87,14 +87,15 @@ export async function getOrCreateBlobUrl(
 export async function triggerBackgroundCache(song: Song, audioUrl: string): Promise<void> {
   if (!song?.id || !audioUrl) return;
 
-  const key = makeCacheKey(song.id, song.source);
+  const songSource = song.source || "netease";
+  const key = makeCacheKey(song.id, songSource);
 
   // Skip if already cached or currently downloading
   if (cachedStatusMap.get(key) === true) return;
   if (cachingTasks.get(key) === true) return;
 
   // Double-check IDB before downloading
-  const alreadyCached = await checkIsCached(song.id, song.source);
+  const alreadyCached = await checkIsCached(song.id, songSource);
   if (alreadyCached) return;
 
   cachingTasks.set(key, true);
@@ -131,9 +132,9 @@ export async function triggerBackgroundCache(song: Song, audioUrl: string): Prom
     const cached: CachedNetworkAudio = {
       cacheKey: key,
       songId: song.id,
-      source: song.source,
-      title: song.title,
-      artist: song.artist,
+      source: songSource,
+      title: song.title || "未知歌曲",
+      artist: song.artist || "未知艺术家",
       album: song.album,
       cover: coverToSave || song.cover,
       lyrics: lyricsToSave,

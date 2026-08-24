@@ -253,4 +253,35 @@ describe("NetworkAudioCache Service", () => {
     const updated = await getCachedAudio("t1", "netease");
     expect(updated?.lastPlayedAt).toBeGreaterThan(initialTime);
   });
+
+  it("should provide default fallback values when source, title, or artist are missing in cache", async () => {
+    const buf = new Uint8Array(256).buffer;
+    await saveCachedAudio({
+      cacheKey: "unknown-key",
+      songId: "legacy-song",
+      source: undefined as any,
+      title: undefined as any,
+      artist: undefined as any,
+      duration: 120,
+      fileData: buf,
+      fileType: "audio/mpeg",
+      originalUrl: "",
+      cachedAt: Date.now(),
+      lastPlayedAt: Date.now(),
+      fileSize: 256,
+    });
+
+    const all = await getAllCachedAudioMeta();
+    const legacy = all.find((m) => m.songId === "legacy-song");
+    expect(legacy).toBeDefined();
+    expect(legacy?.source).toBe("netease");
+    expect(legacy?.title).toBe("未知歌曲");
+    expect(legacy?.artist).toBe("未知艺术家");
+  });
+
+  it("makeCacheKey should handle missing source safely", () => {
+    expect(makeCacheKey("12345", "qq")).toBe("qq:12345");
+    expect(makeCacheKey("12345", undefined)).toBe("netease:12345");
+    expect(makeCacheKey("12345", "")).toBe("netease:12345");
+  });
 });
