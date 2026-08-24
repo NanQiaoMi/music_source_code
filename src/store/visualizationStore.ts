@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 export type VisualizationEffect =
+  | "cinematicOrientalInk"
   | "spatialMesh"
   | "cyberpunkParticles"
   | "organicFluid"
@@ -12,7 +13,8 @@ export type VisualizationEffect =
   | "gravitationalField"
   | "prismPulse"
   | "superstringSingularity"
-  | "cinematicSilkAurora";
+  | "cinematicSilkAurora"
+  | "orientalLandscape";
 
 export type NumericEffectSettings = Record<string, number>;
 export type EffectSettings = Record<VisualizationEffect, NumericEffectSettings>;
@@ -49,6 +51,14 @@ interface VisualizationState {
 }
 
 const defaultEffectSettings: EffectSettings = {
+  cinematicOrientalInk: {
+    godraysIntensity: 1.2,
+    particleCount: 450,
+    inkFlowSpeed: 1.0,
+    showPoetry: 1,
+    filmVignette: 0.65,
+    colorScheme: 0,
+  },
   spatialMesh: { blurIntensity: 120, speed: 1.0, colorIntensity: 0.8 },
   cyberpunkParticles: {
     particleCount: 240,
@@ -99,6 +109,7 @@ const defaultEffectSettings: EffectSettings = {
   prismPulse: { complexity: 6, refraction: 1.0, drift: 0.5, speed: 1.0 },
   superstringSingularity: { speed: 1.0, singularityMass: 1.0, superstringTension: 1.2, coreGlow: 1.5 },
   cinematicSilkAurora: { silkCount: 6, flowSpeed: 1.0, glowIntensity: 1.15, bokehDensity: 1.0, firefliesCount: 25, godRaysIntensity: 1.0, spatialDepth: 1.2, anamorphicFlare: 1.0 },
+  orientalLandscape: { lightRays: 1.0, mountainBreath: 1.0, waterRipple: 1.0, goldGlow: 1.2, filmVignette: 0.65 },
 };
 
 const defaultPresets: VisualizationPreset[] = [
@@ -165,7 +176,7 @@ const defaultPresets: VisualizationPreset[] = [
   ];
 
 export const useVisualizationStore = create<VisualizationState>((set, get) => ({
-  currentEffect: "cinematicSilkAurora",
+  currentEffect: "cinematicOrientalInk",
   isFullscreen: false,
   presets: defaultPresets,
   currentPresetId: "preset-astro-blackhole",

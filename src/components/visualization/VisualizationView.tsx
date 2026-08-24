@@ -395,6 +395,9 @@ export function VisualizationView() {
         // Call the appropriate effect
 
         switch (currentEff) {
+          case "cinematicOrientalInk":
+            Effects.drawCinematicOrientalInk(effectCtx);
+            break;
           case "spatialMesh":
             Effects.drawSpatialMesh(effectCtx);
             break;
@@ -430,6 +433,9 @@ export function VisualizationView() {
             break;
           case "cinematicSilkAurora":
             Effects.drawCinematicSilkAurora(effectCtx);
+            break;
+          case "orientalLandscape":
+            Effects.drawOrientalLandscape(effectCtx);
             break;
 
           default:
@@ -541,6 +547,8 @@ export function VisualizationView() {
   };
 
   const effectsList: { id: VisualizationEffect; name: string }[] = [
+    { id: "orientalLandscape", name: "青绿千里 · 电影画卷 (古风纯乐)" },
+    { id: "cinematicOrientalInk", name: "千里江山 · 流光墨韵" },
     { id: "cinematicSilkAurora", name: "流金丝绸极光 (电影感)" },
     { id: "spatialMesh", name: "流光幻境" },
     { id: "cyberpunkParticles", name: "神经之网" },

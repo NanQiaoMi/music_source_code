@@ -85,6 +85,8 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
   };
 
   const effectLabels: Record<string, string> = {
+    orientalLandscape: "青绿千里 · 电影画卷 (古风纯乐)",
+    cinematicOrientalInk: "千里江山 · 流光墨韵 (纯音/古风)",
     cinematicSilkAurora: "流金丝绸极光 (电影感)",
     spatialMesh: "流光幻境",
     cyberpunkParticles: "神经之网",
@@ -110,7 +112,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
         {/* Header */}
         <div className="p-5 flex items-center justify-between border-b border-white/10 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 via-teal-600 to-amber-500 flex items-center justify-center">
               <Settings className="w-4 h-4 text-white" />
             </div>
             <div>
@@ -135,6 +137,96 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
             <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-3 h-3" /> 效果参数
             </h3>
+
+            {currentEffect === "orientalLandscape" && (
+              <div className="space-y-4">
+                <SettingSlider
+                  label="丁达尔神光穿透度"
+                  value={effectSettings.orientalLandscape?.lightRays ?? 1.0}
+                  min={0.0}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("orientalLandscape", { lightRays: v })}
+                />
+                <SettingSlider
+                  label="远山呼吸律动感"
+                  value={effectSettings.orientalLandscape?.mountainBreath ?? 1.0}
+                  min={0.2}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("orientalLandscape", { mountainBreath: v })}
+                />
+                <SettingSlider
+                  label="水镜涟漪灵敏度"
+                  value={effectSettings.orientalLandscape?.waterRipple ?? 1.0}
+                  min={0.0}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("orientalLandscape", { waterRipple: v })}
+                />
+                <SettingSlider
+                  label="锦绫金丝辉光"
+                  value={effectSettings.orientalLandscape?.goldGlow ?? 1.2}
+                  min={0.2}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("orientalLandscape", { goldGlow: v })}
+                />
+                <SettingSlider
+                  label="电影胶片暗角"
+                  value={effectSettings.orientalLandscape?.filmVignette ?? 0.65}
+                  min={0.0}
+                  max={1.0}
+                  step={0.05}
+                  onChange={(v) => updateEffectSettings("orientalLandscape", { filmVignette: v })}
+                />
+              </div>
+            )}
+
+            {currentEffect === "cinematicOrientalInk" && (
+              <div className="space-y-4">
+                <SettingSlider
+                  label="丁达尔体积光强度"
+                  value={effectSettings.cinematicOrientalInk?.godraysIntensity ?? 1.2}
+                  min={0.0}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cinematicOrientalInk", { godraysIntensity: v })}
+                />
+                <SettingSlider
+                  label="金箔微粒密度"
+                  value={effectSettings.cinematicOrientalInk?.particleCount ?? 450}
+                  min={100}
+                  max={900}
+                  step={50}
+                  onChange={(v) => updateEffectSettings("cinematicOrientalInk", { particleCount: v })}
+                />
+                <SettingSlider
+                  label="水墨流动速率"
+                  value={effectSettings.cinematicOrientalInk?.inkFlowSpeed ?? 1.0}
+                  min={0.2}
+                  max={3.0}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cinematicOrientalInk", { inkFlowSpeed: v })}
+                />
+                <SettingSlider
+                  label="电影呼吸暗角"
+                  value={effectSettings.cinematicOrientalInk?.filmVignette ?? 0.65}
+                  min={0.0}
+                  max={1.0}
+                  step={0.05}
+                  onChange={(v) => updateEffectSettings("cinematicOrientalInk", { filmVignette: v })}
+                />
+                <SettingSlider
+                  label="东方调色方案 (0青绿 1水墨 2暮霞)"
+                  value={effectSettings.cinematicOrientalInk?.colorScheme ?? 0}
+                  min={0}
+                  max={2}
+                  step={1}
+                  onChange={(v) => updateEffectSettings("cinematicOrientalInk", { colorScheme: v })}
+                />
+              </div>
+            )}
 
             {currentEffect === "cinematicSilkAurora" && (
               <div className="space-y-4">
