@@ -138,17 +138,17 @@ const COLOR_SCHEMES: Record<
     skyTop: "#01070d",
     skyMid: "#03141d",
     skyBottom: "#08222b",
-    farMountain: ["#124856", "#0c323d", "#061c22"],
-    midMountain: ["#1a6064", "#114448", "#082225"],
-    nearMountain: ["#22786e", "#16554f", "#0a2a29"],
-    shoreMountain: ["#2b8f82", "#1d665f", "#0d3634"],
-    goldGlint: "rgba(255, 235, 150, 0.98)",
-    goldWire: "rgba(240, 205, 110, 0.88)",
-    cloudColor: "rgba(160, 220, 230, 0.18)",
-    waterWave: "rgba(180, 240, 245, 0.35)",
-    waterReflect: "rgba(14, 52, 60, 0.40)",
-    lanternGlow: "rgba(255, 210, 110, 0.95)",
-    koiColor: "rgba(255, 190, 110, 0.65)",
+    farMountain: ["#144e5d", "#0c3540", "#051c22"],
+    midMountain: ["#1c686d", "#12494e", "#072428"],
+    nearMountain: ["#248278", "#175b55", "#092d2c"],
+    shoreMountain: ["#2f998b", "#1e6d65", "#0c3937"],
+    goldGlint: "rgba(255, 238, 160, 0.98)",
+    goldWire: "rgba(245, 210, 115, 0.90)",
+    cloudColor: "rgba(160, 225, 235, 0.20)",
+    waterWave: "rgba(185, 242, 248, 0.40)",
+    waterReflect: "rgba(18, 62, 72, 0.45)",
+    lanternGlow: "rgba(255, 215, 115, 0.98)",
+    koiColor: "rgba(255, 195, 115, 0.70)",
     vignetteColor: "rgba(1, 4, 7, 0.85)",
   },
   jiangnan_ink: {
@@ -250,35 +250,38 @@ function dynamicShanShuiRidge(
   hScale: number
 ): number {
   if (layerIndex === 1) {
-    const spire1 = Math.exp(-Math.pow((normX - 0.32 + Math.sin(time * 0.05) * 0.02) * 6.0, 2)) * (-0.17 * hScale);
-    const subSpire1 = Math.exp(-Math.pow((normX - 0.40) * 9.5, 2)) * (-0.10 * hScale);
-    const spire2 = Math.exp(-Math.pow((normX - 0.68 + Math.cos(time * 0.05) * 0.02) * 5.2, 2)) * (-0.15 * hScale);
-    const subSpire2 = Math.exp(-Math.pow((normX - 0.58) * 8.5, 2)) * (-0.09 * hScale);
-    const spire3 = Math.exp(-Math.pow((normX - 0.88) * 7.0, 2)) * (-0.12 * hScale);
-    const rolling = Math.sin(normX * 4.0 + time * 0.10) * (0.03 * hScale);
-    const microCrests = Math.sin(normX * 14.0 + 1.2) * (0.008 * hScale);
+    const spire1 = Math.exp(-Math.pow((normX - 0.33 + Math.sin(time * 0.05) * 0.02) * 5.8, 2)) * (-0.17 * hScale);
+    const subSpire1 = Math.exp(-Math.pow((normX - 0.42) * 9.0, 2)) * (-0.10 * hScale);
+    const spire2 = Math.exp(-Math.pow((normX - 0.69 + Math.cos(time * 0.05) * 0.02) * 5.2, 2)) * (-0.15 * hScale);
+    const subSpire2 = Math.exp(-Math.pow((normX - 0.60) * 8.5, 2)) * (-0.09 * hScale);
+    const spire3 = Math.exp(-Math.pow((normX - 0.88) * 6.8, 2)) * (-0.12 * hScale);
+    const crag = Math.sin(normX * 9.5 + time * 0.08) * (0.015 * hScale);
+    const rolling = Math.sin(normX * 4.0 + time * 0.10) * (0.028 * hScale);
+    const microCrests = Math.sin(normX * 16.0 + 1.2) * (0.006 * hScale);
     const breath = Math.sin(time * 0.22) * (0.012 * hScale + energy * 0.018 * hScale);
-    return spire1 + subSpire1 + spire2 + subSpire2 + spire3 + rolling + microCrests + breath;
+    return spire1 + subSpire1 + spire2 + subSpire2 + spire3 + crag + rolling + microCrests + breath;
   } else if (layerIndex === 2) {
-    const peak1 = Math.exp(-Math.pow((normX - 0.20 + Math.sin(time * 0.07) * 0.02) * 5.5, 2)) * (-0.14 * hScale);
-    const peak2 = Math.exp(-Math.pow((normX - 0.50 - Math.cos(time * 0.06) * 0.02) * 4.8, 2)) * (-0.15 * hScale);
-    const peak3 = Math.exp(-Math.pow((normX - 0.78) * 6.0, 2)) * (-0.11 * hScale);
-    const slope = Math.sin(normX * 4.8 - time * 0.15) * (0.028 * hScale);
-    const microCrests = Math.sin(normX * 16.0 + 0.8) * (0.007 * hScale);
+    const peak1 = Math.exp(-Math.pow((normX - 0.22 + Math.sin(time * 0.07) * 0.02) * 5.2, 2)) * (-0.14 * hScale);
+    const peak2 = Math.exp(-Math.pow((normX - 0.52 - Math.cos(time * 0.06) * 0.02) * 4.6, 2)) * (-0.15 * hScale);
+    const peak3 = Math.exp(-Math.pow((normX - 0.80) * 5.8, 2)) * (-0.11 * hScale);
+    const crag = Math.sin(normX * 11.0 - time * 0.12) * (0.014 * hScale);
+    const slope = Math.sin(normX * 4.8 - time * 0.15) * (0.025 * hScale);
+    const microCrests = Math.sin(normX * 18.0 + 0.8) * (0.005 * hScale);
     const breath = Math.cos(time * 0.30 + normX * 3) * (0.015 * hScale + energy * 0.02 * hScale);
-    return peak1 + peak2 + peak3 + slope + microCrests + breath;
+    return peak1 + peak2 + peak3 + crag + slope + microCrests + breath;
   } else if (layerIndex === 3) {
-    const cliff1 = Math.exp(-Math.pow((normX - 0.84 + Math.sin(time * 0.08) * 0.02) * 5.0, 2)) * (-0.11 * hScale);
-    const cliff2 = Math.exp(-Math.pow((normX - 0.26) * 6.0, 2)) * (-0.09 * hScale);
-    const cliff3 = Math.exp(-Math.pow((normX - 0.60) * 7.5, 2)) * (-0.08 * hScale);
-    const shore = Math.sin(normX * 5.2 + time * 0.20) * (0.022 * hScale);
-    const microCrests = Math.sin(normX * 18.0) * (0.005 * hScale);
+    const cliff1 = Math.exp(-Math.pow((normX - 0.85 + Math.sin(time * 0.08) * 0.02) * 4.8, 2)) * (-0.11 * hScale);
+    const cliff2 = Math.exp(-Math.pow((normX - 0.28) * 5.8, 2)) * (-0.09 * hScale);
+    const cliff3 = Math.exp(-Math.pow((normX - 0.62) * 7.2, 2)) * (-0.08 * hScale);
+    const crag = Math.sin(normX * 13.0 + time * 0.15) * (0.012 * hScale);
+    const shore = Math.sin(normX * 5.2 + time * 0.20) * (0.020 * hScale);
+    const microCrests = Math.sin(normX * 20.0) * (0.004 * hScale);
     const breath = Math.sin(time * 0.38 + normX * 4) * (0.012 * hScale + energy * 0.018 * hScale);
-    return cliff1 + cliff2 + cliff3 + shore + microCrests + breath;
+    return cliff1 + cliff2 + cliff3 + crag + shore + microCrests + breath;
   } else {
     const hummock1 = Math.exp(-Math.pow((normX - 0.14) * 6.5, 2)) * (-0.06 * hScale);
     const hummock2 = Math.exp(-Math.pow((normX - 0.72) * 5.5, 2)) * (-0.06 * hScale);
-    const shoreWave = Math.sin(normX * 6.5 - time * 0.25) * (0.018 * hScale);
+    const shoreWave = Math.sin(normX * 6.5 - time * 0.25) * (0.016 * hScale);
     const breath = Math.sin(time * 0.45 + normX * 5) * (0.008 * hScale + energy * 0.012 * hScale);
     return hummock1 + hummock2 + shoreWave + breath;
   }
@@ -388,9 +391,9 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     ];
 
     const kois: SwimmingKoi[] = [
-      { x: width * 0.42, y: height * 0.90, angle: 0.2, speed: 18, length: 22, alpha: 0.50, swimPhase: 0, trail: [] },
-      { x: width * 0.55, y: height * 0.93, angle: 3.3, speed: 14, length: 18, alpha: 0.45, swimPhase: 1.5, trail: [] },
-      { x: width * 0.28, y: height * 0.95, angle: 0.1, speed: 12, length: 16, alpha: 0.40, swimPhase: 3.0, trail: [] },
+      { x: width * 0.36, y: height * 0.82, angle: 0.2, speed: 18, length: 22, alpha: 0.55, swimPhase: 0, trail: [] },
+      { x: width * 0.52, y: height * 0.86, angle: 3.2, speed: 15, length: 18, alpha: 0.50, swimPhase: 1.5, trail: [] },
+      { x: width * 0.22, y: height * 0.88, angle: 0.1, speed: 12, length: 16, alpha: 0.45, swimPhase: 3.0, trail: [] },
     ];
 
     const stars: StarNode[] = [];
@@ -508,7 +511,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     });
     ctx.restore();
 
-    // 3. 极度柔和朦胧的空灵冷月
+    // 3. 极度柔和朦胧的空灵冷月 (with Delicate Volumetric Rays)
     const moonX = width * 0.16;
     const moonY = height * 0.18;
     const moonRadius = Math.min(width, height) * 0.052;
@@ -516,8 +519,26 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
 
+    const rayAngleCount = 6;
+    for (let r = 0; r < rayAngleCount; r++) {
+      const angle = (Math.PI / 3) * r + state.timeAccumulator * 0.04;
+      const rayLength = moonRadius * 8.0;
+      const endX = moonX + Math.cos(angle) * rayLength;
+      const endY = moonY + Math.sin(angle) * rayLength;
+      const rayGrd = ctx.createLinearGradient(moonX, moonY, endX, endY);
+      rayGrd.addColorStop(0, "rgba(215, 245, 255, 0.14)");
+      rayGrd.addColorStop(0.5, "rgba(160, 220, 245, 0.04)");
+      rayGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = rayGrd;
+      ctx.beginPath();
+      ctx.moveTo(moonX, moonY);
+      ctx.arc(moonX, moonY, rayLength, angle - 0.12, angle + 0.12);
+      ctx.closePath();
+      ctx.fill();
+    }
+
     const outerBloom = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.5, moonX, moonY, moonRadius * 7.5);
-    outerBloom.addColorStop(0, "rgba(200, 240, 255, 0.30)");
+    outerBloom.addColorStop(0, "rgba(200, 240, 255, 0.28)");
     outerBloom.addColorStop(0.35, "rgba(150, 215, 240, 0.12)");
     outerBloom.addColorStop(0.70, "rgba(90, 160, 200, 0.03)");
     outerBloom.addColorStop(1.0, "rgba(0, 0, 0, 0)");
@@ -582,7 +603,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     const drawShanShui = (layerIndex: number, baseYRatio: number, colorStops: [string, string, string], goldWireAlpha: number) => {
       ctx.save();
       const baseY = height * baseYRatio;
-      const mtnGrd = ctx.createLinearGradient(0, baseY - height * 0.20, 0, height + 80);
+      const mtnGrd = ctx.createLinearGradient(0, baseY - height * 0.22, 0, height + 80);
       mtnGrd.addColorStop(0, colorStops[0]);
       mtnGrd.addColorStop(0.35, colorStops[1]);
       mtnGrd.addColorStop(0.80, colorStops[2]);
@@ -593,7 +614,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
       ctx.moveTo(0, height + 80);
       ctx.lineTo(0, baseY);
 
-      const stepPx = 5;
+      const stepPx = 4;
       const totalSteps = Math.ceil(width / stepPx) + 1;
       const ridgePoints: { x: number; y: number }[] = [];
 
@@ -660,17 +681,28 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     drawShanShui(3, 0.82, colors.nearMountain, 0.85);
     drawShanShui(4, 0.90, colors.shoreMountain, 0.70);
 
-    // 5. 水面微波、钓翁扁舟与锦鲤
+    // 5. 水面微波、月光湖面倒影、钓翁扁舟与锦鲤
     ctx.save();
     ctx.globalCompositeOperation = "screen";
+
+    const moonReflectGrd = ctx.createLinearGradient(moonX - 60, height * 0.78, moonX + 60, height);
+    moonReflectGrd.addColorStop(0, "rgba(200, 240, 255, 0.22)");
+    moonReflectGrd.addColorStop(0.5, "rgba(160, 220, 245, 0.10)");
+    moonReflectGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = moonReflectGrd;
+    for (let rY = height * 0.78; rY < height; rY += 10) {
+      const rW = 35 + (rY - height * 0.78) * 0.45 + Math.sin(state.timeAccumulator * 1.2 + rY * 0.05) * 8;
+      ctx.fillRect(moonX - rW / 2, rY, rW, 2.5);
+    }
+
     for (let w = 0; w < 4; w++) {
-      const waveY = height * (0.85 + w * 0.035);
-      const waveAlpha = (0.20 - w * 0.03) * (0.7 + state.smoothedMid * 0.35);
+      const waveY = height * (0.82 + w * 0.04);
+      const waveAlpha = (0.24 - w * 0.035) * (0.7 + state.smoothedMid * 0.35);
       ctx.strokeStyle = colors.waterWave;
       ctx.lineWidth = 1.1;
       ctx.globalAlpha = waveAlpha;
       ctx.beginPath();
-      for (let x = 0; x <= width; x += 18) {
+      for (let x = 0; x <= width; x += 16) {
         const sinOffset = Math.sin(x * 0.015 + state.timeAccumulator * (0.35 + w * 0.12) + w) * 2.5;
         if (x === 0) ctx.moveTo(x, waveY + sinOffset);
         else ctx.lineTo(x, waveY + sinOffset);
@@ -685,45 +717,45 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
 
       if (koi.x < -40) koi.x = width + 40;
       if (koi.x > width + 40) koi.x = -40;
-      if (koi.y < height * 0.84) koi.y = height - 15;
-      if (koi.y > height + 20) koi.y = height * 0.86;
+      if (koi.y < height * 0.78) koi.y = height - 15;
+      if (koi.y > height + 20) koi.y = height * 0.80;
 
-      koi.trail.unshift({ x: koi.x, y: koi.y, alpha: 0.5 });
-      if (koi.trail.length > 8) koi.trail.pop();
+      koi.trail.unshift({ x: koi.x, y: koi.y, alpha: 0.55 });
+      if (koi.trail.length > 10) koi.trail.pop();
 
       ctx.save();
       ctx.globalCompositeOperation = "screen";
       koi.trail.forEach((tr, tIdx) => {
-        tr.alpha -= dt * 0.6;
-        ctx.fillStyle = `rgba(255, 205, 130, ${Math.max(0, tr.alpha * 0.35)})`;
+        tr.alpha -= dt * 0.5;
+        ctx.fillStyle = `rgba(255, 210, 135, ${Math.max(0, tr.alpha * 0.40)})`;
         ctx.beginPath();
-        ctx.arc(tr.x, tr.y, (1 - tIdx / 8) * 3, 0, Math.PI * 2);
+        ctx.arc(tr.x, tr.y, (1 - tIdx / 10) * 3.2, 0, Math.PI * 2);
         ctx.fill();
       });
       ctx.restore();
 
-      const wiggle = Math.sin(koi.swimPhase) * 3;
+      const wiggle = Math.sin(koi.swimPhase) * 3.2;
 
       ctx.save();
       ctx.translate(koi.x, koi.y);
       ctx.rotate(koi.angle);
       ctx.fillStyle = colors.koiColor;
-      ctx.globalAlpha = koi.alpha * (0.8 + state.smoothedMid * 0.3);
+      ctx.globalAlpha = koi.alpha * (0.85 + state.smoothedMid * 0.3);
 
       ctx.beginPath();
       ctx.moveTo(koi.length * 0.5, 0);
-      ctx.quadraticCurveTo(0, 3, -koi.length * 0.5, wiggle);
+      ctx.quadraticCurveTo(0, 3.5, -koi.length * 0.5, wiggle);
       ctx.quadraticCurveTo(-koi.length * 0.7, wiggle * 1.5, -koi.length * 0.8, wiggle * 2);
-      ctx.quadraticCurveTo(-koi.length * 0.5, 0, 0, -3);
+      ctx.quadraticCurveTo(-koi.length * 0.5, 0, 0, -3.5);
       ctx.closePath();
       ctx.fill();
 
       ctx.restore();
     });
 
-    const boatX = width * 0.28;
-    const boatBobbing = Math.sin(state.timeAccumulator * 0.65) * 3.0;
-    const boatY = height * 0.89 + boatBobbing;
+    const boatX = width * 0.24;
+    const boatBobbing = Math.sin(state.timeAccumulator * 0.65) * 2.8;
+    const boatY = height * 0.79 + boatBobbing;
 
     ctx.save();
     ctx.translate(boatX, boatY);
@@ -743,14 +775,14 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     ctx.arc(-2, 0, 7, Math.PI, 0, false);
     ctx.fill();
 
-    ctx.strokeStyle = "rgba(200, 220, 210, 0.65)";
+    ctx.strokeStyle = "rgba(200, 225, 215, 0.70)";
     ctx.lineWidth = 1.0;
     ctx.beginPath();
     ctx.moveTo(-12, 0);
     ctx.quadraticCurveTo(-26, -14, -36, -20);
     ctx.stroke();
 
-    ctx.strokeStyle = "rgba(220, 240, 255, 0.25)";
+    ctx.strokeStyle = "rgba(220, 240, 255, 0.30)";
     ctx.lineWidth = 0.6;
     ctx.beginPath();
     ctx.moveTo(-36, -20);
@@ -760,22 +792,22 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     ctx.globalCompositeOperation = "screen";
     const lanternX = 14;
     const lanternY = -4;
-    const lanternGrd = ctx.createRadialGradient(lanternX, lanternY, 0, lanternX, lanternY, 26);
-    lanternGrd.addColorStop(0, "rgba(255, 248, 200, 1.0)");
+    const lanternGrd = ctx.createRadialGradient(lanternX, lanternY, 0, lanternX, lanternY, 28);
+    lanternGrd.addColorStop(0, "rgba(255, 250, 210, 1.0)");
     lanternGrd.addColorStop(0.25, colors.lanternGlow);
     lanternGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
     ctx.fillStyle = lanternGrd;
     ctx.beginPath();
-    ctx.arc(lanternX, lanternY, 26, 0, Math.PI * 2);
+    ctx.arc(lanternX, lanternY, 28, 0, Math.PI * 2);
     ctx.fill();
 
-    const reflectGrd = ctx.createRadialGradient(lanternX, 10, 0, lanternX, 10, 18);
-    reflectGrd.addColorStop(0, "rgba(255, 215, 130, 0.50)");
+    const reflectGrd = ctx.createRadialGradient(lanternX, 10, 0, lanternX, 10, 20);
+    reflectGrd.addColorStop(0, "rgba(255, 220, 140, 0.55)");
     reflectGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
     ctx.fillStyle = reflectGrd;
     ctx.save();
     ctx.translate(lanternX, 10);
-    ctx.scale(18, 5.0);
+    ctx.scale(20, 5.5);
     ctx.beginPath();
     ctx.arc(0, 0, 1, 0, Math.PI * 2);
     ctx.fill();
