@@ -416,9 +416,8 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
     }
     context.globalAlpha = 1.0;
 
-    // ─── 4.1 山脚水汀洲渚、水榭山居与水面晨雾岚气 (Shoals, Pavilions & Water Mist) ───
+    // ─── 4.1 山脚水汀洲渚与水面晨雾岚气 (Shoals & Water Mist) ───
     drawWaterShoals(context, scrollX, scrollW, waterY, t, priv.smoothBass);
-    drawWatersidePavilion(context, scrollX + scrollW * 0.46, waterY - 2, t, priv.smoothBass, priv.smoothMid, goldGlow);
     drawWaterHorizonMist(context, scrollX, scrollW, waterY, t, priv.smoothTreble);
 
     // ─── 5. 水天融界 · 水面镜像倒影与水波 ───
@@ -808,7 +807,7 @@ function drawDetailedBoatWithLongReflection(
   ctx.arc(boatX - 1, boatY - 1.0, 4.5, Math.PI, 0);
   ctx.fill();
 
-  // 4. 蓑笠翁与鱼竿
+  // 4. 蓑笠翁 (静坐船头)
   ctx.fillStyle = "rgba(20, 42, 50, 0.95)";
   ctx.beginPath();
   ctx.moveTo(boatX - 10, boatY - 4);
@@ -820,14 +819,6 @@ function drawDetailedBoatWithLongReflection(
   ctx.beginPath();
   ctx.arc(boatX - 6, boatY - 2.5, 3.2, 0, Math.PI * 2);
   ctx.fill();
-  // 细韧鱼竿与钓丝
-  ctx.strokeStyle = "rgba(200, 220, 230, 0.65)";
-  ctx.lineWidth = 0.6;
-  ctx.beginPath();
-  ctx.moveTo(boatX - 6, boatY - 4);
-  ctx.lineTo(boatX - 19, boatY - 12);
-  ctx.lineTo(boatX - 21, boatY + 2);
-  ctx.stroke();
 
   // 5. 暖金八角风灯
   const lanternPulse = 0.82 + Math.sin(t * 3.2) * 0.18 + smoothMid * 0.35;
