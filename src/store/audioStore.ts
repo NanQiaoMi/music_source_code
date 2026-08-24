@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { useQueueStore } from "./queueStore";
 import { useRecommendationStore } from "./recommendationStore";
-import { usePlayerStore } from "./playerStore";
+import { usePlayerStore, registerAudioStoreSync } from "./playerStore";
 import { usePlaylistStore } from "./playlistStore";
 import { useEQStore } from "./eqStore";
 import { createSafeStorage } from "@/lib/storage/safeStorage";
@@ -291,8 +291,9 @@ export const useAudioStore = create<AudioState>()(
         set({ volume: Math.max(0, Math.min(1, volume)) });
       },
       toggleMute: () => {
-        usePlayerStore.getState().toggleMute();
-        set((state) => ({ isMuted: !state.isMuted }));
+        const nextMuted = !get().isMuted;
+        usePlayerStore.getState().setIsMuted(nextMuted);
+        set({ isMuted: nextMuted });
       },
       setPlaybackRate: (rate) => {
         usePlayerStore.getState().setPlaybackRate(rate);
@@ -695,3 +696,36 @@ export const useAudioStore = create<AudioState>()(
     }
   )
 );
+
+// 注册与 playerStore 之间的实时双向同步
+registerAudioStoreSync((playerState) => {
+  const currentAudio = useAudioStore.getState();
+  const updates: Partial<AudioState> = {};
+  if (playerState.isPlaying !== undefined && playerState.isPlaying !== currentAudio.isPlaying) {
+    updates.isPlaying = playerState.isPlaying;
+  }
+  if (playerState.currentSong !== undefined && playerState.currentSong?.id !== currentAudio.currentSong?.id) {
+    updates.currentSong = playerState.currentSong;
+  }
+  if (playerState.isLoading !== undefined && playerState.isLoading !== currentAudio.isLoading) {
+    updates.isLoading = playerState.isLoading;
+  }
+  if (playerState.volume !== undefined && playerState.volume !== currentAudio.volume) {
+    updates.volume = playerState.volume;
+  }
+  if (playerState.isMuted !== undefined && playerState.isMuted !== currentAudio.isMuted) {
+    updates.isMuted = playerState.isMuted;
+  }
+  if (playerState.playbackRate !== undefined && playerState.playbackRate !== currentAudio.playbackRate) {
+    updates.playbackRate = playerState.playbackRate;
+  }
+  if (playerState.loopMode !== undefined && playerState.loopMode !== currentAudio.loopMode) {
+    updates.loopMode = playerState.loopMode;
+  }
+  if (playerState.duration !== undefined && playerState.duration !== currentAudio.duration) {
+    updates.duration = playerState.duration;
+  }
+  if (Object.keys(updates).length > 0) {
+    useAudioStore.setState(updates);
+  }
+});

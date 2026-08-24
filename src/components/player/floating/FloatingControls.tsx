@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence, useAnimationFrame } from "framer-motion";
 import { useAudioStore, type LoopMode } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import {
   Heart,
@@ -427,10 +428,16 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
   showShuffleAndLoop = false,
   showFavorite = true,
 }) => {
-  const isPlaying = useAudioStore((state) => state.isPlaying);
-  const isLoading = useAudioStore((state) => state.isLoading);
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
-  const togglePlay = () => setIsPlaying(!isPlaying);
+  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
+  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
+  const isPlaying = audioIsPlaying || playerIsPlaying;
+
+  const isLoading = useAudioStore((state) => state.isLoading) || usePlayerStore((state) => state.isLoading);
+  const togglePlay = () => {
+    const nextPlaying = !isPlaying;
+    useAudioStore.getState().setIsPlaying(nextPlaying);
+    usePlayerStore.getState().setIsPlaying(nextPlaying);
+  };
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);
   const loopMode = useAudioStore((state) => state.loopMode);

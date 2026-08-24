@@ -33,6 +33,14 @@ interface PlayerState {
   prevSong: () => void;
 }
 
+// 注册与 audioStore 的实时双向强同步
+type StoreSyncListener = (state: Partial<PlayerState>) => void;
+let audioStoreSyncListener: StoreSyncListener | null = null;
+
+export const registerAudioStoreSync = (listener: StoreSyncListener | null) => {
+  audioStoreSyncListener = listener;
+};
+
 export const usePlayerStore = create<PlayerState>()(
   persist(
     (set, _get) => ({
@@ -46,34 +54,74 @@ export const usePlayerStore = create<PlayerState>()(
       playbackRate: 1.0,
       loopMode: "none",
 
-      setCurrentSong: (song) => set({ currentSong: song }),
+      setCurrentSong: (song) => {
+        set({ currentSong: song });
+        audioStoreSyncListener?.({ currentSong: song });
+      },
       updateCurrentSongCover: (cover) =>
-        set((state) => (state.currentSong ? { currentSong: { ...state.currentSong, cover } } : {})),
+        set((state) => {
+          if (!state.currentSong) return {};
+          const nextSong = { ...state.currentSong, cover };
+          audioStoreSyncListener?.({ currentSong: nextSong });
+          return { currentSong: nextSong };
+        }),
       updateCurrentSongLyrics: (lyrics, translationLyrics) =>
-        set((state) =>
-          state.currentSong
-            ? {
-                currentSong: {
-                  ...state.currentSong,
-                  lyrics,
-                  translationLyrics: translationLyrics || state.currentSong.translationLyrics,
-                },
-              }
-            : {}
-        ),
-      setIsPlaying: (playing) => set({ isPlaying: playing }),
-      setCurrentTime: (time) => set({ currentTime: Math.max(0, time) }),
-      setDuration: (duration) => set({ duration }),
-      setIsLoading: (loading) => set({ isLoading: loading }),
-      setVolume: (volume) => set({ volume: Math.max(0, Math.min(1, volume)) }),
-      setIsMuted: (muted) => set({ isMuted: muted }),
+        set((state) => {
+          if (!state.currentSong) return {};
+          const nextSong = {
+            ...state.currentSong,
+            lyrics,
+            translationLyrics: translationLyrics || state.currentSong.translationLyrics,
+          };
+          audioStoreSyncListener?.({ currentSong: nextSong });
+          return { currentSong: nextSong };
+        }),
+      setIsPlaying: (playing) => {
+        set({ isPlaying: playing });
+        audioStoreSyncListener?.({ isPlaying: playing });
+      },
+      setCurrentTime: (time) => {
+        const t = Math.max(0, time);
+        set({ currentTime: t });
+        audioStoreSyncListener?.({ currentTime: t });
+      },
+      setDuration: (duration) => {
+        set({ duration });
+        audioStoreSyncListener?.({ duration });
+      },
+      setIsLoading: (loading) => {
+        set({ isLoading: loading });
+        audioStoreSyncListener?.({ isLoading: loading });
+      },
+      setVolume: (volume) => {
+        const v = Math.max(0, Math.min(1, volume));
+        set({ volume: v });
+        audioStoreSyncListener?.({ volume: v });
+      },
+      setIsMuted: (muted) => {
+        set({ isMuted: muted });
+        audioStoreSyncListener?.({ isMuted: muted });
+      },
       setPlaybackRate: (rate) => {
         const clampedRate = Math.max(0.5, Math.min(2.0, rate));
-        set({ playbackRate: Math.round(clampedRate * 10) / 10 });
+        const r = Math.round(clampedRate * 10) / 10;
+        set({ playbackRate: r });
+        audioStoreSyncListener?.({ playbackRate: r });
       },
-      setLoopMode: (mode) => set({ loopMode: mode }),
-      togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
-      toggleMute: () => set((state) => ({ isMuted: !state.isMuted })),
+      setLoopMode: (mode) => {
+        set({ loopMode: mode });
+        audioStoreSyncListener?.({ loopMode: mode });
+      },
+      togglePlay: () => {
+        const nextPlaying = !_get().isPlaying;
+        set({ isPlaying: nextPlaying });
+        audioStoreSyncListener?.({ isPlaying: nextPlaying });
+      },
+      toggleMute: () => {
+        const nextMuted = !_get().isMuted;
+        set({ isMuted: nextMuted });
+        audioStoreSyncListener?.({ isMuted: nextMuted });
+      },
       nextSong: () => {},
       prevSong: () => {},
     }),
@@ -92,3 +140,16 @@ export const usePlayerStore = create<PlayerState>()(
     }
   )
 );
+
+// 监听直接 setState 的变化
+usePlayerStore.subscribe((state, prev) => {
+  if (state.isPlaying !== prev.isPlaying) {
+    audioStoreSyncListener?.({ isPlaying: state.isPlaying });
+  }
+  if (state.currentSong?.id !== prev.currentSong?.id) {
+    audioStoreSyncListener?.({ currentSong: state.currentSong });
+  }
+  if (state.isLoading !== prev.isLoading) {
+    audioStoreSyncListener?.({ isLoading: state.isLoading });
+  }
+});

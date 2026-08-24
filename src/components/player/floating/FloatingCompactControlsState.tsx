@@ -5,6 +5,7 @@ import React, { useRef, useState, memo } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useBilingualLyricParser } from "@/hooks/useBilingualLyricParser";
 import { useIntegratedAudioPipeline } from "@/lib/audio/useIntegratedAudioPipeline";
@@ -110,10 +111,15 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
   dragHandlers,
   className = "",
 }) => {
-  // 仅订阅播放布尔值与当前歌曲 (绝不订阅 60FPS 的 currentTime)
-  const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentSong = useAudioStore((state) => state.currentSong);
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  // 结合 audioStore 与 playerStore 状态，确保 100% 实时同步
+  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
+  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
+  const isPlaying = audioIsPlaying || playerIsPlaying;
+
+  const audioSong = useAudioStore((state) => state.currentSong);
+  const playerSong = usePlayerStore((state) => state.currentSong);
+  const currentSong = audioSong || playerSong;
+
   const nextSong = useAudioStore((state) => state.nextSong);
   const prevSong = useAudioStore((state) => state.prevSong);
 
@@ -158,6 +164,12 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
 
   const handlePrevTrack = () => {
     prevSong();
+  };
+
+  const handleTogglePlay = () => {
+    const nextPlaying = !isPlaying;
+    useAudioStore.getState().setIsPlaying(nextPlaying);
+    usePlayerStore.getState().setIsPlaying(nextPlaying);
   };
 
   if (!currentSong) return null;
@@ -247,7 +259,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
           {/* 播放/暂停 */}
           <FastPlayPauseButton
             isPlaying={isPlaying}
-            onToggle={() => setIsPlaying(!isPlaying)}
+            onToggle={handleTogglePlay}
           />
 
           {/* 下一首 */}

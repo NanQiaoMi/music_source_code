@@ -4,6 +4,7 @@ import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { FloatingAmbientGlow } from "./FloatingAmbientGlow";
 import { LiquidGlassFilter } from "./LiquidGlassFilter";
 import type { DragHandlers } from "./useFloatingDragPhysics";
@@ -30,8 +31,13 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
   showGlow = true,
   showBorderBeam = true,
 }) => {
-  const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
+  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
+  const isPlaying = audioIsPlaying || playerIsPlaying;
+
+  const audioSong = useAudioStore((state) => state.currentSong);
+  const playerSong = usePlayerStore((state) => state.currentSong);
+  const currentSong = audioSong || playerSong;
 
   const [isHovered, setIsHovered] = useState(false);
   const textContainerRef = useRef<HTMLDivElement | null>(null);

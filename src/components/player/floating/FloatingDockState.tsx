@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { Play, Pause, ChevronRight, ChevronLeft } from "lucide-react";
 import { LiquidGlassFilter } from "./LiquidGlassFilter";
 import type { DragHandlers, FloatingPlayerState } from "./useFloatingDragPhysics";
@@ -28,10 +29,15 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
   dragHandlers,
   className = "",
 }) => {
-  const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentSong = useAudioStore((state) => state.currentSong);
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
-  const isLoading = useAudioStore((state) => state.isLoading);
+  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
+  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
+  const isPlaying = audioIsPlaying || playerIsPlaying;
+
+  const audioSong = useAudioStore((state) => state.currentSong);
+  const playerSong = usePlayerStore((state) => state.currentSong);
+  const currentSong = audioSong || playerSong;
+
+  const isLoading = useAudioStore((state) => state.isLoading) || usePlayerStore((state) => state.isLoading);
 
   const [isHovered, setIsHovered] = useState(false);
   const [showPlayOverlay, setShowPlayOverlay] = useState(false);
@@ -49,7 +55,9 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
   const handlePlayToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isLoading) {
-      setIsPlaying(!isPlaying);
+      const nextPlaying = !isPlaying;
+      useAudioStore.getState().setIsPlaying(nextPlaying);
+      usePlayerStore.getState().setIsPlaying(nextPlaying);
     }
   };
 

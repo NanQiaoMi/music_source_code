@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useCallback } from "react";
 import { motion } from "framer-motion";
@@ -16,12 +16,16 @@ export const DarkCinemaFloatingCard: React.FC<DarkCinemaFloatingCardProps> = ({
   className = "",
   onExpand,
 }) => {
-  const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentTime = useAudioStore((state) => state.currentTime);
-  const duration = useAudioStore((state) => state.duration);
-  const currentSong = useAudioStore((state) => state.currentSong);
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
-  const togglePlay = usePlayerStore((state) => state.togglePlay);
+  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
+  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
+  const isPlaying = audioIsPlaying || playerIsPlaying;
+
+  const currentTime = useAudioStore((state) => state.currentTime) || usePlayerStore((state) => state.currentTime) || 0;
+  const duration = useAudioStore((state) => state.duration) || usePlayerStore((state) => state.duration) || 0;
+
+  const audioSong = useAudioStore((state) => state.currentSong);
+  const playerSong = usePlayerStore((state) => state.currentSong);
+  const currentSong = audioSong || playerSong;
 
   const title = currentSong?.title || "后来你好吗";
   const artist = currentSong?.artist || "A-Lin [music]";
@@ -32,13 +36,11 @@ export const DarkCinemaFloatingCard: React.FC<DarkCinemaFloatingCardProps> = ({
   const handleToggle = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (togglePlay) {
-        togglePlay();
-      } else {
-        setIsPlaying(!isPlaying);
-      }
+      const nextPlaying = !isPlaying;
+      useAudioStore.getState().setIsPlaying(nextPlaying);
+      usePlayerStore.getState().setIsPlaying(nextPlaying);
     },
-    [isPlaying, setIsPlaying, togglePlay]
+    [isPlaying]
   );
 
   return (

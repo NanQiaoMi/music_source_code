@@ -4,6 +4,7 @@ import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 import { Volume2, VolumeX, Music2, Maximize2 } from "lucide-react";
 import { NowPlayingHalo } from "@/components/player/NowPlayingHalo";
@@ -23,7 +24,7 @@ export const APPLE_SPRING_GENTLE = {
   type: "spring" as const,
   stiffness: 300,
   damping: 30,
-  mass: 0.8,
+  mass: 1,
 };
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
@@ -36,14 +37,31 @@ const formatTime = (seconds: number): string => {
 };
 
 export const GlobalPlayerBar: React.FC = () => {
-  const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentTime = useAudioStore((state) => state.currentTime);
-  const duration = useAudioStore((state) => state.duration);
+  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
+  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
+  const isPlaying = audioIsPlaying || playerIsPlaying;
+
+  const audioCurrentTime = useAudioStore((state) => state.currentTime);
+  const playerCurrentTime = usePlayerStore((state) => state.currentTime);
+  const currentTime = audioCurrentTime || playerCurrentTime || 0;
+
+  const audioDuration = useAudioStore((state) => state.duration);
+  const playerDuration = usePlayerStore((state) => state.duration);
+  const duration = audioDuration || playerDuration || 0;
+
   const volume = useAudioStore((state) => state.volume);
   const isMuted = useAudioStore((state) => state.isMuted);
-  const currentSong = useAudioStore((state) => state.currentSong);
-  const isLoading = useAudioStore((state) => state.isLoading);
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+
+  const audioSong = useAudioStore((state) => state.currentSong);
+  const playerSong = usePlayerStore((state) => state.currentSong);
+  const currentSong = audioSong || playerSong;
+
+  const isLoading = useAudioStore((state) => state.isLoading) || usePlayerStore((state) => state.isLoading);
+  const handleTogglePlay = () => {
+    const nextPlaying = !isPlaying;
+    useAudioStore.getState().setIsPlaying(nextPlaying);
+    usePlayerStore.getState().setIsPlaying(nextPlaying);
+  };
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);
   const setVolume = useAudioStore((state) => state.setVolume);
@@ -184,7 +202,7 @@ export const GlobalPlayerBar: React.FC = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => setIsPlaying(!isPlaying)}
+              onClick={handleTogglePlay}
               disabled={isLoading}
               className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-lg transition-transform active:scale-90 disabled:opacity-50"
             >

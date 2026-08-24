@@ -4,6 +4,7 @@
 import React, { useEffect, useCallback, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 import { FloatingCompactControlsState } from "./floating/FloatingCompactControlsState";
 
@@ -14,8 +15,14 @@ export interface FloatingPlayerProps {
 export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
   className = "",
 }) => {
-  const currentSong = useAudioStore((state) => state.currentSong);
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const audioSong = useAudioStore((state) => state.currentSong);
+  const playerSong = usePlayerStore((state) => state.currentSong);
+  const currentSong = audioSong || playerSong;
+
+  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
+  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
+  const isPlaying = audioIsPlaying || playerIsPlaying;
+
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const volume = useAudioStore((state) => state.volume);
   const setVolume = useAudioStore((state) => state.setVolume);
