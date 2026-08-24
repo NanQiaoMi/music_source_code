@@ -357,8 +357,9 @@ export function drawOrientalLandscape(context: EffectContext): void {
   }
   ctx.globalAlpha = 1.0;
 
-  // ─── 4.1 山脚水汀洲渚与水面晨雾岚气 (Shoals & Water Mist) ───
+  // ─── 4.1 山脚水汀洲渚、水榭山居与水面晨雾岚气 (Shoals, Pavilions & Water Mist) ───
   drawWaterShoals(ctx, scrollX, scrollW, waterY, t, smoothBass);
+  drawWatersidePavilion(ctx, scrollX + scrollW * 0.46, waterY - 2, t, smoothBass, smoothMid, goldGlow);
   drawWaterHorizonMist(ctx, scrollX, scrollW, waterY, t, smoothTreble);
 
   // ─── 5. 水天融界 · 水面镜像倒影与碎金微澜 ───
@@ -500,12 +501,15 @@ export function drawOrientalLandscape(context: EffectContext): void {
 
   ctx.restore();
 
-  // ─── 8. 东方长卷极简淡金诗意留白与朱砂小印 ───
+  // ─── 8. 东方长卷极简淡金诗意留白与双重金石朱砂印 ───
   ctx.save();
   const textX = scrollX + 36;
-  const textY = scrollY + 36;
+  const textY = scrollY + 46;
 
-  ctx.fillStyle = "rgba(254, 243, 199, 0.45)";
+  // 宣和古制椭圆引首小印
+  drawOvalLeadSeal(ctx, textX, scrollY + 22, 10, 16);
+
+  ctx.fillStyle = "rgba(254, 243, 199, 0.48)";
   ctx.font = "13px serif";
   ctx.textAlign = "center";
   ctx.fillText("千", textX, textY);
@@ -1027,6 +1031,133 @@ function drawWaterHorizonMist(
 
   ctx.closePath();
   ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * 宋代水村水榭山居 (Waterside Thatched Pavilion & Warm Lattice Light)
+ */
+function drawWatersidePavilion(
+  ctx: CanvasRenderingContext2D,
+  px: number,
+  py: number,
+  t: number,
+  smoothBass: number,
+  smoothMid: number,
+  goldGlow: number
+) {
+  ctx.save();
+
+  // 1. 水面微波暖灯倒影 (Warm Window Light Reflection on Lake)
+  const winPulse = 0.85 + Math.sin(t * 2.8) * 0.15 + smoothMid * 0.30;
+  const reflGrad = ctx.createLinearGradient(px, py + 2, px, py + 18);
+  reflGrad.addColorStop(0, `rgba(254, 215, 120, ${0.40 * winPulse * goldGlow})`);
+  reflGrad.addColorStop(0.6, `rgba(245, 158, 11, ${0.15 * winPulse})`);
+  reflGrad.addColorStop(1, "rgba(245, 158, 11, 0)");
+
+  ctx.fillStyle = reflGrad;
+  ctx.beginPath();
+  ctx.ellipse(px, py + 8, 8 + smoothBass * 2.0, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. 木桩基柱 (Stilts)
+  ctx.strokeStyle = "rgba(10, 26, 28, 0.95)";
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  ctx.moveTo(px - 7, py - 2);
+  ctx.lineTo(px - 7, py + 4);
+  ctx.moveTo(px + 7, py - 2);
+  ctx.lineTo(px + 7, py + 4);
+  ctx.moveTo(px, py - 2);
+  ctx.lineTo(px, py + 5);
+  ctx.stroke();
+
+  // 3. 水榭房身 (Wooden Pavilion Walls)
+  ctx.fillStyle = "rgba(12, 30, 34, 0.95)";
+  ctx.fillRect(px - 8, py - 11, 16, 9);
+
+  // 4. 暖黄隔扇窗扉 (Warm Lattice Window)
+  const winGlow = ctx.createRadialGradient(px, py - 6.5, 0.5, px, py - 6.5, 8);
+  winGlow.addColorStop(0, `rgba(255, 248, 220, ${0.98 * winPulse})`);
+  winGlow.addColorStop(0.4, `rgba(251, 191, 36, ${0.70 * winPulse * goldGlow})`);
+  winGlow.addColorStop(1, "rgba(245, 158, 11, 0)");
+  ctx.fillStyle = winGlow;
+  ctx.beginPath();
+  ctx.arc(px, py - 6.5, 8, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = `rgba(255, 250, 230, ${0.92 * winPulse})`;
+  ctx.fillRect(px - 3, py - 8.5, 6, 5);
+
+  // 窗格十字纹
+  ctx.strokeStyle = "rgba(20, 40, 45, 0.85)";
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(px, py - 8.5);
+  ctx.lineTo(px, py - 3.5);
+  ctx.moveTo(px - 3, py - 6);
+  ctx.lineTo(px + 3, py - 6);
+  ctx.stroke();
+
+  // 5. 飞檐挑角歇山屋顶 (Thatched Eaves)
+  ctx.fillStyle = "rgba(8, 22, 26, 0.98)";
+  ctx.beginPath();
+  ctx.moveTo(px - 12, py - 10);
+  ctx.quadraticCurveTo(px - 8, py - 12, px, py - 16);
+  ctx.quadraticCurveTo(px + 8, py - 12, px + 12, py - 10);
+  ctx.quadraticCurveTo(px, py - 11, px - 12, py - 10);
+  ctx.fill();
+
+  // 屋脊泥金微线
+  ctx.strokeStyle = `rgba(245, 210, 85, ${0.45 * goldGlow})`;
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(px - 11, py - 10.5);
+  ctx.quadraticCurveTo(px, py - 15.5, px + 11, py - 10.5);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
+ * 宣和古制椭圆朱砂引首印 (“妙品”阴文)
+ */
+function drawOvalLeadSeal(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  ctx.save();
+  const sealGrad = ctx.createLinearGradient(x - w / 2, y - h / 2, x + w / 2, y + h / 2);
+  sealGrad.addColorStop(0, "#c2382f");
+  sealGrad.addColorStop(1, "#801612");
+  ctx.fillStyle = sealGrad;
+
+  ctx.beginPath();
+  ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(254, 243, 199, 0.35)";
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+
+  // “妙品”古篆白文刻线
+  ctx.strokeStyle = "rgba(254, 243, 199, 0.85)";
+  ctx.lineWidth = 0.75;
+  ctx.lineCap = "round";
+
+  // 上字：“妙”
+  ctx.beginPath();
+  ctx.moveTo(x - 2.2, y - 4.5);
+  ctx.lineTo(x - 2.2, y - 1.5);
+  ctx.moveTo(x + 1.8, y - 5.0);
+  ctx.lineTo(x + 1.8, y - 1.5);
+  ctx.moveTo(x - 2.5, y - 3.2);
+  ctx.lineTo(x + 2.5, y - 3.2);
+
+  // 下字：“品”
+  ctx.beginPath();
+  ctx.rect(x - 2.0, y + 0.5, 4.0, 2.2);
+  ctx.rect(x - 3.0, y + 3.4, 2.6, 2.0);
+  ctx.rect(x + 0.4, y + 3.4, 2.6, 2.0);
+  ctx.stroke();
+
   ctx.restore();
 }
 

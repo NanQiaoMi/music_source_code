@@ -632,7 +632,8 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ctx.closePath();
     ctx.fill();
 
-    // 2. 山脊受月光勾勒出灵动描金金线与阳面微光
+
+    // 3. 山脊受月光勾勒出灵动描金金线与阳面微光
     if (goldWireAlpha > 0.05) {
       ctx.save();
       ctx.globalCompositeOperation = "screen";
@@ -715,12 +716,26 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   }
 
   // =========================================================================
-  // 7. 清潭水波、纯净发光微澜与灵动锦鲤 (Pure Luminous Lake Caustics & Fish)
+  // 7. 清潭水波、水月倒影、纯净发光微澜与灵动锦鲤 (Luminous Lake Caustics & Fish)
   // =========================================================================
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  // 1. 多重谐波复合水波微澜（轻柔水光透亮）
+  // 1. 水面月影微光垂注 (Subtle Lunar Water Column Reflection)
+  const moonReflectGrd = ctx.createRadialGradient(moonX, height * 0.88, 5, moonX, height * 0.88, 140);
+  moonReflectGrd.addColorStop(0, "rgba(200, 245, 255, 0.12)");
+  moonReflectGrd.addColorStop(0.5, "rgba(160, 225, 245, 0.05)");
+  moonReflectGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = moonReflectGrd;
+  ctx.save();
+  ctx.translate(moonX, height * 0.88);
+  ctx.scale(1.0, 0.35);
+  ctx.beginPath();
+  ctx.arc(0, 0, 140, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // 2. 多重谐波复合水波微澜（轻柔水光透亮）
   for (let w = 0; w < 4; w++) {
     const waveY = height * (0.84 + w * 0.035);
     const waveAlpha = (0.20 - w * 0.03) * (0.7 + smoothMid * 0.35);
@@ -740,7 +755,7 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ctx.stroke();
   }
 
-  // 2. 纯净发光流体缓动涟漪 (Pure Luminous Dual-Ring Glassy Ripples - 无暗色色块)
+  // 3. 纯净发光流体缓动涟漪 (Pure Luminous Dual-Ring Glassy Ripples - 无暗色色块)
   for (let i = ripplesPool.length - 1; i >= 0; i--) {
     const r = ripplesPool[i];
     r.life += dt;
@@ -787,7 +802,7 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ctx.restore();
   }
 
-  // 3. 游弋变速与流光尾鳍锦鲤 (Burst-and-Glide Swimming Dynamics with Translucent Fins)
+  // 4. 游弋变速与流光尾鳍锦鲤 (Burst-and-Glide Swimming Dynamics with Translucent Fins)
   koisPool.forEach((koi) => {
     koi.glideTimer += dt * (1.2 + smoothEnergy * 1.5);
     const strokePhase = Math.sin(koi.glideTimer);

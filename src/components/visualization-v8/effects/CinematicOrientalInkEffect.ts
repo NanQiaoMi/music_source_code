@@ -648,6 +648,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
       ctx.closePath();
       ctx.fill();
 
+
       if (goldWireAlpha > 0.05) {
         ctx.save();
         ctx.globalCompositeOperation = "screen";
@@ -698,9 +699,23 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     drawShanShui(3, 0.82, colors.nearMountain, 0.85);
     drawShanShui(4, 0.90, colors.shoreMountain, 0.70);
 
-    // 5. 多重谐波水波、纯净透亮微澜与游弋锦鲤 (Pure Luminous Lake Caustics & Fish)
+    // 5. 多重谐波水波、水月微澜与游弋锦鲤 (Pure Luminous Lake Caustics & Fish)
     ctx.save();
     ctx.globalCompositeOperation = "screen";
+
+    // 水面月影微光垂注 (Subtle Lunar Water Column Reflection)
+    const moonReflectGrd = ctx.createRadialGradient(moonX, height * 0.88, 5, moonX, height * 0.88, 140);
+    moonReflectGrd.addColorStop(0, "rgba(200, 245, 255, 0.12)");
+    moonReflectGrd.addColorStop(0.5, "rgba(160, 225, 245, 0.05)");
+    moonReflectGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = moonReflectGrd;
+    ctx.save();
+    ctx.translate(moonX, height * 0.88);
+    ctx.scale(1.0, 0.35);
+    ctx.beginPath();
+    ctx.arc(0, 0, 140, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
 
     for (let w = 0; w < 4; w++) {
       const waveY = height * (0.84 + w * 0.035);
