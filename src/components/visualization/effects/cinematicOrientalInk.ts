@@ -67,61 +67,61 @@ const ORIENTAL_POEMS = [
 
 const COLOR_SCHEMES = [
   {
-    // 0: 【青绿千山 · 幽谷月华】(宋代王希孟青绿设色，清雅绝尘)
-    skyTop: "#010608",
-    skyMid: "#031115",
-    skyBottom: "#071c21",
-    farMountain: ["#061317", "#040d10", "#020608"],
-    midMountain: ["#092125", "#06171a", "#030a0c"],
-    nearMountain: ["#0d2b2d", "#081a1b", "#03090a"],
-    goldGlint: "rgba(255, 235, 160, 0.95)",
-    goldWire: "rgba(235, 195, 100, 0.70)",
-    cloudColor: "rgba(10, 38, 42, 0.28)",
-    waterColor: "rgba(2, 9, 12, 0.96)",
-    waterWave: "rgba(200, 240, 230, 0.32)",
-    lanternGlow: "rgba(255, 205, 110, 0.90)",
-    koiColor: "rgba(255, 185, 105, 0.45)",
-    moonBase: "rgba(240, 248, 255, 0.96)",
-    moonGlow: "rgba(210, 240, 248, 0.12)",
-    vignetteColor: "rgba(1, 3, 5, 0.88)",
+    // 0: 【青绿千山 · 幽谷月华】(宋代王希孟青绿设色，矿物石青石绿，层峦叠翠)
+    skyTop: "#020a10",
+    skyMid: "#061822",
+    skyBottom: "#0b2a33",
+    farMountain: ["#0f3944", "#0a262e", "#05151b"],
+    midMountain: ["#165052", "#0f373a", "#071c1e"],
+    nearMountain: ["#1b635c", "#124542", "#082021"],
+    goldGlint: "rgba(255, 235, 150, 0.98)",
+    goldWire: "rgba(240, 205, 110, 0.85)",
+    cloudColor: "rgba(160, 220, 230, 0.22)",
+    waterColor: "#030e14",
+    waterWave: "rgba(180, 235, 240, 0.35)",
+    lanternGlow: "rgba(255, 210, 110, 0.95)",
+    koiColor: "rgba(255, 185, 100, 0.55)",
+    moonGlow: "rgba(190, 235, 255, 0.15)",
+    lightBeam: "rgba(200, 240, 255, 0.045)",
+    vignetteColor: "rgba(1, 4, 7, 0.85)",
   },
   {
-    // 1: 【烟雨水墨 · 孤舟晚渡】(新安徽派水墨，空灵幽邃)
-    skyTop: "#020305",
-    skyMid: "#06080e",
-    skyBottom: "#0d111a",
-    farMountain: ["#0d0f15", "#08090d", "#040507"],
-    midMountain: ["#131620", "#0c0e15", "#05060a"],
-    nearMountain: ["#191f2c", "#10141d", "#07080d"],
-    goldGlint: "rgba(220, 240, 255, 0.95)",
-    goldWire: "rgba(175, 205, 245, 0.65)",
-    cloudColor: "rgba(20, 26, 38, 0.30)",
-    waterColor: "rgba(4, 5, 8, 0.96)",
-    waterWave: "rgba(190, 215, 250, 0.28)",
-    lanternGlow: "rgba(255, 215, 130, 0.85)",
-    koiColor: "rgba(205, 225, 255, 0.40)",
-    moonBase: "rgba(245, 248, 255, 0.96)",
-    moonGlow: "rgba(195, 220, 255, 0.10)",
-    vignetteColor: "rgba(1, 2, 3, 0.88)",
+    // 1: 【烟雨水墨 · 孤舟晚渡】(江南徽派水墨，空灵幽邃)
+    skyTop: "#030509",
+    skyMid: "#0a0f19",
+    skyBottom: "#121b2c",
+    farMountain: ["#1e2538", "#141926", "#0a0d14"],
+    midMountain: ["#2a354d", "#1c2436", "#0e131d"],
+    nearMountain: ["#384869", "#243048", "#121927"],
+    goldGlint: "rgba(230, 245, 255, 0.98)",
+    goldWire: "rgba(190, 220, 255, 0.80)",
+    cloudColor: "rgba(180, 205, 240, 0.24)",
+    waterColor: "#050810",
+    waterWave: "rgba(200, 225, 255, 0.32)",
+    lanternGlow: "rgba(255, 220, 130, 0.90)",
+    koiColor: "rgba(215, 235, 255, 0.50)",
+    moonGlow: "rgba(195, 220, 255, 0.14)",
+    lightBeam: "rgba(210, 230, 255, 0.040)",
+    vignetteColor: "rgba(2, 3, 5, 0.85)",
   },
   {
     // 2: 【暮霞沉香 · 金碧流丹】(盛唐沉香朱砂，典雅华贵)
-    skyTop: "#060108",
-    skyMid: "#140417",
-    skyBottom: "#22071e",
-    farMountain: ["#140416", "#0d020e", "#050106"],
-    midMountain: ["#200822", "#140315", "#0a010b"],
-    nearMountain: ["#320d2e", "#1e041c", "#0e010e"],
-    goldGlint: "rgba(255, 225, 140, 0.98)",
-    goldWire: "rgba(250, 180, 75, 0.75)",
-    cloudColor: "rgba(48, 12, 36, 0.32)",
-    waterColor: "rgba(9, 2, 11, 0.96)",
-    waterWave: "rgba(255, 185, 135, 0.36)",
-    lanternGlow: "rgba(255, 185, 80, 0.90)",
-    koiColor: "rgba(255, 155, 85, 0.50)",
-    moonBase: "rgba(255, 240, 225, 0.96)",
-    moonGlow: "rgba(255, 190, 145, 0.12)",
-    vignetteColor: "rgba(4, 1, 6, 0.88)",
+    skyTop: "#0a020c",
+    skyMid: "#1c0620",
+    skyBottom: "#2f0c28",
+    farMountain: ["#2d0e2e", "#1e0820", "#0f0311"],
+    midMountain: ["#44143e", "#2f0c2c", "#180517"],
+    nearMountain: ["#5e1b4f", "#401037", "#22071f"],
+    goldGlint: "rgba(255, 230, 140, 0.98)",
+    goldWire: "rgba(255, 195, 85, 0.90)",
+    cloudColor: "rgba(240, 180, 200, 0.25)",
+    waterColor: "#0d0310",
+    waterWave: "rgba(255, 195, 160, 0.38)",
+    lanternGlow: "rgba(255, 190, 80, 0.95)",
+    koiColor: "rgba(255, 165, 90, 0.60)",
+    moonGlow: "rgba(255, 200, 160, 0.16)",
+    lightBeam: "rgba(255, 215, 180, 0.050)",
+    vignetteColor: "rgba(5, 1, 7, 0.85)",
   },
 ];
 
@@ -131,11 +131,10 @@ let cloudsPool: CloudLayer[] | null = null;
 let ripplesPool: LakeRipple[] = [];
 let koisPool: SwimmingKoi[] | null = null;
 let starSparkleSprite: HTMLCanvasElement | null = null;
-let moonDiscTexture: HTMLCanvasElement | null = null;
-let moonGlowSprite: HTMLCanvasElement | null = null;
+let moonSprite: HTMLCanvasElement | null = null;
 let grainCanvas: HTMLCanvasElement | null = null;
 
-// 声学双阶极平滑滤波器
+// 声学双阶平滑滤波器
 let smoothBass = 0;
 let smoothMid = 0;
 let smoothTreble = 0;
@@ -151,11 +150,11 @@ let poemAlpha = 0;
 let lastTransientPeak = 0;
 
 // =========================================================================
-// 2. High-End Master Texture Generators
+// 2. High-Performance Master Sprite Generators
 // =========================================================================
 
-// 生成带有真实水墨阴影肌理的清幽月轮（Lunar Texture）
-function createMoonDiscTexture(size: number): HTMLCanvasElement | null {
+// 绘制电影级纯净空灵月轮与多层发光月冕 (Celestial Radiant Moon Sprite)
+function createMoonSprite(size: number): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null;
   try {
     const canvas = document.createElement("canvas");
@@ -165,89 +164,39 @@ function createMoonDiscTexture(size: number): HTMLCanvasElement | null {
     if (!ctx) return null;
 
     const c = size / 2;
-    const r = size * 0.46;
+    const moonR = size * 0.18; // 核心月盘半径
 
-    // 1. 柔和发光的月面底盘 (Soft Lunar Base)
-    const baseGrd = ctx.createRadialGradient(c - r * 0.25, c - r * 0.25, 0, c, c, r);
-    baseGrd.addColorStop(0, "rgba(255, 255, 255, 1.0)");
-    baseGrd.addColorStop(0.65, "rgba(240, 246, 252, 0.98)");
-    baseGrd.addColorStop(0.92, "rgba(220, 235, 245, 0.90)");
-    baseGrd.addColorStop(1.0, "rgba(200, 220, 235, 0.0)"); // 亚像素柔滑边缘
-
-    ctx.fillStyle = baseGrd;
-    ctx.beginPath();
-    ctx.arc(c, c, r, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 2. 水墨玉兔月海纹理（Lunar Maria Ink Washes）
-    ctx.save();
-    ctx.globalCompositeOperation = "multiply";
-    ctx.fillStyle = "rgba(180, 200, 215, 0.35)";
-
-    // 几处典雅的天然水墨阴影
-    const inkSpots = [
-      { x: c - r * 0.2, y: c - r * 0.15, rx: r * 0.35, ry: r * 0.22, rot: 0.3 },
-      { x: c + r * 0.25, y: c - r * 0.25, rx: r * 0.25, ry: r * 0.18, rot: -0.4 },
-      { x: c - r * 0.1, y: c + r * 0.3, rx: r * 0.40, ry: r * 0.25, rot: 0.8 },
-      { x: c + r * 0.2, y: c + r * 0.15, rx: r * 0.30, ry: r * 0.20, rot: -0.2 },
-    ];
-
-    inkSpots.forEach((spot) => {
-      ctx.save();
-      ctx.translate(spot.x, spot.y);
-      ctx.rotate(spot.rot);
-      ctx.scale(spot.rx, spot.ry);
-      const spotGrd = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-      spotGrd.addColorStop(0, "rgba(145, 175, 195, 0.45)");
-      spotGrd.addColorStop(0.6, "rgba(175, 200, 215, 0.20)");
-      spotGrd.addColorStop(1.0, "rgba(255, 255, 255, 0)");
-      ctx.fillStyle = spotGrd;
-      ctx.beginPath();
-      ctx.arc(0, 0, 1, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    });
-    ctx.restore();
-
-    // 3. 月轮内缘高光（Lunar Crescent Rim Highlight）
-    ctx.save();
-    ctx.globalCompositeOperation = "screen";
-    const rimGrd = ctx.createRadialGradient(c - r * 0.35, c - r * 0.35, r * 0.4, c, c, r);
-    rimGrd.addColorStop(0, "rgba(255, 255, 255, 0.0)");
-    rimGrd.addColorStop(0.8, "rgba(255, 255, 255, 0.3)");
-    rimGrd.addColorStop(1.0, "rgba(255, 255, 255, 0.8)");
-    ctx.fillStyle = rimGrd;
-    ctx.beginPath();
-    ctx.arc(c, c, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    return canvas;
-  } catch {
-    return null;
-  }
-}
-
-// 生成宏观空灵月华晕轮（Multi-Stage Lunar Corona Glow）
-function createMoonGlowSprite(size: number): HTMLCanvasElement | null {
-  if (typeof document === "undefined") return null;
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-
-    const c = size / 2;
-    const grd = ctx.createRadialGradient(c, c, 0, c, c, c);
-    grd.addColorStop(0, "rgba(255, 255, 255, 0.85)");
-    grd.addColorStop(0.12, "rgba(235, 248, 255, 0.55)");
-    grd.addColorStop(0.32, "rgba(195, 235, 245, 0.22)");
-    grd.addColorStop(0.65, "rgba(140, 195, 215, 0.06)");
-    grd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
-
-    ctx.fillStyle = grd;
+    // 1. 广域大气外晕 (Outer Atmospheric Bloom)
+    const bloomGrd = ctx.createRadialGradient(c, c, moonR * 0.8, c, c, size * 0.48);
+    bloomGrd.addColorStop(0, "rgba(215, 245, 255, 0.40)");
+    bloomGrd.addColorStop(0.30, "rgba(160, 225, 245, 0.15)");
+    bloomGrd.addColorStop(0.65, "rgba(100, 180, 215, 0.04)");
+    bloomGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = bloomGrd;
     ctx.fillRect(0, 0, size, size);
+
+    // 2. 近距月冕柔焦环 (Lunar Corona Ring)
+    const coronaGrd = ctx.createRadialGradient(c, c, moonR * 0.5, c, c, moonR * 1.8);
+    coronaGrd.addColorStop(0, "rgba(255, 255, 255, 0.90)");
+    coronaGrd.addColorStop(0.40, "rgba(235, 250, 255, 0.70)");
+    coronaGrd.addColorStop(0.75, "rgba(190, 235, 250, 0.25)");
+    coronaGrd.addColorStop(1.0, "rgba(140, 205, 235, 0.0)");
+    ctx.fillStyle = coronaGrd;
+    ctx.beginPath();
+    ctx.arc(c, c, moonR * 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. 核心温润玉轮 (Pearl-White Moon Disc with Soft Edge)
+    const moonDiscGrd = ctx.createRadialGradient(c - moonR * 0.25, c - moonR * 0.25, 0, c, c, moonR);
+    moonDiscGrd.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+    moonDiscGrd.addColorStop(0.70, "rgba(248, 252, 255, 0.98)");
+    moonDiscGrd.addColorStop(0.92, "rgba(230, 244, 252, 0.92)");
+    moonDiscGrd.addColorStop(1.0, "rgba(210, 235, 248, 0.0)");
+    ctx.fillStyle = moonDiscGrd;
+    ctx.beginPath();
+    ctx.arc(c, c, moonR, 0, Math.PI * 2);
+    ctx.fill();
+
     return canvas;
   } catch {
     return null;
@@ -299,11 +248,11 @@ function createFilmGrainTexture(): HTMLCanvasElement | null {
     const img = ctx.createImageData(128, 128);
     const d = img.data;
     for (let i = 0; i < d.length; i += 4) {
-      const noise = (Math.random() - 0.5) * 28;
+      const noise = (Math.random() - 0.5) * 24;
       d[i] = 128 + noise;
       d[i + 1] = 128 + noise;
       d[i + 2] = 128 + noise;
-      d[i + 3] = 10;
+      d[i + 3] = 8;
     }
     ctx.putImageData(img, 0, 0);
     return canvas;
@@ -312,32 +261,70 @@ function createFilmGrainTexture(): HTMLCanvasElement | null {
   }
 }
 
-// 险峻峻拔的宋画高山峰峦轮廓函数（远山挺拔，中山层叠，近岸幽深）
+// 宋代《千里江山》式险峻雄奇峰峦轮廓函数 (Dramatic Mountain Spires)
 function shanShuiRidgeHeight(
   normX: number,
   layerIndex: number,
   time: number
 ): number {
   if (layerIndex === 1) {
-    // 远山：巍峨奇峰，高耸挺拔 (Majestic mountain spires)
-    const p1 = Math.exp(-Math.pow((normX - 0.28) * 5.0, 2)) * -160;
-    const p2 = Math.exp(-Math.pow((normX - 0.65) * 4.2, 2)) * -135;
-    const p3 = Math.exp(-Math.pow((normX - 0.88) * 7.0, 2)) * -90;
-    const undulating = Math.sin(normX * 4.2 + 0.3) * 35;
-    return p1 + p2 + p3 + undulating;
+    // 远岫：巍峨雄峻、高耸入云 (Towering Distant Spires)
+    const spire1 = Math.exp(-Math.pow((normX - 0.28) * 4.8, 2)) * -220;
+    const spire2 = Math.exp(-Math.pow((normX - 0.62) * 4.2, 2)) * -185;
+    const spire3 = Math.exp(-Math.pow((normX - 0.88) * 6.5, 2)) * -130;
+    const ridge = Math.sin(normX * 4.8 + 0.4) * 42;
+    return spire1 + spire2 + spire3 + ridge;
   } else if (layerIndex === 2) {
-    // 中山：层峦叠嶂，深谷流岚 (Rolling slopes & mist valleys)
-    const p1 = Math.exp(-Math.pow((normX - 0.18) * 4.5, 2)) * -105;
-    const p2 = Math.exp(-Math.pow((normX - 0.52) * 3.8, 2)) * -115;
-    const slope = Math.sin(normX * 5.0 + 1.2) * 38;
-    const breath = Math.sin(time * 0.12 + normX * 2) * 6;
-    return p1 + p2 + slope + breath;
+    // 中山：层峦起伏、深谷流岚 (Mid-range Rolling Peaks)
+    const peak1 = Math.exp(-Math.pow((normX - 0.16) * 4.2, 2)) * -145;
+    const peak2 = Math.exp(-Math.pow((normX - 0.50) * 3.6, 2)) * -160;
+    const peak3 = Math.exp(-Math.pow((normX - 0.78) * 5.0, 2)) * -110;
+    const slope = Math.sin(normX * 5.4 + 1.2) * 45;
+    const breath = Math.sin(time * 0.12 + normX * 2) * 8;
+    return peak1 + peak2 + peak3 + slope + breath;
   } else {
-    // 近山：临水岩矶，古木磐石 (Lakeside crags & rocky shores)
-    const cliff = Math.exp(-Math.pow((normX - 0.82) * 4.0, 2)) * -75;
-    const shore = Math.sin(normX * 3.5 + 2.0) * 28;
-    return cliff + shore;
+    // 近山：临水险峰与岩矶古岸 (Near Cliffs & Water Shores)
+    const cliff = Math.exp(-Math.pow((normX - 0.82) * 3.8, 2)) * -105;
+    const rock = Math.exp(-Math.pow((normX - 0.24) * 5.2, 2)) * -75;
+    const shore = Math.sin(normX * 3.8 + 2.0) * 35;
+    return cliff + rock + shore;
   }
+}
+
+// 绘制古松剪影（宋画点睛之笔：悬崖古松）
+function drawAncientPine(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "rgba(4, 12, 14, 0.96)";
+
+  // 弯曲主干
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.quadraticCurveTo(-12, -25, -6, -50);
+  ctx.quadraticCurveTo(-2, -65, -18, -80);
+  ctx.quadraticCurveTo(-12, -65, -2, -50);
+  ctx.quadraticCurveTo(-6, -25, 4, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // 苍劲松枝与松针簇
+  const clusters = [
+    { x: -18, y: -80, r: 16 },
+    { x: -32, y: -72, r: 13 },
+    { x: -6, y: -76, r: 14 },
+    { x: 10, y: -62, r: 12 },
+    { x: -26, y: -52, r: 11 },
+    { x: 18, y: -48, r: 10 },
+  ];
+
+  clusters.forEach((c) => {
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.restore();
 }
 
 // =========================================================================
@@ -391,13 +378,13 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   timeAccum += dt * (0.32 + smoothMid * 0.25 * inkSpeedMult);
   breathTime += dt * 0.25;
 
-  // 琴筝泛音涟漪触发
+  // 泛音清潭涟漪触发
   if (rawTreble > 0.42 && time - lastTransientPeak > 550) {
     lastTransientPeak = time;
     if (ripplesPool.length < 6) {
       ripplesPool.push({
-        x: width * 0.25 + Math.random() * width * 0.5,
-        y: height * 0.83 + Math.random() * height * 0.12,
+        x: width * 0.20 + Math.random() * width * 0.55,
+        y: height * 0.82 + Math.random() * height * 0.12,
         radius: 3,
         maxRadius: 50 + Math.random() * 70,
         alpha: 0.65,
@@ -408,8 +395,7 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
 
   // 3. 资源初始化
   if (!starSparkleSprite) starSparkleSprite = createStarSparkleSprite(56);
-  if (!moonDiscTexture) moonDiscTexture = createMoonDiscTexture(256);
-  if (!moonGlowSprite) moonGlowSprite = createMoonGlowSprite(512);
+  if (!moonSprite) moonSprite = createMoonSprite(420);
   if (!grainCanvas) grainCanvas = createFilmGrainTexture();
 
   if (!firefliesPool || firefliesPool.length !== targetParticleCount) {
@@ -440,17 +426,17 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
 
   if (!cloudsPool) {
     cloudsPool = [
-      { x: width * 0.22, y: height * 0.45, rx: 280, ry: 50, baseAlpha: 0.25, speed: 0.07, phase: 0 },
-      { x: width * 0.68, y: height * 0.52, rx: 340, ry: 60, baseAlpha: 0.20, speed: 0.05, phase: 2.1 },
-      { x: width * 0.40, y: height * 0.66, rx: 420, ry: 70, baseAlpha: 0.28, speed: 0.08, phase: 4.3 },
+      { x: width * 0.22, y: height * 0.48, rx: 320, ry: 65, baseAlpha: 0.28, speed: 0.07, phase: 0 },
+      { x: width * 0.68, y: height * 0.55, rx: 380, ry: 75, baseAlpha: 0.22, speed: 0.05, phase: 2.1 },
+      { x: width * 0.40, y: height * 0.68, rx: 460, ry: 85, baseAlpha: 0.32, speed: 0.08, phase: 4.3 },
     ];
   }
 
   if (!koisPool) {
     koisPool = [
-      { x: width * 0.42, y: height * 0.90, angle: 0.2, speed: 18, length: 22, alpha: 0.35, swimPhase: 0 },
-      { x: width * 0.55, y: height * 0.93, angle: 3.3, speed: 14, length: 18, alpha: 0.30, swimPhase: 1.5 },
-      { x: width * 0.28, y: height * 0.94, angle: 0.1, speed: 12, length: 16, alpha: 0.25, swimPhase: 3.0 },
+      { x: width * 0.42, y: height * 0.89, angle: 0.2, speed: 18, length: 22, alpha: 0.45, swimPhase: 0 },
+      { x: width * 0.55, y: height * 0.93, angle: 3.3, speed: 14, length: 18, alpha: 0.40, swimPhase: 1.5 },
+      { x: width * 0.28, y: height * 0.94, angle: 0.1, speed: 12, length: 16, alpha: 0.35, swimPhase: 3.0 },
     ];
   }
 
@@ -459,58 +445,74 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   // =========================================================================
   const skyGrd = ctx.createLinearGradient(0, 0, 0, height);
   skyGrd.addColorStop(0, colors.skyTop);
-  skyGrd.addColorStop(0.5, colors.skyMid);
+  skyGrd.addColorStop(0.45, colors.skyMid);
   skyGrd.addColorStop(1.0, colors.skyBottom);
   ctx.fillStyle = skyGrd;
   ctx.fillRect(0, 0, width, height);
 
   // =========================================================================
-  // 5. 艺术级水墨月轮、多重月华晕轮与丝绸流云 (Artistic Ink-Washed Moon)
+  // 5. 电影级清幽皓月与柔和丁达尔月光 (Ethereal Moon & Volumetric Rays)
   // =========================================================================
   const moonX = width * 0.16;
-  const moonY = height * 0.21;
-  const moonDiameter = Math.min(width, height) * 0.11; // 比例得体的高贵月轮
-  const moonRadius = moonDiameter / 2;
+  const moonY = height * 0.20;
+  const moonSize = Math.min(width, height) * 0.42;
 
   ctx.save();
 
-  // 1. 广域柔焦月华（大范围月光漫射）
-  if (moonGlowSprite) {
+  // 1. 柔和斜向月光散射（Volumetric Moonlight Beams 从左上洒向右下千山与清潭）
+  ctx.globalCompositeOperation = "screen";
+  for (let b = 0; b < 4; b++) {
+    const beamAngle = 0.58 + b * 0.18;
+    const beamLen = Math.max(width, height) * 1.1;
+    const beamW = 90 + b * 40;
+    const beamAlpha = (0.35 + Math.sin(breathTime + b) * 0.08 + smoothMid * 0.15);
+
+    ctx.save();
+    ctx.translate(moonX, moonY);
+    ctx.rotate(beamAngle);
+
+    const bGrd = ctx.createLinearGradient(0, 0, beamLen, 0);
+    bGrd.addColorStop(0, "rgba(215, 245, 255, 0.18)");
+    bGrd.addColorStop(0.25, colors.lightBeam);
+    bGrd.addColorStop(0.70, "rgba(180, 230, 245, 0.015)");
+    bGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
+
+    ctx.fillStyle = bGrd;
+    ctx.globalAlpha = beamAlpha;
+    ctx.beginPath();
+    ctx.moveTo(0, -beamW * 0.15);
+    ctx.lineTo(beamLen, -beamW);
+    ctx.lineTo(beamLen, beamW);
+    ctx.lineTo(0, beamW * 0.15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // 2. 电影级玉轮与多层发光月冕 (Celestial Radiant Moon Sprite)
+  if (moonSprite) {
     ctx.globalCompositeOperation = "screen";
-    const glowSize = moonDiameter * 6.5 * (1.0 + smoothEnergy * 0.12);
-    ctx.globalAlpha = 0.70 + Math.sin(breathTime) * 0.06 + smoothMid * 0.15;
-    ctx.drawImage(moonGlowSprite, moonX - glowSize / 2, moonY - glowSize / 2, glowSize, glowSize);
+    const mScale = 1.0 + smoothEnergy * 0.08 + Math.sin(breathTime) * 0.03;
+    const curSize = moonSize * mScale;
+    ctx.drawImage(moonSprite, moonX - curSize / 2, moonY - curSize / 2, curSize, curSize);
   }
 
-  // 2. 绘制带有水墨月海肌理与柔滑边缘的月面 (Lunar Disc Texture)
-  if (moonDiscTexture) {
-    ctx.globalCompositeOperation = "source-over";
-    ctx.drawImage(
-      moonDiscTexture,
-      moonX - moonRadius * 1.08,
-      moonY - moonRadius * 1.08,
-      moonDiameter * 1.08,
-      moonDiameter * 1.08
-    );
-  }
-
-  // 3. 诗意水墨薄云拂月（3 缕半透明丝绸烟云掠过月盘）
+  // 3. 诗意水墨流云拂月（半透明丝绸烟云掠过月盘）
   const cloudWisps = [
-    { dy: -moonRadius * 0.25, w: moonDiameter * 2.2, h: moonRadius * 0.28, rot: 0.04, speed: 0.18, phase: 0 },
-    { dy: moonRadius * 0.20, w: moonDiameter * 2.8, h: moonRadius * 0.35, rot: -0.03, speed: 0.24, phase: 1.8 },
-    { dy: moonRadius * 0.55, w: moonDiameter * 1.9, h: moonRadius * 0.22, rot: 0.02, speed: 0.14, phase: 3.5 },
+    { dy: -moonSize * 0.06, w: moonSize * 0.85, h: moonSize * 0.09, rot: 0.04, speed: 0.18, phase: 0 },
+    { dy: moonSize * 0.05, w: moonSize * 1.10, h: moonSize * 0.11, rot: -0.03, speed: 0.24, phase: 1.8 },
   ];
 
   ctx.globalCompositeOperation = "source-over";
   cloudWisps.forEach((wisp) => {
-    const cloudOffset = Math.sin(timeAccum * wisp.speed + wisp.phase) * (moonRadius * 0.6);
+    const cloudOffset = Math.sin(timeAccum * wisp.speed + wisp.phase) * (moonSize * 0.15);
     const cx = moonX + cloudOffset;
     const cy = moonY + wisp.dy;
 
     const wispGrd = ctx.createLinearGradient(cx - wisp.w / 2, 0, cx + wisp.w / 2, 0);
     wispGrd.addColorStop(0, "rgba(0, 0, 0, 0)");
     wispGrd.addColorStop(0.3, colors.skyMid);
-    wispGrd.addColorStop(0.5, "rgba(4, 18, 22, 0.85)");
+    wispGrd.addColorStop(0.5, "rgba(5, 20, 26, 0.80)");
     wispGrd.addColorStop(0.7, colors.skyMid);
     wispGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
 
@@ -528,7 +530,7 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   ctx.restore();
 
   // =========================================================================
-  // 6. 宋代青绿空灵山水画卷 (Solid Layered Mountains with Ink Streaks)
+  // 6. 宋代青绿巍峨千山画卷 (Majestic Mountain Peaks with Gold Inlay)
   // =========================================================================
   const drawShanShuiLayer = (
     layerIndex: number,
@@ -539,11 +541,12 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ctx.save();
     const baseY = height * baseYRatio;
 
-    // 1. 实心山体渐变填充
-    const mtnGrd = ctx.createLinearGradient(0, baseY - 180, 0, height);
+    // 1. 实心山体渐变（浓淡相生、清晰可见的青绿设色）
+    const mtnGrd = ctx.createLinearGradient(0, baseY - 240, 0, height);
     mtnGrd.addColorStop(0, colorStops[0]);
-    mtnGrd.addColorStop(0.45, colorStops[1]);
-    mtnGrd.addColorStop(1.0, colorStops[2]);
+    mtnGrd.addColorStop(0.35, colorStops[1]);
+    mtnGrd.addColorStop(0.85, colorStops[2]);
+    mtnGrd.addColorStop(1.0, "rgba(2, 8, 12, 0.98)");
     ctx.fillStyle = mtnGrd;
 
     ctx.beginPath();
@@ -572,10 +575,10 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
       ctx.save();
       ctx.globalCompositeOperation = "screen";
       ctx.strokeStyle = colors.goldWire;
-      ctx.lineWidth = 1.2 + smoothTreble * 0.6;
+      ctx.lineWidth = 1.3 + smoothTreble * 0.8;
       ctx.shadowColor = colors.goldGlint;
-      ctx.shadowBlur = 6 + smoothTreble * 8;
-      ctx.globalAlpha = goldWireAlpha * (0.60 + smoothTreble * 0.35);
+      ctx.shadowBlur = 8 + smoothTreble * 10;
+      ctx.globalAlpha = goldWireAlpha * (0.65 + smoothTreble * 0.35);
 
       ctx.beginPath();
       for (let i = 0; i < ridgePoints.length; i++) {
@@ -587,8 +590,8 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     }
 
     // 3. 山谷间缭绕的温润水墨云岚 (Valley Mist)
-    const mistY = baseY - 35;
-    const mistGrd = ctx.createLinearGradient(0, mistY, 0, mistY + 120);
+    const mistY = baseY - 45;
+    const mistGrd = ctx.createLinearGradient(0, mistY, 0, mistY + 140);
     mistGrd.addColorStop(0, "rgba(0, 0, 0, 0)");
     mistGrd.addColorStop(0.45, colors.cloudColor);
     mistGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
@@ -596,26 +599,26 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
     ctx.fillStyle = mistGrd;
-    ctx.fillRect(0, mistY, width, 120);
+    ctx.fillRect(0, mistY, width, 140);
     ctx.restore();
 
     ctx.restore();
   };
 
-  // 1. 远岫群峰 (Distant Pinnacles: 苍茫出尘)
-  drawShanShuiLayer(1, 0.46, colors.farMountain, 0.30);
+  // 1. 远岫巍峨奇峰 (Distant Towering Peaks: 石青设色)
+  drawShanShuiLayer(1, 0.44, colors.farMountain, 0.35);
 
-  // 2. 山间悠悠游云 (Mid-altitude Mountain Mist)
+  // 2. 山间悠悠游云海 (Mid-altitude Mountain Cloud Sea)
   ctx.save();
   ctx.globalCompositeOperation = "screen";
   cloudsPool.forEach((cloud) => {
-    const cx = (cloud.x + Math.sin(timeAccum * cloud.speed + cloud.phase) * 50) % (width + 280) - 140;
+    const cx = (cloud.x + Math.sin(timeAccum * cloud.speed + cloud.phase) * 60) % (width + 300) - 150;
     const cloudGrd = ctx.createRadialGradient(cx, cloud.y, 0, cx, cloud.y, cloud.rx);
     cloudGrd.addColorStop(0, colors.cloudColor);
-    cloudGrd.addColorStop(0.6, "rgba(6, 26, 29, 0.12)");
+    cloudGrd.addColorStop(0.6, "rgba(10, 38, 45, 0.15)");
     cloudGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
     ctx.fillStyle = cloudGrd;
-    ctx.globalAlpha = cloud.baseAlpha * (0.8 + Math.sin(breathTime) * 0.2);
+    ctx.globalAlpha = cloud.baseAlpha * (0.85 + Math.sin(breathTime) * 0.15);
     ctx.save();
     ctx.translate(cx, cloud.y);
     ctx.scale(cloud.rx, cloud.ry);
@@ -626,34 +629,52 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   });
   ctx.restore();
 
-  // 3. 中山苍峦 (Mid Mountain: 石青石绿)
-  drawShanShuiLayer(2, 0.62, colors.midMountain, 0.55);
+  // 3. 中山苍峦叠嶂 (Mid Mountain: 石绿设色)
+  drawShanShuiLayer(2, 0.60, colors.midMountain, 0.60);
 
-  // 4. 近山磐石 (Near Crags: 沉稳深邃)
-  drawShanShuiLayer(3, 0.78, colors.nearMountain, 0.80);
+  // 4. 近山峭壁磐石 (Near Mountain: 浓翠焦墨)
+  drawShanShuiLayer(3, 0.76, colors.nearMountain, 0.85);
+
+  // 5. 悬崖古松（宋画点睛之笔）
+  drawAncientPine(ctx, width * 0.84, height * 0.72 + shanShuiRidgeHeight(0.84, 3, timeAccum), 1.0);
 
   // =========================================================================
-  // 7. 清潭水镜、月影倒影、一叶扁舟与水底游鱼 (Lake Mirror with Moon Reflection)
+  // 7. 清潭水镜、波光粼粼、一叶扁舟与游鱼 (Lake Mirror with Moonlight Caustics)
   // =========================================================================
-  const lakeY = height * 0.82;
+  const lakeY = height * 0.80;
   ctx.save();
 
   // 1. 清潭深邃如镜
   const lakeGrd = ctx.createLinearGradient(0, lakeY, 0, height);
-  lakeGrd.addColorStop(0, "rgba(2, 7, 10, 0.6)");
+  lakeGrd.addColorStop(0, "rgba(2, 8, 12, 0.75)");
   lakeGrd.addColorStop(1.0, colors.waterColor);
   ctx.fillStyle = lakeGrd;
   ctx.fillRect(0, lakeY, width, height - lakeY);
 
-  // 2. 清幽月光在水面的纵向倒影柱 (Vertical Moonlight Water Reflection)
+  // 2. 清幽月光在水面荡漾的碎金波光倒影 (Moonlight Shimmering Caustics)
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  const moonReflectGrd = ctx.createLinearGradient(moonX - moonRadius * 1.8, 0, moonX + moonRadius * 1.8, 0);
-  moonReflectGrd.addColorStop(0, "rgba(0, 0, 0, 0)");
-  moonReflectGrd.addColorStop(0.5, "rgba(215, 240, 250, 0.12)");
-  moonReflectGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = moonReflectGrd;
-  ctx.fillRect(moonX - moonRadius * 1.8, lakeY, moonRadius * 3.6, height - lakeY);
+  for (let s = 0; s < 7; s++) {
+    const sY = lakeY + (height - lakeY) * ((s + 1) / 9);
+    const sWidth = (moonSize * 0.6) * (1.0 + s * 0.25);
+    const sOffset = Math.sin(timeAccum * 0.8 + s * 0.6) * 12;
+    const sAlpha = (0.28 - s * 0.03) * (0.8 + smoothEnergy * 0.3);
+
+    const sGrd = ctx.createLinearGradient(moonX + sOffset - sWidth / 2, 0, moonX + sOffset + sWidth / 2, 0);
+    sGrd.addColorStop(0, "rgba(0, 0, 0, 0)");
+    sGrd.addColorStop(0.5, "rgba(220, 245, 255, 0.45)");
+    sGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+    ctx.fillStyle = sGrd;
+    ctx.globalAlpha = sAlpha;
+    ctx.save();
+    ctx.translate(moonX + sOffset, sY);
+    ctx.scale(sWidth / 2, 2.5);
+    ctx.beginPath();
+    ctx.arc(0, 0, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
   ctx.restore();
 
   // 3. 水底游弋灵动锦鲤 (Swimming Koi)
@@ -693,7 +714,7 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   ctx.globalCompositeOperation = "screen";
   for (let w = 0; w < 3; w++) {
     const waveY = lakeY + (height - lakeY) * ((w + 1) / 4);
-    const waveAlpha = (0.16 - w * 0.04) * (0.7 + smoothMid * 0.3);
+    const waveAlpha = (0.18 - w * 0.04) * (0.7 + smoothMid * 0.3);
     ctx.strokeStyle = colors.waterWave;
     ctx.lineWidth = 1.0;
     ctx.globalAlpha = waveAlpha;
@@ -730,50 +751,51 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ctx.restore();
   }
 
-  // 6. 一叶扁舟与渔火微光
-  const boatX = width * 0.32;
+  // 6. 一叶扁舟与暖黄渔火
+  const boatX = width * 0.28;
   const boatBobbing = Math.sin(timeAccum * 0.55) * 2.5;
-  const boatY = height * 0.86 + boatBobbing;
+  const boatY = height * 0.85 + boatBobbing;
 
   ctx.save();
   ctx.translate(boatX, boatY);
   ctx.rotate(Math.sin(timeAccum * 0.55) * 0.018);
 
-  ctx.fillStyle = "rgba(3, 6, 8, 0.95)";
+  // 乌篷船身
+  ctx.fillStyle = "rgba(4, 10, 12, 0.98)";
   ctx.beginPath();
-  ctx.moveTo(-20, 0);
-  ctx.quadraticCurveTo(-9, 6, 0, 7);
-  ctx.quadraticCurveTo(13, 6, 22, 0);
-  ctx.quadraticCurveTo(9, 3, 0, 3);
-  ctx.quadraticCurveTo(-9, 3, -20, 0);
+  ctx.moveTo(-22, 0);
+  ctx.quadraticCurveTo(-10, 7, 0, 8);
+  ctx.quadraticCurveTo(14, 7, 24, 0);
+  ctx.quadraticCurveTo(10, 3, 0, 3);
+  ctx.quadraticCurveTo(-10, 3, -22, 0);
   ctx.closePath();
   ctx.fill();
 
   ctx.beginPath();
-  ctx.arc(-2, 0, 6.5, Math.PI, 0, false);
+  ctx.arc(-2, 0, 7, Math.PI, 0, false);
   ctx.fill();
 
   // 船头暖黄渔火
   ctx.globalCompositeOperation = "screen";
-  const lanternX = 13;
-  const lanternY = -3;
-  const lanternGrd = ctx.createRadialGradient(lanternX, lanternY, 0, lanternX, lanternY, 22);
-  lanternGrd.addColorStop(0, "rgba(255, 242, 185, 0.95)");
+  const lanternX = 14;
+  const lanternY = -4;
+  const lanternGrd = ctx.createRadialGradient(lanternX, lanternY, 0, lanternX, lanternY, 26);
+  lanternGrd.addColorStop(0, "rgba(255, 248, 200, 1.0)");
   lanternGrd.addColorStop(0.25, colors.lanternGlow);
   lanternGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = lanternGrd;
   ctx.beginPath();
-  ctx.arc(lanternX, lanternY, 22, 0, Math.PI * 2);
+  ctx.arc(lanternX, lanternY, 26, 0, Math.PI * 2);
   ctx.fill();
 
   // 水中渔火倒影
-  const reflectGrd = ctx.createRadialGradient(lanternX, 8, 0, lanternX, 8, 16);
-  reflectGrd.addColorStop(0, "rgba(255, 210, 130, 0.40)");
+  const reflectGrd = ctx.createRadialGradient(lanternX, 10, 0, lanternX, 10, 18);
+  reflectGrd.addColorStop(0, "rgba(255, 215, 130, 0.45)");
   reflectGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = reflectGrd;
   ctx.save();
-  ctx.translate(lanternX, 8);
-  ctx.scale(16, 4.5);
+  ctx.translate(lanternX, 10);
+  ctx.scale(18, 5.0);
   ctx.beginPath();
   ctx.arc(0, 0, 1, 0, Math.PI * 2);
   ctx.fill();
@@ -814,21 +836,21 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
 
     const halfSize = p.size;
     if (p.colorType === "gold") {
-      ctx.fillStyle = `rgba(245, 200, 110, ${p.alpha})`;
+      ctx.fillStyle = `rgba(245, 205, 110, ${p.alpha})`;
     } else if (p.colorType === "moonlight") {
       ctx.fillStyle = `rgba(225, 245, 255, ${p.alpha * 0.9})`;
     } else {
-      ctx.fillStyle = `rgba(225, 120, 90, ${p.alpha * 0.85})`;
+      ctx.fillStyle = `rgba(230, 125, 95, ${p.alpha * 0.85})`;
     }
 
     ctx.beginPath();
     ctx.arc(0, 0, halfSize, 0, Math.PI * 2);
     ctx.fill();
 
-    if (p.z > 0.72 && p.alpha > 0.78 && starSparkleSprite) {
+    if (p.z > 0.70 && p.alpha > 0.75 && starSparkleSprite) {
       ctx.globalCompositeOperation = "screen";
       const spSize = halfSize * 6 * (1.0 + smoothTreble * 0.5);
-      ctx.globalAlpha = p.alpha * 0.80;
+      ctx.globalAlpha = p.alpha * 0.85;
       ctx.drawImage(starSparkleSprite, -spSize / 2, -spSize / 2, spSize, spSize);
     }
     ctx.restore();
