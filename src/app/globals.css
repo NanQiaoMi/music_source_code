@@ -341,6 +341,39 @@ textarea {
   will-change: transform;
 }
 
+/* Dual Breathing Rays — 100% GPU Composited CSS Keyframes (0% CPU / 0 JS Re-renders) */
+@keyframes aura-ray-breathe-1 {
+  0%, 100% {
+    opacity: 0.05;
+    transform: translate3d(0, 0, 0) scale(0.97) rotate(-22deg);
+  }
+  50% {
+    opacity: 0.13;
+    transform: translate3d(12px, -6px, 0) scale(1.03) rotate(-22deg);
+  }
+}
+
+@keyframes aura-ray-breathe-2 {
+  0%, 100% {
+    opacity: 0.04;
+    transform: translate3d(0, 0, 0) scale(0.97) rotate(24deg);
+  }
+  50% {
+    opacity: 0.11;
+    transform: translate3d(-12px, 6px, 0) scale(1.03) rotate(24deg);
+  }
+}
+
+.animate-aura-ray-1 {
+  animation: aura-ray-breathe-1 5.4s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+  will-change: transform, opacity;
+}
+
+.animate-aura-ray-2 {
+  animation: aura-ray-breathe-2 6.0s cubic-bezier(0.42, 0, 0.58, 1) infinite 2.2s;
+  will-change: transform, opacity;
+}
+
 /* Vinyl Specular Conic Light Sweeping */
 @keyframes conic-sweep {
   0% {

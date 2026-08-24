@@ -72,7 +72,7 @@ export const AmbientFluidMeshBackground: React.FC = () => {
   return (
     <div className="fixed inset-0 w-full h-full pointer-events-none overflow-hidden z-0 select-none bg-[#070709]">
       {/* ─── 1. 沉浸式超大高斯弥散底层 (Crossfading Dynamic Album Glass) ─── */}
-      <div className="absolute inset-0 overflow-hidden opacity-35 scale-110 filter blur-[95px] transform-gpu">
+      <div className="absolute inset-0 overflow-hidden opacity-25 scale-105 filter blur-[40px] transform-gpu">
         {/* 旧封面渐隐层 */}
         {isCrossfading && prevCover && (
           <div className="absolute inset-0 transition-opacity duration-[1200ms] ease-out opacity-0">
@@ -112,7 +112,7 @@ export const AmbientFluidMeshBackground: React.FC = () => {
       >
         {/* 光斑 1: 左上高位光团 (Primary Color, 26s 漫游) */}
         <div
-          className="animate-orb-1 absolute -top-[15%] -left-[10%] w-[680px] h-[680px] rounded-full mix-blend-screen opacity-35 filter blur-[110px] transform-gpu transition-colors duration-[1200ms] ease-out"
+          className="animate-orb-1 absolute -top-[15%] -left-[10%] w-[680px] h-[680px] rounded-full mix-blend-screen opacity-35 filter blur-[40px] transform-gpu transition-colors duration-[1200ms] ease-out"
           style={{
             background: `radial-gradient(circle, ${primary} 0%, rgba(0,0,0,0) 70%)`,
           }}
@@ -120,7 +120,7 @@ export const AmbientFluidMeshBackground: React.FC = () => {
 
         {/* 光斑 2: 右上高位主色 (Secondary Color, 22s 漫游) */}
         <div
-          className="animate-orb-2 absolute -top-[10%] -right-[10%] w-[640px] h-[640px] rounded-full mix-blend-screen opacity-30 filter blur-[120px] transform-gpu transition-colors duration-[1200ms] ease-out"
+          className="animate-orb-2 absolute -top-[10%] -right-[10%] w-[640px] h-[640px] rounded-full mix-blend-screen opacity-30 filter blur-[40px] transform-gpu transition-colors duration-[1200ms] ease-out"
           style={{
             background: `radial-gradient(circle, ${secondary} 0%, rgba(0,0,0,0) 70%)`,
           }}
@@ -128,7 +128,7 @@ export const AmbientFluidMeshBackground: React.FC = () => {
 
         {/* 光斑 3: 右下与黑胶后方深邃光团 (Accent Color, 28s 漫游) */}
         <div
-          className="animate-orb-3 absolute -bottom-[20%] right-[15%] w-[820px] h-[820px] rounded-full mix-blend-screen opacity-28 filter blur-[130px] transform-gpu transition-colors duration-[1200ms] ease-out"
+          className="animate-orb-3 absolute -bottom-[20%] right-[15%] w-[820px] h-[820px] rounded-full mix-blend-screen opacity-28 filter blur-[40px] transform-gpu transition-colors duration-[1200ms] ease-out"
           style={{
             background: `radial-gradient(circle, ${accent} 0%, rgba(0,0,0,0) 70%)`,
           }}
@@ -136,7 +136,7 @@ export const AmbientFluidMeshBackground: React.FC = () => {
 
         {/* 光斑 4: 左下深底氛围光 (Surface / Complementary Color, 20s 漫游) */}
         <div
-          className="animate-orb-4 absolute -bottom-[15%] -left-[15%] w-[720px] h-[720px] rounded-full mix-blend-screen opacity-25 filter blur-[125px] transform-gpu transition-colors duration-[1200ms] ease-out"
+          className="animate-orb-4 absolute -bottom-[15%] -left-[15%] w-[720px] h-[720px] rounded-full mix-blend-screen opacity-25 filter blur-[40px] transform-gpu transition-colors duration-[1200ms] ease-out"
           style={{
             background: `radial-gradient(circle, ${surface} 0%, rgba(0,0,0,0) 70%)`,
           }}
