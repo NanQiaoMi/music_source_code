@@ -833,7 +833,9 @@ function OfflineCacheTab() {
     if (!searchQuery.trim()) return cachedSongs;
     const q = searchQuery.toLowerCase();
     return cachedSongs.filter(
-      (s) => s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q)
+      (s) =>
+        (s.title && s.title.toLowerCase().includes(q)) ||
+        (s.artist && s.artist.toLowerCase().includes(q))
     );
   }, [cachedSongs, searchQuery]);
 
@@ -850,15 +852,16 @@ function OfflineCacheTab() {
   };
 
   const handlePlaySong = (item: CachedNetworkAudioMeta) => {
+    const src = item.source || "netease";
     useAudioStore.getState().playSong({
       id: item.songId,
-      title: item.title,
-      artist: item.artist,
+      title: item.title || "未知歌曲",
+      artist: item.artist || "未知艺术家",
       album: item.album,
-      duration: item.duration,
+      duration: item.duration || 0,
       cover: item.cover,
-      source: item.source as any,
-      audioUrl: `cached://${item.source}/${item.songId}`,
+      source: src as any,
+      audioUrl: `cached://${src}/${item.songId}`,
     });
   };
 
@@ -948,12 +951,14 @@ function OfflineCacheTab() {
         ) : (
           <div className="divide-y divide-white/5 max-h-[320px] overflow-y-auto custom-scrollbar">
             {filteredSongs.map((item) => {
-              const sizeMB = (item.fileSize / 1024 / 1024).toFixed(1);
-              const cachedTimeStr = new Date(item.cachedAt).toLocaleDateString();
+              const sizeMB = item.fileSize ? (item.fileSize / 1024 / 1024).toFixed(1) : "0.0";
+              const cachedTimeStr = item.cachedAt ? new Date(item.cachedAt).toLocaleDateString() : "未知时间";
+              const displaySource = (item.source || "NET").toUpperCase();
+              const displayFormat = item.fileType?.split("/")[1]?.toUpperCase() || "MP3";
 
               return (
                 <div
-                  key={item.cacheKey}
+                  key={item.cacheKey || `${item.source || "cache"}:${item.songId}`}
                   className="px-4 py-3 flex items-center justify-between hover:bg-white/[0.03] transition-colors group"
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -967,16 +972,16 @@ function OfflineCacheTab() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-white truncate">{item.title}</span>
+                        <span className="text-xs font-semibold text-white truncate">{item.title || "未知曲目"}</span>
                         <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/5 text-white/60 font-mono">
-                          {item.source.toUpperCase()}
+                          {displaySource}
                         </span>
                         <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 font-mono">
-                          {item.fileType?.split("/")[1]?.toUpperCase() || "MP3"}
+                          {displayFormat}
                         </span>
                       </div>
                       <div className="text-[11px] text-white/50 truncate flex items-center gap-2 mt-0.5">
-                        <span>{item.artist}</span>
+                        <span>{item.artist || "未知艺术家"}</span>
                         <span>·</span>
                         <span>{sizeMB} MB</span>
                         <span>·</span>
@@ -987,7 +992,7 @@ function OfflineCacheTab() {
 
                   <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => handleDelete(item.songId, item.source)}
+                      onClick={() => handleDelete(item.songId, item.source || "")}
                       className="p-1.5 rounded-lg text-white/40 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
                       title="删除此歌曲缓存"
                     >

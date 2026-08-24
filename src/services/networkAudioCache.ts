@@ -54,8 +54,8 @@ const openNetworkCacheDB = (): Promise<IDBDatabase> => {
 
 // ---------- Public utilities ----------
 
-export function makeCacheKey(songId: string, source: string): string {
-  return `${source}:${songId}`;
+export function makeCacheKey(songId: string, source?: string): string {
+  return `${source || "netease"}:${songId}`;
 }
 
 export function createBlobUrlFromCache(cached: CachedNetworkAudio): string {
@@ -101,7 +101,12 @@ export const getCachedAudioMeta = async (
   if (!full) return null;
   const { fileData: _fd, ...meta } = full;
   void _fd;
-  return meta;
+  return {
+    ...meta,
+    source: meta.source || source || "netease",
+    title: meta.title || "未知歌曲",
+    artist: meta.artist || "未知艺术家",
+  };
 };
 
 export const saveCachedAudio = async (audio: CachedNetworkAudio): Promise<void> => {
@@ -146,7 +151,15 @@ export const getAllCachedAudioMeta = async (): Promise<CachedNetworkAudioMeta[]>
       req.onsuccess = () => resolve((req.result as CachedNetworkAudio[]) ?? []);
       req.onerror = () => reject(req.error);
     });
-    return all.map(({ fileData: _fd, ...meta }) => { void _fd; return meta; });
+    return all.map(({ fileData: _fd, ...meta }) => {
+      void _fd;
+      return {
+        ...meta,
+        source: meta.source || "netease",
+        title: meta.title || "未知歌曲",
+        artist: meta.artist || "未知艺术家",
+      };
+    });
   } catch (e) {
     console.warn("[NetworkAudioCache] getAllCachedAudioMeta error:", e);
     return [];
