@@ -23,12 +23,15 @@ import {
   Check,
   SlidersHorizontal,
   Settings2,
+  Lock,
+  KeyRound,
 } from "lucide-react";
 import type { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
+import { useUserAccountStore, isPlatformLoggedIn, PlatformType } from "@/store/userAccountStore";
 import { multiSourceResolver } from "@/services/MultiSourceResolver";
 import { LXRunner } from "@/lib/sources/lxRunner";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
@@ -669,10 +672,37 @@ export const LxMusicSearchTab: React.FC = () => {
         ) : searchMode === "songs" ? (
           /* 单曲模式表格 */
           processedSongs.length === 0 ? (
-            <div className="h-96 flex flex-col items-center justify-center text-white/40 gap-3">
-              <Music2 className="w-12 h-12 opacity-30" />
-              <p className="text-sm">未检索到相关曲目，请尝试更换关键词或切换音源</p>
-            </div>
+            activeTab !== "all" && activeTab !== "lx_custom" && !isPlatformLoggedIn(activeTab) ? (
+              <div className="h-96 flex flex-col items-center justify-center text-center p-8 space-y-4">
+                <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-300 shadow-lg shadow-amber-500/5">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <div className="space-y-1.5 max-w-md">
+                  <h4 className="text-[17px] font-semibold text-white tracking-tight">
+                    【{SOURCE_TABS.find((t) => t.id === activeTab)?.label || activeTab}】链路未连接
+                  </h4>
+                  <p className="text-[13px] text-white/50 leading-relaxed">
+                    根据平台安全与账号规范，未登录的音乐平台默认关闭网络链路。请先登录账号以开启该平台的专属搜索与母带流解析。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
+                    useUserAccountStore.getState().setIsAccountModalOpen(true);
+                  }}
+                  className="px-6 py-2.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold tracking-tight shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>立即扫码 / 导入 Cookie 开启</span>
+                </button>
+              </div>
+            ) : (
+              <div className="h-96 flex flex-col items-center justify-center text-white/40 gap-3">
+                <Music2 className="w-12 h-12 opacity-30" />
+                <p className="text-sm">未检索到相关曲目，请尝试更换关键词或切换音源</p>
+              </div>
+            )
           ) : (
             <div className="w-full flex-1 overflow-y-auto custom-scrollbar flex flex-col">
               {/* 表头 */}
@@ -870,10 +900,37 @@ export const LxMusicSearchTab: React.FC = () => {
         ) : (
           /* 歌单模式网格 */
           playlistResults.length === 0 ? (
-            <div className="h-96 flex flex-col items-center justify-center text-white/40 gap-3">
-              <FolderHeart className="w-12 h-12 opacity-30" />
-              <p className="text-sm">未检索到相关歌单，请尝试更换关键词</p>
-            </div>
+            activeTab !== "all" && activeTab !== "lx_custom" && !isPlatformLoggedIn(activeTab) ? (
+              <div className="h-96 flex flex-col items-center justify-center text-center p-8 space-y-4">
+                <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-300 shadow-lg shadow-amber-500/5">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <div className="space-y-1.5 max-w-md">
+                  <h4 className="text-[17px] font-semibold text-white tracking-tight">
+                    【{SOURCE_TABS.find((t) => t.id === activeTab)?.label || activeTab}】歌单同步未开启
+                  </h4>
+                  <p className="text-[13px] text-white/50 leading-relaxed">
+                    未登录的音乐平台默认关闭歌单与曲库链路。请先登录该平台账号以开启在线歌单检索与导入功能。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
+                    useUserAccountStore.getState().setIsAccountModalOpen(true);
+                  }}
+                  className="px-6 py-2.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold tracking-tight shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>立即扫码 / 导入 Cookie 开启</span>
+                </button>
+              </div>
+            ) : (
+              <div className="h-96 flex flex-col items-center justify-center text-white/40 gap-3">
+                <FolderHeart className="w-12 h-12 opacity-30" />
+                <p className="text-sm">未检索到相关歌单，请尝试更换关键词</p>
+              </div>
+            )
           ) : (
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
               {playlistResults.map((p, idx) => (

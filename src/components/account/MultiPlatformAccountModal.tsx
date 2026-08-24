@@ -44,6 +44,7 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
     neteaseUser,
     qqUser,
     kugouUser,
+    kuwoUser,
     qishuiUser,
     userPlaylists,
     isLoadingPlaylists,
@@ -187,6 +188,8 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
       ? qqUser
       : activePlatform === "kugou"
       ? kugouUser
+      : activePlatform === "kuwo"
+      ? kuwoUser
       : qishuiUser;
 
   const platformMeta = {
@@ -207,6 +210,12 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
       color: "from-blue-500 to-cyan-600",
       badge: "KUGOU",
       accent: "#0071e3",
+    },
+    kuwo: {
+      name: "酷我音乐",
+      color: "from-amber-500 to-yellow-600",
+      badge: "KUWO",
+      accent: "#f59e0b",
     },
     qishui: {
       name: "汽水音乐",
@@ -250,10 +259,10 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
           </button>
         </div>
 
-        {/* 平台切换 Squircle 药丸栏 (4 Platform Pills) */}
+        {/* 平台切换 Squircle 药丸栏 (5 Platform Pills) */}
         <div className="px-8 pt-4 pb-1">
-          <div className="grid grid-cols-4 gap-2.5 p-1.5 rounded-2xl bg-white/[0.04] border border-white/[0.04]">
-            {(["netease", "qq", "kugou", "qishui"] as PlatformType[]).map((p) => {
+          <div className="grid grid-cols-5 gap-2 p-1.5 rounded-2xl bg-white/[0.04] border border-white/[0.04]">
+            {(["netease", "qq", "kugou", "kuwo", "qishui"] as PlatformType[]).map((p) => {
               const meta = platformMeta[p];
               const isSelected = activePlatform === p;
               const isLogged =
@@ -263,6 +272,8 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
                   ? qqUser.loggedIn
                   : p === "kugou"
                   ? kugouUser.loggedIn
+                  : p === "kuwo"
+                  ? kuwoUser.loggedIn
                   : qishuiUser.loggedIn;
 
               return (
@@ -270,7 +281,7 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
                   key={p}
                   type="button"
                   onClick={() => setActivePlatform(p)}
-                  className={`relative p-2.5 rounded-xl text-left transition-all ${
+                  className={`relative p-2 rounded-xl text-left transition-all ${
                     isSelected
                       ? "bg-white/15 border border-white/10 shadow-sm"
                       : "hover:bg-white/5 border border-transparent"
@@ -278,7 +289,7 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
                 >
                   <div className="flex items-center justify-between">
                     <div
-                      className={`w-3 h-3 rounded-full bg-gradient-to-br ${meta.color} shadow-sm`}
+                      className={`w-2.5 h-2.5 rounded-full bg-gradient-to-br ${meta.color} shadow-sm`}
                     />
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
@@ -286,7 +297,7 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
                       }`}
                     />
                   </div>
-                  <div className="text-[13px] font-medium text-white mt-1.5 tracking-tight truncate">
+                  <div className="text-[12px] font-medium text-white mt-1.5 tracking-tight truncate">
                     {meta.name}
                   </div>
                   <div className="text-[10px] text-[#86868b] font-mono mt-0.5 truncate">
@@ -546,7 +557,13 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
                       placeholder={
                         activePlatform === "netease"
                           ? "MUSIC_U=xxx; __csrf=xxx..."
-                          : "uin=xxx; qm_keyst=xxx..."
+                          : activePlatform === "qq"
+                          ? "uin=xxx; qm_keyst=xxx..."
+                          : activePlatform === "kugou"
+                          ? "KuGou=xxx; kg_mid=xxx..."
+                          : activePlatform === "kuwo"
+                          ? "kw_token=xxx; Hm_lvt_xxx..."
+                          : "session_id=xxx; token=xxx..."
                       }
                       rows={3}
                       className="w-full p-3 rounded-xl bg-black/40 border border-white/10 text-[12px] text-white font-mono focus:outline-none focus:border-[#0071e3]"

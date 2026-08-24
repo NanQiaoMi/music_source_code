@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
+  const qqCookie = request.headers.get("x-qq-cookie") || request.headers.get("cookie") || "";
+  if (!qqCookie || qqCookie.trim().length < 5) {
+    return NextResponse.json(
+      { code: 401, message: "QQ Music authentication required. Please login with Cookie." },
+      { status: 401 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const mid = searchParams.get("mid") || searchParams.get("id") || "";
   const title = searchParams.get("title") || searchParams.get("name") || "";
@@ -13,7 +21,10 @@ export async function GET(request: NextRequest) {
     try {
       const crossRes = await fetch(
         `${origin}/api/song/url?name=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}&id=${mid}`,
-        { signal: AbortSignal.timeout(3000) }
+        {
+          signal: AbortSignal.timeout(3000),
+          headers: { "x-qq-cookie": qqCookie },
+        }
       );
       if (crossRes.ok) {
         const crossData = await crossRes.json();
@@ -34,3 +45,4 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ url: "", code: 404, message: "QQ song stream not found" });
 }
+
