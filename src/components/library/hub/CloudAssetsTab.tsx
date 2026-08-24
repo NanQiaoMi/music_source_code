@@ -47,15 +47,25 @@ export const CloudAssetsTab: React.FC = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const handleOpenPlaylistDetail = (pl: any) => {
+    const userForSource =
+      pl.source === "netease"
+        ? neteaseUser
+        : pl.source === "qq"
+        ? qqUser
+        : pl.source === "kugou"
+        ? kugouUser
+        : qishuiUser;
+
     setSelectedDrawerPlaylist({
       id: String(pl.id),
       name: pl.name || "云端歌单",
       coverImgUrl: pl.coverImgUrl || "/default-cover.svg",
-      creatorName: pl.source === "netease" ? "网易云音乐" : pl.source === "qq" ? "QQ音乐" : "云端资产",
+      creatorName: userForSource?.nickname || (pl.source === "netease" ? "网易云音乐" : pl.source === "qq" ? "QQ音乐" : "云端资产"),
+      creatorAvatarUrl: userForSource?.avatarUrl,
       playCount: pl.playCount || 0,
       trackCount: pl.trackCount || 0,
       source: pl.source || "netease",
-      description: pl.description || "多平台已授权同步云歌单",
+      description: pl.description || "多平台已授权同步云歌单，包含完整母带音频解析与离线缓存支持",
     });
     setIsDrawerOpen(true);
   };
