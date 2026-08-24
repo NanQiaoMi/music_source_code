@@ -326,17 +326,17 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
     // ─── 3. 晴空白鹭 · 仙鹤群飞 ───
     drawFlockOfCranes(context, priv.cranes, scrollX, scrollY, scrollW, scrollH, t, priv.smoothTreble);
 
-    // ─── 4. 6 重宋画《千里江山》水墨层峦 (千峰竞秀 · 叠嶂嵯峨 · 斧劈皴与立体向背) ───
+    // ─── 4. 6 重宋画《千里江山》水墨层峦 (连绵云山 · 优雅起伏 · 泥金微光) ───
     const breathFactor = mountainBreath * priv.smoothBass;
     const midVibe = priv.smoothMid * 5;
 
     const mountainPalette = [
-      { fillTop: "#1a5060", fillBottom: "#0b2630", alpha: 0.60, baseY: 0.13, speed: 0.18 },
-      { fillTop: "#155e70", fillBottom: "#092d38", alpha: 0.72, baseY: 0.18, speed: 0.28 },
-      { fillTop: "#126d66", fillBottom: "#073431", alpha: 0.82, baseY: 0.23, speed: 0.40 },
-      { fillTop: "#117c69", fillBottom: "#073d33", alpha: 0.90, baseY: 0.28, speed: 0.54 },
-      { fillTop: "#0e6e58", fillBottom: "#053428", alpha: 0.96, baseY: 0.32, speed: 0.68 },
-      { fillTop: "#0b5744", fillBottom: "#04241b", alpha: 1.00, baseY: 0.36, speed: 0.84 },
+      { fillTop: "#1a5060", fillBottom: "#0c2b36", alpha: 0.62, baseY: 0.13, speed: 0.22 },
+      { fillTop: "#155e70", fillBottom: "#0a3340", alpha: 0.75, baseY: 0.18, speed: 0.32 },
+      { fillTop: "#126d66", fillBottom: "#083a37", alpha: 0.84, baseY: 0.23, speed: 0.44 },
+      { fillTop: "#117c69", fillBottom: "#084439", alpha: 0.92, baseY: 0.29, speed: 0.58 },
+      { fillTop: "#0e6e58", fillBottom: "#063b2e", alpha: 0.96, baseY: 0.33, speed: 0.72 },
+      { fillTop: "#0b5744", fillBottom: "#042a20", alpha: 1.00, baseY: 0.37, speed: 0.88 },
     ];
 
     for (let layer = 0; layer < 6; layer++) {
@@ -344,7 +344,7 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
       const layerDepth = (layer + 1) / 6;
       const basePeakHeight = scrollH * (config.baseY * 0.85);
       const layerTime = t * config.speed;
-      const layerAmp = (basePeakHeight * 0.35 + breathFactor * 12 * layerDepth) * (1 + (layer >= 3 ? midVibe * 0.02 : 0));
+      const layerAmp = (basePeakHeight * 0.32 + breathFactor * 14 * layerDepth) * (1 + (layer >= 3 ? midVibe * 0.02 : 0));
 
       context.beginPath();
       context.moveTo(scrollX, bottomY);
@@ -358,27 +358,13 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
         if (ptIndex >= MAX_MOUNTAIN_POINTS) break;
         const normX = (x - scrollX) / scrollW;
 
-        // ─── 宋画千峰耸立与多峰折叠算法 (Gothic Crags & Multi-Summit Harmonics) ───
-        const freqBase = 3.2 + layer * 0.8;
-        const phase1 = layerTime + layer * 1.7;
-        const phase2 = -layerTime * 0.5 + layer * 2.3;
-
-        // 1. 尖耸折线主峰
-        const sinP1 = Math.sin(normX * freqBase + phase1);
-        const sharpPeak1 = (1.0 - Math.pow(Math.abs(sinP1), 0.75)) * Math.sign(sinP1) * 0.48;
-
-        // 2. 次级陡峭岩壁
-        const cosP2 = Math.cos(normX * (freqBase * 2.1) + phase2);
-        const sharpPeak2 = (Math.pow(Math.abs(cosP2), 1.4) * Math.sign(cosP2)) * 0.28;
-
-        // 3. 斧劈山石细密褶皱
-        const sinP3 = Math.sin(normX * 13.5 + layerTime * 1.1);
-        const rockTexture = (1.0 - Math.abs(sinP3)) * 0.14;
-
-        // 4. 微观山石起伏
-        const microCrag = Math.cos(normX * 28.0 - layerTime * 1.5) * 0.05;
-
-        const mountainCurve = sharpPeak1 + sharpPeak2 + rockTexture + microCrag;
+        // 经典优雅宋画层峦连绵谐波
+        const h1 = Math.sin(normX * (2.4 + layer * 1.1) + layerTime + layer * 1.6);
+        const cosVal = Math.cos(normX * (5.5 + layer * 1.5) - layerTime * 0.4 + layer);
+        const h2 = Math.cos(normX * (5.5 + layer * 1.5) - layerTime * 0.4 + layer);
+        const h3 = Math.sin(normX * 11.0 + layerTime * 0.9) * 0.22;
+        const h4 = Math.cos(normX * 20.0 - layerTime * 1.4) * 0.08;
+        const mountainCurve = (h1 * 0.60 + h2 * 0.28 + h3 * 0.08 + h4 * 0.04);
 
         const y = waterY - basePeakHeight - mountainCurve * layerAmp;
         ptsX[ptIndex] = x;
@@ -393,43 +379,18 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
 
       const mtnGrad = context.createLinearGradient(
         scrollX + scrollW * 0.22,
-        waterY - basePeakHeight * 1.35,
+        waterY - basePeakHeight * 1.3,
         scrollX + scrollW * 0.35,
         waterY + scrollH * 0.32
       );
       mtnGrad.addColorStop(0, config.fillTop);
-      mtnGrad.addColorStop(0.35, config.fillTop);
-      mtnGrad.addColorStop(0.65, config.fillBottom);
-      mtnGrad.addColorStop(0.88, "#05181e");
-      mtnGrad.addColorStop(1, "#020a0d");
+      mtnGrad.addColorStop(0.45, config.fillBottom);
+      mtnGrad.addColorStop(0.85, "#061c22");
+      mtnGrad.addColorStop(1, "#030f13");
 
       context.fillStyle = mtnGrad;
       context.globalAlpha = config.alpha;
       context.fill();
-
-      // 山体立体向背分染
-      if (layer >= 2 && ptIndex > 10) {
-        context.save();
-        context.beginPath();
-        context.moveTo(ptsX[0], ptsY[0]);
-        for (let i = 0; i < ptIndex; i += 2) {
-          const px = ptsX[i];
-          const py = ptsY[i];
-          const shadowDepth = Math.sin((px - scrollX) * 0.02 + layer) > 0 ? 12 : 3;
-          context.lineTo(px, Math.min(waterY + 10, py + shadowDepth));
-        }
-        context.lineTo(scrollX + scrollW, bottomY);
-        context.lineTo(scrollX, bottomY);
-        context.closePath();
-
-        const shadowGrad = context.createLinearGradient(0, waterY - basePeakHeight, 0, waterY);
-        shadowGrad.addColorStop(0, "rgba(2, 10, 14, 0.25)");
-        shadowGrad.addColorStop(1, "rgba(2, 10, 14, 0.65)");
-        context.fillStyle = shadowGrad;
-        context.globalAlpha = config.alpha * 0.45;
-        context.fill();
-        context.restore();
-      }
 
       if (layer >= 2) {
         context.save();
