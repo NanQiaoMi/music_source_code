@@ -37,26 +37,16 @@ const formatTime = (seconds: number): string => {
 };
 
 export const GlobalPlayerBar: React.FC = () => {
-  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
-  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
-  const isPlaying = audioIsPlaying || playerIsPlaying;
-
-  const audioCurrentTime = useAudioStore((state) => state.currentTime);
-  const playerCurrentTime = usePlayerStore((state) => state.currentTime);
-  const currentTime = audioCurrentTime || playerCurrentTime || 0;
-
+  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const currentTime = useAudioStore((state) => state.currentTime);
   const audioDuration = useAudioStore((state) => state.duration);
-  const playerDuration = usePlayerStore((state) => state.duration);
-  const duration = audioDuration || playerDuration || 0;
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const duration = audioDuration || currentSong?.duration || 0;
 
   const volume = useAudioStore((state) => state.volume);
   const isMuted = useAudioStore((state) => state.isMuted);
+  const isLoading = useAudioStore((state) => state.isLoading);
 
-  const audioSong = useAudioStore((state) => state.currentSong);
-  const playerSong = usePlayerStore((state) => state.currentSong);
-  const currentSong = audioSong || playerSong;
-
-  const isLoading = useAudioStore((state) => state.isLoading) || usePlayerStore((state) => state.isLoading);
   const handleTogglePlay = () => {
     const nextPlaying = !isPlaying;
     useAudioStore.getState().setIsPlaying(nextPlaying);

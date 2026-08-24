@@ -707,6 +707,12 @@ registerAudioStoreSync((playerState) => {
   if (playerState.currentSong !== undefined && playerState.currentSong?.id !== currentAudio.currentSong?.id) {
     updates.currentSong = playerState.currentSong;
   }
+  if (playerState.currentTime !== undefined && playerState.currentTime !== currentAudio.currentTime) {
+    updates.currentTime = playerState.currentTime;
+  }
+  if (playerState.duration !== undefined && playerState.duration !== currentAudio.duration) {
+    updates.duration = playerState.duration;
+  }
   if (playerState.isLoading !== undefined && playerState.isLoading !== currentAudio.isLoading) {
     updates.isLoading = playerState.isLoading;
   }
@@ -722,10 +728,44 @@ registerAudioStoreSync((playerState) => {
   if (playerState.loopMode !== undefined && playerState.loopMode !== currentAudio.loopMode) {
     updates.loopMode = playerState.loopMode;
   }
-  if (playerState.duration !== undefined && playerState.duration !== currentAudio.duration) {
-    updates.duration = playerState.duration;
-  }
   if (Object.keys(updates).length > 0) {
     useAudioStore.setState(updates);
   }
 });
+
+// 监听 audioStore 状态变化并同步至 playerStore
+useAudioStore.subscribe((state, prev) => {
+  const playerState = usePlayerStore.getState();
+  const updates: Partial<typeof playerState> = {};
+  if (state.isPlaying !== prev.isPlaying && state.isPlaying !== playerState.isPlaying) {
+    updates.isPlaying = state.isPlaying;
+  }
+  if (state.currentSong?.id !== prev.currentSong?.id && state.currentSong?.id !== playerState.currentSong?.id) {
+    updates.currentSong = state.currentSong;
+  }
+  if (state.currentTime !== prev.currentTime && state.currentTime !== playerState.currentTime) {
+    updates.currentTime = state.currentTime;
+  }
+  if (state.duration !== prev.duration && state.duration !== playerState.duration) {
+    updates.duration = state.duration;
+  }
+  if (state.isLoading !== prev.isLoading && state.isLoading !== playerState.isLoading) {
+    updates.isLoading = state.isLoading;
+  }
+  if (state.volume !== prev.volume && state.volume !== playerState.volume) {
+    updates.volume = state.volume;
+  }
+  if (state.isMuted !== prev.isMuted && state.isMuted !== playerState.isMuted) {
+    updates.isMuted = state.isMuted;
+  }
+  if (state.playbackRate !== prev.playbackRate && state.playbackRate !== playerState.playbackRate) {
+    updates.playbackRate = state.playbackRate;
+  }
+  if (state.loopMode !== prev.loopMode && state.loopMode !== playerState.loopMode) {
+    updates.loopMode = state.loopMode;
+  }
+  if (Object.keys(updates).length > 0) {
+    usePlayerStore.setState(updates);
+  }
+});
+

@@ -16,16 +16,12 @@ export const DarkCinemaFloatingCard: React.FC<DarkCinemaFloatingCardProps> = ({
   className = "",
   onExpand,
 }) => {
-  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
-  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
-  const isPlaying = audioIsPlaying || playerIsPlaying;
+  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const currentTime = useAudioStore((state) => state.currentTime);
+  const audioDuration = useAudioStore((state) => state.duration);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const duration = audioDuration || currentSong?.duration || 0;
 
-  const currentTime = useAudioStore((state) => state.currentTime) || usePlayerStore((state) => state.currentTime) || 0;
-  const duration = useAudioStore((state) => state.duration) || usePlayerStore((state) => state.duration) || 0;
-
-  const audioSong = useAudioStore((state) => state.currentSong);
-  const playerSong = usePlayerStore((state) => state.currentSong);
-  const currentSong = audioSong || playerSong;
 
   const title = currentSong?.title || "后来你好吗";
   const artist = currentSong?.artist || "A-Lin [music]";

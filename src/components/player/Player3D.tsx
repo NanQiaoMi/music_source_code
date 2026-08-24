@@ -309,25 +309,12 @@ CoverWith3DEffect.displayName = "CoverWith3DEffect";
 
 export const Player3D: React.FC = () => {
   const shouldReduceMotion = useReducedMotion();
-  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
-  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
-  const isPlaying = audioIsPlaying || playerIsPlaying;
-
-  const audioCurrentTime = useAudioStore((state) => state.currentTime);
-  const playerCurrentTime = usePlayerStore((state) => state.currentTime);
-  const currentTime = audioCurrentTime || playerCurrentTime || 0;
-
+  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const currentTime = useAudioStore((state) => state.currentTime);
   const audioDuration = useAudioStore((state) => state.duration);
-  const playerDuration = usePlayerStore((state) => state.duration);
-  const songDuration =
-    useAudioStore((state) => state.currentSong?.duration) ||
-    usePlayerStore((state) => state.currentSong?.duration) ||
-    0;
-  const duration = audioDuration || playerDuration || songDuration || 0;
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const duration = audioDuration || currentSong?.duration || 0;
 
-  const audioSong = useAudioStore((state) => state.currentSong);
-  const playerSong = usePlayerStore((state) => state.currentSong);
-  const currentSong = audioSong || playerSong;
   const bufferedRanges = useAudioStore((state) => state.bufferedRanges);
   const { themeColors } = useAlbumTheme(currentSong?.cover);
   const isLoading = useAudioStore((state) => state.isLoading);

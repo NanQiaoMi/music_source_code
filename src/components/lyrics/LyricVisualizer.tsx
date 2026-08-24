@@ -197,7 +197,10 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
                 transition={
                   shouldReduceMotion ? { duration: 0 } : { duration: 0.5, ease: "easeOut" }
                 }
-                className={`flex flex-col ${alignmentClass} transition-colors duration-500`}
+                onClick={() => useAudioStore.getState().seekTo(lyric.time)}
+                title="点击跳转至此句播放"
+                className={`flex flex-col ${alignmentClass} transition-colors duration-500 cursor-pointer hover:opacity-90 active:scale-98`}
+
               >
                 <p
                   className={`${fontFamilyClass} leading-snug`}

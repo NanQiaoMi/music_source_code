@@ -130,8 +130,6 @@ export const usePlayerStore = create<PlayerState>()(
       storage: createJSONStorage(() => createSafeStorage("player-store")),
       partialize: (state) => ({
         currentSong: state.currentSong ? sanitizeSongForStorage(state.currentSong) : null,
-        currentTime: state.currentTime,
-        duration: state.duration,
         volume: state.volume,
         isMuted: state.isMuted,
         playbackRate: state.playbackRate,
@@ -141,15 +139,20 @@ export const usePlayerStore = create<PlayerState>()(
   )
 );
 
-// 监听直接 setState 的变化
+// 监听直接 setState 的变化，并实时双向同步至 audioStore
 usePlayerStore.subscribe((state, prev) => {
-  if (state.isPlaying !== prev.isPlaying) {
-    audioStoreSyncListener?.({ isPlaying: state.isPlaying });
-  }
-  if (state.currentSong?.id !== prev.currentSong?.id) {
-    audioStoreSyncListener?.({ currentSong: state.currentSong });
-  }
-  if (state.isLoading !== prev.isLoading) {
-    audioStoreSyncListener?.({ isLoading: state.isLoading });
+  const updates: Partial<PlayerState> = {};
+  if (state.isPlaying !== prev.isPlaying) updates.isPlaying = state.isPlaying;
+  if (state.currentSong?.id !== prev.currentSong?.id) updates.currentSong = state.currentSong;
+  if (state.currentTime !== prev.currentTime) updates.currentTime = state.currentTime;
+  if (state.duration !== prev.duration) updates.duration = state.duration;
+  if (state.isLoading !== prev.isLoading) updates.isLoading = state.isLoading;
+  if (state.volume !== prev.volume) updates.volume = state.volume;
+  if (state.isMuted !== prev.isMuted) updates.isMuted = state.isMuted;
+  if (state.playbackRate !== prev.playbackRate) updates.playbackRate = state.playbackRate;
+  if (state.loopMode !== prev.loopMode) updates.loopMode = state.loopMode;
+  if (Object.keys(updates).length > 0) {
+    audioStoreSyncListener?.(updates);
   }
 });
+

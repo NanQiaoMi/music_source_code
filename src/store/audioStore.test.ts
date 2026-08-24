@@ -184,4 +184,25 @@ describe("audioStore playback sync", () => {
 
     registerAudioSeekHandler(null);
   });
+
+  it("should bidirectionally sync currentTime between audioStore and playerStore", () => {
+    usePlayerStore.getState().setCurrentTime(88.2);
+    expect(useAudioStore.getState().currentTime).toBe(88.2);
+    expect(usePlayerStore.getState().currentTime).toBe(88.2);
+
+    useAudioStore.getState().setCurrentTime(12.5);
+    expect(useAudioStore.getState().currentTime).toBe(12.5);
+    expect(usePlayerStore.getState().currentTime).toBe(12.5);
+  });
+
+  it("should bidirectionally sync duration between audioStore and playerStore", () => {
+    usePlayerStore.getState().setDuration(320);
+    expect(useAudioStore.getState().duration).toBe(320);
+    expect(usePlayerStore.getState().duration).toBe(320);
+
+    useAudioStore.getState().setDuration(195);
+    expect(useAudioStore.getState().duration).toBe(195);
+    expect(usePlayerStore.getState().duration).toBe(195);
+  });
 });
+

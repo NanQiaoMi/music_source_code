@@ -202,8 +202,10 @@ const attachListeners = (
 
   const onTimeUpdate = () => {
     const t = audio.currentTime;
-    useAudioStore.getState().setCurrentTime(t);
-    usePlayerStore.getState().setCurrentTime(t);
+    if (Number.isFinite(t)) {
+      useAudioStore.setState({ currentTime: t });
+      usePlayerStore.setState({ currentTime: t });
+    }
 
     const abState = useABLoopStore.getState();
     if (abState.isEnabled && abState.pointA !== null && abState.pointB !== null) {
@@ -227,12 +229,13 @@ const attachListeners = (
   };
   const onLoadedMetadata = () => {
     const d = audio.duration;
-    if (d && !isNaN(d)) {
-      useAudioStore.getState().setDuration(d);
-      usePlayerStore.getState().setDuration(d);
+    if (d && !isNaN(d) && Number.isFinite(d)) {
+      useAudioStore.setState({ duration: d });
+      usePlayerStore.setState({ duration: d });
     }
-    useAudioStore.getState().setIsLoading(false);
-    usePlayerStore.getState().setIsLoading(false);
+    useAudioStore.setState({ isLoading: false });
+    usePlayerStore.setState({ isLoading: false });
+
 
     // 智能防试听截断：若加载出的流时长 <= 95s (如 30s/60s VIP试听)，自动抢救全网完整母带
     // 使用防重入标志避免抢救后 audio.load() 再次触发 onLoadedMetadata 形成死循环
@@ -576,6 +579,13 @@ export const useAudioPlayer = () => {
           const maxTime = Number.isFinite(activeAudio.duration) && activeAudio.duration > 0 ? activeAudio.duration : time;
           const clamped = Math.max(0, Math.min(time, maxTime));
           activeAudio.currentTime = clamped;
+          useAudioStore.setState({ currentTime: clamped });
+          usePlayerStore.setState({ currentTime: clamped });
+        } catch {}
+      }
+      if (secondaryElementRef.current) {
+        try {
+          secondaryElementRef.current.currentTime = time;
         } catch {}
       }
     });
@@ -596,13 +606,15 @@ export const useAudioPlayer = () => {
     }
 
     // Sync current values if already loaded
-    if (audio.duration && !isNaN(audio.duration)) {
+    if (audio.duration && !isNaN(audio.duration) && Number.isFinite(audio.duration)) {
       setDuration(audio.duration);
-      useAudioStore.getState().setDuration(audio.duration);
+      useAudioStore.setState({ duration: audio.duration });
+      usePlayerStore.setState({ duration: audio.duration });
     }
-    if (audio.currentTime) {
+    if (audio.currentTime !== undefined && !isNaN(audio.currentTime) && Number.isFinite(audio.currentTime)) {
       setCurrentTime(audio.currentTime);
-      useAudioStore.getState().setCurrentTime(audio.currentTime);
+      useAudioStore.setState({ currentTime: audio.currentTime });
+      usePlayerStore.setState({ currentTime: audio.currentTime });
     }
 
     return () => {
@@ -612,6 +624,7 @@ export const useAudioPlayer = () => {
       }
     };
   }, [audioElement, handlePlayError, setDuration, setCurrentTime]);
+
 
   // 同步原生 HTMLAudioElement 的 loop 属性与单曲循环状态
   useEffect(() => {
@@ -692,7 +705,13 @@ export const useAudioPlayer = () => {
         lastToastSongIdRef.current = null;
         rescueInProgressRef.current = false;
         rescuedUrlsRef.current.clear();
+        useAudioStore.setState({ currentTime: 0 });
+        usePlayerStore.setState({ currentTime: 0 });
+        if (audio) {
+          audio.currentTime = 0;
+        }
       }
+
 
       try {
         let audioUrl = currentSong.audioUrl?.trim();
