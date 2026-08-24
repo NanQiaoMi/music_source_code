@@ -30,6 +30,8 @@ import { StarFieldV8Effect } from "./StarFieldV8";
 import { TunnelFlightV8Effect } from "./TunnelFlightV8";
 import { VibrationGeometryV8Effect } from "./VibrationGeometryV8";
 import { KineticParticleStageV8Effect } from "./KineticParticleStageV8";
+import { CinematicOrientalInkEffect } from "./CinematicOrientalInkEffect";
+import { OrientalLandscapeV8Effect } from "./OrientalLandscapeV8";
 
 export {
   SpectrumV8Effect,
@@ -59,6 +61,8 @@ export {
   AudioShapeV8Effect,
   SpectrumWaterfallV8Effect,
   SpringSystemV8Effect,
+  CinematicOrientalInkEffect,
+  OrientalLandscapeV8Effect,
 };
 
 export const effectsRegistry: EffectPlugin[] = [];

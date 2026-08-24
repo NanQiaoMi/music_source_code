@@ -99,6 +99,29 @@ export const usePresetStore = create<PresetStore>((set, get) => ({
   loadSystemPresets: () => {
     const systemPresets: EffectPreset[] = [
       {
+        id: "oriental-landscape-default",
+        name: "青绿千里 · 电影画卷",
+        description: "东方水墨重彩与电影级丁达尔神光远山画卷，专为纯音乐与国风定制",
+        effectId: "oriental-landscape-v8",
+        tags: ["国风", "电影感", "古风", "纯音乐"],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        isSystem: true,
+        isFavorite: true,
+        parameters: {
+          lightRays: 1.0,
+          mountainBreath: 1.0,
+          waterRipple: 1.0,
+          scrollUnroll: 1.0,
+          colorTheme: "peacock",
+          filmGrain: 0.35,
+          positionX: 0,
+          positionY: 0,
+          scale: 1,
+          rotation: 0,
+        },
+      },
+      {
         id: "spectrum-default",
         name: "频谱 - 默认",
         description: "经典频谱可视化效果",
