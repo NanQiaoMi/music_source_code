@@ -33,44 +33,67 @@ interface DustParticle {
   phase: number;
 }
 
+interface MistPuff {
+  x: number;
+  y: number;
+  vx: number;
+  radius: number;
+  alpha: number;
+  phase: number;
+}
+
 let localRipples: WaterRipple[] = [];
 let localPetals: GoldenPetal[] = [];
 let localParticles: DustParticle[] = [];
+let localMistPuffs: MistPuff[] = [];
 let lastRippleTime = 0;
 let initialized = false;
 
-// 平滑阻尼追踪器 (EMA Damping: 45)
+// 平滑阻尼追踪器 (EMA Damping: 40)
 let smoothBass = 0;
 let smoothMid = 0;
 let smoothTreble = 0;
 let smoothEnergy = 0;
 
-function initLivingElements(width: number, height: number) {
+function initLivingElements(width: number, height: number, waterY: number) {
   localParticles = [];
-  for (let i = 0; i < 45; i++) {
+  for (let i = 0; i < 40; i++) {
     localParticles.push({
       x: Math.random() * width,
       y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.25,
-      vy: -Math.random() * 0.35 - 0.1,
-      size: Math.random() * 2.0 + 0.6,
-      alpha: Math.random() * 0.5 + 0.2,
+      vx: (Math.random() - 0.5) * 0.2,
+      vy: -Math.random() * 0.3 - 0.08,
+      size: Math.random() * 1.8 + 0.6,
+      alpha: Math.random() * 0.45 + 0.15,
       phase: Math.random() * Math.PI * 2,
     });
   }
 
   localPetals = [];
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 14; i++) {
     localPetals.push({
       x: Math.random() * width,
       y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.35 + 0.15,
-      vy: Math.random() * 0.3 + 0.15,
-      size: Math.random() * 3.8 + 2.0,
-      alpha: Math.random() * 0.25 + 0.12, // 细腻半透明 (12%~37%)
+      vx: (Math.random() - 0.5) * 0.3 + 0.12,
+      vy: Math.random() * 0.25 + 0.12,
+      size: Math.random() * 3.5 + 1.8,
+      alpha: Math.random() * 0.22 + 0.1, // 细腻半透明 (10%~32%)
       rotation: Math.random() * Math.PI * 2,
-      vRot: (Math.random() - 0.5) * 0.025,
+      vRot: (Math.random() - 0.5) * 0.02,
       aspect: 0.35 + Math.random() * 0.35,
+      phase: Math.random() * Math.PI * 2,
+    });
+  }
+
+  // 水天交界处的 10 个独立飘动的高斯水雾团 (彻底替代生硬横条)
+  localMistPuffs = [];
+  for (let i = 0; i < 10; i++) {
+    localMistPuffs.push({
+      x: Math.random() * width,
+      y: waterY + (Math.random() - 0.5) * 28,
+      vx: (Math.random() - 0.5) * 0.18 + 0.08,
+      radius: Math.random() * 90 + 70,
+      alpha: Math.random() * 0.10 + 0.06,
       phase: Math.random() * Math.PI * 2,
     });
   }
@@ -81,10 +104,10 @@ function initLivingElements(width: number, height: number) {
 /**
  * 120 FPS 宋画清幽 · 电影级柔焦水墨长卷 (Oriental Serene Landscape)
  * 极致清幽优雅：
- * 1. 彻底去除红色印章，改用天际极简淡金诗意留白；
- * 2. 彻底消除几何硬线条与多边形光束，改用宋代《千里江山》米家云山水墨层峦与全柔焦高斯体积雾光；
- * 3. 水天融界无硬切线，山脚低空漫雾缭绕，水镜倒影浑然天成；
- * 4. 半透明轻柔落英、一叶孤舟与微茫渔火，悠扬清幽、极具文人雅趣。
+ * 1. 彻底清除所有水平矩形发光条与生硬带状雾层，杜绝任何直角与直线截断；
+ * 2. 依附山坳峡谷的有机流动云岫与晨曦透光（Mountain Saddle Pass Glow）；
+ * 3. 水天交界处采用多团半透明高斯圆形水雾自然弥散，烟波浩渺；
+ * 4. 水波粼粼碎金采用余弦两端羽化，浑然一体。
  */
 export function drawOrientalLandscape(context: EffectContext): void {
   const { ctx, width, height, data, time, params } = context;
@@ -96,7 +119,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
   const goldGlow = params?.goldGlow ?? 1.0;
   const filmVignette = params?.filmVignette ?? 0.65;
 
-  // 1. 低通音频平滑滤波 (EMA Filtering, Damping: 45)
+  // 1. 低通音频平滑滤波 (EMA Filtering, Damping: 40)
   let bassSum = 0;
   let midSum = 0;
   let trebleSum = 0;
@@ -113,32 +136,47 @@ export function drawOrientalLandscape(context: EffectContext): void {
   const rawTreble = trebleSum / ((trebleEnd - midEnd) * 255 || 1);
   const rawEnergy = rawBass * 0.4 + rawMid * 0.4 + rawTreble * 0.2;
 
-  smoothBass += (rawBass - smoothBass) * 0.045;
-  smoothMid += (rawMid - smoothMid) * 0.065;
-  smoothTreble += (rawTreble - smoothTreble) * 0.085;
-  smoothEnergy += (rawEnergy - smoothEnergy) * 0.055;
+  smoothBass += (rawBass - smoothBass) * 0.04;
+  smoothMid += (rawMid - smoothMid) * 0.06;
+  smoothTreble += (rawTreble - smoothTreble) * 0.08;
+  smoothEnergy += (rawEnergy - smoothEnergy) * 0.05;
 
   if (context.refs.smoothBass) context.refs.smoothBass.current = smoothBass;
   if (context.refs.smoothMid) context.refs.smoothMid.current = smoothMid;
   if (context.refs.smoothTreble) context.refs.smoothTreble.current = smoothTreble;
 
-  const t = time * 0.00075;
+  const t = time * 0.0007;
 
-  if (!initialized || localParticles.length === 0) {
-    initLivingElements(width, height);
+  // ─── 2. 2.35:1 宽银幕电影绢帛画幅尺寸计算 ───
+  const maxScrollW = width * 0.92;
+  const targetAspect = 2.35;
+  let scrollW = maxScrollW;
+  let scrollH = scrollW / targetAspect;
+
+  if (scrollH > height * 0.78) {
+    scrollH = height * 0.78;
+    scrollW = scrollH * targetAspect;
   }
 
-  // 泛音微波涟漪生成 (柔和细腻)
-  if (smoothTreble > 0.35 && t - lastRippleTime > 0.28) {
+  const scrollX = (width - scrollW) / 2;
+  const scrollY = (height - scrollH) / 2;
+  const waterY = scrollY + scrollH * 0.58;
+
+  if (!initialized || localParticles.length === 0) {
+    initLivingElements(width, height, waterY);
+  }
+
+  // 泛音微波涟漪生成
+  if (smoothTreble > 0.36 && t - lastRippleTime > 0.30) {
     lastRippleTime = t;
-    if (localRipples.length < 6) {
+    if (localRipples.length < 5) {
       localRipples.push({
-        x: width * (0.35 + Math.random() * 0.38),
-        y: height * (0.64 + Math.random() * 0.12),
-        radius: 6,
-        maxRadius: Math.min(width, height) * 0.28,
-        alpha: 0.75 * waterRipple,
-        speed: 1.4 + smoothTreble * 2.0,
+        x: width * (0.36 + Math.random() * 0.36),
+        y: waterY + 20 + Math.random() * 35,
+        radius: 4,
+        maxRadius: Math.min(width, height) * 0.25,
+        alpha: 0.65 * waterRipple,
+        speed: 1.2 + smoothTreble * 1.8,
       });
     }
   }
@@ -157,26 +195,13 @@ export function drawOrientalLandscape(context: EffectContext): void {
     height * 0.46,
     width * 0.75
   );
-  ambientGlow.addColorStop(0, "rgba(8, 48, 64, 0.25)");
-  ambientGlow.addColorStop(0.5, "rgba(12, 54, 50, 0.12)");
+  ambientGlow.addColorStop(0, "rgba(8, 48, 64, 0.22)");
+  ambientGlow.addColorStop(0.5, "rgba(12, 54, 50, 0.10)");
   ambientGlow.addColorStop(1, "rgba(4, 7, 10, 0)");
   ctx.fillStyle = ambientGlow;
   ctx.fillRect(0, 0, width, height);
 
-  // ─── 2. 2.35:1 宽银幕电影绢帛画幅 (无生硬外框，自然羽化融入暗夜) ───
-  const maxScrollW = width * 0.92;
-  const targetAspect = 2.35;
-  let scrollW = maxScrollW;
-  let scrollH = scrollW / targetAspect;
-
-  if (scrollH > height * 0.78) {
-    scrollH = height * 0.78;
-    scrollW = scrollH * targetAspect;
-  }
-
-  const scrollX = (width - scrollW) / 2;
-  const scrollY = (height - scrollH) / 2;
-
+  // ─── 2. 画卷内部裁剪 ───
   ctx.save();
   ctx.beginPath();
   roundRect(ctx, scrollX, scrollY, scrollW, scrollH, 16);
@@ -192,30 +217,26 @@ export function drawOrientalLandscape(context: EffectContext): void {
   ctx.fillStyle = skyGrad;
   ctx.fillRect(scrollX, scrollY, scrollW, scrollH);
 
-  // 天际晨曦温润月白/淡金漫射晕 (Soft Dawn Atmosphere)
+  // 天际晨曦温润漫射晕 (Soft Dawn Atmosphere)
   const dawnGlow = ctx.createRadialGradient(
-    scrollX + scrollW * 0.22,
-    scrollY + scrollH * 0.18,
+    scrollX + scrollW * 0.20,
+    scrollY + scrollH * 0.15,
     10,
-    scrollX + scrollW * 0.22,
-    scrollY + scrollH * 0.18,
-    scrollW * 0.55
+    scrollX + scrollW * 0.20,
+    scrollY + scrollH * 0.15,
+    scrollW * 0.50
   );
-  dawnGlow.addColorStop(0, `rgba(254, 240, 138, ${0.22 * lightRays})`);
-  dawnGlow.addColorStop(0.4, `rgba(245, 158, 11, ${0.08 * lightRays})`);
-  dawnGlow.addColorStop(0.75, "rgba(56, 189, 248, 0.03)");
+  dawnGlow.addColorStop(0, `rgba(254, 240, 138, ${0.20 * lightRays})`);
+  dawnGlow.addColorStop(0.4, `rgba(245, 158, 11, ${0.07 * lightRays})`);
+  dawnGlow.addColorStop(0.8, "rgba(56, 189, 248, 0.02)");
   dawnGlow.addColorStop(1, "rgba(5, 14, 20, 0)");
   ctx.fillStyle = dawnGlow;
   ctx.fillRect(scrollX, scrollY, scrollW, scrollH);
 
-  // 水天融界 Y 坐标（柔和过渡区）
-  const waterY = scrollY + scrollH * 0.58;
-
-  // ─── 3. 6 重宋画《千里江山》水墨层峦 (Misty Mountain Silhouettes, Zero Hard Lines) ───
+  // ─── 3. 6 重宋画《千里江山》水墨层峦 ───
   const breathFactor = mountainBreath * smoothBass;
-  const midVibe = smoothMid * 6;
+  const midVibe = smoothMid * 5;
 
-  // 宋代传世矿物石色：黛青 ➔ 墨绿 ➔ 孔雀暗翠 ➔ 苍黑
   const mountainPalette = [
     { fillTop: "#0a2835", fillBottom: "#041219", alpha: 0.35, baseY: 0.22, speed: 0.22 },
     { fillTop: "#0d3742", fillBottom: "#061a22", alpha: 0.50, baseY: 0.29, speed: 0.32 },
@@ -232,7 +253,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
     const layerDepth = (layer + 1) / 6;
     const basePeakHeight = scrollH * (config.baseY * 0.85);
     const layerTime = t * config.speed;
-    const layerAmp = (basePeakHeight * 0.40 + breathFactor * 26 * layerDepth) * (1 + (layer >= 4 ? midVibe * 0.025 : 0));
+    const layerAmp = (basePeakHeight * 0.38 + breathFactor * 24 * layerDepth) * (1 + (layer >= 4 ? midVibe * 0.02 : 0));
 
     const points: { x: number; y: number }[] = [];
     ctx.beginPath();
@@ -241,7 +262,6 @@ export function drawOrientalLandscape(context: EffectContext): void {
     const step = 4;
     for (let x = scrollX; x <= scrollX + scrollW; x += step) {
       const normX = (x - scrollX) / scrollW;
-      // 5 谐波自然水墨峰峦起伏，起伏平缓悠远
       const h1 = Math.sin(normX * (2.4 + layer * 1.1) + layerTime + layer * 1.6);
       const h2 = Math.cos(normX * (5.5 + layer * 1.5) - layerTime * 0.4 + layer);
       const h3 = Math.sin(normX * 11.0 + layerTime * 0.9) * 0.25;
@@ -258,7 +278,6 @@ export function drawOrientalLandscape(context: EffectContext): void {
 
     mountainPaths.push({ points, color: config.fillTop, alpha: config.alpha });
 
-    // 山体细腻水墨晕染填充
     const mtnGrad = ctx.createLinearGradient(
       scrollX + scrollW * 0.22,
       waterY - basePeakHeight * 1.4,
@@ -273,92 +292,76 @@ export function drawOrientalLandscape(context: EffectContext): void {
     ctx.globalAlpha = config.alpha;
     ctx.fill();
 
-    // 仅在最近两层山脊带有极细柔和微光 (0.5px，绝不刺眼)
     if (layer >= 4) {
-      ctx.strokeStyle = layer === 5 ? "rgba(251, 191, 36, 0.28)" : "rgba(74, 222, 128, 0.20)";
+      ctx.strokeStyle = layer === 5 ? "rgba(251, 191, 36, 0.22)" : "rgba(74, 222, 128, 0.16)";
       ctx.lineWidth = 0.6;
-      ctx.globalAlpha = (0.2 + smoothMid * 0.35) * goldGlow;
+      ctx.globalAlpha = (0.18 + smoothMid * 0.3) * goldGlow;
       ctx.stroke();
-    }
-
-    // 山坳间流淌的 3 层半透明水墨烟岚 (Volumetric Mist Bands)
-    if (layer === 1 || layer === 3 || layer === 5) {
-      ctx.save();
-      ctx.globalCompositeOperation = "screen";
-      const fogY = waterY - basePeakHeight * 0.38;
-      const fogGrad = ctx.createLinearGradient(scrollX, fogY - 30, scrollX, fogY + 40);
-      fogGrad.addColorStop(0, "rgba(210, 245, 240, 0)");
-      fogGrad.addColorStop(0.5, `rgba(175, 225, 220, ${0.09 + smoothBass * 0.06})`);
-      fogGrad.addColorStop(1, "rgba(210, 245, 240, 0)");
-      ctx.fillStyle = fogGrad;
-
-      ctx.beginPath();
-      ctx.moveTo(scrollX, fogY);
-      for (let fx = scrollX; fx <= scrollX + scrollW; fx += 16) {
-        const fogCurve = Math.sin((fx - scrollX) * 0.012 + t * (layer === 1 ? 0.5 : -0.6)) * 14;
-        ctx.lineTo(fx, fogY + fogCurve);
-      }
-      ctx.lineTo(scrollX + scrollW, fogY + 60);
-      ctx.lineTo(scrollX, fogY + 60);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
     }
   }
   ctx.globalAlpha = 1.0;
 
-  // ─── 4. 全柔焦高斯体积散射烟岚光 (Zero Hard Edge Gaussian Light) ───
-  const rayStrength = lightRays * (0.55 + smoothBass * 0.65 + smoothEnergy * 0.25);
+  // ─── 4. 全柔焦高斯山坳透光 (Mountain Saddle Pass Glow - 绝无生硬横条) ───
+  const rayStrength = lightRays * (0.5 + smoothBass * 0.6 + smoothEnergy * 0.2);
   if (rayStrength > 0.05) {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
 
-    const lightCenterX = scrollX + scrollW * 0.20;
-    const lightCenterY = scrollY + scrollH * 0.05;
+    const lightCenterX = scrollX + scrollW * 0.22;
+    const lightCenterY = scrollY + scrollH * 0.10;
 
-    // 广角柔焦高斯光晕堆叠 (彻底消除硬边缘)
+    // 广角全柔焦高斯光晕 (圆形羽化扩散)
     for (let g = 0; g < 4; g++) {
-      const radius = scrollW * (0.28 + g * 0.18);
-      const alpha = (0.16 / (g + 1)) * rayStrength;
+      const radius = scrollW * (0.25 + g * 0.16);
+      const alpha = (0.13 / (g + 1)) * rayStrength;
 
       const diffuseGrd = ctx.createRadialGradient(
         lightCenterX,
         lightCenterY,
-        10,
-        lightCenterX + scrollW * 0.15,
-        lightCenterY + scrollH * 0.35,
+        5,
+        lightCenterX + scrollW * 0.12,
+        lightCenterY + scrollH * 0.28,
         radius
       );
-      diffuseGrd.addColorStop(0, `rgba(254, 240, 138, ${alpha * 1.4})`);
-      diffuseGrd.addColorStop(0.35, `rgba(251, 191, 36, ${alpha * 0.8})`);
-      diffuseGrd.addColorStop(0.70, `rgba(56, 189, 248, ${alpha * 0.2})`);
+      diffuseGrd.addColorStop(0, `rgba(254, 240, 138, ${alpha * 1.3})`);
+      diffuseGrd.addColorStop(0.35, `rgba(251, 191, 36, ${alpha * 0.7})`);
+      diffuseGrd.addColorStop(0.70, `rgba(56, 189, 248, ${alpha * 0.15})`);
       diffuseGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
 
       ctx.fillStyle = diffuseGrd;
       ctx.beginPath();
-      ctx.arc(lightCenterX + scrollW * 0.15, lightCenterY + scrollH * 0.35, radius, 0, Math.PI * 2);
+      ctx.arc(lightCenterX + scrollW * 0.12, lightCenterY + scrollH * 0.28, radius, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // 电影级柔焦横向宽银幕金光 (Anamorphic Soft Halo)
-    if (smoothBass > 0.36 || smoothMid > 0.42) {
-      const streakIntensity = Math.min(1, (Math.max(smoothBass, smoothMid) - 0.28) * 1.5);
-      const streakY = waterY - scrollH * 0.20;
-      const streakGrd = ctx.createLinearGradient(scrollX, streakY, scrollX + scrollW, streakY);
-      streakGrd.addColorStop(0, "rgba(251, 191, 36, 0)");
-      streakGrd.addColorStop(0.25, "rgba(251, 191, 36, 0.04)");
-      streakGrd.addColorStop(0.5, `rgba(254, 240, 138, ${0.45 * streakIntensity * goldGlow})`);
-      streakGrd.addColorStop(0.75, "rgba(251, 191, 36, 0.04)");
-      streakGrd.addColorStop(1, "rgba(251, 191, 36, 0)");
+    // 山坳峡谷处的柔焦微光云岫 (2D 高斯椭圆，绝无矩形直角)
+    if (smoothBass > 0.35 || smoothMid > 0.40) {
+      const cloudAlpha = Math.min(0.28, (Math.max(smoothBass, smoothMid) - 0.25) * 0.45) * goldGlow;
+      const valleyX = scrollX + scrollW * 0.42;
+      const valleyY = waterY - scrollH * 0.16;
 
-      ctx.fillStyle = streakGrd;
-      ctx.fillRect(scrollX, streakY - 8, scrollW, 16);
+      const valleyGrd = ctx.createRadialGradient(
+        valleyX,
+        valleyY,
+        10,
+        valleyX,
+        valleyY,
+        scrollW * 0.28
+      );
+      valleyGrd.addColorStop(0, `rgba(254, 240, 138, ${cloudAlpha})`);
+      valleyGrd.addColorStop(0.4, `rgba(251, 191, 36, ${cloudAlpha * 0.45})`);
+      valleyGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+      ctx.fillStyle = valleyGrd;
+      ctx.beginPath();
+      ctx.ellipse(valleyX, valleyY, scrollW * 0.28, scrollH * 0.12, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     ctx.restore();
   }
 
-  // ─── 5. 水天融界 · 水面低空漫雾与真实倒影 (Seamless Water Mist Blend) ───
+  // ─── 5. 水天融界 · 真实倒影与多团高斯流体水雾 ───
   const waterH = scrollY + scrollH - waterY;
   const waterGrad = ctx.createLinearGradient(scrollX, waterY, scrollX, scrollY + scrollH);
   waterGrad.addColorStop(0, "rgba(3, 10, 14, 0.85)");
@@ -367,7 +370,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
   ctx.fillStyle = waterGrad;
   ctx.fillRect(scrollX, waterY, scrollW, waterH);
 
-  // 渲染水面倒影 (Inverted Mountain Reflection)
+  // 渲染水面倒影
   ctx.save();
   ctx.beginPath();
   ctx.rect(scrollX, waterY, scrollW, waterH);
@@ -380,72 +383,87 @@ export function drawOrientalLandscape(context: EffectContext): void {
     for (let i = 0; i < m.points.length; i++) {
       const p = m.points[i];
       const distFromWater = waterY - p.y;
-      const waveShift = Math.sin((p.x - scrollX) * 0.03 + t * 1.8 + l) * (1.5 + smoothBass * 2.5);
-      const reflectY = waterY + distFromWater * 0.50 + waveShift;
+      const waveShift = Math.sin((p.x - scrollX) * 0.03 + t * 1.8 + l) * (1.2 + smoothBass * 2.0);
+      const reflectY = waterY + distFromWater * 0.48 + waveShift;
       ctx.lineTo(p.x, reflectY);
     }
     ctx.lineTo(scrollX + scrollW, waterY);
     ctx.closePath();
 
     ctx.fillStyle = m.color;
-    ctx.globalAlpha = m.alpha * 0.22;
+    ctx.globalAlpha = m.alpha * 0.20;
     ctx.fill();
   }
   ctx.restore();
 
-  // 水天交界处低空漫雾 (Low-Lying Water Fog - 彻底抹去生硬切线)
+  // 烟波浩渺 · 10 个漂移的高斯流体水雾团 (彻底消除矩形带)
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  const mistH = 48;
-  const mistGrad = ctx.createLinearGradient(scrollX, waterY - mistH * 0.5, scrollX, waterY + mistH * 0.5);
-  mistGrad.addColorStop(0, "rgba(180, 230, 225, 0)");
-  mistGrad.addColorStop(0.5, `rgba(160, 220, 215, ${0.16 + smoothBass * 0.08})`);
-  mistGrad.addColorStop(1, "rgba(180, 230, 225, 0)");
-  ctx.fillStyle = mistGrad;
-  ctx.fillRect(scrollX, waterY - mistH * 0.5, scrollW, mistH);
+  localMistPuffs.forEach((puff: MistPuff) => {
+    puff.x += puff.vx;
+    if (puff.x < scrollX - 80) puff.x = scrollX + scrollW + 60;
+    if (puff.x > scrollX + scrollW + 80) puff.x = scrollX - 60;
+
+    const dynamicAlpha = puff.alpha * (0.7 + Math.sin(t * 1.5 + puff.phase) * 0.3 + smoothBass * 0.35);
+    const mistGrd = ctx.createRadialGradient(puff.x, puff.y, 5, puff.x, puff.y, puff.radius);
+    mistGrd.addColorStop(0, `rgba(180, 230, 225, ${dynamicAlpha})`);
+    mistGrd.addColorStop(0.5, `rgba(150, 215, 210, ${dynamicAlpha * 0.5})`);
+    mistGrd.addColorStop(1, "rgba(180, 230, 225, 0)");
+
+    ctx.fillStyle = mistGrd;
+    ctx.beginPath();
+    ctx.arc(puff.x, puff.y, puff.radius, 0, Math.PI * 2);
+    ctx.fill();
+  });
   ctx.restore();
 
-  // 水面微波折射金丝 (Water Shimmer Waves)
+  // 有机多八度微波与碎金粼粼 (两端余弦渐隐，绝无通栏硬线)
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
-  const waveCount = 12;
+  const waveCount = 10;
   for (let w = 0; w < waveCount; w++) {
     const waveY = waterY + ((w + 1) / (waveCount + 1)) * waterH;
-    const wavePhase = t * 1.2 + w * 0.7;
-    const waveAlpha = (0.04 + Math.sin(wavePhase) * 0.025 + smoothTreble * 0.06) * (w > 6 ? 0.4 : 1.0);
+    const wavePhase = t * 1.1 + w * 0.75;
+    const waveAlpha = (0.035 + Math.sin(wavePhase) * 0.02 + smoothTreble * 0.05) * (w > 5 ? 0.4 : 1.0);
 
     ctx.strokeStyle = `rgba(251, 191, 36, ${Math.max(0, waveAlpha) * goldGlow})`;
-    ctx.lineWidth = 0.8;
+    ctx.lineWidth = 0.7;
     ctx.beginPath();
-    ctx.moveTo(scrollX, waveY);
-    for (let x = scrollX; x <= scrollX + scrollW; x += 16) {
-      const dy = Math.sin((x - scrollX) * 0.03 + wavePhase) * (1.0 + smoothBass * 1.6);
-      ctx.lineTo(x, waveY + dy);
+    let started = false;
+    for (let x = scrollX + 30; x <= scrollX + scrollW - 30; x += 16) {
+      const normX = (x - scrollX) / scrollW;
+      const windowEdge = Math.sin(normX * Math.PI); // 两端自然淡出为 0
+      const dy = Math.sin((x - scrollX) * 0.03 + wavePhase) * (0.8 + smoothBass * 1.4) * windowEdge;
+      if (!started) {
+        ctx.moveTo(x, waveY + dy);
+        started = true;
+      } else {
+        ctx.lineTo(x, waveY + dy);
+      }
     }
     ctx.stroke();
   }
 
-  // 同心圆涟漪 (柔焦水纹)
+  // 同心圆涟漪
   localRipples.forEach((rip: WaterRipple, idx: number) => {
     rip.radius += rip.speed;
     rip.alpha *= 0.965;
 
     if (rip.alpha > 0.02) {
-      ctx.strokeStyle = `rgba(56, 189, 248, ${rip.alpha * 0.55})`;
-      ctx.lineWidth = 1.0;
+      ctx.strokeStyle = `rgba(56, 189, 248, ${rip.alpha * 0.45})`;
+      ctx.lineWidth = 0.8;
       ctx.beginPath();
-      ctx.ellipse(rip.x, rip.y, rip.radius, rip.radius * 0.30, 0, 0, Math.PI * 2);
+      ctx.ellipse(rip.x, rip.y, rip.radius, rip.radius * 0.28, 0, 0, Math.PI * 2);
       ctx.stroke();
     } else {
       localRipples.splice(idx, 1);
     }
   });
 
-  // ─── 6. 孤舟蓑笠与微芒渔火 (Solitary Boat with Soft Lantern) ───
+  // ─── 6. 孤舟蓑笠与微芒渔火 ───
   const boatX = scrollX + scrollW * 0.75;
   const boatY = waterY + 14 + Math.sin(t * 1.5) * 2.0;
 
-  // 孤舟剪影
   ctx.fillStyle = "rgba(8, 16, 20, 0.92)";
   ctx.beginPath();
   ctx.moveTo(boatX - 16, boatY);
@@ -457,26 +475,24 @@ export function drawOrientalLandscape(context: EffectContext): void {
   ctx.arc(boatX - 2, boatY - 1.5, 6, Math.PI, 0);
   ctx.fill();
 
-  // 船头渔火微光 (Soft Lantern Glow)
   const lanternX = boatX + 10;
   const lanternY = boatY - 3;
-  const lanternGlow = ctx.createRadialGradient(lanternX, lanternY, 1, lanternX, lanternY, 18);
+  const lanternGlow = ctx.createRadialGradient(lanternX, lanternY, 1, lanternX, lanternY, 16);
   const lanternPulse = 0.75 + Math.sin(t * 3.0) * 0.25 + smoothMid * 0.3;
-  lanternGlow.addColorStop(0, `rgba(254, 240, 138, ${0.85 * lanternPulse})`);
-  lanternGlow.addColorStop(0.4, `rgba(245, 158, 11, ${0.40 * lanternPulse})`);
+  lanternGlow.addColorStop(0, `rgba(254, 240, 138, ${0.80 * lanternPulse})`);
+  lanternGlow.addColorStop(0.4, `rgba(245, 158, 11, ${0.35 * lanternPulse})`);
   lanternGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = lanternGlow;
   ctx.beginPath();
-  ctx.arc(lanternX, lanternY, 18, 0, Math.PI * 2);
+  ctx.arc(lanternX, lanternY, 16, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
 
-  // ─── 7. 半透明落英与金粉微尘 (Delicate Translucent Petals) ───
+  // ─── 7. 半透明落英与金粉微尘 ───
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
 
-  // 金粉微尘
   localParticles.forEach((p: DustParticle) => {
     p.x += p.vx + Math.sin(t + p.phase) * 0.25;
     p.y += p.vy;
@@ -494,7 +510,6 @@ export function drawOrientalLandscape(context: EffectContext): void {
     ctx.fill();
   });
 
-  // 半透明柔和落英花瓣
   localPetals.forEach((petal: GoldenPetal) => {
     petal.x += petal.vx + Math.sin(t * 1.2 + petal.phase) * 0.35;
     petal.y += petal.vy;
@@ -510,7 +525,6 @@ export function drawOrientalLandscape(context: EffectContext): void {
     ctx.translate(petal.x, petal.y);
     ctx.rotate(petal.rotation);
 
-    // 柔和半透明水墨淡金/淡粉渐变花瓣
     const petalGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, petal.size);
     petalGrad.addColorStop(0, `rgba(254, 235, 200, ${petal.alpha * 1.2})`);
     petalGrad.addColorStop(0.6, `rgba(245, 200, 160, ${petal.alpha * 0.7})`);
@@ -525,12 +539,11 @@ export function drawOrientalLandscape(context: EffectContext): void {
 
   ctx.restore();
 
-  // ─── 8. 东方长卷极简淡金诗意留白 (无红色印章) ───
+  // ─── 8. 东方长卷极简淡金诗意留白 ───
   ctx.save();
   const textX = scrollX + 36;
   const textY = scrollY + 36;
 
-  // 竖排淡金写意小楷 (低透明度 28%，幽远空灵)
   ctx.fillStyle = "rgba(245, 235, 215, 0.28)";
   ctx.font = "12px serif";
   ctx.textAlign = "center";
@@ -556,7 +569,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
     ctx.fillRect(scrollX, scrollY, scrollW, scrollH);
   }
 
-  // ─── 9. 绢帛羽化微边 (极细 0.5px，完全融入暗夜) ───
+  // ─── 9. 绢帛羽化微边 ───
   ctx.restore(); // 退出剪裁
 
   ctx.strokeStyle = `rgba(251, 191, 36, ${0.12 * goldGlow})`;
