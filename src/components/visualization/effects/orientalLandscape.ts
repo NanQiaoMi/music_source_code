@@ -33,17 +33,39 @@ interface DustParticle {
   phase: number;
 }
 
+interface CraneEntity {
+  relX: number;
+  relY: number;
+  scale: number;
+  speed: number;
+  wingFreq: number;
+  phase: number;
+  floatPhase: number;
+}
+
 let localRipples: WaterRipple[] = [];
 let localPetals: GoldenPetal[] = [];
 let localParticles: DustParticle[] = [];
+let localCranes: CraneEntity[] = [];
 let lastRippleTime = 0;
 let initialized = false;
 
-// 平滑阻尼追踪器 (EMA Damping: 32 极平滑呼吸)
+// 平滑阻尼追踪器 (EMA Damping: 32 带来空灵大气的呼吸感)
 let smoothBass = 0;
 let smoothMid = 0;
 let smoothTreble = 0;
 let smoothEnergy = 0;
+
+// 预分配用于山体渲染的静态 Float32 顶点缓存 (支持高达 2048 采样点，零堆内存分配)
+const MAX_MOUNTAIN_POINTS = 2048;
+const mountainPointsX: Float32Array[] = [];
+const mountainPointsY: Float32Array[] = [];
+const mountainPointCounts = new Int32Array(6);
+
+for (let i = 0; i < 6; i++) {
+  mountainPointsX.push(new Float32Array(MAX_MOUNTAIN_POINTS));
+  mountainPointsY.push(new Float32Array(MAX_MOUNTAIN_POINTS));
+}
 
 function initLivingElements(width: number, height: number) {
   localParticles = [];
@@ -75,22 +97,29 @@ function initLivingElements(width: number, height: number) {
     });
   }
 
+  localCranes = [
+    { relX: 0.25, relY: 0.15, scale: 0.72, speed: 0.00042, wingFreq: 2.2, phase: 0.0, floatPhase: 0.0 },
+    { relX: 0.19, relY: 0.19, scale: 0.60, speed: 0.00042, wingFreq: 2.3, phase: 1.2, floatPhase: 1.5 },
+    { relX: 0.14, relY: 0.23, scale: 0.52, speed: 0.00042, wingFreq: 2.1, phase: 2.4, floatPhase: 3.1 },
+    { relX: 0.09, relY: 0.18, scale: 0.45, speed: 0.00042, wingFreq: 2.4, phase: 3.6, floatPhase: 4.8 },
+  ];
+
   initialized = true;
 }
 
 /**
  * 120 FPS 宋画清幽 · 电影级柔焦水墨长卷 (Oriental Serene Landscape)
  * 极致清幽优雅：
- * 1. 彻底清除生硬白色椭圆雾盘与水平色块断层，全画面浑然一体；
- * 2. 全柔焦无硬边丁达尔光束（Anti-Aliased Gaussian Volumetric Rays），双向平滑羽化；
- * 3. 宋代青绿重彩自然沉入深潭水墨，水面倒影如镜；
- * 4. 半透明轻柔落英、一叶孤舟与轻晃渔火，意境空灵雅致。
+ * 1. 宋画非对称险峻山势与泥金微皴，山峦层次纵深如诗如画；
+ * 2. 远山轻拂流体丝绢烟岚，拉开宏阔空气景深；
+ * 3. 晴空翱翔瑞鹤编队，长颈展开双翼与丹顶朱砂；
+ * 4. 乌篷孤舟与水面随波荡漾之动态流金长倒影；
+ * 5. 千里江山经典题跋与金石朱砂“清音”小印。
  */
 export function drawOrientalLandscape(context: EffectContext): void {
   const { ctx, width, height, data, time, params } = context;
   if (!width || !height || width <= 0 || height <= 0) return;
 
-  const lightRays = params?.lightRays ?? 1.0;
   const mountainBreath = params?.mountainBreath ?? 1.0;
   const waterRipple = params?.waterRipple ?? 1.0;
   const goldGlow = params?.goldGlow ?? 1.0;
@@ -211,21 +240,21 @@ export function drawOrientalLandscape(context: EffectContext): void {
   ctx.fillStyle = skyBloom;
   ctx.fillRect(scrollX, scrollY, scrollW, scrollH);
 
-  // ─── 3. 6 重宋画《千里江山》重彩矿物青绿层峦 (山峦高雅舒展 · 天际留白开阔) ───
+  // ─── 3. 晴空白鹭 · 仙鹤群飞 (Flock of Soaring Cranes) ───
+  drawFlockOfCranes(ctx, localCranes, scrollX, scrollY, scrollW, scrollH, t, smoothTreble);
+
+  // ─── 4. 6 重宋画《千里江山》重彩矿物青绿层峦 (山峦高雅舒展 · 斧劈皴法与阴阳向背) ───
   const breathFactor = mountainBreath * smoothBass;
   const midVibe = smoothMid * 5;
 
-  // 降低山峰高度（baseY 由原 0.22~0.56 适度调至 0.14~0.38），上方留出 35%~45% 的辽阔天光留白
   const mountainPalette = [
-    { fillTop: "#1a5060", fillBottom: "#0c2b36", alpha: 0.65, baseY: 0.14, speed: 0.22 },
-    { fillTop: "#155e70", fillBottom: "#0a3340", alpha: 0.78, baseY: 0.19, speed: 0.32 },
-    { fillTop: "#126d66", fillBottom: "#083a37", alpha: 0.86, baseY: 0.24, speed: 0.44 },
-    { fillTop: "#117c69", fillBottom: "#084439", alpha: 0.94, baseY: 0.30, speed: 0.58 },
-    { fillTop: "#0e6e58", fillBottom: "#063b2e", alpha: 0.98, baseY: 0.34, speed: 0.72 },
-    { fillTop: "#0b5744", fillBottom: "#042a20", alpha: 1.00, baseY: 0.38, speed: 0.88 },
+    { fillTop: "#1a5060", fillBottom: "#0c2b36", alpha: 0.62, baseY: 0.13, speed: 0.22 },
+    { fillTop: "#155e70", fillBottom: "#0a3340", alpha: 0.75, baseY: 0.18, speed: 0.32 },
+    { fillTop: "#126d66", fillBottom: "#083a37", alpha: 0.84, baseY: 0.23, speed: 0.44 },
+    { fillTop: "#117c69", fillBottom: "#084439", alpha: 0.92, baseY: 0.29, speed: 0.58 },
+    { fillTop: "#0e6e58", fillBottom: "#063b2e", alpha: 0.96, baseY: 0.33, speed: 0.72 },
+    { fillTop: "#0b5744", fillBottom: "#042a20", alpha: 1.00, baseY: 0.37, speed: 0.88 },
   ];
-
-  const mountainPaths: { points: { x: number; y: number }[]; color: string; alpha: number }[] = [];
 
   for (let layer = 0; layer < 6; layer++) {
     const config = mountainPalette[layer];
@@ -234,28 +263,36 @@ export function drawOrientalLandscape(context: EffectContext): void {
     const layerTime = t * config.speed;
     const layerAmp = (basePeakHeight * 0.32 + breathFactor * 14 * layerDepth) * (1 + (layer >= 3 ? midVibe * 0.02 : 0));
 
-    const points: { x: number; y: number }[] = [];
     ctx.beginPath();
     ctx.moveTo(scrollX, bottomY);
 
+    const ptsX = mountainPointsX[layer];
+    const ptsY = mountainPointsY[layer];
+    let ptIndex = 0;
     const step = 4;
+
     for (let x = scrollX; x <= scrollX + scrollW; x += step) {
+      if (ptIndex >= MAX_MOUNTAIN_POINTS) break;
       const normX = (x - scrollX) / scrollW;
+
+      // 宋画非对称转折项 (引入幂次项生成天然险峻与平缓山鞍交错感)
       const h1 = Math.sin(normX * (2.4 + layer * 1.1) + layerTime + layer * 1.6);
-      const h2 = Math.cos(normX * (5.5 + layer * 1.5) - layerTime * 0.4 + layer);
-      const h3 = Math.sin(normX * 11.0 + layerTime * 0.9) * 0.25;
-      const h4 = Math.cos(normX * 20.0 - layerTime * 1.4) * 0.08;
-      const mountainCurve = (h1 * 0.60 + h2 * 0.28 + h3 * 0.08 + h4 * 0.04);
+      const cosVal = Math.cos(normX * (5.5 + layer * 1.5) - layerTime * 0.4 + layer);
+      const h2 = Math.sign(cosVal) * Math.pow(Math.abs(cosVal), 1.25) * 0.32;
+      const h3 = Math.sin(normX * 11.0 + layerTime * 0.9) * 0.12;
+      const h4 = Math.cos(normX * 22.0 - layerTime * 1.4) * 0.05;
+      const mountainCurve = (h1 * 0.58 + h2 + h3 + h4);
 
       const y = waterY - basePeakHeight - mountainCurve * layerAmp;
-      points.push({ x, y });
+      ptsX[ptIndex] = x;
+      ptsY[ptIndex] = y;
+      ptIndex++;
       ctx.lineTo(x, y);
     }
+    mountainPointCounts[layer] = ptIndex;
 
     ctx.lineTo(scrollX + scrollW, bottomY);
     ctx.closePath();
-
-    mountainPaths.push({ points, color: config.fillTop, alpha: config.alpha });
 
     // 山体从山峰石青/石绿自然向下过渡入幽雅江水色
     const mtnGrad = ctx.createLinearGradient(
@@ -273,7 +310,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
     ctx.globalAlpha = config.alpha;
     ctx.fill();
 
-    // 泥金描边（温润内敛，如丝如缕）
+    // 泥金描边（温润内敛，如丝如缕勾勒山脊骨线）
     if (layer >= 2) {
       ctx.save();
       const goldAlpha = layer === 5 
@@ -292,34 +329,48 @@ export function drawOrientalLandscape(context: EffectContext): void {
       ctx.stroke();
       ctx.restore();
     }
+
+    // 在远景层（Layer 1）与中景层（Layer 3）后方分别穿插流体丝绢烟岚
+    if (layer === 1) {
+      drawSilkMistRibbon(ctx, scrollX, scrollY, scrollW, scrollH * 0.44, scrollH * 0.055, t * 1.2, 0.22, smoothTreble, goldGlow);
+    } else if (layer === 3) {
+      drawSilkMistRibbon(ctx, scrollX, scrollY, scrollW, scrollH * 0.54, scrollH * 0.045, t * 1.6 + 2.0, 0.16, smoothTreble, goldGlow);
+    }
   }
   ctx.globalAlpha = 1.0;
 
   // ─── 5. 水天融界 · 水面镜像倒影与碎金微澜 ───
   const waterH = scrollY + scrollH - waterY;
 
-  // 倒影自然翻折
+  // 倒影自然翻折 (零堆内存分配)
   ctx.save();
   ctx.beginPath();
   ctx.rect(scrollX, waterY, scrollW, waterH);
   ctx.clip();
 
-  for (let l = mountainPaths.length - 1; l >= 1; l--) {
-    const m = mountainPaths[l];
+  for (let l = 5; l >= 1; l--) {
+    const count = mountainPointCounts[l];
+    if (count <= 0) continue;
+    const ptsX = mountainPointsX[l];
+    const ptsY = mountainPointsY[l];
+    const mColor = mountainPalette[l].fillTop;
+    const mAlpha = mountainPalette[l].alpha;
+
     ctx.beginPath();
     ctx.moveTo(scrollX, waterY);
-    for (let i = 0; i < m.points.length; i++) {
-      const p = m.points[i];
-      const distFromWater = waterY - p.y;
-      const waveShift = Math.sin((p.x - scrollX) * 0.03 + t * 1.8 + l) * (1.2 + smoothBass * 2.0);
+    for (let i = 0; i < count; i++) {
+      const px = ptsX[i];
+      const py = ptsY[i];
+      const distFromWater = waterY - py;
+      const waveShift = Math.sin((px - scrollX) * 0.03 + t * 1.8 + l) * (1.2 + smoothBass * 2.0);
       const reflectY = waterY + distFromWater * 0.45 + waveShift;
-      ctx.lineTo(p.x, reflectY);
+      ctx.lineTo(px, reflectY);
     }
     ctx.lineTo(scrollX + scrollW, waterY);
     ctx.closePath();
 
-    ctx.fillStyle = m.color;
-    ctx.globalAlpha = m.alpha * 0.24;
+    ctx.fillStyle = mColor;
+    ctx.globalAlpha = mAlpha * 0.22;
     ctx.fill();
   }
   ctx.restore();
@@ -367,32 +418,10 @@ export function drawOrientalLandscape(context: EffectContext): void {
     }
   });
 
-  // ─── 6. 孤舟蓑笠与微芒渔火 ───
+  // ─── 6. 孤舟蓑笠与水面动态流金长倒影 ───
   const boatX = scrollX + scrollW * 0.75;
   const boatY = waterY + 14 + Math.sin(t * 1.5) * 2.0;
-
-  ctx.fillStyle = "rgba(10, 24, 30, 0.95)";
-  ctx.beginPath();
-  ctx.moveTo(boatX - 16, boatY);
-  ctx.quadraticCurveTo(boatX, boatY + 4, boatX + 16, boatY);
-  ctx.quadraticCurveTo(boatX, boatY + 0.8, boatX - 16, boatY);
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(boatX - 2, boatY - 1.5, 6, Math.PI, 0);
-  ctx.fill();
-
-  const lanternX = boatX + 10;
-  const lanternY = boatY - 3;
-  const lanternGlow = ctx.createRadialGradient(lanternX, lanternY, 1, lanternX, lanternY, 20);
-  const lanternPulse = 0.80 + Math.sin(t * 3.0) * 0.20 + smoothMid * 0.35;
-  lanternGlow.addColorStop(0, `rgba(254, 243, 199, ${0.95 * lanternPulse})`);
-  lanternGlow.addColorStop(0.35, `rgba(245, 158, 11, ${0.55 * lanternPulse})`);
-  lanternGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = lanternGlow;
-  ctx.beginPath();
-  ctx.arc(lanternX, lanternY, 20, 0, Math.PI * 2);
-  ctx.fill();
+  drawDetailedBoatWithLongReflection(ctx, boatX, boatY, t, smoothBass, smoothMid, goldGlow);
 
   ctx.restore();
 
@@ -446,7 +475,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
 
   ctx.restore();
 
-  // ─── 8. 东方长卷极简淡金诗意留白 ───
+  // ─── 8. 东方长卷极简淡金诗意留白与朱砂小印 ───
   ctx.save();
   const textX = scrollX + 36;
   const textY = scrollY + 36;
@@ -458,6 +487,9 @@ export function drawOrientalLandscape(context: EffectContext): void {
   ctx.fillText("里", textX, textY + 18);
   ctx.fillText("江", textX, textY + 36);
   ctx.fillText("山", textX, textY + 54);
+
+  // 金石古法熟朱砂“清音”篆书印
+  drawCinnabarSeal(ctx, textX - 8, textY + 68, 16);
   ctx.restore();
 
   // 电影级胶片暗角 (Film Vignette)
@@ -487,6 +519,306 @@ export function drawOrientalLandscape(context: EffectContext): void {
   ctx.restore();
 }
 
+/**
+ * 晴空白鹭 · 仙鹤群飞 (Flock of Soaring Cranes)
+ */
+function drawFlockOfCranes(
+  ctx: CanvasRenderingContext2D,
+  cranes: CraneEntity[],
+  scrollX: number,
+  scrollY: number,
+  scrollW: number,
+  scrollH: number,
+  t: number,
+  smoothTreble: number
+) {
+  ctx.save();
+  for (let i = 0; i < cranes.length; i++) {
+    const c = cranes[i];
+    c.relX += c.speed;
+    if (c.relX > 1.15) c.relX = -0.15;
+
+    const normX = c.relX;
+    let craneAlpha = 0.85;
+    if (normX < 0.1) craneAlpha *= normX / 0.1;
+    if (normX > 0.9) craneAlpha *= (1.0 - normX) / 0.1;
+
+    const cx = scrollX + normX * scrollW;
+    const cy = scrollY + (c.relY + Math.sin(t * 1.5 + c.floatPhase) * 0.02) * scrollH;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(c.scale, c.scale);
+    ctx.globalAlpha = Math.max(0, craneAlpha);
+
+    const wingAngle = Math.sin(t * c.wingFreq * 4.0 + c.phase + smoothTreble * 2.5) * 0.34;
+
+    // 1. 躯干与细长脖颈 (象牙白)
+    ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+    ctx.beginPath();
+    ctx.moveTo(8, -1);
+    ctx.quadraticCurveTo(15, -4, 20, -2); // 鹤喙
+    ctx.quadraticCurveTo(12, 1, 0, 0);    // 身躯
+    ctx.quadraticCurveTo(-6, 2, -10, 0);  // 尾羽
+    ctx.fill();
+
+    // 2. 丹顶 (朱砂点)
+    ctx.fillStyle = "#c2352b";
+    ctx.beginPath();
+    ctx.arc(17, -3, 0.9, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. 上扬左翼
+    ctx.save();
+    ctx.translate(2, -1);
+    ctx.rotate(-wingAngle - 0.2);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.88)";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-6, -14, -14, -18);
+    ctx.quadraticCurveTo(-8, -8, 0, 0);
+    ctx.fill();
+    // 翼尖黑羽
+    ctx.fillStyle = "rgba(10, 24, 30, 0.85)";
+    ctx.beginPath();
+    ctx.moveTo(-10, -14);
+    ctx.lineTo(-14, -18);
+    ctx.lineTo(-11, -11);
+    ctx.fill();
+    ctx.restore();
+
+    // 4. 下覆右翼
+    ctx.save();
+    ctx.translate(2, 1);
+    ctx.rotate(wingAngle * 0.7 + 0.1);
+    ctx.fillStyle = "rgba(240, 245, 250, 0.75)";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-4, 10, -11, 14);
+    ctx.quadraticCurveTo(-6, 6, 0, 0);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+/**
+ * 流体丝绢烟岚云带绘制 (Silk Mist Ribbon)
+ */
+function drawSilkMistRibbon(
+  ctx: CanvasRenderingContext2D,
+  scrollX: number,
+  scrollY: number,
+  scrollW: number,
+  baseYNorm: number,
+  thickness: number,
+  t: number,
+  alphaBase: number,
+  smoothTreble: number,
+  goldGlow: number
+) {
+  ctx.save();
+  const yCenter = scrollY + baseYNorm;
+
+  const grad = ctx.createLinearGradient(0, yCenter - thickness, 0, yCenter + thickness);
+  grad.addColorStop(0, "rgba(215, 238, 242, 0)");
+  grad.addColorStop(0.5, `rgba(225, 245, 248, ${alphaBase * (1 + smoothTreble * 0.45 * goldGlow)})`);
+  grad.addColorStop(1, "rgba(215, 238, 242, 0)");
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+
+  const step = 8;
+  // 上边界曲线 (左 -> 右)
+  for (let x = scrollX; x <= scrollX + scrollW; x += step) {
+    const normX = (x - scrollX) / scrollW;
+    const env = Math.sin(normX * Math.PI);
+    const wave = Math.sin(normX * 3.5 + t * 0.6) * 6 + Math.cos(normX * 7.2 - t * 0.3) * 3;
+    const h = thickness * env * (0.65 + 0.35 * Math.sin(normX * 4.5 + t));
+    const y = yCenter + wave - h;
+    if (x === scrollX) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+
+  // 下边界曲线 (右 -> 左)
+  for (let x = scrollX + scrollW; x >= scrollX; x -= step) {
+    const normX = (x - scrollX) / scrollW;
+    const env = Math.sin(normX * Math.PI);
+    const wave = Math.sin(normX * 3.5 + t * 0.6) * 6 + Math.cos(normX * 7.2 - t * 0.3) * 3;
+    const h = thickness * env * (0.65 + 0.35 * Math.sin(normX * 4.5 + t));
+    const y = yCenter + wave + h;
+    ctx.lineTo(x, y);
+  }
+
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * 乌篷孤舟与水面动态流金长倒影
+ */
+function drawDetailedBoatWithLongReflection(
+  ctx: CanvasRenderingContext2D,
+  boatX: number,
+  boatY: number,
+  t: number,
+  smoothBass: number,
+  smoothMid: number,
+  goldGlow: number
+) {
+  ctx.save();
+
+  // 1. 水面动态拉伸流金倒影 (Specular Elongated Reflection)
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  const lanternX = boatX + 11;
+  const lanternY = boatY - 2;
+  const reflLength = 48;
+  const slices = 10;
+
+  for (let i = 0; i < slices; i++) {
+    const frac = i / slices;
+    const curY = boatY + 3 + frac * reflLength;
+    const waveShift = Math.sin(curY * 0.18 + t * 3.0) * (2.2 + smoothBass * 3.2);
+    const reflWidth = (6.0 + i * 2.2) * (1.0 + smoothMid * 0.6);
+    const reflAlpha = 0.38 * (1.0 - frac * 0.85) * (0.8 + 0.2 * Math.sin(t * 3.5)) * goldGlow;
+
+    ctx.fillStyle = `rgba(251, 191, 36, ${reflAlpha})`;
+    ctx.beginPath();
+    ctx.ellipse(lanternX + waveShift, curY, reflWidth, 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 2. 船身 (优雅木质古舟)
+  ctx.fillStyle = "rgba(8, 20, 26, 0.98)";
+  ctx.beginPath();
+  ctx.moveTo(boatX - 18, boatY);
+  ctx.quadraticCurveTo(boatX, boatY + 4.5, boatX + 18, boatY);
+  ctx.quadraticCurveTo(boatX, boatY + 0.8, boatX - 18, boatY);
+  ctx.fill();
+
+  // 3. 乌篷 (双层竹席篷)
+  ctx.fillStyle = "rgba(12, 28, 36, 0.95)";
+  ctx.beginPath();
+  ctx.arc(boatX - 1, boatY - 1.5, 6.5, Math.PI, 0);
+  ctx.fill();
+  // 篷顶内沿暗影
+  ctx.fillStyle = "rgba(4, 10, 14, 0.95)";
+  ctx.beginPath();
+  ctx.arc(boatX - 1, boatY - 1.0, 4.5, Math.PI, 0);
+  ctx.fill();
+
+  // 4. 蓑笠翁与鱼竿
+  // 斗笠
+  ctx.fillStyle = "rgba(20, 42, 50, 0.95)";
+  ctx.beginPath();
+  ctx.moveTo(boatX - 10, boatY - 4);
+  ctx.lineTo(boatX - 6, boatY - 8);
+  ctx.lineTo(boatX - 2, boatY - 4);
+  ctx.closePath();
+  ctx.fill();
+  // 蓑衣身形
+  ctx.beginPath();
+  ctx.arc(boatX - 6, boatY - 2.5, 3.2, 0, Math.PI * 2);
+  ctx.fill();
+  // 细韧鱼竿与钓丝
+  ctx.strokeStyle = "rgba(200, 220, 230, 0.65)";
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(boatX - 6, boatY - 4);
+  ctx.lineTo(boatX - 19, boatY - 12);
+  ctx.lineTo(boatX - 21, boatY + 2); // 垂入水中的钓丝
+  ctx.stroke();
+
+  // 5. 暖金八角风灯
+  const lanternPulse = 0.82 + Math.sin(t * 3.2) * 0.18 + smoothMid * 0.35;
+  const lanternGlow = ctx.createRadialGradient(lanternX, lanternY, 0.5, lanternX, lanternY, 22);
+  lanternGlow.addColorStop(0, `rgba(255, 248, 220, ${0.98 * lanternPulse})`);
+  lanternGlow.addColorStop(0.3, `rgba(245, 158, 11, ${0.60 * lanternPulse * goldGlow})`);
+  lanternGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = lanternGlow;
+  ctx.beginPath();
+  ctx.arc(lanternX, lanternY, 22, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * 金石古法熟朱砂“清音”篆书印
+ */
+function drawCinnabarSeal(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+  ctx.save();
+  // 1. 印泥基底与金石微晕
+  const sealGrad = ctx.createLinearGradient(x, y, x + size, y + size);
+  sealGrad.addColorStop(0, "#c83b32");
+  sealGrad.addColorStop(1, "#861814");
+  ctx.fillStyle = sealGrad;
+
+  roundRect(ctx, x, y, size, size, 1.8);
+  ctx.fill();
+
+  // 2. 金石边线（微带磨蚀残缺感）
+  ctx.strokeStyle = "rgba(254, 243, 199, 0.35)";
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+
+  // 3. “清音”二字古篆阴刻骨架
+  ctx.strokeStyle = "rgba(254, 243, 199, 0.88)";
+  ctx.lineWidth = 0.85;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  const half = size / 2;
+  const pad = 2.5;
+
+  // ─── 右半部：“清” (Qing) ───
+  ctx.beginPath();
+  ctx.moveTo(x + pad + 1.2, y + pad + 1.5);
+  ctx.lineTo(x + pad + 0.8, y + pad + 3.5);
+  ctx.moveTo(x + pad + 0.8, y + pad + 5.5);
+  ctx.lineTo(x + pad + 1.6, y + pad + 8.5);
+
+  ctx.moveTo(x + pad + 3.2, y + pad + 1.5);
+  ctx.lineTo(x + half - 1.2, y + pad + 1.5);
+  ctx.moveTo(x + pad + 4.5, y + pad + 1.0);
+  ctx.lineTo(x + pad + 4.5, y + pad + 5.0);
+  ctx.moveTo(x + pad + 3.2, y + pad + 3.2);
+  ctx.lineTo(x + half - 1.2, y + pad + 3.2);
+
+  ctx.moveTo(x + pad + 3.0, y + pad + 5.5);
+  ctx.lineTo(x + pad + 3.0, y + size - pad - 1.0);
+  ctx.lineTo(x + half - 1.2, y + size - pad - 1.0);
+  ctx.lineTo(x + half - 1.2, y + pad + 5.5);
+  ctx.moveTo(x + pad + 3.0, y + pad + 8.0);
+  ctx.lineTo(x + half - 1.2, y + pad + 8.0);
+  ctx.stroke();
+
+  // ─── 左半部：“音” (Yin) ───
+  ctx.beginPath();
+  ctx.moveTo(x + half + 1.5, y + pad + 1.5);
+  ctx.lineTo(x + size - pad - 1.5, y + pad + 1.5);
+  ctx.moveTo(x + half + 4.0, y + pad + 0.8);
+  ctx.lineTo(x + half + 4.0, y + pad + 3.5);
+  ctx.moveTo(x + half + 2.5, y + pad + 3.5);
+  ctx.lineTo(x + size - pad - 2.5, y + pad + 3.5);
+
+  ctx.moveTo(x + half + 1.8, y + pad + 5.5);
+  ctx.lineTo(x + half + 1.8, y + size - pad - 1.0);
+  ctx.lineTo(x + size - pad - 1.8, y + size - pad - 1.0);
+  ctx.lineTo(x + size - pad - 1.8, y + pad + 5.5);
+  ctx.closePath();
+  ctx.moveTo(x + half + 1.8, y + pad + 8.2);
+  ctx.lineTo(x + size - pad - 1.8, y + pad + 8.2);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 function roundRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -505,3 +837,4 @@ function roundRect(
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
 }
+

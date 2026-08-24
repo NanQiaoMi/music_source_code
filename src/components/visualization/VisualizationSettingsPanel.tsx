@@ -85,9 +85,9 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
   };
 
   const effectLabels: Record<string, string> = {
-    orientalLandscape: "青绿千里 · 电影画卷 (古风纯乐)",
-    cinematicOrientalInk: "千里江山 · 流光墨韵 (纯音/古风)",
-    cinematicSilkAurora: "流金丝绸极光 (电影感)",
+    orientalLandscape: "青绿千里",
+    cinematicOrientalInk: "千里江山",
+    cinematicSilkAurora: "流金丝绸",
     spatialMesh: "流光幻境",
     cyberpunkParticles: "神经之网",
     organicFluid: "生命流体",

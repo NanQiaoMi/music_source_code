@@ -100,7 +100,7 @@ export const usePresetStore = create<PresetStore>((set, get) => ({
     const systemPresets: EffectPreset[] = [
       {
         id: "oriental-landscape-default",
-        name: "青绿千里 · 电影画卷",
+        name: "青绿千里",
         description: "东方水墨重彩与电影级丁达尔神光远山画卷，专为纯音乐与国风定制",
         effectId: "oriental-landscape-v8",
         tags: ["国风", "电影感", "古风", "纯音乐"],

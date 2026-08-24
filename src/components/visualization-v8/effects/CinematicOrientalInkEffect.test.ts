@@ -78,9 +78,9 @@ describe("CinematicOrientalInkEffect (千里江山·流光墨韵)", () => {
     CinematicOrientalInkEffect.init(renderContext);
   });
 
-  it("should have correct metadata and Oriental aesthetic configuration", () => {
+  it("should have correct metadata", () => {
     expect(CinematicOrientalInkEffect.id).toBe("cinematic_oriental_ink");
-    expect(CinematicOrientalInkEffect.name).toBe("千里江山 · 流光墨韵");
+    expect(CinematicOrientalInkEffect.name).toBe("千里江山");
     expect(CinematicOrientalInkEffect.category).toBe("space");
     expect(CinematicOrientalInkEffect.preferredEngine).toBe("canvas");
     expect(CinematicOrientalInkEffect.parameters.length).toBeGreaterThanOrEqual(5);

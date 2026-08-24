@@ -72,10 +72,10 @@ describe("OrientalLandscapeV8Effect", () => {
     OrientalLandscapeV8Effect.init?.(mockCtx);
   });
 
-  it("should have correct metadata and parameters", () => {
-    expect(OrientalLandscapeV8Effect.id).toBe("oriental-landscape-v8");
-    expect(OrientalLandscapeV8Effect.name).toBe("青绿千里 · 电影画卷");
-    expect(OrientalLandscapeV8Effect.preferredEngine).toBe("canvas");
+  it("should have correct metadata", () => {
+    expect(OrientalLandscapeV8Effect.id).toBe("oriental_landscape");
+    expect(OrientalLandscapeV8Effect.name).toBe("青绿千里");
+    expect(OrientalLandscapeV8Effect.category).toBe("space");
     expect(OrientalLandscapeV8Effect.parameters.length).toBeGreaterThanOrEqual(5);
 
     const paramIds = OrientalLandscapeV8Effect.parameters.map((p) => p.id);

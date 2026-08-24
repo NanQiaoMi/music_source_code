@@ -30,7 +30,7 @@ export interface LakeRipple {
   speed: number;
 }
 
-export interface CloudLayer {
+export interface MistRibbon {
   x: number;
   y: number;
   rx: number;
@@ -38,6 +38,7 @@ export interface CloudLayer {
   baseAlpha: number;
   speed: number;
   phase: number;
+  driftY: number;
 }
 
 export interface SwimmingKoi {
@@ -48,6 +49,7 @@ export interface SwimmingKoi {
   length: number;
   alpha: number;
   swimPhase: number;
+  trail: { x: number; y: number; alpha: number }[];
 }
 
 export interface StarNode {
@@ -58,12 +60,25 @@ export interface StarNode {
   phase: number;
 }
 
+export interface CrestEmber {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  alpha: number;
+  life: number;
+  maxLife: number;
+}
+
 export interface CinematicInkState {
   fireflies: GoldFirefly[];
-  clouds: CloudLayer[];
+  mistRibbons: MistRibbon[];
+  clouds: MistRibbon[];
   ripples: LakeRipple[];
   kois: SwimmingKoi[];
   stars: StarNode[];
+  crestEmbers: CrestEmber[];
   smoothedBass: number;
   smoothedMid: number;
   smoothedTreble: number;
@@ -90,13 +105,13 @@ const ORIENTAL_POEMS = [
 ];
 
 const CONSTELLATION_NODES = [
-  { x: 0.72, y: 0.12 },
-  { x: 0.76, y: 0.15 },
-  { x: 0.81, y: 0.19 },
-  { x: 0.84, y: 0.25 },
-  { x: 0.89, y: 0.26 },
-  { x: 0.92, y: 0.32 },
-  { x: 0.87, y: 0.33 },
+  { x: 0.72, y: 0.10 },
+  { x: 0.76, y: 0.13 },
+  { x: 0.81, y: 0.16 },
+  { x: 0.84, y: 0.22 },
+  { x: 0.89, y: 0.23 },
+  { x: 0.92, y: 0.28 },
+  { x: 0.87, y: 0.29 },
 ];
 
 const COLOR_SCHEMES: Record<
@@ -113,6 +128,7 @@ const COLOR_SCHEMES: Record<
     goldWire: string;
     cloudColor: string;
     waterWave: string;
+    waterReflect: string;
     lanternGlow: string;
     koiColor: string;
     vignetteColor: string;
@@ -122,16 +138,17 @@ const COLOR_SCHEMES: Record<
     skyTop: "#01070d",
     skyMid: "#03141d",
     skyBottom: "#08222b",
-    farMountain: ["#0e3844", "#09252e", "#041419"],
-    midMountain: ["#165053", "#0f383c", "#061a1d"],
-    nearMountain: ["#1c655d", "#124744", "#072021"],
-    shoreMountain: ["#23776d", "#17524e", "#0a2a2b"],
+    farMountain: ["#124856", "#0c323d", "#061c22"],
+    midMountain: ["#1a6064", "#114448", "#082225"],
+    nearMountain: ["#22786e", "#16554f", "#0a2a29"],
+    shoreMountain: ["#2b8f82", "#1d665f", "#0d3634"],
     goldGlint: "rgba(255, 235, 150, 0.98)",
-    goldWire: "rgba(240, 205, 110, 0.85)",
+    goldWire: "rgba(240, 205, 110, 0.88)",
     cloudColor: "rgba(160, 220, 230, 0.18)",
     waterWave: "rgba(180, 240, 245, 0.35)",
+    waterReflect: "rgba(14, 52, 60, 0.40)",
     lanternGlow: "rgba(255, 210, 110, 0.95)",
-    koiColor: "rgba(255, 190, 110, 0.60)",
+    koiColor: "rgba(255, 190, 110, 0.65)",
     vignetteColor: "rgba(1, 4, 7, 0.85)",
   },
   jiangnan_ink: {
@@ -146,6 +163,7 @@ const COLOR_SCHEMES: Record<
     goldWire: "rgba(190, 220, 255, 0.80)",
     cloudColor: "rgba(180, 205, 240, 0.20)",
     waterWave: "rgba(200, 225, 255, 0.32)",
+    waterReflect: "rgba(22, 34, 52, 0.38)",
     lanternGlow: "rgba(255, 220, 130, 0.90)",
     koiColor: "rgba(215, 235, 255, 0.55)",
     vignetteColor: "rgba(2, 3, 5, 0.85)",
@@ -162,6 +180,7 @@ const COLOR_SCHEMES: Record<
     goldWire: "rgba(255, 195, 85, 0.90)",
     cloudColor: "rgba(240, 180, 200, 0.20)",
     waterWave: "rgba(255, 195, 160, 0.36)",
+    waterReflect: "rgba(42, 14, 38, 0.40)",
     lanternGlow: "rgba(255, 190, 80, 0.95)",
     koiColor: "rgba(255, 165, 90, 0.65)",
     vignetteColor: "rgba(5, 1, 7, 0.85)",
@@ -210,11 +229,11 @@ function createGrain(): HTMLCanvasElement | null {
     const img = ctx.createImageData(128, 128);
     const d = img.data;
     for (let i = 0; i < d.length; i += 4) {
-      const noise = (Math.random() - 0.5) * 20;
+      const noise = (Math.random() - 0.5) * 18;
       d[i] = 128 + noise;
       d[i + 1] = 128 + noise;
       d[i + 2] = 128 + noise;
-      d[i + 3] = 6;
+      d[i + 3] = 5;
     }
     ctx.putImageData(img, 0, 0);
     return canvas;
@@ -227,39 +246,47 @@ function dynamicShanShuiRidge(
   normX: number,
   layerIndex: number,
   time: number,
-  energy: number
+  energy: number,
+  hScale: number
 ): number {
   if (layerIndex === 1) {
-    const waveFlow = Math.sin(normX * 3.6 + time * 0.15) * 22;
-    const spire1 = Math.exp(-Math.pow((normX - 0.28 + Math.sin(time * 0.08) * 0.03) * 4.5, 2)) * -190;
-    const spire2 = Math.exp(-Math.pow((normX - 0.65 + Math.cos(time * 0.07) * 0.03) * 4.0, 2)) * -160;
-    const spire3 = Math.exp(-Math.pow((normX - 0.86) * 6.0, 2)) * -110;
-    const breath = Math.sin(time * 0.25) * (8 + energy * 15);
-    return spire1 + spire2 + spire3 + waveFlow + breath;
+    const spire1 = Math.exp(-Math.pow((normX - 0.32 + Math.sin(time * 0.05) * 0.02) * 6.0, 2)) * (-0.17 * hScale);
+    const subSpire1 = Math.exp(-Math.pow((normX - 0.40) * 9.5, 2)) * (-0.10 * hScale);
+    const spire2 = Math.exp(-Math.pow((normX - 0.68 + Math.cos(time * 0.05) * 0.02) * 5.2, 2)) * (-0.15 * hScale);
+    const subSpire2 = Math.exp(-Math.pow((normX - 0.58) * 8.5, 2)) * (-0.09 * hScale);
+    const spire3 = Math.exp(-Math.pow((normX - 0.88) * 7.0, 2)) * (-0.12 * hScale);
+    const rolling = Math.sin(normX * 4.0 + time * 0.10) * (0.03 * hScale);
+    const microCrests = Math.sin(normX * 14.0 + 1.2) * (0.008 * hScale);
+    const breath = Math.sin(time * 0.22) * (0.012 * hScale + energy * 0.018 * hScale);
+    return spire1 + subSpire1 + spire2 + subSpire2 + spire3 + rolling + microCrests + breath;
   } else if (layerIndex === 2) {
-    const waveFlow = Math.sin(normX * 4.6 - time * 0.22) * 28;
-    const peak1 = Math.exp(-Math.pow((normX - 0.18 + Math.sin(time * 0.12) * 0.04) * 4.0, 2)) * -135;
-    const peak2 = Math.exp(-Math.pow((normX - 0.50 - Math.cos(time * 0.10) * 0.04) * 3.5, 2)) * -145;
-    const peak3 = Math.exp(-Math.pow((normX - 0.78) * 4.8, 2)) * -105;
-    const breath = Math.cos(time * 0.35 + normX * 3) * (10 + energy * 20);
-    return peak1 + peak2 + peak3 + waveFlow + breath;
+    const peak1 = Math.exp(-Math.pow((normX - 0.20 + Math.sin(time * 0.07) * 0.02) * 5.5, 2)) * (-0.14 * hScale);
+    const peak2 = Math.exp(-Math.pow((normX - 0.50 - Math.cos(time * 0.06) * 0.02) * 4.8, 2)) * (-0.15 * hScale);
+    const peak3 = Math.exp(-Math.pow((normX - 0.78) * 6.0, 2)) * (-0.11 * hScale);
+    const slope = Math.sin(normX * 4.8 - time * 0.15) * (0.028 * hScale);
+    const microCrests = Math.sin(normX * 16.0 + 0.8) * (0.007 * hScale);
+    const breath = Math.cos(time * 0.30 + normX * 3) * (0.015 * hScale + energy * 0.02 * hScale);
+    return peak1 + peak2 + peak3 + slope + microCrests + breath;
   } else if (layerIndex === 3) {
-    const waveFlow = Math.sin(normX * 5.2 + time * 0.30) * 32;
-    const cliff = Math.exp(-Math.pow((normX - 0.82 + Math.sin(time * 0.15) * 0.03) * 3.8, 2)) * -100;
-    const rock = Math.exp(-Math.pow((normX - 0.26) * 4.6, 2)) * -75;
-    const breath = Math.sin(time * 0.45 + normX * 4) * (12 + energy * 24);
-    return cliff + rock + waveFlow + breath;
+    const cliff1 = Math.exp(-Math.pow((normX - 0.84 + Math.sin(time * 0.08) * 0.02) * 5.0, 2)) * (-0.11 * hScale);
+    const cliff2 = Math.exp(-Math.pow((normX - 0.26) * 6.0, 2)) * (-0.09 * hScale);
+    const cliff3 = Math.exp(-Math.pow((normX - 0.60) * 7.5, 2)) * (-0.08 * hScale);
+    const shore = Math.sin(normX * 5.2 + time * 0.20) * (0.022 * hScale);
+    const microCrests = Math.sin(normX * 18.0) * (0.005 * hScale);
+    const breath = Math.sin(time * 0.38 + normX * 4) * (0.012 * hScale + energy * 0.018 * hScale);
+    return cliff1 + cliff2 + cliff3 + shore + microCrests + breath;
   } else {
-    const shoreWave = Math.sin(normX * 6.0 - time * 0.38) * 24;
-    const hummock = Math.sin(normX * 3.2 + 1.5) * 20;
-    const breath = Math.sin(time * 0.55 + normX * 5) * (8 + energy * 16);
-    return shoreWave + hummock + breath;
+    const hummock1 = Math.exp(-Math.pow((normX - 0.14) * 6.5, 2)) * (-0.06 * hScale);
+    const hummock2 = Math.exp(-Math.pow((normX - 0.72) * 5.5, 2)) * (-0.06 * hScale);
+    const shoreWave = Math.sin(normX * 6.5 - time * 0.25) * (0.018 * hScale);
+    const breath = Math.sin(time * 0.45 + normX * 5) * (0.008 * hScale + energy * 0.012 * hScale);
+    return hummock1 + hummock2 + shoreWave + breath;
   }
 }
 
 export const CinematicOrientalInkEffect: EffectPlugin = {
   id: "cinematic_oriental_ink",
-  name: "千里江山 · 流光墨韵",
+  name: "千里江山",
   category: "space",
   description: "专为纯音乐与古风打造：动态东方青绿水墨画卷、柔和空灵冷月、一叶轻舟渔火与水底灵动游鱼系统",
   preferredEngine: "canvas",
@@ -354,23 +381,23 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
       });
     }
 
-    const clouds: CloudLayer[] = [
-      { x: width * 0.22, y: height * 0.52, rx: 320, ry: 60, baseAlpha: 0.24, speed: 0.07, phase: 0 },
-      { x: width * 0.68, y: height * 0.62, rx: 380, ry: 70, baseAlpha: 0.20, speed: 0.05, phase: 2.1 },
-      { x: width * 0.40, y: height * 0.74, rx: 460, ry: 80, baseAlpha: 0.26, speed: 0.08, phase: 4.3 },
+    const mistRibbons: MistRibbon[] = [
+      { x: width * 0.24, y: height * 0.54, rx: 360, ry: 48, baseAlpha: 0.18, speed: 0.07, phase: 0, driftY: 0 },
+      { x: width * 0.70, y: height * 0.64, rx: 420, ry: 56, baseAlpha: 0.16, speed: 0.05, phase: 2.1, driftY: 0 },
+      { x: width * 0.45, y: height * 0.74, rx: 490, ry: 64, baseAlpha: 0.20, speed: 0.08, phase: 4.3, driftY: 0 },
     ];
 
     const kois: SwimmingKoi[] = [
-      { x: width * 0.42, y: height * 0.88, angle: 0.2, speed: 18, length: 22, alpha: 0.50, swimPhase: 0 },
-      { x: width * 0.55, y: height * 0.92, angle: 3.3, speed: 14, length: 18, alpha: 0.45, swimPhase: 1.5 },
-      { x: width * 0.28, y: height * 0.94, angle: 0.1, speed: 12, length: 16, alpha: 0.40, swimPhase: 3.0 },
+      { x: width * 0.42, y: height * 0.90, angle: 0.2, speed: 18, length: 22, alpha: 0.50, swimPhase: 0, trail: [] },
+      { x: width * 0.55, y: height * 0.93, angle: 3.3, speed: 14, length: 18, alpha: 0.45, swimPhase: 1.5, trail: [] },
+      { x: width * 0.28, y: height * 0.95, angle: 0.1, speed: 12, length: 16, alpha: 0.40, swimPhase: 3.0, trail: [] },
     ];
 
     const stars: StarNode[] = [];
     for (let i = 0; i < 48; i++) {
       stars.push({
         x: Math.random() * width,
-        y: Math.random() * height * 0.6,
+        y: Math.random() * height * 0.50,
         baseAlpha: 0.15 + Math.random() * 0.45,
         size: 0.8 + Math.random() * 1.5,
         phase: Math.random() * Math.PI * 2,
@@ -382,10 +409,12 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
 
     const state: CinematicInkState = {
       fireflies,
-      clouds,
+      mistRibbons,
+      clouds: mistRibbons,
       ripples: [],
       kois,
       stars,
+      crestEmbers: [],
       smoothedBass: 0,
       smoothedMid: 0,
       smoothedTreble: 0,
@@ -549,14 +578,14 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
 
     ctx.restore();
 
-    // 4. 动态宋代青绿画卷（四层沉底铺满，彻底消除断层）
+    // 4. 动态宋代青绿画卷（四层重彩矿物青绿，气韵生动）
     const drawShanShui = (layerIndex: number, baseYRatio: number, colorStops: [string, string, string], goldWireAlpha: number) => {
       ctx.save();
       const baseY = height * baseYRatio;
-      const mtnGrd = ctx.createLinearGradient(0, baseY - 200, 0, height + 80);
+      const mtnGrd = ctx.createLinearGradient(0, baseY - height * 0.20, 0, height + 80);
       mtnGrd.addColorStop(0, colorStops[0]);
-      mtnGrd.addColorStop(0.40, colorStops[1]);
-      mtnGrd.addColorStop(0.85, colorStops[2]);
+      mtnGrd.addColorStop(0.35, colorStops[1]);
+      mtnGrd.addColorStop(0.80, colorStops[2]);
       mtnGrd.addColorStop(1.0, "rgba(2, 6, 9, 0.98)");
       ctx.fillStyle = mtnGrd;
 
@@ -564,14 +593,14 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
       ctx.moveTo(0, height + 80);
       ctx.lineTo(0, baseY);
 
-      const stepPx = 6;
+      const stepPx = 5;
       const totalSteps = Math.ceil(width / stepPx) + 1;
       const ridgePoints: { x: number; y: number }[] = [];
 
       for (let i = 0; i <= totalSteps; i++) {
         const curX = i * stepPx;
         const normX = curX / width;
-        const hOffset = dynamicShanShuiRidge(normX, layerIndex, state.timeAccumulator, state.smoothedEnergy);
+        const hOffset = dynamicShanShuiRidge(normX, layerIndex, state.timeAccumulator, state.smoothedEnergy, height);
         const curY = baseY + hOffset;
         ridgePoints.push({ x: curX, y: curY });
         ctx.lineTo(curX, curY);
@@ -604,21 +633,22 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
       ctx.restore();
     };
 
-    drawShanShui(1, 0.54, colors.farMountain, 0.35);
+    drawShanShui(1, 0.60, colors.farMountain, 0.35);
 
     ctx.save();
     ctx.globalCompositeOperation = "screen";
-    state.clouds.forEach((cloud) => {
-      const cx = (cloud.x + Math.sin(state.timeAccumulator * cloud.speed + cloud.phase) * 70) % (width + 320) - 160;
-      const cloudGrd = ctx.createRadialGradient(cx, cloud.y, 0, cx, cloud.y, cloud.rx);
+    state.mistRibbons.forEach((mist) => {
+      const cx = (mist.x + Math.sin(state.timeAccumulator * mist.speed + mist.phase) * 70) % (width + 320) - 160;
+      const cy = mist.y + Math.sin(state.timeAccumulator * 0.4 + mist.phase) * 6;
+      const cloudGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, mist.rx);
       cloudGrd.addColorStop(0, colors.cloudColor);
       cloudGrd.addColorStop(0.6, "rgba(8, 30, 36, 0.12)");
       cloudGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
       ctx.fillStyle = cloudGrd;
-      ctx.globalAlpha = cloud.baseAlpha * (0.85 + Math.sin(state.breathTime) * 0.15);
+      ctx.globalAlpha = mist.baseAlpha * (0.85 + Math.sin(state.breathTime) * 0.15 + state.smoothedMid * 0.20);
       ctx.save();
-      ctx.translate(cx, cloud.y);
-      ctx.scale(cloud.rx, cloud.ry);
+      ctx.translate(cx, cy);
+      ctx.scale(mist.rx, mist.ry);
       ctx.beginPath();
       ctx.arc(0, 0, 1, 0, Math.PI * 2);
       ctx.fill();
@@ -626,15 +656,15 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     });
     ctx.restore();
 
-    drawShanShui(2, 0.68, colors.midMountain, 0.60);
-    drawShanShui(3, 0.80, colors.nearMountain, 0.85);
+    drawShanShui(2, 0.72, colors.midMountain, 0.60);
+    drawShanShui(3, 0.82, colors.nearMountain, 0.85);
     drawShanShui(4, 0.90, colors.shoreMountain, 0.70);
 
     // 5. 水面微波、钓翁扁舟与锦鲤
     ctx.save();
     ctx.globalCompositeOperation = "screen";
     for (let w = 0; w < 4; w++) {
-      const waveY = height * (0.84 + w * 0.04);
+      const waveY = height * (0.85 + w * 0.035);
       const waveAlpha = (0.20 - w * 0.03) * (0.7 + state.smoothedMid * 0.35);
       ctx.strokeStyle = colors.waterWave;
       ctx.lineWidth = 1.1;
@@ -655,8 +685,22 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
 
       if (koi.x < -40) koi.x = width + 40;
       if (koi.x > width + 40) koi.x = -40;
-      if (koi.y < height * 0.82) koi.y = height - 20;
-      if (koi.y > height + 20) koi.y = height * 0.85;
+      if (koi.y < height * 0.84) koi.y = height - 15;
+      if (koi.y > height + 20) koi.y = height * 0.86;
+
+      koi.trail.unshift({ x: koi.x, y: koi.y, alpha: 0.5 });
+      if (koi.trail.length > 8) koi.trail.pop();
+
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      koi.trail.forEach((tr, tIdx) => {
+        tr.alpha -= dt * 0.6;
+        ctx.fillStyle = `rgba(255, 205, 130, ${Math.max(0, tr.alpha * 0.35)})`;
+        ctx.beginPath();
+        ctx.arc(tr.x, tr.y, (1 - tIdx / 8) * 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
 
       const wiggle = Math.sin(koi.swimPhase) * 3;
 
@@ -679,7 +723,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
 
     const boatX = width * 0.28;
     const boatBobbing = Math.sin(state.timeAccumulator * 0.65) * 3.0;
-    const boatY = height * 0.88 + boatBobbing;
+    const boatY = height * 0.89 + boatBobbing;
 
     ctx.save();
     ctx.translate(boatX, boatY);
@@ -740,7 +784,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     ctx.restore();
     ctx.restore();
 
-    // 6. 空灵流萤
+    // 6. 空灵流萤与悬浮金箔微粒 (3D Depth-of-Field Bokeh & Gold Dust)
     ctx.save();
     const trebleBoost = state.smoothedTreble * 1.0;
     state.fireflies.forEach((p) => {
@@ -790,7 +834,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     });
     ctx.restore();
 
-    // 7. 诗词呼吸层
+    // 7. 宋画竖版典雅题跋诗词与朱砂篆刻 (Vertical Calligraphy Inscription on Right)
     if (showPoetry) {
       state.poemTimer += dt;
       const cycleTime = 16;
@@ -807,31 +851,54 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
       if (currentPoem && state.poemAlpha > 0.01) {
         ctx.save();
         ctx.font = 'normal 400 16px "Noto Serif SC", "Songti SC", "SimSun", serif';
-        ctx.textAlign = "right";
-        ctx.textBaseline = "middle";
-        const textX = width - 48;
-        const textY = height - 46;
-        ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
-        ctx.shadowBlur = 14;
-        ctx.fillStyle = `rgba(240, 235, 220, ${state.poemAlpha * 0.85})`;
-        ctx.fillText(currentPoem.line, textX, textY);
-
-        ctx.font = '300 11px "Noto Serif SC", serif';
-        ctx.fillStyle = `rgba(195, 185, 165, ${state.poemAlpha * 0.55})`;
-        ctx.fillText(`— ${currentPoem.author}`, textX, textY + 22);
-
-        const stampX = textX + 18;
-        const stampY = textY - 2;
-        ctx.fillStyle = `rgba(215, 50, 42, ${state.poemAlpha * 0.85})`;
-        ctx.fillRect(stampX - 8, stampY - 8, 16, 16);
-        ctx.strokeStyle = `rgba(255, 210, 190, ${state.poemAlpha * 0.90})`;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(stampX - 8, stampY - 8, 16, 16);
-        ctx.font = 'bold 8px "Noto Serif SC", serif';
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
+
+        const textX = width - 56;
+        const startY = height * 0.16;
+        const charSpacing = 22;
+
+        ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+        ctx.shadowBlur = 12;
+
+        const chars = currentPoem.line.split("");
+        let curY = startY;
+        ctx.fillStyle = `rgba(240, 235, 220, ${state.poemAlpha * 0.88})`;
+        chars.forEach((ch) => {
+          if (ch === "，" || ch === " " || ch === "、") {
+            curY += charSpacing * 0.6;
+          } else {
+            ctx.fillText(ch, textX, curY);
+            curY += charSpacing;
+          }
+        });
+
+        ctx.font = '300 11px "Noto Serif SC", serif';
+        ctx.fillStyle = `rgba(195, 185, 165, ${state.poemAlpha * 0.60})`;
+        const authorX = textX - 22;
+        let authorY = startY + 20;
+        const authorChars = currentPoem.author.split("");
+        authorChars.forEach((ch) => {
+          if (ch === "·" || ch === " ") {
+            authorY += 14;
+          } else {
+            ctx.fillText(ch, authorX, authorY);
+            authorY += 16;
+          }
+        });
+
+        const stampX = authorX;
+        const stampY = authorY + 12;
+        ctx.fillStyle = `rgba(215, 50, 42, ${state.poemAlpha * 0.85})`;
+        ctx.fillRect(stampX - 7, stampY - 7, 14, 14);
+        ctx.strokeStyle = `rgba(255, 210, 190, ${state.poemAlpha * 0.90})`;
+        ctx.lineWidth = 0.8;
+        ctx.strokeRect(stampX - 7, stampY - 7, 14, 14);
+
+        ctx.font = 'bold 8px "Noto Serif SC", serif';
         ctx.fillStyle = `rgba(255, 255, 255, ${state.poemAlpha * 0.95})`;
         ctx.fillText("墨", stampX, stampY);
+
         ctx.restore();
       }
     }
@@ -871,10 +938,12 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     if (ctx?.private?.state) {
       const state: CinematicInkState = ctx.private.state;
       state.fireflies = [];
+      state.mistRibbons = [];
       state.clouds = [];
       state.ripples = [];
       state.kois = [];
       state.stars = [];
+      state.crestEmbers = [];
       state.starSparkleSprite = null;
       state.grainCanvas = null;
       ctx.private.state = null;
