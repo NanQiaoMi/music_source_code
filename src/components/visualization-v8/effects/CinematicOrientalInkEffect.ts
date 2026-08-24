@@ -50,11 +50,20 @@ export interface SwimmingKoi {
   swimPhase: number;
 }
 
+export interface StarNode {
+  x: number;
+  y: number;
+  baseAlpha: number;
+  size: number;
+  phase: number;
+}
+
 export interface CinematicInkState {
   fireflies: GoldFirefly[];
   clouds: CloudLayer[];
   ripples: LakeRipple[];
   kois: SwimmingKoi[];
+  stars: StarNode[];
   smoothedBass: number;
   smoothedMid: number;
   smoothedTreble: number;
@@ -78,6 +87,16 @@ const ORIENTAL_POEMS = [
   { line: "沧海月明珠有泪，蓝田日暖玉生烟", author: "李商隐 · 锦瑟" },
   { line: "松风吹解带，山月照弹琴", author: "王维 · 酬张少府" },
   { line: "月出惊山鸟，时鸣春涧中", author: "王维 · 鸟鸣涧" },
+];
+
+const CONSTELLATION_NODES = [
+  { x: 0.72, y: 0.12 },
+  { x: 0.76, y: 0.15 },
+  { x: 0.81, y: 0.19 },
+  { x: 0.84, y: 0.25 },
+  { x: 0.89, y: 0.26 },
+  { x: 0.92, y: 0.32 },
+  { x: 0.87, y: 0.33 },
 ];
 
 const COLOR_SCHEMES: Record<
@@ -347,6 +366,17 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
       { x: width * 0.28, y: height * 0.94, angle: 0.1, speed: 12, length: 16, alpha: 0.40, swimPhase: 3.0 },
     ];
 
+    const stars: StarNode[] = [];
+    for (let i = 0; i < 48; i++) {
+      stars.push({
+        x: Math.random() * width,
+        y: Math.random() * height * 0.6,
+        baseAlpha: 0.15 + Math.random() * 0.45,
+        size: 0.8 + Math.random() * 1.5,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+
     const starSparkleSprite = createStarSparkle(56);
     const grainCanvas = createGrain();
 
@@ -355,6 +385,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
       clouds,
       ripples: [],
       kois,
+      stars,
       smoothedBass: 0,
       smoothedMid: 0,
       smoothedTreble: 0,
@@ -415,7 +446,40 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     ctx.fillStyle = skyGrd;
     ctx.fillRect(0, 0, width, height);
 
-    // 2. 极度柔和朦胧的空灵冷月
+    // 2. 二十八宿微星连线
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    state.stars.forEach((st) => {
+      const twinkle = Math.sin(state.timeAccumulator * 0.8 + st.phase) * 0.3 + 0.7;
+      ctx.fillStyle = `rgba(220, 240, 255, ${st.baseAlpha * twinkle * (0.6 + state.smoothedTreble * 0.4)})`;
+      ctx.beginPath();
+      ctx.arc(st.x, st.y, st.size, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.strokeStyle = "rgba(180, 220, 245, 0.12)";
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    for (let i = 0; i < CONSTELLATION_NODES.length; i++) {
+      const node = CONSTELLATION_NODES[i];
+      const px = width * node.x;
+      const py = height * node.y;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    CONSTELLATION_NODES.forEach((node) => {
+      const px = width * node.x;
+      const py = height * node.y;
+      ctx.fillStyle = "rgba(235, 250, 255, 0.45)";
+      ctx.beginPath();
+      ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+
+    // 3. 极度柔和朦胧的空灵冷月
     const moonX = width * 0.16;
     const moonY = height * 0.18;
     const moonRadius = Math.min(width, height) * 0.052;
@@ -485,7 +549,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
 
     ctx.restore();
 
-    // 3. 动态宋代青绿画卷（沉底铺满，彻底消除断层）
+    // 4. 动态宋代青绿画卷（四层沉底铺满，彻底消除断层）
     const drawShanShui = (layerIndex: number, baseYRatio: number, colorStops: [string, string, string], goldWireAlpha: number) => {
       ctx.save();
       const baseY = height * baseYRatio;
@@ -566,7 +630,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     drawShanShui(3, 0.80, colors.nearMountain, 0.85);
     drawShanShui(4, 0.90, colors.shoreMountain, 0.70);
 
-    // 4. 水面微波、扁舟与游鱼
+    // 5. 水面微波、钓翁扁舟与锦鲤
     ctx.save();
     ctx.globalCompositeOperation = "screen";
     for (let w = 0; w < 4; w++) {
@@ -635,6 +699,20 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     ctx.arc(-2, 0, 7, Math.PI, 0, false);
     ctx.fill();
 
+    ctx.strokeStyle = "rgba(200, 220, 210, 0.65)";
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(-12, 0);
+    ctx.quadraticCurveTo(-26, -14, -36, -20);
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(220, 240, 255, 0.25)";
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(-36, -20);
+    ctx.lineTo(-36, 12);
+    ctx.stroke();
+
     ctx.globalCompositeOperation = "screen";
     const lanternX = 14;
     const lanternY = -4;
@@ -662,7 +740,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     ctx.restore();
     ctx.restore();
 
-    // 5. 空灵流萤
+    // 6. 空灵流萤
     ctx.save();
     const trebleBoost = state.smoothedTreble * 1.0;
     state.fireflies.forEach((p) => {
@@ -712,7 +790,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     });
     ctx.restore();
 
-    // 6. 诗词呼吸层
+    // 7. 诗词呼吸层
     if (showPoetry) {
       state.poemTimer += dt;
       const cycleTime = 16;
@@ -758,7 +836,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
       }
     }
 
-    // 7. 电影暗角与宣纸颗粒
+    // 8. 电影暗角与宣纸颗粒
     if (filmVignette > 0.05) {
       ctx.save();
       ctx.globalCompositeOperation = "multiply";
@@ -796,6 +874,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
       state.clouds = [];
       state.ripples = [];
       state.kois = [];
+      state.stars = [];
       state.starSparkleSprite = null;
       state.grainCanvas = null;
       ctx.private.state = null;

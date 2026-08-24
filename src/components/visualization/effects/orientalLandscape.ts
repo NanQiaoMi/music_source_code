@@ -281,48 +281,71 @@ export function drawOrientalLandscape(context: EffectContext): void {
   }
   ctx.globalAlpha = 1.0;
 
-  // ─── 4. 全柔焦无硬边高斯体积丁达尔光束 (True Gaussian Soft God Rays) ───
+  // ─── 4. 电影级柔焦单束神光 · 左右悠扬摇摆与动态呼吸 (Single Swaying Volumetric Ray) ───
   const rayStrength = lightRays * (0.55 + smoothBass * 0.65 + smoothEnergy * 0.25);
   if (rayStrength > 0.05) {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
 
-    const lightOriginX = scrollX + scrollW * 0.16;
-    const lightOriginY = scrollY - 20;
+    // 光源原点在左上角悠扬微动
+    const lightOriginX = scrollX + scrollW * 0.18 + Math.sin(t * 0.4) * (scrollW * 0.02);
+    const lightOriginY = scrollY - 15 + Math.cos(t * 0.35) * 8;
 
-    const rayAngles = [0.29, 0.36, 0.44, 0.52, 0.60];
-    const rayWidths = [45, 60, 70, 55, 40];
-    const rayIntensities = [0.22, 0.32, 0.38, 0.30, 0.20];
-    const rayLen = scrollH * 1.65;
+    // 左右柔和悠扬摇摆主角度 (约 35°~52° 之间慢速摆动)
+    const swayAngle = Math.sin(t * 0.52) * 0.09 + Math.cos(t * 0.26) * 0.05 + smoothBass * 0.03;
+    const masterAngle = Math.PI * 0.42 + swayAngle;
+    const rayLen = scrollH * 1.85;
 
-    for (let r = 0; r < rayAngles.length; r++) {
-      const baseAngle = Math.PI * rayAngles[r] + Math.sin(t * 0.3 + r * 1.1) * 0.025;
-      const beamHalfW = rayWidths[r] * (0.85 + smoothBass * 0.25);
-      const beamAlpha = rayIntensities[r] * rayStrength * 0.28;
+    // 光束范围随低频深呼吸收放变化 (Dynamic Beam Spread)
+    const baseWidth = scrollW * (0.16 + smoothBass * 0.14 + smoothEnergy * 0.06);
 
-      ctx.save();
-      ctx.translate(lightOriginX, lightOriginY);
-      ctx.rotate(baseAngle - Math.PI / 2);
+    ctx.save();
+    ctx.translate(lightOriginX, lightOriginY);
+    ctx.rotate(masterAngle - Math.PI / 2); // 旋转对齐光束主轴
 
-      const beamXGrad = ctx.createLinearGradient(-beamHalfW, 0, beamHalfW, 0);
-      beamXGrad.addColorStop(0, "rgba(254, 240, 138, 0)");
-      beamXGrad.addColorStop(0.3, `rgba(254, 240, 138, ${beamAlpha * 0.5})`);
-      beamXGrad.addColorStop(0.5, `rgba(254, 240, 138, ${beamAlpha})`);
-      beamXGrad.addColorStop(0.7, `rgba(254, 240, 138, ${beamAlpha * 0.5})`);
-      beamXGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
+    // 1. 广角超柔外围光晕 (Wide Ambient Soft Aura)
+    const wideW = baseWidth * 2.2;
+    const wideGrad = ctx.createLinearGradient(-wideW, 0, wideW, 0);
+    wideGrad.addColorStop(0, "rgba(254, 240, 138, 0)");
+    wideGrad.addColorStop(0.35, `rgba(245, 158, 11, ${0.06 * rayStrength})`);
+    wideGrad.addColorStop(0.5, `rgba(254, 240, 138, ${0.12 * rayStrength})`);
+    wideGrad.addColorStop(0.65, `rgba(245, 158, 11, ${0.06 * rayStrength})`);
+    wideGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
+    ctx.fillStyle = wideGrad;
+    ctx.fillRect(-wideW, 0, wideW * 2, rayLen);
 
-      ctx.fillStyle = beamXGrad;
-      ctx.fillRect(-beamHalfW, 0, beamHalfW * 2, rayLen);
-      ctx.restore();
-    }
+    // 2. 主体积神光柱 (Main Volumetric God Ray, 极其柔和的高斯双向羽化)
+    const mainW = baseWidth;
+    const mainGrad = ctx.createLinearGradient(-mainW, 0, mainW, 0);
+    mainGrad.addColorStop(0, "rgba(254, 240, 138, 0)");
+    mainGrad.addColorStop(0.25, `rgba(251, 191, 36, ${0.16 * rayStrength})`);
+    mainGrad.addColorStop(0.5, `rgba(254, 240, 138, ${0.36 * rayStrength})`);
+    mainGrad.addColorStop(0.75, `rgba(251, 191, 36, ${0.16 * rayStrength})`);
+    mainGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
+    ctx.fillStyle = mainGrad;
+    ctx.fillRect(-mainW, 0, mainW * 2, rayLen);
 
+    // 3. 核心温润光轴 (Radiant Core Beam)
+    const coreW = baseWidth * 0.42;
+    const coreGrad = ctx.createLinearGradient(-coreW, 0, coreW, 0);
+    coreGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+    coreGrad.addColorStop(0.3, `rgba(254, 243, 199, ${0.28 * rayStrength})`);
+    coreGrad.addColorStop(0.5, `rgba(255, 255, 240, ${0.45 * rayStrength})`);
+    coreGrad.addColorStop(0.7, `rgba(254, 243, 199, ${0.28 * rayStrength})`);
+    coreGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = coreGrad;
+    ctx.fillRect(-coreW, 0, coreW * 2, rayLen * 0.9);
+
+    ctx.restore();
+
+    // 晨曦源头超大柔焦散射晕 (Atmospheric Broad Bloom)
     const sourceBloom = ctx.createRadialGradient(
       lightOriginX,
       lightOriginY,
       5,
       lightOriginX + scrollW * 0.15,
       lightOriginY + scrollH * 0.35,
-      scrollW * 0.50
+      scrollW * 0.52
     );
     sourceBloom.addColorStop(0, `rgba(254, 240, 138, ${0.35 * rayStrength})`);
     sourceBloom.addColorStop(0.35, `rgba(251, 191, 36, ${0.15 * rayStrength})`);
@@ -330,7 +353,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
     sourceBloom.addColorStop(1, "rgba(0, 0, 0, 0)");
     ctx.fillStyle = sourceBloom;
     ctx.beginPath();
-    ctx.arc(lightOriginX + scrollW * 0.15, lightOriginY + scrollH * 0.35, scrollW * 0.50, 0, Math.PI * 2);
+    ctx.arc(lightOriginX + scrollW * 0.15, lightOriginY + scrollH * 0.35, scrollW * 0.52, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();

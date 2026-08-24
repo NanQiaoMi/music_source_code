@@ -54,6 +54,14 @@ interface SwimmingKoi {
   swimPhase: number;
 }
 
+interface StarNode {
+  x: number;
+  y: number;
+  baseAlpha: number;
+  size: number;
+  phase: number;
+}
+
 const ORIENTAL_POEMS = [
   { line: "高山流水遇知音，明月清泉照此心", author: "古调清吟 · 琴赋" },
   { line: "行到水穷处，坐看云起时", author: "王维 · 终南别业" },
@@ -63,6 +71,17 @@ const ORIENTAL_POEMS = [
   { line: "沧海月明珠有泪，蓝田日暖玉生烟", author: "李商隐 · 锦瑟" },
   { line: "松风吹解带，山月照弹琴", author: "王维 · 酬张少府" },
   { line: "月出惊山鸟，时鸣春涧中", author: "王维 · 鸟鸣涧" },
+];
+
+// 北斗七星等古星宿星座连线（归一化坐标）
+const CONSTELLATION_NODES = [
+  { x: 0.72, y: 0.12 },
+  { x: 0.76, y: 0.15 },
+  { x: 0.81, y: 0.19 },
+  { x: 0.84, y: 0.25 },
+  { x: 0.89, y: 0.26 },
+  { x: 0.92, y: 0.32 },
+  { x: 0.87, y: 0.33 },
 ];
 
 const COLOR_SCHEMES = [
@@ -124,6 +143,7 @@ let firefliesPool: GoldFirefly[] | null = null;
 let cloudsPool: CloudLayer[] | null = null;
 let ripplesPool: LakeRipple[] = [];
 let koisPool: SwimmingKoi[] | null = null;
+let starsPool: StarNode[] | null = null;
 let starSparkleSprite: HTMLCanvasElement | null = null;
 let grainCanvas: HTMLCanvasElement | null = null;
 
@@ -143,7 +163,7 @@ let poemAlpha = 0;
 let lastTransientPeak = 0;
 
 // =========================================================================
-// 2. High-Performance Master Sprites
+// 2. High-Performance Sprites
 // =========================================================================
 
 function createStarSparkleSprite(size: number): HTMLCanvasElement | null {
@@ -204,7 +224,7 @@ function createFilmGrainTexture(): HTMLCanvasElement | null {
   }
 }
 
-// 动态多谐波山峦行云流水起伏算法（让山体随旋律与时间徐徐流动）
+// 动态多谐波山峦行云流水起伏算法
 function dynamicShanShuiRidge(
   normX: number,
   layerIndex: number,
@@ -235,7 +255,7 @@ function dynamicShanShuiRidge(
     const breath = Math.sin(time * 0.45 + normX * 4) * (12 + energy * 24);
     return cliff + rock + waveFlow + breath;
   } else {
-    // 前景芳渚：临江秀渚、起伏波澜 (Foreground Water Shoreline - 充实底部)
+    // 前景芳渚：临江秀渚、起伏波澜 (Foreground Water Shoreline)
     const shoreWave = Math.sin(normX * 6.0 - time * 0.38) * 24;
     const hummock = Math.sin(normX * 3.2 + 1.5) * 20;
     const breath = Math.sin(time * 0.55 + normX * 5) * (8 + energy * 16);
@@ -313,6 +333,19 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   if (!starSparkleSprite) starSparkleSprite = createStarSparkleSprite(56);
   if (!grainCanvas) grainCanvas = createFilmGrainTexture();
 
+  if (!starsPool) {
+    starsPool = [];
+    for (let i = 0; i < 48; i++) {
+      starsPool.push({
+        x: Math.random() * width,
+        y: Math.random() * height * 0.6,
+        baseAlpha: 0.15 + Math.random() * 0.45,
+        size: 0.8 + Math.random() * 1.5,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
   if (!firefliesPool || firefliesPool.length !== targetParticleCount) {
     firefliesPool = [];
     for (let i = 0; i < targetParticleCount; i++) {
@@ -356,7 +389,7 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   }
 
   // =========================================================================
-  // 4. 空灵静谧的苍穹夜色 (Ethereal Sky Gradient)
+  // 4. 空灵静谧的苍穹夜色与北斗星宿 (Ethereal Night Sky with Constellations)
   // =========================================================================
   const skyGrd = ctx.createLinearGradient(0, 0, 0, height);
   skyGrd.addColorStop(0, colors.skyTop);
@@ -364,6 +397,40 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   skyGrd.addColorStop(1.0, colors.skyBottom);
   ctx.fillStyle = skyGrd;
   ctx.fillRect(0, 0, width, height);
+
+  // 绘制深空微弱星宿（二十八宿意象）
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  starsPool.forEach((st) => {
+    const twinkle = Math.sin(timeAccum * 0.8 + st.phase) * 0.3 + 0.7;
+    ctx.fillStyle = `rgba(220, 240, 255, ${st.baseAlpha * twinkle * (0.6 + smoothTreble * 0.4)})`;
+    ctx.beginPath();
+    ctx.arc(st.x, st.y, st.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // 北斗星宿极淡连线
+  ctx.strokeStyle = "rgba(180, 220, 245, 0.12)";
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  for (let i = 0; i < CONSTELLATION_NODES.length; i++) {
+    const node = CONSTELLATION_NODES[i];
+    const px = width * node.x;
+    const py = height * node.y;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  CONSTELLATION_NODES.forEach((node) => {
+    const px = width * node.x;
+    const py = height * node.y;
+    ctx.fillStyle = "rgba(235, 250, 255, 0.45)";
+    ctx.beginPath();
+    ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
 
   // =========================================================================
   // 5. 极度柔和朦胧的空灵冷月 (Ultra-Soft Luminous Moon with Multi-Stage Halo)
@@ -616,7 +683,7 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ctx.restore();
   });
 
-  // 4. 一叶扁舟与暖黄渔火 (Lone Boat on Flowing Waves)
+  // 4. 一叶扁舟、青竹钓竿与暖黄渔火 (Artisanal Sampan Boat with Fishing Rod)
   const boatX = width * 0.28;
   const boatBobbing = Math.sin(timeAccum * 0.65) * 3.0;
   const boatY = height * 0.88 + boatBobbing;
@@ -625,6 +692,7 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   ctx.translate(boatX, boatY);
   ctx.rotate(Math.sin(timeAccum * 0.65) * 0.025);
 
+  // 乌篷船身
   ctx.fillStyle = "rgba(4, 10, 12, 0.98)";
   ctx.beginPath();
   ctx.moveTo(-22, 0);
@@ -635,9 +703,26 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   ctx.closePath();
   ctx.fill();
 
+  // 乌篷拱顶
   ctx.beginPath();
   ctx.arc(-2, 0, 7, Math.PI, 0, false);
   ctx.fill();
+
+  // 青竹钓竿 (Bamboo fishing rod)
+  ctx.strokeStyle = "rgba(200, 220, 210, 0.65)";
+  ctx.lineWidth = 1.0;
+  ctx.beginPath();
+  ctx.moveTo(-12, 0);
+  ctx.quadraticCurveTo(-26, -14, -36, -20);
+  ctx.stroke();
+
+  // 钓丝 (Fine fishing line)
+  ctx.strokeStyle = "rgba(220, 240, 255, 0.25)";
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(-36, -20);
+  ctx.lineTo(-36, 12);
+  ctx.stroke();
 
   // 船头暖黄渔火
   ctx.globalCompositeOperation = "screen";
