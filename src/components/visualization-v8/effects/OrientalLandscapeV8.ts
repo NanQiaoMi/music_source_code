@@ -999,19 +999,6 @@ function drawSongDynastyMoon(
   ctx.arc(moonX + moonR * 0.25, moonY + moonR * 0.15, moonR * 0.45, 0, Math.PI * 2);
   ctx.fill();
 
-  // 4. 月华微风轻岚 (月边拂过一缕细丝轻云)
-  const cloudPhase = t * 0.4;
-  const cloudY = moonY + moonR * 0.35 + Math.sin(cloudPhase) * 1.5;
-  const cloudGrad = ctx.createLinearGradient(moonX - moonR * 2.0, cloudY, moonX + moonR * 2.0, cloudY);
-  cloudGrad.addColorStop(0, "rgba(220, 245, 248, 0)");
-  cloudGrad.addColorStop(0.5, `rgba(235, 250, 252, ${0.18 + smoothMid * 0.12})`);
-  cloudGrad.addColorStop(1, "rgba(220, 245, 248, 0)");
-
-  ctx.fillStyle = cloudGrad;
-  ctx.beginPath();
-  ctx.ellipse(moonX + Math.sin(cloudPhase) * 4, cloudY, moonR * 1.8, moonR * 0.22, -0.08, 0, Math.PI * 2);
-  ctx.fill();
-
   ctx.restore();
 }
 
