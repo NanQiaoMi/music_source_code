@@ -580,7 +580,18 @@ export function isPlatformLoggedIn(platform?: string): boolean {
   return useUserAccountStore.getState().isPlatformLoggedIn(platform);
 }
 
+export function hasAnyPlatformLoggedIn(): boolean {
+  return (
+    isPlatformLoggedIn("netease") ||
+    isPlatformLoggedIn("qq") ||
+    isPlatformLoggedIn("kugou") ||
+    isPlatformLoggedIn("kuwo") ||
+    isPlatformLoggedIn("qishui")
+  );
+}
+
 export function handlePlatformSessionExpired(platform: PlatformType | string, reason?: string): void {
   useUserAccountStore.getState().handlePlatformSessionExpired(platform, reason);
 }
+
 

@@ -3,13 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const cookie = request.headers.get("x-netease-cookie") || request.headers.get("cookie") || "";
+  const cookie = request.headers.get("x-netease-cookie") || "";
   if (!cookie || cookie.trim().length < 5) {
     return NextResponse.json(
       { songs: [], code: 401, message: "NetEase authentication required. Please login first." },
       { status: 401 }
     );
   }
+
 
   const { searchParams } = new URL(request.url);
   const keywords = searchParams.get("keywords") || searchParams.get("s") || "";

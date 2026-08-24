@@ -195,13 +195,14 @@ export async function GET(request: NextRequest) {
 
   // 1. 酷我专区 (仅在明确指定 kuwo 或以 MUSIC_ 开头时调用)
   if (source === "kuwo" || source === "kw" || id.startsWith("MUSIC_") || id.startsWith("kw_")) {
-    const kuwoCookie = request.headers.get("x-kuwo-cookie") || request.headers.get("cookie") || "";
+    const kuwoCookie = request.headers.get("x-kuwo-cookie") || "";
     if (!kuwoCookie || kuwoCookie.trim().length < 5) {
       return NextResponse.json(
         { code: 401, message: "Kuwo authentication required. Please login with Cookie." },
         { status: 401 }
       );
     }
+
 
     if (id) {
       try {
@@ -243,13 +244,14 @@ export async function GET(request: NextRequest) {
 
   // 2. 网易云专区 (严格校验登录凭证，未登录直接返回 401)
   if (source === "netease" || source === "wy" || (!source && /^\d+$/.test(effectiveId))) {
-    const neteaseCookie = request.headers.get("x-netease-cookie") || request.headers.get("cookie") || "";
+    const neteaseCookie = request.headers.get("x-netease-cookie") || "";
     if (!neteaseCookie || neteaseCookie.trim().length < 5) {
       return NextResponse.json(
         { code: 401, message: "NetEase authentication required. Please login with QR code or Cookie." },
         { status: 401 }
       );
     }
+
 
     // 2.1 网易云官方 WeAPI 获取原版真流
     if (/^\d+$/.test(effectiveId)) {

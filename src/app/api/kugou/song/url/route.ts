@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const kugouCookie = request.headers.get("x-kugou-cookie") || request.headers.get("cookie") || "";
+  const kugouCookie = request.headers.get("x-kugou-cookie") || "";
   if (!kugouCookie || kugouCookie.trim().length < 5) {
     return NextResponse.json(
       { code: 401, message: "KuGou authentication required. Please login with Cookie/Token." },
       { status: 401 }
     );
   }
+
 
   const { searchParams } = new URL(request.url);
   const hash = searchParams.get("hash") || searchParams.get("id") || "";

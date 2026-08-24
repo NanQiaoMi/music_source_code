@@ -105,16 +105,73 @@ export const LxMusicSearchTab: React.FC = () => {
   const { addSong, importSongs } = usePlaylistStore();
   const { lxScripts, openManagementModal, resolutionMode, setResolutionMode } = useSourceConfigStore();
 
+  const neteaseUser = useUserAccountStore((state) => state.neteaseUser);
+  const qqUser = useUserAccountStore((state) => state.qqUser);
+  const kugouUser = useUserAccountStore((state) => state.kugouUser);
+  const kuwoUser = useUserAccountStore((state) => state.kuwoUser);
+  const qishuiUser = useUserAccountStore((state) => state.qishuiUser);
+  const neteaseCookie = useUserAccountStore((state) => state.neteaseCookie);
+  const qqCookie = useUserAccountStore((state) => state.qqCookie);
+  const kugouCookie = useUserAccountStore((state) => state.kugouCookie);
+  const kuwoCookie = useUserAccountStore((state) => state.kuwoCookie);
+  const qishuiCookie = useUserAccountStore((state) => state.qishuiCookie);
+  const getPlatformCookie = useUserAccountStore((state) => state.getPlatformCookie);
+
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
   }, []);
+
+  const isPlatformAuth = useCallback(
+    (platform: string): boolean => {
+      const p = platform.toLowerCase();
+      if (p === "netease" || p === "wy") return Boolean(neteaseUser?.loggedIn || (neteaseCookie && neteaseCookie.trim().length > 5));
+      if (p === "qq") return Boolean(qqUser?.loggedIn || (qqCookie && qqCookie.trim().length > 5));
+      if (p === "kugou" || p === "kg") return Boolean(kugouUser?.loggedIn || (kugouCookie && kugouCookie.trim().length > 5));
+      if (p === "kuwo" || p === "kw") return Boolean(kuwoUser?.loggedIn || (kuwoCookie && kuwoCookie.trim().length > 5));
+      if (p === "qishui") return Boolean(qishuiUser?.loggedIn || (qishuiCookie && qishuiCookie.trim().length > 5));
+      if (p === "migu" || p === "mg") return false;
+      return false;
+    },
+    [neteaseUser, qqUser, kugouUser, kuwoUser, qishuiUser, neteaseCookie, qqCookie, kugouCookie, kuwoCookie, qishuiCookie]
+  );
+
+  const hasAnyAuth = useMemo(() => {
+    return (
+      isPlatformAuth("netease") ||
+      isPlatformAuth("qq") ||
+      isPlatformAuth("kugou") ||
+      isPlatformAuth("kuwo") ||
+      isPlatformAuth("qishui")
+    );
+  }, [isPlatformAuth]);
+
+  const hasLxScript = useMemo(() => {
+    return lxScripts.some((s) => s.enabled);
+  }, [lxScripts]);
+
+  const isTabUsable = useCallback(
+    (tab: SearchSourceTab): boolean => {
+      if (tab === "all") return hasAnyAuth || hasLxScript;
+      if (tab === "lx_custom") return hasLxScript;
+      return isPlatformAuth(tab);
+    },
+    [hasAnyAuth, hasLxScript, isPlatformAuth]
+  );
+
+  const isCurrentTabLocked = !isTabUsable(activeTab);
 
   // 执行搜索
   const handleSearch = useCallback(
     async (queryText?: string, targetTab = activeTab, targetMode = searchMode) => {
       const q = (queryText !== undefined ? queryText : keyword).trim();
       if (!q) return;
+
+      if (!isTabUsable(targetTab)) {
+        setSongResults([]);
+        setPlaylistResults([]);
+        return;
+      }
 
       const cacheKey = `${targetMode}-${targetTab}-${q}`.toLowerCase();
       if (targetMode === "songs" && searchMemoryCache.has(cacheKey)) {
@@ -133,10 +190,10 @@ export const LxMusicSearchTab: React.FC = () => {
             setSongResults(seg.all);
             searchMemoryCache.set(cacheKey, seg.all);
           } else if (targetTab === "lx_custom") {
-            const lxScripts = useSourceConfigStore.getState().lxScripts;
+            const activeScripts = useSourceConfigStore.getState().lxScripts;
             const activeScript =
-              lxScripts.find((s) => s.id === selectedScriptId && s.enabled) ||
-              lxScripts.find((s) => s.enabled) || {
+              activeScripts.find((s) => s.id === selectedScriptId && s.enabled) ||
+              activeScripts.find((s) => s.enabled) || {
                 id: "aggregate_special_v9",
                 name: "全豆要[聚合音源] 9.3特供版",
                 author: "全豆要",
@@ -160,7 +217,9 @@ export const LxMusicSearchTab: React.FC = () => {
               migu: `${base}/api/search?keywords=${encodeURIComponent(q)}&limit=100`,
             };
             const targetUrl = epMap[targetTab] || `${base}/api/search?keywords=${encodeURIComponent(q)}&limit=100`;
-            const res = await fetch(targetUrl);
+            const cookie = getPlatformCookie(targetTab);
+            const headers: HeadersInit = cookie ? { [`x-${targetTab}-cookie`]: cookie } : {};
+            const res = await fetch(targetUrl, { headers });
             if (res.ok) {
               const data = await res.json();
               const songs = Array.isArray(data.songs) ? data.songs : [];
@@ -172,7 +231,13 @@ export const LxMusicSearchTab: React.FC = () => {
           }
         } else {
           // 歌单搜索
-          const res = await fetch(`/api/playlist/search?keywords=${encodeURIComponent(q)}&limit=60&source=${targetTab === "all" ? "all" : targetTab}`);
+          const headers: HeadersInit = {};
+          const netCookie = getPlatformCookie("netease");
+          if (netCookie) headers["x-netease-cookie"] = netCookie;
+          const qqC = getPlatformCookie("qq");
+          if (qqC) headers["x-qq-cookie"] = qqC;
+
+          const res = await fetch(`/api/playlist/search?keywords=${encodeURIComponent(q)}&limit=60&source=${targetTab === "all" ? "all" : targetTab}`, { headers });
           if (res.ok) {
             const data = await res.json();
             setPlaylistResults(Array.isArray(data.playlists) ? data.playlists : []);
@@ -187,25 +252,48 @@ export const LxMusicSearchTab: React.FC = () => {
         setIsSearching(false);
       }
     },
-    [keyword, activeTab, searchMode, selectedScriptId, showToast]
+    [keyword, activeTab, searchMode, selectedScriptId, isTabUsable, getPlatformCookie, showToast]
   );
 
-  // 初始加载一次默认搜索
+  const triggerSearchOrPromptLogin = useCallback(() => {
+    if (isCurrentTabLocked) {
+      const tabLabel = SOURCE_TABS.find((t) => t.id === activeTab)?.label || "该平台";
+      showToast(`🔒 【${tabLabel}】尚未登录，请先登录开启链路`);
+      if (activeTab !== "all" && activeTab !== "lx_custom") {
+        useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
+      }
+      useUserAccountStore.getState().setIsAccountModalOpen(true);
+      return;
+    }
+    handleSearch();
+  }, [isCurrentTabLocked, activeTab, showToast, handleSearch]);
+
+  // 初始加载：仅在有已登录平台或可用脚本时才触发默认搜索
   useEffect(() => {
-    handleSearch("周杰伦", "all", "songs");
+    if (isTabUsable("all")) {
+      handleSearch("周杰伦", "all", "songs");
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 切换音源 Tab 时触发
   const handleTabChange = (tab: SearchSourceTab) => {
     setActiveTab(tab);
+    if (!isTabUsable(tab)) {
+      setSongResults([]);
+      setPlaylistResults([]);
+      return;
+    }
     handleSearch(keyword, tab, searchMode);
   };
 
   // 切换单曲/歌单模式
   const handleModeChange = (mode: SearchMode) => {
     setSearchMode(mode);
-    handleSearch(keyword, activeTab, mode);
+    if (isTabUsable(activeTab)) {
+      handleSearch(keyword, activeTab, mode);
+    }
   };
+
 
   // 排序与过滤处理
   const processedSongs = useMemo(() => {
@@ -441,9 +529,13 @@ export const LxMusicSearchTab: React.FC = () => {
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSearch();
+                  if (e.key === "Enter") triggerSearchOrPromptLogin();
                 }}
-                placeholder="搜索全网海量歌曲、歌手、专辑或落雪特供母带..."
+                placeholder={
+                  isCurrentTabLocked
+                    ? `【${SOURCE_TABS.find((t) => t.id === activeTab)?.label || "该平台"}】尚未登录，请先登录开启链路...`
+                    : "搜索全网海量歌曲、歌手、专辑或落雪特供母带..."
+                }
                 className="w-full bg-transparent text-sm text-white placeholder-white/40 focus:outline-none"
               />
               {keyword && (
@@ -457,11 +549,24 @@ export const LxMusicSearchTab: React.FC = () => {
               )}
               <button
                 type="button"
-                onClick={() => handleSearch()}
+                onClick={triggerSearchOrPromptLogin}
                 disabled={isSearching}
-                className="ml-3 px-5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-emerald-500/25 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className={`ml-3 px-5 py-1.5 rounded-xl text-white text-xs font-bold transition-all shadow-lg flex items-center gap-1.5 cursor-pointer ${
+                  isCurrentTabLocked
+                    ? "bg-amber-500/80 hover:bg-amber-500 text-white shadow-amber-500/20"
+                    : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 shadow-emerald-500/25 active:scale-95 disabled:opacity-50"
+                }`}
               >
-                {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "检索"}
+                {isSearching ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : isCurrentTabLocked ? (
+                  <>
+                    <Lock className="w-3 h-3" />
+                    <span>需登录</span>
+                  </>
+                ) : (
+                  "检索"
+                )}
               </button>
             </div>
           </div>
@@ -574,6 +679,7 @@ export const LxMusicSearchTab: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             {SOURCE_TABS.map((tab) => {
               const isActive = activeTab === tab.id;
+              const isUsable = isTabUsable(tab.id);
               return (
                 <button
                   key={tab.id}
@@ -582,11 +688,14 @@ export const LxMusicSearchTab: React.FC = () => {
                   className={`px-3.5 py-1.5 rounded-2xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 border ${
                     isActive
                       ? `bg-white/15 text-white ${tab.activeBorder} shadow-md`
-                      : "bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/[0.08] border-white/10"
+                      : isUsable
+                      ? "bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/[0.08] border-white/10"
+                      : "bg-white/[0.02] text-white/40 hover:text-white/70 hover:bg-white/[0.05] border-white/5 opacity-75"
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${tab.dotColor}`} />
+                  <span className={`w-2 h-2 rounded-full ${isUsable ? tab.dotColor : "bg-zinc-500"}`} />
                   <span>{tab.label}</span>
+                  {!isUsable && <Lock className="w-3 h-3 text-amber-400/90" />}
                   <span className="text-[11px] opacity-80 leading-none">
                     {tab.symbol}
                   </span>
@@ -617,6 +726,10 @@ export const LxMusicSearchTab: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setKeyword(tag);
+                  if (isCurrentTabLocked) {
+                    triggerSearchOrPromptLogin();
+                    return;
+                  }
                   handleSearch(tag);
                 }}
                 className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-white/10 text-white/60 hover:text-white text-xs transition-colors shrink-0 cursor-pointer"
@@ -672,29 +785,52 @@ export const LxMusicSearchTab: React.FC = () => {
         ) : searchMode === "songs" ? (
           /* 单曲模式表格 */
           processedSongs.length === 0 ? (
-            activeTab !== "all" && activeTab !== "lx_custom" && !isPlatformLoggedIn(activeTab) ? (
+            isCurrentTabLocked ? (
               <div className="h-96 flex flex-col items-center justify-center text-center p-8 space-y-4">
                 <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-300 shadow-lg shadow-amber-500/5">
                   <Lock className="w-8 h-8" />
                 </div>
                 <div className="space-y-1.5 max-w-md">
                   <h4 className="text-[17px] font-semibold text-white tracking-tight">
-                    【{SOURCE_TABS.find((t) => t.id === activeTab)?.label || activeTab}】链路未连接
+                    {activeTab === "all"
+                      ? "全网音乐搜索链路未开启"
+                      : activeTab === "lx_custom"
+                      ? "落雪特供音源脚本未启用"
+                      : `【${SOURCE_TABS.find((t) => t.id === activeTab)?.label || activeTab}】链路未连接`}
                   </h4>
                   <p className="text-[13px] text-white/50 leading-relaxed">
-                    根据平台安全与账号规范，未登录的音乐平台默认关闭网络链路。请先登录账号以开启该平台的专属搜索与母带流解析。
+                    {activeTab === "all"
+                      ? "您尚未登录任何网络音乐平台（网易云、QQ音乐、酷狗、酷我、汽水）。根据安全规范，未登录状态下全网搜索与母带流解析处于关闭保护状态。"
+                      : activeTab === "lx_custom"
+                      ? "当前未启用任何自定义落雪音源脚本。请进入音源管理启用脚本后即可解锁母带检索。"
+                      : "根据平台安全与账号规范，未登录的音乐平台默认关闭网络链路与搜索通道。请先登录账号以开启该平台的专属搜索与母带流解析。"}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
-                    useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
-                    useUserAccountStore.getState().setIsAccountModalOpen(true);
+                    if (activeTab === "lx_custom") {
+                      openManagementModal("lx_scripts");
+                    } else {
+                      if (activeTab !== "all") {
+                        useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
+                      }
+                      useUserAccountStore.getState().setIsAccountModalOpen(true);
+                    }
                   }}
                   className="px-6 py-2.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold tracking-tight shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95"
                 >
-                  <KeyRound className="w-3.5 h-3.5" />
-                  <span>立即扫码 / 导入 Cookie 开启</span>
+                  {activeTab === "lx_custom" ? (
+                    <>
+                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                      <span>打开音源管理配置脚本</span>
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>立即登录账号开启链路</span>
+                    </>
+                  )}
                 </button>
               </div>
             ) : (
@@ -723,6 +859,7 @@ export const LxMusicSearchTab: React.FC = () => {
                     #
                   </span>
                 </div>
+
 
                 {/* 歌曲名 */}
                 <div
@@ -900,29 +1037,37 @@ export const LxMusicSearchTab: React.FC = () => {
         ) : (
           /* 歌单模式网格 */
           playlistResults.length === 0 ? (
-            activeTab !== "all" && activeTab !== "lx_custom" && !isPlatformLoggedIn(activeTab) ? (
+            isCurrentTabLocked ? (
               <div className="h-96 flex flex-col items-center justify-center text-center p-8 space-y-4">
                 <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-300 shadow-lg shadow-amber-500/5">
                   <Lock className="w-8 h-8" />
                 </div>
                 <div className="space-y-1.5 max-w-md">
                   <h4 className="text-[17px] font-semibold text-white tracking-tight">
-                    【{SOURCE_TABS.find((t) => t.id === activeTab)?.label || activeTab}】歌单同步未开启
+                    {activeTab === "all"
+                      ? "全网歌单检索链路未开启"
+                      : activeTab === "lx_custom"
+                      ? "落雪音源歌单功能未开启"
+                      : `【${SOURCE_TABS.find((t) => t.id === activeTab)?.label || activeTab}】歌单同步未开启`}
                   </h4>
                   <p className="text-[13px] text-white/50 leading-relaxed">
-                    未登录的音乐平台默认关闭歌单与曲库链路。请先登录该平台账号以开启在线歌单检索与导入功能。
+                    {activeTab === "all"
+                      ? "当前尚未登录任何音乐平台。未登录状态下默认关闭网络歌单检索通道，请先登录账号开启链路。"
+                      : "未登录的音乐平台默认关闭歌单与曲库链路。请先登录该平台账号以开启在线歌单检索与导入功能。"}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
-                    useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
+                    if (activeTab !== "all" && activeTab !== "lx_custom") {
+                      useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
+                    }
                     useUserAccountStore.getState().setIsAccountModalOpen(true);
                   }}
                   className="px-6 py-2.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold tracking-tight shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95"
                 >
                   <KeyRound className="w-3.5 h-3.5" />
-                  <span>立即扫码 / 导入 Cookie 开启</span>
+                  <span>立即登录账号开启链路</span>
                 </button>
               </div>
             ) : (
@@ -932,6 +1077,7 @@ export const LxMusicSearchTab: React.FC = () => {
               </div>
             )
           ) : (
+
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
               {playlistResults.map((p, idx) => (
                 <div

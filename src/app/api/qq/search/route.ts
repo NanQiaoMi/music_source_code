@@ -14,13 +14,14 @@ function decodeEntities(str: string): string {
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const cookie = request.headers.get("x-qq-cookie") || request.headers.get("cookie") || "";
+  const cookie = request.headers.get("x-qq-cookie") || "";
   if (!cookie || cookie.trim().length < 5) {
     return NextResponse.json(
       { songs: [], code: 401, message: "QQ Music authentication required. Please login first.", source: "qq" },
       { status: 401 }
     );
   }
+
 
   const { searchParams } = new URL(request.url);
   const keywords = searchParams.get("keywords") || searchParams.get("s") || "";

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const qqCookie = request.headers.get("x-qq-cookie") || request.headers.get("cookie") || "";
+  const qqCookie = request.headers.get("x-qq-cookie") || "";
   if (!qqCookie || qqCookie.trim().length < 5) {
     return NextResponse.json(
       { code: 401, message: "QQ Music authentication required. Please login with Cookie." },
       { status: 401 }
     );
   }
+
 
   const { searchParams } = new URL(request.url);
   const mid = searchParams.get("mid") || searchParams.get("id") || "";

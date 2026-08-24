@@ -24,14 +24,26 @@ export async function GET(request: NextRequest) {
   const encoded = encodeURIComponent(keywords.trim());
   const playlists: OnlinePlaylistResult[] = [];
 
+  const neteaseCookie = request.headers.get("x-netease-cookie") || "";
+  const qqCookie = request.headers.get("x-qq-cookie") || "";
+
+  if (source === "netease" && (!neteaseCookie || neteaseCookie.trim().length < 5)) {
+    return NextResponse.json({ playlists: [], code: 401, message: "NetEase authentication required." }, { status: 401 });
+  }
+
+  if (source === "qq" && (!qqCookie || qqCookie.trim().length < 5)) {
+    return NextResponse.json({ playlists: [], code: 401, message: "QQ Music authentication required." }, { status: 401 });
+  }
+
   // 1. 网易云歌单搜索 (type=1000 为歌单)
-  if (source === "all" || source === "netease") {
+  if ((source === "all" || source === "netease") && neteaseCookie && neteaseCookie.trim().length >= 5) {
     try {
       const neteaseUrl = `https://music.163.com/api/search/get/web?csrf_token=&s=${encoded}&type=1000&offset=0&total=true&limit=${limit}`;
       const res = await fetch(neteaseUrl, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
           Referer: "https://music.163.com",
+          Cookie: neteaseCookie,
         },
         signal: AbortSignal.timeout(4000),
       });
@@ -57,13 +69,14 @@ export async function GET(request: NextRequest) {
   }
 
   // 2. QQ 音乐歌单搜索
-  if (source === "all" || source === "qq") {
+  if ((source === "all" || source === "qq") && qqCookie && qqCookie.trim().length >= 5) {
     try {
       const qqUrl = `https://c.y.qq.com/soso/fcgi-bin/client_music_search_songlist?page_no=0&num_per_page=${limit}&query=${encoded}&format=json&inCharset=utf8&outCharset=utf-8`;
       const res = await fetch(qqUrl, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
           Referer: "https://y.qq.com",
+          Cookie: qqCookie,
         },
         signal: AbortSignal.timeout(4000),
       });
@@ -93,4 +106,5 @@ export async function GET(request: NextRequest) {
     code: 200,
     count: playlists.length,
   });
+
 }

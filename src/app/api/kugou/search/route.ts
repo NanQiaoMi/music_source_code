@@ -4,13 +4,14 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const cookie = request.headers.get("x-kugou-cookie") || request.headers.get("cookie") || "";
+  const cookie = request.headers.get("x-kugou-cookie") || "";
   if (!cookie || cookie.trim().length < 5) {
     return NextResponse.json(
       { songs: [], code: 401, message: "KuGou authentication required. Please login first.", source: "kugou" },
       { status: 401 }
     );
   }
+
 
   const { searchParams } = new URL(request.url);
   const keywords = searchParams.get("keywords") || searchParams.get("s") || "";

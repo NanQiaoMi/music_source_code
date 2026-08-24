@@ -6,6 +6,7 @@ import { useUIStore } from "@/store/uiStore";
 import { useStorageAnalyticsStore, formatStorageBytes } from "@/store/useStorageAnalyticsStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { useUserAccountStore } from "@/store/userAccountStore";
 import {
   LayoutDashboard,
   Cloud,
@@ -54,6 +55,21 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
   const { activeCount, totalSpeedFormatted, offlineRecords } = useOfflineDownloadStore();
   const { songs } = usePlaylistStore();
 
+  const isAnyLoggedIn = useUserAccountStore((state) =>
+    Boolean(
+      state.neteaseUser?.loggedIn ||
+      state.qqUser?.loggedIn ||
+      state.kugouUser?.loggedIn ||
+      state.kuwoUser?.loggedIn ||
+      state.qishuiUser?.loggedIn ||
+      (state.neteaseCookie && state.neteaseCookie.trim().length > 5) ||
+      (state.qqCookie && state.qqCookie.trim().length > 5) ||
+      (state.kugouCookie && state.kugouCookie.trim().length > 5) ||
+      (state.kuwoCookie && state.kuwoCookie.trim().length > 5) ||
+      (state.qishuiCookie && state.qishuiCookie.trim().length > 5)
+    )
+  );
+
   const [activeTab, setActiveTab] = useState<HubTabKey>(initialTab);
   const [visitedTabs, setVisitedTabs] = useState<Set<HubTabKey>>(new Set([initialTab]));
 
@@ -86,13 +102,14 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
 
   const navTabs = [
     { id: "dashboard", label: "全景看板", icon: LayoutDashboard, badge: null },
-    { id: "lx_search", label: "全网聚搜", icon: Sparkles, badge: "✦" },
-    { id: "cloud", label: "云端曲库", icon: Cloud, badge: "☁" },
+    { id: "lx_search", label: "全网聚搜", icon: Sparkles, badge: isAnyLoggedIn ? "✦" : "🔒" },
+    { id: "cloud", label: "云端曲库", icon: Cloud, badge: isAnyLoggedIn ? "☁" : "🔒" },
     { id: "downloads", label: "离线下载", icon: Download, badge: activeCount > 0 ? `${activeCount}` : null },
     { id: "playlists", label: "歌单编排", icon: FolderHeart, badge: null },
     { id: "local", label: "本地导入", icon: HardDriveDownload, badge: `${storageDetails.localMusicCount}` },
     { id: "health_storage", label: "存储体检", icon: ShieldCheck, badge: null },
   ];
+
 
   const handleClose = () => {
     if (onClose) onClose();

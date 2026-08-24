@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useUserAccountStore, isPlatformLoggedIn, handlePlatformSessionExpired } from "@/store/userAccountStore";
 import { useSourceConfigStore, isSourceUsable } from "@/store/sourceConfigStore";
 import { multiSourceResolver } from "@/services/MultiSourceResolver";
@@ -24,7 +24,7 @@ describe("Platform Login Gatekeeper & Link Guard", () => {
         kuwo: { id: "kuwo", name: "酷我音乐", enabled: true, priority: 5, qualityPreference: "flac" },
         qishui: { id: "qishui", name: "汽水音乐", enabled: true, priority: 6, qualityPreference: "320k" },
         lx_custom: { id: "lx_custom", name: "落雪母带", enabled: false, priority: 7, qualityPreference: "hires" },
-      },
+      } as any,
       lxScripts: [],
       resolutionMode: "hybrid_racing",
     });
