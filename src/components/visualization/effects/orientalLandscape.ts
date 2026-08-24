@@ -137,7 +137,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
 
   const scrollX = (width - scrollW) / 2;
   const scrollY = (height - scrollH) / 2;
-  const waterY = scrollY + scrollH * 0.58;
+  const waterY = scrollY + scrollH * 0.62; // 水面基线适度下移，天地更开阔
   const bottomY = scrollY + scrollH + 30;
 
   if (!initialized || localParticles.length === 0) {
@@ -173,8 +173,8 @@ export function drawOrientalLandscape(context: EffectContext): void {
     height * 0.46,
     width * 0.75
   );
-  ambientGlow.addColorStop(0, "rgba(20, 85, 105, 0.35)");
-  ambientGlow.addColorStop(0.5, "rgba(14, 60, 65, 0.18)");
+  ambientGlow.addColorStop(0, "rgba(14, 60, 75, 0.28)");
+  ambientGlow.addColorStop(0.5, "rgba(10, 42, 48, 0.14)");
   ambientGlow.addColorStop(1, "rgba(2, 5, 8, 0)");
   ctx.fillStyle = ambientGlow;
   ctx.fillRect(0, 0, width, height);
@@ -185,43 +185,44 @@ export function drawOrientalLandscape(context: EffectContext): void {
   roundRect(ctx, scrollX, scrollY, scrollW, scrollH, 16);
   ctx.clip();
 
-  // 宣纸天际古色渐变 (通透典雅宋代绢帛天青天光 ➔ 澄碧江水)
+  // 宣纸天际古色渐变 (沉静典雅宋代绢帛天青 ➔ 澄碧江水)
   const skyGrad = ctx.createLinearGradient(scrollX, scrollY, scrollX, scrollY + scrollH);
-  skyGrad.addColorStop(0, "#081f2b");
-  skyGrad.addColorStop(0.28, "#0e3a4d");
-  skyGrad.addColorStop(0.52, "#185a6e");
-  skyGrad.addColorStop(0.68, "#144855");
-  skyGrad.addColorStop(0.85, "#0d313a");
-  skyGrad.addColorStop(1, "#061b22");
+  skyGrad.addColorStop(0, "#06151f");
+  skyGrad.addColorStop(0.30, "#0a2633");
+  skyGrad.addColorStop(0.54, "#113d4b");
+  skyGrad.addColorStop(0.72, "#0e323d");
+  skyGrad.addColorStop(0.88, "#09222a");
+  skyGrad.addColorStop(1, "#041217");
   ctx.fillStyle = skyGrad;
   ctx.fillRect(scrollX, scrollY, scrollW, scrollH);
 
-  // 天际远景柔和晨曦天光弥散 (Luminous Sky Atmosphere)
+  // 天际远景柔和宋画天青漫射氛晕 (Subtle Celestial Bloom)
   const skyBloom = ctx.createRadialGradient(
     scrollX + scrollW * 0.50,
-    scrollY + scrollH * 0.15,
+    scrollY + scrollH * 0.18,
     20,
     scrollX + scrollW * 0.50,
-    scrollY + scrollH * 0.30,
-    scrollW * 0.65
+    scrollY + scrollH * 0.32,
+    scrollW * 0.60
   );
-  skyBloom.addColorStop(0, "rgba(45, 160, 185, 0.28)");
-  skyBloom.addColorStop(0.4, "rgba(30, 120, 140, 0.12)");
-  skyBloom.addColorStop(1, "rgba(8, 31, 43, 0)");
+  skyBloom.addColorStop(0, "rgba(32, 115, 135, 0.20)");
+  skyBloom.addColorStop(0.45, "rgba(20, 80, 95, 0.08)");
+  skyBloom.addColorStop(1, "rgba(6, 21, 31, 0)");
   ctx.fillStyle = skyBloom;
   ctx.fillRect(scrollX, scrollY, scrollW, scrollH);
 
-  // ─── 3. 6 重宋画《千里江山》重彩矿物青绿层峦 (石青 · 孔雀石绿 · 泥金描边) ───
+  // ─── 3. 6 重宋画《千里江山》重彩矿物青绿层峦 (山峦高雅舒展 · 天际留白开阔) ───
   const breathFactor = mountainBreath * smoothBass;
   const midVibe = smoothMid * 5;
 
+  // 降低山峰高度（baseY 由原 0.22~0.56 适度调至 0.14~0.38），上方留出 35%~45% 的辽阔天光留白
   const mountainPalette = [
-    { fillTop: "#256f85", fillBottom: "#0f3a47", alpha: 0.65, baseY: 0.22, speed: 0.22 },
-    { fillTop: "#1c8296", fillBottom: "#0d4b58", alpha: 0.78, baseY: 0.29, speed: 0.32 },
-    { fillTop: "#189e8b", fillBottom: "#0b584d", alpha: 0.86, baseY: 0.36, speed: 0.44 },
-    { fillTop: "#15b892", fillBottom: "#0a6d56", alpha: 0.94, baseY: 0.44, speed: 0.58 },
-    { fillTop: "#12a07d", fillBottom: "#085744", alpha: 0.98, baseY: 0.51, speed: 0.72 },
-    { fillTop: "#0d8566", fillBottom: "#053d2f", alpha: 1.00, baseY: 0.56, speed: 0.88 },
+    { fillTop: "#1a5060", fillBottom: "#0c2b36", alpha: 0.65, baseY: 0.14, speed: 0.22 },
+    { fillTop: "#155e70", fillBottom: "#0a3340", alpha: 0.78, baseY: 0.19, speed: 0.32 },
+    { fillTop: "#126d66", fillBottom: "#083a37", alpha: 0.86, baseY: 0.24, speed: 0.44 },
+    { fillTop: "#117c69", fillBottom: "#084439", alpha: 0.94, baseY: 0.30, speed: 0.58 },
+    { fillTop: "#0e6e58", fillBottom: "#063b2e", alpha: 0.98, baseY: 0.34, speed: 0.72 },
+    { fillTop: "#0b5744", fillBottom: "#042a20", alpha: 1.00, baseY: 0.38, speed: 0.88 },
   ];
 
   const mountainPaths: { points: { x: number; y: number }[]; color: string; alpha: number }[] = [];
@@ -231,7 +232,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
     const layerDepth = (layer + 1) / 6;
     const basePeakHeight = scrollH * (config.baseY * 0.85);
     const layerTime = t * config.speed;
-    const layerAmp = (basePeakHeight * 0.38 + breathFactor * 24 * layerDepth) * (1 + (layer >= 3 ? midVibe * 0.02 : 0));
+    const layerAmp = (basePeakHeight * 0.32 + breathFactor * 14 * layerDepth) * (1 + (layer >= 3 ? midVibe * 0.02 : 0));
 
     const points: { x: number; y: number }[] = [];
     ctx.beginPath();
@@ -265,28 +266,28 @@ export function drawOrientalLandscape(context: EffectContext): void {
     );
     mtnGrad.addColorStop(0, config.fillTop);
     mtnGrad.addColorStop(0.45, config.fillBottom);
-    mtnGrad.addColorStop(0.85, "#08242b");
-    mtnGrad.addColorStop(1, "#041419");
+    mtnGrad.addColorStop(0.85, "#061c22");
+    mtnGrad.addColorStop(1, "#030f13");
 
     ctx.fillStyle = mtnGrad;
     ctx.globalAlpha = config.alpha;
     ctx.fill();
 
-    // 泥金描边（宋画经典泥金勾勒法，山脊流金溢彩）
+    // 泥金描边（温润内敛，如丝如缕）
     if (layer >= 2) {
       ctx.save();
       const goldAlpha = layer === 5 
-        ? (0.45 + smoothMid * 0.45) * goldGlow 
+        ? (0.35 + smoothMid * 0.35) * goldGlow 
         : layer === 4 
-          ? (0.35 + smoothMid * 0.35) * goldGlow 
-          : (0.22 + smoothMid * 0.25) * goldGlow;
+          ? (0.28 + smoothMid * 0.28) * goldGlow 
+          : (0.18 + smoothMid * 0.20) * goldGlow;
 
       ctx.strokeStyle = layer === 5 
-        ? "rgba(253, 224, 71, 0.85)" 
+        ? "rgba(245, 208, 80, 0.75)" 
         : layer === 4 
-          ? "rgba(251, 191, 36, 0.70)" 
-          : "rgba(110, 231, 183, 0.55)";
-      ctx.lineWidth = layer === 5 ? 1.0 : 0.8;
+          ? "rgba(240, 185, 60, 0.60)" 
+          : "rgba(90, 205, 165, 0.45)";
+      ctx.lineWidth = layer === 5 ? 0.9 : 0.7;
       ctx.globalAlpha = Math.min(1.0, goldAlpha);
       ctx.stroke();
       ctx.restore();
