@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { extractColorsFromImage, defaultColors, ThemeColors } from "@/utils/colorExtractor";
+import { DualBreathingAuraRays } from "./DualBreathingAuraRays";
 
 const DEFAULT_COVER = "/default-cover.svg";
 
@@ -141,6 +142,14 @@ export const AmbientFluidMeshBackground: React.FC = () => {
           }}
         />
       </div>
+
+      {/* ─── 2.5 优雅非对称双弧微光呼吸轨 (Dual Subtle Breathing Aura Rays) ─── */}
+      <DualBreathingAuraRays
+        primary={primary}
+        secondary={secondary}
+        accent={accent}
+        isPlaying={isPlaying}
+      />
 
       {/* ─── 3. Apple 级高奢暗调暗角与对比度护盾 (Dark Vignette Shield) ─── */}
       <div
