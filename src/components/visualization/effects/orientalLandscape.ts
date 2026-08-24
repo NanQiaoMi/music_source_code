@@ -249,18 +249,18 @@ export function drawOrientalLandscape(context: EffectContext): void {
   // ─── 3. 晴空白鹭 · 仙鹤群飞 (Flock of Soaring Cranes) ───
   drawFlockOfCranes(ctx, localCranes, scrollX, scrollY, scrollW, scrollH, t, smoothTreble);
 
-  // ─── 4. 6 重宋画《千里江山》重彩矿物青绿层峦 (错落穿插 · 高远深远 · 泥金微光) ───
+  // ─── 4. 6 重宋画《千里江山》重彩矿物青绿层峦 (千峰起伏 · 峰顶泥金 · 高远深远) ───
   const breathFactor = mountainBreath * smoothBass;
   const midVibe = smoothMid * 5;
 
-  // 远山高远如黛出云，近峦平缓蜿蜒入水，六层峰峦错落交织
+  // 经典北宋全景长卷（左侧峰峦高耸如黛，中景叠翠连绵，右侧清波荡漾映素月）
   const mountainPalette = [
-    { fillTop: "#1c586a", fillBottom: "#0b252e", alpha: 0.60, baseY: 0.28, speed: 0.16, freq: 1.8, phase: 0.0 },
-    { fillTop: "#186576", fillBottom: "#092e38", alpha: 0.72, baseY: 0.24, speed: 0.24, freq: 2.6, phase: 1.8 },
-    { fillTop: "#13746c", fillBottom: "#073934", alpha: 0.82, baseY: 0.20, speed: 0.36, freq: 3.4, phase: 3.5 },
-    { fillTop: "#10806e", fillBottom: "#064035", alpha: 0.90, baseY: 0.17, speed: 0.48, freq: 4.2, phase: 5.2 },
-    { fillTop: "#0d6e57", fillBottom: "#05362a", alpha: 0.96, baseY: 0.14, speed: 0.62, freq: 5.0, phase: 6.9 },
-    { fillTop: "#0a5a44", fillBottom: "#04291e", alpha: 1.00, baseY: 0.11, speed: 0.78, freq: 5.8, phase: 8.6 },
+    { fillTop: "#1c586a", fillBottom: "#0b252e", alpha: 0.60, baseY: 0.29, speed: 0.16, freq: 1.9, phase: 0.0 },
+    { fillTop: "#186576", fillBottom: "#092e38", alpha: 0.72, baseY: 0.25, speed: 0.24, freq: 2.7, phase: 1.8 },
+    { fillTop: "#13746c", fillBottom: "#073934", alpha: 0.82, baseY: 0.21, speed: 0.36, freq: 3.5, phase: 3.5 },
+    { fillTop: "#10806e", fillBottom: "#064035", alpha: 0.90, baseY: 0.17, speed: 0.48, freq: 4.3, phase: 5.2 },
+    { fillTop: "#0d6e57", fillBottom: "#05362a", alpha: 0.96, baseY: 0.14, speed: 0.62, freq: 5.1, phase: 6.9 },
+    { fillTop: "#0a5a44", fillBottom: "#04291e", alpha: 1.00, baseY: 0.11, speed: 0.78, freq: 5.9, phase: 8.6 },
   ];
 
   for (let layer = 0; layer < 6; layer++) {
@@ -316,23 +316,35 @@ export function drawOrientalLandscape(context: EffectContext): void {
     ctx.globalAlpha = config.alpha;
     ctx.fill();
 
-    // 泥金描边（温润内敛，如丝如缕勾勒山脊骨线）
-    if (layer >= 2) {
+    // ─── 峰顶泥金点染勾勒（峰峦高处金光璀璨，山谷低洼处自然消隐） ───
+    if (layer >= 2 && ptIndex > 2) {
       ctx.save();
-      const goldAlpha = layer === 5 
-        ? (0.36 + smoothMid * 0.35) * goldGlow 
-        : layer === 4 
-          ? (0.28 + smoothMid * 0.28) * goldGlow 
-          : (0.18 + smoothMid * 0.20) * goldGlow;
+      const baseGoldAlpha = layer === 5 ? 0.42 : layer === 4 ? 0.32 : 0.22;
+      const audioGold = (baseGoldAlpha + smoothMid * 0.35) * goldGlow;
 
-      ctx.strokeStyle = layer === 5 
-        ? "rgba(245, 210, 85, 0.78)" 
-        : layer === 4 
-          ? "rgba(240, 188, 65, 0.62)" 
-          : "rgba(95, 210, 170, 0.45)";
-      ctx.lineWidth = layer === 5 ? 0.95 : 0.75;
-      ctx.globalAlpha = Math.min(1.0, goldAlpha);
-      ctx.stroke();
+      for (let i = 0; i < ptIndex - 1; i++) {
+        const px1 = ptsX[i];
+        const py1 = ptsY[i];
+        const px2 = ptsX[i + 1];
+        const py2 = ptsY[i + 1];
+
+        // 高度衰减权重：只有靠近峰脊上半段才赋有泥金流光，山腰山脚渐隐入深墨
+        const peakRelHeight = Math.max(0, (waterY - py1) / (basePeakHeight * 1.45));
+        const segmentAlpha = Math.min(1.0, audioGold * Math.pow(peakRelHeight, 1.35));
+
+        if (segmentAlpha > 0.03) {
+          ctx.strokeStyle = layer === 5 
+            ? `rgba(250, 218, 92, ${segmentAlpha})` 
+            : layer === 4 
+              ? `rgba(242, 195, 75, ${segmentAlpha * 0.9})` 
+              : `rgba(100, 220, 180, ${segmentAlpha * 0.75})`;
+          ctx.lineWidth = layer === 5 ? 1.0 : 0.8;
+          ctx.beginPath();
+          ctx.moveTo(px1, py1);
+          ctx.lineTo(px2, py2);
+          ctx.stroke();
+        }
+      }
       ctx.restore();
     }
 

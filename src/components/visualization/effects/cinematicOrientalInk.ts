@@ -28,10 +28,13 @@ interface GoldFirefly {
 interface LakeRipple {
   x: number;
   y: number;
-  radius: number;
+  progress: number;
   maxRadius: number;
+  duration: number;
+  life: number;
+  driftVx: number;
+  driftVy: number;
   alpha: number;
-  speed: number;
 }
 
 interface MistRibbon {
@@ -48,12 +51,15 @@ interface MistRibbon {
 interface SwimmingKoi {
   x: number;
   y: number;
+  targetAngle: number;
   angle: number;
-  speed: number;
+  baseSpeed: number;
+  currentSpeed: number;
   length: number;
   alpha: number;
   swimPhase: number;
-  trail: { x: number; y: number; alpha: number }[];
+  glideTimer: number;
+  trail: { x: number; y: number; alpha: number; size: number }[];
 }
 
 interface StarNode {
@@ -102,16 +108,16 @@ const COLOR_SCHEMES = [
     skyTop: "#01070d",
     skyMid: "#03141d",
     skyBottom: "#08222b",
-    farMountain: ["#124858", "#0b313d", "#04171d"],
-    midMountain: ["#186067", "#104349", "#062024"],
-    nearMountain: ["#207a72", "#14544f", "#082828"],
-    shoreMountain: ["#2a9286", "#1a655e", "#0b3433"],
+    farMountain: ["#144e5f", "#0c323e", "#04171d"],
+    midMountain: ["#1b686f", "#10464d", "#062227"],
+    nearMountain: ["#23867d", "#145953", "#08292a"],
+    shoreMountain: ["#2da093", "#1b6d65", "#0b3635"],
     goldGlint: "rgba(255, 238, 160, 0.98)",
     goldWire: "rgba(245, 210, 115, 0.90)",
-    cloudColor: "rgba(160, 230, 240, 0.22)",
-    waterWave: "rgba(185, 245, 250, 0.40)",
+    cloudColor: "rgba(160, 230, 240, 0.24)",
+    waterWave: "rgba(185, 245, 250, 0.38)",
     waterReflect: "rgba(18, 65, 75, 0.45)",
-    koiColor: "rgba(255, 195, 115, 0.75)",
+    koiColor: "rgba(255, 195, 115, 0.80)",
     vignetteColor: "rgba(1, 4, 7, 0.85)",
   },
   {
@@ -335,17 +341,20 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   timeAccum += dt * (0.35 + smoothMid * 0.30 * inkSpeedMult);
   breathTime += dt * 0.28;
 
-  // 泛音清潭涟漪与山脊金屑生成
-  if (rawTreble > 0.38 && time - lastTransientPeak > 450) {
+  // 泛音清潭涟漪触发（广域平远散布）
+  if (rawTreble > 0.38 && time - lastTransientPeak > 420) {
     lastTransientPeak = time;
     if (ripplesPool.length < 8) {
       ripplesPool.push({
-        x: width * 0.20 + Math.random() * width * 0.60,
-        y: height * 0.80 + Math.random() * height * 0.14,
-        radius: 3,
-        maxRadius: 45 + Math.random() * 55,
-        alpha: 0.85,
-        speed: 22 + Math.random() * 16,
+        x: width * 0.12 + Math.random() * width * 0.76,
+        y: height * 0.83 + Math.random() * height * 0.13,
+        progress: 0,
+        maxRadius: 42 + Math.random() * 50,
+        duration: 2.4 + Math.random() * 0.8,
+        life: 0,
+        driftVx: (Math.random() - 0.5) * 6,
+        driftVy: (Math.random() - 0.5) * 2,
+        alpha: 0.95,
       });
     }
 
@@ -417,11 +426,48 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ];
   }
 
+  // 锦鲤实体初始化（具备有机变速与转向动力学）
   if (!koisPool) {
     koisPool = [
-      { x: width * 0.36, y: height * 0.82, angle: 0.2, speed: 18, length: 22, alpha: 0.55, swimPhase: 0, trail: [] },
-      { x: width * 0.52, y: height * 0.86, angle: 3.2, speed: 15, length: 18, alpha: 0.50, swimPhase: 1.5, trail: [] },
-      { x: width * 0.22, y: height * 0.88, angle: 0.1, speed: 12, length: 16, alpha: 0.45, swimPhase: 3.0, trail: [] },
+      {
+        x: width * 0.36,
+        y: height * 0.86,
+        targetAngle: 0.1,
+        angle: 0.1,
+        baseSpeed: 20,
+        currentSpeed: 20,
+        length: 22,
+        alpha: 0.70,
+        swimPhase: 0,
+        glideTimer: 0,
+        trail: [],
+      },
+      {
+        x: width * 0.68,
+        y: height * 0.89,
+        targetAngle: Math.PI + 0.2,
+        angle: Math.PI + 0.2,
+        baseSpeed: 16,
+        currentSpeed: 16,
+        length: 19,
+        alpha: 0.60,
+        swimPhase: 1.8,
+        glideTimer: 1.5,
+        trail: [],
+      },
+      {
+        x: width * 0.20,
+        y: height * 0.92,
+        targetAngle: 0.3,
+        angle: 0.3,
+        baseSpeed: 14,
+        currentSpeed: 14,
+        length: 16,
+        alpha: 0.55,
+        swimPhase: 3.5,
+        glideTimer: 3.0,
+        trail: [],
+      },
     ];
   }
 
@@ -669,100 +715,170 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   }
 
   // =========================================================================
-  // 7. 清潭水波、双环微澜与灵动锦鲤 (Pristine Water Waves & Luminous Ripples)
+  // 7. 清潭水波、纯净发光微澜与灵动锦鲤 (Pure Luminous Lake Caustics & Fish)
   // =========================================================================
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  // 1. 水面微光波纹叠加
+  // 1. 多重谐波复合水波微澜（轻柔水光透亮）
   for (let w = 0; w < 4; w++) {
-    const waveY = height * (0.82 + w * 0.04);
-    const waveAlpha = (0.24 - w * 0.035) * (0.7 + smoothMid * 0.35);
+    const waveY = height * (0.84 + w * 0.035);
+    const waveAlpha = (0.20 - w * 0.03) * (0.7 + smoothMid * 0.35);
     ctx.strokeStyle = colors.waterWave;
-    ctx.lineWidth = 1.1;
+    ctx.lineWidth = 1.0;
     ctx.globalAlpha = waveAlpha;
 
     ctx.beginPath();
-    for (let x = 0; x <= width; x += 16) {
-      const sinOffset = Math.sin(x * 0.015 + timeAccum * (0.35 + w * 0.12) + w) * 2.5;
-      if (x === 0) ctx.moveTo(x, waveY + sinOffset);
-      else ctx.lineTo(x, waveY + sinOffset);
+    for (let x = 0; x <= width; x += 14) {
+      const harm1 = Math.sin(x * 0.012 + timeAccum * (0.32 + w * 0.10) + w) * 2.2;
+      const harm2 = Math.sin(x * 0.026 - timeAccum * 0.22 + w * 1.5) * 1.1;
+      const harm3 = Math.cos(x * 0.006 + timeAccum * 0.15) * 1.6;
+      const totalOffset = harm1 + harm2 + harm3;
+      if (x === 0) ctx.moveTo(x, waveY + totalOffset);
+      else ctx.lineTo(x, waveY + totalOffset);
     }
     ctx.stroke();
   }
 
-  // 2. 乐曲泛音清潭涟漪 (Jade & Gold Dual-Ring Luminous Ripples)
+  // 2. 纯净发光流体缓动涟漪 (Pure Luminous Dual-Ring Glassy Ripples - 无暗色色块)
   for (let i = ripplesPool.length - 1; i >= 0; i--) {
     const r = ripplesPool[i];
-    r.radius += r.speed * dt;
-    r.alpha -= dt * 0.30;
+    r.life += dt;
+    r.x += r.driftVx * dt;
+    r.y += r.driftVy * dt;
+    const progress = Math.min(1.0, r.life / r.duration);
 
-    if (r.alpha <= 0 || r.radius >= r.maxRadius) {
+    if (progress >= 1.0) {
       ripplesPool.splice(i, 1);
       continue;
     }
 
+    // 非线性流体缓动扩散 (Ease-Out Cubic)
+    const easedProgress = 1.0 - Math.pow(1.0 - progress, 2.6);
+    const curRadius = Math.max(1, easedProgress * r.maxRadius);
+    const curAlpha = Math.pow(1.0 - progress, 1.5) * r.alpha;
+
     ctx.save();
-    // 外环水青透亮
-    ctx.strokeStyle = "rgba(160, 240, 255, 0.75)";
-    ctx.lineWidth = 1.2;
-    ctx.globalAlpha = r.alpha * 0.65;
+    ctx.shadowColor = "rgba(180, 245, 255, 0.75)";
+    ctx.shadowBlur = 6;
+
+    // 外环：晶莹天青柔光线条（自然透亮纵横比 0.46）
+    ctx.strokeStyle = "rgba(175, 245, 255, 0.85)";
+    ctx.lineWidth = Math.max(0.7, 1.4 * (1.0 - progress * 0.5));
+    ctx.globalAlpha = curAlpha * 0.75;
     ctx.translate(r.x, r.y);
-    ctx.scale(r.radius, r.radius * 0.28);
+    ctx.scale(curRadius, curRadius * 0.46);
     ctx.beginPath();
     ctx.arc(0, 0, 1, 0, Math.PI * 2);
     ctx.stroke();
 
-    // 内环微金光晕
-    ctx.strokeStyle = "rgba(255, 220, 130, 0.65)";
-    ctx.lineWidth = 0.9;
-    ctx.globalAlpha = r.alpha * 0.45;
-    ctx.beginPath();
-    ctx.arc(0, 0, 0.65, 0, Math.PI * 2);
-    ctx.stroke();
+    // 内环：典雅微金轻澜
+    if (progress < 0.80) {
+      ctx.shadowColor = "rgba(255, 220, 130, 0.60)";
+      ctx.shadowBlur = 4;
+      ctx.strokeStyle = "rgba(255, 230, 145, 0.80)";
+      ctx.lineWidth = Math.max(0.5, 1.0 * (1.0 - progress));
+      ctx.globalAlpha = curAlpha * 0.55;
+      ctx.beginPath();
+      ctx.arc(0, 0, 0.58, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     ctx.restore();
   }
 
-  // 3. 水底游弋灵动锦鲤（带有游光星露拖尾）
+  // 3. 游弋变速与流光尾鳍锦鲤 (Burst-and-Glide Swimming Dynamics with Translucent Fins)
   koisPool.forEach((koi) => {
-    koi.swimPhase += dt * 3.5;
-    koi.x += Math.cos(koi.angle) * koi.speed * dt;
-    koi.y += Math.sin(koi.angle) * (koi.speed * 0.3) * dt;
+    koi.glideTimer += dt * (1.2 + smoothEnergy * 1.5);
+    const strokePhase = Math.sin(koi.glideTimer);
 
-    if (koi.x < -40) koi.x = width + 40;
-    if (koi.x > width + 40) koi.x = -40;
-    if (koi.y < height * 0.78) koi.y = height - 15;
-    if (koi.y > height + 20) koi.y = height * 0.80;
+    if (strokePhase > 0.2) {
+      koi.currentSpeed += (koi.baseSpeed * (1.3 + smoothEnergy * 0.8) - koi.currentSpeed) * (dt * 4.0);
+      koi.swimPhase += dt * (4.5 + smoothEnergy * 3.0);
+    } else {
+      koi.currentSpeed += (koi.baseSpeed * 0.65 - koi.currentSpeed) * (dt * 2.0);
+      koi.swimPhase += dt * 1.8;
+    }
 
-    // 拖尾记录
-    koi.trail.unshift({ x: koi.x, y: koi.y, alpha: 0.55 });
-    if (koi.trail.length > 10) koi.trail.pop();
+    const turnDrift = Math.sin(timeAccum * 0.5 + koi.length) * 0.015;
+    koi.targetAngle += turnDrift;
+    koi.angle += (koi.targetAngle - koi.angle) * (dt * 2.5);
+
+    koi.x += Math.cos(koi.angle) * koi.currentSpeed * dt;
+    koi.y += Math.sin(koi.angle) * (koi.currentSpeed * 0.35) * dt;
+
+    if (koi.x < -60) {
+      koi.x = width + 50;
+      koi.targetAngle = Math.PI + (Math.random() - 0.5) * 0.4;
+      koi.angle = koi.targetAngle;
+    }
+    if (koi.x > width + 60) {
+      koi.x = -50;
+      koi.targetAngle = (Math.random() - 0.5) * 0.4;
+      koi.angle = koi.targetAngle;
+    }
+    if (koi.y < height * 0.79) {
+      koi.y = height * 0.80;
+      koi.targetAngle += 0.3;
+    }
+    if (koi.y > height + 20) {
+      koi.y = height * 0.83;
+      koi.targetAngle -= 0.3;
+    }
+
+    koi.trail.unshift({ x: koi.x, y: koi.y, alpha: 0.65, size: (1.0 + strokePhase * 0.5) * 2.8 });
+    if (koi.trail.length > 12) koi.trail.pop();
 
     ctx.save();
     ctx.globalCompositeOperation = "screen";
     koi.trail.forEach((tr, tIdx) => {
-      tr.alpha -= dt * 0.5;
-      ctx.fillStyle = `rgba(255, 210, 135, ${Math.max(0, tr.alpha * 0.40)})`;
-      ctx.beginPath();
-      ctx.arc(tr.x, tr.y, (1 - tIdx / 10) * 3.2, 0, Math.PI * 2);
-      ctx.fill();
+      tr.alpha -= dt * 0.6;
+      if (tr.alpha > 0) {
+        ctx.fillStyle = `rgba(255, 215, 140, ${tr.alpha * 0.38})`;
+        ctx.beginPath();
+        ctx.arc(tr.x, tr.y, Math.max(0.5, tr.size * (1 - tIdx / 12)), 0, Math.PI * 2);
+        ctx.fill();
+      }
     });
     ctx.restore();
 
-    const wiggle = Math.sin(koi.swimPhase) * 3.2;
+    const wiggle1 = Math.sin(koi.swimPhase) * 3.8;
+    const wiggle2 = Math.sin(koi.swimPhase - 0.8) * 6.2;
+    const wiggle3 = Math.sin(koi.swimPhase - 1.6) * 8.5;
 
     ctx.save();
     ctx.translate(koi.x, koi.y);
     ctx.rotate(koi.angle);
     ctx.fillStyle = colors.koiColor;
+    ctx.shadowColor = "rgba(255, 205, 120, 0.65)";
+    ctx.shadowBlur = 6;
     ctx.globalAlpha = koi.alpha * (0.85 + smoothMid * 0.3);
 
+    // 绘制流线型锦鲤躯体
     ctx.beginPath();
-    ctx.moveTo(koi.length * 0.5, 0);
-    ctx.quadraticCurveTo(0, 3.5, -koi.length * 0.5, wiggle);
-    ctx.quadraticCurveTo(-koi.length * 0.7, wiggle * 1.5, -koi.length * 0.8, wiggle * 2);
-    ctx.quadraticCurveTo(-koi.length * 0.5, 0, 0, -3.5);
+    ctx.moveTo(koi.length * 0.55, 0);
+    ctx.quadraticCurveTo(koi.length * 0.2, 4.2, 0, wiggle1 * 0.5);
+    ctx.quadraticCurveTo(-koi.length * 0.4, wiggle1 + 3.0, -koi.length * 0.7, wiggle2);
+    ctx.quadraticCurveTo(-koi.length * 0.95, wiggle3, -koi.length * 1.1, wiggle3 * 1.2);
+    ctx.quadraticCurveTo(-koi.length * 0.7, wiggle2, -koi.length * 0.4, wiggle1 - 3.0);
+    ctx.quadraticCurveTo(0, -wiggle1 * 0.5, koi.length * 0.2, -4.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // 胸鳍展开与轻柔摆动
+    const finWiggle = Math.cos(koi.swimPhase * 1.2) * 2.0;
+    ctx.fillStyle = "rgba(255, 235, 175, 0.70)";
+    ctx.beginPath();
+    ctx.moveTo(koi.length * 0.15, 2);
+    ctx.lineTo(koi.length * 0.05, 7 + finWiggle);
+    ctx.lineTo(-koi.length * 0.1, 4);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(koi.length * 0.15, -2);
+    ctx.lineTo(koi.length * 0.05, -7 - finWiggle);
+    ctx.lineTo(-koi.length * 0.1, -4);
     ctx.closePath();
     ctx.fill();
 

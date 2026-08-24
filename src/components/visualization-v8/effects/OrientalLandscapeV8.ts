@@ -375,22 +375,35 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
       context.globalAlpha = config.alpha;
       context.fill();
 
-      if (layer >= 2) {
+      // ─── 峰顶泥金点染勾勒（峰峦高处金光璀璨，山谷低洼处自然消隐） ───
+      if (layer >= 2 && ptIndex > 2) {
         context.save();
-        const goldAlpha = layer === 5 
-          ? (0.36 + priv.smoothMid * 0.35) * goldGlow 
-          : layer === 4 
-            ? (0.28 + priv.smoothMid * 0.28) * goldGlow 
-            : (0.18 + priv.smoothMid * 0.20) * goldGlow;
+        const baseGoldAlpha = layer === 5 ? 0.42 : layer === 4 ? 0.32 : 0.22;
+        const audioGold = (baseGoldAlpha + priv.smoothMid * 0.35) * goldGlow;
 
-        context.strokeStyle = layer === 5 
-          ? "rgba(245, 210, 85, 0.78)" 
-          : layer === 4 
-            ? "rgba(240, 188, 65, 0.62)" 
-            : "rgba(95, 210, 170, 0.45)";
-        context.lineWidth = layer === 5 ? 0.95 : 0.75;
-        context.globalAlpha = Math.min(1.0, goldAlpha);
-        context.stroke();
+        for (let i = 0; i < ptIndex - 1; i++) {
+          const px1 = ptsX[i];
+          const py1 = ptsY[i];
+          const px2 = ptsX[i + 1];
+          const py2 = ptsY[i + 1];
+
+          // 高度衰减权重：只有靠近峰脊上半段才赋有泥金流光，山腰山脚渐隐入深墨
+          const peakRelHeight = Math.max(0, (waterY - py1) / (basePeakHeight * 1.45));
+          const segmentAlpha = Math.min(1.0, audioGold * Math.pow(peakRelHeight, 1.35));
+
+          if (segmentAlpha > 0.03) {
+            context.strokeStyle = layer === 5 
+              ? `rgba(250, 218, 92, ${segmentAlpha})` 
+              : layer === 4 
+                ? `rgba(242, 195, 75, ${segmentAlpha * 0.9})` 
+                : `rgba(100, 220, 180, ${segmentAlpha * 0.75})`;
+            context.lineWidth = layer === 5 ? 1.0 : 0.8;
+            context.beginPath();
+            context.moveTo(px1, py1);
+            context.lineTo(px2, py2);
+            context.stroke();
+          }
+        }
         context.restore();
       }
 
