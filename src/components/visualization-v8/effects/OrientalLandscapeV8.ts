@@ -300,51 +300,35 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
     context.fillStyle = skyBloom;
     context.fillRect(scrollX, scrollY, scrollW, scrollH);
 
-    // ─── 2.1 宋代清幽素月 (Ethereal Song Dynasty Moon & Lunar Halo) ───
-    const moonX = scrollX + scrollW * 0.80;
-    const moonY = scrollY + scrollH * 0.14;
-    const moonR = Math.min(scrollW, scrollH) * 0.042;
-
-    const moonHalo = context.createRadialGradient(moonX, moonY, moonR * 0.5, moonX, moonY, moonR * 4.5);
-    moonHalo.addColorStop(0, "rgba(254, 249, 215, 0.16)");
-    moonHalo.addColorStop(0.35, "rgba(230, 245, 235, 0.06)");
-    moonHalo.addColorStop(1, "rgba(5, 19, 28, 0)");
-    context.fillStyle = moonHalo;
-    context.beginPath();
-    context.arc(moonX, moonY, moonR * 4.5, 0, Math.PI * 2);
-    context.fill();
-
-    const moonGrad = context.createLinearGradient(moonX - moonR, moonY - moonR, moonX + moonR, moonY + moonR);
-    moonGrad.addColorStop(0, "rgba(255, 253, 240, 0.85)");
-    moonGrad.addColorStop(0.65, "rgba(240, 248, 245, 0.65)");
-    moonGrad.addColorStop(1, "rgba(215, 235, 235, 0.35)");
-    context.fillStyle = moonGrad;
-    context.beginPath();
-    context.arc(moonX, moonY, moonR, 0, Math.PI * 2);
-    context.fill();
+    // ─── 2.1 宋代写意白玉素月与月华氛晕 (Ethereal Song Dynasty Moon) ───
+    const moonX = scrollX + scrollW * 0.82;
+    const moonY = scrollY + scrollH * 0.15;
+    const moonR = Math.min(scrollW, scrollH) * 0.040;
+    drawSongDynastyMoon(context, moonX, moonY, moonR, t, priv.smoothMid);
 
     // ─── 3. 晴空白鹭 · 仙鹤群飞 ───
     drawFlockOfCranes(context, priv.cranes, scrollX, scrollY, scrollW, scrollH, t, priv.smoothTreble);
 
-    // ─── 4. 6 重宋画《千里江山》水墨层峦 (连绵云山 · 优雅起伏 · 泥金微光) ───
+    // ─── 4. 6 重宋画《千里江山》水墨层峦 (错落穿插 · 高远深远 · 泥金微光) ───
     const breathFactor = mountainBreath * priv.smoothBass;
     const midVibe = priv.smoothMid * 5;
 
+    // 远山高远如黛出云，近峦平缓蜿蜒入水，六层峰峦错落交织
     const mountainPalette = [
-      { fillTop: "#1a5060", fillBottom: "#0c2b36", alpha: 0.62, baseY: 0.13, speed: 0.22 },
-      { fillTop: "#155e70", fillBottom: "#0a3340", alpha: 0.75, baseY: 0.18, speed: 0.32 },
-      { fillTop: "#126d66", fillBottom: "#083a37", alpha: 0.84, baseY: 0.23, speed: 0.44 },
-      { fillTop: "#117c69", fillBottom: "#084439", alpha: 0.92, baseY: 0.29, speed: 0.58 },
-      { fillTop: "#0e6e58", fillBottom: "#063b2e", alpha: 0.96, baseY: 0.33, speed: 0.72 },
-      { fillTop: "#0b5744", fillBottom: "#042a20", alpha: 1.00, baseY: 0.37, speed: 0.88 },
+      { fillTop: "#1c586a", fillBottom: "#0b252e", alpha: 0.60, baseY: 0.28, speed: 0.16, freq: 1.8, phase: 0.0 },
+      { fillTop: "#186576", fillBottom: "#092e38", alpha: 0.72, baseY: 0.24, speed: 0.24, freq: 2.6, phase: 1.8 },
+      { fillTop: "#13746c", fillBottom: "#073934", alpha: 0.82, baseY: 0.20, speed: 0.36, freq: 3.4, phase: 3.5 },
+      { fillTop: "#10806e", fillBottom: "#064035", alpha: 0.90, baseY: 0.17, speed: 0.48, freq: 4.2, phase: 5.2 },
+      { fillTop: "#0d6e57", fillBottom: "#05362a", alpha: 0.96, baseY: 0.14, speed: 0.62, freq: 5.0, phase: 6.9 },
+      { fillTop: "#0a5a44", fillBottom: "#04291e", alpha: 1.00, baseY: 0.11, speed: 0.78, freq: 5.8, phase: 8.6 },
     ];
 
     for (let layer = 0; layer < 6; layer++) {
       const config = mountainPalette[layer];
       const layerDepth = (layer + 1) / 6;
-      const basePeakHeight = scrollH * (config.baseY * 0.85);
+      const basePeakHeight = scrollH * (config.baseY * 0.95);
       const layerTime = t * config.speed;
-      const layerAmp = (basePeakHeight * 0.32 + breathFactor * 14 * layerDepth) * (1 + (layer >= 3 ? midVibe * 0.02 : 0));
+      const layerAmp = (basePeakHeight * 0.34 + breathFactor * 12 * layerDepth) * (1 + (layer >= 3 ? midVibe * 0.02 : 0));
 
       context.beginPath();
       context.moveTo(scrollX, bottomY);
@@ -358,13 +342,12 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
         if (ptIndex >= MAX_MOUNTAIN_POINTS) break;
         const normX = (x - scrollX) / scrollW;
 
-        // 经典优雅宋画层峦连绵谐波
-        const h1 = Math.sin(normX * (2.4 + layer * 1.1) + layerTime + layer * 1.6);
-        const cosVal = Math.cos(normX * (5.5 + layer * 1.5) - layerTime * 0.4 + layer);
-        const h2 = Math.cos(normX * (5.5 + layer * 1.5) - layerTime * 0.4 + layer);
-        const h3 = Math.sin(normX * 11.0 + layerTime * 0.9) * 0.22;
-        const h4 = Math.cos(normX * 20.0 - layerTime * 1.4) * 0.08;
-        const mountainCurve = (h1 * 0.60 + h2 * 0.28 + h3 * 0.08 + h4 * 0.04);
+        // 多八度连绵优雅正弦叠加 (错落起伏，无突兀断层)
+        const h1 = Math.sin(normX * config.freq + layerTime + config.phase);
+        const h2 = Math.cos(normX * (config.freq * 2.2) - layerTime * 0.5 + config.phase * 1.3);
+        const h3 = Math.sin(normX * (config.freq * 4.5) + layerTime * 0.8) * 0.20;
+        const h4 = Math.cos(normX * 18.0 - layerTime * 1.2) * 0.06;
+        const mountainCurve = (h1 * 0.58 + h2 * 0.30 + h3 + h4);
 
         const y = waterY - basePeakHeight - mountainCurve * layerAmp;
         ptsX[ptIndex] = x;
@@ -379,12 +362,12 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
 
       const mtnGrad = context.createLinearGradient(
         scrollX + scrollW * 0.22,
-        waterY - basePeakHeight * 1.3,
+        waterY - basePeakHeight * 1.35,
         scrollX + scrollW * 0.35,
         waterY + scrollH * 0.32
       );
       mtnGrad.addColorStop(0, config.fillTop);
-      mtnGrad.addColorStop(0.45, config.fillBottom);
+      mtnGrad.addColorStop(0.42, config.fillBottom);
       mtnGrad.addColorStop(0.85, "#061c22");
       mtnGrad.addColorStop(1, "#030f13");
 
@@ -395,17 +378,17 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
       if (layer >= 2) {
         context.save();
         const goldAlpha = layer === 5 
-          ? (0.35 + priv.smoothMid * 0.35) * goldGlow 
+          ? (0.36 + priv.smoothMid * 0.35) * goldGlow 
           : layer === 4 
             ? (0.28 + priv.smoothMid * 0.28) * goldGlow 
             : (0.18 + priv.smoothMid * 0.20) * goldGlow;
 
         context.strokeStyle = layer === 5 
-          ? "rgba(245, 208, 80, 0.75)" 
+          ? "rgba(245, 210, 85, 0.78)" 
           : layer === 4 
-            ? "rgba(240, 185, 60, 0.60)" 
-            : "rgba(90, 205, 165, 0.45)";
-        context.lineWidth = layer === 5 ? 0.9 : 0.7;
+            ? "rgba(240, 188, 65, 0.62)" 
+            : "rgba(95, 210, 170, 0.45)";
+        context.lineWidth = layer === 5 ? 0.95 : 0.75;
         context.globalAlpha = Math.min(1.0, goldAlpha);
         context.stroke();
         context.restore();
@@ -420,8 +403,9 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
     }
     context.globalAlpha = 1.0;
 
-    // ─── 4.1 山脚水汀洲渚与沙洲微波 (Shoals & Sandbars) ───
+    // ─── 4.1 山脚水汀洲渚与水面晨雾岚气 (Shoals & Water Mist) ───
     drawWaterShoals(context, scrollX, scrollW, waterY, t, priv.smoothBass);
+    drawWaterHorizonMist(context, scrollX, scrollW, waterY, t, priv.smoothTreble);
 
     // ─── 5. 水天融界 · 水面镜像倒影与水波 ───
     const waterH = scrollY + scrollH - waterY;
@@ -457,6 +441,9 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
       context.fill();
     }
     context.restore();
+
+    // 水面月华银波倒影 (Moon Specular Reflection)
+    drawMoonWaterReflection(context, moonX, waterY, waterH, t, priv.smoothTreble, priv.smoothBass);
 
     // 有机微波碎金
     context.save();
@@ -968,6 +955,139 @@ function drawWaterShoals(
 
     ctx.restore();
   }
+  ctx.restore();
+}
+
+/**
+ * 宋代写意白玉素月与月华氛晕 (Ethereal Song Dynasty Moon)
+ */
+function drawSongDynastyMoon(
+  ctx: CanvasRenderingContext2D,
+  moonX: number,
+  moonY: number,
+  moonR: number,
+  t: number,
+  smoothMid: number
+) {
+  ctx.save();
+
+  // 1. 广域清辉月晕
+  const outerHalo = ctx.createRadialGradient(moonX, moonY, moonR * 0.8, moonX, moonY, moonR * 4.2);
+  outerHalo.addColorStop(0, "rgba(254, 250, 225, 0.18)");
+  outerHalo.addColorStop(0.35, "rgba(220, 245, 240, 0.07)");
+  outerHalo.addColorStop(1, "rgba(5, 19, 28, 0)");
+  ctx.fillStyle = outerHalo;
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, moonR * 4.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. 玉润月轮本体 (柔焦白玉透青)
+  const moonGrad = ctx.createLinearGradient(moonX - moonR * 0.7, moonY - moonR * 0.7, moonX + moonR * 0.8, moonY + moonR * 0.8);
+  moonGrad.addColorStop(0, "rgba(255, 254, 245, 0.94)");
+  moonGrad.addColorStop(0.55, "rgba(242, 250, 248, 0.82)");
+  moonGrad.addColorStop(0.85, "rgba(218, 238, 238, 0.55)");
+  moonGrad.addColorStop(1, "rgba(180, 215, 218, 0.25)");
+
+  ctx.fillStyle = moonGrad;
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 3. 写意素娥微影 (淡墨隐现)
+  ctx.fillStyle = "rgba(160, 200, 205, 0.14)";
+  ctx.beginPath();
+  ctx.arc(moonX + moonR * 0.25, moonY + moonR * 0.15, moonR * 0.45, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 4. 月华微风轻岚 (月边拂过一缕细丝轻云)
+  const cloudPhase = t * 0.4;
+  const cloudY = moonY + moonR * 0.35 + Math.sin(cloudPhase) * 1.5;
+  const cloudGrad = ctx.createLinearGradient(moonX - moonR * 2.0, cloudY, moonX + moonR * 2.0, cloudY);
+  cloudGrad.addColorStop(0, "rgba(220, 245, 248, 0)");
+  cloudGrad.addColorStop(0.5, `rgba(235, 250, 252, ${0.18 + smoothMid * 0.12})`);
+  cloudGrad.addColorStop(1, "rgba(220, 245, 248, 0)");
+
+  ctx.fillStyle = cloudGrad;
+  ctx.beginPath();
+  ctx.ellipse(moonX + Math.sin(cloudPhase) * 4, cloudY, moonR * 1.8, moonR * 0.22, -0.08, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * 水面月华银波倒影 (Moon Specular Ripple Reflection)
+ */
+function drawMoonWaterReflection(
+  ctx: CanvasRenderingContext2D,
+  moonX: number,
+  waterY: number,
+  waterH: number,
+  t: number,
+  smoothTreble: number,
+  smoothBass: number
+) {
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+
+  const reflLength = Math.min(waterH * 0.75, 55);
+  const slices = 12;
+
+  for (let i = 0; i < slices; i++) {
+    const frac = i / slices;
+    const curY = waterY + 4 + frac * reflLength;
+    const waveShift = Math.sin(curY * 0.16 + t * 2.4) * (2.0 + smoothBass * 2.5);
+    const reflWidth = (14.0 + i * 3.5) * (1.0 + smoothTreble * 0.5);
+    const reflAlpha = 0.22 * (1.0 - frac * 0.82) * (0.8 + 0.2 * Math.sin(t * 3.0 + i * 0.5));
+
+    ctx.fillStyle = `rgba(220, 245, 248, ${reflAlpha})`;
+    ctx.beginPath();
+    ctx.ellipse(moonX + waveShift, curY, reflWidth * 0.5, 1.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/**
+ * 水天交界处晨雾岚气 (Water Horizon Mist Ribbon)
+ */
+function drawWaterHorizonMist(
+  ctx: CanvasRenderingContext2D,
+  scrollX: number,
+  scrollW: number,
+  waterY: number,
+  t: number,
+  smoothTreble: number
+) {
+  ctx.save();
+  const mistGrad = ctx.createLinearGradient(0, waterY - 8, 0, waterY + 14);
+  mistGrad.addColorStop(0, "rgba(215, 240, 245, 0)");
+  mistGrad.addColorStop(0.45, `rgba(225, 245, 248, ${0.12 + smoothTreble * 0.08})`);
+  mistGrad.addColorStop(1, "rgba(215, 240, 245, 0)");
+
+  ctx.fillStyle = mistGrad;
+  ctx.beginPath();
+
+  const step = 10;
+  for (let x = scrollX; x <= scrollX + scrollW; x += step) {
+    const normX = (x - scrollX) / scrollW;
+    const env = Math.sin(normX * Math.PI);
+    const wave = Math.sin(normX * 4.0 + t * 0.8) * 4.0;
+    const y = waterY - 6 + wave * env;
+    if (x === scrollX) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+
+  for (let x = scrollX + scrollW; x >= scrollX; x -= step) {
+    const normX = (x - scrollX) / scrollW;
+    const env = Math.sin(normX * Math.PI);
+    const wave = Math.sin(normX * 4.0 + t * 0.8) * 4.0;
+    const y = waterY + 12 + wave * env;
+    ctx.lineTo(x, y);
+  }
+
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
 }
 

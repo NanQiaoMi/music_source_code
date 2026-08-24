@@ -78,6 +78,7 @@ interface CrestEmber {
 const ORIENTAL_POEMS = [
   { line: "高山流水遇知音，明月清泉照此心", author: "古调清吟 · 琴赋" },
   { line: "行到水穷处，坐看云起时", author: "王维 · 终南别业" },
+  { line: "小舟从此逝，江海寄余生", author: "苏轼 · 临江仙" },
   { line: "落霞与孤鹜齐飞，秋水共长天一色", author: "王勃 · 滕王阁序" },
   { line: "幽兰生前庭，含熏待清风", author: "陶渊明 · 饮酒" },
   { line: "沧海月明珠有泪，蓝田日暖玉生烟", author: "李商隐 · 锦瑟" },
@@ -101,16 +102,16 @@ const COLOR_SCHEMES = [
     skyTop: "#01070d",
     skyMid: "#03141d",
     skyBottom: "#08222b",
-    farMountain: ["#144e5d", "#0c3540", "#051c22"],
-    midMountain: ["#1c686d", "#12494e", "#072428"],
-    nearMountain: ["#248278", "#175b55", "#092d2c"],
-    shoreMountain: ["#2f998b", "#1e6d65", "#0c3937"],
+    farMountain: ["#124858", "#0b313d", "#04171d"],
+    midMountain: ["#186067", "#104349", "#062024"],
+    nearMountain: ["#207a72", "#14544f", "#082828"],
+    shoreMountain: ["#2a9286", "#1a655e", "#0b3433"],
     goldGlint: "rgba(255, 238, 160, 0.98)",
     goldWire: "rgba(245, 210, 115, 0.90)",
-    cloudColor: "rgba(160, 225, 235, 0.20)",
-    waterWave: "rgba(185, 242, 248, 0.38)",
-    waterReflect: "rgba(18, 62, 72, 0.45)",
-    koiColor: "rgba(255, 195, 115, 0.70)",
+    cloudColor: "rgba(160, 230, 240, 0.22)",
+    waterWave: "rgba(185, 245, 250, 0.40)",
+    waterReflect: "rgba(18, 65, 75, 0.45)",
+    koiColor: "rgba(255, 195, 115, 0.75)",
     vignetteColor: "rgba(1, 4, 7, 0.85)",
   },
   {
@@ -124,8 +125,8 @@ const COLOR_SCHEMES = [
     shoreMountain: ["#445a82", "#2d3e5c", "#162030"],
     goldGlint: "rgba(230, 245, 255, 0.98)",
     goldWire: "rgba(190, 220, 255, 0.80)",
-    cloudColor: "rgba(180, 205, 240, 0.20)",
-    waterWave: "rgba(200, 225, 255, 0.32)",
+    cloudColor: "rgba(180, 210, 245, 0.22)",
+    waterWave: "rgba(200, 230, 255, 0.35)",
     waterReflect: "rgba(22, 34, 52, 0.38)",
     koiColor: "rgba(215, 235, 255, 0.55)",
     vignetteColor: "rgba(2, 3, 5, 0.85)",
@@ -141,8 +142,8 @@ const COLOR_SCHEMES = [
     shoreMountain: ["#6e205c", "#4c1341", "#280824"],
     goldGlint: "rgba(255, 230, 140, 0.98)",
     goldWire: "rgba(255, 195, 85, 0.90)",
-    cloudColor: "rgba(240, 180, 200, 0.20)",
-    waterWave: "rgba(255, 195, 160, 0.36)",
+    cloudColor: "rgba(240, 185, 205, 0.22)",
+    waterWave: "rgba(255, 200, 165, 0.38)",
     waterReflect: "rgba(42, 14, 38, 0.40)",
     koiColor: "rgba(255, 165, 90, 0.65)",
     vignetteColor: "rgba(5, 1, 7, 0.85)",
@@ -339,12 +340,12 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     lastTransientPeak = time;
     if (ripplesPool.length < 8) {
       ripplesPool.push({
-        x: width * 0.16 + Math.random() * width * 0.68,
-        y: height * 0.78 + Math.random() * height * 0.16,
-        radius: 2,
-        maxRadius: 40 + Math.random() * 55,
-        alpha: 0.75,
-        speed: 20 + Math.random() * 16,
+        x: width * 0.20 + Math.random() * width * 0.60,
+        y: height * 0.80 + Math.random() * height * 0.14,
+        radius: 3,
+        maxRadius: 45 + Math.random() * 55,
+        alpha: 0.85,
+        speed: 22 + Math.random() * 16,
       });
     }
 
@@ -668,7 +669,7 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   }
 
   // =========================================================================
-  // 7. 清潭水波、双环微澜与灵动锦鲤 (Pristine Water Waves & Koi)
+  // 7. 清潭水波、双环微澜与灵动锦鲤 (Pristine Water Waves & Luminous Ripples)
   // =========================================================================
   ctx.save();
   ctx.globalCompositeOperation = "screen";
@@ -702,7 +703,8 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     }
 
     ctx.save();
-    ctx.strokeStyle = colors.waterWave;
+    // 外环水青透亮
+    ctx.strokeStyle = "rgba(160, 240, 255, 0.75)";
     ctx.lineWidth = 1.2;
     ctx.globalAlpha = r.alpha * 0.65;
     ctx.translate(r.x, r.y);
@@ -712,11 +714,11 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ctx.stroke();
 
     // 内环微金光晕
-    ctx.strokeStyle = colors.goldWire;
-    ctx.lineWidth = 0.8;
-    ctx.globalAlpha = r.alpha * 0.40;
+    ctx.strokeStyle = "rgba(255, 220, 130, 0.65)";
+    ctx.lineWidth = 0.9;
+    ctx.globalAlpha = r.alpha * 0.45;
     ctx.beginPath();
-    ctx.arc(0, 0, 0.7, 0, Math.PI * 2);
+    ctx.arc(0, 0, 0.65, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.restore();

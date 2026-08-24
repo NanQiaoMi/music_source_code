@@ -129,7 +129,6 @@ const COLOR_SCHEMES: Record<
     cloudColor: string;
     waterWave: string;
     waterReflect: string;
-    lanternGlow: string;
     koiColor: string;
     vignetteColor: string;
   }
@@ -138,17 +137,16 @@ const COLOR_SCHEMES: Record<
     skyTop: "#01070d",
     skyMid: "#03141d",
     skyBottom: "#08222b",
-    farMountain: ["#144e5d", "#0c3540", "#051c22"],
-    midMountain: ["#1c686d", "#12494e", "#072428"],
-    nearMountain: ["#248278", "#175b55", "#092d2c"],
-    shoreMountain: ["#2f998b", "#1e6d65", "#0c3937"],
+    farMountain: ["#124858", "#0b313d", "#04171d"],
+    midMountain: ["#186067", "#104349", "#062024"],
+    nearMountain: ["#207a72", "#14544f", "#082828"],
+    shoreMountain: ["#2a9286", "#1a655e", "#0b3433"],
     goldGlint: "rgba(255, 238, 160, 0.98)",
     goldWire: "rgba(245, 210, 115, 0.90)",
-    cloudColor: "rgba(160, 225, 235, 0.20)",
-    waterWave: "rgba(185, 242, 248, 0.40)",
-    waterReflect: "rgba(18, 62, 72, 0.45)",
-    lanternGlow: "rgba(255, 215, 115, 0.98)",
-    koiColor: "rgba(255, 195, 115, 0.70)",
+    cloudColor: "rgba(160, 230, 240, 0.22)",
+    waterWave: "rgba(185, 245, 250, 0.40)",
+    waterReflect: "rgba(18, 65, 75, 0.45)",
+    koiColor: "rgba(255, 195, 115, 0.75)",
     vignetteColor: "rgba(1, 4, 7, 0.85)",
   },
   jiangnan_ink: {
@@ -161,10 +159,9 @@ const COLOR_SCHEMES: Record<
     shoreMountain: ["#445a82", "#2d3e5c", "#162030"],
     goldGlint: "rgba(230, 245, 255, 0.98)",
     goldWire: "rgba(190, 220, 255, 0.80)",
-    cloudColor: "rgba(180, 205, 240, 0.20)",
-    waterWave: "rgba(200, 225, 255, 0.32)",
+    cloudColor: "rgba(180, 210, 245, 0.22)",
+    waterWave: "rgba(200, 230, 255, 0.35)",
     waterReflect: "rgba(22, 34, 52, 0.38)",
-    lanternGlow: "rgba(255, 220, 130, 0.90)",
     koiColor: "rgba(215, 235, 255, 0.55)",
     vignetteColor: "rgba(2, 3, 5, 0.85)",
   },
@@ -178,10 +175,9 @@ const COLOR_SCHEMES: Record<
     shoreMountain: ["#6e205c", "#4c1341", "#280824"],
     goldGlint: "rgba(255, 230, 140, 0.98)",
     goldWire: "rgba(255, 195, 85, 0.90)",
-    cloudColor: "rgba(240, 180, 200, 0.20)",
-    waterWave: "rgba(255, 195, 160, 0.36)",
+    cloudColor: "rgba(240, 185, 205, 0.22)",
+    waterWave: "rgba(255, 200, 165, 0.38)",
     waterReflect: "rgba(42, 14, 38, 0.40)",
-    lanternGlow: "rgba(255, 190, 80, 0.95)",
     koiColor: "rgba(255, 165, 90, 0.65)",
     vignetteColor: "rgba(5, 1, 7, 0.85)",
   },
@@ -255,29 +251,26 @@ function dynamicShanShuiRidge(
     const spire2 = Math.exp(-Math.pow((normX - 0.69 + Math.cos(time * 0.05) * 0.02) * 5.2, 2)) * (-0.15 * hScale);
     const subSpire2 = Math.exp(-Math.pow((normX - 0.60) * 8.5, 2)) * (-0.09 * hScale);
     const spire3 = Math.exp(-Math.pow((normX - 0.88) * 6.8, 2)) * (-0.12 * hScale);
-    const crag = Math.sin(normX * 9.5 + time * 0.08) * (0.015 * hScale);
     const rolling = Math.sin(normX * 4.0 + time * 0.10) * (0.028 * hScale);
     const microCrests = Math.sin(normX * 16.0 + 1.2) * (0.006 * hScale);
     const breath = Math.sin(time * 0.22) * (0.012 * hScale + energy * 0.018 * hScale);
-    return spire1 + subSpire1 + spire2 + subSpire2 + spire3 + crag + rolling + microCrests + breath;
+    return spire1 + subSpire1 + spire2 + subSpire2 + spire3 + rolling + microCrests + breath;
   } else if (layerIndex === 2) {
     const peak1 = Math.exp(-Math.pow((normX - 0.22 + Math.sin(time * 0.07) * 0.02) * 5.2, 2)) * (-0.14 * hScale);
     const peak2 = Math.exp(-Math.pow((normX - 0.52 - Math.cos(time * 0.06) * 0.02) * 4.6, 2)) * (-0.15 * hScale);
     const peak3 = Math.exp(-Math.pow((normX - 0.80) * 5.8, 2)) * (-0.11 * hScale);
-    const crag = Math.sin(normX * 11.0 - time * 0.12) * (0.014 * hScale);
     const slope = Math.sin(normX * 4.8 - time * 0.15) * (0.025 * hScale);
     const microCrests = Math.sin(normX * 18.0 + 0.8) * (0.005 * hScale);
     const breath = Math.cos(time * 0.30 + normX * 3) * (0.015 * hScale + energy * 0.02 * hScale);
-    return peak1 + peak2 + peak3 + crag + slope + microCrests + breath;
+    return peak1 + peak2 + peak3 + slope + microCrests + breath;
   } else if (layerIndex === 3) {
     const cliff1 = Math.exp(-Math.pow((normX - 0.85 + Math.sin(time * 0.08) * 0.02) * 4.8, 2)) * (-0.11 * hScale);
     const cliff2 = Math.exp(-Math.pow((normX - 0.28) * 5.8, 2)) * (-0.09 * hScale);
     const cliff3 = Math.exp(-Math.pow((normX - 0.62) * 7.2, 2)) * (-0.08 * hScale);
-    const crag = Math.sin(normX * 13.0 + time * 0.15) * (0.012 * hScale);
     const shore = Math.sin(normX * 5.2 + time * 0.20) * (0.020 * hScale);
     const microCrests = Math.sin(normX * 20.0) * (0.004 * hScale);
     const breath = Math.sin(time * 0.38 + normX * 4) * (0.012 * hScale + energy * 0.018 * hScale);
-    return cliff1 + cliff2 + cliff3 + crag + shore + microCrests + breath;
+    return cliff1 + cliff2 + cliff3 + shore + microCrests + breath;
   } else {
     const hummock1 = Math.exp(-Math.pow((normX - 0.14) * 6.5, 2)) * (-0.06 * hScale);
     const hummock2 = Math.exp(-Math.pow((normX - 0.72) * 5.5, 2)) * (-0.06 * hScale);
@@ -291,7 +284,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
   id: "cinematic_oriental_ink",
   name: "千里江山",
   category: "space",
-  description: "专为纯音乐与古风打造：动态东方青绿水墨画卷、柔和空灵冷月、一叶轻舟渔火与水底灵动游鱼系统",
+  description: "专为纯音乐与古风打造：动态东方青绿水墨画卷、柔和空灵冷月与水底灵动游鱼系统",
   preferredEngine: "canvas",
   parameters: [
     {
@@ -511,7 +504,7 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     });
     ctx.restore();
 
-    // 3. 极度柔和朦胧的空灵冷月 (with Delicate Volumetric Rays)
+    // 3. 极度柔和朦胧的空灵冷月
     const moonX = width * 0.16;
     const moonY = height * 0.18;
     const moonRadius = Math.min(width, height) * 0.052;
@@ -519,53 +512,35 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
 
-    const rayAngleCount = 6;
-    for (let r = 0; r < rayAngleCount; r++) {
-      const angle = (Math.PI / 3) * r + state.timeAccumulator * 0.04;
-      const rayLength = moonRadius * 8.0;
-      const endX = moonX + Math.cos(angle) * rayLength;
-      const endY = moonY + Math.sin(angle) * rayLength;
-      const rayGrd = ctx.createLinearGradient(moonX, moonY, endX, endY);
-      rayGrd.addColorStop(0, "rgba(215, 245, 255, 0.14)");
-      rayGrd.addColorStop(0.5, "rgba(160, 220, 245, 0.04)");
-      rayGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
-      ctx.fillStyle = rayGrd;
-      ctx.beginPath();
-      ctx.moveTo(moonX, moonY);
-      ctx.arc(moonX, moonY, rayLength, angle - 0.12, angle + 0.12);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    const outerBloom = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.5, moonX, moonY, moonRadius * 7.5);
-    outerBloom.addColorStop(0, "rgba(200, 240, 255, 0.28)");
-    outerBloom.addColorStop(0.35, "rgba(150, 215, 240, 0.12)");
+    const outerBloom = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.4, moonX, moonY, moonRadius * 6.5);
+    outerBloom.addColorStop(0, "rgba(215, 245, 255, 0.32)");
+    outerBloom.addColorStop(0.35, "rgba(160, 220, 245, 0.14)");
     outerBloom.addColorStop(0.70, "rgba(90, 160, 200, 0.03)");
     outerBloom.addColorStop(1.0, "rgba(0, 0, 0, 0)");
     ctx.fillStyle = outerBloom;
     ctx.globalAlpha = 0.85 + Math.sin(state.breathTime) * 0.10 + state.smoothedMid * 0.15;
     ctx.beginPath();
-    ctx.arc(moonX, moonY, moonRadius * 7.5, 0, Math.PI * 2);
+    ctx.arc(moonX, moonY, moonRadius * 6.5, 0, Math.PI * 2);
     ctx.fill();
 
-    const midCorona = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.3, moonX, moonY, moonRadius * 3.2);
-    midCorona.addColorStop(0, "rgba(240, 252, 255, 0.75)");
-    midCorona.addColorStop(0.40, "rgba(195, 235, 250, 0.40)");
+    const midCorona = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.2, moonX, moonY, moonRadius * 2.8);
+    midCorona.addColorStop(0, "rgba(240, 252, 255, 0.80)");
+    midCorona.addColorStop(0.40, "rgba(195, 235, 250, 0.42)");
     midCorona.addColorStop(0.80, "rgba(140, 205, 230, 0.08)");
     midCorona.addColorStop(1.0, "rgba(0, 0, 0, 0)");
     ctx.fillStyle = midCorona;
     ctx.beginPath();
-    ctx.arc(moonX, moonY, moonRadius * 3.2, 0, Math.PI * 2);
+    ctx.arc(moonX, moonY, moonRadius * 2.8, 0, Math.PI * 2);
     ctx.fill();
 
-    const coreMoon = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, moonRadius * 1.2);
+    const coreMoon = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, moonRadius * 1.15);
     coreMoon.addColorStop(0, "rgba(255, 255, 255, 0.98)");
     coreMoon.addColorStop(0.45, "rgba(245, 250, 255, 0.90)");
     coreMoon.addColorStop(0.80, "rgba(220, 242, 252, 0.45)");
     coreMoon.addColorStop(1.0, "rgba(180, 220, 245, 0.0)");
     ctx.fillStyle = coreMoon;
     ctx.beginPath();
-    ctx.arc(moonX, moonY, moonRadius * 1.2, 0, Math.PI * 2);
+    ctx.arc(moonX, moonY, moonRadius * 1.15, 0, Math.PI * 2);
     ctx.fill();
 
     const cloudWisps = [
@@ -681,19 +656,9 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     drawShanShui(3, 0.82, colors.nearMountain, 0.85);
     drawShanShui(4, 0.90, colors.shoreMountain, 0.70);
 
-    // 5. 水面微波、月光湖面倒影、钓翁扁舟与锦鲤
+    // 5. 水面微波与灵动锦鲤 (Pristine Water Waves & Luminous Ripples)
     ctx.save();
     ctx.globalCompositeOperation = "screen";
-
-    const moonReflectGrd = ctx.createLinearGradient(moonX - 60, height * 0.78, moonX + 60, height);
-    moonReflectGrd.addColorStop(0, "rgba(200, 240, 255, 0.22)");
-    moonReflectGrd.addColorStop(0.5, "rgba(160, 220, 245, 0.10)");
-    moonReflectGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
-    ctx.fillStyle = moonReflectGrd;
-    for (let rY = height * 0.78; rY < height; rY += 10) {
-      const rW = 35 + (rY - height * 0.78) * 0.45 + Math.sin(state.timeAccumulator * 1.2 + rY * 0.05) * 8;
-      ctx.fillRect(moonX - rW / 2, rY, rW, 2.5);
-    }
 
     for (let w = 0; w < 4; w++) {
       const waveY = height * (0.82 + w * 0.04);
@@ -708,6 +673,36 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
         else ctx.lineTo(x, waveY + sinOffset);
       }
       ctx.stroke();
+    }
+
+    for (let i = state.ripples.length - 1; i >= 0; i--) {
+      const r = state.ripples[i];
+      r.radius += r.speed * dt;
+      r.alpha -= dt * 0.30;
+
+      if (r.alpha <= 0 || r.radius >= r.maxRadius) {
+        state.ripples.splice(i, 1);
+        continue;
+      }
+
+      ctx.save();
+      ctx.strokeStyle = "rgba(160, 240, 255, 0.75)";
+      ctx.lineWidth = 1.2;
+      ctx.globalAlpha = r.alpha * 0.65;
+      ctx.translate(r.x, r.y);
+      ctx.scale(r.radius, r.radius * 0.28);
+      ctx.beginPath();
+      ctx.arc(0, 0, 1, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(255, 220, 130, 0.65)";
+      ctx.lineWidth = 0.9;
+      ctx.globalAlpha = r.alpha * 0.45;
+      ctx.beginPath();
+      ctx.arc(0, 0, 0.65, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.restore();
     }
 
     state.kois.forEach((koi) => {
@@ -753,67 +748,6 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
       ctx.restore();
     });
 
-    const boatX = width * 0.24;
-    const boatBobbing = Math.sin(state.timeAccumulator * 0.65) * 2.8;
-    const boatY = height * 0.79 + boatBobbing;
-
-    ctx.save();
-    ctx.translate(boatX, boatY);
-    ctx.rotate(Math.sin(state.timeAccumulator * 0.65) * 0.025);
-
-    ctx.fillStyle = "rgba(4, 10, 12, 0.98)";
-    ctx.beginPath();
-    ctx.moveTo(-22, 0);
-    ctx.quadraticCurveTo(-10, 7, 0, 8);
-    ctx.quadraticCurveTo(14, 7, 24, 0);
-    ctx.quadraticCurveTo(10, 3, 0, 3);
-    ctx.quadraticCurveTo(-10, 3, -22, 0);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(-2, 0, 7, Math.PI, 0, false);
-    ctx.fill();
-
-    ctx.strokeStyle = "rgba(200, 225, 215, 0.70)";
-    ctx.lineWidth = 1.0;
-    ctx.beginPath();
-    ctx.moveTo(-12, 0);
-    ctx.quadraticCurveTo(-26, -14, -36, -20);
-    ctx.stroke();
-
-    ctx.strokeStyle = "rgba(220, 240, 255, 0.30)";
-    ctx.lineWidth = 0.6;
-    ctx.beginPath();
-    ctx.moveTo(-36, -20);
-    ctx.lineTo(-36, 12);
-    ctx.stroke();
-
-    ctx.globalCompositeOperation = "screen";
-    const lanternX = 14;
-    const lanternY = -4;
-    const lanternGrd = ctx.createRadialGradient(lanternX, lanternY, 0, lanternX, lanternY, 28);
-    lanternGrd.addColorStop(0, "rgba(255, 250, 210, 1.0)");
-    lanternGrd.addColorStop(0.25, colors.lanternGlow);
-    lanternGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
-    ctx.fillStyle = lanternGrd;
-    ctx.beginPath();
-    ctx.arc(lanternX, lanternY, 28, 0, Math.PI * 2);
-    ctx.fill();
-
-    const reflectGrd = ctx.createRadialGradient(lanternX, 10, 0, lanternX, 10, 20);
-    reflectGrd.addColorStop(0, "rgba(255, 220, 140, 0.55)");
-    reflectGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
-    ctx.fillStyle = reflectGrd;
-    ctx.save();
-    ctx.translate(lanternX, 10);
-    ctx.scale(20, 5.5);
-    ctx.beginPath();
-    ctx.arc(0, 0, 1, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    ctx.restore();
     ctx.restore();
 
     // 6. 空灵流萤与悬浮金箔微粒 (3D Depth-of-Field Bokeh & Gold Dust)
