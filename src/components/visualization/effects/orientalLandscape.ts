@@ -43,10 +43,32 @@ interface CraneEntity {
   floatPhase: number;
 }
 
+interface WildGeeseEntity {
+  relX: number;
+  relY: number;
+  scale: number;
+  speed: number;
+  wingFreq: number;
+  phase: number;
+  floatPhase: number;
+}
+
+interface AzureBirdEntity {
+  relX: number;
+  relY: number;
+  scale: number;
+  speed: number;
+  wingFreq: number;
+  phase: number;
+  floatPhase: number;
+}
+
 let localRipples: WaterRipple[] = [];
 let localPetals: GoldenPetal[] = [];
 let localParticles: DustParticle[] = [];
 let localCranes: CraneEntity[] = [];
+let localGeese: WildGeeseEntity[] = [];
+let localAzureBirds: AzureBirdEntity[] = [];
 let lastRippleTime = 0;
 let initialized = false;
 
@@ -60,7 +82,7 @@ let smoothEnergy = 0;
 const MAX_MOUNTAIN_POINTS = 2048;
 const mountainPointsX: Float32Array[] = [];
 const mountainPointsY: Float32Array[] = [];
-const mountainPointCounts = new Int32Array(6);
+const mountainPointCounts: number[] = [0, 0, 0, 0, 0, 0];
 
 for (let i = 0; i < 6; i++) {
   mountainPointsX.push(new Float32Array(MAX_MOUNTAIN_POINTS));
@@ -97,11 +119,27 @@ function initLivingElements(width: number, height: number) {
     });
   }
 
+  // 1. 晴空丹顶瑞鹤 (3只，悠扬高翔向素月)
   localCranes = [
-    { relX: 0.25, relY: 0.15, scale: 0.72, speed: 0.00042, wingFreq: 2.2, phase: 0.0, floatPhase: 0.0 },
-    { relX: 0.19, relY: 0.19, scale: 0.60, speed: 0.00042, wingFreq: 2.3, phase: 1.2, floatPhase: 1.5 },
-    { relX: 0.14, relY: 0.23, scale: 0.52, speed: 0.00042, wingFreq: 2.1, phase: 2.4, floatPhase: 3.1 },
-    { relX: 0.09, relY: 0.18, scale: 0.45, speed: 0.00042, wingFreq: 2.4, phase: 3.6, floatPhase: 4.8 },
+    { relX: 0.32, relY: 0.14, scale: 0.70, speed: 0.00038, wingFreq: 2.1, phase: 0.0, floatPhase: 0.0 },
+    { relX: 0.25, relY: 0.18, scale: 0.58, speed: 0.00038, wingFreq: 2.2, phase: 1.2, floatPhase: 1.5 },
+    { relX: 0.18, relY: 0.22, scale: 0.48, speed: 0.00038, wingFreq: 2.0, phase: 2.4, floatPhase: 3.1 },
+  ];
+
+  // 2. 远山平沙落雁长空雁阵 (V形人字雁阵，共 6 只大雁)
+  localGeese = [
+    { relX: 0.68, relY: 0.23, scale: 0.36, speed: 0.00050, wingFreq: 3.2, phase: 0.0, floatPhase: 0.0 }, // 领头雁
+    { relX: 0.64, relY: 0.25, scale: 0.33, speed: 0.00050, wingFreq: 3.2, phase: 0.6, floatPhase: 0.4 }, // 左翼1
+    { relX: 0.60, relY: 0.27, scale: 0.30, speed: 0.00050, wingFreq: 3.1, phase: 1.2, floatPhase: 0.8 }, // 左翼2
+    { relX: 0.65, relY: 0.21, scale: 0.33, speed: 0.00050, wingFreq: 3.3, phase: 0.8, floatPhase: 0.5 }, // 右翼1
+    { relX: 0.62, relY: 0.19, scale: 0.30, speed: 0.00050, wingFreq: 3.2, phase: 1.5, floatPhase: 0.9 }, // 右翼2
+    { relX: 0.59, relY: 0.17, scale: 0.27, speed: 0.00050, wingFreq: 3.4, phase: 2.1, floatPhase: 1.3 }, // 右翼3
+  ];
+
+  // 3. 近水汀洲青鸟/翠鸟 (2只，低空穿云掠水，灵巧轻快)
+  localAzureBirds = [
+    { relX: 0.14, relY: 0.51, scale: 0.42, speed: 0.00075, wingFreq: 4.8, phase: 0.0, floatPhase: 0.0 },
+    { relX: 0.08, relY: 0.54, scale: 0.36, speed: 0.00075, wingFreq: 5.0, phase: 1.8, floatPhase: 1.2 },
   ];
 
   initialized = true;
@@ -246,8 +284,9 @@ export function drawOrientalLandscape(context: EffectContext): void {
   const moonR = Math.min(scrollW, scrollH) * 0.040;
   drawSongDynastyMoon(ctx, moonX, moonY, moonR, t, smoothMid);
 
-  // ─── 3. 晴空白鹭 · 仙鹤群飞 (Flock of Soaring Cranes) ───
+  // ─── 3. 晴空白鹭 · 仙鹤群飞 & 远天落雁阵 (Cranes & Wild Geese) ───
   drawFlockOfCranes(ctx, localCranes, scrollX, scrollY, scrollW, scrollH, t, smoothTreble);
+  drawWildGeeseFlock(ctx, localGeese, scrollX, scrollY, scrollW, scrollH, t, smoothTreble);
 
   // ─── 4. 6 重宋画《千里江山》重彩矿物青绿层峦 (千峰起伏 · 峰顶泥金 · 高远深远) ───
   const breathFactor = mountainBreath * smoothBass;
@@ -357,8 +396,9 @@ export function drawOrientalLandscape(context: EffectContext): void {
   }
   ctx.globalAlpha = 1.0;
 
-  // ─── 4.1 山脚水汀洲渚与水面晨雾岚气 (Shoals & Water Mist) ───
+  // ─── 4.1 山脚水汀洲渚与水面晨雾岚气 & 掠水青鸟 (Shoals, Mist & Azure Birds) ───
   drawWaterShoals(ctx, scrollX, scrollW, waterY, t, smoothBass);
+  drawAzureWaterBirds(ctx, localAzureBirds, scrollX, scrollY, scrollW, scrollH, t, smoothMid);
   drawWaterHorizonMist(ctx, scrollX, scrollW, waterY, t, smoothTreble);
 
   // ─── 5. 水天融界 · 水面镜像倒影与碎金微澜 ───
@@ -630,6 +670,167 @@ function drawFlockOfCranes(
     ctx.moveTo(0, 0);
     ctx.quadraticCurveTo(-4, 10, -11, 14);
     ctx.quadraticCurveTo(-6, 6, 0, 0);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+/**
+ * 远山平沙落雁 · 长空雁阵 (Flock of Distant Wild Geese in V-Formation)
+ */
+function drawWildGeeseFlock(
+  ctx: CanvasRenderingContext2D,
+  geese: WildGeeseEntity[],
+  scrollX: number,
+  scrollY: number,
+  scrollW: number,
+  scrollH: number,
+  t: number,
+  smoothTreble: number
+) {
+  ctx.save();
+  for (let i = 0; i < geese.length; i++) {
+    const g = geese[i];
+    g.relX += g.speed;
+    if (g.relX > 1.2) g.relX = -0.2;
+
+    const normX = g.relX;
+    let gooseAlpha = 0.82;
+    if (normX < 0.08) gooseAlpha *= normX / 0.08;
+    if (normX > 0.92) gooseAlpha *= (1.0 - normX) / 0.08;
+
+    const gx = scrollX + normX * scrollW;
+    const gy = scrollY + (g.relY + Math.sin(t * 1.8 + g.floatPhase) * 0.015) * scrollH;
+
+    ctx.save();
+    ctx.translate(gx, gy);
+    ctx.scale(g.scale, g.scale);
+    ctx.globalAlpha = Math.max(0, gooseAlpha);
+
+    const wingAngle = Math.sin(t * g.wingFreq * 4.2 + g.phase + smoothTreble * 2.0) * 0.40;
+
+    // 大雁水墨剪影（流线身躯、伸展长颈、弧形双翼）
+    ctx.fillStyle = "rgba(14, 30, 36, 0.92)";
+    ctx.beginPath();
+    ctx.moveTo(10, 0);
+    ctx.quadraticCurveTo(6, -2, 0, 0);
+    ctx.quadraticCurveTo(-6, 2, -10, 0);
+    ctx.quadraticCurveTo(-4, -1, 0, -1);
+    ctx.closePath();
+    ctx.fill();
+
+    // 雁腹微亮墨韵
+    ctx.fillStyle = "rgba(45, 75, 85, 0.45)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0.5, 4, 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 上展翼
+    ctx.save();
+    ctx.rotate(-wingAngle - 0.15);
+    ctx.fillStyle = "rgba(16, 36, 42, 0.90)";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-4, -10, -12, -14);
+    ctx.quadraticCurveTo(-6, -6, 0, 0);
+    ctx.fill();
+    ctx.restore();
+
+    // 下展翼
+    ctx.save();
+    ctx.rotate(wingAngle * 0.8 + 0.12);
+    ctx.fillStyle = "rgba(12, 28, 34, 0.80)";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-3, 8, -9, 11);
+    ctx.quadraticCurveTo(-5, 5, 0, 0);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+/**
+ * 近水汀洲青鸟 · 掠水翠鸟 (Agile Azure Water Birds)
+ */
+function drawAzureWaterBirds(
+  ctx: CanvasRenderingContext2D,
+  birds: AzureBirdEntity[],
+  scrollX: number,
+  scrollY: number,
+  scrollW: number,
+  scrollH: number,
+  t: number,
+  smoothMid: number
+) {
+  ctx.save();
+  for (let i = 0; i < birds.length; i++) {
+    const b = birds[i];
+    b.relX += b.speed;
+    if (b.relX > 1.15) b.relX = -0.15;
+
+    const normX = b.relX;
+    let birdAlpha = 0.88;
+    if (normX < 0.08) birdAlpha *= normX / 0.08;
+    if (normX > 0.92) birdAlpha *= (1.0 - normX) / 0.08;
+
+    const bx = scrollX + normX * scrollW;
+    const by = scrollY + (b.relY + Math.sin(t * 3.0 + b.floatPhase) * 0.018 + Math.cos(t * 1.5) * 0.008) * scrollH;
+
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.scale(b.scale, b.scale);
+    ctx.globalAlpha = Math.max(0, birdAlpha);
+
+    const wingAngle = Math.sin(t * b.wingFreq * 4.5 + b.phase + smoothMid * 2.5) * 0.45;
+
+    // 翠鸟羽身 (孔雀石绿透青碧)
+    ctx.fillStyle = "rgba(20, 184, 166, 0.95)";
+    ctx.beginPath();
+    ctx.moveTo(9, -0.5);
+    ctx.quadraticCurveTo(4, -3, 0, -1);
+    ctx.quadraticCurveTo(-5, 1, -8, 0);
+    ctx.quadraticCurveTo(-2, 2, 4, 1.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // 橙赭腹羽 (Warm Amber Chest)
+    ctx.fillStyle = "rgba(245, 158, 11, 0.85)";
+    ctx.beginPath();
+    ctx.ellipse(2, 0.8, 3.5, 1.4, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 细尖小喙
+    ctx.strokeStyle = "rgba(8, 28, 32, 0.95)";
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(8, -0.5);
+    ctx.lineTo(13, -1.0);
+    ctx.stroke();
+
+    // 翠色双翼
+    ctx.save();
+    ctx.rotate(-wingAngle - 0.2);
+    ctx.fillStyle = "rgba(14, 165, 233, 0.92)";
+    ctx.beginPath();
+    ctx.moveTo(1, 0);
+    ctx.quadraticCurveTo(-3, -8, -10, -12);
+    ctx.quadraticCurveTo(-5, -4, 1, 0);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.rotate(wingAngle * 0.7 + 0.1);
+    ctx.fillStyle = "rgba(13, 148, 136, 0.85)";
+    ctx.beginPath();
+    ctx.moveTo(1, 0);
+    ctx.quadraticCurveTo(-2, 6, -8, 9);
+    ctx.quadraticCurveTo(-4, 3, 1, 0);
     ctx.fill();
     ctx.restore();
 
