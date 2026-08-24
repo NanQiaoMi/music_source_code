@@ -1,10 +1,11 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { useQueueStore } from "./queueStore";
 import { useRecommendationStore } from "./recommendationStore";
 import { usePlayerStore } from "./playerStore";
 import { usePlaylistStore } from "./playlistStore";
 import { useEQStore } from "./eqStore";
+import { createSafeStorage } from "@/lib/storage/safeStorage";
 
 import { Song } from "@/types/song";
 import {
@@ -664,6 +665,7 @@ export const useAudioStore = create<AudioState>()(
     }),
     {
       name: "audio-store-v4",
+      storage: createJSONStorage(() => createSafeStorage("audio-store-v4")),
       partialize: (state) => ({
         volume: state.volume,
         isMuted: state.isMuted,

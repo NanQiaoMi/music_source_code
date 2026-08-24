@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { usePlayerStore } from "./playerStore";
+import { sanitizeSongForStorage } from "@/lib/storage/safeStorage";
 
 const mockSong = {
   id: "song-1",
   title: "Test Song",
   artist: "Test Artist",
+  album: "Test Album",
+  cover: "/cover.jpg",
+  audioUrl: "https://example.com/audio.mp3",
   duration: 240,
   source: "local" as const,
 };
@@ -96,7 +100,7 @@ describe("playerStore", () => {
 
     const parsed = JSON.parse(saved!);
     expect(parsed.state).toEqual({
-      currentSong: mockSong,
+      currentSong: sanitizeSongForStorage(mockSong),
       currentTime: 99,
       duration: 240,
       volume: 0.2,

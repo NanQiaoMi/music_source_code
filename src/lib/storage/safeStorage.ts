@@ -96,7 +96,16 @@ export function createSafeStorage(storeName?: string): StateStorage {
 export function compactExistingStorage(): void {
   if (typeof window === "undefined" || !window.localStorage) return;
 
-  const targetStores = ["favorites-store", "queue-store", "history-store", "playlist-group-store"];
+  const targetStores = [
+    "favorites-store",
+    "queue-store",
+    "history-store",
+    "playlist-group-store",
+    "player-store",
+    "audio-store-v4",
+    "ai-music-analysis-store",
+    "recent-searches",
+  ];
 
   for (const key of targetStores) {
     try {
@@ -106,18 +115,23 @@ export function compactExistingStorage(): void {
       const parsed = JSON.parse(raw);
       let modified = false;
 
+      if (parsed?.state?.currentSong) {
+        parsed.state.currentSong = sanitizeSongForStorage(parsed.state.currentSong);
+        modified = true;
+      }
+
       if (parsed?.state?.favorites && Array.isArray(parsed.state.favorites)) {
         parsed.state.favorites = parsed.state.favorites.map(sanitizeSongForStorage);
         modified = true;
       }
 
       if (parsed?.state?.queue && Array.isArray(parsed.state.queue)) {
-        parsed.state.queue = parsed.state.queue.map(sanitizeSongForStorage);
+        parsed.state.queue = parsed.state.queue.slice(0, 100).map(sanitizeSongForStorage);
         modified = true;
       }
 
       if (parsed?.state?.history && Array.isArray(parsed.state.history)) {
-        parsed.state.history = parsed.state.history.slice(0, 200).map(sanitizeSongForStorage);
+        parsed.state.history = parsed.state.history.slice(0, 50).map(sanitizeSongForStorage);
         modified = true;
       }
 

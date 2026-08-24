@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { Song } from "@/types/song";
+import { createSafeStorage, sanitizeSongForStorage } from "@/lib/storage/safeStorage";
 
 export type LoopMode = "none" | "single" | "all" | "shuffle";
 
@@ -30,24 +31,6 @@ interface PlayerState {
   toggleMute: () => void;
   nextSong: () => void;
   prevSong: () => void;
-}
-
-function sanitizePersistedPlayerSong(song: Song | null): Song | null {
-  if (!song) return null;
-  const sanitizedCover = song.cover?.startsWith("data:image/") ? "" : song.cover;
-  return {
-    id: song.id,
-    title: song.title,
-    artist: song.artist,
-    album: song.album,
-    duration: song.duration,
-    cover: sanitizedCover,
-    lyrics: song.lyrics,
-    translationLyrics: song.translationLyrics,
-    source: song.source,
-    audioUrl: song.audioUrl?.startsWith("blob:") ? undefined : song.audioUrl,
-    format: (song as any).format,
-  };
 }
 
 export const usePlayerStore = create<PlayerState>()(
@@ -96,8 +79,9 @@ export const usePlayerStore = create<PlayerState>()(
     }),
     {
       name: "player-store",
+      storage: createJSONStorage(() => createSafeStorage("player-store")),
       partialize: (state) => ({
-        currentSong: sanitizePersistedPlayerSong(state.currentSong),
+        currentSong: state.currentSong ? sanitizeSongForStorage(state.currentSong) : null,
         currentTime: state.currentTime,
         duration: state.duration,
         volume: state.volume,
