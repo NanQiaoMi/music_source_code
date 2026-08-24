@@ -101,4 +101,53 @@ describe("useOfflineDownloadStore", () => {
     cancelDownload("song-102");
     expect(useOfflineDownloadStore.getState().tasks["song-102"]).toBeUndefined();
   });
+
+  it("should clear all tasks and clear failed/paused tasks correctly", () => {
+    const dummySong: Song = {
+      id: "song-1",
+      title: "Song 1",
+      artist: "Artist 1",
+      duration: 200,
+      source: "netease",
+    };
+
+    useOfflineDownloadStore.setState({
+      tasks: {
+        "song-1": {
+          id: "song-1",
+          song: dummySong,
+          status: "paused",
+          progress: 20,
+          downloadedBytes: 2000,
+          totalBytes: 10000,
+          speed: 0,
+          speedFormatted: "已暂停",
+          quality: "lossless",
+          addedAt: Date.now(),
+        },
+        "song-2": {
+          id: "song-2",
+          song: { ...dummySong, id: "song-2" },
+          status: "pending",
+          progress: 0,
+          downloadedBytes: 0,
+          totalBytes: 0,
+          speed: 0,
+          speedFormatted: "排队中",
+          quality: "lossless",
+          addedAt: Date.now(),
+        },
+      },
+      activeCount: 0,
+    });
+
+    const { clearFailedOrPausedTasks, clearAllTasks } = useOfflineDownloadStore.getState();
+    clearFailedOrPausedTasks();
+    expect(useOfflineDownloadStore.getState().tasks["song-1"]).toBeUndefined();
+    expect(useOfflineDownloadStore.getState().tasks["song-2"]).toBeDefined();
+
+    clearAllTasks();
+    expect(useOfflineDownloadStore.getState().tasks).toEqual({});
+    expect(useOfflineDownloadStore.getState().activeCount).toBe(0);
+  });
 });

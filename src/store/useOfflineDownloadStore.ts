@@ -55,6 +55,8 @@ interface OfflineDownloadState {
   pauseAll: () => void;
   resumeAll: () => void;
   clearCompleted: () => void;
+  clearAllTasks: () => void;
+  clearFailedOrPausedTasks: () => void;
 
   // Offline Data Actions
   loadOfflineRecords: () => Promise<void>;
@@ -144,10 +146,32 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
 
     try {
       const song = task.song;
-      let targetUrl = song.audioUrl || "";
+      let targetUrl = "";
 
-      // 1. If no direct audio url, resolve through backend api
-      if (!targetUrl || targetUrl.startsWith("http://localhost:3000/placeholder")) {
+      // 1. 优先使用 MultiSourceResolver 解析全网可用母带/高品质 CDN 直链
+      try {
+        const resolved = await multiSourceResolver.resolvePlayableAudio({
+          id: String(song.id),
+          title: song.title,
+          artist: song.artist,
+          album: song.album,
+          duration: song.duration,
+          source: song.source || "netease",
+        });
+        if (resolved && resolved.url) {
+          targetUrl = resolved.url;
+        }
+      } catch (e) {
+        console.warn("[OfflineDownload] multiSourceResolver resolve failed:", e);
+      }
+
+      // 2. 次选：如果歌曲对象带有合法非占位直链
+      if (!targetUrl && song.audioUrl && !song.audioUrl.includes("/placeholder") && !song.audioUrl.includes("outer/url?id=")) {
+        targetUrl = song.audioUrl;
+      }
+
+      // 3. 第三层保底：调用 /api/song/url
+      if (!targetUrl || targetUrl.includes("/placeholder") || targetUrl.includes("outer/url?id=")) {
         const qualityParam = task.quality || "lossless";
         const queryParams = new URLSearchParams({
           id: String(song.id),
@@ -157,29 +181,48 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
           quality: qualityParam,
         });
 
-        const res = await fetch(resolveApiUrl(`/api/song/url?${queryParams.toString()}`), {
-          signal: controller.signal,
-        });
-
-        if (!res.ok) {
-          throw new Error(`解析音频直链失败: ${res.status}`);
+        try {
+          const res = await fetch(resolveApiUrl(`/api/song/url?${queryParams.toString()}`), {
+            signal: controller.signal,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.url) {
+              targetUrl = data.url;
+            }
+          }
+        } catch (e) {
+          console.warn("[OfflineDownload] /api/song/url resolve failed:", e);
         }
-
-        const data = await res.json();
-        if (!data.url) {
-          throw new Error("未能获取到有效高品质音源直链");
-        }
-        targetUrl = data.url;
       }
 
-      // Proxy external audio url to bypass CORS
-      const fetchUrl = targetUrl.startsWith("http")
-        ? resolveApiUrl(`/api/audio/proxy?url=${encodeURIComponent(targetUrl)}`)
-        : resolveApiUrl(targetUrl);
+      // 4. 最终回退
+      if (!targetUrl && song.audioUrl) {
+        targetUrl = song.audioUrl;
+      }
 
-      const audioResponse = await fetch(fetchUrl, {
-        signal: controller.signal,
-      });
+      if (!targetUrl) {
+        throw new Error("未能获取到有效音源直链，请检查平台登录或开启扩展源");
+      }
+
+      // 尝试直连拉取音频流，失败时降级走音频代理
+      let audioResponse: Response;
+      try {
+        audioResponse = await fetch(targetUrl, {
+          signal: controller.signal,
+        });
+        if (!audioResponse.ok) {
+          throw new Error(`Direct fetch HTTP ${audioResponse.status}`);
+        }
+      } catch {
+        const fetchUrl = targetUrl.startsWith("http")
+          ? resolveApiUrl(`/api/audio/proxy?url=${encodeURIComponent(targetUrl)}`)
+          : resolveApiUrl(targetUrl);
+
+        audioResponse = await fetch(fetchUrl, {
+          signal: controller.signal,
+        });
+      }
 
       if (!audioResponse.ok) {
         throw new Error(`音频流下载失败 HTTP ${audioResponse.status}`);
@@ -517,6 +560,28 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
         const next: Record<string, DownloadTask> = {};
         Object.entries(state.tasks).forEach(([id, t]) => {
           if (t.status !== "completed") {
+            next[id] = t;
+          }
+        });
+        return { tasks: next };
+      });
+    },
+
+    clearAllTasks: () => {
+      Object.keys(abortControllers).forEach((id) => {
+        try {
+          abortControllers[id]?.abort();
+        } catch {}
+        delete abortControllers[id];
+      });
+      set({ tasks: {}, activeCount: 0 });
+    },
+
+    clearFailedOrPausedTasks: () => {
+      set((state) => {
+        const next: Record<string, DownloadTask> = {};
+        Object.entries(state.tasks).forEach(([id, t]) => {
+          if (t.status === "downloading" || t.status === "pending") {
             next[id] = t;
           }
         });

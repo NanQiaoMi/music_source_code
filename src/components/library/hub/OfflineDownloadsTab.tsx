@@ -39,6 +39,8 @@ export const OfflineDownloadsTab: React.FC = () => {
     pauseAll,
     resumeAll,
     clearCompleted,
+    clearAllTasks,
+    clearFailedOrPausedTasks,
     loadOfflineRecords,
     deleteOfflineSong,
     clearAllOffline,
@@ -126,7 +128,7 @@ export const OfflineDownloadsTab: React.FC = () => {
           <button
             type="button"
             onClick={resumeAll}
-            className="px-3 py-1.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold border border-white/15 transition-all active:scale-95 cursor-pointer"
+            className="px-3 py-1.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-white text-xs font-semibold shadow-md transition-all active:scale-95 cursor-pointer"
           >
             全部开始
           </button>
@@ -142,9 +144,28 @@ export const OfflineDownloadsTab: React.FC = () => {
           <button
             type="button"
             onClick={clearCompleted}
-            className="px-3 py-1.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs font-medium border border-white/10 transition-all active:scale-95 cursor-pointer"
+            className="px-3 py-1.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium border border-white/10 transition-all active:scale-95 cursor-pointer"
+            title="移除所有已下载完成的任务"
           >
             清空完成项
+          </button>
+
+          <button
+            type="button"
+            onClick={clearFailedOrPausedTasks}
+            className="px-3 py-1.5 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+            title="移除所有暂停与失败的任务"
+          >
+            清空暂停/失败
+          </button>
+
+          <button
+            type="button"
+            onClick={clearAllTasks}
+            className="px-3 py-1.5 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
+            title="强制取消并清空整个下载队列"
+          >
+            清空全部任务
           </button>
         </div>
       </div>
@@ -156,13 +177,23 @@ export const OfflineDownloadsTab: React.FC = () => {
       )}
 
       {/* 模块 1: 正在下载队列 (Active / Pending Tasks) */}
-      {activeTasks.length > 0 && (
+      {taskList.length > 0 && (
         <div className="p-5 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-white tracking-tight flex items-center gap-1.5">
               <Download className="w-4 h-4 text-cyan-400" />
-              下载任务队列 ({activeTasks.length} 个任务进行中)
+              下载任务队列 ({taskList.length} 个任务，其中 {activeCount} 个正在传输)
             </h4>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={clearAllTasks}
+                className="px-2.5 py-1 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-[11px] font-semibold border border-rose-500/20 transition-all active:scale-95 cursor-pointer"
+              >
+                一键清空全部
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2.5 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
