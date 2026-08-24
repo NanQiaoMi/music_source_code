@@ -25,11 +25,18 @@ import {
   KeyRound,
   Play,
   RotateCcw,
+  Lock,
 } from "lucide-react";
 import {
   useSourceConfigStore,
   PRESET_SCHEMES,
+  isSourceUsable,
 } from "@/store/sourceConfigStore";
+import {
+  useUserAccountStore,
+  isPlatformLoggedIn,
+  PlatformType,
+} from "@/store/userAccountStore";
 import {
   MusicSourceId,
   QualityTier,
@@ -339,12 +346,26 @@ export function SourceManagementModal() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                   {sourceList.map((src) => {
-                    const isEnabled = src.enabled;
+                    const isNetwork = src.id !== "local" && src.id !== "lx_custom";
+                    const isLogged = isNetwork ? isPlatformLoggedIn(src.id) : true;
+                    const isUsable = isSourceUsable(src.id);
+                    const isEnabled = src.enabled && isLogged;
+
+                    const handleToggle = () => {
+                      if (isNetwork && !isLogged) {
+                        // 未登录时点击开关自动定向打开登录弹窗
+                        useUserAccountStore.getState().setActivePlatform(src.id as PlatformType);
+                        useUserAccountStore.getState().setIsAccountModalOpen(true);
+                        return;
+                      }
+                      toggleSource(src.id);
+                    };
+
                     return (
                       <div
                         key={src.id}
                         className={`p-4 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
-                          isEnabled
+                          isUsable
                             ? "bg-white/[0.04] border-white/20 shadow-md"
                             : "bg-white/[0.01] border-white/5 opacity-60"
                         }`}
@@ -360,6 +381,12 @@ export function SourceManagementModal() {
                                 >
                                   {src.badgeName}
                                 </span>
+                                {isNetwork && !isLogged && (
+                                  <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                    <Lock className="w-2.5 h-2.5" />
+                                    <span>需登录解锁</span>
+                                  </span>
+                                )}
                               </div>
                               <p className="text-[11px] text-white/45 mt-0.5 line-clamp-1">
                                 {src.description}
@@ -367,22 +394,37 @@ export function SourceManagementModal() {
                             </div>
                           </div>
 
-                          {/* Switch toggle */}
-                          <button
-                            type="button"
-                            onClick={() => toggleSource(src.id)}
-                            className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                              isEnabled ? "bg-cyan-500" : "bg-white/15"
-                            }`}
-                          >
-                            <motion.div
-                              layout
-                              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                              className={`w-4 h-4 rounded-full bg-white absolute top-1 shadow-md ${
-                                isEnabled ? "right-1" : "left-1"
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isNetwork && !isLogged && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  useUserAccountStore.getState().setActivePlatform(src.id as PlatformType);
+                                  useUserAccountStore.getState().setIsAccountModalOpen(true);
+                                }}
+                                className="px-2 py-1 rounded-lg bg-[#0071e3]/20 hover:bg-[#0071e3]/30 text-[#2997ff] text-[11px] font-medium border border-[#0071e3]/40 transition-colors"
+                              >
+                                去登录
+                              </button>
+                            )}
+
+                            {/* Switch toggle */}
+                            <button
+                              type="button"
+                              onClick={handleToggle}
+                              className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                                isEnabled ? "bg-cyan-500" : "bg-white/15"
                               }`}
-                            />
-                          </button>
+                            >
+                              <motion.div
+                                layout
+                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                className={`w-4 h-4 rounded-full bg-white absolute top-1 shadow-md ${
+                                  isEnabled ? "right-1" : "left-1"
+                                }`}
+                              />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Config Controls */}

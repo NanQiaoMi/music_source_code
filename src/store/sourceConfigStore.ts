@@ -11,6 +11,7 @@ import {
   ResolutionMode,
 } from "@/types/sourceConfig";
 import { LXRunner } from "@/lib/sources/lxRunner";
+import { isPlatformLoggedIn } from "@/store/userAccountStore";
 
 const DEFAULT_SOURCES: Record<MusicSourceId, SingleSourceConfig> = {
   netease: {
@@ -177,6 +178,7 @@ interface SourceConfigState {
   // Actions
   setResolutionMode: (mode: ResolutionMode) => void;
   toggleSource: (id: MusicSourceId) => void;
+  isSourceUsable: (id: MusicSourceId) => boolean;
   setSourceConfig: (id: MusicSourceId, partial: Partial<SingleSourceConfig>) => void;
   setSourceQuality: (id: MusicSourceId, quality: QualityTier) => void;
   setSourcePriority: (id: MusicSourceId, priority: number) => void;
@@ -283,6 +285,17 @@ export const useSourceConfigStore = create<SourceConfigState>()(
       activeManagementTab: "matrix",
 
       setResolutionMode: (mode: ResolutionMode) => set({ resolutionMode: mode }),
+
+      isSourceUsable: (id) => {
+        if (id === "local") return true;
+        if (id === "lx_custom") {
+          const state = get();
+          return Boolean(state.sources.lx_custom?.enabled && state.lxScripts.some((s) => s.enabled));
+        }
+        const state = get();
+        const source = state.sources[id];
+        return Boolean(source?.enabled && isPlatformLoggedIn(id));
+      },
 
       toggleSource: (id) => {
         set((state) => {
@@ -564,3 +577,8 @@ export const useSourceConfigStore = create<SourceConfigState>()(
     }
   )
 );
+
+export function isSourceUsable(sourceId: MusicSourceId): boolean {
+  return useSourceConfigStore.getState().isSourceUsable(sourceId);
+}
+

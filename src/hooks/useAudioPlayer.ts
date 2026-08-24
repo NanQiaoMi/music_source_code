@@ -35,6 +35,7 @@ import { triggerBackgroundCache } from "@/hooks/useNetworkAudioCache";
 import { audioPrefetcher } from "@/lib/audio/audioPrefetcher";
 import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
+import { useUserAccountStore, isPlatformLoggedIn, PlatformType } from "@/store/userAccountStore";
 
 // Module-level shared state to persist across hook unmounts/remounts
 let audioInstance: HTMLAudioElement | null = null;
@@ -148,12 +149,38 @@ function stopForMissingAudioSource(audio: HTMLAudioElement): void {
   const currentSong = usePlayerStore.getState().currentSong;
   usePlayerStore.getState().setIsPlaying(false);
   usePlayerStore.getState().setIsLoading(false);
-  useAudioStore.setState({
-    isPlaying: false,
-    isLoading: false,
-    error: { type: "load", message: MISSING_AUDIO_SOURCE_MESSAGE, timestamp: Date.now() },
-  });
-  useUIStore.getState().showToast(`⚠️ 无法播放: 《${currentSong?.title || "该歌曲"}》没有可用音频直链，请导入本地文件或切换音源`, "warning", 4000);
+
+  const src = currentSong?.source;
+  const isNetworkPlatform = src && ["netease", "wy", "qq", "tx", "kugou", "kg", "kuwo", "kw", "qishui"].includes(String(src).toLowerCase());
+  const platformNameMap: Record<string, string> = {
+    netease: "网易云音乐", wy: "网易云音乐",
+    qq: "QQ 音乐", tx: "QQ 音乐",
+    kugou: "酷狗音乐", kg: "酷狗音乐",
+    kuwo: "酷我音乐", kw: "酷我音乐",
+    qishui: "汽水音乐",
+  };
+
+  if (isNetworkPlatform && !isPlatformLoggedIn(src)) {
+    const rawKey = String(src).toLowerCase();
+    const platformLabel = platformNameMap[rawKey] || "该平台";
+    const mappedPlatform = (rawKey === "wy" ? "netease" : rawKey === "tx" ? "qq" : rawKey === "kg" ? "kugou" : rawKey === "kw" ? "kuwo" : rawKey) as PlatformType;
+    useAudioStore.setState({
+      isPlaying: false,
+      isLoading: false,
+      error: { type: "load", message: `【${platformLabel}】链路未连接，请先登录账号以获取专属母带音频流。`, timestamp: Date.now() },
+    });
+    useUIStore.getState().showToast(`🔒 无法播放: 《${currentSong?.title || "此歌曲"}》来自【${platformLabel}】，未登录账号。请先登录以开启链路`, "warning", 4000);
+    // 自动定向激活并打开该平台账号登录弹窗
+    useUserAccountStore.getState().setActivePlatform(mappedPlatform);
+    useUserAccountStore.getState().setIsAccountModalOpen(true);
+  } else {
+    useAudioStore.setState({
+      isPlaying: false,
+      isLoading: false,
+      error: { type: "load", message: MISSING_AUDIO_SOURCE_MESSAGE, timestamp: Date.now() },
+    });
+    useUIStore.getState().showToast(`⚠️ 无法播放: 《${currentSong?.title || "该歌曲"}》没有可用音频直链，请导入本地文件或切换音源`, "warning", 4000);
+  }
 }
 
 // Stable event handlers outside the hook to prevent duplicate listeners

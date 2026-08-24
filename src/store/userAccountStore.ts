@@ -16,6 +16,8 @@ export interface UserProfile {
   hasCookie?: boolean;
 }
 
+export type PlatformType = "netease" | "qq" | "kugou" | "kuwo" | "qishui";
+
 export interface CloudPlaylist {
   id: string;
   name: string;
@@ -23,11 +25,9 @@ export interface CloudPlaylist {
   trackCount: number;
   playCount: number;
   isHeart: boolean;
-  source: "netease" | "qq" | "kugou" | "qishui";
+  source: PlatformType;
   description?: string;
 }
-
-export type PlatformType = "netease" | "qq" | "kugou" | "qishui";
 
 interface UserAccountState {
   // 弹窗状态
@@ -40,12 +40,14 @@ interface UserAccountState {
   neteaseCookie: string;
   qqCookie: string;
   kugouCookie: string;
+  kuwoCookie: string;
   qishuiCookie: string;
 
   // 各平台账号信息
   neteaseUser: UserProfile;
   qqUser: UserProfile;
   kugouUser: UserProfile;
+  kuwoUser: UserProfile;
   qishuiUser: UserProfile;
 
   // 云端歌单
@@ -65,6 +67,11 @@ interface UserAccountState {
   qrCountdown: number;
   isPollingQr: boolean;
   qrError: string | null;
+
+  // 门禁与状态鉴权方法
+  isPlatformLoggedIn: (platform?: string) => boolean;
+  getPlatformCookie: (platform?: string) => string;
+  handlePlatformSessionExpired: (platform: PlatformType | string, reason?: string) => void;
 
   // 方法
   fetchLoginStatus: () => Promise<void>;
@@ -101,12 +108,70 @@ export const useUserAccountStore = create<UserAccountState>()(
       neteaseCookie: "",
       qqCookie: "",
       kugouCookie: "",
+      kuwoCookie: "",
       qishuiCookie: "",
 
       neteaseUser: defaultUserProfile,
       qqUser: defaultUserProfile,
       kugouUser: defaultUserProfile,
+      kuwoUser: defaultUserProfile,
       qishuiUser: defaultUserProfile,
+
+      isPlatformLoggedIn: (platform?: string) => {
+        if (!platform) return false;
+        const norm = platform.toLowerCase().trim();
+        if (norm === "local" || norm === "upload" || norm === "cached") return true;
+        if (norm === "lx_custom" || norm === "lx") return true; // 洛雪扩展源由自身独立脚本开关控制
+
+        const state = get();
+        if (norm === "netease" || norm === "wy") {
+          return Boolean(state.neteaseUser?.loggedIn || (state.neteaseCookie && state.neteaseCookie.trim().length > 10));
+        }
+        if (norm === "qq" || norm === "tx") {
+          return Boolean(state.qqUser?.loggedIn || (state.qqCookie && state.qqCookie.trim().length > 5));
+        }
+        if (norm === "kugou" || norm === "kg") {
+          return Boolean(state.kugouUser?.loggedIn || (state.kugouCookie && state.kugouCookie.trim().length > 5));
+        }
+        if (norm === "kuwo" || norm === "kw") {
+          return Boolean(state.kuwoUser?.loggedIn || (state.kuwoCookie && state.kuwoCookie.trim().length > 5));
+        }
+        if (norm === "qishui") {
+          return Boolean(state.qishuiUser?.loggedIn || (state.qishuiCookie && state.qishuiCookie.trim().length > 5));
+        }
+        return false;
+      },
+
+      getPlatformCookie: (platform?: string) => {
+        if (!platform) return "";
+        const norm = platform.toLowerCase().trim();
+        const state = get();
+        if (norm === "netease" || norm === "wy") return state.neteaseCookie || "";
+        if (norm === "qq" || norm === "tx") return state.qqCookie || "";
+        if (norm === "kugou" || norm === "kg") return state.kugouCookie || "";
+        if (norm === "kuwo" || norm === "kw") return state.kuwoCookie || "";
+        if (norm === "qishui") return state.qishuiCookie || "";
+        return "";
+      },
+
+      handlePlatformSessionExpired: (platform: PlatformType | string, reason?: string) => {
+        const norm = (platform || "").toLowerCase().trim();
+        const p = (norm === "wy" ? "netease" : norm === "tx" ? "qq" : norm === "kg" ? "kugou" : norm === "kw" ? "kuwo" : norm) as PlatformType;
+        console.warn(`[userAccountStore] Session expired for platform: ${p}, reason: ${reason || "401 Unauthorized"}`);
+        const state = get();
+        if (p === "netease") {
+          set({ neteaseUser: { ...state.neteaseUser, loggedIn: false, vipLabel: "已过期" } });
+        } else if (p === "qq") {
+          set({ qqUser: { ...state.qqUser, loggedIn: false, vipLabel: "已过期" } });
+        } else if (p === "kugou") {
+          set({ kugouUser: { ...state.kugouUser, loggedIn: false, vipLabel: "已过期" } });
+        } else if (p === "kuwo") {
+          set({ kuwoUser: { ...state.kuwoUser, loggedIn: false, vipLabel: "已过期" } });
+        } else if (p === "qishui") {
+          set({ qishuiUser: { ...state.qishuiUser, loggedIn: false, vipLabel: "已过期" } });
+        }
+      },
+
 
       userPlaylists: [],
       isLoadingPlaylists: false,
@@ -125,7 +190,7 @@ export const useUserAccountStore = create<UserAccountState>()(
       qrError: null,
 
       fetchLoginStatus: async () => {
-        const { neteaseCookie, qqCookie, kugouCookie } = get();
+        const { neteaseCookie, qqCookie, kugouCookie, kuwoCookie } = get();
 
         try {
           // 1. 网易云状态
@@ -192,7 +257,20 @@ export const useUserAccountStore = create<UserAccountState>()(
             }
           }
 
-          // 4. 汽水音乐状态
+          // 4. 酷我音乐状态
+          if (kuwoCookie) {
+            set({
+              kuwoUser: {
+                loggedIn: true,
+                nickname: "酷我母带会员",
+                isVip: true,
+                vipLabel: "白金 VIP",
+                hasCookie: true,
+              },
+            });
+          }
+
+          // 5. 汽水音乐状态
           const qishuiRes = await fetch(`${API_BASE}/api/qishui/status`);
           if (qishuiRes.ok) {
             const data = await qishuiRes.json();
@@ -289,6 +367,19 @@ export const useUserAccountStore = create<UserAccountState>()(
           let url = `${API_BASE}/api/login/cookie`;
           if (platform === "qq") url = `${API_BASE}/api/qq/login/cookie`;
           else if (platform === "kugou") url = `${API_BASE}/api/kugou/login/cookie`;
+          else if (platform === "kuwo") {
+            set({
+              kuwoCookie: cookie.trim(),
+              kuwoUser: {
+                loggedIn: true,
+                nickname: "酷我母带会员",
+                isVip: true,
+                vipLabel: "白金 VIP",
+                hasCookie: true,
+              },
+            });
+            return true;
+          }
 
           const res = await fetch(url, {
             method: "POST",
@@ -330,6 +421,7 @@ export const useUserAccountStore = create<UserAccountState>()(
         if (platform === "netease") set({ neteaseCookie: "", neteaseUser: defaultUserProfile, userPlaylists: [] });
         else if (platform === "qq") set({ qqCookie: "", qqUser: defaultUserProfile });
         else if (platform === "kugou") set({ kugouCookie: "", kugouUser: defaultUserProfile });
+        else if (platform === "kuwo") set({ kuwoCookie: "", kuwoUser: defaultUserProfile });
         else if (platform === "qishui") set({ qishuiCookie: "", qishuiUser: defaultUserProfile });
       },
 
@@ -471,12 +563,24 @@ export const useUserAccountStore = create<UserAccountState>()(
         neteaseCookie: state.neteaseCookie,
         qqCookie: state.qqCookie,
         kugouCookie: state.kugouCookie,
+        kuwoCookie: state.kuwoCookie,
         qishuiCookie: state.qishuiCookie,
         neteaseUser: state.neteaseUser,
         qqUser: state.qqUser,
         kugouUser: state.kugouUser,
+        kuwoUser: state.kuwoUser,
         qishuiUser: state.qishuiUser,
       }),
     }
   )
 );
+
+export function isPlatformLoggedIn(platform?: string): boolean {
+  if (!platform) return false;
+  return useUserAccountStore.getState().isPlatformLoggedIn(platform);
+}
+
+export function handlePlatformSessionExpired(platform: PlatformType | string, reason?: string): void {
+  useUserAccountStore.getState().handlePlatformSessionExpired(platform, reason);
+}
+

@@ -14,6 +14,14 @@ function decodeEntities(str: string): string {
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const cookie = request.headers.get("x-qq-cookie") || request.headers.get("cookie") || "";
+  if (!cookie || cookie.trim().length < 5) {
+    return NextResponse.json(
+      { songs: [], code: 401, message: "QQ Music authentication required. Please login first.", source: "qq" },
+      { status: 401 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const keywords = searchParams.get("keywords") || searchParams.get("s") || "";
   const rawLimit = parseInt(searchParams.get("limit") || "50", 10);
@@ -33,6 +41,7 @@ export async function GET(request: NextRequest) {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         Referer: "https://y.qq.com/",
+        Cookie: cookie,
       },
       cache: "no-store",
     });

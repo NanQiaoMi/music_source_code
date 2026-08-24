@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
+  const kugouCookie = request.headers.get("x-kugou-cookie") || request.headers.get("cookie") || "";
+  if (!kugouCookie || kugouCookie.trim().length < 5) {
+    return NextResponse.json(
+      { code: 401, message: "KuGou authentication required. Please login with Cookie/Token." },
+      { status: 401 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const hash = searchParams.get("hash") || searchParams.get("id") || "";
   const title = searchParams.get("title") || searchParams.get("name") || "";
@@ -14,7 +22,10 @@ export async function GET(request: NextRequest) {
     try {
       const crossRes = await fetch(
         `${origin}/api/song/url?name=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`,
-        { signal: AbortSignal.timeout(3500) }
+        {
+          signal: AbortSignal.timeout(3500),
+          headers: { "x-kugou-cookie": kugouCookie },
+        }
       );
       if (crossRes.ok) {
         const crossData = await crossRes.json();
@@ -40,7 +51,7 @@ export async function GET(request: NextRequest) {
       const res = await fetch(getdataUrl, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          Cookie: "kg_mid=2333",
+          Cookie: kugouCookie,
         },
         signal: AbortSignal.timeout(3000),
       });
@@ -64,3 +75,4 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ url: "", code: 404, message: "Kugou song stream not found" });
 }
+
