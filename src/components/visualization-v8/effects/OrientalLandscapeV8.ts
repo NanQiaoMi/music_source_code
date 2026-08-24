@@ -256,25 +256,10 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
     const skyGrad = context.createLinearGradient(scrollX, scrollY, scrollX, scrollY + scrollH);
     skyGrad.addColorStop(0, "#050e14");
     skyGrad.addColorStop(0.35, "#081b24");
-    skyGrad.addColorStop(0.58, "#0a2228");
-    skyGrad.addColorStop(0.75, "#06151a");
-    skyGrad.addColorStop(1, "#03080b");
+    skyGrad.addColorStop(0.58, "#0a242a");
+    skyGrad.addColorStop(0.78, "#06151a");
+    skyGrad.addColorStop(1, "#020609");
     context.fillStyle = skyGrad;
-    context.fillRect(scrollX, scrollY, scrollW, scrollH);
-
-    const dawnGlow = context.createRadialGradient(
-      scrollX + scrollW * 0.18,
-      scrollY + scrollH * 0.12,
-      10,
-      scrollX + scrollW * 0.18,
-      scrollY + scrollH * 0.12,
-      scrollW * 0.55
-    );
-    dawnGlow.addColorStop(0, `rgba(254, 240, 138, ${0.22 * lightRays})`);
-    dawnGlow.addColorStop(0.4, `rgba(245, 158, 11, ${0.08 * lightRays})`);
-    dawnGlow.addColorStop(0.8, "rgba(56, 189, 248, 0.02)");
-    dawnGlow.addColorStop(1, "rgba(5, 14, 20, 0)");
-    context.fillStyle = dawnGlow;
     context.fillRect(scrollX, scrollY, scrollW, scrollH);
 
     // ─── 3. 6 重宋画《千里江山》水墨层峦 (自然渐变入深潭，绝无色块断层) ───
@@ -345,84 +330,6 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
       }
     }
     context.globalAlpha = 1.0;
-
-    // ─── 4. 电影级柔焦单束神光 · 左右悠扬摇摆与动态呼吸 (Single Swaying Volumetric Ray) ───
-    const rayStrength = lightRays * (0.55 + priv.smoothBass * 0.65 + priv.smoothEnergy * 0.25);
-    if (rayStrength > 0.05) {
-      context.save();
-      context.globalCompositeOperation = "screen";
-
-      // 光源原点在左上角悠扬微动
-      const lightOriginX = scrollX + scrollW * 0.18 + Math.sin(t * 0.4) * (scrollW * 0.02);
-      const lightOriginY = scrollY - 15 + Math.cos(t * 0.35) * 8;
-
-      // 左右柔和悠扬摇摆主角度 (约 35°~52° 之间慢速摆动)
-      const swayAngle = Math.sin(t * 0.52) * 0.09 + Math.cos(t * 0.26) * 0.05 + priv.smoothBass * 0.03;
-      const masterAngle = Math.PI * 0.42 + swayAngle;
-      const rayLen = scrollH * 1.85;
-
-      // 光束范围随低频深呼吸收放变化 (Dynamic Beam Spread)
-      const baseWidth = scrollW * (0.16 + priv.smoothBass * 0.14 + priv.smoothEnergy * 0.06);
-
-      context.save();
-      context.translate(lightOriginX, lightOriginY);
-      context.rotate(masterAngle - Math.PI / 2); // 旋转对齐光束主轴
-
-      // 1. 广角超柔外围光晕 (Wide Ambient Soft Aura)
-      const wideW = baseWidth * 2.2;
-      const wideGrad = context.createLinearGradient(-wideW, 0, wideW, 0);
-      wideGrad.addColorStop(0, "rgba(254, 240, 138, 0)");
-      wideGrad.addColorStop(0.35, `rgba(245, 158, 11, ${0.06 * rayStrength})`);
-      wideGrad.addColorStop(0.5, `rgba(254, 240, 138, ${0.12 * rayStrength})`);
-      wideGrad.addColorStop(0.65, `rgba(245, 158, 11, ${0.06 * rayStrength})`);
-      wideGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
-      context.fillStyle = wideGrad;
-      context.fillRect(-wideW, 0, wideW * 2, rayLen);
-
-      // 2. 主体积神光柱 (Main Volumetric God Ray, 极其柔和的高斯双向羽化)
-      const mainW = baseWidth;
-      const mainGrad = context.createLinearGradient(-mainW, 0, mainW, 0);
-      mainGrad.addColorStop(0, "rgba(254, 240, 138, 0)");
-      mainGrad.addColorStop(0.25, `rgba(251, 191, 36, ${0.16 * rayStrength})`);
-      mainGrad.addColorStop(0.5, `rgba(254, 240, 138, ${0.36 * rayStrength})`);
-      mainGrad.addColorStop(0.75, `rgba(251, 191, 36, ${0.16 * rayStrength})`);
-      mainGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
-      context.fillStyle = mainGrad;
-      context.fillRect(-mainW, 0, mainW * 2, rayLen);
-
-      // 3. 核心温润光轴 (Radiant Core Beam)
-      const coreW = baseWidth * 0.42;
-      const coreGrad = context.createLinearGradient(-coreW, 0, coreW, 0);
-      coreGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
-      coreGrad.addColorStop(0.3, `rgba(254, 243, 199, ${0.28 * rayStrength})`);
-      coreGrad.addColorStop(0.5, `rgba(255, 255, 240, ${0.45 * rayStrength})`);
-      coreGrad.addColorStop(0.7, `rgba(254, 243, 199, ${0.28 * rayStrength})`);
-      coreGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
-      context.fillStyle = coreGrad;
-      context.fillRect(-coreW, 0, coreW * 2, rayLen * 0.9);
-
-      context.restore();
-
-      // 晨曦源头超大柔焦散射晕 (Atmospheric Broad Bloom)
-      const sourceBloom = context.createRadialGradient(
-        lightOriginX,
-        lightOriginY,
-        5,
-        lightOriginX + scrollW * 0.15,
-        lightOriginY + scrollH * 0.35,
-        scrollW * 0.52
-      );
-      sourceBloom.addColorStop(0, `rgba(254, 240, 138, ${0.35 * rayStrength})`);
-      sourceBloom.addColorStop(0.35, `rgba(251, 191, 36, ${0.15 * rayStrength})`);
-      sourceBloom.addColorStop(0.70, `rgba(56, 189, 248, ${0.03 * rayStrength})`);
-      sourceBloom.addColorStop(1, "rgba(0, 0, 0, 0)");
-      context.fillStyle = sourceBloom;
-      context.beginPath();
-      context.arc(lightOriginX + scrollW * 0.15, lightOriginY + scrollH * 0.35, scrollW * 0.52, 0, Math.PI * 2);
-      context.fill();
-
-      context.restore();
-    }
 
     // ─── 5. 水天融界 · 水面镜像倒影与水波 ───
     const waterH = scrollY + scrollH - waterY;

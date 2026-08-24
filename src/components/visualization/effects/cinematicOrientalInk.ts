@@ -73,7 +73,6 @@ const ORIENTAL_POEMS = [
   { line: "月出惊山鸟，时鸣春涧中", author: "王维 · 鸟鸣涧" },
 ];
 
-// 北斗七星等古星宿星座连线（归一化坐标）
 const CONSTELLATION_NODES = [
   { x: 0.72, y: 0.12 },
   { x: 0.76, y: 0.15 },
@@ -101,6 +100,7 @@ const COLOR_SCHEMES = [
     lanternGlow: "rgba(255, 210, 110, 0.95)",
     koiColor: "rgba(255, 190, 110, 0.60)",
     vignetteColor: "rgba(1, 4, 7, 0.85)",
+    waterfallColor: "rgba(215, 245, 255, 0.65)",
   },
   {
     // 1: 【烟雨水墨 · 孤舟晚渡】(江南徽派水墨，空灵幽邃)
@@ -118,6 +118,7 @@ const COLOR_SCHEMES = [
     lanternGlow: "rgba(255, 220, 130, 0.90)",
     koiColor: "rgba(215, 235, 255, 0.55)",
     vignetteColor: "rgba(2, 3, 5, 0.85)",
+    waterfallColor: "rgba(220, 240, 255, 0.60)",
   },
   {
     // 2: 【暮霞沉香 · 金碧流丹】(盛唐沉香朱砂，典雅华贵)
@@ -135,6 +136,7 @@ const COLOR_SCHEMES = [
     lanternGlow: "rgba(255, 190, 80, 0.95)",
     koiColor: "rgba(255, 165, 90, 0.65)",
     vignetteColor: "rgba(5, 1, 7, 0.85)",
+    waterfallColor: "rgba(255, 225, 210, 0.65)",
   },
 ];
 
@@ -163,7 +165,7 @@ let poemAlpha = 0;
 let lastTransientPeak = 0;
 
 // =========================================================================
-// 2. High-Performance Sprites
+// 2. High-Performance Sprites & Math Functions
 // =========================================================================
 
 function createStarSparkleSprite(size: number): HTMLCanvasElement | null {
@@ -224,42 +226,60 @@ function createFilmGrainTexture(): HTMLCanvasElement | null {
   }
 }
 
-// 动态多谐波山峦行云流水起伏算法
+// 尖耸奇峰与刀劈斧凿山石轮廓生成函数 (Sharp Peak Profile)
+function peakProfile(normX: number, center: number, width: number, heightVal: number): number {
+  const dist = Math.abs(normX - center);
+  if (dist > width) return 0;
+  const t = 1 - dist / width;
+  // 采用超高次指数与尖锥造型，构建宋画中峭拔的主峰与侧峰
+  const sharp = Math.pow(t, 1.6);
+  return -heightVal * sharp;
+}
+
+// 动态宋代《千里江山》险峻奇峰与重峦叠嶂算法
 function dynamicShanShuiRidge(
   normX: number,
   layerIndex: number,
   time: number,
   energy: number
 ): number {
+  // 微观山石岩壁折带皴法微扰
+  const cragNoise = Math.sin(normX * 48 + time * 0.1) * 4.5 + Math.cos(normX * 105) * 2.5;
+
   if (layerIndex === 1) {
-    // 远岫：巍峨雄峻、徐徐缓动 (Towering Distant Peaks with Slow Parallax)
-    const waveFlow = Math.sin(normX * 3.6 + time * 0.15) * 22;
-    const spire1 = Math.exp(-Math.pow((normX - 0.28 + Math.sin(time * 0.08) * 0.03) * 4.5, 2)) * -190;
-    const spire2 = Math.exp(-Math.pow((normX - 0.65 + Math.cos(time * 0.07) * 0.03) * 4.0, 2)) * -160;
-    const spire3 = Math.exp(-Math.pow((normX - 0.86) * 6.0, 2)) * -110;
-    const breath = Math.sin(time * 0.25) * (8 + energy * 15);
-    return spire1 + spire2 + spire3 + waveFlow + breath;
+    // 远岫：拔地而起的巍峨主峰与险峻群峰 (Dramatic Towering Spire Peaks)
+    const spireMain = peakProfile(normX, 0.28 + Math.sin(time * 0.08) * 0.02, 0.16, 260); // 绝壁主峰
+    const spireSide1 = peakProfile(normX, 0.21, 0.09, 175); // 伴生耸峰
+    const spireSide2 = peakProfile(normX, 0.64 + Math.cos(time * 0.06) * 0.02, 0.18, 220); // 中东部拔天奇峰
+    const spireFar = peakProfile(normX, 0.88, 0.14, 150); // 远方山峦屏障
+    const rollingBase = Math.sin(normX * 4.2 + time * 0.12) * 18;
+    const breath = Math.sin(time * 0.25) * (6 + energy * 14);
+
+    return spireMain + spireSide1 + spireSide2 + spireFar + rollingBase + cragNoise * 0.8 + breath;
   } else if (layerIndex === 2) {
-    // 中山：层峦叠嶂、波澜起伏 (Mid-range Rolling Waves)
-    const waveFlow = Math.sin(normX * 4.6 - time * 0.22) * 28;
-    const peak1 = Math.exp(-Math.pow((normX - 0.18 + Math.sin(time * 0.12) * 0.04) * 4.0, 2)) * -135;
-    const peak2 = Math.exp(-Math.pow((normX - 0.50 - Math.cos(time * 0.10) * 0.04) * 3.5, 2)) * -145;
-    const peak3 = Math.exp(-Math.pow((normX - 0.78) * 4.8, 2)) * -105;
-    const breath = Math.cos(time * 0.35 + normX * 3) * (10 + energy * 20);
-    return peak1 + peak2 + peak3 + waveFlow + breath;
+    // 中山：层峦叠翠、峡谷幽邃 (Mid-range Craggy Ridges & Deep Valleys)
+    const peakMid1 = peakProfile(normX, 0.16 + Math.sin(time * 0.10) * 0.02, 0.13, 160);
+    const peakMid2 = peakProfile(normX, 0.48 - Math.cos(time * 0.08) * 0.02, 0.16, 180);
+    const peakMid3 = peakProfile(normX, 0.76, 0.14, 140);
+    const rollingBase = Math.sin(normX * 5.0 - time * 0.18) * 24;
+    const breath = Math.cos(time * 0.35 + normX * 3) * (8 + energy * 18);
+
+    return peakMid1 + peakMid2 + peakMid3 + rollingBase + cragNoise + breath;
   } else if (layerIndex === 3) {
-    // 近山：临水险峰、生动律动 (Near Crags & Rhythmic Undulations)
-    const waveFlow = Math.sin(normX * 5.2 + time * 0.30) * 32;
-    const cliff = Math.exp(-Math.pow((normX - 0.82 + Math.sin(time * 0.15) * 0.03) * 3.8, 2)) * -100;
-    const rock = Math.exp(-Math.pow((normX - 0.26) * 4.6, 2)) * -75;
-    const breath = Math.sin(time * 0.45 + normX * 4) * (12 + energy * 24);
-    return cliff + rock + waveFlow + breath;
+    // 近山：临水险峰、嶙峋磐石 (Near Crags & Waterfront Bluffs)
+    const cliff1 = peakProfile(normX, 0.82 + Math.sin(time * 0.12) * 0.02, 0.18, 130);
+    const cliff2 = peakProfile(normX, 0.36, 0.12, 100);
+    const cliff3 = peakProfile(normX, 0.08, 0.10, 85);
+    const rollingBase = Math.sin(normX * 5.8 + time * 0.24) * 26;
+    const breath = Math.sin(time * 0.45 + normX * 4) * (10 + energy * 20);
+
+    return cliff1 + cliff2 + cliff3 + rollingBase + cragNoise * 1.2 + breath;
   } else {
-    // 前景芳渚：临江秀渚、起伏波澜 (Foreground Water Shoreline)
-    const shoreWave = Math.sin(normX * 6.0 - time * 0.38) * 24;
-    const hummock = Math.sin(normX * 3.2 + 1.5) * 20;
-    const breath = Math.sin(time * 0.55 + normX * 5) * (8 + energy * 16);
-    return shoreWave + hummock + breath;
+    // 前景芳渚：临江秀渚与水墨石矶 (Foreground River Shoreline & Low Islets)
+    const shoreWave = Math.sin(normX * 6.5 - time * 0.32) * 20;
+    const rockyBluff = Math.sin(normX * 3.6 + 1.2) * 16;
+    const breath = Math.sin(time * 0.55 + normX * 5) * (6 + energy * 12);
+    return shoreWave + rockyBluff + cragNoise * 0.6 + breath;
   }
 }
 
@@ -282,7 +302,7 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   const schemeIndex = typeof params?.colorScheme === "number" ? Math.max(0, Math.min(COLOR_SCHEMES.length - 1, params.colorScheme)) : 0;
   const colors = COLOR_SCHEMES[schemeIndex] || COLOR_SCHEMES[0];
 
-  // 2. 声学平滑（双阶长余韵包络器）
+  // 2. 声学平滑
   let rawBass = 0;
   let rawMid = 0;
   let rawTreble = 0;
@@ -398,7 +418,7 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   ctx.fillStyle = skyGrd;
   ctx.fillRect(0, 0, width, height);
 
-  // 绘制深空微弱星宿（二十八宿意象）
+  // 绘制深空微弱星宿
   ctx.save();
   ctx.globalCompositeOperation = "screen";
   starsPool.forEach((st) => {
@@ -442,10 +462,10 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  // 1. 广域深远漫射月辉 (Wide Ethereal Atmospheric Bloom)
+  // 1. 广域深远漫射月辉
   const outerBloom = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.5, moonX, moonY, moonRadius * 7.5);
-  outerBloom.addColorStop(0, "rgba(200, 240, 255, 0.30)");
-  outerBloom.addColorStop(0.35, "rgba(150, 215, 240, 0.12)");
+  outerBloom.addColorStop(0, "rgba(200, 240, 255, 0.28)");
+  outerBloom.addColorStop(0.35, "rgba(150, 215, 240, 0.10)");
   outerBloom.addColorStop(0.70, "rgba(90, 160, 200, 0.03)");
   outerBloom.addColorStop(1.0, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = outerBloom;
@@ -454,29 +474,29 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   ctx.arc(moonX, moonY, moonRadius * 7.5, 0, Math.PI * 2);
   ctx.fill();
 
-  // 2. 近距天青色温润月冕 (Cyan Misty Lunar Corona)
+  // 2. 近距天青色温润月冕
   const midCorona = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.3, moonX, moonY, moonRadius * 3.2);
-  midCorona.addColorStop(0, "rgba(240, 252, 255, 0.75)");
-  midCorona.addColorStop(0.40, "rgba(195, 235, 250, 0.40)");
-  midCorona.addColorStop(0.80, "rgba(140, 205, 230, 0.08)");
+  midCorona.addColorStop(0, "rgba(235, 250, 255, 0.70)");
+  midCorona.addColorStop(0.40, "rgba(190, 230, 248, 0.35)");
+  midCorona.addColorStop(0.80, "rgba(135, 200, 225, 0.07)");
   midCorona.addColorStop(1.0, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = midCorona;
   ctx.beginPath();
   ctx.arc(moonX, moonY, moonRadius * 3.2, 0, Math.PI * 2);
   ctx.fill();
 
-  // 3. 核心柔焦玉轮 (Core Moon Disc)
+  // 3. 核心柔焦玉轮
   const coreMoon = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, moonRadius * 1.2);
-  coreMoon.addColorStop(0, "rgba(255, 255, 255, 0.98)");
-  coreMoon.addColorStop(0.45, "rgba(245, 250, 255, 0.90)");
-  coreMoon.addColorStop(0.80, "rgba(220, 242, 252, 0.45)");
-  coreMoon.addColorStop(1.0, "rgba(180, 220, 245, 0.0)");
+  coreMoon.addColorStop(0, "rgba(252, 254, 255, 0.95)");
+  coreMoon.addColorStop(0.50, "rgba(235, 248, 255, 0.80)");
+  coreMoon.addColorStop(0.85, "rgba(205, 235, 250, 0.35)");
+  coreMoon.addColorStop(1.0, "rgba(170, 215, 240, 0.0)");
   ctx.fillStyle = coreMoon;
   ctx.beginPath();
   ctx.arc(moonX, moonY, moonRadius * 1.2, 0, Math.PI * 2);
   ctx.fill();
 
-  // 4. 诗意水墨薄云拂月 (Wisps of Silken Ink Clouds)
+  // 4. 诗意水墨薄云拂月
   const cloudWisps = [
     { dy: -moonRadius * 0.25, w: moonRadius * 3.6, h: moonRadius * 0.42, rot: 0.04, speed: 0.18, phase: 0 },
     { dy: moonRadius * 0.20, w: moonRadius * 4.5, h: moonRadius * 0.48, rot: -0.03, speed: 0.24, phase: 1.8 },
@@ -509,7 +529,7 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   ctx.restore();
 
   // =========================================================================
-  // 6. 宋代青绿动态山峦画卷 (四层动态流形，沉底铺满，彻底消除断层)
+  // 6. 宋代青绿动态险峻峰峦长卷 (四层耸拔峰骨与皴法阴影)
   // =========================================================================
   const drawShanShuiLayer = (
     layerIndex: number,
@@ -520,8 +540,8 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ctx.save();
     const baseY = height * baseYRatio;
 
-    // 1. 实心山体渐变填充（延伸至画布最底端）
-    const mtnGrd = ctx.createLinearGradient(0, baseY - 200, 0, height + 80);
+    // 1. 实心山体渐变填充
+    const mtnGrd = ctx.createLinearGradient(0, baseY - 260, 0, height + 80);
     mtnGrd.addColorStop(0, colorStops[0]);
     mtnGrd.addColorStop(0.40, colorStops[1]);
     mtnGrd.addColorStop(0.85, colorStops[2]);
@@ -532,7 +552,7 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ctx.moveTo(0, height + 80);
     ctx.lineTo(0, baseY);
 
-    const stepPx = 6;
+    const stepPx = 5;
     const totalSteps = Math.ceil(width / stepPx) + 1;
     const ridgePoints: { x: number; y: number }[] = [];
 
@@ -549,16 +569,35 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ctx.closePath();
     ctx.fill();
 
-    // 2. 山脊受月光勾勒出灵动描金金线 (Gold Leaf Rim Inlay with Running Light)
+    // 2. 山体阴阳向背与水墨皴法折带纹理 (Shan-Shui Brush Facets)
+    if (layerIndex <= 3) {
+      ctx.save();
+      ctx.globalCompositeOperation = "multiply";
+      ctx.fillStyle = "rgba(1, 8, 12, 0.28)";
+      for (let i = 4; i < ridgePoints.length - 8; i += 7) {
+        const pt = ridgePoints[i];
+        if (pt.y < baseY - 40) {
+          ctx.beginPath();
+          ctx.moveTo(pt.x, pt.y);
+          ctx.lineTo(pt.x + 18, pt.y + 45);
+          ctx.lineTo(pt.x - 4, pt.y + 85);
+          ctx.lineTo(pt.x - 12, pt.y + 30);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    // 3. 山脊描金金线流光 (Gold Leaf Crest with Liquid Pulse)
     if (goldWireAlpha > 0.05) {
       ctx.save();
       ctx.globalCompositeOperation = "screen";
       ctx.strokeStyle = colors.goldWire;
-      ctx.lineWidth = 1.3 + smoothTreble * 0.8;
+      ctx.lineWidth = 1.4 + smoothTreble * 0.9;
       ctx.shadowColor = colors.goldGlint;
-      ctx.shadowBlur = 8 + smoothTreble * 10;
+      ctx.shadowBlur = 8 + smoothTreble * 12;
 
-      // 金色流光流动脉冲 (Gold Light Wave)
       const lightPulse = (Math.sin(timeAccum * 1.5 + layerIndex) + 1) * 0.5;
       ctx.globalAlpha = goldWireAlpha * (0.65 + smoothTreble * 0.35 + lightPulse * 0.25);
 
@@ -574,10 +613,28 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ctx.restore();
   };
 
-  // 1. 远岫巍峨奇峰 (Distant Peaks: 石青设色)
-  drawShanShuiLayer(1, 0.54, colors.farMountain, 0.35);
+  // 1. 远岫巍峨主峰群 (Distant Peaks: 石青设色)
+  drawShanShuiLayer(1, 0.52, colors.farMountain, 0.35);
 
-  // 2. 山间悠悠游云 (Mid-altitude Mountain Cloud Layer)
+  // 飞瀑流泉 1（远山奇峰之巅垂下的银丝细瀑）
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const wf1X = width * 0.28 + Math.sin(timeAccum * 0.08) * (width * 0.02);
+  const wf1Y = height * 0.32;
+  const wf1Grd = ctx.createLinearGradient(0, wf1Y, 0, wf1Y + 110);
+  wf1Grd.addColorStop(0, "rgba(220, 245, 255, 0.70)");
+  wf1Grd.addColorStop(1.0, "rgba(180, 230, 245, 0.0)");
+  ctx.strokeStyle = wf1Grd;
+  ctx.lineWidth = 1.6;
+  ctx.shadowColor = colors.goldGlint;
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  ctx.moveTo(wf1X, wf1Y);
+  ctx.quadraticCurveTo(wf1X - 3, wf1Y + 55, wf1X + 2, wf1Y + 110);
+  ctx.stroke();
+  ctx.restore();
+
+  // 2. 山间悠悠游云与峡谷流岚 (Mid-altitude Mountain Cloud Layer)
   ctx.save();
   ctx.globalCompositeOperation = "screen";
   cloudsPool.forEach((cloud) => {
@@ -599,20 +656,36 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   ctx.restore();
 
   // 3. 中山苍峦叠嶂 (Mid Mountain: 石绿设色)
-  drawShanShuiLayer(2, 0.68, colors.midMountain, 0.60);
+  drawShanShuiLayer(2, 0.67, colors.midMountain, 0.60);
+
+  // 飞瀑流泉 2（中山峡谷瀑布）
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  const wf2X = width * 0.48 - Math.cos(timeAccum * 0.08) * (width * 0.02);
+  const wf2Y = height * 0.52;
+  const wf2Grd = ctx.createLinearGradient(0, wf2Y, 0, wf2Y + 95);
+  wf2Grd.addColorStop(0, "rgba(225, 250, 255, 0.65)");
+  wf2Grd.addColorStop(1.0, "rgba(180, 230, 245, 0.0)");
+  ctx.strokeStyle = wf2Grd;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(wf2X, wf2Y);
+  ctx.quadraticCurveTo(wf2X + 4, wf2Y + 50, wf2X - 2, wf2Y + 95);
+  ctx.stroke();
+  ctx.restore();
 
   // 4. 近山峭壁磐石 (Near Mountain: 浓翠焦墨)
-  drawShanShuiLayer(3, 0.80, colors.nearMountain, 0.85);
+  drawShanShuiLayer(3, 0.79, colors.nearMountain, 0.85);
 
-  // 5. 前景临江秀渚 (Foreground River Shoreline: 充实底部空间，完全消除断层)
-  drawShanShuiLayer(4, 0.90, colors.shoreMountain, 0.70);
+  // 5. 前景临江秀渚 (Foreground River Shoreline)
+  drawShanShuiLayer(4, 0.89, colors.shoreMountain, 0.70);
 
   // =========================================================================
   // 7. 清潭水波、碎金倒影、一叶扁舟与游鱼 (Water Ripple & Lone Boat on Shore)
   // =========================================================================
   ctx.save();
 
-  // 1. 水面微光波纹叠加（随山水自然流动）
+  // 1. 水面微光波纹叠加
   ctx.globalCompositeOperation = "screen";
   for (let w = 0; w < 4; w++) {
     const waveY = height * (0.84 + w * 0.04);
@@ -684,9 +757,9 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   });
 
   // 4. 一叶扁舟、青竹钓竿与暖黄渔火 (Artisanal Sampan Boat with Fishing Rod)
-  const boatX = width * 0.28;
+  const boatX = width * 0.30;
   const boatBobbing = Math.sin(timeAccum * 0.65) * 3.0;
-  const boatY = height * 0.88 + boatBobbing;
+  const boatY = height * 0.87 + boatBobbing;
 
   ctx.save();
   ctx.translate(boatX, boatY);
@@ -695,56 +768,56 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
   // 乌篷船身
   ctx.fillStyle = "rgba(4, 10, 12, 0.98)";
   ctx.beginPath();
-  ctx.moveTo(-22, 0);
-  ctx.quadraticCurveTo(-10, 7, 0, 8);
-  ctx.quadraticCurveTo(14, 7, 24, 0);
-  ctx.quadraticCurveTo(10, 3, 0, 3);
-  ctx.quadraticCurveTo(-10, 3, -22, 0);
+  ctx.moveTo(-24, 0);
+  ctx.quadraticCurveTo(-12, 8, 0, 9);
+  ctx.quadraticCurveTo(16, 8, 26, 0);
+  ctx.quadraticCurveTo(12, 3, 0, 3);
+  ctx.quadraticCurveTo(-12, 3, -24, 0);
   ctx.closePath();
   ctx.fill();
 
   // 乌篷拱顶
   ctx.beginPath();
-  ctx.arc(-2, 0, 7, Math.PI, 0, false);
+  ctx.arc(-2, 0, 8, Math.PI, 0, false);
   ctx.fill();
 
-  // 青竹钓竿 (Bamboo fishing rod)
-  ctx.strokeStyle = "rgba(200, 220, 210, 0.65)";
-  ctx.lineWidth = 1.0;
+  // 青竹钓竿
+  ctx.strokeStyle = "rgba(210, 230, 220, 0.75)";
+  ctx.lineWidth = 1.1;
   ctx.beginPath();
-  ctx.moveTo(-12, 0);
-  ctx.quadraticCurveTo(-26, -14, -36, -20);
+  ctx.moveTo(-14, 0);
+  ctx.quadraticCurveTo(-28, -16, -40, -22);
   ctx.stroke();
 
-  // 钓丝 (Fine fishing line)
-  ctx.strokeStyle = "rgba(220, 240, 255, 0.25)";
-  ctx.lineWidth = 0.6;
+  // 极细钓丝
+  ctx.strokeStyle = "rgba(220, 240, 255, 0.30)";
+  ctx.lineWidth = 0.7;
   ctx.beginPath();
-  ctx.moveTo(-36, -20);
-  ctx.lineTo(-36, 12);
+  ctx.moveTo(-40, -22);
+  ctx.lineTo(-40, 14);
   ctx.stroke();
 
   // 船头暖黄渔火
   ctx.globalCompositeOperation = "screen";
-  const lanternX = 14;
+  const lanternX = 16;
   const lanternY = -4;
-  const lanternGrd = ctx.createRadialGradient(lanternX, lanternY, 0, lanternX, lanternY, 26);
+  const lanternGrd = ctx.createRadialGradient(lanternX, lanternY, 0, lanternX, lanternY, 28);
   lanternGrd.addColorStop(0, "rgba(255, 248, 200, 1.0)");
   lanternGrd.addColorStop(0.25, colors.lanternGlow);
   lanternGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = lanternGrd;
   ctx.beginPath();
-  ctx.arc(lanternX, lanternY, 26, 0, Math.PI * 2);
+  ctx.arc(lanternX, lanternY, 28, 0, Math.PI * 2);
   ctx.fill();
 
   // 水中渔火倒影
-  const reflectGrd = ctx.createRadialGradient(lanternX, 10, 0, lanternX, 10, 18);
-  reflectGrd.addColorStop(0, "rgba(255, 215, 130, 0.50)");
+  const reflectGrd = ctx.createRadialGradient(lanternX, 10, 0, lanternX, 10, 20);
+  reflectGrd.addColorStop(0, "rgba(255, 215, 130, 0.55)");
   reflectGrd.addColorStop(1.0, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = reflectGrd;
   ctx.save();
   ctx.translate(lanternX, 10);
-  ctx.scale(18, 5.0);
+  ctx.scale(20, 5.5);
   ctx.beginPath();
   ctx.arc(0, 0, 1, 0, Math.PI * 2);
   ctx.fill();
