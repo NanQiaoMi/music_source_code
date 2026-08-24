@@ -12,6 +12,19 @@ interface Ripple {
   speed: number;
 }
 
+interface GoldenPetal {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  alpha: number;
+  rotation: number;
+  vRot: number;
+  aspect: number;
+  phase: number;
+}
+
 interface DustParticle {
   x: number;
   y: number;
@@ -75,36 +88,24 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
       },
     },
     {
-      id: "scrollUnroll",
-      name: "画轴锦绫与宣纸透光",
+      id: "goldGlow",
+      name: "锦绫金丝辉光",
       type: "number",
       mode: "basic",
       min: 0.5,
-      max: 1.5,
+      max: 2.0,
       step: 0.05,
-      default: 1.0,
+      default: 1.2,
     },
     {
-      id: "colorTheme",
-      name: "东方配色主题",
-      type: "select",
-      mode: "basic",
-      default: "peacock",
-      options: [
-        { label: "青绿千载 (千里江山)", value: "peacock" },
-        { label: "暮色烟紫 (苍茫云海)", value: "sunset" },
-        { label: "霜雪霁月 (水墨清虚)", value: "silver" },
-      ],
-    },
-    {
-      id: "filmGrain",
-      name: "电影胶片与光晕",
+      id: "filmVignette",
+      name: "电影胶片与暗角",
       type: "number",
       mode: "professional",
       min: 0,
       max: 1,
       step: 0.05,
-      default: 0.35,
+      default: 0.65,
     },
   ],
 
@@ -115,11 +116,10 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
       smoothMid: 0,
       smoothTreble: 0,
       smoothEnergy: 0,
-      unrollProgress: 0,
       ripples: [] as Ripple[],
       particles: [] as DustParticle[],
+      petals: [] as GoldenPetal[],
       lastRippleSpawn: 0,
-      // 预生成金粉落英粒子
       initParticles: false,
     };
   },
@@ -138,9 +138,9 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
       smoothMid: 0,
       smoothTreble: 0,
       smoothEnergy: 0,
-      unrollProgress: 0,
       ripples: [],
       particles: [],
+      petals: [],
       lastRippleSpawn: 0,
       initParticles: false,
     };
@@ -148,33 +148,51 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
 
     priv.time += 0.016;
 
-    // 音频平滑处理（避免突兀跳变，保证悠扬大方的呼吸质感）
+    const lightRays = params?.lightRays ?? 1.0;
+    const mountainBreath = params?.mountainBreath ?? 1.0;
+    const waterRipple = params?.waterRipple ?? 1.0;
+    const goldGlow = params?.goldGlow ?? 1.2;
+    const filmVignette = params?.filmVignette ?? 0.65;
+
+    // 音频平滑处理 (Damping: 55)
     const rawBass = audioData.bass || 0;
     const rawMid = audioData.mid || 0;
     const rawTreble = audioData.treble || 0;
-    const rawEnergy = (rawBass * 0.4 + rawMid * 0.4 + rawTreble * 0.2);
+    const rawEnergy = rawBass * 0.4 + rawMid * 0.4 + rawTreble * 0.2;
 
-    priv.smoothBass += (rawBass - priv.smoothBass) * 0.08;
-    priv.smoothMid += (rawMid - priv.smoothMid) * 0.1;
-    priv.smoothTreble += (rawTreble - priv.smoothTreble) * 0.12;
-    priv.smoothEnergy += (rawEnergy - priv.smoothEnergy) * 0.08;
+    priv.smoothBass += (rawBass - priv.smoothBass) * 0.055;
+    priv.smoothMid += (rawMid - priv.smoothMid) * 0.075;
+    priv.smoothTreble += (rawTreble - priv.smoothTreble) * 0.095;
+    priv.smoothEnergy += (rawEnergy - priv.smoothEnergy) * 0.065;
 
-    // 卷轴平滑展开进度 (0 -> 1)
-    if (priv.unrollProgress < 1) {
-      priv.unrollProgress = Math.min(1, priv.unrollProgress + 0.02);
-    }
+    const t = priv.time * 0.05;
 
-    // 初始化金粉微尘粒子
+    // 初始化微尘与落英
     if (!priv.initParticles) {
       priv.particles = [];
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 50; i++) {
         priv.particles.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 0.4,
-          vy: -Math.random() * 0.5 - 0.2,
-          size: Math.random() * 2.5 + 1,
-          alpha: Math.random() * 0.7 + 0.3,
+          vx: (Math.random() - 0.5) * 0.35,
+          vy: -Math.random() * 0.45 - 0.15,
+          size: Math.random() * 2.2 + 0.8,
+          alpha: Math.random() * 0.65 + 0.25,
+          phase: Math.random() * Math.PI * 2,
+        });
+      }
+      priv.petals = [];
+      for (let i = 0; i < 20; i++) {
+        priv.petals.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.5 + 0.2,
+          vy: Math.random() * 0.4 + 0.2,
+          size: Math.random() * 4.5 + 2.5,
+          alpha: Math.random() * 0.6 + 0.3,
+          rotation: Math.random() * Math.PI * 2,
+          vRot: (Math.random() - 0.5) * 0.03,
+          aspect: 0.4 + Math.random() * 0.4,
           phase: Math.random() * Math.PI * 2,
         });
       }
@@ -182,356 +200,462 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
     }
 
     // 泛音高频涟漪生成
-    if (priv.smoothTreble > 0.35 && priv.time - priv.lastRippleSpawn > 0.25) {
+    if (priv.smoothTreble > 0.32 && priv.time - priv.lastRippleSpawn > 0.22) {
       priv.lastRippleSpawn = priv.time;
       if (priv.ripples.length < 8) {
         priv.ripples.push({
-          x: width * (0.3 + Math.random() * 0.4),
-          y: height * (0.65 + Math.random() * 0.1),
-          radius: 4,
-          maxRadius: Math.min(width, height) * 0.25,
-          alpha: 0.8 * (params.waterRipple ?? 1),
-          speed: 1.5 + priv.smoothTreble * 2.0,
+          x: width * (0.28 + Math.random() * 0.44),
+          y: height * (0.64 + Math.random() * 0.14),
+          radius: 6,
+          maxRadius: Math.min(width, height) * 0.32,
+          alpha: 0.9 * waterRipple,
+          speed: 1.8 + priv.smoothTreble * 2.5,
         });
       }
     }
 
     context.save();
 
-    // ─── 1. 外部暗夜环境底色与环境光晕 (Ambient Cinema Backdrop) ───
-    context.fillStyle = "#08090c";
+    // ─── 1. 外部暗夜背景与极光渐晕 ───
+    context.fillStyle = "#05070a";
     context.fillRect(0, 0, width, height);
 
-    // 柔和环境弥散极光
     const ambientGlow = context.createRadialGradient(
       width * 0.5,
       height * 0.45,
-      width * 0.1,
+      width * 0.06,
       width * 0.5,
       height * 0.45,
-      width * 0.65
+      width * 0.72
     );
-    if (params.colorTheme === "sunset") {
-      ambientGlow.addColorStop(0, "rgba(88, 28, 135, 0.22)");
-      ambientGlow.addColorStop(0.5, "rgba(180, 83, 9, 0.12)");
-      ambientGlow.addColorStop(1, "rgba(8, 9, 12, 0)");
-    } else if (params.colorTheme === "silver") {
-      ambientGlow.addColorStop(0, "rgba(51, 65, 85, 0.25)");
-      ambientGlow.addColorStop(0.5, "rgba(30, 41, 59, 0.15)");
-      ambientGlow.addColorStop(1, "rgba(8, 9, 12, 0)");
-    } else {
-      // 默认青绿千载
-      ambientGlow.addColorStop(0, "rgba(13, 79, 108, 0.28)");
-      ambientGlow.addColorStop(0.5, "rgba(26, 93, 87, 0.15)");
-      ambientGlow.addColorStop(1, "rgba(8, 9, 12, 0)");
-    }
+    ambientGlow.addColorStop(0, "rgba(12, 65, 88, 0.32)");
+    ambientGlow.addColorStop(0.45, "rgba(22, 78, 73, 0.16)");
+    ambientGlow.addColorStop(1, "rgba(5, 7, 10, 0)");
     context.fillStyle = ambientGlow;
     context.fillRect(0, 0, width, height);
 
-    // ─── 2. 2.35:1 宽银幕东方宣纸画卷剪裁区 (Scroll Inset) ───
-    const maxScrollW = width * 0.88;
-    const targetAspect = 2.35; // 宽银幕电影比例
-    let scrollW = maxScrollW * priv.unrollProgress;
+    // ─── 2. 2.35:1 宽银幕电影绢帛画幅 (羽化画境) ───
+    const maxScrollW = width * 0.92;
+    const targetAspect = 2.35;
+    let scrollW = maxScrollW;
     let scrollH = scrollW / targetAspect;
 
-    if (scrollH > height * 0.72) {
-      scrollH = height * 0.72;
-      scrollW = scrollH * targetAspect * priv.unrollProgress;
+    if (scrollH > height * 0.76) {
+      scrollH = height * 0.76;
+      scrollW = scrollH * targetAspect;
     }
 
     const scrollX = (width - scrollW) / 2;
     const scrollY = (height - scrollH) / 2;
 
-    // 绘制画卷锦绫外框柔和阴影
-    context.shadowColor = "rgba(0, 0, 0, 0.85)";
-    context.shadowBlur = 48;
-    context.shadowOffsetY = 16;
-    context.fillStyle = "rgba(16, 20, 26, 0.95)";
-    roundRect(context, scrollX, scrollY, scrollW, scrollH, 18);
-    context.fill();
-    context.shadowBlur = 0;
-    context.shadowOffsetY = 0;
-
-    // 限制在画卷内部绘制
+    // 画卷内部剪裁
     context.save();
     context.beginPath();
-    roundRect(context, scrollX, scrollY, scrollW, scrollH, 18);
+    roundRect(context, scrollX, scrollY, scrollW, scrollH, 20);
     context.clip();
 
-    // 宣纸底色渐变 (Antique Chinese Rice Paper Sky)
+    // 宣纸天际古色渐变
     const skyGrad = context.createLinearGradient(scrollX, scrollY, scrollX, scrollY + scrollH);
-    if (params.colorTheme === "sunset") {
-      skyGrad.addColorStop(0, "#20132b");
-      skyGrad.addColorStop(0.4, "#3a2139");
-      skyGrad.addColorStop(0.65, "#5c3335");
-      skyGrad.addColorStop(1, "#1c1124");
-    } else if (params.colorTheme === "silver") {
-      skyGrad.addColorStop(0, "#0f172a");
-      skyGrad.addColorStop(0.45, "#1e293b");
-      skyGrad.addColorStop(0.7, "#334155");
-      skyGrad.addColorStop(1, "#090d16");
-    } else {
-      // 青绿千载
-      skyGrad.addColorStop(0, "#091722");
-      skyGrad.addColorStop(0.35, "#0d2b38");
-      skyGrad.addColorStop(0.65, "#153b3d");
-      skyGrad.addColorStop(1, "#07141b");
-    }
+    skyGrad.addColorStop(0, "#06131c");
+    skyGrad.addColorStop(0.3, "#0a232f");
+    skyGrad.addColorStop(0.55, "#103236");
+    skyGrad.addColorStop(0.75, "#18453f");
+    skyGrad.addColorStop(1, "#040e14");
     context.fillStyle = skyGrad;
     context.fillRect(scrollX, scrollY, scrollW, scrollH);
 
-    // 水面分界线 Y 坐标（位于画卷下方 38% 处）
-    const waterY = scrollY + scrollH * 0.62;
+    // 晨曦暖金光照
+    const dawnGlow = context.createRadialGradient(
+      scrollX + scrollW * 0.22,
+      scrollY + scrollH * 0.15,
+      10,
+      scrollX + scrollW * 0.22,
+      scrollY + scrollH * 0.15,
+      scrollW * 0.45
+    );
+    dawnGlow.addColorStop(0, `rgba(251, 191, 36, ${0.28 * lightRays})`);
+    dawnGlow.addColorStop(0.5, `rgba(245, 158, 11, ${0.12 * lightRays})`);
+    dawnGlow.addColorStop(1, "rgba(6, 19, 28, 0)");
+    context.fillStyle = dawnGlow;
+    context.fillRect(scrollX, scrollY, scrollW, scrollH);
 
-    // ─── 3. 5 重远山叠嶂与水墨视差起伏 (5-Layer Parallax Mountain Ranges) ───
-    const breathFactor = (params.mountainBreath ?? 1.0) * priv.smoothBass;
-    const midVibe = priv.smoothMid * 8;
+    // 水面分界线 Y 坐标
+    const waterY = scrollY + scrollH * 0.60;
 
-    // 山峰调色板配置
-    const mountainColors =
-      params.colorTheme === "sunset"
-        ? [
-            { fill: "#311c38", rim: "#c084fc", alpha: 0.4 },
-            { fill: "#44213f", rim: "#e879f9", alpha: 0.6 },
-            { fill: "#5b273d", rim: "#fb7185", alpha: 0.8 },
-            { fill: "#4c1d2f", rim: "#f43f5e", alpha: 0.9 },
-            { fill: "#2e0f1e", rim: "#fbbf24", alpha: 1.0 },
-          ]
-        : params.colorTheme === "silver"
-        ? [
-            { fill: "#1e293b", rim: "#94a3b8", alpha: 0.4 },
-            { fill: "#334155", rim: "#cbd5e1", alpha: 0.6 },
-            { fill: "#475569", rim: "#e2e8f0", alpha: 0.8 },
-            { fill: "#1e293b", rim: "#f8fafc", alpha: 0.9 },
-            { fill: "#0f172a", rim: "#e0f2fe", alpha: 1.0 },
-          ]
-        : [
-            // 青绿千载
-            { fill: "#0e313d", rim: "#38bdf8", alpha: 0.4 },
-            { fill: "#11454a", rim: "#34d399", alpha: 0.65 },
-            { fill: "#155e5b", rim: "#4ade80", alpha: 0.85 },
-            { fill: "#164e43", rim: "#a3e635", alpha: 0.95 },
-            { fill: "#0b2c28", rim: "#fbbf24", alpha: 1.0 },
-          ];
+    // ─── 3. 6 重《千里江山图》青绿水墨山峦与山谷烟岚 ───
+    const breathFactor = mountainBreath * priv.smoothBass;
+    const midVibe = priv.smoothMid * 10;
 
-    // 依次绘制 5 重远山
-    for (let layer = 0; layer < 5; layer++) {
-      const layerDepth = (layer + 1) / 5;
-      const baseHeight = scrollH * (0.28 + layer * 0.08);
-      const waveSpeed = 0.3 + layer * 0.15;
-      const layerTime = priv.time * waveSpeed;
-      const layerAmp = (baseHeight * 0.35 + breathFactor * 25 * layerDepth) * (1 + (layer === 4 ? midVibe * 0.04 : 0));
+    const mountainPalette = [
+      { fillTop: "#0d3545", fillBottom: "#061822", rim: "#38bdf8", alpha: 0.40, baseY: 0.24, speed: 0.25 },
+      { fillTop: "#104754", fillBottom: "#082129", rim: "#22d3ee", alpha: 0.55, baseY: 0.31, speed: 0.35 },
+      { fillTop: "#145958", fillBottom: "#0b2b2c", rim: "#34d399", alpha: 0.70, baseY: 0.38, speed: 0.48 },
+      { fillTop: "#176c5e", fillBottom: "#0e3831", rim: "#4ade80", alpha: 0.85, baseY: 0.46, speed: 0.62 },
+      { fillTop: "#155745", fillBottom: "#0a2921", rim: "#a3e635", alpha: 0.94, baseY: 0.53, speed: 0.78 },
+      { fillTop: "#0d2822", fillBottom: "#051613", rim: "#fbbf24", alpha: 1.00, baseY: 0.58, speed: 0.95 },
+    ];
 
+    const mountainPaths: { points: { x: number; y: number }[]; color: string; alpha: number }[] = [];
+
+    for (let layer = 0; layer < 6; layer++) {
+      const config = mountainPalette[layer];
+      const layerDepth = (layer + 1) / 6;
+      const basePeakHeight = scrollH * (config.baseY * 0.85);
+      const layerTime = t * config.speed;
+      const layerAmp = (basePeakHeight * 0.42 + breathFactor * 32 * layerDepth) * (1 + (layer >= 4 ? midVibe * 0.03 : 0));
+
+      const points: { x: number; y: number }[] = [];
       context.beginPath();
       context.moveTo(scrollX, waterY);
 
       const step = 4;
       for (let x = scrollX; x <= scrollX + scrollW; x += step) {
         const normX = (x - scrollX) / scrollW;
-        // 多八度谐波叠加塑造山峦起伏
-        const s1 = Math.sin(normX * (3 + layer * 1.5) + layerTime + layer * 2.1);
-        const s2 = Math.cos(normX * (7 + layer * 2) - layerTime * 0.6);
-        const s3 = Math.sin(normX * 14 + layerTime * 1.2) * 0.25;
-        const mountainCurve = (s1 * 0.6 + s2 * 0.3 + s3 * 0.1);
+        const h1 = Math.sin(normX * (2.8 + layer * 1.3) + layerTime + layer * 1.8);
+        const h2 = Math.cos(normX * (6.5 + layer * 1.8) - layerTime * 0.5 + layer);
+        const h3 = Math.sin(normX * 13.0 + layerTime * 1.1) * 0.32;
+        const h4 = Math.cos(normX * 24.0 - layerTime * 1.8) * 0.12;
+        const mountainCurve = (h1 * 0.55 + h2 * 0.30 + h3 * 0.10 + h4 * 0.05);
 
-        const y = waterY - baseHeight - mountainCurve * layerAmp;
+        const y = waterY - basePeakHeight - mountainCurve * layerAmp;
+        points.push({ x, y });
         context.lineTo(x, y);
       }
 
       context.lineTo(scrollX + scrollW, waterY);
       context.closePath();
 
-      // 山体水墨渐变填充
-      const mtnGrad = context.createLinearGradient(scrollX, waterY - baseHeight * 1.4, scrollX, waterY);
-      mtnGrad.addColorStop(0, mountainColors[layer].fill);
-      mtnGrad.addColorStop(1, "rgba(7, 20, 27, 0.95)");
+      mountainPaths.push({ points, color: config.fillTop, alpha: config.alpha });
+
+      const mtnGrad = context.createLinearGradient(
+        scrollX + scrollW * 0.25,
+        waterY - basePeakHeight * 1.5,
+        scrollX + scrollW * 0.6,
+        waterY
+      );
+      mtnGrad.addColorStop(0, config.fillTop);
+      mtnGrad.addColorStop(0.65, config.fillBottom);
+      mtnGrad.addColorStop(1, "rgba(4, 15, 20, 0.98)");
+
       context.fillStyle = mtnGrad;
-      context.globalAlpha = mountainColors[layer].alpha;
+      context.globalAlpha = config.alpha;
       context.fill();
 
-      // 最前两重山脊勾金线 (Gold Rim Stroke)
-      if (layer >= 3) {
-        context.strokeStyle = mountainColors[layer].rim;
-        context.lineWidth = layer === 4 ? 1.5 : 1.0;
-        context.globalAlpha = 0.45 + priv.smoothMid * 0.55;
+      if (layer >= 2) {
+        context.strokeStyle = config.rim;
+        context.lineWidth = layer === 5 ? 1.6 : layer === 4 ? 1.2 : 0.8;
+        context.globalAlpha = (0.35 + priv.smoothMid * 0.65) * (layer === 5 ? goldGlow : 0.85);
         context.stroke();
+      }
+
+      // 山谷烟岚
+      if (layer === 2 || layer === 4) {
+        context.save();
+        context.globalCompositeOperation = "screen";
+        const fogY = waterY - basePeakHeight * 0.45;
+        const fogGrad = context.createLinearGradient(scrollX, fogY - 25, scrollX, fogY + 35);
+        fogGrad.addColorStop(0, "rgba(210, 245, 240, 0)");
+        fogGrad.addColorStop(0.5, `rgba(180, 230, 225, ${0.14 + priv.smoothBass * 0.08})`);
+        fogGrad.addColorStop(1, "rgba(210, 245, 240, 0)");
+        context.fillStyle = fogGrad;
+
+        context.beginPath();
+        context.moveTo(scrollX, fogY);
+        for (let fx = scrollX; fx <= scrollX + scrollW; fx += 16) {
+          const fogCurve = Math.sin((fx - scrollX) * 0.015 + t * (layer === 2 ? 0.6 : -0.8)) * 12;
+          context.lineTo(fx, fogY + fogCurve);
+        }
+        context.lineTo(scrollX + scrollW, fogY + 50);
+        context.lineTo(scrollX, fogY + 50);
+        context.closePath();
+        context.fill();
+        context.restore();
       }
     }
     context.globalAlpha = 1.0;
 
-    // ─── 4. 丁达尔神光体积光束 (Volumetric Tyndall God Rays) ───
-    const rayStrength = (params.lightRays ?? 1.0) * (0.6 + priv.smoothBass * 0.8 + priv.smoothEnergy * 0.4);
+    // ─── 4. 柔焦高斯体积丁达尔神光 ───
+    const rayStrength = lightRays * (0.65 + priv.smoothBass * 0.75 + priv.smoothEnergy * 0.35);
     if (rayStrength > 0.05) {
       context.save();
       context.globalCompositeOperation = "screen";
 
-      const rayOriginX = scrollX + scrollW * 0.22;
-      const rayOriginY = scrollY - 20;
+      const rayOriginX = scrollX + scrollW * 0.20;
+      const rayOriginY = scrollY - 25;
 
-      // 绘制 5 束穿透斜射光
-      for (let r = 0; r < 5; r++) {
-        const rayAngle = Math.PI * 0.28 + (r - 2) * 0.12 + Math.sin(priv.time * 0.4 + r) * 0.04;
-        const rayLength = scrollH * 1.4;
-        const raySpread = scrollW * (0.06 + r * 0.02);
+      const rayAngles = [0.26, 0.33, 0.41, 0.49, 0.58, 0.67];
+      for (let r = 0; r < rayAngles.length; r++) {
+        const baseAngle = Math.PI * rayAngles[r] + Math.sin(t * 0.35 + r * 1.2) * 0.035;
+        const rayLen = scrollH * 1.55;
+        const spread = scrollW * (0.055 + r * 0.018);
 
-        const rayGrad = context.createRadialGradient(
+        const rayGrd = context.createRadialGradient(
           rayOriginX,
           rayOriginY,
-          10,
-          rayOriginX + Math.cos(rayAngle) * rayLength * 0.6,
-          rayOriginY + Math.sin(rayAngle) * rayLength * 0.6,
-          rayLength
+          15,
+          rayOriginX + Math.cos(baseAngle) * rayLen * 0.6,
+          rayOriginY + Math.sin(baseAngle) * rayLen * 0.6,
+          rayLen
         );
 
-        rayGrad.addColorStop(0, `rgba(251, 191, 36, ${0.45 * rayStrength})`);
-        rayGrad.addColorStop(0.35, `rgba(245, 158, 11, ${0.2 * rayStrength})`);
-        rayGrad.addColorStop(0.7, `rgba(56, 189, 248, ${0.08 * rayStrength})`);
-        rayGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+        const rayAlpha = (0.38 - r * 0.04) * rayStrength;
+        rayGrd.addColorStop(0, `rgba(253, 230, 138, ${rayAlpha * 1.2})`);
+        rayGrd.addColorStop(0.3, `rgba(251, 191, 36, ${rayAlpha * 0.8})`);
+        rayGrd.addColorStop(0.65, `rgba(56, 189, 248, ${rayAlpha * 0.25})`);
+        rayGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
 
-        context.fillStyle = rayGrad;
+        context.fillStyle = rayGrd;
         context.beginPath();
         context.moveTo(rayOriginX, rayOriginY);
         context.lineTo(
-          rayOriginX + Math.cos(rayAngle - 0.14) * rayLength - raySpread,
-          rayOriginY + Math.sin(rayAngle - 0.14) * rayLength
+          rayOriginX + Math.cos(baseAngle - 0.12) * rayLen - spread,
+          rayOriginY + Math.sin(baseAngle - 0.12) * rayLen
         );
         context.lineTo(
-          rayOriginX + Math.cos(rayAngle + 0.14) * rayLength + raySpread,
-          rayOriginY + Math.sin(rayAngle + 0.14) * rayLength
+          rayOriginX + Math.cos(baseAngle + 0.12) * rayLen + spread,
+          rayOriginY + Math.sin(baseAngle + 0.12) * rayLen
         );
         context.closePath();
         context.fill();
       }
 
-      // 横向宽银幕电影金光 (Anamorphic Gold Streak)
-      if (priv.smoothBass > 0.45) {
-        const streakY = waterY - scrollH * 0.25;
-        const streakGrad = context.createLinearGradient(scrollX, streakY, scrollX + scrollW, streakY);
-        streakGrad.addColorStop(0, "rgba(251, 191, 36, 0)");
-        streakGrad.addColorStop(0.5, `rgba(251, 191, 36, ${(priv.smoothBass - 0.3) * 0.7})`);
-        streakGrad.addColorStop(1, "rgba(251, 191, 36, 0)");
-        context.fillStyle = streakGrad;
+      const sourceBloom = context.createRadialGradient(rayOriginX, rayOriginY, 5, rayOriginX, rayOriginY, 120);
+      sourceBloom.addColorStop(0, `rgba(254, 240, 138, ${0.65 * rayStrength})`);
+      sourceBloom.addColorStop(0.5, `rgba(251, 191, 36, ${0.30 * rayStrength})`);
+      sourceBloom.addColorStop(1, "rgba(0, 0, 0, 0)");
+      context.fillStyle = sourceBloom;
+      context.beginPath();
+      context.arc(rayOriginX, rayOriginY, 120, 0, Math.PI * 2);
+      context.fill();
+
+      // 横向耀斑
+      if (priv.smoothBass > 0.38 || priv.smoothMid > 0.45) {
+        const streakIntensity = Math.min(1, (Math.max(priv.smoothBass, priv.smoothMid) - 0.3) * 1.6);
+        const streakY = waterY - scrollH * 0.22;
+        const streakGrd = context.createLinearGradient(scrollX, streakY, scrollX + scrollW, streakY);
+        streakGrd.addColorStop(0, "rgba(251, 191, 36, 0)");
+        streakGrd.addColorStop(0.2, "rgba(251, 191, 36, 0.08)");
+        streakGrd.addColorStop(0.5, `rgba(254, 240, 138, ${0.75 * streakIntensity * goldGlow})`);
+        streakGrd.addColorStop(0.8, "rgba(251, 191, 36, 0.08)");
+        streakGrd.addColorStop(1, "rgba(251, 191, 36, 0)");
+
+        context.fillStyle = streakGrd;
         context.fillRect(scrollX, streakY - 1.5, scrollW, 3);
       }
 
       context.restore();
     }
 
-    // ─── 5. 水镜实时微波倒影与泛音涟漪 (Water Specular Reflection & Ripples) ───
-    // 水面底色
+    // ─── 5. 真实水镜倒影与水波折射 ───
+    const waterH = scrollY + scrollH - waterY;
     const waterGrad = context.createLinearGradient(scrollX, waterY, scrollX, scrollY + scrollH);
-    waterGrad.addColorStop(0, "rgba(7, 20, 27, 0.85)");
-    waterGrad.addColorStop(0.4, "rgba(10, 32, 42, 0.95)");
-    waterGrad.addColorStop(1, "rgba(5, 12, 16, 1.0)");
+    waterGrad.addColorStop(0, "rgba(4, 14, 19, 0.88)");
+    waterGrad.addColorStop(0.4, "rgba(6, 20, 27, 0.95)");
+    waterGrad.addColorStop(1, "rgba(3, 8, 12, 1.0)");
     context.fillStyle = waterGrad;
-    context.fillRect(scrollX, waterY, scrollW, scrollH - (waterY - scrollY));
+    context.fillRect(scrollX, waterY, scrollW, waterH);
 
-    // 水面水平高光微波 (Water Shimmer Waves)
+    // 水面倒影
+    context.save();
+    context.beginPath();
+    context.rect(scrollX, waterY, scrollW, waterH);
+    context.clip();
+
+    for (let l = mountainPaths.length - 1; l >= 2; l--) {
+      const m = mountainPaths[l];
+      context.beginPath();
+      context.moveTo(scrollX, waterY);
+      for (let i = 0; i < m.points.length; i++) {
+        const p = m.points[i];
+        const distFromWater = waterY - p.y;
+        const waveShift = Math.sin((p.x - scrollX) * 0.04 + t * 2.2 + l) * (2 + priv.smoothBass * 3.5);
+        const reflectY = waterY + distFromWater * 0.55 + waveShift;
+        context.lineTo(p.x, reflectY);
+      }
+      context.lineTo(scrollX + scrollW, waterY);
+      context.closePath();
+
+      context.fillStyle = m.color;
+      context.globalAlpha = m.alpha * 0.28;
+      context.fill();
+    }
+    context.restore();
+
+    // 水面金色微波
     context.save();
     context.globalCompositeOperation = "lighter";
-    const shimmerCount = 12;
-    for (let w = 0; w < shimmerCount; w++) {
-      const lineY = waterY + ((w + 1) / (shimmerCount + 1)) * (scrollY + scrollH - waterY);
-      const wavePhase = priv.time * 1.2 + w * 0.8;
-      const lineAlpha = (0.06 + Math.sin(wavePhase) * 0.04 + priv.smoothTreble * 0.1) * (w > 6 ? 0.6 : 1.0);
+    const waveCount = 15;
+    for (let w = 0; w < waveCount; w++) {
+      const waveY = waterY + ((w + 1) / (waveCount + 1)) * waterH;
+      const wavePhase = t * 1.4 + w * 0.65;
+      const waveAlpha = (0.05 + Math.sin(wavePhase) * 0.035 + priv.smoothTreble * 0.08) * (w > 8 ? 0.5 : 1.0);
 
-      context.strokeStyle = `rgba(251, 191, 36, ${Math.max(0, lineAlpha)})`;
+      context.strokeStyle = `rgba(251, 191, 36, ${Math.max(0, waveAlpha) * goldGlow})`;
       context.lineWidth = 1.0;
       context.beginPath();
-      context.moveTo(scrollX, lineY);
-      for (let x = scrollX; x <= scrollX + scrollW; x += 16) {
-        const dy = Math.sin((x - scrollX) * 0.04 + wavePhase) * (1.5 + priv.smoothBass * 2);
-        context.lineTo(x, lineY + dy);
+      context.moveTo(scrollX, waveY);
+      for (let x = scrollX; x <= scrollX + scrollW; x += 14) {
+        const dy = Math.sin((x - scrollX) * 0.035 + wavePhase) * (1.2 + priv.smoothBass * 2.2);
+        context.lineTo(x, waveY + dy);
       }
       context.stroke();
     }
 
-    // 同心圆声波涟漪渲染
+    // 泛音涟漪
     priv.ripples.forEach((rip: Ripple, idx: number) => {
       rip.radius += rip.speed;
-      rip.alpha *= 0.96;
+      rip.alpha *= 0.965;
 
       if (rip.alpha > 0.02) {
-        context.strokeStyle = `rgba(56, 189, 248, ${rip.alpha * 0.7})`;
+        context.strokeStyle = `rgba(56, 189, 248, ${rip.alpha * 0.75})`;
         context.lineWidth = 1.5;
         context.beginPath();
-        // 压扁为椭圆模拟透视水面
-        context.ellipse(rip.x, rip.y, rip.radius, rip.radius * 0.35, 0, 0, Math.PI * 2);
+        context.ellipse(rip.x, rip.y, rip.radius, rip.radius * 0.32, 0, 0, Math.PI * 2);
         context.stroke();
 
-        // 内层金光微晕
-        context.strokeStyle = `rgba(251, 191, 36, ${rip.alpha * 0.4})`;
+        context.strokeStyle = `rgba(251, 191, 36, ${rip.alpha * 0.45})`;
         context.beginPath();
-        context.ellipse(rip.x, rip.y, rip.radius * 0.6, rip.radius * 0.22, 0, 0, Math.PI * 2);
+        context.ellipse(rip.x, rip.y, rip.radius * 0.65, rip.radius * 0.20, 0, 0, Math.PI * 2);
         context.stroke();
       } else {
         priv.ripples.splice(idx, 1);
       }
     });
+
+    // ─── 6. 孤舟蓑笠与微芒渔火 ───
+    const boatX = scrollX + scrollW * 0.74;
+    const boatY = waterY + 12 + Math.sin(t * 1.8) * 2.5;
+
+    context.fillStyle = "rgba(10, 18, 24, 0.95)";
+    context.beginPath();
+    context.moveTo(boatX - 18, boatY);
+    context.quadraticCurveTo(boatX, boatY + 5, boatX + 18, boatY);
+    context.quadraticCurveTo(boatX, boatY + 1, boatX - 18, boatY);
+    context.fill();
+
+    context.beginPath();
+    context.arc(boatX - 2, boatY - 2, 7, Math.PI, 0);
+    context.fill();
+
+    const lanternX = boatX + 12;
+    const lanternY = boatY - 4;
+    const lanternGlow = context.createRadialGradient(lanternX, lanternY, 1, lanternX, lanternY, 22);
+    const lanternPulse = 0.75 + Math.sin(t * 3.5) * 0.25 + priv.smoothMid * 0.4;
+    lanternGlow.addColorStop(0, `rgba(254, 240, 138, ${0.95 * lanternPulse})`);
+    lanternGlow.addColorStop(0.35, `rgba(245, 158, 11, ${0.55 * lanternPulse})`);
+    lanternGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+    context.fillStyle = lanternGlow;
+    context.beginPath();
+    context.arc(lanternX, lanternY, 22, 0, Math.PI * 2);
+    context.fill();
+
+    const lanternReflect = context.createRadialGradient(lanternX, boatY + 8, 1, lanternX, boatY + 8, 16);
+    lanternReflect.addColorStop(0, `rgba(251, 191, 36, ${0.45 * lanternPulse})`);
+    lanternReflect.addColorStop(1, "rgba(0, 0, 0, 0)");
+    context.fillStyle = lanternReflect;
+    context.beginPath();
+    context.arc(lanternX, boatY + 8, 16, 0, Math.PI * 2);
+    context.fill();
+
     context.restore();
 
-    // ─── 6. 浮空微尘金粉落英 (Golden Petal Dust with Bokeh Glow) ───
+    // ─── 7. 浮空金粉与飘零落英 ───
     context.save();
     context.globalCompositeOperation = "lighter";
+
     priv.particles.forEach((p: DustParticle) => {
-      p.x += p.vx + Math.sin(priv.time + p.phase) * 0.3;
+      p.x += p.vx + Math.sin(t + p.phase) * 0.35;
       p.y += p.vy;
       if (p.y < scrollY) {
-        p.y = scrollY + scrollH + 10;
+        p.y = scrollY + scrollH + 8;
         p.x = scrollX + Math.random() * scrollW;
       }
       if (p.x < scrollX) p.x = scrollX + scrollW;
       if (p.x > scrollX + scrollW) p.x = scrollX;
 
-      const particleAlpha = p.alpha * (0.6 + Math.sin(priv.time * 2 + p.phase) * 0.4);
+      const particleAlpha = p.alpha * (0.6 + Math.sin(t * 2.2 + p.phase) * 0.4);
       context.fillStyle = `rgba(251, 191, 36, ${particleAlpha})`;
       context.beginPath();
       context.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       context.fill();
     });
+
+    priv.petals.forEach((petal: GoldenPetal) => {
+      petal.x += petal.vx + Math.sin(t * 1.5 + petal.phase) * 0.45;
+      petal.y += petal.vy;
+      petal.rotation += petal.vRot;
+
+      if (petal.y > scrollY + scrollH + 10) {
+        petal.y = scrollY - 10;
+        petal.x = scrollX + Math.random() * scrollW;
+      }
+      if (petal.x > scrollX + scrollW + 10) petal.x = scrollX - 10;
+
+      context.save();
+      context.translate(petal.x, petal.y);
+      context.rotate(petal.rotation);
+      context.fillStyle = `rgba(253, 230, 138, ${petal.alpha * (0.7 + priv.smoothMid * 0.4)})`;
+      context.beginPath();
+      context.ellipse(0, 0, petal.size, petal.size * petal.aspect, 0, 0, Math.PI * 2);
+      context.fill();
+      context.restore();
+    });
+
     context.restore();
 
-    // ─── 7. 宣纸锦绫金丝装裱边缘 (Silk Brocade Gold Border) ───
+    // ─── 8. 东方长卷书法印章与电影胶片暗角 ───
+    context.save();
+    const stampX = scrollX + 36;
+    const stampY = scrollY + 36;
+
+    context.fillStyle = "rgba(215, 50, 40, 0.85)";
+    context.strokeStyle = "rgba(255, 200, 180, 0.9)";
+    context.lineWidth = 1;
+    roundRect(context, stampX, stampY, 26, 26, 4);
+    context.fill();
+    context.stroke();
+
+    context.fillStyle = "rgba(255, 255, 255, 0.95)";
+    context.font = "bold 11px serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText("国风", stampX + 13, stampY + 13);
+
+    context.fillStyle = "rgba(245, 235, 215, 0.65)";
+    context.font = "12px serif";
+    context.textAlign = "center";
+    context.fillText("千", stampX + 44, stampY + 10);
+    context.fillText("里", stampX + 44, stampY + 26);
+    context.fillText("江", stampX + 44, stampY + 42);
+    context.fillText("山", stampX + 44, stampY + 58);
+    context.restore();
+
+    if (filmVignette > 0) {
+      const vigGrd = context.createRadialGradient(
+        scrollX + scrollW / 2,
+        scrollY + scrollH / 2,
+        scrollW * 0.32,
+        scrollX + scrollW / 2,
+        scrollY + scrollH / 2,
+        scrollW * 0.68
+      );
+      vigGrd.addColorStop(0, "rgba(0,0,0,0)");
+      vigGrd.addColorStop(1, `rgba(0,0,0,${filmVignette * 0.70})`);
+      context.fillStyle = vigGrd;
+      context.fillRect(scrollX, scrollY, scrollW, scrollH);
+    }
+
+    // ─── 9. 绢帛羽化微边 ───
     context.restore(); // 退出剪裁
 
-    // 绘制画轴金丝双线边框
-    context.strokeStyle = "rgba(251, 191, 36, 0.4)";
-    context.lineWidth = 1.5;
-    roundRect(context, scrollX, scrollY, scrollW, scrollH, 18);
+    context.strokeStyle = `rgba(251, 191, 36, ${0.20 * goldGlow})`;
+    context.lineWidth = 1.0;
+    roundRect(context, scrollX, scrollY, scrollW, scrollH, 20);
     context.stroke();
 
-    context.strokeStyle = "rgba(255, 255, 255, 0.12)";
-    context.lineWidth = 1;
-    roundRect(context, scrollX + 3.5, scrollY + 3.5, scrollW - 7, scrollH - 7, 15);
-    context.stroke();
-
-    // 画卷四角东方雅致暗纹
-    const cornerSize = 14;
-    context.strokeStyle = "rgba(251, 191, 36, 0.75)";
-    context.lineWidth = 2;
-    // 左上
-    context.beginPath();
-    context.moveTo(scrollX + 8, scrollY + 8 + cornerSize);
-    context.lineTo(scrollX + 8, scrollY + 8);
-    context.lineTo(scrollX + 8 + cornerSize, scrollY + 8);
-    context.stroke();
-    // 右上
-    context.beginPath();
-    context.moveTo(scrollX + scrollW - 8 - cornerSize, scrollY + 8);
-    context.lineTo(scrollX + scrollW - 8, scrollY + 8);
-    context.lineTo(scrollX + scrollW - 8, scrollY + 8 + cornerSize);
-    context.stroke();
-    // 左下
-    context.beginPath();
-    context.moveTo(scrollX + 8, scrollY + scrollH - 8 - cornerSize);
-    context.lineTo(scrollX + 8, scrollY + scrollH - 8);
-    context.lineTo(scrollX + 8 + cornerSize, scrollY + scrollH - 8);
-    context.stroke();
-    // 右下
-    context.beginPath();
-    context.moveTo(scrollX + scrollW - 8 - cornerSize, scrollY + scrollH - 8);
-    context.lineTo(scrollX + scrollW - 8, scrollY + scrollH - 8);
-    context.lineTo(scrollX + scrollW - 8, scrollY + scrollH - 8 - cornerSize);
+    context.strokeStyle = "rgba(255, 255, 255, 0.06)";
+    context.lineWidth = 0.5;
+    roundRect(context, scrollX + 2, scrollY + 2, scrollW - 4, scrollH - 4, 18);
     context.stroke();
 
     context.restore();
@@ -549,9 +673,6 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
   },
 };
 
-/**
- * 辅助绘制平滑圆角矩形路径
- */
 function roundRect(
   ctx: CanvasRenderingContext2D,
   x: number,

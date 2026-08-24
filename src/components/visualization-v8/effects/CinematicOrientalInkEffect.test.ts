@@ -38,6 +38,9 @@ describe("CinematicOrientalInkEffect (千里江山·流光墨韵)", () => {
       createRadialGradient: vi.fn(() => ({
         addColorStop: vi.fn(),
       })),
+      ellipse: vi.fn(),
+      rect: vi.fn(),
+      quadraticCurveTo: vi.fn(),
       fillStyle: "",
       strokeStyle: "",
       lineWidth: 1,
@@ -80,11 +83,10 @@ describe("CinematicOrientalInkEffect (千里江山·流光墨韵)", () => {
     expect(CinematicOrientalInkEffect.name).toBe("千里江山 · 流光墨韵");
     expect(CinematicOrientalInkEffect.category).toBe("space");
     expect(CinematicOrientalInkEffect.preferredEngine).toBe("canvas");
-    expect(CinematicOrientalInkEffect.parameters.length).toBeGreaterThanOrEqual(6);
+    expect(CinematicOrientalInkEffect.parameters.length).toBeGreaterThanOrEqual(5);
 
     const paramIds = CinematicOrientalInkEffect.parameters.map((p) => p.id);
     expect(paramIds).toContain("colorScheme");
-    expect(paramIds).toContain("godraysIntensity");
     expect(paramIds).toContain("particleCount");
     expect(paramIds).toContain("inkFlowSpeed");
     expect(paramIds).toContain("showPoetry");
@@ -94,16 +96,15 @@ describe("CinematicOrientalInkEffect (千里江山·流光墨韵)", () => {
   it("should initialize physical gold flake particles and volumetric shafts", () => {
     const state: CinematicInkState = renderContext.private?.state;
     expect(state).toBeDefined();
-    expect(state.particles.length).toBe(450);
-    expect(state.shafts.length).toBe(5);
-    expect(state.inkWaves.length).toBe(3);
+    expect(state.fireflies.length).toBe(450);
+    expect(state.clouds.length).toBe(3);
     expect(state.smoothedBass).toBe(0);
     expect(state.smoothedMid).toBe(0);
 
-    const firstParticle = state.particles[0];
+    const firstParticle = state.fireflies[0];
     expect(firstParticle.z).toBeGreaterThan(0.1);
     expect(firstParticle.z).toBeLessThanOrEqual(1.0);
-    expect(["gold", "platinum", "copper"]).toContain(firstParticle.colorType);
+    expect(["gold", "moonlight", "cinnabar"]).toContain(firstParticle.colorType);
   });
 
   it("should render frame with volumetric shafts, ink layers and gold flakes without errors", () => {

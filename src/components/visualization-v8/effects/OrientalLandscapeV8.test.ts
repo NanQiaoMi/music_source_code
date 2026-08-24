@@ -23,6 +23,12 @@ describe("OrientalLandscapeV8Effect", () => {
       arc: vi.fn(),
       arcTo: vi.fn(),
       ellipse: vi.fn(),
+      rect: vi.fn(),
+      quadraticCurveTo: vi.fn(),
+      translate: vi.fn(),
+      rotate: vi.fn(),
+      scale: vi.fn(),
+      fillText: vi.fn(),
       stroke: vi.fn(),
       fill: vi.fn(),
       fillRect: vi.fn(),
@@ -76,7 +82,8 @@ describe("OrientalLandscapeV8Effect", () => {
     expect(paramIds).toContain("lightRays");
     expect(paramIds).toContain("mountainBreath");
     expect(paramIds).toContain("waterRipple");
-    expect(paramIds).toContain("colorTheme");
+    expect(paramIds).toContain("goldGlow");
+    expect(paramIds).toContain("filmVignette");
   });
 
   it("should render frames without throwing errors", () => {
@@ -85,26 +92,14 @@ describe("OrientalLandscapeV8Effect", () => {
         lightRays: 1.0,
         mountainBreath: 1.0,
         waterRipple: 1.0,
-        scrollUnroll: 1.0,
-        colorTheme: "peacock",
-        filmGrain: 0.35,
+        goldGlow: 1.2,
+        filmVignette: 0.65,
       });
     }).not.toThrow();
 
     expect(context2d.save).toHaveBeenCalled();
     expect(context2d.restore).toHaveBeenCalled();
     expect(context2d.fillRect).toHaveBeenCalled();
-  });
-
-  it("should support sunset and silver color themes", () => {
-    expect(() => {
-      OrientalLandscapeV8Effect.render(mockCtx, mockAudioData, {
-        colorTheme: "sunset",
-      });
-      OrientalLandscapeV8Effect.render(mockCtx, mockAudioData, {
-        colorTheme: "silver",
-      });
-    }).not.toThrow();
   });
 
   it("should clean up cleanly in destroy", () => {
