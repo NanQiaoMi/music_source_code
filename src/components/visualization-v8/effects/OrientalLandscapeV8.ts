@@ -35,6 +35,16 @@ interface DustParticle {
   phase: number;
 }
 
+interface LakeMist {
+  x: number;
+  y: number;
+  vx: number;
+  radiusX: number;
+  radiusY: number;
+  alpha: number;
+  phase: number;
+}
+
 export const OrientalLandscapeV8Effect: EffectPlugin = {
   id: "oriental-landscape-v8",
   name: "青绿千里 · 电影画卷",
@@ -119,6 +129,7 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
       ripples: [] as Ripple[],
       particles: [] as DustParticle[],
       petals: [] as GoldenPetal[],
+      mists: [] as LakeMist[],
       lastRippleSpawn: 0,
       initParticles: false,
     };
@@ -141,6 +152,7 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
       ripples: [],
       particles: [],
       petals: [],
+      mists: [],
       lastRippleSpawn: 0,
       initParticles: false,
     };
@@ -154,16 +166,16 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
     const goldGlow = params?.goldGlow ?? 1.0;
     const filmVignette = params?.filmVignette ?? 0.65;
 
-    // 音频平滑处理 (Damping: 35 极平滑呼吸)
+    // 音频平滑处理 (Damping: 32)
     const rawBass = audioData.bass || 0;
     const rawMid = audioData.mid || 0;
     const rawTreble = audioData.treble || 0;
     const rawEnergy = rawBass * 0.4 + rawMid * 0.4 + rawTreble * 0.2;
 
-    priv.smoothBass += (rawBass - priv.smoothBass) * 0.035;
-    priv.smoothMid += (rawMid - priv.smoothMid) * 0.055;
-    priv.smoothTreble += (rawTreble - priv.smoothTreble) * 0.075;
-    priv.smoothEnergy += (rawEnergy - priv.smoothEnergy) * 0.045;
+    priv.smoothBass += (rawBass - priv.smoothBass) * 0.032;
+    priv.smoothMid += (rawMid - priv.smoothMid) * 0.052;
+    priv.smoothTreble += (rawTreble - priv.smoothTreble) * 0.072;
+    priv.smoothEnergy += (rawEnergy - priv.smoothEnergy) * 0.042;
 
     const t = priv.time * 0.045;
 
@@ -180,16 +192,16 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
     const scrollX = (width - scrollW) / 2;
     const scrollY = (height - scrollH) / 2;
     const waterY = scrollY + scrollH * 0.58;
-    const bottomY = scrollY + scrollH + 30;
+    const bottomY = scrollY + scrollH + 40;
 
     if (!priv.initParticles) {
       priv.particles = [];
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 45; i++) {
         priv.particles.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 0.2,
-          vy: -Math.random() * 0.3 - 0.08,
+          vx: (Math.random() - 0.5) * 0.22,
+          vy: -Math.random() * 0.32 - 0.08,
           size: Math.random() * 1.8 + 0.6,
           alpha: Math.random() * 0.45 + 0.15,
           phase: Math.random() * Math.PI * 2,
@@ -200,13 +212,25 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
         priv.petals.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 0.3 + 0.12,
-          vy: Math.random() * 0.25 + 0.12,
+          vx: (Math.random() - 0.5) * 0.28 + 0.12,
+          vy: Math.random() * 0.24 + 0.12,
           size: Math.random() * 3.5 + 1.8,
           alpha: Math.random() * 0.22 + 0.1,
           rotation: Math.random() * Math.PI * 2,
           vRot: (Math.random() - 0.5) * 0.02,
           aspect: 0.35 + Math.random() * 0.35,
+          phase: Math.random() * Math.PI * 2,
+        });
+      }
+      priv.mists = [];
+      for (let i = 0; i < 8; i++) {
+        priv.mists.push({
+          x: Math.random() * width,
+          y: waterY + (Math.random() - 0.5) * 30,
+          vx: (Math.random() - 0.5) * 0.15 + 0.05,
+          radiusX: Math.random() * 120 + 80,
+          radiusY: Math.random() * 25 + 15,
+          alpha: Math.random() * 0.08 + 0.04,
           phase: Math.random() * Math.PI * 2,
         });
       }
@@ -277,7 +301,7 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
     context.fillStyle = dawnGlow;
     context.fillRect(scrollX, scrollY, scrollW, scrollH);
 
-    // ─── 3. 6 重宋画《千里江山》水墨层峦 (通底闭合，无任何中间截断线) ───
+    // ─── 3. 6 重宋画《千里江山》水墨层峦 (通底自然晕染) ───
     const breathFactor = mountainBreath * priv.smoothBass;
     const midVibe = priv.smoothMid * 5;
 
@@ -301,7 +325,7 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
 
       const points: { x: number; y: number }[] = [];
       context.beginPath();
-      context.moveTo(scrollX, bottomY); // 底部闭合至画卷最底端
+      context.moveTo(scrollX, bottomY);
 
       const step = 4;
       for (let x = scrollX; x <= scrollX + scrollW; x += step) {
@@ -345,7 +369,7 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
     }
     context.globalAlpha = 1.0;
 
-    // ─── 4. 电影级斜向高斯体积丁达尔光柱 (Cinematic Volumetric God Rays) ───
+    // ─── 4. 全柔焦无硬边高斯体积丁达尔光束 (True Gaussian Soft God Rays) ───
     const rayStrength = lightRays * (0.55 + priv.smoothBass * 0.65 + priv.smoothEnergy * 0.25);
     if (rayStrength > 0.05) {
       context.save();
@@ -354,48 +378,30 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
       const lightOriginX = scrollX + scrollW * 0.16;
       const lightOriginY = scrollY - 20;
 
-      const rayConfigs = [
-        { angle: 0.29, spread: 0.045, intensity: 0.32 },
-        { angle: 0.36, spread: 0.055, intensity: 0.40 },
-        { angle: 0.44, spread: 0.065, intensity: 0.45 },
-        { angle: 0.52, spread: 0.055, intensity: 0.36 },
-        { angle: 0.60, spread: 0.045, intensity: 0.28 },
-      ];
-
+      const rayAngles = [0.29, 0.36, 0.44, 0.52, 0.60];
+      const rayWidths = [45, 60, 70, 55, 40];
+      const rayIntensities = [0.25, 0.35, 0.40, 0.32, 0.22];
       const rayLen = scrollH * 1.65;
 
-      for (let r = 0; r < rayConfigs.length; r++) {
-        const cfg = rayConfigs[r];
-        const baseAngle = Math.PI * cfg.angle + Math.sin(t * 0.3 + r * 1.1) * 0.025;
-        const spread = scrollW * cfg.spread;
-        const beamAlpha = cfg.intensity * rayStrength * 0.28;
+      for (let r = 0; r < rayAngles.length; r++) {
+        const baseAngle = Math.PI * rayAngles[r] + Math.sin(t * 0.3 + r * 1.1) * 0.025;
+        const beamHalfW = rayWidths[r] * (0.85 + priv.smoothBass * 0.25);
+        const beamAlpha = rayIntensities[r] * rayStrength * 0.30;
 
-        const rayGrd = context.createRadialGradient(
-          lightOriginX,
-          lightOriginY,
-          10,
-          lightOriginX + Math.cos(baseAngle) * rayLen * 0.55,
-          lightOriginY + Math.sin(baseAngle) * rayLen * 0.55,
-          rayLen
-        );
-        rayGrd.addColorStop(0, `rgba(254, 240, 138, ${beamAlpha * 1.3})`);
-        rayGrd.addColorStop(0.35, `rgba(251, 191, 36, ${beamAlpha * 0.8})`);
-        rayGrd.addColorStop(0.70, `rgba(56, 189, 248, ${beamAlpha * 0.2})`);
-        rayGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
+        context.save();
+        context.translate(lightOriginX, lightOriginY);
+        context.rotate(baseAngle - Math.PI / 2);
 
-        context.fillStyle = rayGrd;
-        context.beginPath();
-        context.moveTo(lightOriginX, lightOriginY);
-        context.lineTo(
-          lightOriginX + Math.cos(baseAngle - 0.08) * rayLen - spread,
-          lightOriginY + Math.sin(baseAngle - 0.08) * rayLen
-        );
-        context.lineTo(
-          lightOriginX + Math.cos(baseAngle + 0.08) * rayLen + spread,
-          lightOriginY + Math.sin(baseAngle + 0.08) * rayLen
-        );
-        context.closePath();
-        context.fill();
+        const beamXGrad = context.createLinearGradient(-beamHalfW, 0, beamHalfW, 0);
+        beamXGrad.addColorStop(0, "rgba(254, 240, 138, 0)");
+        beamXGrad.addColorStop(0.3, `rgba(254, 240, 138, ${beamAlpha * 0.5})`);
+        beamXGrad.addColorStop(0.5, `rgba(254, 240, 138, ${beamAlpha})`);
+        beamXGrad.addColorStop(0.7, `rgba(254, 240, 138, ${beamAlpha * 0.5})`);
+        beamXGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
+
+        context.fillStyle = beamXGrad;
+        context.fillRect(-beamHalfW, 0, beamHalfW * 2, rayLen);
+        context.restore();
       }
 
       const sourceBloom = context.createRadialGradient(
@@ -404,31 +410,34 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
         5,
         lightOriginX + scrollW * 0.15,
         lightOriginY + scrollH * 0.35,
-        scrollW * 0.45
+        scrollW * 0.50
       );
-      sourceBloom.addColorStop(0, `rgba(254, 240, 138, ${0.35 * rayStrength})`);
-      sourceBloom.addColorStop(0.4, `rgba(251, 191, 36, ${0.15 * rayStrength})`);
+      sourceBloom.addColorStop(0, `rgba(254, 240, 138, ${0.38 * rayStrength})`);
+      sourceBloom.addColorStop(0.35, `rgba(251, 191, 36, ${0.16 * rayStrength})`);
+      sourceBloom.addColorStop(0.70, `rgba(56, 189, 248, ${0.04 * rayStrength})`);
       sourceBloom.addColorStop(1, "rgba(0, 0, 0, 0)");
       context.fillStyle = sourceBloom;
       context.beginPath();
-      context.arc(lightOriginX + scrollW * 0.15, lightOriginY + scrollH * 0.35, scrollW * 0.45, 0, Math.PI * 2);
+      context.arc(lightOriginX + scrollW * 0.15, lightOriginY + scrollH * 0.35, scrollW * 0.50, 0, Math.PI * 2);
       context.fill();
 
       context.restore();
     }
 
-    // ─── 5. 水天融界 · 深潭水墨水体与倒影 ───
-    const waterH = scrollY + scrollH - waterY;
-    const waterGrad = context.createLinearGradient(scrollX, waterY, scrollX, scrollY + scrollH);
-    waterGrad.addColorStop(0, "rgba(3, 10, 14, 0.82)");
-    waterGrad.addColorStop(0.4, "rgba(4, 15, 20, 0.94)");
+    // ─── 5. 水天融界 · 无缝深潭水墨水体与倒影 (Seamless Lake Blend, Zero Horizontal Line) ───
+    const lakeFadeTop = waterY - 50;
+    const lakeFadeH = scrollY + scrollH - lakeFadeTop;
+    const waterGrad = context.createLinearGradient(scrollX, lakeFadeTop, scrollX, scrollY + scrollH);
+    waterGrad.addColorStop(0, "rgba(3, 10, 14, 0.0)");
+    waterGrad.addColorStop(0.30, "rgba(3, 10, 14, 0.70)");
+    waterGrad.addColorStop(0.65, "rgba(4, 15, 20, 0.94)");
     waterGrad.addColorStop(1, "rgba(2, 6, 9, 1.0)");
     context.fillStyle = waterGrad;
-    context.fillRect(scrollX, waterY, scrollW, waterH);
+    context.fillRect(scrollX, lakeFadeTop, scrollW, lakeFadeH);
 
     context.save();
     context.beginPath();
-    context.rect(scrollX, waterY, scrollW, waterH);
+    context.rect(scrollX, waterY, scrollW, scrollY + scrollH - waterY);
     context.clip();
 
     for (let l = mountainPaths.length - 1; l >= 2; l--) {
@@ -446,9 +455,30 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
       context.closePath();
 
       context.fillStyle = m.color;
-      context.globalAlpha = m.alpha * 0.20;
+      context.globalAlpha = m.alpha * 0.18;
       context.fill();
     }
+    context.restore();
+
+    // 烟波浩渺 · 湖面高斯流动薄雾
+    context.save();
+    context.globalCompositeOperation = "screen";
+    priv.mists.forEach((mist: LakeMist) => {
+      mist.x += mist.vx;
+      if (mist.x < scrollX - 100) mist.x = scrollX + scrollW + 80;
+      if (mist.x > scrollX + scrollW + 100) mist.x = scrollX - 80;
+
+      const dynamicAlpha = mist.alpha * (0.7 + Math.sin(t * 1.4 + mist.phase) * 0.3 + priv.smoothBass * 0.3);
+      const mistGrd = context.createRadialGradient(mist.x, mist.y, 5, mist.x, mist.y, mist.radiusX);
+      mistGrd.addColorStop(0, `rgba(180, 230, 225, ${dynamicAlpha})`);
+      mistGrd.addColorStop(0.5, `rgba(150, 215, 210, ${dynamicAlpha * 0.4})`);
+      mistGrd.addColorStop(1, "rgba(180, 230, 225, 0)");
+
+      context.fillStyle = mistGrd;
+      context.beginPath();
+      context.ellipse(mist.x, mist.y, mist.radiusX, mist.radiusY, 0, 0, Math.PI * 2);
+      context.fill();
+    });
     context.restore();
 
     // 有机微波碎金
@@ -456,7 +486,7 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
     context.globalCompositeOperation = "lighter";
     const waveCount = 10;
     for (let w = 0; w < waveCount; w++) {
-      const waveY = waterY + ((w + 1) / (waveCount + 1)) * waterH;
+      const waveY = waterY + ((w + 1) / (waveCount + 1)) * (scrollY + scrollH - waterY);
       const wavePhase = t * 1.1 + w * 0.75;
       const waveAlpha = (0.035 + Math.sin(wavePhase) * 0.02 + priv.smoothTreble * 0.05) * (w > 5 ? 0.4 : 1.0);
 
