@@ -593,12 +593,18 @@ export const OrientalLandscapeV8Effect: EffectPlugin = {
       context.fillRect(scrollX, scrollY, scrollW, scrollH);
     }
 
-    // ─── 9. 绢帛羽化微边 ───
+    // ─── 9. 绢帛双层御府装裱细金边 ───
     context.restore(); // 退出剪裁
 
-    context.strokeStyle = `rgba(251, 191, 36, ${0.22 * goldGlow})`;
+    context.strokeStyle = `rgba(251, 191, 36, ${0.25 * goldGlow})`;
     context.lineWidth = 1.0;
     roundRect(context, scrollX, scrollY, scrollW, scrollH, 16);
+    context.stroke();
+
+    // 内层微润细线 (0.5px 仿古制双宣嵌边)
+    context.strokeStyle = `rgba(254, 243, 199, ${0.10 * goldGlow})`;
+    context.lineWidth = 0.5;
+    roundRect(context, scrollX + 3, scrollY + 3, scrollW - 6, scrollH - 6, 14);
     context.stroke();
 
     context.restore();
@@ -766,7 +772,19 @@ function drawDetailedBoatWithLongReflection(
 ) {
   ctx.save();
 
-  // 1. 水面动态拉伸流金倒影 (Specular Elongated Reflection)
+  // 1. 船身微澜扩散同心水晕 (Gentle Boat Hull Water Echo Ripples)
+  for (let r = 0; r < 3; r++) {
+    const ripPhase = (t * 0.45 + r * 0.33) % 1.0;
+    const ripR = 5 + ripPhase * 26;
+    const ripAlpha = (1.0 - ripPhase) * 0.20 * (0.8 + smoothBass * 0.4);
+    ctx.strokeStyle = `rgba(130, 225, 215, ${ripAlpha})`;
+    ctx.lineWidth = 0.65;
+    ctx.beginPath();
+    ctx.ellipse(boatX, boatY + 2, ripR, ripR * 0.22, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // 1.1 水面动态拉伸流金倒影 (Specular Elongated Reflection)
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   const lanternX = boatX + 11;

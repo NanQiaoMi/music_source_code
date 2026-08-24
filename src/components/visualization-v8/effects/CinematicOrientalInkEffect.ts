@@ -648,14 +648,13 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
       ctx.closePath();
       ctx.fill();
 
-
       if (goldWireAlpha > 0.05) {
         ctx.save();
         ctx.globalCompositeOperation = "screen";
         ctx.strokeStyle = colors.goldWire;
-        ctx.lineWidth = 1.3 + state.smoothedTreble * 0.8;
+        ctx.lineWidth = 1.2 + state.smoothedTreble * 0.6;
         ctx.shadowColor = colors.goldGlint;
-        ctx.shadowBlur = 8 + state.smoothedTreble * 10;
+        ctx.shadowBlur = 7 + state.smoothedTreble * 8;
 
         const lightPulse = (Math.sin(state.timeAccumulator * 1.5 + layerIndex) + 1) * 0.5;
         ctx.globalAlpha = goldWireAlpha * (0.65 + state.smoothedTreble * 0.35 + lightPulse * 0.25);
@@ -703,7 +702,6 @@ export const CinematicOrientalInkEffect: EffectPlugin = {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
 
-    // 水面月影微光垂注 (Subtle Lunar Water Column Reflection)
     const moonReflectGrd = ctx.createRadialGradient(moonX, height * 0.88, 5, moonX, height * 0.88, 140);
     moonReflectGrd.addColorStop(0, "rgba(200, 245, 255, 0.12)");
     moonReflectGrd.addColorStop(0.5, "rgba(160, 225, 245, 0.05)");

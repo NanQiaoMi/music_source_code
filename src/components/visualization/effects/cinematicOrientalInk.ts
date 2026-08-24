@@ -632,15 +632,14 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
     ctx.closePath();
     ctx.fill();
 
-
-    // 3. 山脊受月光勾勒出灵动描金金线与阳面微光
+    // 2. 山脊受月光勾勒出灵动描金金线与金光波纹
     if (goldWireAlpha > 0.05) {
       ctx.save();
       ctx.globalCompositeOperation = "screen";
       ctx.strokeStyle = colors.goldWire;
-      ctx.lineWidth = 1.3 + smoothTreble * 0.8;
+      ctx.lineWidth = 1.2 + smoothTreble * 0.6;
       ctx.shadowColor = colors.goldGlint;
-      ctx.shadowBlur = 8 + smoothTreble * 10;
+      ctx.shadowBlur = 7 + smoothTreble * 8;
 
       const lightPulse = (Math.sin(timeAccum * 1.5 + layerIndex) + 1) * 0.5;
       ctx.globalAlpha = goldWireAlpha * (0.65 + smoothTreble * 0.35 + lightPulse * 0.25);
