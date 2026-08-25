@@ -705,12 +705,16 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
               currentY + Math.sin(prevX * ribbon.freq + ribbon.phase) * (ribbon.amplitude * 0.5);
             const cx = (prevX + sx) / 2;
             const cy = (prevY + sy) / 2;
-            c2d.quadraticCurveTo(
-              prevX,
-              prevY - currentThickness * 0.5,
-              cx,
-              cy - currentThickness * 0.5
-            );
+            if (typeof c2d.quadraticCurveTo === "function") {
+              c2d.quadraticCurveTo(
+                prevX,
+                prevY - currentThickness * 0.5,
+                cx,
+                cy - currentThickness * 0.5
+              );
+            } else {
+              c2d.lineTo(cx, cy - currentThickness * 0.5);
+            }
           }
         }
         c2d.lineTo(width, height);

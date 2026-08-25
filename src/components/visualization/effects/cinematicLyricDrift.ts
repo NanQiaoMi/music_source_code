@@ -514,12 +514,16 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
             currentY + Math.sin(prevX * ribbon.freq + ribbon.phase) * (ribbon.amplitude * 0.5);
           const cx = (prevX + sx) / 2;
           const cy = (prevY + sy) / 2;
-          ctx.quadraticCurveTo(
-            prevX,
-            prevY - currentThickness * 0.5,
-            cx,
-            cy - currentThickness * 0.5
-          );
+          if (typeof ctx.quadraticCurveTo === "function") {
+            ctx.quadraticCurveTo(
+              prevX,
+              prevY - currentThickness * 0.5,
+              cx,
+              cy - currentThickness * 0.5
+            );
+          } else {
+            ctx.lineTo(cx, cy - currentThickness * 0.5);
+          }
         }
       }
       ctx.lineTo(width, height);

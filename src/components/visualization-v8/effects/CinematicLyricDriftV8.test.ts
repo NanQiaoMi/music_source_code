@@ -21,6 +21,7 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
       arc: vi.fn(),
       moveTo: vi.fn(),
       lineTo: vi.fn(),
+      quadraticCurveTo: vi.fn(),
       closePath: vi.fn(),
       fill: vi.fn(),
       stroke: vi.fn(),
