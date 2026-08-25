@@ -795,12 +795,12 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { heroFontSize: v })}
                 />
                 <SettingSlider
-                  label="词组弹出节奏"
-                  value={effectSettings.cinematicLyricDrift.popSpeed ?? 1.2}
-                  min={0.5}
-                  max={2.5}
-                  step={0.1}
-                  onChange={(v) => updateEffectSettings("cinematicLyricDrift", { popSpeed: v })}
+                  label="焦点放大倍率"
+                  value={effectSettings.cinematicLyricDrift.focusScale ?? 1.3}
+                  min={1.1}
+                  max={1.6}
+                  step={0.05}
+                  onChange={(v) => updateEffectSettings("cinematicLyricDrift", { focusScale: v })}
                 />
                 <SettingSlider
                   label="宣纸肌理微粒"

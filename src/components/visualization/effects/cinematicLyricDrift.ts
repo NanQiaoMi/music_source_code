@@ -9,18 +9,6 @@ import { usePlayerStore } from "@/store/playerStore";
 // 1. Types & Data Structures
 // =========================================================================
 
-interface GoldSparkle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  alpha: number;
-  life: number;
-  maxLife: number;
-  color: string;
-}
-
 interface AmbientDustItem {
   x: number;
   y: number;
@@ -49,10 +37,11 @@ interface WordSegment {
   width: number;
   startRatio: number;
   endRatio: number;
-  popScale: number;
-  popY: number;
-  popAlpha: number;
-  popProgress: number;
+  popTriggerTime: number;
+  currentScale: number;
+  currentAlpha: number;
+  currentY: number;
+  depthZ: number;
   phaseOffset: number;
 }
 
@@ -68,10 +57,8 @@ interface ColorPalette {
   bgGradEnd: string;
   ambientAura: string;
   textUnsung: string;
-  textSung: string;
-  goldGradientStart: string;
-  goldGradientEnd: string;
-  activeGlow: string;
+  textPast: string;
+  textFocus: string;
   dustColor: string;
   orbColor: string;
 }
@@ -83,14 +70,12 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradStart: "#140c06",
     bgGradMid: "#090502",
     bgGradEnd: "#020101",
-    ambientAura: "rgba(255, 175, 95, 0.12)",
-    textUnsung: "rgba(255, 245, 230, 0.35)",
-    textSung: "#fffef9",
-    goldGradientStart: "#ffffff",
-    goldGradientEnd: "#ffd276",
-    activeGlow: "rgba(255, 195, 100, 0.55)",
-    dustColor: "rgba(255, 220, 160, 0.45)",
-    orbColor: "rgba(245, 160, 80, 0.06)",
+    ambientAura: "rgba(255, 175, 95, 0.1)",
+    textUnsung: "rgba(255, 245, 230, 0.2)",
+    textPast: "rgba(235, 220, 195, 0.4)",
+    textFocus: "#ffffff",
+    dustColor: "rgba(255, 220, 160, 0.4)",
+    orbColor: "rgba(245, 160, 80, 0.05)",
   },
   // 1: 青黛冷月 (Indigo Moonlit Mist)
   {
@@ -98,14 +83,12 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradStart: "#09101c",
     bgGradMid: "#040810",
     bgGradEnd: "#010204",
-    ambientAura: "rgba(140, 195, 255, 0.11)",
-    textUnsung: "rgba(225, 240, 255, 0.35)",
-    textSung: "#faffff",
-    goldGradientStart: "#ffffff",
-    goldGradientEnd: "#a8dcff",
-    activeGlow: "rgba(150, 215, 255, 0.55)",
-    dustColor: "rgba(200, 230, 255, 0.45)",
-    orbColor: "rgba(120, 185, 250, 0.06)",
+    ambientAura: "rgba(140, 195, 255, 0.09)",
+    textUnsung: "rgba(215, 235, 255, 0.2)",
+    textPast: "rgba(190, 220, 250, 0.4)",
+    textFocus: "#ffffff",
+    dustColor: "rgba(200, 230, 255, 0.4)",
+    orbColor: "rgba(120, 185, 250, 0.05)",
   },
   // 2: 暮染丹青 (Cinnabar Twilight)
   {
@@ -113,14 +96,12 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradStart: "#160812",
     bgGradMid: "#0a0308",
     bgGradEnd: "#020102",
-    ambientAura: "rgba(240, 140, 185, 0.12)",
-    textUnsung: "rgba(255, 230, 240, 0.35)",
-    textSung: "#fff6fa",
-    goldGradientStart: "#ffffff",
-    goldGradientEnd: "#ffb8d9",
-    activeGlow: "rgba(255, 160, 205, 0.55)",
-    dustColor: "rgba(255, 205, 225, 0.45)",
-    orbColor: "rgba(230, 120, 175, 0.06)",
+    ambientAura: "rgba(240, 140, 185, 0.1)",
+    textUnsung: "rgba(255, 225, 235, 0.2)",
+    textPast: "rgba(245, 205, 220, 0.4)",
+    textFocus: "#ffffff",
+    dustColor: "rgba(255, 205, 225, 0.4)",
+    orbColor: "rgba(230, 120, 175, 0.05)",
   },
   // 3: 苍山松烟 (Pine Smoke Jade)
   {
@@ -128,14 +109,12 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradStart: "#07150e",
     bgGradMid: "#030a07",
     bgGradEnd: "#010302",
-    ambientAura: "rgba(120, 215, 165, 0.11)",
-    textUnsung: "rgba(225, 255, 240, 0.35)",
-    textSung: "#f4fff9",
-    goldGradientStart: "#ffffff",
-    goldGradientEnd: "#b5ffd8",
-    activeGlow: "rgba(130, 230, 180, 0.55)",
-    dustColor: "rgba(185, 245, 215, 0.45)",
-    orbColor: "rgba(100, 200, 150, 0.06)",
+    ambientAura: "rgba(120, 215, 165, 0.09)",
+    textUnsung: "rgba(220, 255, 235, 0.2)",
+    textPast: "rgba(195, 240, 215, 0.4)",
+    textFocus: "#ffffff",
+    dustColor: "rgba(185, 245, 215, 0.4)",
+    orbColor: "rgba(100, 200, 150, 0.05)",
   },
   // 4: 极简焦墨 (Timeless Monochrome)
   {
@@ -143,14 +122,12 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradStart: "#111113",
     bgGradMid: "#060607",
     bgGradEnd: "#010101",
-    ambientAura: "rgba(220, 220, 230, 0.08)",
-    textUnsung: "rgba(255, 255, 255, 0.32)",
-    textSung: "#ffffff",
-    goldGradientStart: "#ffffff",
-    goldGradientEnd: "#d4d4dc",
-    activeGlow: "rgba(235, 235, 245, 0.5)",
-    dustColor: "rgba(235, 235, 245, 0.38)",
-    orbColor: "rgba(190, 190, 205, 0.05)",
+    ambientAura: "rgba(220, 220, 230, 0.07)",
+    textUnsung: "rgba(255, 255, 255, 0.18)",
+    textPast: "rgba(215, 215, 220, 0.38)",
+    textFocus: "#ffffff",
+    dustColor: "rgba(235, 235, 245, 0.35)",
+    orbColor: "rgba(190, 190, 205, 0.04)",
   },
 ];
 
@@ -173,11 +150,9 @@ let currentSegmentsCache: WordSegment[] = [];
 let previousSegmentsCache: WordSegment[] = [];
 let totalLineWidthCache = 0;
 let prevLineWidthCache = 0;
-let lineEntranceTimeCache = 0;
 let lineTransitionAlpha = 0;
 let prevLineFadeAlpha = 0;
 let breathAngle = 0;
-const goldSparkles: GoldSparkle[] = [];
 let smoothedProgressCache = 0;
 let lastReportedTimeCache = 0;
 let lastTimeUpdateMsCache = 0;
@@ -221,7 +196,7 @@ function segmentText(text: string): string[] {
       buffer = "";
     } else if (buffer.length >= 2 && i < chars.length - 1) {
       if (chars.length - i - 1 === 1) {
-        // 继续积累
+        // 合并
       } else {
         result.push(buffer);
         buffer = "";
@@ -256,10 +231,11 @@ function buildSegmentedLine(
       width: w,
       startRatio: 0,
       endRatio: 0,
-      popScale: 0.4,
-      popY: 30,
-      popAlpha: 0,
-      popProgress: 0,
+      popTriggerTime: -1,
+      currentScale: 0.7,
+      currentAlpha: 0,
+      currentY: 25,
+      depthZ: 0,
       phaseOffset: i * 0.45,
     });
     currentOffset += w;
@@ -336,14 +312,8 @@ function springEaseOut(t: number): number {
   return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
 }
 
-function easeOutCubic(t: number): number {
-  return 1 - Math.pow(1 - t, 3);
-}
-
-function getFilmGrainCanvas(): HTMLCanvasElement | null {
-  if (grainCanvasCache) return grainCanvasCache;
+function createFilmGrainCanvas(): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null;
-
   try {
     const canvas = document.createElement("canvas");
     canvas.width = 256;
@@ -374,7 +344,7 @@ function getFilmGrainCanvas(): HTMLCanvasElement | null {
   }
 }
 
-function renderKineticSegments(
+function render3DDepthSegments(
   ctx: CanvasRenderingContext2D,
   segments: WordSegment[],
   totalWidth: number,
@@ -389,6 +359,19 @@ function renderKineticSegments(
   if (!segments || segments.length === 0 || lineAlpha <= 0.001) return;
 
   const startX = centerX - totalWidth / 2;
+
+  const renderItems: Array<{
+    seg: WordSegment;
+    drawX: number;
+    drawY: number;
+    scale: number;
+    alpha: number;
+    rot: number;
+    depthZ: number;
+    isActive: boolean;
+    isPast: boolean;
+  }> = [];
+
   let runningX = startX;
 
   for (let i = 0; i < segments.length; i++) {
@@ -397,64 +380,59 @@ function renderKineticSegments(
     const isPast = currentLineProgress >= seg.endRatio;
     const isActive = currentLineProgress >= seg.startRatio && currentLineProgress < seg.endRatio;
 
-    const organicFloatY = Math.sin(time * 1.8 + seg.phaseOffset) * 2.2;
-    const organicRot = Math.sin(time * 1.2 + seg.phaseOffset * 0.8) * 0.015;
+    const organicFloatY = Math.sin(time * 1.6 + seg.phaseOffset) * 2.0;
+    const organicRot = Math.sin(time * 1.0 + seg.phaseOffset * 0.8) * 0.012;
 
-    const currentScale = isExiting ? seg.popScale * lineAlpha : seg.popScale;
-    const currentAlpha = seg.popAlpha * lineAlpha;
+    const currentScale = isExiting ? seg.currentScale * lineAlpha : seg.currentScale;
+    const currentAlpha = seg.currentAlpha * lineAlpha;
     const drawX = runningX + seg.width * 0.5;
-    const drawY = centerY + (isExiting ? -15 * (1 - lineAlpha) : seg.popY) + organicFloatY;
+    const drawY = centerY + (isExiting ? -18 * (1 - lineAlpha) : seg.currentY) + organicFloatY;
 
     if (currentAlpha > 0.001) {
-      ctx.save();
-      ctx.translate(drawX, drawY);
-      ctx.scale(currentScale, currentScale);
-      ctx.rotate(organicRot);
-
-      if (isActive) {
-        const segProgress =
-          (currentLineProgress - seg.startRatio) / Math.max(0.01, seg.endRatio - seg.startRatio);
-        const pulse = 1.0 + Math.sin(segProgress * Math.PI) * 0.35;
-
-        ctx.save();
-        const glowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 48 * pulse);
-        glowGrad.addColorStop(0, palette.activeGlow);
-        glowGrad.addColorStop(0.5, palette.activeGlow.replace(/[\d.]+\)$/, "0.15)"));
-        glowGrad.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = glowGrad;
-        ctx.beginPath();
-        ctx.arc(0, 0, 48 * pulse, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      ctx.globalAlpha = currentAlpha;
-
-      if (isPast) {
-        ctx.fillStyle = palette.textSung;
-        ctx.fillText(seg.text, 0, 0);
-      } else if (isActive) {
-        const segGrad = ctx.createLinearGradient(-seg.width * 0.5, -20, seg.width * 0.5, 20);
-        segGrad.addColorStop(0, palette.goldGradientStart);
-        segGrad.addColorStop(1, palette.goldGradientEnd);
-        ctx.fillStyle = segGrad;
-        ctx.fillText(seg.text, 0, 0);
-
-        ctx.save();
-        ctx.globalCompositeOperation = "source-atop";
-        ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
-        ctx.fillText(seg.text, 0, 0);
-        ctx.restore();
-      } else {
-        ctx.fillStyle = palette.textUnsung;
-        ctx.fillText(seg.text, 0, 0);
-      }
-
-      ctx.restore();
+      renderItems.push({
+        seg,
+        drawX,
+        drawY,
+        scale: currentScale,
+        alpha: currentAlpha,
+        rot: organicRot,
+        depthZ: seg.depthZ,
+        isActive,
+        isPast,
+      });
     }
 
     runningX += seg.width;
   }
+
+  // Back-to-Front 排序
+  renderItems.sort((a, b) => a.depthZ - b.depthZ);
+
+  ctx.save();
+  ctx.shadowBlur = 0; // 彻底去除发光
+
+  for (const item of renderItems) {
+    ctx.save();
+    ctx.translate(item.drawX, item.drawY);
+    ctx.scale(item.scale, item.scale);
+    ctx.rotate(item.rot);
+    ctx.globalAlpha = item.alpha;
+
+    if (item.isActive) {
+      ctx.fillStyle = palette.textFocus;
+      ctx.fillText(item.seg.text, 0, 0);
+    } else if (item.isPast) {
+      ctx.fillStyle = palette.textPast;
+      ctx.fillText(item.seg.text, 0, 0);
+    } else {
+      ctx.fillStyle = palette.textUnsung;
+      ctx.fillText(item.seg.text, 0, 0);
+    }
+
+    ctx.restore();
+  }
+
+  ctx.restore();
 }
 
 // =========================================================================
@@ -477,7 +455,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   const selectedFontFamily = FONT_STYLES[fontStyleIndex];
 
   const heroFontSize = Math.round(params?.heroFontSize ?? 42);
-  const popSpeed = params?.popSpeed ?? 1.2;
+  const focusScaleMultiplier = params?.focusScale ?? 1.3;
   const filmGrain = params?.filmGrain ?? 0.2;
   const breathingDepth = params?.breathingDepth ?? 1.0;
   const vignetteStrength = params?.vignetteStrength ?? 0.72;
@@ -594,20 +572,6 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
         isSinging = true;
         activeLine = curr.text;
         targetProgress = Math.min(1.0, Math.max(0.0, elapsed / Math.max(1.0, estimatedDuration)));
-
-        if (goldSparkles.length < 18 && Math.random() < 0.12) {
-          goldSparkles.push({
-            x: width * 0.5 + (Math.random() - 0.5) * (totalLineWidthCache * 0.7 || 200),
-            y: height * 0.52 + (Math.random() - 0.5) * 12,
-            vx: (Math.random() - 0.5) * 0.2,
-            vy: -0.2 - Math.random() * 0.25,
-            size: 0.8 + Math.random() * 1.4,
-            alpha: 0.85,
-            life: 0,
-            maxLife: 1.4 + Math.random() * 0.8,
-            color: palette.goldGradientEnd,
-          });
-        }
       }
     }
   }
@@ -619,7 +583,6 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
       prevLineFadeAlpha = lineTransitionAlpha;
     }
     currentLineTextCache = activeLine;
-    lineEntranceTimeCache = time * 0.001;
     lineTransitionAlpha = 0;
     smoothedProgressCache = targetProgress;
 
@@ -638,41 +601,54 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     }
   }
 
-  smoothedProgressCache += (targetProgress - smoothedProgressCache) * 0.25;
+  smoothedProgressCache += (targetProgress - smoothedProgressCache) * 0.28;
 
   const targetCurrentAlpha = isSinging ? 1.0 : 0.0;
   lineTransitionAlpha += (targetCurrentAlpha - lineTransitionAlpha) * 0.09;
   prevLineFadeAlpha += (0.0 - prevLineFadeAlpha) * 0.1;
 
-  // 词组弹簧更新
   if (currentSegmentsCache.length > 0) {
-    const entranceElapsed = Math.max(0, time * 0.001 - lineEntranceTimeCache);
-    const segCount = currentSegmentsCache.length;
-    const staggerDelay = 0.08 / popSpeed;
-    const singlePopDuration = 0.42 / popSpeed;
+    const lineProg = smoothedProgressCache;
+    const nowTimeSec = time * 0.001;
 
-    for (let i = 0; i < segCount; i++) {
+    for (let i = 0; i < currentSegmentsCache.length; i++) {
       const seg = currentSegmentsCache[i];
-      const segStartTime = i * staggerDelay;
-      const segLocalT = Math.max(
-        0,
-        Math.min(1.0, (entranceElapsed - segStartTime) / singlePopDuration)
-      );
 
-      seg.popProgress = segLocalT;
-      if (segLocalT <= 0) {
-        seg.popAlpha = 0;
-        seg.popScale = 0.5;
-        seg.popY = 24;
-      } else if (segLocalT >= 1.0) {
-        seg.popAlpha = 1.0;
-        seg.popScale = 1.0;
-        seg.popY = 0;
+      if (lineProg >= seg.startRatio && seg.popTriggerTime < 0) {
+        seg.popTriggerTime = nowTimeSec;
+      }
+
+      if (seg.popTriggerTime < 0) {
+        seg.currentScale = 0.7;
+        seg.currentAlpha = 0.0;
+        seg.currentY = 24;
+        seg.depthZ = 0;
       } else {
-        const springVal = springEaseOut(segLocalT);
-        seg.popScale = 0.5 + 0.5 * springVal;
-        seg.popY = 24 * (1 - easeOutCubic(segLocalT));
-        seg.popAlpha = Math.min(1.0, segLocalT * 2.2);
+        const timeSincePop = Math.max(0, nowTimeSec - seg.popTriggerTime);
+        const popDuration = 0.35;
+        const popRatio = Math.min(1.0, timeSincePop / popDuration);
+        const springFactor = springEaseOut(popRatio);
+
+        if (lineProg < seg.endRatio) {
+          seg.currentScale = 0.7 + (focusScaleMultiplier - 0.7) * springFactor;
+          seg.currentAlpha = Math.min(1.0, popRatio * 2.5);
+          seg.currentY = 24 * (1 - popRatio);
+          seg.depthZ = 100 + i;
+        } else {
+          const pastProg = Math.min(
+            1.0,
+            (lineProg - seg.endRatio) / Math.max(0.1, 1.0 - seg.endRatio)
+          );
+          const targetPastScale = 0.78;
+          const targetPastAlpha = 0.38;
+          const targetPastY = 8;
+
+          seg.currentScale =
+            focusScaleMultiplier - (focusScaleMultiplier - targetPastScale) * pastProg;
+          seg.currentAlpha = 1.0 - (1.0 - targetPastAlpha) * pastProg;
+          seg.currentY = targetPastY * pastProg;
+          seg.depthZ = 10 + i;
+        }
       }
     }
   }
@@ -695,7 +671,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   ctx.save();
   ctx.globalCompositeOperation = "screen";
   const auraRadius = width * 0.42 * auraBreathFactor;
-  const auraAlpha = 0.06 + totalEnergy * 0.07;
+  const auraAlpha = 0.05 + totalEnergy * 0.06;
   const auraGrad = ctx.createRadialGradient(
     width * 0.5,
     height * 0.52,
@@ -765,31 +741,6 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     ctx.restore();
   }
 
-  if (goldSparkles.length > 0) {
-    ctx.save();
-    ctx.globalCompositeOperation = "screen";
-    for (let i = goldSparkles.length - 1; i >= 0; i--) {
-      const drop = goldSparkles[i];
-      drop.life += 0.016;
-      drop.x += drop.vx;
-      drop.y += drop.vy;
-
-      const progress = drop.life / drop.maxLife;
-      if (progress >= 1.0) {
-        goldSparkles.splice(i, 1);
-        continue;
-      }
-
-      const dropAlpha = drop.alpha * (1.0 - progress);
-      ctx.fillStyle = drop.color;
-      ctx.globalAlpha = dropAlpha;
-      ctx.beginPath();
-      ctx.arc(drop.x, drop.y, drop.size * (1.0 - progress * 0.3), 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
   const heroY = height * 0.52;
   const heroX = width * 0.5;
 
@@ -799,7 +750,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   ctx.font = `500 ${heroFontSize}px ${selectedFontFamily}`;
 
   if (prevLineFadeAlpha > 0.005 && previousSegmentsCache.length > 0) {
-    renderKineticSegments(
+    render3DDepthSegments(
       ctx,
       previousSegmentsCache,
       prevLineWidthCache,
@@ -814,7 +765,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   }
 
   if (lineTransitionAlpha > 0.005 && currentSegmentsCache.length > 0) {
-    renderKineticSegments(
+    render3DDepthSegments(
       ctx,
       currentSegmentsCache,
       totalLineWidthCache,
@@ -830,7 +781,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
 
   ctx.restore();
 
-  const grainCanvas = getFilmGrainCanvas();
+  const grainCanvas = createFilmGrainCanvas();
   if (filmGrain > 0.05 && grainCanvas) {
     ctx.save();
     ctx.globalCompositeOperation = "overlay";
