@@ -15,18 +15,6 @@ import { usePlayerStore } from "@/store/playerStore";
 // 1. Types & Data Structures
 // =========================================================================
 
-export interface LyricStardustParticle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  alpha: number;
-  maxLife: number;
-  life: number;
-  color: string;
-}
-
 export interface AmbientFloatingDust {
   x: number;
   y: number;
@@ -38,7 +26,7 @@ export interface AmbientFloatingDust {
   freq: number;
 }
 
-export interface SoftBokehOrb {
+export interface SoftAtmosphereOrb {
   x: number;
   y: number;
   baseRadius: number;
@@ -48,7 +36,6 @@ export interface SoftBokehOrb {
   baseAlpha: number;
   phase: number;
   speed: number;
-  colorType: "warm" | "cool" | "gold";
 }
 
 export interface ParsedLrcLine {
@@ -57,18 +44,18 @@ export interface ParsedLrcLine {
 }
 
 export interface CinematicLyricDriftState {
-  bokehOrbs: SoftBokehOrb[];
+  atmosphereOrbs: SoftAtmosphereOrb[];
   ambientDust: AmbientFloatingDust[];
-  stardustParticles: LyricStardustParticle[];
   parsedLyrics: ParsedLrcLine[];
   lastRawLyrics: string;
-  activeLine: string;
-  prevLine: string;
-  nextLine: string;
-  lineProgress: number;
-  lineAlpha: number;
-  contextAlpha: number;
+  // 歌词平滑换行过渡
+  currentLineText: string;
+  previousLineText: string;
+  currentLineProgress: number;
+  lineTransitionAlpha: number; // 0 -> 1 for current line
+  prevLineFadeAlpha: number; // 1 -> 0 for previous line
   isSinging: boolean;
+  // 音频与呼吸
   smoothedBass: number;
   smoothedMid: number;
   smoothedTreble: number;
@@ -79,7 +66,7 @@ export interface CinematicLyricDriftState {
 }
 
 // =========================================================================
-// 2. Color Palettes (Refined & Luxurious)
+// 2. High-End Editorial Color Palettes
 // =========================================================================
 
 export interface ColorPalette {
@@ -87,97 +74,79 @@ export interface ColorPalette {
   bgGradStart: string;
   bgGradMid: string;
   bgGradEnd: string;
-  primaryGlow: string;
-  heroText: string;
-  heroTextActive: string;
-  contextText: string;
-  bokehColorA: string;
-  bokehColorB: string;
+  ambientAura: string;
+  textUnsung: string;
+  textSung: string;
+  textActiveGlow: string;
   dustColor: string;
-  stardustColor: string;
-  haloColor: string;
+  orbColor: string;
 }
 
 const COLOR_PALETTES: ColorPalette[] = [
-  // 0: 暮色琥珀 (Sunset Amber - Warm 35mm Velvet Cinema)
+  // 0: 暖金午夜 (Warm Golden Midnight - High-End Acoustic)
   {
-    name: "暮色琥珀",
-    bgGradStart: "#120904",
-    bgGradMid: "#090502",
-    bgGradEnd: "#030201",
-    primaryGlow: "rgba(240, 160, 80, 0.18)",
-    heroText: "#fdf8f2",
-    heroTextActive: "#fff9f0",
-    contextText: "rgba(220, 180, 140, 0.35)",
-    bokehColorA: "rgba(230, 140, 60, 0.12)",
-    bokehColorB: "rgba(180, 90, 40, 0.08)",
-    dustColor: "rgba(255, 210, 150, 0.55)",
-    stardustColor: "rgba(255, 225, 170, 0.85)",
-    haloColor: "rgba(240, 150, 70, 0.06)",
+    name: "暖金午夜",
+    bgGradStart: "#140b05",
+    bgGradMid: "#0a0603",
+    bgGradEnd: "#040201",
+    ambientAura: "rgba(255, 175, 95, 0.12)",
+    textUnsung: "rgba(240, 220, 195, 0.38)",
+    textSung: "#fffdf9",
+    textActiveGlow: "rgba(255, 190, 110, 0.6)",
+    dustColor: "rgba(255, 215, 160, 0.45)",
+    orbColor: "rgba(245, 160, 80, 0.07)",
   },
-  // 1: 月白冷雾 (Moonlight Mist - Serene & Poetic)
+  // 1: 冰川月华 (Glacier Moonlight - Pure Nordic Ethereal)
   {
-    name: "月白冷雾",
-    bgGradStart: "#080e1a",
+    name: "冰川月华",
+    bgGradStart: "#090f1a",
     bgGradMid: "#04070d",
-    bgGradEnd: "#010204",
-    primaryGlow: "rgba(140, 190, 255, 0.16)",
-    heroText: "#f5f9ff",
-    heroTextActive: "#ffffff",
-    contextText: "rgba(160, 195, 235, 0.32)",
-    bokehColorA: "rgba(120, 180, 240, 0.12)",
-    bokehColorB: "rgba(70, 120, 190, 0.08)",
-    dustColor: "rgba(190, 225, 255, 0.55)",
-    stardustColor: "rgba(220, 240, 255, 0.85)",
-    haloColor: "rgba(100, 170, 255, 0.05)",
+    bgGradEnd: "#010306",
+    ambientAura: "rgba(140, 195, 255, 0.11)",
+    textUnsung: "rgba(185, 215, 245, 0.36)",
+    textSung: "#faffff",
+    textActiveGlow: "rgba(150, 215, 255, 0.6)",
+    dustColor: "rgba(200, 230, 255, 0.45)",
+    orbColor: "rgba(120, 185, 250, 0.06)",
   },
-  // 2: 暮樱晚霞 (Sakura Twilight - Romantic & Tender)
+  // 2: 暮色幽粉 (Dusk Rose - Tender & Emotional)
   {
-    name: "暮樱晚霞",
-    bgGradStart: "#140813",
-    bgGradMid: "#0a0309",
+    name: "暮色幽粉",
+    bgGradStart: "#150912",
+    bgGradMid: "#090308",
     bgGradEnd: "#030103",
-    primaryGlow: "rgba(235, 130, 180, 0.18)",
-    heroText: "#fff4f9",
-    heroTextActive: "#ffffff",
-    contextText: "rgba(230, 160, 195, 0.35)",
-    bokehColorA: "rgba(220, 110, 160, 0.12)",
-    bokehColorB: "rgba(160, 70, 130, 0.08)",
-    dustColor: "rgba(255, 195, 220, 0.55)",
-    stardustColor: "rgba(255, 220, 235, 0.85)",
-    haloColor: "rgba(220, 100, 170, 0.06)",
+    ambientAura: "rgba(240, 140, 185, 0.12)",
+    textUnsung: "rgba(245, 200, 220, 0.38)",
+    textSung: "#fff6fa",
+    textActiveGlow: "rgba(255, 160, 205, 0.6)",
+    dustColor: "rgba(255, 205, 225, 0.45)",
+    orbColor: "rgba(230, 120, 175, 0.07)",
   },
-  // 3: 薄荷晨曦 (Morning Sage - Calm & Fresh Lo-Fi)
+  // 3: 晨雾苍翠 (Morning Mist Sage - Organic Clean)
   {
-    name: "薄荷晨曦",
-    bgGradStart: "#06130d",
-    bgGradMid: "#020906",
-    bgGradEnd: "#010302",
-    primaryGlow: "rgba(110, 210, 160, 0.16)",
-    heroText: "#f2fff8",
-    heroTextActive: "#ffffff",
-    contextText: "rgba(150, 215, 185, 0.32)",
-    bokehColorA: "rgba(90, 190, 140, 0.12)",
-    bokehColorB: "rgba(50, 130, 100, 0.08)",
-    dustColor: "rgba(170, 240, 205, 0.55)",
-    stardustColor: "rgba(210, 255, 235, 0.85)",
-    haloColor: "rgba(80, 200, 140, 0.05)",
+    name: "晨雾苍翠",
+    bgGradStart: "#07140e",
+    bgGradMid: "#030906",
+    bgGradEnd: "#010403",
+    ambientAura: "rgba(120, 215, 165, 0.11)",
+    textUnsung: "rgba(185, 235, 210, 0.36)",
+    textSung: "#f4fff9",
+    textActiveGlow: "rgba(130, 230, 180, 0.6)",
+    dustColor: "rgba(185, 245, 215, 0.45)",
+    orbColor: "rgba(100, 200, 150, 0.06)",
   },
-  // 4: 黑白胶片 (Vintage Noir - Pure Film Monochrome)
+  // 4: 经典胶片 (Classic 35mm Monochrome - Timeless Noir)
   {
-    name: "黑白胶片",
-    bgGradStart: "#0e0e10",
-    bgGradMid: "#060607",
+    name: "经典胶片",
+    bgGradStart: "#101012",
+    bgGradMid: "#070708",
     bgGradEnd: "#020202",
-    primaryGlow: "rgba(220, 220, 230, 0.12)",
-    heroText: "#fbfbfb",
-    heroTextActive: "#ffffff",
-    contextText: "rgba(180, 180, 190, 0.28)",
-    bokehColorA: "rgba(180, 180, 190, 0.09)",
-    bokehColorB: "rgba(120, 120, 130, 0.06)",
-    dustColor: "rgba(230, 230, 240, 0.45)",
-    stardustColor: "rgba(250, 250, 255, 0.8)",
-    haloColor: "rgba(200, 200, 210, 0.04)",
+    ambientAura: "rgba(220, 220, 230, 0.09)",
+    textUnsung: "rgba(210, 210, 215, 0.35)",
+    textSung: "#ffffff",
+    textActiveGlow: "rgba(230, 230, 240, 0.5)",
+    dustColor: "rgba(235, 235, 245, 0.4)",
+    orbColor: "rgba(190, 190, 205, 0.05)",
   },
 ];
 
@@ -188,7 +157,6 @@ const COLOR_PALETTES: ColorPalette[] = [
 function isMetadataLine(text: string): boolean {
   const t = text.trim();
   if (!t) return true;
-  // 严格过滤各类制作人/作词/编曲/录音等元数据
   return (
     /^(作词|作曲|编曲|制作|混音|录音|母带|吉他|贝斯|鼓手|和声|监制|企划|文案|出品|发行|提供|翻唱|原唱|统筹|OP|SP|Written|Composed|Arranged|Produced|Mixed|Mastered|Vocals|Guitar|Bass|Drums|Engineer|Publisher|Record)[\s:：]/i.test(
       t
@@ -256,12 +224,80 @@ function createFilmGrainCanvas(): HTMLCanvasElement | null {
       data[i] = val;
       data[i + 1] = val;
       data[i + 2] = val;
-      data[i + 3] = Math.floor(Math.random() * 28); // 细腻胶片噪点
+      data[i + 3] = Math.floor(Math.random() * 24); // 极细腻超微胶片
     }
     ctx.putImageData(imgData, 0, 0);
     return canvas;
   } catch {
     return null;
+  }
+}
+
+/**
+ * 绘制拥有极致字间距（Tracking）与现代人文排版的高级中文字符串
+ */
+function drawSpacedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  centerX: number,
+  centerY: number,
+  letterSpacing: number,
+  progress: number,
+  palette: ColorPalette,
+  alpha: number
+) {
+  if (!text || alpha <= 0.001) return;
+
+  const chars = Array.from(text);
+  const charWidths: number[] = [];
+  let totalWidth = 0;
+
+  for (let i = 0; i < chars.length; i++) {
+    const w = ctx.measureText(chars[i]).width;
+    charWidths.push(w);
+    totalWidth += w;
+    if (i < chars.length - 1) {
+      totalWidth += letterSpacing;
+    }
+  }
+
+  let startX = centerX - totalWidth / 2;
+  const activeCharIndex = Math.min(chars.length - 1, Math.floor(progress * chars.length));
+
+  for (let i = 0; i < chars.length; i++) {
+    const char = chars[i];
+    const w = charWidths[i];
+    const charCenterX = startX + w / 2;
+
+    ctx.save();
+    if (i < activeCharIndex) {
+      // 已唱过部分：温润微亮纯白
+      ctx.fillStyle = palette.textSung;
+      ctx.shadowColor = palette.ambientAura;
+      ctx.shadowBlur = 8;
+      ctx.fillText(char, charCenterX, centerY);
+    } else if (i === activeCharIndex && progress > 0) {
+      // 当前正唱到的字符：高贵流光发亮 (Active Hero Char)
+      ctx.fillStyle = palette.textSung;
+      ctx.shadowColor = palette.textActiveGlow;
+      ctx.shadowBlur = 18;
+      ctx.fillText(char, charCenterX, centerY);
+
+      // 额外的微色散层次
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.fillStyle = palette.textActiveGlow;
+      ctx.fillText(char, charCenterX, centerY);
+      ctx.restore();
+    } else {
+      // 未唱部分：优雅高级半透明灰白
+      ctx.fillStyle = palette.textUnsung;
+      ctx.shadowBlur = 0;
+      ctx.fillText(char, charCenterX, centerY);
+    }
+    ctx.restore();
+
+    startX += w + letterSpacing;
   }
 }
 
@@ -273,21 +309,21 @@ const PARAMETERS: EffectParameterDefinition[] = [
   // Basic Mode
   {
     id: "colorScheme",
-    name: "电影影调",
+    name: "电影调色",
     type: "select",
     mode: "basic",
     default: 0,
     options: [
-      { label: "暮色琥珀 (Sunset Amber)", value: 0 },
-      { label: "月白冷雾 (Moonlight Mist)", value: 1 },
-      { label: "暮樱晚霞 (Sakura Twilight)", value: 2 },
-      { label: "薄荷晨曦 (Morning Sage)", value: 3 },
-      { label: "黑白胶片 (Vintage Noir)", value: 4 },
+      { label: "暖金午夜 (Warm Golden Midnight)", value: 0 },
+      { label: "冰川月华 (Glacier Moonlight)", value: 1 },
+      { label: "暮色幽粉 (Dusk Rose)", value: 2 },
+      { label: "晨雾苍翠 (Morning Mist Sage)", value: 3 },
+      { label: "经典胶片 (Classic 35mm Noir)", value: 4 },
     ],
   },
   {
     id: "glowIntensity",
-    name: "环境微光呼吸感",
+    name: "光晕呼吸感",
     type: "number",
     mode: "basic",
     min: 0.2,
@@ -297,21 +333,23 @@ const PARAMETERS: EffectParameterDefinition[] = [
   },
   {
     id: "heroFontSize",
-    name: "歌词字号大小",
+    name: "歌词字号",
     type: "number",
     mode: "basic",
-    min: 22,
-    max: 38,
+    min: 24,
+    max: 42,
     step: 1,
-    default: 28,
+    default: 32,
   },
-  // Professional Mode
   {
-    id: "showContextLines",
-    name: "显示上下句景深",
-    type: "boolean",
+    id: "letterSpacing",
+    name: "高级字间距",
+    type: "number",
     mode: "professional",
-    default: true,
+    min: 1,
+    max: 12,
+    step: 0.5,
+    default: 5.0,
   },
   {
     id: "filmGrain",
@@ -321,17 +359,7 @@ const PARAMETERS: EffectParameterDefinition[] = [
     min: 0,
     max: 1.0,
     step: 0.05,
-    default: 0.3,
-  },
-  {
-    id: "chromaticAberration",
-    name: "镜头微色散",
-    type: "number",
-    mode: "professional",
-    min: 0,
-    max: 1.5,
-    step: 0.05,
-    default: 0.6,
+    default: 0.25,
   },
   {
     id: "breathingDepth",
@@ -343,16 +371,15 @@ const PARAMETERS: EffectParameterDefinition[] = [
     step: 0.1,
     default: 1.0,
   },
-  // Expert Mode
   {
     id: "vignetteStrength",
-    name: "电影暗角深度",
+    name: "暗角沉浸感",
     type: "number",
     mode: "expert",
     min: 0,
     max: 1.0,
     step: 0.05,
-    default: 0.68,
+    default: 0.7,
   },
 ];
 
@@ -365,7 +392,7 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
   name: "温光浮字 · 电影感",
   category: "particles",
   description:
-    "专为温柔慢歌设计的电影级诗意歌词可视化，主句光影流转、景深呼吸、星尘解构，无歌词时呈现纯粹高级的氛围背景",
+    "专为温柔慢歌打造的极简画册级歌词可视化，现代人文排版、字间距美学、温润流光、无歌词时呈现纯粹高级的静谧背景",
   preferredEngine: "canvas",
   parameters: PARAMETERS,
 
@@ -373,53 +400,50 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     const width = ctx.width || 1280;
     const height = ctx.height || 720;
 
-    // 1. 生成极柔和的大光圈背景微光晕 (Soft Bokeh Orbs - 极度克制，18~24 个，柔焦无硬边)
-    const bokehOrbs: SoftBokehOrb[] = [];
-    const orbCount = 20;
+    // 1. 极其克制的极柔背景大光晕 (8~12 个，无硬边界)
+    const atmosphereOrbs: SoftAtmosphereOrb[] = [];
+    const orbCount = 12;
     for (let i = 0; i < orbCount; i++) {
-      const baseRadius = 25 + Math.random() * 55;
-      bokehOrbs.push({
+      const baseRadius = 40 + Math.random() * 80;
+      atmosphereOrbs.push({
         x: Math.random() * width,
         y: Math.random() * height,
         baseRadius,
         currentRadius: baseRadius,
-        vx: (Math.random() - 0.5) * 0.12,
-        vy: -0.06 - Math.random() * 0.14,
-        baseAlpha: 0.04 + Math.random() * 0.12,
+        vx: (Math.random() - 0.5) * 0.08,
+        vy: -0.04 - Math.random() * 0.08,
+        baseAlpha: 0.03 + Math.random() * 0.07,
         phase: Math.random() * Math.PI * 2,
-        speed: 0.25 + Math.random() * 0.5,
-        colorType: Math.random() > 0.5 ? "warm" : "cool",
+        speed: 0.2 + Math.random() * 0.4,
       });
     }
 
-    // 2. 生成空气悬浮微尘 (Fine Sunlit Dust Flakes)
+    // 2. 空气极细悬浮光尘 (Fine Atmosphere Dust)
     const ambientDust: AmbientFloatingDust[] = [];
-    const dustCount = 110;
+    const dustCount = 80;
     for (let i = 0; i < dustCount; i++) {
       ambientDust.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        size: 0.7 + Math.random() * 1.5,
-        vx: (Math.random() - 0.5) * 0.15,
-        vy: -0.08 - Math.random() * 0.18,
-        baseAlpha: 0.15 + Math.random() * 0.45,
+        size: 0.6 + Math.random() * 1.2,
+        vx: (Math.random() - 0.5) * 0.1,
+        vy: -0.05 - Math.random() * 0.12,
+        baseAlpha: 0.12 + Math.random() * 0.35,
         phase: Math.random() * Math.PI * 2,
-        freq: 0.5 + Math.random() * 1.5,
+        freq: 0.4 + Math.random() * 1.2,
       });
     }
 
     const state: CinematicLyricDriftState = {
-      bokehOrbs,
+      atmosphereOrbs,
       ambientDust,
-      stardustParticles: [],
       parsedLyrics: [],
       lastRawLyrics: "",
-      activeLine: "",
-      prevLine: "",
-      nextLine: "",
-      lineProgress: 0,
-      lineAlpha: 0,
-      contextAlpha: 0,
+      currentLineText: "",
+      previousLineText: "",
+      currentLineProgress: 0,
+      lineTransitionAlpha: 0,
+      prevLineFadeAlpha: 0,
       isSinging: false,
       smoothedBass: 0,
       smoothedMid: 0,
@@ -441,7 +465,7 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     const height = ctx.height;
     const deltaTime = Math.min(ctx.deltaTime || 0.016, 0.1);
 
-    if (!ctx.private || !ctx.private.bokehOrbs) {
+    if (!ctx.private || !ctx.private.atmosphereOrbs) {
       CinematicLyricDriftV8Effect.init(ctx);
     }
     const state = ctx.private as CinematicLyricDriftState;
@@ -456,15 +480,14 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     const palette = COLOR_PALETTES[schemeIndex];
 
     const glowIntensity = params.glowIntensity ?? 1.0;
-    const heroFontSize = params.heroFontSize ?? 28;
-    const showContextLines = params.showContextLines !== 0 && params.showContextLines !== false;
-    const filmGrain = params.filmGrain ?? 0.3;
-    const chromaticAberration = params.chromaticAberration ?? 0.6;
+    const heroFontSize = params.heroFontSize ?? 32;
+    const letterSpacing = params.letterSpacing ?? 5.0;
+    const filmGrain = params.filmGrain ?? 0.25;
     const breathingDepth = params.breathingDepth ?? 1.0;
-    const vignetteStrength = params.vignetteStrength ?? 0.68;
+    const vignetteStrength = params.vignetteStrength ?? 0.7;
 
     // -------------------------------------------------------------
-    // 2. 音频数据平滑 & 有机呼吸节律计算
+    // 2. 音频数据平滑 & 慢速有机呼吸
     // -------------------------------------------------------------
     let rawBass = audioData.bass || 0;
     let rawMid = audioData.mid || 0;
@@ -483,7 +506,7 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
       rawTreble = Math.max(rawTreble, tSum / (32 * 255));
     }
 
-    const smoothFactor = 0.07;
+    const smoothFactor = 0.06;
     state.smoothedBass += (rawBass - state.smoothedBass) * smoothFactor;
     state.smoothedMid += (rawMid - state.smoothedMid) * smoothFactor;
     state.smoothedTreble += (rawTreble - state.smoothedTreble) * smoothFactor;
@@ -492,15 +515,15 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     state.smoothedEnergy += (totalEnergy - state.smoothedEnergy) * smoothFactor;
 
     state.timeAccumulator += deltaTime;
-    // 呼吸周期：约 5.2 秒一个深度呼吸周期
+    // 慢歌呼吸周期：约 6 秒一个柔和呼吸
     state.breathPhase =
-      (state.breathPhase + deltaTime * (0.5 + state.smoothedEnergy * 0.5) * breathingDepth) %
+      (state.breathPhase + deltaTime * (0.45 + state.smoothedEnergy * 0.4) * breathingDepth) %
       (Math.PI * 2);
     const breathSin = Math.sin(state.breathPhase);
-    const breathFactor = 1.0 + breathSin * 0.06 * breathingDepth + state.smoothedBass * 0.12;
+    const breathFactor = 1.0 + breathSin * 0.05 * breathingDepth + state.smoothedBass * 0.08;
 
     // -------------------------------------------------------------
-    // 3. 歌词状态精准解析（严格排除所有元数据，无词时纯净优美背景）
+    // 3. 歌词状态精准检测（严格过滤元数据，单行纯净极简呈现）
     // -------------------------------------------------------------
     const audioState = useAudioStore.getState();
     const playerState = usePlayerStore.getState();
@@ -512,11 +535,11 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     if (rawLyrics !== state.lastRawLyrics) {
       state.lastRawLyrics = rawLyrics;
       state.parsedLyrics = parseLrc(rawLyrics);
+      state.currentLineText = "";
+      state.previousLineText = "";
     }
 
     let activeLine = "";
-    let prevLine = "";
-    let nextLine = "";
     let lineProgress = 0;
     let isSinging = false;
 
@@ -535,65 +558,46 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
         const next = state.parsedLyrics[activeIdx + 1];
         const lineDuration = next ? Math.max(1.2, next.time - curr.time) : 5.0;
         const elapsed = currentTime - curr.time;
-
-        // 根据字数智能估算演唱持续时长（中文每字约 0.35s，最少 2.2s）
         const estimatedDuration = Math.min(lineDuration, Math.max(2.2, curr.text.length * 0.36));
 
-        // 仅在真实演唱区间内（加上 0.8s 尾韵淡出）判定为正在演唱
         if (elapsed >= 0 && elapsed <= estimatedDuration + 0.8) {
           isSinging = true;
           activeLine = curr.text;
           lineProgress = Math.min(1.0, Math.max(0.0, elapsed / Math.max(1.0, estimatedDuration)));
-
-          // 提取上下文供景深排版
-          if (activeIdx > 0) {
-            prevLine = state.parsedLyrics[activeIdx - 1].text;
-          }
-          if (next) {
-            nextLine = next.text;
-          }
-
-          // 在演唱时，偶尔从歌词文字周围析出极细腻的星尘微粒（Stardust Embers）
-          if (state.stardustParticles.length < 24 && Math.random() < 0.2) {
-            state.stardustParticles.push({
-              x: width * 0.5 + (Math.random() - 0.5) * (curr.text.length * heroFontSize * 0.9),
-              y: height * 0.54 + (Math.random() - 0.5) * 20,
-              vx: (Math.random() - 0.5) * 0.3,
-              vy: -0.3 - Math.random() * 0.4,
-              size: 0.8 + Math.random() * 1.6,
-              alpha: 0.7 + Math.random() * 0.3,
-              life: 0,
-              maxLife: 1.8 + Math.random() * 1.2,
-              color: palette.stardustColor,
-            });
-          }
         }
       }
     }
 
-    state.activeLine = activeLine;
-    state.prevLine = prevLine;
-    state.nextLine = nextLine;
-    state.lineProgress = lineProgress;
+    // 歌词平滑换行过渡处理
+    if (activeLine !== state.currentLineText) {
+      if (state.currentLineText) {
+        state.previousLineText = state.currentLineText;
+        state.prevLineFadeAlpha = state.lineTransitionAlpha;
+      }
+      state.currentLineText = activeLine;
+      state.lineTransitionAlpha = 0;
+    }
+
+    state.currentLineProgress = lineProgress;
     state.isSinging = isSinging;
 
-    // 优雅的淡入淡出插值（避免闪烁）
-    const targetAlpha = isSinging ? 1.0 : 0.0;
-    state.lineAlpha += (targetAlpha - state.lineAlpha) * 0.06;
-    state.contextAlpha += (targetAlpha * 0.4 - state.contextAlpha) * 0.05;
+    // 换行平滑淡入淡出插值
+    const targetCurrentAlpha = isSinging ? 1.0 : 0.0;
+    state.lineTransitionAlpha += (targetCurrentAlpha - state.lineTransitionAlpha) * 0.08;
+    state.prevLineFadeAlpha += (0.0 - state.prevLineFadeAlpha) * 0.12;
 
     // -------------------------------------------------------------
     // 4. 绘制渲染流水线
     // -------------------------------------------------------------
 
-    // A. 电影级丝绒深邃底色渐变 (Deep Velvet Cinema Gradient)
+    // A. 顶级画册丝绒深邃底色 (Luxury Deep Velvet Background)
     const bgGrad = c2d.createRadialGradient(
       width * 0.5,
       height * 0.48,
       20,
       width * 0.5,
       height * 0.5,
-      Math.max(width, height) * 0.8
+      Math.max(width, height) * 0.82
     );
     bgGrad.addColorStop(0, palette.bgGradStart);
     bgGrad.addColorStop(0.55, palette.bgGradMid);
@@ -601,13 +605,13 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     c2d.fillStyle = bgGrad;
     c2d.fillRect(0, 0, width, height);
 
-    // B. 中心柔和呼吸光场 (Central Breathing Aura)
+    // B. 中心深呼吸温光晕 (Central Breathing Aura)
     if (glowIntensity > 0.05) {
       c2d.save();
       c2d.globalCompositeOperation = "screen";
 
-      const auraRadius = width * 0.45 * breathFactor;
-      const auraAlpha = (0.08 + state.smoothedEnergy * 0.12) * glowIntensity;
+      const auraRadius = width * 0.42 * breathFactor;
+      const auraAlpha = (0.07 + state.smoothedEnergy * 0.08) * glowIntensity;
       const auraGrad = c2d.createRadialGradient(
         width * 0.5,
         height * 0.52,
@@ -616,8 +620,8 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
         height * 0.52,
         auraRadius
       );
-      auraGrad.addColorStop(0, palette.primaryGlow.replace(/[\d.]+\)$/, `${auraAlpha})`));
-      auraGrad.addColorStop(0.5, palette.primaryGlow.replace(/[\d.]+\)$/, `${auraAlpha * 0.3})`));
+      auraGrad.addColorStop(0, palette.ambientAura.replace(/[\d.]+\)$/, `${auraAlpha})`));
+      auraGrad.addColorStop(0.5, palette.ambientAura.replace(/[\d.]+\)$/, `${auraAlpha * 0.3})`));
       auraGrad.addColorStop(1, "rgba(0,0,0,0)");
 
       c2d.fillStyle = auraGrad;
@@ -627,29 +631,26 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
       c2d.restore();
     }
 
-    // C. 柔美散焦焦外光斑 (Soft Lens Bokeh Orbs - 极度柔润，无硬边)
+    // C. 极度柔焦的大气微光团 (Soft Atmosphere Orbs)
     c2d.save();
     c2d.globalCompositeOperation = "screen";
 
-    for (const orb of state.bokehOrbs) {
+    for (const orb of state.atmosphereOrbs) {
       orb.y += orb.vy;
-      orb.x += orb.vx + Math.sin(state.timeAccumulator * 0.3 + orb.phase) * 0.12;
+      orb.x += orb.vx + Math.sin(state.timeAccumulator * 0.25 + orb.phase) * 0.1;
 
       if (orb.y < -orb.baseRadius * 2) {
         orb.y = height + orb.baseRadius * 2;
         orb.x = Math.random() * width;
       }
 
-      const pulse = 1.0 + Math.sin(state.timeAccumulator * orb.speed + orb.phase) * 0.15;
+      const pulse = 1.0 + Math.sin(state.timeAccumulator * orb.speed + orb.phase) * 0.12;
       const curR = orb.baseRadius * pulse * breathFactor;
-      const alpha = orb.baseAlpha * glowIntensity * (0.7 + state.smoothedBass * 0.6);
+      const alpha = orb.baseAlpha * glowIntensity * (0.8 + state.smoothedBass * 0.4);
 
       const orbGrad = c2d.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, curR);
-      const colorStr = orb.colorType === "warm" ? palette.bokehColorA : palette.bokehColorB;
-
-      orbGrad.addColorStop(0, colorStr.replace(/[\d.]+\)$/, `${alpha * 0.85})`));
-      orbGrad.addColorStop(0.4, colorStr.replace(/[\d.]+\)$/, `${alpha * 0.35})`));
-      orbGrad.addColorStop(0.8, colorStr.replace(/[\d.]+\)$/, `${alpha * 0.08})`));
+      orbGrad.addColorStop(0, palette.orbColor.replace(/[\d.]+\)$/, `${alpha * 0.9})`));
+      orbGrad.addColorStop(0.4, palette.orbColor.replace(/[\d.]+\)$/, `${alpha * 0.35})`));
       orbGrad.addColorStop(1, "rgba(0,0,0,0)");
 
       c2d.fillStyle = orbGrad;
@@ -659,153 +660,106 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     }
     c2d.restore();
 
-    // D. 悬浮日光微尘 (Ambient Fine Dust)
+    // D. 悬浮极细日光微尘 (Ambient Fine Dust)
     c2d.save();
     c2d.globalCompositeOperation = "screen";
     for (const dust of state.ambientDust) {
       dust.y += dust.vy;
-      dust.x += dust.vx + Math.sin(state.timeAccumulator * dust.freq + dust.phase) * 0.2;
+      dust.x += dust.vx + Math.sin(state.timeAccumulator * dust.freq + dust.phase) * 0.15;
 
       if (dust.y < -10) {
         dust.y = height + 10;
         dust.x = Math.random() * width;
       }
 
-      const twinkle = (Math.sin(state.timeAccumulator * dust.freq * 2 + dust.phase) + 1) * 0.5;
-      const dustAlpha = dust.baseAlpha * (0.3 + twinkle * 0.7 + state.smoothedTreble * 0.4);
+      const twinkle = (Math.sin(state.timeAccumulator * dust.freq * 1.8 + dust.phase) + 1) * 0.5;
+      const dustAlpha = dust.baseAlpha * (0.3 + twinkle * 0.7 + state.smoothedTreble * 0.3);
 
       c2d.fillStyle = palette.dustColor.replace(/[\d.]+\)$/, `${dustAlpha})`);
       c2d.beginPath();
-      c2d.arc(dust.x, dust.y, dust.size * (1.0 + state.smoothedTreble * 0.3), 0, Math.PI * 2);
+      c2d.arc(dust.x, dust.y, dust.size * (1.0 + state.smoothedTreble * 0.2), 0, Math.PI * 2);
       c2d.fill();
     }
     c2d.restore();
 
-    // E. 歌词解构星尘粒子流 (Lyric Stardust Embers)
-    if (state.stardustParticles.length > 0) {
+    // E. 顶级现代人文无衬线排版（Pure Editorial Single-Hero Typography）
+    // 字体栈采用现代极致典雅人文黑体，字重 300，彻底告别丑陋宋体
+    const heroY = height * 0.52;
+    const heroX = width * 0.5;
+    const fSize = Math.round(heroFontSize * breathFactor);
+
+    c2d.save();
+    c2d.textAlign = "center";
+    c2d.textBaseline = "middle";
+    c2d.font = `300 ${fSize}px -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif`;
+
+    // 1. 旧句漂浮淡出 (Previous line drifting upwards & fading out)
+    if (state.prevLineFadeAlpha > 0.01 && state.previousLineText) {
       c2d.save();
-      c2d.globalCompositeOperation = "screen";
-      for (let i = state.stardustParticles.length - 1; i >= 0; i--) {
-        const p = state.stardustParticles[i];
-        p.life += deltaTime;
-        p.x += p.vx;
-        p.y += p.vy;
-
-        const progress = p.life / p.maxLife;
-        if (progress >= 1.0) {
-          state.stardustParticles.splice(i, 1);
-          continue;
-        }
-
-        const pAlpha = p.alpha * (1.0 - progress) * (Math.sin(progress * Math.PI) || 0);
-        c2d.fillStyle = p.color.replace(/[\d.]+\)$/, `${pAlpha})`);
-        c2d.beginPath();
-        c2d.arc(p.x, p.y, p.size * (1.0 - progress * 0.5), 0, Math.PI * 2);
-        c2d.fill();
-      }
+      const prevDriftY = heroY - (1.0 - state.prevLineFadeAlpha) * 16;
+      c2d.globalAlpha = state.prevLineFadeAlpha * 0.6;
+      drawSpacedText(
+        c2d,
+        state.previousLineText,
+        heroX,
+        prevDriftY,
+        letterSpacing,
+        1.0,
+        palette,
+        state.prevLineFadeAlpha
+      );
       c2d.restore();
     }
 
-    // F. 大师级电影感歌词排版（景深排版、大字距、逐字柔和高光流转、纯净无杂质）
-    if (state.lineAlpha > 0.005 && state.activeLine) {
+    // 2. 当前焦点歌词浮现 (Current hero line drifting in from bottom)
+    if (state.lineTransitionAlpha > 0.005 && state.currentLineText) {
       c2d.save();
-      c2d.textAlign = "center";
-      c2d.textBaseline = "middle";
+      const currDriftY = heroY + (1.0 - state.lineTransitionAlpha) * 14;
+      c2d.globalAlpha = state.lineTransitionAlpha;
 
-      const heroY = height * 0.54;
-      const heroX = width * 0.5;
-      const fSize = heroFontSize * breathFactor;
-
-      // 1. 上下句景深排版 (Rack Focus Context Lines)
-      if (showContextLines && state.contextAlpha > 0.005) {
-        c2d.save();
-        const subFontSize = Math.max(14, Math.round(fSize * 0.65));
-        c2d.font = `300 ${subFontSize}px -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Serif SC", serif`;
-
-        // 上一句（较淡，稍高）
-        if (state.prevLine) {
-          c2d.fillStyle = palette.contextText.replace(/[\d.]+\)$/, `${0.22 * state.contextAlpha})`);
-          c2d.fillText(state.prevLine, heroX, heroY - fSize * 1.55);
-        }
-
-        // 下一句（稍清晰，稍低）
-        if (state.nextLine) {
-          c2d.fillStyle = palette.contextText.replace(/[\d.]+\)$/, `${0.28 * state.contextAlpha})`);
-          c2d.fillText(state.nextLine, heroX, heroY + fSize * 1.55);
-        }
-        c2d.restore();
-      }
-
-      // 2. 主歌词背后柔和光晕 (Subtle Ambient Back-Bloom)
-      const textGlowGrad = c2d.createRadialGradient(heroX, heroY, 0, heroX, heroY, width * 0.28);
-      const glowAlpha = (0.1 + state.smoothedEnergy * 0.15) * state.lineAlpha;
-      textGlowGrad.addColorStop(0, palette.primaryGlow.replace(/[\d.]+\)$/, `${glowAlpha})`));
+      // 柔和微背光漫射
+      const textGlowGrad = c2d.createRadialGradient(
+        heroX,
+        currDriftY,
+        0,
+        heroX,
+        currDriftY,
+        width * 0.25
+      );
+      const glowAlpha = (0.08 + state.smoothedEnergy * 0.1) * state.lineTransitionAlpha;
+      textGlowGrad.addColorStop(0, palette.ambientAura.replace(/[\d.]+\)$/, `${glowAlpha})`));
       textGlowGrad.addColorStop(
         0.6,
-        palette.primaryGlow.replace(/[\d.]+\)$/, `${glowAlpha * 0.2})`)
+        palette.ambientAura.replace(/[\d.]+\)$/, `${glowAlpha * 0.2})`)
       );
       textGlowGrad.addColorStop(1, "rgba(0,0,0,0)");
       c2d.fillStyle = textGlowGrad;
       c2d.beginPath();
-      c2d.arc(heroX, heroY, width * 0.28, 0, Math.PI * 2);
+      c2d.arc(heroX, currDriftY, width * 0.25, 0, Math.PI * 2);
       c2d.fill();
 
-      // 3. 电影大光圈镜头微色散 (Chromatic RGB Separation)
-      c2d.font = `400 ${fSize}px -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Serif SC", "STSong", serif`;
-
-      if (chromaticAberration > 0.05) {
-        const caOffset = (0.8 * chromaticAberration + state.smoothedBass * 0.8) * breathFactor;
-
-        c2d.save();
-        c2d.globalCompositeOperation = "screen";
-
-        // 红暖通道
-        c2d.fillStyle = `rgba(255, 140, 110, ${0.18 * state.lineAlpha})`;
-        c2d.fillText(state.activeLine, heroX - caOffset, heroY);
-
-        // 青冷通道
-        c2d.fillStyle = `rgba(110, 200, 255, ${0.18 * state.lineAlpha})`;
-        c2d.fillText(state.activeLine, heroX + caOffset, heroY);
-
-        c2d.restore();
-      }
-
-      // 4. 主文字温润发光渲染
-      c2d.shadowColor = palette.primaryGlow;
-      c2d.shadowBlur = 12 * breathFactor;
-      c2d.fillStyle = palette.heroText;
-      c2d.globalAlpha = state.lineAlpha;
-      c2d.fillText(state.activeLine, heroX, heroY);
-
-      // 5. 逐字流光唤醒 (Luminescent Character Sweep)
-      c2d.shadowBlur = 0;
-      const textMetrics = c2d.measureText(state.activeLine);
-      const textW = textMetrics.width;
-      if (textW > 0 && state.lineProgress > 0) {
-        const sweepX = heroX - textW / 2 + textW * state.lineProgress;
-        const sweepGrad = c2d.createRadialGradient(sweepX, heroY, 0, sweepX, heroY, 42);
-        sweepGrad.addColorStop(0, `rgba(255, 255, 255, ${0.85 * state.lineAlpha})`);
-        sweepGrad.addColorStop(
-          0.5,
-          palette.primaryGlow.replace(/[\d.]+\)$/, `${0.3 * state.lineAlpha})`)
-        );
-        sweepGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
-
-        c2d.save();
-        c2d.globalCompositeOperation = "source-atop";
-        c2d.fillStyle = sweepGrad;
-        c2d.fillText(state.activeLine, heroX, heroY);
-        c2d.restore();
-      }
+      // 精确字距与逐字流光渲染
+      drawSpacedText(
+        c2d,
+        state.currentLineText,
+        heroX,
+        currDriftY,
+        letterSpacing,
+        state.currentLineProgress,
+        palette,
+        state.lineTransitionAlpha
+      );
 
       c2d.restore();
     }
 
-    // G. 35mm 胶片微粒质感 (35mm Film Grain)
+    c2d.restore();
+
+    // F. 35mm 胶片微粒 (Film Grain)
     if (filmGrain > 0.05 && state.grainCanvas) {
       c2d.save();
       c2d.globalCompositeOperation = "overlay";
-      c2d.globalAlpha = Math.min(0.16, filmGrain * 0.12);
+      c2d.globalAlpha = Math.min(0.15, filmGrain * 0.12);
       const pattern = c2d.createPattern(state.grainCanvas, "repeat");
       if (pattern) {
         const grainOffsetX = (Math.random() - 0.5) * 20;
@@ -817,7 +771,7 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
       c2d.restore();
     }
 
-    // H. 电影暗角 (Vignette)
+    // G. 沉浸式电影暗角 (Vignette)
     if (vignetteStrength > 0.05) {
       c2d.save();
       const maxDim = Math.max(width, height) * 0.75;
@@ -843,9 +797,8 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
 
   destroy(ctx?: RenderContext) {
     if (ctx && ctx.private) {
-      ctx.private.bokehOrbs = [];
+      ctx.private.atmosphereOrbs = [];
       ctx.private.ambientDust = [];
-      ctx.private.stardustParticles = [];
       ctx.private.parsedLyrics = [];
       ctx.private.grainCanvas = null;
     }

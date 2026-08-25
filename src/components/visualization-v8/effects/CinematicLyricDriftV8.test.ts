@@ -82,12 +82,12 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
     expect(CinematicLyricDriftV8Effect.parameters.length).toBeGreaterThan(5);
   });
 
-  it("should initialize bokeh orbs and dust motes", () => {
+  it("should initialize atmosphere orbs and dust motes", () => {
     CinematicLyricDriftV8Effect.init(renderContext);
     const state = renderContext.private as CinematicLyricDriftState;
 
     expect(state).toBeDefined();
-    expect(state.bokehOrbs.length).toBeGreaterThan(10);
+    expect(state.atmosphereOrbs.length).toBeGreaterThan(5);
     expect(state.ambientDust.length).toBeGreaterThan(50);
   });
 
@@ -97,12 +97,11 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
       CinematicLyricDriftV8Effect.render(renderContext, audioData, {
         colorScheme: 0,
         glowIntensity: 1.0,
-        heroFontSize: 28,
-        showContextLines: true,
-        filmGrain: 0.3,
-        chromaticAberration: 0.6,
+        heroFontSize: 32,
+        letterSpacing: 5.0,
+        filmGrain: 0.25,
         breathingDepth: 1.0,
-        vignetteStrength: 0.68,
+        vignetteStrength: 0.7,
       });
     }).not.toThrow();
 
@@ -114,8 +113,8 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
     CinematicLyricDriftV8Effect.destroy(renderContext);
     const state = renderContext.private as CinematicLyricDriftState;
 
-    expect(state.bokehOrbs.length).toBe(0);
+    expect(state.atmosphereOrbs.length).toBe(0);
     expect(state.ambientDust.length).toBe(0);
-    expect(state.stardustParticles.length).toBe(0);
+    expect(state.parsedLyrics.length).toBe(0);
   });
 });
