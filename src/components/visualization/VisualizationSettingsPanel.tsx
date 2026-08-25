@@ -762,37 +762,37 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   />
                 </div>
                 <SettingSlider
-                  label="散景光斑强度"
+                  label="柔焦散景微光"
                   value={effectSettings.cinematicLyricDrift.bokehIntensity}
                   min={0.0}
-                  max={2.5}
-                  step={0.1}
+                  max={2.0}
+                  step={0.05}
                   onChange={(v) =>
                     updateEffectSettings("cinematicLyricDrift", { bokehIntensity: v })
                   }
                 />
                 <SettingSlider
-                  label="文字漂浮速度"
+                  label="环境流动光带"
+                  value={effectSettings.cinematicLyricDrift.ambientLightIntensity ?? 1.0}
+                  min={0.0}
+                  max={2.0}
+                  step={0.05}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicLyricDrift", { ambientLightIntensity: v })
+                  }
+                />
+                <SettingSlider
+                  label="微尘浮动速度"
                   value={effectSettings.cinematicLyricDrift.floatingSpeed}
                   min={0.2}
-                  max={3.0}
+                  max={2.5}
                   step={0.1}
                   onChange={(v) =>
                     updateEffectSettings("cinematicLyricDrift", { floatingSpeed: v })
                   }
                 />
                 <SettingSlider
-                  label="丁达尔光线强度"
-                  value={effectSettings.cinematicLyricDrift.godraysIntensity}
-                  min={0.0}
-                  max={2.0}
-                  step={0.05}
-                  onChange={(v) =>
-                    updateEffectSettings("cinematicLyricDrift", { godraysIntensity: v })
-                  }
-                />
-                <SettingSlider
-                  label="35mm胶片颗粒"
+                  label="35mm胶片质感"
                   value={effectSettings.cinematicLyricDrift.filmGrain}
                   min={0.0}
                   max={1.0}
@@ -800,10 +800,10 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { filmGrain: v })}
                 />
                 <SettingSlider
-                  label="电影镜头色散"
+                  label="镜头微色散"
                   value={effectSettings.cinematicLyricDrift.chromaticAberration}
                   min={0.0}
-                  max={3.0}
+                  max={2.0}
                   step={0.1}
                   onChange={(v) =>
                     updateEffectSettings("cinematicLyricDrift", { chromaticAberration: v })

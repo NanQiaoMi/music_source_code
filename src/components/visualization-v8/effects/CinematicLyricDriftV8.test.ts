@@ -21,6 +21,7 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
       arc: vi.fn(),
       moveTo: vi.fn(),
       lineTo: vi.fn(),
+      quadraticCurveTo: vi.fn(),
       closePath: vi.fn(),
       fill: vi.fn(),
       stroke: vi.fn(),
@@ -81,35 +82,32 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
     expect(CinematicLyricDriftV8Effect.parameters.length).toBeGreaterThan(5);
   });
 
-  it("should initialize floating words, bokeh orbs and dust motes", () => {
+  it("should initialize bokeh orbs and dust motes", () => {
     CinematicLyricDriftV8Effect.init(renderContext);
     const state = renderContext.private as CinematicLyricDriftState;
 
     expect(state).toBeDefined();
-    expect(state.floatingWords.length).toBeGreaterThan(10);
     expect(state.bokehOrbs.length).toBeGreaterThan(10);
     expect(state.dustMotes.length).toBeGreaterThan(50);
   });
 
-  it("should render without errors with default parameters", () => {
+  it("should render without errors and render pure background when no lyrics", () => {
     CinematicLyricDriftV8Effect.init(renderContext);
     expect(() => {
       CinematicLyricDriftV8Effect.render(renderContext, audioData, {
         colorScheme: 0,
-        bokehIntensity: 1.2,
+        bokehIntensity: 1.0,
+        ambientLightIntensity: 1.0,
         floatingSpeed: 1.0,
-        godraysIntensity: 1.1,
-        filmGrain: 0.45,
-        chromaticAberration: 1.2,
+        filmGrain: 0.35,
+        chromaticAberration: 0.8,
         breathingDepth: 1.0,
-        heroFontSize: 30,
-        anamorphicStreak: 1.0,
+        heroFontSize: 28,
         vignetteStrength: 0.65,
       });
     }).not.toThrow();
 
     expect(mockCtx.fillRect).toHaveBeenCalled();
-    expect(mockCtx.fillText).toHaveBeenCalled();
   });
 
   it("should clean up resources on destroy", () => {
