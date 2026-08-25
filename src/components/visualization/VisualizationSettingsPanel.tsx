@@ -788,35 +788,25 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
 
                 <SettingSlider
                   label="书法字号"
-                  value={effectSettings.cinematicLyricDrift.heroFontSize ?? 38}
+                  value={effectSettings.cinematicLyricDrift.heroFontSize ?? 40}
                   min={28}
-                  max={52}
+                  max={56}
                   step={1}
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { heroFontSize: v })}
                 />
                 <SettingSlider
                   label="书法行气字距"
-                  value={effectSettings.cinematicLyricDrift.letterSpacing ?? 7.0}
+                  value={effectSettings.cinematicLyricDrift.letterSpacing ?? 8.0}
                   min={2}
-                  max={16}
+                  max={18}
                   step={0.5}
                   onChange={(v) =>
                     updateEffectSettings("cinematicLyricDrift", { letterSpacing: v })
                   }
                 />
                 <SettingSlider
-                  label="水墨晕染深度"
-                  value={effectSettings.cinematicLyricDrift.inkBleedIntensity ?? 1.1}
-                  min={0.2}
-                  max={2.0}
-                  step={0.05}
-                  onChange={(v) =>
-                    updateEffectSettings("cinematicLyricDrift", { inkBleedIntensity: v })
-                  }
-                />
-                <SettingSlider
                   label="宣纸肌理微粒"
-                  value={effectSettings.cinematicLyricDrift.filmGrain ?? 0.25}
+                  value={effectSettings.cinematicLyricDrift.filmGrain ?? 0.2}
                   min={0.0}
                   max={1.0}
                   step={0.05}
