@@ -437,6 +437,9 @@ export function VisualizationView() {
           case "orientalLandscape":
             Effects.drawOrientalLandscape(effectCtx);
             break;
+          case "cinematicLyricDrift":
+            Effects.drawCinematicLyricDrift(effectCtx);
+            break;
 
           default:
             Effects.drawSpatialMesh(effectCtx);
@@ -547,6 +550,7 @@ export function VisualizationView() {
   };
 
   const effectsList: { id: VisualizationEffect; name: string }[] = [
+    { id: "cinematicLyricDrift", name: "温光浮字" },
     { id: "orientalLandscape", name: "青绿千里" },
     { id: "cinematicOrientalInk", name: "千里江山" },
     { id: "cinematicSilkAurora", name: "流金丝绸" },

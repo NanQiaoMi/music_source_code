@@ -14,7 +14,8 @@ export type VisualizationEffect =
   | "prismPulse"
   | "superstringSingularity"
   | "cinematicSilkAurora"
-  | "orientalLandscape";
+  | "orientalLandscape"
+  | "cinematicLyricDrift";
 
 export type NumericEffectSettings = Record<string, number>;
 export type EffectSettings = Record<VisualizationEffect, NumericEffectSettings>;
@@ -107,9 +108,41 @@ const defaultEffectSettings: EffectSettings = {
   cyberMatrix: { speed: 1.0, density: 1.0 },
   gravitationalField: { speed: 1.0, sensitivity: 1.0, coreIntensity: 1.0 },
   prismPulse: { complexity: 6, refraction: 1.0, drift: 0.5, speed: 1.0 },
-  superstringSingularity: { speed: 1.0, singularityMass: 1.0, superstringTension: 1.2, coreGlow: 1.5 },
-  cinematicSilkAurora: { silkCount: 6, flowSpeed: 1.0, glowIntensity: 1.15, bokehDensity: 1.0, firefliesCount: 25, godRaysIntensity: 1.0, spatialDepth: 1.2, anamorphicFlare: 1.0 },
-  orientalLandscape: { lightRays: 1.0, mountainBreath: 1.0, waterRipple: 1.0, goldGlow: 1.2, filmVignette: 0.65 },
+  superstringSingularity: {
+    speed: 1.0,
+    singularityMass: 1.0,
+    superstringTension: 1.2,
+    coreGlow: 1.5,
+  },
+  cinematicSilkAurora: {
+    silkCount: 6,
+    flowSpeed: 1.0,
+    glowIntensity: 1.15,
+    bokehDensity: 1.0,
+    firefliesCount: 25,
+    godRaysIntensity: 1.0,
+    spatialDepth: 1.2,
+    anamorphicFlare: 1.0,
+  },
+  orientalLandscape: {
+    lightRays: 1.0,
+    mountainBreath: 1.0,
+    waterRipple: 1.0,
+    goldGlow: 1.2,
+    filmVignette: 0.65,
+  },
+  cinematicLyricDrift: {
+    colorScheme: 0,
+    bokehIntensity: 1.2,
+    floatingSpeed: 1.0,
+    godraysIntensity: 1.1,
+    filmGrain: 0.45,
+    chromaticAberration: 1.2,
+    breathingDepth: 1.0,
+    heroFontSize: 30,
+    anamorphicStreak: 1.0,
+    vignetteStrength: 0.65,
+  },
 };
 
 const defaultPresets: VisualizationPreset[] = [
@@ -118,62 +151,62 @@ const defaultPresets: VisualizationPreset[] = [
     name: "深空黑洞 (Sagittarius A*)",
     effect: "cyberpunkParticles",
     settings: {
-        particleCount: 1200,
-        particleSize: 2.2,
-        speed: 1.8,
-        glowIntensity: 1.2,
-        gravityLens: 1.8,
-        pulseSpeed: 1.5,
-        accretionSpin: 1.6,
-        bokehAmount: 1.2,
-      },
+      particleCount: 1200,
+      particleSize: 2.2,
+      speed: 1.8,
+      glowIntensity: 1.2,
+      gravityLens: 1.8,
+      pulseSpeed: 1.5,
+      accretionSpin: 1.6,
+      bokehAmount: 1.2,
     },
-    {
-      id: "preset-astro-supernova",
-      name: "超新星遗迹 (Supernova Remnant)",
-      effect: "cyberpunkParticles",
-      settings: {
-        particleCount: 1500,
-        particleSize: 2.6,
-        speed: 2.0,
-        glowIntensity: 2.2,
-        gravityLens: 1.2,
-        pulseSpeed: 2.0,
-        accretionSpin: 1.2,
-        bokehAmount: 1.8,
-      },
+  },
+  {
+    id: "preset-astro-supernova",
+    name: "超新星遗迹 (Supernova Remnant)",
+    effect: "cyberpunkParticles",
+    settings: {
+      particleCount: 1500,
+      particleSize: 2.6,
+      speed: 2.0,
+      glowIntensity: 2.2,
+      gravityLens: 1.2,
+      pulseSpeed: 2.0,
+      accretionSpin: 1.2,
+      bokehAmount: 1.8,
     },
-    {
-      id: "preset-astro-synapse",
-      name: "量子突触中枢 (Quantum Synapse)",
-      effect: "cyberpunkParticles",
-      settings: {
-        particleCount: 800,
-        particleSize: 1.8,
-        speed: 1.4,
-        glowIntensity: 1.0,
-        gravityLens: 0.8,
-        pulseSpeed: 2.4,
-        accretionSpin: 0.8,
-        bokehAmount: 0.6,
-      },
+  },
+  {
+    id: "preset-astro-synapse",
+    name: "量子突触中枢 (Quantum Synapse)",
+    effect: "cyberpunkParticles",
+    settings: {
+      particleCount: 800,
+      particleSize: 1.8,
+      speed: 1.4,
+      glowIntensity: 1.0,
+      gravityLens: 0.8,
+      pulseSpeed: 2.4,
+      accretionSpin: 0.8,
+      bokehAmount: 0.6,
     },
-    {
-      id: "preset-astro-aurora",
-      name: "电离极光纤维 (Ionized Lattice)",
-      effect: "cyberpunkParticles",
-      settings: {
-        particleCount: 1000,
-        particleSize: 2.0,
-        speed: 1.0,
-        glowIntensity: 1.6,
-        gravityLens: 0.6,
-        pulseSpeed: 1.0,
-        accretionSpin: 0.9,
-        bokehAmount: 0.9,
-      },
+  },
+  {
+    id: "preset-astro-aurora",
+    name: "电离极光纤维 (Ionized Lattice)",
+    effect: "cyberpunkParticles",
+    settings: {
+      particleCount: 1000,
+      particleSize: 2.0,
+      speed: 1.0,
+      glowIntensity: 1.6,
+      gravityLens: 0.6,
+      pulseSpeed: 1.0,
+      accretionSpin: 0.9,
+      bokehAmount: 0.9,
     },
-  ];
+  },
+];
 
 export const useVisualizationStore = create<VisualizationState>((set, get) => ({
   currentEffect: "cinematicOrientalInk",
