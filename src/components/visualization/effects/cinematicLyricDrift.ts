@@ -251,7 +251,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
 
   const glowIntensity = params?.glowIntensity ?? 1.0;
   const heroFontSize = params?.heroFontSize ?? 28;
-  const showContextLines = params?.showContextLines ?? true;
+  const showContextLines = params?.showContextLines !== 0 && params?.showContextLines !== false;
   const filmGrain = params?.filmGrain ?? 0.3;
   const chromaticAberration = params?.chromaticAberration ?? 0.6;
   const breathingDepth = params?.breathingDepth ?? 1.0;

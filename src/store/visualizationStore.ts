@@ -135,7 +135,7 @@ const defaultEffectSettings: EffectSettings = {
     colorScheme: 0,
     glowIntensity: 1.0,
     heroFontSize: 28,
-    showContextLines: true,
+    showContextLines: 1,
     filmGrain: 0.3,
     chromaticAberration: 0.6,
     breathingDepth: 1.0,
