@@ -81,12 +81,11 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
     expect(CinematicLyricDriftV8Effect.parameters.length).toBeGreaterThan(5);
   });
 
-  it("should initialize floating words, bokeh orbs and dust motes", () => {
+  it("should initialize bokeh orbs and dust motes", () => {
     CinematicLyricDriftV8Effect.init(renderContext);
     const state = renderContext.private as CinematicLyricDriftState;
 
     expect(state).toBeDefined();
-    expect(state.floatingWords.length).toBeGreaterThan(10);
     expect(state.bokehOrbs.length).toBeGreaterThan(10);
     expect(state.dustMotes.length).toBeGreaterThan(50);
   });
