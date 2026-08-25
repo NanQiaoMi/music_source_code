@@ -134,8 +134,8 @@ const defaultEffectSettings: EffectSettings = {
   cinematicLyricDrift: {
     fontStyle: 0,
     colorScheme: 0,
-    heroFontSize: 40,
-    letterSpacing: 8.0,
+    heroFontSize: 42,
+    popSpeed: 1.2,
     filmGrain: 0.2,
     breathingDepth: 1.0,
     vignetteStrength: 0.72,
