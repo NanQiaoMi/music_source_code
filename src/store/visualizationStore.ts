@@ -133,14 +133,13 @@ const defaultEffectSettings: EffectSettings = {
   },
   cinematicLyricDrift: {
     colorScheme: 0,
-    bokehIntensity: 1.0,
-    ambientLightIntensity: 1.0,
-    floatingSpeed: 1.0,
-    filmGrain: 0.35,
-    chromaticAberration: 0.8,
-    breathingDepth: 1.0,
+    glowIntensity: 1.0,
     heroFontSize: 28,
-    vignetteStrength: 0.65,
+    showContextLines: true,
+    filmGrain: 0.3,
+    chromaticAberration: 0.6,
+    breathingDepth: 1.0,
+    vignetteStrength: 0.68,
   },
 };
 

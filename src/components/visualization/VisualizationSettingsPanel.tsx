@@ -740,9 +740,9 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
               <div className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm text-white/80">影调调色板</label>
+                    <label className="text-sm text-white/80">电影影调</label>
                     <span className="text-xs text-white/40 font-mono bg-white/5 px-2 py-0.5 rounded-md">
-                      {["暮色琥珀", "月白柔雾", "暮樱温霞", "薄荷晨曦", "胶片纯粹"][
+                      {["暮色琥珀", "月白冷雾", "暮樱晚霞", "薄荷晨曦", "黑白胶片"][
                         Math.round(effectSettings.cinematicLyricDrift.colorScheme || 0)
                       ] || "暮色琥珀"}
                     </span>
@@ -762,38 +762,26 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   />
                 </div>
                 <SettingSlider
-                  label="柔焦散景微光"
-                  value={effectSettings.cinematicLyricDrift.bokehIntensity}
-                  min={0.0}
-                  max={2.0}
-                  step={0.05}
-                  onChange={(v) =>
-                    updateEffectSettings("cinematicLyricDrift", { bokehIntensity: v })
-                  }
-                />
-                <SettingSlider
-                  label="环境流动光带"
-                  value={effectSettings.cinematicLyricDrift.ambientLightIntensity ?? 1.0}
-                  min={0.0}
-                  max={2.0}
-                  step={0.05}
-                  onChange={(v) =>
-                    updateEffectSettings("cinematicLyricDrift", { ambientLightIntensity: v })
-                  }
-                />
-                <SettingSlider
-                  label="微尘浮动速度"
-                  value={effectSettings.cinematicLyricDrift.floatingSpeed}
+                  label="环境微光呼吸感"
+                  value={effectSettings.cinematicLyricDrift.glowIntensity ?? 1.0}
                   min={0.2}
-                  max={2.5}
-                  step={0.1}
+                  max={2.0}
+                  step={0.05}
                   onChange={(v) =>
-                    updateEffectSettings("cinematicLyricDrift", { floatingSpeed: v })
+                    updateEffectSettings("cinematicLyricDrift", { glowIntensity: v })
                   }
+                />
+                <SettingSlider
+                  label="歌词字号大小"
+                  value={effectSettings.cinematicLyricDrift.heroFontSize ?? 28}
+                  min={22}
+                  max={38}
+                  step={1}
+                  onChange={(v) => updateEffectSettings("cinematicLyricDrift", { heroFontSize: v })}
                 />
                 <SettingSlider
                   label="35mm胶片质感"
-                  value={effectSettings.cinematicLyricDrift.filmGrain}
+                  value={effectSettings.cinematicLyricDrift.filmGrain ?? 0.3}
                   min={0.0}
                   max={1.0}
                   step={0.05}
@@ -801,17 +789,17 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                 />
                 <SettingSlider
                   label="镜头微色散"
-                  value={effectSettings.cinematicLyricDrift.chromaticAberration}
+                  value={effectSettings.cinematicLyricDrift.chromaticAberration ?? 0.6}
                   min={0.0}
-                  max={2.0}
-                  step={0.1}
+                  max={1.5}
+                  step={0.05}
                   onChange={(v) =>
                     updateEffectSettings("cinematicLyricDrift", { chromaticAberration: v })
                   }
                 />
                 <SettingSlider
-                  label="呼吸律动幅度"
-                  value={effectSettings.cinematicLyricDrift.breathingDepth}
+                  label="呼吸起伏幅度"
+                  value={effectSettings.cinematicLyricDrift.breathingDepth ?? 1.0}
                   min={0.0}
                   max={2.0}
                   step={0.1}
@@ -820,8 +808,8 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   }
                 />
                 <SettingSlider
-                  label="暗角沉浸感"
-                  value={effectSettings.cinematicLyricDrift.vignetteStrength}
+                  label="电影暗角深度"
+                  value={effectSettings.cinematicLyricDrift.vignetteStrength ?? 0.68}
                   min={0.0}
                   max={1.0}
                   step={0.05}
