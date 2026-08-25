@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Long+Cang&family=Liu+Jian+Mao+Cao&family=Noto+Serif+SC:wght@300;400;600;900&family=ZCOOL+XiaoWei&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -162,7 +163,12 @@ textarea {
     left: 10%;
     right: 10%;
     height: 1px;
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.45) 50%, transparent 100%);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.45) 50%,
+      transparent 100%
+    );
     pointer-events: none;
   }
 
@@ -280,7 +286,8 @@ textarea {
 
 /* Ambient Fluid Mesh Orb Floating Animations */
 @keyframes orb-float-1 {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate3d(0, 0, 0) scale(1);
   }
   33% {
@@ -292,7 +299,8 @@ textarea {
 }
 
 @keyframes orb-float-2 {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate3d(0, 0, 0) scale(1);
   }
   33% {
@@ -304,7 +312,8 @@ textarea {
 }
 
 @keyframes orb-float-3 {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate3d(0, 0, 0) scale(1);
   }
   50% {
@@ -313,7 +322,8 @@ textarea {
 }
 
 @keyframes orb-float-4 {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate3d(0, 0, 0) scale(1);
   }
   50% {
@@ -369,7 +379,8 @@ textarea {
 
 /* Floor Caustics Water Ripple Shimmer */
 @keyframes caustic-shimmer {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.035;
     transform: scale(1) translateY(0);
   }
