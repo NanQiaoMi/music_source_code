@@ -740,11 +740,35 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
               <div className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm text-white/80">电影调色</label>
+                    <label className="text-sm text-white/80">书法字体风格</label>
+                    <span className="text-xs text-amber-300/80 font-mono bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                      {["洒脱行楷", "苍劲狂草", "典雅文楷", "金石宋韵"][
+                        Math.round(effectSettings.cinematicLyricDrift.fontStyle || 0)
+                      ] || "洒脱行楷"}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={3}
+                    step={1}
+                    value={effectSettings.cinematicLyricDrift.fontStyle || 0}
+                    onChange={(e) =>
+                      updateEffectSettings("cinematicLyricDrift", {
+                        fontStyle: parseInt(e.target.value, 10),
+                      })
+                    }
+                    className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-white/10"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-white/80">水墨调色板</label>
                     <span className="text-xs text-white/40 font-mono bg-white/5 px-2 py-0.5 rounded-md">
-                      {["暖金午夜", "冰川月华", "暮色幽粉", "晨雾苍翠", "经典胶片"][
+                      {["洒金玄墨", "青黛冷月", "暮染丹青", "苍山松烟", "极简焦墨"][
                         Math.round(effectSettings.cinematicLyricDrift.colorScheme || 0)
-                      ] || "暖金午夜"}
+                      ] || "洒金玄墨"}
                     </span>
                   </div>
                   <input
@@ -761,36 +785,37 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                     className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-white/10"
                   />
                 </div>
+
                 <SettingSlider
-                  label="光晕呼吸感"
-                  value={effectSettings.cinematicLyricDrift.glowIntensity ?? 1.0}
-                  min={0.2}
-                  max={2.0}
-                  step={0.05}
-                  onChange={(v) =>
-                    updateEffectSettings("cinematicLyricDrift", { glowIntensity: v })
-                  }
-                />
-                <SettingSlider
-                  label="歌词字号"
-                  value={effectSettings.cinematicLyricDrift.heroFontSize ?? 32}
-                  min={24}
-                  max={42}
+                  label="书法字号"
+                  value={effectSettings.cinematicLyricDrift.heroFontSize ?? 38}
+                  min={28}
+                  max={52}
                   step={1}
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { heroFontSize: v })}
                 />
                 <SettingSlider
-                  label="高级字间距"
-                  value={effectSettings.cinematicLyricDrift.letterSpacing ?? 5.0}
-                  min={1}
-                  max={12}
+                  label="书法行气字距"
+                  value={effectSettings.cinematicLyricDrift.letterSpacing ?? 7.0}
+                  min={2}
+                  max={16}
                   step={0.5}
                   onChange={(v) =>
                     updateEffectSettings("cinematicLyricDrift", { letterSpacing: v })
                   }
                 />
                 <SettingSlider
-                  label="35mm胶片质感"
+                  label="水墨晕染深度"
+                  value={effectSettings.cinematicLyricDrift.inkBleedIntensity ?? 1.1}
+                  min={0.2}
+                  max={2.0}
+                  step={0.05}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicLyricDrift", { inkBleedIntensity: v })
+                  }
+                />
+                <SettingSlider
+                  label="宣纸肌理微粒"
                   value={effectSettings.cinematicLyricDrift.filmGrain ?? 0.25}
                   min={0.0}
                   max={1.0}
@@ -798,7 +823,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { filmGrain: v })}
                 />
                 <SettingSlider
-                  label="呼吸起伏幅度"
+                  label="墨韵呼吸起伏"
                   value={effectSettings.cinematicLyricDrift.breathingDepth ?? 1.0}
                   min={0.0}
                   max={2.0}
@@ -808,8 +833,8 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   }
                 />
                 <SettingSlider
-                  label="暗角沉浸感"
-                  value={effectSettings.cinematicLyricDrift.vignetteStrength ?? 0.7}
+                  label="幽深画境暗角"
+                  value={effectSettings.cinematicLyricDrift.vignetteStrength ?? 0.72}
                   min={0.0}
                   max={1.0}
                   step={0.05}

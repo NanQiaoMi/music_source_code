@@ -132,13 +132,14 @@ const defaultEffectSettings: EffectSettings = {
     filmVignette: 0.65,
   },
   cinematicLyricDrift: {
+    fontStyle: 0,
     colorScheme: 0,
-    glowIntensity: 1.0,
-    heroFontSize: 32,
-    letterSpacing: 5.0,
+    heroFontSize: 38,
+    letterSpacing: 7.0,
+    inkBleedIntensity: 1.1,
     filmGrain: 0.25,
     breathingDepth: 1.0,
-    vignetteStrength: 0.7,
+    vignetteStrength: 0.72,
   },
 };
 
