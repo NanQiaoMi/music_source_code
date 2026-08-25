@@ -790,7 +790,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   label="电影大字号"
                   value={effectSettings.cinematicLyricDrift.heroFontSize ?? 60}
                   min={36}
-                  max={84}
+                  max={96}
                   step={2}
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { heroFontSize: v })}
                 />
@@ -798,15 +798,33 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   label="焦点放大倍率"
                   value={effectSettings.cinematicLyricDrift.focusScale ?? 1.5}
                   min={1.2}
-                  max={1.8}
+                  max={2.0}
                   step={0.05}
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { focusScale: v })}
                 />
                 <SettingSlider
+                  label="镜头穿梭速度"
+                  value={effectSettings.cinematicLyricDrift.shuttleSpeed ?? 1.2}
+                  min={0.5}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cinematicLyricDrift", { shuttleSpeed: v })}
+                />
+                <SettingSlider
+                  label="向上升腾高度"
+                  value={effectSettings.cinematicLyricDrift.ascensionHeight ?? 90}
+                  min={40}
+                  max={160}
+                  step={5}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicLyricDrift", { ascensionHeight: v })
+                  }
+                />
+                <SettingSlider
                   label="光学景深虚化"
-                  value={effectSettings.cinematicLyricDrift.depthBlurStrength ?? 1.0}
+                  value={effectSettings.cinematicLyricDrift.depthBlurStrength ?? 1.2}
                   min={0.0}
-                  max={2.0}
+                  max={2.5}
                   step={0.1}
                   onChange={(v) =>
                     updateEffectSettings("cinematicLyricDrift", { depthBlurStrength: v })

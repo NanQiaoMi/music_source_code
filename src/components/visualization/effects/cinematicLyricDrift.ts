@@ -41,6 +41,7 @@ interface WordSegment {
   currentScale: number;
   currentAlpha: number;
   currentY: number;
+  currentXOffset: number;
   depthZ: number;
   blurPx: number;
   phaseOffset: number;
@@ -59,7 +60,8 @@ interface ColorPalette {
   ambientAura: string;
   textUnsung: string;
   textPast: string;
-  textFocus: string;
+  textFocusTop: string;
+  textFocusBottom: string;
   dustColor: string;
   orbColor: string;
 }
@@ -72,9 +74,10 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#090502",
     bgGradEnd: "#020101",
     ambientAura: "rgba(255, 175, 95, 0.1)",
-    textUnsung: "rgba(255, 245, 230, 0.18)",
-    textPast: "rgba(235, 220, 195, 0.38)",
-    textFocus: "#ffffff",
+    textUnsung: "rgba(255, 245, 230, 0.15)",
+    textPast: "rgba(235, 220, 195, 0.35)",
+    textFocusTop: "#ffffff",
+    textFocusBottom: "#ffd8a8",
     dustColor: "rgba(255, 220, 160, 0.4)",
     orbColor: "rgba(245, 160, 80, 0.05)",
   },
@@ -85,9 +88,10 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#040810",
     bgGradEnd: "#010204",
     ambientAura: "rgba(140, 195, 255, 0.09)",
-    textUnsung: "rgba(215, 235, 255, 0.18)",
-    textPast: "rgba(190, 220, 250, 0.38)",
-    textFocus: "#ffffff",
+    textUnsung: "rgba(215, 235, 255, 0.15)",
+    textPast: "rgba(190, 220, 250, 0.35)",
+    textFocusTop: "#ffffff",
+    textFocusBottom: "#c2e0ff",
     dustColor: "rgba(200, 230, 255, 0.4)",
     orbColor: "rgba(120, 185, 250, 0.05)",
   },
@@ -98,9 +102,10 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#0a0308",
     bgGradEnd: "#020102",
     ambientAura: "rgba(240, 140, 185, 0.1)",
-    textUnsung: "rgba(255, 225, 235, 0.18)",
-    textPast: "rgba(245, 205, 220, 0.38)",
-    textFocus: "#ffffff",
+    textUnsung: "rgba(255, 225, 235, 0.15)",
+    textPast: "rgba(245, 205, 220, 0.35)",
+    textFocusTop: "#ffffff",
+    textFocusBottom: "#ffd0e2",
     dustColor: "rgba(255, 205, 225, 0.4)",
     orbColor: "rgba(230, 120, 175, 0.05)",
   },
@@ -111,9 +116,10 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#030a07",
     bgGradEnd: "#010302",
     ambientAura: "rgba(120, 215, 165, 0.09)",
-    textUnsung: "rgba(220, 255, 235, 0.18)",
-    textPast: "rgba(195, 240, 215, 0.38)",
-    textFocus: "#ffffff",
+    textUnsung: "rgba(220, 255, 235, 0.15)",
+    textPast: "rgba(195, 240, 215, 0.35)",
+    textFocusTop: "#ffffff",
+    textFocusBottom: "#c7f5dd",
     dustColor: "rgba(185, 245, 215, 0.4)",
     orbColor: "rgba(100, 200, 150, 0.05)",
   },
@@ -126,7 +132,8 @@ const COLOR_PALETTES: ColorPalette[] = [
     ambientAura: "rgba(220, 220, 230, 0.07)",
     textUnsung: "rgba(255, 255, 255, 0.15)",
     textPast: "rgba(215, 215, 220, 0.35)",
-    textFocus: "#ffffff",
+    textFocusTop: "#ffffff",
+    textFocusBottom: "#d8d8e0",
     dustColor: "rgba(235, 235, 245, 0.35)",
     orbColor: "rgba(190, 190, 205, 0.04)",
   },
@@ -157,6 +164,7 @@ let breathAngle = 0;
 let smoothedProgressCache = 0;
 let lastReportedTimeCache = 0;
 let lastTimeUpdateMsCache = 0;
+let cameraParallaxZCache = 0;
 
 function isMetadataLine(text: string): boolean {
   const t = text.trim();
@@ -233,11 +241,12 @@ function buildSegmentedLine(
       startRatio: 0,
       endRatio: 0,
       popTriggerTime: -1,
-      currentScale: 0.65,
+      currentScale: 0.4,
       currentAlpha: 0,
-      currentY: 30,
+      currentY: 40,
+      currentXOffset: 0,
       depthZ: 0,
-      blurPx: 4,
+      blurPx: 6,
       phaseOffset: i * 0.45,
     });
     currentOffset += w;
@@ -346,7 +355,7 @@ function createFilmGrainCanvas(): HTMLCanvasElement | null {
   }
 }
 
-function render3DDepthSegments(
+function renderCinematicFocalStream(
   ctx: CanvasRenderingContext2D,
   segments: WordSegment[],
   totalWidth: number,
@@ -356,6 +365,7 @@ function render3DDepthSegments(
   lineAlpha: number,
   palette: ColorPalette,
   time: number,
+  heroFontSize: number,
   isExiting: boolean,
   fitScale: number
 ) {
@@ -384,14 +394,13 @@ function render3DDepthSegments(
     const isPast = currentLineProgress >= seg.endRatio;
     const isActive = currentLineProgress >= seg.startRatio && currentLineProgress < seg.endRatio;
 
-    const organicFloatY = Math.sin(time * 1.6 + seg.phaseOffset) * 2.5;
+    const organicFloatY = Math.sin(time * 1.6 + seg.phaseOffset) * 2.2;
     const organicRot = Math.sin(time * 1.0 + seg.phaseOffset * 0.8) * 0.012;
 
     const currentScale = (isExiting ? seg.currentScale * lineAlpha : seg.currentScale) * fitScale;
     const currentAlpha = seg.currentAlpha * lineAlpha;
     const drawX = runningX + seg.width * fitScale * 0.5;
-    const drawY =
-      centerY + (isExiting ? -24 * (1 - lineAlpha) : seg.currentY * fitScale) + organicFloatY;
+    const drawY = centerY + (isExiting ? -30 * (1 - lineAlpha) : seg.currentY) + organicFloatY;
 
     if (currentAlpha > 0.001) {
       renderItems.push({
@@ -400,7 +409,7 @@ function render3DDepthSegments(
         drawY,
         scale: currentScale,
         alpha: currentAlpha,
-        blurPx: isExiting ? seg.blurPx + 2 : seg.blurPx,
+        blurPx: isExiting ? seg.blurPx + 2.5 : seg.blurPx,
         rot: organicRot,
         depthZ: seg.depthZ,
         isActive,
@@ -411,11 +420,10 @@ function render3DDepthSegments(
     runningX += seg.width * fitScale;
   }
 
-  // Back-to-Front 排序
   renderItems.sort((a, b) => a.depthZ - b.depthZ);
 
   ctx.save();
-  ctx.shadowBlur = 0; // 彻底去除发光
+  ctx.shadowBlur = 0;
 
   const hasFilterSupport = typeof ctx.filter === "string";
 
@@ -435,7 +443,10 @@ function render3DDepthSegments(
     }
 
     if (item.isActive) {
-      ctx.fillStyle = palette.textFocus;
+      const grad = ctx.createLinearGradient(0, -heroFontSize * 0.6, 0, heroFontSize * 0.4);
+      grad.addColorStop(0, palette.textFocusTop);
+      grad.addColorStop(1, palette.textFocusBottom);
+      ctx.fillStyle = grad;
       ctx.fillText(item.seg.text, 0, 0);
     } else if (item.isPast) {
       ctx.fillStyle = palette.textPast;
@@ -472,7 +483,9 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
 
   const heroFontSize = Math.round(params?.heroFontSize ?? 60);
   const focusScaleMultiplier = params?.focusScale ?? 1.5;
-  const depthBlurStrength = params?.depthBlurStrength ?? 1.0;
+  const shuttleSpeed = params?.shuttleSpeed ?? 1.2;
+  const ascensionHeight = params?.ascensionHeight ?? 90;
+  const depthBlurStrength = params?.depthBlurStrength ?? 1.2;
   const filmGrain = params?.filmGrain ?? 0.2;
   const breathingDepth = params?.breathingDepth ?? 1.0;
   const vignetteStrength = params?.vignetteStrength ?? 0.72;
@@ -503,7 +516,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
 
   breathAngle = (breathAngle + 0.016 * (0.35 + totalEnergy * 0.3) * breathingDepth) % (Math.PI * 2);
   const breathSin = Math.sin(breathAngle);
-  const auraBreathFactor = 1.0 + breathSin * 0.05 * breathingDepth + refs.smoothBass.current * 0.08;
+  const auraBreathFactor = 1.0 + breathSin * 0.05 * breathingDepth;
 
   if (!refs.bokeh.current || refs.bokeh.current.length === 0) {
     const orbs: SoftAtmosphereOrbItem[] = [];
@@ -624,6 +637,8 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   lineTransitionAlpha += (targetCurrentAlpha - lineTransitionAlpha) * 0.09;
   prevLineFadeAlpha += (0.0 - prevLineFadeAlpha) * 0.1;
 
+  let shuttleImpulse = 0;
+
   if (currentSegmentsCache.length > 0) {
     const lineProg = smoothedProgressCache;
     const nowTimeSec = time * 0.001;
@@ -633,45 +648,47 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
 
       if (lineProg >= seg.startRatio && seg.popTriggerTime < 0) {
         seg.popTriggerTime = nowTimeSec;
+        shuttleImpulse = 1.0;
       }
 
       if (seg.popTriggerTime < 0) {
-        seg.currentScale = 0.65;
+        seg.currentScale = 0.4;
         seg.currentAlpha = 0.0;
-        seg.currentY = 28;
+        seg.currentY = 40;
         seg.depthZ = 0;
-        seg.blurPx = 4.0 * depthBlurStrength;
+        seg.blurPx = 6.0 * depthBlurStrength;
       } else {
         const timeSincePop = Math.max(0, nowTimeSec - seg.popTriggerTime);
-        const popDuration = 0.35;
+        const popDuration = 0.32 / Math.max(0.5, shuttleSpeed);
         const popRatio = Math.min(1.0, timeSincePop / popDuration);
         const springFactor = springEaseOut(popRatio);
 
         if (lineProg < seg.endRatio) {
-          seg.currentScale = 0.65 + (focusScaleMultiplier - 0.65) * springFactor;
-          seg.currentAlpha = Math.min(1.0, popRatio * 2.5);
-          seg.currentY = 28 * (1 - popRatio);
+          seg.currentScale = 0.4 + (focusScaleMultiplier - 0.4) * springFactor;
+          seg.currentAlpha = Math.min(1.0, popRatio * 3.0);
+          seg.currentY = 40 * (1 - popRatio);
           seg.depthZ = 100 + i;
-          seg.blurPx = 0.0;
+          seg.blurPx = 6.0 * (1 - popRatio) * depthBlurStrength;
         } else {
           const pastProg = Math.min(
             1.0,
             (lineProg - seg.endRatio) / Math.max(0.1, 1.0 - seg.endRatio)
           );
-          const targetPastScale = 0.72;
-          const targetPastAlpha = 0.35;
-          const targetPastY = 12;
+          const targetPastScale = 0.65;
+          const targetPastAlpha = 0.28;
 
           seg.currentScale =
             focusScaleMultiplier - (focusScaleMultiplier - targetPastScale) * pastProg;
           seg.currentAlpha = 1.0 - (1.0 - targetPastAlpha) * pastProg;
-          seg.currentY = targetPastY * pastProg;
+          seg.currentY = -Math.pow(pastProg, 0.85) * ascensionHeight;
           seg.depthZ = 10 + i;
-          seg.blurPx = (1.5 + pastProg * 4.5) * depthBlurStrength;
+          seg.blurPx = (1.5 + pastProg * 6.5) * depthBlurStrength;
         }
       }
     }
   }
+
+  cameraParallaxZCache += (shuttleImpulse - cameraParallaxZCache) * 0.15;
 
   // 绘制
   const bgGrad = ctx.createRadialGradient(
@@ -742,7 +759,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
     for (const dust of refs.nebulaStars.current as AmbientDustItem[]) {
-      dust.y += dust.vy;
+      dust.y += dust.vy - cameraParallaxZCache * 0.3;
       dust.x += dust.vx + Math.sin(time * 0.0004 * dust.freq + dust.phase) * 0.12;
 
       if (dust.y < -10) {
@@ -776,7 +793,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   ctx.font = `500 ${heroFontSize}px ${selectedFontFamily}`;
 
   if (prevLineFadeAlpha > 0.005 && previousSegmentsCache.length > 0) {
-    render3DDepthSegments(
+    renderCinematicFocalStream(
       ctx,
       previousSegmentsCache,
       prevLineWidthCache,
@@ -786,13 +803,14 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
       prevLineFadeAlpha * 0.6,
       palette,
       time * 0.001,
+      heroFontSize,
       true,
       prevFitScale
     );
   }
 
   if (lineTransitionAlpha > 0.005 && currentSegmentsCache.length > 0) {
-    render3DDepthSegments(
+    renderCinematicFocalStream(
       ctx,
       currentSegmentsCache,
       totalLineWidthCache,
@@ -802,6 +820,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
       lineTransitionAlpha,
       palette,
       time * 0.001,
+      heroFontSize,
       false,
       currFitScale
     );
