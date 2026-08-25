@@ -134,14 +134,12 @@ const defaultEffectSettings: EffectSettings = {
   cinematicLyricDrift: {
     fontStyle: 0,
     colorScheme: 0,
-    heroFontSize: 60,
-    focusScale: 1.5,
-    shuttleSpeed: 1.2,
-    ascensionHeight: 90,
-    depthBlurStrength: 1.2,
-    filmGrain: 0.2,
-    breathingDepth: 1.0,
-    vignetteStrength: 0.72,
+    heroFontSize: 54,
+    shimmerFeather: 50,
+    fluidSpeed: 0.8,
+    ambientGlowIntensity: 0.9,
+    filmGrain: 0.15,
+    vignetteStrength: 0.65,
   },
 };
 

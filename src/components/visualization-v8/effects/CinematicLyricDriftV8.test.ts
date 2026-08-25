@@ -82,13 +82,12 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
     expect(CinematicLyricDriftV8Effect.parameters.length).toBeGreaterThan(5);
   });
 
-  it("should initialize atmosphere orbs and dust motes", () => {
+  it("should initialize fluid blobs", () => {
     CinematicLyricDriftV8Effect.init(renderContext);
     const state = renderContext.private as CinematicLyricDriftState;
 
     expect(state).toBeDefined();
-    expect(state.atmosphereOrbs.length).toBeGreaterThan(5);
-    expect(state.ambientDust.length).toBeGreaterThan(50);
+    expect(state.fluidBlobs.length).toBeGreaterThanOrEqual(4);
   });
 
   it("should render without errors and render pure background when no lyrics", () => {
@@ -97,14 +96,12 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
       CinematicLyricDriftV8Effect.render(renderContext, audioData, {
         fontStyle: 0,
         colorScheme: 0,
-        heroFontSize: 60,
-        focusScale: 1.5,
-        shuttleSpeed: 1.2,
-        ascensionHeight: 90,
-        depthBlurStrength: 1.2,
-        filmGrain: 0.2,
-        breathingDepth: 1.0,
-        vignetteStrength: 0.72,
+        heroFontSize: 54,
+        shimmerFeather: 50,
+        fluidSpeed: 0.8,
+        ambientGlowIntensity: 0.9,
+        filmGrain: 0.15,
+        vignetteStrength: 0.65,
       });
     }).not.toThrow();
 
@@ -116,8 +113,7 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
     CinematicLyricDriftV8Effect.destroy(renderContext);
     const state = renderContext.private as CinematicLyricDriftState;
 
-    expect(state.atmosphereOrbs.length).toBe(0);
-    expect(state.ambientDust.length).toBe(0);
+    expect(state.fluidBlobs.length).toBe(0);
     expect(state.parsedLyrics.length).toBe(0);
   });
 });

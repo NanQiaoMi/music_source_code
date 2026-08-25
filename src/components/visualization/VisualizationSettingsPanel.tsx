@@ -787,70 +787,52 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                 </div>
 
                 <SettingSlider
-                  label="电影大字号"
-                  value={effectSettings.cinematicLyricDrift.heroFontSize ?? 60}
+                  label="歌词字号"
+                  value={effectSettings.cinematicLyricDrift.heroFontSize ?? 54}
                   min={36}
-                  max={96}
+                  max={72}
                   step={2}
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { heroFontSize: v })}
                 />
                 <SettingSlider
-                  label="焦点放大倍率"
-                  value={effectSettings.cinematicLyricDrift.focusScale ?? 1.5}
-                  min={1.2}
-                  max={2.0}
-                  step={0.05}
-                  onChange={(v) => updateEffectSettings("cinematicLyricDrift", { focusScale: v })}
-                />
-                <SettingSlider
-                  label="镜头穿梭速度"
-                  value={effectSettings.cinematicLyricDrift.shuttleSpeed ?? 1.2}
-                  min={0.5}
-                  max={2.5}
-                  step={0.1}
-                  onChange={(v) => updateEffectSettings("cinematicLyricDrift", { shuttleSpeed: v })}
-                />
-                <SettingSlider
-                  label="向上升腾高度"
-                  value={effectSettings.cinematicLyricDrift.ascensionHeight ?? 90}
-                  min={40}
-                  max={160}
+                  label="流光羽化宽度"
+                  value={effectSettings.cinematicLyricDrift.shimmerFeather ?? 50}
+                  min={20}
+                  max={100}
                   step={5}
                   onChange={(v) =>
-                    updateEffectSettings("cinematicLyricDrift", { ascensionHeight: v })
+                    updateEffectSettings("cinematicLyricDrift", { shimmerFeather: v })
                   }
                 />
                 <SettingSlider
-                  label="光学景深虚化"
-                  value={effectSettings.cinematicLyricDrift.depthBlurStrength ?? 1.2}
-                  min={0.0}
-                  max={2.5}
+                  label="背景流体速度"
+                  value={effectSettings.cinematicLyricDrift.fluidSpeed ?? 0.8}
+                  min={0.2}
+                  max={2.0}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cinematicLyricDrift", { fluidSpeed: v })}
+                />
+                <SettingSlider
+                  label="弥散光晕强度"
+                  value={effectSettings.cinematicLyricDrift.ambientGlowIntensity ?? 0.9}
+                  min={0.2}
+                  max={1.5}
                   step={0.1}
                   onChange={(v) =>
-                    updateEffectSettings("cinematicLyricDrift", { depthBlurStrength: v })
+                    updateEffectSettings("cinematicLyricDrift", { ambientGlowIntensity: v })
                   }
                 />
                 <SettingSlider
-                  label="宣纸肌理微粒"
-                  value={effectSettings.cinematicLyricDrift.filmGrain ?? 0.2}
+                  label="胶片颗粒微粒"
+                  value={effectSettings.cinematicLyricDrift.filmGrain ?? 0.15}
                   min={0.0}
-                  max={1.0}
-                  step={0.05}
+                  max={0.5}
+                  step={0.02}
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { filmGrain: v })}
                 />
                 <SettingSlider
-                  label="墨韵呼吸起伏"
-                  value={effectSettings.cinematicLyricDrift.breathingDepth ?? 1.0}
-                  min={0.0}
-                  max={2.0}
-                  step={0.1}
-                  onChange={(v) =>
-                    updateEffectSettings("cinematicLyricDrift", { breathingDepth: v })
-                  }
-                />
-                <SettingSlider
-                  label="幽深画境暗角"
-                  value={effectSettings.cinematicLyricDrift.vignetteStrength ?? 0.72}
+                  label="幽深暗角"
+                  value={effectSettings.cinematicLyricDrift.vignetteStrength ?? 0.65}
                   min={0.0}
                   max={1.0}
                   step={0.05}
