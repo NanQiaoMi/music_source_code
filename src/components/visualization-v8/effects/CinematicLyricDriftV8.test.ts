@@ -97,10 +97,9 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
       CinematicLyricDriftV8Effect.render(renderContext, audioData, {
         fontStyle: 0,
         colorScheme: 0,
-        heroFontSize: 38,
-        letterSpacing: 7.0,
-        inkBleedIntensity: 1.1,
-        filmGrain: 0.25,
+        heroFontSize: 40,
+        letterSpacing: 8.0,
+        filmGrain: 0.2,
         breathingDepth: 1.0,
         vignetteStrength: 0.72,
       });
