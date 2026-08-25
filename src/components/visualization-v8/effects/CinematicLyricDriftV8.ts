@@ -15,7 +15,7 @@ import { usePlayerStore } from "@/store/playerStore";
 // 1. Types & Data Structures
 // =========================================================================
 
-export interface GoldInkParticle {
+export interface GoldSparkle {
   x: number;
   y: number;
   vx: number;
@@ -50,25 +50,51 @@ export interface SoftAtmosphereOrb {
   speed: number;
 }
 
+export interface WordSegment {
+  text: string;
+  width: number;
+  startRatio: number;
+  endRatio: number;
+  // 动力学弹簧状态
+  popScale: number;
+  popY: number;
+  popAlpha: number;
+  popProgress: number; // 0 -> 1
+  phaseOffset: number;
+}
+
 export interface ParsedLrcLine {
   time: number;
   text: string;
+  segments?: WordSegment[];
 }
 
 export interface CinematicLyricDriftState {
   atmosphereOrbs: SoftAtmosphereOrb[];
   ambientDust: AmbientFloatingDust[];
-  goldInkParticles: GoldInkParticle[];
+  goldSparkles: GoldSparkle[];
   parsedLyrics: ParsedLrcLine[];
   lastRawLyrics: string;
-  // 平滑歌词状态
+
+  // 高精度音频时钟插值
+  lastReportedTime: number;
+  lastTimeUpdateMs: number;
+
+  // 词组级动力学状态
   currentLineText: string;
   previousLineText: string;
-  rawProgress: number;
-  smoothedProgress: number; // 60fps 极度丝滑插值进度
+  currentSegments: WordSegment[];
+  previousSegments: WordSegment[];
+  totalLineWidth: number;
+  prevLineWidth: number;
+
+  // 进度与过渡
+  lineEntranceTime: number;
   lineTransitionAlpha: number;
   prevLineFadeAlpha: number;
+  smoothedLineProgress: number;
   isSinging: boolean;
+
   // 音频平滑
   smoothedBass: number;
   smoothedMid: number;
@@ -110,7 +136,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textSung: "#fffef9",
     goldGradientStart: "#ffffff",
     goldGradientEnd: "#ffd276",
-    activeGlow: "rgba(255, 195, 100, 0.5)",
+    activeGlow: "rgba(255, 195, 100, 0.55)",
     dustColor: "rgba(255, 220, 160, 0.45)",
     orbColor: "rgba(245, 160, 80, 0.06)",
   },
@@ -125,7 +151,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textSung: "#faffff",
     goldGradientStart: "#ffffff",
     goldGradientEnd: "#a8dcff",
-    activeGlow: "rgba(150, 215, 255, 0.5)",
+    activeGlow: "rgba(150, 215, 255, 0.55)",
     dustColor: "rgba(200, 230, 255, 0.45)",
     orbColor: "rgba(120, 185, 250, 0.06)",
   },
@@ -140,7 +166,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textSung: "#fff6fa",
     goldGradientStart: "#ffffff",
     goldGradientEnd: "#ffb8d9",
-    activeGlow: "rgba(255, 160, 205, 0.5)",
+    activeGlow: "rgba(255, 160, 205, 0.55)",
     dustColor: "rgba(255, 205, 225, 0.45)",
     orbColor: "rgba(230, 120, 175, 0.06)",
   },
@@ -155,7 +181,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textSung: "#f4fff9",
     goldGradientStart: "#ffffff",
     goldGradientEnd: "#b5ffd8",
-    activeGlow: "rgba(130, 230, 180, 0.5)",
+    activeGlow: "rgba(130, 230, 180, 0.55)",
     dustColor: "rgba(185, 245, 215, 0.45)",
     orbColor: "rgba(100, 200, 150, 0.06)",
   },
@@ -170,7 +196,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textSung: "#ffffff",
     goldGradientStart: "#ffffff",
     goldGradientEnd: "#d4d4dc",
-    activeGlow: "rgba(235, 235, 245, 0.45)",
+    activeGlow: "rgba(235, 235, 245, 0.5)",
     dustColor: "rgba(235, 235, 245, 0.38)",
     orbColor: "rgba(190, 190, 205, 0.05)",
   },
@@ -188,7 +214,7 @@ const FONT_STYLES = [
 ];
 
 // =========================================================================
-// 3. Metadata Filtering & Helpers
+// 3. Helpers: Word Segmenter & Spring Math
 // =========================================================================
 
 function isMetadataLine(text: string): boolean {
@@ -201,6 +227,103 @@ function isMetadataLine(text: string): boolean {
     /^(作词|作曲|编曲|词曲|制作人|录音室|混音室)[\s:：]/i.test(t) ||
     /^\s*(QQ音乐|网易云音乐|酷狗|酷我|咪咕|Kugou|Netease|TME)\s*$/i.test(t)
   );
+}
+
+/**
+ * 智能分词器：
+ * - 英文/拉丁文本：按单词与空格分词（如 "Look what it costed" -> ["Look", "what", "it", "costed"]）
+ * - 中文/CJK文本：按语义节奏将 1~3 个字划分为一个灵动的词组单元
+ */
+function segmentText(text: string): string[] {
+  const t = text.trim();
+  if (!t) return [];
+
+  // 判断是否为纯拉丁/英文歌词（含空格）
+  const hasSpaces = /\s+/.test(t);
+  const isPureLatin = /^[A-Za-z0-9\s'’.,!?-]+$/.test(t);
+
+  if (hasSpaces || isPureLatin) {
+    const rawTokens = t.split(/(\s+)/);
+    const result: string[] = [];
+    for (const r of rawTokens) {
+      if (r) result.push(r);
+    }
+    return result;
+  }
+
+  // 中文分词节奏：将长句拆成 2~3 个字的优美词组
+  const result: string[] = [];
+  const chars = Array.from(t);
+  let buffer = "";
+
+  for (let i = 0; i < chars.length; i++) {
+    buffer += chars[i];
+    // 遇到标点立即切分，或每 2 个字切一次
+    if (/[，。！？、…；：]/.test(chars[i])) {
+      result.push(buffer);
+      buffer = "";
+    } else if (buffer.length >= 2 && i < chars.length - 1) {
+      // 若剩余字数仅剩 1 个，则合并为 3 字词组，避免单字落单
+      if (chars.length - i - 1 === 1) {
+        // 继续积累
+      } else {
+        result.push(buffer);
+        buffer = "";
+      }
+    }
+  }
+  if (buffer) {
+    result.push(buffer);
+  }
+
+  return result.length > 0 ? result : [t];
+}
+
+/**
+ * 解析并生成带分词测量的歌词行
+ */
+function buildSegmentedLine(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  fontFamily: string,
+  fontSize: number
+): { segments: WordSegment[]; totalWidth: number } {
+  ctx.save();
+  ctx.font = `500 ${fontSize}px ${fontFamily}`;
+
+  const tokenTexts = segmentText(text);
+  const segments: WordSegment[] = [];
+  let currentOffset = 0;
+
+  for (let i = 0; i < tokenTexts.length; i++) {
+    const rawToken = tokenTexts[i];
+    const w = ctx.measureText(rawToken).width;
+    segments.push({
+      text: rawToken,
+      width: w,
+      startRatio: 0,
+      endRatio: 0,
+      popScale: 0.4,
+      popY: 30,
+      popAlpha: 0,
+      popProgress: 0,
+      phaseOffset: i * 0.45,
+    });
+    currentOffset += w;
+  }
+
+  const totalWidth = Math.max(10, currentOffset);
+
+  // 计算每个词组的时间比例区间
+  let accumulatedW = 0;
+  for (const seg of segments) {
+    seg.startRatio = accumulatedW / totalWidth;
+    accumulatedW += seg.width;
+    seg.endRatio = accumulatedW / totalWidth;
+  }
+
+  ctx.restore();
+  return { segments, totalWidth };
 }
 
 function parseLrc(lrcText: string): ParsedLrcLine[] {
@@ -239,6 +362,36 @@ function parseLrc(lrcText: string): ParsedLrcLine[] {
   return result;
 }
 
+function findActiveLyricIndex(lyrics: ParsedLrcLine[], time: number): number {
+  let low = 0;
+  let high = lyrics.length - 1;
+  let ans = -1;
+
+  while (low <= high) {
+    const mid = (low + high) >> 1;
+    if (lyrics[mid].time <= time) {
+      ans = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return ans;
+}
+
+/**
+ * 经典 Spring Overshoot 弹簧缓动 (Apple/Framer Motion 风格)
+ * 产生灵动自然的微超调弹出效果
+ */
+function springEaseOut(t: number): number {
+  const c4 = (2 * Math.PI) / 3;
+  return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 function createFilmGrainCanvas(): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null;
   try {
@@ -261,7 +414,7 @@ function createFilmGrainCanvas(): HTMLCanvasElement | null {
       data[i] = val;
       data[i + 1] = val;
       data[i + 2] = val;
-      data[i + 3] = Math.floor(Math.random() * 20);
+      data[i + 3] = Math.floor(Math.random() * 18);
     }
     ctx.putImageData(imgData, 0, 0);
     return canvas;
@@ -271,92 +424,98 @@ function createFilmGrainCanvas(): HTMLCanvasElement | null {
 }
 
 /**
- * 60FPS 液体连续流光书法渲染器 (Liquid Continuous Gradient Flow)
- * - 彻底告别按字符离散跳跃，实现亚像素级平滑流动
- * - 中文字符与英文单词完美自适应
- * - 字号绝对恒定稳定，杜绝任何呼吸抽搐与忽大忽小
+ * 词组级动力学排版绘制器 (Kinetic Segment Spring Renderer)
  */
-function renderSilkySmoothLyrics(
+function renderKineticSegments(
   ctx: CanvasRenderingContext2D,
-  text: string,
+  segments: WordSegment[],
+  totalWidth: number,
   centerX: number,
   centerY: number,
-  progress: number,
+  currentLineProgress: number,
+  lineAlpha: number,
   palette: ColorPalette,
-  alpha: number
+  time: number,
+  isExiting: boolean
 ) {
-  if (!text || alpha <= 0.001) return;
+  if (!segments || segments.length === 0 || lineAlpha <= 0.001) return;
 
-  ctx.save();
-  ctx.globalAlpha = alpha;
+  const startX = centerX - totalWidth / 2;
+  let runningX = startX;
 
-  const textMetrics = ctx.measureText(text);
-  const textWidth = Math.max(10, textMetrics.width);
-  const startX = centerX - textWidth / 2;
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
 
-  // 1. 底层：若处于演唱中且进度 > 0，渲染当前唱到的金色漫射背光 (Soft Golden Back-Glow)
-  if (progress > 0.001) {
-    const activeX = startX + textWidth * progress;
-    ctx.save();
-    const glowGrad = ctx.createRadialGradient(activeX, centerY, 0, activeX, centerY, 45);
-    glowGrad.addColorStop(0, palette.activeGlow);
-    glowGrad.addColorStop(0.6, palette.activeGlow.replace(/[\d.]+\)$/, "0.1)"));
-    glowGrad.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = glowGrad;
-    ctx.beginPath();
-    ctx.arc(activeX, centerY, 45, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    // 1. 判断词组的演唱状态（已唱 / 唱中 / 未唱）
+    const isPast = currentLineProgress >= seg.endRatio;
+    const isActive = currentLineProgress >= seg.startRatio && currentLineProgress < seg.endRatio;
+
+    // 2. 有机微漂浮（微风拂墨）
+    const organicFloatY = Math.sin(time * 1.8 + seg.phaseOffset) * 2.2;
+    const organicRot = Math.sin(time * 1.2 + seg.phaseOffset * 0.8) * 0.015;
+
+    // 3. 词组弹簧位置与缩放
+    const currentScale = isExiting ? seg.popScale * lineAlpha : seg.popScale;
+    const currentAlpha = seg.popAlpha * lineAlpha;
+    const drawX = runningX + seg.width * 0.5;
+    const drawY = centerY + (isExiting ? -15 * (1 - lineAlpha) : seg.popY) + organicFloatY;
+
+    if (currentAlpha > 0.001) {
+      ctx.save();
+      ctx.translate(drawX, drawY);
+      ctx.scale(currentScale, currentScale);
+      ctx.rotate(organicRot);
+
+      // A. 若处于唱到的瞬间，渲染金色漫射水晕 (Bloom Aura)
+      if (isActive) {
+        const segProgress =
+          (currentLineProgress - seg.startRatio) / Math.max(0.01, seg.endRatio - seg.startRatio);
+        const pulse = 1.0 + Math.sin(segProgress * Math.PI) * 0.35;
+
+        ctx.save();
+        const glowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 48 * pulse);
+        glowGrad.addColorStop(0, palette.activeGlow);
+        glowGrad.addColorStop(0.5, palette.activeGlow.replace(/[\d.]+\)$/, "0.15)"));
+        glowGrad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = glowGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 48 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // B. 词组墨色渲染
+      ctx.globalAlpha = currentAlpha;
+
+      if (isPast) {
+        // 已唱完：纯净温润白金水墨
+        ctx.fillStyle = palette.textSung;
+        ctx.fillText(seg.text, 0, 0);
+      } else if (isActive) {
+        // 正在唱：洒金高光笔触 (Gold Gradient)
+        const segGrad = ctx.createLinearGradient(-seg.width * 0.5, -20, seg.width * 0.5, 20);
+        segGrad.addColorStop(0, palette.goldGradientStart);
+        segGrad.addColorStop(1, palette.goldGradientEnd);
+        ctx.fillStyle = segGrad;
+        ctx.fillText(seg.text, 0, 0);
+
+        // 顶层飞白微光
+        ctx.save();
+        ctx.globalCompositeOperation = "source-atop";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+        ctx.fillText(seg.text, 0, 0);
+        ctx.restore();
+      } else {
+        // 未唱到：清透半透明宣纸淡墨
+        ctx.fillStyle = palette.textUnsung;
+        ctx.fillText(seg.text, 0, 0);
+      }
+
+      ctx.restore();
+    }
+
+    runningX += seg.width;
   }
-
-  // 2. 主层：连续流光线性渐变 (Continuous Linear Gradient Sweep)
-  if (progress <= 0.001) {
-    // 尚未开唱：纯净半透明宣纸白墨
-    ctx.fillStyle = palette.textUnsung;
-    ctx.fillText(text, centerX, centerY);
-  } else if (progress >= 0.999) {
-    // 全句唱毕：纯净温润白金水墨
-    ctx.fillStyle = palette.textSung;
-    ctx.fillText(text, centerX, centerY);
-  } else {
-    // 演唱中：60fps 丝滑连续渐变流光
-    const sweepX = startX + textWidth * progress;
-    const bandWidth = Math.max(25, textWidth * 0.08); // 柔和过渡光带宽
-
-    const p0 = Math.max(0, Math.min(1, (sweepX - bandWidth * 1.5 - startX) / textWidth));
-    const p1 = Math.max(0, Math.min(1, (sweepX - startX) / textWidth));
-    const p2 = Math.max(0, Math.min(1, (sweepX + bandWidth * 1.5 - startX) / textWidth));
-
-    const lineGrad = ctx.createLinearGradient(startX, 0, startX + textWidth, 0);
-    lineGrad.addColorStop(0, palette.textSung);
-    lineGrad.addColorStop(p0, palette.textSung);
-    lineGrad.addColorStop(p1, palette.goldGradientEnd);
-    lineGrad.addColorStop(p2, palette.textUnsung);
-    lineGrad.addColorStop(1, palette.textUnsung);
-
-    ctx.fillStyle = lineGrad;
-    ctx.fillText(text, centerX, centerY);
-
-    // 3. 顶层：当前唱到位置的微飞白高光 (Luminescent Sheen Pulse)
-    ctx.save();
-    ctx.globalCompositeOperation = "source-atop";
-    const sweepPointGrad = ctx.createRadialGradient(
-      sweepX,
-      centerY,
-      0,
-      sweepX,
-      centerY,
-      bandWidth * 1.8
-    );
-    sweepPointGrad.addColorStop(0, "rgba(255, 255, 255, 0.7)");
-    sweepPointGrad.addColorStop(0.5, palette.goldGradientStart);
-    sweepPointGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
-    ctx.fillStyle = sweepPointGrad;
-    ctx.fillText(text, centerX, centerY);
-    ctx.restore();
-  }
-
-  ctx.restore();
 }
 
 // =========================================================================
@@ -364,7 +523,6 @@ function renderSilkySmoothLyrics(
 // =========================================================================
 
 const PARAMETERS: EffectParameterDefinition[] = [
-  // Basic Mode
   {
     id: "fontStyle",
     name: "书法字体风格",
@@ -400,7 +558,17 @@ const PARAMETERS: EffectParameterDefinition[] = [
     min: 28,
     max: 56,
     step: 1,
-    default: 40,
+    default: 42,
+  },
+  {
+    id: "popSpeed",
+    name: "词组弹出节奏",
+    type: "number",
+    mode: "professional",
+    min: 0.5,
+    max: 2.5,
+    step: 0.1,
+    default: 1.2,
   },
   {
     id: "filmGrain",
@@ -442,8 +610,7 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
   id: "cinematic-lyric-drift-v8",
   name: "温光浮字 · 电影感",
   category: "particles",
-  description:
-    "专为温柔国风与慢歌打造的水墨毛笔书法歌词可视化，60FPS丝滑流光、稳定排版、纯粹留白，无歌词时呈现极净禅意山水微光",
+  description: "分词级非线性弹簧动力学排版、60FPS洒金微流光、无歌词时呈现极净禅意水墨微光",
   preferredEngine: "canvas",
   parameters: PARAMETERS,
 
@@ -486,15 +653,21 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     const state: CinematicLyricDriftState = {
       atmosphereOrbs,
       ambientDust,
-      goldInkParticles: [],
+      goldSparkles: [],
       parsedLyrics: [],
       lastRawLyrics: "",
+      lastReportedTime: 0,
+      lastTimeUpdateMs: typeof performance !== "undefined" ? performance.now() : Date.now(),
       currentLineText: "",
       previousLineText: "",
-      rawProgress: 0,
-      smoothedProgress: 0,
+      currentSegments: [],
+      previousSegments: [],
+      totalLineWidth: 0,
+      prevLineWidth: 0,
+      lineEntranceTime: 0,
       lineTransitionAlpha: 0,
       prevLineFadeAlpha: 0,
+      smoothedLineProgress: 0,
       isSinging: false,
       smoothedBass: 0,
       smoothedMid: 0,
@@ -536,14 +709,14 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     );
     const selectedFontFamily = FONT_STYLES[fontStyleIndex];
 
-    // 字号保持绝对恒定稳定，绝不因低音鼓点一抽一抽地突变！
-    const heroFontSize = Math.round(params.heroFontSize ?? 40);
+    const heroFontSize = Math.round(params.heroFontSize ?? 42);
+    const popSpeed = params.popSpeed ?? 1.2;
     const filmGrain = params.filmGrain ?? 0.2;
     const breathingDepth = params.breathingDepth ?? 1.0;
     const vignetteStrength = params.vignetteStrength ?? 0.72;
 
     // -------------------------------------------------------------
-    // 2. 音频平滑 & 柔和光晕呼吸
+    // 2. 音频平滑 & 柔和呼吸
     // -------------------------------------------------------------
     let rawBass = audioData.bass || 0;
     let rawMid = audioData.mid || 0;
@@ -575,64 +748,70 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
       (state.breathPhase + deltaTime * (0.35 + state.smoothedEnergy * 0.3) * breathingDepth) %
       (Math.PI * 2);
     const breathSin = Math.sin(state.breathPhase);
-    // 仅用于背景光场扩散，绝不缩放文字字号
     const auraBreathFactor = 1.0 + breathSin * 0.05 * breathingDepth + state.smoothedBass * 0.08;
 
     // -------------------------------------------------------------
-    // 3. 歌词状态检测与 60FPS 极度丝滑进度插值
+    // 3. 高精度时钟与歌词分词动力学状态
     // -------------------------------------------------------------
     const audioState = useAudioStore.getState();
     const playerState = usePlayerStore.getState();
     const currentSong = audioState.currentSong || playerState.currentSong;
-    const currentTime = audioState.currentTime || playerState.currentTime || 0;
+    const reportedTime = audioState.currentTime || playerState.currentTime || 0;
     const isPlaying = audioState.isPlaying || playerState.isPlaying;
     const rawLyrics = currentSong?.lyrics || "";
+
+    const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
+
+    if (Math.abs(reportedTime - state.lastReportedTime) > 0.02) {
+      state.lastReportedTime = reportedTime;
+      state.lastTimeUpdateMs = nowMs;
+    }
+
+    const elapsedSinceUpdate = isPlaying ? (nowMs - state.lastTimeUpdateMs) / 1000 : 0;
+    const preciseTime = state.lastReportedTime + Math.min(0.8, Math.max(0, elapsedSinceUpdate));
 
     if (rawLyrics !== state.lastRawLyrics) {
       state.lastRawLyrics = rawLyrics;
       state.parsedLyrics = parseLrc(rawLyrics);
       state.currentLineText = "";
       state.previousLineText = "";
-      state.smoothedProgress = 0;
+      state.currentSegments = [];
+      state.previousSegments = [];
+      state.totalLineWidth = 0;
+      state.prevLineWidth = 0;
+      state.smoothedLineProgress = 0;
     }
 
     let activeLine = "";
-    let rawProgress = 0;
+    let targetProgress = 0;
     let isSinging = false;
 
     if (isPlaying && state.parsedLyrics.length > 0) {
-      let activeIdx = -1;
-      for (let i = 0; i < state.parsedLyrics.length; i++) {
-        if (currentTime >= state.parsedLyrics[i].time) {
-          activeIdx = i;
-        } else {
-          break;
-        }
-      }
+      const activeIdx = findActiveLyricIndex(state.parsedLyrics, preciseTime);
 
       if (activeIdx >= 0) {
         const curr = state.parsedLyrics[activeIdx];
         const next = state.parsedLyrics[activeIdx + 1];
         const lineDuration = next ? Math.max(1.2, next.time - curr.time) : 5.0;
-        const elapsed = currentTime - curr.time;
+        const elapsed = preciseTime - curr.time;
         const estimatedDuration = Math.min(lineDuration, Math.max(2.2, curr.text.length * 0.36));
 
         if (elapsed >= 0 && elapsed <= estimatedDuration + 0.8) {
           isSinging = true;
           activeLine = curr.text;
-          rawProgress = Math.min(1.0, Math.max(0.0, elapsed / Math.max(1.0, estimatedDuration)));
+          targetProgress = Math.min(1.0, Math.max(0.0, elapsed / Math.max(1.0, estimatedDuration)));
 
-          // 演唱时偶尔析出细腻金粉星尘
-          if (state.goldInkParticles.length < 16 && Math.random() < 0.1) {
-            state.goldInkParticles.push({
-              x: width * 0.5 + (Math.random() - 0.5) * (curr.text.length * heroFontSize * 0.6),
-              y: height * 0.52 + (Math.random() - 0.5) * 10,
-              vx: (Math.random() - 0.5) * 0.15,
-              vy: -0.15 - Math.random() * 0.2,
-              size: 0.8 + Math.random() * 1.3,
-              alpha: 0.8,
+          // 唱到当前词时析出金色星芒
+          if (state.goldSparkles.length < 18 && Math.random() < 0.12) {
+            state.goldSparkles.push({
+              x: width * 0.5 + (Math.random() - 0.5) * (state.totalLineWidth * 0.7 || 200),
+              y: height * 0.52 + (Math.random() - 0.5) * 12,
+              vx: (Math.random() - 0.5) * 0.2,
+              vy: -0.2 - Math.random() * 0.25,
+              size: 0.8 + Math.random() * 1.4,
+              alpha: 0.85,
               life: 0,
-              maxLife: 1.5 + Math.random() * 1.0,
+              maxLife: 1.4 + Math.random() * 0.8,
               color: palette.goldGradientEnd,
             });
           }
@@ -640,29 +819,80 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
       }
     }
 
-    // 歌词平滑换行
+    // 歌词换行并构建词组分词
     if (activeLine !== state.currentLineText) {
       if (state.currentLineText) {
         state.previousLineText = state.currentLineText;
+        state.previousSegments = state.currentSegments;
+        state.prevLineWidth = state.totalLineWidth;
         state.prevLineFadeAlpha = state.lineTransitionAlpha;
       }
       state.currentLineText = activeLine;
+      state.lineEntranceTime = state.timeAccumulator;
       state.lineTransitionAlpha = 0;
-      state.smoothedProgress = 0;
+      state.smoothedLineProgress = targetProgress;
+
+      if (activeLine) {
+        const { segments, totalWidth } = buildSegmentedLine(
+          c2d,
+          activeLine,
+          selectedFontFamily,
+          heroFontSize
+        );
+        state.currentSegments = segments;
+        state.totalLineWidth = totalWidth;
+      } else {
+        state.currentSegments = [];
+        state.totalLineWidth = 0;
+      }
     }
 
-    state.rawProgress = rawProgress;
     state.isSinging = isSinging;
-
-    // 进度平滑插值（保证流光如水流般连续推进）
-    state.smoothedProgress += (rawProgress - state.smoothedProgress) * 0.15;
+    state.smoothedLineProgress += (targetProgress - state.smoothedLineProgress) * 0.25;
 
     const targetCurrentAlpha = isSinging ? 1.0 : 0.0;
-    state.lineTransitionAlpha += (targetCurrentAlpha - state.lineTransitionAlpha) * 0.08;
+    state.lineTransitionAlpha += (targetCurrentAlpha - state.lineTransitionAlpha) * 0.09;
     state.prevLineFadeAlpha += (0.0 - state.prevLineFadeAlpha) * 0.1;
 
     // -------------------------------------------------------------
-    // 4. 绘制渲染流水线
+    // 4. 词组非线性顺序弹簧弹出计算 (Word Segment Kinetic Step)
+    // -------------------------------------------------------------
+    if (state.currentSegments.length > 0) {
+      const entranceElapsed = Math.max(0, state.timeAccumulator - state.lineEntranceTime);
+      const segCount = state.currentSegments.length;
+      // 每个词组之间的入场交错延迟
+      const staggerDelay = 0.08 / popSpeed;
+      const singlePopDuration = 0.42 / popSpeed;
+
+      for (let i = 0; i < segCount; i++) {
+        const seg = state.currentSegments[i];
+        const segStartTime = i * staggerDelay;
+        const segLocalT = Math.max(
+          0,
+          Math.min(1.0, (entranceElapsed - segStartTime) / singlePopDuration)
+        );
+
+        seg.popProgress = segLocalT;
+        if (segLocalT <= 0) {
+          seg.popAlpha = 0;
+          seg.popScale = 0.5;
+          seg.popY = 24;
+        } else if (segLocalT >= 1.0) {
+          seg.popAlpha = 1.0;
+          seg.popScale = 1.0;
+          seg.popY = 0;
+        } else {
+          // 经典弹簧超调 (Spring Elastic Pop)
+          const springVal = springEaseOut(segLocalT);
+          seg.popScale = 0.5 + 0.5 * springVal;
+          seg.popY = 24 * (1 - easeOutCubic(segLocalT));
+          seg.popAlpha = Math.min(1.0, segLocalT * 2.2);
+        }
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 5. 绘制流水线
     // -------------------------------------------------------------
 
     // A. 宣纸水墨深邃底色
@@ -680,7 +910,7 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     c2d.fillStyle = bgGrad;
     c2d.fillRect(0, 0, width, height);
 
-    // B. 中心温润水墨光场（仅光晕做柔和呼吸，文字不动）
+    // B. 中心水墨温光
     c2d.save();
     c2d.globalCompositeOperation = "screen";
     const auraRadius = width * 0.42 * auraBreathFactor;
@@ -702,7 +932,7 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     c2d.fill();
     c2d.restore();
 
-    // C. 柔焦墨光团
+    // C. 柔焦光团
     c2d.save();
     c2d.globalCompositeOperation = "screen";
     for (const orb of state.atmosphereOrbs) {
@@ -752,19 +982,19 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     }
     c2d.restore();
 
-    // E. 金墨微粒流
-    if (state.goldInkParticles.length > 0) {
+    // E. 金墨星火微粒
+    if (state.goldSparkles.length > 0) {
       c2d.save();
       c2d.globalCompositeOperation = "screen";
-      for (let i = state.goldInkParticles.length - 1; i >= 0; i--) {
-        const drop = state.goldInkParticles[i];
+      for (let i = state.goldSparkles.length - 1; i >= 0; i--) {
+        const drop = state.goldSparkles[i];
         drop.life += deltaTime;
         drop.x += drop.vx;
         drop.y += drop.vy;
 
         const progress = drop.life / drop.maxLife;
         if (progress >= 1.0) {
-          state.goldInkParticles.splice(i, 1);
+          state.goldSparkles.splice(i, 1);
           continue;
         }
 
@@ -778,7 +1008,7 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
       c2d.restore();
     }
 
-    // F. 60FPS 丝滑连续流光书法排版（固定基准线，永不卡顿抖动）
+    // F. 词组级动力学排版绘制 (Kinetic Word Segment Display)
     const heroY = height * 0.52;
     const heroX = width * 0.5;
 
@@ -787,29 +1017,35 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     c2d.textBaseline = "middle";
     c2d.font = `500 ${heroFontSize}px ${selectedFontFamily}`;
 
-    // 1. 旧句原地平滑淡出（不突兀跳动）
-    if (state.prevLineFadeAlpha > 0.005 && state.previousLineText) {
-      renderSilkySmoothLyrics(
+    // 1. 旧句词组优雅退场
+    if (state.prevLineFadeAlpha > 0.005 && state.previousSegments.length > 0) {
+      renderKineticSegments(
         c2d,
-        state.previousLineText,
+        state.previousSegments,
+        state.prevLineWidth,
         heroX,
         heroY,
         1.0,
+        state.prevLineFadeAlpha * 0.6,
         palette,
-        state.prevLineFadeAlpha * 0.6
+        state.timeAccumulator,
+        true
       );
     }
 
-    // 2. 当前句原地平滑淡入并连续流光
-    if (state.lineTransitionAlpha > 0.005 && state.currentLineText) {
-      renderSilkySmoothLyrics(
+    // 2. 当前句词组非线性弹簧顺序弹出进场 & 灵动流光
+    if (state.lineTransitionAlpha > 0.005 && state.currentSegments.length > 0) {
+      renderKineticSegments(
         c2d,
-        state.currentLineText,
+        state.currentSegments,
+        state.totalLineWidth,
         heroX,
         heroY,
-        state.smoothedProgress,
+        state.smoothedLineProgress,
+        state.lineTransitionAlpha,
         palette,
-        state.lineTransitionAlpha
+        state.timeAccumulator,
+        false
       );
     }
 
@@ -859,8 +1095,10 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     if (ctx && ctx.private) {
       ctx.private.atmosphereOrbs = [];
       ctx.private.ambientDust = [];
-      ctx.private.goldInkParticles = [];
+      ctx.private.goldSparkles = [];
       ctx.private.parsedLyrics = [];
+      ctx.private.currentSegments = [];
+      ctx.private.previousSegments = [];
       ctx.private.grainCanvas = null;
     }
   },

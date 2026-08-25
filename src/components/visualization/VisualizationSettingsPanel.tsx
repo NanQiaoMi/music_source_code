@@ -788,21 +788,19 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
 
                 <SettingSlider
                   label="书法字号"
-                  value={effectSettings.cinematicLyricDrift.heroFontSize ?? 40}
+                  value={effectSettings.cinematicLyricDrift.heroFontSize ?? 42}
                   min={28}
                   max={56}
                   step={1}
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { heroFontSize: v })}
                 />
                 <SettingSlider
-                  label="书法行气字距"
-                  value={effectSettings.cinematicLyricDrift.letterSpacing ?? 8.0}
-                  min={2}
-                  max={18}
-                  step={0.5}
-                  onChange={(v) =>
-                    updateEffectSettings("cinematicLyricDrift", { letterSpacing: v })
-                  }
+                  label="词组弹出节奏"
+                  value={effectSettings.cinematicLyricDrift.popSpeed ?? 1.2}
+                  min={0.5}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("cinematicLyricDrift", { popSpeed: v })}
                 />
                 <SettingSlider
                   label="宣纸肌理微粒"

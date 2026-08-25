@@ -9,7 +9,7 @@ import { usePlayerStore } from "@/store/playerStore";
 // 1. Types & Data Structures
 // =========================================================================
 
-interface GoldInkParticle {
+interface GoldSparkle {
   x: number;
   y: number;
   vx: number;
@@ -44,6 +44,18 @@ interface SoftAtmosphereOrbItem {
   speed: number;
 }
 
+interface WordSegment {
+  text: string;
+  width: number;
+  startRatio: number;
+  endRatio: number;
+  popScale: number;
+  popY: number;
+  popAlpha: number;
+  popProgress: number;
+  phaseOffset: number;
+}
+
 interface ParsedLrcLine {
   time: number;
   text: string;
@@ -76,7 +88,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textSung: "#fffef9",
     goldGradientStart: "#ffffff",
     goldGradientEnd: "#ffd276",
-    activeGlow: "rgba(255, 195, 100, 0.5)",
+    activeGlow: "rgba(255, 195, 100, 0.55)",
     dustColor: "rgba(255, 220, 160, 0.45)",
     orbColor: "rgba(245, 160, 80, 0.06)",
   },
@@ -91,7 +103,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textSung: "#faffff",
     goldGradientStart: "#ffffff",
     goldGradientEnd: "#a8dcff",
-    activeGlow: "rgba(150, 215, 255, 0.5)",
+    activeGlow: "rgba(150, 215, 255, 0.55)",
     dustColor: "rgba(200, 230, 255, 0.45)",
     orbColor: "rgba(120, 185, 250, 0.06)",
   },
@@ -106,7 +118,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textSung: "#fff6fa",
     goldGradientStart: "#ffffff",
     goldGradientEnd: "#ffb8d9",
-    activeGlow: "rgba(255, 160, 205, 0.5)",
+    activeGlow: "rgba(255, 160, 205, 0.55)",
     dustColor: "rgba(255, 205, 225, 0.45)",
     orbColor: "rgba(230, 120, 175, 0.06)",
   },
@@ -121,7 +133,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textSung: "#f4fff9",
     goldGradientStart: "#ffffff",
     goldGradientEnd: "#b5ffd8",
-    activeGlow: "rgba(130, 230, 180, 0.5)",
+    activeGlow: "rgba(130, 230, 180, 0.55)",
     dustColor: "rgba(185, 245, 215, 0.45)",
     orbColor: "rgba(100, 200, 150, 0.06)",
   },
@@ -136,20 +148,20 @@ const COLOR_PALETTES: ColorPalette[] = [
     textSung: "#ffffff",
     goldGradientStart: "#ffffff",
     goldGradientEnd: "#d4d4dc",
-    activeGlow: "rgba(235, 235, 245, 0.45)",
+    activeGlow: "rgba(235, 235, 245, 0.5)",
     dustColor: "rgba(235, 235, 245, 0.38)",
     orbColor: "rgba(190, 190, 205, 0.05)",
   },
 ];
 
 const FONT_STYLES = [
-  // 0: 洒脱行楷 (中英文兼顾：华文行楷/楷体 + 优雅西文手写)
+  // 0: 洒脱行楷
   `"STXingkai", "华文行楷", "Xingkai SC", "Ma Shan Zheng", "STKaiti", "楷体", "Snell Roundhand", "Brush Script MT", "Georgia", serif`,
-  // 1: 清雅文楷 (清秀文雅楷体)
+  // 1: 清雅文楷
   `"STKaiti", "Kaiti SC", "楷体", "楷体_GB2312", "LXGW WenKai", "Baskerville", "Georgia", serif`,
-  // 2: 金石古韵 (经典古典刻本文韵)
+  // 2: 金石古韵
   `"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "Palatino", "Georgia", serif`,
-  // 3: 苍劲狂草 (写意洒脱狂草)
+  // 3: 苍劲狂草
   `"Long Cang", "Liu Jian Mao Cao", "STXingkai", "华文行楷", "STKaiti", "Brush Script MT", serif`,
 ];
 
@@ -157,12 +169,18 @@ let parsedLyricsCache: ParsedLrcLine[] = [];
 let lastRawLyricsCache = "";
 let grainCanvasCache: HTMLCanvasElement | null = null;
 let currentLineTextCache = "";
-let previousLineTextCache = "";
+let currentSegmentsCache: WordSegment[] = [];
+let previousSegmentsCache: WordSegment[] = [];
+let totalLineWidthCache = 0;
+let prevLineWidthCache = 0;
+let lineEntranceTimeCache = 0;
 let lineTransitionAlpha = 0;
 let prevLineFadeAlpha = 0;
 let breathAngle = 0;
-const goldInkParticles: GoldInkParticle[] = [];
+const goldSparkles: GoldSparkle[] = [];
 let smoothedProgressCache = 0;
+let lastReportedTimeCache = 0;
+let lastTimeUpdateMsCache = 0;
 
 function isMetadataLine(text: string): boolean {
   const t = text.trim();
@@ -174,6 +192,90 @@ function isMetadataLine(text: string): boolean {
     /^(作词|作曲|编曲|词曲|制作人|录音室|混音室)[\s:：]/i.test(t) ||
     /^\s*(QQ音乐|网易云音乐|酷狗|酷我|咪咕|Kugou|Netease|TME)\s*$/i.test(t)
   );
+}
+
+function segmentText(text: string): string[] {
+  const t = text.trim();
+  if (!t) return [];
+
+  const hasSpaces = /\s+/.test(t);
+  const isPureLatin = /^[A-Za-z0-9\s'’.,!?-]+$/.test(t);
+
+  if (hasSpaces || isPureLatin) {
+    const rawTokens = t.split(/(\s+)/);
+    const result: string[] = [];
+    for (const r of rawTokens) {
+      if (r) result.push(r);
+    }
+    return result;
+  }
+
+  const result: string[] = [];
+  const chars = Array.from(t);
+  let buffer = "";
+
+  for (let i = 0; i < chars.length; i++) {
+    buffer += chars[i];
+    if (/[，。！？、…；：]/.test(chars[i])) {
+      result.push(buffer);
+      buffer = "";
+    } else if (buffer.length >= 2 && i < chars.length - 1) {
+      if (chars.length - i - 1 === 1) {
+        // 继续积累
+      } else {
+        result.push(buffer);
+        buffer = "";
+      }
+    }
+  }
+  if (buffer) {
+    result.push(buffer);
+  }
+
+  return result.length > 0 ? result : [t];
+}
+
+function buildSegmentedLine(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  fontFamily: string,
+  fontSize: number
+): { segments: WordSegment[]; totalWidth: number } {
+  ctx.save();
+  ctx.font = `500 ${fontSize}px ${fontFamily}`;
+
+  const tokenTexts = segmentText(text);
+  const segments: WordSegment[] = [];
+  let currentOffset = 0;
+
+  for (let i = 0; i < tokenTexts.length; i++) {
+    const rawToken = tokenTexts[i];
+    const w = ctx.measureText(rawToken).width;
+    segments.push({
+      text: rawToken,
+      width: w,
+      startRatio: 0,
+      endRatio: 0,
+      popScale: 0.4,
+      popY: 30,
+      popAlpha: 0,
+      popProgress: 0,
+      phaseOffset: i * 0.45,
+    });
+    currentOffset += w;
+  }
+
+  const totalWidth = Math.max(10, currentOffset);
+
+  let accumulatedW = 0;
+  for (const seg of segments) {
+    seg.startRatio = accumulatedW / totalWidth;
+    accumulatedW += seg.width;
+    seg.endRatio = accumulatedW / totalWidth;
+  }
+
+  ctx.restore();
+  return { segments, totalWidth };
 }
 
 function parseLrc(lrcText: string): ParsedLrcLine[] {
@@ -212,6 +314,32 @@ function parseLrc(lrcText: string): ParsedLrcLine[] {
   return result;
 }
 
+function findActiveLyricIndex(lyrics: ParsedLrcLine[], time: number): number {
+  let low = 0;
+  let high = lyrics.length - 1;
+  let ans = -1;
+
+  while (low <= high) {
+    const mid = (low + high) >> 1;
+    if (lyrics[mid].time <= time) {
+      ans = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return ans;
+}
+
+function springEaseOut(t: number): number {
+  const c4 = (2 * Math.PI) / 3;
+  return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 function getFilmGrainCanvas(): HTMLCanvasElement | null {
   if (grainCanvasCache) return grainCanvasCache;
   if (typeof document === "undefined") return null;
@@ -236,7 +364,7 @@ function getFilmGrainCanvas(): HTMLCanvasElement | null {
       data[i] = val;
       data[i + 1] = val;
       data[i + 2] = val;
-      data[i + 3] = Math.floor(Math.random() * 20);
+      data[i + 3] = Math.floor(Math.random() * 18);
     }
     ctx.putImageData(imgData, 0, 0);
     grainCanvasCache = canvas;
@@ -246,84 +374,87 @@ function getFilmGrainCanvas(): HTMLCanvasElement | null {
   }
 }
 
-function renderSilkySmoothLyrics(
+function renderKineticSegments(
   ctx: CanvasRenderingContext2D,
-  text: string,
+  segments: WordSegment[],
+  totalWidth: number,
   centerX: number,
   centerY: number,
-  progress: number,
+  currentLineProgress: number,
+  lineAlpha: number,
   palette: ColorPalette,
-  alpha: number
+  time: number,
+  isExiting: boolean
 ) {
-  if (!text || alpha <= 0.001) return;
+  if (!segments || segments.length === 0 || lineAlpha <= 0.001) return;
 
-  ctx.save();
-  ctx.globalAlpha = alpha;
+  const startX = centerX - totalWidth / 2;
+  let runningX = startX;
 
-  const textMetrics = ctx.measureText(text);
-  const textWidth = Math.max(10, textMetrics.width);
-  const startX = centerX - textWidth / 2;
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
 
-  // 1. 底层：若处于演唱中且进度 > 0，渲染当前唱到的金色漫射背光 (Soft Golden Back-Glow)
-  if (progress > 0.001) {
-    const activeX = startX + textWidth * progress;
-    ctx.save();
-    const glowGrad = ctx.createRadialGradient(activeX, centerY, 0, activeX, centerY, 45);
-    glowGrad.addColorStop(0, palette.activeGlow);
-    glowGrad.addColorStop(0.6, palette.activeGlow.replace(/[\d.]+\)$/, "0.1)"));
-    glowGrad.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = glowGrad;
-    ctx.beginPath();
-    ctx.arc(activeX, centerY, 45, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    const isPast = currentLineProgress >= seg.endRatio;
+    const isActive = currentLineProgress >= seg.startRatio && currentLineProgress < seg.endRatio;
+
+    const organicFloatY = Math.sin(time * 1.8 + seg.phaseOffset) * 2.2;
+    const organicRot = Math.sin(time * 1.2 + seg.phaseOffset * 0.8) * 0.015;
+
+    const currentScale = isExiting ? seg.popScale * lineAlpha : seg.popScale;
+    const currentAlpha = seg.popAlpha * lineAlpha;
+    const drawX = runningX + seg.width * 0.5;
+    const drawY = centerY + (isExiting ? -15 * (1 - lineAlpha) : seg.popY) + organicFloatY;
+
+    if (currentAlpha > 0.001) {
+      ctx.save();
+      ctx.translate(drawX, drawY);
+      ctx.scale(currentScale, currentScale);
+      ctx.rotate(organicRot);
+
+      if (isActive) {
+        const segProgress =
+          (currentLineProgress - seg.startRatio) / Math.max(0.01, seg.endRatio - seg.startRatio);
+        const pulse = 1.0 + Math.sin(segProgress * Math.PI) * 0.35;
+
+        ctx.save();
+        const glowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 48 * pulse);
+        glowGrad.addColorStop(0, palette.activeGlow);
+        glowGrad.addColorStop(0.5, palette.activeGlow.replace(/[\d.]+\)$/, "0.15)"));
+        glowGrad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = glowGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 48 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.globalAlpha = currentAlpha;
+
+      if (isPast) {
+        ctx.fillStyle = palette.textSung;
+        ctx.fillText(seg.text, 0, 0);
+      } else if (isActive) {
+        const segGrad = ctx.createLinearGradient(-seg.width * 0.5, -20, seg.width * 0.5, 20);
+        segGrad.addColorStop(0, palette.goldGradientStart);
+        segGrad.addColorStop(1, palette.goldGradientEnd);
+        ctx.fillStyle = segGrad;
+        ctx.fillText(seg.text, 0, 0);
+
+        ctx.save();
+        ctx.globalCompositeOperation = "source-atop";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+        ctx.fillText(seg.text, 0, 0);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = palette.textUnsung;
+        ctx.fillText(seg.text, 0, 0);
+      }
+
+      ctx.restore();
+    }
+
+    runningX += seg.width;
   }
-
-  // 2. 主层：连续流光线性渐变 (Continuous Linear Gradient Sweep)
-  if (progress <= 0.001) {
-    ctx.fillStyle = palette.textUnsung;
-    ctx.fillText(text, centerX, centerY);
-  } else if (progress >= 0.999) {
-    ctx.fillStyle = palette.textSung;
-    ctx.fillText(text, centerX, centerY);
-  } else {
-    const sweepX = startX + textWidth * progress;
-    const bandWidth = Math.max(25, textWidth * 0.08);
-
-    const p0 = Math.max(0, Math.min(1, (sweepX - bandWidth * 1.5 - startX) / textWidth));
-    const p1 = Math.max(0, Math.min(1, (sweepX - startX) / textWidth));
-    const p2 = Math.max(0, Math.min(1, (sweepX + bandWidth * 1.5 - startX) / textWidth));
-
-    const lineGrad = ctx.createLinearGradient(startX, 0, startX + textWidth, 0);
-    lineGrad.addColorStop(0, palette.textSung);
-    lineGrad.addColorStop(p0, palette.textSung);
-    lineGrad.addColorStop(p1, palette.goldGradientEnd);
-    lineGrad.addColorStop(p2, palette.textUnsung);
-    lineGrad.addColorStop(1, palette.textUnsung);
-
-    ctx.fillStyle = lineGrad;
-    ctx.fillText(text, centerX, centerY);
-
-    // 3. 顶层：当前唱到位置的微飞白高光 (Luminescent Sheen Pulse)
-    ctx.save();
-    ctx.globalCompositeOperation = "source-atop";
-    const sweepPointGrad = ctx.createRadialGradient(
-      sweepX,
-      centerY,
-      0,
-      sweepX,
-      centerY,
-      bandWidth * 1.8
-    );
-    sweepPointGrad.addColorStop(0, "rgba(255, 255, 255, 0.7)");
-    sweepPointGrad.addColorStop(0.5, palette.goldGradientStart);
-    sweepPointGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
-    ctx.fillStyle = sweepPointGrad;
-    ctx.fillText(text, centerX, centerY);
-    ctx.restore();
-  }
-
-  ctx.restore();
 }
 
 // =========================================================================
@@ -333,9 +464,6 @@ function renderSilkySmoothLyrics(
 export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   const { ctx, width, height, data, time, refs, params } = effectCtx;
 
-  // -------------------------------------------------------------
-  // 1. 参数与调色板 / 书法字体选择
-  // -------------------------------------------------------------
   const schemeIndex = Math.max(
     0,
     Math.min(COLOR_PALETTES.length - 1, Math.round(params?.colorScheme ?? 0))
@@ -348,15 +476,12 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   );
   const selectedFontFamily = FONT_STYLES[fontStyleIndex];
 
-  // 字号绝对稳定恒定
-  const heroFontSize = Math.round(params?.heroFontSize ?? 40);
+  const heroFontSize = Math.round(params?.heroFontSize ?? 42);
+  const popSpeed = params?.popSpeed ?? 1.2;
   const filmGrain = params?.filmGrain ?? 0.2;
   const breathingDepth = params?.breathingDepth ?? 1.0;
   const vignetteStrength = params?.vignetteStrength ?? 0.72;
 
-  // -------------------------------------------------------------
-  // 2. 音频平滑 & 呼吸律动
-  // -------------------------------------------------------------
   let rawBass = 0;
   let rawMid = 0;
   let rawTreble = 0;
@@ -383,12 +508,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
 
   breathAngle = (breathAngle + 0.016 * (0.35 + totalEnergy * 0.3) * breathingDepth) % (Math.PI * 2);
   const breathSin = Math.sin(breathAngle);
-  // 仅供光晕呼吸
   const auraBreathFactor = 1.0 + breathSin * 0.05 * breathingDepth + refs.smoothBass.current * 0.08;
-
-  // -------------------------------------------------------------
-  // 3. 粒子池初始化
-  // -------------------------------------------------------------
 
   if (!refs.bokeh.current || refs.bokeh.current.length === 0) {
     const orbs: SoftAtmosphereOrbItem[] = [];
@@ -428,60 +548,63 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     refs.nebulaStars.current = dust;
   }
 
-  // -------------------------------------------------------------
-  // 4. 歌词状态检测与丝滑插值
-  // -------------------------------------------------------------
   const audioState = useAudioStore.getState();
   const playerState = usePlayerStore.getState();
   const currentSong = audioState.currentSong || playerState.currentSong;
-  const currentTime = audioState.currentTime || playerState.currentTime || 0;
+  const reportedTime = audioState.currentTime || playerState.currentTime || 0;
   const isPlaying = audioState.isPlaying || playerState.isPlaying;
   const rawLyrics = currentSong?.lyrics || "";
+
+  const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
+
+  if (Math.abs(reportedTime - lastReportedTimeCache) > 0.02) {
+    lastReportedTimeCache = reportedTime;
+    lastTimeUpdateMsCache = nowMs;
+  }
+
+  const elapsedSinceUpdate = isPlaying ? (nowMs - lastTimeUpdateMsCache) / 1000 : 0;
+  const preciseTime = lastReportedTimeCache + Math.min(0.8, Math.max(0, elapsedSinceUpdate));
 
   if (rawLyrics !== lastRawLyricsCache) {
     lastRawLyricsCache = rawLyrics;
     parsedLyricsCache = parseLrc(rawLyrics);
     currentLineTextCache = "";
-    previousLineTextCache = "";
+    currentSegmentsCache = [];
+    previousSegmentsCache = [];
+    totalLineWidthCache = 0;
+    prevLineWidthCache = 0;
     smoothedProgressCache = 0;
   }
 
   let activeLine = "";
-  let rawProgress = 0;
+  let targetProgress = 0;
   let isSinging = false;
 
   if (isPlaying && parsedLyricsCache.length > 0) {
-    let activeIdx = -1;
-    for (let i = 0; i < parsedLyricsCache.length; i++) {
-      if (currentTime >= parsedLyricsCache[i].time) {
-        activeIdx = i;
-      } else {
-        break;
-      }
-    }
+    const activeIdx = findActiveLyricIndex(parsedLyricsCache, preciseTime);
 
     if (activeIdx >= 0) {
       const curr = parsedLyricsCache[activeIdx];
       const next = parsedLyricsCache[activeIdx + 1];
       const lineDuration = next ? Math.max(1.2, next.time - curr.time) : 5.0;
-      const elapsed = currentTime - curr.time;
+      const elapsed = preciseTime - curr.time;
       const estimatedDuration = Math.min(lineDuration, Math.max(2.2, curr.text.length * 0.36));
 
       if (elapsed >= 0 && elapsed <= estimatedDuration + 0.8) {
         isSinging = true;
         activeLine = curr.text;
-        rawProgress = Math.min(1.0, Math.max(0.0, elapsed / Math.max(1.0, estimatedDuration)));
+        targetProgress = Math.min(1.0, Math.max(0.0, elapsed / Math.max(1.0, estimatedDuration)));
 
-        if (goldInkParticles.length < 16 && Math.random() < 0.1) {
-          goldInkParticles.push({
-            x: width * 0.5 + (Math.random() - 0.5) * (curr.text.length * heroFontSize * 0.6),
-            y: height * 0.52 + (Math.random() - 0.5) * 10,
-            vx: (Math.random() - 0.5) * 0.15,
-            vy: -0.15 - Math.random() * 0.2,
-            size: 0.8 + Math.random() * 1.3,
-            alpha: 0.8,
+        if (goldSparkles.length < 18 && Math.random() < 0.12) {
+          goldSparkles.push({
+            x: width * 0.5 + (Math.random() - 0.5) * (totalLineWidthCache * 0.7 || 200),
+            y: height * 0.52 + (Math.random() - 0.5) * 12,
+            vx: (Math.random() - 0.5) * 0.2,
+            vy: -0.2 - Math.random() * 0.25,
+            size: 0.8 + Math.random() * 1.4,
+            alpha: 0.85,
             life: 0,
-            maxLife: 1.5 + Math.random() * 1.0,
+            maxLife: 1.4 + Math.random() * 0.8,
             color: palette.goldGradientEnd,
           });
         }
@@ -491,25 +614,70 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
 
   if (activeLine !== currentLineTextCache) {
     if (currentLineTextCache) {
-      previousLineTextCache = currentLineTextCache;
+      previousSegmentsCache = currentSegmentsCache;
+      prevLineWidthCache = totalLineWidthCache;
       prevLineFadeAlpha = lineTransitionAlpha;
     }
     currentLineTextCache = activeLine;
+    lineEntranceTimeCache = time * 0.001;
     lineTransitionAlpha = 0;
-    smoothedProgressCache = 0;
+    smoothedProgressCache = targetProgress;
+
+    if (activeLine) {
+      const { segments, totalWidth } = buildSegmentedLine(
+        ctx,
+        activeLine,
+        selectedFontFamily,
+        heroFontSize
+      );
+      currentSegmentsCache = segments;
+      totalLineWidthCache = totalWidth;
+    } else {
+      currentSegmentsCache = [];
+      totalLineWidthCache = 0;
+    }
   }
 
-  smoothedProgressCache += (rawProgress - smoothedProgressCache) * 0.15;
+  smoothedProgressCache += (targetProgress - smoothedProgressCache) * 0.25;
 
   const targetCurrentAlpha = isSinging ? 1.0 : 0.0;
-  lineTransitionAlpha += (targetCurrentAlpha - lineTransitionAlpha) * 0.08;
+  lineTransitionAlpha += (targetCurrentAlpha - lineTransitionAlpha) * 0.09;
   prevLineFadeAlpha += (0.0 - prevLineFadeAlpha) * 0.1;
 
-  // -------------------------------------------------------------
-  // 5. 绘制渲染流程
-  // -------------------------------------------------------------
+  // 词组弹簧更新
+  if (currentSegmentsCache.length > 0) {
+    const entranceElapsed = Math.max(0, time * 0.001 - lineEntranceTimeCache);
+    const segCount = currentSegmentsCache.length;
+    const staggerDelay = 0.08 / popSpeed;
+    const singlePopDuration = 0.42 / popSpeed;
 
-  // A. 宣纸水墨深邃底色
+    for (let i = 0; i < segCount; i++) {
+      const seg = currentSegmentsCache[i];
+      const segStartTime = i * staggerDelay;
+      const segLocalT = Math.max(
+        0,
+        Math.min(1.0, (entranceElapsed - segStartTime) / singlePopDuration)
+      );
+
+      seg.popProgress = segLocalT;
+      if (segLocalT <= 0) {
+        seg.popAlpha = 0;
+        seg.popScale = 0.5;
+        seg.popY = 24;
+      } else if (segLocalT >= 1.0) {
+        seg.popAlpha = 1.0;
+        seg.popScale = 1.0;
+        seg.popY = 0;
+      } else {
+        const springVal = springEaseOut(segLocalT);
+        seg.popScale = 0.5 + 0.5 * springVal;
+        seg.popY = 24 * (1 - easeOutCubic(segLocalT));
+        seg.popAlpha = Math.min(1.0, segLocalT * 2.2);
+      }
+    }
+  }
+
+  // 绘制
   const bgGrad = ctx.createRadialGradient(
     width * 0.5,
     height * 0.48,
@@ -524,7 +692,6 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, width, height);
 
-  // B. 中心光晕
   ctx.save();
   ctx.globalCompositeOperation = "screen";
   const auraRadius = width * 0.42 * auraBreathFactor;
@@ -546,7 +713,6 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   ctx.fill();
   ctx.restore();
 
-  // C. 柔焦光团
   if (refs.bokeh.current) {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
@@ -576,7 +742,6 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     ctx.restore();
   }
 
-  // D. 悬浮金粉
   if (refs.nebulaStars.current) {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
@@ -600,19 +765,18 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     ctx.restore();
   }
 
-  // E. 金墨微滴
-  if (goldInkParticles.length > 0) {
+  if (goldSparkles.length > 0) {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
-    for (let i = goldInkParticles.length - 1; i >= 0; i--) {
-      const drop = goldInkParticles[i];
+    for (let i = goldSparkles.length - 1; i >= 0; i--) {
+      const drop = goldSparkles[i];
       drop.life += 0.016;
       drop.x += drop.vx;
       drop.y += drop.vy;
 
       const progress = drop.life / drop.maxLife;
       if (progress >= 1.0) {
-        goldInkParticles.splice(i, 1);
+        goldSparkles.splice(i, 1);
         continue;
       }
 
@@ -626,7 +790,6 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     ctx.restore();
   }
 
-  // F. 60FPS 丝滑连续流光排版
   const heroY = height * 0.52;
   const heroX = width * 0.5;
 
@@ -635,35 +798,38 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   ctx.textBaseline = "middle";
   ctx.font = `500 ${heroFontSize}px ${selectedFontFamily}`;
 
-  // 1. 旧句淡出
-  if (prevLineFadeAlpha > 0.005 && previousLineTextCache) {
-    renderSilkySmoothLyrics(
+  if (prevLineFadeAlpha > 0.005 && previousSegmentsCache.length > 0) {
+    renderKineticSegments(
       ctx,
-      previousLineTextCache,
+      previousSegmentsCache,
+      prevLineWidthCache,
       heroX,
       heroY,
       1.0,
+      prevLineFadeAlpha * 0.6,
       palette,
-      prevLineFadeAlpha * 0.6
+      time * 0.001,
+      true
     );
   }
 
-  // 2. 当前句平滑流光
-  if (lineTransitionAlpha > 0.005 && currentLineTextCache) {
-    renderSilkySmoothLyrics(
+  if (lineTransitionAlpha > 0.005 && currentSegmentsCache.length > 0) {
+    renderKineticSegments(
       ctx,
-      currentLineTextCache,
+      currentSegmentsCache,
+      totalLineWidthCache,
       heroX,
       heroY,
       smoothedProgressCache,
+      lineTransitionAlpha,
       palette,
-      lineTransitionAlpha
+      time * 0.001,
+      false
     );
   }
 
   ctx.restore();
 
-  // G. 宣纸肌理
   const grainCanvas = getFilmGrainCanvas();
   if (filmGrain > 0.05 && grainCanvas) {
     ctx.save();
@@ -680,7 +846,6 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     ctx.restore();
   }
 
-  // H. 暗角
   if (vignetteStrength > 0.05) {
     ctx.save();
     const maxDim = Math.max(width, height) * 0.75;
