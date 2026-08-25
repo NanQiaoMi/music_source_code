@@ -42,6 +42,7 @@ interface WordSegment {
   currentAlpha: number;
   currentY: number;
   depthZ: number;
+  blurPx: number;
   phaseOffset: number;
 }
 
@@ -71,8 +72,8 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#090502",
     bgGradEnd: "#020101",
     ambientAura: "rgba(255, 175, 95, 0.1)",
-    textUnsung: "rgba(255, 245, 230, 0.2)",
-    textPast: "rgba(235, 220, 195, 0.4)",
+    textUnsung: "rgba(255, 245, 230, 0.18)",
+    textPast: "rgba(235, 220, 195, 0.38)",
     textFocus: "#ffffff",
     dustColor: "rgba(255, 220, 160, 0.4)",
     orbColor: "rgba(245, 160, 80, 0.05)",
@@ -84,8 +85,8 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#040810",
     bgGradEnd: "#010204",
     ambientAura: "rgba(140, 195, 255, 0.09)",
-    textUnsung: "rgba(215, 235, 255, 0.2)",
-    textPast: "rgba(190, 220, 250, 0.4)",
+    textUnsung: "rgba(215, 235, 255, 0.18)",
+    textPast: "rgba(190, 220, 250, 0.38)",
     textFocus: "#ffffff",
     dustColor: "rgba(200, 230, 255, 0.4)",
     orbColor: "rgba(120, 185, 250, 0.05)",
@@ -97,8 +98,8 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#0a0308",
     bgGradEnd: "#020102",
     ambientAura: "rgba(240, 140, 185, 0.1)",
-    textUnsung: "rgba(255, 225, 235, 0.2)",
-    textPast: "rgba(245, 205, 220, 0.4)",
+    textUnsung: "rgba(255, 225, 235, 0.18)",
+    textPast: "rgba(245, 205, 220, 0.38)",
     textFocus: "#ffffff",
     dustColor: "rgba(255, 205, 225, 0.4)",
     orbColor: "rgba(230, 120, 175, 0.05)",
@@ -110,8 +111,8 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#030a07",
     bgGradEnd: "#010302",
     ambientAura: "rgba(120, 215, 165, 0.09)",
-    textUnsung: "rgba(220, 255, 235, 0.2)",
-    textPast: "rgba(195, 240, 215, 0.4)",
+    textUnsung: "rgba(220, 255, 235, 0.18)",
+    textPast: "rgba(195, 240, 215, 0.38)",
     textFocus: "#ffffff",
     dustColor: "rgba(185, 245, 215, 0.4)",
     orbColor: "rgba(100, 200, 150, 0.05)",
@@ -123,8 +124,8 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#060607",
     bgGradEnd: "#010101",
     ambientAura: "rgba(220, 220, 230, 0.07)",
-    textUnsung: "rgba(255, 255, 255, 0.18)",
-    textPast: "rgba(215, 215, 220, 0.38)",
+    textUnsung: "rgba(255, 255, 255, 0.15)",
+    textPast: "rgba(215, 215, 220, 0.35)",
     textFocus: "#ffffff",
     dustColor: "rgba(235, 235, 245, 0.35)",
     orbColor: "rgba(190, 190, 205, 0.04)",
@@ -232,10 +233,11 @@ function buildSegmentedLine(
       startRatio: 0,
       endRatio: 0,
       popTriggerTime: -1,
-      currentScale: 0.7,
+      currentScale: 0.65,
       currentAlpha: 0,
-      currentY: 25,
+      currentY: 30,
       depthZ: 0,
+      blurPx: 4,
       phaseOffset: i * 0.45,
     });
     currentOffset += w;
@@ -354,11 +356,12 @@ function render3DDepthSegments(
   lineAlpha: number,
   palette: ColorPalette,
   time: number,
-  isExiting: boolean
+  isExiting: boolean,
+  fitScale: number
 ) {
   if (!segments || segments.length === 0 || lineAlpha <= 0.001) return;
 
-  const startX = centerX - totalWidth / 2;
+  const startX = centerX - (totalWidth * fitScale) / 2;
 
   const renderItems: Array<{
     seg: WordSegment;
@@ -366,6 +369,7 @@ function render3DDepthSegments(
     drawY: number;
     scale: number;
     alpha: number;
+    blurPx: number;
     rot: number;
     depthZ: number;
     isActive: boolean;
@@ -380,13 +384,14 @@ function render3DDepthSegments(
     const isPast = currentLineProgress >= seg.endRatio;
     const isActive = currentLineProgress >= seg.startRatio && currentLineProgress < seg.endRatio;
 
-    const organicFloatY = Math.sin(time * 1.6 + seg.phaseOffset) * 2.0;
+    const organicFloatY = Math.sin(time * 1.6 + seg.phaseOffset) * 2.5;
     const organicRot = Math.sin(time * 1.0 + seg.phaseOffset * 0.8) * 0.012;
 
-    const currentScale = isExiting ? seg.currentScale * lineAlpha : seg.currentScale;
+    const currentScale = (isExiting ? seg.currentScale * lineAlpha : seg.currentScale) * fitScale;
     const currentAlpha = seg.currentAlpha * lineAlpha;
-    const drawX = runningX + seg.width * 0.5;
-    const drawY = centerY + (isExiting ? -18 * (1 - lineAlpha) : seg.currentY) + organicFloatY;
+    const drawX = runningX + seg.width * fitScale * 0.5;
+    const drawY =
+      centerY + (isExiting ? -24 * (1 - lineAlpha) : seg.currentY * fitScale) + organicFloatY;
 
     if (currentAlpha > 0.001) {
       renderItems.push({
@@ -395,6 +400,7 @@ function render3DDepthSegments(
         drawY,
         scale: currentScale,
         alpha: currentAlpha,
+        blurPx: isExiting ? seg.blurPx + 2 : seg.blurPx,
         rot: organicRot,
         depthZ: seg.depthZ,
         isActive,
@@ -402,7 +408,7 @@ function render3DDepthSegments(
       });
     }
 
-    runningX += seg.width;
+    runningX += seg.width * fitScale;
   }
 
   // Back-to-Front 排序
@@ -411,12 +417,22 @@ function render3DDepthSegments(
   ctx.save();
   ctx.shadowBlur = 0; // 彻底去除发光
 
+  const hasFilterSupport = typeof ctx.filter === "string";
+
   for (const item of renderItems) {
     ctx.save();
     ctx.translate(item.drawX, item.drawY);
     ctx.scale(item.scale, item.scale);
     ctx.rotate(item.rot);
     ctx.globalAlpha = item.alpha;
+
+    if (hasFilterSupport) {
+      if (item.isActive || item.blurPx < 0.3) {
+        ctx.filter = "none";
+      } else {
+        ctx.filter = `blur(${item.blurPx.toFixed(1)}px)`;
+      }
+    }
 
     if (item.isActive) {
       ctx.fillStyle = palette.textFocus;
@@ -454,8 +470,9 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   );
   const selectedFontFamily = FONT_STYLES[fontStyleIndex];
 
-  const heroFontSize = Math.round(params?.heroFontSize ?? 42);
-  const focusScaleMultiplier = params?.focusScale ?? 1.3;
+  const heroFontSize = Math.round(params?.heroFontSize ?? 60);
+  const focusScaleMultiplier = params?.focusScale ?? 1.5;
+  const depthBlurStrength = params?.depthBlurStrength ?? 1.0;
   const filmGrain = params?.filmGrain ?? 0.2;
   const breathingDepth = params?.breathingDepth ?? 1.0;
   const vignetteStrength = params?.vignetteStrength ?? 0.72;
@@ -619,10 +636,11 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
       }
 
       if (seg.popTriggerTime < 0) {
-        seg.currentScale = 0.7;
+        seg.currentScale = 0.65;
         seg.currentAlpha = 0.0;
-        seg.currentY = 24;
+        seg.currentY = 28;
         seg.depthZ = 0;
+        seg.blurPx = 4.0 * depthBlurStrength;
       } else {
         const timeSincePop = Math.max(0, nowTimeSec - seg.popTriggerTime);
         const popDuration = 0.35;
@@ -630,24 +648,26 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
         const springFactor = springEaseOut(popRatio);
 
         if (lineProg < seg.endRatio) {
-          seg.currentScale = 0.7 + (focusScaleMultiplier - 0.7) * springFactor;
+          seg.currentScale = 0.65 + (focusScaleMultiplier - 0.65) * springFactor;
           seg.currentAlpha = Math.min(1.0, popRatio * 2.5);
-          seg.currentY = 24 * (1 - popRatio);
+          seg.currentY = 28 * (1 - popRatio);
           seg.depthZ = 100 + i;
+          seg.blurPx = 0.0;
         } else {
           const pastProg = Math.min(
             1.0,
             (lineProg - seg.endRatio) / Math.max(0.1, 1.0 - seg.endRatio)
           );
-          const targetPastScale = 0.78;
-          const targetPastAlpha = 0.38;
-          const targetPastY = 8;
+          const targetPastScale = 0.72;
+          const targetPastAlpha = 0.35;
+          const targetPastY = 12;
 
           seg.currentScale =
             focusScaleMultiplier - (focusScaleMultiplier - targetPastScale) * pastProg;
           seg.currentAlpha = 1.0 - (1.0 - targetPastAlpha) * pastProg;
           seg.currentY = targetPastY * pastProg;
           seg.depthZ = 10 + i;
+          seg.blurPx = (1.5 + pastProg * 4.5) * depthBlurStrength;
         }
       }
     }
@@ -744,6 +764,12 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   const heroY = height * 0.52;
   const heroX = width * 0.5;
 
+  const maxAllowedWidth = width * 0.88;
+  const currFitScale =
+    totalLineWidthCache > 0 ? Math.min(1.0, maxAllowedWidth / totalLineWidthCache) : 1.0;
+  const prevFitScale =
+    prevLineWidthCache > 0 ? Math.min(1.0, maxAllowedWidth / prevLineWidthCache) : 1.0;
+
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -760,7 +786,8 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
       prevLineFadeAlpha * 0.6,
       palette,
       time * 0.001,
-      true
+      true,
+      prevFitScale
     );
   }
 
@@ -775,7 +802,8 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
       lineTransitionAlpha,
       palette,
       time * 0.001,
-      false
+      false,
+      currFitScale
     );
   }
 
@@ -798,7 +826,6 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   }
 
   if (vignetteStrength > 0.05) {
-    ctx.save();
     const maxDim = Math.max(width, height) * 0.75;
     const vigGrad = ctx.createRadialGradient(
       width * 0.5,
@@ -812,6 +839,5 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     vigGrad.addColorStop(1, `rgba(0,0,0,${vignetteStrength * 0.85})`);
     ctx.fillStyle = vigGrad;
     ctx.fillRect(0, 0, width, height);
-    ctx.restore();
   }
 }

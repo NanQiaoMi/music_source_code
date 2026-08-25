@@ -787,20 +787,30 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                 </div>
 
                 <SettingSlider
-                  label="书法字号"
-                  value={effectSettings.cinematicLyricDrift.heroFontSize ?? 42}
-                  min={28}
-                  max={56}
-                  step={1}
+                  label="电影大字号"
+                  value={effectSettings.cinematicLyricDrift.heroFontSize ?? 60}
+                  min={36}
+                  max={84}
+                  step={2}
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { heroFontSize: v })}
                 />
                 <SettingSlider
                   label="焦点放大倍率"
-                  value={effectSettings.cinematicLyricDrift.focusScale ?? 1.3}
-                  min={1.1}
-                  max={1.6}
+                  value={effectSettings.cinematicLyricDrift.focusScale ?? 1.5}
+                  min={1.2}
+                  max={1.8}
                   step={0.05}
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { focusScale: v })}
+                />
+                <SettingSlider
+                  label="光学景深虚化"
+                  value={effectSettings.cinematicLyricDrift.depthBlurStrength ?? 1.0}
+                  min={0.0}
+                  max={2.0}
+                  step={0.1}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicLyricDrift", { depthBlurStrength: v })
+                  }
                 />
                 <SettingSlider
                   label="宣纸肌理微粒"

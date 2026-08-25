@@ -48,7 +48,8 @@ export interface WordSegment {
   currentScale: number;
   currentAlpha: number;
   currentY: number;
-  depthZ: number; // 空间深度（越小越靠后）
+  depthZ: number; // 空间深度（越大越靠前）
+  blurPx: number; // 光学景深模糊度 (px)
   phaseOffset: number;
 }
 
@@ -76,7 +77,6 @@ export interface CinematicLyricDriftState {
   prevLineWidth: number;
 
   // 进度与过渡
-  lineEntranceTime: number;
   lineTransitionAlpha: number;
   prevLineFadeAlpha: number;
   smoothedLineProgress: number;
@@ -117,8 +117,8 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#090502",
     bgGradEnd: "#020101",
     ambientAura: "rgba(255, 175, 95, 0.1)",
-    textUnsung: "rgba(255, 245, 230, 0.2)",
-    textPast: "rgba(235, 220, 195, 0.4)",
+    textUnsung: "rgba(255, 245, 230, 0.18)",
+    textPast: "rgba(235, 220, 195, 0.38)",
     textFocus: "#ffffff",
     dustColor: "rgba(255, 220, 160, 0.4)",
     orbColor: "rgba(245, 160, 80, 0.05)",
@@ -130,8 +130,8 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#040810",
     bgGradEnd: "#010204",
     ambientAura: "rgba(140, 195, 255, 0.09)",
-    textUnsung: "rgba(215, 235, 255, 0.2)",
-    textPast: "rgba(190, 220, 250, 0.4)",
+    textUnsung: "rgba(215, 235, 255, 0.18)",
+    textPast: "rgba(190, 220, 250, 0.38)",
     textFocus: "#ffffff",
     dustColor: "rgba(200, 230, 255, 0.4)",
     orbColor: "rgba(120, 185, 250, 0.05)",
@@ -143,8 +143,8 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#0a0308",
     bgGradEnd: "#020102",
     ambientAura: "rgba(240, 140, 185, 0.1)",
-    textUnsung: "rgba(255, 225, 235, 0.2)",
-    textPast: "rgba(245, 205, 220, 0.4)",
+    textUnsung: "rgba(255, 225, 235, 0.18)",
+    textPast: "rgba(245, 205, 220, 0.38)",
     textFocus: "#ffffff",
     dustColor: "rgba(255, 205, 225, 0.4)",
     orbColor: "rgba(230, 120, 175, 0.05)",
@@ -156,8 +156,8 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#030a07",
     bgGradEnd: "#010302",
     ambientAura: "rgba(120, 215, 165, 0.09)",
-    textUnsung: "rgba(220, 255, 235, 0.2)",
-    textPast: "rgba(195, 240, 215, 0.4)",
+    textUnsung: "rgba(220, 255, 235, 0.18)",
+    textPast: "rgba(195, 240, 215, 0.38)",
     textFocus: "#ffffff",
     dustColor: "rgba(185, 245, 215, 0.4)",
     orbColor: "rgba(100, 200, 150, 0.05)",
@@ -169,8 +169,8 @@ const COLOR_PALETTES: ColorPalette[] = [
     bgGradMid: "#060607",
     bgGradEnd: "#010101",
     ambientAura: "rgba(220, 220, 230, 0.07)",
-    textUnsung: "rgba(255, 255, 255, 0.18)",
-    textPast: "rgba(215, 215, 220, 0.38)",
+    textUnsung: "rgba(255, 255, 255, 0.15)",
+    textPast: "rgba(215, 215, 220, 0.35)",
     textFocus: "#ffffff",
     dustColor: "rgba(235, 235, 245, 0.35)",
     orbColor: "rgba(190, 190, 205, 0.04)",
@@ -267,10 +267,11 @@ function buildSegmentedLine(
       startRatio: 0,
       endRatio: 0,
       popTriggerTime: -1,
-      currentScale: 0.7,
+      currentScale: 0.65,
       currentAlpha: 0,
-      currentY: 25,
+      currentY: 30,
       depthZ: 0,
+      blurPx: 4,
       phaseOffset: i * 0.45,
     });
     currentOffset += w;
@@ -379,7 +380,7 @@ function createFilmGrainCanvas(): HTMLCanvasElement | null {
 }
 
 /**
- * 3D 景深层次词组绘制器 (Back-to-Front 层次排序 + 零发光纯净排版)
+ * 真实光学景深虚化与大字号动力学绘制器 (True Optical Depth Blur & Large Typography)
  */
 function render3DDepthSegments(
   ctx: CanvasRenderingContext2D,
@@ -391,19 +392,21 @@ function render3DDepthSegments(
   lineAlpha: number,
   palette: ColorPalette,
   time: number,
-  isExiting: boolean
+  isExiting: boolean,
+  fitScale: number
 ) {
   if (!segments || segments.length === 0 || lineAlpha <= 0.001) return;
 
-  const startX = centerX - totalWidth / 2;
+  const startX = centerX - (totalWidth * fitScale) / 2;
 
-  // 1. 构建可排序渲染项列表 (按 depthZ 从小到大排序绘制：后景小词先画，前景大词最后画盖在上方)
+  // 1. 构建渲染项 (Back-to-Front 排序)
   const renderItems: Array<{
     seg: WordSegment;
     drawX: number;
     drawY: number;
     scale: number;
     alpha: number;
+    blurPx: number;
     rot: number;
     depthZ: number;
     isActive: boolean;
@@ -418,14 +421,14 @@ function render3DDepthSegments(
     const isPast = currentLineProgress >= seg.endRatio;
     const isActive = currentLineProgress >= seg.startRatio && currentLineProgress < seg.endRatio;
 
-    // 有机微浮动
-    const organicFloatY = Math.sin(time * 1.6 + seg.phaseOffset) * 2.0;
+    const organicFloatY = Math.sin(time * 1.6 + seg.phaseOffset) * 2.5;
     const organicRot = Math.sin(time * 1.0 + seg.phaseOffset * 0.8) * 0.012;
 
-    const currentScale = isExiting ? seg.currentScale * lineAlpha : seg.currentScale;
+    const currentScale = (isExiting ? seg.currentScale * lineAlpha : seg.currentScale) * fitScale;
     const currentAlpha = seg.currentAlpha * lineAlpha;
-    const drawX = runningX + seg.width * 0.5;
-    const drawY = centerY + (isExiting ? -18 * (1 - lineAlpha) : seg.currentY) + organicFloatY;
+    const drawX = runningX + seg.width * fitScale * 0.5;
+    const drawY =
+      centerY + (isExiting ? -24 * (1 - lineAlpha) : seg.currentY * fitScale) + organicFloatY;
 
     if (currentAlpha > 0.001) {
       renderItems.push({
@@ -434,6 +437,7 @@ function render3DDepthSegments(
         drawY,
         scale: currentScale,
         alpha: currentAlpha,
+        blurPx: isExiting ? seg.blurPx + 2 : seg.blurPx,
         rot: organicRot,
         depthZ: seg.depthZ,
         isActive,
@@ -441,15 +445,17 @@ function render3DDepthSegments(
       });
     }
 
-    runningX += seg.width;
+    runningX += seg.width * fitScale;
   }
 
-  // 2. 从深到浅排序 (Back-to-Front)
+  // 2. 从深到浅排序 (Back-to-Front: 虚化后景先画，锐利前景大字最后画)
   renderItems.sort((a, b) => a.depthZ - b.depthZ);
 
-  // 3. 纯净无发光绘制
+  // 3. 真实光学景深虚化与纯净大字绘制
   ctx.save();
   ctx.shadowBlur = 0; // 彻底去除发光
+
+  const hasFilterSupport = typeof ctx.filter === "string";
 
   for (const item of renderItems) {
     ctx.save();
@@ -458,16 +464,25 @@ function render3DDepthSegments(
     ctx.rotate(item.rot);
     ctx.globalAlpha = item.alpha;
 
+    // 应用真实 Canvas 光学景深模糊滤镜
+    if (hasFilterSupport) {
+      if (item.isActive || item.blurPx < 0.3) {
+        ctx.filter = "none";
+      } else {
+        ctx.filter = `blur(${item.blurPx.toFixed(1)}px)`;
+      }
+    }
+
     if (item.isActive) {
-      // A. 当前焦点词：最前层、最大、最清晰的纯白金特写
+      // A. 当前焦点词：100% 锐利无虚化、纯白金大字特写
       ctx.fillStyle = palette.textFocus;
       ctx.fillText(item.seg.text, 0, 0);
     } else if (item.isPast) {
-      // B. 先弹出的已唱过词：向后退隐、缩小虚化的雅致淡墨
+      // B. 先弹出的已唱词：退入后景深处、大光圈虚化散景
       ctx.fillStyle = palette.textPast;
       ctx.fillText(item.seg.text, 0, 0);
     } else {
-      // C. 未唱到词：极淡半透明轮廓
+      // C. 未唱词：远景微虚化轮廓
       ctx.fillStyle = palette.textUnsung;
       ctx.fillText(item.seg.text, 0, 0);
     }
@@ -512,23 +527,33 @@ const PARAMETERS: EffectParameterDefinition[] = [
   },
   {
     id: "heroFontSize",
-    name: "书法字号",
+    name: "电影大字号",
     type: "number",
     mode: "basic",
-    min: 28,
-    max: 56,
-    step: 1,
-    default: 42,
+    min: 36,
+    max: 84,
+    step: 2,
+    default: 60,
   },
   {
     id: "focusScale",
     name: "焦点放大倍率",
     type: "number",
     mode: "professional",
-    min: 1.1,
-    max: 1.6,
+    min: 1.2,
+    max: 1.8,
     step: 0.05,
-    default: 1.3,
+    default: 1.5,
+  },
+  {
+    id: "depthBlurStrength",
+    name: "光学景深虚化",
+    type: "number",
+    mode: "professional",
+    min: 0.0,
+    max: 2.0,
+    step: 0.1,
+    default: 1.0,
   },
   {
     id: "filmGrain",
@@ -570,7 +595,7 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
   id: "cinematic-lyric-drift-v8",
   name: "温光浮字 · 电影感",
   category: "particles",
-  description: "3D景深层次词组动力学排版、播放触发即时破空弹出、前清后虚时空层叠、无发光纯净排版",
+  description: "电影级大字号排版、真实Canvas光学景深虚化、播放触发即时破空弹出、前锐后虚时空层叠",
   preferredEngine: "canvas",
   parameters: PARAMETERS,
 
@@ -623,7 +648,6 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
       previousSegments: [],
       totalLineWidth: 0,
       prevLineWidth: 0,
-      lineEntranceTime: 0,
       lineTransitionAlpha: 0,
       prevLineFadeAlpha: 0,
       smoothedLineProgress: 0,
@@ -668,8 +692,9 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     );
     const selectedFontFamily = FONT_STYLES[fontStyleIndex];
 
-    const heroFontSize = Math.round(params.heroFontSize ?? 42);
-    const focusScaleMultiplier = params.focusScale ?? 1.3;
+    const heroFontSize = Math.round(params.heroFontSize ?? 60);
+    const focusScaleMultiplier = params.focusScale ?? 1.5;
+    const depthBlurStrength = params.depthBlurStrength ?? 1.0;
     const filmGrain = params.filmGrain ?? 0.2;
     const breathingDepth = params.breathingDepth ?? 1.0;
     const vignetteStrength = params.vignetteStrength ?? 0.72;
@@ -772,7 +797,6 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
         state.prevLineFadeAlpha = state.lineTransitionAlpha;
       }
       state.currentLineText = activeLine;
-      state.lineEntranceTime = state.timeAccumulator;
       state.lineTransitionAlpha = 0;
       state.smoothedLineProgress = targetProgress;
 
@@ -799,7 +823,7 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     state.prevLineFadeAlpha += (0.0 - state.prevLineFadeAlpha) * 0.1;
 
     // -------------------------------------------------------------
-    // 4. 播放触发逐词破空弹出 & 3D 景深向后退移物理模拟
+    // 4. 播放触发逐词破空弹出 & 3D 真实光学景深推移物理模拟
     // -------------------------------------------------------------
     if (state.currentSegments.length > 0) {
       const lineProg = state.smoothedLineProgress;
@@ -813,11 +837,12 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
         }
 
         if (seg.popTriggerTime < 0) {
-          // A. 尚未唱到：未弹出，极淡隐匿在后景等待
-          seg.currentScale = 0.7;
+          // A. 尚未唱到：隐匿在深景中，轻度虚化
+          seg.currentScale = 0.65;
           seg.currentAlpha = 0.0;
-          seg.currentY = 24;
+          seg.currentY = 28;
           seg.depthZ = 0;
+          seg.blurPx = 4.0 * depthBlurStrength;
         } else {
           // B. 已经触发弹出：计算入场弹簧动力学与向后景深推移
           const timeSincePop = Math.max(0, state.timeAccumulator - seg.popTriggerTime);
@@ -826,27 +851,30 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
           const springFactor = springEaseOut(popRatio);
 
           if (lineProg < seg.endRatio) {
-            // 正在唱 (Active Focus)：从前方最大特写弹性弹出，Z 轴最高
-            seg.currentScale = 0.7 + (focusScaleMultiplier - 0.7) * springFactor;
+            // 正在唱 (Active Focus)：从前方最大特写弹性弹出，100% 锐利无虚化，Z 轴最高
+            seg.currentScale = 0.65 + (focusScaleMultiplier - 0.65) * springFactor;
             seg.currentAlpha = Math.min(1.0, popRatio * 2.5);
-            seg.currentY = 24 * (1 - popRatio);
+            seg.currentY = 28 * (1 - popRatio);
             seg.depthZ = 100 + i; // 最前景
+            seg.blurPx = 0.0; // 最佳焦平面，无虚化！
           } else {
-            // 已唱过 (Past Depth Pushback)：随时间向后景深退移、缩小、虚化淡出
+            // 已唱过 (Past Depth Pushback)：随时间向深景退移、缩小、真实光学景深模糊散景
             const pastProg = Math.min(
               1.0,
               (lineProg - seg.endRatio) / Math.max(0.1, 1.0 - seg.endRatio)
             );
 
-            const targetPastScale = 0.78;
-            const targetPastAlpha = 0.38;
-            const targetPastY = 8;
+            const targetPastScale = 0.72;
+            const targetPastAlpha = 0.35;
+            const targetPastY = 12;
 
             seg.currentScale =
               focusScaleMultiplier - (focusScaleMultiplier - targetPastScale) * pastProg;
             seg.currentAlpha = 1.0 - (1.0 - targetPastAlpha) * pastProg;
             seg.currentY = targetPastY * pastProg;
             seg.depthZ = 10 + i; // 退回后景
+            // 光学景深模糊度随深度加深
+            seg.blurPx = (1.5 + pastProg * 4.5) * depthBlurStrength;
           }
         }
       }
@@ -943,9 +971,16 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     }
     c2d.restore();
 
-    // E. 3D 景深层次词组绘制 (零发光纯净排版)
+    // E. 电影级大字号 3D 景深层次排版与光学虚化绘制
     const heroY = height * 0.52;
     const heroX = width * 0.5;
+
+    // 屏幕宽度安全自适应系数（保证大字气派且不溢出边缘）
+    const maxAllowedWidth = width * 0.88;
+    const currFitScale =
+      state.totalLineWidth > 0 ? Math.min(1.0, maxAllowedWidth / state.totalLineWidth) : 1.0;
+    const prevFitScale =
+      state.prevLineWidth > 0 ? Math.min(1.0, maxAllowedWidth / state.prevLineWidth) : 1.0;
 
     c2d.save();
     c2d.textAlign = "center";
@@ -964,11 +999,12 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
         state.prevLineFadeAlpha * 0.6,
         palette,
         state.timeAccumulator,
-        true
+        true,
+        prevFitScale
       );
     }
 
-    // 2. 当前句词组 3D 景深顺序弹出与推移
+    // 2. 当前句词组 3D 景深顺序弹出与光学虚化推移
     if (state.lineTransitionAlpha > 0.005 && state.currentSegments.length > 0) {
       render3DDepthSegments(
         c2d,
@@ -980,7 +1016,8 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
         state.lineTransitionAlpha,
         palette,
         state.timeAccumulator,
-        false
+        false,
+        currFitScale
       );
     }
 
