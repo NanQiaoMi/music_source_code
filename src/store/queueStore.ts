@@ -99,6 +99,7 @@ interface QueueState {
   setQueue: (songs: Song[]) => void;
   setCurrentIndex: (index: number) => void;
   addToQueue: (song: Song) => void;
+  addToNext: (song: Song) => void;
   insertNext: (song: Song) => void;
   playNext: (song: Song) => void;
   clearAfterCurrent: () => void;
@@ -133,9 +134,7 @@ export const useQueueStore = create<QueueState>()(
 
       updateSong: (songId, updates) =>
         set((state) => ({
-          queue: state.queue.map((song) =>
-            song.id === songId ? { ...song, ...updates } : song
-          ),
+          queue: state.queue.map((song) => (song.id === songId ? { ...song, ...updates } : song)),
         })),
 
       setQueue: (songs) =>
@@ -153,6 +152,12 @@ export const useQueueStore = create<QueueState>()(
         set((state) => ({
           queue: [...state.queue, song],
         })),
+
+      addToNext: (song) =>
+        set((state) => {
+          const next = playNext(state, song);
+          return { queue: next.queue, currentIndex: next.currentIndex };
+        }),
 
       insertNext: (song) =>
         set((state) => {
