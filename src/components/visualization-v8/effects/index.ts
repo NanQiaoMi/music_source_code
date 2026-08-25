@@ -32,6 +32,7 @@ import { VibrationGeometryV8Effect } from "./VibrationGeometryV8";
 import { KineticParticleStageV8Effect } from "./KineticParticleStageV8";
 import { CinematicOrientalInkEffect } from "./CinematicOrientalInkEffect";
 import { OrientalLandscapeV8Effect } from "./OrientalLandscapeV8";
+import { CinematicLyricDriftV8Effect } from "./CinematicLyricDriftV8";
 
 export {
   SpectrumV8Effect,
@@ -63,6 +64,7 @@ export {
   SpringSystemV8Effect,
   CinematicOrientalInkEffect,
   OrientalLandscapeV8Effect,
+  CinematicLyricDriftV8Effect,
 };
 
 export const effectsRegistry: EffectPlugin[] = [];

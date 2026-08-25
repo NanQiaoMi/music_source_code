@@ -98,6 +98,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
     cyberMatrix: "赛博矩阵",
     prismPulse: "棱镜脉冲",
     superstringSingularity: "量子超弦奇点",
+    cinematicLyricDrift: "温光浮字",
   };
 
   return (
@@ -191,7 +192,9 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   min={0.0}
                   max={2.5}
                   step={0.1}
-                  onChange={(v) => updateEffectSettings("cinematicOrientalInk", { godraysIntensity: v })}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicOrientalInk", { godraysIntensity: v })
+                  }
                 />
                 <SettingSlider
                   label="金箔微粒密度"
@@ -199,7 +202,9 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   min={100}
                   max={900}
                   step={50}
-                  onChange={(v) => updateEffectSettings("cinematicOrientalInk", { particleCount: v })}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicOrientalInk", { particleCount: v })
+                  }
                 />
                 <SettingSlider
                   label="水墨流动速率"
@@ -207,7 +212,9 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   min={0.2}
                   max={3.0}
                   step={0.1}
-                  onChange={(v) => updateEffectSettings("cinematicOrientalInk", { inkFlowSpeed: v })}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicOrientalInk", { inkFlowSpeed: v })
+                  }
                 />
                 <SettingSlider
                   label="电影呼吸暗角"
@@ -215,7 +222,9 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   min={0.0}
                   max={1.0}
                   step={0.05}
-                  onChange={(v) => updateEffectSettings("cinematicOrientalInk", { filmVignette: v })}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicOrientalInk", { filmVignette: v })
+                  }
                 />
                 <SettingSlider
                   label="东方调色方案 (0青绿 1水墨 2暮霞)"
@@ -252,7 +261,9 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   min={0.5}
                   max={2.2}
                   step={0.1}
-                  onChange={(v) => updateEffectSettings("cinematicSilkAurora", { glowIntensity: v })}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicSilkAurora", { glowIntensity: v })
+                  }
                 />
                 <SettingSlider
                   label="大光圈光斑密度"
@@ -268,7 +279,9 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   min={10}
                   max={50}
                   step={5}
-                  onChange={(v) => updateEffectSettings("cinematicSilkAurora", { firefliesCount: v })}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicSilkAurora", { firefliesCount: v })
+                  }
                 />
                 <SettingSlider
                   label="电影体积光束强度"
@@ -276,7 +289,9 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   min={0.0}
                   max={2.0}
                   step={0.1}
-                  onChange={(v) => updateEffectSettings("cinematicSilkAurora", { godRaysIntensity: v })}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicSilkAurora", { godRaysIntensity: v })
+                  }
                 />
                 <SettingSlider
                   label="3D 空间纵深跨度"
@@ -292,7 +307,9 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   min={0.0}
                   max={2.5}
                   step={0.1}
-                  onChange={(v) => updateEffectSettings("cinematicSilkAurora", { anamorphicFlare: v })}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicSilkAurora", { anamorphicFlare: v })
+                  }
                 />
               </div>
             )}
@@ -715,6 +732,102 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   step={0.1}
                   onChange={(v) => updateEffectSettings("prismPulse", { speed: v })}
                   onTrackUsage={() => reportUsage("visualizer_config")}
+                />
+              </div>
+            )}
+
+            {currentEffect === "cinematicLyricDrift" && effectSettings.cinematicLyricDrift && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-white/80">影调调色板</label>
+                    <span className="text-xs text-white/40 font-mono bg-white/5 px-2 py-0.5 rounded-md">
+                      {["暮色琥珀", "月白柔雾", "暮樱温霞", "薄荷晨曦", "胶片纯粹"][
+                        Math.round(effectSettings.cinematicLyricDrift.colorScheme || 0)
+                      ] || "暮色琥珀"}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={4}
+                    step={1}
+                    value={effectSettings.cinematicLyricDrift.colorScheme || 0}
+                    onChange={(e) =>
+                      updateEffectSettings("cinematicLyricDrift", {
+                        colorScheme: parseInt(e.target.value, 10),
+                      })
+                    }
+                    className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-white/10"
+                  />
+                </div>
+                <SettingSlider
+                  label="散景光斑强度"
+                  value={effectSettings.cinematicLyricDrift.bokehIntensity}
+                  min={0.0}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicLyricDrift", { bokehIntensity: v })
+                  }
+                />
+                <SettingSlider
+                  label="文字漂浮速度"
+                  value={effectSettings.cinematicLyricDrift.floatingSpeed}
+                  min={0.2}
+                  max={3.0}
+                  step={0.1}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicLyricDrift", { floatingSpeed: v })
+                  }
+                />
+                <SettingSlider
+                  label="丁达尔光线强度"
+                  value={effectSettings.cinematicLyricDrift.godraysIntensity}
+                  min={0.0}
+                  max={2.0}
+                  step={0.05}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicLyricDrift", { godraysIntensity: v })
+                  }
+                />
+                <SettingSlider
+                  label="35mm胶片颗粒"
+                  value={effectSettings.cinematicLyricDrift.filmGrain}
+                  min={0.0}
+                  max={1.0}
+                  step={0.05}
+                  onChange={(v) => updateEffectSettings("cinematicLyricDrift", { filmGrain: v })}
+                />
+                <SettingSlider
+                  label="电影镜头色散"
+                  value={effectSettings.cinematicLyricDrift.chromaticAberration}
+                  min={0.0}
+                  max={3.0}
+                  step={0.1}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicLyricDrift", { chromaticAberration: v })
+                  }
+                />
+                <SettingSlider
+                  label="呼吸律动幅度"
+                  value={effectSettings.cinematicLyricDrift.breathingDepth}
+                  min={0.0}
+                  max={2.0}
+                  step={0.1}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicLyricDrift", { breathingDepth: v })
+                  }
+                />
+                <SettingSlider
+                  label="暗角沉浸感"
+                  value={effectSettings.cinematicLyricDrift.vignetteStrength}
+                  min={0.0}
+                  max={1.0}
+                  step={0.05}
+                  onChange={(v) =>
+                    updateEffectSettings("cinematicLyricDrift", { vignetteStrength: v })
+                  }
                 />
               </div>
             )}
