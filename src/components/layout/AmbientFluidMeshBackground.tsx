@@ -37,7 +37,7 @@ export const AmbientFluidMeshBackground: React.FC = () => {
     setMounted(true);
   }, []);
 
-  // 150ms 终点吸附智能防抖色彩与封面提取
+  // 250ms 终点吸附智能防抖色彩与封面提取（避免切歌转场瞬间占用 GPU/CPU 资源）
   useEffect(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -57,7 +57,7 @@ export const AmbientFluidMeshBackground: React.FC = () => {
       } else {
         setColors(defaultColors);
       }
-    }, 150);
+    }, 250);
 
     return () => {
       if (debounceTimerRef.current) {
