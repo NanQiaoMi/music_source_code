@@ -94,7 +94,7 @@ export const MusicCardStack: React.FC = () => {
     }
   }, [currentSong?.id, displaySongs]);
 
-  // 切换焦点专辑时防抖同步当前选中的歌曲（延迟 320ms，等切歌弹簧运动完全就绪后再触发背景色彩提取）
+  // 切换焦点专辑时防抖同步当前选中的歌曲（延迟 450ms，等切歌弹簧运动完全就绪后再触发背景色彩提取）
   useEffect(() => {
     if (selectedSongTimerRef.current) {
       clearTimeout(selectedSongTimerRef.current);
@@ -102,7 +102,7 @@ export const MusicCardStack: React.FC = () => {
     if (displaySongs.length > 0 && displaySongs[centerIndex]) {
       selectedSongTimerRef.current = setTimeout(() => {
         setSelectedSong(displaySongs[centerIndex]);
-      }, 320);
+      }, 450);
     }
     return () => {
       if (selectedSongTimerRef.current) {

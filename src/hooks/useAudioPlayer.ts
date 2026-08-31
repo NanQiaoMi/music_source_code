@@ -911,9 +911,6 @@ export const useAudioPlayer = () => {
               !audioUrl.startsWith("blob:") &&
               !audioUrl.startsWith("data:"));
           if ((isInvalidUrl || isRiskyOuterUrl) && currentSong) {
-            useUIStore
-              .getState()
-              .showToast(`⚡ 正在通过音源引擎嗅探直链: 《${currentSong.title}》...`, "info", 2000);
             try {
               const resolved = await multiSourceResolver.resolvePlayableAudio({
                 id: currentSong.id,

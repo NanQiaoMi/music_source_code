@@ -140,83 +140,26 @@ export function useDynamicTheme() {
   const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentColorsRef = useRef<ThemeColors>(defaultColors);
 
-  const animateColorTransition = useCallback(
-    (fromColors: ThemeColors, toColors: ThemeColors) => {
-      const startTime = Date.now();
+  const applyThemeColors = useCallback(
+    (toColors: ThemeColors) => {
+      if (typeof document === "undefined") return;
+      const root = document.documentElement;
 
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
-      }
+      root.style.setProperty("--theme-primary", toColors.primary);
+      root.style.setProperty("--theme-secondary", toColors.secondary);
+      root.style.setProperty("--theme-accent", toColors.accent);
+      root.style.setProperty("--theme-complementary", toColors.complementary);
+      root.style.setProperty("--theme-background", toColors.background);
+      root.style.setProperty("--theme-surface", toColors.surface);
+      root.style.setProperty("--theme-text", toColors.text);
+      root.style.setProperty("--theme-text-muted", toColors.textMuted);
+      root.style.setProperty(
+        "--theme-gradient",
+        `linear-gradient(135deg, ${toColors.primary}, ${toColors.secondary}, ${toColors.accent})`
+      );
 
-      const parseColor = (color: string): number[] => {
-        const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-        if (match) {
-          return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
-        }
-        return [147, 51, 234];
-      };
-
-      const easeOut = (t: number): number => {
-        return 1 - Math.pow(1 - t, 3);
-      };
-
-      const lerp = (start: number, end: number, t: number): number => {
-        return Math.round(start + (end - start) * t);
-      };
-
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(1, elapsed / TRANSITION_DURATION);
-        const easedProgress = easeOut(progress);
-
-        const fromPrimary = parseColor(fromColors.primary);
-        const toPrimary = parseColor(toColors.primary);
-        const currentPrimary = `rgb(${lerp(fromPrimary[0], toPrimary[0], easedProgress)}, ${lerp(fromPrimary[1], toPrimary[1], easedProgress)}, ${lerp(fromPrimary[2], toPrimary[2], easedProgress)})`;
-
-        const fromSecondary = parseColor(fromColors.secondary);
-        const toSecondary = parseColor(toColors.secondary);
-        const currentSecondary = `rgb(${lerp(fromSecondary[0], toSecondary[0], easedProgress)}, ${lerp(fromSecondary[1], toSecondary[1], easedProgress)}, ${lerp(fromSecondary[2], toSecondary[2], easedProgress)})`;
-
-        const fromAccent = parseColor(fromColors.accent);
-        const toAccent = parseColor(toColors.accent);
-        const currentAccent = `rgb(${lerp(fromAccent[0], toAccent[0], easedProgress)}, ${lerp(fromAccent[1], toAccent[1], easedProgress)}, ${lerp(fromAccent[2], toAccent[2], easedProgress)})`;
-
-        const fromBackground = parseColor(fromColors.background);
-        const toBackground = parseColor(toColors.background);
-        const currentBackground = `rgb(${lerp(fromBackground[0], toBackground[0], easedProgress)}, ${lerp(fromBackground[1], toBackground[1], easedProgress)}, ${lerp(fromBackground[2], toBackground[2], easedProgress)})`;
-
-        const fromSurface = parseColor(fromColors.surface);
-        const toSurface = parseColor(toColors.surface);
-        const currentSurface = `rgb(${lerp(fromSurface[0], toSurface[0], easedProgress)}, ${lerp(fromSurface[1], toSurface[1], easedProgress)}, ${lerp(fromSurface[2], toSurface[2], easedProgress)})`;
-
-        const fromComplementary = parseColor(fromColors.complementary);
-        const toComplementary = parseColor(toColors.complementary);
-        const currentComplementary = `rgb(${lerp(fromComplementary[0], toComplementary[0], easedProgress)}, ${lerp(fromComplementary[1], toComplementary[1], easedProgress)}, ${lerp(fromComplementary[2], toComplementary[2], easedProgress)})`;
-
-        const root = document.documentElement;
-        root.style.setProperty("--theme-primary", currentPrimary);
-        root.style.setProperty("--theme-secondary", currentSecondary);
-        root.style.setProperty("--theme-accent", currentAccent);
-        root.style.setProperty("--theme-complementary", currentComplementary);
-        root.style.setProperty("--theme-background", currentBackground);
-        root.style.setProperty("--theme-surface", currentSurface);
-        root.style.setProperty("--theme-text", toColors.text);
-        root.style.setProperty("--theme-text-muted", toColors.textMuted);
-
-        root.style.setProperty(
-          "--theme-gradient",
-          `linear-gradient(135deg, ${currentPrimary}, ${currentSecondary}, ${currentAccent})`
-        );
-
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          setThemeColors(toColors);
-          currentColorsRef.current = toColors;
-        }
-      };
-
-      requestAnimationFrame(animate);
+      setThemeColors(toColors);
+      currentColorsRef.current = toColors;
     },
     [setThemeColors]
   );
@@ -224,26 +167,35 @@ export function useDynamicTheme() {
   const extractThemeColors = useCallback(
     async (imageUrl: string | undefined) => {
       if (!isDynamicTheme || !imageUrl) {
-        // When dynamic theme is disabled, we should not aggressively revert to defaultColors,
-        // because the user might have applied a static custom skin.
-        // We simply stop extracting and let the current UIStore themeColors persist.
         return;
       }
 
       try {
         const colors = await extractColorsFromImage(imageUrl);
         const vibrantColors = boostVibrantColors(colors);
-        animateColorTransition(currentColorsRef.current, vibrantColors);
+        applyThemeColors(vibrantColors);
       } catch (error) {
         console.error("Failed to extract theme colors:", error);
-        animateColorTransition(currentColorsRef.current, defaultColors);
+        applyThemeColors(defaultColors);
       }
     },
-    [animateColorTransition, isDynamicTheme, themeColors]
+    [applyThemeColors, isDynamicTheme]
   );
 
   useEffect(() => {
-    extractThemeColors(currentSong?.cover);
+    if (transitionTimeoutRef.current) {
+      clearTimeout(transitionTimeoutRef.current);
+    }
+    // 350ms 防抖，在切歌动画就绪后才提取色彩，杜绝切歌瞬间的主线程竞争
+    transitionTimeoutRef.current = setTimeout(() => {
+      extractThemeColors(currentSong?.cover);
+    }, 350);
+
+    return () => {
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+      }
+    };
   }, [currentSong?.cover, extractThemeColors]);
 
   useEffect(() => {
