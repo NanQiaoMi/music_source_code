@@ -304,7 +304,20 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                             : "bg-white/[0.06] border-white/[0.08] text-white/90"
                         }`}
                       >
-                        {msg.content}
+                        <div>{msg.content}</div>
+                        {isError && (
+                          <div className="pt-2.5 mt-1 border-t border-red-500/20">
+                            <button
+                              type="button"
+                              onClick={handleOpenAISettings}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600/80 hover:bg-purple-500 text-white text-[12px] font-semibold transition-all active:scale-95 shadow-md shadow-purple-900/30"
+                            >
+                              <Key className="w-3.5 h-3.5" />
+                              <span>打开 AI 设置切换模型 / 检查密钥</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 
