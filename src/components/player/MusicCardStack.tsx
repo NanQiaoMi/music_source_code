@@ -31,24 +31,35 @@ const DISC_SIZE = 305;
 const MAX_VISIBLE_HALF = 3; // 左右各显示 3 张，共 7 张黄金视野，大幅降低 3D 渲染开销
 
 export const MusicCardStack: React.FC = () => {
-  const { songs, recentPlayed, setSelectedSong } = usePlaylistStore();
+  const songs = usePlaylistStore((state) => state.songs);
+  const recentPlayed = usePlaylistStore((state) => state.recentPlayed);
+  const setSelectedSong = usePlaylistStore((state) => state.setSelectedSong);
   const queue = useQueueStore((state) => state.queue);
-  const { offlineRecords } = useOfflineDownloadStore();
-  const { currentSong, isPlaying, setIsPlaying } = useAudioStore();
+  const offlineRecords = useOfflineDownloadStore((state) => state.offlineRecords);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const { lastGesture, gestureTriggered } = useGestureStore();
-  const { setCurrentView } = useUIStore();
+  const setCurrentView = useUIStore((state) => state.setCurrentView);
 
   const displaySongs: Song[] = useMemo(() => {
-    const rawList = queue && queue.length > 0 ? queue : songs && songs.length > 0 ? songs : recentPlayed;
+    const rawList =
+      queue && queue.length > 0 ? queue : songs && songs.length > 0 ? songs : recentPlayed;
     const playlistCoverMap = new Map(songs.map((s) => [s.id, s.cover]));
     const offlineCoverMap = new Map(offlineRecords.map((r) => [String(r.songId), r.cover]));
 
     return rawList.map((song) => {
       let cover = song.cover;
       if (!cover || cover === DEFAULT_COVER_SRC || cover.includes("default-cover")) {
-        if (playlistCoverMap.get(song.id) && !playlistCoverMap.get(song.id)!.includes("default-cover")) {
+        if (
+          playlistCoverMap.get(song.id) &&
+          !playlistCoverMap.get(song.id)!.includes("default-cover")
+        ) {
           cover = playlistCoverMap.get(song.id);
-        } else if (offlineCoverMap.get(String(song.id)) && !offlineCoverMap.get(String(song.id))!.includes("default-cover")) {
+        } else if (
+          offlineCoverMap.get(String(song.id)) &&
+          !offlineCoverMap.get(String(song.id))!.includes("default-cover")
+        ) {
           cover = offlineCoverMap.get(String(song.id));
         }
       }
@@ -212,16 +223,19 @@ export const MusicCardStack: React.FC = () => {
     [currentSong?.id, isPlaying, setIsPlaying, setSelectedSong, displaySongs]
   );
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
 
-    mouseX.set(((x - centerX) / centerX) * 7.5);
-    mouseY.set(-((y - centerY) / centerY) * 7.5);
-  }, [mouseX, mouseY]);
+      mouseX.set(((x - centerX) / centerX) * 7.5);
+      mouseY.set(-((y - centerY) / centerY) * 7.5);
+    },
+    [mouseX, mouseY]
+  );
 
   const handleMouseEnterCard = useCallback(() => {
     setIsCenterHovered(true);
@@ -286,7 +300,10 @@ export const MusicCardStack: React.FC = () => {
     if (gestureTriggered && lastGesture) {
       if ((lastGesture as any) === "swipe_left" || (lastGesture as any)?.type === "swipe_left") {
         handleNext();
-      } else if ((lastGesture as any) === "swipe_right" || (lastGesture as any)?.type === "swipe_right") {
+      } else if (
+        (lastGesture as any) === "swipe_right" ||
+        (lastGesture as any)?.type === "swipe_right"
+      ) {
         handlePrev();
       }
     }
@@ -355,7 +372,7 @@ export const MusicCardStack: React.FC = () => {
             const rotateY = isCenter ? 0 : card.offset < 0 ? 38 : -38;
             const scale = isCenter
               ? isCenterHovered
-                ? 1.20
+                ? 1.2
                 : 1.18
               : Math.max(0.64, 0.82 - absOffset * 0.08);
             const opacity = isCenter ? 1 : Math.max(0.28, 0.72 - absOffset * 0.16);
@@ -442,7 +459,8 @@ export const MusicCardStack: React.FC = () => {
                         width: DISC_SIZE,
                         height: DISC_SIZE,
                         zIndex: 0,
-                        boxShadow: "0 20px 52px rgba(0,0,0,0.94), inset 0 0 0 2px rgba(255,255,255,0.08)",
+                        boxShadow:
+                          "0 20px 52px rgba(0,0,0,0.94), inset 0 0 0 2px rgba(255,255,255,0.08)",
                         background:
                           "radial-gradient(circle, #1a1a1a 0%, #111111 25%, #222222 26%, #0d0d0d 45%, #1f1f1f 46%, #080808 65%, #1a1a1a 66%, #050505 100%)",
                       }}
@@ -467,7 +485,9 @@ export const MusicCardStack: React.FC = () => {
                         {/* 顺时针物理真实多角度彩虹高光扫光 */}
                         <div
                           className={`absolute inset-0 rounded-full pointer-events-none ${
-                            isPlayingThis ? "animate-conic-sweep-active" : "animate-conic-sweep-idle"
+                            isPlayingThis
+                              ? "animate-conic-sweep-active"
+                              : "animate-conic-sweep-idle"
                           }`}
                           style={{
                             background:
@@ -580,7 +600,8 @@ export const MusicCardStack: React.FC = () => {
                       className="absolute -bottom-[58px] left-2 right-2 h-[52px] rounded-[22px] overflow-hidden opacity-35 pointer-events-none scale-y-[-1]"
                       style={{
                         maskImage: "linear-gradient(to top, rgba(0,0,0,0.9), transparent 75%)",
-                        WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.9), transparent 75%)",
+                        WebkitMaskImage:
+                          "linear-gradient(to top, rgba(0,0,0,0.9), transparent 75%)",
                       }}
                     >
                       <Image

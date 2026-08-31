@@ -1,4 +1,4 @@
-﻿import { create } from "zustand";
+import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { saveSongEmotions, loadSongEmotions } from "@/services/metadataStorage";
 import { EmotionPoint, EmotionCoordinate } from "@/types/emotion";
@@ -303,10 +303,13 @@ Coordinate rules:
 Use the full coordinate space naturally and avoid clustering every song near the center.
 Return format: {"v": number, "e": number, "d": string}`;
 
+          const isBrowser = typeof window !== "undefined";
           const baseUrl = config.baseUrl.replace(/\/$/, "");
-          const url = baseUrl.endsWith("/v1")
-            ? `${baseUrl}/chat/completions`
-            : `${baseUrl}/v1/chat/completions`;
+          const url = isBrowser
+            ? "/api/ai/chat"
+            : baseUrl.endsWith("/v1")
+              ? `${baseUrl}/chat/completions`
+              : `${baseUrl}/v1/chat/completions`;
 
           const response = await fetch(url, {
             method: "POST",
@@ -315,6 +318,8 @@ Return format: {"v": number, "e": number, "d": string}`;
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
+              baseUrl: config.baseUrl,
+              apiKey: config.apiKey,
               model: config.model,
               messages: [{ role: "user", content: prompt }],
               temperature: 0.7,

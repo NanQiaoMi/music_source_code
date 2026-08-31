@@ -112,14 +112,23 @@ function toDNAJournal(value: unknown): Omit<DNAJournal, "timestamp"> | null {
   };
 }
 
-async function requestChatCompletion(url: string, apiKey: string, body: unknown): Promise<string> {
-  const response = await fetch(url, {
+async function requestChatCompletion(
+  url: string,
+  apiKey: string,
+  body: Record<string, unknown>,
+  baseUrl?: string
+): Promise<string> {
+  const isBrowser = typeof window !== "undefined";
+  const targetUrl = isBrowser ? "/api/ai/chat" : url;
+  const payload = isBrowser ? { ...body, baseUrl, apiKey } : body;
+
+  const response = await fetch(targetUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -168,7 +177,8 @@ export const useKnowledgeStore = create<KnowledgeState>()(
               ],
               temperature: 0.8,
               max_tokens: 150,
-            }
+            },
+            config.baseUrl
           );
 
           set((state) => ({
@@ -209,7 +219,8 @@ export const useKnowledgeStore = create<KnowledgeState>()(
               ],
               temperature: 0.3,
               max_tokens: 600,
-            }
+            },
+            config.baseUrl
           );
           const parsedMetaphors = extractJson(rawContent).filter(isMetaphor);
 
@@ -247,7 +258,8 @@ export const useKnowledgeStore = create<KnowledgeState>()(
               ],
               temperature: 0.8,
               max_tokens: 800,
-            }
+            },
+            config.baseUrl
           );
 
           const parsed = toDNAJournal(extractJson(rawContent)[0]);
