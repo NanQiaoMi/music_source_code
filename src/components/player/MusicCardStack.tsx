@@ -17,18 +17,18 @@ import { getStoredMusic } from "@/services/localMusicStorage";
 import { Song } from "@/types/song";
 import Link from "next/link";
 
-// Apple 顶级 Cover Flow 丝滑物理弹簧配置 (极速响应 + 零丢帧)
+// Apple 顶级 Cover Flow 物理弹簧 (更轻更敏捷：stiffness 420, damping 36, mass 0.55)
 const COVER_FLOW_SPRING = {
   type: "spring" as const,
-  stiffness: 320,
-  damping: 30,
-  mass: 0.7,
+  stiffness: 420,
+  damping: 36,
+  mass: 0.55,
 };
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 const SLEEVE_SIZE = 360;
 const DISC_SIZE = 305;
-const MAX_VISIBLE_HALF = 4; // 左右最多各显示 4 张
+const MAX_VISIBLE_HALF = 3; // 左右各显示 3 张，共 7 张黄金视野，大幅降低 3D 渲染开销
 
 export const MusicCardStack: React.FC = () => {
   const { songs, recentPlayed, setSelectedSong } = usePlaylistStore();
@@ -83,7 +83,7 @@ export const MusicCardStack: React.FC = () => {
     }
   }, [currentSong?.id, displaySongs]);
 
-  // 切换焦点专辑时防抖同步当前选中的歌曲，避免滑动过程中连续触发重型色彩提取
+  // 切换焦点专辑时防抖同步当前选中的歌曲（延迟 320ms，等切歌弹簧运动完全就绪后再触发背景色彩提取）
   useEffect(() => {
     if (selectedSongTimerRef.current) {
       clearTimeout(selectedSongTimerRef.current);
@@ -91,7 +91,7 @@ export const MusicCardStack: React.FC = () => {
     if (displaySongs.length > 0 && displaySongs[centerIndex]) {
       selectedSongTimerRef.current = setTimeout(() => {
         setSelectedSong(displaySongs[centerIndex]);
-      }, 120);
+      }, 320);
     }
     return () => {
       if (selectedSongTimerRef.current) {
@@ -125,7 +125,7 @@ export const MusicCardStack: React.FC = () => {
     return cards;
   }, [centerIndex, displaySongs]);
 
-  // 针对当前可视区域内的未补全封面，采用防抖 + 记忆缓存异步后台静默提取，绝不在动画切歌时阻塞 UI
+  // 针对当前可视区域内的未补全封面，在静止空闲时（800ms 防抖）异步后台提取，绝不在切歌动画过程中阻塞 UI
   useEffect(() => {
     const missingCoverCards = visibleCards.filter(
       (card) =>
@@ -177,7 +177,7 @@ export const MusicCardStack: React.FC = () => {
           } catch {}
         }
       });
-    }, 300);
+    }, 800);
 
     return () => clearTimeout(timer);
   }, [visibleCards]);
@@ -404,7 +404,7 @@ export const MusicCardStack: React.FC = () => {
                   x: card.offset > 0 ? x + 80 : x - 80,
                   opacity: 0,
                   scale: scale * 0.92,
-                  transition: { duration: 0.18 },
+                  transition: { duration: 0.15 },
                 }}
                 transition={COVER_FLOW_SPRING}
                 className="group flex items-center justify-center transform-gpu"
@@ -432,8 +432,8 @@ export const MusicCardStack: React.FC = () => {
                       }}
                       transition={{
                         type: "spring",
-                        stiffness: 260,
-                        damping: 26,
+                        stiffness: 280,
+                        damping: 28,
                       }}
                       style={{
                         position: "absolute",
@@ -455,15 +455,14 @@ export const MusicCardStack: React.FC = () => {
                         }`}
                         style={{ willChange: "transform" }}
                       >
-                        {/* 超精细 8 圈物理同心折射凹槽 */}
-                        <div className="absolute inset-2.5 rounded-full border border-white/[0.045]" />
-                        <div className="absolute inset-6 rounded-full border border-white/[0.03]" />
-                        <div className="absolute inset-10 rounded-full border border-white/[0.04]" />
-                        <div className="absolute inset-15 rounded-full border border-white/[0.035]" />
-                        <div className="absolute inset-20 rounded-full border border-white/[0.05]" />
-                        <div className="absolute inset-25 rounded-full border border-white/[0.03]" />
-                        <div className="absolute inset-30 rounded-full border border-white/[0.04]" />
-                        <div className="absolute inset-36 rounded-full border border-white/[0.06]" />
+                        {/* 超精细物理同心折射凹槽 (采用轻量高效的 CSS repeating radial 纹理) */}
+                        <div
+                          className="absolute inset-1 rounded-full pointer-events-none opacity-40"
+                          style={{
+                            background:
+                              "repeating-radial-gradient(circle, transparent 0, transparent 4px, rgba(255,255,255,0.04) 4.5px, transparent 5px)",
+                          }}
+                        />
 
                         {/* 顺时针物理真实多角度彩虹高光扫光 */}
                         <div
