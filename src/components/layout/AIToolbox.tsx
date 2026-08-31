@@ -1,8 +1,18 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Activity, Trash2, Brain, Dice1, Settings, Pause, Play } from "lucide-react";
+import {
+  ChevronDown,
+  Activity,
+  Trash2,
+  Brain,
+  Dice1,
+  Settings,
+  Pause,
+  Play,
+  Sparkles,
+} from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
 import { useLinerNotesStore } from "@/store/linerNotesStore";
 import { useGlassToast } from "@/components/shared/GlassToast";
@@ -71,6 +81,13 @@ export const AIToolbox: React.FC = () => {
   };
 
   const menuItems = [
+    {
+      id: "aiAgent",
+      label: "AI 找歌助手",
+      icon: <Sparkles className="w-4 h-4 text-cyan-400" />,
+      action: () => openPanel("aiAgent"),
+      desc: "模糊歌词/全网一键找歌与播放",
+    },
     {
       id: "aiSettings",
       label: "AI 接口配置",

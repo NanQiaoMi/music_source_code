@@ -99,6 +99,8 @@ const FACTORIES = {
     import("@/components/widgets/DNAJournal").then((m) => ({ default: m.DNAJournal })),
   emotionMatrix: () => import("@/components/emotion/EmotionMatrixView"),
   aiSettings: () => import("@/components/settings/AISettingsPanel"),
+  aiAgent: () =>
+    import("@/components/ai-agent/AIAgentPanel").then((m) => ({ default: m.AIAgentPanel })),
   shelf3D: () =>
     import("@/components/library/Shelf3DView").then((m) => ({ default: m.Shelf3DView })),
   audioSourceManager: () =>
@@ -419,6 +421,12 @@ export function PanelOrchestrator() {
         isOpen={panels.aiSettings}
         onClose={() => closePanel("aiSettings")}
         component={PANEL_COMPONENTS.aiSettings}
+      />
+      <LazyPanel
+        name="aiAgent"
+        isOpen={panels.aiAgent}
+        onClose={() => closePanel("aiAgent")}
+        component={PANEL_COMPONENTS.aiAgent}
       />
 
       <LazyPanel
