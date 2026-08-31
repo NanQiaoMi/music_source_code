@@ -104,6 +104,38 @@ export interface RunAgentConversationOptions {
   abortSignal?: AbortSignal;
 }
 
+export function parseAIErrorMessage(status: number, rawText: string): string {
+  let message = rawText;
+  try {
+    const json = JSON.parse(rawText);
+    message = json.error?.message || json.message || rawText;
+  } catch {
+    // raw text
+  }
+
+  const lowerMsg = message.toLowerCase();
+  if (
+    status === 429 ||
+    lowerMsg.includes("rpm") ||
+    lowerMsg.includes("quota") ||
+    lowerMsg.includes("rate limit") ||
+    lowerMsg.includes("exhausted")
+  ) {
+    return "当前 AI 端点调用频次超限 (429 / RPM Exhausted) 或账户余额已用尽。\n💡 建议稍等 10-30 秒后重试，或点击下方「AI 设置」切换为其他服务商端点（如 DeepSeek、SiliconFlow、通义千问或本地 Ollama）。";
+  }
+  if (status === 401 || lowerMsg.includes("unauthorized") || lowerMsg.includes("api key")) {
+    return "API 密钥鉴权失败 (401 Unauthorized)。\n💡 请点击下方「AI 设置」检查 API Key 是否正确或已失效。";
+  }
+  if (status === 404 || lowerMsg.includes("not found") || lowerMsg.includes("model")) {
+    return `未找到目标模型 (${message})。\n💡 请在「AI 设置」中点击「拉取可用模型」重新选择当前端点支持的模型。`;
+  }
+  if (status === 504 || status === 408 || lowerMsg.includes("timeout")) {
+    return "AI 接口请求超时 (504 Timeout)。\n💡 上游服务商响应较慢，建议更换更快或更高并发的端点。";
+  }
+
+  return `API 请求失败 (${status}): ${message}`;
+}
+
 /**
  * 执行 ReAct 循环驱动的 AI Agent 会话
  */
@@ -171,17 +203,17 @@ export async function runAgentConversation({
         supportsTools = false;
         continue;
       }
-      throw new Error(`API 请求失败 (${response.status}): ${errorText || response.statusText}`);
+      throw new Error(parseAIErrorMessage(response.status, errorText || response.statusText));
     }
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
-      throw new Error(`API 请求失败 (${response.status}): ${errorText || response.statusText}`);
+      throw new Error(parseAIErrorMessage(response.status, errorText || response.statusText));
     }
 
     const data: ChatCompletionResponse = await response.json();
     if (data.error) {
-      throw new Error(data.error.message || "未知 API 错误");
+      throw new Error(parseAIErrorMessage(response.status || 500, data.error.message || "未知 API 错误"));
     }
 
     const choice = data.choices?.[0];
