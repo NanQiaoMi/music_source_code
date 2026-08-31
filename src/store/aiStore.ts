@@ -9,6 +9,16 @@ export interface AIConfig {
   id: string;
   lastTested?: number;
   status: "idle" | "testing" | "online" | "offline";
+  // Enhanced attributes
+  providerId?: string;
+  latency?: number;
+  temperature?: number;
+  topP?: number;
+  maxTokens?: number;
+  timeout?: number;
+  systemPrompt?: string;
+  customHeaders?: Record<string, string>;
+  stream?: boolean;
 }
 
 interface AIState {
@@ -18,12 +28,14 @@ interface AIState {
   isEnabled: boolean;
 
   // Actions
-  addConfig: (config: Omit<AIConfig, "id" | "status">) => void;
+  addConfig: (config: Omit<AIConfig, "id" | "status"> & { id?: string; status?: AIConfig["status"] }) => string;
   removeConfig: (id: string) => void;
   updateConfig: (id: string, updates: Partial<AIConfig>) => void;
+  duplicateConfig: (id: string) => string | null;
   setActiveConfig: (id: string | null) => void;
   toggleEnabled: () => void;
   setEnabled: (enabled: boolean) => void;
+  importConfigs: (imported: AIConfig[], mode: "merge" | "overwrite") => void;
 
   // Test logic
   testConfig: (id: string) => Promise<boolean>;
@@ -75,6 +87,37 @@ function normalizePersistedAIConfig(value: unknown): AIConfig | null {
   if (typeof value.lastTested === "number" && Number.isFinite(value.lastTested)) {
     config.lastTested = value.lastTested;
   }
+  if (typeof value.providerId === "string") {
+    config.providerId = value.providerId;
+  }
+  if (typeof value.latency === "number" && Number.isFinite(value.latency)) {
+    config.latency = value.latency;
+  }
+  if (typeof value.temperature === "number" && Number.isFinite(value.temperature)) {
+    config.temperature = value.temperature;
+  }
+  if (typeof value.topP === "number" && Number.isFinite(value.topP)) {
+    config.topP = value.topP;
+  }
+  if (typeof value.maxTokens === "number" && Number.isFinite(value.maxTokens)) {
+    config.maxTokens = value.maxTokens;
+  }
+  if (typeof value.timeout === "number" && Number.isFinite(value.timeout)) {
+    config.timeout = value.timeout;
+  }
+  if (typeof value.systemPrompt === "string") {
+    config.systemPrompt = value.systemPrompt;
+  }
+  if (isRecord(value.customHeaders)) {
+    const headers: Record<string, string> = {};
+    for (const [k, v] of Object.entries(value.customHeaders)) {
+      if (typeof v === "string") headers[k] = v;
+    }
+    config.customHeaders = headers;
+  }
+  if (typeof value.stream === "boolean") {
+    config.stream = value.stream;
+  }
 
   return config;
 }
@@ -109,17 +152,51 @@ export const useAIStore = create<AIState>()(
       isEnabled: true,
 
       addConfig: (config) => {
-        const id = Math.random().toString(36).substring(2, 11);
+        const id = config.id || Math.random().toString(36).substring(2, 11);
+        const newEntry: AIConfig = {
+          temperature: 0.7,
+          topP: 1.0,
+          maxTokens: 2048,
+          timeout: 30000,
+          stream: true,
+          ...config,
+          id,
+          status: config.status || "idle",
+        };
         set((state) => ({
-          configs: [...state.configs, { ...config, id, status: "idle" }],
+          configs: [...state.configs, newEntry],
+          activeConfigId: state.activeConfigId || id,
         }));
+        return id;
       },
 
       removeConfig: (id) => {
+        set((state) => {
+          const remaining = state.configs.filter((c) => c.id !== id);
+          return {
+            configs: remaining,
+            activeConfigId:
+              state.activeConfigId === id ? (remaining[0]?.id ?? null) : state.activeConfigId,
+          };
+        });
+      },
+
+      duplicateConfig: (id) => {
+        const target = get().configs.find((c) => c.id === id);
+        if (!target) return null;
+        const newId = Math.random().toString(36).substring(2, 11);
+        const duplicated: AIConfig = {
+          ...target,
+          id: newId,
+          name: `${target.name} (副本)`,
+          status: "idle",
+          lastTested: undefined,
+          latency: undefined,
+        };
         set((state) => ({
-          configs: state.configs.filter((c) => c.id !== id),
-          activeConfigId: state.activeConfigId === id ? null : state.activeConfigId,
+          configs: [...state.configs, duplicated],
         }));
+        return newId;
       },
 
       updateConfig: (id, updates) => {
@@ -134,11 +211,41 @@ export const useAIStore = create<AIState>()(
 
       setEnabled: (enabled) => set({ isEnabled: enabled }),
 
+      importConfigs: (imported, mode) => {
+        const sanitized = imported
+          .map(normalizePersistedAIConfig)
+          .filter((c): c is AIConfig => c !== null);
+        if (sanitized.length === 0) return;
+
+        set((state) => {
+          if (mode === "overwrite") {
+            return {
+              configs: sanitized,
+              activeConfigId: sanitized[0]?.id ?? null,
+            };
+          }
+          // merge: replace by id if exists, otherwise append
+          const map = new Map<string, AIConfig>();
+          for (const item of state.configs) {
+            map.set(item.id, item);
+          }
+          for (const item of sanitized) {
+            map.set(item.id, item);
+          }
+          const merged = Array.from(map.values());
+          return {
+            configs: merged,
+            activeConfigId: state.activeConfigId || merged[0]?.id || null,
+          };
+        });
+      },
+
       testConfig: async (id) => {
         const config = get().configs.find((c) => c.id === id);
         if (!config) return false;
 
         get().updateConfig(id, { status: "testing" });
+        const startTime = typeof performance !== "undefined" ? performance.now() : Date.now();
 
         try {
           const isBrowser = typeof window !== "undefined";
@@ -170,14 +277,19 @@ export const useAIStore = create<AIState>()(
             ok = response.ok;
           }
 
+          const endTime = typeof performance !== "undefined" ? performance.now() : Date.now();
+          const latency = Math.max(1, Math.round(endTime - startTime));
+
           if (ok) {
-            get().updateConfig(id, { status: "online", lastTested: Date.now() });
+            get().updateConfig(id, { status: "online", lastTested: Date.now(), latency });
             return true;
           } else {
             throw new Error("API response not OK");
           }
         } catch {
-          get().updateConfig(id, { status: "offline", lastTested: Date.now() });
+          const endTime = typeof performance !== "undefined" ? performance.now() : Date.now();
+          const latency = Math.max(1, Math.round(endTime - startTime));
+          get().updateConfig(id, { status: "offline", lastTested: Date.now(), latency });
           return false;
         }
       },
