@@ -380,7 +380,7 @@ export const MusicCardStack: React.FC = () => {
 
             return (
               <motion.div
-                key={card.id}
+                key={`${card.id}_${card.displayIndex}_${card.offset}`}
                 onClick={() => {
                   if (isCenter) {
                     handlePlayCard(card, card.displayIndex);
