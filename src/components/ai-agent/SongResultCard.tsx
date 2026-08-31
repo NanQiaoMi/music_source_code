@@ -31,11 +31,7 @@ function formatDuration(sec?: number): string {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-export const SongResultCard: React.FC<SongResultCardProps> = ({
-  result,
-  onPlay,
-  onDownload,
-}) => {
+export const SongResultCard: React.FC<SongResultCardProps> = ({ result, onPlay, onDownload }) => {
   const { song } = result;
   const [imageError, setImageError] = useState(false);
 
@@ -58,11 +54,10 @@ export const SongResultCard: React.FC<SongResultCardProps> = ({
     downloadTask?.status === "transcoding";
   const isDownloaded = isOffline || downloadTask?.status === "completed";
 
-  const sourceInfo =
-    SOURCE_LABELS[song.source] || {
-      label: song.source || "网络",
-      color: "bg-white/10 text-white/70 border-white/15",
-    };
+  const sourceInfo = SOURCE_LABELS[song.source] || {
+    label: song.source || "网络",
+    color: "bg-white/10 text-white/70 border-white/15",
+  };
 
   const handlePlayClick = (e: React.MouseEvent) => {
     e.stopPropagation();

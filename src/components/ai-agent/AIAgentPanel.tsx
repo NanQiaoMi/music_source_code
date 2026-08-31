@@ -361,9 +361,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                 onChange={(e) => setInputVal(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={
-                  isProcessing
-                    ? "AI 正在检索中..."
-                    : "描述想听的歌曲、模糊歌词、歌手或心情..."
+                  isProcessing ? "AI 正在检索中..." : "描述想听的歌曲、模糊歌词、歌手或心情..."
                 }
                 rows={1}
                 disabled={isProcessing}

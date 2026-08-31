@@ -192,7 +192,13 @@ export const useUIStore = create<UIState>((set, get) => ({
     if (typeof window !== "undefined") {
       try {
         const saved = sessionStorage.getItem("mimimusic_active_view") as ViewType;
-        if (saved && (saved === "home" || saved === "player" || saved === "visualization" || saved === "emotion")) {
+        if (
+          saved &&
+          (saved === "home" ||
+            saved === "player" ||
+            saved === "visualization" ||
+            saved === "emotion")
+        ) {
           set({ currentView: saved });
         }
       } catch {

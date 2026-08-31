@@ -72,7 +72,11 @@ describe("aiAgentService", () => {
       expect(formatted[1]).toEqual({ role: "user", content: "搜索晴天" });
       expect(formatted[2].role).toBe("assistant");
       expect(formatted[2].tool_calls).toHaveLength(1);
-      expect(formatted[3]).toEqual({ role: "tool", tool_call_id: "call_1", content: '{"count":1}' });
+      expect(formatted[3]).toEqual({
+        role: "tool",
+        tool_call_id: "call_1",
+        content: '{"count":1}',
+      });
     });
   });
 
@@ -170,7 +174,11 @@ describe("aiAgentService", () => {
       });
 
       expect(global.fetch).toHaveBeenCalledTimes(2);
-      expect(executeTool).toHaveBeenCalledWith("search_songs", { query: "晴天" }, expect.anything());
+      expect(executeTool).toHaveBeenCalledWith(
+        "search_songs",
+        { query: "晴天" },
+        expect.anything()
+      );
 
       // Should have assistant tool call, tool response, and final assistant message
       const toolMsg = result.find((m) => m.role === "tool");
