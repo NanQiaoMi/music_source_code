@@ -7,15 +7,9 @@ import { useUIStore, ToastMessage } from "@/store/uiStore";
 import {
   CheckCircle2,
   XCircle,
-  Info,
   AlertTriangle,
   X,
   Sparkles,
-  Music,
-  Radio,
-  Download,
-  FolderHeart,
-  Flame,
 } from "lucide-react";
 
 interface ParsedMessage {
@@ -109,11 +103,11 @@ const ToastIconBadge: React.FC<{
 }> = ({ type, isPlayback }) => {
   if (isPlayback) {
     return (
-      <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.35)] shrink-0">
-        <div className="flex items-end justify-center gap-0.5 w-3.5 h-3.5">
-          <span className="w-0.5 bg-emerald-400 rounded-full animate-[bounce_0.8s_infinite_ease-in-out] h-3" />
-          <span className="w-0.5 bg-emerald-400 rounded-full animate-[bounce_0.6s_infinite_ease-in-out_0.2s] h-3.5" />
-          <span className="w-0.5 bg-emerald-400 rounded-full animate-[bounce_0.9s_infinite_ease-in-out_0.4s] h-2" />
+      <div className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-400/35 text-emerald-300 flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.25)] shrink-0">
+        <div className="flex items-end justify-center gap-0.5 w-3 h-3">
+          <span className="w-0.5 bg-emerald-400 rounded-full h-2.5 animate-pulse" />
+          <span className="w-0.5 bg-emerald-400 rounded-full h-3 animate-ping" />
+          <span className="w-0.5 bg-emerald-400 rounded-full h-2 animate-pulse" />
         </div>
       </div>
     );
@@ -122,27 +116,27 @@ const ToastIconBadge: React.FC<{
   switch (type) {
     case "success":
       return (
-        <div className="w-8 h-8 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.25)] shrink-0">
-          <CheckCircle2 className="w-4 h-4" />
+        <div className="w-7 h-7 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.2)] shrink-0">
+          <CheckCircle2 className="w-3.5 h-3.5" />
         </div>
       );
     case "error":
       return (
-        <div className="w-8 h-8 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center shadow-[0_0_15px_rgba(244,63,94,0.25)] shrink-0">
-          <XCircle className="w-4 h-4" />
+        <div className="w-7 h-7 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center shadow-[0_0_12px_rgba(244,63,94,0.2)] shrink-0">
+          <XCircle className="w-3.5 h-3.5" />
         </div>
       );
     case "warning":
       return (
-        <div className="w-8 h-8 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.25)] shrink-0">
-          <AlertTriangle className="w-4 h-4" />
+        <div className="w-7 h-7 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.2)] shrink-0">
+          <AlertTriangle className="w-3.5 h-3.5" />
         </div>
       );
     case "info":
     default:
       return (
-        <div className="w-8 h-8 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.25)] shrink-0">
-          <Sparkles className="w-4 h-4" />
+        <div className="w-7 h-7 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.2)] shrink-0">
+          <Sparkles className="w-3.5 h-3.5" />
         </div>
       );
   }
@@ -157,26 +151,26 @@ const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
     { border: string; glow: string; progress: string; tagBg: string }
   > = {
     success: {
-      border: "border-emerald-500/35 hover:border-emerald-400/60",
-      glow: "shadow-[0_20px_50px_rgba(0,0,0,0.7),0_0_30px_rgba(16,185,129,0.18)]",
+      border: "border-emerald-500/30 hover:border-emerald-400/50",
+      glow: "shadow-[0_12px_36px_rgba(0,0,0,0.6),0_0_20px_rgba(16,185,129,0.12)]",
       progress: "from-emerald-400 to-teal-400",
       tagBg: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
     },
     error: {
-      border: "border-rose-500/35 hover:border-rose-400/60",
-      glow: "shadow-[0_20px_50px_rgba(0,0,0,0.7),0_0_30px_rgba(244,63,94,0.18)]",
+      border: "border-rose-500/30 hover:border-rose-400/50",
+      glow: "shadow-[0_12px_36px_rgba(0,0,0,0.6),0_0_20px_rgba(244,63,94,0.12)]",
       progress: "from-rose-400 to-pink-500",
       tagBg: "bg-rose-500/20 text-rose-300 border-rose-500/30",
     },
     warning: {
-      border: "border-amber-500/35 hover:border-amber-400/60",
-      glow: "shadow-[0_20px_50px_rgba(0,0,0,0.7),0_0_30px_rgba(245,158,11,0.18)]",
+      border: "border-amber-500/30 hover:border-amber-400/50",
+      glow: "shadow-[0_12px_36px_rgba(0,0,0,0.6),0_0_20px_rgba(245,158,11,0.12)]",
       progress: "from-amber-400 to-orange-400",
       tagBg: "bg-amber-500/20 text-amber-300 border-amber-500/30",
     },
     info: {
-      border: "border-cyan-500/35 hover:border-cyan-400/60",
-      glow: "shadow-[0_20px_50px_rgba(0,0,0,0.7),0_0_30px_rgba(6,182,212,0.18)]",
+      border: "border-cyan-500/30 hover:border-cyan-400/50",
+      glow: "shadow-[0_12px_36px_rgba(0,0,0,0.6),0_0_20px_rgba(6,182,212,0.12)]",
       progress: "from-cyan-400 to-blue-500",
       tagBg: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
     },
@@ -187,29 +181,29 @@ const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, y: -24, scale: 0.9, filter: "blur(8px)" }}
-      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-      exit={{ opacity: 0, y: -16, scale: 0.92, filter: "blur(6px)" }}
-      transition={{ type: "spring", damping: 26, stiffness: 360 }}
-      className={`relative group flex items-center gap-3.5 px-4 py-2.5 bg-[#090b14]/92 backdrop-blur-3xl rounded-2xl md:rounded-full border ${currentStyle.border} ${currentStyle.glow} pointer-events-auto select-none font-sans text-white max-w-md md:max-w-lg shadow-2xl transition-all`}
+      initial={{ opacity: 0, y: -12, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -12, scale: 0.95 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+      style={{ willChange: "transform, opacity" }}
+      className={`relative group flex items-center gap-3 px-3.5 py-2 bg-[#0c0e17]/95 backdrop-blur-2xl rounded-2xl border ${currentStyle.border} ${currentStyle.glow} pointer-events-auto select-none font-sans text-white max-w-sm sm:max-w-md shadow-2xl transition-colors`}
     >
       {/* 动态图标微标 */}
       <ToastIconBadge type={toast.type} isPlayback={parsed.isPlayback} />
 
       {/* 消息主体结构化排版 */}
-      <div className="flex flex-col min-w-0 flex-1 justify-center py-0.5">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="flex flex-col min-w-0 flex-1 justify-center">
+        <div className="flex items-center gap-1.5 min-w-0">
           {parsed.tag && (
             <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold border tracking-wide uppercase shrink-0 font-mono shadow-sm ${currentStyle.tagBg}`}
+              className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold border tracking-wide uppercase shrink-0 font-mono ${currentStyle.tagBg}`}
             >
               {parsed.tag}
             </span>
           )}
 
           <span
-            className={`text-xs font-semibold text-white/95 truncate leading-tight ${
+            className={`text-xs font-semibold text-white/90 truncate leading-snug ${
               parsed.isPlayback ? "font-bold text-white" : ""
             }`}
           >
@@ -218,7 +212,7 @@ const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
         </div>
 
         {parsed.subtitle && (
-          <span className="text-[11px] text-white/50 truncate mt-0.5 font-medium leading-tight">
+          <span className="text-[10px] text-white/45 truncate mt-0.5 font-medium leading-tight">
             {parsed.subtitle}
           </span>
         )}
@@ -228,19 +222,20 @@ const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
       <button
         type="button"
         onClick={() => removeToast(toast.id)}
-        className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all cursor-pointer shrink-0 hover:rotate-90"
+        className="w-5 h-5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors cursor-pointer shrink-0"
         title="关闭通知"
       >
         <X className="w-3 h-3" />
       </button>
 
-      {/* 底部自动倒计时平滑收敛微光光条 */}
+      {/* 底部自动倒计时 GPU scaleX 收敛光条 */}
       {toast.duration && toast.duration > 0 && (
-        <div className="absolute bottom-0 left-6 right-6 h-[2px] overflow-hidden rounded-full opacity-40 group-hover:opacity-70 transition-opacity">
+        <div className="absolute bottom-0 left-4 right-4 h-[1.5px] overflow-hidden rounded-full opacity-30 group-hover:opacity-60 transition-opacity">
           <motion.div
-            initial={{ width: "100%" }}
-            animate={{ width: "0%" }}
+            initial={{ scaleX: 1 }}
+            animate={{ scaleX: 0 }}
             transition={{ duration: durationSec, ease: "linear" }}
+            style={{ originX: 0, willChange: "transform" }}
             className={`h-full bg-gradient-to-r ${currentStyle.progress} rounded-full`}
           />
         </div>
@@ -253,7 +248,7 @@ export const GlassToastContainer: React.FC = () => {
   const toasts = useUIStore((state) => state.toasts);
 
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[999999] space-y-2.5 pointer-events-none flex flex-col items-center">
+    <div className="fixed top-20 right-6 z-[999999] space-y-2 pointer-events-none flex flex-col items-end">
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} />
