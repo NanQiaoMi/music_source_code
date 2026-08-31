@@ -45,10 +45,13 @@ export const useLinerNotesStore = create<LinerNotesState>()(
         const timeoutId = setTimeout(() => controller.abort(), 12000);
 
         try {
+          const isBrowser = typeof window !== "undefined";
           const baseUrl = config.baseUrl.replace(/\/$/, "");
-          const url = baseUrl.endsWith("/v1")
-            ? `${baseUrl}/chat/completions`
-            : `${baseUrl}/v1/chat/completions`;
+          const url = isBrowser
+            ? "/api/ai/chat"
+            : baseUrl.endsWith("/v1")
+              ? `${baseUrl}/chat/completions`
+              : `${baseUrl}/v1/chat/completions`;
 
           const emotionContext = emotion
             ? `[核心质感]：${emotion.x > 0 ? "偏向明亮/温润" : "偏向幽暗/冷峻"}的底色，伴随${emotion.y > 0 ? "极具颗粒感/侵略性" : "失重/漂流"}的脉络。`
@@ -76,14 +79,14 @@ ${lyrics ? `语义残片：${lyrics.substring(0, 400)}` : ""}`;
               Authorization: `Bearer ${config.apiKey}`,
             },
             body: JSON.stringify({
-              model: config.model || "gpt-4o-mini",
+              baseUrl: config.baseUrl,
+              apiKey: config.apiKey,
+              model: config.model || "deepseek-v4-flash",
               messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt },
               ],
               temperature: 0.95,
-              presence_penalty: 0.6, // 鼓励谈论新话题
-              frequency_penalty: 0.6, // 减少重复词汇
               max_tokens: 150,
             }),
             signal: controller.signal,

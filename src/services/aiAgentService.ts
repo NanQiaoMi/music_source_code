@@ -114,7 +114,8 @@ export async function runAgentConversation({
   abortSignal,
 }: RunAgentConversationOptions): Promise<AgentMessage[]> {
   const currentMessages: AgentMessage[] = [...messages];
-  const url = resolveChatCompletionsUrl(config.baseUrl);
+  const isBrowser = typeof window !== "undefined";
+  const url = isBrowser ? "/api/ai/chat" : resolveChatCompletionsUrl(config.baseUrl);
 
   let openAIMessages = formatMessagesForOpenAI(currentMessages);
   const maxIterations = 5;
@@ -128,6 +129,8 @@ export async function runAgentConversation({
     onUpdate(currentMessages, null);
 
     const requestBody: Record<string, unknown> = {
+      baseUrl: config.baseUrl,
+      apiKey: config.apiKey,
       model: config.model,
       messages: openAIMessages,
       temperature: 0.7,

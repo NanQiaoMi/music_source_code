@@ -141,16 +141,36 @@ export const useAIStore = create<AIState>()(
         get().updateConfig(id, { status: "testing" });
 
         try {
-          const baseUrl = config.baseUrl.replace(/\/$/, "");
-          const url = baseUrl.endsWith("/v1") ? `${baseUrl}/models` : `${baseUrl}/v1/models`;
-          const response = await fetch(url, {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${config.apiKey}`,
-            },
-          });
+          const isBrowser = typeof window !== "undefined";
+          let ok = false;
 
-          if (response.ok) {
+          if (isBrowser) {
+            // 在浏览器中通过服务端代理进行连通性测试
+            const response = await fetch("/api/ai/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                baseUrl: config.baseUrl,
+                apiKey: config.apiKey,
+                model: config.model || "deepseek-v4-flash",
+                messages: [{ role: "user", content: "hi" }],
+                max_tokens: 5,
+              }),
+            });
+            ok = response.ok;
+          } else {
+            const baseUrl = config.baseUrl.replace(/\/$/, "");
+            const url = baseUrl.endsWith("/v1") ? `${baseUrl}/models` : `${baseUrl}/v1/models`;
+            const response = await fetch(url, {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${config.apiKey}`,
+              },
+            });
+            ok = response.ok;
+          }
+
+          if (ok) {
             get().updateConfig(id, { status: "online", lastTested: Date.now() });
             return true;
           } else {
@@ -167,18 +187,33 @@ export const useAIStore = create<AIState>()(
         if (!config) return [];
 
         try {
-          const baseUrl = config.baseUrl.replace(/\/$/, "");
-          const url = baseUrl.endsWith("/v1") ? `${baseUrl}/models` : `${baseUrl}/v1/models`;
-          const response = await fetch(url, {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${config.apiKey}`,
-            },
-          });
+          const isBrowser = typeof window !== "undefined";
+          let data: unknown;
 
-          if (!response.ok) return [];
+          if (isBrowser) {
+            const response = await fetch("/api/ai/models", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                baseUrl: config.baseUrl,
+                apiKey: config.apiKey,
+              }),
+            });
+            if (!response.ok) return [];
+            data = await response.json();
+          } else {
+            const baseUrl = config.baseUrl.replace(/\/$/, "");
+            const url = baseUrl.endsWith("/v1") ? `${baseUrl}/models` : `${baseUrl}/v1/models`;
+            const response = await fetch(url, {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${config.apiKey}`,
+              },
+            });
+            if (!response.ok) return [];
+            data = await response.json();
+          }
 
-          const data: unknown = await response.json();
           return extractModelIds(data);
         } catch (error) {
           console.warn("Failed to fetch models:", error);

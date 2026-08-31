@@ -3,12 +3,11 @@
 
 import React, { useRef, useState, memo } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useBilingualLyricParser } from "@/hooks/useBilingualLyricParser";
-import { useIntegratedAudioPipeline } from "@/lib/audio/useIntegratedAudioPipeline";
 import { SkipBack, SkipForward, Mic2, ChevronUp, Play, Pause, Heart } from "lucide-react";
 import type { DragHandlers } from "./useFloatingDragPhysics";
 import { Song } from "@/types/song";
@@ -120,10 +119,6 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
   const playerSong = usePlayerStore((state) => state.currentSong);
   const currentSong = audioSong || playerSong;
 
-  const nextSong = useAudioStore((state) => state.nextSong);
-  const prevSong = useAudioStore((state) => state.prevSong);
-
-  const { playTrackWithPipeline } = useIntegratedAudioPipeline();
   const [showMiniLyricTooltip, setShowMiniLyricTooltip] = useState(false);
   const pointerDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -158,19 +153,19 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
     onExpandFull?.();
   };
 
-  const handleNextTrack = () => {
-    nextSong();
-  };
+  const handleNextTrack = React.useCallback(() => {
+    useAudioStore.getState().nextSong();
+  }, []);
 
-  const handlePrevTrack = () => {
-    prevSong();
-  };
+  const handlePrevTrack = React.useCallback(() => {
+    useAudioStore.getState().prevSong();
+  }, []);
 
-  const handleTogglePlay = () => {
+  const handleTogglePlay = React.useCallback(() => {
     const nextPlaying = !isPlaying;
     useAudioStore.getState().setIsPlaying(nextPlaying);
     usePlayerStore.getState().setIsPlaying(nextPlaying);
-  };
+  }, [isPlaying]);
 
   if (!currentSong) return null;
 
@@ -228,10 +223,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
         </div>
 
         {/* 3. 右侧控制按钮组 (0ms 零延迟极速响应) */}
-        <div
-          className="flex items-center gap-1 flex-shrink-0"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           {/* 歌词按钮 */}
           <button
             type="button"
@@ -257,10 +249,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
           </button>
 
           {/* 播放/暂停 */}
-          <FastPlayPauseButton
-            isPlaying={isPlaying}
-            onToggle={handleTogglePlay}
-          />
+          <FastPlayPauseButton isPlaying={isPlaying} onToggle={handleTogglePlay} />
 
           {/* 下一首 */}
           <button

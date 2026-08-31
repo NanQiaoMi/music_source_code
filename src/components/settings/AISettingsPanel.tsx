@@ -1,9 +1,9 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Trash2, RefreshCcw, Sparkles, Key, Zap, Check, ChevronDown } from "lucide-react";
+import { X, Plus, Trash2, RefreshCcw, Sparkles, Check } from "lucide-react";
 import { useAIStore } from "@/store/aiStore";
 import { useGlassToast } from "@/components/shared/GlassToast";
 
@@ -34,7 +34,7 @@ export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClos
   });
 
   const [isAdding, setIsAdding] = useState(false);
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [_availableModels, setAvailableModels] = useState<string[]>([]);
   const [_isFetchingModels, setIsFetchingModels] = useState(false);
 
   const handleAdd = () => {
@@ -137,9 +137,60 @@ export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClos
                   className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] space-y-3 overflow-hidden"
                 >
                   <div className="text-[13px] font-semibold text-white">新增服务配置</div>
+
+                  {/* 常用服务商一键预设 */}
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] text-[#86868b]">一键快捷预设：</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        {
+                          name: "商汤日日新",
+                          baseUrl: "https://token.sensenova.cn/v1",
+                          model: "deepseek-v4-flash",
+                        },
+                        {
+                          name: "DeepSeek 官方",
+                          baseUrl: "https://api.deepseek.com/v1",
+                          model: "deepseek-chat",
+                        },
+                        {
+                          name: "硅基流动",
+                          baseUrl: "https://api.siliconflow.cn/v1",
+                          model: "deepseek-ai/DeepSeek-V3",
+                        },
+                        {
+                          name: "OpenAI",
+                          baseUrl: "https://api.openai.com/v1",
+                          model: "gpt-4o-mini",
+                        },
+                        {
+                          name: "月之暗面",
+                          baseUrl: "https://api.moonshot.cn/v1",
+                          model: "moonshot-v1-8k",
+                        },
+                      ].map((preset) => (
+                        <button
+                          key={preset.name}
+                          type="button"
+                          onClick={() =>
+                            setNewConfig({
+                              ...newConfig,
+                              name: preset.name,
+                              baseUrl: preset.baseUrl,
+                              model: preset.model,
+                            })
+                          }
+                          className="px-2.5 py-1 rounded-lg text-[11px] bg-white/[0.06] hover:bg-white/[0.12] text-white/80 hover:text-white border border-white/[0.08] transition-all"
+                        >
+                          {preset.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2">
                     <input
-                      placeholder="配置名称 (如 OpenAI)"
+                      placeholder="配置名称 (如 商汤日日新)"
                       value={newConfig.name}
                       onChange={(e) => setNewConfig({ ...newConfig, name: e.target.value })}
                       className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[12px] text-white outline-none focus:border-[#0071e3]"
@@ -151,13 +202,21 @@ export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClos
                       className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[12px] text-white outline-none focus:border-[#0071e3]"
                     />
                   </div>
-                  <input
-                    type="password"
-                    placeholder="API Key (sk-...)"
-                    value={newConfig.apiKey}
-                    onChange={(e) => setNewConfig({ ...newConfig, apiKey: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[12px] text-white outline-none focus:border-[#0071e3]"
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="password"
+                      placeholder="API Key (sk-...)"
+                      value={newConfig.apiKey}
+                      onChange={(e) => setNewConfig({ ...newConfig, apiKey: e.target.value })}
+                      className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[12px] text-white outline-none focus:border-[#0071e3]"
+                    />
+                    <input
+                      placeholder="默认模型 (如 deepseek-v4-flash)"
+                      value={newConfig.model}
+                      onChange={(e) => setNewConfig({ ...newConfig, model: e.target.value })}
+                      className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[12px] text-white outline-none focus:border-[#0071e3]"
+                    />
+                  </div>
                   <div className="flex justify-end gap-2 pt-1">
                     <button
                       type="button"
