@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 
@@ -18,13 +19,9 @@ function isTimedLyricLine(value: unknown): value is TimedLyricLine {
   );
 }
 
-export function DesktopLyrics() {
+function DesktopLyricsContent() {
   const currentSong = useAudioStore((state) => state.currentSong);
   const currentTime = useAudioStore((state) => state.currentTime);
-
-  useEffect(() => {
-    if (!window.isDesktopLyricsMode) return;
-  }, []);
 
   const currentLyric = useMemo(() => {
     const lyrics = currentSong?.lyrics;
@@ -54,8 +51,6 @@ export function DesktopLyrics() {
     return currentSong?.title || "";
   }, [currentTime, currentSong]);
 
-  if (!window.isDesktopLyricsMode) return null;
-
   return (
     <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
       <AnimatePresence mode="wait">
@@ -84,4 +79,12 @@ export function DesktopLyrics() {
       </AnimatePresence>
     </div>
   );
+}
+
+export function DesktopLyrics() {
+  if (typeof window === "undefined" || !window.isDesktopLyricsMode) {
+    return null;
+  }
+
+  return <DesktopLyricsContent />;
 }

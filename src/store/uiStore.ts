@@ -40,6 +40,7 @@ export type PanelName =
   | "smartRandom"
   | "emotionMatrix"
   | "aiSettings"
+  | "aiAgent"
   | "dnaJournal"
   | "shelf3D"
   | "audioSourceManager"
@@ -83,6 +84,7 @@ export const PANEL_NAMES: readonly PanelName[] = [
   "smartRandom",
   "emotionMatrix",
   "aiSettings",
+  "aiAgent",
   "dnaJournal",
   "shelf3D",
   "audioSourceManager",

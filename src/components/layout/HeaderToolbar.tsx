@@ -3,7 +3,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Crown, Plus, Radio } from "lucide-react";
+import { Crown, Plus, Radio, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useUIStore } from "@/store/uiStore";
 import { usePlaylistStore } from "@/store/playlistStore";
@@ -51,8 +51,22 @@ export function HeaderToolbar() {
           <AppleUnifiedNavIsland />
         </div>
 
-        {/* 右侧栏: 音源管理 + 多平台账号胶囊 + 管理曲库 */}
+        {/* 右侧栏: AI 找歌 + 音源管理 + 多平台账号胶囊 + 管理曲库 */}
         <div className="flex items-center justify-end gap-2.5 shrink-0 z-10 ml-auto">
+          {/* AI 找歌助手入口 */}
+          <button
+            type="button"
+            onClick={() => openPanel("aiAgent")}
+            className="h-[36px] px-3 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] shadow-sm flex items-center gap-1.5 transition-all active:scale-[0.98] group shrink-0"
+            title="AI 找歌助手"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse shrink-0" />
+            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+            <span className="text-[12px] font-medium text-white/90 group-hover:text-white whitespace-nowrap">
+              AI 找歌
+            </span>
+          </button>
+
           {/* 音源管理中心入口 */}
           <button
             type="button"
