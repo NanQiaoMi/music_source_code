@@ -137,10 +137,9 @@ function boostVibrantColors(colors: ThemeColors): ThemeColors {
 export function useDynamicTheme() {
   const { themeColors, isDynamicTheme, setThemeColors, themeMode } = useUIStore();
   const currentSong = useAudioStore((state) => state.currentSong);
-  const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const currentColorsRef = useRef<ThemeColors>(defaultColors);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const applyThemeColors = useCallback(
+  const applyColorsToDOM = useCallback(
     (toColors: ThemeColors) => {
       if (typeof document === "undefined") return;
       const root = document.documentElement;
@@ -159,7 +158,6 @@ export function useDynamicTheme() {
       );
 
       setThemeColors(toColors);
-      currentColorsRef.current = toColors;
     },
     [setThemeColors]
   );
@@ -170,30 +168,30 @@ export function useDynamicTheme() {
         return;
       }
 
-      try {
-        const colors = await extractColorsFromImage(imageUrl);
-        const vibrantColors = boostVibrantColors(colors);
-        applyThemeColors(vibrantColors);
-      } catch (error) {
-        console.error("Failed to extract theme colors:", error);
-        applyThemeColors(defaultColors);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
+
+      // 350ms 防抖：等切歌 3D 物理弹簧运动完全就绪后再执行，绝不抢占动画关键帧的第一毫秒 CPU
+      debounceTimerRef.current = setTimeout(async () => {
+        try {
+          const colors = await extractColorsFromImage(imageUrl);
+          const vibrantColors = boostVibrantColors(colors);
+          applyColorsToDOM(vibrantColors);
+        } catch (error) {
+          console.error("Failed to extract theme colors:", error);
+          applyColorsToDOM(defaultColors);
+        }
+      }, 350);
     },
-    [applyThemeColors, isDynamicTheme]
+    [applyColorsToDOM, isDynamicTheme]
   );
 
   useEffect(() => {
-    if (transitionTimeoutRef.current) {
-      clearTimeout(transitionTimeoutRef.current);
-    }
-    // 350ms 防抖，在切歌动画就绪后才提取色彩，杜绝切歌瞬间的主线程竞争
-    transitionTimeoutRef.current = setTimeout(() => {
-      extractThemeColors(currentSong?.cover);
-    }, 350);
-
+    extractThemeColors(currentSong?.cover);
     return () => {
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
     };
   }, [currentSong?.cover, extractThemeColors]);

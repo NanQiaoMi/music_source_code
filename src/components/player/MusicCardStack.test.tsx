@@ -150,4 +150,39 @@ describe("MusicCardStack", () => {
       message: "这首示例歌曲没有音频文件，请先到数据管理页导入本地音乐。",
     });
   });
+
+  it("plays playable track on card click", async () => {
+    const playableSong: Song = {
+      id: "song-real-1",
+      title: "Real Song 1",
+      artist: "Top Artist",
+      album: "Great Album",
+      cover: "https://example.com/cover1.jpg",
+      audioUrl: "https://example.com/audio1.mp3",
+      duration: 210,
+      source: "netease",
+    };
+
+    usePlaylistStore.setState({
+      songs: [playableSong],
+      filteredSongs: [playableSong],
+    });
+
+    const { MusicCardStack } = await import("./MusicCardStack");
+
+    await act(async () => {
+      root.render(<MusicCardStack />);
+    });
+
+    const title = Array.from(container.querySelectorAll("h3")).find((node) =>
+      node.textContent?.includes("Real Song 1")
+    );
+    expect(title).toBeDefined();
+
+    await act(async () => {
+      title?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(useAudioStore.getState().currentSong?.id).toBe("song-real-1");
+  });
 });
