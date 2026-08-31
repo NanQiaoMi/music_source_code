@@ -22,11 +22,7 @@ describe("formatTime utility", () => {
 describe("GlassProgressBar component", () => {
   it("renders elapsed time, duration and progress track correctly", () => {
     const html = renderToStaticMarkup(
-      <GlassProgressBar
-        currentTime={25}
-        duration={100}
-        onSeek={vi.fn()}
-      />
+      <GlassProgressBar currentTime={25} duration={100} onSeek={vi.fn()} />
     );
 
     expect(html).toContain("0:25");
@@ -89,11 +85,7 @@ describe("GlassProgressBar component", () => {
 
   it("gracefully displays 0:00 when duration is unavailable", () => {
     const html = renderToStaticMarkup(
-      <GlassProgressBar
-        currentTime={0}
-        duration={0}
-        onSeek={vi.fn()}
-      />
+      <GlassProgressBar currentTime={0} duration={0} onSeek={vi.fn()} />
     );
 
     expect(html).toContain("0:00");

@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useAudioStore, LoopMode } from "@/store/audioStore";
-import { usePlayerStore } from "@/store/playerStore";
 import { MISSING_AUDIO_SOURCE_HELP_TEXT } from "@/lib/audio/playableAudioSource";
 import { useUIStore } from "@/store/uiStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
@@ -74,13 +73,6 @@ const FullscreenLyrics = dynamic(
     ),
   { ssr: false }
 );
-
-const formatTime = (seconds: number): string => {
-  if (isNaN(seconds) || seconds < 0) return "0:00";
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
 
 const HeartIcon = memo(({ filled }: { filled: boolean }) => (
   <svg
@@ -479,13 +471,13 @@ export const Player3D: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
-          <div className="max-w-4xl mx-auto relative overflow-hidden rounded-[32px] bg-[#0a0c14]/60 backdrop-blur-[60px] border border-white/10 shadow-[0_20px_80px_rgba(0,0,0,0.8)] px-10 py-8">
+          <div className="max-w-4xl mx-auto relative overflow-hidden rounded-[28px] bg-[#080a10]/65 backdrop-blur-[60px] border border-white/[0.08] shadow-[0_20px_70px_rgba(0,0,0,0.75)] px-8 py-6">
             {/* Subtle highlight gradient */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/5 to-transparent opacity-30 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.03] to-transparent pointer-events-none" />
 
             <div className="relative z-10">
               {/* 进度条 */}
-              <div className="mb-4">
+              <div className="mb-2">
                 <GlassProgressBar
                   currentTime={currentTime}
                   duration={duration}
