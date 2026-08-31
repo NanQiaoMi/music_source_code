@@ -231,5 +231,66 @@ describe("aiAgentService", () => {
         })
       ).rejects.toThrow(/API 请求失败/);
     });
+
+    it("should automatically failover to fallback config when primary config hits 429 rate limit", async () => {
+      const fallbackConfig: AIConfig = {
+        id: "fallback-ai-config",
+        name: "DeepSeek Backup",
+        baseUrl: "https://api.deepseek.com/v1",
+        apiKey: "sk-deepseek-backup",
+        model: "deepseek-chat",
+        status: "online",
+      };
+
+      const onFallback = vi.fn();
+      const onUpdate = vi.fn();
+
+      // 1st call to primary: 429 rpm exhausted
+      // 2nd call to fallback: 200 OK
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          statusText: "Too Many Requests",
+          text: async () => JSON.stringify({ error: { message: "rpm exhausted" } }),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            choices: [
+              {
+                message: {
+                  role: "assistant",
+                  content: "来自备用端点的成功回复",
+                },
+              },
+            ],
+          }),
+        } as any);
+
+      const messages: AgentMessage[] = [
+        { id: "user_1", role: "user", content: "找歌", timestamp: 1 },
+      ];
+
+      const result = await runAgentConversation({
+        messages,
+        config: mockConfig,
+        fallbackConfigs: [fallbackConfig],
+        onUpdate,
+        onFallback,
+      });
+
+      expect(onFallback).toHaveBeenCalledTimes(1);
+      expect(onFallback).toHaveBeenCalledWith(
+        mockConfig,
+        fallbackConfig,
+        expect.stringContaining("429")
+      );
+
+      const lastMsg = result[result.length - 1];
+      expect(lastMsg.content).toBe("来自备用端点的成功回复");
+      expect(lastMsg.status).toBe("done");
+    });
   });
 });

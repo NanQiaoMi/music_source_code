@@ -100,7 +100,9 @@ export function resolveChatCompletionsUrl(baseUrl: string): string {
 export interface RunAgentConversationOptions {
   messages: AgentMessage[];
   config: AIConfig;
+  fallbackConfigs?: AIConfig[];
   onUpdate: (updatedMessages: AgentMessage[], currentToolName: string | null) => void;
+  onFallback?: (fromConfig: AIConfig, toConfig: AIConfig, reason: string) => void;
   abortSignal?: AbortSignal;
 }
 
@@ -137,17 +139,22 @@ export function parseAIErrorMessage(status: number, rawText: string): string {
 }
 
 /**
- * 执行 ReAct 循环驱动的 AI Agent 会话
+ * 执行 ReAct 循环驱动的 AI Agent 会话（支持多端点自动故障转移）
  */
 export async function runAgentConversation({
   messages,
   config,
+  fallbackConfigs = [],
   onUpdate,
+  onFallback,
   abortSignal,
 }: RunAgentConversationOptions): Promise<AgentMessage[]> {
   const currentMessages: AgentMessage[] = [...messages];
   const isBrowser = typeof window !== "undefined";
-  const url = isBrowser ? "/api/ai/chat" : resolveChatCompletionsUrl(config.baseUrl);
+
+  let currentConfig = config;
+  let remainingFallbacks = [...fallbackConfigs];
+  let url = isBrowser ? "/api/ai/chat" : resolveChatCompletionsUrl(currentConfig.baseUrl);
 
   let openAIMessages = formatMessagesForOpenAI(currentMessages);
   const maxIterations = 5;
@@ -160,59 +167,126 @@ export async function runAgentConversation({
 
     onUpdate(currentMessages, null);
 
-    const requestBody: Record<string, unknown> = {
-      baseUrl: config.baseUrl,
-      apiKey: config.apiKey,
-      model: config.model,
-      messages: openAIMessages,
-      temperature: 0.7,
-      max_tokens: 1024,
-    };
+    let response: Response | null = null;
+    let success = false;
 
-    if (supportsTools) {
-      requestBody.tools = AI_AGENT_TOOLS;
-      requestBody.tool_choice = "auto";
-    }
-
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${config.apiKey}`,
-        },
-        body: JSON.stringify(requestBody),
-        signal: abortSignal,
-      });
-    } catch (err) {
+    // 单次迭代内的端点请求与故障转移重试循环
+    while (!success) {
       if (abortSignal?.aborted) {
         throw new DOMException("Aborted", "AbortError");
       }
-      throw err;
-    }
 
-    // 处理不支持 tools 的模型进行降级重试
-    if (!response.ok && supportsTools && (response.status === 400 || response.status === 404)) {
-      const errorText = await response.text().catch(() => "");
-      if (
-        errorText.includes("tools") ||
-        errorText.includes("tool_choice") ||
-        errorText.includes("not supported")
-      ) {
-        supportsTools = false;
-        continue;
+      const requestBody: Record<string, unknown> = {
+        baseUrl: currentConfig.baseUrl,
+        apiKey: currentConfig.apiKey,
+        model: currentConfig.model,
+        messages: openAIMessages,
+        temperature: currentConfig.temperature ?? 0.7,
+        max_tokens: currentConfig.maxTokens ?? 1024,
+      };
+
+      if (supportsTools) {
+        requestBody.tools = AI_AGENT_TOOLS;
+        requestBody.tool_choice = "auto";
       }
-      throw new Error(parseAIErrorMessage(response.status, errorText || response.statusText));
+
+      try {
+        response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${currentConfig.apiKey}`,
+          },
+          body: JSON.stringify(requestBody),
+          signal: abortSignal,
+        });
+      } catch (err) {
+        if (abortSignal?.aborted) {
+          throw new DOMException("Aborted", "AbortError");
+        }
+
+        // 网络或连接异常时的故障转移
+        if (remainingFallbacks.length > 0) {
+          const nextConfig = remainingFallbacks.shift()!;
+          const reason = err instanceof Error ? err.message : "网络连接异常";
+          onFallback?.(currentConfig, nextConfig, reason);
+          currentConfig = nextConfig;
+          url = isBrowser ? "/api/ai/chat" : resolveChatCompletionsUrl(currentConfig.baseUrl);
+          supportsTools = true;
+          continue;
+        }
+
+        throw err;
+      }
+
+      // 处理不支持 tools 的模型进行降级重试 (同端点降级)
+      if (!response.ok && supportsTools && (response.status === 400 || response.status === 404)) {
+        const errorText = await response.text().catch(() => "");
+        if (
+          errorText.includes("tools") ||
+          errorText.includes("tool_choice") ||
+          errorText.includes("not supported")
+        ) {
+          supportsTools = false;
+          continue;
+        }
+
+        // 若不是单纯的 tools 错误而是 404/400 且有备用端点，尝试备用端点
+        if (remainingFallbacks.length > 0) {
+          const nextConfig = remainingFallbacks.shift()!;
+          onFallback?.(currentConfig, nextConfig, `端点响应 ${response.status}`);
+          currentConfig = nextConfig;
+          url = isBrowser ? "/api/ai/chat" : resolveChatCompletionsUrl(currentConfig.baseUrl);
+          supportsTools = true;
+          continue;
+        }
+
+        throw new Error(parseAIErrorMessage(response.status, errorText || response.statusText));
+      }
+
+      // 处理 429 (限频/额度超限)、401 (密钥失效)、5xx (服务端故障) 自动无感故障转移
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+
+        if (
+          (response.status === 429 ||
+            response.status === 401 ||
+            response.status >= 500 ||
+            errorText.includes("rpm") ||
+            errorText.includes("quota")) &&
+          remainingFallbacks.length > 0
+        ) {
+          const nextConfig = remainingFallbacks.shift()!;
+          const reason = `端点 [${currentConfig.name}] 触发 ${response.status} 限频/错误`;
+          onFallback?.(currentConfig, nextConfig, reason);
+          currentConfig = nextConfig;
+          url = isBrowser ? "/api/ai/chat" : resolveChatCompletionsUrl(currentConfig.baseUrl);
+          supportsTools = true;
+          continue;
+        }
+
+        throw new Error(parseAIErrorMessage(response.status, errorText || response.statusText));
+      }
+
+      success = true;
     }
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
-      throw new Error(parseAIErrorMessage(response.status, errorText || response.statusText));
+    if (!response) {
+      throw new Error("未能获取到有效的服务响应");
     }
 
     const data: ChatCompletionResponse = await response.json();
     if (data.error) {
+      // 业务错误时若有备用端点也可以转移
+      if (remainingFallbacks.length > 0) {
+        const nextConfig = remainingFallbacks.shift()!;
+        onFallback?.(currentConfig, nextConfig, data.error.message || "模型返回业务错误");
+        currentConfig = nextConfig;
+        url = isBrowser ? "/api/ai/chat" : resolveChatCompletionsUrl(currentConfig.baseUrl);
+        supportsTools = true;
+        iteration--;
+        continue;
+      }
       throw new Error(parseAIErrorMessage(response.status || 500, data.error.message || "未知 API 错误"));
     }
 

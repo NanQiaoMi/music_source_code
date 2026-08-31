@@ -55,8 +55,15 @@ export const useAIAgentStore = create<AIAgentState>()((set, get) => ({
     if (!trimmed || get().isProcessing) return;
 
     const aiState = useAIStore.getState();
-    const activeConfig =
-      aiState.configs.find((c) => c.id === aiState.activeConfigId) || aiState.configs[0];
+    const orderedPool = aiState.enableAutoFallback
+      ? aiState.getOrderedConfigPool(aiState.activeConfigId)
+      : [
+          aiState.configs.find((c) => c.id === aiState.activeConfigId) ||
+            aiState.configs[0],
+        ].filter(Boolean);
+
+    const activeConfig = orderedPool[0];
+    const fallbackConfigs = orderedPool.slice(1);
 
     const userMsg: AgentMessage = {
       id: `msg_user_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -97,8 +104,15 @@ export const useAIAgentStore = create<AIAgentState>()((set, get) => ({
       const resultMessages = await runAgentConversation({
         messages: updatedWithUser,
         config: activeConfig,
+        fallbackConfigs,
         onUpdate: (updatedMessages, currentToolName) => {
           set({ messages: updatedMessages, currentToolName });
+        },
+        onFallback: (fromConfig, toConfig, reason) => {
+          useUIStore.getState().showToast?.(
+            `⚠️ [${fromConfig.name}] 受限，已自动无感切换至 [${toConfig.name}] 继续检索`,
+            "info"
+          );
         },
         abortSignal: currentAbortController.signal,
       });
