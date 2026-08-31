@@ -26,6 +26,7 @@ interface AIState {
   activeConfigId: string | null;
 
   isEnabled: boolean;
+  enableAutoFallback: boolean;
 
   // Actions
   addConfig: (config: Omit<AIConfig, "id" | "status"> & { id?: string; status?: AIConfig["status"] }) => string;
@@ -35,14 +36,22 @@ interface AIState {
   setActiveConfig: (id: string | null) => void;
   toggleEnabled: () => void;
   setEnabled: (enabled: boolean) => void;
+  toggleAutoFallback: () => void;
+  setAutoFallback: (enabled: boolean) => void;
   importConfigs: (imported: AIConfig[], mode: "merge" | "overwrite") => void;
+
+  // Candidate pool & fallback resolver
+  getOrderedConfigPool: (primaryId?: string | null) => AIConfig[];
 
   // Test logic
   testConfig: (id: string) => Promise<boolean>;
   fetchModels: (id: string) => Promise<string[]>;
 }
 
-type PersistedAIState = Pick<AIState, "configs" | "activeConfigId" | "isEnabled">;
+type PersistedAIState = Pick<
+  AIState,
+  "configs" | "activeConfigId" | "isEnabled" | "enableAutoFallback"
+>;
 
 export const AI_STORE_KEY = "mimi-ai-store";
 const AI_STORE_VERSION = 1;
@@ -141,6 +150,8 @@ function normalizePersistedAIState(value: unknown): PersistedAIState | null {
         ? requestedActiveConfigId
         : null,
     isEnabled: typeof value.isEnabled === "boolean" ? value.isEnabled : true,
+    enableAutoFallback:
+      typeof value.enableAutoFallback === "boolean" ? value.enableAutoFallback : true,
   };
 }
 
@@ -150,6 +161,7 @@ export const useAIStore = create<AIState>()(
       configs: [],
       activeConfigId: null,
       isEnabled: true,
+      enableAutoFallback: true,
 
       addConfig: (config) => {
         const id = config.id || Math.random().toString(36).substring(2, 11);
@@ -210,6 +222,40 @@ export const useAIStore = create<AIState>()(
       toggleEnabled: () => set((state) => ({ isEnabled: !state.isEnabled })),
 
       setEnabled: (enabled) => set({ isEnabled: enabled }),
+
+      toggleAutoFallback: () =>
+        set((state) => ({ enableAutoFallback: !state.enableAutoFallback })),
+
+      setAutoFallback: (enabled) => set({ enableAutoFallback: enabled }),
+
+      getOrderedConfigPool: (primaryId) => {
+        const state = get();
+        // 筛选出拥有有效 Base URL 和 API Key 的可用端点候选池
+        const validConfigs = state.configs.filter(
+          (c) => !!c.baseUrl?.trim() && !!c.apiKey?.trim()
+        );
+        if (validConfigs.length === 0) {
+          // 如果没有填 Key 的，则回退到所有配置
+          return state.configs;
+        }
+
+        const targetPrimaryId = primaryId || state.activeConfigId;
+        const primary =
+          validConfigs.find((c) => c.id === targetPrimaryId) || validConfigs[0];
+        const others = validConfigs.filter((c) => c.id !== primary.id);
+
+        // 排序规则：优先已测试连通在线(online)，其次网络延迟(latency)最低者优先
+        others.sort((a, b) => {
+          if (a.status === "online" && b.status !== "online") return -1;
+          if (b.status === "online" && a.status !== "online") return 1;
+          if (typeof a.latency === "number" && typeof b.latency === "number") {
+            return a.latency - b.latency;
+          }
+          return 0;
+        });
+
+        return [primary, ...others];
+      },
 
       importConfigs: (imported, mode) => {
         const sanitized = imported
@@ -340,6 +386,7 @@ export const useAIStore = create<AIState>()(
         configs: state.configs,
         activeConfigId: state.activeConfigId,
         isEnabled: state.isEnabled,
+        enableAutoFallback: state.enableAutoFallback,
       }),
       migrate: (persistedState, version) => {
         if (version > AI_STORE_VERSION) {

@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { AIConfig } from "@/store/aiStore";
-import { Network, Plus, Trash2, Shield, Radio, Clock } from "lucide-react";
+import { AIConfig, useAIStore } from "@/store/aiStore";
+import { Network, Plus, Trash2, Shield, Radio, Clock, Zap, CheckCircle2 } from "lucide-react";
 
 interface AIAdvancedNetworkTabProps {
   config: AIConfig;
@@ -16,6 +16,14 @@ export const AIAdvancedNetworkTab: React.FC<AIAdvancedNetworkTabProps> = ({
   const timeout = config.timeout ?? 30000;
   const stream = config.stream ?? true;
   const customHeaders = config.customHeaders ?? {};
+
+  const enableAutoFallback = useAIStore((state) => state.enableAutoFallback);
+  const toggleAutoFallback = useAIStore((state) => state.toggleAutoFallback);
+  const configs = useAIStore((state) => state.configs);
+
+  const availableFallbacksCount = configs.filter(
+    (c) => c.id !== config.id && !!c.apiKey?.trim() && !!c.baseUrl?.trim()
+  ).length;
 
   const [newHeaderKey, setNewHeaderKey] = useState("");
   const [newHeaderValue, setNewHeaderValue] = useState("");
@@ -39,6 +47,53 @@ export const AIAdvancedNetworkTab: React.FC<AIAdvancedNetworkTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* 智能故障转移与多端点容灾池 */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-900/20 via-indigo-900/10 to-transparent border border-purple-500/20 space-y-3 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+              <Zap className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-semibold text-white">
+                  多端点智能故障转移 (Auto Failover)
+                </span>
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                  <CheckCircle2 className="w-2.5 h-2.5" />
+                  全局推荐
+                </span>
+              </div>
+              <p className="text-[11px] text-white/50 mt-0.5">
+                当主端点遭遇 429 限频、401 密钥失效或超时时，自动无感切换至备用端点继续生成
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleAutoFallback}
+            className={`w-11 h-6 rounded-full transition-colors relative p-0.5 shrink-0 ${
+              enableAutoFallback ? "bg-purple-600 shadow-md shadow-purple-600/30" : "bg-white/20"
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                enableAutoFallback ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between text-[11px] text-white/40 pt-1 border-t border-white/[0.06]">
+          <span>备用端点候选池状态：</span>
+          <span className={availableFallbacksCount > 0 ? "text-purple-300 font-medium" : "text-amber-300/80"}>
+            {availableFallbacksCount > 0
+              ? `已就绪 ${availableFallbacksCount} 个有效备用端点`
+              : "暂无其他已填 Key 的备用端点（可在左侧添加更多端点以实现容灾）"}
+          </span>
+        </div>
+      </div>
       {/* 网络与连接选项 */}
       <div className="space-y-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
         <div className="flex items-center gap-2 text-[13px] font-semibold text-white">
