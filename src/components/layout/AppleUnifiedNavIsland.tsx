@@ -52,12 +52,23 @@ export interface NavHubConfig {
 
 export interface AppleUnifiedNavIslandProps {
   isSearchOpen?: boolean;
+  hasActiveToast?: boolean;
 }
 
-export function AppleUnifiedNavIsland({ isSearchOpen: isSearchOpenProp }: AppleUnifiedNavIslandProps = {}) {
-  const { openPanel, isFullscreen, toggleFullscreen, panels } = useUIStore();
+export function AppleUnifiedNavIsland({
+  isSearchOpen: isSearchOpenProp,
+  hasActiveToast: hasActiveToastProp,
+}: AppleUnifiedNavIslandProps = {}) {
+  const openPanel = useUIStore((state) => state.openPanel);
+  const isFullscreen = useUIStore((state) => state.isFullscreen);
+  const toggleFullscreen = useUIStore((state) => state.toggleFullscreen);
+  const panels = useUIStore((state) => state.panels);
+  const toasts = useUIStore((state) => state.toasts);
+
   const storeSearchOpen = panels?.search ?? false;
   const isSearchOpen = isSearchOpenProp ?? storeSearchOpen;
+  const storeHasToast = Array.isArray(toasts) && toasts.length > 0;
+  const hasActiveToast = hasActiveToastProp ?? storeHasToast;
   const { isEnabled: isGestureEnabled, toggleGestureEnabled } = useGestureStore();
 
   const [activeHubId, setActiveHubId] = useState<string | null>(null);
@@ -295,10 +306,10 @@ export function AppleUnifiedNavIsland({ isSearchOpen: isSearchOpenProp }: AppleU
     <motion.div
       ref={islandRef}
       data-testid="apple-unified-nav-island"
-      data-search-avoidance={isSearchOpen ? "shifted" : "idle"}
+      data-search-avoidance={isSearchOpen ? "shifted" : hasActiveToast ? "toast-avoidance" : "idle"}
       onMouseLeave={handleMouseLeaveIsland}
       animate={{
-        y: isSearchOpen ? 56 : 0,
+        y: isSearchOpen ? 56 : hasActiveToast ? 46 : 0,
         scale: isSearchOpen ? 0.99 : 1,
       }}
       transition={{
