@@ -366,7 +366,7 @@ export const MusicCardStack: React.FC = () => {
 
             return (
               <motion.div
-                key={`slot-${card.offset}`}
+                key={card.id || `card-${card.displayIndex}`}
                 onClick={() => {
                   if (isCenter) {
                     handlePlayCard(card, card.displayIndex);
@@ -390,9 +390,9 @@ export const MusicCardStack: React.FC = () => {
                   backfaceVisibility: "hidden",
                 }}
                 initial={{
-                  x: card.offset > 0 ? x + 80 : x - 80,
+                  x: card.offset > 0 ? x + 90 : x - 90,
                   opacity: 0,
-                  scale: scale * 0.92,
+                  scale: scale * 0.9,
                   rotateY,
                   z,
                 }}
@@ -404,10 +404,10 @@ export const MusicCardStack: React.FC = () => {
                   opacity,
                 }}
                 exit={{
-                  x: card.offset > 0 ? x + 80 : x - 80,
+                  x: card.offset > 0 ? x + 90 : x - 90,
                   opacity: 0,
-                  scale: scale * 0.92,
-                  transition: { duration: 0.15 },
+                  scale: scale * 0.9,
+                  transition: { duration: 0.18 },
                 }}
                 transition={COVER_FLOW_SPRING}
                 className="group flex items-center justify-center transform-gpu"
