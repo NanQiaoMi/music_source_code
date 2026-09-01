@@ -671,7 +671,6 @@ export const useAudioStore = create<AudioState>()(
         currentSong: state.currentSong ? sanitizeSongForStorage(state.currentSong) : null,
         currentTime: typeof state.currentTime === "number" ? state.currentTime : 0,
         duration: typeof state.duration === "number" ? state.duration : 0,
-        queue: Array.isArray(state.queue) ? state.queue.slice(0, 100).map(sanitizeSongForStorage) : [],
         currentIndex: typeof state.currentIndex === "number" ? state.currentIndex : 0,
         volume: state.volume,
         isMuted: state.isMuted,

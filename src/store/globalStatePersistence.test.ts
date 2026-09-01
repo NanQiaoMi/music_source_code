@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { useUIStore } from "./uiStore";
 import { usePlayerStore } from "./playerStore";
 import { useAudioStore } from "./audioStore";
+import { useQueueStore } from "./queueStore";
 import { useDataManagerStore } from "./useDataManagerStore";
 import { useAIAgentStore } from "./useAIAgentStore";
 import { useSourceConfigStore } from "./sourceConfigStore";
@@ -38,7 +39,7 @@ describe("Global State Retention & Persistence Engine", () => {
     expect(parsed.state.themeMode).toBe("light");
   });
 
-  it("2. PlayerStore & AudioStore accurately persist breakpoint currentTime and sanitized queue", () => {
+  it("2. PlayerStore, QueueStore & AudioStore accurately persist breakpoint currentTime and sanitized queue", () => {
     usePlayerStore.getState().setCurrentSong(sampleSong);
     usePlayerStore.getState().setCurrentTime(115.5);
     usePlayerStore.getState().setDuration(226);
@@ -50,15 +51,18 @@ describe("Global State Retention & Persistence Engine", () => {
     expect(playerParsed.state.duration).toBe(226);
     expect(playerParsed.state.currentSong.title).toBe("夜曲");
 
-    useAudioStore.getState().setQueue([sampleSong]);
-    useAudioStore.getState().setCurrentTime(115.5);
+    useQueueStore.getState().setQueue([sampleSong]);
+    const queueRaw = localStorage.getItem("queue-store-v5");
+    expect(queueRaw).toBeTruthy();
+    const queueParsed = JSON.parse(queueRaw!);
+    expect(queueParsed.state.queue.length).toBe(1);
+    expect(queueParsed.state.queue[0].id).toBe("song-persist-test-1");
 
+    useAudioStore.getState().setCurrentTime(115.5);
     const audioRaw = localStorage.getItem("audio-store-v4");
     expect(audioRaw).toBeTruthy();
     const audioParsed = JSON.parse(audioRaw!);
     expect(audioParsed.state.currentTime).toBe(115.5);
-    expect(audioParsed.state.queue.length).toBe(1);
-    expect(audioParsed.state.queue[0].id).toBe("song-persist-test-1");
   });
 
   it("3. DataManagerStore retains active hub tab, search keyword, and search results across unmounts", () => {
