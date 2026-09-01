@@ -118,35 +118,35 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full min-h-screen bg-[#050508] text-white flex flex-col overflow-hidden font-sans select-none">
-      {/* 顶部环境流光渐变背景 */}
+    <div className="relative w-full h-full min-h-screen bg-[#07080c] text-white flex flex-col overflow-hidden font-sans select-none">
+      {/* 顶部环境流光渐变背景 (极简深空微光漫反射，彻底告别刺眼杂色) */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[20%] w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[130px]" />
-        <div className="absolute top-[30%] right-[10%] w-[450px] h-[450px] rounded-full bg-purple-600/10 blur-[140px]" />
-        <div className="absolute bottom-[-10%] left-[40%] w-[600px] h-[600px] rounded-full bg-cyan-600/08 blur-[160px]" />
+        <div className="absolute top-[-10%] left-[20%] w-[600px] h-[600px] rounded-full bg-white/[0.03] blur-[150px]" />
+        <div className="absolute top-[30%] right-[10%] w-[500px] h-[500px] rounded-full bg-white/[0.02] blur-[160px]" />
+        <div className="absolute bottom-[-10%] left-[40%] w-[600px] h-[600px] rounded-full bg-white/[0.015] blur-[180px]" />
       </div>
 
       {/* ── 顶部 Apple Liquid Glass 悬浮主导航栏 ── */}
-      <header className="relative z-30 flex items-center justify-between px-4 md:px-8 py-3.5 bg-white/[0.04] border-b border-white/[0.12] backdrop-blur-[56px] backdrop-saturate-[180%] shadow-lg shrink-0">
+      <header className="relative z-30 flex items-center justify-between px-4 md:px-8 py-3.5 bg-[#090a0f]/80 border-b border-white/[0.08] backdrop-blur-[40px] shadow-[0_4px_30px_rgba(0,0,0,0.4)] shrink-0">
         {/* 左侧：返回主页 & 标题 */}
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={handleClose}
-            className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/15 transition-all active:scale-90 cursor-pointer shadow-sm"
+            className="p-2 rounded-2xl bg-white/[0.06] hover:bg-white/[0.14] text-white/80 hover:text-white border border-white/[0.10] transition-all active:scale-90 cursor-pointer shadow-sm"
             title="返回主播放器 (ESC)"
           >
             {isStandalonePage ? <Home className="w-4 h-4" /> : <X className="w-4 h-4" />}
           </button>
 
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-300 shadow-sm shrink-0">
+            <div className="w-8 h-8 rounded-2xl bg-white/[0.08] border border-white/[0.15] flex items-center justify-center text-white/90 shadow-sm shrink-0">
               <Music2 className="w-4 h-4" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-1.5 leading-tight">
                 资料库资产管理中枢
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/10 text-cyan-300 border border-white/15 font-medium">
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/70 border border-white/[0.10] font-medium">
                   ✦ 全景中枢
                 </span>
               </h2>
@@ -158,7 +158,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
         </div>
 
         {/* 中间：6 大分类 Tab Pills (纯 CSS GPU 零重排超快响应) */}
-        <div className="hidden lg:flex items-center gap-1 p-1 rounded-2xl bg-black/50 border border-white/10 shadow-inner backdrop-blur-md">
+        <div className="hidden lg:flex items-center gap-1 p-1 rounded-2xl bg-black/40 border border-white/[0.08] shadow-inner backdrop-blur-md">
           {navTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -169,15 +169,15 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
                 onClick={() => handleSelectTab(tab.id as HubTabKey)}
                 className={`relative flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-xl transition-all duration-150 cursor-pointer whitespace-nowrap select-none active:scale-95 ${
                   isActive
-                    ? "bg-white/20 text-white font-bold border border-white/25 shadow-[0_4px_16px_rgba(255,255,255,0.18),inset_0_1px_1px_rgba(255,255,255,0.45)] backdrop-blur-md"
-                    : "text-white/60 hover:text-white hover:bg-white/[0.06] border border-transparent"
+                    ? "bg-white/[0.14] text-white font-bold border border-white/[0.20] shadow-[0_4px_16px_rgba(255,255,255,0.08),inset_0_1px_1px_rgba(255,255,255,0.25)] backdrop-blur-md"
+                    : "text-white/55 hover:text-white hover:bg-white/[0.06] border border-transparent"
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 transition-colors ${isActive ? "text-cyan-300 scale-105" : "text-white/60"}`} />
+                <Icon className={`w-3.5 h-3.5 transition-colors ${isActive ? "text-white scale-105" : "text-white/60"}`} />
                 <span>{tab.label}</span>
                 {tab.badge && (
                   <span className={`text-[9px] font-mono px-1 rounded-full border font-bold transition-all ${
-                    isActive ? "bg-cyan-400 text-black border-cyan-300" : "bg-white/10 text-cyan-200 border-cyan-400/30"
+                    isActive ? "bg-white text-black border-white" : "bg-white/[0.08] text-white/70 border-white/[0.15]"
                   }`}>
                     {tab.badge}
                   </span>
@@ -189,15 +189,15 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
 
         {/* 右侧：实时微型状态指示器 */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-white/[0.05] border border-white/10 text-xs font-mono">
-            <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-xs font-mono">
+            <HardDrive className="w-3.5 h-3.5 text-white/60" />
             <span className="text-white/80">{formatStorageBytes(storageDetails.totalUsageBytes)}</span>
             <span className="text-white/30">/</span>
             <span className="text-white/50">{usagePercent.toFixed(0)}%</span>
           </div>
 
           {activeCount > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono animate-pulse">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/[0.10] border border-white/[0.15] text-white text-xs font-mono animate-pulse shadow-sm">
               <Download className="w-3.5 h-3.5" />
               <span>{totalSpeedFormatted}</span>
             </div>
@@ -206,7 +206,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
       </header>
 
       {/* 移动端小屏二级分类 Tab */}
-      <div className="flex lg:hidden overflow-x-auto px-4 py-2 bg-black/40 border-b border-white/10 gap-1.5 shrink-0 custom-scrollbar z-20">
+      <div className="flex lg:hidden overflow-x-auto px-4 py-2 bg-black/40 border-b border-white/[0.08] gap-1.5 shrink-0 custom-scrollbar z-20">
         {navTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -216,10 +216,10 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
               type="button"
               onClick={() => handleSelectTab(tab.id as HubTabKey)}
               className={`relative flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap cursor-pointer transition-all duration-150 active:scale-95 ${
-                isActive ? "bg-white/20 text-white font-bold border border-white/25 shadow-sm" : "bg-white/5 text-white/60 hover:text-white"
+                isActive ? "bg-white/[0.15] text-white font-bold border border-white/[0.20] shadow-sm" : "bg-white/[0.04] text-white/60 hover:text-white"
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? "text-cyan-300" : ""}`} />
+              <Icon className={`w-3.5 h-3.5 ${isActive ? "text-white" : ""}`} />
               <span>{tab.label}</span>
             </button>
           );

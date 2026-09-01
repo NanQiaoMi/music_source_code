@@ -44,9 +44,9 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
       value: formatStorageBytes(storageDetails.totalUsageBytes),
       sub: `配额 ${formatStorageBytes(storageDetails.quotaBytes)} (${usagePercent.toFixed(1)}%)`,
       icon: HardDrive,
-      color: "from-blue-500/20 to-cyan-500/10",
-      border: "border-blue-500/20",
-      iconColor: "text-cyan-400",
+      color: "from-white/[0.06] to-white/[0.02]",
+      border: "border-white/[0.08]",
+      iconColor: "text-white/80",
       actionKey: "health_storage",
     },
     {
@@ -54,9 +54,9 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
       value: `${songs.length} 首`,
       sub: `包含本地 ${storageDetails.localMusicCount} 首 · 云端 ${Math.max(0, songs.length - storageDetails.localMusicCount)} 首`,
       icon: Music,
-      color: "from-purple-500/20 to-pink-500/10",
-      border: "border-purple-500/20",
-      iconColor: "text-purple-400",
+      color: "from-white/[0.06] to-white/[0.02]",
+      border: "border-white/[0.08]",
+      iconColor: "text-white/80",
       actionKey: "playlists",
     },
     {
@@ -64,9 +64,9 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
       value: `${platformStats.netease + platformStats.qq + platformStats.kugou + platformStats.kuwo + platformStats.qishui > 0 ? "5 大平台" : "全网直连"}`,
       sub: "网易云 · QQ音乐 · 酷狗 · 酷我 · 汽水",
       icon: Cloud,
-      color: "from-emerald-500/20 to-teal-500/10",
-      border: "border-emerald-500/20",
-      iconColor: "text-emerald-400",
+      color: "from-white/[0.06] to-white/[0.02]",
+      border: "border-white/[0.08]",
+      iconColor: "text-white/80",
       actionKey: "cloud",
     },
     {
@@ -74,9 +74,9 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
       value: `${storageDetails.offlineAudioCount} 首`,
       sub: activeCount > 0 ? `下载中 ${activeCount} 首 · 速度 ${totalSpeedFormatted}` : "纯离线即开即播已就绪",
       icon: Download,
-      color: "from-amber-500/20 to-orange-500/10",
-      border: "border-amber-500/20",
-      iconColor: "text-amber-400",
+      color: "from-white/[0.06] to-white/[0.02]",
+      border: "border-white/[0.08]",
+      iconColor: "text-white/80",
       actionKey: "downloads",
     },
   ];
@@ -88,7 +88,7 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
         <div>
           <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
             全景数据资产与存储看板
-            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-white/[0.08] text-white/80 border border-white/[0.15]">
               LIVE METRICS
             </span>
           </h3>
@@ -101,9 +101,9 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
           type="button"
           onClick={() => refreshAnalytics(songs)}
           disabled={isAnalyzing}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold border border-white/15 transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/[0.08] hover:bg-white/[0.16] text-white text-xs font-semibold border border-white/[0.12] transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isAnalyzing ? "animate-spin text-cyan-400" : ""}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${isAnalyzing ? "animate-spin text-white/90" : ""}`} />
           <span>{isAnalyzing ? "正在诊断..." : "重新体检"}</span>
         </button>
       </div>
@@ -116,13 +116,13 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
             <div
               key={i}
               onClick={() => onNavigateTab(card.actionKey)}
-              className={`p-4 rounded-3xl bg-gradient-to-br ${card.color} border ${card.border} backdrop-blur-2xl transition-all hover:scale-[1.02] hover:border-white/30 cursor-pointer group shadow-[0_10px_30px_rgba(0,0,0,0.5)]`}
+              className={`p-4 rounded-3xl bg-gradient-to-br ${card.color} border ${card.border} backdrop-blur-2xl transition-all hover:scale-[1.02] hover:border-white/30 cursor-pointer group shadow-[0_10px_30px_rgba(0,0,0,0.4)]`}
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium text-white/60">
                   {card.title}
                 </span>
-                <div className={`p-2 rounded-2xl bg-white/10 ${card.iconColor} group-hover:scale-110 transition-transform`}>
+                <div className={`p-2 rounded-2xl bg-white/10 ${card.iconColor} group-hover:scale-110 transition-transform shadow-inner`}>
                   <Icon className="w-4 h-4" />
                 </div>
               </div>
@@ -140,10 +140,10 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
       {/* 主数据可视化 Grid (2 列大图表) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 左侧：存储水波球 + 细分容量占比 (5 栅格) */}
-        <div className="lg:col-span-5 p-5 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] flex flex-col justify-between">
+        <div className="lg:col-span-5 p-5 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-bold text-white tracking-tight flex items-center gap-1.5">
-              <HardDrive className="w-4 h-4 text-cyan-400" />
+              <HardDrive className="w-4 h-4 text-white/80" />
               存储容量与细分配额
             </h4>
             <span className="text-[10px] font-mono text-white/40">
@@ -160,28 +160,28 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
           </div>
 
           {/* 细分容量 Breakdown 列表 */}
-          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/10 text-xs">
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
+          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/[0.08] text-xs">
+            <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.04]">
               <span className="text-white/60 text-[11px]">本地音频:</span>
               <span className="font-mono text-white font-semibold text-[11px]">
                 {formatStorageBytes(storageDetails.localMusicBytes)}
               </span>
             </div>
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
+            <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.04]">
               <span className="text-white/60 text-[11px]">网络离线:</span>
-              <span className="font-mono text-cyan-300 font-semibold text-[11px]">
+              <span className="font-mono text-white font-semibold text-[11px]">
                 {formatStorageBytes(storageDetails.offlineAudioBytes)}
               </span>
             </div>
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
+            <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.04]">
               <span className="text-white/60 text-[11px]">封面缓存:</span>
-              <span className="font-mono text-purple-300 font-semibold text-[11px]">
+              <span className="font-mono text-white/90 font-semibold text-[11px]">
                 {formatStorageBytes(storageDetails.coversBytes)}
               </span>
             </div>
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
+            <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.04]">
               <span className="text-white/60 text-[11px]">歌词与索引:</span>
-              <span className="font-mono text-emerald-300 font-semibold text-[11px]">
+              <span className="font-mono text-white/90 font-semibold text-[11px]">
                 {formatStorageBytes(storageDetails.lyricsBytes)}
               </span>
             </div>
@@ -189,10 +189,10 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
         </div>
 
         {/* 右侧：音质层级分布与联动筛选 (7 栅格) */}
-        <div className="lg:col-span-7 p-5 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] flex flex-col justify-between">
+        <div className="lg:col-span-7 p-5 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col justify-between">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-xs font-bold text-white tracking-tight flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-amber-400" />
+              <Zap className="w-4 h-4 text-white/80" />
               音质层级分布与码率分析
             </h4>
             <span className="text-[10px] text-white/40">
@@ -207,11 +207,11 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
             }}
           />
 
-          <div className="flex items-center justify-between text-[11px] text-white/60 mt-3 p-2.5 rounded-2xl bg-emerald-500/[0.08] border border-emerald-500/20">
+          <div className="flex items-center justify-between text-[11px] text-white/60 mt-3 p-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
             <span>✨ 想寻找更多未收录高解析母带？可使用全新「全网聚搜」探索落雪特供源与六大平台。</span>
             <button
               onClick={() => onNavigateTab("lx_search")}
-              className="px-2.5 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-semibold border border-emerald-500/30 transition-all shrink-0 ml-2"
+              className="px-3 py-1 rounded-xl bg-white text-black font-semibold hover:bg-white/90 transition-all shrink-0 ml-2 shadow-sm active:scale-95"
             >
               即刻探索 ➔
             </button>
@@ -222,10 +222,10 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
       {/* 底部数据可视化 Grid (平台甜甜圈 + 六维健康雷达) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 多源平台甜甜圈图 (5 栅格) */}
-        <div className="lg:col-span-5 p-5 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.7)]">
+        <div className="lg:col-span-5 p-5 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-xs font-bold text-white tracking-tight flex items-center gap-1.5">
-              <Cloud className="w-4 h-4 text-emerald-400" />
+              <Cloud className="w-4 h-4 text-white/80" />
               多平台音源资产构成
             </h4>
             <span className="text-[10px] font-mono text-white/40">
@@ -237,7 +237,7 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
         </div>
 
         {/* 曲库健康雷达与自愈建议 (7 栅格) */}
-        <div className="lg:col-span-7 p-5 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.7)]">
+        <div className="lg:col-span-7 p-5 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
           <LibraryHealthRadar
             metrics={healthRadar}
             diagnostics={diagnostics}

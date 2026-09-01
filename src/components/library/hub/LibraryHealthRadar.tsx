@@ -47,7 +47,7 @@ export const LibraryHealthRadar: React.FC<LibraryHealthRadarProps> = ({
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return "text-emerald-400 border-emerald-500/30 bg-emerald-500/10";
-    if (score >= 75) return "text-cyan-400 border-cyan-500/30 bg-cyan-500/10";
+    if (score >= 75) return "text-white border-white/20 bg-white/10";
     if (score >= 60) return "text-amber-400 border-amber-500/30 bg-amber-500/10";
     return "text-rose-400 border-rose-500/30 bg-rose-500/10";
   };
@@ -90,7 +90,7 @@ export const LibraryHealthRadar: React.FC<LibraryHealthRadarProps> = ({
                 y1={center}
                 x2={x}
                 y2={y}
-                stroke="rgba(255, 255, 255, 0.1)"
+                stroke="rgba(255, 255, 255, 0.08)"
                 strokeWidth="1"
               />
             );
@@ -99,10 +99,10 @@ export const LibraryHealthRadar: React.FC<LibraryHealthRadarProps> = ({
           {/* Data Filled Polygon */}
           <polygon
             points={points}
-            fill="rgba(56, 189, 248, 0.25)"
-            stroke="#38bdf8"
-            strokeWidth="2"
-            style={{ filter: "drop-shadow(0 0 10px rgba(56, 189, 248, 0.5))" }}
+            fill="rgba(255, 255, 255, 0.18)"
+            stroke="#ffffff"
+            strokeWidth="1.5"
+            style={{ filter: "drop-shadow(0 0 10px rgba(255, 255, 255, 0.35))" }}
           />
 
           {/* Point Dots */}
@@ -117,10 +117,10 @@ export const LibraryHealthRadar: React.FC<LibraryHealthRadarProps> = ({
                 key={i}
                 cx={x}
                 cy={y}
-                r="3.5"
+                r="3"
                 fill="#ffffff"
-                stroke="#0284c7"
-                strokeWidth="2"
+                stroke="#666666"
+                strokeWidth="1.5"
               />
             );
           })}
@@ -141,7 +141,7 @@ export const LibraryHealthRadar: React.FC<LibraryHealthRadarProps> = ({
       <div className="flex flex-col gap-2.5 w-full flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-cyan-400" />
+            <Activity className="w-4 h-4 text-white/80" />
             <h4 className="text-xs font-bold text-white tracking-tight">
               曲库健康诊断与优化
             </h4>
@@ -157,21 +157,17 @@ export const LibraryHealthRadar: React.FC<LibraryHealthRadarProps> = ({
               key={item.id}
               className={`flex items-start justify-between p-2.5 rounded-2xl border backdrop-blur-xl transition-all ${
                 item.type === "danger"
-                  ? "bg-rose-500/[0.08] border-rose-500/30"
+                  ? "bg-rose-500/[0.06] border-rose-500/25"
                   : item.type === "warning"
-                  ? "bg-amber-500/[0.08] border-amber-500/30"
-                  : item.type === "info"
-                  ? "bg-cyan-500/[0.08] border-cyan-500/30"
-                  : "bg-emerald-500/[0.08] border-emerald-500/30"
+                  ? "bg-amber-500/[0.06] border-amber-500/25"
+                  : "bg-white/[0.04] border-white/[0.08] hover:border-white/[0.16]"
               }`}
             >
               <div className="flex items-start gap-2.5 min-w-0 pr-2">
                 {item.type === "danger" || item.type === "warning" ? (
                   <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                ) : item.type === "info" ? (
-                  <Sparkles className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
                 ) : (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <Sparkles className="w-4 h-4 text-white/80 shrink-0 mt-0.5" />
                 )}
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-white tracking-tight leading-tight">
@@ -187,7 +183,7 @@ export const LibraryHealthRadar: React.FC<LibraryHealthRadarProps> = ({
                 <button
                   type="button"
                   onClick={() => onActionClick?.(item.actionKey!)}
-                  className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-[11px] border border-white/15 transition-all active:scale-95 shrink-0 whitespace-nowrap cursor-pointer"
+                  className="px-3 py-1 rounded-xl bg-white/[0.12] hover:bg-white/[0.22] text-white font-medium text-[11px] border border-white/[0.15] transition-all active:scale-95 shrink-0 whitespace-nowrap cursor-pointer shadow-sm"
                 >
                   {item.actionText}
                 </button>
@@ -195,8 +191,8 @@ export const LibraryHealthRadar: React.FC<LibraryHealthRadarProps> = ({
             </div>
           ))
         ) : (
-          <div className="flex items-center gap-2 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs">
-            <ShieldCheck className="w-4 h-4 shrink-0" />
+          <div className="flex items-center gap-2 p-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white/80 text-xs">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>全量曲库指标健康，无损坏或冗余文件。</span>
           </div>
         )}

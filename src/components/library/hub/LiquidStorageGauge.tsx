@@ -56,15 +56,15 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      // Outer ambient glow ring
+      // Outer ambient glow ring (Apple Pure Cold Titanium & Silver)
       const ringGrad = ctx.createLinearGradient(0, 0, width, height);
-      ringGrad.addColorStop(0, "rgba(59, 130, 246, 0.35)");
-      ringGrad.addColorStop(0.5, "rgba(147, 51, 234, 0.25)");
-      ringGrad.addColorStop(1, "rgba(236, 72, 153, 0.35)");
+      ringGrad.addColorStop(0, "rgba(255, 255, 255, 0.45)");
+      ringGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.20)");
+      ringGrad.addColorStop(1, "rgba(255, 255, 255, 0.35)");
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.strokeStyle = ringGrad;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
 
       // Clip inside circle for liquid wave
@@ -73,14 +73,14 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
       ctx.clip();
 
       // Dark obsidian liquid background
-      ctx.fillStyle = "rgba(10, 12, 22, 0.75)";
+      ctx.fillStyle = "rgba(10, 11, 16, 0.85)";
       ctx.fillRect(0, 0, width, height);
 
       // Water wave calculation
       const waveHeight = 6;
       const baseWaterY = height - (height * currentFill);
 
-      // Back wave (Subtle purple)
+      // Back wave (Subtle deep titanium)
       ctx.beginPath();
       ctx.moveTo(0, height);
       for (let x = 0; x <= width; x += 2) {
@@ -90,12 +90,12 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
       ctx.lineTo(width, height);
       ctx.closePath();
       const backGrad = ctx.createLinearGradient(0, baseWaterY, 0, height);
-      backGrad.addColorStop(0, "rgba(147, 51, 234, 0.45)");
-      backGrad.addColorStop(1, "rgba(79, 70, 229, 0.85)");
+      backGrad.addColorStop(0, "rgba(255, 255, 255, 0.12)");
+      backGrad.addColorStop(1, "rgba(255, 255, 255, 0.04)");
       ctx.fillStyle = backGrad;
       ctx.fill();
 
-      // Front wave (Vibrant Cyan / Blue)
+      // Front wave (Pure Icy Silver & Frosted Liquid)
       ctx.beginPath();
       ctx.moveTo(0, height);
       for (let x = 0; x <= width; x += 2) {
@@ -105,9 +105,9 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
       ctx.lineTo(width, height);
       ctx.closePath();
       const frontGrad = ctx.createLinearGradient(0, baseWaterY - 10, 0, height);
-      frontGrad.addColorStop(0, "rgba(56, 189, 248, 0.75)");
-      frontGrad.addColorStop(0.5, "rgba(59, 130, 246, 0.85)");
-      frontGrad.addColorStop(1, "rgba(30, 58, 138, 0.95)");
+      frontGrad.addColorStop(0, "rgba(255, 255, 255, 0.35)");
+      frontGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.20)");
+      frontGrad.addColorStop(1, "rgba(255, 255, 255, 0.08)");
       ctx.fillStyle = frontGrad;
       ctx.fill();
 
@@ -118,7 +118,7 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
         if (x === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.65)";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.80)";
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
@@ -129,7 +129,7 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
         const by = baseWaterY + 15 + ((step * 18 + b * 22) % Math.max(10, height - baseWaterY - 10));
         ctx.beginPath();
         ctx.arc(bx, by, 1.5 + (b % 2), 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
         ctx.fill();
       }
 
@@ -152,7 +152,7 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
           ref={canvasRef}
           width={176}
           height={176}
-          className="w-full h-full drop-shadow-[0_12px_32px_rgba(59,130,246,0.3)]"
+          className="w-full h-full drop-shadow-[0_12px_32px_rgba(0,0,0,0.6)]"
         />
 
         {/* Center overlay percentage typography */}
@@ -160,7 +160,7 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
           <span className="text-[28px] font-black tracking-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)] font-mono leading-none">
             {usagePercent < 0.1 ? "< 0.1" : usagePercent.toFixed(1)}%
           </span>
-          <span className="text-[10px] tracking-wider uppercase font-semibold text-cyan-200/80 drop-shadow mt-1">
+          <span className="text-[10px] tracking-wider uppercase font-semibold text-white/60 drop-shadow mt-1">
             已用配额
           </span>
         </div>
