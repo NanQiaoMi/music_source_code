@@ -1,12 +1,16 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Sparkles, Music2, Disc3 } from "lucide-react";
 
 interface AIMarkdownRendererProps {
   content: string;
   className?: string;
 }
+
+// Global LRU Cache for parsed Markdown AST blocks (Max 200 entries to prevent memory leak)
+const AST_CACHE_MAX_SIZE = 200;
+const astBlockCache = new Map<string, React.ReactNode[]>();
 
 /**
  * 格式化行内 Markdown（加粗、斜体、代码、书名号歌名高亮）
@@ -63,14 +67,10 @@ function renderInlineContent(text: string): React.ReactNode[] {
   });
 }
 
-/**
- * 将多行文本解析为块级元素（标题、分割线、列表、表格、引用块、段落）
- */
-export const AIMarkdownRenderer: React.FC<AIMarkdownRendererProps> = ({
-  content,
-  className = "",
-}) => {
-  if (!content) return null;
+function parseMarkdownBlocks(content: string): React.ReactNode[] {
+  if (astBlockCache.has(content)) {
+    return astBlockCache.get(content)!;
+  }
 
   const rawLines = content.split("\n");
   const blocks: React.ReactNode[] = [];
@@ -87,7 +87,7 @@ export const AIMarkdownRenderer: React.FC<AIMarkdownRendererProps> = ({
     }
 
     // 2. 水平分割线 (--- / ***)
-    if (/^(\-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
       blocks.push(
         <div key={`hr-${i}`} className="my-2.5 flex items-center gap-2">
           <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-white/[0.15] to-transparent" />
@@ -142,7 +142,11 @@ export const AIMarkdownRenderer: React.FC<AIMarkdownRendererProps> = ({
     // 4. 表格识别 (| col | col |)
     if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
       const tableLines: string[] = [];
-      while (i < rawLines.length && rawLines[i].trim().startsWith("|") && rawLines[i].trim().endsWith("|")) {
+      while (
+        i < rawLines.length &&
+        rawLines[i].trim().startsWith("|") &&
+        rawLines[i].trim().endsWith("|")
+      ) {
         tableLines.push(rawLines[i].trim());
         i++;
       }
@@ -154,7 +158,7 @@ export const AIMarkdownRenderer: React.FC<AIMarkdownRendererProps> = ({
           .map((c) => c.trim());
 
         // 过滤掉对齐行 (|---|---|)
-        const bodyLines = tableLines.slice(1).filter((l) => !/^[\|\s\-:]+$/.test(l));
+        const bodyLines = tableLines.slice(1).filter((l) => !/^[|\s\-:]+$/.test(l));
 
         blocks.push(
           <div
@@ -181,15 +185,9 @@ export const AIMarkdownRenderer: React.FC<AIMarkdownRendererProps> = ({
                     .split("|")
                     .map((c) => c.trim());
                   return (
-                    <tr
-                      key={rIdx}
-                      className="hover:bg-white/[0.04] transition-colors"
-                    >
+                    <tr key={rIdx} className="hover:bg-white/[0.04] transition-colors">
                       {cells.map((cell, cIdx) => (
-                        <td
-                          key={cIdx}
-                          className="px-3 py-2 text-white/85 leading-relaxed"
-                        >
+                        <td key={cIdx} className="px-3 py-2 text-white/85 leading-relaxed">
                           {renderInlineContent(cell)}
                         </td>
                       ))}
@@ -270,12 +268,34 @@ export const AIMarkdownRenderer: React.FC<AIMarkdownRendererProps> = ({
 
     // 8. 普通段落
     blocks.push(
-      <p key={`p-${i}`} className="my-1.5 text-[13.5px] leading-relaxed text-white/90 tracking-normal">
+      <p
+        key={`p-${i}`}
+        className="my-1.5 text-[13.5px] leading-relaxed text-white/90 tracking-normal"
+      >
         {renderInlineContent(trimmed)}
       </p>
     );
     i++;
   }
 
-  return <div className={`space-y-1 ${className}`}>{blocks}</div>;
-};
+  if (astBlockCache.size >= AST_CACHE_MAX_SIZE) {
+    const firstKey = astBlockCache.keys().next().value;
+    if (firstKey) astBlockCache.delete(firstKey);
+  }
+  astBlockCache.set(content, blocks);
+
+  return blocks;
+}
+
+/**
+ * 将多行文本解析为块级元素（标题、分割线、列表、表格、引用块、段落）
+ */
+export const AIMarkdownRenderer: React.FC<AIMarkdownRendererProps> = React.memo(
+  ({ content, className = "" }) => {
+    const blocks = useMemo(() => (content ? parseMarkdownBlocks(content) : null), [content]);
+    if (!blocks) return null;
+    return <div className={`space-y-1 ${className}`}>{blocks}</div>;
+  }
+);
+
+AIMarkdownRenderer.displayName = "AIMarkdownRenderer";

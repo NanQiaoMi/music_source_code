@@ -62,8 +62,7 @@ export const useAIAgentStore = create<AIAgentState>()(
         const orderedPool = aiState.enableAutoFallback
           ? aiState.getOrderedConfigPool(aiState.activeConfigId)
           : [
-              aiState.configs.find((c) => c.id === aiState.activeConfigId) ||
-                aiState.configs[0],
+              aiState.configs.find((c) => c.id === aiState.activeConfigId) || aiState.configs[0],
             ].filter(Boolean);
 
         const activeConfig = orderedPool[0];
@@ -103,6 +102,21 @@ export const useAIAgentStore = create<AIAgentState>()(
         });
 
         currentAbortController = new AbortController();
+        let pendingRafId: number | null = null;
+        let pendingUpdate: { msgs: AgentMessage[]; tool: string | null } | null = null;
+
+        const flushPendingUpdate = (finalMessages?: AgentMessage[]) => {
+          if (pendingRafId !== null && typeof cancelAnimationFrame !== "undefined") {
+            cancelAnimationFrame(pendingRafId);
+            pendingRafId = null;
+          }
+          if (finalMessages) {
+            set({ messages: finalMessages });
+          } else if (pendingUpdate) {
+            set({ messages: pendingUpdate.msgs, currentToolName: pendingUpdate.tool });
+            pendingUpdate = null;
+          }
+        };
 
         try {
           const resultMessages = await runAgentConversation({
@@ -110,23 +124,38 @@ export const useAIAgentStore = create<AIAgentState>()(
             config: activeConfig,
             fallbackConfigs,
             onUpdate: (updatedMessages, currentToolName) => {
-              set({ messages: updatedMessages, currentToolName });
+              pendingUpdate = { msgs: updatedMessages, tool: currentToolName };
+              if (pendingRafId === null && typeof requestAnimationFrame !== "undefined") {
+                pendingRafId = requestAnimationFrame(() => {
+                  pendingRafId = null;
+                  if (pendingUpdate) {
+                    set({ messages: pendingUpdate.msgs, currentToolName: pendingUpdate.tool });
+                    pendingUpdate = null;
+                  }
+                });
+              } else if (typeof requestAnimationFrame === "undefined") {
+                set({ messages: updatedMessages, currentToolName });
+              }
             },
             onFallback: (fromConfig, toConfig) => {
-              useUIStore.getState().showToast?.(
-                `⚠️ [${fromConfig.name}] 受限，已自动无感切换至 [${toConfig.name}] 继续检索`,
-                "info"
-              );
+              useUIStore
+                .getState()
+                .showToast?.(
+                  `⚠️ [${fromConfig.name}] 受限，已自动无感切换至 [${toConfig.name}] 继续检索`,
+                  "info"
+                );
             },
             abortSignal: currentAbortController.signal,
           });
 
+          flushPendingUpdate(resultMessages);
           set({
             messages: resultMessages,
             isProcessing: false,
             currentToolName: null,
           });
         } catch (err: unknown) {
+          flushPendingUpdate();
           const isAborted =
             currentAbortController?.signal.aborted ||
             (err instanceof DOMException && err.name === "AbortError");
@@ -161,6 +190,7 @@ export const useAIAgentStore = create<AIAgentState>()(
             }));
           }
         } finally {
+          flushPendingUpdate();
           currentAbortController = null;
         }
       },
