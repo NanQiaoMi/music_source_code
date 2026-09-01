@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { FileText, Search } from "lucide-react";
+import { FileText, Search, Music2 } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
 import { useBilingualLyricParser } from "@/hooks/useBilingualLyricParser";
 import { useLyricSettingsStore } from "@/store/lyricSettingsStore";
@@ -80,6 +80,11 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
     }
   }, [fontFamily]);
 
+  // 判断是否为纯音乐/超短曲目（<= 3 行）
+  const isInstrumentalOrShort = useMemo(() => {
+    return hasLyrics && lyrics.merged.length <= 3;
+  }, [hasLyrics, lyrics.merged.length]);
+
   useEffect(() => {
     lyricRefs.current = lyricRefs.current.slice(0, lyrics.merged.length);
   }, [lyrics.merged]);
@@ -98,6 +103,11 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
   }, []);
 
   useEffect(() => {
+    if (isInstrumentalOrShort) {
+      setOffsetY(0);
+      return;
+    }
+
     if (currentIndex >= 0 && lyricRefs.current[currentIndex] && containerHeight > 0) {
       const element = lyricRefs.current[currentIndex];
       const elementTop = element!.offsetTop;
@@ -107,7 +117,7 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
     } else if (currentIndex === -1 || containerHeight === 0) {
       setOffsetY(0);
     }
-  }, [currentIndex, lyrics.merged, containerHeight]);
+  }, [currentIndex, lyrics.merged, containerHeight, isInstrumentalOrShort]);
 
   const scrollTransition = useMemo(
     () => ({
@@ -125,10 +135,12 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
       ref={lyricsContainerRef}
       className="relative w-full h-full overflow-hidden px-8"
       style={{
-        maskImage: "linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)",
-        WebkitMaskImage:
-          "linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)",
-        opacity,
+        maskImage: isInstrumentalOrShort
+          ? "none"
+          : "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+        WebkitMaskImage: isInstrumentalOrShort
+          ? "none"
+          : "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
       }}
     >
       {!hasLyrics ? (
@@ -138,11 +150,16 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
           transition={{ duration: shouldReduceMotion ? 0 : 0.35 }}
           className={`w-full h-full flex flex-col justify-center ${alignmentClass} px-4 sm:px-12 text-center`}
         >
-          <p className="text-xs uppercase tracking-[0.18em] text-white/35 mb-3">No synced lyrics</p>
-          <p className="text-xl font-medium text-white mb-2">
+          <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/15 flex items-center justify-center mb-4 text-white/80 shadow-[0_0_25px_rgba(255,255,255,0.1)]">
+            <Music2 className="w-6 h-6" />
+          </div>
+          <p className="text-xs uppercase tracking-[0.2em] text-white/50 mb-2 font-semibold">
+            No Synced Lyrics
+          </p>
+          <p className="text-2xl font-bold text-white mb-2 tracking-tight">
             {currentSong?.title || "暂无歌词同步"}
           </p>
-          <p className="text-sm text-white/55 mb-5">
+          <p className="text-sm text-white/70 mb-6 font-medium">
             {currentSong?.artist
               ? `${currentSong.artist} 还没有可用歌词`
               : "当前歌曲还没有可用歌词"}
@@ -151,7 +168,7 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
             <button
               type="button"
               onClick={() => openPanel("lyricsSearch")}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90 shadow-lg transition-all active:scale-95"
             >
               <Search className="w-4 h-4" />
               搜索歌词
@@ -159,14 +176,66 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
             <button
               type="button"
               onClick={() => openPanel("lyricsImport")}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/15 text-white text-sm font-medium hover:bg-white/25 border border-white/10 backdrop-blur-md transition-all active:scale-95"
             >
               <FileText className="w-4 h-4" />
               手动导入
             </button>
           </div>
         </motion.div>
+      ) : isInstrumentalOrShort ? (
+        /* 纯音乐 / 短歌词（<= 3 行）高亮度居中卡片展示 */
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="w-full h-full flex flex-col justify-center items-center text-center px-4"
+        >
+          {/* 纯音乐光环微标 */}
+          <motion.div
+            animate={{ scale: [1, 1.05, 1], opacity: [0.85, 1, 0.85] }}
+            transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
+            className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/20 flex items-center justify-center mb-6 text-white shadow-[0_0_35px_rgba(255,255,255,0.18)]"
+          >
+            <Music2 className="w-7 h-7 text-white" />
+          </motion.div>
+
+          <div className="space-y-4 max-w-lg">
+            {lyrics.merged.map((lyric, idx) => {
+              const isCurrent = idx === currentIndex || (currentIndex === -1 && idx === 0);
+              return (
+                <div key={`${lyric.time}-${idx}`} className="flex flex-col items-center">
+                  <p
+                    className={`${fontFamilyClass} tracking-tight transition-all duration-300`}
+                    style={{
+                      fontSize: isCurrent
+                        ? `${Math.max(26, fontSize + 10)}px`
+                        : `${Math.max(16, fontSize)}px`,
+                      lineHeight: 1.3,
+                      fontWeight: isCurrent ? Math.max(700, fontWeight) : 500,
+                      color: isCurrent ? currentLineColor || "#ffffff" : "rgba(255,255,255,0.75)",
+                      textShadow: isCurrent
+                        ? "0 2px 14px rgba(0,0,0,0.7), 0 0 30px rgba(255,255,255,0.25)"
+                        : "0 1px 8px rgba(0,0,0,0.5)",
+                    }}
+                  >
+                    {lyric.original}
+                  </p>
+
+                  {isCurrent && (
+                    <motion.div
+                      layoutId="instrumentalUnderline"
+                      className="mt-3.5 h-1 rounded-full bg-gradient-to-r from-transparent via-white to-transparent shadow-[0_0_12px_rgba(255,255,255,0.8)]"
+                      style={{ width: "48%" }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
       ) : (
+        /* 标准长歌词滚动区（高对比度、清晰透亮） */
         <motion.div
           animate={{ y: offsetY }}
           transition={shouldReduceMotion ? { duration: 0 } : scrollTransition}
@@ -182,6 +251,13 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
             const distance = Math.abs(idx - currentIndex);
             const isNear = distance <= 3;
 
+            // 优化非高亮行亮度：临近行保持 0.65~0.45 高清晰度，杜绝发暗看不清
+            const targetOpacity = isCurrent
+              ? 1.0
+              : isNear
+                ? Math.max(0.35, 0.65 - distance * 0.12)
+                : 0.18;
+
             return (
               <motion.div
                 key={`${lyric.time}-${idx}`}
@@ -190,29 +266,39 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
                 }}
                 initial={false}
                 animate={{
-                  opacity: isCurrent ? 1 : isNear ? 0.4 - distance * 0.08 : 0.1,
-                  scale: isCurrent ? 1.05 : 1,
-                  filter: isCurrent ? "blur(0px)" : `blur(${Math.min(distance * 0.5, 4)}px)`,
+                  opacity: targetOpacity,
+                  scale: isCurrent ? 1.04 : 1,
+                  filter: isCurrent
+                    ? "none"
+                    : isNear
+                      ? `blur(${Math.min(distance * 0.3, 1.5)}px)`
+                      : "blur(2.5px)",
                 }}
                 transition={
-                  shouldReduceMotion ? { duration: 0 } : { duration: 0.5, ease: "easeOut" }
+                  shouldReduceMotion ? { duration: 0 } : { duration: 0.45, ease: "easeOut" }
                 }
                 onClick={() => useAudioStore.getState().seekTo(lyric.time)}
                 title="点击跳转至此句播放"
-                className={`flex flex-col ${alignmentClass} transition-colors duration-500 cursor-pointer hover:opacity-90 active:scale-98`}
-
+                className={`flex flex-col ${alignmentClass} transition-colors duration-300 cursor-pointer hover:opacity-95 active:scale-98`}
               >
                 <p
-                  className={`${fontFamilyClass} leading-snug`}
+                  className={`${fontFamilyClass} leading-snug tracking-tight`}
                   style={{
-                    fontSize: isCurrent ? `${fontSize + 12}px` : `${fontSize}px`,
-                    lineHeight: 1.2,
-                    fontWeight: isCurrent ? fontWeight : Math.max(300, fontWeight - 200),
-                    color: isCurrent ? currentLineColor : inactiveLineColor,
-                    textShadow:
-                      isCurrent && textShadow
-                        ? `0 4px ${textShadowBlur}px ${textShadowColor}`
-                        : "none",
+                    fontSize: isCurrent
+                      ? `${Math.max(26, fontSize + 10)}px`
+                      : `${Math.max(17, fontSize)}px`,
+                    lineHeight: 1.3,
+                    fontWeight: isCurrent
+                      ? Math.max(700, fontWeight)
+                      : Math.max(500, fontWeight - 100),
+                    color: isCurrent
+                      ? currentLineColor || "#ffffff"
+                      : inactiveLineColor || "rgba(255,255,255,0.65)",
+                    textShadow: isCurrent
+                      ? textShadow
+                        ? `0 2px 14px rgba(0,0,0,0.7), 0 0 ${textShadowBlur}px ${textShadowColor || "rgba(255,255,255,0.25)"}`
+                        : "0 2px 10px rgba(0,0,0,0.6)"
+                      : "0 1px 6px rgba(0,0,0,0.4)",
                     WebkitTextStroke:
                       isCurrent && textStroke ? `${textStrokeWidth}px ${textStrokeColor}` : "none",
                   }}
@@ -221,22 +307,20 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
                   {isCurrent && (
                     <motion.span
                       aria-hidden="true"
-                      className="mx-auto mt-2 block h-0.5 rounded-full"
+                      className="mx-auto mt-2.5 block h-0.5 rounded-full"
                       initial={shouldReduceMotion ? false : { scaleX: 0 }}
                       animate={{ scaleX: 1 }}
-                      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.45 }}
+                      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.4 }}
                       style={{
-                        width: "56%",
+                        width: "52%",
                         transformOrigin:
                           alignment === "right"
                             ? "right"
                             : alignment === "left"
                               ? "left"
                               : "center",
-                        background: currentLineColor,
-                        boxShadow: textShadow
-                          ? `0 0 ${Math.max(8, textShadowBlur / 2)}px ${currentLineColor}`
-                          : "none",
+                        background: currentLineColor || "#ffffff",
+                        boxShadow: `0 0 10px ${currentLineColor || "#ffffff"}`,
                       }}
                     />
                   )}
@@ -244,11 +328,15 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
 
                 {showTranslation && lyric.translation && (
                   <p
-                    className={`${fontFamilyClass} mt-4 font-medium opacity-80`}
+                    className={`${fontFamilyClass} mt-3.5 font-medium`}
                     style={{
-                      fontSize: isCurrent ? `${fontSize}px` : `${fontSize - 4}px`,
+                      fontSize: isCurrent
+                        ? `${Math.max(16, fontSize)}px`
+                        : `${Math.max(14, fontSize - 3)}px`,
                       lineHeight: 1.4,
-                      color: isCurrent ? translationColor : "rgba(255,255,255,0.5)",
+                      color: isCurrent
+                        ? translationColor || "rgba(255,255,255,0.9)"
+                        : "rgba(255,255,255,0.55)",
                     }}
                   >
                     {lyric.translation}
@@ -257,11 +345,13 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
 
                 {showTransliteration && lyric.transliteration && (
                   <p
-                    className={`${fontFamilyClass} mt-2 italic font-light opacity-60`}
+                    className={`${fontFamilyClass} mt-1.5 italic font-light`}
                     style={{
-                      fontSize: isCurrent ? `${fontSize - 4}px` : `${fontSize - 8}px`,
+                      fontSize: isCurrent
+                        ? `${Math.max(14, fontSize - 3)}px`
+                        : `${Math.max(12, fontSize - 6)}px`,
                       lineHeight: 1.4,
-                      color: isCurrent ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.4)",
+                      color: isCurrent ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.45)",
                     }}
                   >
                     {lyric.transliteration}
