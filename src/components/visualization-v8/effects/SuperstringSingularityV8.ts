@@ -14,14 +14,14 @@ interface JetHelicalStrand {
   pitch: number;
 }
 
-interface SpiralGasFilament {
+interface UltraSmoothFilament {
   baseRadius: number;
   angleOffset: number;
   length: number;
   speed: number;
   spiralK: number;
   width: number;
-  alpha: number;
+  baseAlpha: number;
   tier: number;
   waveFreq: number;
   wavePhase: number;
@@ -35,7 +35,7 @@ interface ShockwaveRing {
 }
 
 interface SuperstringState {
-  filaments: SpiralGasFilament[];
+  filaments: UltraSmoothFilament[];
   jetStrands: JetHelicalStrand[];
   shockwaves: ShockwaveRing[];
   smoothedBass: number;
@@ -51,7 +51,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
   name: "量子超弦奇点",
   category: "space",
   description:
-    "电影级天体物理黑洞与相对论极向螺旋喷流：48°俯视透视、铜金旋涡实体连续盘与爱因斯坦引力透镜弯月环（60FPS 极速渲染）",
+    "电影级天体物理黑洞与相对论极向螺旋喷流：48°俯视透视、铜金旋涡实体连续盘与爱因斯坦引力透镜弯月环（超精丝滑 60FPS 渲染）",
   preferredEngine: "canvas",
 
   parameters: [
@@ -80,10 +80,10 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       name: "流体层密度",
       type: "number",
       mode: "professional",
-      min: 30,
-      max: 120,
-      step: 10,
-      default: 54,
+      min: 60,
+      max: 200,
+      step: 20,
+      default: 140,
     },
     {
       id: "chromaticAberration",
@@ -118,11 +118,11 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
   ],
 
   init(ctx: RenderContext) {
-    const filaments: SpiralGasFilament[] = [];
-    const filamentCount = 54;
+    const filaments: UltraSmoothFilament[] = [];
+    const filamentCount = 140;
     for (let i = 0; i < filamentCount; i++) {
       const frac = i / (filamentCount - 1);
-      const baseRadius = 46 + Math.pow(frac, 1.35) * 780;
+      const baseRadius = 46 + Math.pow(frac, 1.28) * 820;
       const speed = (0.012 / Math.sqrt(Math.max(1, baseRadius * 0.025))) * 0.75;
 
       let tier = 1;
@@ -135,13 +135,13 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       filaments.push({
         baseRadius,
         angleOffset: (i * 137.508 * Math.PI) / 180,
-        length: Math.PI * (2.0 + (i % 3) * 0.5),
+        length: Math.PI * (2.4 + (i % 4) * 0.4),
         speed,
-        spiralK: 0.12 + (i % 4) * 0.015,
-        width: 2.5 + frac * 8.0,
-        alpha: 0.18 + Math.sin(frac * Math.PI) * 0.22,
+        spiralK: 0.1 + (i % 5) * 0.012,
+        width: 1.0 + frac * 2.8,
+        baseAlpha: 0.14 + Math.sin(frac * Math.PI) * 0.18,
         tier,
-        waveFreq: 2 + (i % 3),
+        waveFreq: 2 + (i % 4),
         wavePhase: Math.random() * Math.PI * 2,
       });
     }
@@ -152,11 +152,11 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       const frac = i / strandCount;
       jetStrands.push({
         phase: frac * Math.PI * 2,
-        radiusBase: 7 + (i % 2) * 5,
-        radiusGrowth: 36 + (i % 3) * 14,
-        speed: 0.022 + (i % 2) * 0.008,
-        width: 2.2 + (i % 2) * 1.5,
-        alpha: 0.35 + (i % 2) * 0.25,
+        radiusBase: 6 + (i % 2) * 5,
+        radiusGrowth: 34 + (i % 3) * 12,
+        speed: 0.02 + (i % 2) * 0.006,
+        width: 1.8 + (i % 2) * 1.2,
+        alpha: 0.38 + (i % 2) * 0.22,
         colorType: i % 3,
         pitch: 3.2 + (i % 2) * 0.8,
       });
@@ -344,7 +344,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     lensGrd.addColorStop(1, "rgba(160, 30, 5, 0)");
 
     g.strokeStyle = "rgba(255, 175, 45, 0.25)";
-    g.lineWidth = 9 + bass * 4;
+    g.lineWidth = 8 + bass * 4;
     g.beginPath();
     g.ellipse(
       cx,
@@ -358,7 +358,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     g.stroke();
 
     g.strokeStyle = lensGrd;
-    g.lineWidth = 3.5 + bass * 2.0;
+    g.lineWidth = 3.2 + bass * 1.8;
     g.beginPath();
     g.ellipse(
       cx,
@@ -456,7 +456,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
 
     for (let h = 0; h < state.jetStrands.length; h++) {
       const strand = state.jetStrands[h];
-      const steps = 32;
+      const steps = 48;
       const pts: { x: number; y: number }[] = [];
 
       for (let s = 0; s <= steps; s++) {
@@ -557,54 +557,44 @@ function renderSmoothAccretionDiskV8(
   mid: number,
   treble: number,
   isForeground: boolean,
-  filaments: SpiralGasFilament[]
+  filaments: UltraSmoothFilament[]
 ) {
   const maxDiskR = horizonR * 12.0;
+  g.lineCap = "round";
+  g.lineJoin = "round";
 
   if (isForeground) {
-    const startAngle = 0;
-    const endAngle = Math.PI;
-
     const iscoGrd = g.createRadialGradient(cx, cy, iscoR * 0.9, cx, cy, horizonR * 3.5);
-    iscoGrd.addColorStop(0, "rgba(255, 250, 220, 0.75)");
-    iscoGrd.addColorStop(0.3, "rgba(255, 190, 60, 0.55)");
-    iscoGrd.addColorStop(0.7, "rgba(235, 110, 25, 0.35)");
+    iscoGrd.addColorStop(0, "rgba(255, 250, 220, 0.7)");
+    iscoGrd.addColorStop(0.3, "rgba(255, 190, 60, 0.5)");
+    iscoGrd.addColorStop(0.7, "rgba(235, 110, 25, 0.3)");
     iscoGrd.addColorStop(1, "rgba(160, 45, 10, 0)");
 
     g.fillStyle = iscoGrd;
     g.beginPath();
-    g.ellipse(cx, cy, horizonR * 3.5, horizonR * 3.5 * diskTilt, diskAngle, startAngle, endAngle);
-    g.ellipse(cx, cy, iscoR * 0.95, iscoR * 0.95 * diskTilt, diskAngle, endAngle, startAngle, true);
+    g.ellipse(cx, cy, horizonR * 3.5, horizonR * 3.5 * diskTilt, diskAngle, 0, Math.PI);
+    g.ellipse(cx, cy, iscoR * 0.95, iscoR * 0.95 * diskTilt, diskAngle, Math.PI, 0, true);
     g.fill();
 
     const mainDiskGrd = g.createRadialGradient(cx, cy, horizonR * 2.8, cx, cy, maxDiskR * 0.85);
-    mainDiskGrd.addColorStop(0, "rgba(225, 105, 22, 0.38)");
-    mainDiskGrd.addColorStop(0.35, "rgba(175, 55, 14, 0.26)");
-    mainDiskGrd.addColorStop(0.7, "rgba(110, 25, 6, 0.15)");
+    mainDiskGrd.addColorStop(0, "rgba(225, 105, 22, 0.35)");
+    mainDiskGrd.addColorStop(0.35, "rgba(175, 55, 14, 0.24)");
+    mainDiskGrd.addColorStop(0.7, "rgba(110, 25, 6, 0.14)");
     mainDiskGrd.addColorStop(1, "rgba(45, 8, 2, 0)");
 
     g.fillStyle = mainDiskGrd;
     g.beginPath();
-    g.ellipse(cx, cy, maxDiskR * 0.85, maxDiskR * 0.85 * diskTilt, diskAngle, startAngle, endAngle);
-    g.ellipse(
-      cx,
-      cy,
-      horizonR * 2.6,
-      horizonR * 2.6 * diskTilt,
-      diskAngle,
-      endAngle,
-      startAngle,
-      true
-    );
+    g.ellipse(cx, cy, maxDiskR * 0.85, maxDiskR * 0.85 * diskTilt, diskAngle, 0, Math.PI);
+    g.ellipse(cx, cy, horizonR * 2.6, horizonR * 2.6 * diskTilt, diskAngle, Math.PI, 0, true);
     g.fill();
   }
 
   const tierColors = [
-    `rgba(255, 248, 215, ${0.45 + mid * 0.2})`,
-    `rgba(255, 185, 65, ${0.35 + mid * 0.15})`,
-    `rgba(230, 105, 28, ${0.28 + mid * 0.12})`,
-    `rgba(170, 52, 14, ${0.22 + mid * 0.08})`,
-    `rgba(100, 22, 6, ${0.15 + mid * 0.05})`,
+    `rgba(255, 248, 215, ${0.42 + mid * 0.2})`,
+    `rgba(255, 185, 65, ${0.32 + mid * 0.15})`,
+    `rgba(230, 105, 28, ${0.25 + mid * 0.12})`,
+    `rgba(170, 52, 14, ${0.18 + mid * 0.08})`,
+    `rgba(100, 22, 6, ${0.12 + mid * 0.05})`,
   ];
 
   for (let tier = 0; tier < 5; tier++) {
@@ -619,7 +609,7 @@ function renderSmoothAccretionDiskV8(
       if (curBaseR < iscoR * 0.95 || curBaseR > maxDiskR) continue;
 
       const angleStart = rot * (f.speed * 85) + f.angleOffset;
-      const steps = 30;
+      const steps = 40;
       let started = false;
 
       for (let s = 0; s <= steps; s++) {
@@ -627,9 +617,9 @@ function renderSmoothAccretionDiskV8(
         const angle = angleStart + prog * f.length;
 
         const r = curBaseR * Math.exp(prog * f.spiralK);
-        if (r > maxDiskR * 1.1) break;
+        if (r > maxDiskR * 1.08) break;
 
-        const wave = Math.sin(angle * f.waveFreq + t * 2.0 + f.wavePhase) * (2.5 + bass * 4.0);
+        const wave = Math.sin(angle * f.waveFreq + t * 2.0 + f.wavePhase) * (2.2 + bass * 3.5);
         const finalR = r + wave;
 
         const ex = Math.cos(angle) * finalR;
@@ -637,7 +627,7 @@ function renderSmoothAccretionDiskV8(
         const px = cx + ex * cosD - ey * sinD;
         const py = cy + ex * sinD + ey * cosD;
 
-        const isInFront = ey >= -horizonR * 0.18;
+        const isInFront = ey >= -horizonR * 0.2;
         if (isForeground === isInFront) {
           if (!started) {
             g.moveTo(px, py);
@@ -654,14 +644,14 @@ function renderSmoothAccretionDiskV8(
 
     if (hasPaths) {
       g.strokeStyle = tierColors[tier];
-      g.lineWidth = (3.0 + tier * 1.2) * (1 + treble * 0.25);
+      g.lineWidth = (1.2 + tier * 0.5) * (1 + treble * 0.2);
       g.stroke();
     }
   }
 
   if (isForeground) {
     g.strokeStyle = "rgba(255, 255, 240, 0.92)";
-    g.lineWidth = 2.6 + bass * 1.5;
+    g.lineWidth = 2.4 + bass * 1.2;
     g.beginPath();
     g.ellipse(cx, cy, iscoR, iscoR * diskTilt, diskAngle, 0, Math.PI);
     g.stroke();
