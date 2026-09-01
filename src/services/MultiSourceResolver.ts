@@ -218,7 +218,7 @@ export class MultiSourceResolver {
 
     const base = getApiBase();
 
-    // 1. 【严格源隔离规则】：如果歌曲明确标记了所属网络平台，必须且只能走该平台的鉴权链路
+    // 1. 【优先平台登录 VIP 链路】
     if (query.source) {
       const src = query.source.toLowerCase();
 
@@ -229,99 +229,103 @@ export class MultiSourceResolver {
           MultiSourceResolver.resolvedUrlCache.set(cacheKey, { result: lxRes, expiry: Date.now() + 1800000 });
           return lxRes;
         }
-        return null;
       }
 
-      // 原生网络平台：未登录一律直接阻断，绝不跨源串流
-      if (!isPlatformLoggedIn(src)) {
-        console.warn(`[MultiSourceResolver] Blocked request for unauthenticated platform source: ${src}`);
-        return null;
-      }
+      // 已登录对应平台：单源专属解析 (如 VIP Cookie 专属高清通道)
+      if (isPlatformLoggedIn(src)) {
+        let singleResult: ResolvedAudioSource | null = null;
+        if (src === "netease" || src === "wy") {
+          singleResult = await this.resolveNetease(query.id || "", query);
+        } else if (src === "qq" || src === "tx") {
+          singleResult = await this.resolveQQMusic(query);
+        } else if (src === "kugou" || src === "kg") {
+          singleResult = await this.resolveKugou(query);
+        } else if (src === "kuwo" || src === "kw") {
+          singleResult = await this.resolveKuwo(query);
+        } else if (src === "qishui") {
+          singleResult = await this.resolveQishui(query);
+        }
 
-      // 已登录对应平台：单源专属解析
-      let singleResult: ResolvedAudioSource | null = null;
-      if (src === "netease" || src === "wy") {
-        singleResult = await this.resolveNetease(query.id || "", query);
-      } else if (src === "qq" || src === "tx") {
-        singleResult = await this.resolveQQMusic(query);
-      } else if (src === "kugou" || src === "kg") {
-        singleResult = await this.resolveKugou(query);
-      } else if (src === "kuwo" || src === "kw") {
-        singleResult = await this.resolveKuwo(query);
-      } else if (src === "qishui") {
-        singleResult = await this.resolveQishui(query);
+        if (singleResult && singleResult.url) {
+          MultiSourceResolver.resolvedUrlCache.set(cacheKey, { result: singleResult, expiry: Date.now() + 1800000 });
+          return singleResult;
+        }
       }
-
-      if (singleResult && singleResult.url) {
-        MultiSourceResolver.resolvedUrlCache.set(cacheKey, { result: singleResult, expiry: Date.now() + 1800000 });
-        return singleResult;
-      }
-      return null;
     }
 
-    // 2. 【未指明源时的聚合竞速】：仅在当前「所有已登录平台」与「启用的洛雪脚本」之间竞速
+    // 2. 【多源竞速与洛雪解析】
     const resolutionMode = typeof window !== "undefined" ? useSourceConfigStore.getState().resolutionMode : "hybrid_racing";
 
-    // 洛雪独占模式
+    // 2.1 尝试洛雪扩展源 (若启用了脚本)
+    const lxRes = await this.resolveLxScript(query);
+    if (lxRes?.url) {
+      MultiSourceResolver.resolvedUrlCache.set(cacheKey, { result: lxRes, expiry: Date.now() + 1800000 });
+      return lxRes;
+    }
+
     if (resolutionMode === "lx_only") {
-      const lxRes = await this.resolveLxScript(query);
-      if (lxRes?.url) {
-        MultiSourceResolver.resolvedUrlCache.set(cacheKey, { result: lxRes, expiry: Date.now() + 1800000 });
-        return lxRes;
-      }
       return null;
     }
 
+    // 2.2 尝试所有已登录平台的竞速任务
     const tasks: Promise<ResolvedAudioSource | null>[] = [];
+    if (isPlatformLoggedIn("netease")) tasks.push(this.resolveNetease(query.id || "", query));
+    if (isPlatformLoggedIn("qq")) tasks.push(this.resolveQQMusic(query));
+    if (isPlatformLoggedIn("kugou")) tasks.push(this.resolveKugou(query));
+    if (isPlatformLoggedIn("kuwo")) tasks.push(this.resolveKuwo(query));
+    if (isPlatformLoggedIn("qishui")) tasks.push(this.resolveQishui(query));
 
-    // 洛雪扩展源任务
-    const isLxEnabled = typeof window !== "undefined"
-      ? (useSourceConfigStore.getState().sources.lx_custom?.enabled && useSourceConfigStore.getState().lxScripts.some((s) => s.enabled))
-      : true;
-    if (isLxEnabled) {
-      tasks.push(this.resolveLxScript(query));
-    }
+    if (tasks.length > 0) {
+      try {
+        const raceResult = await Promise.race(
+          tasks.map((t) => t.then((res) => (res?.url ? res : Promise.reject())))
+        );
+        if (raceResult?.url) {
+          MultiSourceResolver.resolvedUrlCache.set(cacheKey, { result: raceResult, expiry: Date.now() + 1800000 });
+          return raceResult;
+        }
+      } catch {}
 
-    // 各已登录平台任务
-    if (isPlatformLoggedIn("netease")) {
-      tasks.push(this.resolveNetease(query.id || "", query));
-    }
-    if (isPlatformLoggedIn("qq")) {
-      tasks.push(this.resolveQQMusic(query));
-    }
-    if (isPlatformLoggedIn("kugou")) {
-      tasks.push(this.resolveKugou(query));
-    }
-    if (isPlatformLoggedIn("kuwo")) {
-      tasks.push(this.resolveKuwo(query));
-    }
-    if (isPlatformLoggedIn("qishui")) {
-      tasks.push(this.resolveQishui(query));
-    }
-
-    // 若没有任何已登录网络源且洛雪未开启，直接返回 null，阻断请求
-    if (tasks.length === 0) {
-      console.warn("[MultiSourceResolver] No authenticated platform or enabled script available for audio resolution.");
-      return null;
-    }
-
-    // 并发竞速解析
-    try {
-      const raceResult = await Promise.race(
-        tasks.map((t) => t.then((res) => (res?.url ? res : Promise.reject())))
-      );
-      if (raceResult?.url) {
-        MultiSourceResolver.resolvedUrlCache.set(cacheKey, { result: raceResult, expiry: Date.now() + 1800000 });
-        return raceResult;
+      const settled = await Promise.allSettled(tasks);
+      for (const r of settled) {
+        if (r.status === "fulfilled" && r.value?.url) {
+          MultiSourceResolver.resolvedUrlCache.set(cacheKey, { result: r.value, expiry: Date.now() + 1800000 });
+          return r.value;
+        }
       }
-    } catch {}
+    }
 
-    // 竞速未命中，遍历等待首个成功结果
-    const settled = await Promise.allSettled(tasks);
-    for (const r of settled) {
-      if (r.status === "fulfilled" && r.value?.url) {
-        MultiSourceResolver.resolvedUrlCache.set(cacheKey, { result: r.value, expiry: Date.now() + 1800000 });
-        return r.value;
+    // 3. 【高可用公网嗅探兜底】：调用服务端高可用直链管道 (/api/song/url)
+    if (query.title || query.id) {
+      try {
+        const params = new URLSearchParams();
+        if (query.id) params.set("id", String(query.id));
+        if (query.title) params.set("title", query.title);
+        if (query.artist) params.set("artist", query.artist);
+        if (query.source) params.set("source", query.source);
+
+        const res = await fetch(`${base}/api/song/url?${params.toString()}`, {
+          signal: AbortSignal.timeout(4000),
+          headers: query.source ? getPlatformHeaders(query.source) : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.url && typeof data.url === "string" && data.url.startsWith("http")) {
+            const resolved: ResolvedAudioSource = {
+              url: data.url,
+              source: data.source || "kuwo",
+              quality: data.level || "lossless",
+              format: data.url.includes(".flac") ? "flac" : "mp3",
+              bitrate: data.br || 320000,
+              isTrial: false,
+              name: `${query.title || "未知曲目"} (高可用母带流)`,
+            };
+            MultiSourceResolver.resolvedUrlCache.set(cacheKey, { result: resolved, expiry: Date.now() + 1800000 });
+            return resolved;
+          }
+        }
+      } catch (err) {
+        console.warn("[MultiSourceResolver] Fallback /api/song/url resolution error:", err);
       }
     }
 
