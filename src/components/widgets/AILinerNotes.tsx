@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, RotateCcw, Copy, Check } from "lucide-react";
+import { Sparkles, Loader2, RotateCcw, Copy, Check, MessageSquare } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
 import { useLinerNotesStore } from "@/store/linerNotesStore";
 import { useEmotionStore } from "@/store/emotionStore";
+import { useAIAgentStore } from "@/store/useAIAgentStore";
 
 export const AILinerNotes: React.FC = () => {
   const currentSong = useAudioStore((state) => state.currentSong);
@@ -60,6 +61,16 @@ export const AILinerNotes: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleOpenAIChat = () => {
+    if (!currentSong) return;
+    const prompt = displayNote
+      ? `请深度解析《${currentSong.title}》（${currentSong.artist}）这首歌曲的情感内涵与这句通感评语：“${displayNote}”`
+      : `请帮我深度解析《${currentSong.title}》（${currentSong.artist}）这首歌的创作背景与情感表达。`;
+    const agentStore = useAIAgentStore.getState();
+    agentStore.setIsPanelOpen(true);
+    agentStore.sendMessage(prompt);
+  };
+
   if (!mounted || !currentSong) {
     return null;
   }
@@ -72,24 +83,34 @@ export const AILinerNotes: React.FC = () => {
       transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
       className="fixed bottom-28 left-8 z-40 max-w-[320px] pointer-events-auto"
     >
-      <div className="rounded-2xl bg-black/35 backdrop-blur-2xl border border-white/[0.12] p-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.12)] transition-all hover:bg-black/45 group">
+      <div className="rounded-2xl bg-black/40 backdrop-blur-2xl border border-white/[0.14] p-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all hover:bg-black/55 group">
         {/* 顶部标题栏 */}
         <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-white/70">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-white/80">
             {isGenerating ? (
               <Loader2 className="w-3.5 h-3.5 text-cyan-300 animate-spin" />
             ) : (
-              <Sparkles className="w-3.5 h-3.5 text-white/80" />
+              <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
             )}
             <span>AI 情感洞察</span>
           </div>
 
-          <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+            {displayNote && (
+              <button
+                type="button"
+                onClick={handleOpenAIChat}
+                className="p-1 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-colors"
+                title="向 AI 提问并深度探讨此感悟"
+              >
+                <MessageSquare className="w-3 h-3 text-cyan-300" />
+              </button>
+            )}
             {displayNote && (
               <button
                 type="button"
                 onClick={handleCopy}
-                className="p-1 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors"
+                className="p-1 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-colors"
                 title={copied ? "已复制" : "复制感悟"}
               >
                 {copied ? (
@@ -103,7 +124,7 @@ export const AILinerNotes: React.FC = () => {
               type="button"
               onClick={() => fetchNotesForCurrentSong(true)}
               disabled={isGenerating}
-              className="p-1 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors disabled:opacity-40"
+              className="p-1 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-colors disabled:opacity-40"
               title="重新生成感悟"
             >
               <RotateCcw className={`w-3 h-3 ${isGenerating ? "animate-spin" : ""}`} />
@@ -131,8 +152,11 @@ export const AILinerNotes: React.FC = () => {
               animate={{ opacity: 1, filter: "blur(0px)" }}
               exit={{ opacity: 0, filter: "blur(6px)" }}
               transition={{ duration: 0.5, ease: "easeOut" }}
+              onClick={displayNote ? handleOpenAIChat : undefined}
+              className={displayNote ? "cursor-pointer group/text" : ""}
+              title={displayNote ? "点击唤起 AI 智能体深入探讨这首歌" : undefined}
             >
-              <p className="text-[12.5px] leading-relaxed text-white/85 font-light tracking-wide italic select-text">
+              <p className="text-[12.5px] leading-relaxed text-white/90 font-light tracking-wide italic select-text group-hover/text:text-cyan-200 transition-colors">
                 “{displayNote || "聆听旋律流转，感悟音符间的情感共鸣..."}”
               </p>
             </motion.div>
