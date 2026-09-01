@@ -10,7 +10,6 @@ import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
-import { useGestureStore } from "@/store/gestureStore";
 import { getCoverFromCache, saveCoverToCache } from "@/services/coverCache";
 import { multiSourceResolver } from "@/services/MultiSourceResolver";
 import { getStoredMusic } from "@/services/localMusicStorage";
@@ -40,7 +39,6 @@ export const MusicCardStack: React.FC = () => {
   const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
-  const { lastGesture, gestureTriggered } = useGestureStore();
   const setCurrentView = useUIStore((state) => state.setCurrentView);
 
   const displaySongs: Song[] = useMemo(() => {
@@ -117,7 +115,8 @@ export const MusicCardStack: React.FC = () => {
     const total = displaySongs.length;
     if (total === 0) return [];
 
-    const half = Math.min(MAX_VISIBLE_HALF, Math.floor((total - 1) / 2));
+    const half =
+      total <= 1 ? 0 : Math.min(MAX_VISIBLE_HALF, total >= 3 ? Math.floor((total - 1) / 2) : 1);
     const cards = [];
 
     for (let i = -half; i <= half; i++) {
@@ -296,20 +295,6 @@ export const MusicCardStack: React.FC = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [centerIndex, displaySongs, handleNext, handlePrev, handlePlayCard]);
 
-  // 手势切歌联动
-  useEffect(() => {
-    if (gestureTriggered && lastGesture) {
-      if ((lastGesture as any) === "swipe_left" || (lastGesture as any)?.type === "swipe_left") {
-        handleNext();
-      } else if (
-        (lastGesture as any) === "swipe_right" ||
-        (lastGesture as any)?.type === "swipe_right"
-      ) {
-        handlePrev();
-      }
-    }
-  }, [gestureTriggered, lastGesture, handleNext, handlePrev]);
-
   // 空曲库占位展示
   if (displaySongs.length === 0) {
     return (
@@ -381,7 +366,7 @@ export const MusicCardStack: React.FC = () => {
 
             return (
               <motion.div
-                key={card.id}
+                key={`slot-${card.offset}`}
                 onClick={() => {
                   if (isCenter) {
                     handlePlayCard(card, card.displayIndex);

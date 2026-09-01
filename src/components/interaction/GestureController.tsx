@@ -144,9 +144,9 @@ export const GestureController: React.FC = () => {
 
     if (dt > 50 && dt < SWIPE_MAX_TIME_MS && Math.abs(dx) > SWIPE_MIN_DISTANCE) {
       swipeHistoryRef.current = [];
-      // ע⣺ͷǾģx Ѿ 1-x ת
-      //  dx > 0 ԭʼͷζ󣬵ת
-      return dx < 0 ? "swipe_right" : "swipe_left";
+      // 注意：摄像头是镜像的，x 已经经过 1-x 反转
+      // dx < 0 意味着在屏幕上从右向左滑动 (swipe_left)，dx > 0 意味着从左向右滑动 (swipe_right)
+      return dx < 0 ? "swipe_left" : "swipe_right";
     }
 
     return null;
@@ -284,9 +284,9 @@ export const GestureController: React.FC = () => {
           setLastGesture(swipe);
 
           if (swipe === "swipe_left") {
-            useAudioStore.getState().prevSong();
-          } else if (swipe === "swipe_right") {
             useAudioStore.getState().nextSong();
+          } else if (swipe === "swipe_right") {
+            useAudioStore.getState().prevSong();
           }
 
           setTimeout(() => setGestureTriggered(false), 400);
