@@ -28,14 +28,14 @@ describe("TopEdgeSearchTrigger", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not open search panel when mouse moves at top edge (prevent accidental popup)", async () => {
+  it("opens search panel when mouse moves within top 15px", async () => {
     await act(async () => {
       root.render(<TopEdgeSearchTrigger />);
     });
 
     expect(useUIStore.getState().panels.search).toBe(false);
 
-    // Trigger mousemove at clientY = 10
+    // Trigger mousemove at clientY = 10 (within top 15px)
     await act(async () => {
       window.dispatchEvent(
         new MouseEvent("mousemove", {
@@ -45,7 +45,7 @@ describe("TopEdgeSearchTrigger", () => {
       );
     });
 
-    expect(useUIStore.getState().panels.search).toBe(false);
+    expect(useUIStore.getState().panels.search).toBe(true);
   });
 
   it("does not open search panel when mouse moves below top 15px", async () => {
@@ -67,13 +67,19 @@ describe("TopEdgeSearchTrigger", () => {
     expect(useUIStore.getState().panels.search).toBe(false);
   });
 
-  it("renders safe non-intrusive sensor element", async () => {
+  it("opens search panel when mouse enters the invisible top sensor bar", async () => {
     await act(async () => {
       root.render(<TopEdgeSearchTrigger />);
     });
 
     const sensor = container.querySelector('[data-testid="top-edge-search-sensor"]');
     expect(sensor).not.toBeNull();
+
+    await act(async () => {
+      sensor?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    });
+
+    expect(useUIStore.getState().panels.search).toBe(true);
   });
 
   it("opens search panel on touch pull-down from top edge", async () => {
@@ -92,9 +98,9 @@ describe("TopEdgeSearchTrigger", () => {
       window.dispatchEvent(touchStart);
     });
 
-    // Touch move down (clientY = 80 => delta 60px > 50px)
+    // Touch move down (clientY = 60 => delta 40px > 30px)
     const touchMove = new TouchEvent("touchmove", {
-      touches: [{ clientY: 80 } as unknown as Touch],
+      touches: [{ clientY: 60 } as unknown as Touch],
       bubbles: true,
     });
     await act(async () => {

@@ -38,11 +38,14 @@ import { useSourceConfigStore } from "@/store/sourceConfigStore";
 import { PlaylistDetailDrawer, DrawerPlaylistInfo } from "./PlaylistDetailDrawer";
 import type { OnlinePlaylistResult } from "@/app/api/playlist/search/route";
 
-type SearchSourceTab = "all" | "kuwo" | "kugou" | "qq" | "netease" | "migu" | "lx_custom";
-type SearchMode = "songs" | "playlists";
-type SortField = "index" | "title" | "artist" | "album" | "duration";
-type SortOrder = "asc" | "desc";
-type QualityFilter = "all" | "24bit" | "flac";
+import {
+  useDataManagerStore,
+  SearchSourceTab,
+  SearchMode,
+  SortField,
+  SortOrder,
+  QualityFilter,
+} from "@/store/useDataManagerStore";
 
 const SOURCE_TABS: { id: SearchSourceTab; label: string; symbol: string; dotColor: string; activeBorder: string; badgeStyle: string }[] = [
   { id: "all", label: "全网聚合", symbol: "✦", dotColor: "bg-white", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
@@ -71,18 +74,30 @@ const HOT_SEARCH_TAGS = [
 const searchMemoryCache = new Map<string, Song[]>();
 
 export const LxMusicSearchTab: React.FC = () => {
-  const [keyword, setKeyword] = useState("周杰伦");
-  const [activeTab, setActiveTab] = useState<SearchSourceTab>("all");
-  const [searchMode, setSearchMode] = useState<SearchMode>("songs");
-  const [qualityFilter, setQualityFilter] = useState<QualityFilter>("all");
+  const {
+    keyword,
+    setKeyword,
+    activeSourceTab: activeTab,
+    setActiveSourceTab: setActiveTab,
+    searchMode,
+    setSearchMode,
+    qualityFilter,
+    setQualityFilter,
+    songResults,
+    setSongResults,
+    playlistResults,
+    setPlaylistResults,
+    sortField,
+    setSortField,
+    sortOrder,
+    setSortOrder,
+    selectedScriptId,
+    setSelectedScriptId,
+  } = useDataManagerStore();
 
   const [isSearching, setIsSearching] = useState(false);
-  const [songResults, setSongResults] = useState<Song[]>([]);
-  const [playlistResults, setPlaylistResults] = useState<OnlinePlaylistResult[]>([]);
 
-  // 表格排序与多选
-  const [sortField, setSortField] = useState<SortField>("index");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  // 表格多选
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // 歌单详情抽屉
@@ -97,7 +112,6 @@ export const LxMusicSearchTab: React.FC = () => {
   } | null>(null);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [selectedScriptId, setSelectedScriptId] = useState<string>("exclusive_v5");
 
   const { playSong, playQueue } = useAudioStore();
   const { addToQueue, insertNext } = useQueueStore();
@@ -338,7 +352,7 @@ export const LxMusicSearchTab: React.FC = () => {
 
   const handleSortToggle = (field: SortField) => {
     if (sortField === field) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
       setSortOrder("asc");

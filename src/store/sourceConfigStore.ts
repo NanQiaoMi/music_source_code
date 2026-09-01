@@ -573,6 +573,7 @@ export const useSourceConfigStore = create<SourceConfigState>()(
         sources: state.sources,
         lxScripts: state.lxScripts.map(({ scriptContent, ...meta }) => meta),
         activePreset: state.activePreset,
+        resolutionMode: state.resolutionMode,
       }),
     }
   )
