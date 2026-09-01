@@ -1,33 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EffectContext } from "./types";
 
-interface SuperstringFilament {
-  baseAngle: number;
-  length: number;
-  innerRadius: number;
-  outerRadius: number;
-  spiralTightness: number;
-  frequency: number;
-  phase: number;
-  harmonicRank: number;
-  colorType: number; // 0: 铂金蓝白, 1: 炽热琥珀金, 2: 极光金青, 3: 深空赤金
-  lineWidth: number;
-  alpha: number;
-  rotationSpeed: number;
-  verticalWaveAmp: number;
-}
-
-interface PlasmaRibbonLayer {
-  radiusInner: number;
-  radiusOuter: number;
-  speed: number;
-  phase: number;
-  waveCount: number;
-  hueOffset: number;
-  alpha: number;
-  thickness: number;
-}
-
 interface GravitationalShockwave {
   radius: number;
   maxRadius: number;
@@ -39,6 +12,7 @@ interface GravitationalShockwave {
 let cachedAnamorphicSprite: HTMLCanvasElement | null = null;
 let cachedPhotonRingSprite: HTMLCanvasElement | null = null;
 let cachedCoreHaloSprite: HTMLCanvasElement | null = null;
+let cachedUpperLensingSprite: HTMLCanvasElement | null = null;
 
 function createRadialGlowSprite(
   size: number,
@@ -78,15 +52,15 @@ function createAnamorphicFlareSprite(width: number, height: number): HTMLCanvasE
     const cy = height / 2;
 
     const hGrd = ctx.createLinearGradient(0, cy, width, cy);
-    hGrd.addColorStop(0, "rgba(50, 160, 255, 0)");
-    hGrd.addColorStop(0.2, "rgba(70, 200, 255, 0.18)");
-    hGrd.addColorStop(0.38, "rgba(255, 210, 120, 0.45)");
+    hGrd.addColorStop(0, "rgba(70, 170, 255, 0)");
+    hGrd.addColorStop(0.18, "rgba(90, 210, 255, 0.2)");
+    hGrd.addColorStop(0.35, "rgba(255, 220, 130, 0.45)");
     hGrd.addColorStop(0.48, "rgba(255, 250, 240, 0.95)");
     hGrd.addColorStop(0.5, "rgba(255, 255, 255, 1.0)");
     hGrd.addColorStop(0.52, "rgba(255, 250, 240, 0.95)");
-    hGrd.addColorStop(0.62, "rgba(255, 190, 90, 0.45)");
-    hGrd.addColorStop(0.8, "rgba(255, 120, 40, 0.15)");
-    hGrd.addColorStop(1, "rgba(255, 80, 20, 0)");
+    hGrd.addColorStop(0.65, "rgba(255, 180, 70, 0.45)");
+    hGrd.addColorStop(0.82, "rgba(255, 100, 30, 0.15)");
+    hGrd.addColorStop(1, "rgba(255, 60, 10, 0)");
 
     const vGrd = ctx.createLinearGradient(cx, 0, cx, height);
     vGrd.addColorStop(0, "rgba(255, 255, 255, 0)");
@@ -109,31 +83,46 @@ function createAnamorphicFlareSprite(width: number, height: number): HTMLCanvasE
 function initSprites() {
   if (typeof document === "undefined") return;
   if (!cachedAnamorphicSprite) {
-    cachedAnamorphicSprite = createAnamorphicFlareSprite(800, 56);
+    cachedAnamorphicSprite = createAnamorphicFlareSprite(1200, 64);
   }
   if (!cachedPhotonRingSprite) {
-    cachedPhotonRingSprite = createRadialGlowSprite(220, [
+    cachedPhotonRingSprite = createRadialGlowSprite(280, [
       [0, "rgba(255, 255, 255, 1.0)"],
-      [0.15, "rgba(255, 230, 180, 0.95)"],
-      [0.35, "rgba(255, 150, 50, 0.65)"],
-      [0.65, "rgba(180, 80, 240, 0.22)"],
-      [0.85, "rgba(50, 140, 255, 0.08)"],
+      [0.18, "rgba(255, 235, 190, 0.95)"],
+      [0.35, "rgba(255, 160, 50, 0.6)"],
+      [0.6, "rgba(220, 80, 20, 0.25)"],
+      [0.85, "rgba(80, 160, 255, 0.08)"],
       [1, "rgba(0, 0, 0, 0)"],
     ]);
   }
   if (!cachedCoreHaloSprite) {
-    cachedCoreHaloSprite = createRadialGlowSprite(320, [
-      [0, "rgba(255, 200, 100, 0.85)"],
-      [0.25, "rgba(240, 110, 30, 0.45)"],
-      [0.55, "rgba(140, 40, 200, 0.18)"],
-      [0.85, "rgba(30, 90, 220, 0.05)"],
+    cachedCoreHaloSprite = createRadialGlowSprite(512, [
+      [0, "rgba(255, 220, 120, 0.85)"],
+      [0.22, "rgba(255, 140, 40, 0.5)"],
+      [0.5, "rgba(200, 60, 15, 0.2)"],
+      [0.78, "rgba(60, 100, 220, 0.06)"],
+      [1, "rgba(0, 0, 0, 0)"],
+    ]);
+  }
+  if (!cachedUpperLensingSprite) {
+    cachedUpperLensingSprite = createRadialGlowSprite(512, [
+      [0, "rgba(255, 255, 240, 1.0)"],
+      [0.25, "rgba(255, 190, 75, 0.8)"],
+      [0.55, "rgba(235, 95, 25, 0.4)"],
+      [0.8, "rgba(140, 30, 10, 0.12)"],
       [1, "rgba(0, 0, 0, 0)"],
     ]);
   }
 }
 
 /**
- * 电影级卡冈图雅黑洞吸积光盘模拟光效 (零粒子 · 纯连续流体光带与超弦曲率束流)
+ * 电影级《星际穿越》卡冈图雅真实相对论黑洞模拟 (Gargantua General Relativity Black Hole)
+ * - 纯净连续发光等离子吸积盘 (Volumetric Incandescent Plasma Fluid Disk)
+ * - 爱因斯坦弯曲双光环引力透镜 (Warped Lensing Halo Arcs)
+ * - 相对论多普勒辐射不对称增强 (Doppler Beaming - Left Bright Blue-White, Right Dark Amber-Red)
+ * - 纯黑施瓦西事件视界暗核 (Pure Absolute Pitch-Black Event Horizon)
+ * - 1.8px 极细高亮光子球层 (Razor-sharp Photon Sphere Ring)
+ * - 0 杂乱线条，0 噪点粒子，纯粹电影级流体光晕
  */
 export function drawSuperstringSingularity({
   ctx,
@@ -153,12 +142,11 @@ export function drawSuperstringSingularity({
 
   const speed = params.speed || 1.0;
   const singularityMass = params.singularityMass || 1.0;
-  const superstringTension = params.superstringTension || 1.2;
   const coreGlow = params.coreGlow || 1.5;
   const chromaticAberration = params.chromaticAberration || 1.35;
   const burstSensitivity = params.burstSensitivity || 1.1;
 
-  // --- 1. SIGNAL EXTRACTION & AUDIO METRICS ---
+  // --- 1. 音频特征提取与平滑响应 ---
   const getVal = (idx: number) => (data && data[idx] !== undefined ? data[idx] / 255 : 0);
   const rawBass = (getVal(0) + getVal(1) + getVal(2) + getVal(3) + getVal(4)) / 5;
   const rawMid = (getVal(12) + getVal(24) + getVal(36) + getVal(48)) / 4;
@@ -175,110 +163,47 @@ export function drawSuperstringSingularity({
 
   const t = (time || 0) * 0.0008 * speed;
 
-  // --- 2. INITIALIZE 64 HARMONIC SUPERSTRING FILAMENTS & 6 CONTINUOUS PLASMA RIBBONS ---
-  if (!refs.particles.current || refs.particles.current.length === 0) {
-    const filamentCount = 64;
-    const filaments: SuperstringFilament[] = [];
+  // 旋转自转角累加
+  const rot =
+    ((refs.bokeh.current && refs.bokeh.current[0]) || 0) +
+    (0.0035 + energy * 0.008) * (params.superstringTension || 1.2);
+  if (!refs.bokeh.current) refs.bokeh.current = [];
+  refs.bokeh.current[0] = rot;
 
-    for (let i = 0; i < filamentCount; i++) {
-      const angle = (i / filamentCount) * Math.PI * 2;
-      const rank = (i % 6) + 1;
-      const colorType = i % 4;
-      const innerRadius = 38 + (i % 8) * 6;
-      const outerRadius = 380 + (i / filamentCount) * 460;
-
-      filaments.push({
-        baseAngle: angle,
-        length: outerRadius - innerRadius,
-        innerRadius,
-        outerRadius,
-        spiralTightness: 1.8 + (i % 5) * 0.35,
-        frequency: 2 + rank * 1.2,
-        phase: (i / filamentCount) * Math.PI * 4,
-        harmonicRank: rank,
-        colorType,
-        lineWidth: 1.2 + (i % 4) * 0.5,
-        alpha: 0.45 + (i % 3) * 0.2,
-        rotationSpeed: (0.004 + (1 / (rank + 2)) * 0.008) * 1.1,
-        verticalWaveAmp: 8 + (i % 6) * 4,
-      });
-    }
-
-    const plasmaRibbons: PlasmaRibbonLayer[] = [];
-    const ribbonRadii = [
-      { inR: 45, outR: 110, spd: 0.016, thick: 28, alpha: 0.42 },
-      { inR: 95, outR: 180, spd: 0.012, thick: 36, alpha: 0.35 },
-      { inR: 160, outR: 280, spd: 0.009, thick: 48, alpha: 0.28 },
-      { inR: 250, outR: 420, spd: 0.006, thick: 62, alpha: 0.22 },
-      { inR: 380, outR: 580, spd: 0.004, thick: 80, alpha: 0.16 },
-      { inR: 520, outR: 780, spd: 0.0025, thick: 110, alpha: 0.12 },
-    ];
-
-    ribbonRadii.forEach((r, idx) => {
-      plasmaRibbons.push({
-        radiusInner: r.inR,
-        radiusOuter: r.outR,
-        speed: r.spd,
-        phase: (idx / ribbonRadii.length) * Math.PI * 2,
-        waveCount: 3 + (idx % 3),
-        hueOffset: idx * 0.15,
-        alpha: r.alpha,
-        thickness: r.thick,
-      });
-    });
-
-    refs.particles.current = filaments as any[];
-    refs.nebulaStars.current = plasmaRibbons as any[];
+  if (!refs.shockwaves.current) {
     refs.shockwaves.current = [];
   }
+  const shockwaves = refs.shockwaves.current as GravitationalShockwave[];
 
-  const filaments = refs.particles.current as unknown as SuperstringFilament[];
-  const plasmaRibbons = refs.nebulaStars.current as unknown as PlasmaRibbonLayer[];
-  const shockwaves = (refs.shockwaves.current || []) as GravitationalShockwave[];
-
-  // 低音重击生成引力波时空曲率等高线涟漪光膜
-  if (rawBass > 0.62 && rawBass - bass > 0.22 * burstSensitivity && shockwaves.length < 5) {
+  // 低音重击生成引力波时空曲率光膜
+  if (rawBass > 0.62 && rawBass - bass > 0.22 * burstSensitivity && shockwaves.length < 4) {
     shockwaves.push({
-      radius: 40 * singularityMass,
-      maxRadius: Math.max(sw, sh) * 0.68,
+      radius: 50 * singularityMass,
+      maxRadius: Math.max(sw, sh) * 0.72,
       alpha: 0.95,
-      speed: 14 + bass * 20,
-      lineWidth: 2.5 + bass * 3.0,
+      speed: 15 + bass * 22,
+      lineWidth: 2.2 + bass * 2.8,
     });
   }
 
-  // --- 3. 深邃暗黑深空背景与引力透镜空间雾化 ---
+  // --- 2. 深邃深空暗黑宇宙底色与引力透镜微光 ---
   ctx.save();
   ctx.fillStyle = "#010204";
   ctx.fillRect(0, 0, sw, sh);
 
   ctx.globalCompositeOperation = "screen";
   const maxDim = Math.max(sw, sh);
-  const bgGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxDim * 0.75);
-  bgGrd.addColorStop(0, `rgba(255, 175, 60, ${(0.07 + bass * 0.1) * chromaticAberration})`);
-  bgGrd.addColorStop(0.28, `rgba(220, 90, 25, ${0.04 + mid * 0.05})`);
-  bgGrd.addColorStop(0.55, `rgba(130, 45, 180, ${0.025 + mid * 0.03})`);
-  bgGrd.addColorStop(0.78, `rgba(35, 110, 220, ${0.02 + treble * 0.03})`);
+  const bgGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxDim * 0.8);
+  bgGrd.addColorStop(0, `rgba(255, 160, 45, ${(0.08 + bass * 0.12) * chromaticAberration})`);
+  bgGrd.addColorStop(0.25, `rgba(210, 75, 20, ${0.05 + mid * 0.06})`);
+  bgGrd.addColorStop(0.55, `rgba(110, 30, 150, ${0.03 + mid * 0.03})`);
+  bgGrd.addColorStop(0.8, `rgba(20, 80, 180, ${0.02 + treble * 0.03})`);
   bgGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = bgGrd;
   ctx.fillRect(0, 0, sw, sh);
   ctx.restore();
 
-  // --- 4. 3D CAMERA PROJECTION & MATRIX ROTATION ---
-  const fov = 680;
-  const pitch = 0.68 + Math.sin(t * 0.12) * 0.03; // 约 39° 倾角
-  const cosP = Math.cos(pitch);
-  const sinP = Math.sin(pitch);
-
-  const rot =
-    ((refs.bokeh.current && refs.bokeh.current[0]) || 0) +
-    (0.003 + energy * 0.008) * superstringTension;
-  if (!refs.bokeh.current) refs.bokeh.current = [];
-  refs.bokeh.current[0] = rot;
-  const cosR = Math.cos(rot);
-  const sinR = Math.sin(rot);
-
-  // --- 5. 引力波冲击光膜 ---
+  // --- 3. 引力波时空震颤光膜 ---
   if (shockwaves.length > 0) {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
@@ -295,310 +220,245 @@ export function drawSuperstringSingularity({
       const ringProgress = swItem.radius / swItem.maxRadius;
       const ringAlpha = swItem.alpha * (1 - ringProgress * 0.6);
 
-      ctx.strokeStyle = `rgba(255, 225, 150, ${ringAlpha * 0.85})`;
+      ctx.strokeStyle = `rgba(255, 220, 140, ${ringAlpha * 0.8})`;
       ctx.lineWidth = swItem.lineWidth;
       ctx.beginPath();
-      ctx.ellipse(cx, cy, swItem.radius, swItem.radius * cosP, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, swItem.radius, swItem.radius * 0.42, 0, 0, Math.PI * 2);
       ctx.stroke();
 
-      ctx.strokeStyle = `rgba(120, 180, 255, ${ringAlpha * 0.45})`;
+      ctx.strokeStyle = `rgba(80, 170, 255, ${ringAlpha * 0.4})`;
       ctx.lineWidth = swItem.lineWidth * 0.6;
       ctx.beginPath();
-      ctx.ellipse(cx, cy, swItem.radius * 0.94, swItem.radius * 0.94 * cosP, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, swItem.radius * 0.93, swItem.radius * 0.93 * 0.42, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
     ctx.restore();
   }
 
-  // --- 6. 爱因斯坦引力透镜弯曲双光拱 (Upper & Lower Gravitational Lensing Halos) ---
-  const lensingRadius = (78 + bass * 26) * singularityMass;
-  const lensingHeight = lensingRadius * 0.92;
+  // 基础物理尺度
+  const horizonRadius = (42 + bass * 18) * singularityMass; // 施瓦西半径
+  const diskTilt = 0.38; // 约 35° 倾角
+
+  // --- 4. 爱因斯坦引力透镜弯曲光环：上部主光环 (Upper Warped Accretion Halo) ---
+  // 被黑洞强大引力弯曲到黑洞上方的吸积盘背面光线
+  const upperRadiusX = (165 + bass * 45) * singularityMass;
+  const upperRadiusY = upperRadiusX * 0.92;
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  // (6.1) 上部弯曲引力透镜主光拱
-  const upperGrd = ctx.createRadialGradient(
+  // 上光环多层流体发光
+  const upperHaloGrd = ctx.createRadialGradient(
     cx,
-    cy - lensingHeight * 0.38,
-    lensingRadius * 0.32,
+    cy - upperRadiusY * 0.38,
+    horizonRadius * 0.7,
     cx,
-    cy - lensingHeight * 0.38,
-    lensingRadius * 1.65
+    cy - upperRadiusY * 0.38,
+    upperRadiusX * 1.55
   );
-  upperGrd.addColorStop(0, `rgba(255, 250, 235, ${(0.92 + bass * 0.15) * chromaticAberration})`);
-  upperGrd.addColorStop(0.25, `rgba(255, 180, 60, ${0.65 + mid * 0.3})`);
-  upperGrd.addColorStop(0.55, `rgba(220, 80, 25, ${0.35 + mid * 0.2})`);
-  upperGrd.addColorStop(0.82, "rgba(120, 40, 160, 0.12)");
-  upperGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
+  upperHaloGrd.addColorStop(
+    0,
+    `rgba(255, 255, 245, ${(0.96 + bass * 0.15) * chromaticAberration})`
+  );
+  upperHaloGrd.addColorStop(0.18, `rgba(255, 215, 110, ${0.85 + mid * 0.25})`);
+  upperHaloGrd.addColorStop(0.42, `rgba(255, 130, 35, ${0.55 + mid * 0.2})`);
+  upperHaloGrd.addColorStop(0.72, "rgba(180, 45, 10, 0.2)");
+  upperHaloGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
 
-  ctx.fillStyle = upperGrd;
+  ctx.fillStyle = upperHaloGrd;
   ctx.beginPath();
+  // 绘制饱满的上部弯曲光弧
   ctx.ellipse(
     cx,
-    cy - lensingHeight * 0.45,
-    lensingRadius * 1.42,
-    lensingHeight * 0.96,
+    cy - upperRadiusY * 0.42,
+    upperRadiusX * 1.28,
+    upperRadiusY * 0.98,
     0,
     Math.PI * 0.88,
     Math.PI * 2.12
   );
   ctx.fill();
 
-  // (6.2) 下部弯曲引力透镜副光拱
-  const lowerGrd = ctx.createRadialGradient(
-    cx,
-    cy + lensingHeight * 0.38,
-    lensingRadius * 0.32,
-    cx,
-    cy + lensingHeight * 0.38,
-    lensingRadius * 1.5
-  );
-  lowerGrd.addColorStop(0, `rgba(255, 240, 200, ${(0.72 + bass * 0.2) * chromaticAberration})`);
-  lowerGrd.addColorStop(0.32, `rgba(240, 140, 45, ${0.45 + mid * 0.25})`);
-  lowerGrd.addColorStop(0.65, `rgba(180, 50, 20, ${0.18 + mid * 0.15})`);
-  lowerGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-  ctx.fillStyle = lowerGrd;
+  // 上光环内缘白炽高光带 (Inner Hot Lensing Crest)
+  ctx.strokeStyle = "rgba(255, 250, 220, 0.95)";
+  ctx.lineWidth = 3.5 + bass * 2.5;
+  ctx.shadowColor = "#FFA834";
+  ctx.shadowBlur = 24 * coreGlow;
   ctx.beginPath();
   ctx.ellipse(
     cx,
-    cy + lensingHeight * 0.42,
-    lensingRadius * 1.32,
-    lensingHeight * 0.8,
+    cy - upperRadiusY * 0.42,
+    upperRadiusX * 0.96,
+    upperRadiusY * 0.78,
     0,
-    0,
-    Math.PI
+    Math.PI * 0.92,
+    Math.PI * 2.08
   );
+  ctx.stroke();
+
+  // --- 5. 爱因斯坦引力透镜弯曲光环：下部副光环 (Lower Warped Accretion Halo) ---
+  const lowerRadiusX = (145 + bass * 38) * singularityMass;
+  const lowerRadiusY = lowerRadiusX * 0.72;
+
+  const lowerHaloGrd = ctx.createRadialGradient(
+    cx,
+    cy + lowerRadiusY * 0.38,
+    horizonRadius * 0.65,
+    cx,
+    cy + lowerRadiusY * 0.38,
+    lowerRadiusX * 1.4
+  );
+  lowerHaloGrd.addColorStop(0, `rgba(255, 235, 180, ${(0.78 + bass * 0.2) * chromaticAberration})`);
+  lowerHaloGrd.addColorStop(0.25, `rgba(255, 150, 45, ${0.5 + mid * 0.2})`);
+  lowerHaloGrd.addColorStop(0.65, "rgba(180, 50, 15, 0.18)");
+  lowerHaloGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+  ctx.fillStyle = lowerHaloGrd;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + lowerRadiusY * 0.4, lowerRadiusX * 1.2, lowerRadiusY * 0.82, 0, 0, Math.PI);
   ctx.fill();
 
   ctx.restore();
 
-  // --- 7. 6 层连续流体等离子曲率吸积光幕 (Volumetric Continuous Fluid Plasma Ribbons) ---
+  // --- 6. 前景连续发光等离子吸积盘 (Volumetric Incandescent Foreground Accretion Disk) ---
+  // 横跨黑洞前方的炽热等离子体主盘，具有真实的多普勒相对论辐射增强（左亮白右暗红）
+  const diskOuterR = (480 + bass * 120 + mid * 80) * singularityMass;
+  const diskInnerR = horizonRadius * 1.28;
+
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
-  for (let layerIdx = 0; layerIdx < plasmaRibbons.length; layerIdx++) {
-    const ribbon = plasmaRibbons[layerIdx];
-    ribbon.phase += ribbon.speed * (1 + energy * 1.6 + bass * 1.2);
-
-    const rInner = ribbon.radiusInner * singularityMass;
-    const rOuter = ribbon.radiusOuter * singularityMass * (1 + bass * 0.18);
-    const segments = 48;
+  // 6.1 主吸积盘多层热流体渐变光幕 (Multi-layered Continuous Plasma Ribbons)
+  const layerCount = 6;
+  for (let l = 0; l < layerCount; l++) {
+    const layerFrac = l / (layerCount - 1);
+    const curInnerR = diskInnerR + (diskOuterR - diskInnerR) * (layerFrac * 0.55);
+    const curOuterR = curInnerR + (diskOuterR - diskInnerR) * 0.45;
+    const waveNoise = Math.sin(rot * 2 + l * 1.2 + t) * (8 + bass * 16);
 
     ctx.beginPath();
-    // 外边缘流体曲线
-    for (let s = 0; s <= segments; s++) {
-      const segAngle = (s / segments) * Math.PI * 2;
-      const wave = Math.sin(segAngle * ribbon.waveCount + ribbon.phase + t * 2) * (8 + bass * 16);
-      const curR = rOuter + wave;
+    ctx.ellipse(
+      cx,
+      cy,
+      curOuterR + waveNoise,
+      (curOuterR + waveNoise) * diskTilt,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.ellipse(
+      cx,
+      cy,
+      curInnerR - waveNoise * 0.5,
+      (curInnerR - waveNoise * 0.5) * diskTilt,
+      0,
+      0,
+      Math.PI * 2,
+      true
+    );
 
-      const pxRaw = Math.cos(segAngle) * curR;
-      const pyRaw = Math.sin(segAngle * 3 + ribbon.phase) * (6 + treble * 12);
-      const pzRaw = Math.sin(segAngle) * curR;
+    // 相对论多普勒渐变：左侧（迎面运动）极亮白蓝白，右侧（背向运动）深邃暗金赤红
+    const diskGrd = ctx.createLinearGradient(cx - curOuterR, cy, cx + curOuterR, cy);
+    diskGrd.addColorStop(
+      0,
+      `rgba(100, 210, 255, ${(0.85 - layerFrac * 0.35) * chromaticAberration})`
+    );
+    diskGrd.addColorStop(
+      0.28,
+      `rgba(255, 255, 245, ${(0.98 - layerFrac * 0.3) * chromaticAberration})`
+    );
+    diskGrd.addColorStop(0.48, `rgba(255, 210, 95, ${0.85 - layerFrac * 0.35})`);
+    diskGrd.addColorStop(0.72, `rgba(240, 110, 30, ${0.55 - layerFrac * 0.3})`);
+    diskGrd.addColorStop(1, `rgba(160, 30, 10, ${0.25 - layerFrac * 0.2})`);
 
-      const rx = pxRaw * cosR - pzRaw * sinR;
-      const rz = pxRaw * sinR + pzRaw * cosR;
-      const ry = pyRaw * cosP - rz * sinP;
-      const finalZ = pyRaw * sinP + rz * cosP + fov;
-
-      if (finalZ <= 10) continue;
-      const scale = fov / finalZ;
-      const screenX = cx + rx * scale;
-      const screenY = cy + ry * scale;
-
-      if (s === 0) {
-        ctx.moveTo(screenX, screenY);
-      } else {
-        ctx.lineTo(screenX, screenY);
-      }
-    }
-
-    // 内边缘闭合
-    for (let s = segments; s >= 0; s--) {
-      const segAngle = (s / segments) * Math.PI * 2;
-      const wave = Math.sin(segAngle * ribbon.waveCount + ribbon.phase * 1.3) * (4 + bass * 8);
-      const curR = rInner + wave;
-
-      const pxRaw = Math.cos(segAngle) * curR;
-      const pyRaw = Math.sin(segAngle * 2 + ribbon.phase) * (4 + treble * 8);
-      const pzRaw = Math.sin(segAngle) * curR;
-
-      const rx = pxRaw * cosR - pzRaw * sinR;
-      const rz = pxRaw * sinR + pzRaw * cosR;
-      const ry = pyRaw * cosP - rz * sinP;
-      const finalZ = pyRaw * sinP + rz * cosP + fov;
-
-      if (finalZ <= 10) continue;
-      const scale = fov / finalZ;
-      const screenX = cx + rx * scale;
-      const screenY = cy + ry * scale;
-
-      ctx.lineTo(screenX, screenY);
-    }
-    ctx.closePath();
-
-    const ribbonGrd = ctx.createLinearGradient(cx - rOuter * 0.8, cy, cx + rOuter * 0.8, cy);
-    ribbonGrd.addColorStop(0, `rgba(70, 200, 255, ${ribbon.alpha * 0.85 * chromaticAberration})`);
-    ribbonGrd.addColorStop(0.35, `rgba(255, 240, 200, ${ribbon.alpha * 0.95})`);
-    ribbonGrd.addColorStop(0.68, `rgba(255, 160, 45, ${ribbon.alpha * 0.75})`);
-    ribbonGrd.addColorStop(1, `rgba(220, 60, 20, ${ribbon.alpha * 0.35})`);
-
-    ctx.fillStyle = ribbonGrd;
+    ctx.fillStyle = diskGrd;
     ctx.fill();
   }
-  ctx.restore();
 
-  // --- 8. 64 根多维连续平滑空间曲率超弦 (Harmonic Continuous Superstring Strands - 0 粒子) ---
-  const waveAmp = (6 + bass * 22) * singularityMass;
-  const vertAmp = (8 + treble * 26) * singularityMass;
-  const speedMult = (1 + energy * 2.0 + bass * 1.5) * superstringTension;
+  // 6.2 吸积盘内缘最稳定轨道（ISCO）白炽高温等离子湍流光环
+  const iscoRadius = diskInnerR * 1.08;
+  ctx.strokeStyle = "rgba(255, 255, 250, 0.98)";
+  ctx.lineWidth = 4.2 + bass * 3.0;
+  ctx.shadowColor = "#FFE080";
+  ctx.shadowBlur = 32 * coreGlow;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, iscoRadius, iscoRadius * diskTilt, 0, 0, Math.PI * 2);
+  ctx.stroke();
 
-  ctx.save();
-  ctx.globalCompositeOperation = "screen";
-
-  for (let fIdx = 0; fIdx < filaments.length; fIdx++) {
-    const filament = filaments[fIdx];
-    filament.baseAngle += filament.rotationSpeed * speedMult;
-
-    const curveSteps = 32;
-    const points: { x: number; y: number; scale: number; alpha: number }[] = [];
-
-    for (let s = 0; s <= curveSteps; s++) {
-      const progress = s / curveSteps;
-      const curRadius = (filament.innerRadius + progress * filament.length) * singularityMass;
-
-      const spiralAngle =
-        filament.baseAngle +
-        Math.log(curRadius * 0.04 + 1) * filament.spiralTightness +
-        Math.sin(progress * filament.frequency * Math.PI * 2 + t * 3 + filament.phase) *
-          (waveAmp / Math.max(30, curRadius));
-
-      const pxRaw = Math.cos(spiralAngle) * curRadius;
-      const pyRaw =
-        Math.sin(progress * Math.PI * 3 + t * 2.5 + filament.phase) *
-        vertAmp *
-        (1 - progress * 0.3);
-      const pzRaw = Math.sin(spiralAngle) * curRadius;
-
-      const rx = pxRaw * cosR - pzRaw * sinR;
-      const rz = pxRaw * sinR + pzRaw * cosR;
-      const ry = pyRaw * cosP - rz * sinP;
-      const finalZ = pyRaw * sinP + rz * cosP + fov;
-
-      if (finalZ <= 10) continue;
-      const scale = fov / finalZ;
-      const screenX = cx + rx * scale;
-      const screenY = cy + ry * scale;
-
-      const alpha =
-        filament.alpha * (1 - progress * 0.55) * scale * (0.7 + mid * 0.6) * chromaticAberration;
-
-      points.push({ x: screenX, y: screenY, scale, alpha });
-    }
-
-    if (points.length < 3) continue;
-
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-
-    for (let i = 1; i < points.length - 1; i++) {
-      const xc = (points[i].x + points[i + 1].x) / 2;
-      const yc = (points[i].y + points[i + 1].y) / 2;
-      ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
-    }
-    ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
-
-    const startPt = points[0];
-    const endPt = points[points.length - 1];
-    const strokeGrd = ctx.createLinearGradient(startPt.x, startPt.y, endPt.x, endPt.y);
-
-    if (filament.colorType === 0) {
-      strokeGrd.addColorStop(0, "rgba(255, 255, 255, 0.95)");
-      strokeGrd.addColorStop(0.3, "rgba(100, 220, 255, 0.85)");
-      strokeGrd.addColorStop(0.7, "rgba(60, 140, 240, 0.45)");
-      strokeGrd.addColorStop(1, "rgba(40, 80, 200, 0)");
-    } else if (filament.colorType === 1) {
-      strokeGrd.addColorStop(0, "rgba(255, 250, 220, 0.95)");
-      strokeGrd.addColorStop(0.35, "rgba(255, 190, 70, 0.85)");
-      strokeGrd.addColorStop(0.75, "rgba(230, 95, 30, 0.4)");
-      strokeGrd.addColorStop(1, "rgba(160, 40, 10, 0)");
-    } else if (filament.colorType === 2) {
-      strokeGrd.addColorStop(0, "rgba(255, 255, 255, 0.9)");
-      strokeGrd.addColorStop(0.4, "rgba(120, 240, 220, 0.75)");
-      strokeGrd.addColorStop(0.8, "rgba(80, 160, 220, 0.35)");
-      strokeGrd.addColorStop(1, "rgba(30, 60, 160, 0)");
-    } else {
-      strokeGrd.addColorStop(0, "rgba(255, 235, 180, 0.9)");
-      strokeGrd.addColorStop(0.35, "rgba(255, 140, 45, 0.75)");
-      strokeGrd.addColorStop(0.75, "rgba(190, 50, 80, 0.35)");
-      strokeGrd.addColorStop(1, "rgba(120, 20, 60, 0)");
-    }
-
-    ctx.strokeStyle = strokeGrd;
-    ctx.lineWidth = Math.max(0.8, filament.lineWidth * (1 + bass * 0.6));
-    ctx.stroke();
-  }
-
-  ctx.restore();
-
-  // --- 9. 纯黑施瓦西视界暗核与光子球发光薄环 ---
-  const horizonRadius = (36 + bass * 16) * singularityMass;
-
-  // (9.1) 光子球外晕大氛围光
+  // 6.3 宽幅等离子柔光外晕
   if (cachedCoreHaloSprite) {
-    ctx.save();
-    ctx.globalCompositeOperation = "screen";
-    const haloDiameter = horizonRadius * 4.2 * coreGlow;
-    ctx.globalAlpha = Math.min(1.0, 0.8 + bass * 0.2);
-    ctx.drawImage(
-      cachedCoreHaloSprite,
-      cx - haloDiameter / 2,
-      cy - haloDiameter / 2,
-      haloDiameter,
-      haloDiameter
-    );
-    ctx.restore();
+    const haloW = diskOuterR * 2.2;
+    const haloH = haloW * diskTilt * 1.4;
+    ctx.globalAlpha = Math.min(1.0, 0.75 + bass * 0.25);
+    ctx.drawImage(cachedCoreHaloSprite, cx - haloW / 2, cy - haloH / 2, haloW, haloH);
   }
 
-  // (9.2) 纯粹深邃黑洞暗核
-  ctx.save();
-  const voidGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, horizonRadius);
-  voidGrd.addColorStop(0, "rgba(0, 0, 0, 1.0)");
-  voidGrd.addColorStop(0.82, "rgba(1, 2, 4, 1.0)");
-  voidGrd.addColorStop(0.96, "rgba(15, 10, 8, 0.85)");
-  voidGrd.addColorStop(1, "rgba(255, 210, 120, 0)");
+  ctx.restore();
 
-  ctx.fillStyle = voidGrd;
+  // --- 7. 施瓦西绝对纯黑事件视界暗核 (Pure Absolute Pitch-Black Event Horizon Void) ---
+  // 黑洞中心彻底吞噬一切光线的引力黑体
+  ctx.save();
+  ctx.fillStyle = "#000000";
   ctx.beginPath();
   ctx.arc(cx, cy, horizonRadius, 0, Math.PI * 2);
   ctx.fill();
 
-  // (9.3) 极细高光光子环切线
-  ctx.strokeStyle = "rgba(255, 250, 240, 0.98)";
-  ctx.lineWidth = 1.8 + bass * 1.8;
-  ctx.shadowColor = "#FFC870";
-  ctx.shadowBlur = 20 * coreGlow;
+  // 视界边缘微弱的引力色散吸收边缘
+  const voidGrd = ctx.createRadialGradient(
+    cx,
+    cy,
+    horizonRadius * 0.85,
+    cx,
+    cy,
+    horizonRadius * 1.06
+  );
+  voidGrd.addColorStop(0, "rgba(0, 0, 0, 1.0)");
+  voidGrd.addColorStop(0.7, "rgba(3, 2, 5, 0.95)");
+  voidGrd.addColorStop(1, "rgba(255, 180, 70, 0)");
+  ctx.fillStyle = voidGrd;
   ctx.beginPath();
-  ctx.arc(cx, cy, horizonRadius * 0.97, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.strokeStyle = "rgba(100, 210, 255, 0.65)";
-  ctx.lineWidth = 1.0;
-  ctx.shadowColor = "#40B4FF";
-  ctx.shadowBlur = 12 * coreGlow;
-  ctx.beginPath();
-  ctx.arc(cx, cy, horizonRadius * 1.02, 0, Math.PI * 2);
-  ctx.stroke();
+  ctx.arc(cx, cy, horizonRadius * 1.06, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 
-  // --- 10. 电影级变形宽银幕横向拉丝光晕 ---
+  // --- 8. 极细高光光子球层 (Razor-sharp Photon Sphere Ring) ---
+  // 光子在黑洞临界轨道无数次自转形成的高能极光光子环
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+
+  // 主光子白金切线环 (1.8px)
+  ctx.strokeStyle = "rgba(255, 255, 255, 1.0)";
+  ctx.lineWidth = 1.8 + bass * 1.6;
+  ctx.shadowColor = "#FFD275";
+  ctx.shadowBlur = 22 * coreGlow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, horizonRadius * 0.99, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 次级多普勒蓝移微光
+  ctx.strokeStyle = "rgba(120, 220, 255, 0.7)";
+  ctx.lineWidth = 1.0;
+  ctx.shadowColor = "#38B6FF";
+  ctx.shadowBlur = 14 * coreGlow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, horizonRadius * 1.03, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 光子球层贴图高亮外晕
+  if (cachedPhotonRingSprite) {
+    const ringDiam = horizonRadius * 3.8 * coreGlow;
+    ctx.globalAlpha = Math.min(1.0, 0.85 + bass * 0.15);
+    ctx.drawImage(cachedPhotonRingSprite, cx - ringDiam / 2, cy - ringDiam / 2, ringDiam, ringDiam);
+  }
+  ctx.restore();
+
+  // --- 9. 电影级宽银幕横向变形拉丝耀斑 (Anamorphic Panavision Lens Flare) ---
   if (cachedAnamorphicSprite) {
     ctx.save();
     ctx.globalCompositeOperation = "screen";
-    const flareWidth = Math.min(sw * 1.25, (640 + bass * 320 + energy * 220) * coreGlow);
-    const flareHeight = (30 + bass * 26) * coreGlow;
-    ctx.globalAlpha = Math.min(1.0, (0.65 + bass * 0.35) * chromaticAberration);
+    const flareWidth = Math.min(sw * 1.35, (720 + bass * 380 + energy * 260) * coreGlow);
+    const flareHeight = (32 + bass * 28) * coreGlow;
+    ctx.globalAlpha = Math.min(1.0, (0.7 + bass * 0.3) * chromaticAberration);
     ctx.drawImage(
       cachedAnamorphicSprite,
       cx - flareWidth / 2,
