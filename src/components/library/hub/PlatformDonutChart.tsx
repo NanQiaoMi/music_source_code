@@ -22,11 +22,11 @@ export const PlatformDonutChart: React.FC<PlatformDonutChartProps> = ({
     { id: "kugou", name: "酷狗音乐", count: stats.kugou, color: "#06b6d4", bgClass: "bg-cyan-500" },
     { id: "kuwo", name: "酷我音乐", count: stats.kuwo, color: "#f59e0b", bgClass: "bg-amber-500" },
     { id: "qishui", name: "汽水音乐", count: stats.qishui, color: "#38bdf8", bgClass: "bg-sky-400" },
-    { id: "local", name: "本地音乐", count: stats.local, color: "#a855f7", bgClass: "bg-purple-500" },
+    { id: "local", name: "本地音乐", count: stats.local, color: "#e2e8f0", bgClass: "bg-slate-200" },
   ].filter((s) => s.count > 0);
 
   const validSegments = segments.length > 0 ? segments : [
-    { id: "local", name: "本地/导入", count: total, color: "#a855f7", bgClass: "bg-purple-500" },
+    { id: "local", name: "本地/导入", count: total, color: "#e2e8f0", bgClass: "bg-slate-200" },
   ];
 
   // SVG circle calculation
@@ -97,7 +97,7 @@ export const PlatformDonutChart: React.FC<PlatformDonutChartProps> = ({
               <span className="text-xs font-bold text-white truncate max-w-[90px]">
                 {activeSegment.name}
               </span>
-              <span className="text-[13px] font-black text-cyan-300 font-mono">
+              <span className="text-[13px] font-black text-white font-mono">
                 {activeSegment.count} 首
               </span>
               <span className="text-[10px] text-white/50 font-mono">

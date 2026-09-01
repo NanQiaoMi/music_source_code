@@ -45,13 +45,13 @@ type SortOrder = "asc" | "desc";
 type QualityFilter = "all" | "24bit" | "flac";
 
 const SOURCE_TABS: { id: SearchSourceTab; label: string; symbol: string; dotColor: string; activeBorder: string; badgeStyle: string }[] = [
-  { id: "all", label: "全网聚合", symbol: "✦", dotColor: "bg-cyan-400", activeBorder: "border-cyan-400/50 shadow-cyan-500/10", badgeStyle: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" },
-  { id: "kuwo", label: "酷我音乐", symbol: "◈", dotColor: "bg-emerald-400", activeBorder: "border-emerald-400/50 shadow-emerald-500/10", badgeStyle: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" },
-  { id: "kugou", label: "酷狗音乐", symbol: "◆", dotColor: "bg-blue-400", activeBorder: "border-blue-400/50 shadow-blue-500/10", badgeStyle: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
-  { id: "qq", label: "QQ 音乐", symbol: "✧", dotColor: "bg-teal-400", activeBorder: "border-teal-400/50 shadow-teal-500/10", badgeStyle: "bg-teal-500/20 text-teal-300 border-teal-500/30" },
-  { id: "netease", label: "网易云", symbol: "●", dotColor: "bg-rose-400", activeBorder: "border-rose-400/50 shadow-rose-500/10", badgeStyle: "bg-rose-500/20 text-rose-300 border-rose-500/30" },
-  { id: "migu", label: "咪咕音乐", symbol: "◉", dotColor: "bg-amber-400", activeBorder: "border-amber-400/50 shadow-amber-500/10", badgeStyle: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
-  { id: "lx_custom", label: "落雪母带", symbol: "⚡", dotColor: "bg-purple-400", activeBorder: "border-purple-400/50 shadow-purple-500/10", badgeStyle: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
+  { id: "all", label: "全网聚合", symbol: "✦", dotColor: "bg-white", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
+  { id: "kuwo", label: "酷我音乐", symbol: "◈", dotColor: "bg-emerald-400", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
+  { id: "kugou", label: "酷狗音乐", symbol: "◆", dotColor: "bg-blue-400", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
+  { id: "qq", label: "QQ 音乐", symbol: "✧", dotColor: "bg-teal-400", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
+  { id: "netease", label: "网易云", symbol: "●", dotColor: "bg-rose-400", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
+  { id: "migu", label: "咪咕音乐", symbol: "◉", dotColor: "bg-amber-400", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
+  { id: "lx_custom", label: "落雪母带", symbol: "⚡", dotColor: "bg-purple-400", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
 ];
 
 const HOT_SEARCH_TAGS = [
@@ -500,14 +500,14 @@ export const LxMusicSearchTab: React.FC = () => {
   const getQualityBadge = (song: Song) => {
     if (song.title.includes("24bit") || song.format === "flac") {
       return (
-        <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.15)] flex items-center gap-1 font-medium">
+        <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-white/[0.12] text-white/90 border border-white/[0.20] shadow-sm flex items-center gap-1 font-medium">
           <span>💎</span>
           <span>高解析</span>
         </span>
       );
     }
     return (
-      <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)] flex items-center gap-1 font-medium">
+      <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-white/[0.08] text-white/80 border border-white/[0.12] flex items-center gap-1 font-medium">
         <span>✦</span>
         <span>无损</span>
       </span>
@@ -517,13 +517,13 @@ export const LxMusicSearchTab: React.FC = () => {
   return (
     <div className="relative w-full h-full flex flex-col gap-5 select-none font-sans">
       {/* ── 顶部控制中枢 Bento ── */}
-      <div className="p-5 md:p-6 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] flex flex-col gap-4">
+      <div className="p-5 md:p-6 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col gap-4">
         {/* 第一行：搜索框 + 模式胶囊切换 + 音质过滤与播放全部 */}
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
           {/* 搜索框 */}
           <div className="relative flex-1 w-full flex items-center">
-            <div className="relative w-full flex items-center bg-white/[0.06] hover:bg-white/[0.09] focus-within:bg-white/[0.12] border border-white/15 focus-within:border-emerald-400/70 rounded-2xl px-4 py-2.5 transition-all shadow-inner group">
-              <Search className="w-4 h-4 text-emerald-400 shrink-0 mr-3 group-focus-within:scale-110 transition-transform" />
+            <div className="relative w-full flex items-center bg-white/[0.04] hover:bg-white/[0.07] focus-within:bg-white/[0.09] border border-white/[0.10] focus-within:border-white/40 focus-within:shadow-[0_0_24px_rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 transition-all shadow-inner group">
+              <Search className="w-4 h-4 text-white/70 shrink-0 mr-3 group-focus-within:scale-110 transition-transform" />
               <input
                 type="text"
                 value={keyword}
@@ -551,14 +551,14 @@ export const LxMusicSearchTab: React.FC = () => {
                 type="button"
                 onClick={triggerSearchOrPromptLogin}
                 disabled={isSearching}
-                className={`ml-3 px-5 py-1.5 rounded-xl text-white text-xs font-bold transition-all shadow-lg flex items-center gap-1.5 cursor-pointer ${
+                className={`ml-3 px-5 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 ${
                   isCurrentTabLocked
-                    ? "bg-amber-500/80 hover:bg-amber-500 text-white shadow-amber-500/20"
-                    : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 shadow-emerald-500/25 active:scale-95 disabled:opacity-50"
+                    ? "bg-white/[0.15] text-white border border-white/20"
+                    : "bg-white text-black font-semibold hover:bg-white/90 shadow-[0_2px_12px_rgba(255,255,255,0.25)] disabled:opacity-50"
                 }`}
               >
                 {isSearching ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
                 ) : isCurrentTabLocked ? (
                   <>
                     <Lock className="w-3 h-3" />
@@ -574,7 +574,7 @@ export const LxMusicSearchTab: React.FC = () => {
           {/* 右侧功能组：解析通道模式 & 歌曲/歌单切换 & 音质过滤 */}
           <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-between lg:justify-end shrink-0">
             {/* 🚀 解析链路通道选择器：全网智能聚合 vs 纯落雪音源 */}
-            <div className="flex items-center bg-black/40 border border-white/10 p-1 rounded-2xl">
+            <div className="flex items-center bg-black/40 border border-white/[0.08] p-1 rounded-2xl">
               <button
                 type="button"
                 onClick={() => {
@@ -583,7 +583,7 @@ export const LxMusicSearchTab: React.FC = () => {
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
                   resolutionMode === "hybrid_racing"
-                    ? "bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 shadow-md shadow-cyan-500/20"
+                    ? "bg-white/[0.14] text-white border border-white/[0.20] shadow-sm"
                     : "text-white/50 hover:text-white"
                 }`}
                 title="通道一：本地母带直连 + 落雪自定义脚本并发竞速抢答，速度最快，自动容灾兜底"
@@ -599,7 +599,7 @@ export const LxMusicSearchTab: React.FC = () => {
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
                   resolutionMode === "lx_only"
-                    ? "bg-purple-500/30 text-purple-300 border border-purple-400/40 shadow-md shadow-purple-500/20"
+                    ? "bg-white/[0.14] text-white border border-white/[0.20] shadow-sm"
                     : "text-white/50 hover:text-white"
                 }`}
                 title="通道二：100% 仅调用已启用的落雪自定义音源脚本解析，免 VIP 验证，纯净无外部依赖"
@@ -610,13 +610,13 @@ export const LxMusicSearchTab: React.FC = () => {
             </div>
 
             {/* 歌曲 / 歌单模式切换 */}
-            <div className="flex items-center bg-black/40 border border-white/10 p-1 rounded-2xl">
+            <div className="flex items-center bg-black/40 border border-white/[0.08] p-1 rounded-2xl">
               <button
                 type="button"
                 onClick={() => handleModeChange("songs")}
                 className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   searchMode === "songs"
-                    ? "bg-gradient-to-r from-emerald-500/90 to-teal-500/90 text-white shadow-md shadow-emerald-500/20"
+                    ? "bg-white/[0.14] text-white font-bold border border-white/[0.20] shadow-sm"
                     : "text-white/60 hover:text-white"
                 }`}
               >
@@ -630,7 +630,7 @@ export const LxMusicSearchTab: React.FC = () => {
                 onClick={() => handleModeChange("playlists")}
                 className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   searchMode === "playlists"
-                    ? "bg-gradient-to-r from-emerald-500/90 to-teal-500/90 text-white shadow-md shadow-emerald-500/20"
+                    ? "bg-white/[0.14] text-white font-bold border border-white/[0.20] shadow-sm"
                     : "text-white/60 hover:text-white"
                 }`}
               >
@@ -644,14 +644,14 @@ export const LxMusicSearchTab: React.FC = () => {
             {/* 音质过滤 & 播放全部 */}
             {searchMode === "songs" && (
               <div className="flex items-center gap-2">
-                <div className="flex items-center bg-black/30 border border-white/10 rounded-2xl p-1 text-xs text-white/60">
+                <div className="flex items-center bg-black/30 border border-white/[0.08] rounded-2xl p-1 text-xs text-white/60">
                   {(["all", "24bit", "flac"] as QualityFilter[]).map((q) => (
                     <button
                       key={q}
                       type="button"
                       onClick={() => setQualityFilter(q)}
                       className={`px-3 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                        qualityFilter === q ? "bg-white/15 text-white shadow-sm" : "hover:text-white"
+                        qualityFilter === q ? "bg-white/[0.14] text-white font-semibold shadow-sm" : "hover:text-white"
                       }`}
                     >
                       {q === "all" ? "全部" : q === "24bit" ? "💎 高解析" : "✦ 无损"}
@@ -663,9 +663,9 @@ export const LxMusicSearchTab: React.FC = () => {
                   type="button"
                   onClick={handlePlayAll}
                   disabled={processedSongs.length === 0}
-                  className="px-4 py-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 shadow-sm"
+                  className="px-4 py-2 rounded-2xl bg-white text-black hover:bg-white/90 text-xs font-semibold transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 shadow-[0_2px_12px_rgba(255,255,255,0.25)]"
                 >
-                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <Play className="w-3.5 h-3.5 fill-black" />
                   播放全部
                 </button>
               </div>
@@ -687,16 +687,16 @@ export const LxMusicSearchTab: React.FC = () => {
                   onClick={() => handleTabChange(tab.id)}
                   className={`px-3.5 py-1.5 rounded-2xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 border ${
                     isActive
-                      ? `bg-white/15 text-white ${tab.activeBorder} shadow-md`
+                      ? "bg-white/[0.14] text-white border-white/[0.22] shadow-sm"
                       : isUsable
-                      ? "bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/[0.08] border-white/10"
-                      : "bg-white/[0.02] text-white/40 hover:text-white/70 hover:bg-white/[0.05] border-white/5 opacity-75"
+                      ? "bg-white/[0.04] text-white/70 hover:text-white hover:bg-white/[0.08] border-white/[0.08]"
+                      : "bg-white/[0.02] text-white/40 hover:text-white/60 hover:bg-white/[0.05] border-white/[0.05] opacity-75"
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${isUsable ? tab.dotColor : "bg-zinc-500"}`} />
+                  <span className={`w-2 h-2 rounded-full ${isUsable ? tab.dotColor : "bg-white/30"}`} />
                   <span>{tab.label}</span>
-                  {!isUsable && <Lock className="w-3 h-3 text-amber-400/90" />}
-                  <span className="text-[11px] opacity-80 leading-none">
+                  {!isUsable && <Lock className="w-3 h-3 text-white/50" />}
+                  <span className="text-[11px] opacity-70 leading-none">
                     {tab.symbol}
                   </span>
                 </button>
@@ -707,18 +707,18 @@ export const LxMusicSearchTab: React.FC = () => {
             <button
               type="button"
               onClick={() => openManagementModal("lx_scripts")}
-              className="px-3 py-1.5 rounded-2xl bg-white/[0.04] hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ml-1"
+              className="px-3 py-1.5 rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.10] text-white/80 hover:text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ml-1"
               title="管理自定义落雪音源与配置多音源优先级"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-400" />
+              <SlidersHorizontal className="w-3.5 h-3.5 text-white/70" />
               <span>音源管理</span>
             </button>
           </div>
 
           {/* 热门搜索标签 */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar text-xs text-white/40 shrink-0">
-            <span className="shrink-0 flex items-center gap-1 text-xs font-semibold text-amber-400/90">
-              <Flame className="w-3.5 h-3.5 text-amber-400" /> 热搜:
+            <span className="shrink-0 flex items-center gap-1 text-xs font-semibold text-white/60">
+              <Flame className="w-3.5 h-3.5 text-white/60" /> 热搜:
             </span>
             {HOT_SEARCH_TAGS.map((tag) => (
               <button
@@ -732,7 +732,7 @@ export const LxMusicSearchTab: React.FC = () => {
                   }
                   handleSearch(tag);
                 }}
-                className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-white/10 text-white/60 hover:text-white text-xs transition-colors shrink-0 cursor-pointer"
+                className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.06] hover:border-white/[0.15] text-white/70 hover:text-white text-xs transition-all shrink-0 cursor-pointer"
               >
                 {tag}
               </button>
@@ -742,9 +742,9 @@ export const LxMusicSearchTab: React.FC = () => {
 
         {/* 当选择「落雪母带」Tab 时，展示已安装的特供音源二级切换器 */}
         {activeTab === "lx_custom" && (
-          <div className="flex items-center gap-2 pt-2 border-t border-purple-500/20 text-xs">
-            <span className="text-purple-300 font-semibold flex items-center gap-1 shrink-0">
-              <Sparkles className="w-3.5 h-3.5 text-purple-400" /> 当前可用特供脚本:
+          <div className="flex items-center gap-2 pt-2 border-t border-white/[0.08] text-xs">
+            <span className="text-white/80 font-semibold flex items-center gap-1 shrink-0">
+              <Sparkles className="w-3.5 h-3.5 text-white/70" /> 当前可用特供脚本:
             </span>
             <div className="flex flex-wrap items-center gap-1.5">
               {lxScripts
@@ -758,15 +758,14 @@ export const LxMusicSearchTab: React.FC = () => {
                       onClick={() => {
                         setSelectedScriptId(script.id);
                         handleSearch(keyword, "lx_custom", searchMode);
-                        showToast(`已切换至音源: ${script.name}`);
                       }}
-                      className={`px-3 py-1 rounded-xl text-xs font-medium transition-all border ${
+                      className={`px-2.5 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 border ${
                         isSelected
-                          ? "bg-purple-500/25 text-purple-200 border-purple-400/50 shadow-md shadow-purple-500/20 font-bold"
-                          : "bg-white/5 text-white/60 hover:text-white border-white/10"
+                          ? "bg-white/[0.14] text-white border-white/[0.22] shadow-sm"
+                          : "bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/[0.08] border-white/[0.08]"
                       }`}
                     >
-                      {script.name}
+                      <span>{script.name}</span>
                     </button>
                   );
                 })}
@@ -787,7 +786,7 @@ export const LxMusicSearchTab: React.FC = () => {
           processedSongs.length === 0 ? (
             isCurrentTabLocked ? (
               <div className="h-96 flex flex-col items-center justify-center text-center p-8 space-y-4">
-                <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-300 shadow-lg shadow-amber-500/5">
+                <div className="w-16 h-16 rounded-3xl bg-white/[0.06] border border-white/[0.12] flex items-center justify-center text-white/80 shadow-lg">
                   <Lock className="w-8 h-8" />
                 </div>
                 <div className="space-y-1.5 max-w-md">
@@ -818,7 +817,7 @@ export const LxMusicSearchTab: React.FC = () => {
                       useUserAccountStore.getState().setIsAccountModalOpen(true);
                     }
                   }}
-                  className="px-6 py-2.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold tracking-tight shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+                  className="px-6 py-2.5 rounded-full bg-white text-black hover:bg-white/90 text-xs font-semibold tracking-tight shadow-[0_2px_12px_rgba(255,255,255,0.25)] flex items-center gap-2 cursor-pointer transition-all active:scale-95"
                 >
                   {activeTab === "lx_custom" ? (
                     <>
@@ -842,12 +841,12 @@ export const LxMusicSearchTab: React.FC = () => {
           ) : (
             <div className="w-full flex-1 overflow-y-auto custom-scrollbar flex flex-col">
               {/* 表头 */}
-              <div className="sticky top-0 bg-[#0c0e17]/95 backdrop-blur-2xl z-20 border-b border-white/10 text-white/50 text-xs font-semibold px-4 py-3 flex items-center select-none">
+              <div className="sticky top-0 bg-[#090a0f]/95 backdrop-blur-2xl z-20 border-b border-white/[0.08] text-white/50 text-xs font-semibold px-4 py-3 flex items-center select-none">
                 {/* 勾选框 & 序号 */}
                 <div className="w-16 shrink-0 flex items-center justify-center gap-2">
                   <button type="button" onClick={handleSelectAll} className="hover:text-white cursor-pointer">
                     {selectedIds.size === processedSongs.length && processedSongs.length > 0 ? (
-                      <CheckSquare className="w-4 h-4 text-emerald-400" />
+                      <CheckSquare className="w-4 h-4 text-white" />
                     ) : (
                       <Square className="w-4 h-4 text-white/30" />
                     )}
@@ -859,7 +858,6 @@ export const LxMusicSearchTab: React.FC = () => {
                     #
                   </span>
                 </div>
-
 
                 {/* 歌曲名 */}
                 <div
@@ -915,8 +913,8 @@ export const LxMusicSearchTab: React.FC = () => {
                       onContextMenu={(e) => handleContextMenu(e, song)}
                       className={`group flex items-center px-2 py-3 rounded-2xl transition-all cursor-pointer select-none ${
                         isSelected
-                          ? "bg-emerald-500/15 border border-emerald-500/30"
-                          : "hover:bg-white/[0.06] border border-transparent"
+                          ? "bg-white/[0.12] border border-white/[0.20]"
+                          : "hover:bg-white/[0.05] border border-transparent"
                       }`}
                     >
                       {/* 勾选框 & 序号 */}
@@ -930,7 +928,7 @@ export const LxMusicSearchTab: React.FC = () => {
                           className="text-white/40 hover:text-white cursor-pointer"
                         >
                           {isSelected ? (
-                            <CheckSquare className="w-4 h-4 text-emerald-400" />
+                            <CheckSquare className="w-4 h-4 text-white" />
                           ) : (
                             <Square className="w-4 h-4 text-white/30" />
                           )}
@@ -949,7 +947,7 @@ export const LxMusicSearchTab: React.FC = () => {
                           {getQualityBadge(song)}
                           {getSourceBadge(song.source)}
                           {isDownloaded && (
-                            <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                            <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded-md bg-white/[0.08] text-white/80 border border-white/[0.12]">
                               已离线
                             </span>
                           )}
@@ -965,7 +963,7 @@ export const LxMusicSearchTab: React.FC = () => {
                             setKeyword(song.artist);
                             handleSearch(song.artist);
                           }}
-                          className="text-xs text-white/60 hover:text-emerald-400 truncate hover:underline transition-colors text-left"
+                          className="text-xs text-white/60 hover:text-white truncate hover:underline transition-colors text-left"
                         >
                           {song.artist}
                         </button>
@@ -990,7 +988,7 @@ export const LxMusicSearchTab: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handlePlaySingle(song)}
-                            className="w-8 h-8 rounded-xl bg-white/10 hover:bg-emerald-500 hover:text-white flex items-center justify-center text-white/80 transition-all active:scale-90 shadow-sm"
+                            className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white hover:text-black flex items-center justify-center text-white/80 transition-all active:scale-90 shadow-sm"
                             title="立即播放"
                           >
                             <Play className="w-3.5 h-3.5 fill-current" />

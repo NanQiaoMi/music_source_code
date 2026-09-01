@@ -144,7 +144,7 @@ export const CloudAssetsTab: React.FC = () => {
         <div>
           <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
             多平台云端曲库与账号资产
-            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-white/[0.08] text-white/80 border border-white/[0.15]">
               CLOUD SYNC
             </span>
           </h3>
@@ -158,16 +158,16 @@ export const CloudAssetsTab: React.FC = () => {
             type="button"
             onClick={handleSyncAllCloud}
             disabled={isSyncing}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold border border-white/15 transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white/[0.08] hover:bg-white/[0.16] text-white text-xs font-semibold border border-white/[0.12] transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-emerald-400" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-white/90" : ""}`} />
             <span>{isSyncing ? "全量同步中..." : "一键同步全部云端歌单"}</span>
           </button>
 
           <button
             type="button"
             onClick={() => openManagementModal()}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-semibold border border-emerald-500/30 transition-all active:scale-95 cursor-pointer shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white text-black font-semibold hover:bg-white/90 text-xs transition-all active:scale-95 cursor-pointer shadow-[0_2px_12px_rgba(255,255,255,0.25)]"
           >
             <KeyRound className="w-3.5 h-3.5" />
             <span>账号与鉴权管理</span>

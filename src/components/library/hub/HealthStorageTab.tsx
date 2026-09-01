@@ -118,7 +118,7 @@ export const HealthStorageTab: React.FC = () => {
       <div>
         <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
           曲库健康体检与存储优化
-          <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+          <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-white/[0.08] text-white/80 border border-white/[0.15]">
             AUTO-HEALING
           </span>
         </h3>
@@ -134,10 +134,10 @@ export const HealthStorageTab: React.FC = () => {
       )}
 
       {/* 存储配额与空间管理卡片 */}
-      <div className="p-5 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] space-y-4">
+      <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-cyan-400" />
+            <Sliders className="w-4 h-4 text-white/80" />
             <h4 className="text-xs font-bold text-white tracking-tight">
               本地离线缓存配额与阈值设置
             </h4>
@@ -145,7 +145,7 @@ export const HealthStorageTab: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-white/60">当前已用:</span>
-            <span className="text-xs font-mono font-bold text-cyan-300">
+            <span className="text-xs font-mono font-bold text-white">
               {formatStorageBytes(storageDetails.totalUsageBytes)} ({usagePercent.toFixed(1)}%)
             </span>
           </div>
@@ -160,8 +160,8 @@ export const HealthStorageTab: React.FC = () => {
               onClick={() => setCacheLimitGB(gb)}
               className={`p-3 rounded-2xl border transition-all cursor-pointer text-center ${
                 cacheLimitGB === gb
-                  ? "bg-cyan-500/20 border-cyan-500/40 text-white font-bold ring-1 ring-cyan-400/30"
-                  : "bg-white/[0.02] border-white/10 text-white/60 hover:bg-white/[0.06] hover:text-white"
+                  ? "bg-white/[0.14] border-white/[0.22] text-white font-bold ring-1 ring-white/20"
+                  : "bg-white/[0.02] border-white/[0.08] text-white/60 hover:bg-white/[0.06] hover:text-white"
               }`}
             >
               <div className="text-sm font-mono">{gb} GB</div>
@@ -181,7 +181,7 @@ export const HealthStorageTab: React.FC = () => {
             type="button"
             onClick={handleClearCache}
             disabled={isCleaning}
-            className="px-3.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0"
+            className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 border border-white/10 text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0"
           >
             {isCleaning ? "清理中..." : "一键清理全部临时缓存"}
           </button>
@@ -191,10 +191,10 @@ export const HealthStorageTab: React.FC = () => {
       {/* 智能去重与自愈系统 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 声学智能去重中枢 */}
-        <div className="p-5 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] space-y-3.5">
+        <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] space-y-3.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-purple-400" />
+              <Layers className="w-4 h-4 text-white/80" />
               <h4 className="text-xs font-bold text-white tracking-tight">
                 声学与元数据智能去重中枢
               </h4>
@@ -204,7 +204,7 @@ export const HealthStorageTab: React.FC = () => {
               type="button"
               onClick={handleScanDuplicates}
               disabled={isScanningDedup}
-              className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold hover:bg-purple-500/30 transition-all cursor-pointer"
+              className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-xl bg-white/[0.08] text-white/80 border border-white/[0.12] font-semibold hover:bg-white/[0.15] hover:text-white transition-all cursor-pointer"
             >
               <RefreshCw className={`w-3 h-3 ${isScanningDedup ? "animate-spin" : ""}`} />
               <span>扫描重复曲目</span>
@@ -221,7 +221,7 @@ export const HealthStorageTab: React.FC = () => {
                 <div key={idx} className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs">
                   <div className="flex items-center justify-between font-semibold text-white">
                     <span className="truncate">{group.key}</span>
-                    <span className="text-[10px] text-purple-300 font-mono">
+                    <span className="text-[10px] text-white/70 font-mono">
                       {group.songs.length} 个版本
                     </span>
                   </div>
@@ -231,7 +231,7 @@ export const HealthStorageTab: React.FC = () => {
               <button
                 type="button"
                 onClick={handleAutoDedup}
-                className="w-full py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold text-xs transition-all active:scale-95 shadow-md mt-2 cursor-pointer"
+                className="w-full py-2.5 rounded-xl bg-white text-black font-semibold hover:bg-white/90 text-xs transition-all active:scale-95 shadow-[0_2px_12px_rgba(255,255,255,0.25)] mt-2 cursor-pointer"
               >
                 一键保留最高音质去重
               </button>
@@ -244,16 +244,16 @@ export const HealthStorageTab: React.FC = () => {
         </div>
 
         {/* 全网多源自愈与音源替补 */}
-        <div className="p-5 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] space-y-3.5">
+        <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] space-y-3.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400" />
+              <Sparkles className="w-4 h-4 text-white/80" />
               <h4 className="text-xs font-bold text-white tracking-tight">
                 失效曲目全网多源自愈 (Auto-Healing)
               </h4>
             </div>
 
-            <span className="text-[10px] text-emerald-300 font-mono">
+            <span className="text-[10px] text-white/70 font-mono">
               5 大源在线巡检
             </span>
           </div>
@@ -262,9 +262,9 @@ export const HealthStorageTab: React.FC = () => {
             当某首网络歌曲因原平台 VIP 限制或版权失效时，自动向其他 4 个平台（网易云/QQ/酷狗/酷我/汽水）发起模糊匹配并无缝替换可用直链。
           </p>
 
-          <div className="p-3.5 rounded-2xl bg-amber-500/[0.06] border border-amber-500/20 text-xs space-y-2">
-            <div className="flex items-center gap-2 text-amber-300 font-medium">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-xs space-y-2">
+            <div className="flex items-center gap-2 text-white/90 font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0 text-white/70" />
               <span>智能替补引擎状态：实时就绪</span>
             </div>
             <p className="text-[11px] text-white/50">

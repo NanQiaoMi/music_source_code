@@ -262,7 +262,7 @@ export const PlaylistHubTab: React.FC = () => {
         <div>
           <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
             歌单编排与管理中枢
-            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30">
+            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-white/[0.08] text-white/80 border border-white/[0.15]">
               PLAYLIST HUB
             </span>
           </h3>
@@ -274,7 +274,7 @@ export const PlaylistHubTab: React.FC = () => {
         <button
           type="button"
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold border border-purple-500/30 transition-all active:scale-95 cursor-pointer shadow-sm self-start sm:self-auto"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white text-black font-semibold hover:bg-white/90 text-xs shadow-[0_2px_12px_rgba(255,255,255,0.25)] transition-all active:scale-95 cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>新建自建歌单</span>

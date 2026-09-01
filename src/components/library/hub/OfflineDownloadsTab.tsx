@@ -83,9 +83,9 @@ export const OfflineDownloadsTab: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in select-none">
       {/* 顶部下载控制台与速度仪表 */}
-      <div className="p-5 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-white/[0.06] border border-white/[0.12] flex items-center justify-center text-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] shrink-0">
             <Download className={`w-6 h-6 ${activeCount > 0 ? "animate-bounce" : ""}`} />
           </div>
 
@@ -94,12 +94,12 @@ export const OfflineDownloadsTab: React.FC = () => {
               <h3 className="text-sm font-bold text-white tracking-tight">
                 离线下载调度中枢
               </h3>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.08] text-white/80 font-bold border border-white/[0.12]">
                 {activeCount > 0 ? `下载中 ${activeCount}` : "就绪空闲"}
               </span>
             </div>
             <p className="text-xs text-white/50 font-mono mt-0.5 flex items-center gap-2">
-              <span>当前瞬时速率: <strong className="text-cyan-300">{totalSpeedFormatted}</strong></span>
+              <span>当前瞬时速率: <strong className="text-white font-bold">{totalSpeedFormatted}</strong></span>
               <span>·</span>
               <span>队列中: {taskList.length} 个任务</span>
             </p>
@@ -109,13 +109,13 @@ export const OfflineDownloadsTab: React.FC = () => {
         {/* 快捷批量控制按钮组与并发调节 */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* 并发数调节 */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-black/40 border border-white/10 text-xs text-white">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-black/40 border border-white/[0.08] text-xs text-white">
             <Sliders className="w-3.5 h-3.5 text-white/50" />
             <span className="text-white/60 text-[11px]">并发:</span>
             <select
               value={concurrencyLimit}
               onChange={(e) => setConcurrency(Number(e.target.value))}
-              className="bg-transparent text-cyan-300 font-bold font-mono text-xs focus:outline-none cursor-pointer"
+              className="bg-transparent text-white font-bold font-mono text-xs focus:outline-none cursor-pointer"
             >
               <option value="1" className="bg-[#12121a] text-white">1 线程</option>
               <option value="2" className="bg-[#12121a] text-white">2 线程</option>
@@ -128,7 +128,7 @@ export const OfflineDownloadsTab: React.FC = () => {
           <button
             type="button"
             onClick={resumeAll}
-            className="px-3 py-1.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-white text-xs font-semibold shadow-md transition-all active:scale-95 cursor-pointer"
+            className="px-3.5 py-1.5 rounded-2xl bg-white text-black hover:bg-white/90 text-xs font-semibold shadow-[0_2px_12px_rgba(255,255,255,0.25)] transition-all active:scale-95 cursor-pointer"
           >
             全部开始
           </button>
@@ -136,7 +136,7 @@ export const OfflineDownloadsTab: React.FC = () => {
           <button
             type="button"
             onClick={pauseAll}
-            className="px-3 py-1.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold border border-white/15 transition-all active:scale-95 cursor-pointer"
+            className="px-3 py-1.5 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] text-white text-xs font-semibold border border-white/[0.12] transition-all active:scale-95 cursor-pointer"
           >
             全部暂停
           </button>
@@ -144,7 +144,7 @@ export const OfflineDownloadsTab: React.FC = () => {
           <button
             type="button"
             onClick={clearCompleted}
-            className="px-3 py-1.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium border border-white/10 transition-all active:scale-95 cursor-pointer"
+            className="px-3 py-1.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white text-xs font-medium border border-white/[0.08] transition-all active:scale-95 cursor-pointer"
             title="移除所有已下载完成的任务"
           >
             清空完成项
@@ -153,7 +153,7 @@ export const OfflineDownloadsTab: React.FC = () => {
           <button
             type="button"
             onClick={clearFailedOrPausedTasks}
-            className="px-3 py-1.5 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+            className="px-3 py-1.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.08] text-xs font-medium transition-all active:scale-95 cursor-pointer"
             title="移除所有暂停与失败的任务"
           >
             清空暂停/失败
@@ -162,7 +162,7 @@ export const OfflineDownloadsTab: React.FC = () => {
           <button
             type="button"
             onClick={clearAllTasks}
-            className="px-3 py-1.5 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
+            className="px-3 py-1.5 rounded-2xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/25 text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-sm"
             title="强制取消并清空整个下载队列"
           >
             清空全部任务
