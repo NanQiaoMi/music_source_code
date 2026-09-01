@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { CinematicLyricDriftV8Effect, CinematicLyricDriftState } from "./CinematicLyricDriftV8";
+import {
+  CinematicLyricDriftV8Effect,
+  CinematicLyricDriftState,
+  parseLrc,
+} from "./CinematicLyricDriftV8";
 import { RenderContext, AudioData } from "@/lib/visualization/types";
 
-describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
+describe("CinematicLyricDriftV8Effect (弧光伴字 · Apple Music 4K 液态流光)", () => {
   let mockCanvas: HTMLCanvasElement;
   let mockCtx: CanvasRenderingContext2D;
   let renderContext: RenderContext;
@@ -31,6 +35,8 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
       translate: vi.fn(),
       rotate: vi.fn(),
       scale: vi.fn(),
+      clip: vi.fn(),
+      rect: vi.fn(),
       drawImage: vi.fn(),
       createLinearGradient: vi.fn(() => ({
         addColorStop: vi.fn(),
@@ -50,6 +56,7 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
       font: "",
       textAlign: "start",
       textBaseline: "alphabetic",
+      letterSpacing: "",
     } as unknown as CanvasRenderingContext2D;
 
     renderContext = {
@@ -76,44 +83,67 @@ describe("CinematicLyricDriftV8Effect (温光浮字 · 电影感)", () => {
 
   it("should have correct metadata and plugin properties", () => {
     expect(CinematicLyricDriftV8Effect.id).toBe("cinematic-lyric-drift-v8");
-    expect(CinematicLyricDriftV8Effect.name).toBe("温光浮字 · 电影感");
-    expect(CinematicLyricDriftV8Effect.category).toBe("particles");
+    expect(CinematicLyricDriftV8Effect.name).toBe("弧光伴字");
+    expect(CinematicLyricDriftV8Effect.category).toBe("space");
     expect(CinematicLyricDriftV8Effect.preferredEngine).toBe("canvas");
     expect(CinematicLyricDriftV8Effect.parameters.length).toBeGreaterThan(5);
+
+    const paramIds = CinematicLyricDriftV8Effect.parameters.map((p) => p.id);
+    expect(paramIds).toContain("colorScheme");
+    expect(paramIds).toContain("bassPulse");
+    expect(paramIds).toContain("fluidSpeed");
+    expect(paramIds).toContain("ambientBrightness");
+    expect(paramIds).toContain("shimmerFeather");
+    expect(paramIds).toContain("filmGrain");
+    expect(paramIds).toContain("heroFontSize");
   });
 
-  it("should initialize fluid blobs", () => {
+  it("should initialize 5 fluid blobs and dynamic palettes", () => {
     CinematicLyricDriftV8Effect.init(renderContext);
     const state = renderContext.private as CinematicLyricDriftState;
 
     expect(state).toBeDefined();
-    expect(state.fluidBlobs.length).toBeGreaterThanOrEqual(4);
+    expect(state.fluidBlobs.length).toBe(5);
+    expect(state.currentPalette).toBeDefined();
+    expect(state.targetPalette).toBeDefined();
   });
 
-  it("should render without errors and render pure background when no lyrics", () => {
+  it("should render without errors with audio and parameters", () => {
     CinematicLyricDriftV8Effect.init(renderContext);
     expect(() => {
       CinematicLyricDriftV8Effect.render(renderContext, audioData, {
-        fontStyle: 0,
         colorScheme: 0,
-        heroFontSize: 54,
-        shimmerFeather: 50,
+        bassPulse: 1.0,
         fluidSpeed: 0.8,
-        ambientGlowIntensity: 0.9,
-        filmGrain: 0.15,
-        vignetteStrength: 0.65,
+        ambientBrightness: 1.1,
+        shimmerFeather: 45,
+        filmGrain: 0.08,
+        heroFontSize: 56,
       });
     }).not.toThrow();
 
     expect(mockCtx.fillRect).toHaveBeenCalled();
   });
 
-  it("should clean up resources on destroy", () => {
-    CinematicLyricDriftV8Effect.init(renderContext);
-    CinematicLyricDriftV8Effect.destroy(renderContext);
-    const state = renderContext.private as CinematicLyricDriftState;
+  it("should parse standard LRC lyrics cleanly and filter metadata", () => {
+    const rawLrc = `
+[00:00.00] 作词 : 方文山
+[00:01.00] 作曲 : 周杰伦
+[00:04.20] 故事的小黄花
+[00:08.50] 从出生那年就飘着
+`;
+    const parsed = parseLrc(rawLrc);
+    expect(parsed.length).toBe(2);
+    expect(parsed[0].text).toBe("故事的小黄花");
+    expect(parsed[0].time).toBeCloseTo(4.2, 1);
+    expect(parsed[1].text).toBe("从出生那年就飘着");
+    expect(parsed[1].time).toBeCloseTo(8.5, 1);
+  });
 
-    expect(state.fluidBlobs.length).toBe(0);
-    expect(state.parsedLyrics.length).toBe(0);
+  it("should clean up state on destroy", () => {
+    CinematicLyricDriftV8Effect.init(renderContext);
+    expect(renderContext.private).toBeDefined();
+    CinematicLyricDriftV8Effect.destroy(renderContext);
+    expect(renderContext.private).toBeUndefined();
   });
 });

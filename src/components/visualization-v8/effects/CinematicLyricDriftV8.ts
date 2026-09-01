@@ -12,7 +12,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 
 // =========================================================================
-// 1. Types & Data Structures (Apple Music Liquid Shimmer System)
+// 1. Types & Data Structures (Apple Music 4K Liquid Mesh System)
 // =========================================================================
 
 export interface FluidColorBlob {
@@ -22,7 +22,12 @@ export interface FluidColorBlob {
   currentRadius: number;
   vx: number;
   vy: number;
-  color: string;
+  r: number;
+  g: number;
+  b: number;
+  targetR: number;
+  targetG: number;
+  targetB: number;
   alpha: number;
   phase: number;
   speed: number;
@@ -33,10 +38,24 @@ export interface ParsedLrcLine {
   text: string;
 }
 
+export interface DynamicPalette {
+  bgStart: [number, number, number];
+  bgMid: [number, number, number];
+  bgEnd: [number, number, number];
+  blobs: [number, number, number][];
+}
+
 export interface CinematicLyricDriftState {
   fluidBlobs: FluidColorBlob[];
   parsedLyrics: ParsedLrcLine[];
   lastRawLyrics: string;
+  lastSongId: string;
+  lastCoverUrl: string;
+
+  // 封面色谱平滑过渡
+  currentPalette: DynamicPalette;
+  targetPalette: DynamicPalette;
+  paletteMorphT: number;
 
   // 高精度音频时钟插值
   lastReportedTime: number;
@@ -48,13 +67,16 @@ export interface CinematicLyricDriftState {
   totalLineWidth: number;
   prevLineWidth: number;
 
-  // 进度与丝绸微滑过渡
+  // 8px 物理弹簧过渡与丝绸微滑
   lineTransitionAlpha: number;
   prevLineFadeAlpha: number;
   smoothedLineProgress: number;
   isSinging: boolean;
 
-  // 音频平滑
+  // 空闲曲目徽章动画
+  idleBadgeAlpha: number;
+
+  // 音频三频平滑（纯重低音呼吸）
   smoothedBass: number;
   smoothedMid: number;
   smoothedTreble: number;
@@ -65,138 +87,229 @@ export interface CinematicLyricDriftState {
 }
 
 // =========================================================================
-// 2. Apple-Grade Ambient Color Palettes
+// 2. Apple-Grade Ambient Fallback Color Palettes
 // =========================================================================
 
-export interface ColorPalette {
-  name: string;
-  bgGradStart: string;
-  bgGradMid: string;
-  bgGradEnd: string;
-  blobColors: string[];
-  textUnsung: string;
-  textPast: string;
-  textFocus: string;
-  shimmerAura: string;
-}
+const DEFAULT_AURORA_PALETTE: DynamicPalette = {
+  bgStart: [10, 17, 32],
+  bgMid: [6, 10, 20],
+  bgEnd: [2, 3, 6],
+  blobs: [
+    [28, 85, 180],
+    [130, 45, 185],
+    [20, 170, 200],
+    [190, 55, 120],
+    [45, 30, 100],
+  ],
+};
 
-const COLOR_PALETTES: ColorPalette[] = [
-  // 0: 深海极光 (Deep Aurora - 极夜深黑 + 极光黛蓝 + 浅紫柔光)
+const PRESET_PALETTES: DynamicPalette[] = [
+  // 0: 自适应封面色盘 (Dynamic Album Art)
+  DEFAULT_AURORA_PALETTE,
+  // 1: 深海极光 (Deep Aurora)
   {
-    name: "深海极光",
-    bgGradStart: "#090d16",
-    bgGradMid: "#04070c",
-    bgGradEnd: "#010204",
-    blobColors: [
-      "rgba(35, 75, 160, 0.28)",
-      "rgba(100, 45, 150, 0.22)",
-      "rgba(20, 140, 180, 0.24)",
-      "rgba(60, 20, 110, 0.20)",
+    bgStart: [9, 13, 22],
+    bgMid: [4, 7, 12],
+    bgEnd: [1, 2, 4],
+    blobs: [
+      [35, 95, 200],
+      [140, 55, 195],
+      [25, 180, 210],
+      [80, 30, 140],
+      [30, 60, 130],
     ],
-    textUnsung: "rgba(255, 255, 255, 0.24)",
-    textPast: "rgba(255, 255, 255, 0.65)",
-    textFocus: "#ffffff",
-    shimmerAura: "rgba(180, 220, 255, 0.15)",
   },
-  // 1: 丝绒暮霭 (Sunset Velvet - 黑曜 + 暖金琥珀 + 玫瑰暮色)
+  // 2: 丝绒暮霭 (Sunset Velvet)
   {
-    name: "丝绒暮霭",
-    bgGradStart: "#140a0e",
-    bgGradMid: "#0a0407",
-    bgGradEnd: "#020102",
-    blobColors: [
-      "rgba(190, 80, 60, 0.26)",
-      "rgba(160, 40, 95, 0.22)",
-      "rgba(215, 130, 60, 0.24)",
-      "rgba(110, 25, 65, 0.20)",
+    bgStart: [22, 10, 15],
+    bgMid: [12, 5, 8],
+    bgEnd: [2, 1, 2],
+    blobs: [
+      [220, 85, 65],
+      [180, 45, 110],
+      [235, 145, 70],
+      [130, 30, 75],
+      [190, 60, 90],
     ],
-    textUnsung: "rgba(255, 240, 235, 0.24)",
-    textPast: "rgba(255, 245, 240, 0.68)",
-    textFocus: "#ffffff",
-    shimmerAura: "rgba(255, 210, 175, 0.15)",
   },
-  // 2: 苍翠玉石 (Emerald Pine - 幽深竹墨 + 苍翠薄荷)
+  // 3: 苍翠玉石 (Emerald Pine)
   {
-    name: "苍翠玉石",
-    bgGradStart: "#06120d",
-    bgGradMid: "#030a07",
-    bgGradEnd: "#010302",
-    blobColors: [
-      "rgba(25, 120, 80, 0.26)",
-      "rgba(15, 85, 110, 0.22)",
-      "rgba(40, 160, 110, 0.22)",
-      "rgba(10, 60, 45, 0.20)",
+    bgStart: [7, 20, 14],
+    bgMid: [4, 11, 8],
+    bgEnd: [1, 3, 2],
+    blobs: [
+      [30, 150, 100],
+      [20, 110, 140],
+      [50, 190, 130],
+      [15, 80, 60],
+      [25, 130, 110],
     ],
-    textUnsung: "rgba(230, 255, 245, 0.24)",
-    textPast: "rgba(240, 255, 250, 0.68)",
-    textFocus: "#ffffff",
-    shimmerAura: "rgba(180, 255, 220, 0.15)",
   },
-  // 3: 极简黑曜 (Minimalist Noir - 纯粹深邃黑曜石 + 月华冷白)
+  // 4: 极简黑曜 (Minimalist Noir)
   {
-    name: "极简黑曜",
-    bgGradStart: "#0e0e11",
-    bgGradMid: "#060608",
-    bgGradEnd: "#010101",
-    blobColors: [
-      "rgba(120, 120, 140, 0.18)",
-      "rgba(70, 70, 90, 0.15)",
-      "rgba(140, 140, 160, 0.16)",
-      "rgba(50, 50, 70, 0.14)",
+    bgStart: [16, 16, 20],
+    bgMid: [8, 8, 10],
+    bgEnd: [2, 2, 3],
+    blobs: [
+      [140, 140, 170],
+      [90, 90, 120],
+      [160, 160, 190],
+      [70, 70, 100],
+      [110, 110, 140],
     ],
-    textUnsung: "rgba(255, 255, 255, 0.22)",
-    textPast: "rgba(255, 255, 255, 0.62)",
-    textFocus: "#ffffff",
-    shimmerAura: "rgba(255, 255, 255, 0.12)",
-  },
-  // 4: 银河星云 (Nebula Violet - 银河深紫 + 梦幻粉晶)
-  {
-    name: "银河星云",
-    bgGradStart: "#120818",
-    bgGradMid: "#08030d",
-    bgGradEnd: "#020103",
-    blobColors: [
-      "rgba(140, 45, 180, 0.26)",
-      "rgba(70, 40, 160, 0.24)",
-      "rgba(190, 70, 150, 0.22)",
-      "rgba(45, 20, 100, 0.20)",
-    ],
-    textUnsung: "rgba(250, 235, 255, 0.24)",
-    textPast: "rgba(252, 245, 255, 0.68)",
-    textFocus: "#ffffff",
-    shimmerAura: "rgba(235, 195, 255, 0.15)",
   },
 ];
 
-const FONT_STYLES = [
-  // 0: 现代极简 (Apple SF Pro / 苹方 / 兰亭黑)
-  `-apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif`,
-  // 1: 经典雅致 (New York / 思源宋体 / Georgia)
-  `"New York", "Source Han Serif SC", "Songti SC", "STSong", "Georgia", serif`,
-  // 2: 清雅文楷 (LXGW WenKai / 楷体)
-  `"LXGW WenKai", "STKaiti", "Kaiti SC", "楷体", "Baskerville", serif`,
-  // 3: 极简几何 (Futura / Montserrat)
-  `"Montserrat", "Futura", "PingFang SC", "Noto Sans SC", sans-serif`,
-];
-
 // =========================================================================
-// 3. Helpers: LRC Parser & Film Grain Canvas
+// 3. 封面色盘智能采样与亮度/饱和度钳制提取器
 // =========================================================================
 
-function isMetadataLine(text: string): boolean {
-  const t = text.trim();
-  if (!t) return true;
-  return (
-    /^(作词|作曲|编曲|制作|混音|录音|母带|吉他|贝斯|鼓手|和声|监制|企划|文案|出品|发行|提供|翻唱|原唱|统筹|OP|SP|Written|Composed|Arranged|Produced|Mixed|Mastered|Vocals|Guitar|Bass|Drums|Engineer|Publisher|Record)[\s:：]/i.test(
-      t
-    ) ||
-    /^(作词|作曲|编曲|词曲|制作人|录音室|混音室)[\s:：]/i.test(t) ||
-    /^\s*(QQ音乐|网易云音乐|酷狗|酷我|咪咕|Kugou|Netease|TME)\s*$/i.test(t)
-  );
+const paletteCache = new Map<string, DynamicPalette>();
+
+function clamp(val: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, val));
 }
 
-function parseLrc(lrcText: string): ParsedLrcLine[] {
-  if (!lrcText || typeof lrcText !== "string") return [];
+function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+  return [h, s, l];
+}
+
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  let r: number, g: number, b: number;
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1 / 3);
+  }
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+/**
+ * 提取并钳制封面高阶柔光调色盘（饱和度 45%~75%，亮度 25%~45%）
+ */
+function extractCoverPalette(imgElement: HTMLImageElement): DynamicPalette {
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return DEFAULT_AURORA_PALETTE;
+
+    ctx.drawImage(imgElement, 0, 0, 32, 32);
+    const imgData = ctx.getImageData(0, 0, 32, 32).data;
+
+    // 采样多点色彩
+    const sampleIndices = [
+      (8 * 32 + 8) * 4,
+      (8 * 32 + 24) * 4,
+      (16 * 32 + 16) * 4,
+      (24 * 32 + 8) * 4,
+      (24 * 32 + 24) * 4,
+    ];
+
+    const extractedBlobs: [number, number, number][] = sampleIndices.map((idx, i) => {
+      const rawR = imgData[idx] ?? 60;
+      const rawG = imgData[idx + 1] ?? 100;
+      const rawB = imgData[idx + 2] ?? 180;
+
+      const [h, s, l] = rgbToHsl(rawR, rawG, rawB);
+      // 钳制饱和度与亮度
+      const clampedS = clamp(s, 0.45, 0.85);
+      const clampedL = clamp(l, 0.28, 0.48);
+      // 微调色相分布
+      const shiftedH = (h + i * 0.08) % 1.0;
+
+      return hslToRgb(shiftedH, clampedS, clampedL);
+    });
+
+    const primaryHsl = rgbToHsl(extractedBlobs[0][0], extractedBlobs[0][1], extractedBlobs[0][2]);
+    const bgStart = hslToRgb(primaryHsl[0], 0.4, 0.09);
+    const bgMid = hslToRgb(primaryHsl[0], 0.35, 0.04);
+    const bgEnd = hslToRgb(primaryHsl[0], 0.3, 0.015);
+
+    return {
+      bgStart,
+      bgMid,
+      bgEnd,
+      blobs: extractedBlobs,
+    };
+  } catch {
+    return DEFAULT_AURORA_PALETTE;
+  }
+}
+
+function loadAndCacheCoverPalette(url: string, onDone: (p: DynamicPalette) => void) {
+  if (!url) {
+    onDone(DEFAULT_AURORA_PALETTE);
+    return;
+  }
+  if (paletteCache.has(url)) {
+    onDone(paletteCache.get(url)!);
+    return;
+  }
+
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    const palette = extractCoverPalette(img);
+    paletteCache.set(url, palette);
+    onDone(palette);
+  };
+  img.onerror = () => {
+    onDone(DEFAULT_AURORA_PALETTE);
+  };
+  img.src = url;
+}
+
+// =========================================================================
+// 4. LRC 歌词高精度语义解析与时延插值
+// =========================================================================
+
+function isMetadataLine(line: string): boolean {
+  const metaRegex =
+    /^(作词|作曲|制作人|编曲|混音|母带|录音|吉他|贝斯|鼓|键盘|和声|策划|出品|监制|发行|演唱|原唱|词|曲)\s*[:：]/i;
+  return metaRegex.test(line);
+}
+
+export function parseLrc(lrcText: string): ParsedLrcLine[] {
+  if (!lrcText) return [];
   const lines = lrcText.split(/\r?\n/);
   const result: ParsedLrcLine[] = [];
   const timeRegex = /\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/g;
@@ -248,6 +361,27 @@ function findActiveLyricIndex(lyrics: ParsedLrcLine[], time: number): number {
   return ans;
 }
 
+/**
+ * 智能语义字符插值（标点符号微停顿）
+ */
+function calculateSmartProgress(
+  elapsed: number,
+  duration: number,
+  text: string
+): number {
+  if (duration <= 0 || elapsed <= 0) return 0;
+  if (elapsed >= duration) return 1.0;
+
+  const linearP = elapsed / duration;
+  // 中文标点字符识别，赋予轻微停顿权重
+  const hasPunctuation = /[，。！？、,!?]/.test(text);
+  if (hasPunctuation) {
+    // 缓动平滑
+    return linearP < 0.5 ? 2 * linearP * linearP : 1 - Math.pow(-2 * linearP + 2, 2) / 2;
+  }
+  return linearP;
+}
+
 function createFilmGrainCanvas(): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null;
   try {
@@ -270,7 +404,7 @@ function createFilmGrainCanvas(): HTMLCanvasElement | null {
       data[i] = val;
       data[i + 1] = val;
       data[i + 2] = val;
-      data[i + 3] = Math.floor(Math.random() * 16);
+      data[i + 3] = Math.floor(Math.random() * 18);
     }
     ctx.putImageData(imgData, 0, 0);
     return canvas;
@@ -279,9 +413,10 @@ function createFilmGrainCanvas(): HTMLCanvasElement | null {
   }
 }
 
-/**
- * Apple 风格纯净液态流光歌词绘制器 (Apple Music Liquid Shimmer Sweep)
- */
+// =========================================================================
+// 5. Apple 风格单行巨幕液态水银扫光绘制器
+// =========================================================================
+
 function renderLiquidShimmerLine(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -290,7 +425,6 @@ function renderLiquidShimmerLine(
   centerY: number,
   progress: number,
   lineAlpha: number,
-  palette: ColorPalette,
   featherWidth: number,
   fitScale: number
 ) {
@@ -300,42 +434,39 @@ function renderLiquidShimmerLine(
   const startX = centerX - actualWidth / 2;
   const endX = centerX + actualWidth / 2;
 
-  // 1. 严格无发光，绝对锐利清爽
   ctx.save();
-  ctx.shadowBlur = 0;
   ctx.globalAlpha = lineAlpha;
 
-  // 2. 底层：完整绘制整句优雅未唱文字 (24% 纯净深灰白，字形永不破损)
+  // 1. 底层：未唱文字（28% 锐利高对比度银白）
   ctx.save();
-  ctx.fillStyle = palette.textUnsung;
+  ctx.fillStyle = "rgba(255, 255, 255, 0.28)";
+  ctx.shadowBlur = 0;
   ctx.fillText(text, centerX, centerY);
   ctx.restore();
 
-  // 3. 顶层：月光液态流光扫描层 (通过带羽化的线性渐变点亮已唱和唱中字段)
+  // 2. 顶层：月光液态流光扫描层（带羽化的水银光带）
   if (progress > 0.001) {
     const sweepX = startX + actualWidth * Math.min(1.0, Math.max(0.0, progress));
-    const feather = Math.max(20, featherWidth * fitScale);
+    const feather = Math.max(25, featherWidth * fitScale);
 
-    const gradStartX = Math.max(startX - 10, sweepX - feather * 1.6);
+    const gradStartX = Math.max(startX - 10, sweepX - feather * 1.8);
     const gradEndX = Math.min(endX + 10, sweepX + feather * 0.8);
 
     if (gradEndX > gradStartX) {
-      const grad = ctx.createLinearGradient(gradStartX, 0, gradEndX, 0);
-
-      // 已唱过的沉淀温润白
-      grad.addColorStop(0.0, palette.textPast);
-      // 正在唱的流光高光峰值 (100% 纯白月光)
-      const peakStop = Math.max(
-        0.05,
-        Math.min(0.95, (sweepX - gradStartX) / (gradEndX - gradStartX))
-      );
-      grad.addColorStop(peakStop, palette.textFocus);
-      // 未唱区域衰减至透明
-      grad.addColorStop(1.0, "rgba(255, 255, 255, 0)");
+      const sweepGrad = ctx.createLinearGradient(gradStartX, centerY, gradEndX, centerY);
+      sweepGrad.addColorStop(0, "#ffffff");
+      sweepGrad.addColorStop(0.65, "rgba(255, 255, 255, 0.95)");
+      sweepGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
 
       ctx.save();
-      // 使用渐变填充再次绘制文字，优雅覆盖
-      ctx.fillStyle = grad;
+      // 限制在已唱区域
+      ctx.beginPath();
+      ctx.rect(startX - 20, centerY - 100, sweepX - startX + 20, 200);
+      ctx.clip();
+
+      ctx.fillStyle = sweepGrad;
+      ctx.shadowColor = "rgba(255, 255, 255, 0.35)";
+      ctx.shadowBlur = 12;
       ctx.fillText(text, centerX, centerY);
       ctx.restore();
     }
@@ -345,164 +476,180 @@ function renderLiquidShimmerLine(
 }
 
 // =========================================================================
-// 4. Parameter Definitions
-// =========================================================================
-
-const PARAMETERS: EffectParameterDefinition[] = [
-  {
-    id: "fontStyle",
-    name: "字体设计风格",
-    type: "select",
-    mode: "basic",
-    default: 0,
-    options: [
-      { label: "现代极简 (Apple SF Pro / 苹方)", value: 0 },
-      { label: "经典雅致 (New York / 思源宋体)", value: 1 },
-      { label: "清雅文楷 (LXGW WenKai / 文楷)", value: 2 },
-      { label: "极简几何 (Futura / Montserrat)", value: 3 },
-    ],
-  },
-  {
-    id: "colorScheme",
-    name: "流体艺术色系",
-    type: "select",
-    mode: "basic",
-    default: 0,
-    options: [
-      { label: "深海极光 (Deep Aurora)", value: 0 },
-      { label: "丝绒暮霭 (Sunset Velvet)", value: 1 },
-      { label: "苍翠玉石 (Emerald Pine)", value: 2 },
-      { label: "极简黑曜 (Minimalist Noir)", value: 3 },
-      { label: "银河星云 (Nebula Violet)", value: 4 },
-    ],
-  },
-  {
-    id: "heroFontSize",
-    name: "歌词字号",
-    type: "number",
-    mode: "basic",
-    min: 36,
-    max: 72,
-    step: 2,
-    default: 54,
-  },
-  {
-    id: "shimmerFeather",
-    name: "流光羽化宽度",
-    type: "number",
-    mode: "professional",
-    min: 20,
-    max: 100,
-    step: 5,
-    default: 50,
-  },
-  {
-    id: "fluidSpeed",
-    name: "背景流体速度",
-    type: "number",
-    mode: "professional",
-    min: 0.2,
-    max: 2.0,
-    step: 0.1,
-    default: 0.8,
-  },
-  {
-    id: "ambientGlowIntensity",
-    name: "弥散光晕强度",
-    type: "number",
-    mode: "professional",
-    min: 0.2,
-    max: 1.5,
-    step: 0.1,
-    default: 0.9,
-  },
-  {
-    id: "filmGrain",
-    name: "胶片颗粒微粒",
-    type: "number",
-    mode: "expert",
-    min: 0.0,
-    max: 0.5,
-    step: 0.02,
-    default: 0.15,
-  },
-  {
-    id: "vignetteStrength",
-    name: "幽深暗角",
-    type: "number",
-    mode: "expert",
-    min: 0.0,
-    max: 1.0,
-    step: 0.05,
-    default: 0.65,
-  },
-];
-
-// =========================================================================
-// 5. Plugin Implementation
+// 6. 核心 EffectPlugin 实现
 // =========================================================================
 
 export const CinematicLyricDriftV8Effect: EffectPlugin = {
   id: "cinematic-lyric-drift-v8",
-  name: "温光浮字 · 电影感",
-  category: "particles",
-  description: "Apple风格纯净液态流光歌词、完整优雅横向排版、深邃流体弥散色斑、丝绸微滑换句过渡",
+  name: "弧光伴字",
+  category: "space",
+  description: "Apple Music 4K 液态流光视差引擎：封面自适应色彩网格、纯重低音呼吸、月光水银巨幕扫光与 8px 物理弹簧微滑",
   preferredEngine: "canvas",
-  parameters: PARAMETERS,
+
+  parameters: [
+    {
+      id: "colorScheme",
+      name: "流体色盘模式",
+      type: "number",
+      mode: "basic",
+      min: 0,
+      max: 4,
+      step: 1,
+      default: 0,
+    },
+    {
+      id: "bassPulse",
+      name: "重低音呼吸律动",
+      type: "number",
+      mode: "basic",
+      min: 0,
+      max: 2,
+      step: 0.05,
+      default: 1.0,
+    },
+    {
+      id: "fluidSpeed",
+      name: "液态流动速度",
+      type: "number",
+      mode: "basic",
+      min: 0.2,
+      max: 2.0,
+      step: 0.05,
+      default: 0.8,
+    },
+    {
+      id: "ambientBrightness",
+      name: "流体光晕亮度",
+      type: "number",
+      mode: "basic",
+      min: 0.5,
+      max: 1.8,
+      step: 0.05,
+      default: 1.1,
+    },
+    {
+      id: "shimmerFeather",
+      name: "水银扫光羽化",
+      type: "number",
+      mode: "professional",
+      min: 20,
+      max: 90,
+      step: 2,
+      default: 45,
+    },
+    {
+      id: "filmGrain",
+      name: "4K 胶片微噪点",
+      type: "number",
+      mode: "professional",
+      min: 0,
+      max: 0.3,
+      step: 0.01,
+      default: 0.08,
+    },
+    {
+      id: "heroFontSize",
+      name: "巨幕歌词基准字号",
+      type: "number",
+      mode: "professional",
+      min: 36,
+      max: 72,
+      step: 2,
+      default: 56,
+    },
+  ],
 
   init(ctx: RenderContext) {
-    const width = ctx.width || 1280;
-    const height = ctx.height || 720;
+    const width = ctx.width || 1920;
+    const height = ctx.height || 1080;
+    const maxDim = Math.max(width, height);
 
-    // 创建 4 个 Apple Music 风格超大流体色块
+    // 5 颗大半径高透流体晶球（Apple Music 4K 弥散流体网格）
     const fluidBlobs: FluidColorBlob[] = [
       {
-        x: width * 0.3,
-        y: height * 0.35,
-        baseRadius: Math.min(width, height) * 0.45,
-        currentRadius: Math.min(width, height) * 0.45,
+        x: width * 0.2,
+        y: height * 0.3,
+        baseRadius: maxDim * 0.65,
+        currentRadius: maxDim * 0.65,
         vx: 0.12,
-        vy: 0.08,
-        color: "rgba(35, 75, 160, 0.28)",
-        alpha: 0.28,
+        vy: 0.09,
+        r: 28,
+        g: 85,
+        b: 180,
+        targetR: 28,
+        targetG: 85,
+        targetB: 180,
+        alpha: 0.68,
         phase: 0,
-        speed: 0.5,
+        speed: 0.6,
       },
       {
-        x: width * 0.7,
-        y: height * 0.4,
-        baseRadius: Math.min(width, height) * 0.48,
-        currentRadius: Math.min(width, height) * 0.48,
-        vx: -0.09,
-        vy: 0.11,
-        color: "rgba(100, 45, 150, 0.22)",
-        alpha: 0.22,
+        x: width * 0.8,
+        y: height * 0.35,
+        baseRadius: maxDim * 0.72,
+        currentRadius: maxDim * 0.72,
+        vx: -0.1,
+        vy: 0.08,
+        r: 130,
+        g: 45,
+        b: 185,
+        targetR: 130,
+        targetG: 45,
+        targetB: 185,
+        alpha: 0.62,
         phase: Math.PI * 0.5,
-        speed: 0.45,
-      },
-      {
-        x: width * 0.45,
-        y: height * 0.65,
-        baseRadius: Math.min(width, height) * 0.42,
-        currentRadius: Math.min(width, height) * 0.42,
-        vx: 0.08,
-        vy: -0.1,
-        color: "rgba(20, 140, 180, 0.24)",
-        alpha: 0.24,
-        phase: Math.PI,
         speed: 0.55,
       },
       {
-        x: width * 0.6,
-        y: height * 0.25,
-        baseRadius: Math.min(width, height) * 0.38,
-        currentRadius: Math.min(width, height) * 0.38,
+        x: width * 0.3,
+        y: height * 0.75,
+        baseRadius: maxDim * 0.68,
+        currentRadius: maxDim * 0.68,
+        vx: 0.09,
+        vy: -0.11,
+        r: 20,
+        g: 170,
+        b: 200,
+        targetR: 20,
+        targetG: 170,
+        targetB: 200,
+        alpha: 0.65,
+        phase: Math.PI,
+        speed: 0.65,
+      },
+      {
+        x: width * 0.75,
+        y: height * 0.8,
+        baseRadius: maxDim * 0.62,
+        currentRadius: maxDim * 0.62,
         vx: -0.11,
-        vy: -0.07,
-        color: "rgba(60, 20, 110, 0.20)",
-        alpha: 0.2,
+        vy: -0.09,
+        r: 190,
+        g: 55,
+        b: 120,
+        targetR: 190,
+        targetG: 55,
+        targetB: 120,
+        alpha: 0.58,
         phase: Math.PI * 1.5,
-        speed: 0.4,
+        speed: 0.5,
+      },
+      {
+        x: width * 0.5,
+        y: height * 0.5,
+        baseRadius: maxDim * 0.8,
+        currentRadius: maxDim * 0.8,
+        vx: 0.05,
+        vy: 0.06,
+        r: 45,
+        g: 30,
+        b: 100,
+        targetR: 45,
+        targetG: 30,
+        targetB: 100,
+        alpha: 0.52,
+        phase: Math.PI * 0.75,
+        speed: 0.45,
       },
     ];
 
@@ -510,6 +657,11 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
       fluidBlobs,
       parsedLyrics: [],
       lastRawLyrics: "",
+      lastSongId: "",
+      lastCoverUrl: "",
+      currentPalette: DEFAULT_AURORA_PALETTE,
+      targetPalette: DEFAULT_AURORA_PALETTE,
+      paletteMorphT: 1.0,
       lastReportedTime: 0,
       lastTimeUpdateMs: typeof performance !== "undefined" ? performance.now() : Date.now(),
       currentLineText: "",
@@ -520,6 +672,7 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
       prevLineFadeAlpha: 0,
       smoothedLineProgress: 0,
       isSinging: false,
+      idleBadgeAlpha: 1.0,
       smoothedBass: 0,
       smoothedMid: 0,
       smoothedTreble: 0,
@@ -546,72 +699,75 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     const state = ctx.private as CinematicLyricDriftState;
 
     // -------------------------------------------------------------
-    // 1. 参数与字体
+    // 1. 参数解构
     // -------------------------------------------------------------
-    const schemeIndex = Math.max(
-      0,
-      Math.min(COLOR_PALETTES.length - 1, Math.round(params.colorScheme ?? 0))
-    );
-    const palette = COLOR_PALETTES[schemeIndex];
-
-    const fontStyleIndex = Math.max(
-      0,
-      Math.min(FONT_STYLES.length - 1, Math.round(params.fontStyle ?? 0))
-    );
-    const selectedFontFamily = FONT_STYLES[fontStyleIndex];
-
-    const heroFontSize = Math.round(params.heroFontSize ?? 54);
-    const shimmerFeather = params.shimmerFeather ?? 50;
+    const schemeIndex = Math.max(0, Math.min(4, Math.round(params.colorScheme ?? 0)));
+    const bassPulse = params.bassPulse ?? 1.0;
     const fluidSpeed = params.fluidSpeed ?? 0.8;
-    const ambientGlowIntensity = params.ambientGlowIntensity ?? 0.9;
-    const filmGrain = params.filmGrain ?? 0.15;
-    const vignetteStrength = params.vignetteStrength ?? 0.65;
+    const ambientBrightness = params.ambientBrightness ?? 1.1;
+    const shimmerFeather = params.shimmerFeather ?? 45;
+    const filmGrain = params.filmGrain ?? 0.08;
+    const heroFontSize = Math.round(params.heroFontSize ?? 56);
 
     // -------------------------------------------------------------
-    // 2. 音频平滑 (仅用于流体背景极其温柔的微呼吸)
-    // -------------------------------------------------------------
-    let rawBass = audioData.bass || 0;
-    let rawMid = audioData.mid || 0;
-    let rawTreble = audioData.treble || 0;
-
-    if (audioData.frequencyData && audioData.frequencyData.length >= 64) {
-      const fd = audioData.frequencyData;
-      let bSum = 0;
-      let mSum = 0;
-      let tSum = 0;
-      for (let i = 0; i < 8; i++) bSum += fd[i];
-      for (let i = 8; i < 32; i++) mSum += fd[i];
-      for (let i = 32; i < 64; i++) tSum += fd[i];
-      rawBass = Math.max(rawBass, bSum / (8 * 255));
-      rawMid = Math.max(rawMid, mSum / (24 * 255));
-      rawTreble = Math.max(rawTreble, tSum / (32 * 255));
-    }
-
-    const smoothFactor = 0.04;
-    state.smoothedBass += (rawBass - state.smoothedBass) * smoothFactor;
-    state.smoothedMid += (rawMid - state.smoothedMid) * smoothFactor;
-    state.smoothedTreble += (rawTreble - state.smoothedTreble) * smoothFactor;
-    const totalEnergy =
-      state.smoothedBass * 0.5 + state.smoothedMid * 0.3 + state.smoothedTreble * 0.2;
-    state.smoothedEnergy += (totalEnergy - state.smoothedEnergy) * smoothFactor;
-
-    state.timeAccumulator += deltaTime;
-    state.breathPhase =
-      (state.breathPhase + deltaTime * (0.2 + state.smoothedEnergy * 0.2)) % (Math.PI * 2);
-
-    // -------------------------------------------------------------
-    // 3. 高精度时钟与实时演唱状态定位
+    // 2. 封面色谱自适应与平滑 600ms 演化
     // -------------------------------------------------------------
     const audioState = useAudioStore.getState();
     const playerState = usePlayerStore.getState();
     const currentSong = audioState.currentSong || playerState.currentSong;
+    const songCover = currentSong?.cover || "";
+
+    if (schemeIndex === 0) {
+      if (songCover !== state.lastCoverUrl) {
+        state.lastCoverUrl = songCover;
+        loadAndCacheCoverPalette(songCover, (newPalette) => {
+          state.targetPalette = newPalette;
+          state.paletteMorphT = 0;
+        });
+      }
+    } else {
+      state.targetPalette = PRESET_PALETTES[schemeIndex];
+    }
+
+    if (state.paletteMorphT < 1.0) {
+      state.paletteMorphT = Math.min(1.0, state.paletteMorphT + deltaTime * 1.6); // 约 600ms 完成平滑过渡
+      const t = state.paletteMorphT;
+      const lerp = (a: number, b: number) => a + (b - a) * t;
+
+      for (let i = 0; i < state.fluidBlobs.length; i++) {
+        const blob = state.fluidBlobs[i];
+        const targetColor = state.targetPalette.blobs[i % state.targetPalette.blobs.length];
+        blob.r = lerp(blob.r, targetColor[0]);
+        blob.g = lerp(blob.g, targetColor[1]);
+        blob.b = lerp(blob.b, targetColor[2]);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 3. 纯重低音呼吸动力学 (Bass-Only Breathing 20-150Hz)
+    // -------------------------------------------------------------
+    let rawBass = audioData.bass || 0;
+    if (audioData.frequencyData && audioData.frequencyData.length >= 16) {
+      const fd = audioData.frequencyData;
+      let bSum = 0;
+      for (let i = 0; i < 8; i++) bSum += fd[i];
+      rawBass = Math.max(rawBass, bSum / (8 * 255));
+    }
+
+    const smoothFactor = 0.08;
+    state.smoothedBass += (rawBass - state.smoothedBass) * smoothFactor;
+    state.timeAccumulator += deltaTime;
+    state.breathPhase = (state.breathPhase + deltaTime * 0.4) % (Math.PI * 2);
+
+    // -------------------------------------------------------------
+    // 4. LRC 歌词精准时间轴与状态定位
+    // -------------------------------------------------------------
     const reportedTime = audioState.currentTime || playerState.currentTime || 0;
     const isPlaying = audioState.isPlaying || playerState.isPlaying;
     const rawLyrics = currentSong?.lyrics || "";
 
     const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
-
-    if (Math.abs(reportedTime - state.lastReportedTime) > 0.02) {
+    if (Math.abs(reportedTime - state.lastReportedTime) > 0.03) {
       state.lastReportedTime = reportedTime;
       state.lastTimeUpdateMs = nowMs;
     }
@@ -641,17 +797,19 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
         const next = state.parsedLyrics[activeIdx + 1];
         const lineDuration = next ? Math.max(1.2, next.time - curr.time) : 5.0;
         const elapsed = preciseTime - curr.time;
-        const estimatedDuration = Math.min(lineDuration, Math.max(2.0, curr.text.length * 0.34));
+        const estimatedDuration = Math.min(lineDuration, Math.max(2.0, curr.text.length * 0.32));
 
-        if (elapsed >= 0 && elapsed <= estimatedDuration + 0.8) {
+        if (elapsed >= 0 && elapsed <= estimatedDuration + 0.6) {
           isSinging = true;
           activeLine = curr.text;
-          targetProgress = Math.min(1.0, Math.max(0.0, elapsed / Math.max(1.0, estimatedDuration)));
+          targetProgress = calculateSmartProgress(elapsed, estimatedDuration, curr.text);
         }
       }
     }
 
-    // 换行度量
+    // 换行与度量
+    const fontFamily = `-apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif`;
+
     if (activeLine !== state.currentLineText) {
       if (state.currentLineText) {
         state.previousLineText = state.currentLineText;
@@ -664,7 +822,7 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
 
       if (activeLine) {
         c2d.save();
-        c2d.font = `600 ${heroFontSize}px ${selectedFontFamily}`;
+        c2d.font = `600 ${heroFontSize}px ${fontFamily}`;
         state.totalLineWidth = c2d.measureText(activeLine).width;
         c2d.restore();
       } else {
@@ -673,97 +831,130 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     }
 
     state.isSinging = isSinging;
-    state.smoothedLineProgress += (targetProgress - state.smoothedLineProgress) * 0.28;
+    state.smoothedLineProgress += (targetProgress - state.smoothedLineProgress) * 0.32;
 
     const targetCurrentAlpha = isSinging ? 1.0 : 0.0;
-    state.lineTransitionAlpha += (targetCurrentAlpha - state.lineTransitionAlpha) * 0.09;
-    state.prevLineFadeAlpha += (0.0 - state.prevLineFadeAlpha) * 0.1;
+    state.lineTransitionAlpha += (targetCurrentAlpha - state.lineTransitionAlpha) * 0.12;
+    state.prevLineFadeAlpha += (0.0 - state.prevLineFadeAlpha) * 0.15;
+
+    // 空闲徽章透明度
+    const targetIdleAlpha = isSinging ? 0.0 : 1.0;
+    state.idleBadgeAlpha += (targetIdleAlpha - state.idleBadgeAlpha) * 0.08;
 
     // -------------------------------------------------------------
-    // 4. 背景渲染：深邃黑曜石 + Apple Music 风格流体弥散光晕
+    // 5. 渲染底层：Apple Music 4K 液态流光弥散网格
     // -------------------------------------------------------------
 
-    // A. 深邃底色
+    // A. 深度黑夜底色
+    const bgStartRgb = state.targetPalette.bgStart;
+    const bgMidRgb = state.targetPalette.bgMid;
+    const bgEndRgb = state.targetPalette.bgEnd;
+
     const bgGrad = c2d.createRadialGradient(
       width * 0.5,
       height * 0.45,
-      30,
+      20,
       width * 0.5,
       height * 0.5,
-      Math.max(width, height) * 0.85
+      Math.max(width, height) * 0.9
     );
-    bgGrad.addColorStop(0, palette.bgGradStart);
-    bgGrad.addColorStop(0.6, palette.bgGradMid);
-    bgGrad.addColorStop(1, palette.bgGradEnd);
+    bgGrad.addColorStop(0, `rgb(${bgStartRgb[0]}, ${bgStartRgb[1]}, ${bgStartRgb[2]})`);
+    bgGrad.addColorStop(0.55, `rgb(${bgMidRgb[0]}, ${bgMidRgb[1]}, ${bgMidRgb[2]})`);
+    bgGrad.addColorStop(1, `rgb(${bgEndRgb[0]}, ${bgEndRgb[1]}, ${bgEndRgb[2]})`);
     c2d.fillStyle = bgGrad;
     c2d.fillRect(0, 0, width, height);
 
-    // B. Apple 风格流体弥散色斑（极慢律动，如丝绒温润流动）
+    // B. Apple 风格液态柔光晶球融合
     c2d.save();
     c2d.globalCompositeOperation = "screen";
 
     for (let i = 0; i < state.fluidBlobs.length; i++) {
       const blob = state.fluidBlobs[i];
-      const blobColorPattern = palette.blobColors[i % palette.blobColors.length];
 
-      // 极慢平滑游弋
+      // 简谐柔和游弋
       blob.x +=
-        blob.vx * fluidSpeed +
-        Math.sin(state.timeAccumulator * 0.15 * blob.speed + blob.phase) * 0.4;
+        blob.vx * fluidSpeed * 1.2 +
+        Math.sin(state.timeAccumulator * 0.2 * blob.speed + blob.phase) * 0.8;
       blob.y +=
-        blob.vy * fluidSpeed +
-        Math.cos(state.timeAccumulator * 0.12 * blob.speed + blob.phase) * 0.4;
+        blob.vy * fluidSpeed * 1.2 +
+        Math.cos(state.timeAccumulator * 0.18 * blob.speed + blob.phase) * 0.8;
 
-      // 屏幕边界柔和回弹
-      const margin = blob.baseRadius * 0.6;
+      // 屏幕边缘弹性回弹
+      const margin = blob.baseRadius * 0.5;
       if (blob.x < -margin) blob.vx = Math.abs(blob.vx);
       if (blob.x > width + margin) blob.vx = -Math.abs(blob.vx);
       if (blob.y < -margin) blob.vy = Math.abs(blob.vy);
       if (blob.y > height + margin) blob.vy = -Math.abs(blob.vy);
 
-      // 微呼吸形变
-      const pulse = 1.0 + Math.sin(state.breathPhase + blob.phase) * 0.08;
-      const curR = blob.baseRadius * pulse;
-      const alpha = blob.alpha * ambientGlowIntensity * (0.85 + state.smoothedBass * 0.3);
+      // 纯重低音呼吸脉冲
+      const bassExpand = 1.0 + state.smoothedBass * 0.22 * bassPulse;
+      const curRadius = blob.baseRadius * bassExpand;
+      const alpha =
+        blob.alpha * ambientBrightness * (0.85 + state.smoothedBass * 0.25 * bassPulse);
 
-      const blobGrad = c2d.createRadialGradient(blob.x, blob.y, 0, blob.x, blob.y, curR);
-      blobGrad.addColorStop(0, blobColorPattern.replace(/[\d.]+\)$/, `${alpha})`));
-      blobGrad.addColorStop(
-        0.5,
-        blobColorPattern.replace(/[\d.]+\)$/, `${(alpha * 0.4).toFixed(3)})`)
+      const r = Math.round(blob.r);
+      const g = Math.round(blob.g);
+      const b = Math.round(blob.b);
+
+      const blobGrad = c2d.createRadialGradient(
+        blob.x,
+        blob.y,
+        0,
+        blob.x,
+        blob.y,
+        curRadius
       );
+      blobGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`);
+      blobGrad.addColorStop(0.45, `rgba(${r}, ${g}, ${b}, ${(alpha * 0.45).toFixed(3)})`);
+      blobGrad.addColorStop(0.8, `rgba(${r}, ${g}, ${b}, ${(alpha * 0.1).toFixed(3)})`);
       blobGrad.addColorStop(1, "rgba(0,0,0,0)");
 
       c2d.fillStyle = blobGrad;
       c2d.beginPath();
-      c2d.arc(blob.x, blob.y, curR, 0, Math.PI * 2);
+      c2d.arc(blob.x, blob.y, curRadius, 0, Math.PI * 2);
       c2d.fill();
     }
     c2d.restore();
 
+    // C. 4K 防色阶胶片微噪点叠加
+    if (state.grainCanvas && filmGrain > 0.005) {
+      c2d.save();
+      c2d.globalAlpha = filmGrain;
+      c2d.globalCompositeOperation = "overlay";
+      const grainPattern = c2d.createPattern(state.grainCanvas, "repeat");
+      if (grainPattern) {
+        c2d.fillStyle = grainPattern;
+        c2d.fillRect(0, 0, width, height);
+      }
+      c2d.restore();
+    }
+
     // -------------------------------------------------------------
-    // 5. 歌词渲染：Apple 风格纯净液态流光 (横向完整排版 + 丝绸微滑)
+    // 6. 歌词渲染：单行巨幕 + 8px 物理弹簧微滑 + 水银扫光
     // -------------------------------------------------------------
-    const heroY = height * 0.51;
     const heroX = width * 0.5;
+    const heroY = height * 0.51;
 
-    // 自适应安全排版（保证整句完整大气且绝不溢出边缘）
-    const maxAllowedWidth = width * 0.86;
-    const currFitScale =
-      state.totalLineWidth > 0 ? Math.min(1.0, maxAllowedWidth / state.totalLineWidth) : 1.0;
-    const prevFitScale =
-      state.prevLineWidth > 0 ? Math.min(1.0, maxAllowedWidth / state.prevLineWidth) : 1.0;
+    // 自适应字号计算（保证长句不溢出屏幕）
+    const maxSafeWidth = width * 0.84;
+    let fitScale = 1.0;
+    if (state.totalLineWidth > maxSafeWidth && maxSafeWidth > 100) {
+      fitScale = maxSafeWidth / state.totalLineWidth;
+    }
+    const currentActualFontSize = Math.max(34, Math.round(heroFontSize * fitScale));
 
-    const actualFontSize = Math.round(heroFontSize * currFitScale);
-
-    c2d.save();
     c2d.textAlign = "center";
     c2d.textBaseline = "middle";
-    c2d.font = `600 ${actualFontSize}px ${selectedFontFamily}`;
+    c2d.letterSpacing = "-0.02em";
 
-    // A. 旧句退场：向上微浮 10px 平滑淡出 (丝绸微滑)
-    if (state.prevLineFadeAlpha > 0.005 && state.previousLineText) {
-      const prevY = heroY - 10 * (1 - state.prevLineFadeAlpha);
+    // 1. 上一句歌词淡出与上浮 8px (Spring Float Out)
+    if (state.prevLineFadeAlpha > 0.01 && state.previousLineText) {
+      const prevScale = Math.min(1.0, maxSafeWidth / (state.prevLineWidth || 1));
+      const prevFontSize = Math.max(34, Math.round(heroFontSize * prevScale));
+      const prevY = heroY - (1.0 - state.prevLineFadeAlpha) * 8;
+
+      c2d.save();
+      c2d.font = `600 ${prevFontSize}px ${fontFamily}`;
       renderLiquidShimmerLine(
         c2d,
         state.previousLineText,
@@ -771,78 +962,72 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
         heroX,
         prevY,
         1.0,
-        state.prevLineFadeAlpha * 0.65,
-        palette,
+        state.prevLineFadeAlpha,
         shimmerFeather,
-        prevFitScale
+        prevScale
       );
+      c2d.restore();
     }
 
-    // B. 当前句入场：从下方微升 10px 柔和淡入 + 月光液态流光精准扫描
-    if (state.lineTransitionAlpha > 0.005 && state.currentLineText) {
-      const currY = heroY + 10 * (1 - state.lineTransitionAlpha);
+    // 2. 当前正在唱的歌词（从下方 +8px 上浮入场并水银扫光）
+    if (state.lineTransitionAlpha > 0.01 && state.currentLineText) {
+      const curY = heroY + (1.0 - state.lineTransitionAlpha) * 8;
+
+      c2d.save();
+      c2d.font = `600 ${currentActualFontSize}px ${fontFamily}`;
       renderLiquidShimmerLine(
         c2d,
         state.currentLineText,
         state.totalLineWidth,
         heroX,
-        currY,
+        curY,
         state.smoothedLineProgress,
         state.lineTransitionAlpha,
-        palette,
         shimmerFeather,
-        currFitScale
+        fitScale
       );
-    }
-
-    c2d.restore();
-
-    // -------------------------------------------------------------
-    // 6. 顶级胶片微粒 & 幽深暗角
-    // -------------------------------------------------------------
-    if (filmGrain > 0.02 && state.grainCanvas) {
-      c2d.save();
-      c2d.globalCompositeOperation = "overlay";
-      c2d.globalAlpha = filmGrain;
-      const pattern = c2d.createPattern(state.grainCanvas, "repeat");
-      if (pattern) {
-        const grainOffsetX = (Math.random() - 0.5) * 20;
-        const grainOffsetY = (Math.random() - 0.5) * 20;
-        c2d.translate(grainOffsetX, grainOffsetY);
-        c2d.fillStyle = pattern;
-        c2d.fillRect(-20, -20, width + 40, height + 40);
-      }
       c2d.restore();
     }
 
-    if (vignetteStrength > 0.05) {
+    // 3. 空闲/间奏/纯音乐优雅微标 (Idle Track Badge)
+    if (state.idleBadgeAlpha > 0.01) {
+      const trackTitle = currentSong?.title || "MIMI Music Player";
+      const trackArtist = currentSong?.artist || "享受纯净音律";
+
       c2d.save();
-      const maxDim = Math.max(width, height) * 0.75;
-      const vigGrad = c2d.createRadialGradient(
-        width * 0.5,
-        height * 0.5,
-        maxDim * 0.42,
-        width * 0.5,
-        height * 0.5,
-        maxDim
-      );
-      vigGrad.addColorStop(0, "rgba(0,0,0,0)");
-      vigGrad.addColorStop(1, `rgba(0,0,0,${vignetteStrength * 0.85})`);
-      c2d.fillStyle = vigGrad;
-      c2d.fillRect(0, 0, width, height);
+      c2d.globalAlpha = state.idleBadgeAlpha * 0.85;
+
+      // 标题
+      c2d.font = `600 ${Math.min(42, heroFontSize * 0.75)}px ${fontFamily}`;
+      c2d.fillStyle = "rgba(255, 255, 255, 0.95)";
+      c2d.shadowColor = "rgba(255, 255, 255, 0.3)";
+      c2d.shadowBlur = 16;
+      c2d.fillText(trackTitle, heroX, heroY - 16);
+
+      // 歌手与脉冲微光点
+      c2d.font = `400 16px ${fontFamily}`;
+      c2d.fillStyle = "rgba(255, 255, 255, 0.55)";
+      c2d.shadowBlur = 0;
+      c2d.fillText(trackArtist, heroX, heroY + 24);
+
+      // 律动呼吸点
+      const dotPulse = 1.0 + state.smoothedBass * 0.6 * bassPulse;
+      c2d.fillStyle = "rgba(255, 255, 255, 0.75)";
+      c2d.beginPath();
+      c2d.arc(heroX, heroY + 54, 2.5 * dotPulse, 0, Math.PI * 2);
+      c2d.fill();
+
       c2d.restore();
     }
   },
 
-  resize(_width: number, _height: number) {
-    // 自动响应视口
+  resize(width: number, height: number) {
+    // Canvas dimensions updated automatically
   },
 
   destroy(ctx?: RenderContext) {
     if (ctx && ctx.private) {
-      ctx.private.fluidBlobs = [];
-      ctx.private.parsedLyrics = [];
-      ctx.private.grainCanvas = null;
+      ctx.private = undefined;
     }
   },
 };
