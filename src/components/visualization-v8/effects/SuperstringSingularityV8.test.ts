@@ -79,10 +79,11 @@ describe("SuperstringSingularityV8Effect", () => {
     expect(paramIds).toContain("burstSensitivity");
   });
 
-  it("initializes particle state and render context properly", () => {
+  it("initializes filament state and render context properly", () => {
     SuperstringSingularityV8Effect.init(renderContext);
     expect(renderContext.private?.state).toBeDefined();
-    expect(renderContext.private?.state.particles.length).toBeGreaterThan(1000);
+    expect(renderContext.private?.state.filaments.length).toBeGreaterThanOrEqual(24);
+    expect(renderContext.private?.state.plasmaRibbons.length).toBeGreaterThan(0);
   });
 
   it("renders correctly with audioData and beat triggers", () => {
