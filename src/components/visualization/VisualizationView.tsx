@@ -79,13 +79,14 @@ export function VisualizationView() {
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const themeColors = useUIStore((state) => state.themeColors);
   const _isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
+  const isFullscreen = useUIStore((state) => state.isFullscreen);
+  const toggleFullscreen = useUIStore((state) => state.toggleFullscreen);
   const currentTime = useAudioStore((state) => state.currentTime);
   const duration = useAudioStore((state) => state.duration);
   const bufferedRanges = useAudioStore((state) => state.bufferedRanges);
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);
-  const { currentEffect, setCurrentEffect, isFullscreen, setIsFullscreen, effectSettings } =
-    useVisualizationStore();
+  const { currentEffect, setCurrentEffect, effectSettings } = useVisualizationStore();
   const { currentTheme: _currentTheme } = useVisualSettingsStore();
   const { seek } = useAudioPlayer();
   const [showSettings, setShowSettings] = useState(false);
@@ -127,7 +128,7 @@ export function VisualizationView() {
     };
   }, []);
 
-  // Sync fullscreen state with browser events
+  // Sync fullscreen state with browser events globally
   useEffect(() => {
     const handleFsChange = () => {
       const isFs = !!(
@@ -136,7 +137,8 @@ export function VisualizationView() {
         (document as LegacyAny).mozFullScreenElement ||
         (document as LegacyAny).msFullscreenElement
       );
-      setIsFullscreen(isFs);
+      useUIStore.setState({ isFullscreen: isFs });
+      useVisualizationStore.setState({ isFullscreen: isFs });
     };
 
     const events = [
@@ -150,7 +152,7 @@ export function VisualizationView() {
     return () => {
       events.forEach((event) => document.removeEventListener(event, handleFsChange));
     };
-  }, [setIsFullscreen]);
+  }, []);
 
   // Fallback to valid effect if current effect was removed
   useEffect(() => {
@@ -161,49 +163,8 @@ export function VisualizationView() {
   }, [currentEffect, setCurrentEffect]);
 
   const handleToggleFullscreen = useCallback(() => {
-    // 1. Try Electron Native Fullscreen first (Best for Desktop)
-    if ((window as LegacyAny).electronAPI?.toggleFullscreen) {
-      (window as LegacyAny).electronAPI
-        .toggleFullscreen()
-        .then((result: boolean) => setIsFullscreen(result))
-        .catch((err: LegacyAny) => console.error("Electron fullscreen failed:", err));
-      return;
-    }
-
-    // 2. Fallback to Browser Fullscreen API with vendor prefixes
-    const doc = document as LegacyAny;
-    const isFs = !!(
-      doc.fullscreenElement ||
-      doc.webkitFullscreenElement ||
-      doc.mozFullScreenElement ||
-      doc.msFullscreenElement
-    );
-
-    if (!isFs) {
-      const elem = containerRef.current || document.documentElement;
-      const request =
-        elem.requestFullscreen ||
-        (elem as LegacyAny).webkitRequestFullscreen ||
-        (elem as LegacyAny).mozRequestFullScreen ||
-        (elem as LegacyAny).msRequestFullscreen;
-      if (request) {
-        request.call(elem).catch((err: LegacyAny) => {
-          console.error("Fullscreen request failed:", err);
-        });
-      }
-    } else {
-      const exit =
-        doc.exitFullscreen ||
-        doc.webkitExitFullscreen ||
-        doc.mozCancelFullScreen ||
-        doc.msExitFullscreen;
-      if (exit) {
-        exit.call(doc).catch((err: LegacyAny) => {
-          console.error("Exit fullscreen failed:", err);
-        });
-      }
-    }
-  }, [setIsFullscreen]);
+    toggleFullscreen();
+  }, [toggleFullscreen]);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
