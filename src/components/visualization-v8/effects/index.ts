@@ -15,7 +15,6 @@ import { SpringSystemV8Effect } from "./SpringSystemV8";
 import { SpectrumV8Effect } from "./SpectrumV8";
 import { WaveformV8Effect } from "./WaveformV8";
 import { ParticleNebulaV8 } from "./ParticleNebulaV8";
-import { SuperstringSingularityV8Effect } from "./SuperstringSingularityV8";
 import { AudioCrystalV8Effect } from "./AudioCrystalV8";
 import { AudioLiquidV8Effect } from "./AudioLiquidV8";
 import { AudioPaintingV8Effect } from "./AudioPaintingV8";
@@ -38,7 +37,6 @@ export {
   SpectrumV8Effect,
   WaveformV8Effect,
   ParticleNebulaV8,
-  SuperstringSingularityV8Effect,
   AudioCrystalV8Effect,
   AudioLiquidV8Effect,
   AudioPaintingV8Effect,

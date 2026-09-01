@@ -97,7 +97,6 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
     vinylGroove: "量子空间",
     cyberMatrix: "赛博矩阵",
     prismPulse: "棱镜脉冲",
-    superstringSingularity: "量子超弦奇点",
     cinematicLyricDrift: "温光浮字",
   };
 
