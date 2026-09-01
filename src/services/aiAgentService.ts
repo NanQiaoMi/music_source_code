@@ -165,6 +165,7 @@ export async function runAgentConversation({
   let openAIMessages = formatMessagesForOpenAI(currentMessages);
   const maxIterations = 5;
   let supportsTools = true;
+  let accumulatedSongResults: SongResult[] = [];
 
   for (let iteration = 0; iteration < maxIterations; iteration++) {
     if (abortSignal?.aborted) {
@@ -193,7 +194,8 @@ export async function runAgentConversation({
 
       if (supportsTools) {
         requestBody.tools = AI_AGENT_TOOLS;
-        requestBody.tool_choice = "auto";
+        // 若已执行过工具，引导模型聚焦自然语言总结，避免无谓的重复工具调用
+        requestBody.tool_choice = iteration > 1 ? "none" : "auto";
       }
 
       try {
@@ -358,6 +360,7 @@ export async function runAgentConversation({
             canPlay: true,
             canDownload: true,
           }));
+          accumulatedSongResults = [...accumulatedSongResults, ...songResults];
         }
 
         const toolMsg: AgentMessage = {
@@ -386,13 +389,20 @@ export async function runAgentConversation({
       continue;
     }
 
-    // 模型返回普通回复
-    const finalContent = message.content || "";
+    // 模型返回普通回复（若模型返回空字符串且有搜索结果，自动提供优雅音乐推荐短语）
+    let finalContent = message.content?.trim() || "";
+    if (!finalContent && accumulatedSongResults.length > 0) {
+      finalContent = `为你找到了《**${accumulatedSongResults[0].song.title}**》等 ${accumulatedSongResults.length} 首契合氛围的曲目 🎵，可以直接在下方列表中点击播放：`;
+    } else if (!finalContent && iteration > 0) {
+      finalContent = `已为你完成操作。`;
+    }
+
     const finalMsg: AgentMessage = {
       id: `msg_assistant_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       role: "assistant",
       content: finalContent,
       timestamp: Date.now(),
+      songResults: accumulatedSongResults.length > 0 ? accumulatedSongResults : undefined,
       status: "done",
     };
 

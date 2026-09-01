@@ -308,16 +308,21 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
           )}
 
           {/* 消息对话主滚动区 */}
-          <div className="relative z-10 flex-1 overflow-y-auto px-4 py-4 space-y-4 scroll-smooth min-h-0">
-            {messages.map((msg) => {
+          <div className="relative z-10 flex-1 overflow-y-auto px-4 py-4 space-y-4 scroll-smooth min-h-0 custom-scrollbar">
+            {messages.map((msg, msgIdx) => {
               if (msg.role === "tool") {
-                if (msg.songResults && msg.songResults.length > 0) {
+                // 若后续紧跟带有歌曲结果的 assistant 消息，则在 assistant 消息中统一呈现，避免割裂
+                const nextMsg = messages[msgIdx + 1];
+                const nextIsAssistantWithSongs =
+                  nextMsg?.role === "assistant" && nextMsg.songResults && nextMsg.songResults.length > 0;
+
+                if (msg.songResults && msg.songResults.length > 0 && !nextIsAssistantWithSongs) {
                   return (
                     <motion.div
                       key={msg.id}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="space-y-2.5 my-3"
+                      className="rounded-[20px] bg-white/[0.03] border border-white/[0.08] p-3 space-y-2.5 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)] my-3"
                     >
                       {/* 检索结果顶栏与批量操作按钮 */}
                       <div className="flex items-center justify-between px-1">
@@ -326,7 +331,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                           <span>已全网检索到 {msg.songResults.length} 首曲目</span>
                         </span>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => handlePlayAllResults(msg.songResults || [])}
@@ -346,8 +351,8 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                         </div>
                       </div>
 
-                      {/* 歌曲卡片列表 */}
-                      <div className="grid grid-cols-1 gap-2.5">
+                      {/* 内部纵向紧凑滚动区 */}
+                      <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                         {msg.songResults.map((sr) => (
                           <SongResultCard
                             key={sr.song.id}
@@ -471,16 +476,16 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                       </div>
                     )}
 
-                    {/* 关联的歌曲卡片列表 */}
+                    {/* 关联的歌曲卡片列表：置于同一回答气泡内的紧凑滚动盒中，兼顾多曲目滚动与整体美感 */}
                     {msg.songResults && msg.songResults.length > 0 && (
-                      <div className="space-y-2.5 pt-1">
+                      <div className="rounded-[20px] bg-white/[0.03] border border-white/[0.08] p-3 space-y-2.5 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
                         <div className="flex items-center justify-between px-1">
                           <span className="text-[12px] font-medium text-white/70 flex items-center gap-1.5">
                             <Music4 className="w-3.5 h-3.5 text-white/60" />
-                            <span>推荐曲目 ({msg.songResults.length})</span>
+                            <span>推荐曲目 ({msg.songResults.length} 首)</span>
                           </span>
 
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => handlePlayAllResults(msg.songResults || [])}
@@ -500,7 +505,8 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-2">
+                        {/* 内部纵向紧凑滚动区 */}
+                        <div className="max-h-[320px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                           {msg.songResults.map((sr) => (
                             <SongResultCard
                               key={sr.song.id}
