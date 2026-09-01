@@ -82,7 +82,7 @@ describe("SuperstringSingularityV8Effect", () => {
   it("initializes state and render context properly", () => {
     SuperstringSingularityV8Effect.init(renderContext);
     expect(renderContext.private?.state).toBeDefined();
-    expect(renderContext.private?.state.photonRingSprite).toBeDefined();
+    expect(renderContext.private?.state.streams.length).toBeGreaterThan(0);
   });
 
   it("renders correctly with audioData and beat triggers", () => {
