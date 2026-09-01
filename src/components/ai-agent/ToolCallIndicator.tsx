@@ -2,7 +2,20 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Search, PlayCircle, Download, FileText, Sparkles } from "lucide-react";
+import {
+  Search,
+  PlayCircle,
+  Download,
+  FileText,
+  Sparkles,
+  Sliders,
+  Volume2,
+  Repeat,
+  Radio,
+  Heart,
+  ListPlus,
+  Moon,
+} from "lucide-react";
 
 export interface ToolCallIndicatorProps {
   toolName?: string | null;
@@ -19,6 +32,38 @@ const TOOL_CONFIG: Record<
   play_song: {
     label: "正在解析高品质音频流与播放器...",
     icon: PlayCircle,
+  },
+  control_playback: {
+    label: "正在执行播放器控制指令...",
+    icon: Sliders,
+  },
+  set_volume: {
+    label: "正在调节播放器音量与声音通道...",
+    icon: Volume2,
+  },
+  set_play_mode: {
+    label: "正在配置播放循环模式...",
+    icon: Repeat,
+  },
+  get_current_playing: {
+    label: "正在读取当前曲目与播放状态...",
+    icon: Radio,
+  },
+  like_current_song: {
+    label: "正在更新红心收藏列表...",
+    icon: Heart,
+  },
+  add_to_queue: {
+    label: "正在更新待播清单与播放队列...",
+    icon: ListPlus,
+  },
+  switch_visualizer: {
+    label: "正在切换全屏音乐可视化引擎...",
+    icon: Sparkles,
+  },
+  set_sleep_timer: {
+    label: "正在配置睡眠倒计时关机...",
+    icon: Moon,
   },
   download_song: {
     label: "正在添加歌曲至无损离线下载队列...",
@@ -58,27 +103,7 @@ export const ToolCallIndicator: React.FC<ToolCallIndicatorProps> = ({ toolName }
         <span className="text-[12.5px] font-medium tracking-tight whitespace-nowrap text-white/90">
           {config.label}
         </span>
-
-        {/* 呼吸微白脉冲点 */}
-        <div className="flex items-center gap-1 ml-1">
-          <motion.span
-            animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
-            transition={{ repeat: Infinity, duration: 1.2, delay: 0 }}
-            className="w-1.5 h-1.5 rounded-full bg-white/80 shadow-[0_0_6px_rgba(255,255,255,0.8)]"
-          />
-          <motion.span
-            animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
-            transition={{ repeat: Infinity, duration: 1.2, delay: 0.2 }}
-            className="w-1.5 h-1.5 rounded-full bg-white/80 shadow-[0_0_6px_rgba(255,255,255,0.8)]"
-          />
-          <motion.span
-            animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
-            transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }}
-            className="w-1.5 h-1.5 rounded-full bg-white/80 shadow-[0_0_6px_rgba(255,255,255,0.8)]"
-          />
-        </div>
       </div>
     </motion.div>
   );
 };
-
