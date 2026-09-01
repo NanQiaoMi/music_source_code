@@ -12,7 +12,6 @@ export type VisualizationEffect =
   | "cyberMatrix"
   | "gravitationalField"
   | "prismPulse"
-  | "superstringSingularity"
   | "cinematicSilkAurora"
   | "orientalLandscape"
   | "cinematicLyricDrift";
@@ -108,12 +107,6 @@ const defaultEffectSettings: EffectSettings = {
   cyberMatrix: { speed: 1.0, density: 1.0 },
   gravitationalField: { speed: 1.0, sensitivity: 1.0, coreIntensity: 1.0 },
   prismPulse: { complexity: 6, refraction: 1.0, drift: 0.5, speed: 1.0 },
-  superstringSingularity: {
-    speed: 1.0,
-    singularityMass: 1.0,
-    superstringTension: 1.2,
-    coreGlow: 1.5,
-  },
   cinematicSilkAurora: {
     silkCount: 6,
     flowSpeed: 1.0,

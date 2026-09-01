@@ -55,6 +55,23 @@ const NextIcon = memo(() => (
 ));
 NextIcon.displayName = "NextIcon";
 
+const EFFECTS_LIST: { id: VisualizationEffect; name: string }[] = [
+  { id: "cinematicLyricDrift", name: "温光浮字" },
+  { id: "orientalLandscape", name: "青绿千里" },
+  { id: "cinematicOrientalInk", name: "千里江山" },
+  { id: "cinematicSilkAurora", name: "流金丝绸" },
+  { id: "spatialMesh", name: "流光幻境" },
+  { id: "cyberpunkParticles", name: "神经之网" },
+  { id: "organicFluid", name: "生命流体" },
+  { id: "auroraWave", name: "极光幻影" },
+  { id: "spectrumRing", name: "频谱奇点" },
+  { id: "nebulaField", name: "星海漫游" },
+  { id: "vinylGroove", name: "量子空间" },
+  { id: "cyberMatrix", name: "赛博矩阵" },
+  { id: "prismPulse", name: "棱镜脉冲" },
+  { id: "gravitationalField", name: "重力场 (隐藏)" },
+];
+
 export function VisualizationView() {
   const { currentView, setCurrentView, isTransitioning } = useUIStore();
   const currentSong = useAudioStore((state) => state.currentSong);
@@ -134,6 +151,14 @@ export function VisualizationView() {
       events.forEach((event) => document.removeEventListener(event, handleFsChange));
     };
   }, [setIsFullscreen]);
+
+  // Fallback to valid effect if current effect was removed
+  useEffect(() => {
+    const validIds = EFFECTS_LIST.map((e) => e.id);
+    if (!validIds.includes(currentEffect)) {
+      setCurrentEffect("cinematicOrientalInk");
+    }
+  }, [currentEffect, setCurrentEffect]);
 
   const handleToggleFullscreen = useCallback(() => {
     // 1. Try Electron Native Fullscreen first (Best for Desktop)
@@ -428,9 +453,6 @@ export function VisualizationView() {
           case "prismPulse":
             Effects.drawPrismPulse(effectCtx);
             break;
-          case "superstringSingularity":
-            Effects.drawSuperstringSingularity(effectCtx);
-            break;
           case "cinematicSilkAurora":
             Effects.drawCinematicSilkAurora(effectCtx);
             break;
@@ -534,13 +556,6 @@ export function VisualizationView() {
         willChange: "filter",
       };
     }
-    if (currentEffect === "superstringSingularity") {
-      return {
-        filter: `saturate(1.35) contrast(1.15) brightness(1.1) drop-shadow(0 0 35px rgba(147, 51, 234, 0.2))`,
-        transform: "translateZ(0)",
-        willChange: "filter",
-      };
-    }
     if (currentEffect === "cinematicSilkAurora") {
       return {
         transform: "translateZ(0)",
@@ -549,23 +564,7 @@ export function VisualizationView() {
     return { transform: "translateZ(0)" };
   };
 
-  const effectsList: { id: VisualizationEffect; name: string }[] = [
-    { id: "cinematicLyricDrift", name: "温光浮字" },
-    { id: "orientalLandscape", name: "青绿千里" },
-    { id: "cinematicOrientalInk", name: "千里江山" },
-    { id: "cinematicSilkAurora", name: "流金丝绸" },
-    { id: "spatialMesh", name: "流光幻境" },
-    { id: "cyberpunkParticles", name: "神经之网" },
-    { id: "organicFluid", name: "生命流体" },
-    { id: "auroraWave", name: "极光幻影" },
-    { id: "spectrumRing", name: "频谱奇点" },
-    { id: "nebulaField", name: "星海漫游" },
-    { id: "vinylGroove", name: "量子空间" },
-    { id: "cyberMatrix", name: "赛博矩阵" },
-    { id: "prismPulse", name: "棱镜脉冲" },
-    { id: "superstringSingularity", name: "量子超弦奇点" },
-    { id: "gravitationalField", name: "重力场 (隐藏)" },
-  ];
+  const effectsList = EFFECTS_LIST;
 
   return (
     <motion.div
