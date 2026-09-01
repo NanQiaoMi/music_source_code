@@ -25,7 +25,7 @@ import {
   Search,
 } from "lucide-react";
 import { useAIAgentStore } from "@/store/useAIAgentStore";
-import { useAIStore } from "@/store/aiStore";
+import { useAIStore, DEFAULT_SENSENOVA_CONFIGS } from "@/store/aiStore";
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
@@ -95,7 +95,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
 
   const activeConfig =
     configs.find((c) => c.id === activeConfigId) || (configs.length > 0 ? configs[0] : null);
-  const isConfigured = !!activeConfig && isEnabled;
+  const isConfigured = !!activeConfig?.apiKey?.trim() && isEnabled;
 
   const [inputVal, setInputVal] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);

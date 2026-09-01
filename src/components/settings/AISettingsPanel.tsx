@@ -39,6 +39,7 @@ export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClos
     duplicateConfig,
     setActiveConfig,
     importConfigs,
+    resetToDefaultConfigs,
     testConfig,
     fetchModels,
   } = useAIStore();
@@ -128,34 +129,13 @@ export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClos
   };
 
   const handleResetDefaults = () => {
-    if (confirm("确定要恢复官方推荐默认 AI 端点配置吗？这将添加 DeepSeek 与 SenseNova 预设。")) {
-      const deepseekPreset = PROVIDER_PRESETS[0];
-      const sensenovaPreset = PROVIDER_PRESETS[1];
-      addConfig({
-        name: deepseekPreset.name,
-        providerId: deepseekPreset.id,
-        baseUrl: deepseekPreset.baseUrl,
-        apiKey: "",
-        model: deepseekPreset.defaultModel,
-        temperature: 0.7,
-        topP: 1.0,
-        maxTokens: 2048,
-        timeout: 30000,
-        stream: true,
-      });
-      addConfig({
-        name: sensenovaPreset.name,
-        providerId: sensenovaPreset.id,
-        baseUrl: sensenovaPreset.baseUrl,
-        apiKey: "",
-        model: sensenovaPreset.defaultModel,
-        temperature: 0.7,
-        topP: 1.0,
-        maxTokens: 2048,
-        timeout: 30000,
-        stream: true,
-      });
-      showToast("已重置并添加官方推荐端点", "success");
+    if (
+      confirm(
+        "确定要恢复官方推荐商汤 SenseNova 极速多通道 AI 端点配置吗？这将载入 5 大官方高速密钥与多模型容灾池。"
+      )
+    ) {
+      resetToDefaultConfigs();
+      showToast("已成功重置并载入 SenseNova 多通道 API 端点矩阵", "success");
     }
   };
 
