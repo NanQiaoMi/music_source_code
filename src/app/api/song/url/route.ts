@@ -196,20 +196,12 @@ export async function GET(request: NextRequest) {
   // 1. 酷我专区 (仅在明确指定 kuwo 或以 MUSIC_ 开头时调用)
   if (source === "kuwo" || source === "kw" || id.startsWith("MUSIC_") || id.startsWith("kw_")) {
     const kuwoCookie = request.headers.get("x-kuwo-cookie") || "";
-    if (!kuwoCookie || kuwoCookie.trim().length < 5) {
-      return NextResponse.json(
-        { code: 401, message: "Kuwo authentication required. Please login with Cookie." },
-        { status: 401 }
-      );
-    }
-
-
     if (id) {
       try {
         const rid = id.replace(/^(MUSIC_|kw_)/, "");
         const directRes = await fetch(
           `http://antiserver.kuwo.cn/anti.s?type=convert_url&rid=${rid}&format=mp3&response=url`,
-          { signal: AbortSignal.timeout(2500), headers: { Cookie: kuwoCookie } }
+          { signal: AbortSignal.timeout(3000), headers: kuwoCookie ? { Cookie: kuwoCookie } : undefined }
         );
         if (directRes.ok) {
           const streamUrl = (await directRes.text()).trim();
@@ -238,23 +230,14 @@ export async function GET(request: NextRequest) {
         });
       }
     }
-
-    return NextResponse.json({ url: "", code: 404, message: "Kuwo audio not found" });
   }
 
-  // 2. 网易云专区 (严格校验登录凭证，未登录直接返回 401)
+  // 2. 网易云专区
   if (source === "netease" || source === "wy" || (!source && /^\d+$/.test(effectiveId))) {
     const neteaseCookie = request.headers.get("x-netease-cookie") || "";
-    if (!neteaseCookie || neteaseCookie.trim().length < 5) {
-      return NextResponse.json(
-        { code: 401, message: "NetEase authentication required. Please login with QR code or Cookie." },
-        { status: 401 }
-      );
-    }
 
-
-    // 2.1 网易云官方 WeAPI 获取原版真流
-    if (/^\d+$/.test(effectiveId)) {
+    // 2.1 网易云官方 WeAPI 获取原版真流 (若提供了 Cookie)
+    if (neteaseCookie && neteaseCookie.trim().length >= 5 && /^\d+$/.test(effectiveId)) {
       try {
         const weRes = await neteaseWeApiRequest(
           "/api/song/enhance/player/url/v1",
@@ -281,8 +264,10 @@ export async function GET(request: NextRequest) {
           });
         }
       } catch {}
+    }
 
-      // 2.2 网易云官方外链 CDN 校验
+    // 2.2 网易云官方外链 CDN 校验
+    if (/^\d+$/.test(effectiveId)) {
       try {
         const directUrl = `https://music.163.com/song/media/outer/url?id=${effectiveId}.mp3`;
         const headCheck = await fetch(directUrl, {
@@ -291,7 +276,7 @@ export async function GET(request: NextRequest) {
           headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
             Referer: "https://music.163.com",
-            Cookie: neteaseCookie,
+            Cookie: neteaseCookie || "",
           },
           signal: AbortSignal.timeout(3000),
         });
@@ -308,22 +293,9 @@ export async function GET(request: NextRequest) {
         }
       } catch {}
     }
-
-    if (source === "netease" || source === "wy") {
-      // 纯网易云请求，不跨源到其他平台
-      return NextResponse.json({ url: "", code: 404, message: "NetEase audio stream not found" });
-    }
   }
 
-  // 3. 通用未指明来源时的兜底：仅在提供了有效 Cookie 时解析
-  const anyCookie = request.headers.get("x-netease-cookie") || request.headers.get("x-qq-cookie") || request.headers.get("x-kugou-cookie") || request.headers.get("x-kuwo-cookie");
-  if (!anyCookie) {
-    return NextResponse.json(
-      { code: 401, message: "Platform authentication required. Please login first." },
-      { status: 401 }
-    );
-  }
-
+  // 3. 通用高可用公网音源嗅探 (酷我母带与全网高码率流)
   if (title) {
     const crossResult = await resolveCrossSourceAudio(title, artist);
     if (crossResult?.url) {
