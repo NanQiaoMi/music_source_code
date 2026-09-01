@@ -18,6 +18,8 @@ interface LinerNotesState {
   clearCache: () => void;
 }
 
+let lastRateLimitTimestamp = 0;
+
 export const useLinerNotesStore = create<LinerNotesState>()(
   persist(
     (set, get) => ({
@@ -28,6 +30,11 @@ export const useLinerNotesStore = create<LinerNotesState>()(
         const key = `${artist}-${title}`;
         const cached = get().notes[key];
         if (cached && !forceRefresh) return cached;
+
+        // 若最近 60 秒内遭遇过 429 限流，则静默跳过后台通感生成，把配额留给找歌 Agent
+        if (Date.now() - lastRateLimitTimestamp < 60000) {
+          return null;
+        }
 
         const aiStore = useAIStore.getState();
         if (!aiStore.isEnabled) return null;
@@ -93,6 +100,9 @@ ${lyrics ? `语义残片：${lyrics.substring(0, 400)}` : ""}`;
           });
 
           if (!response.ok) {
+            if (response.status === 429) {
+              lastRateLimitTimestamp = Date.now();
+            }
             console.warn(`[LinerNotes] AI request failed with status: ${response.status}`);
             return null;
           }

@@ -273,6 +273,16 @@ const attachListeners = (
     useAudioStore.setState({ isLoading: false });
     usePlayerStore.setState({ isLoading: false });
 
+    // 断点续播恢复：如果本地持久化记录了上次播放秒数，且尚未开始播放，则安全恢复到该断点
+    const savedTime = usePlayerStore.getState().currentTime || useAudioStore.getState().currentTime;
+    if (savedTime > 0 && Math.abs(audio.currentTime - savedTime) > 1 && savedTime < (d || Infinity)) {
+      try {
+        audio.currentTime = savedTime;
+      } catch {
+        // Ignored
+      }
+    }
+
     // 智能防试听截断：若加载出的流时长 <= 95s (如 30s/60s VIP试听)，自动抢救全网完整母带
     // 使用防重入标志避免抢救后 audio.load() 再次触发 onLoadedMetadata 形成死循环
     const currentSong = usePlayerStore.getState().currentSong;
@@ -911,6 +921,9 @@ export const useAudioPlayer = () => {
               !audioUrl.startsWith("blob:") &&
               !audioUrl.startsWith("data:"));
           if ((isInvalidUrl || isRiskyOuterUrl) && currentSong) {
+            useUIStore
+              .getState()
+              .showToast(`⚡ 正在通过音源引擎嗅探直链: 《${currentSong.title}》...`, "info", 2000);
             try {
               const resolved = await multiSourceResolver.resolvePlayableAudio({
                 id: currentSong.id,

@@ -30,14 +30,9 @@ import { LocalMusicManager } from "./LocalMusicManager";
 import { SourceManagementModal } from "@/components/sources/SourceManagementModal";
 import { Sparkles } from "lucide-react";
 
-export type HubTabKey =
-  | "dashboard"
-  | "lx_search"
-  | "cloud"
-  | "downloads"
-  | "playlists"
-  | "local"
-  | "health_storage";
+import { useDataManagerStore, HubTabKey } from "@/store/useDataManagerStore";
+
+export type { HubTabKey };
 
 interface UnifiedDataManagerHubProps {
   initialTab?: HubTabKey;
@@ -54,6 +49,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
   const { storageDetails, usagePercent, refreshAnalytics } = useStorageAnalyticsStore();
   const { activeCount, totalSpeedFormatted, offlineRecords } = useOfflineDownloadStore();
   const { songs } = usePlaylistStore();
+  const { activeHubTab, setActiveHubTab } = useDataManagerStore();
 
   const isAnyLoggedIn = useUserAccountStore((state) =>
     Boolean(
@@ -70,11 +66,11 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
     )
   );
 
-  const [activeTab, setActiveTab] = useState<HubTabKey>(initialTab);
-  const [visitedTabs, setVisitedTabs] = useState<Set<HubTabKey>>(new Set([initialTab]));
+  const activeTab = activeHubTab || initialTab;
+  const [visitedTabs, setVisitedTabs] = useState<Set<HubTabKey>>(new Set([activeTab]));
 
   const handleSelectTab = (tab: HubTabKey) => {
-    setActiveTab(tab);
+    setActiveHubTab(tab);
     setVisitedTabs((prev) => {
       if (prev.has(tab)) return prev;
       const next = new Set(prev);

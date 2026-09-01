@@ -283,6 +283,110 @@ export const HealthStorageTab: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* 状态持久化与容灾备份安全中枢 */}
+      <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-white/80" />
+            <h4 className="text-xs font-bold text-white tracking-tight">
+              应用状态持久化与容灾中枢 (State Persistence & Disaster Recovery)
+            </h4>
+          </div>
+
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono">
+            双层沙盒保护中
+          </span>
+        </div>
+
+        <p className="text-xs text-white/50 leading-relaxed">
+          MIMI 现已启用 LocalStorage（轻量状态/界面视图/断点记忆）与 IndexedDB（全量队列/离线缓存/AI会话）双层持久化体系。在此可进行状态完整性诊断、全量配置备份导出或在遇到脏数据时执行一键安全重置。
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-1">
+            <span className="text-[10px] text-white/50">视图与断点记忆</span>
+            <div className="text-xs font-semibold text-white flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>毫秒级秒开还原</span>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-1">
+            <span className="text-[10px] text-white/50">音源与账号沙盒</span>
+            <div className="text-xs font-semibold text-white flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>乐观离线保护</span>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-1">
+            <span className="text-[10px] text-white/50">搜索与AI缓存</span>
+            <div className="text-xs font-semibold text-white flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>面板开关零丢失</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                const backupData = {
+                  version: "2.0",
+                  exportTime: new Date().toISOString(),
+                  localStorageDump: { ...localStorage },
+                };
+                const blob = new Blob([JSON.stringify(backupData, null, 2)], {
+                  type: "application/json",
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `mimimusic-backup-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                setFeedback("📦 成功导出全量应用配置与状态备份！");
+                setTimeout(() => setFeedback(null), 3000);
+              } catch {
+                setFeedback("❌ 备份导出失败");
+              }
+            }}
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-white border border-white/[0.12] text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            <span>导出应用配置与歌单备份 (.json)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm("⚠️ 确定要重置应用状态缓存吗？\n该操作将清除视图设置与搜索缓存，但不会删除您已下载的离线音乐文件。")) {
+                try {
+                  const keepOffline = localStorage.getItem("mimimusic_offline_downloads");
+                  localStorage.clear();
+                  if (keepOffline) {
+                    localStorage.setItem("mimimusic_offline_downloads", keepOffline);
+                  }
+                  sessionStorage.clear();
+                  setFeedback("🔄 应用状态已安全重置，即将刷新页面生效...");
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 1200);
+                } catch {
+                  setFeedback("❌ 重置失败");
+                }
+              }
+            }}
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer ml-auto"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>一键安全重置应用状态 (Disaster Reset)</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

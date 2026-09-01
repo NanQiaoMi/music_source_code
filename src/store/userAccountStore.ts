@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { createSafeStorage } from "@/lib/storage/safeStorage";
 import { Song } from "@/types/song";
 
 export interface UserProfile {
@@ -559,6 +559,7 @@ export const useUserAccountStore = create<UserAccountState>()(
     }),
     {
       name: "mimi-user-account-storage",
+      storage: createJSONStorage(() => createSafeStorage("mimi-user-account-storage")),
       partialize: (state) => ({
         neteaseCookie: state.neteaseCookie,
         qqCookie: state.qqCookie,
@@ -570,6 +571,7 @@ export const useUserAccountStore = create<UserAccountState>()(
         kugouUser: state.kugouUser,
         kuwoUser: state.kuwoUser,
         qishuiUser: state.qishuiUser,
+        userPlaylists: Array.isArray(state.userPlaylists) ? state.userPlaylists.slice(0, 50) : [],
       }),
     }
   )

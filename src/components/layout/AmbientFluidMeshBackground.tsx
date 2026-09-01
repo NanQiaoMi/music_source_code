@@ -10,11 +10,22 @@ import { extractColorsFromImage, defaultColors, ThemeColors } from "@/utils/colo
 const DEFAULT_COVER = "/default-cover.svg";
 
 export const AmbientFluidMeshBackground: React.FC = () => {
-  const currentCover = useAudioStore((state) => state.currentSong?.cover);
+  const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const selectedCover = usePlaylistStore((state) => state.selectedSong?.cover);
+  const selectedSong = usePlaylistStore((state) => state.selectedSong);
+  const songs = usePlaylistStore((state) => state.songs);
+  const recentPlayed = usePlaylistStore((state) => state.recentPlayed);
 
-  const coverUrl = selectedCover || currentCover || DEFAULT_COVER;
+  // 焦点歌曲：优先选取当前选中的歌曲，其次是正在播放的歌曲，最后是曲库首曲
+  const activeSong = useMemo(() => {
+    if (selectedSong) return selectedSong;
+    if (currentSong) return currentSong;
+    if (songs.length > 0) return songs[0];
+    if (recentPlayed.length > 0) return recentPlayed[0];
+    return null;
+  }, [selectedSong, currentSong, songs, recentPlayed]);
+
+  const coverUrl = activeSong?.cover || DEFAULT_COVER;
 
   const [colors, setColors] = useState<ThemeColors>(defaultColors);
   const [activeCover, setActiveCover] = useState<string>(DEFAULT_COVER);
@@ -22,7 +33,7 @@ export const AmbientFluidMeshBackground: React.FC = () => {
   const [isCrossfading, setIsCrossfading] = useState<boolean>(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 400ms 终点吸附智能防抖色彩与封面提取（等切歌弹簧与焦点完全就绪后再进行平滑过渡）
+  // 250ms 终点吸附智能防抖色彩与封面提取（避免切歌转场瞬间占用 GPU/CPU 资源）
   useEffect(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -42,7 +53,7 @@ export const AmbientFluidMeshBackground: React.FC = () => {
       } else {
         setColors(defaultColors);
       }
-    }, 400);
+    }, 250);
 
     return () => {
       if (debounceTimerRef.current) {

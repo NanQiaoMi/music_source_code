@@ -130,6 +130,8 @@ export const usePlayerStore = create<PlayerState>()(
       storage: createJSONStorage(() => createSafeStorage("player-store")),
       partialize: (state) => ({
         currentSong: state.currentSong ? sanitizeSongForStorage(state.currentSong) : null,
+        currentTime: typeof state.currentTime === "number" ? state.currentTime : 0,
+        duration: typeof state.duration === "number" ? state.duration : 0,
         volume: state.volume,
         isMuted: state.isMuted,
         playbackRate: state.playbackRate,

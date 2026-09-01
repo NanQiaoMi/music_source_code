@@ -130,19 +130,24 @@ function performColorExtraction(img: HTMLImageElement): ThemeColors {
       return defaultColors;
     }
 
-    // 降低分辨率以极大提高性能 (32x32 足够提取代表性主色，耗时 < 0.5ms)
-    canvas.width = 32;
-    canvas.height = 32;
+    // 降低分辨率以提高性能
+    const imgWidth = img.naturalWidth || img.width || 100;
+    const imgHeight = img.naturalHeight || img.height || 100;
+    const maxSize = 150;
+    const scale = Math.min(1, maxSize / Math.max(imgWidth, imgHeight));
+    canvas.width = Math.max(1, Math.round(imgWidth * scale));
+    canvas.height = Math.max(1, Math.round(imgHeight * scale));
 
-    ctx.drawImage(img, 0, 0, 32, 32);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-    const imageData = ctx.getImageData(0, 0, 32, 32);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const pixels = imageData.data;
 
-    // 使用 Map 进行 O(1) 哈希量化聚类，杜绝 O(N*M) 嵌套查找
-    const sampleMap = new Map<number, { r: number; g: number; b: number; count: number }>();
+    // 采样像素（步长为4，提高性能）
+    const samples: { r: number; g: number; b: number; count: number }[] = [];
+    const sampleStep = 4;
 
-    for (let i = 0; i < pixels.length; i += 4) {
+    for (let i = 0; i < pixels.length; i += 4 * sampleStep) {
       const r = pixels[i];
       const g = pixels[i + 1];
       const b = pixels[i + 2];
@@ -159,17 +164,22 @@ function performColorExtraction(img: HTMLImageElement): ThemeColors {
       const quantizedR = Math.round(r / 32) * 32;
       const quantizedG = Math.round(g / 32) * 32;
       const quantizedB = Math.round(b / 32) * 32;
-      const colorKey = (quantizedR << 16) | (quantizedG << 8) | quantizedB;
 
-      const entry = sampleMap.get(colorKey);
-      if (entry) {
-        entry.count++;
+      // 查找相似颜色
+      const existingIndex = samples.findIndex(
+        (s) =>
+          Math.abs(s.r - quantizedR) < 32 &&
+          Math.abs(s.g - quantizedG) < 32 &&
+          Math.abs(s.b - quantizedB) < 32
+      );
+
+      if (existingIndex >= 0) {
+        samples[existingIndex].count++;
       } else {
-        sampleMap.set(colorKey, { r: quantizedR, g: quantizedG, b: quantizedB, count: 1 });
+        samples.push({ r: quantizedR, g: quantizedG, b: quantizedB, count: 1 });
       }
     }
 
-    const samples = Array.from(sampleMap.values());
     if (samples.length === 0) {
       return defaultColors;
     }
@@ -225,8 +235,7 @@ function performColorExtraction(img: HTMLImageElement): ThemeColors {
     // 计算文字颜色（根据背景亮度）
     const bgBrightness = (background.r * 299 + background.g * 587 + background.b * 114) / 1000;
     const textColor = bgBrightness > 128 ? "rgb(30, 30, 30)" : "rgb(255, 255, 255)";
-    const textMutedColor =
-      bgBrightness > 128 ? "rgba(30, 30, 30, 0.6)" : "rgba(255, 255, 255, 0.6)";
+    const textMutedColor = bgBrightness > 128 ? "rgba(30, 30, 30, 0.6)" : "rgba(255, 255, 255, 0.6)";
 
     return {
       primary: `rgb(${adjustedPrimary.r}, ${adjustedPrimary.g}, ${adjustedPrimary.b})`,
