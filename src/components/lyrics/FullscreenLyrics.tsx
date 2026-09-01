@@ -8,7 +8,7 @@ import { useLyricSettingsStore } from "@/store/lyricSettingsStore";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { useAlbumTheme } from "@/hooks/useAlbumTheme";
 
-import { Settings, ChevronDown } from "lucide-react";
+import { Settings, ChevronDown, Music2 } from "lucide-react";
 import { LyricSettingsPanel } from "./LyricSettingsPanel";
 
 interface FullscreenLyricsProps {
@@ -285,8 +285,17 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
     return () => observer.disconnect();
   }, []);
 
+  const isInstrumentalOrShort = React.useMemo(() => {
+    return hasLyrics && lyrics.merged.length <= 3;
+  }, [hasLyrics, lyrics.merged.length]);
+
   // 计算偏移量以居中当前歌词
   useEffect(() => {
+    if (isInstrumentalOrShort) {
+      setOffsetY(0);
+      return;
+    }
+
     if (currentIndex >= 0 && lyricRefs.current[currentIndex] && containerHeight > 0) {
       const element = lyricRefs.current[currentIndex];
       const elementTop = element!.offsetTop;
@@ -298,7 +307,7 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
     } else if (currentIndex === -1 || containerHeight === 0) {
       setOffsetY(0);
     }
-  }, [currentIndex, lyrics.merged, containerHeight]);
+  }, [currentIndex, lyrics.merged, containerHeight, isInstrumentalOrShort]);
 
   // 动画配置
   const scrollTransition = React.useMemo(
@@ -372,19 +381,80 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
           onClick={handleLyricsClick}
           className="relative h-full w-full overflow-hidden px-8 cursor-pointer z-10"
           style={{
-            opacity,
-            maskImage: "linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)",
-            WebkitMaskImage:
-              "linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)",
+            maskImage: isInstrumentalOrShort
+              ? "none"
+              : "linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%)",
+            WebkitMaskImage: isInstrumentalOrShort
+              ? "none"
+              : "linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%)",
           }}
         >
           {!hasLyrics ? (
             <div
               className={`h-full flex flex-col justify-center items-center ${alignmentClass} space-y-4`}
             >
-              <p className={`${fontFamilyClass} text-white/60 text-2xl`}>暂无歌词</p>
-              <p className={`${fontFamilyClass} text-white/40 text-sm`}>点击任意位置退出</p>
+              <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/20 flex items-center justify-center mb-2 text-white shadow-[0_0_35px_rgba(255,255,255,0.15)]">
+                <Music2 className="w-8 h-8" />
+              </div>
+              <p className={`${fontFamilyClass} text-white/90 text-3xl font-bold tracking-tight`}>
+                暂无歌词
+              </p>
+              <p className={`${fontFamilyClass} text-white/60 text-base font-medium`}>
+                点击任意位置退出
+              </p>
             </div>
+          ) : isInstrumentalOrShort ? (
+            /* 纯音乐 / 短歌词高亮度居中卡片展示 */
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="w-full h-full flex flex-col justify-center items-center text-center px-4"
+            >
+              <motion.div
+                animate={{ scale: [1, 1.05, 1], opacity: [0.85, 1, 0.85] }}
+                transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
+                className="w-16 h-16 rounded-3xl bg-white/10 backdrop-blur-2xl border border-white/20 flex items-center justify-center mb-8 text-white shadow-[0_0_40px_rgba(255,255,255,0.2)]"
+              >
+                <Music2 className="w-8 h-8 text-white" />
+              </motion.div>
+
+              <div className="space-y-5 max-w-xl">
+                {lyrics.merged.map((lyric, idx) => {
+                  const isCurrent = idx === currentIndex || (currentIndex === -1 && idx === 0);
+                  return (
+                    <div key={`${lyric.time}-${idx}`} className="flex flex-col items-center">
+                      <p
+                        className={`${fontFamilyClass} tracking-tight transition-all duration-300`}
+                        style={{
+                          fontSize: isCurrent
+                            ? `${Math.max(32, fontSize + 16)}px`
+                            : `${Math.max(18, fontSize + 2)}px`,
+                          lineHeight: 1.3,
+                          fontWeight: isCurrent ? Math.max(700, fontWeight) : 500,
+                          color: isCurrent
+                            ? currentLineColor || "#ffffff"
+                            : "rgba(255,255,255,0.75)",
+                          textShadow: isCurrent
+                            ? "0 2px 16px rgba(0,0,0,0.8), 0 0 35px rgba(255,255,255,0.3)"
+                            : "0 1px 8px rgba(0,0,0,0.5)",
+                        }}
+                      >
+                        {lyric.original}
+                      </p>
+
+                      {isCurrent && (
+                        <motion.div
+                          layoutId="fullscreenInstrumentalUnderline"
+                          className="mt-4 h-1 rounded-full bg-gradient-to-r from-transparent via-white to-transparent shadow-[0_0_15px_rgba(255,255,255,0.9)]"
+                          style={{ width: "48%" }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
           ) : (
             <motion.div
               animate={{ y: offsetY }}
@@ -402,6 +472,12 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
                 const _isPast = idx < currentIndex;
                 const isNear = distance <= 3;
 
+                const targetOpacity = isCurrent
+                  ? 1.0
+                  : isNear
+                    ? Math.max(0.35, 0.65 - distance * 0.12)
+                    : 0.18;
+
                 return (
                   <motion.div
                     key={`${lyric.time}-${idx}`}
@@ -411,24 +487,35 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
                     initial={false}
                     animate={{
                       scale: isCurrent ? 1.05 : 1,
-                      opacity: isCurrent ? 1 : isNear ? 0.4 - distance * 0.08 : 0.1,
-                      filter: isCurrent ? "blur(0px)" : `blur(${Math.min(distance * 0.5, 4)}px)`,
+                      opacity: targetOpacity,
+                      filter: isCurrent
+                        ? "none"
+                        : isNear
+                          ? `blur(${Math.min(distance * 0.3, 1.5)}px)`
+                          : "blur(2.5px)",
                     }}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
-                    className={`flex flex-col ${alignmentClass} transition-colors duration-500`}
+                    transition={{ duration: 0.45, ease: "easeOut" }}
+                    className={`flex flex-col ${alignmentClass} transition-colors duration-300`}
                   >
                     {/* 原文 */}
                     <p
                       className={`${fontFamilyClass} leading-snug tracking-tight`}
                       style={{
-                        fontSize: isCurrent ? `${fontSize + 12}px` : `${fontSize}px`,
-                        lineHeight: 1.2,
-                        fontWeight: isCurrent ? fontWeight : Math.max(300, fontWeight - 200),
-                        color: isCurrent ? currentLineColor : inactiveLineColor,
-                        textShadow:
-                          isCurrent && textShadow
-                            ? `0 4px ${textShadowBlur}px ${textShadowColor}`
-                            : "none",
+                        fontSize: isCurrent
+                          ? `${Math.max(28, fontSize + 14)}px`
+                          : `${Math.max(18, fontSize + 2)}px`,
+                        lineHeight: 1.3,
+                        fontWeight: isCurrent
+                          ? Math.max(700, fontWeight)
+                          : Math.max(500, fontWeight - 100),
+                        color: isCurrent
+                          ? currentLineColor || "#ffffff"
+                          : inactiveLineColor || "rgba(255,255,255,0.65)",
+                        textShadow: isCurrent
+                          ? textShadow
+                            ? `0 2px 14px rgba(0,0,0,0.7), 0 0 ${textShadowBlur}px ${textShadowColor || "rgba(255,255,255,0.25)"}`
+                            : "0 2px 12px rgba(0,0,0,0.7)"
+                          : "0 1px 6px rgba(0,0,0,0.4)",
                         WebkitTextStroke:
                           isCurrent && textStroke
                             ? `${textStrokeWidth}px ${textStrokeColor}`
@@ -441,11 +528,15 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
                     {/* 翻译 */}
                     {showTranslation && lyric.translation && (
                       <p
-                        className={`${fontFamilyClass} mt-4 font-medium opacity-80`}
+                        className={`${fontFamilyClass} mt-4 font-medium`}
                         style={{
-                          fontSize: isCurrent ? `${fontSize}px` : `${fontSize - 4}px`,
+                          fontSize: isCurrent
+                            ? `${Math.max(18, fontSize + 2)}px`
+                            : `${Math.max(15, fontSize - 2)}px`,
                           lineHeight: 1.4,
-                          color: isCurrent ? translationColor : "rgba(255,255,255,0.5)",
+                          color: isCurrent
+                            ? translationColor || "rgba(255,255,255,0.9)"
+                            : "rgba(255,255,255,0.55)",
                         }}
                       >
                         {lyric.translation}
@@ -455,11 +546,13 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
                     {/* 音译 */}
                     {showTransliteration && lyric.transliteration && (
                       <p
-                        className={`${fontFamilyClass} mt-2 italic font-light opacity-60`}
+                        className={`${fontFamilyClass} mt-2 italic font-light`}
                         style={{
-                          fontSize: isCurrent ? `${fontSize - 4}px` : `${fontSize - 8}px`,
+                          fontSize: isCurrent
+                            ? `${Math.max(16, fontSize)}px`
+                            : `${Math.max(13, fontSize - 4)}px`,
                           lineHeight: 1.4,
-                          color: isCurrent ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.4)",
+                          color: isCurrent ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.45)",
                         }}
                       >
                         {lyric.transliteration}

@@ -38,6 +38,18 @@ export interface SongResult {
   source: string;
   canPlay: boolean;
   canDownload: boolean;
+  isBestMatch?: boolean;
+  matchScore?: number;
+  qualityLabel?: string;
+}
+
+export interface AgentSessionMeta {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messageCount: number;
+  lastSnippet: string;
 }
 
 export interface AgentMessage {
