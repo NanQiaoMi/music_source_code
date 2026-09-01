@@ -19,6 +19,7 @@ import { Song } from "@/types/song";
 vi.mock("./MultiSourceResolver", () => ({
   multiSourceResolver: {
     searchOnlineMusic: vi.fn(),
+    searchBestMatchingSongResults: vi.fn(),
     fetchOnlineLyrics: vi.fn(),
   },
 }));
@@ -177,13 +178,27 @@ describe("aiAgentTools - Complete Player Tools Suite", () => {
         },
       ];
 
-      (multiSourceResolver.searchOnlineMusic as any).mockResolvedValue(mockSongs);
+      const mockSongResults = mockSongs.map((s, idx) => ({
+        song: s,
+        source: s.source,
+        canPlay: true,
+        canDownload: true,
+        isBestMatch: idx === 0,
+        matchScore: 98,
+        qualityLabel: "无损 FLAC",
+      }));
+
+      (multiSourceResolver.searchBestMatchingSongResults as any).mockResolvedValue(mockSongResults);
 
       const res = await executeTool("search_songs", { query: "周杰伦 晴天", limit: 5 });
 
-      expect(multiSourceResolver.searchOnlineMusic).toHaveBeenCalledWith("周杰伦 晴天", 5);
+      expect(multiSourceResolver.searchBestMatchingSongResults).toHaveBeenCalledWith(
+        "周杰伦 晴天",
+        5
+      );
       expect(res.success).toBe(true);
       expect(res.songs).toEqual(mockSongs);
+      expect(res.songResults).toEqual(mockSongResults);
       expect(getCachedSong("jay_qingtian")).toEqual(mockSongs[0]);
     });
 
@@ -395,17 +410,35 @@ describe("aiAgentTools - Complete Player Tools Suite", () => {
 
   describe("executeTool - add_to_queue", () => {
     it("should add resolved cached songs to queue", async () => {
-      const mockSong1: Song = { id: "q1", title: "Song 1", artist: "A1", duration: 180, source: "netease" };
-      const mockSong2: Song = { id: "q2", title: "Song 2", artist: "A2", duration: 200, source: "netease" };
+      const mockSong1: Song = {
+        id: "q1",
+        title: "Song 1",
+        artist: "A1",
+        duration: 180,
+        source: "netease",
+      };
+      const mockSong2: Song = {
+        id: "q2",
+        title: "Song 2",
+        artist: "A2",
+        duration: 200,
+        source: "netease",
+      };
       cacheSongs([mockSong1, mockSong2]);
 
       const queueState = useQueueStore.getState();
 
-      const resAppend = await executeTool("add_to_queue", { action: "append", songIds: ["q1", "q2"] });
+      const resAppend = await executeTool("add_to_queue", {
+        action: "append",
+        songIds: ["q1", "q2"],
+      });
       expect(resAppend.success).toBe(true);
       expect(queueState.addToQueue).toHaveBeenCalledTimes(2);
 
-      const resInsert = await executeTool("add_to_queue", { action: "insert_next", songIds: ["q1", "q2"] });
+      const resInsert = await executeTool("add_to_queue", {
+        action: "insert_next",
+        songIds: ["q1", "q2"],
+      });
       expect(resInsert.success).toBe(true);
       expect(queueState.addToNext).toHaveBeenCalledTimes(2);
     });

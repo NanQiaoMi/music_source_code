@@ -151,15 +151,46 @@ describe("useAIAgentStore", () => {
     });
 
     useAIAgentStore.getState().openPanel();
-    expect(useAIAgentStore.getState().isPanelOpen).toBe(true);
     expect(openPanelMock).toHaveBeenCalledWith("aiAgent");
-
-    useAIAgentStore.getState().closePanel();
-    expect(useAIAgentStore.getState().isPanelOpen).toBe(false);
-    expect(closePanelMock).toHaveBeenCalledWith("aiAgent");
+    expect(useAIAgentStore.getState().isPanelOpen).toBe(true);
 
     useAIAgentStore.getState().togglePanel();
-    expect(useAIAgentStore.getState().isPanelOpen).toBe(true);
+    expect(closePanelMock).toHaveBeenCalledWith("aiAgent");
+    expect(useAIAgentStore.getState().isPanelOpen).toBe(false);
+  });
+
+  it("should handle multi-session lifecycle (create, rename, switch, delete, clear)", async () => {
+    const store = useAIAgentStore.getState();
+
+    // 1. 创建新会话
+    const newSessionId = store.createNewSession("周杰伦专场");
+    expect(useAIAgentStore.getState().currentSessionId).toBe(newSessionId);
+    expect(useAIAgentStore.getState().sessions.length).toBe(2);
+    expect(useAIAgentStore.getState().sessions[0].title).toBe("周杰伦专场");
+
+    // 2. 重命名会话
+    useAIAgentStore.getState().renameSession(newSessionId, "周杰伦精选");
+    expect(useAIAgentStore.getState().sessions[0].title).toBe("周杰伦精选");
+
+    // 3. 切换会话抽屉
+    useAIAgentStore.getState().openSessionDrawer();
+    expect(useAIAgentStore.getState().isSessionDrawerOpen).toBe(true);
+    useAIAgentStore.getState().closeSessionDrawer();
+    expect(useAIAgentStore.getState().isSessionDrawerOpen).toBe(false);
+
+    // 4. 切换回旧会话
+    const oldSessionId = useAIAgentStore.getState().sessions[1].id;
+    await useAIAgentStore.getState().switchSession(oldSessionId);
+    expect(useAIAgentStore.getState().currentSessionId).toBe(oldSessionId);
+
+    // 5. 删除会话
+    await useAIAgentStore.getState().deleteSession(newSessionId);
+    expect(useAIAgentStore.getState().sessions.length).toBe(1);
+
+    // 6. 清空所有会话
+    await useAIAgentStore.getState().clearAllSessions();
+    expect(useAIAgentStore.getState().sessions.length).toBe(1);
+    expect(useAIAgentStore.getState().sessions[0].title).toBe("探索新音乐");
   });
 
   it("should clear messages and reset state", () => {

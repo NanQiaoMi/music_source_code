@@ -2,12 +2,13 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { createSafeStorage } from "@/lib/storage/safeStorage";
 import { Song } from "@/types/song";
-import { AgentMessage } from "@/types/aiAgent";
+import { AgentMessage, AgentSessionMeta } from "@/types/aiAgent";
 import { useAIStore } from "./aiStore";
 import { useAudioStore } from "./audioStore";
 import { useOfflineDownloadStore } from "./useOfflineDownloadStore";
 import { useUIStore } from "./uiStore";
 import { runAgentConversation } from "@/services/aiAgentService";
+import { aiAgentDb } from "@/lib/storage/aiAgentDb";
 
 export const DEFAULT_SUGGESTED_PROMPTS = [
   "搜周杰伦的晴天",
@@ -25,16 +26,44 @@ export const INITIAL_GREETING_MESSAGE: AgentMessage = {
   status: "done",
 };
 
+const DEFAULT_SESSION_ID = "session_default";
+
+const DEFAULT_INITIAL_SESSION: AgentSessionMeta = {
+  id: DEFAULT_SESSION_ID,
+  title: "探索新音乐",
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+  messageCount: 1,
+  lastSnippet: "你好！我是 MIMI 音乐找歌助手 🎵",
+};
+
 let currentAbortController: AbortController | null = null;
 
 export interface AIAgentState {
+  // 会话列表元数据与当前会话
+  sessions: AgentSessionMeta[];
+  currentSessionId: string;
+  isSessionDrawerOpen: boolean;
+  isSessionLoading: boolean;
+
+  // 当前激活会话的消息体
   messages: AgentMessage[];
   isProcessing: boolean;
   currentToolName: string | null;
   isPanelOpen: boolean;
   suggestedPrompts: string[];
 
-  // Actions
+  // 会话管理 Actions
+  createNewSession: (initialTitle?: string) => string;
+  switchSession: (sessionId: string) => Promise<void>;
+  deleteSession: (sessionId: string) => Promise<void>;
+  clearAllSessions: () => Promise<void>;
+  renameSession: (sessionId: string, newTitle: string) => void;
+  openSessionDrawer: () => void;
+  closeSessionDrawer: () => void;
+  toggleSessionDrawer: () => void;
+
+  // 消息与交互 Actions
   sendMessage: (text: string) => Promise<void>;
   clearMessages: () => void;
   openPanel: () => void;
@@ -45,14 +74,164 @@ export interface AIAgentState {
   downloadSongFromAgent: (song: Song) => Promise<void>;
 }
 
+// 辅助萃取会话标题
+function extractSessionTitle(prompt: string): string {
+  const clean = prompt.replace(/[？?！!，,。.\n\r]/g, " ").trim();
+  if (!clean) return "音乐对话";
+  const words = clean.split(/\s+/);
+  if (words.length > 0 && words[0].length >= 2) {
+    return clean.slice(0, 16);
+  }
+  return clean.slice(0, 14);
+}
+
 export const useAIAgentStore = create<AIAgentState>()(
   persist(
     (set, get) => ({
+      sessions: [DEFAULT_INITIAL_SESSION],
+      currentSessionId: DEFAULT_SESSION_ID,
+      isSessionDrawerOpen: false,
+      isSessionLoading: false,
+
       messages: [{ ...INITIAL_GREETING_MESSAGE, timestamp: Date.now() }],
       isProcessing: false,
       currentToolName: null,
       isPanelOpen: false,
       suggestedPrompts: DEFAULT_SUGGESTED_PROMPTS,
+
+      createNewSession: (initialTitle?: string) => {
+        if (currentAbortController) {
+          currentAbortController.abort();
+          currentAbortController = null;
+        }
+
+        const newId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        const newSessionMeta: AgentSessionMeta = {
+          id: newId,
+          title: initialTitle || "新音乐对话",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          messageCount: 1,
+          lastSnippet: "你好！我是 MIMI 音乐找歌助手 🎵",
+        };
+
+        const initialMsgs = [{ ...INITIAL_GREETING_MESSAGE, timestamp: Date.now() }];
+
+        set((state) => ({
+          sessions: [newSessionMeta, ...state.sessions.filter((s) => s.id !== newId)],
+          currentSessionId: newId,
+          messages: initialMsgs,
+          isProcessing: false,
+          currentToolName: null,
+          isSessionDrawerOpen: false,
+        }));
+
+        aiAgentDb.saveSessionMessages(newId, initialMsgs);
+        return newId;
+      },
+
+      switchSession: async (sessionId: string) => {
+        if (sessionId === get().currentSessionId && get().messages.length > 0) {
+          set({ isSessionDrawerOpen: false });
+          return;
+        }
+
+        if (currentAbortController) {
+          currentAbortController.abort();
+          currentAbortController = null;
+        }
+
+        set({ isSessionLoading: true, currentSessionId: sessionId, isSessionDrawerOpen: false });
+
+        try {
+          const storedMessages = await aiAgentDb.getSessionMessages(sessionId);
+          const activeMessages =
+            storedMessages && storedMessages.length > 0
+              ? storedMessages
+              : [{ ...INITIAL_GREETING_MESSAGE, timestamp: Date.now() }];
+
+          set({
+            messages: activeMessages,
+            isProcessing: false,
+            currentToolName: null,
+            isSessionLoading: false,
+          });
+        } catch {
+          set({
+            messages: [{ ...INITIAL_GREETING_MESSAGE, timestamp: Date.now() }],
+            isProcessing: false,
+            currentToolName: null,
+            isSessionLoading: false,
+          });
+        }
+      },
+
+      deleteSession: async (sessionId: string) => {
+        const { sessions, currentSessionId } = get();
+        const remaining = sessions.filter((s) => s.id !== sessionId);
+
+        await aiAgentDb.deleteSessionMessages(sessionId);
+
+        if (remaining.length === 0) {
+          // 全部删光时重建默认空白会话
+          get().createNewSession("探索新音乐");
+          return;
+        }
+
+        if (currentSessionId === sessionId) {
+          const nextSession = remaining[0];
+          set({ sessions: remaining });
+          await get().switchSession(nextSession.id);
+        } else {
+          set({ sessions: remaining });
+        }
+      },
+
+      clearAllSessions: async () => {
+        if (currentAbortController) {
+          currentAbortController.abort();
+          currentAbortController = null;
+        }
+
+        await aiAgentDb.clearAllSessionMessages();
+
+        const defaultId = `session_${Date.now()}`;
+        const newSession: AgentSessionMeta = {
+          id: defaultId,
+          title: "探索新音乐",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          messageCount: 1,
+          lastSnippet: "你好！我是 MIMI 音乐找歌助手 🎵",
+        };
+        const initialMsgs = [{ ...INITIAL_GREETING_MESSAGE, timestamp: Date.now() }];
+
+        set({
+          sessions: [newSession],
+          currentSessionId: defaultId,
+          messages: initialMsgs,
+          isProcessing: false,
+          currentToolName: null,
+          isSessionDrawerOpen: false,
+        });
+
+        await aiAgentDb.saveSessionMessages(defaultId, initialMsgs);
+      },
+
+      renameSession: (sessionId: string, newTitle: string) => {
+        const trimmed = newTitle.trim();
+        if (!trimmed) return;
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, title: trimmed, updatedAt: Date.now() } : s
+          ),
+        }));
+      },
+
+      openSessionDrawer: () => set({ isSessionDrawerOpen: true }),
+      closeSessionDrawer: () => set({ isSessionDrawerOpen: false }),
+      toggleSessionDrawer: () =>
+        set((state) => ({ isSessionDrawerOpen: !state.isSessionDrawerOpen })),
 
       sendMessage: async (text: string) => {
         const trimmed = text.trim();
@@ -67,6 +246,20 @@ export const useAIAgentStore = create<AIAgentState>()(
 
         const activeConfig = orderedPool[0];
         const fallbackConfigs = orderedPool.slice(1);
+
+        const currentSessionId = get().currentSessionId;
+        const currentSession = get().sessions.find((s) => s.id === currentSessionId);
+
+        // 首条提问自动萃取生成会话标题
+        if (
+          currentSession &&
+          (currentSession.title === "新音乐对话" ||
+            currentSession.title === "探索新音乐" ||
+            currentSession.messageCount <= 1)
+        ) {
+          const autoTitle = extractSessionTitle(trimmed);
+          get().renameSession(currentSessionId, autoTitle);
+        }
 
         const userMsg: AgentMessage = {
           id: `msg_user_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -88,9 +281,21 @@ export const useAIAgentStore = create<AIAgentState>()(
             error: "AI_CONFIG_MISSING",
           };
 
+          const newMsgs = [...get().messages, userMsg, warnMsg];
           set((state) => ({
-            messages: [...state.messages, userMsg, warnMsg],
+            messages: newMsgs,
+            sessions: state.sessions.map((s) =>
+              s.id === currentSessionId
+                ? {
+                    ...s,
+                    messageCount: newMsgs.length,
+                    lastSnippet: trimmed.slice(0, 30),
+                    updatedAt: Date.now(),
+                  }
+                : s
+            ),
           }));
+          aiAgentDb.saveSessionMessages(currentSessionId, newMsgs);
           return;
         }
 
@@ -149,17 +354,31 @@ export const useAIAgentStore = create<AIAgentState>()(
           });
 
           flushPendingUpdate(resultMessages);
-          set({
+          set((state) => ({
             messages: resultMessages,
             isProcessing: false,
             currentToolName: null,
-          });
+            sessions: state.sessions.map((s) =>
+              s.id === currentSessionId
+                ? {
+                    ...s,
+                    messageCount: resultMessages.length,
+                    lastSnippet: (
+                      resultMessages[resultMessages.length - 1]?.content || trimmed
+                    ).slice(0, 32),
+                    updatedAt: Date.now(),
+                  }
+                : s
+            ),
+          }));
+          aiAgentDb.saveSessionMessages(currentSessionId, resultMessages);
         } catch (err: unknown) {
           flushPendingUpdate();
           const isAborted =
             currentAbortController?.signal.aborted ||
             (err instanceof DOMException && err.name === "AbortError");
 
+          let finalErrorMsgs: AgentMessage[];
           if (isAborted) {
             const stopMsg: AgentMessage = {
               id: `msg_stopped_${Date.now()}`,
@@ -168,11 +387,7 @@ export const useAIAgentStore = create<AIAgentState>()(
               timestamp: Date.now(),
               status: "done",
             };
-            set((state) => ({
-              messages: [...state.messages, stopMsg],
-              isProcessing: false,
-              currentToolName: null,
-            }));
+            finalErrorMsgs = [...get().messages, stopMsg];
           } else {
             const errorText = err instanceof Error ? err.message : String(err);
             const errorMsg: AgentMessage = {
@@ -183,12 +398,25 @@ export const useAIAgentStore = create<AIAgentState>()(
               status: "error",
               error: errorText,
             };
-            set((state) => ({
-              messages: [...state.messages, errorMsg],
-              isProcessing: false,
-              currentToolName: null,
-            }));
+            finalErrorMsgs = [...get().messages, errorMsg];
           }
+
+          set((state) => ({
+            messages: finalErrorMsgs,
+            isProcessing: false,
+            currentToolName: null,
+            sessions: state.sessions.map((s) =>
+              s.id === currentSessionId
+                ? {
+                    ...s,
+                    messageCount: finalErrorMsgs.length,
+                    lastSnippet: "已终止或出错",
+                    updatedAt: Date.now(),
+                  }
+                : s
+            ),
+          }));
+          aiAgentDb.saveSessionMessages(currentSessionId, finalErrorMsgs);
         } finally {
           flushPendingUpdate();
           currentAbortController = null;
@@ -200,11 +428,26 @@ export const useAIAgentStore = create<AIAgentState>()(
           currentAbortController.abort();
           currentAbortController = null;
         }
-        set({
-          messages: [{ ...INITIAL_GREETING_MESSAGE, timestamp: Date.now() }],
+        const initialMsgs = [{ ...INITIAL_GREETING_MESSAGE, timestamp: Date.now() }];
+        const currentSessionId = get().currentSessionId;
+
+        set((state) => ({
+          messages: initialMsgs,
           isProcessing: false,
           currentToolName: null,
-        });
+          sessions: state.sessions.map((s) =>
+            s.id === currentSessionId
+              ? {
+                  ...s,
+                  messageCount: 1,
+                  lastSnippet: "已清空当前对话",
+                  updatedAt: Date.now(),
+                }
+              : s
+          ),
+        }));
+
+        aiAgentDb.saveSessionMessages(currentSessionId, initialMsgs);
       },
 
       openPanel: () => {
@@ -213,13 +456,13 @@ export const useAIAgentStore = create<AIAgentState>()(
       },
 
       closePanel: () => {
-        set({ isPanelOpen: false });
+        set({ isPanelOpen: false, isSessionDrawerOpen: false });
         useUIStore.getState().closePanel("aiAgent");
       },
 
       togglePanel: () => {
         const nextState = !get().isPanelOpen;
-        set({ isPanelOpen: nextState });
+        set({ isPanelOpen: nextState, isSessionDrawerOpen: false });
         if (nextState) {
           useUIStore.getState().openPanel("aiAgent");
         } else {
@@ -247,6 +490,8 @@ export const useAIAgentStore = create<AIAgentState>()(
       name: "mimi_ai_agent_chat_store_v1",
       storage: createJSONStorage(() => createSafeStorage("mimi_ai_agent_chat_store_v1")),
       partialize: (state) => ({
+        sessions: Array.isArray(state.sessions) ? state.sessions.slice(0, 50) : [],
+        currentSessionId: state.currentSessionId || DEFAULT_SESSION_ID,
         messages: Array.isArray(state.messages) ? state.messages.slice(-50) : [],
         suggestedPrompts: state.suggestedPrompts,
       }),
@@ -254,6 +499,17 @@ export const useAIAgentStore = create<AIAgentState>()(
         if (state) {
           state.isProcessing = false;
           state.currentToolName = null;
+          state.isSessionLoading = false;
+          state.isSessionDrawerOpen = false;
+
+          // 异步从 IndexedDB 恢复当前会话的消息体
+          if (state.currentSessionId) {
+            aiAgentDb.getSessionMessages(state.currentSessionId).then((storedMsgs) => {
+              if (storedMsgs && storedMsgs.length > 0) {
+                useAIAgentStore.setState({ messages: storedMsgs });
+              }
+            });
+          }
         }
       },
     }
