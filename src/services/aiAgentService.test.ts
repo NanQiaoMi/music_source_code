@@ -3,6 +3,7 @@ import {
   runAgentConversation,
   formatMessagesForOpenAI,
   resolveChatCompletionsUrl,
+  extractInlineToolCalls,
 } from "./aiAgentService";
 import { executeTool } from "./aiAgentTools";
 import { AIConfig } from "@/store/aiStore";
@@ -291,6 +292,129 @@ describe("aiAgentService", () => {
       const lastMsg = result[result.length - 1];
       expect(lastMsg.content).toBe("来自备用端点的成功回复");
       expect(lastMsg.status).toBe("done");
+    });
+
+    it("should extract and execute inline pseudo-XML tool calls from model content", async () => {
+      const inlineXmlOutput = `<tool_call>
+<function=search_songs>
+<parameter=limit>
+8
+</parameter>
+<parameter=query>
+赵雷 成都
+</parameter>
+</function>
+<tool_call>
+<function=search_songs>
+<parameter=limit>
+8
+</parameter>
+<parameter=query>
+马頔 消息
+</parameter>
+</function>`;
+
+      // 1st call returns inline XML tool calls
+      // 2nd call returns final response
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            choices: [
+              {
+                message: {
+                  role: "assistant",
+                  content: inlineXmlOutput,
+                },
+              },
+            ],
+          }),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            choices: [
+              {
+                message: {
+                  role: "assistant",
+                  content: "为你找到了赵雷和马頔的经典民谣 🎵",
+                },
+              },
+            ],
+          }),
+        } as any);
+
+      (executeTool as any).mockResolvedValue({
+        success: true,
+        songs: [
+          {
+            id: "song-1",
+            title: "成都",
+            artist: "赵雷",
+            source: "netease",
+          },
+        ],
+      });
+
+      const onUpdate = vi.fn();
+      const messages: AgentMessage[] = [
+        { id: "user_1", role: "user", content: "来几首民谣", timestamp: 1 },
+      ];
+
+      const result = await runAgentConversation({
+        messages,
+        config: mockConfig,
+        onUpdate,
+      });
+
+      expect(executeTool).toHaveBeenCalledWith(
+        "search_songs",
+        { limit: 8, query: "赵雷 成都" },
+        expect.anything()
+      );
+      expect(executeTool).toHaveBeenCalledWith(
+        "search_songs",
+        { limit: 8, query: "马頔 消息" },
+        expect.anything()
+      );
+
+      const lastMsg = result[result.length - 1];
+      expect(lastMsg.content).toBe("为你找到了赵雷和马頔的经典民谣 🎵");
+      expect(lastMsg.songResults).toBeDefined();
+      expect(lastMsg.songResults?.[0].song.title).toBe("成都");
+    });
+  });
+
+  describe("extractInlineToolCalls", () => {
+    it("should correctly parse pseudo-XML function and parameter tags", () => {
+      const input = `<tool_call>
+<function=search_songs>
+<parameter=limit>
+8
+</parameter>
+<parameter=query>
+朴树 白桦林
+</parameter>
+</function>`;
+
+      const { toolCalls, cleanedContent } = extractInlineToolCalls(input);
+      expect(toolCalls).toHaveLength(1);
+      expect(toolCalls[0].function.name).toBe("search_songs");
+      expect(JSON.parse(toolCalls[0].function.arguments)).toEqual({
+        limit: 8,
+        query: "朴树 白桦林",
+      });
+      expect(cleanedContent).toBe("");
+    });
+
+    it("should handle mixed text and JSON tool calls", () => {
+      const input = `好的，正在为你搜索：<tool_call>{"name":"search_songs","arguments":{"query":"晴天"}}</tool_call>请稍候`;
+      const { toolCalls, cleanedContent } = extractInlineToolCalls(input);
+      expect(toolCalls).toHaveLength(1);
+      expect(toolCalls[0].function.name).toBe("search_songs");
+      expect(JSON.parse(toolCalls[0].function.arguments)).toEqual({ query: "晴天" });
+      expect(cleanedContent).toBe("好的，正在为你搜索：请稍候");
     });
   });
 });

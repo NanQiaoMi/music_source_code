@@ -67,7 +67,7 @@ export const AILinerNotes: React.FC = () => {
       ? `请深度解析《${currentSong.title}》（${currentSong.artist}）这首歌曲的情感内涵与这句通感评语：“${displayNote}”`
       : `请帮我深度解析《${currentSong.title}》（${currentSong.artist}）这首歌的创作背景与情感表达。`;
     const agentStore = useAIAgentStore.getState();
-    agentStore.setIsPanelOpen(true);
+    agentStore.openPanel();
     agentStore.sendMessage(prompt);
   };
 

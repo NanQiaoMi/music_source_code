@@ -119,6 +119,112 @@ export interface RunAgentConversationOptions {
   abortSignal?: AbortSignal;
 }
 
+/**
+ * 自动提取并解析大模型输出在 content 中的伪 XML / JSON 格式工具调用
+ * 兼容 SenseNova / Qwen / DeepSeek 等端点偶尔内联输出的 <tool_call><function=name>...</function>
+ */
+export function extractInlineToolCalls(content: string): {
+  toolCalls: OpenAIToolCall[];
+  cleanedContent: string;
+} {
+  if (!content) return { toolCalls: [], cleanedContent: "" };
+
+  const toolCalls: OpenAIToolCall[] = [];
+  let cleaned = content;
+
+  // 1. 匹配 SenseNova 伪 XML 语法:
+  // <function=search_songs> 或 <function name="search_songs">
+  //   <parameter=limit>8</parameter>
+  //   <parameter=query>赵雷 成都</parameter>
+  // </function>
+  const functionRegex =
+    /<function(?:\s*=\s*|\s+name\s*=\s*["']?)([a-zA-Z0-9_-]+)["']?>([\s\S]*?)<\/function>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = functionRegex.exec(content)) !== null) {
+    const fnName = match[1].trim();
+    const body = match[2];
+    const args: Record<string, unknown> = {};
+
+    // 匹配 <parameter=key>value</parameter> 或 <parameter name="key">value</parameter>
+    const paramRegex =
+      /<parameter(?:\s*=\s*|\s+name\s*=\s*["']?)([a-zA-Z0-9_-]+)["']?>([\s\S]*?)<\/parameter>/gi;
+    let paramMatch: RegExpExecArray | null;
+    let hasParams = false;
+
+    while ((paramMatch = paramRegex.exec(body)) !== null) {
+      hasParams = true;
+      const key = paramMatch[1].trim();
+      const rawVal = paramMatch[2].trim();
+      let val: unknown = rawVal;
+      if (!isNaN(Number(rawVal)) && rawVal !== "") {
+        val = Number(rawVal);
+      } else if (rawVal === "true") {
+        val = true;
+      } else if (rawVal === "false") {
+        val = false;
+      }
+      args[key] = val;
+    }
+
+    if (!hasParams) {
+      // 尝试 JSON 解析
+      try {
+        const parsed = JSON.parse(body.trim());
+        Object.assign(args, parsed);
+      } catch {}
+    }
+
+    toolCalls.push({
+      id: `call_inline_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      type: "function",
+      function: {
+        name: fnName,
+        arguments: JSON.stringify(args),
+      },
+    });
+  }
+
+  // 2. 匹配 <tool_call>{"name": "...", "arguments": {...}}</tool_call>
+  const jsonToolCallRegex = /<tool_call>([\s\S]*?)<\/tool_call>/gi;
+  while ((match = jsonToolCallRegex.exec(content)) !== null) {
+    const raw = match[1].trim();
+    if (raw.startsWith("{") && raw.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed.name) {
+          toolCalls.push({
+            id: `call_inline_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            type: "function",
+            function: {
+              name: parsed.name,
+              arguments:
+                typeof parsed.arguments === "string"
+                  ? parsed.arguments
+                  : JSON.stringify(parsed.arguments || parsed.parameters || {}),
+            },
+          });
+        }
+      } catch {}
+    }
+  }
+
+  // 从文本中彻底清理所有 tool_call、function、parameter 原始代码标签
+  cleaned = cleaned
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, "")
+    .replace(/<tool_call>/gi, "")
+    .replace(/<\/tool_call>/gi, "")
+    .replace(
+      /<function(?:\s*=\s*|\s+name\s*=\s*["']?)[a-zA-Z0-9_-]+["']?>[\s\S]*?<\/function>/gi,
+      ""
+    )
+    .replace(/<function[\s\S]*?<\/function>/gi, "")
+    .replace(/<parameter[\s\S]*?<\/parameter>/gi, "")
+    .trim();
+
+  return { toolCalls, cleanedContent: cleaned };
+}
+
 export function parseAIErrorMessage(status: number, rawText: string): string {
   let message = rawText;
   try {
@@ -314,9 +420,21 @@ export async function runAgentConversation({
       throw new Error("模型未返回有效消息内容");
     }
 
+    let effectiveToolCalls = message.tool_calls;
+    let effectiveContent = message.content || "";
+
+    // 自动检测并提取模型输出在 content 中的内联 XML / JSON 工具调用 (兼容 SenseNova / Qwen / DeepSeek 等端点)
+    if (!effectiveToolCalls || effectiveToolCalls.length === 0) {
+      const { toolCalls: inlineCalls, cleanedContent } = extractInlineToolCalls(effectiveContent);
+      if (inlineCalls.length > 0) {
+        effectiveToolCalls = inlineCalls;
+        effectiveContent = cleanedContent;
+      }
+    }
+
     // 检查是否有工具调用
-    if (message.tool_calls && message.tool_calls.length > 0) {
-      const toolCalls: ToolCall[] = message.tool_calls.map((tc) => ({
+    if (effectiveToolCalls && effectiveToolCalls.length > 0) {
+      const toolCalls: ToolCall[] = effectiveToolCalls.map((tc) => ({
         id: tc.id,
         type: "function",
         function: {
@@ -328,7 +446,7 @@ export async function runAgentConversation({
       const assistantMsg: AgentMessage = {
         id: `msg_toolcall_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         role: "assistant",
-        content: message.content || "",
+        content: effectiveContent,
         timestamp: Date.now(),
         toolCalls,
         status: "streaming",
@@ -337,14 +455,14 @@ export async function runAgentConversation({
       currentMessages.push(assistantMsg);
       openAIMessages.push({
         role: "assistant",
-        content: message.content || null,
-        tool_calls: message.tool_calls,
+        content: effectiveContent || null,
+        tool_calls: effectiveToolCalls,
       });
 
       onUpdate(currentMessages, null);
 
       // 执行每一个 tool call
-      for (const tc of message.tool_calls) {
+      for (const tc of effectiveToolCalls) {
         if (abortSignal?.aborted) {
           throw new DOMException("Aborted", "AbortError");
         }
@@ -401,7 +519,8 @@ export async function runAgentConversation({
     }
 
     // 模型返回普通回复（若模型返回空字符串且有搜索结果，自动提供优雅音乐推荐短语）
-    let finalContent = message.content?.trim() || "";
+    const { cleanedContent: sanitizedContent } = extractInlineToolCalls(effectiveContent);
+    let finalContent = sanitizedContent.trim();
     if (!finalContent && accumulatedSongResults.length > 0) {
       finalContent = `为你找到了《**${accumulatedSongResults[0].song.title}**》等 ${accumulatedSongResults.length} 首契合氛围的曲目 🎵，可以直接在下方列表中点击播放：`;
     } else if (!finalContent && iteration > 0) {

@@ -67,12 +67,30 @@ function renderInlineContent(text: string): React.ReactNode[] {
   });
 }
 
+function sanitizeRawToolCalls(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, "")
+    .replace(/<tool_call>/gi, "")
+    .replace(/<\/tool_call>/gi, "")
+    .replace(
+      /<function(?:\s*=\s*|\s+name\s*=\s*["']?)[a-zA-Z0-9_-]+["']?>[\s\S]*?<\/function>/gi,
+      ""
+    )
+    .replace(/<function[\s\S]*?<\/function>/gi, "")
+    .replace(/<parameter[\s\S]*?<\/parameter>/gi, "")
+    .trim();
+}
+
 function parseMarkdownBlocks(content: string): React.ReactNode[] {
-  if (astBlockCache.has(content)) {
-    return astBlockCache.get(content)!;
+  const sanitized = sanitizeRawToolCalls(content);
+  if (!sanitized) return [];
+
+  if (astBlockCache.has(sanitized)) {
+    return astBlockCache.get(sanitized)!;
   }
 
-  const rawLines = content.split("\n");
+  const rawLines = sanitized.split("\n");
   const blocks: React.ReactNode[] = [];
 
   let i = 0;
