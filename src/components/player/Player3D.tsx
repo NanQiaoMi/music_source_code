@@ -13,6 +13,7 @@ import { useABLoopStore } from "@/store/abLoopStore";
 import { GlassProgressBar } from "@/components/shared/GlassProgressBar";
 import { useAlbumTheme } from "@/hooks/useAlbumTheme";
 import { AppleAudioSourceIndicator } from "@/components/player/AppleAudioSourceIndicator";
+import { AudioEngine } from "@/lib/audio/AudioEngine";
 import {
   Sparkles,
   Play,
@@ -564,7 +565,12 @@ export const Player3D: React.FC = () => {
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => setIsPlaying(!isPlaying)}
+                    onClick={async () => {
+                      try {
+                        await AudioEngine.getInstance().resume();
+                      } catch {}
+                      setIsPlaying(!isPlaying);
+                    }}
                     disabled={!currentSong}
                     className={`w-16 h-16 rounded-full bg-white flex items-center justify-center text-black shadow-[0_0_25px_rgba(255,255,255,0.4)] hover:shadow-[0_0_40px_rgba(255,255,255,0.6)] transition-all disabled:opacity-30 ${
                       isLoading ? "animate-pulse" : ""

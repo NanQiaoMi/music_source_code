@@ -275,7 +275,11 @@ const attachListeners = (
 
     // 断点续播恢复：如果本地持久化记录了上次播放秒数，且尚未开始播放，则安全恢复到该断点
     const savedTime = usePlayerStore.getState().currentTime || useAudioStore.getState().currentTime;
-    if (savedTime > 0 && Math.abs(audio.currentTime - savedTime) > 1 && savedTime < (d || Infinity)) {
+    if (
+      savedTime > 0 &&
+      Math.abs(audio.currentTime - savedTime) > 1 &&
+      savedTime < (d || Infinity)
+    ) {
       try {
         audio.currentTime = savedTime;
       } catch {
@@ -663,6 +667,12 @@ export const useAudioPlayer = () => {
           activeAudio.currentTime = clamped;
           useAudioStore.setState({ currentTime: clamped });
           usePlayerStore.setState({ currentTime: clamped });
+          if (isPlayingRef.current && activeAudio.paused) {
+            AudioEngine.getInstance()
+              .resume()
+              .catch(() => {});
+            activeAudio.play().catch(handlePlayError);
+          }
         } catch {}
       }
       if (secondaryElementRef.current) {

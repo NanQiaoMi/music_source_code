@@ -360,18 +360,31 @@ export const GlassProgressBar: React.FC<GlassProgressBarProps> = memo(
             </div>
           </div>
 
-          {/* Apple Pearl Thumb / Scrubber Knob */}
+          {/* Apple Refined Frosted Pearl Thumb / Scrubber Handle */}
           {hasValidDuration && (
             <motion.div
               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none z-30 flex items-center justify-center"
               style={{ left: `${currentPercent}%` }}
               animate={{
-                scale: isDragging ? 1.35 : isHovered ? 1.15 : 0,
+                scale: isDragging ? 1.25 : isHovered ? 1.05 : 0,
                 opacity: isDragging || isHovered ? 1 : 0,
               }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              transition={{ type: "spring", stiffness: 450, damping: 28 }}
             >
-              <div className="w-3 h-3 rounded-full bg-white shadow-[0_1px_6px_rgba(0,0,0,0.5),0_0_0_1.5px_rgba(255,255,255,0.95)]" />
+              <div className="relative flex items-center justify-center">
+                {/* 外部极光柔雾光环 */}
+                <div
+                  className="w-3.5 h-3.5 rounded-full bg-white/25 backdrop-blur-xl border border-white/60 shadow-[0_0_10px_rgba(255,255,255,0.7),0_2px_4px_rgba(0,0,0,0.35)] flex items-center justify-center transition-all duration-200"
+                  style={{
+                    boxShadow: accentColor
+                      ? `0 0 12px ${accentColor}90, 0 2px 4px rgba(0,0,0,0.4)`
+                      : "0 0 10px rgba(255,255,255,0.75), 0 2px 4px rgba(0,0,0,0.4)",
+                  }}
+                >
+                  {/* 内部极清纯白高光微核 */}
+                  <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_5px_rgba(255,255,255,1)]" />
+                </div>
+              </div>
             </motion.div>
           )}
 
@@ -380,7 +393,7 @@ export const GlassProgressBar: React.FC<GlassProgressBarProps> = memo(
             {(isHovered || isDragging) && previewPercent !== null && previewTime !== null && (
               <motion.div
                 initial={{ opacity: 0, y: 2, scale: 0.92 }}
-                animate={{ opacity: 1, y: -20, scale: 1 }}
+                animate={{ opacity: 1, y: -22, scale: 1 }}
                 exit={{ opacity: 0, y: 2, scale: 0.92 }}
                 transition={{ duration: 0.12, ease: "easeOut" }}
                 className="absolute top-0 -translate-x-1/2 pointer-events-none z-40"
@@ -388,8 +401,8 @@ export const GlassProgressBar: React.FC<GlassProgressBarProps> = memo(
                   left: `clamp(24px, ${previewPercent}%, calc(100% - 24px))`,
                 }}
               >
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-xl border border-white/15 shadow-[0_4px_16px_rgba(0,0,0,0.6)] text-white text-[10px] font-mono tracking-wider whitespace-nowrap">
-                  <span className="w-1 h-1 rounded-full bg-white/90 animate-pulse" />
+                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/85 backdrop-blur-2xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.6)] text-white text-[11px] font-mono tracking-wider whitespace-nowrap">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.9)] animate-pulse" />
                   <span>{formatTime(previewTime)}</span>
                 </div>
               </motion.div>
