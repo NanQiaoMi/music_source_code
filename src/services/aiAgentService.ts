@@ -302,7 +302,9 @@ export async function runAgentConversation({
         iteration--;
         continue;
       }
-      throw new Error(parseAIErrorMessage(response.status || 500, data.error.message || "未知 API 错误"));
+      throw new Error(
+        parseAIErrorMessage(response.status || 500, data.error.message || "未知 API 错误")
+      );
     }
 
     const choice = data.choices?.[0];
@@ -359,14 +361,16 @@ export async function runAgentConversation({
 
         const toolResult = await executeTool(toolName, parsedArgs, { abortSignal });
 
-        let songResults: SongResult[] | undefined;
-        if (toolResult.songs && toolResult.songs.length > 0) {
+        let songResults: SongResult[] | undefined = toolResult.songResults;
+        if (!songResults && toolResult.songs && toolResult.songs.length > 0) {
           songResults = toolResult.songs.map((s) => ({
             song: s,
             source: s.source || "netease",
             canPlay: true,
             canDownload: true,
           }));
+        }
+        if (songResults && songResults.length > 0) {
           accumulatedSongResults = [...accumulatedSongResults, ...songResults];
         }
 

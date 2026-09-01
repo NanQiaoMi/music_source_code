@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, Download, Check, Loader2, Music2, Plus } from "lucide-react";
+import { Play, Pause, Download, Check, Loader2, Music2, Plus, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { Song } from "@/types/song";
 import { SongResult } from "@/types/aiAgent";
@@ -220,6 +220,20 @@ export const SongResultCard: React.FC<SongResultCardProps> = React.memo(
               >
                 {song.title}
               </h4>
+
+              {result.isBestMatch && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md text-[9px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.3)] shrink-0 animate-pulse">
+                  <Sparkles className="w-2.5 h-2.5 text-amber-300" />
+                  <span>AI 优选</span>
+                </span>
+              )}
+
+              {result.qualityLabel && (
+                <span className="px-1.5 py-0.2 rounded-md text-[9px] font-mono bg-white/[0.08] text-white/70 border border-white/[0.12] shrink-0">
+                  {result.qualityLabel}
+                </span>
+              )}
+
               <span
                 className={`px-1.5 py-0.2 rounded-md text-[9.5px] font-medium border shrink-0 backdrop-blur-md ${sourceInfo.color}`}
               >

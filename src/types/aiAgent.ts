@@ -70,6 +70,7 @@ export interface ToolExecutionResult {
   data?: unknown;
   error?: string;
   songs?: Song[];
+  songResults?: SongResult[];
 }
 
 export type ToolExecutorFn = (

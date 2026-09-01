@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Trash2, X, Key, ArrowRight, Zap } from "lucide-react";
+import { Sparkles, Trash2, X, Key, ArrowRight, Zap, History, Plus, Loader2 } from "lucide-react";
 import { useAIAgentStore } from "@/store/useAIAgentStore";
 import { useAIStore } from "@/store/aiStore";
 import { useUIStore } from "@/store/uiStore";
@@ -12,6 +12,7 @@ import { SongResult } from "@/types/aiAgent";
 import { ToolCallIndicator } from "./ToolCallIndicator";
 import { AIAgentInputBox } from "./AIAgentInputBox";
 import { AgentMessageItem } from "./AgentMessageItem";
+import { AIAgentSessionDrawer } from "./AIAgentSessionDrawer";
 
 export interface AIAgentPanelProps {
   isOpen: boolean;
@@ -26,6 +27,14 @@ const DRAWER_SPRING = {
 };
 
 export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) => {
+  const sessions = useAIAgentStore((state) => state.sessions);
+  const currentSessionId = useAIAgentStore((state) => state.currentSessionId);
+  const isSessionDrawerOpen = useAIAgentStore((state) => state.isSessionDrawerOpen);
+  const isSessionLoading = useAIAgentStore((state) => state.isSessionLoading);
+  const openSessionDrawer = useAIAgentStore((state) => state.openSessionDrawer);
+  const closeSessionDrawer = useAIAgentStore((state) => state.closeSessionDrawer);
+  const createNewSession = useAIAgentStore((state) => state.createNewSession);
+
   const messages = useAIAgentStore((state) => state.messages);
   const isProcessing = useAIAgentStore((state) => state.isProcessing);
   const currentToolName = useAIAgentStore((state) => state.currentToolName);
@@ -46,6 +55,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
   const activeConfig =
     configs.find((c) => c.id === activeConfigId) || (configs.length > 0 ? configs[0] : null);
   const isConfigured = !!activeConfig?.apiKey?.trim() && isEnabled;
+  const currentSession = sessions.find((s) => s.id === currentSessionId);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -91,14 +101,18 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
         e.preventDefault();
-        onClose();
+        if (isSessionDrawerOpen) {
+          closeSessionDrawer();
+        } else {
+          onClose();
+        }
       }
     };
     if (isOpen) {
       window.addEventListener("keydown", handleKeyDown);
       return () => window.removeEventListener("keydown", handleKeyDown);
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, isSessionDrawerOpen, closeSessionDrawer, onClose]);
 
   const handleOpenAISettings = useCallback(() => {
     onClose();
@@ -178,20 +192,29 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
               <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-48 bg-gradient-to-b from-white/[0.06] via-white/[0.02] to-transparent blur-3xl rounded-full" />
             </div>
 
-            {/* 顶部 Header：极简钛银光球 Logo + 模型状态微标 + 操作栏 */}
-            <div className="relative z-10 px-5 pt-4 pb-3.5 border-b border-white/[0.08] bg-black/20 backdrop-blur-2xl flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="relative w-9 h-9 rounded-full bg-white/[0.08] border border-white/[0.15] p-[1px] shadow-[0_0_12px_rgba(255,255,255,0.06)] flex items-center justify-center">
+            {/* 顶部 Header：极简钛银光球 Logo + 会话切换 + 操作栏 */}
+            <div className="relative z-10 px-4 pt-4 pb-3.5 border-b border-white/[0.08] bg-black/20 backdrop-blur-2xl flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                <div className="relative w-9 h-9 rounded-full bg-white/[0.08] border border-white/[0.15] p-[1px] shadow-[0_0_12px_rgba(255,255,255,0.06)] flex items-center justify-center shrink-0">
                   <Sparkles className="w-4 h-4 text-white/90" />
                 </div>
 
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-[14.5px] font-semibold text-white tracking-tight">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <h3 className="text-[14px] font-semibold text-white tracking-tight shrink-0">
                       AI 找歌助手
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[9.5px] font-semibold bg-white/[0.06] text-white/70 border border-white/[0.1] shadow-sm">
-                      Agent v2
+                    <button
+                      type="button"
+                      onClick={openSessionDrawer}
+                      className="group/sess flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.10] text-[11.5px] font-medium text-white/90 truncate transition-all active:scale-95 max-w-[150px]"
+                      title="点击切换历史对话"
+                    >
+                      <History className="w-3 h-3 text-white/60 group-hover/sess:text-white shrink-0" />
+                      <span className="truncate">{currentSession?.title || "探索新音乐"}</span>
+                    </button>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-semibold bg-white/[0.06] text-white/70 border border-white/[0.1] shrink-0">
+                      v2
                     </span>
                   </div>
 
@@ -200,7 +223,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                     {isConfigured ? (
                       <>
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
-                        <span className="truncate max-w-[170px] text-white/80 font-medium">
+                        <span className="truncate max-w-[150px] text-white/80 font-medium">
                           {activeConfig?.model || activeConfig?.name || "在线就绪"}
                         </span>
                       </>
@@ -215,7 +238,15 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
               </div>
 
               {/* 右侧操作胶囊 */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => createNewSession()}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.1] transition-all active:scale-95"
+                  title="新建对话"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
                 <button
                   type="button"
                   onClick={clearMessages}
@@ -274,32 +305,42 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
               onScroll={handleScroll}
               className="relative z-10 flex-1 overflow-y-auto px-4 py-4 space-y-3.5 min-h-0 custom-scrollbar transform-gpu"
             >
-              {messages.map((msg) => (
-                <AgentMessageItem
-                  key={msg.id}
-                  message={msg}
-                  onPlaySong={playSongFromAgent}
-                  onDownloadSong={downloadSongFromAgent}
-                  onPlayAll={handlePlayAllResults}
-                  onAddAllToQueue={handleAddAllToQueue}
-                  onOpenAISettings={handleOpenAISettings}
-                  onCopyText={handleCopyMessage}
-                  onSendPrompt={handleSend}
-                  isCopied={copiedId === msg.id}
-                />
-              ))}
+              {isSessionLoading ? (
+                <div className="flex flex-col items-center justify-center h-full py-16 text-white/40 space-y-3">
+                  <Loader2 className="w-7 h-7 animate-spin text-white/60" />
+                  <span className="text-[12.5px]">正在加载会话消息...</span>
+                </div>
+              ) : (
+                messages.map((msg) => (
+                  <AgentMessageItem
+                    key={msg.id}
+                    message={msg}
+                    onPlaySong={playSongFromAgent}
+                    onDownloadSong={downloadSongFromAgent}
+                    onPlayAll={handlePlayAllResults}
+                    onAddAllToQueue={handleAddAllToQueue}
+                    onOpenAISettings={handleOpenAISettings}
+                    onCopyText={handleCopyMessage}
+                    onSendPrompt={handleSend}
+                    isCopied={copiedId === msg.id}
+                  />
+                ))
+              )}
 
               {/* 正在执行 Tool 时的指示器 */}
               {isProcessing && <ToolCallIndicator toolName={currentToolName} />}
             </div>
 
-            {/* 独立底栏输入组件（打字时与消息树 100% 隔离，0 重绘） */}
+            {/* 独立底栏输入组件 */}
             <AIAgentInputBox
               isProcessing={isProcessing}
               onSend={handleSend}
               onAbort={abortCurrentRequest}
               disabled={!isConfigured}
             />
+
+            {/* 历史会话管理侧滑抽屉 */}
+            <AIAgentSessionDrawer isOpen={isSessionDrawerOpen} onClose={closeSessionDrawer} />
           </motion.div>
         </div>
       )}

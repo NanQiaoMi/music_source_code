@@ -98,7 +98,8 @@ export const AI_AGENT_TOOLS: ToolDefinition[] = [
           action: {
             type: "string",
             enum: ["play", "pause", "toggle", "next", "prev", "stop"],
-            description: "操作指令：play(继续播放), pause(暂停), toggle(切换播放暂停), next(下一首), prev(上一首), stop(停止)",
+            description:
+              "操作指令：play(继续播放), pause(暂停), toggle(切换播放暂停), next(下一首), prev(上一首), stop(停止)",
           },
         },
         required: ["action"],
@@ -136,7 +137,8 @@ export const AI_AGENT_TOOLS: ToolDefinition[] = [
           mode: {
             type: "string",
             enum: ["single", "loop", "shuffle", "sequence"],
-            description: "目标播放模式：single(单曲循环), loop(列表循环), shuffle(随机播放), sequence(顺序播放)",
+            description:
+              "目标播放模式：single(单曲循环), loop(列表循环), shuffle(随机播放), sequence(顺序播放)",
           },
         },
         required: ["mode"],
@@ -187,7 +189,8 @@ export const AI_AGENT_TOOLS: ToolDefinition[] = [
           action: {
             type: "string",
             enum: ["append", "insert_next", "clear"],
-            description: "添加方式：append(追加到待播列表末尾), insert_next(插队到下一首播放), clear(清空待播队列)",
+            description:
+              "添加方式：append(追加到待播列表末尾), insert_next(插队到下一首播放), clear(清空待播队列)",
           },
           songIds: {
             type: "array",
@@ -209,7 +212,8 @@ export const AI_AGENT_TOOLS: ToolDefinition[] = [
         properties: {
           effect: {
             type: "string",
-            description: "可视化特效名称或别名，例如：cinematicLyricDrift(弧光伴字/流光歌词), cinematicOrientalInk(东方水墨), orientalLandscape(水墨山水), spectrum(经典频谱), particleField(粒子场), starTrails(星轨), auroraWave(极光)",
+            description:
+              "可视化特效名称或别名，例如：cinematicLyricDrift(弧光伴字/流光歌词), cinematicOrientalInk(东方水墨), orientalLandscape(水墨山水), spectrum(经典频谱), particleField(粒子场), starTrails(星轨), auroraWave(极光)",
           },
         },
         required: ["effect"],
@@ -305,7 +309,12 @@ export const AI_AGENT_TOOLS: ToolDefinition[] = [
  */
 function normalizeVisualizerEffect(input: string): string {
   const trimmed = input.trim().toLowerCase();
-  if (trimmed.includes("弧光") || trimmed.includes("歌词") || trimmed.includes("drift") || trimmed.includes("lyric")) {
+  if (
+    trimmed.includes("弧光") ||
+    trimmed.includes("歌词") ||
+    trimmed.includes("drift") ||
+    trimmed.includes("lyric")
+  ) {
     return "cinematicLyricDrift";
   }
   if (trimmed.includes("水墨山水") || trimmed.includes("landscape") || trimmed.includes("山水")) {
@@ -352,26 +361,42 @@ export async function executeTool(
         const rawLimit = typeof args.limit === "number" ? args.limit : 8;
         const limit = Math.max(1, Math.min(rawLimit, 20));
 
-        const songs = await multiSourceResolver.searchOnlineMusic(query, limit);
+        const songResults = await multiSourceResolver.searchBestMatchingSongResults(query, limit);
+        const songs = songResults.map((sr) => sr.song);
         cacheSongs(songs);
 
+        const bestMatch = songResults.find((sr) => sr.isBestMatch);
         const summary = {
           count: songs.length,
-          results: songs.map((s) => ({
-            id: s.id,
-            title: s.title,
-            artist: s.artist,
-            album: s.album || "",
-            duration: s.duration,
-            source: s.source,
+          bestMatch: bestMatch
+            ? {
+                title: bestMatch.song.title,
+                artist: bestMatch.song.artist,
+                source: bestMatch.source,
+                quality: bestMatch.qualityLabel,
+                matchScore: bestMatch.matchScore,
+              }
+            : null,
+          results: songResults.map((sr) => ({
+            id: sr.song.id,
+            title: sr.song.title,
+            artist: sr.song.artist,
+            album: sr.song.album || "",
+            duration: sr.song.duration,
+            source: sr.source,
+            quality: sr.qualityLabel,
+            isBestMatch: sr.isBestMatch,
           })),
         };
 
         return {
           success: true,
-          message: `已检索到 ${songs.length} 首歌曲`,
+          message: bestMatch
+            ? `已从已有渠道中优选出最符合资源《${bestMatch.song.title}》（${bestMatch.source} · ${bestMatch.qualityLabel}），共检索到 ${songs.length} 首`
+            : `已检索到 ${songs.length} 首歌曲`,
           data: summary,
           songs,
+          songResults,
         };
       }
 
@@ -718,7 +743,8 @@ export async function executeTool(
           };
         }
 
-        const minutes = typeof args.minutes === "number" ? Math.max(1, Math.round(args.minutes)) : null;
+        const minutes =
+          typeof args.minutes === "number" ? Math.max(1, Math.round(args.minutes)) : null;
         if (!minutes) {
           return {
             success: false,
