@@ -10,17 +10,6 @@ interface StarParticle {
   twinklePhase: number;
 }
 
-interface GasFlowStratum {
-  relativeRadius: number; // 0 (ISCO) to 1 (outer)
-  speed: number;
-  phase: number;
-  width: number;
-  alpha: number;
-  turbFreq: number;
-  turbAmp: number;
-  colorType: number; // 0: 白炽, 1: 琥珀金, 2: 熔岩铜, 3: 赭红
-}
-
 interface GravitationalShockwave {
   radius: number;
   maxRadius: number;
@@ -29,59 +18,32 @@ interface GravitationalShockwave {
 }
 
 let stars: StarParticle[] = [];
-let strata: GasFlowStratum[] = [];
 
 function initGargantuaData(sw: number, sh: number) {
   if (stars.length > 0) return;
 
-  // 1. 初始化背景引力透镜恒星场 (160 颗星点)
-  for (let i = 0; i < 160; i++) {
+  for (let i = 0; i < 180; i++) {
     stars.push({
-      x: (Math.random() - 0.5) * sw * 1.4,
-      y: (Math.random() - 0.5) * sh * 1.4,
-      size: Math.random() < 0.15 ? 1.6 : Math.random() < 0.5 ? 1.0 : 0.6,
-      alpha: 0.25 + Math.random() * 0.65,
-      twinkleSpeed: 1.5 + Math.random() * 3.0,
+      x: (Math.random() - 0.5) * sw * 1.5,
+      y: (Math.random() - 0.5) * sh * 1.5,
+      size: Math.random() < 0.12 ? 1.5 : Math.random() < 0.45 ? 0.9 : 0.5,
+      alpha: 0.2 + Math.random() * 0.7,
+      twinkleSpeed: 1.2 + Math.random() * 2.8,
       twinklePhase: Math.random() * Math.PI * 2,
-    });
-  }
-
-  // 2. 初始化吸积盘流体气流层 (18 层致密平滑无缝流质体，完全杜绝细线条)
-  strata = [];
-  const strataCount = 20;
-  for (let i = 0; i < strataCount; i++) {
-    const frac = i / (strataCount - 1);
-    let colorType = 1;
-    if (frac < 0.18)
-      colorType = 0; // 白炽金核心
-    else if (frac < 0.5)
-      colorType = 1; // 琥珀金
-    else if (frac < 0.8)
-      colorType = 2; // 熔岩铜
-    else colorType = 3; // 赭石赤红
-
-    strata.push({
-      relativeRadius: frac,
-      speed: (0.012 / Math.sqrt(Math.max(0.1, frac + 0.15))) * 0.8,
-      phase: Math.random() * Math.PI * 2,
-      width: 4.0 + frac * 18.0,
-      alpha: 0.25 + Math.sin(frac * Math.PI) * 0.35,
-      turbFreq: 3 + (i % 4),
-      turbAmp: 2.0 + (i % 3) * 1.5,
-      colorType,
     });
   }
 }
 
 /**
- * 1:1 像素级复刻电影《星际穿越》(Interstellar) 卡冈图雅 (Gargantua) 真实引力透镜黑洞
- * - 纯黑施瓦西事件视界与极细光子球环
- * - 上方引力透镜天冠光拱 (Top Lensed Accretion Crown)
- * - 下方引力透镜下腹光弧 (Bottom Lensed Accretion Underbelly)
- * - 倾斜赤道面前置主吸积盘 (Tilted Equatorial Accretion Disk with Doppler Beaming)
- * - 多普勒集束效应 (左侧朝向观察者：更亮更白炽；右侧远离：更暗红移)
- * - 实体连续流质感（完全摒弃线框，采用连续多重体绘制与流体光幕）
- * - 极速 60FPS 满帧运行
+ * 1:1 像素级复刻电影《星际穿越》(Interstellar) 卡冈图雅 (Gargantua) 真实物理引力透镜黑洞
+ * 严格还原经典天体物理模拟形态（Kip Thorne 广义相对论光线追踪仿真）：
+ * 1. 中心高耸的纯黑施瓦西事件视界球顶（清晰可见的大半个纯黑视界天穹）
+ * 2. 上方高耸的引力透镜天冠拱门（Top Lensed Crown）与丝绸般细腻的同心流纹
+ * 3. 下方紧密包覆的引力透镜下腹光弧（Bottom Lensed Underbelly）
+ * 4. 倾斜赤道面前置主吸积盘（-32° 倾角，精准切过视界下半部，绝不遮挡中央黑体）
+ * 5. 多普勒集束（左翼超强白炽展宽，右翼暗淡红移收细）
+ * 6. 极细白炽光子球环（Photon Sphere Ring）
+ * 7. 60FPS 极速渲染与音频动力学共振
  */
 export function drawSuperstringSingularity({
   ctx,
@@ -98,12 +60,11 @@ export function drawSuperstringSingularity({
   initGargantuaData(sw, sh);
 
   const cx = sw * 0.5;
-  const cy = sh * 0.52;
+  const cy = sh * 0.53;
 
   const speed = params.speed || 1.0;
   const singularityMass = params.singularityMass || 1.0;
   const superstringTension = params.superstringTension || 1.2;
-  const coreGlow = params.coreGlow || 1.2;
   const burstSensitivity = params.burstSensitivity || 1.1;
 
   // --- 1. 音频特征平滑提取 ---
@@ -126,7 +87,7 @@ export function drawSuperstringSingularity({
   // 自转推进
   const rot =
     ((refs.bokeh.current && refs.bokeh.current[0]) || 0) +
-    (0.003 + energy * 0.006) * superstringTension;
+    (0.0028 + energy * 0.0055) * superstringTension;
   if (!refs.bokeh.current) refs.bokeh.current = [];
   refs.bokeh.current[0] = rot;
 
@@ -139,31 +100,38 @@ export function drawSuperstringSingularity({
     shockwaves.push({
       radius: 95 * singularityMass,
       maxRadius: Math.max(sw, sh) * 0.85,
-      alpha: 0.65,
-      speed: 18 + bass * 20,
+      alpha: 0.6,
+      speed: 18 + bass * 18,
     });
   }
 
-  // --- 2. 几何与物理常数 (Kip Thorne Gargantua Geometry) ---
-  const horizonR = (98 + bass * 18) * singularityMass; // 施瓦西视界半径
-  const diskTiltAngle = -0.58; // 倾角约 -33.2° (左下至右上)
-  const cosD = Math.cos(diskTiltAngle);
-  const sinD = Math.sin(diskTiltAngle);
+  // --- 2. 几何与空间参数 ---
+  const horizonR = (92 + bass * 16) * singularityMass; // 施瓦西黑洞视界半径
+  const diskTilt = -0.56; // -32° 倾角
+  const cosD = Math.cos(diskTilt);
+  const sinD = Math.sin(diskTilt);
 
-  // --- 3. 深空背景与引力透镜扭曲星场 (Einstein Lensed Starfield) ---
+  // --- 3. 深空背景与引力透镜弯折星场 ---
   ctx.save();
-  ctx.fillStyle = "#010003";
+  ctx.fillStyle = "#020003";
   ctx.fillRect(0, 0, sw, sh);
 
   // 广域深空暗赤色星云微晕
-  const spaceGrd = ctx.createRadialGradient(cx, cy, horizonR * 1.2, cx, cy, Math.max(sw, sh) * 0.8);
-  spaceGrd.addColorStop(0, "rgba(45, 12, 10, 0.4)");
-  spaceGrd.addColorStop(0.4, "rgba(22, 6, 8, 0.25)");
-  spaceGrd.addColorStop(1, "rgba(1, 0, 3, 0.95)");
+  const spaceGrd = ctx.createRadialGradient(
+    cx,
+    cy,
+    horizonR * 1.1,
+    cx,
+    cy,
+    Math.max(sw, sh) * 0.85
+  );
+  spaceGrd.addColorStop(0, "rgba(40, 10, 8, 0.42)");
+  spaceGrd.addColorStop(0.4, "rgba(18, 4, 6, 0.26)");
+  spaceGrd.addColorStop(1, "rgba(2, 0, 3, 0.96)");
   ctx.fillStyle = spaceGrd;
   ctx.fillRect(0, 0, sw, sh);
 
-  // 绘制受引力透镜弯折拉伸的恒星点
+  // 绘制受强引力场切向偏折的恒星
   for (let i = 0; i < stars.length; i++) {
     const s = stars[i];
     const sx = cx + s.x;
@@ -172,66 +140,35 @@ export function drawSuperstringSingularity({
     const dy = sy - cy;
     const dist = Math.hypot(dx, dy);
 
-    if (dist < horizonR * 0.95) continue; // 视界内部黑洞遮挡
+    if (dist < horizonR * 0.98) continue; // 视界遮挡
 
-    // 爱因斯坦环引力偏折与切向微拉伸
-    const deflection = (horizonR * horizonR * 1.4) / (dist + 0.1);
-    const renderX = sx + (dx / dist) * deflection;
-    const renderY = sy + (dy / dist) * deflection;
+    const deflection = (horizonR * horizonR * 1.35) / (dist + 0.1);
+    const rx = sx + (dx / dist) * deflection;
+    const ry = sy + (dy / dist) * deflection;
 
-    if (renderX < -20 || renderX > sw + 20 || renderY < -20 || renderY > sh + 20) continue;
+    if (rx < -10 || rx > sw + 10 || ry < -10 || ry > sh + 10) continue;
 
     const twinkle = 0.5 + 0.5 * Math.sin(t * s.twinkleSpeed + s.twinklePhase);
-    const starAlpha = s.alpha * twinkle;
-
-    ctx.fillStyle = `rgba(240, 245, 255, ${starAlpha})`;
+    ctx.fillStyle = `rgba(240, 245, 255, ${s.alpha * twinkle})`;
     ctx.beginPath();
-    ctx.arc(renderX, renderY, s.size, 0, Math.PI * 2);
+    ctx.arc(rx, ry, s.size, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
 
-  // --- 4. 【上方引力透镜天冠光拱】(Top Gravitational Lensing Crown) ---
-  // 吸积盘背侧光线被黑洞引力场弯折至视界上方，形成拱门状皇冠
+  // --- 4. 【上方引力透镜天冠拱门】(Top Gravitational Lensing Crown) ---
   ctx.save();
-  renderLensedCrown(
-    ctx,
-    cx,
-    cy,
-    horizonR,
-    diskTiltAngle,
-    cosD,
-    sinD,
-    rot,
-    t,
-    bass,
-    mid,
-    treble,
-    coreGlow
-  );
+  renderTopCrown(ctx, cx, cy, horizonR, diskTilt, cosD, sinD, rot, t, bass, mid, treble);
   ctx.restore();
 
   // --- 5. 【下方引力透镜下腹光弧】(Bottom Gravitational Lensing Underbelly) ---
-  // 吸积盘底部光线被弯折至视界下方，形成较细的弧形底晕
   ctx.save();
-  renderLensedUnderbelly(
-    ctx,
-    cx,
-    cy,
-    horizonR,
-    diskTiltAngle,
-    cosD,
-    sinD,
-    rot,
-    t,
-    bass,
-    mid,
-    treble
-  );
+  renderBottomUnderbelly(ctx, cx, cy, horizonR, diskTilt, cosD, sinD, rot, t, bass, mid, treble);
   ctx.restore();
 
-  // --- 6. 【3D 纯黑施瓦西事件视界球体与光子球环】---
+  // --- 6. 【中心 3D 纯黑施瓦西事件视界与极细光子球环】---
   ctx.save();
+  // 纯黑视界球体
   ctx.fillStyle = "#000000";
   ctx.beginPath();
   ctx.arc(cx, cy, horizonR, 0, Math.PI * 2);
@@ -243,33 +180,12 @@ export function drawSuperstringSingularity({
   ctx.beginPath();
   ctx.arc(cx, cy, horizonR * 0.99, 0, Math.PI * 2);
   ctx.stroke();
-
-  // 光子球内圈白炽微边
-  ctx.strokeStyle = "rgba(255, 240, 180, 0.4)";
-  ctx.lineWidth = 2.4;
-  ctx.beginPath();
-  ctx.arc(cx, cy, horizonR * 0.99, 0, Math.PI * 2);
-  ctx.stroke();
   ctx.restore();
 
-  // --- 7. 【赤道面前置主吸积盘】(Equatorial Accretion Disk - Front Crossing) ---
-  // 横跨黑洞前方的倾斜实体主吸积盘，左侧更亮更白炽（多普勒集束），右侧更暗红移
+  // --- 7. 【赤道面前置主吸积盘】(Front Equatorial Accretion Disk - Lower Crossing) ---
+  // 精确横跨在黑洞下半部前方，完整露出黑洞上半球天穹
   ctx.save();
-  renderEquatorialDisk(
-    ctx,
-    cx,
-    cy,
-    horizonR,
-    diskTiltAngle,
-    cosD,
-    sinD,
-    rot,
-    t,
-    bass,
-    mid,
-    treble,
-    coreGlow
-  );
+  renderFrontEquatorialDisk(ctx, cx, cy, horizonR, diskTilt, cosD, sinD, rot, t, bass, mid, treble);
   ctx.restore();
 
   // --- 8. 引力波时空曲率冲击涟漪 ---
@@ -285,10 +201,10 @@ export function drawSuperstringSingularity({
         continue;
       }
 
-      ctx.strokeStyle = `rgba(255, 180, 80, ${swItem.alpha * 0.4})`;
-      ctx.lineWidth = 1.8;
+      ctx.strokeStyle = `rgba(255, 175, 75, ${swItem.alpha * 0.38})`;
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.ellipse(cx, cy, swItem.radius, swItem.radius * 0.38, diskTiltAngle, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, swItem.radius, swItem.radius * 0.42, diskTilt, 0, Math.PI * 2);
       ctx.stroke();
     }
     ctx.restore();
@@ -297,142 +213,9 @@ export function drawSuperstringSingularity({
 
 /**
  * 绘制卡冈图雅上方引力透镜天冠 (Top Lensed Crown)
+ * 背侧吸积盘被引力场弯折包覆于黑洞上方，带有极其细腻的同心开普勒流态微纹理
  */
-function renderLensedCrown(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  horizonR: number,
-  diskAngle: number,
-  cosD: number,
-  sinD: number,
-  rot: number,
-  t: number,
-  bass: number,
-  mid: number,
-  treble: number,
-  coreGlow: number
-) {
-  const crownOuterR = horizonR * 2.25;
-  const crownInnerR = horizonR * 1.03;
-
-  // 1. 底层大面积外扩散赤红/赭石晕轮 (Outer Crimson/Copper Smear)
-  const outerSmearGrd = ctx.createRadialGradient(
-    cx,
-    cy,
-    crownInnerR * 1.05,
-    cx,
-    cy - horizonR * 0.15,
-    crownOuterR * 1.15
-  );
-  outerSmearGrd.addColorStop(0, "rgba(255, 180, 40, 0.85)");
-  outerSmearGrd.addColorStop(0.28, "rgba(235, 95, 20, 0.65)");
-  outerSmearGrd.addColorStop(0.65, "rgba(160, 30, 8, 0.35)");
-  outerSmearGrd.addColorStop(0.9, "rgba(80, 10, 4, 0.15)");
-  outerSmearGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-  ctx.fillStyle = outerSmearGrd;
-  ctx.beginPath();
-  // 绘制上拱形区域
-  ctx.ellipse(cx, cy, crownOuterR, crownOuterR * 0.82, diskAngle, Math.PI * 0.96, Math.PI * 2.04);
-  ctx.ellipse(
-    cx,
-    cy,
-    crownInnerR,
-    crownInnerR * 0.76,
-    diskAngle,
-    Math.PI * 2.04,
-    Math.PI * 0.96,
-    true
-  );
-  ctx.closePath();
-  ctx.fill();
-
-  // 2. 内部白炽超高温透镜光拱 (Inner Incandescent Lensing Arch)
-  const innerArchGrd = ctx.createRadialGradient(
-    cx - horizonR * 0.15,
-    cy - horizonR * 0.1,
-    crownInnerR * 0.98,
-    cx,
-    cy,
-    crownInnerR * 1.55
-  );
-  innerArchGrd.addColorStop(0, "rgba(255, 255, 250, 0.98)");
-  innerArchGrd.addColorStop(0.22, "rgba(255, 235, 130, 0.92)");
-  innerArchGrd.addColorStop(0.6, "rgba(255, 145, 30, 0.6)");
-  innerArchGrd.addColorStop(1, "rgba(200, 50, 10, 0)");
-
-  ctx.fillStyle = innerArchGrd;
-  ctx.beginPath();
-  ctx.ellipse(
-    cx,
-    cy,
-    crownInnerR * 1.5,
-    crownInnerR * 1.18,
-    diskAngle,
-    Math.PI * 0.96,
-    Math.PI * 2.04
-  );
-  ctx.ellipse(
-    cx,
-    cy,
-    crownInnerR,
-    crownInnerR * 0.78,
-    diskAngle,
-    Math.PI * 2.04,
-    Math.PI * 0.96,
-    true
-  );
-  ctx.closePath();
-  ctx.fill();
-
-  // 3. 极速平滑流体微纹理 (12 层同心平滑流体微弧，赋予真实开普勒旋涡细节)
-  for (let i = 0; i < 12; i++) {
-    const frac = i / 11;
-    const r = crownInnerR + frac * (crownOuterR - crownInnerR) * 0.85;
-    const ry = crownInnerR * 0.78 + frac * (crownOuterR * 0.82 - crownInnerR * 0.78) * 0.85;
-
-    // 多普勒不对称度：左侧增强
-    const alpha = (0.28 - frac * 0.18) * (1 + mid * 0.35);
-
-    if (frac < 0.25) {
-      ctx.strokeStyle = `rgba(255, 250, 220, ${alpha * 1.2})`;
-    } else if (frac < 0.6) {
-      ctx.strokeStyle = `rgba(255, 175, 45, ${alpha})`;
-    } else {
-      ctx.strokeStyle = `rgba(210, 65, 15, ${alpha * 0.8})`;
-    }
-
-    ctx.lineWidth = 2.0 + (1 - frac) * 3.5;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, r, ry, diskAngle, Math.PI * 0.98, Math.PI * 2.02);
-    ctx.stroke();
-  }
-
-  // 4. 天冠左侧多普勒强光束 (Doppler Beaming Boost on Left Flank)
-  const leftBoostGrd = ctx.createRadialGradient(
-    cx - horizonR * 0.9,
-    cy - horizonR * 0.4,
-    10,
-    cx - horizonR * 0.9,
-    cy - horizonR * 0.4,
-    horizonR * 1.2
-  );
-  leftBoostGrd.addColorStop(0, "rgba(255, 255, 255, 0.85)");
-  leftBoostGrd.addColorStop(0.35, "rgba(255, 220, 100, 0.55)");
-  leftBoostGrd.addColorStop(0.75, "rgba(255, 130, 25, 0.2)");
-  leftBoostGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-  ctx.fillStyle = leftBoostGrd;
-  ctx.beginPath();
-  ctx.arc(cx - horizonR * 0.9, cy - horizonR * 0.4, horizonR * 1.1, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-/**
- * 绘制卡冈图雅下方引力透镜光弧 (Bottom Lensed Underbelly)
- */
-function renderLensedUnderbelly(
+function renderTopCrown(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
@@ -446,47 +229,96 @@ function renderLensedUnderbelly(
   mid: number,
   treble: number
 ) {
-  const underInnerR = horizonR * 1.03;
-  const underOuterR = horizonR * 1.62;
+  const crownInnerR = horizonR * 1.02;
+  const crownOuterR = horizonR * 2.35;
 
-  const underGrd = ctx.createRadialGradient(
+  // 1. 底层大面积渐变流质天冠（内圈炽金 -> 中间琥珀 -> 外圈熔岩赤红）
+  const crownGrd = ctx.createRadialGradient(
+    cx - horizonR * 0.2,
+    cy - horizonR * 0.15,
+    crownInnerR * 0.98,
     cx,
-    cy + horizonR * 0.1,
-    underInnerR * 0.98,
-    cx,
-    cy + horizonR * 0.2,
-    underOuterR * 1.1
+    cy - horizonR * 0.35,
+    crownOuterR * 1.08
   );
-  underGrd.addColorStop(0, "rgba(255, 240, 160, 0.75)");
-  underGrd.addColorStop(0.3, "rgba(240, 115, 25, 0.55)");
-  underGrd.addColorStop(0.7, "rgba(160, 40, 10, 0.28)");
-  underGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
+  crownGrd.addColorStop(0, "rgba(255, 255, 240, 0.98)");
+  crownGrd.addColorStop(0.12, "rgba(255, 220, 100, 0.92)");
+  crownGrd.addColorStop(0.35, "rgba(250, 130, 25, 0.75)");
+  crownGrd.addColorStop(0.68, "rgba(175, 38, 10, 0.45)");
+  crownGrd.addColorStop(0.92, "rgba(85, 10, 4, 0.18)");
+  crownGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
 
-  ctx.fillStyle = underGrd;
+  ctx.fillStyle = crownGrd;
   ctx.beginPath();
-  ctx.ellipse(cx, cy, underOuterR, underOuterR * 0.65, diskAngle, 0, Math.PI);
-  ctx.ellipse(cx, cy, underInnerR, underInnerR * 0.6, diskAngle, Math.PI, 0, true);
+  ctx.ellipse(cx, cy, crownOuterR, crownOuterR * 0.84, diskAngle, Math.PI * 0.96, Math.PI * 2.04);
+  ctx.ellipse(
+    cx,
+    cy,
+    crownInnerR,
+    crownInnerR * 0.78,
+    diskAngle,
+    Math.PI * 2.04,
+    Math.PI * 0.96,
+    true
+  );
   ctx.closePath();
   ctx.fill();
 
-  // 下腹 6 层细微流光层
-  for (let i = 0; i < 6; i++) {
-    const frac = i / 5;
-    const r = underInnerR + frac * (underOuterR - underInnerR) * 0.8;
-    const ry = underInnerR * 0.6 + frac * (underOuterR * 0.65 - underInnerR * 0.6) * 0.8;
+  // 2. 天冠细微丝滑同心流体层（32 层微细丝滑光层，赋予开普勒旋涡实体流质感）
+  ctx.lineCap = "round";
+  for (let i = 0; i < 32; i++) {
+    const frac = i / 31;
+    const rx = crownInnerR + frac * (crownOuterR - crownInnerR) * 0.88;
+    const ry = crownInnerR * 0.78 + frac * (crownOuterR * 0.84 - crownInnerR * 0.78) * 0.88;
 
-    ctx.strokeStyle = `rgba(235, 110, 25, ${(0.22 - frac * 0.15) * (1 + mid * 0.3)})`;
-    ctx.lineWidth = 1.8 + (1 - frac) * 2.2;
+    // 旋转相位波动
+    const wave = Math.sin(frac * 18.0 + rot * 4.0) * 0.08;
+    const alpha = (0.24 - frac * 0.15 + wave) * (1 + mid * 0.25);
+    if (alpha <= 0.01) continue;
+
+    if (frac < 0.18) {
+      ctx.strokeStyle = `rgba(255, 255, 230, ${alpha * 1.4})`;
+    } else if (frac < 0.52) {
+      ctx.strokeStyle = `rgba(255, 185, 55, ${alpha * 1.1})`;
+    } else {
+      ctx.strokeStyle = `rgba(215, 65, 15, ${alpha * 0.85})`;
+    }
+
+    ctx.lineWidth = 1.5 + (1 - frac) * 2.5;
     ctx.beginPath();
-    ctx.ellipse(cx, cy, r, ry, diskAngle, 0.05, Math.PI - 0.05);
+    ctx.ellipse(cx, cy, rx, ry, diskAngle, Math.PI * 0.97, Math.PI * 2.03);
     ctx.stroke();
   }
+
+  // 3. 右上掠角引力尾迹 (Top-Right Lensed Accretion Flare)
+  const flareGrd = ctx.createRadialGradient(
+    cx + horizonR * 1.6 * cosD,
+    cy + horizonR * 1.6 * sinD - horizonR * 0.5,
+    5,
+    cx + horizonR * 1.6 * cosD,
+    cy + horizonR * 1.6 * sinD - horizonR * 0.5,
+    horizonR * 1.8
+  );
+  flareGrd.addColorStop(0, "rgba(255, 140, 30, 0.45)");
+  flareGrd.addColorStop(0.5, "rgba(180, 40, 10, 0.2)");
+  flareGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+  ctx.fillStyle = flareGrd;
+  ctx.beginPath();
+  ctx.arc(
+    cx + horizonR * 1.6 * cosD,
+    cy + horizonR * 1.6 * sinD - horizonR * 0.5,
+    horizonR * 1.8,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
 }
 
 /**
- * 绘制赤道面主吸积盘 (Equatorial Accretion Disk - Front Crossing with Doppler Asymmetry)
+ * 绘制卡冈图雅下方引力透镜下腹 (Bottom Lensed Underbelly)
  */
-function renderEquatorialDisk(
+function renderBottomUnderbelly(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
@@ -498,117 +330,180 @@ function renderEquatorialDisk(
   t: number,
   bass: number,
   mid: number,
-  treble: number,
-  coreGlow: number
+  treble: number
 ) {
-  const diskLenL = horizonR * 5.4; // 左翼长度（多普勒朝向观察者，更长更宽）
-  const diskLenR = horizonR * 4.6; // 右翼长度（红移远离观察者）
-  const diskThickness = horizonR * 0.52 * (1 + bass * 0.15);
+  const underInnerR = horizonR * 1.02;
+  const underOuterR = horizonR * 1.72;
 
-  // 1. 赤道盘大面积实体流体填充（无任何细线，纯净平滑）
-  // 构造沿主轴的多边形流体区域
-  const ptsLeft: { x: number; y: number }[] = [];
-  const ptsRight: { x: number; y: number }[] = [];
-  const steps = 40;
-
-  for (let i = 0; i <= steps; i++) {
-    const prog = i / steps; // 0 (左端) 到 1 (右端)
-    const u = -diskLenL + prog * (diskLenL + diskLenR);
-
-    // 盘面厚度沿轴向分布：中间靠近黑洞较厚，两端平滑收尖
-    const uDistNorm = u < 0 ? -u / diskLenL : u / diskLenR;
-    const profile = Math.pow(1 - Math.min(1, uDistNorm), 0.65);
-    const halfThick = diskThickness * profile * (u < 0 ? 1.25 : 0.85);
-
-    // 旋转变换至世界坐标
-    const topX = cx + u * cosD - -halfThick * sinD;
-    const topY = cy + u * sinD + -halfThick * cosD;
-    const botX = cx + u * cosD - halfThick * sinD;
-    const botY = cy + u * sinD + halfThick * cosD;
-
-    ptsLeft.push({ x: topX, y: topY });
-    ptsRight.unshift({ x: botX, y: botY });
-  }
-
-  // 1.1 主盘底层红铜/深赤渐变流体
-  const mainDiskGrd = ctx.createLinearGradient(
-    cx - diskLenL * cosD,
-    cy - diskLenL * sinD,
-    cx + diskLenR * cosD,
-    cy + diskLenR * sinD
+  const underGrd = ctx.createRadialGradient(
+    cx,
+    cy + horizonR * 0.1,
+    underInnerR * 0.96,
+    cx,
+    cy + horizonR * 0.25,
+    underOuterR * 1.05
   );
-  mainDiskGrd.addColorStop(0, "rgba(80, 10, 4, 0)");
-  mainDiskGrd.addColorStop(0.12, "rgba(180, 45, 12, 0.45)");
-  mainDiskGrd.addColorStop(0.35, "rgba(255, 140, 30, 0.88)");
-  mainDiskGrd.addColorStop(0.5, "rgba(255, 245, 180, 0.98)"); // 核心超高温
-  mainDiskGrd.addColorStop(0.72, "rgba(230, 95, 20, 0.68)");
-  mainDiskGrd.addColorStop(0.9, "rgba(140, 30, 8, 0.35)");
-  mainDiskGrd.addColorStop(1, "rgba(50, 8, 3, 0)");
+  underGrd.addColorStop(0, "rgba(255, 240, 160, 0.85)");
+  underGrd.addColorStop(0.25, "rgba(245, 125, 28, 0.65)");
+  underGrd.addColorStop(0.65, "rgba(165, 42, 10, 0.32)");
+  underGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
 
-  ctx.fillStyle = mainDiskGrd;
+  ctx.fillStyle = underGrd;
   ctx.beginPath();
-  ctx.moveTo(ptsLeft[0].x, ptsLeft[0].y);
-  for (let p = 1; p < ptsLeft.length; p++) ctx.lineTo(ptsLeft[p].x, ptsLeft[p].y);
-  for (let p = 0; p < ptsRight.length; p++) ctx.lineTo(ptsRight[p].x, ptsRight[p].y);
+  ctx.ellipse(cx, cy, underOuterR, underOuterR * 0.66, diskAngle, 0.02, Math.PI * 0.98);
+  ctx.ellipse(cx, cy, underInnerR, underInnerR * 0.6, diskAngle, Math.PI * 0.98, 0.02, true);
   ctx.closePath();
   ctx.fill();
 
-  // 1.2 赤道盘核心白炽高能强光束 (Center Blazing White-Hot Beam)
-  const coreBeamGrd = ctx.createLinearGradient(
-    cx - diskLenL * 0.75 * cosD,
-    cy - diskLenL * 0.75 * sinD,
-    cx + diskLenR * 0.65 * cosD,
-    cy + diskLenR * 0.65 * sinD
+  // 下腹 12 层微细流线
+  for (let i = 0; i < 12; i++) {
+    const frac = i / 11;
+    const rx = underInnerR + frac * (underOuterR - underInnerR) * 0.82;
+    const ry = underInnerR * 0.6 + frac * (underOuterR * 0.66 - underInnerR * 0.6) * 0.82;
+
+    ctx.strokeStyle = `rgba(240, 115, 28, ${(0.2 - frac * 0.12) * (1 + mid * 0.25)})`;
+    ctx.lineWidth = 1.4 + (1 - frac) * 1.8;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, diskAngle, 0.06, Math.PI * 0.94);
+    ctx.stroke();
+  }
+}
+
+/**
+ * 绘制赤道面前置主吸积盘 (Front Equatorial Accretion Disk)
+ * 横跨在黑洞下半部前方，左翼白炽多普勒集束宽大，右翼渐缩暗红，中心绝不遮蔽上半球黑洞视界
+ */
+function renderFrontEquatorialDisk(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  horizonR: number,
+  diskAngle: number,
+  cosD: number,
+  sinD: number,
+  rot: number,
+  t: number,
+  bass: number,
+  mid: number,
+  treble: number
+) {
+  const diskLenLeft = horizonR * 5.2; // 左翼展长
+  const diskLenRight = horizonR * 4.6; // 右翼展长
+  const diskHalfHeight = horizonR * 0.22 * (1 + bass * 0.12); // 主盘扁平流线高度（精确控制，不吞噬黑洞）
+
+  // 1. 赤道盘流体外廓多边形插值
+  const topPts: { x: number; y: number }[] = [];
+  const botPts: { x: number; y: number }[] = [];
+  const steps = 44;
+
+  for (let i = 0; i <= steps; i++) {
+    const prog = i / steps; // 0 (左端) 到 1 (右端)
+    const u = -diskLenLeft + prog * (diskLenLeft + diskLenRight);
+
+    // 沿轴向的厚度包络（中间在视界处适中，左翼由于多普勒更宽，两端平滑收敛）
+    const normDist = u < 0 ? -u / diskLenLeft : u / diskLenRight;
+    const thickness =
+      diskHalfHeight * Math.pow(1 - Math.min(1, normDist), 0.7) * (u < 0 ? 1.3 : 0.85);
+
+    // 赤道盘在 Y 轴上微下移（约 +0.18 horizonR），确保黑洞上半球天穹完全暴露！
+    const vOffset = horizonR * 0.18;
+
+    const topX = cx + u * cosD - (-thickness + vOffset) * sinD;
+    const topY = cy + u * sinD + (-thickness + vOffset) * cosD;
+
+    const botX = cx + u * cosD - (thickness + vOffset) * sinD;
+    const botY = cy + u * sinD + (thickness + vOffset) * cosD;
+
+    topPts.push({ x: topX, y: topY });
+    botPts.unshift({ x: botX, y: botY });
+  }
+
+  // 1.1 主盘大面积连续渐变流质体
+  const diskGrd = ctx.createLinearGradient(
+    cx - diskLenLeft * cosD,
+    cy - diskLenLeft * sinD,
+    cx + diskLenRight * cosD,
+    cy + diskLenRight * sinD
   );
-  coreBeamGrd.addColorStop(0, "rgba(255, 160, 40, 0)");
-  coreBeamGrd.addColorStop(0.2, "rgba(255, 225, 110, 0.85)");
-  coreBeamGrd.addColorStop(0.45, "rgba(255, 255, 255, 1.0)");
-  coreBeamGrd.addColorStop(0.65, "rgba(255, 215, 80, 0.8)");
-  coreBeamGrd.addColorStop(1, "rgba(240, 110, 20, 0)");
+  diskGrd.addColorStop(0, "rgba(80, 10, 4, 0)");
+  diskGrd.addColorStop(0.12, "rgba(195, 50, 12, 0.45)");
+  diskGrd.addColorStop(0.32, "rgba(255, 145, 28, 0.88)");
+  diskGrd.addColorStop(0.48, "rgba(255, 245, 175, 0.98)"); // 核心白炽区
+  diskGrd.addColorStop(0.7, "rgba(235, 100, 20, 0.7)");
+  diskGrd.addColorStop(0.88, "rgba(145, 30, 8, 0.35)");
+  diskGrd.addColorStop(1, "rgba(45, 6, 2, 0)");
 
-  ctx.strokeStyle = coreBeamGrd;
-  ctx.lineWidth = 5.5 + bass * 3.5;
+  ctx.fillStyle = diskGrd;
   ctx.beginPath();
-  ctx.moveTo(cx - diskLenL * 0.85 * cosD, cy - diskLenL * 0.85 * sinD);
-  ctx.lineTo(cx + diskLenR * 0.75 * cosD, cy + diskLenR * 0.75 * sinD);
-  ctx.stroke();
-
-  // 1.3 核心白炽微线
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
-  ctx.lineWidth = 1.8 + bass * 1.0;
-  ctx.beginPath();
-  ctx.moveTo(cx - diskLenL * 0.65 * cosD, cy - diskLenL * 0.65 * sinD);
-  ctx.lineTo(cx + diskLenR * 0.45 * cosD, cy + diskLenR * 0.45 * sinD);
-  ctx.stroke();
-
-  // 2. 左翼多普勒集束巨型光团 (Doppler Beaming Left Wing Flare)
-  const dopplerFlareGrd = ctx.createRadialGradient(
-    cx - horizonR * 1.8 * cosD,
-    cy - horizonR * 1.8 * sinD,
-    5,
-    cx - horizonR * 1.8 * cosD,
-    cy - horizonR * 1.8 * sinD,
-    horizonR * 2.2
-  );
-  dopplerFlareGrd.addColorStop(0, "rgba(255, 255, 255, 0.9)");
-  dopplerFlareGrd.addColorStop(0.25, "rgba(255, 230, 120, 0.7)");
-  dopplerFlareGrd.addColorStop(0.65, "rgba(245, 115, 25, 0.3)");
-  dopplerFlareGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-  ctx.fillStyle = dopplerFlareGrd;
-  ctx.beginPath();
-  ctx.arc(cx - horizonR * 1.8 * cosD, cy - horizonR * 1.8 * sinD, horizonR * 2.2, 0, Math.PI * 2);
+  ctx.moveTo(topPts[0].x, topPts[0].y);
+  for (let p = 1; p < topPts.length; p++) ctx.lineTo(topPts[p].x, topPts[p].y);
+  for (let p = 0; p < botPts.length; p++) ctx.lineTo(botPts[p].x, botPts[p].y);
+  ctx.closePath();
   ctx.fill();
 
-  // 3. 内部 ISCO 耀斑光晕
-  const iscoFlareGrd = ctx.createRadialGradient(cx, cy, horizonR * 0.95, cx, cy, horizonR * 1.6);
-  iscoFlareGrd.addColorStop(0, "rgba(255, 255, 255, 0.95)");
-  iscoFlareGrd.addColorStop(0.35, "rgba(255, 215, 90, 0.65)");
-  iscoFlareGrd.addColorStop(0.75, "rgba(235, 100, 20, 0.25)");
-  iscoFlareGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
+  // 1.2 核心白炽流光带 (Incandescent Core Ribbon)
+  const ribbonGrd = ctx.createLinearGradient(
+    cx - diskLenLeft * 0.75 * cosD,
+    cy - diskLenLeft * 0.75 * sinD,
+    cx + diskLenRight * 0.65 * cosD,
+    cy + diskLenRight * 0.65 * sinD
+  );
+  ribbonGrd.addColorStop(0, "rgba(255, 160, 40, 0)");
+  ribbonGrd.addColorStop(0.2, "rgba(255, 225, 110, 0.85)");
+  ribbonGrd.addColorStop(0.46, "rgba(255, 255, 255, 0.98)");
+  ribbonGrd.addColorStop(0.68, "rgba(255, 210, 80, 0.78)");
+  ribbonGrd.addColorStop(1, "rgba(240, 100, 18, 0)");
 
-  ctx.fillStyle = iscoFlareGrd;
+  ctx.strokeStyle = ribbonGrd;
+  ctx.lineWidth = 3.6 + bass * 2.2;
   ctx.beginPath();
-  ctx.ellipse(cx, cy, horizonR * 1.55, horizonR * 0.65, diskAngle, 0, Math.PI * 2);
+  const vOff = horizonR * 0.18;
+  ctx.moveTo(
+    cx - diskLenLeft * 0.82 * cosD - vOff * -sinD,
+    cy - diskLenLeft * 0.82 * sinD + vOff * cosD
+  );
+  ctx.lineTo(
+    cx + diskLenRight * 0.72 * cosD - vOff * -sinD,
+    cy + diskLenRight * 0.72 * sinD + vOff * cosD
+  );
+  ctx.stroke();
+
+  // 1.3 极细白炽中线
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+  ctx.lineWidth = 1.2 + bass * 0.6;
+  ctx.beginPath();
+  ctx.moveTo(
+    cx - diskLenLeft * 0.62 * cosD - vOff * -sinD,
+    cy - diskLenLeft * 0.62 * sinD + vOff * cosD
+  );
+  ctx.lineTo(
+    cx + diskLenRight * 0.45 * cosD - vOff * -sinD,
+    cy + diskLenRight * 0.45 * sinD + vOff * cosD
+  );
+  ctx.stroke();
+
+  // 2. 左翼多普勒集束巨型耀斑 (Doppler Beaming Left Wing Flare)
+  const dopplerGrd = ctx.createRadialGradient(
+    cx - horizonR * 1.65 * cosD,
+    cy - horizonR * 1.65 * sinD + horizonR * 0.1,
+    5,
+    cx - horizonR * 1.65 * cosD,
+    cy - horizonR * 1.65 * sinD + horizonR * 0.1,
+    horizonR * 1.9
+  );
+  dopplerGrd.addColorStop(0, "rgba(255, 255, 250, 0.88)");
+  dopplerGrd.addColorStop(0.22, "rgba(255, 220, 100, 0.65)");
+  dopplerGrd.addColorStop(0.62, "rgba(245, 115, 25, 0.25)");
+  dopplerGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+  ctx.fillStyle = dopplerGrd;
+  ctx.beginPath();
+  ctx.arc(
+    cx - horizonR * 1.65 * cosD,
+    cy - horizonR * 1.65 * sinD + horizonR * 0.1,
+    horizonR * 1.9,
+    0,
+    Math.PI * 2
+  );
   ctx.fill();
 }
