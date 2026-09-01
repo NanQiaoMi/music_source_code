@@ -20,27 +20,27 @@ export interface SongResultCardProps {
 const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
   netease: {
     label: "网易云",
-    color: "bg-red-500/15 text-red-300 border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.15)]",
+    color: "bg-white/[0.06] text-white/75 border-white/[0.1]",
   },
   qq: {
     label: "QQ音乐",
-    color: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)]",
+    color: "bg-white/[0.06] text-white/75 border-white/[0.1]",
   },
   kugou: {
     label: "酷狗",
-    color: "bg-blue-500/15 text-blue-300 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.15)]",
+    color: "bg-white/[0.06] text-white/75 border-white/[0.1]",
   },
   kuwo: {
     label: "酷我",
-    color: "bg-amber-500/15 text-amber-300 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.15)]",
+    color: "bg-white/[0.06] text-white/75 border-white/[0.1]",
   },
   bilibili: {
     label: "B站",
-    color: "bg-pink-500/15 text-pink-300 border-pink-500/30 shadow-[0_0_10px_rgba(236,72,153,0.15)]",
+    color: "bg-white/[0.06] text-white/75 border-white/[0.1]",
   },
   local: {
     label: "本地",
-    color: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)]",
+    color: "bg-white/[0.06] text-white/75 border-white/[0.1]",
   },
 };
 
@@ -120,8 +120,8 @@ export const SongResultCard: React.FC<SongResultCardProps> = ({ result, onPlay, 
       onClick={handlePlayClick}
       className={`group relative flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden backdrop-blur-2xl ${
         isThisSong
-          ? "bg-purple-500/[0.14] border-purple-500/40 shadow-[0_8px_32px_rgba(168,85,247,0.22),inset_0_1px_0_rgba(255,255,255,0.2)]"
-          : "bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.08] hover:border-white/[0.18] shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
+          ? "bg-white/[0.10] border-white/[0.22] shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.2)]"
+          : "bg-white/[0.03] hover:bg-white/[0.07] border-white/[0.08] hover:border-white/[0.16] shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
       }`}
     >
       {/* 顶部微光反射条 */}
@@ -195,9 +195,9 @@ export const SongResultCard: React.FC<SongResultCardProps> = ({ result, onPlay, 
             >
               {isCurrentlyPlaying ? (
                 <div className="flex items-end gap-0.5 h-4">
-                  <span className="w-1 bg-[#2997ff] rounded-full animate-[pulse_0.7s_ease-in-out_infinite]" />
-                  <span className="w-1 bg-[#2997ff] rounded-full animate-[pulse_1.1s_ease-in-out_infinite]" />
-                  <span className="w-1 bg-[#2997ff] rounded-full animate-[pulse_0.5s_ease-in-out_infinite]" />
+                  <span className="w-1 bg-white rounded-full animate-[pulse_0.7s_ease-in-out_infinite]" />
+                  <span className="w-1 bg-white rounded-full animate-[pulse_1.1s_ease-in-out_infinite]" />
+                  <span className="w-1 bg-white rounded-full animate-[pulse_0.5s_ease-in-out_infinite]" />
                 </div>
               ) : (
                 <Play className="w-4 h-4 text-white fill-white ml-0.5 drop-shadow-md" />
@@ -211,7 +211,7 @@ export const SongResultCard: React.FC<SongResultCardProps> = ({ result, onPlay, 
           <div className="flex items-center gap-2 min-w-0">
             <h4
               className={`text-[13.5px] font-semibold truncate tracking-tight ${
-                isThisSong ? "text-purple-300" : "text-white group-hover:text-white"
+                isThisSong ? "text-white font-bold drop-shadow-sm" : "text-white group-hover:text-white"
               }`}
               title={song.title}
             >
@@ -259,7 +259,7 @@ export const SongResultCard: React.FC<SongResultCardProps> = ({ result, onPlay, 
           onClick={handlePlayClick}
           className={`h-8 px-3 rounded-full flex items-center gap-1.5 text-[11.5px] font-medium border backdrop-blur-md transition-all active:scale-95 shadow-sm ${
             isCurrentlyPlaying
-              ? "bg-purple-500/25 text-purple-200 border-purple-500/50 hover:bg-purple-500/35 shadow-[0_0_12px_rgba(168,85,247,0.3)]"
+              ? "bg-white text-black border-white shadow-[0_0_16px_rgba(255,255,255,0.25)]"
               : "bg-white/[0.08] hover:bg-white/[0.18] text-white hover:text-white border-white/[0.12]"
           }`}
           title={isCurrentlyPlaying ? "正在播放" : "立即播放"}
@@ -294,9 +294,9 @@ export const SongResultCard: React.FC<SongResultCardProps> = ({ result, onPlay, 
           disabled={isDownloading || isDownloaded}
           className={`w-8 h-8 rounded-full flex items-center justify-center border backdrop-blur-md transition-all active:scale-95 ${
             isDownloaded
-              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 cursor-default"
+              ? "bg-white/[0.16] text-white border-white/[0.25] cursor-default"
               : isDownloading
-                ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 cursor-wait"
+                ? "bg-white/[0.12] text-white/80 border-white/[0.2] cursor-wait"
                 : "bg-white/[0.06] hover:bg-white/[0.16] text-white/70 hover:text-white border-white/[0.08]"
           }`}
           title={
