@@ -14,6 +14,11 @@ export const AILinerNotes: React.FC = () => {
 
   const [displayNote, setDisplayNote] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchNotesForCurrentSong = useCallback(
     async (force = false) => {
@@ -39,12 +44,14 @@ export const AILinerNotes: React.FC = () => {
   );
 
   useEffect(() => {
+    if (!mounted) return;
+
     if (currentSong?.id) {
       fetchNotesForCurrentSong(false);
     } else {
       setDisplayNote(null);
     }
-  }, [currentSong?.id, currentSong?.artist, currentSong?.title, fetchNotesForCurrentSong]);
+  }, [mounted, currentSong?.id, currentSong?.artist, currentSong?.title, fetchNotesForCurrentSong]);
 
   const handleCopy = () => {
     if (!displayNote) return;
@@ -53,7 +60,7 @@ export const AILinerNotes: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (!currentSong) {
+  if (!mounted || !currentSong) {
     return null;
   }
 
