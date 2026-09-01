@@ -3,31 +3,31 @@
 
 import { EffectPlugin, RenderContext, AudioData } from "@/lib/visualization/types";
 
-interface JetSmokyStrand {
+interface JetHelicalStrand {
   phase: number;
   radiusBase: number;
-  radiusExp: number;
+  radiusGrowth: number;
   speed: number;
   width: number;
   alpha: number;
   colorType: number;
-  freq: number;
+  pitch: number;
 }
 
-interface AccretionGasBand {
+interface SpiralGasFilament {
   baseRadius: number;
-  armAngle: number;
+  angleOffset: number;
   length: number;
   speed: number;
-  spiralRate: number;
+  spiralK: number;
   width: number;
   alpha: number;
-  colorIndex: number;
+  tier: number;
   waveFreq: number;
   wavePhase: number;
 }
 
-interface GravitationalShockwave {
+interface ShockwaveRing {
   radius: number;
   maxRadius: number;
   alpha: number;
@@ -35,9 +35,9 @@ interface GravitationalShockwave {
 }
 
 interface SuperstringState {
-  gasBands: AccretionGasBand[];
-  jetStrands: JetSmokyStrand[];
-  shockwaves: GravitationalShockwave[];
+  filaments: SpiralGasFilament[];
+  jetStrands: JetHelicalStrand[];
+  shockwaves: ShockwaveRing[];
   smoothedBass: number;
   smoothedMid: number;
   smoothedTreble: number;
@@ -51,7 +51,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
   name: "量子超弦奇点",
   category: "space",
   description:
-    "电影级天体物理黑洞与相对论双螺旋极向喷流模拟：48°俯视透视、铜金旋涡流态实体盘与爱因斯坦引力透镜弯月环",
+    "电影级天体物理黑洞与相对论极向螺旋喷流：48°俯视透视、铜金旋涡实体连续盘与爱因斯坦引力透镜弯月环（60FPS 极速渲染）",
   preferredEngine: "canvas",
 
   parameters: [
@@ -80,10 +80,10 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       name: "流体层密度",
       type: "number",
       mode: "professional",
-      min: 80,
-      max: 240,
-      step: 20,
-      default: 180,
+      min: 30,
+      max: 120,
+      step: 10,
+      default: 54,
     },
     {
       id: "chromaticAberration",
@@ -118,52 +118,52 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
   ],
 
   init(ctx: RenderContext) {
-    const gasBands: AccretionGasBand[] = [];
-    const bandCount = 180;
-    for (let i = 0; i < bandCount; i++) {
-      const frac = i / (bandCount - 1);
-      const baseRadius = 45 + Math.pow(frac, 1.25) * 850;
-      const speed = (0.01 / Math.sqrt(Math.max(1, baseRadius * 0.02))) * 0.8;
+    const filaments: SpiralGasFilament[] = [];
+    const filamentCount = 54;
+    for (let i = 0; i < filamentCount; i++) {
+      const frac = i / (filamentCount - 1);
+      const baseRadius = 46 + Math.pow(frac, 1.35) * 780;
+      const speed = (0.012 / Math.sqrt(Math.max(1, baseRadius * 0.025))) * 0.75;
 
-      let colorIndex = 1;
-      if (frac < 0.12) colorIndex = 0;
-      else if (frac < 0.42) colorIndex = 1;
-      else if (frac < 0.72) colorIndex = 2;
-      else if (frac < 0.92) colorIndex = 3;
-      else colorIndex = 4;
+      let tier = 1;
+      if (frac < 0.1) tier = 0;
+      else if (frac < 0.38) tier = 1;
+      else if (frac < 0.68) tier = 2;
+      else if (frac < 0.88) tier = 3;
+      else tier = 4;
 
-      gasBands.push({
+      filaments.push({
         baseRadius,
-        armAngle: (i * 137.508 * Math.PI) / 180,
-        length: Math.PI * (2.2 + Math.random() * 1.6),
+        angleOffset: (i * 137.508 * Math.PI) / 180,
+        length: Math.PI * (2.0 + (i % 3) * 0.5),
         speed,
-        spiralRate: 0.14 + (i % 6) * 0.015,
-        width: 6.0 + frac * 28.0,
-        alpha: 0.08 + Math.sin(frac * Math.PI) * 0.14,
-        colorIndex,
-        waveFreq: 2 + (i % 5),
+        spiralK: 0.12 + (i % 4) * 0.015,
+        width: 2.5 + frac * 8.0,
+        alpha: 0.18 + Math.sin(frac * Math.PI) * 0.22,
+        tier,
+        waveFreq: 2 + (i % 3),
         wavePhase: Math.random() * Math.PI * 2,
       });
     }
 
-    const jetStrands: JetSmokyStrand[] = [];
-    const strandCount = 18;
+    const jetStrands: JetHelicalStrand[] = [];
+    const strandCount = 6;
     for (let i = 0; i < strandCount; i++) {
       const frac = i / strandCount;
       jetStrands.push({
         phase: frac * Math.PI * 2,
-        radiusBase: 8 + (i % 3) * 6,
-        radiusExp: 32 + (i % 4) * 12,
-        speed: 0.018 + (i % 3) * 0.005,
-        width: 4.0 + (i % 4) * 3.5,
-        alpha: 0.12 + Math.random() * 0.15,
+        radiusBase: 7 + (i % 2) * 5,
+        radiusGrowth: 36 + (i % 3) * 14,
+        speed: 0.022 + (i % 2) * 0.008,
+        width: 2.2 + (i % 2) * 1.5,
+        alpha: 0.35 + (i % 2) * 0.25,
         colorType: i % 3,
-        freq: 3.5 + (i % 3) * 1.5,
+        pitch: 3.2 + (i % 2) * 0.8,
       });
     }
 
     const state: SuperstringState = {
-      gasBands,
+      filaments,
       jetStrands,
       shockwaves: [],
       smoothedBass: 0,
@@ -184,21 +184,16 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     const sw = canvas.width;
     const sh = canvas.height;
 
-    const {
-      singularityMass = 1.0,
-      superstringTension = 1.2,
-      burstSensitivity = 1.1,
-      coreGlow = 1.2,
-    } = params;
+    const { singularityMass = 1.0, superstringTension = 1.2, burstSensitivity = 1.1 } = params;
 
     let state = ctx.private?.state as SuperstringState | undefined;
-    if (!state || !state.gasBands || state.gasBands.length === 0) {
+    if (!state || !state.filaments || state.filaments.length === 0) {
       this.init(ctx);
       state = ctx.private?.state as SuperstringState;
     }
 
     const cx = sw * 0.53;
-    const cy = sh * 0.59;
+    const cy = sh * 0.6;
 
     const rawBass = audioData.bass || 0;
     const rawMid = audioData.mid || 0;
@@ -219,147 +214,160 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
 
     const nowMs = Date.now();
     if (
-      rawBass > 0.66 &&
-      rawBass - state.smoothedBass > 0.22 * burstSensitivity &&
+      rawBass > 0.68 &&
+      rawBass - state.smoothedBass > 0.24 * burstSensitivity &&
       nowMs - state.lastBassTriggerTime > 300 &&
-      state.shockwaves.length < 3
+      state.shockwaves.length < 2
     ) {
       state.lastBassTriggerTime = nowMs;
       state.shockwaves.push({
-        radius: 48 * singularityMass,
-        maxRadius: Math.max(sw, sh) * 0.85,
-        alpha: 0.6,
-        speed: 15 + bass * 18,
+        radius: 50 * singularityMass,
+        maxRadius: Math.max(sw, sh) * 0.8,
+        alpha: 0.5,
+        speed: 16 + bass * 18,
       });
     }
 
-    state.rotationAngle += (0.0022 + energy * 0.005) * superstringTension;
+    state.rotationAngle += (0.0025 + energy * 0.006) * superstringTension;
     const rot = state.rotationAngle;
 
     const horizonR = (48 + bass * 12) * singularityMass;
-    const diskTilt = 0.43;
-    const diskRotationAngle = -0.48;
-    const cosD = Math.cos(diskRotationAngle);
-    const sinD = Math.sin(diskRotationAngle);
+    const iscoR = horizonR * 1.34;
+    const diskTilt = 0.42;
+    const diskAngle = -0.46;
+    const cosD = Math.cos(diskAngle);
+    const sinD = Math.sin(diskAngle);
 
-    // 1. 深空底色
+    // 1. 深空宇宙底色
     g.save();
-    g.fillStyle = "#0a0302";
+    g.fillStyle = "#070202";
     g.fillRect(0, 0, sw, sh);
 
     const spaceAmbientGrd = g.createRadialGradient(
-      cx + sw * 0.1,
-      cy + sh * 0.1,
-      horizonR * 2.0,
+      cx + sw * 0.08,
+      cy + sh * 0.08,
+      horizonR * 1.5,
       cx,
       cy,
-      Math.max(sw, sh) * 0.95
+      Math.max(sw, sh) * 0.88
     );
-    spaceAmbientGrd.addColorStop(0, "rgba(70, 20, 8, 0.45)");
-    spaceAmbientGrd.addColorStop(0.35, "rgba(40, 10, 4, 0.35)");
-    spaceAmbientGrd.addColorStop(0.7, "rgba(18, 4, 2, 0.25)");
-    spaceAmbientGrd.addColorStop(1, "rgba(5, 1, 1, 0.9)");
+    spaceAmbientGrd.addColorStop(0, "rgba(55, 16, 6, 0.42)");
+    spaceAmbientGrd.addColorStop(0.35, "rgba(30, 8, 3, 0.32)");
+    spaceAmbientGrd.addColorStop(0.7, "rgba(12, 3, 1, 0.22)");
+    spaceAmbientGrd.addColorStop(1, "rgba(4, 1, 1, 0.95)");
     g.fillStyle = spaceAmbientGrd;
     g.fillRect(0, 0, sw, sh);
 
-    // 2. 左上方银河星系流光
-    const galaxyX = sw * 0.14;
-    const galaxyY = sh * 0.13;
+    // 2. 左上方侧向银河系盘面
+    const galaxyX = sw * 0.12;
+    const galaxyY = sh * 0.14;
 
-    const galaxyHalo = g.createRadialGradient(galaxyX, galaxyY, 10, galaxyX, galaxyY, sw * 0.42);
-    galaxyHalo.addColorStop(0, "rgba(225, 240, 255, 0.6)");
-    galaxyHalo.addColorStop(0.18, "rgba(170, 210, 255, 0.38)");
-    galaxyHalo.addColorStop(0.45, "rgba(90, 140, 210, 0.16)");
-    galaxyHalo.addColorStop(0.75, "rgba(35, 60, 110, 0.05)");
+    const galaxyHalo = g.createRadialGradient(galaxyX, galaxyY, 15, galaxyX, galaxyY, sw * 0.36);
+    galaxyHalo.addColorStop(0, "rgba(220, 240, 255, 0.55)");
+    galaxyHalo.addColorStop(0.2, "rgba(150, 195, 255, 0.32)");
+    galaxyHalo.addColorStop(0.5, "rgba(70, 120, 200, 0.12)");
     galaxyHalo.addColorStop(1, "rgba(0, 0, 0, 0)");
 
     g.fillStyle = galaxyHalo;
     g.beginPath();
-    g.ellipse(galaxyX, galaxyY, sw * 0.35, sh * 0.15, -0.62, 0, Math.PI * 2);
+    g.ellipse(galaxyX, galaxyY, sw * 0.32, sh * 0.14, -0.58, 0, Math.PI * 2);
     g.fill();
 
     const galaxyCore = g.createLinearGradient(
-      galaxyX - sw * 0.25,
-      galaxyY + sh * 0.12,
-      galaxyX + sw * 0.25,
-      galaxyY - sh * 0.12
+      galaxyX - sw * 0.2,
+      galaxyY + sh * 0.1,
+      galaxyX + sw * 0.2,
+      galaxyY - sh * 0.1
     );
     galaxyCore.addColorStop(0, "rgba(200, 230, 255, 0)");
-    galaxyCore.addColorStop(0.35, "rgba(240, 248, 255, 0.45)");
-    galaxyCore.addColorStop(0.5, "rgba(255, 255, 255, 0.85)");
-    galaxyCore.addColorStop(0.65, "rgba(240, 248, 255, 0.45)");
+    galaxyCore.addColorStop(0.4, "rgba(240, 250, 255, 0.65)");
+    galaxyCore.addColorStop(0.5, "rgba(255, 255, 255, 0.88)");
+    galaxyCore.addColorStop(0.6, "rgba(240, 250, 255, 0.65)");
     galaxyCore.addColorStop(1, "rgba(200, 230, 255, 0)");
 
     g.fillStyle = galaxyCore;
     g.beginPath();
-    g.ellipse(galaxyX, galaxyY, sw * 0.28, 14, -0.62, 0, Math.PI * 2);
+    g.ellipse(galaxyX, galaxyY, sw * 0.24, 11, -0.58, 0, Math.PI * 2);
     g.fill();
 
-    g.strokeStyle = "rgba(20, 8, 4, 0.45)";
-    g.lineWidth = 4;
+    g.strokeStyle = "rgba(15, 6, 3, 0.5)";
+    g.lineWidth = 3.2;
     g.beginPath();
-    g.ellipse(galaxyX, galaxyY + 2, sw * 0.26, 4, -0.62, 0, Math.PI * 2);
+    g.ellipse(galaxyX, galaxyY + 1.5, sw * 0.22, 3.2, -0.58, 0, Math.PI * 2);
     g.stroke();
 
-    for (let s = 0; s < 48; s++) {
-      const starX = galaxyX + Math.sin(s * 87.3 + t * 0.05) * sw * 0.22;
-      const starY = galaxyY + Math.cos(s * 43.7) * sh * 0.12;
-      const starAlpha = 0.25 + (Math.sin(t * 2.5 + s) * 0.5 + 0.5) * 0.55;
-      g.fillStyle = `rgba(245, 250, 255, ${starAlpha})`;
+    for (let s = 0; s < 32; s++) {
+      const starX = galaxyX + Math.sin(s * 87.3) * sw * 0.2;
+      const starY = galaxyY + Math.cos(s * 43.7) * sh * 0.11;
+      const starAlpha = 0.3 + (Math.sin(t * 3.0 + s * 1.5) * 0.5 + 0.5) * 0.6;
+      g.fillStyle = `rgba(240, 248, 255, ${starAlpha})`;
       g.beginPath();
-      g.arc(starX, starY, s % 4 === 0 ? 1.6 : 0.8, 0, Math.PI * 2);
+      g.arc(starX, starY, s % 3 === 0 ? 1.4 : 0.7, 0, Math.PI * 2);
       g.fill();
     }
     g.restore();
 
     // 3. 吸积盘后半部分
     g.save();
-    renderVolumetricDiskV8(
+    renderSmoothAccretionDiskV8(
       g,
       cx,
       cy,
       horizonR,
+      iscoR,
       diskTilt,
       cosD,
       sinD,
-      diskRotationAngle,
+      diskAngle,
       rot,
       t,
       bass,
       mid,
       treble,
       false,
-      state.gasBands
+      state.filaments
     );
     g.restore();
 
     // 4. 爱因斯坦引力透镜弯月光拱
     g.save();
-    const lensR = horizonR * 1.36;
+    const lensR = horizonR * 1.34;
     const lensGrd = g.createLinearGradient(
-      cx - lensR * 1.1,
-      cy - lensR * 0.85,
-      cx + lensR * 0.8,
-      cy + lensR * 0.6
+      cx - lensR,
+      cy - lensR * 0.8,
+      cx + lensR * 0.7,
+      cy + lensR * 0.5
     );
     lensGrd.addColorStop(0, "rgba(255, 255, 255, 0.95)");
-    lensGrd.addColorStop(0.25, "rgba(255, 215, 110, 0.88)");
-    lensGrd.addColorStop(0.65, "rgba(240, 120, 28, 0.55)");
-    lensGrd.addColorStop(1, "rgba(170, 35, 8, 0.1)");
+    lensGrd.addColorStop(0.3, "rgba(255, 225, 120, 0.88)");
+    lensGrd.addColorStop(0.7, "rgba(235, 115, 25, 0.45)");
+    lensGrd.addColorStop(1, "rgba(160, 30, 5, 0)");
 
-    g.strokeStyle = lensGrd;
-    g.lineWidth = 4.2 + bass * 2.5;
-    g.shadowColor = "#FFA825";
-    g.shadowBlur = 20 * coreGlow;
+    g.strokeStyle = "rgba(255, 175, 45, 0.25)";
+    g.lineWidth = 9 + bass * 4;
     g.beginPath();
     g.ellipse(
-      cx - 2,
-      cy - horizonR * 0.14,
-      lensR * 1.04,
-      lensR * 0.74,
-      diskRotationAngle,
-      Math.PI * 0.82,
-      Math.PI * 2.18
+      cx,
+      cy - horizonR * 0.12,
+      lensR * 1.05,
+      lensR * 0.75,
+      diskAngle,
+      Math.PI * 0.8,
+      Math.PI * 2.2
+    );
+    g.stroke();
+
+    g.strokeStyle = lensGrd;
+    g.lineWidth = 3.5 + bass * 2.0;
+    g.beginPath();
+    g.ellipse(
+      cx,
+      cy - horizonR * 0.12,
+      lensR * 1.05,
+      lensR * 0.75,
+      diskAngle,
+      Math.PI * 0.8,
+      Math.PI * 2.2
     );
     g.stroke();
     g.restore();
@@ -371,24 +379,8 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     g.arc(cx, cy, horizonR, 0, Math.PI * 2);
     g.fill();
 
-    const horizonAbsorbGrd = g.createRadialGradient(
-      cx,
-      cy,
-      horizonR * 0.86,
-      cx,
-      cy,
-      horizonR * 1.04
-    );
-    horizonAbsorbGrd.addColorStop(0, "rgba(0, 0, 0, 1.0)");
-    horizonAbsorbGrd.addColorStop(0.8, "rgba(2, 1, 3, 0.96)");
-    horizonAbsorbGrd.addColorStop(1, "rgba(255, 160, 45, 0)");
-    g.fillStyle = horizonAbsorbGrd;
-    g.beginPath();
-    g.arc(cx, cy, horizonR * 1.04, 0, Math.PI * 2);
-    g.fill();
-
-    g.strokeStyle = "rgba(255, 255, 255, 0.92)";
-    g.lineWidth = 1.2 + bass * 0.8;
+    g.strokeStyle = "rgba(255, 255, 255, 0.85)";
+    g.lineWidth = 1.2 + bass * 0.6;
     g.beginPath();
     g.arc(cx, cy, horizonR * 0.99, 0, Math.PI * 2);
     g.stroke();
@@ -396,22 +388,23 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
 
     // 6. 吸积盘前半部分
     g.save();
-    renderVolumetricDiskV8(
+    renderSmoothAccretionDiskV8(
       g,
       cx,
       cy,
       horizonR,
+      iscoR,
       diskTilt,
       cosD,
       sinD,
-      diskRotationAngle,
+      diskAngle,
       rot,
       t,
       bass,
       mid,
       treble,
       true,
-      state.gasBands
+      state.filaments
     );
     g.restore();
 
@@ -423,8 +416,8 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     const jetPerpX = -jetSin;
     const jetPerpY = jetCos;
 
-    const jetLength = Math.min(sw, sh) * (0.92 + bass * 0.22);
-    const jetBaseRadius = horizonR * 0.42;
+    const jetLength = Math.min(sw, sh) * (0.95 + bass * 0.2);
+    const jetBaseR = horizonR * 0.38;
 
     const jetConeGrd = g.createLinearGradient(
       cx,
@@ -432,16 +425,16 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       cx + jetCos * jetLength,
       cy + jetSin * jetLength
     );
-    jetConeGrd.addColorStop(0, "rgba(255, 255, 255, 0.95)");
-    jetConeGrd.addColorStop(0.06, "rgba(195, 235, 255, 0.85)");
-    jetConeGrd.addColorStop(0.22, "rgba(110, 195, 255, 0.42)");
-    jetConeGrd.addColorStop(0.55, "rgba(50, 130, 240, 0.16)");
-    jetConeGrd.addColorStop(1, "rgba(20, 60, 180, 0)");
+    jetConeGrd.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+    jetConeGrd.addColorStop(0.08, "rgba(185, 230, 255, 0.7)");
+    jetConeGrd.addColorStop(0.3, "rgba(100, 185, 255, 0.28)");
+    jetConeGrd.addColorStop(0.7, "rgba(40, 110, 220, 0.08)");
+    jetConeGrd.addColorStop(1, "rgba(15, 50, 160, 0)");
 
     g.fillStyle = jetConeGrd;
     g.beginPath();
-    const jetTipWidth = 56 + bass * 35;
-    g.moveTo(cx - jetPerpX * jetBaseRadius, cy - jetPerpY * jetBaseRadius);
+    const jetTipWidth = 48 + bass * 24;
+    g.moveTo(cx - jetPerpX * jetBaseR, cy - jetPerpY * jetBaseR);
     g.lineTo(
       cx + jetCos * jetLength - jetPerpX * jetTipWidth,
       cy + jetSin * jetLength - jetPerpY * jetTipWidth
@@ -450,37 +443,36 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       cx + jetCos * jetLength + jetPerpX * jetTipWidth,
       cy + jetSin * jetLength + jetPerpY * jetTipWidth
     );
-    g.lineTo(cx + jetPerpX * jetBaseRadius, cy + jetPerpY * jetBaseRadius);
+    g.lineTo(cx + jetPerpX * jetBaseR, cy + jetPerpY * jetBaseR);
     g.closePath();
     g.fill();
 
     g.strokeStyle = "rgba(255, 255, 255, 0.95)";
-    g.lineWidth = 2.8 + bass * 2.2;
-    g.shadowColor = "#80D8FF";
-    g.shadowBlur = 18 * coreGlow;
+    g.lineWidth = 2.4 + bass * 1.6;
     g.beginPath();
     g.moveTo(cx, cy);
-    g.lineTo(cx + jetCos * (jetLength * 0.75), cy + jetSin * (jetLength * 0.75));
+    g.lineTo(cx + jetCos * (jetLength * 0.72), cy + jetSin * (jetLength * 0.72));
     g.stroke();
 
     for (let h = 0; h < state.jetStrands.length; h++) {
       const strand = state.jetStrands[h];
-      const steps = 36;
+      const steps = 32;
       const pts: { x: number; y: number }[] = [];
 
       for (let s = 0; s <= steps; s++) {
         const prog = s / steps;
         const curDist = prog * jetLength;
         const helixRadius =
-          (strand.radiusBase + Math.pow(prog, 1.1) * strand.radiusExp) * (1 + bass * 0.25);
-        const helixAngle = prog * Math.PI * strand.freq + t * (strand.speed * 85) + strand.phase;
+          (strand.radiusBase + Math.pow(prog, 1.15) * strand.radiusGrowth) * (1 + bass * 0.22);
+        const helixAngle = prog * Math.PI * strand.pitch + t * (strand.speed * 80) + strand.phase;
 
         const offsetX = jetPerpX * (Math.sin(helixAngle) * helixRadius);
         const offsetY = jetPerpY * (Math.sin(helixAngle) * helixRadius);
 
-        const px = cx + jetCos * curDist + offsetX;
-        const py = cy + jetSin * curDist + offsetY;
-        pts.push({ x: px, y: py });
+        pts.push({
+          x: cx + jetCos * curDist + offsetX,
+          y: cy + jetSin * curDist + offsetY,
+        });
       }
 
       g.beginPath();
@@ -492,40 +484,23 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
       }
       g.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
 
-      const strandGrd = g.createLinearGradient(
-        cx,
-        cy,
-        cx + jetCos * jetLength,
-        cy + jetSin * jetLength
-      );
-
       if (strand.colorType === 0) {
-        strandGrd.addColorStop(0, `rgba(255, 255, 255, ${strand.alpha * 1.5})`);
-        strandGrd.addColorStop(0.25, `rgba(220, 248, 255, ${strand.alpha * 1.2})`);
-        strandGrd.addColorStop(0.7, `rgba(110, 200, 255, ${strand.alpha * 0.6})`);
-        strandGrd.addColorStop(1, "rgba(50, 120, 240, 0)");
+        g.strokeStyle = `rgba(255, 255, 255, ${strand.alpha * (0.8 + treble * 0.2)})`;
       } else if (strand.colorType === 1) {
-        strandGrd.addColorStop(0, `rgba(230, 245, 255, ${strand.alpha * 1.3})`);
-        strandGrd.addColorStop(0.3, `rgba(120, 215, 255, ${strand.alpha * 1.1})`);
-        strandGrd.addColorStop(0.75, `rgba(60, 150, 245, ${strand.alpha * 0.5})`);
-        strandGrd.addColorStop(1, "rgba(30, 80, 200, 0)");
+        g.strokeStyle = `rgba(135, 220, 255, ${strand.alpha * (0.75 + treble * 0.2)})`;
       } else {
-        strandGrd.addColorStop(0, `rgba(245, 255, 255, ${strand.alpha * 1.2})`);
-        strandGrd.addColorStop(0.35, `rgba(140, 245, 235, ${strand.alpha * 1.0})`);
-        strandGrd.addColorStop(0.8, `rgba(70, 180, 230, ${strand.alpha * 0.4})`);
-        strandGrd.addColorStop(1, "rgba(30, 90, 180, 0)");
+        g.strokeStyle = `rgba(160, 245, 240, ${strand.alpha * (0.7 + treble * 0.2)})`;
       }
 
-      g.strokeStyle = strandGrd;
-      g.lineWidth = strand.width * (1 + treble * 0.35);
+      g.lineWidth = strand.width * (1 + treble * 0.3);
       g.stroke();
     }
 
-    const baseFlareR = horizonR * 0.48 * (1 + bass * 0.4);
+    const baseFlareR = horizonR * 0.42 * (1 + bass * 0.35);
     const baseGrd = g.createRadialGradient(cx, cy, 0, cx, cy, baseFlareR);
     baseGrd.addColorStop(0, "rgba(255, 255, 255, 1.0)");
-    baseGrd.addColorStop(0.4, "rgba(210, 245, 255, 0.9)");
-    baseGrd.addColorStop(0.8, "rgba(100, 190, 255, 0.4)");
+    baseGrd.addColorStop(0.35, "rgba(215, 245, 255, 0.85)");
+    baseGrd.addColorStop(0.7, "rgba(90, 180, 255, 0.35)");
     baseGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
 
     g.fillStyle = baseGrd;
@@ -534,7 +509,7 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
     g.fill();
     g.restore();
 
-    // 8. 引力波冲击
+    // 8. 引力波涟漪
     if (state.shockwaves.length > 0) {
       g.save();
       for (let i = state.shockwaves.length - 1; i >= 0; i--) {
@@ -547,19 +522,10 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
           continue;
         }
 
-        g.strokeStyle = `rgba(255, 195, 110, ${swItem.alpha * 0.3})`;
+        g.strokeStyle = `rgba(255, 190, 100, ${swItem.alpha * 0.35})`;
         g.lineWidth = 1.6;
         g.beginPath();
-        for (let a = 0; a <= 36; a++) {
-          const rad = (a / 36) * Math.PI * 2;
-          const ex = Math.cos(rad) * swItem.radius;
-          const ey = Math.sin(rad) * swItem.radius * diskTilt;
-          const rx = cx + ex * cosD - ey * sinD;
-          const ry = cy + ex * sinD + ey * cosD;
-          if (a === 0) g.moveTo(rx, ry);
-          else g.lineTo(rx, ry);
-        }
-        g.closePath();
+        g.ellipse(cx, cy, swItem.radius, swItem.radius * diskTilt, diskAngle, 0, Math.PI * 2);
         g.stroke();
       }
       g.restore();
@@ -575,146 +541,129 @@ export const SuperstringSingularityV8Effect: EffectPlugin = {
   },
 };
 
-function renderVolumetricDiskV8(
+function renderSmoothAccretionDiskV8(
   g: CanvasRenderingContext2D,
   cx: number,
   cy: number,
   horizonR: number,
+  iscoR: number,
   diskTilt: number,
   cosD: number,
   sinD: number,
-  rotAngle: number,
+  diskAngle: number,
   rot: number,
   t: number,
   bass: number,
   mid: number,
   treble: number,
   isForeground: boolean,
-  gasBands: AccretionGasBand[]
+  filaments: SpiralGasFilament[]
 ) {
-  const iscoR = horizonR * 1.32;
-  const maxR = horizonR * 18.0;
+  const maxDiskR = horizonR * 12.0;
 
   if (isForeground) {
-    const fgBaseGrd = g.createRadialGradient(cx, cy, iscoR * 1.1, cx, cy, horizonR * 6.5);
-    fgBaseGrd.addColorStop(0, "rgba(255, 240, 180, 0.4)");
-    fgBaseGrd.addColorStop(0.2, "rgba(245, 140, 35, 0.32)");
-    fgBaseGrd.addColorStop(0.55, "rgba(180, 65, 15, 0.2)");
-    fgBaseGrd.addColorStop(0.85, "rgba(90, 20, 6, 0.1)");
-    fgBaseGrd.addColorStop(1, "rgba(0, 0, 0, 0)");
+    const startAngle = 0;
+    const endAngle = Math.PI;
 
-    g.fillStyle = fgBaseGrd;
+    const iscoGrd = g.createRadialGradient(cx, cy, iscoR * 0.9, cx, cy, horizonR * 3.5);
+    iscoGrd.addColorStop(0, "rgba(255, 250, 220, 0.75)");
+    iscoGrd.addColorStop(0.3, "rgba(255, 190, 60, 0.55)");
+    iscoGrd.addColorStop(0.7, "rgba(235, 110, 25, 0.35)");
+    iscoGrd.addColorStop(1, "rgba(160, 45, 10, 0)");
+
+    g.fillStyle = iscoGrd;
     g.beginPath();
-    for (let a = 0; a <= 36; a++) {
-      const rad = (a / 36) * Math.PI;
-      const ex = Math.cos(rad) * (horizonR * 8.5);
-      const ey = Math.sin(rad) * (horizonR * 8.5) * diskTilt;
-      const px = cx + ex * cosD - ey * sinD;
-      const py = cy + ex * sinD + ey * cosD;
-      if (a === 0) g.moveTo(px, py);
-      else g.lineTo(px, py);
-    }
-    for (let a = 36; a >= 0; a--) {
-      const rad = (a / 36) * Math.PI;
-      const ex = Math.cos(rad) * (iscoR * 0.98);
-      const ey = Math.sin(rad) * (iscoR * 0.98) * diskTilt;
-      const px = cx + ex * cosD - ey * sinD;
-      const py = cy + ex * sinD + ey * cosD;
-      g.lineTo(px, py);
-    }
-    g.closePath();
+    g.ellipse(cx, cy, horizonR * 3.5, horizonR * 3.5 * diskTilt, diskAngle, startAngle, endAngle);
+    g.ellipse(cx, cy, iscoR * 0.95, iscoR * 0.95 * diskTilt, diskAngle, endAngle, startAngle, true);
+    g.fill();
+
+    const mainDiskGrd = g.createRadialGradient(cx, cy, horizonR * 2.8, cx, cy, maxDiskR * 0.85);
+    mainDiskGrd.addColorStop(0, "rgba(225, 105, 22, 0.38)");
+    mainDiskGrd.addColorStop(0.35, "rgba(175, 55, 14, 0.26)");
+    mainDiskGrd.addColorStop(0.7, "rgba(110, 25, 6, 0.15)");
+    mainDiskGrd.addColorStop(1, "rgba(45, 8, 2, 0)");
+
+    g.fillStyle = mainDiskGrd;
+    g.beginPath();
+    g.ellipse(cx, cy, maxDiskR * 0.85, maxDiskR * 0.85 * diskTilt, diskAngle, startAngle, endAngle);
+    g.ellipse(
+      cx,
+      cy,
+      horizonR * 2.6,
+      horizonR * 2.6 * diskTilt,
+      diskAngle,
+      endAngle,
+      startAngle,
+      true
+    );
     g.fill();
   }
 
-  for (let i = 0; i < gasBands.length; i++) {
-    const band = gasBands[i];
-    const curBaseR = band.baseRadius * (1 + bass * 0.06);
+  const tierColors = [
+    `rgba(255, 248, 215, ${0.45 + mid * 0.2})`,
+    `rgba(255, 185, 65, ${0.35 + mid * 0.15})`,
+    `rgba(230, 105, 28, ${0.28 + mid * 0.12})`,
+    `rgba(170, 52, 14, ${0.22 + mid * 0.08})`,
+    `rgba(100, 22, 6, ${0.15 + mid * 0.05})`,
+  ];
 
-    if (curBaseR < iscoR * 0.95 || curBaseR > maxR) continue;
+  for (let tier = 0; tier < 5; tier++) {
+    g.beginPath();
+    let hasPaths = false;
 
-    const angleStart = rot * (band.speed * 85) + band.armAngle;
-    const steps = 42;
-    const pts: { x: number; y: number; alpha: number }[] = [];
+    for (let i = 0; i < filaments.length; i++) {
+      const f = filaments[i];
+      if (f.tier !== tier) continue;
 
-    for (let s = 0; s <= steps; s++) {
-      const prog = s / steps;
-      const angle = angleStart + prog * band.length;
+      const curBaseR = f.baseRadius * (1 + bass * 0.05);
+      if (curBaseR < iscoR * 0.95 || curBaseR > maxDiskR) continue;
 
-      const r = curBaseR * Math.exp(prog * band.spiralRate);
-      if (r > maxR * 1.15) break;
+      const angleStart = rot * (f.speed * 85) + f.angleOffset;
+      const steps = 30;
+      let started = false;
 
-      const waveDisp =
-        Math.sin(angle * band.waveFreq + t * 1.8 + band.wavePhase) * (3.0 + bass * 5.0);
-      const finalR = r + waveDisp;
+      for (let s = 0; s <= steps; s++) {
+        const prog = s / steps;
+        const angle = angleStart + prog * f.length;
 
-      const ex = Math.cos(angle) * finalR;
-      const ey = Math.sin(angle) * finalR * diskTilt;
-      const px = cx + ex * cosD - ey * sinD;
-      const py = cy + ex * sinD + ey * cosD;
+        const r = curBaseR * Math.exp(prog * f.spiralK);
+        if (r > maxDiskR * 1.1) break;
 
-      const isInFront = ey >= -horizonR * 0.22;
+        const wave = Math.sin(angle * f.waveFreq + t * 2.0 + f.wavePhase) * (2.5 + bass * 4.0);
+        const finalR = r + wave;
 
-      if (isForeground === isInFront) {
-        const distRatio = (finalR - iscoR) / (horizonR * 7.5);
-        const alpha =
-          band.alpha *
-          (1 - Math.min(1, Math.max(0, distRatio * 0.75))) *
-          (isForeground ? 1.0 : 0.75) *
-          (1 + mid * 0.3);
+        const ex = Math.cos(angle) * finalR;
+        const ey = Math.sin(angle) * finalR * diskTilt;
+        const px = cx + ex * cosD - ey * sinD;
+        const py = cy + ex * sinD + ey * cosD;
 
-        pts.push({ x: px, y: py, alpha });
+        const isInFront = ey >= -horizonR * 0.18;
+        if (isForeground === isInFront) {
+          if (!started) {
+            g.moveTo(px, py);
+            started = true;
+            hasPaths = true;
+          } else {
+            g.lineTo(px, py);
+          }
+        } else {
+          started = false;
+        }
       }
     }
 
-    if (pts.length < 2) continue;
-
-    g.beginPath();
-    g.moveTo(pts[0].x, pts[0].y);
-    for (let p = 1; p < pts.length; p++) {
-      g.lineTo(pts[p].x, pts[p].y);
+    if (hasPaths) {
+      g.strokeStyle = tierColors[tier];
+      g.lineWidth = (3.0 + tier * 1.2) * (1 + treble * 0.25);
+      g.stroke();
     }
-
-    const startPt = pts[0];
-    const endPt = pts[pts.length - 1];
-    const strokeGrd = g.createLinearGradient(startPt.x, startPt.y, endPt.x, endPt.y);
-
-    if (band.colorIndex === 0) {
-      strokeGrd.addColorStop(0, `rgba(255, 255, 245, ${pts[0].alpha * 1.4})`);
-      strokeGrd.addColorStop(0.3, `rgba(255, 228, 140, ${pts[0].alpha * 1.2})`);
-      strokeGrd.addColorStop(0.7, `rgba(255, 165, 50, ${pts[0].alpha * 0.9})`);
-      strokeGrd.addColorStop(1, `rgba(215, 85, 22, ${pts[pts.length - 1].alpha * 0.5})`);
-    } else if (band.colorIndex === 1) {
-      strokeGrd.addColorStop(0, `rgba(255, 235, 165, ${pts[0].alpha * 1.2})`);
-      strokeGrd.addColorStop(0.35, `rgba(248, 155, 48, ${pts[0].alpha * 1.05})`);
-      strokeGrd.addColorStop(0.75, `rgba(205, 90, 26, ${pts[0].alpha * 0.8})`);
-      strokeGrd.addColorStop(1, `rgba(155, 48, 14, ${pts[pts.length - 1].alpha * 0.45})`);
-    } else if (band.colorIndex === 2) {
-      strokeGrd.addColorStop(0, `rgba(245, 150, 48, ${pts[0].alpha * 1.05})`);
-      strokeGrd.addColorStop(0.45, `rgba(200, 80, 22, ${pts[0].alpha * 0.85})`);
-      strokeGrd.addColorStop(0.85, `rgba(140, 40, 12, ${pts[0].alpha * 0.55})`);
-      strokeGrd.addColorStop(1, `rgba(85, 20, 6, ${pts[pts.length - 1].alpha * 0.28})`);
-    } else if (band.colorIndex === 3) {
-      strokeGrd.addColorStop(0, `rgba(190, 70, 22, ${pts[0].alpha * 0.85})`);
-      strokeGrd.addColorStop(0.5, `rgba(130, 36, 12, ${pts[0].alpha * 0.6})`);
-      strokeGrd.addColorStop(1, `rgba(60, 12, 4, ${pts[pts.length - 1].alpha * 0.2})`);
-    } else {
-      strokeGrd.addColorStop(0, `rgba(140, 40, 12, ${pts[0].alpha * 0.6})`);
-      strokeGrd.addColorStop(0.5, `rgba(80, 18, 6, ${pts[0].alpha * 0.35})`);
-      strokeGrd.addColorStop(1, `rgba(30, 6, 2, ${pts[pts.length - 1].alpha * 0.1})`);
-    }
-
-    g.strokeStyle = strokeGrd;
-    g.lineWidth = band.width * (1 + treble * 0.3);
-    g.stroke();
   }
 
   if (isForeground) {
-    g.strokeStyle = "rgba(255, 252, 235, 0.85)";
-    g.lineWidth = 3.2 + bass * 2.0;
-    g.shadowColor = "#FFC450";
-    g.shadowBlur = 18;
+    g.strokeStyle = "rgba(255, 255, 240, 0.92)";
+    g.lineWidth = 2.6 + bass * 1.5;
     g.beginPath();
-    g.ellipse(cx, cy, iscoR, iscoR * diskTilt, rotAngle, 0, Math.PI);
+    g.ellipse(cx, cy, iscoR, iscoR * diskTilt, diskAngle, 0, Math.PI);
     g.stroke();
   }
 }
