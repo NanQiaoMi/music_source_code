@@ -98,11 +98,11 @@ describe("Global State Retention & Persistence Engine", () => {
   });
 
   it("5. SourceConfigStore persists resolutionMode and custom sound scripts", () => {
-    useSourceConfigStore.getState().setResolutionMode("lx_pure_first");
+    useSourceConfigStore.getState().setResolutionMode("lx_only");
 
     const sourceRaw = localStorage.getItem("vibe_source_config_v1");
     expect(sourceRaw).toBeTruthy();
     const sourceParsed = JSON.parse(sourceRaw!);
-    expect(sourceParsed.state.resolutionMode).toBe("lx_pure_first");
+    expect(sourceParsed.state.resolutionMode).toBe("lx_only");
   });
 });

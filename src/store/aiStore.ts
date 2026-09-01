@@ -21,6 +21,79 @@ export interface AIConfig {
   stream?: boolean;
 }
 
+export const DEFAULT_SENSENOVA_CONFIGS: Array<Omit<AIConfig, "id"> & { id: string }> = [
+  {
+    id: "sensenova-mimidemimi",
+    name: "SenseNova 6.8 (主通道 - mimidemimi)",
+    providerId: "sensenova",
+    baseUrl: "https://token.sensenova.cn/v1",
+    apiKey: "sk-deijjmIMBW7NuHwPd6qt2eOE4UPPknjF",
+    model: "sensenova-6.8-flash-lite",
+    temperature: 0.7,
+    topP: 1.0,
+    maxTokens: 2048,
+    timeout: 30000,
+    stream: true,
+    status: "idle",
+  },
+  {
+    id: "sensenova-maomaodemaomao",
+    name: "SenseNova 6.8 (备用1 - MAOMAODEMAOMAO)",
+    providerId: "sensenova",
+    baseUrl: "https://token.sensenova.cn/v1",
+    apiKey: "sk-3i5hCE1SC7aQpKOQnJg1L9lktkJ1NcaL",
+    model: "sensenova-6.8-flash-lite",
+    temperature: 0.7,
+    topP: 1.0,
+    maxTokens: 2048,
+    timeout: 30000,
+    stream: true,
+    status: "idle",
+  },
+  {
+    id: "sensenova-deepseek-v4-pro",
+    name: "DeepSeek-V4 Pro (备用2 - MAOMAODEMIMI)",
+    providerId: "sensenova",
+    baseUrl: "https://token.sensenova.cn/v1",
+    apiKey: "sk-F83DUjX1CcogKgbi6VCk4qMA8UYsPH16",
+    model: "deepseek-v4-pro",
+    temperature: 0.7,
+    topP: 1.0,
+    maxTokens: 2048,
+    timeout: 30000,
+    stream: true,
+    status: "idle",
+  },
+  {
+    id: "sensenova-deepseek-v4-flash",
+    name: "DeepSeek-V4 Flash (备用3 - MAOMAODEMIMI2)",
+    providerId: "sensenova",
+    baseUrl: "https://token.sensenova.cn/v1",
+    apiKey: "sk-qN2X1XYkazEHkVi7tdTUvUEKkoBHp7kY",
+    model: "deepseek-v4-flash",
+    temperature: 0.7,
+    topP: 1.0,
+    maxTokens: 2048,
+    timeout: 30000,
+    stream: true,
+    status: "idle",
+  },
+  {
+    id: "sensenova-kimi-k3",
+    name: "Kimi-K3 (备用4 - MIMIDEMIMI2)",
+    providerId: "sensenova",
+    baseUrl: "https://token.sensenova.cn/v1",
+    apiKey: "sk-6zoL2AmkiwjiIAetIdwTBNdpkjZaemnB",
+    model: "kimi-k3",
+    temperature: 0.7,
+    topP: 1.0,
+    maxTokens: 2048,
+    timeout: 30000,
+    stream: true,
+    status: "idle",
+  },
+];
+
 interface AIState {
   configs: AIConfig[];
   activeConfigId: string | null;
@@ -39,6 +112,7 @@ interface AIState {
   toggleAutoFallback: () => void;
   setAutoFallback: (enabled: boolean) => void;
   importConfigs: (imported: AIConfig[], mode: "merge" | "overwrite") => void;
+  resetToDefaultConfigs: () => void;
 
   // Candidate pool & fallback resolver
   getOrderedConfigPool: (primaryId?: string | null) => AIConfig[];
@@ -228,15 +302,24 @@ export const useAIStore = create<AIState>()(
 
       setAutoFallback: (enabled) => set({ enableAutoFallback: enabled }),
 
+      resetToDefaultConfigs: () => {
+        set({
+          configs: DEFAULT_SENSENOVA_CONFIGS,
+          activeConfigId: DEFAULT_SENSENOVA_CONFIGS[0].id,
+          isEnabled: true,
+          enableAutoFallback: true,
+        });
+      },
+
       getOrderedConfigPool: (primaryId) => {
         const state = get();
         // 筛选出拥有有效 Base URL 和 API Key 的可用端点候选池
-        const validConfigs = state.configs.filter(
+        let validConfigs = state.configs.filter(
           (c) => !!c.baseUrl?.trim() && !!c.apiKey?.trim()
         );
         if (validConfigs.length === 0) {
-          // 如果没有填 Key 的，则回退到所有配置
-          return state.configs;
+          // 若暂无已配置端点，使用商汤官方预设多 Key 容灾池
+          validConfigs = DEFAULT_SENSENOVA_CONFIGS;
         }
 
         const targetPrimaryId = primaryId || state.activeConfigId;

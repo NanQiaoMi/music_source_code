@@ -23,9 +23,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
-      baseUrl = "https://api.openai.com/v1",
+      baseUrl = process.env.SENSENOVA_BASE_URL || "https://token.sensenova.cn/v1",
       apiKey: bodyApiKey,
-      model,
+      model = process.env.SENSENOVA_DEFAULT_MODEL || "sensenova-6.8-flash-lite",
       messages,
       tools,
       tool_choice,
@@ -36,17 +36,17 @@ export async function POST(req: NextRequest) {
 
     const authHeader = req.headers.get("authorization") || "";
     const effectiveApiKey =
-      bodyApiKey || (authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : authHeader);
+      bodyApiKey ||
+      (authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : authHeader) ||
+      process.env.SENSENOVA_API_KEY_1 ||
+      process.env.SENSENOVA_API_KEY ||
+      "sk-deijjmIMBW7NuHwPd6qt2eOE4UPPknjF";
 
     if (!effectiveApiKey) {
       return NextResponse.json(
         { error: { message: "未提供 API Key，请在 AI 设置中配置" } },
         { status: 401 }
       );
-    }
-
-    if (!model) {
-      return NextResponse.json({ error: { message: "未指定模型名称 (model)" } }, { status: 400 });
     }
 
     const targetUrl = resolveChatCompletionsUrl(baseUrl);
