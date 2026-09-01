@@ -47,20 +47,30 @@ export function LazyPanel({
   component: LazyComponent,
   extraProps = {},
 }: LazyPanelProps) {
-  if (!isOpen) return null;
+  const [hasMounted, setHasMounted] = React.useState(isOpen);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setHasMounted(true);
+    }
+  }, [isOpen]);
+
+  if (!isOpen && !hasMounted) return null;
 
   return (
     <PanelErrorBoundary panelName={name} onClose={onClose}>
       <Suspense
         fallback={
-          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-10 h-10 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
-              <span className="text-white/40 text-xs uppercase tracking-widest font-bold">
-                Loading...
-              </span>
+          isOpen ? (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-10 h-10 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+                <span className="text-white/40 text-xs uppercase tracking-widest font-bold">
+                  Loading...
+                </span>
+              </div>
             </div>
-          </div>
+          ) : null
         }
       >
         <LazyComponent isOpen={isOpen} onClose={onClose} {...extraProps} />

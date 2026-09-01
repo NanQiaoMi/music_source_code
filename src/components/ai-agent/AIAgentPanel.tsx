@@ -39,9 +39,16 @@ export interface AIAgentPanelProps {
 
 const DRAWER_SPRING = {
   type: "spring" as const,
-  stiffness: 340,
-  damping: 32,
-  mass: 0.85,
+  stiffness: 380,
+  damping: 34,
+  mass: 0.8,
+};
+
+const DRAWER_EXIT = {
+  type: "spring" as const,
+  stiffness: 400,
+  damping: 36,
+  mass: 0.8,
 };
 
 // 分类快捷灵感矩阵（极简冷钛纯白调色体系）
@@ -177,39 +184,39 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
     showToast(`已将 ${songs.length} 首歌曲全部添加至待播清单`, "success");
   };
 
-  if (!isOpen) return null;
-
   return (
-    <AnimatePresence>
-      <div
-        data-testid="ai-agent-panel"
-        className="fixed inset-0 z-[200] flex justify-end pointer-events-auto select-none p-3 sm:p-4"
-      >
-        {/* 背景景深微透遮罩 (透出底层 3D 黑胶与弥散流体光，消除纯黑死板感) */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          onClick={onClose}
-          className="absolute inset-0 bg-black/35 backdrop-blur-[6px]"
-        />
-
-        {/* 悬浮液态玻璃浮岛卡片容器 (Floating Liquid Glass Island) */}
-        <motion.div
-          initial={{ x: "105%", opacity: 0, scale: 0.96 }}
-          animate={{ x: 0, opacity: 1, scale: 1 }}
-          exit={{ x: "105%", opacity: 0, scale: 0.96 }}
-          transition={DRAWER_SPRING}
-          className="relative z-10 w-full sm:w-[500px] max-w-full h-full rounded-[28px] bg-[#0c0d14]/65 border border-white/[0.1] shadow-[-20px_20px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-[40px] flex flex-col overflow-hidden text-white font-sans"
+    <AnimatePresence mode="wait">
+      {isOpen && (
+        <div
+          data-testid="ai-agent-panel"
+          className="fixed inset-0 z-[200] flex justify-end pointer-events-auto select-none p-3 sm:p-4 overflow-hidden"
         >
-          {/* 顶栏 Apple 极简冰白/冷钛漫反射氛围光 */}
-          <div className="absolute top-0 right-0 left-0 h-48 overflow-hidden pointer-events-none z-0">
-            <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-48 bg-gradient-to-b from-white/[0.06] via-white/[0.02] to-transparent blur-3xl rounded-full" />
-          </div>
+          {/* 背景景深微透遮罩 (220ms 1:1 同步淡出) */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/35 backdrop-blur-[6px]"
+          />
 
-          {/* 顶部 Header：极简钛银光球 Logo + 模型状态微标 + 极简操作栏 */}
-          <div className="relative z-10 px-5 pt-4 pb-3.5 border-b border-white/[0.08] bg-black/20 backdrop-blur-2xl flex items-center justify-between shrink-0">
+          {/* 悬浮液态玻璃浮岛卡片容器 (Floating Liquid Glass Island) */}
+          <motion.div
+            initial={{ x: "100%", opacity: 0, scale: 0.98 }}
+            animate={{ x: 0, opacity: 1, scale: 1 }}
+            exit={{ x: "100%", opacity: 0, scale: 0.98 }}
+            transition={DRAWER_SPRING}
+            style={{ transformOrigin: "right center" }}
+            className="relative z-10 w-full sm:w-[500px] max-w-full h-full rounded-[28px] bg-[#0c0d14]/65 border border-white/[0.1] shadow-[-20px_20px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-[40px] flex flex-col overflow-hidden text-white font-sans transform-gpu will-change-transform"
+          >
+            {/* 顶栏 Apple 极简冰白/冷钛漫反射氛围光 */}
+            <div className="absolute top-0 right-0 left-0 h-48 overflow-hidden pointer-events-none z-0">
+              <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-48 bg-gradient-to-b from-white/[0.06] via-white/[0.02] to-transparent blur-3xl rounded-full" />
+            </div>
+
+            {/* 顶部 Header：极简钛银光球 Logo + 模型状态微标 + 极简操作栏 */}
+            <div className="relative z-10 px-5 pt-4 pb-3.5 border-b border-white/[0.08] bg-black/20 backdrop-blur-2xl flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               {/* 极简钛银单色晶体光球 */}
               <div className="relative w-9 h-9 rounded-full bg-white/[0.08] border border-white/[0.15] p-[1px] shadow-[0_0_12px_rgba(255,255,255,0.06)] flex items-center justify-center">
@@ -612,6 +619,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
           </div>
         </motion.div>
       </div>
+      )}
     </AnimatePresence>
   );
 };
