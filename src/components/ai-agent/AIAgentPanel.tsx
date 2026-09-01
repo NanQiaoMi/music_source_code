@@ -31,6 +31,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { SongResultCard } from "./SongResultCard";
 import { ToolCallIndicator } from "./ToolCallIndicator";
+import { AIMarkdownRenderer } from "./AIMarkdownRenderer";
 
 export interface AIAgentPanelProps {
   isOpen: boolean;
@@ -399,6 +400,13 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
               // Assistant message
               const isGreeting = msg.id === "greeting";
               const isError = msg.status === "error";
+              const hasContent = Boolean(msg.content && msg.content.trim().length > 0);
+              const hasSongResults = Boolean(msg.songResults && msg.songResults.length > 0);
+
+              // 过滤掉纯工具调用时的空占位消息，彻底杜绝空白暗黑圆角方框
+              if (!hasContent && !hasSongResults && !isError) {
+                return null;
+              }
 
               return (
                 <motion.div
@@ -413,15 +421,15 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
 
                   <div className="space-y-2.5 flex-1 min-w-0">
                     {/* 高透超薄水晶超薄玻璃气泡 */}
-                    {msg.content && (
+                    {hasContent && (
                       <div
-                        className={`relative rounded-[20px] rounded-tl-[4px] px-4 py-3 text-[13.5px] leading-relaxed break-words whitespace-pre-wrap border backdrop-blur-2xl transition-all ${
+                        className={`relative rounded-[22px] rounded-tl-[4px] px-4 py-3 text-[13.5px] leading-relaxed break-words border backdrop-blur-2xl transition-all shadow-[0_8px_32px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.1)] ${
                           isError
                             ? "bg-red-500/10 border-red-500/30 text-red-200 shadow-[0_4px_20px_rgba(239,68,68,0.15)]"
-                            : "bg-white/[0.04] hover:bg-white/[0.06] border-white/[0.08] text-white/90 shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)]"
+                            : "bg-white/[0.05] hover:bg-white/[0.07] border-white/[0.1] text-white/90"
                         }`}
                       >
-                        <div>{msg.content}</div>
+                        <AIMarkdownRenderer content={msg.content} />
 
                         {/* 错误时的快捷切换模型按钮 */}
                         {isError && (
@@ -439,8 +447,8 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                         )}
 
                         {/* 气泡底部微工具栏 */}
-                        {!isError && (
-                          <div className="pt-2 mt-1 border-t border-white/[0.06] flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {!isError && !isGreeting && (
+                          <div className="pt-2 mt-2 border-t border-white/[0.06] flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               type="button"
                               onClick={() => handleCopyMessage(msg.id, msg.content)}

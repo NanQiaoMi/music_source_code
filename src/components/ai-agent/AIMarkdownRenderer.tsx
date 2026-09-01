@@ -39,13 +39,14 @@ function renderInlineContent(text: string): React.ReactNode[] {
     }
 
     if (part.startsWith("《") && part.endsWith("》") && part.length >= 2) {
+      const inner = part.slice(1, -1).replace(/^\*\*|\*\*$/g, "");
       return (
         <span
           key={index}
           className="inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 rounded-lg bg-white/[0.08] border border-white/[0.14] text-white font-medium text-[12.5px] shadow-[0_1px_4px_rgba(0,0,0,0.2)] text-white/95"
         >
           <Music2 className="w-3 h-3 text-white/70 shrink-0 inline" />
-          <span>{part.slice(1, -1)}</span>
+          <strong>{inner}</strong>
         </span>
       );
     }
