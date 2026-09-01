@@ -5,6 +5,11 @@ import { Song } from "@/types/song";
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 /**
+ * 内存备用存储：当浏览器 LocalStorage 配额耗尽或受限时，无缝降级至内存存储，保证应用永不崩溃
+ */
+const inMemoryStorage = new Map<string, string>();
+
+/**
  * 过滤单曲元数据，移除超大歌词文本、波形数据与过大 Base64 封面
  * 单曲持久化体积由 50KB+ 降至 0.2KB (暴降 99%)
  */
@@ -38,57 +43,19 @@ export function sanitizeSongForStorage(song: Song): Song {
 }
 
 /**
- * 包装 window.localStorage，提供 SSR 安全性、QuotaExceededError 自动异常捕获与空间自愈
+ * 废弃/旧版本冗余 Key 清单，清理时优先释放
  */
-export function createSafeStorage(storeName?: string): StateStorage {
-  return {
-    getItem: (name: string): string | null => {
-      if (typeof window === "undefined" || !window.localStorage) {
-        return null;
-      }
-      try {
-        return window.localStorage.getItem(name);
-      } catch (err) {
-        console.warn(`[SafeStorage] Failed to getItem('${name}'):`, err);
-        return null;
-      }
-    },
-
-    setItem: (name: string, value: string): void => {
-      if (typeof window === "undefined" || !window.localStorage) {
-        return;
-      }
-      try {
-        window.localStorage.setItem(name, value);
-      } catch (err: any) {
-        console.warn(
-          `[SafeStorage] QuotaExceededError caught on setItem('${name}'). Initiating self-healing compaction...`,
-          err
-        );
-        try {
-          compactExistingStorage();
-          window.localStorage.setItem(name, value);
-        } catch (retryErr) {
-          console.error(
-            `[SafeStorage] Critical storage full for '${name}'. Gracefully degraded to memory state.`,
-            retryErr
-          );
-        }
-      }
-    },
-
-    removeItem: (name: string): void => {
-      if (typeof window === "undefined" || !window.localStorage) {
-        return;
-      }
-      try {
-        window.localStorage.removeItem(name);
-      } catch (err) {
-        console.warn(`[SafeStorage] Failed to removeItem('${name}'):`, err);
-      }
-    },
-  };
-}
+const OBSOLETE_LEGACY_KEYS = [
+  "audio-store-v1",
+  "audio-store-v2",
+  "audio-store-v3",
+  "queue-store-v1",
+  "queue-store-v2",
+  "queue-store-v3",
+  "queue-store-v4",
+  "ai-music-analysis-store",
+  "recent-searches",
+];
 
 /**
  * 自动扫描现有 LocalStorage，对过往膨胀的旧数据进行静默瘦身压缩，瞬间释放数兆空间
@@ -96,15 +63,24 @@ export function createSafeStorage(storeName?: string): StateStorage {
 export function compactExistingStorage(): void {
   if (typeof window === "undefined" || !window.localStorage) return;
 
+  // 1. 优先清理废弃旧版本键
+  for (const legacyKey of OBSOLETE_LEGACY_KEYS) {
+    try {
+      window.localStorage.removeItem(legacyKey);
+    } catch {
+      // 忽略清理异常
+    }
+  }
+
+  // 2. 压缩现有活跃 Store 的臃肿字段
   const targetStores = [
     "favorites-store",
+    "queue-store-v5",
     "queue-store",
     "history-store",
     "playlist-group-store",
     "player-store",
     "audio-store-v4",
-    "ai-music-analysis-store",
-    "recent-searches",
   ];
 
   for (const key of targetStores) {
@@ -126,20 +102,75 @@ export function compactExistingStorage(): void {
       }
 
       if (parsed?.state?.queue && Array.isArray(parsed.state.queue)) {
-        parsed.state.queue = parsed.state.queue.slice(0, 100).map(sanitizeSongForStorage);
+        parsed.state.queue = parsed.state.queue.slice(0, 50).map(sanitizeSongForStorage);
         modified = true;
       }
 
       if (parsed?.state?.history && Array.isArray(parsed.state.history)) {
-        parsed.state.history = parsed.state.history.slice(0, 50).map(sanitizeSongForStorage);
+        parsed.state.history = parsed.state.history.slice(0, 20).map(sanitizeSongForStorage);
         modified = true;
       }
 
       if (modified) {
         window.localStorage.setItem(key, JSON.stringify(parsed));
       }
-    } catch (e) {
-      console.warn(`[SafeStorage] Error during compaction of key '${key}':`, e);
+    } catch {
+      // 瘦身过程中如果写失败则直接略过
     }
   }
+}
+
+/**
+ * 包装 window.localStorage，提供 SSR 安全性、QuotaExceededError 自动异常捕获与内存无损降级
+ */
+export function createSafeStorage(storeName?: string): StateStorage {
+  return {
+    getItem: (name: string): string | null => {
+      if (typeof window === "undefined" || !window.localStorage) {
+        return inMemoryStorage.get(name) ?? null;
+      }
+      try {
+        const stored = window.localStorage.getItem(name);
+        return stored !== null ? stored : (inMemoryStorage.get(name) ?? null);
+      } catch {
+        return inMemoryStorage.get(name) ?? null;
+      }
+    },
+
+    setItem: (name: string, value: string): void => {
+      // 内存备份始终保持同步更新
+      inMemoryStorage.set(name, value);
+
+      if (typeof window === "undefined" || !window.localStorage) {
+        return;
+      }
+
+      try {
+        window.localStorage.setItem(name, value);
+      } catch (err: any) {
+        // 捕获 QuotaExceededError，执行静默瘦身自愈
+        try {
+          compactExistingStorage();
+          window.localStorage.setItem(name, value);
+        } catch {
+          // 若依然受限，静默保持内存状态，绝不触发 console.error 造成红屏报错
+          console.warn(
+            `[SafeStorage] LocalStorage quota reached for '${name || storeName}'. State safely retained in memory.`
+          );
+        }
+      }
+    },
+
+    removeItem: (name: string): void => {
+      inMemoryStorage.delete(name);
+      if (typeof window === "undefined" || !window.localStorage) {
+        return;
+      }
+      try {
+        window.localStorage.removeItem(name);
+      } catch {
+        // 忽略移除异常
+      }
+    },
+  };
 }
