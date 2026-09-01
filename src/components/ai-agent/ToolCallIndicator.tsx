@@ -13,78 +13,79 @@ const TOOL_CONFIG: Record<
   { label: string; icon: React.FC<{ className?: string }>; color: string }
 > = {
   search_songs: {
-    label: "正在全网与曲库检索相关曲目...",
+    label: "正在全网与本地曲库检索相关曲目...",
     icon: Search,
-    color: "from-cyan-500/20 to-blue-500/20 text-cyan-300 border-cyan-500/30",
+    color: "from-cyan-500/25 via-blue-500/20 to-purple-500/25 text-cyan-200 border-cyan-400/30",
   },
   play_song: {
-    label: "正在准备音频流与播放器...",
+    label: "正在解析高品质音频流与播放器...",
     icon: PlayCircle,
-    color: "from-purple-500/20 to-pink-500/20 text-purple-300 border-purple-500/30",
+    color: "from-purple-500/25 via-pink-500/20 to-indigo-500/25 text-purple-200 border-purple-400/30",
   },
   download_song: {
-    label: "正在添加歌曲至离线下载队列...",
+    label: "正在添加歌曲至无损离线下载队列...",
     icon: Download,
-    color: "from-emerald-500/20 to-teal-500/20 text-emerald-300 border-emerald-500/30",
+    color: "from-emerald-500/25 via-teal-500/20 to-cyan-500/25 text-emerald-200 border-emerald-400/30",
   },
   get_lyrics: {
-    label: "正在获取歌词与翻译...",
+    label: "正在智能解析精准歌词与双语翻译...",
     icon: FileText,
-    color: "from-amber-500/20 to-orange-500/20 text-amber-300 border-amber-500/30",
+    color: "from-amber-500/25 via-orange-500/20 to-yellow-500/25 text-amber-200 border-amber-400/30",
   },
 };
 
 export const ToolCallIndicator: React.FC<ToolCallIndicatorProps> = ({ toolName }) => {
   const config = (toolName && TOOL_CONFIG[toolName]) || {
-    label: "AI 思考中...",
+    label: "AI 音乐智能体思考中...",
     icon: Sparkles,
-    color: "from-purple-500/20 to-indigo-500/20 text-purple-300 border-purple-500/30",
+    color: "from-purple-500/25 via-indigo-500/20 to-cyan-500/25 text-purple-200 border-purple-400/30",
   };
 
   const Icon = config.icon;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+      initial={{ opacity: 0, y: 8, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -4, scale: 0.96 }}
-      transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-      className="flex items-center gap-2.5 my-2"
+      exit={{ opacity: 0, y: -4, scale: 0.95 }}
+      transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
+      className="flex items-center gap-2.5 my-2.5"
     >
       <div
-        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${config.color} border backdrop-blur-xl shadow-[0_4px_16px_rgba(0,0,0,0.3)]`}
+        className={`inline-flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r ${config.color} border backdrop-blur-2xl shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]`}
       >
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+          transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
           className="shrink-0"
         >
-          <Icon className="w-3.5 h-3.5" />
+          <Icon className="w-4 h-4" />
         </motion.div>
 
-        <span className="text-[12px] font-medium tracking-tight whitespace-nowrap">
+        <span className="text-[12.5px] font-medium tracking-tight whitespace-nowrap">
           {config.label}
         </span>
 
-        {/* 呼吸脉冲点 */}
-        <div className="flex items-center gap-1 ml-0.5">
+        {/* 呼吸极光脉冲点 */}
+        <div className="flex items-center gap-1 ml-1">
           <motion.span
-            animate={{ opacity: [0.3, 1, 0.3] }}
+            animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
             transition={{ repeat: Infinity, duration: 1.2, delay: 0 }}
-            className="w-1 h-1 rounded-full bg-current"
+            className="w-1.5 h-1.5 rounded-full bg-current shadow-[0_0_6px_currentColor]"
           />
           <motion.span
-            animate={{ opacity: [0.3, 1, 0.3] }}
+            animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
             transition={{ repeat: Infinity, duration: 1.2, delay: 0.2 }}
-            className="w-1 h-1 rounded-full bg-current"
+            className="w-1.5 h-1.5 rounded-full bg-current shadow-[0_0_6px_currentColor]"
           />
           <motion.span
-            animate={{ opacity: [0.3, 1, 0.3] }}
+            animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
             transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }}
-            className="w-1 h-1 rounded-full bg-current"
+            className="w-1.5 h-1.5 rounded-full bg-current shadow-[0_0_6px_currentColor]"
           />
         </div>
       </div>
     </motion.div>
   );
 };
+
