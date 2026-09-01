@@ -3,6 +3,7 @@
 import { useEffect, useCallback } from "react";
 import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
+import { useVisualizationStore } from "@/store/visualizationStore";
 import { useKeyboardShortcutsStore } from "@/store/keyboardShortcutsStore";
 
 export interface ShortcutValidationResult {
@@ -255,13 +256,28 @@ export const useKeyboardShortcuts = () => {
 
   useEffect(() => {
     const handleFSChange = () => {
-      useUIStore.setState({ isFullscreen: !!document.fullscreenElement });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const doc = document as any;
+      const isFs = !!(
+        doc.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        doc.mozFullScreenElement ||
+        doc.msFullscreenElement
+      );
+      useUIStore.setState({ isFullscreen: isFs });
+      useVisualizationStore.setState({ isFullscreen: isFs });
     };
 
-    document.addEventListener("fullscreenchange", handleFSChange);
+    const events = [
+      "fullscreenchange",
+      "webkitfullscreenchange",
+      "mozfullscreenchange",
+      "MSFullscreenChange",
+    ];
+    events.forEach((event) => document.addEventListener(event, handleFSChange));
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("fullscreenchange", handleFSChange);
+      events.forEach((event) => document.removeEventListener(event, handleFSChange));
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [handleKeyDown]);
