@@ -44,30 +44,26 @@ const DRAWER_SPRING = {
   mass: 0.85,
 };
 
-// 分类快捷灵感矩阵
+// 分类快捷灵感矩阵（极简冷钛纯白调色体系）
 const INSPIRATION_CATEGORIES = [
   {
     category: "歌词寻歌",
     icon: Search,
-    color: "from-cyan-500/20 to-blue-500/20 text-cyan-300 border-cyan-500/30",
     prompts: ["有句歌词是'如果天黑之前来得及'", "搜歌词包含'爱是一道光'的歌"],
   },
   {
     category: "深夜心情",
     icon: Moon,
-    color: "from-purple-500/20 to-indigo-500/20 text-purple-300 border-purple-500/30",
     prompts: ["来几首适合深夜独自沉思的吉他民谣", "心情低落时听的治愈系钢琴曲"],
   },
   {
     category: "场景电台",
     icon: Radio,
-    color: "from-emerald-500/20 to-teal-500/20 text-emerald-300 border-emerald-500/30",
     prompts: ["适合专注工作编程的极简 Lo-Fi 节奏", "开车兜风时的动感放克音乐"],
   },
   {
     category: "歌手精选",
     icon: Music4,
-    color: "from-pink-500/20 to-rose-500/20 text-pink-300 border-pink-500/30",
     prompts: ["搜周杰伦的经典抒情慢歌", "推荐几首陈奕迅小众但好听的粤语歌"],
   },
 ];
@@ -205,21 +201,19 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
           animate={{ x: 0, opacity: 1, scale: 1 }}
           exit={{ x: "105%", opacity: 0, scale: 0.96 }}
           transition={DRAWER_SPRING}
-          className="relative z-10 w-full sm:w-[500px] max-w-full h-full rounded-[28px] bg-[#0c0d14]/80 border border-white/[0.12] shadow-[-20px_20px_70px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.2)] backdrop-blur-3xl flex flex-col overflow-hidden text-white font-sans"
+          className="relative z-10 w-full sm:w-[500px] max-w-full h-full rounded-[28px] bg-[#0c0d14]/65 border border-white/[0.1] shadow-[-20px_20px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-[40px] flex flex-col overflow-hidden text-white font-sans"
         >
-          {/* 顶栏 Apple 极光流体呼吸氛围光 */}
-          <div className="absolute top-0 right-0 left-0 h-52 overflow-hidden pointer-events-none z-0">
-            <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-52 bg-gradient-to-b from-purple-600/30 via-cyan-500/20 to-transparent blur-3xl rounded-full animate-pulse" />
+          {/* 顶栏 Apple 极简冰白/冷钛漫反射氛围光 */}
+          <div className="absolute top-0 right-0 left-0 h-48 overflow-hidden pointer-events-none z-0">
+            <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-48 bg-gradient-to-b from-white/[0.06] via-white/[0.02] to-transparent blur-3xl rounded-full" />
           </div>
 
-          {/* 顶部 Header：极光光球 Logo + 模型状态微标 + 极简操作栏 */}
-          <div className="relative z-10 px-5 pt-4 pb-3.5 border-b border-white/[0.08] bg-black/25 backdrop-blur-2xl flex items-center justify-between shrink-0">
+          {/* 顶部 Header：极简钛银光球 Logo + 模型状态微标 + 极简操作栏 */}
+          <div className="relative z-10 px-5 pt-4 pb-3.5 border-b border-white/[0.08] bg-black/20 backdrop-blur-2xl flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
-              {/* 呼吸极光光球 */}
-              <div className="relative w-9 h-9 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-cyan-400 p-[1.5px] shadow-[0_0_16px_rgba(168,85,247,0.35)]">
-                <div className="w-full h-full bg-[#0d0e15] rounded-full flex items-center justify-center">
-                  <Sparkles className="w-4.5 h-4.5 text-cyan-300 animate-[spin_8s_linear_infinite]" />
-                </div>
+              {/* 极简钛银单色晶体光球 */}
+              <div className="relative w-9 h-9 rounded-full bg-white/[0.08] border border-white/[0.15] p-[1px] shadow-[0_0_12px_rgba(255,255,255,0.06)] flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-white/90" />
               </div>
 
               <div>
@@ -227,7 +221,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                   <h3 className="text-[14.5px] font-semibold text-white tracking-tight">
                     AI 找歌助手
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[9.5px] font-semibold bg-gradient-to-r from-purple-500/25 to-cyan-500/25 text-purple-200 border border-purple-400/30 shadow-sm">
+                  <span className="px-2 py-0.5 rounded-full text-[9.5px] font-semibold bg-white/[0.06] text-white/70 border border-white/[0.1] shadow-sm">
                     Agent v2
                   </span>
                 </div>
@@ -243,8 +237,8 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                     </>
                   ) : (
                     <>
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 shadow-[0_0_6px_rgba(251,191,36,0.8)]" />
-                      <span className="text-amber-300/90 font-medium">尚未连接 AI 接口</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/40 shrink-0" />
+                      <span className="text-white/60 font-medium">尚未连接 AI 接口</span>
                     </>
                   )}
                 </div>
@@ -272,22 +266,22 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
             </div>
           </div>
 
-          {/* 未配置 AI 时的高奢 Apple 极光晶体引导卡片 (取代生硬刺眼的黄色报警条) */}
+          {/* 未配置 AI 时的高奢 Apple 冷钛磨砂引导卡片 (取代生硬刺眼的黄色报警条和紫红渐变) */}
           {!isConfigured && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
-              className="relative z-10 p-3.5 mx-4 my-2.5 rounded-2xl bg-gradient-to-r from-purple-500/15 via-pink-500/10 to-amber-500/15 border border-purple-500/30 flex items-center justify-between gap-3 shadow-[0_4px_20px_rgba(168,85,247,0.15)] shrink-0 backdrop-blur-2xl"
+              className="relative z-10 p-3.5 mx-4 my-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.10] flex items-center justify-between gap-3 shadow-[0_4px_20px_rgba(0,0,0,0.3)] shrink-0 backdrop-blur-2xl"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
-                  <Zap className="w-4 h-4 text-purple-300" />
+                <div className="w-8 h-8 rounded-xl bg-white/[0.08] border border-white/[0.12] flex items-center justify-center shrink-0">
+                  <Zap className="w-4 h-4 text-white/90" />
                 </div>
                 <div className="min-w-0">
                   <div className="text-[12.5px] font-semibold text-white truncate">
                     {!isEnabled ? "AI 功能目前已暂停" : "尚未配置 API Key"}
                   </div>
-                  <div className="text-[10.5px] text-white/60 truncate">
+                  <div className="text-[10.5px] text-white/50 truncate">
                     支持 SenseNova / DeepSeek / 硅基流动 等多模型池
                   </div>
                 </div>
@@ -296,7 +290,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
               <button
                 type="button"
                 onClick={handleOpenAISettings}
-                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border border-white/20 text-[11.5px] font-medium flex items-center gap-1.5 transition-all shadow-md shadow-purple-950/40 active:scale-95 shrink-0"
+                className="px-3 py-1.5 rounded-xl bg-white/[0.12] hover:bg-white/[0.22] text-white border border-white/[0.15] text-[11.5px] font-medium flex items-center gap-1.5 transition-all shadow-sm active:scale-95 shrink-0"
               >
                 <Key className="w-3.5 h-3.5" />
                 <span>配置端点</span>
@@ -319,8 +313,8 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                     >
                       {/* 检索结果顶栏与批量操作按钮 */}
                       <div className="flex items-center justify-between px-1">
-                        <span className="text-[12px] font-medium text-purple-300/90 flex items-center gap-1.5">
-                          <Music4 className="w-3.5 h-3.5 text-cyan-300" />
+                        <span className="text-[12px] font-medium text-white/70 flex items-center gap-1.5">
+                          <Music4 className="w-3.5 h-3.5 text-white/60" />
                           <span>已全网检索到 {msg.songResults.length} 首曲目</span>
                         </span>
 
@@ -328,7 +322,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                           <button
                             type="button"
                             onClick={() => handlePlayAllResults(msg.songResults || [])}
-                            className="px-2.5 py-1 rounded-full bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30 text-[11px] font-medium flex items-center gap-1 transition-all active:scale-95"
+                            className="px-2.5 py-1 rounded-full bg-white/[0.12] hover:bg-white/[0.22] text-white border border-white/[0.15] text-[11px] font-medium flex items-center gap-1 transition-all active:scale-95 shadow-sm"
                           >
                             <Play className="w-3 h-3 fill-current" />
                             <span>一键连播</span>
@@ -336,7 +330,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                           <button
                             type="button"
                             onClick={() => handleAddAllToQueue(msg.songResults || [])}
-                            className="px-2.5 py-1 rounded-full bg-white/[0.08] hover:bg-white/[0.15] text-white/80 border border-white/[0.1] text-[11px] font-medium flex items-center gap-1 transition-all active:scale-95"
+                            className="px-2.5 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.14] text-white/80 border border-white/[0.1] text-[11px] font-medium flex items-center gap-1 transition-all active:scale-95"
                           >
                             <ListPlus className="w-3 h-3" />
                             <span>全部加歌</span>
@@ -383,13 +377,13 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                       )}
                     </button>
 
-                    {/* 紫罗兰晶体磨砂玻璃气泡 */}
-                    <div className="max-w-[86%] rounded-[20px] rounded-tr-[4px] bg-gradient-to-tr from-purple-600/75 via-indigo-600/75 to-purple-500/75 border border-white/25 px-4 py-2.5 text-[13.5px] text-white leading-relaxed shadow-lg shadow-purple-950/40 backdrop-blur-xl break-words whitespace-pre-wrap">
+                    {/* 深空冷钛磨砂玻璃气泡 (Apple 极简纯净单色) */}
+                    <div className="max-w-[86%] rounded-[20px] rounded-tr-[4px] bg-white/[0.12] hover:bg-white/[0.16] border border-white/[0.18] px-4 py-2.5 text-[13.5px] text-white leading-relaxed shadow-md backdrop-blur-xl break-words whitespace-pre-wrap transition-colors">
                       {msg.content}
                     </div>
 
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 border border-white/25 flex items-center justify-center shrink-0 mb-0.5 text-white shadow-md">
-                      <User className="w-4 h-4" />
+                    <div className="w-7 h-7 rounded-full bg-white/[0.15] border border-white/[0.2] flex items-center justify-center shrink-0 mb-0.5 text-white shadow-sm">
+                      <User className="w-3.5 h-3.5" />
                     </div>
                   </motion.div>
                 );
@@ -406,18 +400,18 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   className="flex justify-start gap-2.5 items-start pr-8 group"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500/30 to-cyan-500/30 border border-white/15 flex items-center justify-center shrink-0 mt-0.5 text-cyan-300 shadow-md backdrop-blur-xl">
-                    <Bot className="w-4.5 h-4.5" />
+                  <div className="w-8 h-8 rounded-full bg-white/[0.08] border border-white/[0.12] flex items-center justify-center shrink-0 mt-0.5 text-white/80 shadow-sm backdrop-blur-xl">
+                    <Bot className="w-4 h-4" />
                   </div>
 
                   <div className="space-y-2.5 flex-1 min-w-0">
-                    {/* 高透超薄极光玻璃消息气泡 */}
+                    {/* 高透超薄水晶超薄玻璃气泡 */}
                     {msg.content && (
                       <div
                         className={`relative rounded-[20px] rounded-tl-[4px] px-4 py-3 text-[13.5px] leading-relaxed break-words whitespace-pre-wrap border backdrop-blur-2xl transition-all ${
                           isError
                             ? "bg-red-500/10 border-red-500/30 text-red-200 shadow-[0_4px_20px_rgba(239,68,68,0.15)]"
-                            : "bg-white/[0.05] hover:bg-white/[0.07] border-white/[0.10] text-white/95 shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]"
+                            : "bg-white/[0.04] hover:bg-white/[0.06] border-white/[0.08] text-white/90 shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)]"
                         }`}
                       >
                         <div>{msg.content}</div>
@@ -428,7 +422,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                             <button
                               type="button"
                               onClick={handleOpenAISettings}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600/80 hover:bg-purple-500 text-white text-[12px] font-semibold transition-all active:scale-95 shadow-md shadow-purple-900/30"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.15] hover:bg-white/[0.25] text-white border border-white/[0.2] text-[12px] font-semibold transition-all active:scale-95 shadow-sm"
                             >
                               <Key className="w-3.5 h-3.5" />
                               <span>打开 AI 设置切换模型 / 检查密钥</span>
@@ -466,8 +460,8 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                     {msg.songResults && msg.songResults.length > 0 && (
                       <div className="space-y-2.5 pt-1">
                         <div className="flex items-center justify-between px-1">
-                          <span className="text-[12px] font-medium text-purple-300/90 flex items-center gap-1.5">
-                            <Music4 className="w-3.5 h-3.5 text-cyan-300" />
+                          <span className="text-[12px] font-medium text-white/70 flex items-center gap-1.5">
+                            <Music4 className="w-3.5 h-3.5 text-white/60" />
                             <span>推荐曲目 ({msg.songResults.length})</span>
                           </span>
 
@@ -475,7 +469,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                             <button
                               type="button"
                               onClick={() => handlePlayAllResults(msg.songResults || [])}
-                              className="px-2.5 py-1 rounded-full bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30 text-[11px] font-medium flex items-center gap-1 transition-all active:scale-95"
+                              className="px-2.5 py-1 rounded-full bg-white/[0.12] hover:bg-white/[0.22] text-white border border-white/[0.15] text-[11px] font-medium flex items-center gap-1 transition-all active:scale-95 shadow-sm"
                             >
                               <Play className="w-3 h-3 fill-current" />
                               <span>一键连播</span>
@@ -483,7 +477,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                             <button
                               type="button"
                               onClick={() => handleAddAllToQueue(msg.songResults || [])}
-                              className="px-2.5 py-1 rounded-full bg-white/[0.08] hover:bg-white/[0.15] text-white/80 border border-white/[0.1] text-[11px] font-medium flex items-center gap-1 transition-all active:scale-95"
+                              className="px-2.5 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.14] text-white/80 border border-white/[0.1] text-[11px] font-medium flex items-center gap-1 transition-all active:scale-95"
                             >
                               <ListPlus className="w-3 h-3" />
                               <span>全部加歌</span>
@@ -504,11 +498,11 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                       </div>
                     )}
 
-                    {/* 初次欢迎语后的 Apple Intelligence 灵动分类矩阵 */}
+                    {/* 初次欢迎语后的 Apple Intelligence 极简灵感探索矩阵 */}
                     {isGreeting && (
                       <div className="pt-3 space-y-3">
                         <div className="text-[12px] font-medium text-white/60 flex items-center gap-1.5 px-1">
-                          <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
+                          <Sparkles className="w-3.5 h-3.5 text-white/60" />
                           <span>灵感探索矩阵：</span>
                         </div>
 
@@ -518,10 +512,10 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                             return (
                               <div
                                 key={cat.category}
-                                className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-xl space-y-1.5"
+                                className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-xl space-y-1.5 hover:border-white/[0.12] transition-colors"
                               >
-                                <div className="flex items-center gap-1.5 text-[11.5px] font-semibold text-white/80 px-1">
-                                  <CatIcon className="w-3.5 h-3.5 text-purple-300" />
+                                <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-white/80 px-1">
+                                  <CatIcon className="w-3.5 h-3.5 text-white/70" />
                                   <span>{cat.category}</span>
                                 </div>
                                 <div className="flex flex-wrap gap-1.5">
@@ -530,10 +524,10 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                                       key={prompt}
                                       type="button"
                                       onClick={() => handlePromptClick(prompt)}
-                                      className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] border border-white/[0.08] hover:border-purple-400/40 text-[12px] text-white/85 hover:text-white transition-all text-left flex items-center gap-1.5 active:scale-95 shadow-sm"
+                                      className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.06] hover:border-white/[0.18] text-[12px] text-white/80 hover:text-white transition-all text-left flex items-center gap-1.5 active:scale-95 shadow-sm"
                                     >
                                       <span>{prompt}</span>
-                                      <ArrowRight className="w-3 h-3 opacity-40 group-hover:opacity-100" />
+                                      <ArrowRight className="w-3 h-3 opacity-30 group-hover:opacity-100" />
                                     </button>
                                   ))}
                                 </div>
@@ -555,8 +549,8 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
           </div>
 
           {/* 底部悬浮灵动输入胶囊与控制区 */}
-          <div className="relative z-10 p-3 sm:p-4 border-t border-white/[0.08] bg-black/35 backdrop-blur-2xl shrink-0 space-y-2">
-            <div className="relative flex items-end gap-2 bg-white/[0.05] border border-white/[0.12] focus-within:border-purple-500/60 focus-within:shadow-[0_0_24px_rgba(168,85,247,0.25)] rounded-2xl p-2 transition-all shadow-inner backdrop-blur-xl">
+          <div className="relative z-10 p-3 sm:p-4 border-t border-white/[0.08] bg-black/25 backdrop-blur-2xl shrink-0 space-y-2">
+            <div className="relative flex items-end gap-2 bg-white/[0.04] border border-white/[0.10] focus-within:border-white/30 focus-within:shadow-[0_0_24px_rgba(255,255,255,0.08)] rounded-2xl p-2 transition-all shadow-inner backdrop-blur-xl">
               <textarea
                 ref={textareaRef}
                 value={inputVal}
@@ -579,7 +573,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                 <button
                   type="button"
                   onClick={abortCurrentRequest}
-                  className="w-8 h-8 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 flex items-center justify-center shrink-0 transition-all active:scale-95 shadow-md shadow-red-950/30"
+                  className="w-8 h-8 rounded-xl bg-white/[0.15] hover:bg-white/[0.25] text-white border border-white/[0.2] flex items-center justify-center shrink-0 transition-all active:scale-95 shadow-sm"
                   title="停止生成"
                 >
                   <Square className="w-3.5 h-3.5 fill-current" />
@@ -591,7 +585,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
                   disabled={!inputVal.trim()}
                   className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all active:scale-95 ${
                     inputVal.trim()
-                      ? "bg-gradient-to-tr from-purple-500 to-cyan-500 text-white shadow-md shadow-purple-500/30 hover:opacity-90 hover:scale-105"
+                      ? "bg-white text-black font-semibold shadow-[0_2px_12px_rgba(255,255,255,0.25)] hover:bg-white/90 hover:scale-105"
                       : "bg-white/5 text-white/20 cursor-not-allowed"
                   }`}
                   title="发送 (Enter)"
@@ -609,7 +603,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
               <button
                 type="button"
                 onClick={handleOpenAISettings}
-                className="hover:text-purple-300 transition-colors flex items-center gap-1 font-medium"
+                className="hover:text-white transition-colors flex items-center gap-1 font-medium"
               >
                 <Key className="w-3 h-3" />
                 <span>AI 设置 (⌘I)</span>
