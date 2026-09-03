@@ -507,13 +507,61 @@ export function generateDailyRecommendationGroups(
   songs: SongWithPlayCount[],
   context: RecommendationContext,
   mode: DailyRecommendationMode = getDailyRecommendationMode(),
-  perGroupLimit: number = 6
+  perGroupLimit: number = 6,
+  excludeSongIds?: Set<string>,
+  batchOffset: number = 0
 ): DailyRecommendationResult {
   const effectiveContext = { ...context, mode };
   const scored = songs.map((song) => scoreSongForRecommendation(song, effectiveContext));
-  const byScore = [...scored].sort(
+
+  // 1. 区分全新候选曲目与上一批已展示曲目，确保「换一批」能探索新歌
+  let freshCandidates: ScoredRecommendation[] = [];
+  let shownCandidates: ScoredRecommendation[] = [];
+
+  if (excludeSongIds && excludeSongIds.size > 0) {
+    for (const item of scored) {
+      if (!excludeSongIds.has(item.song.id)) {
+        freshCandidates.push(item);
+      } else {
+        shownCandidates.push(item);
+      }
+    }
+  } else {
+    freshCandidates = [...scored];
+  }
+
+  freshCandidates.sort(
     (a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title)
   );
+  shownCandidates.sort(
+    (a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title)
+  );
+
+  let byScore: ScoredRecommendation[] = [];
+  if (freshCandidates.length >= 4) {
+    // 曲库中有充足未展示歌曲，优先推送新歌，并根据批次偏移轻量交替
+    const rotatedFresh = [...freshCandidates];
+    if (batchOffset > 0) {
+      const shift = batchOffset % rotatedFresh.length;
+      byScore = [...rotatedFresh.slice(shift), ...rotatedFresh.slice(0, shift), ...shownCandidates];
+    } else {
+      byScore = [...freshCandidates, ...shownCandidates];
+    }
+  } else if (freshCandidates.length > 0) {
+    // 部分新歌置顶，其余由上一批曲目经偏移轮换后补齐
+    const rotatedShown = [...shownCandidates];
+    const shift = batchOffset > 0 && rotatedShown.length > 0 ? batchOffset % rotatedShown.length : 0;
+    byScore = [...freshCandidates, ...rotatedShown.slice(shift), ...rotatedShown.slice(0, shift)];
+  } else {
+    // 曲库全部歌曲均已在上一批展示（如曲库只有 4 首演示歌曲），按偏移值对原列表进行旋转
+    const all = [...shownCandidates];
+    if (batchOffset > 0 && all.length > 0) {
+      const shift = batchOffset % all.length;
+      byScore = [...all.slice(shift), ...all.slice(0, shift)];
+    } else {
+      byScore = all;
+    }
+  }
 
   // ─── 艺术家多样性防堆砌算法 (Anti-Monopoly Artist Guard) ───
   const pickDiverse = (
@@ -579,11 +627,18 @@ export function generateDailyRecommendationGroups(
     reasons: new Map(items.map((item) => [item.song.id, item.reasons])),
   });
 
-  const groups = [
+  const rawGroups = [
     makeGroup("familiar", "常听延续", "从你的高频播放里挑选", familiar),
     makeGroup("extend", "相邻探索", "沿着当前偏好向外扩展", extend),
     makeGroup("discover", "新鲜发现", "降低重复度，补充新鲜感", discover),
   ].filter((group) => group.songs.length > 0);
+
+  // 当换一批时，如果偏好发现新歌，旋转组的交替优先级
+  let groups = rawGroups;
+  if (batchOffset > 0 && rawGroups.length > 0) {
+    const shift = batchOffset % rawGroups.length;
+    groups = [...rawGroups.slice(shift), ...rawGroups.slice(0, shift)];
+  }
 
   const orderedSongs: SongWithPlayCount[] = [];
   const usedIds = new Set<string>();
@@ -596,6 +651,26 @@ export function generateDailyRecommendationGroups(
         usedIds.add(song.id);
       }
     }
+  }
+
+  // 保证换一批时：未在上一批展示过的新歌优先置顶；若曲库全部已展示则平滑旋转
+  if (excludeSongIds && excludeSongIds.size > 0) {
+    const unshown = orderedSongs.filter((s) => !excludeSongIds.has(s.id));
+    const shown = orderedSongs.filter((s) => excludeSongIds.has(s.id));
+    if (unshown.length > 0) {
+      orderedSongs.length = 0;
+      orderedSongs.push(...unshown, ...shown);
+    } else if (batchOffset > 0 && orderedSongs.length > 0) {
+      const shift = batchOffset % orderedSongs.length;
+      const rotated = [...orderedSongs.slice(shift), ...orderedSongs.slice(0, shift)];
+      orderedSongs.length = 0;
+      orderedSongs.push(...rotated);
+    }
+  } else if (batchOffset > 0 && orderedSongs.length > 0) {
+    const shift = batchOffset % orderedSongs.length;
+    const rotated = [...orderedSongs.slice(shift), ...orderedSongs.slice(0, shift)];
+    orderedSongs.length = 0;
+    orderedSongs.push(...rotated);
   }
 
   // 保证连续两首曲目不会出现同一个歌手连续堆叠

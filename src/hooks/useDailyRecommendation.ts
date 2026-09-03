@@ -109,8 +109,14 @@ export const useDailyRecommendation = () => {
     null
   );
 
+  const [batchOffset, setBatchOffset] = useState<number>(0);
+
   const generateRecommendationInternal = useCallback(
-    (customMode?: DailyRecommendationMode): string[] => {
+    (
+      customMode?: DailyRecommendationMode,
+      excludeIds?: Set<string>,
+      offset: number = 0
+    ): string[] => {
       if (songs.length === 0) return [];
 
       const { negativeFeedback } = useRecommendationStore.getState();
@@ -158,29 +164,38 @@ export const useDailyRecommendation = () => {
       const favorites = useFavoritesStore.getState().favorites || [];
       const favoriteSongIds = new Set<string>(favorites.map((f: Song) => f.id));
 
-    const context = {
-      recentSongs,
-      topArtists,
-      topGenres,
-      skippedSongIds: new Set<string>(),
-      favoriteSongIds,
-      mode: activeMode,
-    };
-    const result = generateDailyRecommendationGroups(songsWithCount, context, activeMode, 6);
+      const context = {
+        recentSongs,
+        topArtists,
+        topGenres,
+        skippedSongIds: new Set<string>(),
+        favoriteSongIds,
+        mode: activeMode,
+      };
+      const result = generateDailyRecommendationGroups(
+        songsWithCount,
+        context,
+        activeMode,
+        6,
+        excludeIds,
+        offset
+      );
 
-    useRecommendationStore.getState().refreshRecommendations(
-      collectRecommendationInputs({
-        getPlaylists: usePlaylistStore.getState,
-        getEmotionTags: useEmotionStore.getState,
-        getHistory: useQueueStore.getState,
-      }).songs,
-      context
-    );
+      useRecommendationStore.getState().refreshRecommendations(
+        collectRecommendationInputs({
+          getPlaylists: usePlaylistStore.getState,
+          getEmotionTags: useEmotionStore.getState,
+          getHistory: useQueueStore.getState,
+        }).songs,
+        context
+      );
 
-    setRecommendationGroups(result.groups);
-    setRecommendationMode(result.mode);
-    return result.orderedSongs.map((s) => s.id);
-  }, [songs, getTopArtists, history, listeningStats, customMode]);
+      setRecommendationGroups(result.groups);
+      setRecommendationMode(result.mode);
+      return result.orderedSongs.map((s) => s.id);
+    },
+    [songs, getTopArtists, history, listeningStats, customMode]
+  );
 
   const recommendation = useMemo(() => {
     const songMap = new Map(songs.map((song) => [song.id, song]));
@@ -218,7 +233,7 @@ export const useDailyRecommendation = () => {
       }
     }
 
-    const newSongIds = generateRecommendationInternal();
+    const newSongIds = generateRecommendationInternal(undefined, undefined, batchOffset);
     saveRecommendationToStorage(newSongIds);
     setRecommendationSongIds(newSongIds);
     setIsLoading(false);
@@ -228,6 +243,7 @@ export const useDailyRecommendation = () => {
     saveRecommendationToStorage,
     songs,
     getToday,
+    batchOffset,
   ]);
 
   const refreshRecommendation = useCallback(() => {
@@ -237,15 +253,19 @@ export const useDailyRecommendation = () => {
       localStorage.removeItem(RECOMMENDATION_KEY);
     }
 
-    setRecommendationSongIds([]);
+    const nextOffset = batchOffset + 1;
+    setBatchOffset(nextOffset);
+
+    // 记录当前展示的曲目 ID，换一批时优先排除并轮换
+    const currentExcludeIds = new Set(recommendationSongIds);
 
     setTimeout(() => {
-      const newSongIds = generateRecommendationInternal();
+      const newSongIds = generateRecommendationInternal(undefined, currentExcludeIds, nextOffset);
       saveRecommendationToStorage(newSongIds);
       setRecommendationSongIds(newSongIds);
       setIsLoading(false);
-    }, 200);
-  }, [saveRecommendationToStorage, generateRecommendationInternal]);
+    }, 150);
+  }, [batchOffset, recommendationSongIds, generateRecommendationInternal, saveRecommendationToStorage]);
 
   useEffect(() => {
     queueMicrotask(loadRecommendation);
