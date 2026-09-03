@@ -169,6 +169,10 @@ export class AudioEngine {
     return this.context;
   }
 
+  public getAudioContext(): AudioContext | null {
+    return this.context;
+  }
+
   public getAnalyser(): AnalyserNode | null {
     return this.analyser;
   }

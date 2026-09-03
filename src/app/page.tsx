@@ -13,6 +13,7 @@ import dynamic from "next/dynamic";
 import { HomeView } from "@/components/layout/HomeView";
 import { Apple3DQueueDrawer } from "@/components/player/Apple3DQueueDrawer";
 import { PanelOrchestrator } from "@/components/layout/PanelOrchestrator";
+import { PanelErrorBoundary } from "@/components/shared/PanelErrorBoundary";
 
 // Heavy Views & Dynamic Ambient (Lazy Loaded)
 const AmbientFluidMeshBackground = dynamic(
@@ -123,21 +124,27 @@ export default function Home() {
       `}</style>
 
       {/* ─── Global Dynamic Adaptive Ambient Background ───────────── */}
-      <AmbientFluidMeshBackground />
+      <PanelErrorBoundary panelName="Ambient Background">
+        <AmbientFluidMeshBackground />
+      </PanelErrorBoundary>
 
       {/* ─── Primary View Content ─────────────────────────────────── */}
       <HomeView />
       <PlayerView />
 
       {/* ─── Global Visualization & HUD ───────────────────────────── */}
-      {currentView === "visualization" && <VisualizationView />}
+      {currentView === "visualization" && (
+        <PanelErrorBoundary panelName="3D Visualization Engine">
+          <VisualizationView />
+        </PanelErrorBoundary>
+      )}
       <DesktopLyrics />
       {currentView === "player" && (
-        <>
+        <PanelErrorBoundary panelName="Player HUD Overlay">
           <FeatureButtonsContainer />
           <GlassRadarWidget />
           <MusicBackstory />
-        </>
+        </PanelErrorBoundary>
       )}
       <VirtualCursor />
       <GlassToastContainer />
