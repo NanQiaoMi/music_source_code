@@ -2,28 +2,130 @@ import { AIConfig } from "@/store/aiStore";
 import { AgentMessage, SongResult, ToolCall } from "@/types/aiAgent";
 import { AI_AGENT_TOOLS, executeTool } from "./aiAgentTools";
 
-export const AI_AGENT_SYSTEM_PROMPT = `你是 MIMI Music Player 的专属全能音乐管家与极简美学 AI 助手。
-你的核心能力与交互准则：
-1. 【音乐找寻与推荐】：
-   - 深度理解用户的音乐意图（模糊歌词、歌手别名、特定心情场景如“深夜微醺爵士”、“专注写代码的低保真节拍”、小众流派等）。
-   - 找歌、听歌、荐歌请优先调用 \`search_songs\` 进行曲库检索。
-   - 当用户要求“播放某首歌”但未指明具体版本时，先通过 \`search_songs\` 检索，并在检索后调用 \`play_song\` 立即开播。
-2. 【全功能播放器与环境控制】：
-   - 播放状态控制：当用户要求“暂停”、“继续”、“下一首”、“上一首”、“切换播放”时，调用 \`control_playback\`。
-   - 音量与声音：当用户要求“调大/调小音量”、“音量设为 50%”、“静音”时，调用 \`set_volume\`。
-   - 播放循环模式：当用户要求“单曲循环”、“随机播放”、“列表循环”、“顺序播放”时，调用 \`set_play_mode\`。
-   - 当前曲目查询：当用户询问“现在在放什么歌？”、“当前播放的歌手是谁？”时，调用 \`get_current_playing\` 并在回复中自然告知用户。
-   - 红心收藏：当用户要求“把这首歌加入喜欢/收藏”或“取消收藏”时，调用 \`like_current_song\`。
-   - 待播队列：当用户要求“把这些歌加入待播/下一首播放”或“清空待播”时，调用 \`add_to_queue\`。
-   - 全屏可视化特效：当用户要求“换成水墨特效”、“开启弧光伴字/流光歌词”、“换成星轨粒子”时，调用 \`switch_visualizer\`。
-   - 睡眠定时器：当用户要求“30分钟后停止播放”、“设置睡眠倒计时”或“取消定时”时，调用 \`set_sleep_timer\`。
-   - 离线下载与歌词：分别调用 \`download_song\` 与 \`get_lyrics\`。
-3. 【至关重要的排版与回答规范】：
-   - 当调用 \`search_songs\` 检索到曲目后，前端界面已自动生成精致的独立滚动卡片盒（包含封面、试听播放、添加待播和无损下载按钮）。
-   - **绝对严禁在文本中用 Markdown 表格（| # | 歌曲 | ... |）或重复冗长的长列表罗列所有歌曲**，避免造成排版混乱。
-   - 你的文字回答应短小精悍、优雅自然、富有音乐品味（通常控制在 2~3 句话以内），简述听感意境并点睛推荐 1~2 首亮点作。
-   - 执行控制类操作（如切歌、调音量、设定时、换特效）后，给出一句轻巧贴心的操作确认即可。
-4. 严禁捏造虚假的歌曲或无效链接，回复保持亲切自然、懂音乐、高级优雅。`;
+export interface MusicPlaybackContext {
+  currentSong?: {
+    id?: string;
+    title: string;
+    artist: string;
+    album?: string;
+    duration?: number;
+    currentTime?: number;
+    isPlaying?: boolean;
+    lyricsSnippet?: string;
+    source?: string;
+  } | null;
+  emotion?: {
+    x: number;
+    y: number;
+    description?: string;
+  } | null;
+  timeOfDay?: {
+    hour: number;
+    periodLabel: string;
+    ambientMood: string;
+  };
+  userPreferences?: {
+    favoriteCount?: number;
+    topArtists?: string[];
+  };
+}
+
+export const AI_AGENT_SYSTEM_PROMPT = `你是 MIMI Music Player 的专属「音乐策展人（Music Curator）与声音主理人」。
+你拥有顶尖黑胶唱片店主理人的艺术修养与听觉通感。你不仅深谙乐理、配器声学质地（如吉他箱体的木质共振、黑胶底噪的模拟温润感、合成器的低频滤波）与时代音乐流派，更懂得敏锐体察听众在不同时辰与环境下的心境。
+
+你的交互准则与核心信条：
+1. 【沉浸式去机械化表达】：
+   - 严禁任何 AI 客服套话（如“好的，为您推荐...”、“作为您的AI助手”、“请问还有什么能帮您”）。
+   - 直入音乐听感与质地，以富有品味的通感断句、意象切片切入对话。
+   - 播控操作（切歌、调音量、设定时、换特效）完成后，仅给出一句轻巧雅致的操作确认即可。
+
+2. 【广度发现与深度导赏准则】：
+   - 当听众寻求推荐、找歌或探索某种心情/场景时，调用 \`search_songs\` 工具一次性检索 8~10 首高品质曲目，涵盖不同年代、主流代表与宝藏小众分支。
+   - 前端已自动为检索结果渲染出包含试听、连播与下载的精致卡片盒。**绝对严禁在正文中用 Markdown 表格（| # | 歌名 | ... |）重复堆砌曲目列表**。
+   - 你的文字回答应短小精悍、优雅自然（通常 2~3 句话），重点针对其中 1~2 首最具辨识度的曲目，用一两句点睛之笔导赏其编曲亮点或情绪锚点。
+
+3. 【当前曲目共振与全能播控】：
+   - 系统已动态为你实时注入听众当前正在聆听的曲目、当前进度歌词和 2D 情感坐标。
+   - 当听众探讨当前歌曲时，结合正在唱到的歌词与配器质地进行深层艺术剖析。
+   - 控制指令执行：
+     - 播放/切歌：调用 \`control_playback\`
+     - 音量调节：调用 \`set_volume\`
+     - 播放循环：调用 \`set_play_mode\`
+     - 收藏喜欢：调用 \`like_current_song\`
+     - 待播队列：调用 \`add_to_queue\`
+     - 全屏特效：调用 \`switch_visualizer\`
+     - 睡眠定时：调用 \`set_sleep_timer\`
+     - 离线下载与歌词：分别调用 \`download_song\` 与 \`get_lyrics\`
+
+4. 严禁捏造虚假的歌曲或无效链接，保持亲切自然、极简克制、懂音乐、高级优雅。`;
+
+export function buildDynamicPromptContext(context?: MusicPlaybackContext): string {
+  if (!context) return "";
+
+  const lines: string[] = ["【当前环境与听觉感知动态上下文（实时注入）】:"];
+
+  // 1. 时段心境
+  if (context.timeOfDay) {
+    lines.push(`- 当前系统时段：${context.timeOfDay.periodLabel}（${context.timeOfDay.ambientMood}）`);
+  }
+
+  // 2. 正在播放曲目态势
+  if (context.currentSong) {
+    const s = context.currentSong;
+    const playState = s.isPlaying ? "正在播放" : "已暂停";
+    const curMin = Math.floor((s.currentTime || 0) / 60);
+    const curSec = Math.floor((s.currentTime || 0) % 60).toString().padStart(2, "0");
+    const durMin = Math.floor((s.duration || 0) / 60);
+    const durSec = Math.floor((s.duration || 0) % 60).toString().padStart(2, "0");
+    lines.push(
+      `- 正在聆听曲目：《${s.title}》 - ${s.artist}${s.album ? `（专辑：《${s.album}》）` : ""} [${playState}，进度 ${curMin}:${curSec} / ${durMin}:${durSec}]`
+    );
+
+    if (s.lyricsSnippet) {
+      lines.push(`- 当前唱到的歌词片段：\n${s.lyricsSnippet}`);
+    }
+  } else {
+    lines.push("- 当前曲库状态：暂无正在播放的歌曲（静默待播，随时等待唤醒探索新旋律）");
+  }
+
+  // 3. 情感心境坐标
+  if (context.emotion) {
+    const { x, y, description } = context.emotion;
+    const valenceText =
+      x > 0.2 ? "明亮温润、正面愉悦" : x < -0.2 ? "幽暗清冷、伤感沉郁" : "平静中性、克制留白";
+    const arousalText =
+      y > 0.2
+        ? "能量充沛、颗粒感与律动强烈"
+        : y < -0.2
+          ? "舒缓失重、轻柔漂流与微醺"
+          : "平和自如、节奏从容";
+    lines.push(
+      `- 旋律 2D 情感坐标：[X=${x.toFixed(2)}, Y=${y.toFixed(2)}] -> ${
+        description || `${valenceText}，伴随${arousalText}`
+      }`
+    );
+  } else if (context.currentSong) {
+    lines.push("- 旋律情感底色：基于曲目氛围自然推断，以通感与意象共振为基调");
+  }
+
+  // 4. 用户偏好
+  if (context.userPreferences) {
+    const { favoriteCount, topArtists } = context.userPreferences;
+    const parts: string[] = [];
+    if (favoriteCount !== undefined && favoriteCount > 0) parts.push(`收藏曲目数: ${favoriteCount} 首`);
+    if (topArtists && topArtists.length > 0)
+      parts.push(`常听艺人偏好: ${topArtists.slice(0, 4).join(" / ")}`);
+    if (parts.length > 0) {
+      lines.push(`- 听众品味侧写：${parts.join(" · ")}`);
+    }
+  }
+
+  lines.push(
+    "（请根据上述动态环境上下文，在回答、导赏或互动时自然呼应听众此时此刻的心境与听觉状态，保持音乐策展人专属的高级审美与意境）"
+  );
+
+  return lines.join("\n");
+}
 
 interface OpenAIToolCall {
   id: string;
@@ -59,11 +161,19 @@ interface ChatCompletionResponse {
   };
 }
 
-export function formatMessagesForOpenAI(messages: AgentMessage[]): OpenAIMessagePayload[] {
+export function formatMessagesForOpenAI(
+  messages: AgentMessage[],
+  playbackContext?: MusicPlaybackContext
+): OpenAIMessagePayload[] {
+  const dynamicContextText = buildDynamicPromptContext(playbackContext);
+  const fullSystemPrompt = dynamicContextText
+    ? `${AI_AGENT_SYSTEM_PROMPT}\n\n${dynamicContextText}`
+    : AI_AGENT_SYSTEM_PROMPT;
+
   const payload: OpenAIMessagePayload[] = [
     {
       role: "system",
-      content: AI_AGENT_SYSTEM_PROMPT,
+      content: fullSystemPrompt,
     },
   ];
 
@@ -114,6 +224,7 @@ export interface RunAgentConversationOptions {
   messages: AgentMessage[];
   config: AIConfig;
   fallbackConfigs?: AIConfig[];
+  playbackContext?: MusicPlaybackContext;
   onUpdate: (updatedMessages: AgentMessage[], currentToolName: string | null) => void;
   onFallback?: (fromConfig: AIConfig, toConfig: AIConfig, reason: string) => void;
   abortSignal?: AbortSignal;
@@ -264,6 +375,7 @@ export async function runAgentConversation({
   messages,
   config,
   fallbackConfigs = [],
+  playbackContext,
   onUpdate,
   onFallback,
   abortSignal,
@@ -275,7 +387,7 @@ export async function runAgentConversation({
   let remainingFallbacks = [...fallbackConfigs];
   let url = isBrowser ? "/api/ai/chat" : resolveChatCompletionsUrl(currentConfig.baseUrl);
 
-  let openAIMessages = formatMessagesForOpenAI(currentMessages);
+  let openAIMessages = formatMessagesForOpenAI(currentMessages, playbackContext);
   const maxIterations = 5;
   let supportsTools = true;
   let accumulatedSongResults: SongResult[] = [];

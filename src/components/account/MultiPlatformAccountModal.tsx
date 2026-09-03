@@ -657,31 +657,6 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
             关闭
           </button>
         </div>
-      </motion.div>
-    </div>
-  );                {cookieSubmitting ? "正在验证..." : "确认登录并同步"}
-                    </button>
-                  </motion.form>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-        </div>
-
-        {/* 底部关闭栏 (Apple Spacious Footer) */}
-        <div className="px-8 py-5 border-t border-white/[0.06] bg-white/[0.02] flex items-center justify-between">
-          <span className="text-[12px] text-[#86868b]">
-            安全提示：凭证仅保存在本地沙盒，绝不上报第三方
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-7 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-[14px] font-medium tracking-tight transition-colors"
-          >
-            关闭
-          </button>
-        </div>
-      </motion.div>
-    </div>
   );
 };
+
