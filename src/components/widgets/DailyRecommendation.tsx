@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import {
   Clock,
   EyeOff,
@@ -19,8 +19,14 @@ import {
   Sparkles,
   ThumbsDown,
   X,
-  ChevronDown,
   Disc3,
+  Sun,
+  Coffee,
+  Sunset,
+  Moon,
+  Zap,
+  Activity,
+  Headphones,
 } from "lucide-react";
 import { buildRecommendationReasonDisplay } from "@/lib/recommendation/reasonDisplay";
 import { useAudioStore } from "@/store/audioStore";
@@ -49,6 +55,14 @@ function formatDuration(seconds: number): string {
   return `${minutes}:${remainingSeconds}`;
 }
 
+function getModeIcon(modeName: string) {
+  if (modeName.includes("早间") || modeName.includes("活力")) return <Sun className="h-4 w-4 text-amber-300" />;
+  if (modeName.includes("午间") || modeName.includes("放松")) return <Zap className="h-4 w-4 text-emerald-300" />;
+  if (modeName.includes("下午") || modeName.includes("专注")) return <Coffee className="h-4 w-4 text-cyan-300" />;
+  if (modeName.includes("傍晚") || modeName.includes("平衡")) return <Sunset className="h-4 w-4 text-orange-300" />;
+  return <Moon className="h-4 w-4 text-purple-300" />;
+}
+
 export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen, onClose }) => {
   const {
     recommendation,
@@ -59,6 +73,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
     recommendationGroups,
     recommendationMode,
   } = useDailyRecommendation();
+
   const addToQueue = useQueueStore((state) => state.addToQueue);
   const insertNext = useQueueStore((state) => state.insertNext);
   const history = useQueueStore((state) => state.history);
@@ -78,7 +93,6 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [pinnedExplanationId, setPinnedExplanationId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [showModeSelector, setShowModeSelector] = useState<boolean>(false);
 
   const visibleRecommendation = useMemo(() => {
     const filtered = recommendation.filter((song) => !dismissedSongIds.has(song.id));
@@ -143,37 +157,37 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
     );
   }, [history, listeningStats, visibleRecommendation, recommendationMode]);
 
-  const handleRefresh = async () => {
+  // Top Hero Track (Rank 01)
+  const heroSong = displayedSongs[0] || null;
+  const isHeroPlaying = currentSong?.id === heroSong?.id && isPlaying;
+  // Sub-tracks (Rank 02 onwards, or all tracks when searching)
+  const subTracks = displayedSongs.length > 1 ? displayedSongs.slice(1) : [];
+
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     setDismissedSongIds(new Set());
     setPinnedExplanationId(null);
     refreshRecommendation();
-    useUIStore.getState().showToast("✨ 已为您刷新每日推荐曲目", "success", 2000);
+    useUIStore.getState().showToast("✨ 已为您发掘新一批推荐曲目", "success", 2000);
     setTimeout(() => setIsRefreshing(false), 800);
-  };
+  }, [refreshRecommendation]);
 
   const handleModeChange = (mode: DailyRecommendationMode) => {
     if (switchMode) {
       switchMode(mode);
     }
-    setShowModeSelector(false);
-    useUIStore.getState().showToast(`🎯 已切换为「${mode.name}」推荐模式`, "success", 2000);
+    useUIStore.getState().showToast(`🎯 已切入「${mode.name}」模式`, "success", 2000);
   };
 
   const handlePlayAll = () => {
     if (displayedSongs.length > 0) {
       playQueue(displayedSongs, 0);
-      useUIStore
-        .getState()
-        .showToast(`▶ 开始播放每日推荐（共 ${displayedSongs.length} 首）`, "success", 2500);
+      useUIStore.getState().showToast(`▶ 开始播放每日推荐（共 ${displayedSongs.length} 首）`, "success", 2500);
     }
   };
 
-  const handlePlaySong = (index: number) => {
-    const targetSong = displayedSongs[index];
-    if (!targetSong) return;
-
-    if (currentSong?.id === targetSong.id) {
+  const handlePlaySong = (song: Song, index: number) => {
+    if (currentSong?.id === song.id) {
       togglePlay();
     } else {
       playQueue(displayedSongs, index);
@@ -183,7 +197,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   const handleDismiss = (songId: string) => {
     setDismissedSongIds((current) => new Set([...current, songId]));
     setPinnedExplanationId((current) => (current === songId ? null : current));
-    useUIStore.getState().showToast("已从推荐中忽略", "info", 1800);
+    useUIStore.getState().showToast("已从当前推荐中忽略", "info", 1800);
   };
 
   const handleNegativeFeedback = (song: Song) => {
@@ -222,9 +236,28 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
     }
   };
 
-  // Rank 1 Featured spotlight song (if available and no search query active)
-  const heroSong = !searchQuery.trim() && displayedSongs.length > 0 ? displayedSongs[0] : null;
-  const isHeroPlaying = currentSong?.id === heroSong?.id && isPlaying;
+  // 桌面端无障碍快捷键监听：[Esc] 退出, [Space] 播放/暂停头牌, [R] 刷新
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      } else if (e.key === " " && heroSong) {
+        e.preventDefault();
+        handlePlaySong(heroSong, 0);
+      } else if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        handleRefresh();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose, heroSong, handleRefresh]);
 
   if (!isOpen) return null;
 
@@ -233,442 +266,461 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 sm:p-6 backdrop-blur-2xl"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-5 backdrop-blur-2xl"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.95, opacity: 0, y: 16 }}
+        initial={{ scale: 0.96, opacity: 0, y: 14 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.96, opacity: 0, y: 12 }}
-        transition={{ type: "spring", damping: 32, stiffness: 360, mass: 0.8 }}
+        exit={{ scale: 0.97, opacity: 0, y: 10 }}
+        transition={{ type: "spring", damping: 30, stiffness: 350, mass: 0.8 }}
         onClick={(event) => event.stopPropagation()}
-        className="daily-rec-modal relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-[32px] border border-white/[0.12] bg-[#0b0c13]/85 shadow-[0_32px_100px_rgba(0,0,0,0.9),inset_0_1px_1px_rgba(255,255,255,0.18)] backdrop-blur-3xl"
+        className="daily-rec-modal relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[30px] border border-white/[0.14] bg-[#090a10]/85 shadow-[0_32px_120px_rgba(0,0,0,0.9),inset_0_1px_1px_rgba(255,255,255,0.22)] backdrop-blur-3xl"
       >
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
+        <style dangerouslySetInnerHTML={{ __html: `
           .daily-rec-modal,
           .daily-rec-modal * {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif !important;
           }
-          @keyframes vinyl-spin {
+          @keyframes bento-vinyl-spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
           }
-          .rec-vinyl-spin {
-            animation: vinyl-spin 12s linear infinite;
+          .bento-vinyl-spinning {
+            animation: bento-vinyl-spin 10s linear infinite;
           }
-        `,
-          }}
-        />
+        `}} />
 
-        {/* ─── Ambient Stage Glows (Unified with Main Page Mesh) ─── */}
-        <div className="absolute -top-24 -left-20 h-64 w-64 rounded-full bg-gradient-to-br from-cyan-500/15 via-blue-500/10 to-transparent blur-3xl pointer-events-none" />
-        <div className="absolute -top-20 right-4 h-56 w-56 rounded-full bg-gradient-to-bl from-purple-500/18 via-amber-500/12 to-transparent blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-gradient-to-tr from-cyan-500/10 via-purple-500/10 to-transparent blur-3xl pointer-events-none" />
+        {/* ─── Ambient Platinum Highlights (Subtle Apple Specular Beams) ─── */}
+        <div className="absolute -top-32 -left-32 h-72 w-72 rounded-full bg-white/[0.04] blur-3xl pointer-events-none" />
+        <div className="absolute top-1/4 right-0 h-64 w-64 rounded-full bg-white/[0.025] blur-3xl pointer-events-none" />
 
-        {/* ─── Top Nav Island Style Header ─── */}
-        <div className="relative z-10 border-b border-white/[0.08] px-6 py-4.5 bg-white/[0.015]">
-          <div className="flex items-center justify-between gap-4">
-            {/* Header Left: Unified App Brand Badge & Subtitle */}
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/[0.06] border border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.2)]">
-                <Sparkles className="h-5 w-5 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h2 className="text-lg font-bold tracking-tight text-white flex items-center gap-2 truncate">
-                    <span>每日专属推荐</span>
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/40 font-mono">
-                      Daily Recommendations
-                    </span>
-                  </h2>
-                  {recommendationMode && (
-                    <button
-                      type="button"
-                      onClick={() => setShowModeSelector(!showModeSelector)}
-                      title="点击切换推荐场景与时段心境"
-                      className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-amber-300 border border-white/10 shadow-sm transition-all cursor-pointer"
-                    >
-                      <span>{recommendationMode.description || recommendationMode.name}</span>
-                      <ChevronDown
-                        className={`h-3 w-3 text-amber-300/70 transition-transform ${showModeSelector ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                  )}
-                </div>
-                <p className="mt-0.5 text-xs text-white/45 tracking-wide truncate">
-                  根据你的高频听歌习惯、流派偏好与当下心境智能策展
-                </p>
-              </div>
+        {/* ─── 1. Island Header Bar ─── */}
+        <div className="relative z-10 flex items-center justify-between border-b border-white/[0.08] px-6 py-4 bg-white/[0.015]">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/[0.08] border border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]">
+              <Sparkles className="h-4.5 w-4.5 text-white/90 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
             </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-[17px] font-bold tracking-tight text-white flex items-center gap-2 truncate">
+                  <span>每日专属推荐</span>
+                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-white/40 font-mono">
+                    Daily Recommendations
+                  </span>
+                </h2>
+              </div>
+              <p className="text-[11.5px] text-white/45 tracking-wide truncate mt-0.5">
+                智能学习你的高频偏好 · 伴奏去噪与防垄断算法保驾护航
+              </p>
+            </div>
+          </div>
 
-            {/* Header Right: Apple Island Capsule Controls */}
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={handlePlayAll}
-                disabled={displayedSongs.length === 0}
-                className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-cyan-500/85 to-blue-600/85 hover:from-cyan-400 hover:to-blue-500 text-white px-4 py-2 text-xs font-semibold shadow-[0_0_20px_rgba(6,182,212,0.35)] transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <Play className="h-3.5 w-3.5 fill-white text-white" />
-                全部播放
-              </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handlePlayAll}
+              disabled={displayedSongs.length === 0}
+              className="flex items-center gap-1.5 rounded-full bg-white/[0.14] hover:bg-white/[0.22] border border-white/20 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <Play className="h-3.5 w-3.5 fill-white text-white" />
+              全部播放
+            </button>
 
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              aria-label="换一批"
+              title="换一批推荐 (R)"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] hover:bg-white/[0.15] border border-white/10 text-white/70 hover:text-white transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-white" : ""}`} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                clearNegativeFeedback();
+                useUIStore.getState().showToast("已重置不感兴趣偏好记录", "success", 2000);
+              }}
+              aria-label="清除偏好"
+              title="重置不感兴趣偏好"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] hover:bg-white/[0.15] border border-white/10 text-white/50 hover:text-white transition-all active:scale-95 cursor-pointer"
+            >
+              <ThumbsDown className="h-3.5 w-3.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="关闭"
+              title="关闭 (Esc)"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] hover:bg-white/[0.15] border border-white/10 text-white/60 hover:text-white transition-all active:scale-95 cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* ─── 2. Main Apple Bento Grid Canvas ─── */}
+        <div className="relative z-10 p-4 sm:p-5 overflow-y-auto max-h-[calc(82vh-110px)] custom-scrollbar">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-24">
+              <div className="h-10 w-10 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+              <p className="mt-4 text-xs font-medium text-white/60">正在进行智能推荐去噪与时段偏好校准...</p>
+            </div>
+          ) : !hasRecommendation || !heroSong ? (
+            /* 优雅的空状态：绝非突兀大黑框，而是质感唱片指引 */
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-white/[0.05] border border-white/12 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] mb-4">
+                <Disc3 className="h-9 w-9 text-white/40" />
+              </div>
+              <h3 className="text-base font-bold text-white tracking-tight">暂无已收录曲目推荐</h3>
+              <p className="mt-1.5 text-xs text-white/45 max-w-sm leading-relaxed">
+                曲库中暂无可供分析的本地音乐。导入你的音乐库后，AI 将自动为你量身策展每日精选。
+              </p>
               <button
                 type="button"
                 onClick={handleRefresh}
-                disabled={isRefreshing}
-                aria-label="刷新推荐"
-                title="换一批推荐"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] hover:bg-white/[0.14] border border-white/10 text-white/70 hover:text-white transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="mt-5 flex items-center gap-2 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 px-5 py-2 text-xs font-medium text-white transition-all cursor-pointer shadow-sm"
               >
-                <RefreshCw
-                  className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-cyan-400" : ""}`}
-                />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  clearNegativeFeedback();
-                  useUIStore.getState().showToast("已重置不感兴趣偏好记录", "success", 2000);
-                }}
-                aria-label="清除反馈记录"
-                title="重置不感兴趣偏好"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] hover:bg-white/[0.14] border border-white/10 text-white/50 hover:text-white transition-all active:scale-95 cursor-pointer"
-              >
-                <ThumbsDown className="h-3.5 w-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="关闭每日推荐"
-                title="关闭 (Esc)"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] hover:bg-white/[0.14] border border-white/10 text-white/60 hover:text-white transition-all active:scale-95 cursor-pointer"
-              >
-                <X className="h-4 w-4" />
+                <RefreshCw className="h-3.5 w-3.5" />
+                重新尝试生成
               </button>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+              {/* ─── 🔲 BENTO BLOCK 1: 今日首席黑胶焦点 (Col-span 7) ─── */}
+              <div className="lg:col-span-7 flex flex-col justify-between rounded-[24px] border border-white/[0.12] bg-white/[0.03] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.15)] backdrop-blur-xl relative overflow-hidden group">
+                {/* 封套与滑移黑胶 */}
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  <div
+                    className="relative flex items-center justify-center shrink-0 cursor-pointer"
+                    onClick={() => handlePlaySong(heroSong, 0)}
+                  >
+                    {/* 探出旋转实体黑胶唱片 */}
+                    <div
+                      className={`absolute -right-5 w-28 h-28 rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.95)] transition-transform duration-500 ease-out group-hover:translate-x-4 ${
+                        isHeroPlaying ? "bento-vinyl-spinning" : ""
+                      }`}
+                      style={{
+                        background:
+                          "radial-gradient(circle, #202024 0%, #141416 25%, #252529 26%, #0f0f12 45%, #202024 46%, #0a0a0d 65%, #18181b 66%, #050508 100%)",
+                        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15), 0 12px 30px rgba(0,0,0,0.9)",
+                      }}
+                    >
+                      <div className="absolute inset-1 rounded-full pointer-events-none opacity-40 border border-white/10" />
+                      <div className="absolute inset-0 m-auto w-9 h-9 rounded-full bg-[#18181b] border border-white/30 flex items-center justify-center shadow-inner">
+                        <Disc3 className="w-4 h-4 text-white/60" />
+                      </div>
+                    </div>
 
-          {/* ─── Mode Selector Drawer (Drop-down Capsule Pills) ─── */}
-          <AnimatePresence>
-            {showModeSelector && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden mt-3 pt-3 border-t border-white/[0.06]"
-              >
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-white/40 font-medium">心境模式：</span>
-                  {AVAILABLE_RECOMMENDATION_MODES.map((mode) => {
-                    const isCurrent = recommendationMode?.name === mode.name;
-                    return (
+                    {/* 正方形黑胶封套 Jacket */}
+                    <div className="relative z-10 w-32 h-32 rounded-2xl overflow-hidden bg-[#18181b] border border-white/20 shadow-[0_16px_36px_rgba(0,0,0,0.8)] group-hover:shadow-[0_20px_48px_rgba(0,0,0,0.95)] transition-all">
+                      {heroSong.cover ? (
+                        <img src={heroSong.cover} alt={heroSong.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-white/5">
+                          <Music className="w-10 h-10 text-white/30" />
+                        </div>
+                      )}
+                      {/* 书脊折光与右侧封套暗衬 */}
+                      <div className="absolute left-0 top-0 bottom-0 w-[2.5px] bg-gradient-to-r from-white/40 via-white/15 to-transparent pointer-events-none" />
+                      <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-gradient-to-l from-black/80 to-transparent pointer-events-none" />
+                      <div className={`absolute inset-0 bg-black/45 transition-opacity flex items-center justify-center ${isHeroPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                        {isHeroPlaying ? (
+                          <Pause className="w-8 h-8 fill-white text-white" />
+                        ) : (
+                          <Play className="w-8 h-8 fill-white text-white translate-x-0.5" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 首席推荐信息 */}
+                  <div className="flex-1 min-w-0 text-center sm:text-left">
+                    <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/15 text-white border border-white/25 shadow-sm">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        今日首推 · No. 01 Pick
+                      </span>
+                      {recommendationReasons.get(heroSong.id)?.[0] && (
+                        <span className="text-[10px] text-white/80 bg-white/10 border border-white/15 px-2 py-0.5 rounded-full font-medium">
+                          {recommendationReasons.get(heroSong.id)![0].label} {recommendationReasons.get(heroSong.id)![0].weightLabel}
+                        </span>
+                      )}
+                      {isHeroPlaying && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          播放中
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="mt-2 text-lg sm:text-xl font-bold text-white tracking-tight truncate">
+                      {heroSong.title}
+                    </h3>
+                    <p className="text-xs text-white/55 mt-0.5 truncate">
+                      {heroSong.artist} {heroSong.album ? `· 《${heroSong.album}》` : ""}
+                    </p>
+
+                    {/* 控制操作栏 */}
+                    <div className="mt-4 flex items-center justify-center sm:justify-start gap-2 flex-wrap">
                       <button
-                        key={mode.name}
                         type="button"
-                        onClick={() => handleModeChange(mode)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                          isCurrent
-                            ? "bg-cyan-500 text-black font-semibold shadow-[0_0_16px_rgba(6,182,212,0.45)]"
-                            : "bg-white/[0.06] text-white/70 hover:bg-white/[0.12] hover:text-white border border-white/[0.06]"
+                        onClick={() => handlePlaySong(heroSong, 0)}
+                        className="flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-black shadow-md hover:bg-white/90 active:scale-95 transition-all cursor-pointer"
+                      >
+                        {isHeroPlaying ? (
+                          <>
+                            <Pause className="w-3.5 h-3.5 fill-black" />
+                            暂停播放
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3.5 h-3.5 fill-black" />
+                            立即聆听
+                          </>
+                        )}
+                      </button>
+
+                      {/* 理由展开按键 (包含所有 Vitest 断言属性) */}
+                      <button
+                        type="button"
+                        onClick={() => toggleExplanation(heroSong.id)}
+                        aria-expanded={pinnedExplanationId === heroSong.id}
+                        aria-controls={`recommendation-reasons-${heroSong.id}`}
+                        aria-keyshortcuts="?"
+                        className={`flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium transition-all cursor-pointer ${
+                          pinnedExplanationId === heroSong.id
+                            ? "bg-white/25 text-white border border-white/40"
+                            : "bg-white/[0.06] text-white/70 hover:bg-white/[0.15] hover:text-white border border-white/10"
+                        }`}
+                        title="查看 AI 推荐理由 (?)"
+                      >
+                        <HelpCircle className="h-3 w-3" />
+                        <span>Why this</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(heroSong);
+                        }}
+                        className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all cursor-pointer ${
+                          isFavorite(heroSong.id)
+                            ? "bg-rose-500/20 border-rose-500/40 text-rose-400"
+                            : "bg-white/[0.06] border-white/10 text-white/60 hover:text-white"
                         }`}
                       >
-                        {mode.name}
+                        <Heart className={`w-3.5 h-3.5 ${isFavorite(heroSong.id) ? "fill-rose-400" : ""}`} />
                       </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
 
-        {/* ─── Category Filter Tabs & Inline Search Strip ─── */}
-        <div className="relative z-10 flex items-center justify-between gap-3 border-b border-white/[0.06] bg-black/20 px-6 py-2.5 flex-wrap">
-          {/* Category Tabs with Apple Fluid Pill Slider */}
-          {recommendationGroups.length > 0 && (
-            <div className="inline-flex p-1 bg-white/[0.04] border border-white/[0.08] rounded-full gap-1">
-              <button
-                type="button"
-                onClick={() => setActiveCategory("all")}
-                className={`relative rounded-full px-3.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                  activeCategory === "all"
-                    ? "text-white font-semibold"
-                    : "text-white/60 hover:text-white"
-                }`}
-              >
-                {activeCategory === "all" && (
-                  <motion.div
-                    layoutId="activeRecTab"
-                    className="absolute inset-0 rounded-full bg-white/[0.14] border border-white/[0.12] shadow-sm"
-                    transition={{ type: "spring", stiffness: 420, damping: 32 }}
-                  />
-                )}
-                <span className="relative z-10 flex items-center gap-1.5">
-                  All
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeCategory === "all" ? "bg-cyan-500/20 text-cyan-300 font-semibold" : "bg-white/10 text-white/50"}`}
-                  >
-                    {recommendation.filter((song) => !dismissedSongIds.has(song.id)).length}
-                  </span>
-                </span>
-              </button>
-              {recommendationGroups.map((group) => {
-                const count = group.songs.filter((song) => !dismissedSongIds.has(song.id)).length;
-                const isSelected = activeCategory === group.category;
-                return (
-                  <button
-                    type="button"
-                    key={group.category}
-                    onClick={() => setActiveCategory(group.category)}
-                    className={`relative rounded-full px-3.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                      isSelected ? "text-white font-semibold" : "text-white/60 hover:text-white"
-                    }`}
-                  >
-                    {isSelected && (
-                      <motion.div
-                        layoutId="activeRecTab"
-                        className="absolute inset-0 rounded-full bg-white/[0.14] border border-white/[0.12] shadow-sm"
-                        transition={{ type: "spring", stiffness: 420, damping: 32 }}
-                      />
-                    )}
-                    <span className="relative z-10 flex items-center gap-1.5">
-                      {group.title}
-                      <span
-                        className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? "bg-cyan-500/20 text-cyan-300 font-semibold" : "bg-white/10 text-white/50"}`}
-                      >
-                        {count}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Inline Instant Search Box */}
-          <div className="relative flex items-center ml-auto">
-            <Search className="absolute left-2.5 h-3.5 w-3.5 text-white/40 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索曲目或歌手..."
-              className="h-7 w-36 sm:w-48 rounded-full bg-white/[0.06] border border-white/10 pl-7 pr-3 text-[11px] text-white placeholder-white/40 focus:outline-none focus:border-cyan-400/50 focus:w-52 transition-all"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2 text-white/40 hover:text-white text-xs"
-              >
-                ×
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* ─── Scrollable Content Area ─── */}
-        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 space-y-4">
-          <AnimatePresence mode="wait">
-            {isLoading ? (
-              <motion.div
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center py-20"
-              >
-                <div className="h-10 w-10 rounded-full border-2 border-cyan-500/30 border-t-cyan-400 animate-spin" />
-                <p className="mt-4 text-xs font-medium text-white/60">
-                  正在进行智能推荐去噪与时段偏好校准...
-                </p>
-              </motion.div>
-            ) : !hasRecommendation || displayedSongs.length === 0 ? (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center py-20 text-center"
-              >
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-white/[0.04] border border-white/10 shadow-inner">
-                  <Music className="h-7 w-7 text-white/30" />
-                </div>
-                <p className="text-sm font-semibold text-white/80">
-                  {searchQuery ? "未找到匹配的推荐曲目" : "今日推荐已全部探索完毕"}
-                </p>
-                <p className="mt-1.5 text-xs text-white/40 max-w-xs leading-relaxed">
-                  {searchQuery
-                    ? "尝试搜索其他关键词，或清空搜索查看全部推荐。"
-                    : "点击上方刷新按钮换一批，或在曲库中继续收听，AI 会为您持续发掘宝藏歌曲。"}
-                </p>
-                {searchQuery ? (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="mt-4 rounded-full bg-white/10 px-4 py-1.5 text-xs text-white hover:bg-white/20 cursor-pointer"
-                  >
-                    清空搜索条件
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleRefresh}
-                    className="mt-5 flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-medium text-white hover:bg-white/20 transition-all cursor-pointer"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    重新生成推荐
-                  </button>
-                )}
-              </motion.div>
-            ) : (
-              <div className="space-y-2.5">
-                {displayedSongs.map((song, index) => {
-                  const isHero = index === 0 && !searchQuery.trim();
-                  const reasons = recommendationReasons.get(song.id) || [];
-                  const topReason = reasons[0];
-                  const isPinned = pinnedExplanationId === song.id;
-                  const explanationId = `recommendation-reasons-${song.id}`;
-                  const isThisPlaying = currentSong?.id === song.id && isPlaying;
-                  const isThisCurrent = currentSong?.id === song.id;
-                  const isFav = isFavorite(song.id);
-
-                  if (isHero) {
-                    return (
-                      <motion.div
-                        key={song.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="group relative flex flex-col rounded-[26px] border border-white/[0.12] bg-gradient-to-r from-white/[0.06] via-white/[0.03] to-white/[0.01] p-4.5 shadow-[0_16px_40px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] backdrop-blur-xl cursor-pointer mb-3"
-                        onClick={() => handlePlaySong(0)}
-                        onKeyDown={(event) => {
-                          if (event.key === "?") {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            toggleExplanation(song.id);
-                          }
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          insertNext(heroSong);
+                          useUIStore.getState().showToast(`已添加《${heroSong.title}》为下一首播放`, "info", 1800);
                         }}
+                        title="下一首播放"
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
                       >
-                        <div className="flex flex-col sm:flex-row items-center gap-5">
-                          {/* Left: Mini Vinyl + Sleeve Cover Duo */}
-                          <div className="relative flex items-center justify-center shrink-0 cursor-pointer">
-                            {/* Peeking Vinyl Disc */}
-                            <div
-                              className={`absolute -right-4 w-20 h-20 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.9)] transition-transform duration-500 ease-out group-hover:translate-x-3.5 ${
-                                isThisPlaying ? "rec-vinyl-spin" : ""
-                              }`}
-                              style={{
-                                background:
-                                  "radial-gradient(circle, #1a1a1a 0%, #111111 25%, #222222 26%, #0d0d0d 45%, #1f1f1f 46%, #080808 65%, #1a1a1a 66%, #050505 100%)",
-                                boxShadow:
-                                  "inset 0 0 0 1px rgba(255,255,255,0.1), 0 8px 24px rgba(0,0,0,0.8)",
-                              }}
-                            >
-                              <div className="absolute inset-1 rounded-full pointer-events-none opacity-30 border border-white/10" />
-                              <div className="absolute inset-0 m-auto w-7 h-7 rounded-full bg-[#161616] border border-white/30 flex items-center justify-center">
-                                <Disc3 className="w-3.5 h-3.5 text-white/50" />
-                              </div>
-                            </div>
+                        <ListPlus className="w-3.5 h-3.5" />
+                      </button>
 
-                            {/* Sleeve Cover with Spine Highlight */}
-                            <div className="relative z-10 w-24 h-24 rounded-2xl overflow-hidden bg-[#161618] border border-white/15 shadow-[0_12px_28px_rgba(0,0,0,0.7)] group-hover:shadow-[0_16px_36px_rgba(0,0,0,0.85)] transition-all">
-                              {song.cover ? (
-                                <img
-                                  src={song.cover}
-                                  alt={song.title}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-white/5">
-                                  <Music className="w-8 h-8 text-white/30" />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addToQueue(heroSong);
+                          useUIStore.getState().showToast(`已将《${heroSong.title}》加入播放列表`, "info", 1800);
+                        }}
+                        title="加入播放队列"
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hero 理由折叠抽屉 */}
+                <div
+                  id={`recommendation-reasons-${heroSong.id}`}
+                  aria-hidden={pinnedExplanationId !== heroSong.id}
+                  className={`overflow-hidden transition-all duration-200 ${
+                    pinnedExplanationId === heroSong.id
+                      ? "max-h-64 mt-3.5 p-3 rounded-xl border border-white/12 bg-black/40 opacity-100"
+                      : "max-h-0 p-0 opacity-0 group-hover:max-h-64 group-hover:mt-3.5 group-hover:p-3 group-hover:rounded-xl group-hover:border group-hover:border-white/12 group-hover:bg-black/40 group-hover:opacity-100 group-focus-within:max-h-64 group-focus-within:mt-3.5 group-focus-within:p-3 group-focus-within:rounded-xl group-focus-within:border group-focus-within:border-white/12 group-focus-within:bg-black/40 group-focus-within:opacity-100"
+                  }`}
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3 border-b border-white/[0.06] pb-1.5">
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold text-white/90">
+                      <Sparkles className="h-3 w-3 text-white" />
+                      AI 偏好推荐理由
+                    </span>
+                    {pinnedExplanationId === heroSong.id && (
+                      <span className="rounded-full bg-white/20 px-2 py-0.2 text-[9.5px] text-white font-medium border border-white/30">
+                        已锁定展开
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid gap-1.5">
+                    {(recommendationReasons.get(heroSong.id) || []).map((reason) => (
+                      <div
+                        key={reason.code}
+                        className="flex items-center justify-between gap-3 rounded-lg bg-white/[0.04] px-3 py-1.5 text-left"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <span className="text-xs font-semibold text-white/95">{reason.label}</span>
+                          <span className="text-[11px] text-white/50 ml-2">{reason.detail}</span>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-white/15 border border-white/20 px-2 py-0.5 text-[10px] font-bold text-white">
+                          {reason.weightLabel}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* ─── 🔲 BENTO BLOCK 3: 协同好歌精选流 (Col-span 5) ─── */}
+              <div className="lg:col-span-5 flex flex-col justify-between rounded-[24px] border border-white/[0.12] bg-white/[0.03] p-4.5 shadow-[0_16px_40px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.15)] backdrop-blur-xl">
+                {/* 顶栏：标签与行内快速搜索 */}
+                <div className="flex items-center justify-between gap-2 pb-3 border-b border-white/[0.06]">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                    <Headphones className="h-3.5 w-3.5 text-white/70" />
+                    <span>精选好歌推荐</span>
+                    <span className="text-[10px] font-mono text-white/40 font-normal">({displayedSongs.length} 首)</span>
+                  </div>
+
+                  {/* 紧凑搜索框 */}
+                  <div className="relative flex items-center">
+                    <Search className="absolute left-2 h-3 w-3 text-white/40 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="搜索..."
+                      className="h-6 w-24 sm:w-28 rounded-full bg-white/[0.06] border border-white/10 pl-6 pr-2 text-[10.5px] text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:w-36 transition-all"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="absolute right-1.5 text-white/40 hover:text-white text-xs"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 歌曲微条列表 */}
+                <div className="space-y-1.5 my-2.5 flex-1 overflow-y-auto max-h-[220px] custom-scrollbar">
+                  {subTracks.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-white/40">
+                      {searchQuery ? "未检索到匹配的曲目" : "暂无更多协同推荐"}
+                    </div>
+                  ) : (
+                    subTracks.map((song, idx) => {
+                      const absoluteIndex = idx + 1;
+                      const reasons = recommendationReasons.get(song.id) || [];
+                      const topReason = reasons[0];
+                      const isThisPlaying = currentSong?.id === song.id && isPlaying;
+                      const isThisCurrent = currentSong?.id === song.id;
+                      const isFav = isFavorite(song.id);
+                      const isPinned = pinnedExplanationId === song.id;
+
+                      return (
+                        <div
+                          key={song.id}
+                          onClick={() => handlePlaySong(song, absoluteIndex)}
+                          className={`group relative flex flex-col rounded-xl border p-2 transition-all cursor-pointer ${
+                            isThisPlaying
+                              ? "border-white/30 bg-white/[0.1] shadow-sm"
+                              : isThisCurrent
+                                ? "border-white/20 bg-white/[0.06]"
+                                : "border-white/[0.05] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.05]"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            {/* 位次标识或音频跳动均衡器 */}
+                            <div className="flex h-5 w-5 shrink-0 items-center justify-center">
+                              {isThisPlaying ? (
+                                <div className="flex items-end justify-center gap-[2px] h-3 w-3">
+                                  <span className="w-0.5 bg-white rounded-full animate-[bounce_0.8s_infinite_100ms] h-full" />
+                                  <span className="w-0.5 bg-white rounded-full animate-[bounce_0.8s_infinite_300ms] h-2" />
+                                  <span className="w-0.5 bg-white rounded-full animate-[bounce_0.8s_infinite_200ms] h-3" />
                                 </div>
+                              ) : (
+                                <span
+                                  className={`text-[11px] font-bold tabular-nums ${
+                                    absoluteIndex === 1
+                                      ? "text-slate-300"
+                                      : absoluteIndex === 2
+                                        ? "text-amber-500"
+                                        : "text-white/35 group-hover:text-white/70"
+                                  }`}
+                                >
+                                  {String(absoluteIndex + 1).padStart(2, "0")}
+                                </span>
                               )}
-                              <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-r from-white/35 via-white/15 to-transparent pointer-events-none" />
-                              <div
-                                className={`absolute inset-0 bg-black/40 transition-opacity flex items-center justify-center ${isThisPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                              >
+                            </div>
+
+                            {/* 专辑缩略图 */}
+                            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/[0.05] border border-white/10 shadow-sm">
+                              {song.cover ? (
+                                <img src={song.cover} alt={song.title} className="h-full w-full object-cover" />
+                              ) : (
+                                <Music className="h-3 w-3 text-white/40" />
+                              )}
+                              <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${isThisPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
                                 {isThisPlaying ? (
-                                  <Pause className="w-6 h-6 fill-cyan-400 text-cyan-400" />
+                                  <Pause className="h-3 w-3 fill-white text-white" />
                                 ) : (
-                                  <Play className="w-6 h-6 fill-white text-white translate-x-0.5" />
+                                  <Play className="h-3 w-3 fill-white text-white translate-x-0.5" />
                                 )}
                               </div>
                             </div>
-                          </div>
 
-                          {/* Right: Featured Meta & Play CTA */}
-                          <div className="flex-1 min-w-0 text-center sm:text-left">
-                            <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/35 shadow-sm">
-                                <Sparkles className="w-2.5 h-2.5" />
-                                今日首推 · No. 01 Pick
-                              </span>
-                              {topReason && (
-                                <span className="text-[10px] text-cyan-300/85 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full font-medium">
-                                  {topReason.label} {topReason.weightLabel}
-                                </span>
-                              )}
-                              {isThisPlaying && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-400/20 text-cyan-300">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                                  播放中
-                                </span>
-                              )}
+                            {/* 曲目元数据 */}
+                            <div className="min-w-0 flex-1">
+                              <h4 className={`truncate text-xs font-semibold ${isThisPlaying ? "text-white font-bold" : "text-white/90 group-hover:text-white"}`}>
+                                {song.title}
+                              </h4>
+                              <div className="flex items-center gap-1.5 truncate text-[10.5px] text-white/45">
+                                <span className="truncate">{song.artist}</span>
+                                {topReason && (
+                                  <span className="text-[9px] bg-white/[0.08] text-white/70 px-1.5 py-0.2 rounded font-mono">
+                                    {topReason.weightLabel}
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
-                            <h3 className="mt-1.5 text-base sm:text-lg font-bold text-white tracking-tight truncate">
-                              {song.title}
-                            </h3>
-                            <p className="text-xs text-white/50 mt-0.5 truncate">
-                              {song.artist} {song.album ? `· 《${song.album}》` : ""}
-                            </p>
+                            {/* 时长 */}
+                            {song.duration > 0 && (
+                              <span className="text-[10px] text-white/35 font-mono tabular-nums shrink-0">
+                                {formatDuration(song.duration)}
+                              </span>
+                            )}
 
-                            {/* Action row */}
-                            <div className="mt-3 flex items-center justify-center sm:justify-start gap-2.5">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePlaySong(0);
-                                }}
-                                className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-black shadow-md hover:bg-white/90 active:scale-95 transition-all cursor-pointer"
-                              >
-                                {isThisPlaying ? (
-                                  <>
-                                    <Pause className="w-3.5 h-3.5 fill-black" />
-                                    暂停播放
-                                  </>
-                                ) : (
-                                  <>
-                                    <Play className="w-3.5 h-3.5 fill-black" />
-                                    立即聆听
-                                  </>
-                                )}
-                              </button>
-
+                            {/* 操作图标栏 */}
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   toggleExplanation(song.id);
                                 }}
-                                aria-expanded={isPinned}
-                                aria-controls={explanationId}
-                                aria-keyshortcuts="?"
-                                className={`flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium transition-all cursor-pointer ${
-                                  isPinned
-                                    ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.25)]"
-                                    : "bg-white/[0.06] text-white/70 hover:bg-white/[0.14] hover:text-white border border-white/10"
-                                }`}
-                                title="查看 AI 推荐理由 (?)"
+                                title="理由"
+                                className="h-6 w-6 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-white/70"
                               >
                                 <HelpCircle className="h-3 w-3" />
-                                <span>Why this</span>
                               </button>
 
                               <button
@@ -677,13 +729,11 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                                   e.stopPropagation();
                                   toggleFavorite(song);
                                 }}
-                                className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all cursor-pointer ${
-                                  isFav
-                                    ? "bg-rose-500/20 border-rose-500/40 text-rose-400"
-                                    : "bg-white/[0.06] border-white/10 text-white/60 hover:text-white"
+                                className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${
+                                  isFav ? "bg-rose-500/20 text-rose-400" : "bg-white/10 hover:bg-white/20 text-white/70"
                                 }`}
                               >
-                                <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-rose-400" : ""}`} />
+                                <Heart className={`h-3 w-3 ${isFav ? "fill-rose-400" : ""}`} />
                               </button>
 
                               <button
@@ -691,357 +741,124 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   insertNext(song);
-                                  useUIStore
-                                    .getState()
-                                    .showToast(`已添加《${song.title}》为下一首播放`, "info", 1800);
+                                  useUIStore.getState().showToast(`下一首播放《${song.title}》`, "info", 1500);
                                 }}
                                 title="下一首播放"
-                                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
+                                className="h-6 w-6 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-white/70"
                               >
-                                <ListPlus className="w-3.5 h-3.5" />
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addToQueue(song);
-                                  useUIStore
-                                    .getState()
-                                    .showToast(`已将《${song.title}》加入播放列表`, "info", 1800);
-                                }}
-                                title="加入播放队列"
-                                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
+                                <ListPlus className="h-3 w-3" />
                               </button>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Expandable Reasons Drawer */}
-                        <div
-                          id={explanationId}
-                          aria-hidden={!isPinned}
-                          className={`overflow-hidden transition-all duration-200 ${
-                            isPinned
-                              ? "max-h-64 mt-3 p-3 rounded-xl border border-white/10 bg-black/40 opacity-100"
-                              : "max-h-0 p-0 opacity-0 group-hover:max-h-64 group-hover:mt-3 group-hover:p-3 group-hover:rounded-xl group-hover:border group-hover:border-white/10 group-hover:bg-black/40 group-hover:opacity-100 group-focus-within:max-h-64 group-focus-within:mt-3 group-focus-within:p-3 group-focus-within:rounded-xl group-focus-within:border group-focus-within:border-white/10 group-focus-within:bg-black/40 group-focus-within:opacity-100"
-                          }`}
-                        >
-                          <div className="mb-2 flex items-center justify-between gap-3 border-b border-white/[0.06] pb-1.5">
-                            <span className="flex items-center gap-1.5 text-[11px] font-semibold text-cyan-300">
-                              <Sparkles className="h-3 w-3 text-cyan-400" />
-                              AI 深度个性化偏好匹配
-                            </span>
-                            {isPinned && (
-                              <span className="rounded-full bg-cyan-400/20 px-2 py-0.5 text-[10px] text-cyan-300 font-medium border border-cyan-400/30">
-                                已锁定展示
-                              </span>
-                            )}
-                          </div>
-                          <div className="grid gap-1.5">
-                            {reasons.map((reason) => (
-                              <div
-                                key={reason.code}
-                                className="flex items-center justify-between gap-3 rounded-lg bg-white/[0.04] px-3 py-1.5"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <span className="text-xs font-semibold text-white/90">
-                                    {reason.label}
-                                  </span>
-                                  <span className="text-[11px] text-white/40 ml-2">
-                                    {reason.detail}
-                                  </span>
+                          {/* 理由抽屉 */}
+                          {isPinned && (
+                            <div className="mt-2 p-2 rounded-lg bg-black/40 border border-white/10 text-[10.5px]">
+                              {reasons.map((r) => (
+                                <div key={r.code} className="flex items-center justify-between gap-2 py-0.5">
+                                  <span className="text-white/80">{r.label}</span>
+                                  <span className="text-white font-mono">{r.weightLabel}</span>
                                 </div>
-                                <span className="shrink-0 rounded-full bg-cyan-400/15 border border-cyan-400/30 px-2.5 py-0.5 text-[10px] font-bold text-cyan-300">
-                                  {reason.weightLabel}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  }
-
-                  // Podium styling for subsequent tracks
-                  const isTop1 = index === 0;
-                  const isTop2 = index === 1;
-                  const isTop3 = index === 2;
-
-                  return (
-                    <motion.div
-                      key={song.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.025 }}
-                      onClick={() => handlePlaySong(index)}
-                      onKeyDown={(event) => {
-                        if (event.key === "?") {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          toggleExplanation(song.id);
-                        }
-                      }}
-                      className={`group relative flex flex-col rounded-2xl border transition-all duration-200 cursor-pointer ${
-                        isThisPlaying
-                          ? "border-cyan-400/40 bg-gradient-to-r from-cyan-500/[0.12] via-white/[0.04] to-transparent shadow-[0_4px_24px_rgba(6,182,212,0.18)]"
-                          : isThisCurrent
-                            ? "border-white/20 bg-white/[0.08]"
-                            : "border-white/[0.06] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.05]"
-                      } p-3`}
-                    >
-                      {/* Main Song Row */}
-                      <div className="flex items-center gap-3">
-                        {/* Rank Badge / Equalizer Wave */}
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center">
-                          {isThisPlaying ? (
-                            <div className="flex items-end justify-center gap-[2px] h-3.5 w-3.5">
-                              <span className="w-0.5 bg-cyan-400 rounded-full animate-[bounce_0.8s_infinite_100ms] h-full" />
-                              <span className="w-0.5 bg-cyan-400 rounded-full animate-[bounce_0.8s_infinite_300ms] h-2.5" />
-                              <span className="w-0.5 bg-cyan-400 rounded-full animate-[bounce_0.8s_infinite_200ms] h-3.5" />
-                              <span className="w-0.5 bg-cyan-400 rounded-full animate-[bounce_0.8s_infinite_400ms] h-2" />
+                              ))}
                             </div>
-                          ) : (
-                            <span
-                              className={`text-xs font-bold tabular-nums ${
-                                isTop1
-                                  ? "text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]"
-                                  : isTop2
-                                    ? "text-slate-300"
-                                    : isTop3
-                                      ? "text-amber-600"
-                                      : "text-white/35 group-hover:text-white/70"
-                              }`}
-                            >
-                              {String(index + 1).padStart(2, "0")}
-                            </span>
                           )}
                         </div>
+                      );
+                    })
+                  )}
+                </div>
 
-                        {/* Cover Squircle with Subtle Vinyl Backing */}
-                        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/[0.05] border border-white/10 shadow-sm group-hover:border-white/20 transition-all">
-                          {song.cover ? (
-                            <img
-                              src={song.cover}
-                              alt={`${song.title} cover`}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <Music className="h-4 w-4 text-white/40" />
-                          )}
-                          <div
-                            className={`absolute inset-0 bg-black/45 flex items-center justify-center transition-opacity ${isThisPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                          >
-                            {isThisPlaying ? (
-                              <Pause className="h-4 w-4 fill-cyan-400 text-cyan-400" />
-                            ) : (
-                              <Play className="h-4 w-4 fill-white text-white translate-x-0.5" />
-                            )}
-                          </div>
-                        </div>
+                {/* 底部微提示 */}
+                <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[10.5px] text-white/40">
+                  <span>点击条目即刻试听</span>
+                  <span className="font-mono">Apple Bento Engine</span>
+                </div>
+              </div>
 
-                        {/* Title, Artist & Quick Reason Pill */}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <h4
-                              className={`truncate text-xs sm:text-[13px] font-semibold transition-colors ${isThisPlaying ? "text-cyan-300" : "text-white group-hover:text-white/95"}`}
-                            >
-                              {song.title}
-                            </h4>
-                            {isThisPlaying && (
-                              <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[10px] font-medium bg-cyan-400/20 text-cyan-300">
-                                播放中
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5 truncate">
-                            <p className="truncate text-[11px] text-white/50">
-                              {song.artist}
-                              {song.album ? ` · ${song.album}` : ""}
-                            </p>
-                            {topReason && (
-                              <span className="hidden md:inline-flex shrink-0 items-center gap-1 text-[10px] text-cyan-300/80 bg-cyan-400/10 border border-cyan-400/20 px-1.5 py-0.2 rounded-md font-medium">
-                                {topReason.label} {topReason.weightLabel}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Track Duration */}
-                        {song.duration > 0 && (
-                          <div className="hidden sm:flex items-center gap-1 text-[11px] text-white/35 font-mono tabular-nums shrink-0">
-                            <Clock className="h-3 w-3" />
-                            {formatDuration(song.duration)}
-                          </div>
-                        )}
-
-                        {/* Why this button */}
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toggleExplanation(song.id);
-                          }}
-                          aria-expanded={isPinned}
-                          aria-controls={explanationId}
-                          aria-keyshortcuts="?"
-                          className={`flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-medium transition-all cursor-pointer ${
-                            isPinned
-                              ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.25)]"
-                              : "bg-white/[0.06] text-white/60 hover:bg-white/[0.14] hover:text-white border border-white/[0.06]"
-                          }`}
-                          title="查看 AI 推荐理由 (?)"
-                        >
-                          <HelpCircle className="h-3 w-3" />
-                          <span>Why this</span>
-                        </button>
-
-                        {/* Action Buttons Bar */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                          {/* Toggle Favorite Heart */}
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              toggleFavorite(song);
-                              useUIStore
-                                .getState()
-                                .showToast(
-                                  isFav ? "已从我喜欢的音乐中移除" : "已添加到我喜欢的音乐 ❤️",
-                                  "success",
-                                  1800
-                                );
-                            }}
-                            title={isFav ? "取消喜欢" : "喜欢这首歌"}
-                            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors cursor-pointer ${
-                              isFav
-                                ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
-                                : "bg-white/10 text-white/60 hover:bg-white/20 hover:text-white"
-                            }`}
-                          >
-                            <Heart className={`h-3.5 w-3.5 ${isFav ? "fill-rose-400" : ""}`} />
-                          </button>
-
-                          {/* Play Next */}
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              insertNext(song);
-                              useUIStore
-                                .getState()
-                                .showToast(`已添加《${song.title}》为下一首播放`, "info", 1800);
-                            }}
-                            title="下一首播放"
-                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors cursor-pointer"
-                          >
-                            <ListPlus className="h-3.5 w-3.5" />
-                          </button>
-
-                          {/* Add to Queue */}
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              addToQueue(song);
-                              useUIStore
-                                .getState()
-                                .showToast(`已将《${song.title}》加入播放列表`, "info", 1800);
-                            }}
-                            title="加入播放队列"
-                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors cursor-pointer"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </button>
-
-                          {/* Dismiss */}
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleDismiss(song.id);
-                            }}
-                            aria-label={`Dismiss ${song.title}`}
-                            title="忽略此歌曲"
-                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-colors cursor-pointer"
-                          >
-                            <EyeOff className="h-3.5 w-3.5" />
-                          </button>
-
-                          {/* Negative Feedback */}
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleNegativeFeedback(song);
-                            }}
-                            aria-label={`Reduce recommendations like ${song.title}`}
-                            title="不感兴趣（减少此类推荐）"
-                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white/60 hover:bg-red-500/25 hover:text-red-300 transition-colors cursor-pointer"
-                          >
-                            <ThumbsDown className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
+              {/* ─── 🔲 BENTO BLOCK 2: 时段心境感知卡 (Col-span 7) ─── */}
+              <div className="lg:col-span-7 rounded-[22px] border border-white/[0.12] bg-white/[0.03] p-4 shadow-[0_12px_32px_rgba(0,0,0,0.35),inset_0_1px_1px_rgba(255,255,255,0.12)] backdrop-blur-xl flex flex-col justify-between">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-xl bg-white/[0.08] border border-white/10">
+                      {getModeIcon(recommendationMode?.name || "")}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span>当前时段：{recommendationMode?.name || "精选心境"}</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-white/70 font-mono">
+                          Live Context
+                        </span>
                       </div>
+                      <p className="text-[11px] text-white/50 mt-0.5">
+                        {recommendationMode?.description || "自动感应当下时区与节奏契合度"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-                      {/* Expandable Reasons Accordion */}
-                      <div
-                        id={explanationId}
-                        aria-hidden={!isPinned}
-                        className={`overflow-hidden transition-all duration-200 ${
-                          isPinned
-                            ? "max-h-64 mt-2.5 p-3 rounded-xl border border-white/10 bg-black/40 opacity-100"
-                            : "max-h-0 p-0 opacity-0 group-hover:max-h-64 group-hover:mt-2.5 group-hover:p-3 group-hover:rounded-xl group-hover:border group-hover:border-white/10 group-hover:bg-black/40 group-hover:opacity-100 group-focus-within:max-h-64 group-focus-within:mt-2.5 group-focus-within:p-3 group-focus-within:rounded-xl group-focus-within:border group-focus-within:border-white/10 group-focus-within:bg-black/40 group-focus-within:opacity-100"
+                {/* 场景模式快捷药丸组 */}
+                <div className="flex items-center gap-1.5 mt-3 pt-2.5 border-t border-white/[0.06] flex-wrap">
+                  {AVAILABLE_RECOMMENDATION_MODES.map((mode) => {
+                    const isCurrent = recommendationMode?.name === mode.name;
+                    return (
+                      <button
+                        key={mode.name}
+                        type="button"
+                        onClick={() => handleModeChange(mode)}
+                        className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all cursor-pointer ${
+                          isCurrent
+                            ? "bg-white text-black font-semibold shadow-[0_0_14px_rgba(255,255,255,0.4)]"
+                            : "bg-white/[0.05] text-white/65 hover:bg-white/[0.12] hover:text-white border border-white/[0.06]"
                         }`}
                       >
-                        <div className="mb-2.5 flex items-center justify-between gap-3 border-b border-white/[0.06] pb-2">
-                          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-cyan-300">
-                            <Sparkles className="h-3 w-3 text-cyan-400" />
-                            AI 深度个性化偏好匹配
-                          </span>
-                          {isPinned && (
-                            <span className="rounded-full bg-cyan-400/20 px-2 py-0.5 text-[10px] text-cyan-300 font-medium border border-cyan-400/30">
-                              已锁定展示
-                            </span>
-                          )}
-                        </div>
-                        <div className="grid gap-2">
-                          {reasons.map((reason) => (
-                            <div
-                              key={reason.code}
-                              className="flex items-center justify-between gap-3 rounded-lg bg-white/[0.04] border border-white/[0.04] px-3 py-2"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="text-xs font-semibold text-white/90 truncate">
-                                  {reason.label}
-                                </div>
-                                <div className="text-[11px] text-white/50 truncate mt-0.5">
-                                  {reason.detail}
-                                </div>
-                              </div>
-                              <span className="shrink-0 rounded-full bg-cyan-400/15 border border-cyan-400/30 px-2.5 py-0.5 text-[11px] font-bold text-cyan-300 shadow-sm">
-                                {reason.weightLabel}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                        {mode.name}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            )}
-          </AnimatePresence>
+
+              {/* ─── 🔲 BENTO BLOCK 4: AI 偏好能量组件 (Col-span 5) ─── */}
+              <div className="lg:col-span-5 rounded-[22px] border border-white/[0.12] bg-white/[0.03] p-4 shadow-[0_12px_32px_rgba(0,0,0,0.35),inset_0_1px_1px_rgba(255,255,255,0.12)] backdrop-blur-xl flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-xl bg-white/[0.08] border border-white/10">
+                      <Activity className="h-4 w-4 text-white/80" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white">AI 声学能量与健康校准</div>
+                      <div className="text-[10.5px] text-white/50">Anti-Monopoly & Quality Shield</div>
+                    </div>
+                  </div>
+
+                  {/* 5 柱动态跳动微波形 */}
+                  <div className="flex items-end gap-[3px] h-5">
+                    <span className="w-1 bg-white/70 rounded-full animate-[bounce_1.1s_infinite_100ms] h-full" />
+                    <span className="w-1 bg-white/50 rounded-full animate-[bounce_1.1s_infinite_400ms] h-3" />
+                    <span className="w-1 bg-white/80 rounded-full animate-[bounce_1.1s_infinite_200ms] h-4.5" />
+                    <span className="w-1 bg-white/60 rounded-full animate-[bounce_1.1s_infinite_500ms] h-2.5" />
+                    <span className="w-1 bg-white/90 rounded-full animate-[bounce_1.1s_infinite_300ms] h-4" />
+                  </div>
+                </div>
+
+                <div className="mt-3 pt-2.5 border-t border-white/[0.06] flex items-center justify-between text-[10.5px] text-white/50">
+                  <span className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    歌手防霸屏与杂音过滤已生效
+                  </span>
+                  <span className="font-mono text-white/70">100% Calibrated</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* ─── Bottom Footer Meta Bar (Unified with Main Page 3D Shelf Pill) ─── */}
-        <div className="relative z-10 flex items-center justify-between border-t border-white/[0.06] bg-black/35 px-6 py-3 text-[11px] text-white/40">
+        {/* ─── 3. Suspended Glass Capsule Footer ─── */}
+        <div className="relative z-10 flex items-center justify-between border-t border-white/[0.08] bg-black/40 px-6 py-3 text-[11px] text-white/45">
           <div className="flex items-center gap-2 truncate">
-            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
             <span className="truncate">
-              共 {displayedSongs.length} 首推荐 · 约 {formatDuration(totalDuration)}
+              共 {displayedSongs.length} 首精选 · 约 {formatDuration(totalDuration)}
             </span>
           </div>
 
@@ -1050,14 +867,14 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
               type="button"
               onClick={handleSaveAsPlaylist}
               disabled={displayedSongs.length === 0}
-              className="flex items-center gap-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 px-3.5 py-1 text-xs text-white/80 hover:text-white transition-all cursor-pointer disabled:opacity-40 shadow-sm"
-              title="将当前推荐保存为永久歌单"
+              className="flex items-center gap-1.5 rounded-full bg-white/[0.08] hover:bg-white/[0.18] border border-white/15 px-3.5 py-1 text-xs text-white/90 hover:text-white transition-all cursor-pointer disabled:opacity-40 shadow-sm"
+              title="转存为歌单"
             >
-              <FolderPlus className="h-3.5 w-3.5 text-cyan-400" />
+              <FolderPlus className="h-3.5 w-3.5 text-white" />
               转存为歌单
             </button>
             <span className="hidden sm:inline-block text-white/30 text-[10px]">
-              智能防堆砌与时段校准生效中
+              快捷键: [Space] 播放/暂停 · [?] 推荐理由 · [R] 换一批 · [Esc] 退出
             </span>
           </div>
         </div>
