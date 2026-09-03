@@ -597,7 +597,7 @@ export function VisualizationView() {
                 <X className="w-5 h-5 text-white/90" />
               </button>
 
-              <div className="flex items-center gap-1.5 p-1 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 overflow-x-auto max-w-[70vw] scrollbar-hide shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+              <div className="flex items-center gap-1.5 p-1 rounded-full bg-black/35 backdrop-blur-2xl border border-white/[0.12] overflow-x-auto max-w-[70vw] scrollbar-hide shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)]">
                 {effectsList.map((effect) => (
                   <button
                     key={effect.id}
@@ -607,8 +607,8 @@ export function VisualizationView() {
                     }}
                     className={`px-4 py-1.5 rounded-full text-[11px] font-bold tracking-widest transition-all duration-300 whitespace-nowrap shrink-0 uppercase ${
                       currentEffect === effect.id
-                        ? "bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.5)] scale-105"
-                        : "text-white/50 hover:text-white/90 hover:bg-white/5"
+                        ? "bg-gradient-to-r from-amber-50/95 via-white to-amber-100/95 text-black shadow-[0_0_18px_rgba(255,225,160,0.4)] scale-105"
+                        : "text-white/60 hover:text-white hover:bg-white/[0.08]"
                     }`}
                   >
                     {effect.name}
@@ -619,22 +619,22 @@ export function VisualizationView() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowSettings(!showSettings)}
-                  className="w-12 h-12 rounded-full bg-black/20 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-105 transition-all duration-300"
+                  className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-xl border border-white/[0.12] flex items-center justify-center hover:bg-white/[0.12] hover:scale-105 transition-all duration-300 shadow-sm"
                 >
                   <Settings className="w-5 h-5 text-white/90" />
                 </button>
 
                 <button
                   onClick={() => setShowRecording(!showRecording)}
-                  className="w-12 h-12 rounded-full bg-black/20 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-105 transition-all duration-300"
+                  className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-xl border border-white/[0.12] flex items-center justify-center hover:bg-white/[0.12] hover:scale-105 transition-all duration-300 shadow-sm"
                 >
                   <Video className="w-5 h-5 text-white/90" />
                 </button>
 
                 <button
                   onClick={handleToggleFullscreen}
-                  title={isFullscreen ? "退出全??(F)" : "进入全屏 (F)"}
-                  className="w-12 h-12 rounded-full bg-black/20 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-105 transition-all duration-300"
+                  title={isFullscreen ? "退出全屏 (F)" : "进入全屏 (F)"}
+                  className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-xl border border-white/[0.12] flex items-center justify-center hover:bg-white/[0.12] hover:scale-105 transition-all duration-300 shadow-sm"
                 >
                   {isFullscreen ? (
                     <Minimize2 className="w-5 h-5 text-white/90" />
@@ -659,29 +659,29 @@ export function VisualizationView() {
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-4xl z-10 pointer-events-auto"
             >
-              <div className="relative overflow-hidden rounded-[32px] bg-[#0a0c14]/60 backdrop-blur-[60px] border border-white/10 shadow-[0_20px_80px_rgba(0,0,0,0.8)] p-8 md:p-10">
-                {/* Subtle highlight gradient */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/5 to-transparent opacity-30 pointer-events-none" />
+              <div className="relative overflow-hidden rounded-[32px] bg-[#0a0c14]/65 backdrop-blur-[60px] border border-white/[0.14] shadow-[0_24px_80px_rgba(0,0,0,0.75),inset_0_1px_1px_rgba(255,230,180,0.18)] p-8 md:p-10">
+                {/* Subtle highlight gradient matching silk warmth */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/[0.04] via-purple-500/[0.03] to-transparent opacity-80 pointer-events-none" />
 
                 <div className="relative z-10 flex flex-col gap-6">
                   {currentSong && (
                     <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                       <div className="flex-1 min-w-0 flex flex-col items-center md:items-start text-center md:text-left">
-                        <h2 className="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 tracking-tight mb-1 truncate w-full">
+                        <h2 className="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/75 tracking-tight mb-1 truncate w-full">
                           {currentSong.title}
                         </h2>
                         <p className="text-white/60 text-sm md:text-base font-medium truncate w-full flex items-center justify-center md:justify-start gap-2">
-                          <span className="px-2 py-0.5 rounded-md bg-white/10 text-xs font-bold uppercase tracking-wider text-white/80">
+                          <span className="px-2 py-0.5 rounded-md bg-white/10 text-xs font-bold uppercase tracking-wider text-white/80 border border-white/[0.08]">
                             Hires
                           </span>
-                          {currentSong.artist} {currentSong.album ? ` ??${currentSong.album}` : ""}
+                          {currentSong.artist} {currentSong.album ? ` · ${currentSong.album}` : ""}
                         </p>
                       </div>
 
                       <div className="flex items-center justify-center gap-4 shrink-0">
                         <button
                           onClick={prevSong}
-                          className="w-12 h-12 rounded-full bg-white/10 border border-white/10 text-white flex items-center justify-center transition-all duration-300 hover:bg-white/20 hover:scale-110 active:scale-95 hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                          className="w-12 h-12 rounded-full bg-white/[0.08] border border-white/[0.12] text-white flex items-center justify-center transition-all duration-300 hover:bg-white/[0.18] hover:scale-110 active:scale-95 hover:shadow-[0_0_20px_rgba(255,255,255,0.18)]"
                         >
                           <PrevIcon />
                         </button>
@@ -689,7 +689,7 @@ export function VisualizationView() {
                         <button
                           onClick={handleTogglePlay}
                           disabled={!currentSong}
-                          className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-all duration-300 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_40px_rgba(255,255,255,0.6)]"
+                          className="w-16 h-16 rounded-full bg-gradient-to-b from-white to-amber-50/90 text-black flex items-center justify-center shadow-[0_0_28px_rgba(255,225,160,0.35)] transition-all duration-300 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_36px_rgba(255,235,180,0.5)]"
                         >
                           {isPlaying ? <PauseIcon /> : <PlayIcon />}
                         </button>
