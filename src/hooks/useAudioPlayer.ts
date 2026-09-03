@@ -47,8 +47,12 @@ const isPlayingRef: { current: boolean } = { current: false };
 const currentSongIdRef: { current: string | null } = { current: null };
 const lastRecordedSongIdRef: { current: string | null } = { current: null };
 const lastToastSongIdRef: { current: string | null } = { current: null };
-const rescueInProgressRef: { current: boolean } = { current: false };
-const rescuedUrlsRef: { current: Set<string> } = { current: new Set() };
+export const rescueInProgressRef: { current: boolean } = { current: false };
+export const rescuedUrlsRef: { current: Set<string> } = { current: new Set() };
+export const songRescueAttemptsRef: { current: Map<string, number> } = { current: new Map() };
+export const failedUrlsRef: { current: Set<string> } = { current: new Set() };
+export const waitingTimeoutRef: { current: ReturnType<typeof setTimeout> | null } = { current: null };
+export const stutterRetryCountRef: { current: number } = { current: 0 };
 const playbackRequestIdRef: { current: number } = { current: 0 };
 const loadingInProgressSongIdRef: { current: string | null } = { current: null };
 const activeHookIds = new Set<string>();
@@ -288,46 +292,63 @@ const attachListeners = (
     }
 
     // 智能防试听截断：若加载出的流时长 <= 95s (如 30s/60s VIP试听)，自动抢救全网完整母带
-    // 使用防重入标志避免抢救后 audio.load() 再次触发 onLoadedMetadata 形成死循环
+    // 使用防重入标志与单曲抢救次数上限，避免抢救后 audio.load() 再次触发 onLoadedMetadata 形成死循环
     const currentSong = usePlayerStore.getState().currentSong;
+    const songKey = String(currentSong?.id || currentSong?.title || "");
+    const rescueAttempts = songKey ? songRescueAttemptsRef.current.get(songKey) || 0 : 0;
+
     if (
       audio.duration > 0 &&
       audio.duration <= 95 &&
       currentSong &&
       (currentSong.title || currentSong.id) &&
       !rescueInProgressRef.current &&
+      rescueAttempts < 1 &&
       !rescuedUrlsRef.current.has(audio.src)
     ) {
       rescueInProgressRef.current = true;
+      songRescueAttemptsRef.current.set(songKey, rescueAttempts + 1);
+
       logHandledAudioWarning(
         "Detected trial snippet (" + Math.round(audio.duration) + "s), auto-rescuing full song for",
         currentSong.title
       );
       multiSourceResolver
-        .resolvePlayableAudio({
-          id: currentSong.id,
-          title: currentSong.title,
-          artist: currentSong.artist,
-          album: currentSong.album,
-          source: currentSong.source,
-        })
+        .resolvePlayableAudio(
+          {
+            id: currentSong.id,
+            title: currentSong.title,
+            artist: currentSong.artist,
+            album: currentSong.album,
+            source: currentSong.source,
+          },
+          true
+        )
         .then((rescued) => {
-          if (rescued?.url && rescued.url !== currentSong.audioUrl && !rescued.isTrial) {
+          if (
+            rescued?.url &&
+            rescued.url !== currentSong.audioUrl &&
+            !rescued.isTrial &&
+            !failedUrlsRef.current.has(rescued.url)
+          ) {
             const streamUrl = getPlayableStreamUrl(rescued.url);
-            rescuedUrlsRef.current.add(streamUrl);
-            audio.src = streamUrl;
-            currentAudioUrlRef.current = streamUrl;
-            // 直接修改对象属性而不创建新引用，避免触发 Playback Effect 重执行导致状态重置
-            currentSong.audioUrl = rescued.url;
-            currentSong.source = rescued.source;
-            audio.load();
-            if (isPlayingRef.current) {
-              audio.play().catch(handlePlayError);
+            if (!failedUrlsRef.current.has(streamUrl)) {
+              rescuedUrlsRef.current.add(streamUrl);
+              audio.src = streamUrl;
+              currentAudioUrlRef.current = streamUrl;
+              // 直接修改对象属性而不创建新引用，避免触发 Playback Effect 重执行导致状态重置
+              currentSong.audioUrl = rescued.url;
+              currentSong.source = rescued.source;
+              useAudioStore.setState({ error: null });
+              audio.load();
+              if (isPlayingRef.current) {
+                audio.play().catch(handlePlayError);
+              }
             }
           }
-          rescueInProgressRef.current = false;
         })
-        .catch(() => {
+        .catch(() => {})
+        .finally(() => {
           rescueInProgressRef.current = false;
         });
     }
@@ -344,6 +365,10 @@ const attachListeners = (
     usePlayerStore.getState().setIsLoading(true);
   };
   const onCanPlay = () => {
+    if (waitingTimeoutRef.current) {
+      clearTimeout(waitingTimeoutRef.current);
+      waitingTimeoutRef.current = null;
+    }
     useAudioStore.getState().setIsLoading(false);
     usePlayerStore.getState().setIsLoading(false);
     if (isPlayingRef.current) {
@@ -353,8 +378,41 @@ const attachListeners = (
   const onWaiting = () => {
     useAudioStore.getState().setIsLoading(true);
     usePlayerStore.getState().setIsLoading(true);
+
+    if (waitingTimeoutRef.current) {
+      clearTimeout(waitingTimeoutRef.current);
+    }
+
+    waitingTimeoutRef.current = setTimeout(() => {
+      waitingTimeoutRef.current = null;
+      if (stutterRetryCountRef.current < 2) {
+        stutterRetryCountRef.current += 1;
+        console.warn(
+          `[useAudioPlayer] Stutter detected (waiting > 2.0s), executing soft resume #${stutterRetryCountRef.current}`
+        );
+        try {
+          const cur = audio.currentTime;
+          if (Number.isFinite(cur)) {
+            audio.currentTime = cur;
+          }
+          if (isPlayingRef.current || !audio.paused) {
+            audio.play().catch(handlePlayError);
+          }
+        } catch (e) {
+          console.warn("[useAudioPlayer] Stutter soft resume failed:", e);
+        }
+      } else {
+        console.warn("[useAudioPlayer] Stutter recovery limit reached (max 2 retries per stall)");
+      }
+    }, 2000);
   };
   const onPlaying = () => {
+    if (waitingTimeoutRef.current) {
+      clearTimeout(waitingTimeoutRef.current);
+      waitingTimeoutRef.current = null;
+    }
+    stutterRetryCountRef.current = 0;
+
     useAudioStore.getState().setIsLoading(false);
     usePlayerStore.getState().setIsLoading(false);
     // 仅在切歌或新曲目初次播放成功时弹出 Toast 提示（杜绝快进/倒退/拖动进度条 seek 时重复刷屏）
@@ -391,6 +449,10 @@ const attachListeners = (
     usePlayerStore.getState().setIsPlaying(true);
   };
   const onPause = () => {
+    if (waitingTimeoutRef.current) {
+      clearTimeout(waitingTimeoutRef.current);
+      waitingTimeoutRef.current = null;
+    }
     // 只有当 isPlayingRef 为 false 时才同步 store（杜绝浏览器在更换 src / load 阶段原生抛出 pause 事件导致状态被误重置）
     if (!isPlayingRef.current) {
       useAudioStore.getState().setIsPlaying(false);
@@ -398,6 +460,12 @@ const attachListeners = (
     }
   };
   const onEnded = () => {
+    if (waitingTimeoutRef.current) {
+      clearTimeout(waitingTimeoutRef.current);
+      waitingTimeoutRef.current = null;
+    }
+    stutterRetryCountRef.current = 0;
+
     // 播放结束双重保险触发离线持久化缓存
     const endedSong = usePlayerStore.getState().currentSong;
     const currentSrc = audio.src;
@@ -430,53 +498,98 @@ const attachListeners = (
   const onError = async (event: Event) => {
     const audioEl = event.target as HTMLAudioElement;
     const error = audioEl.error;
+
+    if (waitingTimeoutRef.current) {
+      clearTimeout(waitingTimeoutRef.current);
+      waitingTimeoutRef.current = null;
+    }
+
+    // 记录所有失败的 URL，防止后续抢救或嗅探再次陷入同一坏链
+    if (audioEl.src) failedUrlsRef.current.add(audioEl.src);
+    if (audioEl.currentSrc) failedUrlsRef.current.add(audioEl.currentSrc);
+
     // 过滤中断与取消错误 (MEDIA_ERR_ABORTED = 1)
     if (!error || error.code === 1) {
       return;
     }
 
     const hasValidSrc = Boolean(audioEl.currentSrc || audioEl.src);
+    if (!hasValidSrc) return;
 
-    if (hasValidSrc && error) {
-      const currentSong = usePlayerStore.getState().currentSong;
-      if (currentSong && (currentSong.title || currentSong.id)) {
-        logHandledAudioWarning(
-          "Audio element load failed, attempting auto-rescue",
-          audioEl.currentSrc
-        );
-        try {
-          const rescued = await multiSourceResolver.resolvePlayableAudio({
+    // Strict guard check to strictly prevent concurrent or recursive re-entry
+    if (rescueInProgressRef.current) {
+      return;
+    }
+
+    const currentSong = usePlayerStore.getState().currentSong;
+    const songKey = String(currentSong?.id || currentSong?.title || "");
+    const rescueAttempts = songKey ? songRescueAttemptsRef.current.get(songKey) || 0 : 0;
+
+    if (currentSong && (currentSong.title || currentSong.id) && rescueAttempts < 1) {
+      rescueInProgressRef.current = true;
+      songRescueAttemptsRef.current.set(songKey, rescueAttempts + 1);
+
+      logHandledAudioWarning(
+        "Audio element load failed, attempting auto-rescue",
+        audioEl.currentSrc || audioEl.src
+      );
+
+      try {
+        multiSourceResolver.invalidateSong({
+          id: currentSong.id,
+          title: currentSong.title,
+          artist: currentSong.artist,
+          album: currentSong.album,
+          source: currentSong.source,
+        });
+
+        const rescued = await multiSourceResolver.resolvePlayableAudio(
+          {
             id: currentSong.id,
             title: currentSong.title,
             artist: currentSong.artist,
             album: currentSong.album,
-          });
-          if (rescued?.url) {
-            const streamUrl = getPlayableStreamUrl(rescued.url);
+          },
+          true
+        );
+
+        if (rescued?.url && !failedUrlsRef.current.has(rescued.url)) {
+          const streamUrl = getPlayableStreamUrl(rescued.url);
+          if (!failedUrlsRef.current.has(streamUrl)) {
             rescuedUrlsRef.current.add(streamUrl);
             audioEl.src = streamUrl;
             currentAudioUrlRef.current = streamUrl;
             // 直接修改属性而不创建新引用，避免触发 Playback Effect 级联重置
             currentSong.audioUrl = rescued.url;
             currentSong.source = rescued.source;
+            useAudioStore.setState({ error: null });
             audioEl.load();
             if (isPlayingRef.current) {
               audioEl.play().catch(handlePlayError);
             }
             return;
           }
-        } catch (e) {
-          console.warn("[useAudioPlayer] Auto-rescue error:", e);
         }
+      } catch (e) {
+        console.warn("[useAudioPlayer] Auto-rescue error:", e);
+      } finally {
+        rescueInProgressRef.current = false;
       }
+    }
 
-      const loadError = createAudioElementLoadError(error);
-      logHandledAudioWarning("Audio element load failed", loadError.message);
-      setError(loadError);
-      setIsLoading(false);
-      isPlayingRef.current = false;
-      useAudioStore.getState().setIsPlaying(false);
-      usePlayerStore.getState().setIsPlaying(false);
+    // Graceful fallback when rescue limit is reached (sets error state, stops loading, shows 1 toast, never loops)
+    const loadError = createAudioElementLoadError(error);
+    logHandledAudioWarning("Audio element load failed", loadError.message);
+    setError(loadError);
+    setIsLoading(false);
+    isPlayingRef.current = false;
+    useAudioStore.getState().setIsPlaying(false);
+    usePlayerStore.getState().setIsPlaying(false);
+    useAudioStore.getState().setIsLoading(false);
+    usePlayerStore.getState().setIsLoading(false);
+
+    if (songKey && lastToastSongIdRef.current !== `error-${songKey}`) {
+      lastToastSongIdRef.current = `error-${songKey}`;
       useUIStore
         .getState()
         .showToast(
@@ -501,6 +614,10 @@ const attachListeners = (
 
   audio._vibeListenersAttached = true;
   audio._vibeCleanup = () => {
+    if (waitingTimeoutRef.current) {
+      clearTimeout(waitingTimeoutRef.current);
+      waitingTimeoutRef.current = null;
+    }
     audio.removeEventListener("timeupdate", onTimeUpdate);
     audio.removeEventListener("loadedmetadata", onLoadedMetadata);
     audio.removeEventListener("durationchange", onDurationChange);
@@ -587,32 +704,76 @@ export const useAudioPlayer = () => {
 
       if (isAbortError) return;
 
-      const currentSong = usePlayerStore.getState().currentSong;
       const audio = audioElementRef.current;
-      if (audio && currentSong && (currentSong.title || currentSong.id)) {
+      if (audio?.src) failedUrlsRef.current.add(audio.src);
+      if (audio?.currentSrc) failedUrlsRef.current.add(audio.currentSrc);
+
+      if (waitingTimeoutRef.current) {
+        clearTimeout(waitingTimeoutRef.current);
+        waitingTimeoutRef.current = null;
+      }
+
+      // Guard check to strictly prevent concurrent or recursive re-entry
+      if (rescueInProgressRef.current) {
+        return;
+      }
+
+      const currentSong = usePlayerStore.getState().currentSong;
+      const songKey = String(currentSong?.id || currentSong?.title || "");
+      const rescueAttempts = songKey ? songRescueAttemptsRef.current.get(songKey) || 0 : 0;
+
+      if (audio && currentSong && (currentSong.title || currentSong.id) && rescueAttempts < 1) {
+        rescueInProgressRef.current = true;
+        songRescueAttemptsRef.current.set(songKey, rescueAttempts + 1);
+
         try {
-          const rescued = await multiSourceResolver.resolvePlayableAudio({
+          multiSourceResolver.invalidateSong({
             id: currentSong.id,
             title: currentSong.title,
             artist: currentSong.artist,
             album: currentSong.album,
+            source: currentSong.source,
           });
-          if (rescued?.url) {
+
+          const rescued = await multiSourceResolver.resolvePlayableAudio(
+            {
+              id: currentSong.id,
+              title: currentSong.title,
+              artist: currentSong.artist,
+              album: currentSong.album,
+            },
+            true
+          );
+
+          if (rescued?.url && !failedUrlsRef.current.has(rescued.url)) {
             const streamUrl = getPlayableStreamUrl(rescued.url);
-            rescuedUrlsRef.current.add(streamUrl);
-            audio.src = streamUrl;
-            currentAudioUrlRef.current = streamUrl;
-            currentSong.audioUrl = rescued.url;
-            currentSong.source = rescued.source;
-            useAudioStore.setState({ error: null });
-            audio.load();
-            audio.play().catch(() => {});
-            return;
+            if (!failedUrlsRef.current.has(streamUrl)) {
+              rescuedUrlsRef.current.add(streamUrl);
+              audio.src = streamUrl;
+              currentAudioUrlRef.current = streamUrl;
+              currentSong.audioUrl = rescued.url;
+              currentSong.source = rescued.source;
+              useAudioStore.setState({ error: null });
+              audio.load();
+              audio.play().catch(handlePlayError);
+              return;
+            }
           }
         } catch {
           // ignore
+        } finally {
+          rescueInProgressRef.current = false;
         }
       }
+
+      // Graceful fallback when rescue limit is reached (sets error state, stops loading, shows 1 toast, never loops)
+      isPlayingRef.current = false;
+      setIsPlaying(false);
+      setIsLoading(false);
+      useAudioStore.getState().setIsPlaying(false);
+      usePlayerStore.getState().setIsPlaying(false);
+      useAudioStore.getState().setIsLoading(false);
+      usePlayerStore.getState().setIsLoading(false);
 
       if (
         message.includes("no supported sources") ||
@@ -625,8 +786,16 @@ export const useAudioPlayer = () => {
           message: MISSING_AUDIO_SOURCE_MESSAGE,
           timestamp: Date.now(),
         });
-        setIsPlaying(false);
-        setIsLoading(false);
+        if (songKey && lastToastSongIdRef.current !== `error-${songKey}`) {
+          lastToastSongIdRef.current = `error-${songKey}`;
+          useUIStore
+            .getState()
+            .showToast(
+              `⚠️ 无法播放: 《${currentSong?.title || "该歌曲"}》没有可用音频直链，请导入本地文件或切换音源`,
+              "warning",
+              4000
+            );
+        }
         return;
       }
 
@@ -636,8 +805,16 @@ export const useAudioPlayer = () => {
         message: "Playback failed: " + message,
         timestamp: Date.now(),
       });
-      setIsPlaying(false);
-      setIsLoading(false);
+      if (songKey && lastToastSongIdRef.current !== `error-${songKey}`) {
+        lastToastSongIdRef.current = `error-${songKey}`;
+        useUIStore
+          .getState()
+          .showToast(
+            `❌ 播放失败: 无法解析《${currentSong?.title || "此歌曲"}》的音频流，请尝试更换音源`,
+            "error",
+            4000
+          );
+      }
     },
     [setError, setIsPlaying, setIsLoading]
   );
@@ -800,6 +977,11 @@ export const useAudioPlayer = () => {
         lastToastSongIdRef.current = null;
         rescueInProgressRef.current = false;
         rescuedUrlsRef.current.clear();
+        if (waitingTimeoutRef.current) {
+          clearTimeout(waitingTimeoutRef.current);
+          waitingTimeoutRef.current = null;
+        }
+        stutterRetryCountRef.current = 0;
         useAudioStore.setState({ currentTime: 0 });
         usePlayerStore.setState({ currentTime: 0 });
         if (audio) {
@@ -943,11 +1125,14 @@ export const useAudioPlayer = () => {
                 source: currentSong.source,
               });
               if (currentSongIdRef.current !== songId) return;
-              if (resolved?.url) {
-                audioUrl = resolved.url;
-                currentSong.audioUrl = resolved.url;
-                currentSong.source = resolved.source;
-                currentAudioUrlRef.current = audioUrl;
+              if (resolved?.url && !failedUrlsRef.current.has(resolved.url)) {
+                const streamUrl = getPlayableStreamUrl(resolved.url);
+                if (!failedUrlsRef.current.has(streamUrl)) {
+                  audioUrl = resolved.url;
+                  currentSong.audioUrl = resolved.url;
+                  currentSong.source = resolved.source;
+                  currentAudioUrlRef.current = streamUrl;
+                }
               }
             } catch (e) {
               console.warn("[useAudioPlayer] Failed to auto-resolve playable stream:", e);
@@ -1018,12 +1203,16 @@ export const useAudioPlayer = () => {
             .catch(() => {});
         }
 
-        if (!audioUrl) {
+        if (!audioUrl || failedUrlsRef.current.has(audioUrl)) {
           stopForMissingAudioSource(audio);
           return;
         }
 
         const streamUrl = getPlayableStreamUrl(audioUrl);
+        if (failedUrlsRef.current.has(streamUrl)) {
+          stopForMissingAudioSource(audio);
+          return;
+        }
         currentAudioUrlRef.current = streamUrl;
 
         if (targetPlaying) {

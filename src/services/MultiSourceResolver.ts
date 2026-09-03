@@ -249,6 +249,16 @@ export class MultiSourceResolver {
     this.resolvedUrlCache.clear();
   }
 
+  public static invalidateSong(query: SongMetadataQuery): void {
+    const key =
+      `${query.source || ""}-${query.id || ""}-${query.title || ""}-${query.artist || ""}`.toLowerCase();
+    this.resolvedUrlCache.delete(key);
+  }
+
+  public invalidateSong(query: SongMetadataQuery): void {
+    MultiSourceResolver.invalidateSong(query);
+  }
+
   private async validateStream(url: string): Promise<boolean> {
     if (!url || !url.startsWith("http")) return false;
     return true;
@@ -257,7 +267,10 @@ export class MultiSourceResolver {
   /**
    * 聚合解析核心入口：严格鉴权门禁 + 极速并发竞速 + LRU 高速缓存 (毫秒级响应)
    */
-  public async resolvePlayableAudio(query: SongMetadataQuery): Promise<ResolvedAudioSource | null> {
+  public async resolvePlayableAudio(
+    query: SongMetadataQuery,
+    bypassCache: boolean = false
+  ): Promise<ResolvedAudioSource | null> {
     if (!query.title && !query.id) return null;
 
     // 本地母带源由播放器本地解码，不走网络解析
@@ -266,9 +279,13 @@ export class MultiSourceResolver {
     const cacheKey =
       `${query.source || ""}-${query.id || ""}-${query.title || ""}-${query.artist || ""}`.toLowerCase();
     const now = Date.now();
-    const cached = MultiSourceResolver.resolvedUrlCache.get(cacheKey);
-    if (cached && cached.expiry > now && cached.result?.url) {
-      return cached.result;
+    if (!bypassCache) {
+      const cached = MultiSourceResolver.resolvedUrlCache.get(cacheKey);
+      if (cached && cached.expiry > now && cached.result?.url) {
+        return cached.result;
+      }
+    } else {
+      MultiSourceResolver.resolvedUrlCache.delete(cacheKey);
     }
 
     const base = getApiBase();
