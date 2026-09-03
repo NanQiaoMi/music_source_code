@@ -5,9 +5,11 @@ import { Song } from "@/types/song";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
+import { useFavoritesStore } from "@/store/favoritesStore";
 import {
   generateDailyRecommendationGroups,
   getDailyRecommendationMode,
+  AVAILABLE_RECOMMENDATION_MODES,
   type DailyRecommendationGroup,
   type DailyRecommendationMode,
 } from "@/utils/recommendationLogic";
@@ -110,11 +112,18 @@ export const useDailyRecommendation = () => {
     if (songs.length === 0) return [];
 
     const { negativeFeedback } = useRecommendationStore.getState();
-    const negArtists = new Set(negativeFeedback.filter((f) => f.artist).map((f) => f.artist!));
-    const negGenres = new Set(negativeFeedback.filter((f) => f.genre).map((f) => f.genre!));
+    const negSongIds = new Set(negativeFeedback.map((f) => f.songId));
+    const negArtists = new Set(
+      negativeFeedback.filter((f) => f.artist).map((f) => f.artist?.toLowerCase().trim())
+    );
+    const negGenres = new Set(
+      negativeFeedback.filter((f) => f.genre).map((f) => f.genre?.toLowerCase().trim())
+    );
+
     const filteredSongs = songs.filter((s) => {
-      if (negArtists.has(s.artist)) return false;
-      if (s.genre && negGenres.has(s.genre)) return false;
+      if (negSongIds.has(s.id)) return false;
+      if (s.artist && negArtists.has(s.artist.toLowerCase().trim())) return false;
+      if (s.genre && negGenres.has(s.genre.toLowerCase().trim())) return false;
       return true;
     });
     const sourceSongs = filteredSongs.length > 0 ? filteredSongs : songs;
@@ -143,14 +152,19 @@ export const useDailyRecommendation = () => {
       addedAt: song.addedAt,
     }));
 
-    const mode = getDailyRecommendationMode();
+    const activeMode = customMode || getDailyRecommendationMode();
+    const favorites = useFavoritesStore.getState().favorites || [];
+    const favoriteSongIds = new Set(favorites.map((f) => f.id));
+
     const context = {
       recentSongs,
       topArtists,
       topGenres,
       skippedSongIds: new Set<string>(),
+      favoriteSongIds,
+      mode: activeMode,
     };
-    const result = generateDailyRecommendationGroups(songsWithCount, context, mode, 6);
+    const result = generateDailyRecommendationGroups(songsWithCount, context, activeMode, 6);
 
     useRecommendationStore.getState().refreshRecommendations(
       collectRecommendationInputs({
@@ -164,7 +178,7 @@ export const useDailyRecommendation = () => {
     setRecommendationGroups(result.groups);
     setRecommendationMode(result.mode);
     return result.orderedSongs.map((s) => s.id);
-  }, [songs, getTopArtists, history, listeningStats]);
+  }, [songs, getTopArtists, history, listeningStats, customMode]);
 
   const recommendation = useMemo(() => {
     const songMap = new Map(songs.map((song) => [song.id, song]));
