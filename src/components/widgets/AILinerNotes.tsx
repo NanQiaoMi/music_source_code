@@ -114,8 +114,8 @@ export const AILinerNotes: React.FC = () => {
                 “{displayNote || "聆听旋律流转，感悟音符间的情感共鸣..."}”
               </p>
 
-              {/* 左侧垂直渐变光带微引线 (Subtle left gradient glow trace) */}
-              <div className="absolute -left-3 top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-transparent via-white/30 to-transparent pointer-events-none" />
+              {/* 左侧垂直渐变光带微引线 (温润微金色柔光) */}
+              <div className="absolute -left-3 top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-transparent via-amber-200/40 to-transparent pointer-events-none shadow-[0_0_8px_rgba(251,191,36,0.25)]" />
             </motion.div>
           )}
         </AnimatePresence>
