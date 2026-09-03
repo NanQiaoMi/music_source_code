@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Clock,
   EyeOff,
+  FolderPlus,
   Heart,
   HelpCircle,
   ListPlus,
@@ -14,6 +15,7 @@ import {
   Pause,
   Plus,
   RefreshCw,
+  Search,
   Sparkles,
   ThumbsDown,
   X,
@@ -27,7 +29,11 @@ import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useUIStore } from "@/store/uiStore";
 import type { Song } from "@/types/song";
-import { scoreSongForRecommendation } from "@/utils/recommendationLogic";
+import {
+  scoreSongForRecommendation,
+  AVAILABLE_RECOMMENDATION_MODES,
+  type DailyRecommendationMode,
+} from "@/utils/recommendationLogic";
 import { useDailyRecommendation } from "@/hooks/useDailyRecommendation";
 
 interface DailyRecommendationProps {
@@ -47,6 +53,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
     recommendation,
     isLoading,
     refreshRecommendation,
+    switchMode,
     hasRecommendation,
     recommendationGroups,
     recommendationMode,
@@ -68,6 +75,8 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   const [dismissedSongIds, setDismissedSongIds] = useState<Set<string>>(new Set());
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [pinnedExplanationId, setPinnedExplanationId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [showModeSelector, setShowModeSelector] = useState<boolean>(false);
 
   const visibleRecommendation = useMemo(() => {
     const filtered = recommendation.filter((song) => !dismissedSongIds.has(song.id));
@@ -80,9 +89,21 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
     return filtered.filter((song) => groupIds.has(song.id));
   }, [activeCategory, dismissedSongIds, recommendation, recommendationGroups]);
 
+  // 行内实时检索过滤
+  const displayedSongs = useMemo(() => {
+    if (!searchQuery.trim()) return visibleRecommendation;
+    const q = searchQuery.toLowerCase().trim();
+    return visibleRecommendation.filter(
+      (s) =>
+        s.title.toLowerCase().includes(q) ||
+        (s.artist && s.artist.toLowerCase().includes(q)) ||
+        (s.album && s.album.toLowerCase().includes(q))
+    );
+  }, [visibleRecommendation, searchQuery]);
+
   const totalDuration = useMemo(() => {
-    return visibleRecommendation.reduce((acc, s) => acc + (s.duration || 0), 0);
-  }, [visibleRecommendation]);
+    return displayedSongs.reduce((acc, s) => acc + (s.duration || 0), 0);
+  }, [displayedSongs]);
 
   const recommendationReasons = useMemo(() => {
     const topArtists = (listeningStats.topArtists || []).slice(0, 5).map((item) => item.artist);
@@ -111,13 +132,14 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
             topArtists,
             topGenres,
             skippedSongIds: new Set(),
+            mode: recommendationMode || undefined,
           }
         );
 
         return [song.id, buildRecommendationReasonDisplay(scored.reasons.slice(0, 3))];
       })
     );
-  }, [history, listeningStats, visibleRecommendation]);
+  }, [history, listeningStats, visibleRecommendation, recommendationMode]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -128,21 +150,29 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
     setTimeout(() => setIsRefreshing(false), 800);
   };
 
+  const handleModeChange = (mode: DailyRecommendationMode) => {
+    if (switchMode) {
+      switchMode(mode);
+    }
+    setShowModeSelector(false);
+    useUIStore.getState().showToast(`🎯 已切换为「${mode.name}」模式`, "success", 2000);
+  };
+
   const handlePlayAll = () => {
-    if (visibleRecommendation.length > 0) {
-      playQueue(visibleRecommendation, 0);
-      useUIStore.getState().showToast(`▶ 开始播放推荐列表（共 ${visibleRecommendation.length} 首）`, "success", 2500);
+    if (displayedSongs.length > 0) {
+      playQueue(displayedSongs, 0);
+      useUIStore.getState().showToast(`▶ 开始播放推荐列表（共 ${displayedSongs.length} 首）`, "success", 2500);
     }
   };
 
   const handlePlaySong = (index: number) => {
-    const targetSong = visibleRecommendation[index];
+    const targetSong = displayedSongs[index];
     if (!targetSong) return;
 
     if (currentSong?.id === targetSong.id) {
       togglePlay();
     } else {
-      playQueue(visibleRecommendation, index);
+      playQueue(displayedSongs, index);
     }
   };
 
@@ -160,6 +190,32 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
 
   const toggleExplanation = (songId: string) => {
     setPinnedExplanationId((current) => (current === songId ? null : songId));
+  };
+
+  const handleSaveAsPlaylist = () => {
+    if (displayedSongs.length === 0) return;
+    const now = new Date();
+    const dateStr = `${now.getMonth() + 1}月${now.getDate()}日`;
+    const modeStr = recommendationMode?.name || "精选";
+    const playlistTitle = `${dateStr} · 每日推荐 (${modeStr})`;
+
+    try {
+      const STORAGE_KEY = "vibe_custom_playlists_v1";
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const list = raw ? JSON.parse(raw) : [];
+      const newPlaylist = {
+        id: `pl-daily-${Date.now()}`,
+        title: playlistTitle,
+        cover: displayedSongs[0]?.cover || "/default-cover.svg",
+        songs: displayedSongs,
+        createdAt: Date.now(),
+      };
+      list.unshift(newPlaylist);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      useUIStore.getState().showToast(`✨ 已成功转存为歌单《${playlistTitle}》`, "success", 2500);
+    } catch {
+      useUIStore.getState().showToast("转存歌单失败，请重试", "error", 2000);
+    }
   };
 
   if (!isOpen) return null;
@@ -198,9 +254,15 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                     Daily Recommendations
                   </h2>
                   {recommendationMode && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-400/15 text-amber-300 border border-amber-400/30 shadow-[inset_0_1px_2px_rgba(245,158,11,0.2)]">
-                      {recommendationMode.description || recommendationMode.name}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowModeSelector(!showModeSelector)}
+                      title="点击切换推荐场景模式"
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-400/15 text-amber-300 border border-amber-400/30 shadow-[inset_0_1px_2px_rgba(245,158,11,0.2)] hover:bg-amber-400/25 transition-colors cursor-pointer"
+                    >
+                      <span>{recommendationMode.description || recommendationMode.name}</span>
+                      <span className="text-[10px] text-amber-300/60">▼</span>
+                    </button>
                   )}
                 </div>
                 <p className="mt-0.5 text-xs text-white/50 tracking-wide truncate">
@@ -214,7 +276,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
               <button
                 type="button"
                 onClick={handlePlayAll}
-                disabled={visibleRecommendation.length === 0}
+                disabled={displayedSongs.length === 0}
                 className="flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-semibold text-black shadow-[0_4px_16px_rgba(255,255,255,0.22)] transition-all hover:bg-white/95 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Play className="h-3.5 w-3.5 fill-black" />
@@ -253,11 +315,45 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
               </button>
             </div>
           </div>
+
+          {/* ─── Mode Selector Accordion Drawer ─── */}
+          <AnimatePresence>
+            {showModeSelector && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden mt-3 pt-3 border-t border-white/[0.06]"
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-white/40 font-medium">推荐模式：</span>
+                  {AVAILABLE_RECOMMENDATION_MODES.map((mode) => {
+                    const isCurrent = recommendationMode?.name === mode.name;
+                    return (
+                      <button
+                        key={mode.name}
+                        type="button"
+                        onClick={() => handleModeChange(mode)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                          isCurrent
+                            ? "bg-amber-400 text-black font-semibold shadow-sm"
+                            : "bg-white/[0.06] text-white/70 hover:bg-white/[0.12] hover:text-white"
+                        }`}
+                      >
+                        {mode.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* ─── Category Filter Sliding Pills ─── */}
-        {recommendationGroups.length > 0 && (
-          <div className="flex items-center gap-1.5 border-b border-white/[0.06] bg-black/20 px-6 py-2.5 overflow-x-auto custom-scrollbar">
+        {/* ─── Filter Tabs & Search Bar ─── */}
+        <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] bg-black/20 px-6 py-2.5 flex-wrap">
+          {/* Category Tabs */}
+          {recommendationGroups.length > 0 && (
             <div className="inline-flex p-1 bg-white/[0.05] border border-white/[0.08] rounded-full gap-1">
               <button
                 type="button"
@@ -309,8 +405,29 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                 );
               })}
             </div>
+          )}
+
+          {/* Inline Instant Search Box */}
+          <div className="relative flex items-center">
+            <Search className="absolute left-2.5 h-3.5 w-3.5 text-white/40 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜索曲目或歌手..."
+              className="h-7 w-36 sm:w-44 rounded-full bg-white/[0.06] border border-white/10 pl-7 pr-3 text-[11px] text-white placeholder-white/40 focus:outline-none focus:border-amber-400/50 focus:w-48 transition-all"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 text-white/40 hover:text-white text-xs"
+              >
+                ×
+              </button>
+            )}
           </div>
-        )}
+        </div>
 
         {/* ─── Streamlined Song Cards List ─── */}
         <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6">
@@ -324,9 +441,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                 className="flex flex-col items-center justify-center py-20"
               >
                 <div className="h-10 w-10 rounded-full border-2 border-amber-500/30 border-t-amber-400 animate-spin" />
-                <p className="mt-4 text-xs font-medium text-white/60">正在为您生成今日个性化推荐...</p>
+                <p className="mt-4 text-xs font-medium text-white/60">正在进行智能推荐去噪与时段偏好校准...</p>
               </motion.div>
-            ) : !hasRecommendation || visibleRecommendation.length === 0 ? (
+            ) : !hasRecommendation || displayedSongs.length === 0 ? (
               <motion.div
                 key="empty"
                 initial={{ opacity: 0 }}
@@ -337,18 +454,32 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-white/[0.04] border border-white/10 shadow-inner">
                   <Music className="h-7 w-7 text-white/30" />
                 </div>
-                <p className="text-sm font-semibold text-white/80">今日推荐已全部探索完毕</p>
-                <p className="mt-1.5 text-xs text-white/40 max-w-xs leading-relaxed">
-                  点击上方刷新按钮换一批，或在曲库中继续收听，AI 会为您持续发掘宝藏歌曲。
+                <p className="text-sm font-semibold text-white/80">
+                  {searchQuery ? "未找到匹配的推荐曲目" : "今日推荐已全部探索完毕"}
                 </p>
-                <button
-                  type="button"
-                  onClick={handleRefresh}
-                  className="mt-5 flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-medium text-white hover:bg-white/20 transition-all cursor-pointer"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  重新生成推荐
-                </button>
+                <p className="mt-1.5 text-xs text-white/40 max-w-xs leading-relaxed">
+                  {searchQuery
+                    ? "尝试搜索其他关键词，或清空搜索查看全部推荐。"
+                    : "点击上方刷新按钮换一批，或在曲库中继续收听，AI 会为您持续发掘宝藏歌曲。"}
+                </p>
+                {searchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="mt-4 rounded-full bg-white/10 px-4 py-1.5 text-xs text-white hover:bg-white/20"
+                  >
+                    清空搜索条件
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleRefresh}
+                    className="mt-5 flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-medium text-white hover:bg-white/20 transition-all cursor-pointer"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    重新生成推荐
+                  </button>
+                )}
               </motion.div>
             ) : (
               <motion.div
@@ -358,7 +489,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                 exit={{ opacity: 0 }}
                 className="space-y-2"
               >
-                {visibleRecommendation.map((song, index) => {
+                {displayedSongs.map((song, index) => {
                   const reasons = recommendationReasons.get(song.id) || [];
                   const topReason = reasons[0];
                   const isPinned = pinnedExplanationId === song.id;
@@ -633,12 +764,24 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
           <div className="flex items-center gap-2 truncate">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-400/70" />
             <span className="truncate">
-              共 {visibleRecommendation.length} 首推荐 · 约 {formatDuration(totalDuration)}
+              共 {displayedSongs.length} 首推荐 · 约 {formatDuration(totalDuration)}
             </span>
           </div>
-          <span className="hidden sm:inline-block text-white/30 text-[10px]">
-            每日凌晨根据听歌习惯与场景自动迭代
-          </span>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={handleSaveAsPlaylist}
+              disabled={displayedSongs.length === 0}
+              className="flex items-center gap-1 rounded-full bg-white/[0.08] hover:bg-white/[0.16] border border-white/10 px-3 py-1 text-xs text-white/80 hover:text-white transition-all cursor-pointer disabled:opacity-40"
+              title="将当前推荐保存为永久歌单"
+            >
+              <FolderPlus className="h-3 w-3" />
+              转存为歌单
+            </button>
+            <span className="hidden sm:inline-block text-white/30 text-[10px]">
+              智能防堆砌与时段校准生效中
+            </span>
+          </div>
         </div>
       </motion.div>
     </motion.div>

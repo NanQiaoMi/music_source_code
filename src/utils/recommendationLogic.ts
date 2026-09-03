@@ -1,4 +1,4 @@
-﻿import { Song } from "@/types/song";
+import { Song } from "@/types/song";
 
 export interface SongWithPlayCount extends Song {
   playCount: number;
@@ -289,6 +289,39 @@ export function generateRecommendations(
   return selectedSongs;
 }
 
+// ─── 1. 垃圾/杂音/伴奏类型文件质量检测 ───
+export function isLowQualityOrNoiseTrack(song: Song): { isLowQuality: boolean; reason?: string } {
+  const title = (song.title || "").trim();
+  const duration = song.duration || 0;
+
+  // 标题缺失或过短
+  if (!title || title.length < 2) {
+    return { isLowQuality: true, reason: "标题过短或缺失" };
+  }
+
+  // 纯标点符号/表情包标题（如 ^.^, :-), ..., ???）
+  const isPureSymbols = /^[^a-zA-Z0-9\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]+$/.test(title);
+  if (isPureSymbols && title.length <= 4) {
+    return { isLowQuality: true, reason: "纯标点表情无意义标题" };
+  }
+
+  // 伴奏 / Type Beat / 纯伴奏租借
+  const isTypeBeat = /type\s*beat|free\s*beat|lease\s*beat|instrumental\s*beat/i.test(title);
+  if (isTypeBeat) {
+    return { isLowQuality: true, reason: "伴奏/Type Beat文件" };
+  }
+
+  // 超短片段（< 45秒），除非明确标有前奏/间奏/Intro
+  if (duration > 0 && duration < 45) {
+    const isIntroOrInterlude = /intro|outro|interlude|序|尾声/i.test(title);
+    if (!isIntroOrInterlude) {
+      return { isLowQuality: true, reason: "音频碎片过短" };
+    }
+  }
+
+  return { isLowQuality: false };
+}
+
 export function scoreSongForRecommendation(
   song: SongWithPlayCount,
   context: RecommendationContext
@@ -297,26 +330,69 @@ export function scoreSongForRecommendation(
   let score = 50;
   const recentIds = new Set(context.recentSongs.map((recentSong) => recentSong.id));
 
+  // 1. 低质与杂音伴奏惩罚
+  const quality = isLowQualityOrNoiseTrack(song);
+  if (quality.isLowQuality) {
+    score -= 40;
+  }
+
+  // 2. 红心收藏加分
+  if (context.favoriteSongIds && context.favoriteSongIds.has(song.id)) {
+    reasons.push({ code: "replay-friendly", label: "红心收藏", weight: 16 });
+    score += 16;
+  }
+
+  // 3. 常听歌手匹配（保留原有代码与测试权重）
   if (context.topArtists.includes(song.artist)) {
     reasons.push({ code: "artist-match", label: "常听歌手", weight: 24 });
     score += 24;
   }
 
+  // 4. 偏好流派风格（保留原有代码与测试权重）
   if (song.genre && context.topGenres.includes(song.genre)) {
     reasons.push({ code: "genre-match", label: "偏好风格", weight: 18 });
     score += 18;
   }
 
+  // 5. 时段氛围契合度
+  if (context.mode) {
+    const titleAndGenre = `${song.title || ""} ${song.genre || ""} ${song.album || ""}`.toLowerCase();
+    const modeName = (
+      context.mode.name ||
+      (context.mode as any).title ||
+      ""
+    ).toLowerCase();
+    if (modeName.includes("专注") || modeName.includes("下午") || modeName.includes("focus")) {
+      const isFocusFriendly = /focus|acoustic|piano|lofi|ambient|instrumental|chill|吉他|钢琴|民谣|纯音乐|慢|安静/i.test(titleAndGenre);
+      if (isFocusFriendly) {
+        score += 15;
+      }
+    } else if (modeName.includes("沉浸") || modeName.includes("深夜") || modeName.includes("夜晚") || modeName.includes("night")) {
+      const isNightFriendly = /night|dream|ambient|ballad|slow|soul|jazz|夜|梦|星|晚安|轻/i.test(titleAndGenre);
+      if (isNightFriendly) {
+        score += 15;
+      }
+    } else if (modeName.includes("活力") || modeName.includes("早间") || modeName.includes("morning")) {
+      const isMorningFriendly = /morning|sun|bright|energy|pop|rock|dance|早|晨|光|燃|活力/i.test(titleAndGenre);
+      if (isMorningFriendly) {
+        score += 15;
+      }
+    }
+  }
+
+  // 6. 适合复听（保留原有代码与测试权重）
   if ((song.playCount || 0) >= 3) {
     reasons.push({ code: "replay-friendly", label: "适合复听", weight: 14 });
     score += 14;
   }
 
+  // 7. 新鲜发现（保留原有代码与测试权重）
   if (!recentIds.has(song.id) && (song.playCount || 0) <= 1) {
     reasons.push({ code: "fresh-discovery", label: "新鲜发现", weight: 12 });
     score += 12;
   }
 
+  // 8. 跳过风险考量（保留原有代码与测试权重）
   if (!context.skippedSongIds.has(song.id)) {
     reasons.push({ code: "skip-avoidance", label: "低跳过风险", weight: 8 });
     score += 8;
@@ -359,6 +435,44 @@ export interface DailyRecommendationMode {
   description: string;
 }
 
+export const AVAILABLE_RECOMMENDATION_MODES: DailyRecommendationMode[] = [
+  {
+    name: "下午专注",
+    hour: 15,
+    targetFamiliarity: 0.6,
+    targetFreshness: 0.4,
+    description: "专注工作的下午推荐",
+  },
+  {
+    name: "深夜沉浸",
+    hour: 23,
+    targetFamiliarity: 0.7,
+    targetFreshness: 0.3,
+    description: "适合夜晚的沉浸推荐",
+  },
+  {
+    name: "早间活力",
+    hour: 8,
+    targetFamiliarity: 0.55,
+    targetFreshness: 0.45,
+    description: "充满活力的早间推荐",
+  },
+  {
+    name: "午间放松",
+    hour: 12,
+    targetFamiliarity: 0.5,
+    targetFreshness: 0.5,
+    description: "舒缓的午间推荐",
+  },
+  {
+    name: "傍晚平衡",
+    hour: 18,
+    targetFamiliarity: 0.45,
+    targetFreshness: 0.55,
+    description: "平衡的傍晚推荐",
+  },
+];
+
 export interface DailyRecommendationGroup {
   category: "familiar" | "extend" | "discover";
   title: string;
@@ -377,44 +491,14 @@ export interface DailyRecommendationResult {
 export function getDailyRecommendationMode(hour?: number): DailyRecommendationMode {
   const h = hour ?? new Date().getHours();
   if (h >= 5 && h < 11)
-    return {
-      name: "早间活力",
-      hour: h,
-      targetFamiliarity: 0.55,
-      targetFreshness: 0.45,
-      description: "充满活力的早间推荐",
-    };
+    return AVAILABLE_RECOMMENDATION_MODES[2]; // 早间活力
   if (h >= 11 && h < 14)
-    return {
-      name: "午间放松",
-      hour: h,
-      targetFamiliarity: 0.5,
-      targetFreshness: 0.5,
-      description: "舒缓的午间推荐",
-    };
+    return AVAILABLE_RECOMMENDATION_MODES[3]; // 午间放松
   if (h >= 14 && h < 17)
-    return {
-      name: "下午专注",
-      hour: h,
-      targetFamiliarity: 0.6,
-      targetFreshness: 0.4,
-      description: "专注工作的下午推荐",
-    };
+    return AVAILABLE_RECOMMENDATION_MODES[0]; // 下午专注
   if (h >= 17 && h < 21)
-    return {
-      name: "傍晚平衡",
-      hour: h,
-      targetFamiliarity: 0.45,
-      targetFreshness: 0.55,
-      description: "平衡的傍晚推荐",
-    };
-  return {
-    name: "深夜沉浸",
-    hour: h,
-    targetFamiliarity: 0.7,
-    targetFreshness: 0.3,
-    description: "适合夜晚的沉浸推荐",
-  };
+    return AVAILABLE_RECOMMENDATION_MODES[4]; // 傍晚平衡
+  return AVAILABLE_RECOMMENDATION_MODES[1]; // 深夜沉浸
 }
 
 export function generateDailyRecommendationGroups(
@@ -423,22 +507,62 @@ export function generateDailyRecommendationGroups(
   mode: DailyRecommendationMode = getDailyRecommendationMode(),
   perGroupLimit: number = 6
 ): DailyRecommendationResult {
-  const scored = songs.map((song) => scoreSongForRecommendation(song, context));
+  const effectiveContext = { ...context, mode };
+  const scored = songs.map((song) => scoreSongForRecommendation(song, effectiveContext));
   const byScore = [...scored].sort(
     (a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title)
   );
 
-  const familiar = byScore
-    .filter((item) => (item.song.playCount || 0) >= 3)
-    .slice(0, perGroupLimit);
-  const discover = byScore
-    .filter((item) => (item.song.playCount || 0) <= 1)
-    .slice(0, perGroupLimit);
+  // ─── 艺术家多样性防堆砌算法 (Anti-Monopoly Artist Guard) ───
+  const pickDiverse = (
+    candidates: ScoredRecommendation[],
+    limit: number,
+    globalArtistCounts: Map<string, number>,
+    maxPerArtist: number = 1
+  ): ScoredRecommendation[] => {
+    const picked: ScoredRecommendation[] = [];
+    const localArtists = new Set<string>();
+
+    for (const item of candidates) {
+      if (picked.length >= limit) break;
+      const artist = (item.song.artist || "未知歌手").toLowerCase().trim();
+      const count = globalArtistCounts.get(artist) || 0;
+
+      if (count < maxPerArtist && !localArtists.has(artist)) {
+        picked.push(item);
+        localArtists.add(artist);
+        globalArtistCounts.set(artist, count + 1);
+      }
+    }
+
+    // 若曲库总独立歌手数不足，平滑兜底填满
+    if (picked.length < limit) {
+      for (const item of candidates) {
+        if (picked.length >= limit) break;
+        if (!picked.some((p) => p.song.id === item.song.id)) {
+          picked.push(item);
+        }
+      }
+    }
+
+    return picked;
+  };
+
+  const globalArtistCounts = new Map<string, number>();
+
+  const familiarCandidates = byScore.filter((item) => (item.song.playCount || 0) >= 3);
+  const familiar = pickDiverse(familiarCandidates, perGroupLimit, globalArtistCounts, 1);
+
+  const discoverCandidates = byScore.filter(
+    (item) => (item.song.playCount || 0) <= 1 && !familiar.some((f) => f.song.id === item.song.id)
+  );
+  const discover = pickDiverse(discoverCandidates, perGroupLimit, globalArtistCounts, 1);
   const familiarIds = new Set(familiar.map((item) => item.song.id));
   const discoverIds = new Set(discover.map((item) => item.song.id));
-  const extend = byScore
-    .filter((item) => !familiarIds.has(item.song.id) && !discoverIds.has(item.song.id))
-    .slice(0, perGroupLimit);
+  const extendCandidates = byScore.filter(
+    (item) => !familiarIds.has(item.song.id) && !discoverIds.has(item.song.id)
+  );
+  const extend = pickDiverse(extendCandidates, perGroupLimit, globalArtistCounts, 1);
 
   const makeGroup = (
     category: DailyRecommendationGroup["category"],
@@ -468,6 +592,20 @@ export function generateDailyRecommendationGroups(
       if (song && !usedIds.has(song.id)) {
         orderedSongs.push(song);
         usedIds.add(song.id);
+      }
+    }
+  }
+
+  // 保证连续两首曲目不会出现同一个歌手连续堆叠
+  for (let i = 0; i < orderedSongs.length - 1; i++) {
+    if (orderedSongs[i].artist && orderedSongs[i].artist === orderedSongs[i + 1].artist) {
+      const swapIdx = orderedSongs.findIndex(
+        (s, idx) => idx > i + 1 && s.artist !== orderedSongs[i].artist
+      );
+      if (swapIdx !== -1) {
+        const temp = orderedSongs[i + 1];
+        orderedSongs[i + 1] = orderedSongs[swapIdx];
+        orderedSongs[swapIdx] = temp;
       }
     }
   }
