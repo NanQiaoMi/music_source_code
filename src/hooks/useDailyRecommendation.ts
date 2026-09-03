@@ -104,57 +104,59 @@ export const useDailyRecommendation = () => {
   }, [history, listeningStats]);
 
   const [recommendationGroups, setRecommendationGroups] = useState<DailyRecommendationGroup[]>([]);
+  const [customMode, setCustomMode] = useState<DailyRecommendationMode | null>(null);
   const [recommendationMode, setRecommendationMode] = useState<DailyRecommendationMode | null>(
     null
   );
 
-  const generateRecommendationInternal = useCallback((): string[] => {
-    if (songs.length === 0) return [];
+  const generateRecommendationInternal = useCallback(
+    (customMode?: DailyRecommendationMode): string[] => {
+      if (songs.length === 0) return [];
 
-    const { negativeFeedback } = useRecommendationStore.getState();
-    const negSongIds = new Set(negativeFeedback.map((f) => f.songId));
-    const negArtists = new Set(
-      negativeFeedback.filter((f) => f.artist).map((f) => f.artist?.toLowerCase().trim())
-    );
-    const negGenres = new Set(
-      negativeFeedback.filter((f) => f.genre).map((f) => f.genre?.toLowerCase().trim())
-    );
+      const { negativeFeedback } = useRecommendationStore.getState();
+      const negSongIds = new Set(negativeFeedback.map((f) => f.songId));
+      const negArtists = new Set(
+        negativeFeedback.filter((f) => f.artist).map((f) => f.artist?.toLowerCase().trim())
+      );
+      const negGenres = new Set(
+        negativeFeedback.filter((f) => f.genre).map((f) => f.genre?.toLowerCase().trim())
+      );
 
-    const filteredSongs = songs.filter((s) => {
-      if (negSongIds.has(s.id)) return false;
-      if (s.artist && negArtists.has(s.artist.toLowerCase().trim())) return false;
-      if (s.genre && negGenres.has(s.genre.toLowerCase().trim())) return false;
-      return true;
-    });
-    const sourceSongs = filteredSongs.length > 0 ? filteredSongs : songs;
+      const filteredSongs = songs.filter((s) => {
+        if (negSongIds.has(s.id)) return false;
+        if (s.artist && negArtists.has(s.artist.toLowerCase().trim())) return false;
+        if (s.genre && negGenres.has(s.genre.toLowerCase().trim())) return false;
+        return true;
+      });
+      const sourceSongs = filteredSongs.length > 0 ? filteredSongs : songs;
 
-    const topArtists = getTopArtists()
-      .slice(0, 5)
-      .map((a) => a.artist);
-    const topGenres = (listeningStats.genreDistribution || []).slice(0, 5).map((g) => g.genre);
-    const recentSongs = history.slice(0, 20).map((s) => ({
-      id: s.id,
-      title: s.title,
-      artist: s.artist,
-      album: s.album,
-      duration: s.duration,
-      cover: s.cover,
-      source: "local" as const,
-    }));
-    const playCounts = new Map(
-      (listeningStats.topSongs || []).map((item) => [item.song.id, item.playCount])
-    );
+      const topArtists = getTopArtists()
+        .slice(0, 5)
+        .map((a) => a.artist);
+      const topGenres = (listeningStats.genreDistribution || []).slice(0, 5).map((g) => g.genre);
+      const recentSongs = history.slice(0, 20).map((s) => ({
+        id: s.id,
+        title: s.title,
+        artist: s.artist,
+        album: s.album,
+        duration: s.duration,
+        cover: s.cover,
+        source: "local" as const,
+      }));
+      const playCounts = new Map(
+        (listeningStats.topSongs || []).map((item) => [item.song.id, item.playCount])
+      );
 
-    const songsWithCount = sourceSongs.map((song) => ({
-      ...song,
-      playCount: playCounts.get(song.id) || 0,
-      lastPlayedAt: history.find((h) => h.id === song.id) ? Date.now() : undefined,
-      addedAt: song.addedAt,
-    }));
+      const songsWithCount = sourceSongs.map((song) => ({
+        ...song,
+        playCount: playCounts.get(song.id) || 0,
+        lastPlayedAt: history.find((h) => h.id === song.id) ? Date.now() : undefined,
+        addedAt: song.addedAt,
+      }));
 
-    const activeMode = customMode || getDailyRecommendationMode();
-    const favorites = useFavoritesStore.getState().favorites || [];
-    const favoriteSongIds = new Set(favorites.map((f) => f.id));
+      const activeMode = customMode || getDailyRecommendationMode();
+      const favorites = useFavoritesStore.getState().favorites || [];
+      const favoriteSongIds = new Set<string>(favorites.map((f: Song) => f.id));
 
     const context = {
       recentSongs,
@@ -254,13 +256,32 @@ export const useDailyRecommendation = () => {
     [recommendation]
   );
 
+  const switchMode = useCallback(
+    (newMode: DailyRecommendationMode) => {
+      setCustomMode(newMode);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(RECOMMENDATION_KEY);
+      }
+      setIsLoading(true);
+      setTimeout(() => {
+        const newSongIds = generateRecommendationInternal();
+        saveRecommendationToStorage(newSongIds);
+        setRecommendationSongIds(newSongIds);
+        setIsLoading(false);
+      }, 100);
+    },
+    [generateRecommendationInternal, saveRecommendationToStorage]
+  );
+
   return {
     recommendation,
     isLoading,
     refreshRecommendation,
+    switchMode,
     playAll,
     hasRecommendation: recommendation && recommendation.length > 0,
     recommendationGroups,
     recommendationMode,
+    availableModes: AVAILABLE_RECOMMENDATION_MODES,
   };
 };
