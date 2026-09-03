@@ -33,6 +33,7 @@ import {
 } from "@/services/networkAudioCache";
 import { triggerBackgroundCache } from "@/hooks/useNetworkAudioCache";
 import { audioPrefetcher } from "@/lib/audio/audioPrefetcher";
+import { BlobUrlRegistry } from "@/services/BlobUrlRegistry";
 import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
 import { useUserAccountStore, isPlatformLoggedIn, PlatformType } from "@/store/userAccountStore";
@@ -142,7 +143,7 @@ export function getPlayableStreamUrl(rawUrl: string | null | undefined): string 
 function stopForMissingAudioSource(audio: HTMLAudioElement): void {
   audio.pause();
   if (currentAudioUrlRef.current?.startsWith("blob:")) {
-    URL.revokeObjectURL(currentAudioUrlRef.current);
+    BlobUrlRegistry.getInstance().revoke(currentAudioUrlRef.current);
   }
   currentAudioUrlRef.current = null;
   currentSongIdRef.current = null;
@@ -1006,7 +1007,10 @@ export const useAudioPlayer = () => {
               const blob = new Blob([offlineRecord.fileData], {
                 type: offlineRecord.mimeType || "audio/mpeg",
               });
-              const blobUrl = URL.createObjectURL(blob);
+              const blobUrl = BlobUrlRegistry.getInstance().register(
+                blob,
+                `offline_${currentSong.id}`
+              );
               audioUrl = blobUrl;
               currentAudioUrlRef.current = blobUrl;
               isOfflineDirectHit = true;

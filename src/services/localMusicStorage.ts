@@ -1,6 +1,8 @@
 // Local Music & Offline Audio Storage Service using IndexedDB
 // This provides persistent storage for local music and offline downloaded network songs
 
+import { BlobUrlRegistry } from "./BlobUrlRegistry";
+
 const DB_NAME = "VibeMusicDB";
 const DB_VERSION = 2;
 const STORE_NAME = "localMusic";
@@ -261,7 +263,7 @@ export const createBlobUrlFromStoredMusic = (music: StoredMusic): string => {
   try {
     const mimeType = music.fileType || "audio/mpeg";
     const blob = music.fileData instanceof Blob ? music.fileData : new Blob([music.fileData], { type: mimeType });
-    return URL.createObjectURL(blob);
+    return BlobUrlRegistry.getInstance().register(blob, `stored_${music.id}`);
   } catch (e) {
     console.error("Failed to create blob URL from stored music:", e);
     return "";
@@ -273,7 +275,7 @@ export const createBlobUrlFromOfflineAudio = (record: OfflineAudioRecord): strin
   try {
     const mimeType = record.mimeType || "audio/mpeg";
     const blob = record.fileData instanceof Blob ? record.fileData : new Blob([record.fileData], { type: mimeType });
-    return URL.createObjectURL(blob);
+    return BlobUrlRegistry.getInstance().register(blob, `offline_${record.songId}`);
   } catch (e) {
     console.error("Failed to create blob URL from offline audio:", e);
     return "";
