@@ -3,6 +3,7 @@ import { useEmotionStore } from "@/store/emotionStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useQueueStore } from "@/store/queueStore";
+import { AudioContextWatchdog } from "@/lib/audio/AudioContextWatchdog";
 
 /**
  * bootstrapApp - Orchestrates the startup sequence of the application.
@@ -45,6 +46,9 @@ export async function bootstrapApp() {
 
     useEmotionStore.getState().initializeEmotions();
     console.log("[Bootstrap] Emotion engine ready.");
+
+    // 启动音频硬件自愈与系统健康巡检守卫
+    AudioContextWatchdog.getInstance().start();
 
     console.log("[Bootstrap] Application successfully bootstrapped.");
     return true;
