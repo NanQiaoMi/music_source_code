@@ -16,6 +16,7 @@ export class AudioEngine {
   private sourceNodes: Map<HTMLAudioElement, MediaElementAudioSourceNode> = new Map();
   private eqNodes: BiquadFilterNode[] = [];
   private isInitialized = false;
+  private isEQEnabled = false;
 
   private static EQ_FREQUENCIES = [
     20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600,
@@ -93,10 +94,31 @@ export class AudioEngine {
   }
 
   /**
-   * Returns the first node in the EQ chain.
+   * Returns the first node in the EQ chain, or masterGain if EQ is disabled.
    */
   public getEQChainEntry(): AudioNode | null {
-    return this.eqNodes.length > 0 ? this.eqNodes[0] : this.masterGain;
+    if (this.isEQEnabled && this.eqNodes.length > 0) {
+      return this.eqNodes[0];
+    }
+    return this.masterGain;
+  }
+
+  public setEQEnabled(enabled: boolean): void {
+    if (this.isEQEnabled === enabled) {
+      return;
+    }
+    this.isEQEnabled = enabled;
+    for (const sourceNode of this.sourceNodes.values()) {
+      try {
+        sourceNode.disconnect();
+      } catch {
+        // Ignore disconnect errors if node is not connected
+      }
+      const target = this.getEQChainEntry();
+      if (target) {
+        sourceNode.connect(target);
+      }
+    }
   }
 
   /**

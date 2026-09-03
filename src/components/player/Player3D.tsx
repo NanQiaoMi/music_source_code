@@ -303,7 +303,6 @@ CoverWith3DEffect.displayName = "CoverWith3DEffect";
 export const Player3D: React.FC = () => {
   const shouldReduceMotion = useReducedMotion();
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentTime = useAudioStore((state) => state.currentTime);
   const audioDuration = useAudioStore((state) => state.duration);
   const currentSong = useAudioStore((state) => state.currentSong);
   const duration = audioDuration || currentSong?.duration || 0;
@@ -477,10 +476,9 @@ export const Player3D: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.03] to-transparent pointer-events-none" />
 
             <div className="relative z-10">
-              {/* 进度条 */}
+              {/* 进度条 (隔离叶子自更新) */}
               <div className="mb-2">
                 <GlassProgressBar
-                  currentTime={currentTime}
                   duration={duration}
                   bufferedRanges={bufferedRanges}
                   abLoopEnabled={abLoopEnabled}

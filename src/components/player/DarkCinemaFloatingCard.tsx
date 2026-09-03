@@ -12,22 +12,33 @@ interface DarkCinemaFloatingCardProps {
   onExpand?: () => void;
 }
 
+const DarkCinemaProgressBar: React.FC<{ duration: number }> = React.memo(({ duration }) => {
+  const currentTime = useAudioStore((state) => state.currentTime);
+  const progressPercent = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
+
+  return (
+    <div className="relative w-full h-1 bg-white/15 rounded-full overflow-hidden">
+      <div
+        className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-purple-500 via-cyan-400 to-white rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)] transition-all duration-150"
+        style={{ width: `${progressPercent}%` }}
+      />
+    </div>
+  );
+});
+DarkCinemaProgressBar.displayName = "DarkCinemaProgressBar";
+
 export const DarkCinemaFloatingCard: React.FC<DarkCinemaFloatingCardProps> = ({
   className = "",
   onExpand,
 }) => {
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentTime = useAudioStore((state) => state.currentTime);
   const audioDuration = useAudioStore((state) => state.duration);
   const currentSong = useAudioStore((state) => state.currentSong);
   const duration = audioDuration || currentSong?.duration || 0;
 
-
   const title = currentSong?.title || "后来你好吗";
   const artist = currentSong?.artist || "A-Lin [music]";
   const sourceLabel = currentSong?.album || "本地文件";
-
-  const progressPercent = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
 
   const handleToggle = useCallback(
     (e: React.MouseEvent) => {
@@ -94,13 +105,8 @@ export const DarkCinemaFloatingCard: React.FC<DarkCinemaFloatingCardProps> = ({
           )}
         </button>
 
-        {/* 细发光进度条 */}
-        <div className="relative w-full h-1 bg-white/15 rounded-full overflow-hidden">
-          <div
-            className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-purple-500 via-cyan-400 to-white rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)] transition-all duration-150"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
+        {/* 细发光进度条 (独立叶子隔离渲染) */}
+        <DarkCinemaProgressBar duration={duration} />
       </div>
     </motion.div>
   );
