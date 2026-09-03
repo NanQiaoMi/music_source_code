@@ -80,3 +80,9 @@ export {
   MINERADIO_LIQUID_GLASS_STYLE,
 } from "./LiquidGlassFilter";
 
+export {
+  FloatingSpeedControl,
+  type FloatingSpeedControlProps,
+} from "./FloatingSpeedControl";
+
+

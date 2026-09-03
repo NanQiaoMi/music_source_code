@@ -11,6 +11,7 @@ import { useBilingualLyricParser } from "@/hooks/useBilingualLyricParser";
 import { SkipBack, SkipForward, Mic2, ChevronUp, Play, Pause, Heart } from "lucide-react";
 import type { DragHandlers } from "./useFloatingDragPhysics";
 import { Song } from "@/types/song";
+import { FloatingSpeedControl } from "./FloatingSpeedControl";
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
@@ -184,9 +185,9 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
     >
       {/* 纯 CSS 硬件加速暗黑毛玻璃胶囊 (360px x 56px) */}
       <div
-        className="drag-handle relative flex items-center justify-between gap-3 px-3.5 py-2 rounded-full shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.25)] border border-white/[0.18] transition-all"
+        className="drag-handle relative flex items-center justify-between gap-2.5 px-3 py-2 rounded-full shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.25)] border border-white/[0.18] transition-all"
         style={{
-          width: 360,
+          width: 388,
           height: 56,
           background:
             "linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(20, 20, 26, 0.88) 100%)",
@@ -260,6 +261,9 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
           >
             <SkipForward className="w-3.5 h-3.5" />
           </button>
+
+          {/* 播放速度图标 (平时为图标，点击展开气泡菜单) */}
+          <FloatingSpeedControl menuPosition="top" buttonSize="sm" />
 
           {/* 收藏红心 */}
           <FastHeartButton songId={currentSong.id} />

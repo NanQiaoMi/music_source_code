@@ -15,6 +15,7 @@ import {
   Shuffle,
   Disc3,
 } from "lucide-react";
+import { FloatingSpeedControl } from "./FloatingSpeedControl";
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
@@ -418,6 +419,7 @@ export interface FloatingControlsProps {
   compact?: boolean;
   showShuffleAndLoop?: boolean;
   showFavorite?: boolean;
+  showSpeedControl?: boolean;
 }
 
 const LOOP_SEQUENCE: LoopMode[] = ["none", "all", "single", "shuffle"];
@@ -427,6 +429,7 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
   compact = false,
   showShuffleAndLoop = false,
   showFavorite = true,
+  showSpeedControl = true,
 }) => {
   const audioIsPlaying = useAudioStore((state) => state.isPlaying);
   const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
@@ -547,7 +550,15 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
       )}
 
 
-      {/* 6. Heart Favorite Button */}
+      {/* 6. Playback Speed Control (Icon by default, click to expand) */}
+      {showSpeedControl && (
+        <FloatingSpeedControl
+          menuPosition="top"
+          buttonSize={compact ? "sm" : "md"}
+        />
+      )}
+
+      {/* 7. Heart Favorite Button */}
       {showFavorite && <HeartFavoriteButton size={compact ? 16 : 18} />}
     </div>
   );

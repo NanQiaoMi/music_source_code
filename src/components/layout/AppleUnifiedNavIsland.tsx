@@ -28,6 +28,7 @@ import {
   Activity,
   Scissors,
   HardDrive,
+  Settings,
 } from "lucide-react";
 import { useUIStore, PanelName } from "@/store/uiStore";
 import { useGestureStore } from "@/store/gestureStore";
@@ -496,6 +497,15 @@ export function AppleUnifiedNavIsland({
             title="键盘快捷键"
           >
             <Keyboard className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openPanel("settings")}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.12] transition-all hover:scale-105 active:scale-95"
+            title="偏好设置"
+          >
+            <Settings className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

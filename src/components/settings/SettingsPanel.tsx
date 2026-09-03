@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
@@ -211,7 +211,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <span className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wider">
               播放速度
             </span>
-            <span className="text-[11px] font-mono text-[#2997ff]">{playbackRate.toFixed(2)}x</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono text-[#2997ff]">{playbackRate.toFixed(2)}x</span>
+              {Math.abs(playbackRate - 1.0) > 0.01 && (
+                <button
+                  type="button"
+                  onClick={() => setPlaybackRate(1.0)}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white/90 font-medium transition-all border border-white/10"
+                >
+                  恢复原速
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.06] space-y-3">
@@ -221,7 +232,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   key={speed}
                   onClick={() => setPlaybackRate(speed)}
                   className={`py-1.5 rounded-lg text-[11px] font-mono font-medium transition-colors ${
-                    playbackRate === speed
+                    Math.abs(playbackRate - speed) < 0.01
                       ? "bg-[#0071e3] text-white shadow-sm font-semibold"
                       : "bg-white/[0.04] text-[#86868b] hover:text-white"
                   }`}

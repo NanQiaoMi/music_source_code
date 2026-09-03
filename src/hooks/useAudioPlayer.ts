@@ -90,10 +90,15 @@ function ensureAudioElements(): HTMLAudioElement | null {
   if (!audioInstance) {
     audioInstance = new Audio();
     audioInstance.crossOrigin = "anonymous";
+    const initialRate = usePlayerStore.getState().playbackRate || 1.0;
+    audioInstance.defaultPlaybackRate = initialRate;
+    audioInstance.playbackRate = initialRate;
     audioElementRef.current = audioInstance;
 
     secondaryAudioInstance = new Audio();
     secondaryAudioInstance.crossOrigin = "anonymous";
+    secondaryAudioInstance.defaultPlaybackRate = initialRate;
+    secondaryAudioInstance.playbackRate = initialRate;
     secondaryElementRef.current = secondaryAudioInstance;
   }
 
@@ -278,6 +283,14 @@ const attachListeners = (
     useAudioStore.setState({ isLoading: false });
     usePlayerStore.setState({ isLoading: false });
 
+    // 播放速度恢复：确保流媒体元数据解析后精准恢复用户设置的目标倍速
+    const currentRate =
+      usePlayerStore.getState().playbackRate || useAudioStore.getState().playbackRate || 1.0;
+    audio.defaultPlaybackRate = currentRate;
+    if (audio.playbackRate !== currentRate) {
+      audio.playbackRate = currentRate;
+    }
+
     // 断点续播恢复：如果本地持久化记录了上次播放秒数，且尚未开始播放，则安全恢复到该断点
     const savedTime = usePlayerStore.getState().currentTime || useAudioStore.getState().currentTime;
     if (
@@ -372,6 +385,11 @@ const attachListeners = (
     }
     useAudioStore.getState().setIsLoading(false);
     usePlayerStore.getState().setIsLoading(false);
+    const currentRate =
+      usePlayerStore.getState().playbackRate || useAudioStore.getState().playbackRate || 1.0;
+    if (audio.playbackRate !== currentRate) {
+      audio.playbackRate = currentRate;
+    }
     if (isPlayingRef.current) {
       audio.play().catch(handlePlayError);
     }
@@ -601,6 +619,18 @@ const attachListeners = (
     }
   };
 
+  const onRateChange = () => {
+    const currentRate = audio.playbackRate;
+    if (Number.isFinite(currentRate) && currentRate > 0) {
+      const rounded = Math.round(currentRate * 100) / 100;
+      const storeRate = usePlayerStore.getState().playbackRate || 1.0;
+      if (Math.abs(storeRate - rounded) > 0.01) {
+        usePlayerStore.setState({ playbackRate: rounded });
+        useAudioStore.setState({ playbackRate: rounded });
+      }
+    }
+  };
+
   audio.addEventListener("timeupdate", onTimeUpdate);
   audio.addEventListener("loadedmetadata", onLoadedMetadata);
   audio.addEventListener("durationchange", onDurationChange);
@@ -612,6 +642,7 @@ const attachListeners = (
   audio.addEventListener("pause", onPause);
   audio.addEventListener("ended", onEnded);
   audio.addEventListener("error", onError);
+  audio.addEventListener("ratechange", onRateChange);
 
   audio._vibeListenersAttached = true;
   audio._vibeCleanup = () => {
@@ -630,6 +661,7 @@ const attachListeners = (
     audio.removeEventListener("pause", onPause);
     audio.removeEventListener("ended", onEnded);
     audio.removeEventListener("error", onError);
+    audio.removeEventListener("ratechange", onRateChange);
     audio._vibeListenersAttached = false;
     audio._vibeCleanup = undefined;
   };
@@ -1238,14 +1270,20 @@ export const useAudioPlayer = () => {
           const fromAudio = audio;
           const toAudio = secondaryElementRef.current;
 
+          const targetRate = usePlayerStore.getState().playbackRate || 1.0;
           toAudio.src = streamUrl;
+          toAudio.defaultPlaybackRate = targetRate;
+          toAudio.playbackRate = targetRate;
           mixer.crossfade(fromAudio, toAudio, duration).catch(handlePlayError);
 
           audioElementRef.current = toAudio;
           secondaryElementRef.current = fromAudio;
           setLocalAudioElement(toAudio);
         } else {
+          const targetRate = usePlayerStore.getState().playbackRate || 1.0;
           audio.src = streamUrl;
+          audio.defaultPlaybackRate = targetRate;
+          audio.playbackRate = targetRate;
           audio.load();
           if (targetPlaying) {
             audio.play().catch(handlePlayError);
@@ -1309,8 +1347,14 @@ export const useAudioPlayer = () => {
   }, [volume, isMuted]);
 
   useEffect(() => {
+    const rate = playbackRate || 1.0;
     if (audioElementRef.current) {
-      audioElementRef.current.playbackRate = playbackRate;
+      audioElementRef.current.defaultPlaybackRate = rate;
+      audioElementRef.current.playbackRate = rate;
+    }
+    if (secondaryElementRef.current) {
+      secondaryElementRef.current.defaultPlaybackRate = rate;
+      secondaryElementRef.current.playbackRate = rate;
     }
   }, [playbackRate]);
 

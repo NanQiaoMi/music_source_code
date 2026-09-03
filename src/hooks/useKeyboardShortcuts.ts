@@ -217,15 +217,27 @@ export const useKeyboardShortcuts = () => {
 
       if (matchKeys(e, bind("speed-up"))) {
         e.preventDefault();
-        audioStore.setPlaybackRate(Math.min(2.0, audioStore.playbackRate + 0.25));
-        uiStore.showToast?.(`播放速度: ${audioStore.playbackRate.toFixed(2)}x`, "info");
+        const nextRate = Math.min(2.0, Math.round((audioStore.playbackRate + 0.25) * 100) / 100);
+        audioStore.setPlaybackRate(nextRate);
+        uiStore.showToast?.(`播放速度: ${nextRate.toFixed(2)}x`, "info");
         return;
       }
 
       if (matchKeys(e, bind("speed-down"))) {
         e.preventDefault();
-        audioStore.setPlaybackRate(Math.max(0.5, audioStore.playbackRate - 0.25));
-        uiStore.showToast?.(`播放速度: ${audioStore.playbackRate.toFixed(2)}x`, "info");
+        const nextRate = Math.max(0.5, Math.round((audioStore.playbackRate - 0.25) * 100) / 100);
+        audioStore.setPlaybackRate(nextRate);
+        uiStore.showToast?.(`播放速度: ${nextRate.toFixed(2)}x`, "info");
+        return;
+      }
+
+      if (
+        matchKeys(e, bind("speed-reset")) ||
+        ((e.ctrlKey || e.metaKey) && (e.key === "0" || e.code === "Digit0"))
+      ) {
+        e.preventDefault();
+        audioStore.resetPlaybackRate();
+        uiStore.showToast?.("播放速度已恢复: 1.00x (原速)", "info");
         return;
       }
 
