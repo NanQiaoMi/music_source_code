@@ -3,7 +3,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Gauge, RotateCcw } from "lucide-react";
+import { Gauge, RotateCcw, Minus, Plus } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
@@ -160,10 +160,10 @@ export const FloatingSpeedControl: React.FC<FloatingSpeedControlProps> = ({
             transition={{ type: "spring", stiffness: 460, damping: 30 }}
             className={`absolute ${
               menuPosition === "top" ? "bottom-full mb-3" : "top-full mt-3"
-            } right-0 z-50 w-[316px] p-4 rounded-3xl select-none shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.22)] border border-white/[0.18] flex flex-col gap-3.5`}
+            } -right-10 z-50 w-[298px] p-3.5 rounded-3xl select-none font-sans shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_1.5px_rgba(255,255,255,0.22)] border border-white/[0.18] flex flex-col gap-2.5`}
             style={{
               background:
-                "linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(20, 20, 26, 0.90) 100%)",
+                "linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(20, 20, 26, 0.92) 100%)",
               backdropFilter: "blur(32px) saturate(190%)",
               WebkitBackdropFilter: "blur(32px) saturate(190%)",
             }}
@@ -175,31 +175,32 @@ export const FloatingSpeedControl: React.FC<FloatingSpeedControlProps> = ({
 
             {/* 1. 顶栏：标题 + 状态读数 + 恢复原速按钮 */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Gauge className="w-4 h-4 text-[#2997ff]" />
-                <span className="text-[13px] font-semibold text-white tracking-tight">播放速度</span>
+              <div className="flex items-center gap-1.5">
+                <Gauge className="w-3.5 h-3.5 text-[#2997ff]" />
+                <span className="text-xs font-semibold text-white tracking-tight">播放速度</span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono font-medium text-[#2997ff] bg-white/[0.06] px-2 py-0.5 rounded-full border border-white/[0.08]">
-                  {playbackRate.toFixed(2)}x
-                </span>
-
+              <div className="flex items-center gap-1.5">
                 {isCustomSpeed ? (
                   <motion.button
                     type="button"
                     data-testid="speed-reset-button"
                     onClick={handleReset}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white/90 font-medium transition-all border border-white/15 cursor-pointer shadow-sm"
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    className="flex items-center gap-1.5 text-[11px] px-2.5 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer shadow-sm font-sans"
                     title="恢复为 1.00x 原速"
                   >
-                    <RotateCcw className="w-2.5 h-2.5 text-cyan-300" />
-                    <span>恢复原速</span>
+                    <span className="font-semibold tabular-nums text-[#2997ff]">{playbackRate.toFixed(2)}x</span>
+                    <span className="flex items-center gap-1 text-[10px] text-white/80">
+                      <RotateCcw className="w-2.5 h-2.5 text-cyan-300" />
+                      恢复原速
+                    </span>
                   </motion.button>
                 ) : (
-                  <span className="text-[11px] text-white/40 font-medium px-1">标准原速</span>
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-white/[0.06] text-white/60 border border-white/[0.08] tabular-nums font-medium font-sans">
+                    1.00x 标准原速
+                  </span>
                 )}
               </div>
             </div>
@@ -214,34 +215,34 @@ export const FloatingSpeedControl: React.FC<FloatingSpeedControlProps> = ({
                     type="button"
                     data-testid={`speed-preset-${speed}`}
                     onClick={() => handleSelectSpeed(speed)}
-                    className={`py-1.5 rounded-xl text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap ${
+                    className={`py-1.5 rounded-xl text-[11px] font-sans font-medium transition-all cursor-pointer whitespace-nowrap ${
                       isSelected
-                        ? "bg-[#0071e3] text-white shadow-sm font-semibold scale-[1.02]"
+                        ? "bg-[#0071e3] text-white shadow-[0_2px_8px_rgba(0,113,227,0.4)] font-semibold scale-[1.02]"
                         : "text-white/60 hover:text-white hover:bg-white/[0.06]"
                     }`}
                   >
-                    {speed === 1.0 ? "1.0x" : `${speed}x`}
+                    {speed === 1.0 ? "1.0x" : speed === 2.0 ? "2.0x" : `${speed}x`}
                   </button>
                 );
               })}
             </div>
 
             {/* 3. 无级连续滑动条 + 微调步进按钮 */}
-            <div className="space-y-2 pt-1 border-t border-white/[0.08]">
-              <div className="flex items-center gap-2.5">
+            <div className="space-y-1.5 pt-1 border-t border-white/[0.08]">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   data-testid="speed-step-minus"
                   onClick={() => handleStepSpeed(-0.05)}
-                  className="w-6 h-6 rounded-full bg-white/[0.06] hover:bg-white/[0.15] active:scale-90 text-white/70 hover:text-white flex items-center justify-center text-xs font-bold border border-white/[0.08] transition-all cursor-pointer flex-shrink-0"
+                  className="w-6 h-6 rounded-full text-white/50 hover:text-white hover:bg-white/10 active:scale-90 flex items-center justify-center transition-all cursor-pointer flex-shrink-0"
                   title="微调减速 -0.05x"
                 >
-                  -
+                  <Minus className="w-3.5 h-3.5" />
                 </button>
 
                 <div className="relative flex-1 flex items-center h-5">
                   {/* 背景轨道与渐变填充 */}
-                  <div className="absolute inset-x-0 h-1.5 rounded-full bg-white/[0.12] pointer-events-none overflow-hidden">
+                  <div className="absolute inset-x-0 h-1 rounded-full bg-white/[0.12] pointer-events-none overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-[#0071e3] to-[#2997ff] rounded-full transition-all duration-75"
                       style={{ width: `${progressPercent}%` }}
@@ -250,7 +251,7 @@ export const FloatingSpeedControl: React.FC<FloatingSpeedControlProps> = ({
 
                   {/* 1.00x 原速中心刻度指示点 (33.33% 位置) */}
                   <div
-                    className="absolute top-1/2 -translate-y-1/2 w-1 h-3 rounded-full bg-white/40 pointer-events-none -ml-0.5"
+                    className="absolute top-1/2 -translate-y-1/2 w-0.5 h-2.5 rounded-full bg-white/40 pointer-events-none -ml-0.5"
                     style={{ left: "33.33%" }}
                     title="1.00x 原速锚点"
                   />
@@ -267,7 +268,7 @@ export const FloatingSpeedControl: React.FC<FloatingSpeedControlProps> = ({
                       const val = parseFloat(e.target.value);
                       setAudioPlaybackRate(val);
                     }}
-                    className="w-full h-5 appearance-none bg-transparent cursor-pointer z-10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(0,0,0,0.5),0_0_0_2px_rgba(41,151,255,0.8)] [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:active:scale-95 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-[0_2px_8px_rgba(0,0,0,0.5),0_0_0_2px_rgba(41,151,255,0.8)]"
+                    className="w-full h-5 appearance-none bg-transparent cursor-pointer z-10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_2px_6px_rgba(0,0,0,0.4),0_0_0_2px_rgba(41,151,255,0.7)] [&::-webkit-slider-thumb]:hover:scale-115 [&::-webkit-slider-thumb]:active:scale-95 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-[0_2px_6px_rgba(0,0,0,0.4),0_0_0_2px_rgba(41,151,255,0.7)]"
                   />
                 </div>
 
@@ -275,21 +276,21 @@ export const FloatingSpeedControl: React.FC<FloatingSpeedControlProps> = ({
                   type="button"
                   data-testid="speed-step-plus"
                   onClick={() => handleStepSpeed(0.05)}
-                  className="w-6 h-6 rounded-full bg-white/[0.06] hover:bg-white/[0.15] active:scale-90 text-white/70 hover:text-white flex items-center justify-center text-xs font-bold border border-white/[0.08] transition-all cursor-pointer flex-shrink-0"
+                  className="w-6 h-6 rounded-full text-white/50 hover:text-white hover:bg-white/10 active:scale-90 flex items-center justify-center transition-all cursor-pointer flex-shrink-0"
                   title="微调加速 +0.05x"
                 >
-                  +
+                  <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
 
               {/* 刻度底标 */}
-              <div className="flex justify-between items-center text-[10.5px] text-white/45 font-medium tabular-nums px-0.5">
+              <div className="flex justify-between items-center text-[10px] text-white/40 font-sans tabular-nums px-2">
                 <span>0.50x</span>
                 <span
                   className={`transition-colors cursor-pointer ${
                     Math.abs(playbackRate - 1.0) < 0.02
-                      ? "text-[#2997ff] font-semibold"
-                      : "hover:text-white/80"
+                      ? "text-[#2997ff] font-medium"
+                      : "hover:text-white/70"
                   }`}
                   onClick={() => setAudioPlaybackRate(1.0)}
                   title="点击设为 1.00x 原速"
@@ -301,8 +302,8 @@ export const FloatingSpeedControl: React.FC<FloatingSpeedControlProps> = ({
             </div>
 
             {/* 4. 底栏高保真 DSP 音质防护微标 */}
-            <div className="flex items-center justify-between text-[10.5px] text-white/40 pt-2 border-t border-white/[0.06]">
-              <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+            <div className="flex items-center justify-between text-[10px] text-white/40 pt-1.5 border-t border-white/[0.06] font-sans">
+              <div className="flex items-center gap-1.5 text-emerald-400/90 font-medium">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_4px_#34d399]" />
                 <span>DSP 原声音高实时校正已启用</span>
               </div>
