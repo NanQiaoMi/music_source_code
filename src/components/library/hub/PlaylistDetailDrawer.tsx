@@ -79,6 +79,36 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(800);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    let rafId: number | null = null;
+    const handleScroll = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        setScrollTop(el.scrollTop);
+        rafId = null;
+      });
+    };
+
+    const updateHeight = () => {
+      setViewportHeight(el.clientHeight || 800);
+    };
+
+    updateHeight();
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", updateHeight);
+
+    return () => {
+      el.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", updateHeight);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [isOpen]);
 
   // Unconditionally call store hooks
   const audioCurrentSong = useAudioStore((state) => state.currentSong);
@@ -365,6 +395,22 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
     if (count >= 10000) return `${(count / 10000).toFixed(1)}万`;
     return count.toString();
   };
+
+  const ITEM_HEIGHT = 56;
+  const OVERSCAN = 10;
+  const isVirtualized = filteredTracks.length > 60;
+  const heroOffset = 400;
+  const relativeScroll = Math.max(0, scrollTop - heroOffset);
+  const startIndex = isVirtualized
+    ? Math.max(0, Math.floor(relativeScroll / ITEM_HEIGHT) - OVERSCAN)
+    : 0;
+  const endIndex = isVirtualized
+    ? Math.min(filteredTracks.length, Math.ceil((relativeScroll + viewportHeight) / ITEM_HEIGHT) + OVERSCAN)
+    : filteredTracks.length;
+
+  const topPadding = isVirtualized ? startIndex * ITEM_HEIGHT : 0;
+  const bottomPadding = isVirtualized ? Math.max(0, (filteredTracks.length - endIndex) * ITEM_HEIGHT) : 0;
+  const visibleTracks = isVirtualized ? filteredTracks.slice(startIndex, endIndex) : filteredTracks;
 
   return (
     <AnimatePresence>
@@ -683,7 +729,9 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    {filteredTracks.map((song, idx) => {
+                    {topPadding > 0 && <div style={{ height: topPadding }} aria-hidden="true" />}
+                    {visibleTracks.map((song, sliceIdx) => {
+                      const idx = startIndex + sliceIdx;
                       const isCurrent = currentPlayingSong?.id === song.id;
                       const isSelected = selectedIds.has(song.id);
                       const isOffline = isSongOffline(song.id);
@@ -844,6 +892,7 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
                         </div>
                       );
                     })}
+                    {bottomPadding > 0 && <div style={{ height: bottomPadding }} aria-hidden="true" />}
                   </div>
                 )}
               </div>

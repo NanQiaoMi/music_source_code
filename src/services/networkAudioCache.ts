@@ -2,6 +2,8 @@
 // Caches network music (NetEase, Kuwo, QQ, etc.) to IndexedDB for offline playback
 // Uses LRU eviction: max 200 songs or 4 GB, whichever is reached first
 
+import { BlobUrlRegistry } from "./BlobUrlRegistry";
+
 const DB_NAME = "VibeNetworkAudioCacheDB";
 const DB_VERSION = 1;
 const AUDIO_STORE = "networkAudio";
@@ -64,7 +66,7 @@ export function createBlobUrlFromCache(cached: CachedNetworkAudio): string {
       cached.fileData instanceof Blob
         ? cached.fileData
         : new Blob([cached.fileData], { type: cached.fileType || "audio/mpeg" });
-    return URL.createObjectURL(blob);
+    return BlobUrlRegistry.getInstance().register(blob, `cached_${cached.songId}`);
   } catch (e) {
     console.warn("[NetworkAudioCache] Failed to create blob URL:", e);
     return "";
