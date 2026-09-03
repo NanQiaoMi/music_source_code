@@ -185,9 +185,9 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
     >
       {/* 纯 CSS 硬件加速暗黑毛玻璃胶囊 (360px x 56px) */}
       <div
-        className="drag-handle relative flex items-center justify-between gap-2.5 px-3 py-2 rounded-full shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.25)] border border-white/[0.18] transition-all"
+        className="drag-handle relative flex items-center justify-between gap-3 px-3.5 py-2 rounded-full shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.25)] border border-white/[0.18] transition-all"
         style={{
-          width: 388,
+          width: 404,
           height: 56,
           background:
             "linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(20, 20, 26, 0.88) 100%)",
@@ -224,7 +224,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
         </div>
 
         {/* 3. 右侧控制按钮组 (0ms 零延迟极速响应) */}
-        <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           {/* 歌词按钮 */}
           <button
             type="button"
