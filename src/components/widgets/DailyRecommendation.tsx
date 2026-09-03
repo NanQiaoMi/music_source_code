@@ -57,7 +57,8 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   const playQueue = useAudioStore((state) => state.playQueue);
   const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const togglePlay = useAudioStore((state) => state.togglePlay);
+  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const togglePlay = () => setIsPlaying(!isPlaying);
   const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
   const addNegativeFeedback = useRecommendationStore((state) => state.addNegativeFeedback);
   const clearNegativeFeedback = useRecommendationStore((state) => state.clearNegativeFeedback);

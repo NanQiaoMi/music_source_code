@@ -7,7 +7,9 @@ import { useAIStore } from "./aiStore";
 import { useAudioStore } from "./audioStore";
 import { useOfflineDownloadStore } from "./useOfflineDownloadStore";
 import { useUIStore } from "./uiStore";
-import { runAgentConversation } from "@/services/aiAgentService";
+import { useEmotionStore } from "./emotionStore";
+import { useFavoritesStore } from "./favoritesStore";
+import { runAgentConversation, MusicPlaybackContext } from "@/services/aiAgentService";
 import { aiAgentDb } from "@/lib/storage/aiAgentDb";
 
 export const DEFAULT_SUGGESTED_PROMPTS = [
@@ -21,7 +23,7 @@ export const INITIAL_GREETING_MESSAGE: AgentMessage = {
   id: "greeting",
   role: "assistant",
   content:
-    "你好！我是 MIMI 音乐找歌助手 🎵\n告诉我你想听什么，无论是歌名、歌手、某句模糊歌词、还是特定的心情与场景，我都能为你检索全网曲库并直接播放或下载！",
+    "你好！我是 MIMI 音乐策展人 🎵\n在音符流转间与你相遇。无论是某句朦胧歌词、此时此刻的心境流转，还是探索小众宝藏与黑胶意境，我都能为你全网淘取并即刻开播！",
   timestamp: Date.now(),
   status: "done",
 };
@@ -34,8 +36,129 @@ const DEFAULT_INITIAL_SESSION: AgentSessionMeta = {
   createdAt: Date.now(),
   updatedAt: Date.now(),
   messageCount: 1,
-  lastSnippet: "你好！我是 MIMI 音乐找歌助手 🎵",
+  lastSnippet: "你好！我是 MIMI 音乐策展人 🎵",
 };
+
+export function extractLyricsSnippet(lyrics: string, currentTime: number): string {
+  if (!lyrics) return "";
+  const lines = lyrics.split("\n");
+  const parsedLines: { time: number; text: string }[] = [];
+
+  for (const line of lines) {
+    const match = line.match(/\[(\d{2}):(\d{2})(?:\.(\d+))?\](.*)/);
+    if (match) {
+      const min = parseInt(match[1], 10);
+      const sec = parseInt(match[2], 10);
+      const ms = match[3] ? parseInt(match[3].slice(0, 2), 10) / 100 : 0;
+      const text = match[4].trim();
+      if (text) {
+        parsedLines.push({ time: min * 60 + sec + ms, text });
+      }
+    }
+  }
+
+  if (parsedLines.length === 0) {
+    return lines
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .slice(0, 4)
+      .map((l) => `> ${l}`)
+      .join("\n");
+  }
+
+  let activeIndex = 0;
+  for (let i = 0; i < parsedLines.length; i++) {
+    if (parsedLines[i].time <= currentTime) {
+      activeIndex = i;
+    } else {
+      break;
+    }
+  }
+
+  const startIndex = Math.max(0, activeIndex - 1);
+  const endIndex = Math.min(parsedLines.length, startIndex + 4);
+  return parsedLines
+    .slice(startIndex, endIndex)
+    .map((l) => `> ${l.text}`)
+    .join("\n");
+}
+
+export function getDynamicPlaybackContext(): MusicPlaybackContext {
+  const audioState = useAudioStore.getState();
+  const currentSong = audioState.currentSong;
+  const currentTime = audioState.currentTime || 0;
+  const isPlaying = audioState.isPlaying;
+
+  // 1. 时段计算
+  const now = new Date();
+  const hour = now.getHours();
+  let periodLabel = "深夜时分";
+  let ambientMood = "万籁俱寂，适宜聆听沉静、温润或内省的声响";
+  if (hour >= 5 && hour < 9) {
+    periodLabel = "清晨曙光";
+    ambientMood = "晨光初醒，适合明亮、清新、轻快的唤醒节奏";
+  } else if (hour >= 9 && hour < 12) {
+    periodLabel = "上午专注";
+    ambientMood = "精力饱满，适合平稳、低保真 Lo-Fi 或专注器乐";
+  } else if (hour >= 12 && hour < 14) {
+    periodLabel = "午后小憩";
+    ambientMood = "惬意慵懒，适宜舒缓、轻柔、微风般的旋律";
+  } else if (hour >= 14 && hour < 18) {
+    periodLabel = "午后时光";
+    ambientMood = "阳光正好，适宜律动、爵士放克或流光流行";
+  } else if (hour >= 18 && hour < 22) {
+    periodLabel = "黄昏与入夜";
+    ambientMood = "落日与霓虹交织，适宜都市流行、R&B 或微醺氛围";
+  } else if (hour >= 22 || hour < 2) {
+    periodLabel = "深夜独处";
+    ambientMood = "夜色渐浓，适宜木吉他民谣、氛围环境音或深情低语";
+  }
+
+  // 2. 歌词切片
+  let lyricsSnippet: string | undefined = undefined;
+  if (currentSong?.lyrics) {
+    lyricsSnippet = extractLyricsSnippet(currentSong.lyrics, currentTime);
+  }
+
+  // 3. 情感坐标
+  const emotionState = useEmotionStore.getState();
+  const point = currentSong ? emotionState.points.find((p) => p.id === currentSong.id) : null;
+  const emotion = point ? { x: point.x, y: point.y } : null;
+
+  // 4. 用户偏好
+  const favState = useFavoritesStore.getState();
+  const favorites = favState.favorites || [];
+  const recentArtists = Array.from(new Set(favorites.map((s) => s.artist).filter(Boolean))).slice(
+    0,
+    5
+  );
+
+  return {
+    currentSong: currentSong
+      ? {
+          id: currentSong.id,
+          title: currentSong.title,
+          artist: currentSong.artist,
+          album: currentSong.album,
+          duration: audioState.duration,
+          currentTime,
+          isPlaying,
+          lyricsSnippet,
+          source: currentSong.source,
+        }
+      : null,
+    emotion,
+    timeOfDay: {
+      hour,
+      periodLabel,
+      ambientMood,
+    },
+    userPreferences: {
+      favoriteCount: favorites.length,
+      topArtists: recentArtists,
+    },
+  };
+}
 
 let currentAbortController: AbortController | null = null;
 
@@ -324,10 +447,12 @@ export const useAIAgentStore = create<AIAgentState>()(
         };
 
         try {
+          const playbackContext = getDynamicPlaybackContext();
           const resultMessages = await runAgentConversation({
             messages: updatedWithUser,
             config: activeConfig,
             fallbackConfigs,
+            playbackContext,
             onUpdate: (updatedMessages, currentToolName) => {
               pendingUpdate = { msgs: updatedMessages, tool: currentToolName };
               if (pendingRafId === null && typeof requestAnimationFrame !== "undefined") {

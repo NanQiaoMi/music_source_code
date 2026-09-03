@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MultiPlatformAccountModal } from "./MultiPlatformAccountModal";
@@ -29,45 +29,68 @@ vi.mock("@/store/queueStore", () => ({
   ),
 }));
 
-vi.mock("@/store/playlistStore", () => ({
-  usePlaylistStore: {
-    getState: vi.fn(() => ({
-      importSongs: vi.fn(),
-    })),
+const mockAccountState = {
+  activePlatform: "netease",
+  neteaseUser: {
+    loggedIn: true,
+    nickname: "猫猫的小毛毛呀",
+    avatarUrl: "https://example.com/avatar.jpg",
+    vipLabel: "黑胶 SVIP",
   },
+  qqUser: { loggedIn: false },
+  kugouUser: { loggedIn: false },
+  kuwoUser: { loggedIn: false },
+  qishuiUser: { loggedIn: false },
+  userPlaylists: [
+    {
+      id: "pl-1",
+      name: "我喜欢的音乐",
+      trackCount: 929,
+      playCount: 10000,
+      coverImgUrl: "https://example.com/cover1.jpg",
+      source: "netease",
+      isHeart: true,
+    },
+    {
+      id: "pl-2",
+      name: "剪辑用",
+      trackCount: 65,
+      playCount: 500,
+      coverImgUrl: "https://example.com/cover2.jpg",
+      source: "netease",
+      isHeart: false,
+    },
+  ],
+  isLoadingPlaylists: false,
+  qrImg: null,
+  qrStatus: 801,
+  qrCountdown: 120,
+  qrError: null,
+  isPollingQr: false,
+  fetchLoginStatus: vi.fn(),
+  generateNeteaseQr: vi.fn(),
+  checkNeteaseQr: vi.fn(),
+  stopQrPolling: vi.fn(),
+  loginWithCookie: vi.fn(),
+  logout: vi.fn(),
+  fetchUserPlaylists: vi.fn(),
+  fetchPlaylistTracks: vi.fn(),
+  setActivePlatform: vi.fn(),
+};
+
+vi.mock("@/store/userAccountStore", () => ({
+  useUserAccountStore: Object.assign(
+    () => mockAccountState,
+    {
+      getState: () => mockAccountState,
+      setState: vi.fn(),
+    }
+  ),
 }));
 
 describe("MultiPlatformAccountModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useUserAccountStore.setState({
-      activePlatform: "netease",
-      neteaseUser: {
-        loggedIn: true,
-        nickname: "猫猫的小毛毛呀",
-        avatarUrl: "https://example.com/avatar.jpg",
-        vipLabel: "黑胶 SVIP",
-      },
-      userPlaylists: [
-        {
-          id: "pl-1",
-          name: "我喜欢的音乐",
-          trackCount: 929,
-          coverImgUrl: "https://example.com/cover1.jpg",
-          source: "netease",
-          isHeart: true,
-        },
-        {
-          id: "pl-2",
-          name: "剪辑用",
-          trackCount: 65,
-          coverImgUrl: "https://example.com/cover2.jpg",
-          source: "netease",
-          isHeart: false,
-        },
-      ],
-      isLoadingPlaylists: false,
-    });
   });
 
   it("renders modal header, user info, and playlists when open", () => {

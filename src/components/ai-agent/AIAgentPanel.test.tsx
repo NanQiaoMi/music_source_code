@@ -52,11 +52,11 @@ describe("AIAgentPanel", () => {
       root.render(<AIAgentPanel isOpen={true} onClose={() => undefined} />);
     });
 
-    expect(container.textContent).toContain("AI 找歌助手");
-    expect(container.textContent).toContain("MIMI 音乐找歌助手");
-    expect(container.textContent).toContain("灵感探索矩阵");
-    expect(container.textContent).toContain("歌词寻歌");
-    expect(container.textContent).toContain("深夜心情");
+    expect(container.textContent).toContain("音乐策展人");
+    expect(container.textContent).toContain("CURATOR");
+    expect(container.textContent).toContain("自适应灵感探索");
+    expect(container.textContent).toContain("灵感寻歌");
+    expect(container.textContent).toContain("沉浸播控");
     expect(container.textContent).toContain("Enter 发送 / Shift+Enter 换行");
   });
 

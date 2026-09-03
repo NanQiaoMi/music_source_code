@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { motion } from "framer-motion";
@@ -21,6 +21,7 @@ import { AgentMessage, SongResult } from "@/types/aiAgent";
 import { Song } from "@/types/song";
 import { SongResultCard } from "./SongResultCard";
 import { AIMarkdownRenderer } from "./AIMarkdownRenderer";
+import { CuratorWelcomeHeroCard } from "./CuratorWelcomeHeroCard";
 
 export const INSPIRATION_CATEGORIES = [
   {
@@ -161,8 +162,16 @@ export const AgentMessageItem: React.FC<AgentMessageItemProps> = React.memo(
       );
     }
 
-    // 3. Assistant 消息展示
+    // 3. Assistant 消息展示 (若为欢迎消息，使用 Apple 灵动流光微晶看板)
     const isGreeting = message.id === "greeting";
+    if (isGreeting) {
+      return (
+        <motion.div {...MESSAGE_ENTER} className="w-full transform-gpu">
+          <CuratorWelcomeHeroCard onSendPrompt={onSendPrompt || (() => {})} />
+        </motion.div>
+      );
+    }
+
     const isError = message.status === "error";
     const hasContent = Boolean(message.content && message.content.trim().length > 0);
     const hasSongResults = Boolean(message.songResults && message.songResults.length > 0);
@@ -229,46 +238,6 @@ export const AgentMessageItem: React.FC<AgentMessageItemProps> = React.memo(
                   </button>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* 初次欢迎语后的 Apple Intelligence 极简灵感探索矩阵 */}
-          {isGreeting && (
-            <div className="pt-2 space-y-2.5">
-              <div className="text-[12px] font-medium text-white/60 flex items-center gap-1.5 px-1">
-                <Sparkles className="w-3.5 h-3.5 text-white/60" />
-                <span>灵感探索矩阵：</span>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2">
-                {INSPIRATION_CATEGORIES.map((cat) => {
-                  const CatIcon = cat.icon;
-                  return (
-                    <div
-                      key={cat.category}
-                      className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-xl space-y-1.5 hover:border-white/[0.12] transition-colors"
-                    >
-                      <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-white/80 px-1">
-                        <CatIcon className="w-3.5 h-3.5 text-white/70" />
-                        <span>{cat.category}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {cat.prompts.map((prompt) => (
-                          <button
-                            key={prompt}
-                            type="button"
-                            onClick={() => onSendPrompt?.(prompt)}
-                            className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.06] hover:border-white/[0.18] text-[11.5px] text-white/80 hover:text-white transition-all text-left flex items-center gap-1.5 active:scale-95 shadow-sm"
-                          >
-                            <span>{prompt}</span>
-                            <ArrowRight className="w-3 h-3 opacity-30 group-hover:opacity-100" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           )}
 

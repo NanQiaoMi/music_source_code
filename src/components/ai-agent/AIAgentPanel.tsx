@@ -192,45 +192,46 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
               <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-48 bg-gradient-to-b from-white/[0.06] via-white/[0.02] to-transparent blur-3xl rounded-full" />
             </div>
 
-            {/* 顶部 Header：极简钛银光球 Logo + 会话切换 + 操作栏 */}
-            <div className="relative z-10 px-4 pt-4 pb-3.5 border-b border-white/[0.08] bg-black/20 backdrop-blur-2xl flex items-center justify-between shrink-0">
+            {/* 顶部 Header：Apple 灵动双胶囊 · 音乐策展人 */}
+            <div className="relative z-10 px-4 pt-4 pb-3.5 border-b border-white/[0.08] bg-black/30 backdrop-blur-2xl flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
-                <div className="relative w-9 h-9 rounded-full bg-white/[0.08] border border-white/[0.15] p-[1px] shadow-[0_0_12px_rgba(255,255,255,0.06)] flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4 text-white/90" />
+                <div className="relative w-9 h-9 rounded-2xl bg-gradient-to-br from-white/[0.12] to-white/[0.04] border border-white/[0.16] shadow-[0_0_16px_rgba(255,255,255,0.08)] flex items-center justify-center shrink-0 group/icon">
+                  <Sparkles className="w-4 h-4 text-cyan-300 transition-transform group-hover/icon:scale-110" />
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <h3 className="text-[14px] font-semibold text-white tracking-tight shrink-0">
-                      AI 找歌助手
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h3 className="text-[14.5px] font-semibold text-white tracking-tight shrink-0 flex items-center gap-1">
+                      <span>音乐策展人</span>
                     </h3>
+
+                    {/* 会话切换灵动胶囊 */}
                     <button
                       type="button"
                       onClick={openSessionDrawer}
-                      className="group/sess flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.10] text-[11.5px] font-medium text-white/90 truncate transition-all active:scale-95 max-w-[150px]"
-                      title="点击切换历史对话"
+                      className="group/sess inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.06] hover:bg-white/[0.14] border border-white/[0.10] hover:border-white/[0.22] text-[11.5px] font-medium text-white/90 truncate transition-all active:scale-95 max-w-[170px] shadow-sm"
+                      title="点击切换历史对话会话"
                     >
-                      <History className="w-3 h-3 text-white/60 group-hover/sess:text-white shrink-0" />
+                      <History className="w-3 h-3 text-cyan-300/80 group-hover/sess:text-cyan-200 shrink-0" />
                       <span className="truncate">{currentSession?.title || "探索新音乐"}</span>
                     </button>
-                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-semibold bg-white/[0.06] text-white/70 border border-white/[0.1] shrink-0">
-                      v2
-                    </span>
                   </div>
 
                   {/* 模型在线与自动切换状态 */}
-                  <div className="flex items-center gap-1.5 text-[11px] text-white/60 mt-0.5">
+                  <div className="flex items-center gap-1.5 text-[11px] text-white/50 mt-0.5">
                     {isConfigured ? (
                       <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
-                        <span className="truncate max-w-[150px] text-white/80 font-medium">
-                          {activeConfig?.model || activeConfig?.name || "在线就绪"}
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
+                        <span className="truncate max-w-[160px] text-white/75 font-medium">
+                          {activeConfig?.model || activeConfig?.name || "已就绪"}
                         </span>
+                        <span className="text-white/20">·</span>
+                        <span className="text-white/40 text-[10px]">声音主理人</span>
                       </>
                     ) : (
                       <>
                         <span className="w-1.5 h-1.5 rounded-full bg-white/40 shrink-0" />
-                        <span className="text-white/60 font-medium">尚未连接 AI 接口</span>
+                        <span className="text-white/50 font-medium">未连接 AI 端点</span>
                       </>
                     )}
                   </div>
