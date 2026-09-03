@@ -234,25 +234,37 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-7 bg-black/80 backdrop-blur-xl select-none font-sans antialiased overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-7 select-none font-sans antialiased overflow-hidden">
+      {/* 磨砂背景虚化遮罩层：轻度压暗 (bg-black/35) + 深度高斯模糊 (backdrop-blur-[24px])，保留后方主界面卡片与环境流光透出 */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.25 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/35 backdrop-blur-[24px] cursor-pointer"
+        aria-label="点击背景关闭"
+      />
+
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 14 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 14 }}
         transition={{ type: "spring", stiffness: 360, damping: 32, mass: 0.8 }}
-        className="relative w-full max-w-[760px] bg-[#0c0d14]/92 rounded-[32px] shadow-[0_32px_120px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.15)] border border-white/[0.12] backdrop-blur-3xl overflow-hidden flex flex-col max-h-[90vh] text-[#f5f5f7] transform-gpu will-change-transform"
+        onClick={(e) => e.stopPropagation()}
+        className="relative z-10 w-full max-w-[760px] bg-[#12131d]/75 rounded-[32px] shadow-[0_32px_120px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.2)] border border-white/[0.14] backdrop-blur-[40px] overflow-hidden flex flex-col max-h-[90vh] text-[#f5f5f7] transform-gpu will-change-transform"
       >
         {/* 顶部环境光与平台强调漫反射 */}
         <div className="absolute top-0 inset-x-0 h-48 overflow-hidden pointer-events-none z-0">
           <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[540px] h-[280px] bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent blur-3xl rounded-full" />
           <div
-            className="absolute -top-20 left-1/2 -translate-x-1/2 w-[460px] h-[220px] blur-[90px] rounded-full transition-all duration-700 opacity-30"
+            className="absolute -top-20 left-1/2 -translate-x-1/2 w-[460px] h-[220px] blur-[90px] rounded-full transition-all duration-700 opacity-25"
             style={{ backgroundColor: platformMeta[activePlatform].accent }}
           />
         </div>
 
         {/* 顶部标题栏 (Apple Liquid Glass Header) */}
-        <div className="relative z-10 flex items-center justify-between px-7 pt-6 pb-5 border-b border-white/[0.08] bg-black/20 backdrop-blur-2xl shrink-0">
+        <div className="relative z-10 flex items-center justify-between px-7 pt-6 pb-5 border-b border-white/[0.08] bg-white/[0.02] backdrop-blur-xl shrink-0">
           <div className="flex items-center gap-3.5">
             <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-white/[0.12] to-white/[0.04] border border-white/[0.16] flex items-center justify-center text-white shadow-[0_4px_20px_rgba(0,0,0,0.3)] shrink-0">
               <Crown className="w-5 h-5 text-amber-300 drop-shadow-[0_2px_8px_rgba(245,158,11,0.5)]" />
@@ -283,7 +295,7 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
 
         {/* 平台切换 Segmented 胶囊栏 (5 Platform Floating Pills) */}
         <div className="relative z-10 px-7 pt-4 pb-2 shrink-0">
-          <div className="grid grid-cols-5 gap-2 p-1.5 rounded-2xl bg-black/35 border border-white/[0.08] backdrop-blur-2xl">
+          <div className="grid grid-cols-5 gap-2 p-1.5 rounded-2xl bg-black/25 border border-white/[0.08] backdrop-blur-xl">
             {(["netease", "qq", "kugou", "kuwo", "qishui"] as PlatformType[]).map((p) => {
               const meta = platformMeta[p];
               const isSelected = activePlatform === p;
@@ -661,7 +673,7 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
         </div>
 
         {/* 底部关闭栏 (Apple Spacious Liquid Glass Footer) */}
-        <div className="relative z-10 px-7 py-4.5 border-t border-white/[0.08] bg-black/25 backdrop-blur-2xl flex items-center justify-between shrink-0">
+        <div className="relative z-10 px-7 py-4.5 border-t border-white/[0.08] bg-white/[0.02] backdrop-blur-xl flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 text-[12px] text-white/50">
             <ShieldCheck className="w-4 h-4 text-emerald-400/90 shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.3)]" />
             <span>安全提示：凭据仅保存在本地沙盒，绝不上报第三方</span>
