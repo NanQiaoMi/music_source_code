@@ -209,9 +209,13 @@ export const useDailyRecommendation = () => {
     const cached = loadRecommendationFromStorage();
 
     if (cached && cached.length > 0) {
-      setRecommendationSongIds(cached);
-      setIsLoading(false);
-      return;
+      const songIdSet = new Set(songs.map((s) => s.id));
+      const validCached = cached.filter((id) => songIdSet.has(id));
+      if (validCached.length > 0) {
+        setRecommendationSongIds(validCached);
+        setIsLoading(false);
+        return;
+      }
     }
 
     const newSongIds = generateRecommendationInternal();
@@ -222,6 +226,7 @@ export const useDailyRecommendation = () => {
     loadRecommendationFromStorage,
     generateRecommendationInternal,
     saveRecommendationToStorage,
+    songs,
     getToday,
   ]);
 
@@ -245,6 +250,12 @@ export const useDailyRecommendation = () => {
   useEffect(() => {
     queueMicrotask(loadRecommendation);
   }, [loadRecommendation]);
+
+  useEffect(() => {
+    if (songs.length > 0 && recommendationSongIds.length === 0) {
+      loadRecommendation();
+    }
+  }, [songs.length, recommendationSongIds.length, loadRecommendation]);
 
   const playAll = useCallback(
     (startIndex: number = 0) => {
