@@ -163,4 +163,51 @@ describe("FloatingSpeedControl", () => {
 
     expect(container.querySelector('[data-testid="floating-speed-menu"]')).toBeNull();
   });
+
+  it("adjusts speed with micro-step buttons (+/- 0.05x)", () => {
+    act(() => {
+      root.render(<FloatingSpeedControl />);
+    });
+
+    const trigger = container.querySelector('[data-testid="floating-speed-trigger"]') as HTMLButtonElement;
+    act(() => {
+      trigger.click();
+      vi.advanceTimersByTime(300);
+    });
+
+    const plusBtn = container.querySelector('[data-testid="speed-step-plus"]') as HTMLButtonElement;
+    expect(plusBtn).toBeTruthy();
+
+    act(() => {
+      plusBtn.click();
+    });
+
+    expect(useAudioStore.getState().playbackRate).toBe(1.05);
+
+    const minusBtn = container.querySelector('[data-testid="speed-step-minus"]') as HTMLButtonElement;
+    expect(minusBtn).toBeTruthy();
+
+    act(() => {
+      minusBtn.click();
+      minusBtn.click();
+    });
+
+    expect(useAudioStore.getState().playbackRate).toBe(0.95);
+  });
+
+  it("renders DSP pitch preservation and precision labels in popup", () => {
+    act(() => {
+      root.render(<FloatingSpeedControl />);
+    });
+
+    const trigger = container.querySelector('[data-testid="floating-speed-trigger"]') as HTMLButtonElement;
+    act(() => {
+      trigger.click();
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(container.textContent).toContain("DSP 原声音高实时校正已启用");
+    expect(container.textContent).toContain("±0.05x 精度");
+  });
 });
+
