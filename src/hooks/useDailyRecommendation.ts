@@ -176,7 +176,7 @@ export const useDailyRecommendation = () => {
         songsWithCount,
         context,
         activeMode,
-        6,
+        2,
         excludeIds,
         offset
       );
@@ -192,7 +192,7 @@ export const useDailyRecommendation = () => {
 
       setRecommendationGroups(result.groups);
       setRecommendationMode(result.mode);
-      return result.orderedSongs.map((s) => s.id);
+      return result.orderedSongs.slice(0, 6).map((s) => s.id);
     },
     [songs, getTopArtists, history, listeningStats, customMode]
   );

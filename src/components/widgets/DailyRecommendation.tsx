@@ -289,6 +289,19 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
           .bento-vinyl-spinning {
             animation: bento-vinyl-spin 10s linear infinite;
           }
+          .bento-subtrack-list::-webkit-scrollbar {
+            width: 4px;
+          }
+          .bento-subtrack-list::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .bento-subtrack-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.18);
+            border-radius: 9999px;
+          }
+          .bento-subtrack-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.35);
+          }
         `}} />
 
         {/* ─── Ambient Platinum Highlights (Subtle Apple Specular Beams) ─── */}
@@ -394,14 +407,14 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
               {/* ─── 🔲 BENTO BLOCK 1: 今日首席黑胶焦点 (Col-span 7) ─── */}
               <div className="lg:col-span-7 flex flex-col justify-between rounded-[24px] border border-white/[0.12] bg-white/[0.03] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.15)] backdrop-blur-xl relative overflow-hidden group">
                 {/* 封套与滑移黑胶 */}
-                <div className="flex flex-col sm:flex-row items-center gap-6">
+                <div className="flex flex-col sm:flex-row items-center gap-5">
                   <div
-                    className="relative flex items-center justify-center shrink-0 cursor-pointer"
+                    className="relative flex items-center shrink-0 cursor-pointer w-44 h-32"
                     onClick={() => handlePlaySong(heroSong, 0)}
                   >
-                    {/* 探出旋转实体黑胶唱片 */}
+                    {/* 探出旋转实体黑胶唱片（安全包含在 w-44 容器内，绝不向右溢出侵害文字） */}
                     <div
-                      className={`absolute -right-5 w-28 h-28 rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.95)] transition-transform duration-500 ease-out group-hover:translate-x-4 ${
+                      className={`absolute left-8 w-28 h-28 rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.95)] transition-transform duration-500 ease-out group-hover:translate-x-2 z-0 ${
                         isHeroPlaying ? "bento-vinyl-spinning" : ""
                       }`}
                       style={{
@@ -438,8 +451,8 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                     </div>
                   </div>
 
-                  {/* 首席推荐信息 */}
-                  <div className="flex-1 min-w-0 text-center sm:text-left">
+                  {/* 首席推荐信息（独立边距，与黑胶绝对安全隔离） */}
+                  <div className="flex-1 min-w-0 text-center sm:text-left pl-1">
                     <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/15 text-white border border-white/25 shadow-sm">
                         <Sparkles className="w-2.5 h-2.5" />
@@ -589,29 +602,33 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
 
               {/* ─── 🔲 BENTO BLOCK 3: 协同好歌精选流 (Col-span 5) ─── */}
               <div className="lg:col-span-5 flex flex-col justify-between rounded-[24px] border border-white/[0.12] bg-white/[0.03] p-4.5 shadow-[0_16px_40px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.15)] backdrop-blur-xl">
-                {/* 顶栏：标签与行内快速搜索 */}
-                <div className="flex items-center justify-between gap-2 pb-3 border-b border-white/[0.06]">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                    <Headphones className="h-3.5 w-3.5 text-white/70" />
+                {/* 顶栏：标签与行内快速搜索（对齐标题与准确计数） */}
+                <div className="flex items-center justify-between gap-2 pb-3 border-b border-white/[0.08]">
+                  <div className="flex items-center gap-2 text-xs font-bold text-white">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/[0.08] border border-white/10">
+                      <Headphones className="h-3.5 w-3.5 text-white/80" />
+                    </div>
                     <span>精选好歌推荐</span>
-                    <span className="text-[10px] font-mono text-white/40 font-normal">({displayedSongs.length} 首)</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-white/[0.06] text-white/50 border border-white/10">
+                      {subTracks.length} 首
+                    </span>
                   </div>
 
                   {/* 紧凑搜索框 */}
                   <div className="relative flex items-center">
-                    <Search className="absolute left-2 h-3 w-3 text-white/40 pointer-events-none" />
+                    <Search className="absolute left-2.5 h-3 w-3 text-white/40 pointer-events-none" />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="搜索..."
-                      className="h-6 w-24 sm:w-28 rounded-full bg-white/[0.06] border border-white/10 pl-6 pr-2 text-[10.5px] text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:w-36 transition-all"
+                      placeholder="搜索推荐..."
+                      className="h-7 w-24 sm:w-28 rounded-full bg-white/[0.06] border border-white/10 pl-7 pr-2.5 text-[10.5px] text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:w-36 transition-all"
                     />
                     {searchQuery && (
                       <button
                         type="button"
                         onClick={() => setSearchQuery("")}
-                        className="absolute right-1.5 text-white/40 hover:text-white text-xs"
+                        className="absolute right-2 text-white/40 hover:text-white text-xs cursor-pointer"
                       >
                         ×
                       </button>
@@ -619,8 +636,8 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                   </div>
                 </div>
 
-                {/* 歌曲微条列表 */}
-                <div className="space-y-1.5 my-2.5 flex-1 overflow-y-auto max-h-[220px] custom-scrollbar">
+                {/* 歌曲微条列表（添加专有纤细滚动条与右侧边距，杜绝溢出与压线） */}
+                <div className="space-y-1.5 my-2.5 flex-1 min-h-[200px] overflow-y-auto pr-1.5 bento-subtrack-list">
                   {subTracks.length === 0 ? (
                     <div className="py-8 text-center text-xs text-white/40">
                       {searchQuery ? "未检索到匹配的曲目" : "暂无更多协同推荐"}
