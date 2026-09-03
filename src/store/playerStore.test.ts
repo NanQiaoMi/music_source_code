@@ -39,17 +39,26 @@ describe("playerStore", () => {
     expect(usePlayerStore.getState().volume).toBe(1);
   });
 
-  it("clamps playbackRate and rounds to one decimal place", () => {
+  it("clamps playbackRate and rounds to two decimal places", () => {
     const store = usePlayerStore.getState();
 
-    store.setPlaybackRate(1.26);
-    expect(usePlayerStore.getState().playbackRate).toBe(1.3);
+    store.setPlaybackRate(1.25);
+    expect(usePlayerStore.getState().playbackRate).toBe(1.25);
+
+    store.setPlaybackRate(0.75);
+    expect(usePlayerStore.getState().playbackRate).toBe(0.75);
+
+    store.setPlaybackRate(1.256);
+    expect(usePlayerStore.getState().playbackRate).toBe(1.26);
 
     store.setPlaybackRate(0.44);
     expect(usePlayerStore.getState().playbackRate).toBe(0.5);
 
     store.setPlaybackRate(2.04);
     expect(usePlayerStore.getState().playbackRate).toBe(2);
+
+    store.resetPlaybackRate();
+    expect(usePlayerStore.getState().playbackRate).toBe(1.0);
   });
 
   it("togglePlay flips playback state", () => {

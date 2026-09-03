@@ -94,9 +94,8 @@ export const useLinerNotesStore = create<LinerNotesState>()(
 
         const aiStore = useAIStore.getState();
         if (aiStore.isEnabled === false) {
-          const fallback = generateFallbackLinerNote(title, artist, emotion);
-          set((state) => ({ notes: { ...state.notes, [key]: fallback }, isGenerating: false }));
-          return fallback;
+          set({ isGenerating: false });
+          return null;
         }
 
         // 中止上一个正在进行的 AI 请求，防止切歌时并发打满连接池
@@ -226,23 +225,14 @@ export const useLinerNotesStore = create<LinerNotesState>()(
                 }
               }
 
-              // 若所有配置超时或失败，优雅采用高多态性唯美本地通感算法，零延迟 100% 可用
-              const fallback = generateFallbackLinerNote(title, artist, emotion);
-              set((state) => ({
-                notes: { ...state.notes, [key]: fallback },
-                isGenerating: false,
-              }));
-              return fallback;
+              console.warn("[linerNotesStore] All AI endpoints exhausted or failed");
+              return null;
             },
             { signal: currentSignal }
           );
-        } catch {
-          const fallback = generateFallbackLinerNote(title, artist, emotion);
-          set((state) => ({
-            notes: { ...state.notes, [key]: fallback },
-            isGenerating: false,
-          }));
-          return fallback;
+        } catch (e) {
+          console.warn("[linerNotesStore] Failed to generate liner notes:", e);
+          return null;
         } finally {
           set({ isGenerating: false });
         }

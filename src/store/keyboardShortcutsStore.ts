@@ -169,6 +169,13 @@ const DEFAULT_SHORTCUTS: ShortcutBinding[] = [
     keys: ["-"],
     description: "减少 0.25x",
   },
+  {
+    id: "speed-reset",
+    label: "恢复原速",
+    category: "播放控制",
+    keys: ["Ctrl+0", "Backspace"],
+    description: "恢复到 1.00x 正常速度",
+  },
   { id: "seek-0", label: "进度 0%", category: "播放控制", keys: ["0"], description: "跳转到 0%" },
   {
     id: "seek-10",

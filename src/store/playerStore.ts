@@ -24,6 +24,7 @@ interface PlayerState {
   setVolume: (volume: number) => void;
   setIsMuted: (muted: boolean) => void;
   setPlaybackRate: (rate: number) => void;
+  resetPlaybackRate: () => void;
   setLoopMode: (mode: LoopMode) => void;
   updateCurrentSongCover: (cover: string) => void;
   updateCurrentSongLyrics: (lyrics: string, translationLyrics?: string) => void;
@@ -104,9 +105,13 @@ export const usePlayerStore = create<PlayerState>()(
       },
       setPlaybackRate: (rate) => {
         const clampedRate = Math.max(0.5, Math.min(2.0, rate));
-        const r = Math.round(clampedRate * 10) / 10;
+        const r = Math.round(clampedRate * 100) / 100;
         set({ playbackRate: r });
         audioStoreSyncListener?.({ playbackRate: r });
+      },
+      resetPlaybackRate: () => {
+        set({ playbackRate: 1.0 });
+        audioStoreSyncListener?.({ playbackRate: 1.0 });
       },
       setLoopMode: (mode) => {
         set({ loopMode: mode });

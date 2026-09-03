@@ -108,6 +108,7 @@ interface AudioState {
   setVolume: (volume: number) => void;
   toggleMute: () => void;
   setPlaybackRate: (rate: number) => void;
+  resetPlaybackRate: () => void;
   setLoopMode: (mode: LoopMode) => void;
   cycleLoopMode: () => void;
   setCurrentSong: (song: Song | null) => void;
@@ -298,7 +299,11 @@ export const useAudioStore = create<AudioState>()(
       setPlaybackRate: (rate) => {
         usePlayerStore.getState().setPlaybackRate(rate);
         const clampedRate = Math.max(0.5, Math.min(2.0, rate));
-        set({ playbackRate: Math.round(clampedRate * 10) / 10 });
+        set({ playbackRate: Math.round(clampedRate * 100) / 100 });
+      },
+      resetPlaybackRate: () => {
+        usePlayerStore.getState().resetPlaybackRate();
+        set({ playbackRate: 1.0 });
       },
       setLoopMode: (mode) => {
         usePlayerStore.getState().setLoopMode(mode);
