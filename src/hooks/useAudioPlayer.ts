@@ -1312,9 +1312,8 @@ export const useAudioPlayer = () => {
 
   useEffect(() => {
     const engine = AudioEngine.getInstance();
-    if (!isEQEnabled) {
-      engine.updateEQ(new Array(30).fill(0));
-    } else {
+    engine.setEQEnabled(isEQEnabled);
+    if (isEQEnabled) {
       engine.updateEQ(eqBands);
     }
   }, [eqBands, isEQEnabled]);

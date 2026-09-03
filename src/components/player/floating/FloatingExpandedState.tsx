@@ -6,7 +6,7 @@ import { motion, type Variants } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
-import { useBilingualLyricParser } from "@/hooks/useBilingualLyricParser";
+import { FloatingOneLineLyricPreview } from "./FloatingOneLineLyricPreview";
 import { FloatingControls, HeartFavoriteButton } from "./FloatingControls";
 import { FloatingProgressScrubber } from "./FloatingProgressScrubber";
 import { FloatingWaveformGlow } from "./FloatingWaveformGlow";
@@ -66,7 +66,6 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
   className = "",
 }) => {
   const currentSong = useAudioStore((state) => state.currentSong);
-  const currentTime = useAudioStore((state) => state.currentTime);
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const { setCurrentView } = useUIStore();
   const { isCached } = useNetworkAudioCache();
@@ -77,17 +76,6 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
   const [activeVisTab, setActiveVisTab] = useState<"waveform" | "spectrum">(
     visualizerMode === "spectrum" ? "spectrum" : "waveform"
   );
-
-  // Parse lyrics for subtle one-line live preview
-  const { lyrics, getCurrentLyricIndex } = useBilingualLyricParser(
-    currentSong?.lyrics,
-    currentSong?.translationLyrics,
-    currentSong?.transliterationLyrics
-  );
-
-  const lyricList = lyrics.merged;
-  const currentLyricIndex = getCurrentLyricIndex(currentTime);
-  const activeLyric = currentLyricIndex >= 0 ? lyricList[currentLyricIndex] : (lyricList[0] || null);
 
   const handleExpandFullPlayer = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -269,18 +257,12 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
         </div>
       </motion.div>
 
-      {/* 5. Subtle Synced Lyric Preview (Apple Music Subtitle Style) */}
-      {activeLyric && (
-        <motion.div
-          variants={itemVariants}
-          className="px-1 text-center -mt-0.5 cursor-pointer"
-          onClick={handleExpandFullPlayer}
-        >
-          <p className="text-xs text-white/50 italic truncate tracking-tight">
-            {activeLyric.original}
-          </p>
-        </motion.div>
-      )}
+      {/* 5. Subtle Synced Lyric Preview (Apple Music Subtitle Style - Isolated Leaf Component) */}
+      <FloatingOneLineLyricPreview
+        currentSong={currentSong}
+        onExpand={handleExpandFullPlayer}
+        variants={itemVariants}
+      />
 
       {/* 6. Sleek Apple Progress & Volume Scrubber */}
       <motion.div variants={itemVariants} className="px-1">

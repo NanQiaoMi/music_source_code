@@ -10,8 +10,8 @@ import { Volume2, VolumeX, Music2, Maximize2 } from "lucide-react";
 import { NowPlayingHalo } from "@/components/player/NowPlayingHalo";
 import { GlassRadarWidget } from "@/components/widgets/GlassRadarWidget";
 import { useABLoopStore } from "@/store/abLoopStore";
-import { ABLoopProgressMarkers } from "@/components/shared/ABLoopProgressMarkers";
 import { useNetworkAudioCache } from "@/hooks/useNetworkAudioCache";
+import { GlobalPlayerProgressBar } from "@/components/shared/GlobalPlayerProgressBar";
 
 export const APPLE_SPRING_CONFIG = {
   type: "spring" as const,
@@ -29,16 +29,8 @@ export const APPLE_SPRING_GENTLE = {
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
-const formatTime = (seconds: number): string => {
-  if (isNaN(seconds) || seconds < 0) return "0:00";
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
-
 export const GlobalPlayerBar: React.FC = () => {
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentTime = useAudioStore((state) => state.currentTime);
   const audioDuration = useAudioStore((state) => state.duration);
   const currentSong = useAudioStore((state) => state.currentSong);
   const duration = audioDuration || currentSong?.duration || 0;
@@ -61,46 +53,9 @@ export const GlobalPlayerBar: React.FC = () => {
   const { isCached } = useNetworkAudioCache();
   const isSongCached = currentSong ? isCached(currentSong.id, currentSong.source) : false;
 
-  const [isHoveringProgress, setIsHoveringProgress] = useState(false);
-  const [hoverTime, setHoverTime] = useState<number | null>(null);
-  const [hoverX, setHoverX] = useState<number>(0);
-
-  const progress =
-    duration > 0 && !isNaN(currentTime) && !isNaN(duration) ? (currentTime / duration) * 100 : 0;
-
   const abLoopEnabled = useABLoopStore((s) => s.isEnabled);
   const pointA = useABLoopStore((s) => s.pointA);
   const pointB = useABLoopStore((s) => s.pointB);
-
-  const handleProgressClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!duration) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const percentage = x / rect.width;
-      const newTime = percentage * duration;
-      useAudioStore.getState().seekTo(newTime);
-    },
-    [duration]
-  );
-
-  const handleProgressHover = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!duration) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const percentage = x / rect.width;
-      const time = percentage * duration;
-      setHoverTime(time);
-      setHoverX(x);
-    },
-    [duration]
-  );
-
-  const handleProgressLeave = useCallback(() => {
-    setHoverTime(null);
-    setIsHoveringProgress(false);
-  }, []);
 
   const handleVolumeChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,7 +92,6 @@ export const GlobalPlayerBar: React.FC = () => {
             onClick={() => setCurrentView("player")}
           >
             <NowPlayingHalo
-              currentTime={currentTime}
               isPlaying={isPlaying}
               level={isMuted ? 0 : volume}
               size={76}
@@ -226,70 +180,13 @@ export const GlobalPlayerBar: React.FC = () => {
             </motion.button>
           </div>
 
-          <div
-            className="relative w-full group"
-            onMouseEnter={() => setIsHoveringProgress(true)}
-            onMouseLeave={handleProgressLeave}
-          >
-            <div
-              className={`relative h-1 bg-white/20 rounded-full overflow-hidden cursor-pointer transition-all duration-200 ${
-                isHoveringProgress ? "h-2" : ""
-              }`}
-              onClick={handleProgressClick}
-              onMouseMove={handleProgressHover}
-            >
-              <motion.div
-                className="absolute top-0 left-0 h-full bg-white/80 rounded-full"
-                style={{ width: `${progress}%` }}
-              />
-              <motion.div
-                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                style={{
-                  left: `calc(${progress}% - 6px)`,
-                  opacity: isHoveringProgress ? 1 : 0,
-                }}
-              />
-
-              <ABLoopProgressMarkers
-                isEnabled={abLoopEnabled}
-                pointA={pointA}
-                pointB={pointB}
-                duration={duration}
-              />
-            </div>
-
-            <AnimatePresence>
-              {isHoveringProgress && hoverTime !== null && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 4, scale: 0.95 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 400,
-                    damping: 30,
-                  }}
-                  className="absolute -top-10 px-2 py-1 bg-black/80 backdrop-blur-md rounded-lg text-xs text-white/90 pointer-events-none"
-                  style={{
-                    left: hoverX,
-                    transform: "translateX(-50%)",
-                    willChange: "transform, opacity",
-                  }}
-                >
-                  {formatTime(hoverTime)}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div className="flex items-center gap-4 mt-1.5">
-            <span className="text-[10px] text-white/50 tabular-nums w-10 text-right">
-              {formatTime(currentTime)}
-            </span>
-            <span className="text-[10px] text-white/50 tabular-nums w-10">
-              {formatTime(duration)}
-            </span>
-          </div>
+          {/* 独立隔离高频进度条与时间 (零全局 Diff) */}
+          <GlobalPlayerProgressBar
+            duration={duration}
+            abLoopEnabled={abLoopEnabled}
+            pointA={pointA}
+            pointB={pointB}
+          />
         </div>
 
         <div className="flex-1 flex items-center justify-end gap-3 flex-shrink-0">

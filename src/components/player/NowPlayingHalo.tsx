@@ -10,8 +10,10 @@ import {
 import { usePerformanceV8Store } from "@/store/performanceV8Store";
 import { usePlayerSkinStore } from "@/store/playerSkinStore";
 
+import { useAudioStore } from "@/store/audioStore";
+
 interface NowPlayingHaloProps {
-  currentTime: number;
+  currentTime?: number;
   isPlaying: boolean;
   level?: number;
   size?: number;
@@ -37,13 +39,16 @@ function getCanvasContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D |
   }
 }
 
-export const NowPlayingHalo: React.FC<NowPlayingHaloProps> = ({
-  currentTime,
+export const NowPlayingHalo: React.FC<NowPlayingHaloProps> = React.memo(({
+  currentTime: propCurrentTime,
   isPlaying,
   level = 0,
   size = 72,
   className = "",
 }) => {
+  const storeTime = useAudioStore((state) => state.currentTime);
+  const currentTime = propCurrentTime !== undefined ? propCurrentTime : storeTime;
+
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const activeHalo = usePlayerSkinStore((state) => state.getActiveHalo());
   const targetFps = usePerformanceV8Store((state) => state.config.targetFPS);
@@ -77,4 +82,4 @@ export const NowPlayingHalo: React.FC<NowPlayingHaloProps> = ({
       className={`pointer-events-none absolute left-1/2 top-1/2 z-0 max-w-none -translate-x-1/2 -translate-y-1/2 rounded-full ${className}`}
     />
   );
-};
+});

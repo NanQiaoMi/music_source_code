@@ -49,6 +49,8 @@ export function RenderEngineManager({
   const startTimeRef = useRef<number | null>(null);
   const effectRef = useRef<EffectPlugin | null>(null);
   const dprRef = useRef(1);
+  const isDegradedDprRef = useRef(false);
+  const lowFpsStreakRef = useRef(0);
   const privateContextRef = useRef<EffectRuntimeState>({});
   const audioSnapshotRef = useRef(audioSnapshot);
 
@@ -64,9 +66,10 @@ export function RenderEngineManager({
     }
   });
 
-  const { config, updateStats } = usePerformanceV8Store();
+  const config = usePerformanceV8Store((state) => state.config);
+  const updateStats = usePerformanceV8Store((state) => state.updateStats);
   const frameCountRef = useRef(0);
-  const lastFPSUpdateRef = useRef(0);
+  const lastFPSUpdateRef = useRef<number | null>(null);
 
   useEffect(() => {
     audioSnapshotRef.current = audioSnapshot;
@@ -114,7 +117,7 @@ export function RenderEngineManager({
 
     const canvas = canvasRef.current;
     const { displayWidth, displayHeight } = getDisplaySize();
-    const dpr = getQualityDpr();
+    const dpr = isDegradedDprRef.current ? 1.0 : getQualityDpr();
 
     dprRef.current = dpr;
     canvas.width = Math.max(1, Math.floor(displayWidth * dpr));
@@ -124,8 +127,12 @@ export function RenderEngineManager({
       ctx2DRef.current.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
+    if (actualEngine === "webgl" && threeSceneRef.current?.renderer) {
+      threeSceneRef.current.renderer.setPixelRatio(dpr);
+    }
+
     return { displayWidth, displayHeight };
-  }, [getDisplaySize, getQualityDpr]);
+  }, [getDisplaySize, getQualityDpr, actualEngine]);
 
   const applyTransform = useCallback(
     (
@@ -344,8 +351,16 @@ export function RenderEngineManager({
   useEffect(() => {
     const render = (timestamp: number) => {
       if (!canvasRef.current) return;
+
+      // Background / hidden tab sleep:
+      // When tab/document is hidden, do NOT execute 2D clear/render or Three.js scene rendering.
+      if (typeof document !== "undefined" && document.hidden) {
+        animationFrameRef.current = requestAnimationFrame(render);
+        return;
+      }
+
       startTimeRef.current ??= timestamp;
-      if (lastFPSUpdateRef.current === 0) {
+      if (lastFPSUpdateRef.current === null) {
         lastFPSUpdateRef.current = timestamp;
       }
 
@@ -372,15 +387,43 @@ export function RenderEngineManager({
       if (now - lastFPSUpdateRef.current >= 1000) {
         const fps = Math.round((frameCountRef.current * 1000) / (now - lastFPSUpdateRef.current));
 
+        // Adaptive frame degradation protection:
+        // Track low-FPS frame counts. If average FPS drops below 35 FPS for 3 consecutive seconds:
+        // Smoothly clamp dprRef.current = 1.0 (avoid 2x or 3x high-DPI overhead on low-power GPUs) and apply to canvas.
+        if (fps < 35) {
+          lowFpsStreakRef.current += 1;
+          if (lowFpsStreakRef.current >= 3 && dprRef.current > 1.0) {
+            isDegradedDprRef.current = true;
+            dprRef.current = 1.0;
+            if (canvasRef.current) {
+              const { displayWidth, displayHeight } = getDisplaySize();
+              canvasRef.current.width = Math.max(1, Math.floor(displayWidth * 1.0));
+              canvasRef.current.height = Math.max(1, Math.floor(displayHeight * 1.0));
+              if (ctx2DRef.current) {
+                ctx2DRef.current.setTransform(1.0, 0, 0, 1.0, 0, 0);
+              }
+              if (actualEngine === "webgl" && threeSceneRef.current) {
+                threeSceneRef.current.renderer.setPixelRatio(1.0);
+                threeSceneRef.current.resize(displayWidth, displayHeight);
+              }
+              if (effectRef.current) {
+                effectRef.current.resize(displayWidth, displayHeight);
+              }
+            }
+          }
+        } else {
+          lowFpsStreakRef.current = 0;
+        }
+
         let drawCalls = 0;
         let gpuMemory = 0;
 
         if (actualEngine === "webgl" && threeSceneRef.current) {
           const info = threeSceneRef.current.renderer.info;
           drawCalls = info.render.calls;
-          // 浼扮畻 GPU 鍐呭瓨鍗犵敤 (geometries + textures)
-          // 娉ㄦ剰锛氳繖鍙槸涓€涓繎浼煎€硷紝Three.js 鐨?info.memory 鎻愪緵鐨勬槸璁℃暟锛屼笉鏄瓧鑺傛暟
-          // 浣嗘垜浠彲浠ラ€氳繃杩欎釜璁℃暟鍙嶆槧璧勬簮鍗犵敤鍘嬪姏
+          // 估算 GPU 内存占用 (geometries + textures)
+          // 注意：这只是一个近似值，Three.js 的 info.memory 提供的是计数，不是字节数
+          // 但我们可以通过这个计数反映资源占用压力
           gpuMemory = info.memory.geometries + info.memory.textures;
         }
 
@@ -424,9 +467,26 @@ export function RenderEngineManager({
       animationFrameRef.current = requestAnimationFrame(render);
     };
 
+    const handleVisibilityChange = () => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        lastTimeRef.current = 0;
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+        animationFrameRef.current = requestAnimationFrame(render);
+      }
+    };
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
+
     animationFrameRef.current = requestAnimationFrame(render);
 
     return () => {
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
