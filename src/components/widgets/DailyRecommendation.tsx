@@ -234,8 +234,14 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
         exit={{ scale: 0.96, opacity: 0, y: 12 }}
         transition={{ type: "spring", damping: 30, stiffness: 340 }}
         onClick={(event) => event.stopPropagation()}
-        className="relative flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-white/[0.12] bg-[#0c0d16]/90 shadow-[0_32px_100px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.15)] backdrop-blur-3xl"
+        className="daily-rec-modal relative flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-white/[0.12] bg-[#0c0d16]/90 shadow-[0_32px_100px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.15)] backdrop-blur-3xl"
       >
+        <style dangerouslySetInnerHTML={{ __html: `
+          .daily-rec-modal,
+          .daily-rec-modal * {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif !important;
+          }
+        `}} />
         {/* ─── Ambient Glow Header ─── */}
         <div className="relative overflow-hidden border-b border-white/[0.08] px-6 py-5">
           {/* Subtle multi-layer aurora halos */}
