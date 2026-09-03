@@ -22,17 +22,59 @@ const nextConfig = {
     config.resolve.fallback.sharp = false;
     config.resolve.fallback["onnxruntime-node"] = false;
 
-    // Performance optimization: minimize the number of chunks
+    // Performance optimization: fine-grained splitChunks isolating heavy libraries
     if (!isServer) {
       config.optimization.splitChunks = {
         chunks: "all",
         minSize: 20000,
-        maxSize: 244000,
+        maxSize: 300000,
         cacheGroups: {
+          default: false,
+          framework: {
+            name: "framework",
+            test: /[\\/]node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/,
+            priority: 40,
+            chunks: "all",
+          },
+          three: {
+            name: "chunk-three",
+            test: /[\\/]node_modules[\\/](three)[\\/]/,
+            priority: 35,
+            chunks: "async",
+            reuseExistingChunk: true,
+          },
+          fabric: {
+            name: "chunk-fabric",
+            test: /[\\/]node_modules[\\/](fabric)[\\/]/,
+            priority: 35,
+            chunks: "async",
+            reuseExistingChunk: true,
+          },
+          ffmpeg: {
+            name: "chunk-ffmpeg",
+            test: /[\\/]node_modules[\\/](@ffmpeg)[\\/]/,
+            priority: 35,
+            chunks: "async",
+            reuseExistingChunk: true,
+          },
+          framerMotion: {
+            name: "chunk-framer-motion",
+            test: /[\\/]node_modules[\\/](framer-motion)[\\/]/,
+            priority: 30,
+            chunks: "all",
+          },
+          lucide: {
+            name: "chunk-lucide",
+            test: /[\\/]node_modules[\\/](lucide-react)[\\/]/,
+            priority: 25,
+            chunks: "all",
+          },
           vendor: {
             test: /[\\/]node_modules[\\/]/,
             name: "vendors",
+            priority: 10,
             chunks: "all",
+            reuseExistingChunk: true,
           },
         },
       };

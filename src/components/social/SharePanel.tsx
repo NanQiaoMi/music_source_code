@@ -42,7 +42,11 @@ import {
 import type { PosterConfig } from "@/utils/posterWorkshop";
 import { PosterPreview, parseLyrics } from "./PosterTemplates";
 import { ControlGroup, GlassSlider } from "./PosterControls";
-import { FabricSharePanel } from "./v2/FabricSharePanel";
+import dynamic from "next/dynamic";
+const FabricSharePanel = dynamic(
+  () => import("./v2/FabricSharePanel").then((m) => m.FabricSharePanel),
+  { ssr: false }
+);
 
 interface SharePanelProps {
   isOpen: boolean;
