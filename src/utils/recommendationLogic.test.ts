@@ -277,7 +277,7 @@ describe("recommendationLogic", () => {
       // Verify that 'familiar' group only picks 1 song from 安河桥南 instead of all 4!
       const familiarGroup = result.groups.find((g: any) => g.category === "familiar");
       expect(familiarGroup).toBeDefined();
-      const anheCount = familiarGroup.songs.filter((s: any) => s.artist === "安河桥南").length;
+      const anheCount = familiarGroup!.songs.filter((s: any) => s.artist === "安河桥南").length;
       expect(anheCount).toBeLessThanOrEqual(1);
 
       // Verify overall orderedSongs doesn't stack the same artist consecutively

@@ -493,145 +493,231 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="mt-4 rounded-full bg-white/10 px-4 py-1.5 text-xs text-white hover:bg-white/20"
-                  >
-                    清空搜索条件
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleRefresh}
-                    className="mt-5 flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-medium text-white hover:bg-white/20 transition-all cursor-pointer"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    重新生成推荐
-                  </button>
-                )}
-              </motion.div>
-            ) : (
-              <div className="space-y-4">
-                {/* ─── 1. Rank 01 Hero Spotlight Card (Echoing Main Page 3D Vinyl Player) ─── */}
-                {heroSong && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="relative overflow-hidden rounded-[26px] border border-white/[0.12] bg-gradient-to-r from-white/[0.06] via-white/[0.03] to-white/[0.01] p-4.5 shadow-[0_16px_40px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] backdrop-blur-xl group"
-                  >
-                    <div className="flex flex-col sm:flex-row items-center gap-5">
-                      {/* Left: Mini Vinyl + Sleeve Cover Duo */}
-                      <div className="relative flex items-center justify-center shrink-0 cursor-pointer" onClick={() => handlePlaySong(0)}>
-                        {/* Peeking Vinyl Disc */}
-                        <div
-                          className={`absolute -right-4 w-20 h-20 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.9)] transition-transform duration-500 ease-out group-hover:translate-x-3.5 ${
-                            isHeroPlaying ? "rec-vinyl-spin" : ""
-                          }`}
-                          style={{
-                            background: "radial-gradient(circle, #1a1a1a 0%, #111111 25%, #222222 26%, #0d0d0d 45%, #1f1f1f 46%, #080808 65%, #1a1a1a 66%, #050505 100%)",
-                            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.1), 0 8px 24px rgba(0,0,0,0.8)",
-                          }}
-                        >
-                          <div className="absolute inset-1 rounded-full pointer-events-none opacity-30 border border-white/10" />
-                          <div className="absolute inset-0 m-auto w-7 h-7 rounded-full bg-[#161616] border border-white/30 flex items-center justify-center">
-                            <Disc3 className="w-3.5 h-3.5 text-white/50" />
-                          </div>
-                        </div>
+                    className="mt-4 rounded-full bg-white/              <div className="space-y-2.5">
+                {displayedSongs.map((song, index) => {
+                  const isHero = index === 0 && !searchQuery.trim();
+                  const reasons = recommendationReasons.get(song.id) || [];
+                  const topReason = reasons[0];
+                  const isPinned = pinnedExplanationId === song.id;
+                  const explanationId = `recommendation-reasons-${song.id}`;
+                  const isThisPlaying = currentSong?.id === song.id && isPlaying;
+                  const isThisCurrent = currentSong?.id === song.id;
+                  const isFav = isFavorite(song.id);
 
-                        {/* Sleeve Cover with Spine Highlight */}
-                        <div className="relative z-10 w-24 h-24 rounded-2xl overflow-hidden bg-[#161618] border border-white/15 shadow-[0_12px_28px_rgba(0,0,0,0.7)] group-hover:shadow-[0_16px_36px_rgba(0,0,0,0.85)] transition-all">
-                          {heroSong.cover ? (
-                            <img src={heroSong.cover} alt={heroSong.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-white/5">
-                              <Music className="w-8 h-8 text-white/30" />
+                  if (isHero) {
+                    return (
+                      <motion.div
+                        key={song.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="group relative flex flex-col rounded-[26px] border border-white/[0.12] bg-gradient-to-r from-white/[0.06] via-white/[0.03] to-white/[0.01] p-4.5 shadow-[0_16px_40px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] backdrop-blur-xl cursor-pointer mb-3"
+                        onClick={() => handlePlaySong(0)}
+                        onKeyDown={(event) => {
+                          if (event.key === "?") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            toggleExplanation(song.id);
+                          }
+                        }}
+                      >
+                        <div className="flex flex-col sm:flex-row items-center gap-5">
+                          {/* Left: Mini Vinyl + Sleeve Cover Duo */}
+                          <div className="relative flex items-center justify-center shrink-0 cursor-pointer">
+                            {/* Peeking Vinyl Disc */}
+                            <div
+                              className={`absolute -right-4 w-20 h-20 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.9)] transition-transform duration-500 ease-out group-hover:translate-x-3.5 ${
+                                isThisPlaying ? "rec-vinyl-spin" : ""
+                              }`}
+                              style={{
+                                background: "radial-gradient(circle, #1a1a1a 0%, #111111 25%, #222222 26%, #0d0d0d 45%, #1f1f1f 46%, #080808 65%, #1a1a1a 66%, #050505 100%)",
+                                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.1), 0 8px 24px rgba(0,0,0,0.8)",
+                              }}
+                            >
+                              <div className="absolute inset-1 rounded-full pointer-events-none opacity-30 border border-white/10" />
+                              <div className="absolute inset-0 m-auto w-7 h-7 rounded-full bg-[#161616] border border-white/30 flex items-center justify-center">
+                                <Disc3 className="w-3.5 h-3.5 text-white/50" />
+                              </div>
                             </div>
-                          )}
-                          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-r from-white/35 via-white/15 to-transparent pointer-events-none" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            {isHeroPlaying ? (
-                              <Pause className="w-6 h-6 fill-cyan-400 text-cyan-400" />
-                            ) : (
-                              <Play className="w-6 h-6 fill-white text-white translate-x-0.5" />
-                            )}
+
+                            {/* Sleeve Cover with Spine Highlight */}
+                            <div className="relative z-10 w-24 h-24 rounded-2xl overflow-hidden bg-[#161618] border border-white/15 shadow-[0_12px_28px_rgba(0,0,0,0.7)] group-hover:shadow-[0_16px_36px_rgba(0,0,0,0.85)] transition-all">
+                              {song.cover ? (
+                                <img src={song.cover} alt={song.title} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-white/5">
+                                  <Music className="w-8 h-8 text-white/30" />
+                                </div>
+                              )}
+                              <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-r from-white/35 via-white/15 to-transparent pointer-events-none" />
+                              <div className={`absolute inset-0 bg-black/40 transition-opacity flex items-center justify-center ${isThisPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                                {isThisPlaying ? (
+                                  <Pause className="w-6 h-6 fill-cyan-400 text-cyan-400" />
+                                ) : (
+                                  <Play className="w-6 h-6 fill-white text-white translate-x-0.5" />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right: Featured Meta & Play CTA */}
+                          <div className="flex-1 min-w-0 text-center sm:text-left">
+                            <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/35 shadow-sm">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                今日首推 · No. 01 Pick
+                              </span>
+                              {topReason && (
+                                <span className="text-[10px] text-cyan-300/85 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full font-medium">
+                                  {topReason.label} {topReason.weightLabel}
+                                </span>
+                              )}
+                              {isThisPlaying && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-400/20 text-cyan-300">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                                  播放中
+                                </span>
+                              )}
+                            </div>
+
+                            <h3 className="mt-1.5 text-base sm:text-lg font-bold text-white tracking-tight truncate">
+                              {song.title}
+                            </h3>
+                            <p className="text-xs text-white/50 mt-0.5 truncate">
+                              {song.artist} {song.album ? `· 《${song.album}》` : ""}
+                            </p>
+
+                            {/* Action row */}
+                            <div className="mt-3 flex items-center justify-center sm:justify-start gap-2.5">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePlaySong(0);
+                                }}
+                                className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-black shadow-md hover:bg-white/90 active:scale-95 transition-all cursor-pointer"
+                              >
+                                {isThisPlaying ? (
+                                  <>
+                                    <Pause className="w-3.5 h-3.5 fill-black" />
+                                    暂停播放
+                                  </>
+                                ) : (
+                                  <>
+                                    <Play className="w-3.5 h-3.5 fill-black" />
+                                    立即聆听
+                                  </>
+                                )}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleExplanation(song.id);
+                                }}
+                                aria-expanded={isPinned}
+                                aria-controls={explanationId}
+                                aria-keyshortcuts="?"
+                                className={`flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium transition-all cursor-pointer ${
+                                  isPinned
+                                    ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.25)]"
+                                    : "bg-white/[0.06] text-white/70 hover:bg-white/[0.14] hover:text-white border border-white/10"
+                                }`}
+                                title="查看 AI 推荐理由 (?)"
+                              >
+                                <HelpCircle className="h-3 w-3" />
+                                <span>Why this</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(song);
+                                }}
+                                className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all cursor-pointer ${
+                                  isFav
+                                    ? "bg-rose-500/20 border-rose-500/40 text-rose-400"
+                                    : "bg-white/[0.06] border-white/10 text-white/60 hover:text-white"
+                                }`}
+                              >
+                                <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-rose-400" : ""}`} />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  insertNext(song);
+                                  useUIStore.getState().showToast(`已添加《${song.title}》为下一首播放`, "info", 1800);
+                                }}
+                                title="下一首播放"
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
+                              >
+                                <ListPlus className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addToQueue(song);
+                                  useUIStore.getState().showToast(`已将《${song.title}》加入播放列表`, "info", 1800);
+                                }}
+                                title="加入播放队列"
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Right: Featured Meta & Play CTA */}
-                      <div className="flex-1 min-w-0 text-center sm:text-left">
-                        <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/35 shadow-sm">
-                            <Sparkles className="w-2.5 h-2.5" />
-                            今日首推 · No. 01 Pick
-                          </span>
-                          {recommendationReasons.get(heroSong.id)?.[0] && (
-                            <span className="text-[10px] text-cyan-300/85 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full font-medium">
-                              {recommendationReasons.get(heroSong.id)![0].label} {recommendationReasons.get(heroSong.id)![0].weightLabel}
+                        {/* Expandable Reasons Drawer */}
+                        <div
+                          id={explanationId}
+                          aria-hidden={!isPinned}
+                          className={`overflow-hidden transition-all duration-200 ${
+                            isPinned
+                              ? "max-h-64 mt-3 p-3 rounded-xl border border-white/10 bg-black/40 opacity-100"
+                              : "max-h-0 p-0 opacity-0 group-hover:max-h-64 group-hover:mt-3 group-hover:p-3 group-hover:rounded-xl group-hover:border group-hover:border-white/10 group-hover:bg-black/40 group-hover:opacity-100 group-focus-within:max-h-64 group-focus-within:mt-3 group-focus-within:p-3 group-focus-within:rounded-xl group-focus-within:border group-focus-within:border-white/10 group-focus-within:bg-black/40 group-focus-within:opacity-100"
+                          }`}
+                        >
+                          <div className="mb-2 flex items-center justify-between gap-3 border-b border-white/[0.06] pb-1.5">
+                            <span className="flex items-center gap-1.5 text-[11px] font-semibold text-cyan-300">
+                              <Sparkles className="h-3 w-3 text-cyan-400" />
+                              AI 深度个性化偏好匹配
                             </span>
-                          )}
-                        </div>
-
-                        <h3 className="mt-1.5 text-base sm:text-lg font-bold text-white tracking-tight truncate">
-                          {heroSong.title}
-                        </h3>
-                        <p className="text-xs text-white/50 mt-0.5 truncate">
-                          {heroSong.artist} {heroSong.album ? `· 《${heroSong.album}》` : ""}
-                        </p>
-
-                        {/* Action row */}
-                        <div className="mt-3 flex items-center justify-center sm:justify-start gap-2.5">
-                          <button
-                            type="button"
-                            onClick={() => handlePlaySong(0)}
-                            className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-black shadow-md hover:bg-white/90 active:scale-95 transition-all cursor-pointer"
-                          >
-                            {isHeroPlaying ? (
-                              <>
-                                <Pause className="w-3.5 h-3.5 fill-black" />
-                                暂停播放
-                              </>
-                            ) : (
-                              <>
-                                <Play className="w-3.5 h-3.5 fill-black" />
-                                立即聆听
-                              </>
+                            {isPinned && (
+                              <span className="rounded-full bg-cyan-400/20 px-2 py-0.5 text-[10px] text-cyan-300 font-medium border border-cyan-400/30">
+                                已锁定展示
+                              </span>
                             )}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(heroSong);
-                            }}
-                            className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all cursor-pointer ${
-                              isFavorite(heroSong.id)
-                                ? "bg-rose-500/20 border-rose-500/40 text-rose-400"
-                                : "bg-white/[0.06] border-white/10 text-white/60 hover:text-white"
-                            }`}
-                          >
-                            <Heart className={`w-3.5 h-3.5 ${isFavorite(heroSong.id) ? "fill-rose-400" : ""}`} />
-                          </button>
+                          </div>
+                          <div className="grid gap-1.5">
+                            {reasons.map((reason) => (
+                              <div
+                                key={reason.code}
+                                className="flex items-center justify-between gap-3 rounded-lg bg-white/[0.04] px-3 py-1.5"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-xs font-semibold text-white/90">{reason.label}</span>
+                                  <span className="text-[11px] text-white/40 ml-2">{reason.detail}</span>
+                                </div>
+                                <span className="shrink-0 rounded-full bg-cyan-400/15 border border-cyan-400/30 px-2.5 py-0.5 text-[10px] font-bold text-cyan-300">
+                                  {reason.weightLabel}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
+                      </motion.div>
+                    );
+                  }
 
-                {/* ─── 2. Streamlined Track Rows ─── */}
-                <div className="space-y-2">
-                  {displayedSongs.map((song, index) => {
-                    const reasons = recommendationReasons.get(song.id) || [];
-                    const topReason = reasons[0];
-                    const isPinned = pinnedExplanationId === song.id;
-                    const explanationId = `recommendation-reasons-${song.id}`;
-                    const isThisPlaying = currentSong?.id === song.id && isPlaying;
-                    const isThisCurrent = currentSong?.id === song.id;
-                    const isFav = isFavorite(song.id);
-
-                    // Podium styling
-                    const isTop1 = index === 0;
-                    const isTop2 = index === 1;
-                    const isTop3 = index === 2;
+                  // Podium styling for subsequent tracks
+                  const isTop2 = index === 1;
+                  const isTop3 = index === 2;
 
                     return (
                       <motion.div

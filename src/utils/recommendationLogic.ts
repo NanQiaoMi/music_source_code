@@ -31,6 +31,8 @@ export interface RecommendationContext {
   topArtists: string[];
   topGenres: string[];
   skippedSongIds: Set<string>;
+  favoriteSongIds?: Set<string>;
+  mode?: DailyRecommendationMode;
 }
 
 export interface ScoredRecommendation {
