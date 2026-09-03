@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, RotateCcw, Copy, Check, MessageSquare } from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
 import { useLinerNotesStore } from "@/store/linerNotesStore";
 import { useEmotionStore } from "@/store/emotionStore";
@@ -14,7 +14,6 @@ export const AILinerNotes: React.FC = () => {
   const { points } = useEmotionStore();
 
   const [displayNote, setDisplayNote] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -54,13 +53,6 @@ export const AILinerNotes: React.FC = () => {
     }
   }, [mounted, currentSong?.id, currentSong?.artist, currentSong?.title, fetchNotesForCurrentSong]);
 
-  const handleCopy = () => {
-    if (!displayNote) return;
-    navigator.clipboard?.writeText(displayNote);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const handleOpenAIChat = () => {
     if (!currentSong) return;
     const prompt = displayNote
@@ -80,59 +72,21 @@ export const AILinerNotes: React.FC = () => {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 16 }}
-      transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-      className="fixed bottom-28 left-8 z-40 max-w-[320px] pointer-events-auto"
+      transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+      className="fixed bottom-28 left-8 z-40 max-w-[300px] pointer-events-auto select-none"
     >
-      <div className="rounded-2xl bg-black/40 backdrop-blur-2xl border border-white/[0.14] p-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all hover:bg-black/55 group">
-        {/* 顶部标题栏 */}
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-white/80">
-            {isGenerating ? (
-              <Loader2 className="w-3.5 h-3.5 text-cyan-300 animate-spin" />
-            ) : (
-              <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
-            )}
-            <span>AI 情感洞察</span>
-          </div>
-
-          <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-            {displayNote && (
-              <button
-                type="button"
-                onClick={handleOpenAIChat}
-                className="p-1 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-colors"
-                title="向 AI 提问并深度探讨此感悟"
-              >
-                <MessageSquare className="w-3 h-3 text-cyan-300" />
-              </button>
-            )}
-            {displayNote && (
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="p-1 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-colors"
-                title={copied ? "已复制" : "复制感悟"}
-              >
-                {copied ? (
-                  <Check className="w-3 h-3 text-emerald-400" />
-                ) : (
-                  <Copy className="w-3 h-3" />
-                )}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => fetchNotesForCurrentSong(true)}
-              disabled={isGenerating}
-              className="p-1 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-colors disabled:opacity-40"
-              title="重新生成感悟"
-            >
-              <RotateCcw className={`w-3 h-3 ${isGenerating ? "animate-spin" : ""}`} />
-            </button>
-          </div>
+      <div className="flex flex-col gap-2.5">
+        {/* 顶部极简微标 */}
+        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-white/40 font-medium">
+          {isGenerating ? (
+            <Loader2 className="w-3 h-3 text-cyan-300 animate-spin" />
+          ) : (
+            <Sparkles className="w-3 h-3 text-cyan-300/80" />
+          )}
+          <span>AI 情感洞察</span>
         </div>
 
-        {/* 内容展示区 */}
+        {/* 内容展示区：无边框底色纯净通感切片 */}
         <AnimatePresence mode="wait">
           {isGenerating && !displayNote ? (
             <motion.div
@@ -140,25 +94,28 @@ export const AILinerNotes: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="space-y-1.5 py-1"
+              className="space-y-1.5 py-1 pl-1"
             >
-              <div className="h-3.5 w-full bg-white/[0.08] animate-pulse rounded-md" />
-              <div className="h-3.5 w-3/4 bg-white/[0.08] animate-pulse rounded-md" />
+              <div className="h-3 w-48 bg-white/[0.06] animate-pulse rounded" />
+              <div className="h-3 w-32 bg-white/[0.06] animate-pulse rounded" />
             </motion.div>
           ) : (
             <motion.div
               key={currentSong.id + (displayNote || "")}
-              initial={{ opacity: 0, filter: "blur(6px)" }}
+              initial={{ opacity: 0, filter: "blur(10px)" }}
               animate={{ opacity: 1, filter: "blur(0px)" }}
-              exit={{ opacity: 0, filter: "blur(6px)" }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
+              exit={{ opacity: 0, filter: "blur(10px)" }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
               onClick={displayNote ? handleOpenAIChat : undefined}
-              className={displayNote ? "cursor-pointer group/text" : ""}
+              className="relative pl-1 cursor-pointer group"
               title={displayNote ? "点击唤起 AI 智能体深入探讨这首歌" : undefined}
             >
-              <p className="text-[12.5px] leading-relaxed text-white/90 font-light tracking-wide italic select-text group-hover/text:text-cyan-200 transition-colors">
+              <p className="text-sm md:text-[15px] font-light leading-relaxed text-white/80 italic font-serif group-hover:text-white transition-colors select-text">
                 “{displayNote || "聆听旋律流转，感悟音符间的情感共鸣..."}”
               </p>
+
+              {/* 左侧垂直渐变光带微引线 (Subtle left gradient glow trace) */}
+              <div className="absolute -left-3 top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-transparent via-white/30 to-transparent pointer-events-none" />
             </motion.div>
           )}
         </AnimatePresence>

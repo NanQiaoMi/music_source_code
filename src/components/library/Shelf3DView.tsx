@@ -353,166 +353,6 @@ function createBokehTexture(): THREE.CanvasTexture {
   return texture;
 }
 
-// 烘焙 1024x1024 顶级发光舞台光环地台贴图 (多重同心光环、向心辐射线、外发光虚化)
-function createStageHaloTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1024;
-  canvas.height = 1024;
-  const ctx = canvas.getContext("2d")!;
-  const cx = 512;
-  const cy = 512;
-
-  // 1. 中心聚光大圆台底色
-  const baseGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 500);
-  baseGrad.addColorStop(0, "rgba(99, 140, 255, 0.42)");
-  baseGrad.addColorStop(0.18, "rgba(79, 102, 241, 0.28)");
-  baseGrad.addColorStop(0.38, "rgba(30, 58, 138, 0.16)");
-  baseGrad.addColorStop(0.65, "rgba(15, 23, 42, 0.06)");
-  baseGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = baseGrad;
-  ctx.fillRect(0, 0, 1024, 1024);
-
-  // 2. 多重同心科技发光光环 (Concentric Stage Rings)
-  const rings = [
-    { r: 120, width: 2.2, alpha: 0.70, glow: 0.40 },
-    { r: 230, width: 2.5, alpha: 0.55, glow: 0.35 },
-    { r: 350, width: 3.2, alpha: 0.50, glow: 0.30 },
-    { r: 450, width: 2.0, alpha: 0.28, glow: 0.15 },
-  ];
-
-  rings.forEach((ring) => {
-    // 宽外发光
-    ctx.strokeStyle = `rgba(129, 140, 248, ${ring.glow})`;
-    ctx.lineWidth = ring.width * 3.5;
-    ctx.beginPath();
-    ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 核心高亮细线
-    ctx.strokeStyle = `rgba(224, 231, 255, ${ring.alpha})`;
-    ctx.lineWidth = ring.width;
-    ctx.beginPath();
-    ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
-    ctx.stroke();
-  });
-
-  // 3. 舞台向心辐射流光微线 (Radial Compass Rays)
-  const rayCount = 32;
-  for (let i = 0; i < rayCount; i++) {
-    const angle = (i / rayCount) * Math.PI * 2;
-    const isMajor = i % 4 === 0;
-    const innerR = 140;
-    const outerR = 440;
-
-    const x1 = cx + Math.cos(angle) * innerR;
-    const y1 = cy + Math.sin(angle) * innerR;
-    const x2 = cx + Math.cos(angle) * outerR;
-    const y2 = cy + Math.sin(angle) * outerR;
-
-    ctx.strokeStyle = isMajor
-      ? "rgba(199, 210, 254, 0.40)"
-      : "rgba(147, 197, 253, 0.14)";
-    ctx.lineWidth = isMajor ? 1.8 : 1.0;
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-  }
-
-  // 4. 环形刻度微点阵 (Concentric Dot Array)
-  const dotCount = 64;
-  for (let i = 0; i < dotCount; i++) {
-    const angle = (i / dotCount) * Math.PI * 2;
-    const r = 350;
-    const dx = cx + Math.cos(angle) * r;
-    const dy = cy + Math.sin(angle) * r;
-    ctx.fillStyle = i % 8 === 0 ? "rgba(255, 255, 255, 0.85)" : "rgba(165, 180, 252, 0.45)";
-    ctx.beginPath();
-    ctx.arc(dx, dy, i % 8 === 0 ? 2.5 : 1.4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-  return texture;
-}
-
-// 烘焙舞台垂直聚光光锥贴图 (Volumetric Spotlight Beam Texture)
-function createSpotlightBeamTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 512;
-  const ctx = canvas.getContext("2d")!;
-
-  // 纵向从顶到底衰减
-  const vGrad = ctx.createLinearGradient(128, 0, 128, 512);
-  vGrad.addColorStop(0, "rgba(255, 255, 255, 0.70)");
-  vGrad.addColorStop(0.12, "rgba(199, 210, 254, 0.42)");
-  vGrad.addColorStop(0.40, "rgba(129, 140, 248, 0.20)");
-  vGrad.addColorStop(0.75, "rgba(99, 102, 241, 0.08)");
-  vGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-  ctx.fillStyle = vGrad;
-  ctx.fillRect(0, 0, 256, 512);
-
-  // 横向双侧柔焦羽化遮罩
-  ctx.globalCompositeOperation = "destination-in";
-  const hGrad = ctx.createLinearGradient(0, 0, 256, 0);
-  hGrad.addColorStop(0, "rgba(0, 0, 0, 0)");
-  hGrad.addColorStop(0.28, "rgba(255, 255, 255, 0.65)");
-  hGrad.addColorStop(0.5, "rgba(255, 255, 255, 1.0)");
-  hGrad.addColorStop(0.72, "rgba(255, 255, 255, 0.65)");
-  hGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = hGrad;
-  ctx.fillRect(0, 0, 256, 512);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-  return texture;
-}
-
-// 烘焙 3D 宏大天幕极光贴图 (Epic Stage Aurora Nebula)
-function createStageNebulaTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 512;
-  const ctx = canvas.getContext("2d")!;
-
-  const nGrad = ctx.createRadialGradient(256, 220, 20, 256, 256, 256);
-  nGrad.addColorStop(0, "rgba(99, 102, 241, 0.48)");
-  nGrad.addColorStop(0.25, "rgba(59, 130, 246, 0.32)");
-  nGrad.addColorStop(0.55, "rgba(147, 51, 234, 0.18)");
-  nGrad.addColorStop(0.82, "rgba(15, 23, 42, 0.06)");
-  nGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = nGrad;
-  ctx.fillRect(0, 0, 512, 512);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-  return texture;
-}
-
-// 烘焙超大柔焦景深光斑贴图 (Large Bokeh Disc Texture)
-function createLargeBokehTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 128;
-  canvas.height = 128;
-  const ctx = canvas.getContext("2d")!;
-
-  const bGrad = ctx.createRadialGradient(64, 64, 4, 64, 64, 60);
-  bGrad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
-  bGrad.addColorStop(0.35, "rgba(199, 210, 254, 0.65)");
-  bGrad.addColorStop(0.70, "rgba(147, 197, 253, 0.20)");
-  bGrad.addColorStop(0.95, "rgba(129, 140, 248, 0.04)");
-  bGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = bGrad;
-  ctx.fillRect(0, 0, 128, 128);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-  return texture;
-}
-
 export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   isOpen = true,
   className = "",
@@ -799,10 +639,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const cardsGroupRef = useRef<THREE.Group | null>(null);
   const particlesRef = useRef<THREE.Points | null>(null);
   const contactShadowMeshRef = useRef<THREE.Mesh | null>(null);
-  const stageHaloMeshRef = useRef<THREE.Mesh | null>(null);
-  const spotlightConeRef = useRef<THREE.Mesh | null>(null);
-  const bokehOrbsRef = useRef<THREE.Points | null>(null);
-  const nebulaMeshRef = useRef<THREE.Mesh | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
   // Virtualized Card Meshes
@@ -834,7 +670,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
     // 1. Scene
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x050711, 0.022);
+    scene.fog = new THREE.FogExp2(0x050507, 0.045);
     sceneRef.current = scene;
 
     // 2. Camera
@@ -876,58 +712,26 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     cardsGroupRef.current = cardsGroup;
     scene.add(cardsGroup);
 
-    // 6. 舞台深邃黑曜石镜面地面与透视全息地网
-    const floorGeo = new THREE.PlaneGeometry(60, 60, 24, 24);
+    // 6. 空灵黑曜石镜面反射地面与隐形全息地网 (Gloss: 0.94, Grid: 0.08)
+    const floorGeo = new THREE.PlaneGeometry(50, 50, 24, 24);
     const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x050811,
-      roughness: 0.15,
-      metalness: 0.85,
+      color: 0x06060a,
+      roughness: 0.06,
+      metalness: 0.94,
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -2.0;
     scene.add(floor);
 
-    // 舞台全息流光透视地网 (0.22 优雅可见)
-    const grid = new THREE.GridHelper(44, 36, 0x6366f1, 0x1e293b);
+    // 舞台全息流光透视地网 (0.08 隐形微线)
+    const grid = new THREE.GridHelper(36, 28, 0x3d4a6b, 0x121524);
     grid.position.y = -1.99;
     if (grid.material instanceof THREE.Material) {
       grid.material.transparent = true;
-      grid.material.opacity = 0.22;
+      grid.material.opacity = 0.08;
     }
     scene.add(grid);
-
-    // 6.1 舞台光环核心地台 (Stage Halo Luminous Pedestal)
-    const stageHaloTexture = createStageHaloTexture();
-    const stageHaloGeo = new THREE.PlaneGeometry(32, 26);
-    const stageHaloMat = new THREE.MeshBasicMaterial({
-      map: stageHaloTexture,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      opacity: 0.92,
-    });
-    const stageHaloMesh = new THREE.Mesh(stageHaloGeo, stageHaloMat);
-    stageHaloMesh.rotation.x = -Math.PI / 2;
-    stageHaloMesh.position.set(0, -1.97, 0.4);
-    stageHaloMeshRef.current = stageHaloMesh;
-    scene.add(stageHaloMesh);
-
-    // 6.2 3D 垂直聚光光锥 (Volumetric Stage Spotlight Cone)
-    const spotlightTexture = createSpotlightBeamTexture();
-    const spotlightGeo = new THREE.CylinderGeometry(0.7, 5.0, 10.0, 32, 1, true);
-    const spotlightMat = new THREE.MeshBasicMaterial({
-      map: spotlightTexture,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      opacity: 0.18,
-      side: THREE.DoubleSide,
-    });
-    const spotlightMesh = new THREE.Mesh(spotlightGeo, spotlightMat);
-    spotlightMesh.position.set(0, 3.0, 0.8);
-    spotlightConeRef.current = spotlightMesh;
-    scene.add(spotlightMesh);
 
     // 7. 高斯径向渐变柔和地面微光投影 (Smooth Gaussian Radial Contact Halo)
     const shadowCanvas = document.createElement("canvas");
@@ -935,15 +739,15 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     shadowCanvas.height = 512;
     const sCtx = shadowCanvas.getContext("2d")!;
     const sGrad = sCtx.createRadialGradient(256, 256, 10, 256, 256, 240);
-    sGrad.addColorStop(0, "rgba(255, 255, 255, 0.38)");
-    sGrad.addColorStop(0.3, "rgba(147, 197, 253, 0.18)");
-    sGrad.addColorStop(0.65, "rgba(99, 102, 241, 0.06)");
+    sGrad.addColorStop(0, "rgba(255, 255, 255, 0.28)");
+    sGrad.addColorStop(0.3, "rgba(255, 255, 255, 0.10)");
+    sGrad.addColorStop(0.65, "rgba(255, 255, 255, 0.03)");
     sGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
     sCtx.fillStyle = sGrad;
     sCtx.fillRect(0, 0, 512, 512);
 
     const shadowTexture = new THREE.CanvasTexture(shadowCanvas);
-    const contactShadowGeo = new THREE.PlaneGeometry(5.6, 3.6);
+    const contactShadowGeo = new THREE.PlaneGeometry(5.2, 3.2);
     const contactShadowMat = new THREE.MeshBasicMaterial({
       map: shadowTexture,
       transparent: true,
@@ -952,88 +756,60 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     });
     const contactShadowMesh = new THREE.Mesh(contactShadowGeo, contactShadowMat);
     contactShadowMesh.rotation.x = -Math.PI / 2;
-    contactShadowMesh.position.set(0, -1.96, 0.9);
+    contactShadowMesh.position.set(0, -1.98, 0.9);
     contactShadowMeshRef.current = contactShadowMesh;
     scene.add(contactShadowMesh);
 
-    // 8. 空间微光星尘 (220 颗多色微光粒子)
-    const particleCount = 220;
+    // 8. 空间柔焦微光星尘 (150 颗超低密度高斯圆形光斑，彻底消除方块感)
+    const particleCount = 150;
     const particleGeo = new THREE.BufferGeometry();
     const particlePos = new Float32Array(particleCount * 3);
-    const particleColors = new Float32Array(particleCount * 3);
-    const colorChoices = [
-      new THREE.Color(0xffffff),
-      new THREE.Color(0x93c5fd),
-      new THREE.Color(0xc7d2fe),
-      new THREE.Color(0xfef08a),
-    ];
     for (let p = 0; p < particleCount; p++) {
       const idx = p * 3;
-      particlePos[idx] = (Math.random() - 0.5) * 28;
-      particlePos[idx + 1] = (Math.random() - 0.5) * 16 + 1.2;
-      particlePos[idx + 2] = (Math.random() - 0.5) * 20;
-
-      const c = colorChoices[p % colorChoices.length];
-      particleColors[idx] = c.r;
-      particleColors[idx + 1] = c.g;
-      particleColors[idx + 2] = c.b;
+      particlePos[idx] = (Math.random() - 0.5) * 26;
+      particlePos[idx + 1] = (Math.random() - 0.5) * 14 + 1.0;
+      particlePos[idx + 2] = (Math.random() - 0.5) * 18;
     }
     particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePos, 3));
-    particleGeo.setAttribute("color", new THREE.BufferAttribute(particleColors, 3));
 
     const bokehTexture = createBokehTexture();
     const particleMat = new THREE.PointsMaterial({
-      size: 0.22,
+      size: 0.18,
       map: bokehTexture,
       transparent: true,
-      opacity: 0.60,
-      vertexColors: true,
+      opacity: 0.45,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
+      color: 0xffffff,
     });
     const particles = new THREE.Points(particleGeo, particleMat);
     particlesRef.current = particles;
     scene.add(particles);
 
-    // 8.1 空间超大柔焦景深光斑 (18 颗前/中景大型 Bokeh Orbs)
-    const largeBokehCount = 18;
-    const largeBokehGeo = new THREE.BufferGeometry();
-    const largeBokehPos = new Float32Array(largeBokehCount * 3);
-    for (let p = 0; p < largeBokehCount; p++) {
-      const idx = p * 3;
-      largeBokehPos[idx] = (Math.random() - 0.5) * 24;
-      largeBokehPos[idx + 1] = (Math.random() - 0.5) * 12 + 0.5;
-      largeBokehPos[idx + 2] = (Math.random() - 0.5) * 14 + 1.0;
-    }
-    largeBokehGeo.setAttribute("position", new THREE.BufferAttribute(largeBokehPos, 3));
-    const largeBokehTexture = createLargeBokehTexture();
-    const largeBokehMat = new THREE.PointsMaterial({
-      size: 1.1,
-      map: largeBokehTexture,
-      transparent: true,
-      opacity: 0.28,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      color: 0xc7d2fe,
-    });
-    const largeBokehPoints = new THREE.Points(largeBokehGeo, largeBokehMat);
-    bokehOrbsRef.current = largeBokehPoints;
-    scene.add(largeBokehPoints);
+    // 8.1 3D 深邃极光星云背景板 (Z: -14)
+    const nebulaCanvas = document.createElement("canvas");
+    nebulaCanvas.width = 512;
+    nebulaCanvas.height = 512;
+    const nCtx = nebulaCanvas.getContext("2d")!;
+    const nGrad = nCtx.createRadialGradient(256, 256, 20, 256, 256, 256);
+    nGrad.addColorStop(0, "rgba(70, 95, 160, 0.40)");
+    nGrad.addColorStop(0.35, "rgba(30, 45, 90, 0.22)");
+    nGrad.addColorStop(0.70, "rgba(12, 18, 40, 0.08)");
+    nGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+    nCtx.fillStyle = nGrad;
+    nCtx.fillRect(0, 0, 512, 512);
+    const nebulaTexture = new THREE.CanvasTexture(nebulaCanvas);
 
-    // 8.2 3D 宏大天幕极光星云背景板 (Z: -9.5)
-    const nebulaTexture = createStageNebulaTexture();
-    const nebulaGeo = new THREE.PlaneGeometry(54, 34);
+    const nebulaGeo = new THREE.PlaneGeometry(38, 26);
     const nebulaMat = new THREE.MeshBasicMaterial({
       map: nebulaTexture,
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
-      color: new THREE.Color(0x6366f1),
-      opacity: 0.65,
+      color: new THREE.Color(0x384c7a),
     });
     const nebulaMesh = new THREE.Mesh(nebulaGeo, nebulaMat);
-    nebulaMesh.position.set(0, 2.8, -9.5);
-    nebulaMeshRef.current = nebulaMesh;
+    nebulaMesh.position.set(0, 2.0, -14);
     scene.add(nebulaMesh);
 
     // 9. 创建 11 张虚拟化卡片 Mesh (Three.js 显存级持久化纹理直连)
@@ -1124,33 +900,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         particlesRef.current.rotation.y += 0.0003;
         const pulseScale = 1.0 + Math.sin(time * 0.002) * 0.05;
         particlesRef.current.scale.set(pulseScale, pulseScale, pulseScale);
-      }
-
-      // 前景柔焦大光斑轻柔漂移与视差浮动
-      if (bokehOrbsRef.current) {
-        bokehOrbsRef.current.rotation.y -= 0.00015;
-        bokehOrbsRef.current.position.y = Math.sin(time * 0.0008) * 0.12;
-      }
-
-      // 舞台光环核心地台微旋呼吸
-      if (stageHaloMeshRef.current) {
-        stageHaloMeshRef.current.rotation.z = Math.sin(time * 0.0003) * 0.025;
-        const mat = stageHaloMeshRef.current.material as THREE.MeshBasicMaterial;
-        mat.opacity = 0.86 + Math.sin(time * 0.002) * 0.08;
-      }
-
-      // 垂直聚光光锥动态呼吸与向心微移
-      if (spotlightConeRef.current) {
-        spotlightConeRef.current.position.x = THREE.MathUtils.lerp(0, -0.6, modeBlend);
-        spotlightConeRef.current.rotation.z = Math.sin(time * 0.0008) * 0.015;
-        const mat = spotlightConeRef.current.material as THREE.MeshBasicMaterial;
-        mat.opacity = 0.16 + Math.sin(time * 0.0025) * 0.04;
-      }
-
-      // 宏大天幕星云轻柔呼吸
-      if (nebulaMeshRef.current) {
-        const nebScale = 1.0 + Math.sin(time * 0.0007) * 0.03;
-        nebulaMeshRef.current.scale.set(nebScale, nebScale, 1.0);
       }
 
       // 地面接触光晕动态跟随
@@ -1289,18 +1038,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       renderer.dispose();
       particleGeo.dispose();
       particleMat.dispose();
-      largeBokehGeo.dispose();
-      largeBokehMat.dispose();
-      largeBokehTexture.dispose();
-      stageHaloGeo.dispose();
-      stageHaloMat.dispose();
-      stageHaloTexture.dispose();
-      spotlightGeo.dispose();
-      spotlightMat.dispose();
-      spotlightTexture.dispose();
-      nebulaGeo.dispose();
-      nebulaMat.dispose();
-      nebulaTexture.dispose();
       floorGeo.dispose();
       floorMat.dispose();
       contactShadowGeo.dispose();
@@ -1565,15 +1302,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`fixed inset-0 z-50 w-full h-full min-h-[520px] ${transparentBg ? "bg-transparent pointer-events-none" : "bg-[#030408]"} overflow-hidden select-none flex flex-col justify-between p-6 ${className}`}
-      style={
-        transparentBg
-          ? undefined
-          : {
-              background:
-                "radial-gradient(ellipse 130% 90% at 50% 28%, #0e172e 0%, #080c18 45%, #030408 85%, #010204 100%)",
-            }
-      }
+      className={`fixed inset-0 z-50 w-full h-full min-h-[520px] ${transparentBg ? "bg-transparent pointer-events-none" : "bg-[#040407]"} overflow-hidden select-none flex flex-col justify-between p-6 ${className}`}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMoveParallax}
       onMouseUp={handleMouseUp}
@@ -1581,48 +1310,25 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     >
       {/* ── 动态自适应极光与舞台弥散流光背景 (Atmospheric Aurora Mesh) ── */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
-        {/* 顶部主舞台氛围光穹顶 */}
+        {/* 顶部主舞台氛围光 */}
         <div
-          className="absolute -top-[25%] left-1/2 -translate-x-1/2 w-[1350px] h-[850px] rounded-full blur-[130px] opacity-55 transition-all duration-1000"
+          className="absolute -top-[20%] left-1/2 -translate-x-1/2 w-[1100px] h-[700px] rounded-full blur-[140px] opacity-35 transition-all duration-1000"
           style={{
             background:
               browseType === "favorites"
-                ? "radial-gradient(circle, rgba(244,63,94,0.55) 0%, rgba(168,85,247,0.30) 45%, transparent 70%)"
+                ? "radial-gradient(circle, rgba(244,63,94,0.45) 0%, rgba(168,85,247,0.25) 45%, transparent 70%)"
                 : browseType === "recent"
-                ? "radial-gradient(circle, rgba(245,158,11,0.55) 0%, rgba(239,68,68,0.30) 45%, transparent 70%)"
+                ? "radial-gradient(circle, rgba(245,158,11,0.45) 0%, rgba(239,68,68,0.25) 45%, transparent 70%)"
                 : browseType === "daily"
-                ? "radial-gradient(circle, rgba(16,185,129,0.55) 0%, rgba(6,182,212,0.30) 45%, transparent 70%)"
-                : "radial-gradient(circle, rgba(99,102,241,0.55) 0%, rgba(59,130,246,0.35) 45%, transparent 70%)",
+                ? "radial-gradient(circle, rgba(16,185,129,0.45) 0%, rgba(6,182,212,0.25) 45%, transparent 70%)"
+                : "radial-gradient(circle, rgba(59,130,246,0.45) 0%, rgba(147,51,234,0.25) 45%, transparent 70%)",
           }}
         />
-
-        {/* 舞台顶棚柔焦聚光光晕 (Concert Theater Ceiling Spotlight Wash) */}
-        <div
-          className="absolute top-[6%] left-1/2 -translate-x-1/2 w-[720px] h-[460px] rounded-[100%] blur-[90px] opacity-40 transition-all duration-1000 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse, rgba(199,210,254,0.35) 0%, rgba(129,140,248,0.18) 45%, transparent 75%)",
-          }}
-        />
-
-        {/* 底部舞台地面反光与舞台光环地面外溢 (Stage Floor Specular Wash) */}
-        <div
-          className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-[1100px] h-[420px] rounded-[100%] blur-[90px] opacity-55 pointer-events-none transition-all duration-1000"
-          style={{
-            background:
-              browseType === "favorites"
-                ? "radial-gradient(ellipse, rgba(244,63,94,0.35) 0%, rgba(168,85,247,0.20) 40%, transparent 75%)"
-                : browseType === "recent"
-                ? "radial-gradient(ellipse, rgba(245,158,11,0.35) 0%, rgba(239,68,68,0.20) 40%, transparent 75%)"
-                : browseType === "daily"
-                ? "radial-gradient(ellipse, rgba(16,185,129,0.35) 0%, rgba(6,182,212,0.20) 40%, transparent 75%)"
-                : "radial-gradient(ellipse, rgba(99,102,241,0.35) 0%, rgba(59,130,246,0.20) 40%, transparent 75%)",
-          }}
-        />
-
-        {/* 舞台顶端与地平流光透视细线 */}
-        <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-        <div className="absolute bottom-[23%] left-[12%] right-[12%] h-[1px] bg-gradient-to-r from-transparent via-indigo-400/25 to-transparent pointer-events-none blur-[0.5px]" />
+        {/* 底部舞台地面反光泛光 */}
+        <div className="absolute -bottom-24 left-0 right-0 h-[360px] bg-gradient-to-t from-cyan-900/15 via-indigo-950/15 to-transparent blur-3xl opacity-60 pointer-events-none" />
+        
+        {/* 顶部流光细线 */}
+        <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
       </div>
 
       {/* 3D WebGL Canvas */}
