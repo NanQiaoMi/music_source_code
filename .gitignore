@@ -105,3 +105,4 @@ mimimusic-promo/
 # Local worktrees and assistant session state
 .worktrees/
 .zcode/
+.cache/

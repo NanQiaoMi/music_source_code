@@ -461,7 +461,7 @@ async function xinghaiBackupGetUrl(platform, songId, quality, songInfo) {
 
 /* Huibq */
 async function huibqGetUrl(platform, songId, quality, songInfo) {
-  if (!HUIBQ_API || !HUIBQ_REQUEST_KEY) throw new Error("Huibq未配置");
+  if (!HUIBQ_API || !HUIBQ_REQUEST_KEY || HUIBQ_REQUEST_KEY === "your_key_here") throw new Error("Huibq未配置有效密钥");
   const hashOrMid = songInfo?.hash ?? songInfo?.songmid;
   if (!hashOrMid) throw new Error("Huibq缺少hash/songmid");
   const selectedQuality = selectQuality(quality, ["320k", "128k"]);
@@ -632,7 +632,7 @@ async function suyinGetUrl(platform, songId, quality, songInfo) {
 /* 长青SVIP */
 async function changqingGetUrl(platform, songId, quality, songInfo) {
   const template = CHANGQING_URL_TEMPLATES[platform];
-  if (!template) throw new Error("长青SVIP不支持该平台");
+  if (!template || template.includes("175.27.166.236")) throw new Error("长青SVIP服务器已下线");
   const id = getPlatformSongId(platform, songInfo);
   if (!id) throw new Error("长青SVIP缺少songId");
   const level = qualityToNetease(quality);
@@ -733,16 +733,13 @@ const SOURCE_HANDLERS = {
 // --- 构建音源链（按平台和是否高品质排序）---
 function buildSourceChain(platform, isHires, quality) {
   const chain = [];
-  // 基础链：星海主、Huibq、溯音各平台、聆川、长青、念心
+  // 基础链：优先走高可用主干星海与溯音官方逆向通道，剔除未配置的占位源
   if (SOURCE_HANDLERS.xinghai) chain.push(SOURCE_HANDLERS.xinghai);
-  if (SOURCE_HANDLERS.huibq) chain.push(SOURCE_HANDLERS.huibq);
   if (platform === "wy" && SOURCE_HANDLERS.suyin163) chain.push(SOURCE_HANDLERS.suyin163);
   if (platform === "tx" && SOURCE_HANDLERS.suyinQQ) chain.push(SOURCE_HANDLERS.suyinQQ);
   if (platform === "kw" && SOURCE_HANDLERS.suyinSearch) chain.push(SOURCE_HANDLERS.suyinSearch);
   if (platform === "mg" && SOURCE_HANDLERS.suyinMigu) chain.push(SOURCE_HANDLERS.suyinMigu);
-  if (SOURCE_HANDLERS.lingchuan) chain.push(SOURCE_HANDLERS.lingchuan);
-  if (SOURCE_HANDLERS.changqingVip) chain.push(SOURCE_HANDLERS.changqingVip);
-  if (SOURCE_HANDLERS.nianxinVip) chain.push(SOURCE_HANDLERS.nianxinVip);
+  if (SOURCE_HANDLERS.xinghaiBackup) chain.push(SOURCE_HANDLERS.xinghaiBackup);
   return chain;
 }
 

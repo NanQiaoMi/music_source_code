@@ -40,6 +40,11 @@ function generateFallbackLinerNote(
   }
 }
 
+import { networkPriorityManager, NetworkPriority } from "@/services/networkPriorityManager";
+
+let activeLinerNotesController: AbortController | null = null;
+let linerNotesDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useLinerNotesStore = create<LinerNotesState>()(
   persist(
     (set, get) => ({
@@ -55,9 +60,18 @@ export const useLinerNotesStore = create<LinerNotesState>()(
 
         const aiStore = useAIStore.getState();
         if (!aiStore.isEnabled) {
-          set({ isGenerating: false });
-          return null;
+          const fallback = generateFallbackLinerNote(title, artist, emotion);
+          set((state) => ({ notes: { ...state.notes, [key]: fallback }, isGenerating: false }));
+          return fallback;
         }
+
+        // 中止上一个正在进行的 AI 请求，防止切歌时并发打满连接池
+        if (activeLinerNotesController) {
+          activeLinerNotesController.abort();
+          activeLinerNotesController = null;
+        }
+        activeLinerNotesController = new AbortController();
+        const currentSignal = activeLinerNotesController.signal;
 
         set({ isGenerating: true });
 
@@ -70,7 +84,6 @@ export const useLinerNotesStore = create<LinerNotesState>()(
           }
         }
 
-        // 加入所有已知 SenseNova 候选配置
         for (const def of DEFAULT_SENSENOVA_CONFIGS) {
           if (!candidateConfigs.some((c) => c.apiKey === def.apiKey)) {
             candidateConfigs.push({
@@ -97,67 +110,92 @@ ${emotionContext}
         const userPrompt = `信号源：${title} / ${artist}
 ${lyrics ? `语义残片：${lyrics.substring(0, 300)}` : ""}`;
 
-        // 逐一轮询配置池
-        for (const config of candidateConfigs) {
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 9000);
+        try {
+          // 通过 P2 后台低优先级调度队列执行（音频拉流缓冲期间自动挂起）
+          return await networkPriorityManager.schedule(
+            NetworkPriority.P2_BACKGROUND,
+            async () => {
+              for (const config of candidateConfigs) {
+                if (currentSignal.aborted) break;
 
-            const isBrowser = typeof window !== "undefined";
-            const baseUrl = config.baseUrl.replace(/\/$/, "");
-            const url = isBrowser
-              ? "/api/ai/chat"
-              : baseUrl.endsWith("/v1")
-                ? `${baseUrl}/chat/completions`
-                : `${baseUrl}/v1/chat/completions`;
+                try {
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-            const response = await fetch(url, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${config.apiKey}`,
-              },
-              body: JSON.stringify({
-                baseUrl: config.baseUrl,
-                apiKey: config.apiKey,
-                model: config.model || "sensenova-6.8-flash-lite",
-                messages: [
-                  { role: "system", content: systemPrompt },
-                  { role: "user", content: userPrompt },
-                ],
-                temperature: 0.85,
-                max_tokens: 100,
-              }),
-              signal: controller.signal,
-            });
+                  const onAbort = () => controller.abort();
+                  currentSignal.addEventListener("abort", onAbort, { once: true });
 
-            clearTimeout(timeoutId);
+                  const isBrowser = typeof window !== "undefined";
+                  const baseUrl = config.baseUrl.replace(/\/$/, "");
+                  const url = isBrowser
+                    ? "/api/ai/chat"
+                    : baseUrl.endsWith("/v1")
+                      ? `${baseUrl}/chat/completions`
+                      : `${baseUrl}/v1/chat/completions`;
 
-            if (!response.ok) {
-              continue; // 自动故障转移至下一个 Key
-            }
+                  const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${config.apiKey}`,
+                    },
+                    body: JSON.stringify({
+                      baseUrl: config.baseUrl,
+                      apiKey: config.apiKey,
+                      model: config.model || "sensenova-6.8-flash-lite",
+                      messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: userPrompt },
+                      ],
+                      temperature: 0.85,
+                      max_tokens: 100,
+                    }),
+                    signal: controller.signal,
+                  });
 
-            const data = await response.json();
-            const result = data.choices?.[0]?.message?.content?.trim();
+                  clearTimeout(timeoutId);
+                  currentSignal.removeEventListener("abort", onAbort);
 
-            if (result && result.length >= 6) {
-              // 清理多余引号
-              const cleaned = result.replace(/^["“'「]|["”'」]$/g, "").trim();
+                  if (!response.ok) {
+                    continue;
+                  }
+
+                  const data = await response.json();
+                  const result = data.choices?.[0]?.message?.content?.trim();
+
+                  if (result && result.length >= 6) {
+                    const cleaned = result.replace(/^["“'「]|["”'」]$/g, "").trim();
+                    set((state) => ({
+                      notes: { ...state.notes, [key]: cleaned },
+                      isGenerating: false,
+                    }));
+                    return cleaned;
+                  }
+                } catch {
+                  continue;
+                }
+              }
+
+              // 若所有配置超时或失败，优雅采用唯美本地通感算法，零延迟 100% 可用
+              const fallback = generateFallbackLinerNote(title, artist, emotion);
               set((state) => ({
-                notes: { ...state.notes, [key]: cleaned },
+                notes: { ...state.notes, [key]: fallback },
                 isGenerating: false,
               }));
-              return cleaned;
-            }
-          } catch {
-            // 继续下一个 Key
-            continue;
-          }
+              return fallback;
+            },
+            { signal: currentSignal }
+          );
+        } catch {
+          const fallback = generateFallbackLinerNote(title, artist, emotion);
+          set((state) => ({
+            notes: { ...state.notes, [key]: fallback },
+            isGenerating: false,
+          }));
+          return fallback;
+        } finally {
+          set({ isGenerating: false });
         }
-
-        console.warn("[LinerNotes] Failed to generate liner notes: all upstream requests failed");
-        set({ isGenerating: false });
-        return null;
       },
 
       clearCache: () => set({ notes: {} }),

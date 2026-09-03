@@ -1,9 +1,10 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { endpointCircuitBreaker, CoolingHostInfo } from "@/services/EndpointCircuitBreaker";
+import { networkPriorityManager } from "@/services/networkPriorityManager";
 import {
   X,
   CheckCircle2,
@@ -16,6 +17,10 @@ import {
   Sparkles,
   Music,
   ShieldCheck,
+  HardDrive,
+  RefreshCw,
+  AlertTriangle,
+  Server,
 } from "lucide-react";
 
 interface AppleAudioSourceInspectorProps {
@@ -27,9 +32,25 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const currentTime = useAudioStore((state) => state.currentTime);
 
-  const [activeTab, setActiveTab] = useState<"sources" | "dsp" | "decrypt">("sources");
+  const [activeTab, setActiveTab] = useState<"sources" | "stream" | "dsp" | "decrypt">("sources");
   const [liveBpm, setLiveBpm] = useState(128);
   const [simulatedEnergy, setSimulatedEnergy] = useState({ low: 0.65, mid: 0.42, snap: 0.81 });
+  const [coolingHosts, setCoolingHosts] = useState<CoolingHostInfo[]>(() =>
+    endpointCircuitBreaker.getCoolingHosts()
+  );
+
+  const refreshCoolingHosts = () => {
+    setCoolingHosts(endpointCircuitBreaker.getCoolingHosts());
+  };
+
+  const handleResetCircuitBreaker = () => {
+    endpointCircuitBreaker.resetAll();
+    setCoolingHosts([]);
+  };
+
+  useEffect(() => {
+    refreshCoolingHosts();
+  }, [activeTab]);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -60,8 +81,8 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-semibold tracking-tight text-[#1d1d1f] dark:text-[#f5f5f7]">
-                音频流引擎与 DSP 分析中心
+              <h3 className="text-base font-bold text-[#1d1d1f] dark:text-[#f5f5f7] tracking-tight">
+                音频底座与高保真 DSP 监视器
               </h3>
               <p className="text-[12px] text-[#858585] dark:text-[#a1a1a6]">
                 Apple Hi-Res Audio Architecture & DSP Pipeline
@@ -79,7 +100,7 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
 
         {/* Apple 经典 Segmented Control (分段选择器) */}
         <div className="px-6 pt-4 pb-2">
-          <div className="grid grid-cols-3 p-1 rounded-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
+          <div className="grid grid-cols-4 p-1 rounded-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
             <button
               type="button"
               onClick={() => setActiveTab("sources")}
@@ -89,7 +110,18 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
                   : "text-[#858585] hover:text-[#1d1d1f] dark:hover:text-white"
               }`}
             >
-              多源聚合与降级
+              多源聚合
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("stream")}
+              className={`py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all duration-200 ${
+                activeTab === "stream"
+                  ? "bg-white dark:bg-[#2c2c2e] text-[#1d1d1f] dark:text-white shadow-sm"
+                  : "text-[#858585] hover:text-[#1d1d1f] dark:hover:text-white"
+              }`}
+            >
+              流防护自愈
             </button>
             <button
               type="button"
@@ -100,7 +132,7 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
                   : "text-[#858585] hover:text-[#1d1d1f] dark:hover:text-white"
               }`}
             >
-              Biquad 节拍分析
+              节拍分析
             </button>
             <button
               type="button"
@@ -111,7 +143,7 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
                   : "text-[#858585] hover:text-[#1d1d1f] dark:hover:text-white"
               }`}
             >
-              SpadeKey 实时解密
+              实时解密
             </button>
           </div>
         </div>
@@ -172,6 +204,110 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: 流媒体抗卡顿与自愈监控 */}
+          {activeTab === "stream" && (
+            <div className="space-y-4">
+              {/* 核心防护盾状态卡片 */}
+              <div className="p-4 rounded-2xl bg-white dark:bg-[#2c2c2e] border border-black/5 dark:border-white/5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#858585] uppercase tracking-wider">
+                    流媒体引擎抗卡顿防护盾
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#34c759]/10 text-[#34c759] border border-[#34c759]/20">
+                    <ShieldCheck className="w-3 h-3" />
+                    抗死循环 & 智能断点自愈生效中
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-[#1d1d1f] dark:text-white">
+                      <HardDrive className="w-3.5 h-3.5 text-[#0071e3]" />
+                      代理层磁盘 LRU 缓存
+                    </div>
+                    <p className="text-[11px] text-[#858585] mt-1">
+                      1GB 配额 · SHA-256 哈希切片 · 二次加载 0ms 本地瞬发
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-[#1d1d1f] dark:text-white">
+                      <Zap className="w-3.5 h-3.5 text-[#34c759]" />
+                      智能断点重连 (Stutter Resume)
+                    </div>
+                    <p className="text-[11px] text-[#858585] mt-1">
+                      缓冲停顿 &gt; 2.0s 自动触发 Range 毫秒级断点重连
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 三级网络优先级队列状态 */}
+              <div className="p-4 rounded-2xl bg-white dark:bg-[#2c2c2e] border border-black/5 dark:border-white/5 shadow-sm space-y-2.5">
+                <h5 className="text-xs font-semibold text-[#858585]">三级网络并发调度队列</h5>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-black/5 dark:bg-white/5">
+                    <span className="font-semibold text-[#1d1d1f] dark:text-white">P0 · 音频拉流与直链嗅探</span>
+                    <span className="font-mono text-[#34c759] font-bold">独占最高通道 (零阻塞)</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-black/5 dark:bg-white/5">
+                    <span className="font-semibold text-[#1d1d1f] dark:text-white">P1 · 歌词解析与封面拉取</span>
+                    <span className="font-mono text-[#0071e3] font-bold">动态并发保护</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-black/5 dark:bg-white/5">
+                    <span className="font-semibold text-[#1d1d1f] dark:text-white">P2 · AI 通感笔记与预加载</span>
+                    <span className="font-mono text-[#ff9500] font-bold">
+                      {networkPriorityManager.isAudioBuffering() ? "音频缓冲中 · 自动挂起" : "就绪 · 零抢占"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 动态熔断心跳池卡片 */}
+              <div className="p-4 rounded-2xl bg-white dark:bg-[#2c2c2e] border border-black/5 dark:border-white/5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Server className="w-3.5 h-3.5 text-[#858585]" />
+                    <span className="text-xs font-semibold text-[#858585]">第三方接口动态熔断心跳池</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleResetCircuitBreaker}
+                    className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-[#1d1d1f] dark:text-white transition-all active:scale-95"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    复位熔断池
+                  </button>
+                </div>
+
+                {coolingHosts.length === 0 ? (
+                  <div className="p-3 rounded-xl bg-[#34c759]/5 border border-[#34c759]/20 text-center">
+                    <p className="text-xs text-[#34c759] font-semibold">
+                      全网所有音源接口与解析节点状态健康，无处于熔断冷却期的节点
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] text-[#ff9500] flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      以下节点因连通异常被临时阶梯式熔断，当前 0ms 快速跳过：
+                    </p>
+                    {coolingHosts.map((item) => (
+                      <div
+                        key={item.host}
+                        className="flex items-center justify-between p-2 rounded-lg bg-[#ff3b30]/10 border border-[#ff3b30]/20 text-xs font-mono"
+                      >
+                        <span className="text-[#ff3b30] font-bold">{item.host}</span>
+                        <span className="text-[#ff3b30] text-[11px]">
+                          连续失败 {item.failureCount} 次 · 隔离余 {item.remainingSeconds}s
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
