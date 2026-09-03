@@ -31,8 +31,6 @@ export interface RecommendationContext {
   topArtists: string[];
   topGenres: string[];
   skippedSongIds: Set<string>;
-  favoriteSongIds?: Set<string>;
-  mode?: DailyRecommendationMode;
 }
 
 export interface ScoredRecommendation {
@@ -359,18 +357,22 @@ export function scoreSongForRecommendation(
   // 5. 时段氛围契合度
   if (context.mode) {
     const titleAndGenre = `${song.title || ""} ${song.genre || ""} ${song.album || ""}`.toLowerCase();
-    const modeName = context.mode.name;
-    if (modeName.includes("专注") || modeName.includes("下午")) {
+    const modeName = (
+      context.mode.name ||
+      (context.mode as any).title ||
+      ""
+    ).toLowerCase();
+    if (modeName.includes("专注") || modeName.includes("下午") || modeName.includes("focus")) {
       const isFocusFriendly = /focus|acoustic|piano|lofi|ambient|instrumental|chill|吉他|钢琴|民谣|纯音乐|慢|安静/i.test(titleAndGenre);
       if (isFocusFriendly) {
         score += 15;
       }
-    } else if (modeName.includes("沉浸") || modeName.includes("深夜") || modeName.includes("夜晚")) {
+    } else if (modeName.includes("沉浸") || modeName.includes("深夜") || modeName.includes("夜晚") || modeName.includes("night")) {
       const isNightFriendly = /night|dream|ambient|ballad|slow|soul|jazz|夜|梦|星|晚安|轻/i.test(titleAndGenre);
       if (isNightFriendly) {
         score += 15;
       }
-    } else if (modeName.includes("活力") || modeName.includes("早间")) {
+    } else if (modeName.includes("活力") || modeName.includes("早间") || modeName.includes("morning")) {
       const isMorningFriendly = /morning|sun|bright|energy|pop|rock|dance|早|晨|光|燃|活力/i.test(titleAndGenre);
       if (isMorningFriendly) {
         score += 15;
@@ -512,7 +514,6 @@ export function generateDailyRecommendationGroups(
   );
 
   // ─── 艺术家多样性防堆砌算法 (Anti-Monopoly Artist Guard) ───
-  // 防止同一个歌手（如"安河桥南"）在一组推荐中连续霸屏，保证曲风与歌手丰富度
   const pickDiverse = (
     candidates: ScoredRecommendation[],
     limit: number,
@@ -556,13 +557,12 @@ export function generateDailyRecommendationGroups(
     (item) => (item.song.playCount || 0) <= 1 && !familiar.some((f) => f.song.id === item.song.id)
   );
   const discover = pickDiverse(discoverCandidates, perGroupLimit, globalArtistCounts, 1);
-
   const familiarIds = new Set(familiar.map((item) => item.song.id));
   const discoverIds = new Set(discover.map((item) => item.song.id));
   const extendCandidates = byScore.filter(
     (item) => !familiarIds.has(item.song.id) && !discoverIds.has(item.song.id)
   );
-  const extend = pickDiverse(extendCandidates, perGroupLimit, globalArtistCounts, 2);
+  const extend = pickDiverse(extendCandidates, perGroupLimit, globalArtistCounts, 1);
 
   const makeGroup = (
     category: DailyRecommendationGroup["category"],
@@ -592,6 +592,20 @@ export function generateDailyRecommendationGroups(
       if (song && !usedIds.has(song.id)) {
         orderedSongs.push(song);
         usedIds.add(song.id);
+      }
+    }
+  }
+
+  // 保证连续两首曲目不会出现同一个歌手连续堆叠
+  for (let i = 0; i < orderedSongs.length - 1; i++) {
+    if (orderedSongs[i].artist && orderedSongs[i].artist === orderedSongs[i + 1].artist) {
+      const swapIdx = orderedSongs.findIndex(
+        (s, idx) => idx > i + 1 && s.artist !== orderedSongs[i].artist
+      );
+      if (swapIdx !== -1) {
+        const temp = orderedSongs[i + 1];
+        orderedSongs[i + 1] = orderedSongs[swapIdx];
+        orderedSongs[swapIdx] = temp;
       }
     }
   }

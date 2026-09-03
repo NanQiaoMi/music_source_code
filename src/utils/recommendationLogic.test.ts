@@ -6,6 +6,7 @@ import {
   calculateFreshnessScore,
   calculateSimilarity,
   generateRecommendations,
+  generateDailyRecommendationGroups,
   scoreSongForRecommendation,
   getMaxPlayCount,
   getNormalizedPlay,
@@ -198,6 +199,91 @@ describe("recommendationLogic", () => {
         expect.arrayContaining(["artist-match", "genre-match", "replay-friendly"])
       );
       expect(result.score).toBeGreaterThan(50);
+    });
+
+    it("penalizes noise tracks, type beats, and pure symbol titles", () => {
+      const typeBeat = createSong({
+        id: "beat-1",
+        title: '"Dream Lover" Gunna Type Beat',
+        artist: "BoxerEven",
+        playCount: 0,
+      });
+      const emojiSong = createSong({
+        id: "emoji-1",
+        title: "^.^",
+        artist: "Lv9",
+        playCount: 0,
+      });
+      const shortAudio = createSong({
+        id: "short-1",
+        title: "Short Clip",
+        duration: 20,
+        playCount: 0,
+      });
+
+      const normalSong = createSong({
+        id: "normal-1",
+        title: "Normal Melodic Track",
+        artist: "Artist X",
+        duration: 210,
+        playCount: 0,
+      });
+
+      const context = {
+        recentSongs: [],
+        topArtists: [],
+        topGenres: [],
+        skippedSongIds: new Set<string>(),
+      };
+
+      const scoreTypeBeat = scoreSongForRecommendation(typeBeat, context).score;
+      const scoreEmoji = scoreSongForRecommendation(emojiSong, context).score;
+      const scoreShort = scoreSongForRecommendation(shortAudio, context).score;
+      const scoreNormal = scoreSongForRecommendation(normalSong, context).score;
+
+      expect(scoreTypeBeat).toBeLessThan(scoreNormal);
+      expect(scoreEmoji).toBeLessThan(scoreNormal);
+      expect(scoreShort).toBeLessThan(scoreNormal);
+    });
+  });
+
+  describe("generateDailyRecommendationGroups artist diversity", () => {
+    it("prevents duplicate artist monopoly across recommendations", () => {
+      const songs = [
+        createSong({ id: "anhe-1", title: "红豆", artist: "安河桥南", playCount: 10 }),
+        createSong({ id: "anhe-2", title: "晚安", artist: "安河桥南", playCount: 9 }),
+        createSong({ id: "anhe-3", title: "拥抱", artist: "安河桥南", playCount: 8 }),
+        createSong({ id: "anhe-4", title: "旅行的意义", artist: "安河桥南", playCount: 7 }),
+        createSong({ id: "other-1", title: "晴天", artist: "周杰伦", playCount: 6 }),
+        createSong({ id: "other-2", title: "七里香", artist: "周杰伦", playCount: 5 }),
+        createSong({ id: "other-3", title: "后来", artist: "刘若英", playCount: 4 }),
+        createSong({ id: "other-4", title: "温柔", artist: "五月天", playCount: 4 }),
+        createSong({ id: "other-5", title: "追光者", artist: "岑宁儿", playCount: 3 }),
+        createSong({ id: "other-6", title: "起风了", artist: "买辣椒也用券", playCount: 3 }),
+      ];
+
+      const result = generateDailyRecommendationGroups(
+        songs,
+        {
+          recentSongs: [],
+          topArtists: ["安河桥南", "周杰伦"],
+          topGenres: [],
+          skippedSongIds: new Set(),
+        },
+        undefined,
+        4
+      );
+
+      // Verify that 'familiar' group only picks 1 song from 安河桥南 instead of all 4!
+      const familiarGroup = result.groups.find((g: any) => g.category === "familiar");
+      expect(familiarGroup).toBeDefined();
+      const anheCount = familiarGroup.songs.filter((s: any) => s.artist === "安河桥南").length;
+      expect(anheCount).toBeLessThanOrEqual(1);
+
+      // Verify overall orderedSongs doesn't stack the same artist consecutively
+      for (let i = 0; i < result.orderedSongs.length - 1; i++) {
+        expect(result.orderedSongs[i].artist).not.toBe(result.orderedSongs[i + 1].artist);
+      }
     });
   });
 });
