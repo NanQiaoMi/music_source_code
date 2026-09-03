@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const {
       baseUrl = process.env.SENSENOVA_BASE_URL || "https://token.sensenova.cn/v1",
       apiKey: bodyApiKey,
-      model = process.env.SENSENOVA_DEFAULT_MODEL || "sensenova-6.8-flash-lite",
+      model = process.env.SENSENOVA_DEFAULT_MODEL || "deepseek-v4-flash",
       messages,
       tools,
       tool_choice,
