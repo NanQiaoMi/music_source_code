@@ -596,24 +596,32 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
               </div>
 
               {/* ─── 🔲 BENTO BLOCK 3: 协同好歌精选流 (Col-span 5) ─── */}
-              <div className="lg:col-span-5 flex flex-col justify-between rounded-[24px] border border-white/[0.12] bg-white/[0.03] p-4.5 shadow-[0_16px_40px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.15)] backdrop-blur-xl overflow-hidden">
-                {/* 顶栏：标签与行内快速搜索（对齐标题与准确计数，支持紧凑分页） */}
-                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-white/[0.08]">
-                  <div className="flex items-center gap-2 text-xs font-bold text-white">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/[0.08] border border-white/10">
-                      <Headphones className="h-3.5 w-3.5 text-white/80" />
+              <div className="lg:col-span-5 flex flex-col justify-between rounded-[24px] border border-white/[0.12] bg-white/[0.03] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.15)] backdrop-blur-xl overflow-hidden">
+                {/* 顶栏：统一规范的 Bento 卡片标题栏 */}
+                <div className="flex items-center justify-between gap-3 pb-3 border-b border-white/[0.08]">
+                  {/* 左侧：与 Block 2 & Block 4 统一规范的图标与双行标题 */}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-2 rounded-xl bg-white/[0.08] border border-white/10 shrink-0 flex items-center justify-center shadow-sm">
+                      <Headphones className="h-4 w-4 text-white/90" />
                     </div>
-                    <span>精选好歌推荐</span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-white/[0.06] text-white/50 border border-white/10">
-                      {subTracks.length} 首
-                    </span>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-white flex items-center gap-2">
+                        <span className="truncate">协同好歌推荐</span>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-white/80 font-mono shrink-0 border border-white/10">
+                          {subTracks.length} 首
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-white/50 mt-0.5 truncate">
+                        Curated Discovery · 智能匹配
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
-                    {/* 分页切换器：如果超过 4 首，优雅分页，绝不让卡片拉长 */}
+                  {/* 右侧：紧凑优雅的分页控制器与搜索框 */}
+                  <div className="flex items-center gap-2 shrink-0">
                     {totalSubPages > 1 && (
-                      <div className="flex items-center gap-1 bg-white/[0.04] border border-white/10 rounded-full px-1.5 py-0.5">
-                        <span className="text-[9.5px] font-mono text-white/50 px-0.5">
+                      <div className="flex items-center gap-1 bg-white/[0.06] border border-white/10 rounded-full px-2 py-0.5">
+                        <span className="text-[11px] font-mono text-white/65 px-0.5">
                           {safeSubPage + 1}/{totalSubPages}
                         </span>
                         <button
@@ -621,37 +629,37 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                           disabled={safeSubPage === 0}
                           onClick={() => setSubTracksPage((p) => Math.max(0, p - 1))}
                           aria-label="上一页"
-                          className="h-4 w-4 flex items-center justify-center rounded-full hover:bg-white/15 disabled:opacity-20 text-white/80 cursor-pointer"
+                          className="h-5 w-5 flex items-center justify-center rounded-full hover:bg-white/15 disabled:opacity-20 text-white/80 transition-all cursor-pointer"
                         >
-                          <ChevronLeft className="h-2.5 w-2.5" />
+                          <ChevronLeft className="h-3 w-3" />
                         </button>
                         <button
                           type="button"
                           disabled={safeSubPage >= totalSubPages - 1}
                           onClick={() => setSubTracksPage((p) => Math.min(totalSubPages - 1, p + 1))}
                           aria-label="下一页"
-                          className="h-4 w-4 flex items-center justify-center rounded-full hover:bg-white/15 disabled:opacity-20 text-white/80 cursor-pointer"
+                          className="h-5 w-5 flex items-center justify-center rounded-full hover:bg-white/15 disabled:opacity-20 text-white/80 transition-all cursor-pointer"
                         >
-                          <ChevronRight className="h-2.5 w-2.5" />
+                          <ChevronRight className="h-3 w-3" />
                         </button>
                       </div>
                     )}
 
-                    {/* 紧凑搜索框 */}
+                    {/* 极简玻璃搜索胶囊 */}
                     <div className="relative flex items-center">
-                      <Search className="absolute left-2 h-3 w-3 text-white/40 pointer-events-none" />
+                      <Search className="absolute left-2.5 h-3.5 w-3.5 text-white/40 pointer-events-none" />
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="搜索..."
-                        className="h-6 w-16 sm:w-20 rounded-full bg-white/[0.06] border border-white/10 pl-6 pr-2 text-[10px] text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:w-28 transition-all"
+                        className="h-7 w-20 sm:w-24 rounded-full bg-white/[0.06] border border-white/10 pl-7.5 pr-2.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:w-28 transition-all"
                       />
                       {searchQuery && (
                         <button
                           type="button"
                           onClick={() => setSearchQuery("")}
-                          className="absolute right-1 text-white/40 hover:text-white text-xs cursor-pointer"
+                          className="absolute right-1.5 text-white/40 hover:text-white text-xs cursor-pointer"
                         >
                           ×
                         </button>
