@@ -4,6 +4,8 @@ import {
   formatMessagesForOpenAI,
   resolveChatCompletionsUrl,
   extractInlineToolCalls,
+  buildDynamicPromptContext,
+  MusicPlaybackContext,
 } from "./aiAgentService";
 import { executeTool } from "./aiAgentTools";
 import { AIConfig } from "@/store/aiStore";
@@ -78,6 +80,70 @@ describe("aiAgentService", () => {
         tool_call_id: "call_1",
         content: '{"count":1}',
       });
+    });
+
+    it("should dynamically inject music playback context into the system prompt", () => {
+      const messages: AgentMessage[] = [
+        { id: "1", role: "user", content: "分析一下这首歌", timestamp: 100 },
+      ];
+
+      const playbackContext: MusicPlaybackContext = {
+        currentSong: {
+          id: "song-red-bean",
+          title: "红豆",
+          artist: "王菲",
+          album: "唱游",
+          duration: 258,
+          currentTime: 84,
+          isPlaying: true,
+          lyricsSnippet: "> 有时候 有时候\n> 我会相信一切有尽头",
+        },
+        emotion: {
+          x: -0.4,
+          y: -0.3,
+          description: "幽暗清冷、伤感沉郁，伴随舒缓失重的漂流感",
+        },
+        timeOfDay: {
+          hour: 2,
+          periodLabel: "深夜时分",
+          ambientMood: "万籁俱寂，适宜聆听沉静、温润或内省的声响",
+        },
+        userPreferences: {
+          favoriteCount: 42,
+          topArtists: ["王菲", "陈绮贞", "周杰伦"],
+        },
+      };
+
+      const formatted = formatMessagesForOpenAI(messages, playbackContext);
+      const systemContent = formatted[0].content || "";
+
+      expect(systemContent).toContain("音乐策展人");
+      expect(systemContent).toContain("红豆");
+      expect(systemContent).toContain("王菲");
+      expect(systemContent).toContain("有时候 有时候");
+      expect(systemContent).toContain("深夜时分");
+      expect(systemContent).toContain("幽暗清冷");
+      expect(systemContent).toContain("王菲 / 陈绮贞 / 周杰伦");
+    });
+  });
+
+  describe("buildDynamicPromptContext", () => {
+    it("returns empty string when context is undefined", () => {
+      expect(buildDynamicPromptContext(undefined)).toBe("");
+    });
+
+    it("handles fallback when no song is currently playing", () => {
+      const context: MusicPlaybackContext = {
+        currentSong: null,
+        timeOfDay: {
+          hour: 15,
+          periodLabel: "午后时光",
+          ambientMood: "阳光正好",
+        },
+      };
+      const text = buildDynamicPromptContext(context);
+      expect(text).toContain("午后时光");
+      expect(text).toContain("暂无正在播放的歌曲");
     });
   });
 

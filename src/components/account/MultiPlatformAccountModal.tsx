@@ -166,7 +166,12 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
           let currentOffset = 100;
           while (currentOffset < total) {
             await new Promise((resolve) => setTimeout(resolve, 600));
-            const nextBatch = await fetchPlaylistTracks(playlist.id, playlist.source, currentOffset, 100);
+            const nextBatch = await fetchPlaylistTracks(
+              playlist.id,
+              playlist.source,
+              currentOffset,
+              100
+            );
             if (!nextBatch || nextBatch.length === 0) break;
 
             const updatedQueue = [...useQueueStore.getState().queue, ...nextBatch];
@@ -186,12 +191,12 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
     activePlatform === "netease"
       ? neteaseUser
       : activePlatform === "qq"
-      ? qqUser
-      : activePlatform === "kugou"
-      ? kugouUser
-      : activePlatform === "kuwo"
-      ? kuwoUser
-      : qishuiUser;
+        ? qqUser
+        : activePlatform === "kugou"
+          ? kugouUser
+          : activePlatform === "kuwo"
+            ? kuwoUser
+            : qishuiUser;
 
   const platformMeta = {
     netease: {
@@ -214,7 +219,21 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
     },
     kuwo: {
       name: "酷我音乐",
-      color: "fro  return (
+      color: "from-amber-500 to-yellow-600",
+      badge: "KUWO",
+      accent: "#f59e0b",
+      glow: "rgba(245, 158, 11, 0.15)",
+    },
+    qishui: {
+      name: "汽水音乐",
+      color: "from-purple-500 to-indigo-600",
+      badge: "QISHUI",
+      accent: "#8b5cf6",
+      glow: "rgba(139, 92, 246, 0.15)",
+    },
+  };
+
+  return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-7 bg-black/80 backdrop-blur-xl select-none font-sans antialiased overflow-hidden">
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 14 }}
@@ -272,12 +291,12 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
                 p === "netease"
                   ? neteaseUser.loggedIn
                   : p === "qq"
-                  ? qqUser.loggedIn
-                  : p === "kugou"
-                  ? kugouUser.loggedIn
-                  : p === "kuwo"
-                  ? kuwoUser.loggedIn
-                  : qishuiUser.loggedIn;
+                    ? qqUser.loggedIn
+                    : p === "kugou"
+                      ? kugouUser.loggedIn
+                      : p === "kuwo"
+                        ? kuwoUser.loggedIn
+                        : qishuiUser.loggedIn;
 
               return (
                 <button
@@ -381,9 +400,7 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
                     className="w-9 h-9 rounded-xl bg-white/[0.06] hover:bg-white/[0.14] border border-white/[0.1] text-white/70 hover:text-white flex items-center justify-center transition-all active:scale-95 shadow-sm"
                     title="刷新歌单"
                   >
-                    <RefreshCw
-                      className={`w-4 h-4 ${isLoadingPlaylists ? "animate-spin" : ""}`}
-                    />
+                    <RefreshCw className={`w-4 h-4 ${isLoadingPlaylists ? "animate-spin" : ""}`} />
                   </button>
                   <button
                     type="button"
@@ -616,12 +633,12 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
                         activePlatform === "netease"
                           ? "MUSIC_U=xxx; __csrf=xxx..."
                           : activePlatform === "qq"
-                          ? "uin=xxx; qm_keyst=xxx..."
-                          : activePlatform === "kugou"
-                          ? "KuGou=xxx; kg_mid=xxx..."
-                          : activePlatform === "kuwo"
-                          ? "kw_token=xxx; Hm_lvt_xxx..."
-                          : "session_id=xxx; token=xxx..."
+                            ? "uin=xxx; qm_keyst=xxx..."
+                            : activePlatform === "kugou"
+                              ? "KuGou=xxx; kg_mid=xxx..."
+                              : activePlatform === "kuwo"
+                                ? "kw_token=xxx; Hm_lvt_xxx..."
+                                : "session_id=xxx; token=xxx..."
                       }
                       rows={3}
                       className="w-full p-3 rounded-xl bg-black/40 border border-white/10 text-[12px] text-white font-mono focus:outline-none focus:border-[#0071e3] transition-colors"
@@ -657,6 +674,7 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
             关闭
           </button>
         </div>
+      </motion.div>
+    </div>
   );
 };
-

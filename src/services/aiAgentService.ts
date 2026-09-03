@@ -66,7 +66,9 @@ export function buildDynamicPromptContext(context?: MusicPlaybackContext): strin
 
   // 1. 时段心境
   if (context.timeOfDay) {
-    lines.push(`- 当前系统时段：${context.timeOfDay.periodLabel}（${context.timeOfDay.ambientMood}）`);
+    lines.push(
+      `- 当前系统时段：${context.timeOfDay.periodLabel}（${context.timeOfDay.ambientMood}）`
+    );
   }
 
   // 2. 正在播放曲目态势
@@ -74,9 +76,13 @@ export function buildDynamicPromptContext(context?: MusicPlaybackContext): strin
     const s = context.currentSong;
     const playState = s.isPlaying ? "正在播放" : "已暂停";
     const curMin = Math.floor((s.currentTime || 0) / 60);
-    const curSec = Math.floor((s.currentTime || 0) % 60).toString().padStart(2, "0");
+    const curSec = Math.floor((s.currentTime || 0) % 60)
+      .toString()
+      .padStart(2, "0");
     const durMin = Math.floor((s.duration || 0) / 60);
-    const durSec = Math.floor((s.duration || 0) % 60).toString().padStart(2, "0");
+    const durSec = Math.floor((s.duration || 0) % 60)
+      .toString()
+      .padStart(2, "0");
     lines.push(
       `- 正在聆听曲目：《${s.title}》 - ${s.artist}${s.album ? `（专辑：《${s.album}》）` : ""} [${playState}，进度 ${curMin}:${curSec} / ${durMin}:${durSec}]`
     );
@@ -112,7 +118,8 @@ export function buildDynamicPromptContext(context?: MusicPlaybackContext): strin
   if (context.userPreferences) {
     const { favoriteCount, topArtists } = context.userPreferences;
     const parts: string[] = [];
-    if (favoriteCount !== undefined && favoriteCount > 0) parts.push(`收藏曲目数: ${favoriteCount} 首`);
+    if (favoriteCount !== undefined && favoriteCount > 0)
+      parts.push(`收藏曲目数: ${favoriteCount} 首`);
     if (topArtists && topArtists.length > 0)
       parts.push(`常听艺人偏好: ${topArtists.slice(0, 4).join(" / ")}`);
     if (parts.length > 0) {
