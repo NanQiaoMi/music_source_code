@@ -285,5 +285,80 @@ describe("recommendationLogic", () => {
         expect(result.orderedSongs[i].artist).not.toBe(result.orderedSongs[i + 1].artist);
       }
     });
+
+    it("rotates and selects fresh songs when 换一批 (batch refresh) is triggered with excludeSongIds", () => {
+      const songs = [
+        createSong({ id: "song-1", title: "Song 1", artist: "Artist 1", playCount: 5 }),
+        createSong({ id: "song-2", title: "Song 2", artist: "Artist 2", playCount: 4 }),
+        createSong({ id: "song-3", title: "Song 3", artist: "Artist 3", playCount: 3 }),
+        createSong({ id: "song-4", title: "Song 4", artist: "Artist 4", playCount: 2 }),
+        createSong({ id: "song-5", title: "Song 5", artist: "Artist 5", playCount: 1 }),
+        createSong({ id: "song-6", title: "Song 6", artist: "Artist 6", playCount: 0 }),
+        createSong({ id: "song-7", title: "Song 7", artist: "Artist 7", playCount: 0 }),
+        createSong({ id: "song-8", title: "Song 8", artist: "Artist 8", playCount: 0 }),
+        createSong({ id: "song-9", title: "Song 9", artist: "Artist 9", playCount: 0 }),
+        createSong({ id: "song-10", title: "Song 10", artist: "Artist 10", playCount: 0 }),
+        createSong({ id: "song-11", title: "Song 11", artist: "Artist 11", playCount: 0 }),
+        createSong({ id: "song-12", title: "Song 12", artist: "Artist 12", playCount: 0 }),
+      ];
+
+      const context = {
+        recentSongs: [],
+        topArtists: [],
+        topGenres: [],
+        skippedSongIds: new Set<string>(),
+      };
+
+      // Batch 1: Initial recommendation
+      const batch1 = generateDailyRecommendationGroups(songs, context, undefined, 4);
+      const batch1HeroId = batch1.orderedSongs[0].id;
+      // The 4 songs displayed in batch 1
+      const batch1DisplayedIds = new Set(batch1.orderedSongs.slice(0, 4).map((s) => s.id));
+
+      // Batch 2: Click 换一批 (passing batch 1 displayed ids to exclude, and batchOffset 1)
+      const batch2 = generateDailyRecommendationGroups(
+        songs,
+        context,
+        undefined,
+        4,
+        batch1DisplayedIds,
+        1
+      );
+      const batch2HeroId = batch2.orderedSongs[0].id;
+
+      // The new Hero must NOT be the same as batch 1!
+      expect(batch2HeroId).not.toBe(batch1HeroId);
+      // New batch prioritizes fresh songs that were not shown in batch 1
+      const newSongsInBatch2 = batch2.orderedSongs.slice(0, 4).filter((s) => !batch1DisplayedIds.has(s.id));
+      expect(newSongsInBatch2.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("rotates the hero track even when library has only 4 demo songs", () => {
+      const demoSongs = [
+        createSong({ id: "s1", title: "稻香", playCount: 0 }),
+        createSong({ id: "s2", title: "起风了", playCount: 0 }),
+        createSong({ id: "s3", title: "七里香", playCount: 0 }),
+        createSong({ id: "s4", title: "晴天", playCount: 0 }),
+      ];
+
+      const context = {
+        recentSongs: [],
+        topArtists: [],
+        topGenres: [],
+        skippedSongIds: new Set<string>(),
+      };
+
+      const batch1 = generateDailyRecommendationGroups(demoSongs, context, undefined, 4, undefined, 0);
+      const batch2 = generateDailyRecommendationGroups(
+        demoSongs,
+        context,
+        undefined,
+        4,
+        new Set(batch1.orderedSongs.map((s) => s.id)),
+        1
+      );
+
+      expect(batch2.orderedSongs[0].id).not.toBe(batch1.orderedSongs[0].id);
+    });
   });
 });
