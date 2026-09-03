@@ -27,6 +27,8 @@ import {
   Zap,
   Activity,
   Headphones,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { buildRecommendationReasonDisplay } from "@/lib/recommendation/reasonDisplay";
 import { useAudioStore } from "@/store/audioStore";
@@ -162,6 +164,20 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   const isHeroPlaying = currentSong?.id === heroSong?.id && isPlaying;
   // Sub-tracks (Rank 02 onwards, or all tracks when searching)
   const subTracks = displayedSongs.length > 1 ? displayedSongs.slice(1) : [];
+
+  // 每页最多呈现 4 首协同曲目，彻底根治“太长了”和空洞拉伸
+  const [subTracksPage, setSubTracksPage] = useState(0);
+  const SUB_TRACKS_PAGE_SIZE = 4;
+  const totalSubPages = Math.max(1, Math.ceil(subTracks.length / SUB_TRACKS_PAGE_SIZE));
+  const safeSubPage = Math.min(subTracksPage, totalSubPages - 1);
+  const visibleSubTracks = subTracks.slice(
+    safeSubPage * SUB_TRACKS_PAGE_SIZE,
+    (safeSubPage + 1) * SUB_TRACKS_PAGE_SIZE
+  );
+
+  useEffect(() => {
+    setSubTracksPage(0);
+  }, [searchQuery, displayedSongs]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -403,56 +419,35 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
-              {/* ─── 🔲 BENTO BLOCK 1: 今日首席黑胶焦点 (Col-span 7) ─── */}
-              <div className="lg:col-span-7 flex flex-col justify-between rounded-[24px] border border-white/[0.12] bg-white/[0.03] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.15)] backdrop-blur-xl relative overflow-hidden group">
-                {/* 封套与滑移黑胶 */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+              {/* ─── 🔲 BENTO BLOCK 1: 今日首席焦点 (Col-span 7) ─── */}
+              <div className="lg:col-span-7 flex flex-col justify-start gap-3.5 rounded-[24px] border border-white/[0.12] bg-white/[0.03] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.15)] backdrop-blur-xl relative overflow-hidden group">
+                {/* 封套与播放控制（纯净方形封套，彻底消除任何穿出方框的元素） */}
                 <div className="flex flex-col sm:flex-row items-center gap-5">
                   <div
-                    className="relative flex items-center shrink-0 cursor-pointer w-44 h-32"
+                    className="relative z-10 w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden bg-[#18181b] border border-white/20 shadow-[0_16px_36px_rgba(0,0,0,0.8)] group-hover:shadow-[0_20px_48px_rgba(0,0,0,0.95)] transition-all shrink-0 cursor-pointer"
                     onClick={() => handlePlaySong(heroSong, 0)}
                   >
-                    {/* 探出旋转实体黑胶唱片（安全包含在 w-44 容器内，绝不向右溢出侵害文字） */}
-                    <div
-                      className={`absolute left-8 w-28 h-28 rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.95)] transition-transform duration-500 ease-out group-hover:translate-x-2 z-0 ${
-                        isHeroPlaying ? "bento-vinyl-spinning" : ""
-                      }`}
-                      style={{
-                        background:
-                          "radial-gradient(circle, #202024 0%, #141416 25%, #252529 26%, #0f0f12 45%, #202024 46%, #0a0a0d 65%, #18181b 66%, #050508 100%)",
-                        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15), 0 12px 30px rgba(0,0,0,0.9)",
-                      }}
-                    >
-                      <div className="absolute inset-1 rounded-full pointer-events-none opacity-40 border border-white/10" />
-                      <div className="absolute inset-0 m-auto w-9 h-9 rounded-full bg-[#18181b] border border-white/30 flex items-center justify-center shadow-inner">
-                        <Disc3 className="w-4 h-4 text-white/60" />
+                    {heroSong.cover ? (
+                      <img src={heroSong.cover} alt={heroSong.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-white/5">
+                        <Music className="w-10 h-10 text-white/30" />
                       </div>
-                    </div>
-
-                    {/* 正方形黑胶封套 Jacket */}
-                    <div className="relative z-10 w-32 h-32 rounded-2xl overflow-hidden bg-[#18181b] border border-white/20 shadow-[0_16px_36px_rgba(0,0,0,0.8)] group-hover:shadow-[0_20px_48px_rgba(0,0,0,0.95)] transition-all">
-                      {heroSong.cover ? (
-                        <img src={heroSong.cover} alt={heroSong.title} className="w-full h-full object-cover" />
+                    )}
+                    {/* 书脊折光与高光 */}
+                    <div className="absolute left-0 top-0 bottom-0 w-[2.5px] bg-gradient-to-r from-white/40 via-white/15 to-transparent pointer-events-none" />
+                    <div className={`absolute inset-0 bg-black/45 transition-opacity flex items-center justify-center ${isHeroPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                      {isHeroPlaying ? (
+                        <Pause className="w-8 h-8 fill-white text-white" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-white/5">
-                          <Music className="w-10 h-10 text-white/30" />
-                        </div>
+                        <Play className="w-8 h-8 fill-white text-white translate-x-0.5" />
                       )}
-                      {/* 书脊折光与右侧封套暗衬 */}
-                      <div className="absolute left-0 top-0 bottom-0 w-[2.5px] bg-gradient-to-r from-white/40 via-white/15 to-transparent pointer-events-none" />
-                      <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-gradient-to-l from-black/80 to-transparent pointer-events-none" />
-                      <div className={`absolute inset-0 bg-black/45 transition-opacity flex items-center justify-center ${isHeroPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
-                        {isHeroPlaying ? (
-                          <Pause className="w-8 h-8 fill-white text-white" />
-                        ) : (
-                          <Play className="w-8 h-8 fill-white text-white translate-x-0.5" />
-                        )}
-                      </div>
                     </div>
                   </div>
 
-                  {/* 首席推荐信息（独立边距，与黑胶绝对安全隔离） */}
-                  <div className="flex-1 min-w-0 text-center sm:text-left pl-1">
+                  {/* 首席推荐信息（独立纯净空间，文字绝不穿框） */}
+                  <div className="flex-1 min-w-0 text-center sm:text-left">
                     <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/15 text-white border border-white/25 shadow-sm">
                         <Sparkles className="w-2.5 h-2.5" />
@@ -601,9 +596,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
               </div>
 
               {/* ─── 🔲 BENTO BLOCK 3: 协同好歌精选流 (Col-span 5) ─── */}
-              <div className="lg:col-span-5 flex flex-col justify-between rounded-[24px] border border-white/[0.12] bg-white/[0.03] p-4.5 shadow-[0_16px_40px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.15)] backdrop-blur-xl">
-                {/* 顶栏：标签与行内快速搜索（对齐标题与准确计数） */}
-                <div className="flex items-center justify-between gap-2 pb-3 border-b border-white/[0.08]">
+              <div className="lg:col-span-5 flex flex-col justify-between rounded-[24px] border border-white/[0.12] bg-white/[0.03] p-4.5 shadow-[0_16px_40px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.15)] backdrop-blur-xl overflow-hidden">
+                {/* 顶栏：标签与行内快速搜索（对齐标题与准确计数，支持紧凑分页） */}
+                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-white/[0.08]">
                   <div className="flex items-center gap-2 text-xs font-bold text-white">
                     <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/[0.08] border border-white/10">
                       <Headphones className="h-3.5 w-3.5 text-white/80" />
@@ -614,37 +609,66 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                     </span>
                   </div>
 
-                  {/* 紧凑搜索框 */}
-                  <div className="relative flex items-center">
-                    <Search className="absolute left-2.5 h-3 w-3 text-white/40 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="搜索推荐..."
-                      className="h-7 w-24 sm:w-28 rounded-full bg-white/[0.06] border border-white/10 pl-7 pr-2.5 text-[10.5px] text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:w-36 transition-all"
-                    />
-                    {searchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchQuery("")}
-                        className="absolute right-2 text-white/40 hover:text-white text-xs cursor-pointer"
-                      >
-                        ×
-                      </button>
+                  <div className="flex items-center gap-1.5">
+                    {/* 分页切换器：如果超过 4 首，优雅分页，绝不让卡片拉长 */}
+                    {totalSubPages > 1 && (
+                      <div className="flex items-center gap-1 bg-white/[0.04] border border-white/10 rounded-full px-1.5 py-0.5">
+                        <span className="text-[9.5px] font-mono text-white/50 px-0.5">
+                          {safeSubPage + 1}/{totalSubPages}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={safeSubPage === 0}
+                          onClick={() => setSubTracksPage((p) => Math.max(0, p - 1))}
+                          aria-label="上一页"
+                          className="h-4 w-4 flex items-center justify-center rounded-full hover:bg-white/15 disabled:opacity-20 text-white/80 cursor-pointer"
+                        >
+                          <ChevronLeft className="h-2.5 w-2.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={safeSubPage >= totalSubPages - 1}
+                          onClick={() => setSubTracksPage((p) => Math.min(totalSubPages - 1, p + 1))}
+                          aria-label="下一页"
+                          className="h-4 w-4 flex items-center justify-center rounded-full hover:bg-white/15 disabled:opacity-20 text-white/80 cursor-pointer"
+                        >
+                          <ChevronRight className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
                     )}
+
+                    {/* 紧凑搜索框 */}
+                    <div className="relative flex items-center">
+                      <Search className="absolute left-2 h-3 w-3 text-white/40 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="搜索..."
+                        className="h-6 w-16 sm:w-20 rounded-full bg-white/[0.06] border border-white/10 pl-6 pr-2 text-[10px] text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:w-28 transition-all"
+                      />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery("")}
+                          className="absolute right-1 text-white/40 hover:text-white text-xs cursor-pointer"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* 歌曲微条列表（添加专有纤细滚动条与右侧边距，杜绝溢出与压线） */}
-                <div className="space-y-1.5 my-2.5 flex-1 min-h-[200px] overflow-y-auto pr-1.5 bento-subtrack-list">
+                {/* 歌曲微条列表（添加专有纤细滚动条与右侧边距，严格限高，杜绝拉长与溢出） */}
+                <div className="space-y-1.5 my-2 flex-1 max-h-[220px] overflow-y-auto pr-1 bento-subtrack-list">
                   {subTracks.length === 0 ? (
                     <div className="py-8 text-center text-xs text-white/40">
                       {searchQuery ? "未检索到匹配的曲目" : "暂无更多协同推荐"}
                     </div>
                   ) : (
-                    subTracks.map((song, idx) => {
-                      const absoluteIndex = idx + 1;
+                    visibleSubTracks.map((song) => {
+                      const absoluteIndex = displayedSongs.indexOf(song);
                       const reasons = recommendationReasons.get(song.id) || [];
                       const topReason = reasons[0];
                       const isThisPlaying = currentSong?.id === song.id && isPlaying;
@@ -783,12 +807,6 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                       );
                     })
                   )}
-                </div>
-
-                {/* 底部微提示 */}
-                <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[10.5px] text-white/40">
-                  <span>点击条目即刻试听</span>
-                  <span className="font-mono">Apple Bento Engine</span>
                 </div>
               </div>
 
