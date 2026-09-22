@@ -150,6 +150,7 @@ let prevLineFadeAlpha = 0;
 let smoothedProgressCache = 0;
 let lastReportedTimeCache = 0;
 let lastTimeUpdateMsCache = 0;
+let lastFrameMsCache = -1;
 
 // 胶片颗粒预渲染成一组可循环的贴图，避免逐帧重建像素数据
 const GRAIN_TILE_SIZE = 256;
@@ -158,6 +159,15 @@ let grainTiles: HTMLCanvasElement[] | null = null;
 let grainPatterns: CanvasPattern[] | null = null;
 let grainPatternContext: CanvasRenderingContext2D | null = null;
 let grainFrameIndex = 0;
+
+// 指数平滑的每帧系数按 60fps 标定，绘制时用实际帧时长换算，
+// 使 120Hz 与 30Hz 上的过渡手感与 60Hz 一致
+const BASS_SMOOTH_PER_FRAME = 0.04;
+const PROGRESS_SMOOTH_PER_FRAME = 0.28;
+const LINE_FADE_IN_PER_FRAME = 0.09;
+const LINE_FADE_OUT_PER_FRAME = 0.1;
+// 单帧步进上限，避免长时间掉帧或切回标签页后一次跳变到位
+const MAX_SMOOTHING_DT_SECONDS = 0.1;
 
 function isMetadataLine(text: string): boolean {
   const t = text.trim();
@@ -301,6 +311,12 @@ function measureLineWidth(
   return width;
 }
 
+// 把按 60fps 标定的每帧系数换算成本帧实际的插值系数
+function frameRateIndependentFactor(perFrameFactor: number, dtSeconds: number): number {
+  if (dtSeconds <= 0) return 0;
+  return 1 - Math.pow(1 - perFrameFactor, dtSeconds * 60);
+}
+
 function renderLiquidShimmerLine(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -369,6 +385,18 @@ function renderLiquidShimmerLine(
 export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   const { ctx, width, height, data, time, refs, params } = effectCtx;
 
+  const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
+  const dtSeconds =
+    lastFrameMsCache < 0
+      ? 0
+      : Math.min(MAX_SMOOTHING_DT_SECONDS, Math.max(0, (nowMs - lastFrameMsCache) / 1000));
+  lastFrameMsCache = nowMs;
+
+  const bassSmooth = frameRateIndependentFactor(BASS_SMOOTH_PER_FRAME, dtSeconds);
+  const progressSmooth = frameRateIndependentFactor(PROGRESS_SMOOTH_PER_FRAME, dtSeconds);
+  const lineFadeIn = frameRateIndependentFactor(LINE_FADE_IN_PER_FRAME, dtSeconds);
+  const lineFadeOut = frameRateIndependentFactor(LINE_FADE_OUT_PER_FRAME, dtSeconds);
+
   const schemeIndex = Math.max(
     0,
     Math.min(COLOR_PALETTES.length - 1, Math.round(params?.colorScheme ?? 0))
@@ -404,10 +432,9 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     rawTreble = tSum / (32 * 255);
   }
 
-  const smoothFactor = 0.04;
-  refs.smoothBass.current += (rawBass - refs.smoothBass.current) * smoothFactor;
-  refs.smoothMid.current += (rawMid - refs.smoothMid.current) * smoothFactor;
-  refs.smoothTreble.current += (rawTreble - refs.smoothTreble.current) * smoothFactor;
+  refs.smoothBass.current += (rawBass - refs.smoothBass.current) * bassSmooth;
+  refs.smoothMid.current += (rawMid - refs.smoothMid.current) * bassSmooth;
+  refs.smoothTreble.current += (rawTreble - refs.smoothTreble.current) * bassSmooth;
 
   // 初始化 4 个流体球
   if (!refs.bokeh.current || refs.bokeh.current.length < 4) {
@@ -470,8 +497,6 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   const reportedTime = audioState.currentTime || playerState.currentTime || 0;
   const isPlaying = audioState.isPlaying || playerState.isPlaying;
   const rawLyrics = currentSong?.lyrics || "";
-
-  const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
 
   if (Math.abs(reportedTime - lastReportedTimeCache) > 0.02) {
     lastReportedTimeCache = reportedTime;
@@ -539,11 +564,11 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     );
   }
 
-  smoothedProgressCache += (targetProgress - smoothedProgressCache) * 0.28;
+  smoothedProgressCache += (targetProgress - smoothedProgressCache) * progressSmooth;
 
   const targetCurrentAlpha = isSinging ? 1.0 : 0.0;
-  lineTransitionAlpha += (targetCurrentAlpha - lineTransitionAlpha) * 0.09;
-  prevLineFadeAlpha += (0.0 - prevLineFadeAlpha) * 0.1;
+  lineTransitionAlpha += (targetCurrentAlpha - lineTransitionAlpha) * lineFadeIn;
+  prevLineFadeAlpha += (0.0 - prevLineFadeAlpha) * lineFadeOut;
 
   // 1. 深邃底色
   const bgGrad = ctx.createRadialGradient(
