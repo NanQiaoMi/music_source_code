@@ -166,8 +166,8 @@ const BASS_SMOOTH_PER_FRAME = 0.04;
 const PROGRESS_SMOOTH_PER_FRAME = 0.28;
 const LINE_FADE_IN_PER_FRAME = 0.09;
 const LINE_FADE_OUT_PER_FRAME = 0.1;
-// 单帧步进上限，避免长时间掉帧或切回标签页后一次跳变到位
-const MAX_SMOOTHING_DT_SECONDS = 0.1;
+// 逐帧累积的位移与插值都按此上限截断，避免长时间掉帧或切回标签页后一次跳变到位
+const MAX_FRAME_DT_SECONDS = 0.1;
 
 function isMetadataLine(text: string): boolean {
   const t = text.trim();
@@ -389,8 +389,11 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   const dtSeconds =
     lastFrameMsCache < 0
       ? 0
-      : Math.min(MAX_SMOOTHING_DT_SECONDS, Math.max(0, (nowMs - lastFrameMsCache) / 1000));
+      : Math.min(MAX_FRAME_DT_SECONDS, Math.max(0, (nowMs - lastFrameMsCache) / 1000));
   lastFrameMsCache = nowMs;
+
+  // 逐帧累积量按 1 个 60fps 帧为基准缩放，使漂移速度不随刷新率变化
+  const driftScale = dtSeconds * 60;
 
   const bassSmooth = frameRateIndependentFactor(BASS_SMOOTH_PER_FRAME, dtSeconds);
   const progressSmooth = frameRateIndependentFactor(PROGRESS_SMOOTH_PER_FRAME, dtSeconds);
@@ -594,8 +597,12 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     const blob = blobs[i];
     const blobColorPattern = palette.blobColors[i % palette.blobColors.length];
 
-    blob.x += blob.vx * fluidSpeed + Math.sin(time * 0.00015 * blob.speed + blob.phase) * 0.4;
-    blob.y += blob.vy * fluidSpeed + Math.cos(time * 0.00012 * blob.speed + blob.phase) * 0.4;
+    blob.x +=
+      (blob.vx * fluidSpeed + Math.sin(time * 0.00015 * blob.speed + blob.phase) * 0.4) *
+      driftScale;
+    blob.y +=
+      (blob.vy * fluidSpeed + Math.cos(time * 0.00012 * blob.speed + blob.phase) * 0.4) *
+      driftScale;
 
     const margin = blob.baseRadius * 0.6;
     if (blob.x < -margin) blob.vx = Math.abs(blob.vx);
