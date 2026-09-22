@@ -55,6 +55,10 @@ const NextIcon = memo(() => (
 ));
 NextIcon.displayName = "NextIcon";
 
+// 画布按设备像素比渲染，消除高分屏上文字与粒子的模糊；上限 2 是为了不让 4K 屏的
+// 填充面积成倍增长（与 Shelf3DView、V8 渲染引擎的上限一致）
+const MAX_RENDER_DPR = 2;
+
 const EFFECTS_LIST: { id: VisualizationEffect; name: string }[] = [
   { id: "cinematicLyricDrift", name: "温光浮字" },
   { id: "orientalLandscape", name: "青绿千里" },
@@ -111,6 +115,8 @@ export function VisualizationView() {
   const shockwavesRef = useRef<unknown[]>([]);
   const albumArtRef = useRef<HTMLDivElement | null>(null);
   const lastEffectRef = useRef<string | null>(null);
+  // 视口尺寸以 CSS 像素为准，画布后备存储按 dpr 放大；效果绘制坐标始终是 CSS 像素
+  const viewportRef = useRef({ w: 0, h: 0, dpr: 1 });
 
   // Mouse idle detection for Zen Mode
   useEffect(() => {
@@ -252,9 +258,15 @@ export function VisualizationView() {
     if (!ctx) return;
 
     const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      initParticles(canvas.width, canvas.height);
+      const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, MAX_RENDER_DPR));
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      viewportRef.current = { w, h, dpr };
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+
+      initParticles(w, h);
     };
 
     const initParticles = (_w: number, _h: number) => {
@@ -332,11 +344,13 @@ export function VisualizationView() {
       active.accent = lerpHueInternal(active.accent, target.accent, 0.05);
 
       if (ctx && dataArrayRef.current) {
+        const { w: cssWidth, h: cssHeight, dpr } = viewportRef.current;
+
         // Shared context for all effects
         const effectCtx: Effects.EffectContext = {
           ctx,
-          width: canvas.width,
-          height: canvas.height,
+          width: cssWidth,
+          height: cssHeight,
           data: dataArrayRef.current,
           time: timestamp,
           musicTime: currentTimeRef.current,
@@ -365,7 +379,8 @@ export function VisualizationView() {
         };
 
         // --- SAFETY RESET: Ensure each effect starts with a clean slate ---
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        // 保留 dpr 缩放，使效果使用的 CSS 像素坐标落到高分辨率后备存储上
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.globalCompositeOperation = "source-over";
         ctx.globalAlpha = 1.0;
         ctx.setLineDash([]);
@@ -375,7 +390,7 @@ export function VisualizationView() {
         // Clear background for non-matrix effects (Matrix handles its own clear)
         if (currentEff !== "cyberMatrix") {
           ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillRect(0, 0, cssWidth, cssHeight);
         }
 
         // Call the appropriate effect
@@ -469,6 +484,7 @@ export function VisualizationView() {
       shockwavesRef.current = [];
 
       // Clear canvas context if possible (though usually GC'd)
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
   }, [currentView]);

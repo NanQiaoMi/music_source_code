@@ -382,9 +382,29 @@ export const drawGravitationalField = ({
     const intensity = (bass - 0.75) * 4;
     const offset = intensity * 15;
     ctx.globalAlpha = 0.3 * intensity;
-    ctx.drawImage(ctx.canvas, offset * (Math.random() - 0.5), offset * (Math.random() - 0.5));
+    ctx.drawImage(
+      ctx.canvas,
+      0,
+      0,
+      ctx.canvas.width,
+      ctx.canvas.height,
+      offset * (Math.random() - 0.5),
+      offset * (Math.random() - 0.5),
+      width,
+      height
+    );
     ctx.globalAlpha = 0.2 * intensity;
-    ctx.drawImage(ctx.canvas, -offset * (Math.random() - 0.5), -offset * (Math.random() - 0.5));
+    ctx.drawImage(
+      ctx.canvas,
+      0,
+      0,
+      ctx.canvas.width,
+      ctx.canvas.height,
+      -offset * (Math.random() - 0.5),
+      -offset * (Math.random() - 0.5),
+      width,
+      height
+    );
     ctx.restore();
   }
 
