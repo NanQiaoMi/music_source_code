@@ -252,10 +252,31 @@ export const drawAuroraWave = ({
     ctx.save();
     ctx.globalCompositeOperation = "screen";
     const intensity = (bass - 0.92) * 10;
+    // 自绘残影：显式给出源/目标矩形，否则目标尺寸会跟随画布的 dpr 缩放被放大
     ctx.globalAlpha = 0.25 * intensity;
-    ctx.drawImage(ctx.canvas, 5 * intensity, 0);
+    ctx.drawImage(
+      ctx.canvas,
+      0,
+      0,
+      ctx.canvas.width,
+      ctx.canvas.height,
+      5 * intensity,
+      0,
+      width,
+      height
+    );
     ctx.globalAlpha = 0.15 * intensity;
-    ctx.drawImage(ctx.canvas, -5 * intensity, 0);
+    ctx.drawImage(
+      ctx.canvas,
+      0,
+      0,
+      ctx.canvas.width,
+      ctx.canvas.height,
+      -5 * intensity,
+      0,
+      width,
+      height
+    );
     ctx.restore();
   }
 
