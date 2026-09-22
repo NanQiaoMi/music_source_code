@@ -140,16 +140,24 @@ const FONT_STYLES = [
 
 let parsedLyricsCache: ParsedLrcLine[] = [];
 let lastRawLyricsCache = "";
-let grainCanvasCache: HTMLCanvasElement | null = null;
 let currentLineTextCache = "";
 let previousLineTextCache = "";
 let totalLineWidthCache = 0;
 let prevLineWidthCache = 0;
+let measuredFontKeyCache = "";
 let lineTransitionAlpha = 0;
 let prevLineFadeAlpha = 0;
 let smoothedProgressCache = 0;
 let lastReportedTimeCache = 0;
 let lastTimeUpdateMsCache = 0;
+
+// 胶片颗粒预渲染成一组可循环的贴图，避免逐帧重建像素数据
+const GRAIN_TILE_SIZE = 256;
+const GRAIN_TILE_FRAMES = 8;
+let grainTiles: HTMLCanvasElement[] | null = null;
+let grainPatterns: CanvasPattern[] | null = null;
+let grainPatternContext: CanvasRenderingContext2D | null = null;
+let grainFrameIndex = 0;
 
 function isMetadataLine(text: string): boolean {
   const t = text.trim();
@@ -216,12 +224,12 @@ function findActiveLyricIndex(lyrics: ParsedLrcLine[], time: number): number {
   return ans;
 }
 
-function createFilmGrainCanvas(): HTMLCanvasElement | null {
+function buildGrainTile(): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null;
   try {
     const canvas = document.createElement("canvas");
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = GRAIN_TILE_SIZE;
+    canvas.height = GRAIN_TILE_SIZE;
     const ctx = canvas.getContext("2d");
     if (
       !ctx ||
@@ -241,11 +249,56 @@ function createFilmGrainCanvas(): HTMLCanvasElement | null {
       data[i + 3] = Math.floor(Math.random() * 16);
     }
     ctx.putImageData(imgData, 0, 0);
-    grainCanvasCache = canvas;
-    return grainCanvasCache;
+    return canvas;
   } catch {
     return null;
   }
+}
+
+function getGrainTiles(): HTMLCanvasElement[] | null {
+  if (grainTiles) return grainTiles;
+
+  const tiles: HTMLCanvasElement[] = [];
+  for (let i = 0; i < GRAIN_TILE_FRAMES; i++) {
+    const tile = buildGrainTile();
+    if (!tile) return null;
+    tiles.push(tile);
+  }
+
+  grainTiles = tiles;
+  return grainTiles;
+}
+
+function getGrainPatterns(ctx: CanvasRenderingContext2D): CanvasPattern[] | null {
+  if (grainPatterns && grainPatternContext === ctx) return grainPatterns;
+
+  const tiles = getGrainTiles();
+  if (!tiles) return null;
+
+  const patterns: CanvasPattern[] = [];
+  for (const tile of tiles) {
+    const pattern = ctx.createPattern(tile, "repeat");
+    if (!pattern) return null;
+    patterns.push(pattern);
+  }
+
+  grainPatterns = patterns;
+  grainPatternContext = ctx;
+  return grainPatterns;
+}
+
+function measureLineWidth(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  fontFamily: string,
+  baseFontSize: number
+): number {
+  if (!text) return 0;
+  ctx.save();
+  ctx.font = `600 ${baseFontSize}px ${fontFamily}`;
+  const width = ctx.measureText(text).width;
+  ctx.restore();
+  return width;
 }
 
 function renderLiquidShimmerLine(
@@ -258,7 +311,9 @@ function renderLiquidShimmerLine(
   lineAlpha: number,
   palette: ColorPalette,
   featherWidth: number,
-  fitScale: number
+  fitScale: number,
+  fontFamily: string,
+  baseFontSize: number
 ) {
   if (!text || totalWidth <= 0 || lineAlpha <= 0.001) return;
 
@@ -269,6 +324,8 @@ function renderLiquidShimmerLine(
   ctx.save();
   ctx.shadowBlur = 0;
   ctx.globalAlpha = lineAlpha;
+  // 按本行自身的缩放比例设置字号，保证字形宽度与流光扫描带的几何一致
+  ctx.font = `600 ${baseFontSize * fitScale}px ${fontFamily}`;
 
   // 1. 底层：完整绘制整句优雅未唱文字
   ctx.save();
@@ -431,6 +488,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     previousLineTextCache = "";
     totalLineWidthCache = 0;
     prevLineWidthCache = 0;
+    measuredFontKeyCache = "";
     smoothedProgressCache = 0;
   }
 
@@ -456,6 +514,8 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     }
   }
 
+  const fontKey = `${selectedFontFamily}|${heroFontSize}`;
+
   if (activeLine !== currentLineTextCache) {
     if (currentLineTextCache) {
       previousLineTextCache = currentLineTextCache;
@@ -465,15 +525,18 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
     currentLineTextCache = activeLine;
     lineTransitionAlpha = 0;
     smoothedProgressCache = targetProgress;
-
-    if (activeLine) {
-      ctx.save();
-      ctx.font = `600 ${heroFontSize}px ${selectedFontFamily}`;
-      totalLineWidthCache = ctx.measureText(activeLine).width;
-      ctx.restore();
-    } else {
-      totalLineWidthCache = 0;
-    }
+    measuredFontKeyCache = fontKey;
+    totalLineWidthCache = measureLineWidth(ctx, activeLine, selectedFontFamily, heroFontSize);
+  } else if (fontKey !== measuredFontKeyCache) {
+    // 字体风格或字号变化后必须按新参数重新测量，否则流光扫描带会与字形宽度错位
+    measuredFontKeyCache = fontKey;
+    totalLineWidthCache = measureLineWidth(ctx, activeLine, selectedFontFamily, heroFontSize);
+    prevLineWidthCache = measureLineWidth(
+      ctx,
+      previousLineTextCache,
+      selectedFontFamily,
+      heroFontSize
+    );
   }
 
   smoothedProgressCache += (targetProgress - smoothedProgressCache) * 0.28;
@@ -544,12 +607,9 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
   const prevFitScale =
     prevLineWidthCache > 0 ? Math.min(1.0, maxAllowedWidth / prevLineWidthCache) : 1.0;
 
-  const actualFontSize = Math.round(heroFontSize * currFitScale);
-
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `600 ${actualFontSize}px ${selectedFontFamily}`;
 
   if (prevLineFadeAlpha > 0.005 && previousLineTextCache) {
     const prevY = heroY - 10 * (1 - prevLineFadeAlpha);
@@ -563,7 +623,9 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
       prevLineFadeAlpha * 0.65,
       palette,
       shimmerFeather,
-      prevFitScale
+      prevFitScale,
+      selectedFontFamily,
+      heroFontSize
     );
   }
 
@@ -579,27 +641,29 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext) {
       lineTransitionAlpha,
       palette,
       shimmerFeather,
-      currFitScale
+      currFitScale,
+      selectedFontFamily,
+      heroFontSize
     );
   }
 
   ctx.restore();
 
   // 4. 胶片微粒
-  const grainCanvas = createFilmGrainCanvas();
-  if (filmGrain > 0.02 && grainCanvas) {
-    ctx.save();
-    ctx.globalCompositeOperation = "overlay";
-    ctx.globalAlpha = filmGrain;
-    const pattern = ctx.createPattern(grainCanvas, "repeat");
-    if (pattern) {
+  if (filmGrain > 0.02) {
+    const patterns = getGrainPatterns(ctx);
+    if (patterns && patterns.length > 0) {
+      grainFrameIndex = (grainFrameIndex + 1) % patterns.length;
+      ctx.save();
+      ctx.globalCompositeOperation = "overlay";
+      ctx.globalAlpha = filmGrain;
       const grainOffsetX = (Math.random() - 0.5) * 20;
       const grainOffsetY = (Math.random() - 0.5) * 20;
       ctx.translate(grainOffsetX, grainOffsetY);
-      ctx.fillStyle = pattern;
+      ctx.fillStyle = patterns[grainFrameIndex];
       ctx.fillRect(-20, -20, width + 40, height + 40);
+      ctx.restore();
     }
-    ctx.restore();
   }
 
   // 5. 暗角
