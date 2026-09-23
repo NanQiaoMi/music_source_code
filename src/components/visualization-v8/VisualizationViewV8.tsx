@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
@@ -58,7 +58,6 @@ export function VisualizationViewV8() {
   } = useVisualizationV8();
 
   const [showControlDrawer, setShowControlDrawer] = useState(false);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const parameterMode = useVisualizationV8Store((state) => state.parameterMode);
   const setParameterMode = useVisualizationV8Store((state) => state.setParameterMode);
 
@@ -72,22 +71,6 @@ export function VisualizationViewV8() {
     !currentEffect ||
     (currentEffect.preferredEngine === "webgl" && !isWebGLAvailable) ||
     needsRecovery;
-
-  useEffect(() => {
-    const updateDimensions = () => {
-      setDimensions({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
-    };
-
-    updateDimensions();
-    window.addEventListener("resize", updateDimensions);
-
-    return () => {
-      window.removeEventListener("resize", updateDimensions);
-    };
-  }, []);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -221,8 +204,6 @@ export function VisualizationViewV8() {
         onRender={handleRender}
         params={getCurrentParams()}
         audioSnapshot={audioSnapshot}
-        width={dimensions.width}
-        height={dimensions.height}
       />
 
       {shouldShowRecovery && (

@@ -28,8 +28,9 @@ interface RenderEngineManagerProps {
   onRender: (ctx: RenderContext, audioData: AudioData, params: EffectParameterMap) => void;
   params?: EffectParameterMap;
   audioSnapshot?: VisualizationAudioSnapshot;
-  width: number;
-  height: number;
+  // 可选覆盖。不传时以画布元素自身的渲染尺寸为准，容器尺寸变化会自动跟随
+  width?: number;
+  height?: number;
 }
 
 export function RenderEngineManager({
@@ -301,6 +302,12 @@ export function RenderEngineManager({
 
     window.addEventListener("resize", handleResize);
 
+    // 容器尺寸变化不一定伴随 window 的 resize（布局调整、面板开合、系统缩放等），
+    // 缺了这个观察会让后备存储停在旧尺寸，画面比例随之失真
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => handleResize()) : null;
+    resizeObserver?.observe(canvas);
+
     if (effect && effect !== effectRef.current) {
       if (effectRef.current) {
         const dimensions = getDisplaySize();
@@ -342,6 +349,7 @@ export function RenderEngineManager({
 
     return () => {
       window.removeEventListener("resize", handleResize);
+      resizeObserver?.disconnect();
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }

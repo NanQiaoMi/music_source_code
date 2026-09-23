@@ -259,12 +259,20 @@ export function VisualizationView() {
 
     const resize = () => {
       const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, MAX_RENDER_DPR));
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+
+      // 以画布元素自身的渲染尺寸为准。window.innerWidth/Height 与元素实际占位并不总是一致
+      // （滚动条、缩放、容器尺寸变化等），用错会导致后备存储与显示比例不符而画面变形。
+      const w = Math.max(1, canvas.clientWidth || window.innerWidth);
+      const h = Math.max(1, canvas.clientHeight || window.innerHeight);
+      const backingWidth = Math.max(1, Math.round(w * dpr));
+      const backingHeight = Math.max(1, Math.round(h * dpr));
+
+      // 尺寸没变就不要重设后备存储：重设会清空画布并造成一次可见的闪烁
+      if (canvas.width === backingWidth && canvas.height === backingHeight) return;
 
       viewportRef.current = { w, h, dpr };
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
+      canvas.width = backingWidth;
+      canvas.height = backingHeight;
 
       initParticles(w, h);
     };
@@ -285,6 +293,12 @@ export function VisualizationView() {
 
     resize();
     window.addEventListener("resize", resize);
+
+    // 容器尺寸可能在窗口尺寸不变的情况下改变（布局调整、面板开合、系统缩放等），
+    // 只监听 window 的 resize 会漏掉这些情况，让后备存储停在旧尺寸而导致画面变形
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => resize()) : null;
+    resizeObserver?.observe(canvas);
 
     const _lerpHue = (current: number, target: number, factor: number) => {
       let diff = target - current;
@@ -469,6 +483,7 @@ export function VisualizationView() {
 
     return () => {
       window.removeEventListener("resize", resize);
+      resizeObserver?.disconnect();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -556,7 +571,7 @@ export function VisualizationView() {
     >
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full transition-all duration-1000 ease-out"
+        className="absolute inset-0 w-full h-full transition-[filter,transform,opacity] duration-1000 ease-out"
         style={getCanvasStyle()}
       />
 
