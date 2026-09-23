@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import Image from "next/image";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
@@ -12,10 +12,37 @@ const DEFAULT_COVER = "/default-cover.svg";
 // 封面淡入时长与取色防抖：两者相差太大时，配色会在图片还没淡完时就开始变
 const COVER_FADE_MS = 1200;
 const COLOR_EXTRACT_DEBOUNCE_MS = 250;
+// 预解码最长等待：宁可稍晚一点开始淡入，也不要被一张慢图卡住
+const PREDECODE_TIMEOUT_MS = 400;
 
 // 光斑的径向渐隐改用遮罩实现。CSS 无法对 background-image 做过渡，
 // 直接写 radial-gradient 会让换色瞬间跳变；纯色 background-color 才能被 transition-colors 平滑插值
 const ORB_MASK = "radial-gradient(circle, #000 0%, transparent 70%)";
+
+// 把位图预先解码进缓存。img 换了 src 之后要等解码完成才会绘制，
+// 未解码时那一层是空白的——而切换瞬间旧封面层正完全可见，于是画面会"闪一下"。
+// 先解码好，元素拿到 src 就能立刻绘制。解码失败（跨域、格式不支持）不阻塞切换。
+function ensureDecoded(url: string): Promise<void> {
+  if (!url || typeof window === "undefined") return Promise.resolve();
+
+  return new Promise<void>((resolve) => {
+    const img = new window.Image();
+    img.src = url;
+
+    if (typeof img.decode === "function") {
+      img.decode().then(resolve, resolve);
+      return;
+    }
+
+    if (img.complete) {
+      resolve();
+      return;
+    }
+
+    img.onload = () => resolve();
+    img.onerror = () => resolve();
+  });
+}
 
 export const AmbientFluidMeshBackground: React.FC = () => {
   const currentSong = useAudioStore((state) => state.currentSong);
@@ -39,26 +66,48 @@ export const AmbientFluidMeshBackground: React.FC = () => {
   const [activeCover, setActiveCover] = useState<string>(DEFAULT_COVER);
   const [prevCover, setPrevCover] = useState<string>(DEFAULT_COVER);
   const [isCrossfading, setIsCrossfading] = useState<boolean>(false);
+  const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 封面立即开始交叉淡入。这一步本身很便宜，不该被防抖推迟——
+  // 封面立即开始交叉淡入：先解码，再换层。两步都很便宜，不该被防抖推迟——
   // 防抖会让背景比卡片晚 250ms 才开始变，观感上就是"先卡一下、再硬切"。
-  // 状态置位放在下一个任务里而不是 effect 同步体内：既避免级联渲染，延迟也只有 ~1ms。
+  //
+  // 收尾计时器放在 ref 里、不走 effect 的清理：setActiveCover 会让本 effect 重跑，
+  // 若把计时器交给清理函数，刚排定就被清掉，isCrossfading 会永远停在 true、旧图层不再卸载。
   useEffect(() => {
     if (coverUrl === activeCover) return;
 
-    const swapTimer = setTimeout(() => {
+    let cancelled = false;
+
+    void (async () => {
+      await Promise.race([
+        ensureDecoded(coverUrl),
+        new Promise((resolve) => setTimeout(resolve, PREDECODE_TIMEOUT_MS)),
+      ]);
+      if (cancelled) return;
+
       setPrevCover(activeCover);
       setActiveCover(coverUrl);
       setIsCrossfading(true);
-    }, 0);
 
-    const fadeTimer = setTimeout(() => setIsCrossfading(false), COVER_FADE_MS);
+      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+      fadeTimerRef.current = setTimeout(() => {
+        setIsCrossfading(false);
+        fadeTimerRef.current = null;
+      }, COVER_FADE_MS);
+    })();
 
     return () => {
-      clearTimeout(swapTimer);
-      clearTimeout(fadeTimer);
+      cancelled = true;
     };
   }, [coverUrl, activeCover]);
+
+  // 卸载时清掉挂起的收尾计时器
+  useEffect(
+    () => () => {
+      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+    },
+    []
+  );
 
   // 取色要采样像素、开销大，仍然防抖：快速连切卡片时不必每张都算
   useEffect(() => {
