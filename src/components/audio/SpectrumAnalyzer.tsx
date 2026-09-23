@@ -47,12 +47,30 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      const width = container.clientWidth;
-      const height = container.clientHeight;
+      // 以画布自身的渲染盒为准：容器一旦有 padding/border，容器尺寸就大于画布的内容盒，
+      // 后备存储与显示比例不符会让画面被压扁
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
 
-      canvas.width = width * window.devicePixelRatio;
-      canvas.height = height * window.devicePixelRatio;
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      // 尺寸为 0 时跳过绘制，避免生成退化的后备存储
+      if (width <= 0 || height <= 0) {
+        animationRef.current = requestAnimationFrame(drawSpectrum);
+        return;
+      }
+
+      const dpr = window.devicePixelRatio || 1;
+      const backingWidth = Math.round(width * dpr);
+      const backingHeight = Math.round(height * dpr);
+
+      // 原来每帧无条件重设后备存储（等于每帧清空画布）；改为仅在变化时重设，
+      // 并在取整后比较，否则 dpr 为小数时 canvas.width 被截断导致判定永远成立
+      if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+        canvas.width = backingWidth;
+        canvas.height = backingHeight;
+      }
+
+      // 变换每帧重设一遍：画布一旦被重设，之前设过的 scale 就丢了
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       ctx.fillStyle = backgroundColor;
       ctx.fillRect(0, 0, width, height);

@@ -18,6 +18,7 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number | null>(null);
+  const dataArrayRef = useRef<Uint8Array | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   const { isGenerating, generationProgress, waveformColor, backgroundColor } = useWaveformStore();
@@ -45,15 +46,30 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      const { width, height } = container.getBoundingClientRect();
+      // 尺寸取画布自身的渲染盒：clientWidth/Height 不含祖先的 CSS 变换，
+      // 而 getBoundingClientRect 会把 transform 算进去，布局动画期间量到的是缩放后的盒子
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
 
-      // 只有在尺寸变化时才重置 canvas 大小
-      const dpr = window.devicePixelRatio || 1;
-      if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
-        ctx.scale(dpr, dpr);
+      // 尺寸为 0 时跳过绘制，避免生成退化的后备存储
+      if (width <= 0 || height <= 0) {
+        animationRef.current = requestAnimationFrame(drawWaveform);
+        return;
       }
+
+      const dpr = window.devicePixelRatio || 1;
+      const backingWidth = Math.round(width * dpr);
+      const backingHeight = Math.round(height * dpr);
+
+      // 只在真正变化时重设后备存储（重设会清空画布）；取整后再比较，
+      // 否则 dpr 为小数时 canvas.width 被截断，判定永远成立而每帧重设
+      if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+        canvas.width = backingWidth;
+        canvas.height = backingHeight;
+      }
+
+      // 变换每帧都设一遍：画布一旦被重设，之前设过的 scale 就丢了
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       ctx.fillStyle = backgroundColor;
       ctx.fillRect(0, 0, width, height);
@@ -64,8 +80,12 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
       }
 
       const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      analyser.getByteTimeDomainData(dataArray);
+      // 复用同一个缓冲，避免每帧分配一个新的 Uint8Array
+      if (!dataArrayRef.current || dataArrayRef.current.length !== bufferLength) {
+        dataArrayRef.current = new Uint8Array(bufferLength);
+      }
+      const dataArray = dataArrayRef.current;
+      analyser.getByteTimeDomainData(dataArray as Uint8Array<ArrayBuffer>);
 
       ctx.strokeStyle = waveformColor;
       ctx.lineWidth = 1.5;
