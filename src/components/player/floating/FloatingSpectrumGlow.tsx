@@ -56,168 +56,171 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
   }, [barCount]);
 
   // Main Render Loop with Peak Hold & Gravity Decay
-  const renderFrame = useCallback(() => {
-    if (!isRunningRef.current) return;
+  const renderFrame = useCallback(
+    function renderFrame() {
+      if (!isRunningRef.current) return;
 
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+      const canvas = canvasRef.current;
+      const container = containerRef.current;
+      if (!canvas || !container) return;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    // 以画布元素自身的渲染尺寸为准：容器的 padding 与 border 不计入画布的内容盒，
-    // 用容器尺寸取后备存储会比画布实际占位更高，画面被纵向压扁（圆点变扁椭圆）
-    const width = canvas.clientWidth || container.clientWidth || 320;
-    const canvasHeight = canvas.clientHeight || height || container.clientHeight || 56;
-    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-    const backingWidth = Math.round(width * dpr);
-    const backingHeight = Math.round(canvasHeight * dpr);
+      // 以画布元素自身的渲染尺寸为准：容器的 padding 与 border 不计入画布的内容盒，
+      // 用容器尺寸取后备存储会比画布实际占位更高，画面被纵向压扁（圆点变扁椭圆）
+      const width = canvas.clientWidth || container.clientWidth || 320;
+      const canvasHeight = canvas.clientHeight || height || container.clientHeight || 56;
+      const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+      const backingWidth = Math.round(width * dpr);
+      const backingHeight = Math.round(canvasHeight * dpr);
 
-    // 取整后再比较：dpr 为小数时 canvas.width 会被截断，否则每帧都会重设后备存储并清空画布
-    if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
-      canvas.width = backingWidth;
-      canvas.height = backingHeight;
-    }
-
-    ctx.save();
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, width, canvasHeight);
-
-    const analyser = getAudioAnalyser();
-    const hasLiveAudio = isPlaying && analyser && !!currentSong;
-
-    const bufferLength = analyser ? analyser.frequencyBinCount : 512;
-    if (!freqDataRef.current || freqDataRef.current.length !== bufferLength) {
-      freqDataRef.current = new Uint8Array(bufferLength);
-    }
-
-    const freqData = freqDataRef.current;
-    if (hasLiveAudio) {
-      analyser.getByteFrequencyData(freqData as Uint8Array<ArrayBuffer>);
-    }
-
-    const peaks = peaksRef.current;
-    const peakHoldTimers = peakHoldTimersRef.current;
-    const peakFallSpeeds = peakFallSpeedsRef.current;
-    const smoothedBars = smoothedBarsRef.current;
-
-    const availableWidth = width;
-    const totalBars = barCount;
-    const barGap = Math.max(2, Math.min(4, availableWidth / (totalBars * 4)));
-    const totalGap = (totalBars - 1) * barGap;
-    const barWidth = Math.max(2, (availableWidth - totalGap) / totalBars);
-    const maxBarHeight = canvasHeight * 0.88;
-
-    let hasActiveSignal = false;
-    const time = Date.now() * 0.003;
-
-    // 1. Prepare Liquid Glass Monochrome White Gradient
-    const barGradient = ctx.createLinearGradient(0, canvasHeight, 0, canvasHeight - maxBarHeight);
-    barGradient.addColorStop(0, "rgba(255, 255, 255, 0.15)");
-    barGradient.addColorStop(0.4, "rgba(255, 255, 255, 0.5)");
-    barGradient.addColorStop(0.8, "rgba(255, 255, 255, 0.85)");
-    barGradient.addColorStop(1, "rgba(255, 255, 255, 1.0)");
-
-    for (let i = 0; i < totalBars; i++) {
-      let rawNormalized = 0;
-
-      if (hasLiveAudio) {
-        // Logarithmic / perceptual frequency bin mapping (gives weight to 40Hz - 4kHz musical frequencies)
-        const logIndex = Math.floor(Math.pow(i / totalBars, 1.6) * (bufferLength * 0.65));
-        const clampedIndex = Math.max(0, Math.min(logIndex, bufferLength - 1));
-        const byteVal = freqData[clampedIndex] || 0;
-
-        // Mild high-frequency boost for visual balance
-        const trebleBoost = 1 + (i / totalBars) * 0.45;
-        rawNormalized = Math.min((byteVal / 255) * trebleBoost, 1);
-      } else if (isPlaying) {
-        // Subtle simulated rhythmic dance if playing without analyser hook
-        const wave = Math.sin(time + i * 0.25) * 0.35 + Math.cos(time * 1.5 - i * 0.15) * 0.25;
-        rawNormalized = Math.max(0.08, Math.min(Math.abs(wave), 0.7));
-      } else {
-        // Paused state: slowly decay to 0
-        rawNormalized = 0;
+      // 取整后再比较：dpr 为小数时 canvas.width 会被截断，否则每帧都会重设后备存储并清空画布
+      if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+        canvas.width = backingWidth;
+        canvas.height = backingHeight;
       }
 
-      // Smooth temporal interpolation
-      const smoothFactor = 0.35;
-      smoothedBars[i] = smoothedBars[i] + (rawNormalized - smoothedBars[i]) * smoothFactor;
-      const currentHeight = Math.max(2, smoothedBars[i] * maxBarHeight);
-
-      if (currentHeight > 3) {
-        hasActiveSignal = true;
-      }
-
-      // Peak Hold & Gravity Decay logic
-      if (currentHeight >= peaks[i]) {
-        peaks[i] = currentHeight;
-        peakHoldTimers[i] = 16; // Hold at apex for 16 frames (~260ms)
-        peakFallSpeeds[i] = 0;
-      } else {
-        if (peakHoldTimers[i] > 0) {
-          peakHoldTimers[i] -= 1;
-        } else {
-          // Accelerate falling velocity
-          peakFallSpeeds[i] += 0.35; // Gravity acceleration
-          peaks[i] = Math.max(currentHeight, peaks[i] - peakFallSpeeds[i]);
-        }
-      }
-
-      if (peaks[i] > 4) {
-        hasActiveSignal = true;
-      }
-
-      const x = i * (barWidth + barGap);
-      const y = canvasHeight - currentHeight;
-
-      // Draw Main Spectrum Bar with Liquid Glass Rounded Top
       ctx.save();
-      ctx.fillStyle = barGradient;
-      ctx.shadowColor = "rgba(255, 255, 255, 0.35)";
-      ctx.shadowBlur = 6 * glowIntensity;
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, canvasHeight);
 
-      const radius = Math.min(barWidth / 2, 3);
-      ctx.beginPath();
-      if (typeof ctx.roundRect === "function") {
-        ctx.roundRect(x, y, barWidth, currentHeight, [radius, radius, 0, 0]);
-      } else {
-        ctx.rect(x, y, barWidth, currentHeight);
+      const analyser = getAudioAnalyser();
+      const hasLiveAudio = isPlaying && analyser && !!currentSong;
+
+      const bufferLength = analyser ? analyser.frequencyBinCount : 512;
+      if (!freqDataRef.current || freqDataRef.current.length !== bufferLength) {
+        freqDataRef.current = new Uint8Array(bufferLength);
       }
-      ctx.fill();
-      ctx.restore();
 
-      // Draw Peak Hold Floating Luminous Cap
-      const peakY = Math.max(2, canvasHeight - peaks[i]);
-      if (peakY < canvasHeight - 3) {
+      const freqData = freqDataRef.current;
+      if (hasLiveAudio) {
+        analyser.getByteFrequencyData(freqData as Uint8Array<ArrayBuffer>);
+      }
+
+      const peaks = peaksRef.current;
+      const peakHoldTimers = peakHoldTimersRef.current;
+      const peakFallSpeeds = peakFallSpeedsRef.current;
+      const smoothedBars = smoothedBarsRef.current;
+
+      const availableWidth = width;
+      const totalBars = barCount;
+      const barGap = Math.max(2, Math.min(4, availableWidth / (totalBars * 4)));
+      const totalGap = (totalBars - 1) * barGap;
+      const barWidth = Math.max(2, (availableWidth - totalGap) / totalBars);
+      const maxBarHeight = canvasHeight * 0.88;
+
+      let hasActiveSignal = false;
+      const time = Date.now() * 0.003;
+
+      // 1. Prepare Liquid Glass Monochrome White Gradient
+      const barGradient = ctx.createLinearGradient(0, canvasHeight, 0, canvasHeight - maxBarHeight);
+      barGradient.addColorStop(0, "rgba(255, 255, 255, 0.15)");
+      barGradient.addColorStop(0.4, "rgba(255, 255, 255, 0.5)");
+      barGradient.addColorStop(0.8, "rgba(255, 255, 255, 0.85)");
+      barGradient.addColorStop(1, "rgba(255, 255, 255, 1.0)");
+
+      for (let i = 0; i < totalBars; i++) {
+        let rawNormalized = 0;
+
+        if (hasLiveAudio) {
+          // Logarithmic / perceptual frequency bin mapping (gives weight to 40Hz - 4kHz musical frequencies)
+          const logIndex = Math.floor(Math.pow(i / totalBars, 1.6) * (bufferLength * 0.65));
+          const clampedIndex = Math.max(0, Math.min(logIndex, bufferLength - 1));
+          const byteVal = freqData[clampedIndex] || 0;
+
+          // Mild high-frequency boost for visual balance
+          const trebleBoost = 1 + (i / totalBars) * 0.45;
+          rawNormalized = Math.min((byteVal / 255) * trebleBoost, 1);
+        } else if (isPlaying) {
+          // Subtle simulated rhythmic dance if playing without analyser hook
+          const wave = Math.sin(time + i * 0.25) * 0.35 + Math.cos(time * 1.5 - i * 0.15) * 0.25;
+          rawNormalized = Math.max(0.08, Math.min(Math.abs(wave), 0.7));
+        } else {
+          // Paused state: slowly decay to 0
+          rawNormalized = 0;
+        }
+
+        // Smooth temporal interpolation
+        const smoothFactor = 0.35;
+        smoothedBars[i] = smoothedBars[i] + (rawNormalized - smoothedBars[i]) * smoothFactor;
+        const currentHeight = Math.max(2, smoothedBars[i] * maxBarHeight);
+
+        if (currentHeight > 3) {
+          hasActiveSignal = true;
+        }
+
+        // Peak Hold & Gravity Decay logic
+        if (currentHeight >= peaks[i]) {
+          peaks[i] = currentHeight;
+          peakHoldTimers[i] = 16; // Hold at apex for 16 frames (~260ms)
+          peakFallSpeeds[i] = 0;
+        } else {
+          if (peakHoldTimers[i] > 0) {
+            peakHoldTimers[i] -= 1;
+          } else {
+            // Accelerate falling velocity
+            peakFallSpeeds[i] += 0.35; // Gravity acceleration
+            peaks[i] = Math.max(currentHeight, peaks[i] - peakFallSpeeds[i]);
+          }
+        }
+
+        if (peaks[i] > 4) {
+          hasActiveSignal = true;
+        }
+
+        const x = i * (barWidth + barGap);
+        const y = canvasHeight - currentHeight;
+
+        // Draw Main Spectrum Bar with Liquid Glass Rounded Top
         ctx.save();
-        ctx.fillStyle = "#FFFFFF";
-        ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+        ctx.fillStyle = barGradient;
+        ctx.shadowColor = "rgba(255, 255, 255, 0.35)";
         ctx.shadowBlur = 6 * glowIntensity;
 
+        const radius = Math.min(barWidth / 2, 3);
         ctx.beginPath();
-        const peakHeight = 2;
         if (typeof ctx.roundRect === "function") {
-          ctx.roundRect(x, peakY - peakHeight, barWidth, peakHeight, 1);
+          ctx.roundRect(x, y, barWidth, currentHeight, [radius, radius, 0, 0]);
         } else {
-          ctx.rect(x, peakY - peakHeight, barWidth, peakHeight);
+          ctx.rect(x, y, barWidth, currentHeight);
         }
         ctx.fill();
         ctx.restore();
+
+        // Draw Peak Hold Floating Luminous Cap
+        const peakY = Math.max(2, canvasHeight - peaks[i]);
+        if (peakY < canvasHeight - 3) {
+          ctx.save();
+          ctx.fillStyle = "#FFFFFF";
+          ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+          ctx.shadowBlur = 6 * glowIntensity;
+
+          ctx.beginPath();
+          const peakHeight = 2;
+          if (typeof ctx.roundRect === "function") {
+            ctx.roundRect(x, peakY - peakHeight, barWidth, peakHeight, 1);
+          } else {
+            ctx.rect(x, peakY - peakHeight, barWidth, peakHeight);
+          }
+          ctx.fill();
+          ctx.restore();
+        }
       }
-    }
 
-    ctx.restore();
+      ctx.restore();
 
-    // 智能休眠判断: 如果未播放且信号已全部衰减至 0，则停止 RAF
-    if (!isPlaying && !hasActiveSignal) {
-      isRunningRef.current = false;
-      animFrameRef.current = null;
-      return;
-    }
+      // 智能休眠判断: 如果未播放且信号已全部衰减至 0，则停止 RAF
+      if (!isPlaying && !hasActiveSignal) {
+        isRunningRef.current = false;
+        animFrameRef.current = null;
+        return;
+      }
 
-    animFrameRef.current = requestAnimationFrame(renderFrame);
-  }, [barCount, currentSong, glowIntensity, height, isPlaying]);
+      animFrameRef.current = requestAnimationFrame(renderFrame);
+    },
+    [barCount, currentSong, glowIntensity, height, isPlaying]
+  );
 
   // Start loop helper
   const startLoop = useCallback(() => {

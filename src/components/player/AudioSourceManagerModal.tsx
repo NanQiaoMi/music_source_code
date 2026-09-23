@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useAudioSourceStore, AudioSourceType, PreferredQuality } from "@/store/audioSourceStore";
@@ -18,8 +18,6 @@ import {
   ShieldCheck,
   Activity,
   Layers,
-  ChevronUp,
-  ChevronDown,
   Sparkles,
   Zap,
   Lock,
@@ -56,7 +54,6 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
   const showToast = useUIStore((state) => state.showToast);
 
   const {
-    sourcePriority,
     autoTrialFallback,
     preferredQuality,
     enableSpadeDecryption,
@@ -64,7 +61,6 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
     enableV8BeatPulse,
     beatSensitivity,
     currentBeatMap,
-    setSourcePriority,
     setAutoTrialFallback,
     setPreferredQuality,
     setEnableSpadeDecryption,
@@ -77,10 +73,22 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
 
   const [activeTab, setActiveTab] = useState<TabType>("track-sources");
   const [candidates, setCandidates] = useState<ResolvedAudioSource[]>([]);
-  const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
-  const [cachedBeatMapCount, setCachedBeatMapCount] = useState(1);
+  // 记录候选已拉取完成的歌曲 id；loading 由它派生，避免在 effect 里同步 setState 触发级联渲染
+  const [loadedCandidatesFor, setLoadedCandidatesFor] = useState<string | null>(null);
+  const isLoadingCandidates = isOpen && !!currentSong && loadedCandidatesFor !== currentSong.id;
+  // 节拍图谱缓存数量只依赖 localStorage 与是否打开，派生即可，无需在 effect 里同步 setState
+  const cachedBeatMapCount = useMemo(() => {
+    if (!isOpen || typeof window === "undefined") return 1;
+    let count = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("beatmap_")) count++;
+    }
+    return Math.max(1, count);
+  }, [isOpen]);
   const [currentBeatIndex, setCurrentBeatIndex] = useState(0);
-  const [tapTimestamps, setTapTimestamps] = useState<number[]>([]);
+  // 只用到 setter：时间戳数组在更新回调里通过 prev 读取，组件不直接消费它的值
+  const [, setTapTimestamps] = useState<number[]>([]);
   const [tapRippleKey, setTapRippleKey] = useState(0);
   const [isSearchingBetter, setIsSearchingBetter] = useState(false);
 
@@ -206,7 +214,7 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
     if (!isOpen || !currentSong) return;
 
     let isMounted = true;
-    setIsLoadingCandidates(true);
+    const songId = currentSong.id;
 
     multiSourceResolver
       .getAvailableSourceCandidates({
@@ -216,53 +224,18 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
         album: currentSong.album,
       })
       .then((list) => {
-        if (isMounted) {
-          setCandidates(list);
-          setIsLoadingCandidates(false);
-        }
+        if (!isMounted) return;
+        setCandidates(list);
+        setLoadedCandidatesFor(songId);
       })
       .catch(() => {
-        if (isMounted) setIsLoadingCandidates(false);
+        if (isMounted) setLoadedCandidatesFor(songId);
       });
-
-    if (typeof window !== "undefined") {
-      let count = 0;
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith("beatmap_")) count++;
-      }
-      setCachedBeatMapCount(Math.max(1, count));
-    }
 
     return () => {
       isMounted = false;
     };
   }, [isOpen, currentSong]);
-
-  // 快捷键 ESC 关闭与 T 键 Tap Tempo
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        document.activeElement?.tagName === "INPUT" ||
-        document.activeElement?.tagName === "TEXTAREA"
-      ) {
-        return;
-      }
-
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      } else if ((e.key === "t" || e.key === "T") && activeTab === "dsp-beatmap") {
-        e.preventDefault();
-        handleTapTempo();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, activeTab, onClose]);
 
   // Tap Tempo 敲击测速算法
   const handleTapTempo = useCallback(() => {
@@ -300,7 +273,32 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
 
       return next;
     });
-  }, [setCurrentBeatMap, showToast]);
+  }, [currentSong, setCurrentBeatMap, showToast]);
+
+  // 快捷键 ESC 关闭与 T 键 Tap Tempo
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA"
+      ) {
+        return;
+      }
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      } else if ((e.key === "t" || e.key === "T") && activeTab === "dsp-beatmap") {
+        e.preventDefault();
+        handleTapTempo();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, activeTab, onClose, handleTapTempo]);
 
   // 平滑等功率无缝切源
   const handleSwitchCandidate = (cand: ResolvedAudioSource) => {
@@ -366,17 +364,6 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
     } finally {
       setIsSearchingBetter(false);
     }
-  };
-
-  // 移动优先级
-  const movePriority = (idx: number, direction: -1 | 1) => {
-    const targetIdx = idx + direction;
-    if (targetIdx < 0 || targetIdx >= sourcePriority.length) return;
-    const next = [...sourcePriority];
-    const temp = next[idx];
-    next[idx] = next[targetIdx];
-    next[targetIdx] = temp;
-    setSourcePriority(next);
   };
 
   const platformMeta: Record<
