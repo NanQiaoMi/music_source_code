@@ -546,7 +546,7 @@ export const GestureController: React.FC = () => {
               ref={canvasRef}
               width={640}
               height={480}
-              className="absolute top-0 left-0 w-52 h-40 rounded-lg"
+              className="absolute top-0 left-0 w-52 h-40 rounded-lg object-cover"
               style={{ transform: "scaleX(-1)" }}
             />
           )}

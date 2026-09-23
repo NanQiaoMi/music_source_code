@@ -113,9 +113,20 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      const width = canvas.width;
-      const height = canvas.height;
+      // 后备存储跟随画布自身的渲染尺寸并按 dpr 缩放。原先固定 640×96 会被拉进任意宽度的
+      // 条状容器里：窄窗口下靠 object-cover 裁切、不生效时横向压扁，波形比例都不对
+      const width = Math.max(1, canvas.clientWidth || 640);
+      const height = Math.max(1, canvas.clientHeight || 96);
+      const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+      const backingWidth = Math.round(width * dpr);
+      const backingHeight = Math.round(height * dpr);
 
+      if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+        canvas.width = backingWidth;
+        canvas.height = backingHeight;
+      }
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
 
       // 背景微网格
@@ -309,7 +320,10 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
     usePlayerStore.getState().setIsPlaying(true);
 
     if (showToast) {
-      showToast(`✨ 已无缝切换为「${cand.name || cand.source.toUpperCase()}」高清无损源`, "success");
+      showToast(
+        `✨ 已无缝切换为「${cand.name || cand.source.toUpperCase()}」高清无损源`,
+        "success"
+      );
     }
   };
 
@@ -365,15 +379,28 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
     setSourcePriority(next);
   };
 
-  const platformMeta: Record<AudioSourceType, { name: string; color: string; badge: string; ping: number }> = {
+  const platformMeta: Record<
+    AudioSourceType,
+    { name: string; color: string; badge: string; ping: number }
+  > = {
     netease: { name: "网易云音乐", color: "from-red-500 to-rose-600", badge: "NETEASE", ping: 24 },
     qq: { name: "QQ 音乐", color: "from-emerald-500 to-teal-600", badge: "TENCENT", ping: 32 },
     kugou: { name: "酷狗音乐", color: "from-blue-500 to-cyan-600", badge: "KUGOU", ping: 45 },
     kuwo: { name: "酷我音乐", color: "from-amber-500 to-orange-600", badge: "KUWO", ping: 38 },
     qishui: { name: "汽水音乐", color: "from-purple-500 to-indigo-600", badge: "QISHUI", ping: 68 },
     local: { name: "本地母带", color: "from-amber-500 to-orange-600", badge: "MASTER", ping: 1 },
-    lx_custom: { name: "洛雪扩展源", color: "from-cyan-500 to-blue-600", badge: "LX_CUSTOM", ping: 85 },
-    cross_matched: { name: "全网智能跨源", color: "from-pink-500 to-rose-600", badge: "AUTO", ping: 50 },
+    lx_custom: {
+      name: "洛雪扩展源",
+      color: "from-cyan-500 to-blue-600",
+      badge: "LX_CUSTOM",
+      ping: 85,
+    },
+    cross_matched: {
+      name: "全网智能跨源",
+      color: "from-pink-500 to-rose-600",
+      badge: "AUTO",
+      ping: 50,
+    },
   };
 
   if (!isOpen) return null;
@@ -619,7 +646,12 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
                               )}
                             </div>
                             <div className="flex items-center gap-3 text-[12px] text-[#86868b] mt-1 font-mono">
-                              <span>{cand.format.toUpperCase()} · {cand.bitrate ? Math.round(cand.bitrate / 1000) + " kbps" : "无损自适应"}</span>
+                              <span>
+                                {cand.format.toUpperCase()} ·{" "}
+                                {cand.bitrate
+                                  ? Math.round(cand.bitrate / 1000) + " kbps"
+                                  : "无损自适应"}
+                              </span>
                               <span className="text-white/20">|</span>
                               <span className="flex items-center gap-1 text-[11px] text-emerald-400">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -699,11 +731,36 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
 
                 <div className="flex items-center justify-between gap-2 overflow-x-auto py-3 text-center">
                   {[
-                    { name: "网易云", role: "首选源", color: "from-red-500 to-rose-600", ping: "24ms" },
-                    { name: "QQ 音乐", role: "次选源", color: "from-emerald-500 to-teal-600", ping: "32ms" },
-                    { name: "酷狗音乐", role: "备选源", color: "from-blue-500 to-cyan-600", ping: "45ms" },
-                    { name: "汽水解密", role: "保底源", color: "from-purple-500 to-indigo-600", ping: "68ms" },
-                    { name: "本地母带", role: "终极直通", color: "from-amber-500 to-orange-600", ping: "1ms" },
+                    {
+                      name: "网易云",
+                      role: "首选源",
+                      color: "from-red-500 to-rose-600",
+                      ping: "24ms",
+                    },
+                    {
+                      name: "QQ 音乐",
+                      role: "次选源",
+                      color: "from-emerald-500 to-teal-600",
+                      ping: "32ms",
+                    },
+                    {
+                      name: "酷狗音乐",
+                      role: "备选源",
+                      color: "from-blue-500 to-cyan-600",
+                      ping: "45ms",
+                    },
+                    {
+                      name: "汽水解密",
+                      role: "保底源",
+                      color: "from-purple-500 to-indigo-600",
+                      ping: "68ms",
+                    },
+                    {
+                      name: "本地母带",
+                      role: "终极直通",
+                      color: "from-amber-500 to-orange-600",
+                      ping: "1ms",
+                    },
                   ].map((node, i, arr) => (
                     <React.Fragment key={node.name}>
                       <div className="flex flex-col items-center gap-1.5 shrink-0">
@@ -824,9 +881,7 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
                     </div>
                     <div>
                       <div className="text-[12px] font-semibold text-white">SpadeKey 内核</div>
-                      <div className="text-[10px] text-[#2997ff] font-mono mt-0.5">
-                        AES-128-ECB
-                      </div>
+                      <div className="text-[10px] text-[#2997ff] font-mono mt-0.5">AES-128-ECB</div>
                     </div>
                   </div>
 
@@ -930,12 +985,7 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
                   </span>
                 </div>
                 <div className="relative w-full h-[96px] rounded-2xl bg-black/60 border border-white/10 overflow-hidden flex items-center justify-center">
-                  <canvas
-                    ref={oscilloscopeCanvasRef}
-                    width={640}
-                    height={96}
-                    className="w-full h-full object-cover"
-                  />
+                  <canvas ref={oscilloscopeCanvasRef} className="w-full h-full block" />
                 </div>
               </div>
 
@@ -967,9 +1017,7 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
                       <motion.div
                         key={beatIndex}
                         animate={
-                          isActive
-                            ? { scale: [1, 1.06, 1], y: [0, -3, 0] }
-                            : { scale: 1, y: 0 }
+                          isActive ? { scale: [1, 1.06, 1], y: [0, -3, 0] } : { scale: 1, y: 0 }
                         }
                         transition={{ type: "spring", stiffness: 500, damping: 25 }}
                         className={`p-4 rounded-2xl border text-center transition-colors ${
@@ -1098,4 +1146,3 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
 };
 
 export default AudioSourceManagerModal;
-
