@@ -72,13 +72,18 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const width = container.clientWidth || 320;
-    const canvasHeight = height || container.clientHeight || 56;
+    // 以画布元素自身的渲染尺寸为准。容器一旦出现 padding/border，容器尺寸就会大于画布的
+    // 内容盒，后备存储随之偏大而生出纵向压扁（FloatingSpectrumGlow 就踩过这个坑）
+    const width = canvas.clientWidth || container.clientWidth || 320;
+    const canvasHeight = canvas.clientHeight || height || container.clientHeight || 56;
     const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const backingWidth = Math.round(width * dpr);
+    const backingHeight = Math.round(canvasHeight * dpr);
 
-    if (canvas.width !== width * dpr || canvas.height !== canvasHeight * dpr) {
-      canvas.width = width * dpr;
-      canvas.height = canvasHeight * dpr;
+    // 取整后再比较：dpr 为小数时 canvas.width 会被截断，否则每帧都会重设后备存储并清空画布
+    if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+      canvas.width = backingWidth;
+      canvas.height = backingHeight;
     }
 
     ctx.save();
@@ -101,7 +106,7 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
     const progressRatio = duration > 0 ? Math.min(Math.max(currentTime / duration, 0), 1) : 0;
     const playheadX = progressRatio * width;
     const centerY = canvasHeight * 0.52;
-    const maxAmplitude = (canvasHeight * 0.42) * glowIntensity;
+    const maxAmplitude = canvasHeight * 0.42 * glowIntensity;
 
     idlePhaseRef.current += isPlaying ? 0.04 : 0.015;
     const phase = idlePhaseRef.current;
@@ -375,9 +380,7 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`relative select-none group ${
-        interactive ? "cursor-pointer" : ""
-      } ${className}`}
+      className={`relative select-none group ${interactive ? "cursor-pointer" : ""} ${className}`}
       style={{ height, touchAction: "none" }}
       onPointerDown={handlePointerDown}
       onMouseMove={handleMouseMove}
@@ -390,7 +393,10 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
         <div
           className="absolute -top-7 -translate-x-1/2 pointer-events-none px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md border border-cyan-500/30 text-[10px] font-mono text-cyan-200 shadow-lg transition-transform"
           style={{
-            left: Math.max(20, Math.min(hoverState.x, (containerRef.current?.clientWidth || 300) - 20)),
+            left: Math.max(
+              20,
+              Math.min(hoverState.x, (containerRef.current?.clientWidth || 300) - 20)
+            ),
           }}
         >
           {formatTooltipTime(hoverState.previewTime)}

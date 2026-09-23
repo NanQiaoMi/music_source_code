@@ -66,13 +66,18 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const width = container.clientWidth || 320;
-    const canvasHeight = height || container.clientHeight || 56;
+    // 以画布元素自身的渲染尺寸为准：容器的 padding 与 border 不计入画布的内容盒，
+    // 用容器尺寸取后备存储会比画布实际占位更高，画面被纵向压扁（圆点变扁椭圆）
+    const width = canvas.clientWidth || container.clientWidth || 320;
+    const canvasHeight = canvas.clientHeight || height || container.clientHeight || 56;
     const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const backingWidth = Math.round(width * dpr);
+    const backingHeight = Math.round(canvasHeight * dpr);
 
-    if (canvas.width !== width * dpr || canvas.height !== canvasHeight * dpr) {
-      canvas.width = width * dpr;
-      canvas.height = canvasHeight * dpr;
+    // 取整后再比较：dpr 为小数时 canvas.width 会被截断，否则每帧都会重设后备存储并清空画布
+    if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+      canvas.width = backingWidth;
+      canvas.height = backingHeight;
     }
 
     ctx.save();
@@ -119,9 +124,7 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
 
       if (hasLiveAudio) {
         // Logarithmic / perceptual frequency bin mapping (gives weight to 40Hz - 4kHz musical frequencies)
-        const logIndex = Math.floor(
-          Math.pow(i / totalBars, 1.6) * (bufferLength * 0.65)
-        );
+        const logIndex = Math.floor(Math.pow(i / totalBars, 1.6) * (bufferLength * 0.65));
         const clampedIndex = Math.max(0, Math.min(logIndex, bufferLength - 1));
         const byteVal = freqData[clampedIndex] || 0;
 
@@ -202,7 +205,6 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
         ctx.fill();
         ctx.restore();
       }
-
     }
 
     ctx.restore();
