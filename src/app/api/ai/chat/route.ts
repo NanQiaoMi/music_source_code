@@ -35,12 +35,13 @@ export async function POST(req: NextRequest) {
     } = body;
 
     const authHeader = req.headers.get("authorization") || "";
+    // 只从调用方或环境变量取密钥。不要在源码里硬编码兜底值：
+    // 提交进去的值会永久留在 git 历史里，事后删除也无法撤回
     const effectiveApiKey =
       bodyApiKey ||
       (authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : authHeader) ||
       process.env.SENSENOVA_API_KEY_1 ||
-      process.env.SENSENOVA_API_KEY ||
-      "sk-deijjmIMBW7NuHwPd6qt2eOE4UPPknjF";
+      process.env.SENSENOVA_API_KEY;
 
     if (!effectiveApiKey) {
       return NextResponse.json(

@@ -21,13 +21,16 @@ export interface AIConfig {
   stream?: boolean;
 }
 
+// 这里刻意不预置任何 apiKey：本模块是客户端代码，写在这里的密钥会被打包进前端
+// 并发送到浏览器，等同于公开。密钥应由服务端从环境变量读取（/api/ai/chat 已支持），
+// 或由用户在 AI 设置里自行填写。
 export const DEFAULT_SENSENOVA_CONFIGS: Array<Omit<AIConfig, "id"> & { id: string }> = [
   {
     id: "sensenova-deepseek-v4-flash",
     name: "DeepSeek-V4 Flash (超快主通道 - 推荐)",
     providerId: "sensenova",
     baseUrl: "https://token.sensenova.cn/v1",
-    apiKey: "sk-qN2X1XYkazEHkVi7tdTUvUEKkoBHp7kY",
+    apiKey: "",
     model: "deepseek-v4-flash",
     temperature: 0.85,
     topP: 1.0,
@@ -41,7 +44,7 @@ export const DEFAULT_SENSENOVA_CONFIGS: Array<Omit<AIConfig, "id"> & { id: strin
     name: "DeepSeek-V4 Pro (深度高质备用1)",
     providerId: "sensenova",
     baseUrl: "https://token.sensenova.cn/v1",
-    apiKey: "sk-F83DUjX1CcogKgbi6VCk4qMA8UYsPH16",
+    apiKey: "",
     model: "deepseek-v4-pro",
     temperature: 0.85,
     topP: 1.0,
@@ -55,7 +58,7 @@ export const DEFAULT_SENSENOVA_CONFIGS: Array<Omit<AIConfig, "id"> & { id: strin
     name: "SenseNova 6.8 (备用通道2 - mimidemimi)",
     providerId: "sensenova",
     baseUrl: "https://token.sensenova.cn/v1",
-    apiKey: "sk-deijjmIMBW7NuHwPd6qt2eOE4UPPknjF",
+    apiKey: "",
     model: "sensenova-6.8-flash-lite",
     temperature: 0.7,
     topP: 1.0,
@@ -69,7 +72,7 @@ export const DEFAULT_SENSENOVA_CONFIGS: Array<Omit<AIConfig, "id"> & { id: strin
     name: "SenseNova 6.8 (备用通道3 - MAOMAODEMAOMAO)",
     providerId: "sensenova",
     baseUrl: "https://token.sensenova.cn/v1",
-    apiKey: "sk-3i5hCE1SC7aQpKOQnJg1L9lktkJ1NcaL",
+    apiKey: "",
     model: "sensenova-6.8-flash-lite",
     temperature: 0.7,
     topP: 1.0,
@@ -83,7 +86,7 @@ export const DEFAULT_SENSENOVA_CONFIGS: Array<Omit<AIConfig, "id"> & { id: strin
     name: "Kimi-K3 (备用4 - MIMIDEMIMI2)",
     providerId: "sensenova",
     baseUrl: "https://token.sensenova.cn/v1",
-    apiKey: "sk-6zoL2AmkiwjiIAetIdwTBNdpkjZaemnB",
+    apiKey: "",
     model: "kimi-k3",
     temperature: 0.7,
     topP: 1.0,
@@ -102,7 +105,9 @@ interface AIState {
   enableAutoFallback: boolean;
 
   // Actions
-  addConfig: (config: Omit<AIConfig, "id" | "status"> & { id?: string; status?: AIConfig["status"] }) => string;
+  addConfig: (
+    config: Omit<AIConfig, "id" | "status"> & { id?: string; status?: AIConfig["status"] }
+  ) => string;
   removeConfig: (id: string) => void;
   updateConfig: (id: string, updates: Partial<AIConfig>) => void;
   duplicateConfig: (id: string) => string | null;
@@ -297,8 +302,7 @@ export const useAIStore = create<AIState>()(
 
       setEnabled: (enabled) => set({ isEnabled: enabled }),
 
-      toggleAutoFallback: () =>
-        set((state) => ({ enableAutoFallback: !state.enableAutoFallback })),
+      toggleAutoFallback: () => set((state) => ({ enableAutoFallback: !state.enableAutoFallback })),
 
       setAutoFallback: (enabled) => set({ enableAutoFallback: enabled }),
 
@@ -314,17 +318,14 @@ export const useAIStore = create<AIState>()(
       getOrderedConfigPool: (primaryId) => {
         const state = get();
         // 筛选出拥有有效 Base URL 和 API Key 的可用端点候选池
-        let validConfigs = state.configs.filter(
-          (c) => !!c.baseUrl?.trim() && !!c.apiKey?.trim()
-        );
+        let validConfigs = state.configs.filter((c) => !!c.baseUrl?.trim() && !!c.apiKey?.trim());
         if (validConfigs.length === 0) {
           // 若暂无已配置端点，使用商汤官方预设多 Key 容灾池
           validConfigs = DEFAULT_SENSENOVA_CONFIGS;
         }
 
         const targetPrimaryId = primaryId || state.activeConfigId;
-        const primary =
-          validConfigs.find((c) => c.id === targetPrimaryId) || validConfigs[0];
+        const primary = validConfigs.find((c) => c.id === targetPrimaryId) || validConfigs[0];
         const others = validConfigs.filter((c) => c.id !== primary.id);
 
         // 排序规则：优先已测试连通在线(online)，其次网络延迟(latency)最低者优先
