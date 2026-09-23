@@ -1,13 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { extractColorsFromImage, defaultColors, ThemeColors } from "@/utils/colorExtractor";
 
 const DEFAULT_COVER = "/default-cover.svg";
+
+// 封面淡入时长与取色防抖：两者相差太大时，配色会在图片还没淡完时就开始变
+const COVER_FADE_MS = 1200;
+const COLOR_EXTRACT_DEBOUNCE_MS = 250;
+
+// 光斑的径向渐隐改用遮罩实现。CSS 无法对 background-image 做过渡，
+// 直接写 radial-gradient 会让换色瞬间跳变；纯色 background-color 才能被 transition-colors 平滑插值
+const ORB_MASK = "radial-gradient(circle, #000 0%, transparent 70%)";
 
 export const AmbientFluidMeshBackground: React.FC = () => {
   const currentSong = useAudioStore((state) => state.currentSong);
@@ -31,36 +39,46 @@ export const AmbientFluidMeshBackground: React.FC = () => {
   const [activeCover, setActiveCover] = useState<string>(DEFAULT_COVER);
   const [prevCover, setPrevCover] = useState<string>(DEFAULT_COVER);
   const [isCrossfading, setIsCrossfading] = useState<boolean>(false);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 250ms 终点吸附智能防抖色彩与封面提取（避免切歌转场瞬间占用 GPU/CPU 资源）
+  // 封面立即开始交叉淡入。这一步本身很便宜，不该被防抖推迟——
+  // 防抖会让背景比卡片晚 250ms 才开始变，观感上就是"先卡一下、再硬切"。
+  // 状态置位放在下一个任务里而不是 effect 同步体内：既避免级联渲染，延迟也只有 ~1ms。
   useEffect(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
+    if (coverUrl === activeCover) return;
 
-    debounceTimerRef.current = setTimeout(async () => {
-      if (coverUrl !== activeCover) {
-        setPrevCover(activeCover);
-        setActiveCover(coverUrl);
-        setIsCrossfading(true);
-        setTimeout(() => setIsCrossfading(false), 1200);
-      }
+    const swapTimer = setTimeout(() => {
+      setPrevCover(activeCover);
+      setActiveCover(coverUrl);
+      setIsCrossfading(true);
+    }, 0);
 
-      if (coverUrl && coverUrl !== DEFAULT_COVER) {
-        const extracted = await extractColorsFromImage(coverUrl);
-        setColors(extracted);
-      } else {
-        setColors(defaultColors);
-      }
-    }, 250);
+    const fadeTimer = setTimeout(() => setIsCrossfading(false), COVER_FADE_MS);
 
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+      clearTimeout(swapTimer);
+      clearTimeout(fadeTimer);
     };
   }, [coverUrl, activeCover]);
+
+  // 取色要采样像素、开销大，仍然防抖：快速连切卡片时不必每张都算
+  useEffect(() => {
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
+      if (!coverUrl || coverUrl === DEFAULT_COVER) {
+        if (!cancelled) setColors(defaultColors);
+        return;
+      }
+
+      const extracted = await extractColorsFromImage(coverUrl);
+      if (!cancelled) setColors(extracted);
+    }, COLOR_EXTRACT_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [coverUrl]);
 
   const { primary, secondary, accent, surface } = colors;
 
@@ -68,9 +86,9 @@ export const AmbientFluidMeshBackground: React.FC = () => {
     <div className="fixed inset-0 w-full h-full pointer-events-none overflow-hidden z-0 select-none bg-[#070709]">
       {/* ─── 1. 沉浸式超大弥散底层 (Crossfading Dynamic Album Glass) ─── */}
       <div className="absolute inset-0 overflow-hidden opacity-30 scale-105 blur-[60px] transform-gpu">
-        {/* 旧封面渐隐层 */}
+        {/* 旧封面垫在下方，等新封面淡完再卸载 */}
         {isCrossfading && prevCover && (
-          <div className="absolute inset-0 transition-opacity duration-[1200ms] ease-out opacity-0">
+          <div className="absolute inset-0">
             <Image
               src={prevCover}
               alt="ambient-prev"
@@ -83,9 +101,13 @@ export const AmbientFluidMeshBackground: React.FC = () => {
           </div>
         )}
 
-        {/* 当前封面渐现层 */}
+        {/* 当前封面：key 变化时重新挂载，让淡入动画每张都重放一遍 */}
         {activeCover && (
-          <div className="absolute inset-0 transition-opacity duration-[1200ms] ease-out opacity-100">
+          <div
+            key={activeCover}
+            className="absolute inset-0"
+            style={{ animation: `ambient-cover-fade-in ${COVER_FADE_MS}ms ease-out both` }}
+          >
             <Image
               src={activeCover}
               alt="ambient-curr"
@@ -109,7 +131,9 @@ export const AmbientFluidMeshBackground: React.FC = () => {
         <div
           className="animate-orb-1 absolute -top-[15%] -left-[10%] w-[600px] h-[600px] rounded-full opacity-30 transform-gpu transition-colors duration-[1200ms] ease-out"
           style={{
-            background: `radial-gradient(circle, ${primary} 0%, transparent 70%)`,
+            backgroundColor: primary,
+            maskImage: ORB_MASK,
+            WebkitMaskImage: ORB_MASK,
             willChange: "transform",
           }}
         />
@@ -118,7 +142,9 @@ export const AmbientFluidMeshBackground: React.FC = () => {
         <div
           className="animate-orb-2 absolute -top-[10%] -right-[10%] w-[560px] h-[560px] rounded-full opacity-25 transform-gpu transition-colors duration-[1200ms] ease-out"
           style={{
-            background: `radial-gradient(circle, ${secondary} 0%, transparent 70%)`,
+            backgroundColor: secondary,
+            maskImage: ORB_MASK,
+            WebkitMaskImage: ORB_MASK,
             willChange: "transform",
           }}
         />
@@ -127,7 +153,9 @@ export const AmbientFluidMeshBackground: React.FC = () => {
         <div
           className="animate-orb-3 absolute -bottom-[20%] right-[15%] w-[700px] h-[700px] rounded-full opacity-25 transform-gpu transition-colors duration-[1200ms] ease-out"
           style={{
-            background: `radial-gradient(circle, ${accent} 0%, transparent 70%)`,
+            backgroundColor: accent,
+            maskImage: ORB_MASK,
+            WebkitMaskImage: ORB_MASK,
             willChange: "transform",
           }}
         />
@@ -136,7 +164,9 @@ export const AmbientFluidMeshBackground: React.FC = () => {
         <div
           className="animate-orb-4 absolute -bottom-[15%] -left-[15%] w-[620px] h-[620px] rounded-full opacity-20 transform-gpu transition-colors duration-[1200ms] ease-out"
           style={{
-            background: `radial-gradient(circle, ${surface} 0%, transparent 70%)`,
+            backgroundColor: surface,
+            maskImage: ORB_MASK,
+            WebkitMaskImage: ORB_MASK,
             willChange: "transform",
           }}
         />
@@ -154,8 +184,9 @@ export const AmbientFluidMeshBackground: React.FC = () => {
       />
 
       {/* ─── 4. 屏幕四周极光琉璃微溢光 ─── */}
+      {/* 过渡的是 boxShadow，用 transition-shadow（transition-colors 不含 box-shadow） */}
       <div
-        className="absolute inset-0 pointer-events-none transition-colors duration-[1200ms] ease-out"
+        className="absolute inset-0 pointer-events-none transition-shadow duration-[1200ms] ease-out"
         style={{
           boxShadow: `
             inset 0 0 140px 10px rgba(0,0,0,0.85),
