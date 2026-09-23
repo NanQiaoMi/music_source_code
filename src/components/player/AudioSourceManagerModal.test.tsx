@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { act } from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createRoot, Root } from "react-dom/client";
@@ -13,6 +14,7 @@ HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
   moveTo: vi.fn(),
   lineTo: vi.fn(),
   stroke: vi.fn(),
+  setTransform: vi.fn(),
   strokeStyle: "",
   lineWidth: 1,
   shadowColor: "",
@@ -165,8 +167,8 @@ describe("AudioSourceManagerModal", () => {
       root?.render(<AudioSourceManagerModal isOpen={true} onClose={onCloseMock} />);
     });
 
-    const doneBtn = Array.from(container?.querySelectorAll("button") || []).find((b) =>
-      b.textContent?.trim() === "完成"
+    const doneBtn = Array.from(container?.querySelectorAll("button") || []).find(
+      (b) => b.textContent?.trim() === "完成"
     );
     expect(doneBtn).toBeTruthy();
 
