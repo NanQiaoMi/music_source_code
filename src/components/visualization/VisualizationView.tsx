@@ -59,6 +59,10 @@ NextIcon.displayName = "NextIcon";
 // 填充面积成倍增长（与 Shelf3DView、V8 渲染引擎的上限一致）
 const MAX_RENDER_DPR = 2;
 
+// 效果之间交叉淡化的时长。切换瞬间把上一效果的最后一帧抓下来，再按这个时长淡出，
+// 避免两个效果之间直接硬切
+const EFFECT_SWITCH_FADE_MS = 450;
+
 const EFFECTS_LIST: { id: VisualizationEffect; name: string }[] = [
   { id: "cinematicLyricDrift", name: "温光浮字" },
   { id: "orientalLandscape", name: "青绿千里" },
@@ -115,6 +119,9 @@ export function VisualizationView() {
   const shockwavesRef = useRef<unknown[]>([]);
   const albumArtRef = useRef<HTMLDivElement | null>(null);
   const lastEffectRef = useRef<string | null>(null);
+  // 效果切换的交叉淡化：离屏画布保存上一效果的最后一帧，以及淡化的起始时间戳
+  const effectFadeCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const effectFadeStartRef = useRef<number | null>(null);
   // 视口尺寸以 CSS 像素为准，画布后备存储按 dpr 放大；效果绘制坐标始终是 CSS 像素
   const viewportRef = useRef({ w: 0, h: 0, dpr: 1 });
 
@@ -316,6 +323,27 @@ export function VisualizationView() {
 
       // 切换效果时彻底清理粒子池与引用，避免跨效果数据结构冲突
       if (lastEffectRef.current !== currentEff) {
+        // 先把上一效果的最后一帧抓进离屏画布（此刻画布上还是旧效果，尚未被清屏覆盖），
+        // 之后按 EFFECT_SWITCH_FADE_MS 把它淡出叠在新效果上，避免硬切。
+        if (lastEffectRef.current !== null) {
+          if (!effectFadeCanvasRef.current) {
+            effectFadeCanvasRef.current = document.createElement("canvas");
+          }
+          const fadeCanvas = effectFadeCanvasRef.current;
+          if (fadeCanvas.width !== canvas.width || fadeCanvas.height !== canvas.height) {
+            fadeCanvas.width = canvas.width;
+            fadeCanvas.height = canvas.height;
+          }
+          const fadeCtx = fadeCanvas.getContext("2d");
+          if (fadeCtx) {
+            // 用单位变换 1:1 拷贝设备像素，不能带上本帧的 dpr 缩放
+            fadeCtx.setTransform(1, 0, 0, 1, 0, 0);
+            fadeCtx.clearRect(0, 0, fadeCanvas.width, fadeCanvas.height);
+            fadeCtx.drawImage(canvas, 0, 0);
+            effectFadeStartRef.current = timestamp;
+          }
+        }
+
         lastEffectRef.current = currentEff;
         particlesRef.current = [];
         nebulaStarsRef.current = [];
@@ -455,6 +483,23 @@ export function VisualizationView() {
 
           default:
             Effects.drawSpatialMesh(effectCtx);
+        }
+
+        // 效果切换的交叉淡化：把上一效果的最后一帧按进度淡出、叠在新效果之上。
+        // 放在特效绘制之后，所以是"旧帧盖在新画面上方逐渐消失"，而不是先黑一下再出现
+        const fadeStart = effectFadeStartRef.current;
+        if (fadeStart !== null && effectFadeCanvasRef.current) {
+          const elapsed = timestamp - fadeStart;
+          if (elapsed >= EFFECT_SWITCH_FADE_MS) {
+            effectFadeStartRef.current = null;
+          } else {
+            ctx.save();
+            // 单位变换：离屏画布已是设备像素尺寸，直接 1:1 覆盖
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.globalAlpha = Math.max(0, 1 - elapsed / EFFECT_SWITCH_FADE_MS);
+            ctx.drawImage(effectFadeCanvasRef.current, 0, 0);
+            ctx.restore();
+          }
         }
       }
 
