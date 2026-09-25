@@ -208,6 +208,11 @@ export function VisualizationView() {
       analyser.fftSize = 256;
       bufferLengthRef.current = analyser.frequencyBinCount;
       dataArrayRef.current = new Uint8Array(bufferLengthRef.current);
+    } else if (!dataArrayRef.current) {
+      // 还没有音频分析器时也准备一份零值频谱：效果照常渲染待机画面，
+      // 否则整块绘制被跳过、整屏纯黑，看起来像出错
+      bufferLengthRef.current = 128;
+      dataArrayRef.current = new Uint8Array(128);
     }
 
     return () => {
@@ -355,6 +360,12 @@ export function VisualizationView() {
 
       const analyser = getAudioAnalyser();
       if (analyser && dataArrayRef.current) {
+        // 分析器可能"后到"：先停在可视化界面看待机画面、之后才开始播放。
+        // 此时待机缓冲的长度与分析器不符，必须先同步，否则 getByteFrequencyData 会抛错
+        if (dataArrayRef.current.length !== analyser.frequencyBinCount) {
+          bufferLengthRef.current = analyser.frequencyBinCount;
+          dataArrayRef.current = new Uint8Array(analyser.frequencyBinCount);
+        }
         analyser.getByteFrequencyData(dataArrayRef.current as LegacyAny);
         const albumScale = 1 + ((dataArrayRef.current[2] || 0) / 255) * 0.08;
         if (albumArtRef.current) {
@@ -385,7 +396,10 @@ export function VisualizationView() {
       active.secondary = lerpHueInternal(active.secondary, target.secondary, 0.05);
       active.accent = lerpHueInternal(active.accent, target.accent, 0.05);
 
-      if (ctx && dataArrayRef.current) {
+      // 不再要求频谱缓冲必须存在：没有音频时用零值频谱继续绘制待机画面，
+      // 否则整块绘制被跳过、画布保持空白，看起来像出错
+      const frameData = dataArrayRef.current;
+      if (ctx && frameData) {
         const { w: cssWidth, h: cssHeight, dpr } = viewportRef.current;
 
         // Shared context for all effects
@@ -393,7 +407,7 @@ export function VisualizationView() {
           ctx,
           width: cssWidth,
           height: cssHeight,
-          data: dataArrayRef.current,
+          data: frameData,
           time: timestamp,
           musicTime: currentTimeRef.current,
           params: settings[currentEff] || settings.spatialMesh,
