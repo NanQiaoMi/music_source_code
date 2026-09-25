@@ -504,7 +504,12 @@ export function VisualizationView() {
     };
   }, [currentView]);
 
-  if (currentView !== "visualization") return null;
+  // 常驻挂载，靠透明度 / 可见性切换。
+  // 原来这里是 `if (currentView !== "visualization") return null`，于是每次切进可视化界面
+  // 都要整块重建（画布、1000 个粒子、14 个特效初始化），同时还叠着一个作用在全屏画布上的
+  // 缩放动画——两者并发就是"切一下卡一下"的来源。改成与 HomeView / PlayerView 一致的常驻
+  // 交叉淡入后，三个主视图的切换手感才统一。
+  const isVisible = currentView === "visualization";
 
   const handleTogglePlay = () => {
     if (currentSong) {
@@ -563,11 +568,15 @@ export function VisualizationView() {
       ref={containerRef}
       onDoubleClick={handleDoubleClick}
       className="absolute inset-0 bg-black overflow-hidden font-sans cursor-pointer"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 1.05 }}
-      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      style={{ pointerEvents: currentView === "visualization" ? "auto" : "none" }}
+      initial={false}
+      animate={{ opacity: isVisible ? 1 : 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      style={{
+        pointerEvents: isVisible ? "auto" : "none",
+        // 隐藏时不参与绘制：常驻画布不应有任何渲染开销
+        visibility: isVisible ? "visible" : "hidden",
+        willChange: "opacity",
+      }}
     >
       <canvas
         ref={canvasRef}
