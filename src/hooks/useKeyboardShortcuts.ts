@@ -40,29 +40,45 @@ export function validateShortcutMap(
   };
 }
 
-function matchKeys(e: KeyboardEvent, pattern: string[]): boolean {
+// 比较单个绑定串（"Q"、"Ctrl+M"、"Ctrl+Shift+A"）
+function matchesSingleSpec(e: KeyboardEvent, spec: string): boolean {
+  const parts = String(spec)
+    .split("+")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return false;
+
+  const expectedKey = parts[parts.length - 1];
+  const mods = parts.slice(0, -1).map((m) => m.toLowerCase());
+
+  const wantCtrl = mods.includes("ctrl") || mods.includes("meta") || mods.includes("cmd");
+  const wantShift = mods.includes("shift");
+  const wantAlt = mods.includes("alt");
+
   const hasCtrl = e.ctrlKey || e.metaKey;
   const hasShift = e.shiftKey;
   const hasAlt = e.altKey;
-  const key = e.key === " " ? "Space" : e.key;
 
-  let modIndex = 0;
-  const keyIndex = pattern.length - 1;
+  // 严格比对修饰键的有无：多余的修饰键一律拒绝。
+  // 否则 Shift+ArrowLeft 会先命中 ArrowLeft（−5 秒），−10 秒那条永远轮不到；
+  // Ctrl+ArrowUp 这类没有任何绑定的组合也会误触发音量调节。
+  if (wantCtrl !== hasCtrl) return false;
+  if (wantShift !== hasShift) return false;
+  if (wantAlt !== hasAlt) return false;
 
-  if (pattern[modIndex] === "Ctrl") {
-    if (!hasCtrl) return false;
-    modIndex++;
-  }
-  if (pattern[modIndex] === "Shift") {
-    if (!hasShift) return false;
-    modIndex++;
-  }
-  if (pattern[modIndex] === "Alt") {
-    if (!hasAlt) return false;
-    modIndex++;
-  }
+  const actualKey = e.key === " " ? "Space" : e.key;
+  // 字母键大小写不敏感：真实键盘在不按 Shift 时给出小写（Ctrl+M 的 e.key 是 "m"，
+  // 不按 Shift 的 F 是 "f"），而绑定表里写的是大写，直接比较永远不相等。
+  return actualKey.toLowerCase() === expectedKey.toLowerCase();
+}
 
-  return modIndex === keyIndex && pattern[keyIndex] === key;
+function matchKeys(e: KeyboardEvent, pattern: string[]): boolean {
+  if (!pattern || pattern.length === 0) return false;
+
+  // 数组里每个元素都是一条独立绑定，必须逐个比对。
+  // 不能先 flatten 成一个数组：["Q", "Ctrl+L"] 会被拼成 Q/Ctrl/L，
+  // 变成"必须按 Ctrl+L"这一种，裸 Q 那条就失效了。
+  return pattern.some((spec) => matchesSingleSpec(e, spec));
 }
 
 export const useKeyboardShortcuts = () => {
@@ -205,11 +221,10 @@ export const useKeyboardShortcuts = () => {
         return;
       }
 
-      if (
-        matchKeys(e, bind("toggle-queue")) ||
-        ((e.key === "q" || e.key === "Q") && !e.ctrlKey && !e.metaKey && !e.altKey) ||
-        ((e.metaKey || e.ctrlKey) && (e.key === "l" || e.key === "L"))
-      ) {
+      // 只走绑定表这一条。原先还硬编码了「裸 q」与「⌘/Ctrl+L」两个兜底：
+      // matchKeys 修好后已能正确处理大小写，裸 q 那条冗余；而 Ctrl+L 那条与 HomeView 的
+      // 「⌘L 唤出 3D 歌单架」重复，会让同一个键触发两个动作。
+      if (matchKeys(e, bind("toggle-queue"))) {
         e.preventDefault();
         uiStore.togglePanel("shelf3D");
         return;

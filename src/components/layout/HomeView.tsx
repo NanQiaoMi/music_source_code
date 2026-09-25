@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Disc3 } from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
@@ -20,24 +20,14 @@ const APPLE_SPRING_CONFIG = {
 };
 
 export function HomeView() {
-  const { currentView, openPanel, togglePanel } = useUIStore();
+  const { currentView, openPanel } = useUIStore();
   const { groups } = usePlaylistGroupStore();
   const { userPlaylists } = useUserAccountStore();
 
   const totalPlaylistsCount = (groups?.length || 0) + (userPlaylists?.length || 0) + 2;
 
-  // 绑定全局快捷键 ⌘L / Ctrl+L 唤出 3D 歌单架
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "l") {
-        e.preventDefault();
-        togglePanel("shelf3D");
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [togglePanel]);
+  // ⌘L / Ctrl+L 唤出 3D 歌单架已交由中枢绑定表统一处理（keyboardShortcutsStore 的 toggle-queue），
+  // 这里原先也监听同一按键去切换同一面板，两个处理器互相抵消，已移除。
 
   return (
     <>

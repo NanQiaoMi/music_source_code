@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
@@ -74,16 +75,14 @@ describe("Apple3DQueueDrawer", () => {
     expect(useUIStore.getState().panels.shelf3D).toBe(true);
   });
 
-  it("toggles the 3D shelf when pressing Q shortcut", async () => {
+  it("does not handle the Q shortcut itself (ownership lives in the central registry)", async () => {
+    // Q / ⌘L 的归属已移交 keyboardShortcutsStore 的 toggle-queue。
+    // 本组件若也监听同一按键去切换同一个面板，两次 toggle 会互相抵消，Q 就表现为"按了没反应"。
+    useUIStore.setState({ panels: { queue: false, shelf3D: false } as any });
+
     await act(async () => {
       root.render(<Apple3DQueueDrawer />);
     });
-
-    await act(async () => {
-      window.dispatchEvent(new KeyboardEvent("keydown", { key: "q", bubbles: true }));
-    });
-
-    expect(useUIStore.getState().panels.shelf3D).toBe(true);
 
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "q", bubbles: true }));
