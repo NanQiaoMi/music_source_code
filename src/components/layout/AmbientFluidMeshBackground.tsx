@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import Image from "next/image";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
@@ -12,6 +12,9 @@ const DEFAULT_COVER = "/default-cover.svg";
 // 封面淡入时长与取色防抖：两者相差太大时，配色会在图片还没淡完时就开始变
 const COVER_FADE_MS = 1200;
 const COLOR_EXTRACT_DEBOUNCE_MS = 250;
+// 连续切换（快速连点卡片）的合并窗口：窗口内的中间封面会被跳过，只换最后一张。
+// 取 220ms 是为了覆盖人连点卡片的节奏（约每秒 4-8 次）；间隔超过它的正常点选仍然立即生效。
+const COVER_COALESCE_MS = 220;
 
 // 光斑的径向渐隐改用遮罩实现。CSS 无法对 background-image 做过渡，
 // 直接写 radial-gradient 会让换色瞬间跳变；纯色 background-color 才能被 transition-colors 平滑插值
@@ -44,19 +47,37 @@ export const AmbientFluidMeshBackground: React.FC = () => {
   const [coverStack, setCoverStack] = useState<string[]>([DEFAULT_COVER]);
   const topCover = coverStack[coverStack.length - 1];
 
-  // 封面切换立即执行，不该被防抖推迟——防抖会让背景比卡片晚 250ms 才开始变。
-  // 置位放在微任务里而不是 effect 同步体内：既避免级联渲染，延迟也只有 ~1ms。
+  const lastChangeAtRef = useRef(0);
+  const pendingSwapRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 封面切换策略：正常点选立即换（跟手），连续快速切换则一路合并、等停下来再换最后一张。
+  // 判据是"距上次点击"而不是"距上次应用"——否则连点时每隔一次仍会漏成一次立即切换。
+  // 每换一次封面都要新建模糊图层并重算模糊，逐个换在连点时就是卡顿的来源。
   useEffect(() => {
     if (coverUrl === topCover) return;
 
-    let cancelled = false;
-    void Promise.resolve().then(() => {
-      if (cancelled) return;
-      setCoverStack((prev) => [...prev, coverUrl].slice(-2));
-    });
+    const apply = () => setCoverStack((prev) => [...prev, coverUrl].slice(-2));
+    const now = Date.now();
+    const isBurst = now - lastChangeAtRef.current < COVER_COALESCE_MS;
+    lastChangeAtRef.current = now;
+
+    if (!isBurst) {
+      // 正常点选：立即应用，保证跟手
+      void Promise.resolve().then(apply);
+    } else {
+      // 连点中：推迟到安静下来再换最后一张
+      if (pendingSwapRef.current) clearTimeout(pendingSwapRef.current);
+      pendingSwapRef.current = setTimeout(() => {
+        pendingSwapRef.current = null;
+        apply();
+      }, COVER_COALESCE_MS);
+    }
 
     return () => {
-      cancelled = true;
+      if (pendingSwapRef.current) {
+        clearTimeout(pendingSwapRef.current);
+        pendingSwapRef.current = null;
+      }
     };
   }, [coverUrl, topCover]);
 
@@ -85,24 +106,34 @@ export const AmbientFluidMeshBackground: React.FC = () => {
   return (
     <div className="fixed inset-0 w-full h-full pointer-events-none overflow-hidden z-0 select-none bg-[#070709]">
       {/* ─── 1. 沉浸式超大弥散底层 (Crossfading Dynamic Album Glass) ─── */}
-      <div className="absolute inset-0 overflow-hidden opacity-30 scale-105 blur-[60px] transform-gpu">
-        {coverStack.map((cover, i) => (
-          <div
-            key={cover}
-            className="absolute inset-0"
-            style={{ animation: `ambient-cover-fade-in ${COVER_FADE_MS}ms ease-out both` }}
-          >
-            <Image
-              src={cover}
-              alt={i === coverStack.length - 1 ? "ambient-curr" : "ambient-prev"}
-              fill
-              sizes="100vw"
-              priority={false}
-              className="object-cover"
-              unoptimized
-            />
-          </div>
-        ))}
+      {/* 先把封面放进一个小盒子模糊、再整体放大铺满屏幕：滤镜只需处理 240×135 的图层
+          （约为全屏的 1/100 像素），模糊半径按同比例缩小（10px/240 ≈ 60px/1440），
+          观感与全尺寸模糊一致。每次换封面这一层都要重算，是连点卡顿的大头。 */}
+      <div className="absolute inset-0 overflow-hidden opacity-30 transform-gpu flex items-center justify-center">
+        {/* 尺寸/模糊/缩放都用内联样式：Tailwind 的任意值类需要构建期扫描到才会生成，
+            这里几处新类未必已进入样式表，写死数值更可靠 */}
+        <div
+          className="relative"
+          style={{ width: 240, height: 135, filter: "blur(10px)", transform: "scale(16)" }}
+        >
+          {coverStack.map((cover, i) => (
+            <div
+              key={cover}
+              className="absolute inset-0"
+              style={{ animation: `ambient-cover-fade-in ${COVER_FADE_MS}ms ease-out both` }}
+            >
+              <Image
+                src={cover}
+                alt={i === coverStack.length - 1 ? "ambient-curr" : "ambient-prev"}
+                fill
+                sizes="240px"
+                priority={false}
+                className="object-cover"
+                unoptimized
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ─── 2. 硬件加速极简流体光斑漫游 (4-Orb Fluid Dynamic Mesh) ─── */}
