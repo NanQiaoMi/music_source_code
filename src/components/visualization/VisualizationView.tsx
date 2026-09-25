@@ -126,7 +126,11 @@ export function VisualizationView() {
   const viewportRef = useRef({ w: 0, h: 0, dpr: 1 });
 
   // Mouse idle detection for Zen Mode
+  // 它切换的是本视图的页眉/页脚，因此只在可视化视图内监听即可：
+  // 否则在其他界面上每次移动鼠标都会触发一次 state 变化，并在隐藏的视图里反复挂载/卸载这两块子树
   useEffect(() => {
+    if (currentView !== "visualization") return;
+
     let timeout: NodeJS.Timeout;
     const handleMouseMove = () => {
       setMouseIdle(false);
@@ -139,7 +143,7 @@ export function VisualizationView() {
       window.removeEventListener("mousemove", handleMouseMove);
       clearTimeout(timeout);
     };
-  }, []);
+  }, [currentView]);
 
   // Sync fullscreen state with browser events globally
   useEffect(() => {
@@ -227,7 +231,6 @@ export function VisualizationView() {
   // Sync music time for shaders
   useEffect(() => {
     currentTimeRef.current = currentTime;
-    (window as LegacyAny)._currentMusicTime = currentTime;
   }, [currentTime]);
 
   const vizTargetHues = useRef({ primary: 280, secondary: 320, accent: 150 });
