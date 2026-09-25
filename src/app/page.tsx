@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { motion } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
 import { useDynamicTheme } from "@/hooks/useDynamicTheme";
@@ -133,11 +132,11 @@ export default function Home() {
       <PlayerView />
 
       {/* ─── Global Visualization & HUD ───────────────────────────── */}
-      {currentView === "visualization" && (
-        <PanelErrorBoundary panelName="3D Visualization Engine">
-          <VisualizationView />
-        </PanelErrorBoundary>
-      )}
+      {/* 常驻挂载，由 VisualizationView 内部用透明度 / 可见性切换。
+          条件挂载会让每次切入都整块重建画布、粒子与特效初始化，切换时必然卡一下。 */}
+      <PanelErrorBoundary panelName="3D Visualization Engine">
+        <VisualizationView />
+      </PanelErrorBoundary>
       <DesktopLyrics />
       {currentView === "player" && (
         <PanelErrorBoundary panelName="Player HUD Overlay">
@@ -153,8 +152,6 @@ export default function Home() {
 
       {/* ─── Feature Panels Orchestration ──────────────────────────── */}
       <PanelOrchestrator />
-
-
 
       {/* ─── Transition Overlay ───────────────────────────────────── */}
       {isTransitioning && (
