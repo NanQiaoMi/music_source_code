@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
@@ -12,37 +12,10 @@ const DEFAULT_COVER = "/default-cover.svg";
 // 封面淡入时长与取色防抖：两者相差太大时，配色会在图片还没淡完时就开始变
 const COVER_FADE_MS = 1200;
 const COLOR_EXTRACT_DEBOUNCE_MS = 250;
-// 预解码最长等待：宁可稍晚一点开始淡入，也不要被一张慢图卡住
-const PREDECODE_TIMEOUT_MS = 400;
 
 // 光斑的径向渐隐改用遮罩实现。CSS 无法对 background-image 做过渡，
 // 直接写 radial-gradient 会让换色瞬间跳变；纯色 background-color 才能被 transition-colors 平滑插值
 const ORB_MASK = "radial-gradient(circle, #000 0%, transparent 70%)";
-
-// 把位图预先解码进缓存。img 换了 src 之后要等解码完成才会绘制，
-// 未解码时那一层是空白的——而切换瞬间旧封面层正完全可见，于是画面会"闪一下"。
-// 先解码好，元素拿到 src 就能立刻绘制。解码失败（跨域、格式不支持）不阻塞切换。
-function ensureDecoded(url: string): Promise<void> {
-  if (!url || typeof window === "undefined") return Promise.resolve();
-
-  return new Promise<void>((resolve) => {
-    const img = new window.Image();
-    img.src = url;
-
-    if (typeof img.decode === "function") {
-      img.decode().then(resolve, resolve);
-      return;
-    }
-
-    if (img.complete) {
-      resolve();
-      return;
-    }
-
-    img.onload = () => resolve();
-    img.onerror = () => resolve();
-  });
-}
 
 export const AmbientFluidMeshBackground: React.FC = () => {
   const currentSong = useAudioStore((state) => state.currentSong);
@@ -63,51 +36,29 @@ export const AmbientFluidMeshBackground: React.FC = () => {
   const coverUrl = activeSong?.cover || DEFAULT_COVER;
 
   const [colors, setColors] = useState<ThemeColors>(defaultColors);
-  const [activeCover, setActiveCover] = useState<string>(DEFAULT_COVER);
-  const [prevCover, setPrevCover] = useState<string>(DEFAULT_COVER);
-  const [isCrossfading, setIsCrossfading] = useState<boolean>(false);
-  const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 封面立即开始交叉淡入：先解码，再换层。两步都很便宜，不该被防抖推迟——
-  // 防抖会让背景比卡片晚 250ms 才开始变，观感上就是"先卡一下、再硬切"。
-  //
-  // 收尾计时器放在 ref 里、不走 effect 的清理：setActiveCover 会让本 effect 重跑，
-  // 若把计时器交给清理函数，刚排定就被清掉，isCrossfading 会永远停在 true、旧图层不再卸载。
+  // 只保留最近两张封面，每张各自拥有独立的 <img> 元素，src 永不改写。
+  // 新封面是"新挂载一个元素做淡入"，旧封面那个元素自始至终没被动过、位图也一直都在，
+  // 所以不会出现"元素还在但位图未就绪"的空白帧 —— 那正是切歌时闪一下的来源。
+  // 也因此不需要预先解码等待：淡入立刻开始，新图加载好就在旧封面之上浮现。
+  const [coverStack, setCoverStack] = useState<string[]>([DEFAULT_COVER]);
+  const topCover = coverStack[coverStack.length - 1];
+
+  // 封面切换立即执行，不该被防抖推迟——防抖会让背景比卡片晚 250ms 才开始变。
+  // 置位放在微任务里而不是 effect 同步体内：既避免级联渲染，延迟也只有 ~1ms。
   useEffect(() => {
-    if (coverUrl === activeCover) return;
+    if (coverUrl === topCover) return;
 
     let cancelled = false;
-
-    void (async () => {
-      await Promise.race([
-        ensureDecoded(coverUrl),
-        new Promise((resolve) => setTimeout(resolve, PREDECODE_TIMEOUT_MS)),
-      ]);
+    void Promise.resolve().then(() => {
       if (cancelled) return;
-
-      setPrevCover(activeCover);
-      setActiveCover(coverUrl);
-      setIsCrossfading(true);
-
-      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
-      fadeTimerRef.current = setTimeout(() => {
-        setIsCrossfading(false);
-        fadeTimerRef.current = null;
-      }, COVER_FADE_MS);
-    })();
+      setCoverStack((prev) => [...prev, coverUrl].slice(-2));
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [coverUrl, activeCover]);
-
-  // 卸载时清掉挂起的收尾计时器
-  useEffect(
-    () => () => {
-      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
-    },
-    []
-  );
+  }, [coverUrl, topCover]);
 
   // 取色要采样像素、开销大，仍然防抖：快速连切卡片时不必每张都算
   useEffect(() => {
@@ -135,31 +86,15 @@ export const AmbientFluidMeshBackground: React.FC = () => {
     <div className="fixed inset-0 w-full h-full pointer-events-none overflow-hidden z-0 select-none bg-[#070709]">
       {/* ─── 1. 沉浸式超大弥散底层 (Crossfading Dynamic Album Glass) ─── */}
       <div className="absolute inset-0 overflow-hidden opacity-30 scale-105 blur-[60px] transform-gpu">
-        {/* 旧封面垫在下方，等新封面淡完再卸载 */}
-        {isCrossfading && prevCover && (
-          <div className="absolute inset-0">
-            <Image
-              src={prevCover}
-              alt="ambient-prev"
-              fill
-              sizes="100vw"
-              priority={false}
-              className="object-cover"
-              unoptimized
-            />
-          </div>
-        )}
-
-        {/* 当前封面：key 变化时重新挂载，让淡入动画每张都重放一遍 */}
-        {activeCover && (
+        {coverStack.map((cover, i) => (
           <div
-            key={activeCover}
+            key={cover}
             className="absolute inset-0"
             style={{ animation: `ambient-cover-fade-in ${COVER_FADE_MS}ms ease-out both` }}
           >
             <Image
-              src={activeCover}
-              alt="ambient-curr"
+              src={cover}
+              alt={i === coverStack.length - 1 ? "ambient-curr" : "ambient-prev"}
               fill
               sizes="100vw"
               priority={false}
@@ -167,7 +102,7 @@ export const AmbientFluidMeshBackground: React.FC = () => {
               unoptimized
             />
           </div>
-        )}
+        ))}
       </div>
 
       {/* ─── 2. 硬件加速极简流体光斑漫游 (4-Orb Fluid Dynamic Mesh) ─── */}
