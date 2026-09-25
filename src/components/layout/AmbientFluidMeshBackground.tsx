@@ -166,19 +166,6 @@ export const AmbientFluidMeshBackground: React.FC = () => {
           `,
         }}
       />
-
-      {/* ─── 4. 屏幕四周极光琉璃微溢光 ─── */}
-      {/* 过渡的是 boxShadow，用 transition-shadow（transition-colors 不含 box-shadow） */}
-      <div
-        className="absolute inset-0 pointer-events-none transition-shadow duration-[1200ms] ease-out"
-        style={{
-          boxShadow: `
-            inset 0 0 140px 10px rgba(0,0,0,0.85),
-            inset 0 0 32px 1px ${primary}18,
-            inset 0 0 16px 1px ${secondary}12
-          `,
-        }}
-      />
     </div>
   );
 };
