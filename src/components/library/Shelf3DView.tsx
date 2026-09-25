@@ -197,7 +197,12 @@ function getOrCreateCardTexture(
     const loadedImg = getOrLoadCoverImage(item.cover, () => {});
     if (loadedImg) {
       ctx.drawImage(loadedImg, coverX, coverY, coverSize, coverSize);
-      const glassSheen = ctx.createLinearGradient(coverX, coverY, coverX + coverSize, coverY + coverSize);
+      const glassSheen = ctx.createLinearGradient(
+        coverX,
+        coverY,
+        coverX + coverSize,
+        coverY + coverSize
+      );
       glassSheen.addColorStop(0, "rgba(255, 255, 255, 0.22)");
       glassSheen.addColorStop(0.3, "rgba(255, 255, 255, 0.05)");
       glassSheen.addColorStop(0.6, "transparent");
@@ -246,7 +251,12 @@ function getOrCreateCardTexture(
   }
 
   // 封面斜向镜面折射光
-  const glassSheen = ctx.createLinearGradient(coverX, coverY, coverX + coverSize, coverY + coverSize);
+  const glassSheen = ctx.createLinearGradient(
+    coverX,
+    coverY,
+    coverX + coverSize,
+    coverY + coverSize
+  );
   glassSheen.addColorStop(0, "rgba(255, 255, 255, 0.22)");
   glassSheen.addColorStop(0.3, "rgba(255, 255, 255, 0.05)");
   glassSheen.addColorStop(0.6, "transparent");
@@ -258,24 +268,26 @@ function getOrCreateCardTexture(
   // 6. 卡片大标题 (智能字号自适应，优先 Apple/苹方 高清字体栈)
   ctx.fillStyle = isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.88)";
   if (item.title.length > 24) {
-    ctx.font = "bold 24px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
+    ctx.font =
+      "bold 24px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
   } else if (item.title.length > 16) {
-    ctx.font = "bold 28px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
+    ctx.font =
+      "bold 28px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
   } else {
-    ctx.font = "bold 32px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
+    ctx.font =
+      "bold 32px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
   }
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
 
-  const titleText =
-    item.title.length > 28 ? item.title.slice(0, 27) + "…" : item.title;
+  const titleText = item.title.length > 28 ? item.title.slice(0, 27) + "…" : item.title;
   ctx.fillText(titleText, w / 2, 545);
 
   // 7. 副标题与曲目计数
   ctx.fillStyle = isActive ? "rgba(255, 255, 255, 0.72)" : "rgba(255, 255, 255, 0.45)";
-  ctx.font = "500 18px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
-  const subtitleText =
-    item.subtitle.length > 28 ? item.subtitle.slice(0, 27) + "…" : item.subtitle;
+  ctx.font =
+    "500 18px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
+  const subtitleText = item.subtitle.length > 28 ? item.subtitle.slice(0, 27) + "…" : item.subtitle;
   ctx.fillText(subtitleText, w / 2, 586);
 
   // 8. 底部操作按键 (透明液态玻璃胶囊)
@@ -297,13 +309,11 @@ function getOrCreateCardTexture(
   ctx.stroke();
 
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "600 19px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
+  ctx.font =
+    "600 19px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  const btnText =
-    item.type === "playlist"
-      ? "▶ 播放歌单 · 点击详情"
-      : "PLAY / 播放";
+  const btnText = item.type === "playlist" ? "▶ 播放歌单 · 点击详情" : "PLAY / 播放";
   ctx.fillText(btnText, w / 2, btnY + btnH / 2);
   ctx.restore();
 
@@ -374,9 +384,9 @@ function createStageHaloTexture(): THREE.CanvasTexture {
 
   // 2. 多重同心科技发光光环 (Concentric Stage Rings)
   const rings = [
-    { r: 120, width: 2.2, alpha: 0.70, glow: 0.40 },
+    { r: 120, width: 2.2, alpha: 0.7, glow: 0.4 },
     { r: 230, width: 2.5, alpha: 0.55, glow: 0.35 },
-    { r: 350, width: 3.2, alpha: 0.50, glow: 0.30 },
+    { r: 350, width: 3.2, alpha: 0.5, glow: 0.3 },
     { r: 450, width: 2.0, alpha: 0.28, glow: 0.15 },
   ];
 
@@ -409,9 +419,7 @@ function createStageHaloTexture(): THREE.CanvasTexture {
     const x2 = cx + Math.cos(angle) * outerR;
     const y2 = cy + Math.sin(angle) * outerR;
 
-    ctx.strokeStyle = isMajor
-      ? "rgba(199, 210, 254, 0.40)"
-      : "rgba(147, 197, 253, 0.14)";
+    ctx.strokeStyle = isMajor ? "rgba(199, 210, 254, 0.40)" : "rgba(147, 197, 253, 0.14)";
     ctx.lineWidth = isMajor ? 1.8 : 1.0;
     ctx.beginPath();
     ctx.moveTo(x1, y1);
@@ -448,7 +456,7 @@ function createSpotlightBeamTexture(): THREE.CanvasTexture {
   const vGrad = ctx.createLinearGradient(128, 0, 128, 512);
   vGrad.addColorStop(0, "rgba(255, 255, 255, 0.70)");
   vGrad.addColorStop(0.12, "rgba(199, 210, 254, 0.42)");
-  vGrad.addColorStop(0.40, "rgba(129, 140, 248, 0.20)");
+  vGrad.addColorStop(0.4, "rgba(129, 140, 248, 0.20)");
   vGrad.addColorStop(0.75, "rgba(99, 102, 241, 0.08)");
   vGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
 
@@ -502,7 +510,7 @@ function createLargeBokehTexture(): THREE.CanvasTexture {
   const bGrad = ctx.createRadialGradient(64, 64, 4, 64, 64, 60);
   bGrad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
   bGrad.addColorStop(0.35, "rgba(199, 210, 254, 0.65)");
-  bGrad.addColorStop(0.70, "rgba(147, 197, 253, 0.20)");
+  bGrad.addColorStop(0.7, "rgba(147, 197, 253, 0.20)");
   bGrad.addColorStop(0.95, "rgba(129, 140, 248, 0.04)");
   bGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = bGrad;
@@ -518,7 +526,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   className = "",
   defaultMode = "stage",
   transparentBg = false,
-  isDrawerMode = false,
   onClose,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -581,13 +588,61 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     const items: ShelfItem[] = [];
 
     // 基础有效曲库 (采用真实全网多源热门高音质曲目)
-    const validSongs = rawSongs.length > 0 ? rawSongs : [
-      { id: "186016", title: "晴天", artist: "周杰伦", album: "叶惠美", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop", duration: 269, source: "netease" },
-      { id: "185706", title: "七里香", artist: "周杰伦", album: "七里香", cover: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop", duration: 299, source: "netease" },
-      { id: "1330348068", title: "起风了", artist: "买辣椒也用券", album: "起风了", cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop", duration: 325, source: "netease" },
-      { id: "186015", title: "三年二班", artist: "周杰伦", album: "叶惠美", cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=600&h=600&fit=crop", duration: 280, source: "netease" },
-      { id: "185827", title: "稻香", artist: "周杰伦", album: "魔杰座", cover: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=600&fit=crop", duration: 223, source: "netease" },
-    ] as Song[];
+    const validSongs =
+      rawSongs.length > 0
+        ? rawSongs
+        : ([
+            {
+              id: "186016",
+              title: "晴天",
+              artist: "周杰伦",
+              album: "叶惠美",
+              cover:
+                "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop",
+              duration: 269,
+              source: "netease",
+            },
+            {
+              id: "185706",
+              title: "七里香",
+              artist: "周杰伦",
+              album: "七里香",
+              cover:
+                "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop",
+              duration: 299,
+              source: "netease",
+            },
+            {
+              id: "1330348068",
+              title: "起风了",
+              artist: "买辣椒也用券",
+              album: "起风了",
+              cover:
+                "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop",
+              duration: 325,
+              source: "netease",
+            },
+            {
+              id: "186015",
+              title: "三年二班",
+              artist: "周杰伦",
+              album: "叶惠美",
+              cover:
+                "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=600&h=600&fit=crop",
+              duration: 280,
+              source: "netease",
+            },
+            {
+              id: "185827",
+              title: "稻香",
+              artist: "周杰伦",
+              album: "魔杰座",
+              cover:
+                "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=600&fit=crop",
+              duration: 223,
+              source: "netease",
+            },
+          ] as Song[]);
 
     // 1. 全部歌曲库
     items.push({
@@ -622,7 +677,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     }
 
     // 2.5 我喜欢的音乐 (专属红心浪漫光晕艺术封面)
-    const effectiveFavs = favorites.length > 0 ? favorites : validSongs.slice(0, Math.min(12, validSongs.length));
+    const effectiveFavs =
+      favorites.length > 0 ? favorites : validSongs.slice(0, Math.min(12, validSongs.length));
     items.push({
       id: "pl-favorites",
       type: "playlist",
@@ -638,7 +694,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     });
 
     // 3. 最近播放记录 (时光唱片金色光影封面)
-    const effectiveRecent = recentPlayedSongs.length > 0 ? recentPlayedSongs : validSongs.slice(0, Math.min(8, validSongs.length));
+    const effectiveRecent =
+      recentPlayedSongs.length > 0
+        ? recentPlayedSongs
+        : validSongs.slice(0, Math.min(8, validSongs.length));
     items.push({
       id: "pl-recent",
       type: "playlist",
@@ -655,13 +714,22 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
     // 3.5 多平台个人云歌单 (网易云/QQ/酷狗等)
     userPlaylists.forEach((up) => {
-      const platformName = up.source === "netease" ? "网易云" : up.source === "qq" ? "QQ音乐" : up.source === "kugou" ? "酷狗" : "汽水音乐";
+      const platformName =
+        up.source === "netease"
+          ? "网易云"
+          : up.source === "qq"
+            ? "QQ音乐"
+            : up.source === "kugou"
+              ? "酷狗"
+              : "汽水音乐";
       items.push({
         id: `cloud-pl-${up.id}`,
         type: "playlist",
         title: up.name,
         subtitle: `${up.trackCount || 0} 首曲目 · ${platformName}云端`,
-        cover: up.coverImgUrl || "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=800&fit=crop",
+        cover:
+          up.coverImgUrl ||
+          "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=800&fit=crop",
         tag: platformName,
         trackCount: up.trackCount || 0,
         songs: [],
@@ -691,12 +759,18 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             });
           }
         }
-      } catch {}
+      } catch {
+        /* 忽略：失败时保持当前状态 */
+      }
     }
 
     // 4. 自定义与系统歌单组 (每日推荐与精选)
     playlistGroups.forEach((group: PlaylistGroup, idx) => {
-      const gSongs = (group.songs && group.songs.length > 0 ? group.songs : validSongs.slice(idx * 3, idx * 3 + 10)) as Song[];
+      const gSongs = (
+        group.songs && group.songs.length > 0
+          ? group.songs
+          : validSongs.slice(idx * 3, idx * 3 + 10)
+      ) as Song[];
       const defaultGroupCover =
         group.type === "daily"
           ? "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800&h=800&fit=crop"
@@ -732,11 +806,56 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
     if (sourceSongs.length === 0) {
       sourceSongs = [
-        { id: "186016", title: "晴天", artist: "周杰伦", album: "叶惠美", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop", duration: 269, source: "netease" },
-        { id: "185706", title: "七里香", artist: "周杰伦", album: "七里香", cover: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop", duration: 299, source: "netease" },
-        { id: "1330348068", title: "起风了", artist: "买辣椒也用券", album: "起风了", cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop", duration: 325, source: "netease" },
-        { id: "186015", title: "三年二班", artist: "周杰伦", album: "叶惠美", cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=600&h=600&fit=crop", duration: 280, source: "netease" },
-        { id: "185827", title: "稻香", artist: "周杰伦", album: "魔杰座", cover: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=600&fit=crop", duration: 223, source: "netease" },
+        {
+          id: "186016",
+          title: "晴天",
+          artist: "周杰伦",
+          album: "叶惠美",
+          cover:
+            "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop",
+          duration: 269,
+          source: "netease",
+        },
+        {
+          id: "185706",
+          title: "七里香",
+          artist: "周杰伦",
+          album: "七里香",
+          cover:
+            "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop",
+          duration: 299,
+          source: "netease",
+        },
+        {
+          id: "1330348068",
+          title: "起风了",
+          artist: "买辣椒也用券",
+          album: "起风了",
+          cover:
+            "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop",
+          duration: 325,
+          source: "netease",
+        },
+        {
+          id: "186015",
+          title: "三年二班",
+          artist: "周杰伦",
+          album: "叶惠美",
+          cover:
+            "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=600&h=600&fit=crop",
+          duration: 280,
+          source: "netease",
+        },
+        {
+          id: "185827",
+          title: "稻香",
+          artist: "周杰伦",
+          album: "魔杰座",
+          cover:
+            "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=600&fit=crop",
+          duration: 223,
+          source: "netease",
+        },
       ];
     }
 
@@ -773,7 +892,11 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const activeIndexRef = useRef<number>(0);
   const shelfItemsRef = useRef<ShelfItem[]>(activeShelfItems);
-  shelfItemsRef.current = activeShelfItems;
+
+  // 索引/交互回调里读它，属于渲染之后的时机；渲染期直接写 ref 违反 react-hooks/refs
+  useEffect(() => {
+    shelfItemsRef.current = activeShelfItems;
+  }, [activeShelfItems]);
 
   // Interaction & Physics refs
   const isDraggingRef = useRef(false);
@@ -827,6 +950,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
   // 初始化 Three.js 3D 舞台
   useEffect(() => {
+    // 关闭面板时必须整块跳过、从而触发上一次的清理函数。
+    // 组件 return null 只是卸载了 canvas 元素，而渲染循环跑在闭包捕获的那个画布上，
+    // 会继续往已脱离文档的 WebGL 上下文里画，直到下一次 isPlaying 变化才停 —— 这是一条失控循环。
+    if (!isOpen) return;
     if (!canvasRef.current || !containerRef.current) return;
 
     const width = containerRef.current.clientWidth || window.innerWidth;
@@ -986,7 +1113,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       size: 0.22,
       map: bokehTexture,
       transparent: true,
-      opacity: 0.60,
+      opacity: 0.6,
       vertexColors: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
@@ -1043,7 +1170,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     for (let i = 0; i < SHELF_MAX_RENDER; i++) {
       const cardMat = new THREE.MeshStandardMaterial({
         roughness: 0.14,
-        metalness: 0.20,
+        metalness: 0.2,
         transparent: true,
         side: THREE.DoubleSide,
       });
@@ -1176,8 +1303,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
           // 对应的真实项目索引
           const itemIndex =
-            (((centerVirtualIndex + slotRelOffset) % totalItems) + totalItems) %
-            totalItems;
+            (((centerVirtualIndex + slotRelOffset) % totalItems) + totalItems) % totalItems;
           const item = currentItems[itemIndex];
 
           // 更新节奏与悬浮呼吸相位
@@ -1208,11 +1334,11 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           const v = Math.max(0, absOffset - 1.0); // 远端延伸区 (>1)
 
           // X 轴位移：中心卡片精准固定在 x=0，两侧卡片平滑对称展开，消除任何偏移错位
-          const stagePx = sign * (u * 1.90 + v * 1.22);
+          const stagePx = sign * (u * 1.9 + v * 1.22);
           // Y 轴微下沉与呼吸浮动
           const stagePy = -u * 0.015 - v * 0.025 + floatY;
           // Z 轴深度：中心突出前置 (Z=1.15)，两侧平滑推入景深
-          const stagePz = (1.15 - u * 0.85 - v * 0.65) + floatZ;
+          const stagePz = 1.15 - u * 0.85 - v * 0.65 + floatZ;
           // Y 轴旋转：精准向心偏转 + 动态转向侧倾
           const stageFocalZ = 4.0;
           const stageRotY = -Math.atan2(stagePx, stageFocalZ - stagePz) * 1.25 + dynamicYawLead;
@@ -1225,12 +1351,13 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           // === 2. 侧栏透视模式 (Side Shelf) - 经典 Apple 偏左侧向 Cover Flow 尊享立体阵列 ===
           const sideCenterX = -0.32; // 当前激活卡片偏左黄金分割点
           // 左右非对称侧向梯级步进（左侧紧凑收拢，右侧展开深远透视通道）
-          const sideStepX = sign < 0
-            ? (u * 1.45 + v * 0.60) // 左侧紧凑向左展开
-            : (u * 1.65 + v * 0.72); // 右侧开阔向右延伸
+          const sideStepX =
+            sign < 0
+              ? u * 1.45 + v * 0.6 // 左侧紧凑向左展开
+              : u * 1.65 + v * 0.72; // 右侧开阔向右延伸
           const sidePx = sideCenterX + sign * sideStepX;
           const sidePy = -u * 0.015 - v * 0.025 + floatY;
-          const sidePz = (1.20 - u * 0.55 - v * 0.40) + floatZ;
+          const sidePz = 1.2 - u * 0.55 - v * 0.4 + floatZ;
 
           // Smoothstep S 型翻转过渡：在 [-0.85, 0.85] 范围内平滑旋转，两侧锁定在黄金 55° 侧倾角
           const flipProgress = Math.max(-1.0, Math.min(1.0, fractionalOffset / 0.85));
@@ -1239,7 +1366,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           const sideRotY = sideTargetRotY + dynamicYawLead * 0.6;
           const sideRotX = 0.03 + mp.y * 0.07 + tiltRoll;
           const sideRotZ = -mp.x * 0.015 + dynamicBankRoll * 0.6;
-          const sideScale = 1.20 - u * 0.24 - v * 0.05 + centerOvershoot * 0.02;
+          const sideScale = 1.2 - u * 0.24 - v * 0.05 + centerOvershoot * 0.02;
 
           // === 3. 模式平滑形变插值 (Stage <-> Side 400ms Morphing) ===
           const finalPx = THREE.MathUtils.lerp(stagePx, sidePx, modeBlend);
@@ -1312,7 +1439,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       threeTextureCache.forEach((tex) => tex.dispose());
       threeTextureCache.clear();
     };
-  }, [isAudioPlaying]);
+  }, [isAudioPlaying, isOpen]);
 
   // 相对刻度滚动 (带音效)
   const scrollToRelative = useCallback((delta: number) => {
@@ -1320,17 +1447,14 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   }, []);
 
   // 鼠标滚轮接管
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      if ((e.target as HTMLElement).closest(".shelf-hud-interactive, .custom-scrollbar")) {
-        return;
-      }
-      e.preventDefault();
-      const delta = Math.sign(e.deltaY || e.deltaX) * 0.85;
-      targetScrollRef.current += delta;
-    },
-    []
-  );
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if ((e.target as HTMLElement).closest(".shelf-hud-interactive, .custom-scrollbar")) {
+      return;
+    }
+    e.preventDefault();
+    const delta = Math.sign(e.deltaY || e.deltaX) * 0.85;
+    targetScrollRef.current += delta;
+  }, []);
 
   // 播放当前选中的卡片 (歌单模式下整单播放，单曲模式下单曲播放)
   const handlePlayCurrent = useCallback(async () => {
@@ -1343,7 +1467,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       if (cur.id.startsWith("cloud-pl-")) {
         const realId = cur.id.replace("cloud-pl-", "");
         try {
-          const res = await fetch(`/api/playlist/tracks?id=${encodeURIComponent(realId)}&limit=500`);
+          const res = await fetch(
+            `/api/playlist/tracks?id=${encodeURIComponent(realId)}&limit=500`
+          );
           if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data.songs) && data.songs.length > 0) {
@@ -1352,7 +1478,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               return;
             }
           }
-        } catch {}
+        } catch {
+          /* 忽略：失败时保持当前状态 */
+        }
       }
 
       if (cur.songs && cur.songs.length > 0) {
@@ -1367,7 +1495,14 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         playTrackWithPipeline(cur.song);
       }
     }
-  }, [activeShelfItems, activeIndex, currentPlayingSong, playTrackWithPipeline, togglePlay, setQueue]);
+  }, [
+    activeShelfItems,
+    activeIndex,
+    currentPlayingSong,
+    playTrackWithPipeline,
+    togglePlay,
+    setQueue,
+  ]);
 
   // 打开曲目二级详情瀑布流面板
   const handleOpenDetail = useCallback(() => {
@@ -1386,7 +1521,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           .then((data) => {
             if (Array.isArray(data.songs) && data.songs.length > 0) {
               setSelectedShelfItem((prev) =>
-                prev && prev.id === cur.id ? { ...prev, songs: data.songs, trackCount: data.songs.length } : prev
+                prev && prev.id === cur.id
+                  ? { ...prev, songs: data.songs, trackCount: data.songs.length }
+                  : prev
               );
             }
           })
@@ -1413,17 +1550,17 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       const now = performance.now();
       const dt = Math.max(1, now - lastDragTimeRef.current);
       const deltaX = e.clientX - prevMouseXRef.current;
-      
+
       if (Math.abs(e.clientX - mouseDownPosRef.current.x) > 4) {
         hasDraggedRef.current = true;
       }
-      
+
       // 记录滑动速度 (用于惯性释放)
       const instantVelocity = (-deltaX * 0.007) / (dt / 16.6);
       dragVelocityRef.current = dragVelocityRef.current * 0.6 + instantVelocity * 0.4;
       lastDragTimeRef.current = now;
       prevMouseXRef.current = e.clientX;
-      
+
       targetScrollRef.current -= deltaX * 0.0075;
     }
 
@@ -1556,11 +1693,12 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const currentActiveItem = activeShelfItems[activeIndex];
 
   // 详情面板过滤后的曲目列表
-  const filteredDetailSongs = selectedShelfItem?.songs?.filter((song) => {
-    if (!trackSearchQuery.trim()) return true;
-    const q = trackSearchQuery.toLowerCase();
-    return song.title.toLowerCase().includes(q) || song.artist.toLowerCase().includes(q);
-  }) || [];
+  const filteredDetailSongs =
+    selectedShelfItem?.songs?.filter((song) => {
+      if (!trackSearchQuery.trim()) return true;
+      const q = trackSearchQuery.toLowerCase();
+      return song.title.toLowerCase().includes(q) || song.artist.toLowerCase().includes(q);
+    }) || [];
 
   return (
     <div
@@ -1589,10 +1727,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               browseType === "favorites"
                 ? "radial-gradient(circle, rgba(244,63,94,0.55) 0%, rgba(168,85,247,0.30) 45%, transparent 70%)"
                 : browseType === "recent"
-                ? "radial-gradient(circle, rgba(245,158,11,0.55) 0%, rgba(239,68,68,0.30) 45%, transparent 70%)"
-                : browseType === "daily"
-                ? "radial-gradient(circle, rgba(16,185,129,0.55) 0%, rgba(6,182,212,0.30) 45%, transparent 70%)"
-                : "radial-gradient(circle, rgba(99,102,241,0.55) 0%, rgba(59,130,246,0.35) 45%, transparent 70%)",
+                  ? "radial-gradient(circle, rgba(245,158,11,0.55) 0%, rgba(239,68,68,0.30) 45%, transparent 70%)"
+                  : browseType === "daily"
+                    ? "radial-gradient(circle, rgba(16,185,129,0.55) 0%, rgba(6,182,212,0.30) 45%, transparent 70%)"
+                    : "radial-gradient(circle, rgba(99,102,241,0.55) 0%, rgba(59,130,246,0.35) 45%, transparent 70%)",
           }}
         />
 
@@ -1613,10 +1751,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
               browseType === "favorites"
                 ? "radial-gradient(ellipse, rgba(244,63,94,0.35) 0%, rgba(168,85,247,0.20) 40%, transparent 75%)"
                 : browseType === "recent"
-                ? "radial-gradient(ellipse, rgba(245,158,11,0.35) 0%, rgba(239,68,68,0.20) 40%, transparent 75%)"
-                : browseType === "daily"
-                ? "radial-gradient(ellipse, rgba(16,185,129,0.35) 0%, rgba(6,182,212,0.20) 40%, transparent 75%)"
-                : "radial-gradient(ellipse, rgba(99,102,241,0.35) 0%, rgba(59,130,246,0.20) 40%, transparent 75%)",
+                  ? "radial-gradient(ellipse, rgba(245,158,11,0.35) 0%, rgba(239,68,68,0.20) 40%, transparent 75%)"
+                  : browseType === "daily"
+                    ? "radial-gradient(ellipse, rgba(16,185,129,0.35) 0%, rgba(6,182,212,0.20) 40%, transparent 75%)"
+                    : "radial-gradient(ellipse, rgba(99,102,241,0.35) 0%, rgba(59,130,246,0.20) 40%, transparent 75%)",
           }}
         />
 
@@ -1661,11 +1799,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             title="按 M 键快速切换展示模式"
           >
             <Layers className="w-3.5 h-3.5 text-white/90 shrink-0" />
-            <span>
-              {displayMode === "stage"
-                ? "舞台展开"
-                : "侧栏透视"}
-            </span>
+            <span>{displayMode === "stage" ? "舞台展开" : "侧栏透视"}</span>
             <span className="text-[10px] text-white/40 font-mono hidden xl:inline">
               ({displayMode === "stage" ? "Stage" : "Side"})
             </span>
@@ -1842,9 +1976,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                 <h3 className="text-xl font-bold text-white leading-tight mt-1">
                   {selectedShelfItem.title}
                 </h3>
-                <p className="text-xs text-white/50 mt-1">
-                  {selectedShelfItem.subtitle}
-                </p>
+                <p className="text-xs text-white/50 mt-1">{selectedShelfItem.subtitle}</p>
               </div>
             </div>
 
@@ -1869,7 +2001,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                   if (selectedShelfItem.id.startsWith("cloud-pl-")) {
                     const realId = selectedShelfItem.id.replace("cloud-pl-", "");
                     try {
-                      const res = await fetch(`/api/playlist/tracks?id=${encodeURIComponent(realId)}&limit=500`);
+                      const res = await fetch(
+                        `/api/playlist/tracks?id=${encodeURIComponent(realId)}&limit=500`
+                      );
                       if (res.ok) {
                         const data = await res.json();
                         if (Array.isArray(data.songs) && data.songs.length > 0) {
@@ -1878,7 +2012,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                           return;
                         }
                       }
-                    } catch {}
+                    } catch {
+                      /* 忽略：失败时保持当前状态 */
+                    }
                   }
 
                   if (selectedShelfItem.songs && selectedShelfItem.songs.length > 0) {
@@ -1958,9 +2094,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                         />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold leading-tight truncate">
-                          {song.title}
-                        </p>
+                        <p className="text-xs font-semibold leading-tight truncate">{song.title}</p>
                         <p className="text-[11px] opacity-50 truncate">
                           {song.artist} · {song.album || "Spatial"}
                         </p>
@@ -1998,9 +2132,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                 );
               })
             ) : (
-              <div className="py-12 text-center text-white/40 text-xs">
-                暂未找到匹配曲目
-              </div>
+              <div className="py-12 text-center text-white/40 text-xs">暂未找到匹配曲目</div>
             )}
           </div>
         </div>
@@ -2063,7 +2195,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             ) : (
               <>
                 <Play className="w-3.5 h-3.5 fill-black shrink-0" />
-                <span className="whitespace-nowrap">{currentActiveItem?.type === "playlist" ? "播放歌单" : "立即播放"}</span>
+                <span className="whitespace-nowrap">
+                  {currentActiveItem?.type === "playlist" ? "播放歌单" : "立即播放"}
+                </span>
               </>
             )}
           </button>
