@@ -247,6 +247,43 @@ function createFilmGrainTexture(): HTMLCanvasElement | null {
   }
 }
 
+// 余烬辉光贴图缓存。
+// 原来的写法是每个余烬一次 save → shadowBlur=6 → arc → fill → restore，每帧 32 次阴影，
+// 每次阴影都要走一遍离屏渲染 + 高斯模糊；累积到临界点会让画面整体冻结数秒（实测最慢单帧 6 秒）。
+// 改为按「尺寸 + 阴影色」预烘焙成贴图，之后每帧只是 drawImage。
+// 烘焙时用的是完全相同的 shadowBlur 调用，所以贴图内容与原绘制一致；
+// 每个余烬各自的可变透明度通过 globalAlpha 施加 —— 原写法也是把该系数整体乘进填充与阴影的。
+const emberSpriteCache = new Map<string, HTMLCanvasElement | null>();
+const EMBER_SHADOW_SPREAD = 10; // 6px 模糊（σ=3）约向外扩散 3σ
+
+function getEmberSprite(size: number, goldGlint: string): HTMLCanvasElement | null {
+  if (typeof document === "undefined") return null;
+
+  const radius = Math.max(0.5, size);
+  const cacheKey = `${Math.round(radius * 10)}|${goldGlint}`;
+  if (emberSpriteCache.has(cacheKey)) return emberSpriteCache.get(cacheKey)!;
+
+  const half = Math.ceil(radius + EMBER_SHADOW_SPREAD);
+  const canvas = document.createElement("canvas");
+  canvas.width = half * 2;
+  canvas.height = half * 2;
+  const c = canvas.getContext("2d");
+  if (!c) {
+    emberSpriteCache.set(cacheKey, null);
+    return null;
+  }
+
+  c.fillStyle = "rgba(255, 230, 140, 0.85)";
+  c.shadowColor = goldGlint;
+  c.shadowBlur = 6;
+  c.beginPath();
+  c.arc(half, half, radius, 0, Math.PI * 2);
+  c.fill();
+
+  emberSpriteCache.set(cacheKey, canvas);
+  return canvas;
+}
+
 // 流畅温润的宋代青绿远山起伏函数（无生硬折角，自然舒展）
 function dynamicShanShuiRidge(
   normX: number,
@@ -777,15 +814,17 @@ export function drawCinematicOrientalInk(context: EffectContext): void {
       continue;
     }
 
-    ctx.save();
-    ctx.globalCompositeOperation = "screen";
-    ctx.fillStyle = `rgba(255, 230, 140, ${ember.alpha * 0.85})`;
-    ctx.shadowColor = colors.goldGlint;
-    ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.arc(ember.x, ember.y, ember.size, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    const emberSprite = getEmberSprite(ember.size, colors.goldGlint);
+    if (emberSprite) {
+      const half = emberSprite.width / 2;
+      const prevAlpha = ctx.globalAlpha;
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      // 0.85 的填充透明度与阴影已烘焙进贴图，这里只叠加本帧的可变系数
+      ctx.globalAlpha = prevAlpha * ember.alpha;
+      ctx.drawImage(emberSprite, ember.x - half, ember.y - half);
+      ctx.restore();
+    }
   }
 
   // =========================================================================
