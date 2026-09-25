@@ -110,7 +110,9 @@ const DEFAULT_SHORTCUTS: ShortcutBinding[] = [
     id: "cycle-loop",
     label: "切换播放模式",
     category: "歌曲操作",
-    keys: ["Ctrl+L"],
+    // 用 Ctrl+Shift+L 而不是 Ctrl+L：Ctrl+L 已被 HomeView 占用为「⌘L 唤出 3D 歌单架」
+    // （导航岛也是这么标的），同一个键绑两处会一次触发两个动作。
+    keys: ["Ctrl+Shift+L"],
     description: "顺序/列表循环/单曲循环/随机",
   },
   {
@@ -152,7 +154,10 @@ const DEFAULT_SHORTCUTS: ShortcutBinding[] = [
     id: "toggle-queue",
     label: "播放列表",
     category: "界面切换",
-    keys: ["Q"],
+    // Q 与 Ctrl+L 都归这一条（导航岛也把 ⌘L 标为 3D 歌单架）。
+    // 原先 Apple3DQueueDrawer 与 HomeView 各自也监听这两个键去开关同一个面板，
+    // 同一个键被开关两次会互相抵消，表现为"按了没反应"。
+    keys: ["Q", "Ctrl+L"],
     description: "展开或收起播放列表抽屉",
   },
   {

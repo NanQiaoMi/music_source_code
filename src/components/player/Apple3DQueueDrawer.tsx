@@ -3,15 +3,13 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
-import { Disc3, Box } from "lucide-react";
+import { Box } from "lucide-react";
 import { useUIStore } from "@/store/uiStore";
-import { useQueueStore } from "@/store/queueStore";
 
 export function Apple3DQueueDrawer() {
   const { panels, openPanel, closePanel, togglePanel } = useUIStore();
   const isOpen = Boolean(panels.shelf3D);
 
-  const { queue } = useQueueStore();
   const [isHandleHovered, setIsHandleHovered] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
 
@@ -33,7 +31,9 @@ export function Apple3DQueueDrawer() {
     togglePanel("shelf3D");
   }, [togglePanel]);
 
-  // Global Keyboard Shortcuts (Esc to close, Q / Cmd+L to toggle 3D Spatial Shelf)
+  // Global Keyboard Shortcut (Esc to close)
+  // 开关本面板的 Q / ⌘L 已交由中枢绑定表统一处理（keyboardShortcutsStore 的 toggle-queue），
+  // 这里原先也监听同样的按键去切换同一个面板，两个处理器互相抵消，已移除。
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing in form inputs
@@ -48,20 +48,12 @@ export function Apple3DQueueDrawer() {
       if (e.key === "Escape" && isOpen) {
         e.preventDefault();
         closePanel("shelf3D");
-      } else if (e.key === "q" || e.key === "Q") {
-        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-          e.preventDefault();
-          handleToggle();
-        }
-      } else if ((e.metaKey || e.ctrlKey) && (e.key === "l" || e.key === "L")) {
-        e.preventDefault();
-        handleToggle();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, handleToggle, closePanel]);
+  }, [isOpen, closePanel]);
 
   // High-precision anti-accidental edge sensor
   const handleHandleMouseEnter = () => {
