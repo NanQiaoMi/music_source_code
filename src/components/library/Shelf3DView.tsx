@@ -870,7 +870,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       songs: [song],
       song,
     }));
-  }, [rawSongs, favorites, recentPlayedSongs, playlistGroups, browseType]);
+  }, [rawSongs, favorites, recentPlayedSongs, playlistGroups, browseType, offlineSongs]);
 
   // 当前活跃的 3D 卡片数据源
   const activeShelfItems = useMemo<ShelfItem[]>(() => {
@@ -1641,7 +1641,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       setQueue(shuffled);
       playTrackWithPipeline(shuffled[0]);
     }
-  }, [selectedShelfItem, playSong, setQueue]);
+  }, [selectedShelfItem, playTrackWithPipeline, setQueue]);
 
   // 键盘快捷键监听
   useEffect(() => {

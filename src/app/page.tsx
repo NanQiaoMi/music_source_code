@@ -146,7 +146,10 @@ export default function Home() {
         </PanelErrorBoundary>
       )}
       <VirtualCursor />
-      <GlassToastContainer />
+      {/* toast 是非必要 UI：单独隔离，它崩溃时静默降级，绝不拖垮主界面与播放 */}
+      <PanelErrorBoundary panelName="Toast Overlay" silent>
+        <GlassToastContainer />
+      </PanelErrorBoundary>
       <MusicLibrarySyncProvider />
       <Apple3DQueueDrawer />
 

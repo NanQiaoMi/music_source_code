@@ -18,11 +18,8 @@ import {
   Music2,
   FolderHeart,
   Loader2,
-  Plus,
   Flame,
-  Check,
   SlidersHorizontal,
-  Settings2,
   Lock,
   KeyRound,
 } from "lucide-react";
@@ -31,7 +28,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
-import { useUserAccountStore, isPlatformLoggedIn, PlatformType } from "@/store/userAccountStore";
+import { useUserAccountStore, PlatformType } from "@/store/userAccountStore";
 import { multiSourceResolver } from "@/services/MultiSourceResolver";
 import { LXRunner } from "@/lib/sources/lxRunner";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
@@ -43,18 +40,73 @@ import {
   SearchSourceTab,
   SearchMode,
   SortField,
-  SortOrder,
   QualityFilter,
 } from "@/store/useDataManagerStore";
 
-const SOURCE_TABS: { id: SearchSourceTab; label: string; symbol: string; dotColor: string; activeBorder: string; badgeStyle: string }[] = [
-  { id: "all", label: "全网聚合", symbol: "✦", dotColor: "bg-white", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
-  { id: "kuwo", label: "酷我音乐", symbol: "◈", dotColor: "bg-emerald-400", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
-  { id: "kugou", label: "酷狗音乐", symbol: "◆", dotColor: "bg-blue-400", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
-  { id: "qq", label: "QQ 音乐", symbol: "✧", dotColor: "bg-teal-400", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
-  { id: "netease", label: "网易云", symbol: "●", dotColor: "bg-rose-400", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
-  { id: "migu", label: "咪咕音乐", symbol: "◉", dotColor: "bg-amber-400", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
-  { id: "lx_custom", label: "落雪母带", symbol: "⚡", dotColor: "bg-purple-400", activeBorder: "border-white/30 shadow-white/5", badgeStyle: "bg-white/[0.12] text-white border-white/20" },
+const SOURCE_TABS: {
+  id: SearchSourceTab;
+  label: string;
+  symbol: string;
+  dotColor: string;
+  activeBorder: string;
+  badgeStyle: string;
+}[] = [
+  {
+    id: "all",
+    label: "全网聚合",
+    symbol: "✦",
+    dotColor: "bg-white",
+    activeBorder: "border-white/30 shadow-white/5",
+    badgeStyle: "bg-white/[0.12] text-white border-white/20",
+  },
+  {
+    id: "kuwo",
+    label: "酷我音乐",
+    symbol: "◈",
+    dotColor: "bg-emerald-400",
+    activeBorder: "border-white/30 shadow-white/5",
+    badgeStyle: "bg-white/[0.12] text-white border-white/20",
+  },
+  {
+    id: "kugou",
+    label: "酷狗音乐",
+    symbol: "◆",
+    dotColor: "bg-blue-400",
+    activeBorder: "border-white/30 shadow-white/5",
+    badgeStyle: "bg-white/[0.12] text-white border-white/20",
+  },
+  {
+    id: "qq",
+    label: "QQ 音乐",
+    symbol: "✧",
+    dotColor: "bg-teal-400",
+    activeBorder: "border-white/30 shadow-white/5",
+    badgeStyle: "bg-white/[0.12] text-white border-white/20",
+  },
+  {
+    id: "netease",
+    label: "网易云",
+    symbol: "●",
+    dotColor: "bg-rose-400",
+    activeBorder: "border-white/30 shadow-white/5",
+    badgeStyle: "bg-white/[0.12] text-white border-white/20",
+  },
+  {
+    id: "migu",
+    label: "咪咕音乐",
+    symbol: "◉",
+    dotColor: "bg-amber-400",
+    activeBorder: "border-white/30 shadow-white/5",
+    badgeStyle: "bg-white/[0.12] text-white border-white/20",
+  },
+  {
+    id: "lx_custom",
+    label: "落雪母带",
+    symbol: "⚡",
+    dotColor: "bg-purple-400",
+    activeBorder: "border-white/30 shadow-white/5",
+    badgeStyle: "bg-white/[0.12] text-white border-white/20",
+  },
 ];
 
 const HOT_SEARCH_TAGS = [
@@ -113,11 +165,13 @@ export const LxMusicSearchTab: React.FC = () => {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const { playSong, playQueue } = useAudioStore();
+  const { playSong: _playSong, playQueue } = useAudioStore();
   const { addToQueue, insertNext } = useQueueStore();
   const { addBatchDownloads, isSongOffline } = useOfflineDownloadStore();
-  const { addSong, importSongs } = usePlaylistStore();
-  const { lxScripts, openManagementModal, resolutionMode, setResolutionMode } = useSourceConfigStore();
+  // 未接线的歌单写入口，_ 前缀标记保留（AGENTS.md：优先标记而非删除）
+  const { addSong: _addSong, importSongs: _importSongs } = usePlaylistStore();
+  const { lxScripts, openManagementModal, resolutionMode, setResolutionMode } =
+    useSourceConfigStore();
 
   const neteaseUser = useUserAccountStore((state) => state.neteaseUser);
   const qqUser = useUserAccountStore((state) => state.qqUser);
@@ -139,15 +193,30 @@ export const LxMusicSearchTab: React.FC = () => {
   const isPlatformAuth = useCallback(
     (platform: string): boolean => {
       const p = platform.toLowerCase();
-      if (p === "netease" || p === "wy") return Boolean(neteaseUser?.loggedIn || (neteaseCookie && neteaseCookie.trim().length > 5));
+      if (p === "netease" || p === "wy")
+        return Boolean(neteaseUser?.loggedIn || (neteaseCookie && neteaseCookie.trim().length > 5));
       if (p === "qq") return Boolean(qqUser?.loggedIn || (qqCookie && qqCookie.trim().length > 5));
-      if (p === "kugou" || p === "kg") return Boolean(kugouUser?.loggedIn || (kugouCookie && kugouCookie.trim().length > 5));
-      if (p === "kuwo" || p === "kw") return Boolean(kuwoUser?.loggedIn || (kuwoCookie && kuwoCookie.trim().length > 5));
-      if (p === "qishui") return Boolean(qishuiUser?.loggedIn || (qishuiCookie && qishuiCookie.trim().length > 5));
+      if (p === "kugou" || p === "kg")
+        return Boolean(kugouUser?.loggedIn || (kugouCookie && kugouCookie.trim().length > 5));
+      if (p === "kuwo" || p === "kw")
+        return Boolean(kuwoUser?.loggedIn || (kuwoCookie && kuwoCookie.trim().length > 5));
+      if (p === "qishui")
+        return Boolean(qishuiUser?.loggedIn || (qishuiCookie && qishuiCookie.trim().length > 5));
       if (p === "migu" || p === "mg") return false;
       return false;
     },
-    [neteaseUser, qqUser, kugouUser, kuwoUser, qishuiUser, neteaseCookie, qqCookie, kugouCookie, kuwoCookie, qishuiCookie]
+    [
+      neteaseUser,
+      qqUser,
+      kugouUser,
+      kuwoUser,
+      qishuiUser,
+      neteaseCookie,
+      qqCookie,
+      kugouCookie,
+      kuwoCookie,
+      qishuiCookie,
+    ]
   );
 
   const hasAnyAuth = useMemo(() => {
@@ -205,8 +274,9 @@ export const LxMusicSearchTab: React.FC = () => {
             searchMemoryCache.set(cacheKey, seg.all);
           } else if (targetTab === "lx_custom") {
             const activeScripts = useSourceConfigStore.getState().lxScripts;
-            const activeScript =
-              activeScripts.find((s) => s.id === selectedScriptId && s.enabled) ||
+            const activeScript = activeScripts.find(
+              (s) => s.id === selectedScriptId && s.enabled
+            ) ||
               activeScripts.find((s) => s.enabled) || {
                 id: "aggregate_special_v9",
                 name: "全豆要[聚合音源] 9.3特供版",
@@ -230,7 +300,8 @@ export const LxMusicSearchTab: React.FC = () => {
               netease: `${base}/api/search?keywords=${encodeURIComponent(q)}&limit=100`,
               migu: `${base}/api/search?keywords=${encodeURIComponent(q)}&limit=100`,
             };
-            const targetUrl = epMap[targetTab] || `${base}/api/search?keywords=${encodeURIComponent(q)}&limit=100`;
+            const targetUrl =
+              epMap[targetTab] || `${base}/api/search?keywords=${encodeURIComponent(q)}&limit=100`;
             const cookie = getPlatformCookie(targetTab);
             const headers: HeadersInit = cookie ? { [`x-${targetTab}-cookie`]: cookie } : {};
             const res = await fetch(targetUrl, { headers });
@@ -251,7 +322,10 @@ export const LxMusicSearchTab: React.FC = () => {
           const qqC = getPlatformCookie("qq");
           if (qqC) headers["x-qq-cookie"] = qqC;
 
-          const res = await fetch(`/api/playlist/search?keywords=${encodeURIComponent(q)}&limit=60&source=${targetTab === "all" ? "all" : targetTab}`, { headers });
+          const res = await fetch(
+            `/api/playlist/search?keywords=${encodeURIComponent(q)}&limit=60&source=${targetTab === "all" ? "all" : targetTab}`,
+            { headers }
+          );
           if (res.ok) {
             const data = await res.json();
             setPlaylistResults(Array.isArray(data.playlists) ? data.playlists : []);
@@ -266,7 +340,17 @@ export const LxMusicSearchTab: React.FC = () => {
         setIsSearching(false);
       }
     },
-    [keyword, activeTab, searchMode, selectedScriptId, isTabUsable, getPlatformCookie, showToast]
+    [
+      keyword,
+      activeTab,
+      searchMode,
+      selectedScriptId,
+      isTabUsable,
+      getPlatformCookie,
+      setPlaylistResults,
+      setSongResults,
+      showToast,
+    ]
   );
 
   const triggerSearchOrPromptLogin = useCallback(() => {
@@ -285,6 +369,8 @@ export const LxMusicSearchTab: React.FC = () => {
   // 初始加载：仅在有已登录平台或可用脚本时才触发默认搜索
   useEffect(() => {
     if (isTabUsable("all")) {
+      // 示例快捷搜索：结果写入 setState，属派生态同步，静态规则穿透不了调用链
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       handleSearch("周杰伦", "all", "songs");
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -308,14 +394,15 @@ export const LxMusicSearchTab: React.FC = () => {
     }
   };
 
-
   // 排序与过滤处理
   const processedSongs = useMemo(() => {
     let list = [...songResults];
 
     // 1. 音质过滤
     if (qualityFilter === "24bit") {
-      list = list.filter((s) => s.title.includes("24bit") || s.format === "flac" || s.album?.includes("Master"));
+      list = list.filter(
+        (s) => s.title.includes("24bit") || s.format === "flac" || s.album?.includes("Master")
+      );
     } else if (qualityFilter === "flac") {
       list = list.filter((s) => s.format === "flac" || !s.format || s.format === "mp3");
     }
@@ -343,7 +430,9 @@ export const LxMusicSearchTab: React.FC = () => {
         if (typeof valA === "string" && typeof valB === "string") {
           return sortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
         }
-        return sortOrder === "asc" ? (valA as number) - (valB as number) : (valB as number) - (valA as number);
+        return sortOrder === "asc"
+          ? (valA as number) - (valB as number)
+          : (valB as number) - (valA as number);
       });
     }
 
@@ -397,9 +486,7 @@ export const LxMusicSearchTab: React.FC = () => {
   // 批量离线下载
   const handleDownloadSelected = () => {
     const toDownload =
-      selectedIds.size > 0
-        ? processedSongs.filter((s) => selectedIds.has(s.id))
-        : processedSongs;
+      selectedIds.size > 0 ? processedSongs.filter((s) => selectedIds.has(s.id)) : processedSongs;
     if (toDownload.length > 0) {
       addBatchDownloads(toDownload, "lossless");
       showToast(`已提交 ${toDownload.length} 首歌曲的高解析离线下载任务`);
@@ -408,9 +495,7 @@ export const LxMusicSearchTab: React.FC = () => {
 
   const handleBatchAddToQueue = () => {
     const toAdd =
-      selectedIds.size > 0
-        ? processedSongs.filter((s) => selectedIds.has(s.id))
-        : processedSongs;
+      selectedIds.size > 0 ? processedSongs.filter((s) => selectedIds.has(s.id)) : processedSongs;
     toAdd.forEach((s) => addToQueue(s));
     showToast(`已将 ${toAdd.length} 首歌曲追加至当前播放队列`);
   };
@@ -665,7 +750,9 @@ export const LxMusicSearchTab: React.FC = () => {
                       type="button"
                       onClick={() => setQualityFilter(q)}
                       className={`px-3 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                        qualityFilter === q ? "bg-white/[0.14] text-white font-semibold shadow-sm" : "hover:text-white"
+                        qualityFilter === q
+                          ? "bg-white/[0.14] text-white font-semibold shadow-sm"
+                          : "hover:text-white"
                       }`}
                     >
                       {q === "all" ? "全部" : q === "24bit" ? "💎 高解析" : "✦ 无损"}
@@ -703,16 +790,16 @@ export const LxMusicSearchTab: React.FC = () => {
                     isActive
                       ? "bg-white/[0.14] text-white border-white/[0.22] shadow-sm"
                       : isUsable
-                      ? "bg-white/[0.04] text-white/70 hover:text-white hover:bg-white/[0.08] border-white/[0.08]"
-                      : "bg-white/[0.02] text-white/40 hover:text-white/60 hover:bg-white/[0.05] border-white/[0.05] opacity-75"
+                        ? "bg-white/[0.04] text-white/70 hover:text-white hover:bg-white/[0.08] border-white/[0.08]"
+                        : "bg-white/[0.02] text-white/40 hover:text-white/60 hover:bg-white/[0.05] border-white/[0.05] opacity-75"
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${isUsable ? tab.dotColor : "bg-white/30"}`} />
+                  <span
+                    className={`w-2 h-2 rounded-full ${isUsable ? tab.dotColor : "bg-white/30"}`}
+                  />
                   <span>{tab.label}</span>
                   {!isUsable && <Lock className="w-3 h-3 text-white/50" />}
-                  <span className="text-[11px] opacity-70 leading-none">
-                    {tab.symbol}
-                  </span>
+                  <span className="text-[11px] opacity-70 leading-none">{tab.symbol}</span>
                 </button>
               );
             })}
@@ -808,15 +895,15 @@ export const LxMusicSearchTab: React.FC = () => {
                     {activeTab === "all"
                       ? "全网音乐搜索链路未开启"
                       : activeTab === "lx_custom"
-                      ? "落雪特供音源脚本未启用"
-                      : `【${SOURCE_TABS.find((t) => t.id === activeTab)?.label || activeTab}】链路未连接`}
+                        ? "落雪特供音源脚本未启用"
+                        : `【${SOURCE_TABS.find((t) => t.id === activeTab)?.label || activeTab}】链路未连接`}
                   </h4>
                   <p className="text-[13px] text-white/50 leading-relaxed">
                     {activeTab === "all"
                       ? "您尚未登录任何网络音乐平台（网易云、QQ音乐、酷狗、酷我、汽水）。根据安全规范，未登录状态下全网搜索与母带流解析处于关闭保护状态。"
                       : activeTab === "lx_custom"
-                      ? "当前未启用任何自定义落雪音源脚本。请进入音源管理启用脚本后即可解锁母带检索。"
-                      : "根据平台安全与账号规范，未登录的音乐平台默认关闭网络链路与搜索通道。请先登录账号以开启该平台的专属搜索与母带流解析。"}
+                        ? "当前未启用任何自定义落雪音源脚本。请进入音源管理启用脚本后即可解锁母带检索。"
+                        : "根据平台安全与账号规范，未登录的音乐平台默认关闭网络链路与搜索通道。请先登录账号以开启该平台的专属搜索与母带流解析。"}
                   </p>
                 </div>
                 <button
@@ -858,7 +945,11 @@ export const LxMusicSearchTab: React.FC = () => {
               <div className="sticky top-0 bg-[#090a0f]/95 backdrop-blur-2xl z-20 border-b border-white/[0.08] text-white/50 text-xs font-semibold px-4 py-3 flex items-center select-none">
                 {/* 勾选框 & 序号 */}
                 <div className="w-16 shrink-0 flex items-center justify-center gap-2">
-                  <button type="button" onClick={handleSelectAll} className="hover:text-white cursor-pointer">
+                  <button
+                    type="button"
+                    onClick={handleSelectAll}
+                    className="hover:text-white cursor-pointer"
+                  >
                     {selectedIds.size === processedSongs.length && processedSongs.length > 0 ? (
                       <CheckSquare className="w-4 h-4 text-white" />
                     ) : (
@@ -1046,80 +1137,77 @@ export const LxMusicSearchTab: React.FC = () => {
               </div>
             </div>
           )
-        ) : (
-          /* 歌单模式网格 */
-          playlistResults.length === 0 ? (
-            isCurrentTabLocked ? (
-              <div className="h-96 flex flex-col items-center justify-center text-center p-8 space-y-4">
-                <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-300 shadow-lg shadow-amber-500/5">
-                  <Lock className="w-8 h-8" />
-                </div>
-                <div className="space-y-1.5 max-w-md">
-                  <h4 className="text-[17px] font-semibold text-white tracking-tight">
-                    {activeTab === "all"
-                      ? "全网歌单检索链路未开启"
-                      : activeTab === "lx_custom"
+        ) : /* 歌单模式网格 */
+        playlistResults.length === 0 ? (
+          isCurrentTabLocked ? (
+            <div className="h-96 flex flex-col items-center justify-center text-center p-8 space-y-4">
+              <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-300 shadow-lg shadow-amber-500/5">
+                <Lock className="w-8 h-8" />
+              </div>
+              <div className="space-y-1.5 max-w-md">
+                <h4 className="text-[17px] font-semibold text-white tracking-tight">
+                  {activeTab === "all"
+                    ? "全网歌单检索链路未开启"
+                    : activeTab === "lx_custom"
                       ? "落雪音源歌单功能未开启"
                       : `【${SOURCE_TABS.find((t) => t.id === activeTab)?.label || activeTab}】歌单同步未开启`}
-                  </h4>
-                  <p className="text-[13px] text-white/50 leading-relaxed">
-                    {activeTab === "all"
-                      ? "当前尚未登录任何音乐平台。未登录状态下默认关闭网络歌单检索通道，请先登录账号开启链路。"
-                      : "未登录的音乐平台默认关闭歌单与曲库链路。请先登录该平台账号以开启在线歌单检索与导入功能。"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (activeTab !== "all" && activeTab !== "lx_custom") {
-                      useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
-                    }
-                    useUserAccountStore.getState().setIsAccountModalOpen(true);
-                  }}
-                  className="px-6 py-2.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold tracking-tight shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95"
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                  <span>立即登录账号开启链路</span>
-                </button>
+                </h4>
+                <p className="text-[13px] text-white/50 leading-relaxed">
+                  {activeTab === "all"
+                    ? "当前尚未登录任何音乐平台。未登录状态下默认关闭网络歌单检索通道，请先登录账号开启链路。"
+                    : "未登录的音乐平台默认关闭歌单与曲库链路。请先登录该平台账号以开启在线歌单检索与导入功能。"}
+                </p>
               </div>
-            ) : (
-              <div className="h-96 flex flex-col items-center justify-center text-white/40 gap-3">
-                <FolderHeart className="w-12 h-12 opacity-30" />
-                <p className="text-sm">未检索到相关歌单，请尝试更换关键词</p>
-              </div>
-            )
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeTab !== "all" && activeTab !== "lx_custom") {
+                    useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
+                  }
+                  useUserAccountStore.getState().setIsAccountModalOpen(true);
+                }}
+                className="px-6 py-2.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold tracking-tight shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>立即登录账号开启链路</span>
+              </button>
+            </div>
           ) : (
-
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
-              {playlistResults.map((p, idx) => (
-                <div
-                  key={`${p.source}-${p.id}-${idx}`}
-                  onClick={() => handleOpenPlaylist(p)}
-                  className="group flex flex-col rounded-3xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-3.5 transition-all hover:scale-[1.03] hover:border-emerald-400/40 cursor-pointer shadow-lg"
-                >
-                  <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-xl mb-3 bg-black/40">
-                    <Image
-                      src={p.coverImgUrl || "/default-cover.svg"}
-                      alt={p.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      sizes="240px"
-                    />
-                    <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[10px] text-white/90 font-mono font-semibold border border-white/10">
-                      {p.source === "netease" ? "网易云" : "QQ音乐"}
-                    </div>
-                  </div>
-                  <h4 className="text-xs font-bold text-white/90 line-clamp-2 leading-snug">
-                    {p.name}
-                  </h4>
-                  <div className="flex items-center justify-between text-[11px] text-white/40 mt-2">
-                    <span className="truncate">{p.creatorName}</span>
-                    <span className="font-mono">{p.trackCount} 首</span>
-                  </div>
-                </div>
-              ))}
+            <div className="h-96 flex flex-col items-center justify-center text-white/40 gap-3">
+              <FolderHeart className="w-12 h-12 opacity-30" />
+              <p className="text-sm">未检索到相关歌单，请尝试更换关键词</p>
             </div>
           )
+        ) : (
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
+            {playlistResults.map((p, idx) => (
+              <div
+                key={`${p.source}-${p.id}-${idx}`}
+                onClick={() => handleOpenPlaylist(p)}
+                className="group flex flex-col rounded-3xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 p-3.5 transition-all hover:scale-[1.03] hover:border-emerald-400/40 cursor-pointer shadow-lg"
+              >
+                <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-xl mb-3 bg-black/40">
+                  <Image
+                    src={p.coverImgUrl || "/default-cover.svg"}
+                    alt={p.name}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    sizes="240px"
+                  />
+                  <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[10px] text-white/90 font-mono font-semibold border border-white/10">
+                    {p.source === "netease" ? "网易云" : "QQ音乐"}
+                  </div>
+                </div>
+                <h4 className="text-xs font-bold text-white/90 line-clamp-2 leading-snug">
+                  {p.name}
+                </h4>
+                <div className="flex items-center justify-between text-[11px] text-white/40 mt-2">
+                  <span className="truncate">{p.creatorName}</span>
+                  <span className="font-mono">{p.trackCount} 首</span>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
@@ -1236,7 +1324,9 @@ export const LxMusicSearchTab: React.FC = () => {
               type="button"
               onClick={() => {
                 if (contextMenu.song) {
-                  navigator.clipboard.writeText(`${contextMenu.song.title} - ${contextMenu.song.artist}`);
+                  navigator.clipboard.writeText(
+                    `${contextMenu.song.title} - ${contextMenu.song.artist}`
+                  );
                   showToast("已复制歌曲信息到剪贴板");
                 }
                 setContextMenu(null);

@@ -4,8 +4,6 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  Clock,
-  EyeOff,
   FolderPlus,
   Heart,
   HelpCircle,
@@ -58,10 +56,14 @@ function formatDuration(seconds: number): string {
 }
 
 function getModeIcon(modeName: string) {
-  if (modeName.includes("早间") || modeName.includes("活力")) return <Sun className="h-4 w-4 text-amber-300" />;
-  if (modeName.includes("午间") || modeName.includes("放松")) return <Zap className="h-4 w-4 text-emerald-300" />;
-  if (modeName.includes("下午") || modeName.includes("专注")) return <Coffee className="h-4 w-4 text-cyan-300" />;
-  if (modeName.includes("傍晚") || modeName.includes("平衡")) return <Sunset className="h-4 w-4 text-orange-300" />;
+  if (modeName.includes("早间") || modeName.includes("活力"))
+    return <Sun className="h-4 w-4 text-amber-300" />;
+  if (modeName.includes("午间") || modeName.includes("放松"))
+    return <Zap className="h-4 w-4 text-emerald-300" />;
+  if (modeName.includes("下午") || modeName.includes("专注"))
+    return <Coffee className="h-4 w-4 text-cyan-300" />;
+  if (modeName.includes("傍晚") || modeName.includes("平衡"))
+    return <Sunset className="h-4 w-4 text-orange-300" />;
   return <Moon className="h-4 w-4 text-purple-300" />;
 }
 
@@ -83,7 +85,8 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
-  const togglePlay = () => setIsPlaying(!isPlaying);
+  // memo：handlePlaySong 与快捷键 effect 都依赖它，每轮新建会让监听反复重绑
+  const togglePlay = useCallback(() => setIsPlaying(!isPlaying), [setIsPlaying, isPlaying]);
   const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
   const addNegativeFeedback = useRecommendationStore((state) => state.addNegativeFeedback);
   const clearNegativeFeedback = useRecommendationStore((state) => state.clearNegativeFeedback);
@@ -92,7 +95,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dismissedSongIds, setDismissedSongIds] = useState<Set<string>>(new Set());
-  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [activeCategory, _setActiveCategory] = useState<string>("all");
   const [pinnedExplanationId, setPinnedExplanationId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -176,6 +179,8 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   );
 
   useEffect(() => {
+    // 翻页归零属派生态同步，静态规则穿透不了调用链
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSubTracksPage(0);
   }, [searchQuery, displayedSongs]);
 
@@ -198,17 +203,23 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   const handlePlayAll = () => {
     if (displayedSongs.length > 0) {
       playQueue(displayedSongs, 0);
-      useUIStore.getState().showToast(`▶ 开始播放每日推荐（共 ${displayedSongs.length} 首）`, "success", 2500);
+      useUIStore
+        .getState()
+        .showToast(`▶ 开始播放每日推荐（共 ${displayedSongs.length} 首）`, "success", 2500);
     }
   };
 
-  const handlePlaySong = (song: Song, index: number) => {
-    if (currentSong?.id === song.id) {
-      togglePlay();
-    } else {
-      playQueue(displayedSongs, index);
-    }
-  };
+  // useCallback：它在下面的快捷键 effect 依赖里，非 memo 会让 effect 每轮重新绑定监听
+  const handlePlaySong = useCallback(
+    (song: Song, index: number) => {
+      if (currentSong?.id === song.id) {
+        togglePlay();
+      } else {
+        playQueue(displayedSongs, index);
+      }
+    },
+    [currentSong?.id, togglePlay, playQueue, displayedSongs]
+  );
 
   const handleDismiss = (songId: string) => {
     setDismissedSongIds((current) => new Set([...current, songId]));
@@ -216,7 +227,8 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
     useUIStore.getState().showToast("已从当前推荐中忽略", "info", 1800);
   };
 
-  const handleNegativeFeedback = (song: Song) => {
+  // 未接线的负反馈入口，_ 前缀标记保留
+  const _handleNegativeFeedback = (song: Song) => {
     addNegativeFeedback(song);
     handleDismiss(song.id);
     useUIStore.getState().showToast("已记录，将减少类似风格推荐", "info", 2000);
@@ -273,7 +285,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose, heroSong, handleRefresh]);
+  }, [isOpen, onClose, heroSong, handlePlaySong, handleRefresh]);
 
   if (!isOpen) return null;
 
@@ -293,7 +305,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
         onClick={(event) => event.stopPropagation()}
         className="daily-rec-modal relative flex w-full max-w-5xl flex-col overflow-hidden rounded-[30px] border border-white/[0.14] bg-[#090a10]/85 shadow-[0_32px_120px_rgba(0,0,0,0.9),inset_0_1px_1px_rgba(255,255,255,0.22)] backdrop-blur-3xl"
       >
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
           .daily-rec-modal,
           .daily-rec-modal * {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif !important;
@@ -318,7 +332,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
           .bento-subtrack-list::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.35);
           }
-        `}} />
+        `,
+          }}
+        />
 
         {/* ─── Ambient Platinum Highlights (Subtle Apple Specular Beams) ─── */}
         <div className="absolute -top-32 -left-32 h-72 w-72 rounded-full bg-white/[0.04] blur-3xl pointer-events-none" />
@@ -364,7 +380,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
               title="换一批推荐 (R)"
               className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] hover:bg-white/[0.15] border border-white/10 text-white/70 hover:text-white transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-white" : ""}`} />
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-white" : ""}`}
+              />
             </button>
 
             <button
@@ -397,7 +415,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-24">
               <div className="h-10 w-10 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-              <p className="mt-4 text-xs font-medium text-white/60">正在进行智能推荐去噪与时段偏好校准...</p>
+              <p className="mt-4 text-xs font-medium text-white/60">
+                正在进行智能推荐去噪与时段偏好校准...
+              </p>
             </div>
           ) : !hasRecommendation || !heroSong ? (
             /* 优雅的空状态：绝非突兀大黑框，而是质感唱片指引 */
@@ -429,7 +449,11 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                     onClick={() => handlePlaySong(heroSong, 0)}
                   >
                     {heroSong.cover ? (
-                      <img src={heroSong.cover} alt={heroSong.title} className="w-full h-full object-cover" />
+                      <img
+                        src={heroSong.cover}
+                        alt={heroSong.title}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-white/5">
                         <Music className="w-10 h-10 text-white/30" />
@@ -437,7 +461,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                     )}
                     {/* 书脊折光与高光 */}
                     <div className="absolute left-0 top-0 bottom-0 w-[2.5px] bg-gradient-to-r from-white/40 via-white/15 to-transparent pointer-events-none" />
-                    <div className={`absolute inset-0 bg-black/45 transition-opacity flex items-center justify-center ${isHeroPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                    <div
+                      className={`absolute inset-0 bg-black/45 transition-opacity flex items-center justify-center ${isHeroPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                    >
                       {isHeroPlaying ? (
                         <Pause className="w-8 h-8 fill-white text-white" />
                       ) : (
@@ -455,7 +481,8 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                       </span>
                       {recommendationReasons.get(heroSong.id)?.[0] && (
                         <span className="text-[10px] text-white/80 bg-white/10 border border-white/15 px-2 py-0.5 rounded-full font-medium">
-                          {recommendationReasons.get(heroSong.id)![0].label} {recommendationReasons.get(heroSong.id)![0].weightLabel}
+                          {recommendationReasons.get(heroSong.id)![0].label}{" "}
+                          {recommendationReasons.get(heroSong.id)![0].weightLabel}
                         </span>
                       )}
                       {isHeroPlaying && (
@@ -523,7 +550,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                             : "bg-white/[0.06] border-white/10 text-white/60 hover:text-white"
                         }`}
                       >
-                        <Heart className={`w-3.5 h-3.5 ${isFavorite(heroSong.id) ? "fill-rose-400" : ""}`} />
+                        <Heart
+                          className={`w-3.5 h-3.5 ${isFavorite(heroSong.id) ? "fill-rose-400" : ""}`}
+                        />
                       </button>
 
                       <button
@@ -531,7 +560,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                         onClick={(e) => {
                           e.stopPropagation();
                           insertNext(heroSong);
-                          useUIStore.getState().showToast(`已添加《${heroSong.title}》为下一首播放`, "info", 1800);
+                          useUIStore
+                            .getState()
+                            .showToast(`已添加《${heroSong.title}》为下一首播放`, "info", 1800);
                         }}
                         title="下一首播放"
                         className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
@@ -544,7 +575,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                         onClick={(e) => {
                           e.stopPropagation();
                           addToQueue(heroSong);
-                          useUIStore.getState().showToast(`已将《${heroSong.title}》加入播放列表`, "info", 1800);
+                          useUIStore
+                            .getState()
+                            .showToast(`已将《${heroSong.title}》加入播放列表`, "info", 1800);
                         }}
                         title="加入播放队列"
                         className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
@@ -583,7 +616,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                         className="flex items-center justify-between gap-3 rounded-lg bg-white/[0.04] px-3 py-1.5 text-left"
                       >
                         <div className="min-w-0 flex-1">
-                          <span className="text-xs font-semibold text-white/95">{reason.label}</span>
+                          <span className="text-xs font-semibold text-white/95">
+                            {reason.label}
+                          </span>
                           <span className="text-[11px] text-white/50 ml-2">{reason.detail}</span>
                         </div>
                         <span className="shrink-0 rounded-full bg-white/15 border border-white/20 px-2 py-0.5 text-[10px] font-bold text-white">
@@ -636,7 +671,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                         <button
                           type="button"
                           disabled={safeSubPage >= totalSubPages - 1}
-                          onClick={() => setSubTracksPage((p) => Math.min(totalSubPages - 1, p + 1))}
+                          onClick={() =>
+                            setSubTracksPage((p) => Math.min(totalSubPages - 1, p + 1))
+                          }
                           aria-label="下一页"
                           className="h-5 w-5 flex items-center justify-center rounded-full hover:bg-white/15 disabled:opacity-20 text-white/80 transition-all cursor-pointer"
                         >
@@ -723,11 +760,17 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                             {/* 专辑缩略图 */}
                             <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/[0.05] border border-white/10 shadow-sm">
                               {song.cover ? (
-                                <img src={song.cover} alt={song.title} className="h-full w-full object-cover" />
+                                <img
+                                  src={song.cover}
+                                  alt={song.title}
+                                  className="h-full w-full object-cover"
+                                />
                               ) : (
                                 <Music className="h-3 w-3 text-white/40" />
                               )}
-                              <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${isThisPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                              <div
+                                className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${isThisPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                              >
                                 {isThisPlaying ? (
                                   <Pause className="h-3 w-3 fill-white text-white" />
                                 ) : (
@@ -738,7 +781,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
 
                             {/* 曲目元数据 */}
                             <div className="min-w-0 flex-1">
-                              <h4 className={`truncate text-xs font-semibold ${isThisPlaying ? "text-white font-bold" : "text-white/90 group-hover:text-white"}`}>
+                              <h4
+                                className={`truncate text-xs font-semibold ${isThisPlaying ? "text-white font-bold" : "text-white/90 group-hover:text-white"}`}
+                              >
                                 {song.title}
                               </h4>
                               <div className="flex items-center gap-1.5 truncate text-[10.5px] text-white/45">
@@ -779,7 +824,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                                   toggleFavorite(song);
                                 }}
                                 className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${
-                                  isFav ? "bg-rose-500/20 text-rose-400" : "bg-white/10 hover:bg-white/20 text-white/70"
+                                  isFav
+                                    ? "bg-rose-500/20 text-rose-400"
+                                    : "bg-white/10 hover:bg-white/20 text-white/70"
                                 }`}
                               >
                                 <Heart className={`h-3 w-3 ${isFav ? "fill-rose-400" : ""}`} />
@@ -790,7 +837,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   insertNext(song);
-                                  useUIStore.getState().showToast(`下一首播放《${song.title}》`, "info", 1500);
+                                  useUIStore
+                                    .getState()
+                                    .showToast(`下一首播放《${song.title}》`, "info", 1500);
                                 }}
                                 title="下一首播放"
                                 className="h-6 w-6 flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-white/70"
@@ -804,7 +853,10 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                           {isPinned && (
                             <div className="mt-2 p-2 rounded-lg bg-black/40 border border-white/10 text-[10.5px]">
                               {reasons.map((r) => (
-                                <div key={r.code} className="flex items-center justify-between gap-2 py-0.5">
+                                <div
+                                  key={r.code}
+                                  className="flex items-center justify-between gap-2 py-0.5"
+                                >
                                   <span className="text-white/80">{r.label}</span>
                                   <span className="text-white font-mono">{r.weightLabel}</span>
                                 </div>
@@ -870,7 +922,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
                     </div>
                     <div>
                       <div className="text-xs font-bold text-white">AI 声学能量与健康校准</div>
-                      <div className="text-[10.5px] text-white/50">Anti-Monopoly & Quality Shield</div>
+                      <div className="text-[10.5px] text-white/50">
+                        Anti-Monopoly & Quality Shield
+                      </div>
                     </div>
                   </div>
 

@@ -104,7 +104,6 @@ export const useDailyRecommendation = () => {
   }, [history, listeningStats]);
 
   const [recommendationGroups, setRecommendationGroups] = useState<DailyRecommendationGroup[]>([]);
-  const [customMode, setCustomMode] = useState<DailyRecommendationMode | null>(null);
   const [recommendationMode, setRecommendationMode] = useState<DailyRecommendationMode | null>(
     null
   );
@@ -194,7 +193,7 @@ export const useDailyRecommendation = () => {
       setRecommendationMode(result.mode);
       return result.orderedSongs.slice(0, 6).map((s) => s.id);
     },
-    [songs, getTopArtists, history, listeningStats, customMode]
+    [songs, getTopArtists, history, listeningStats]
   );
 
   const recommendation = useMemo(() => {
@@ -265,7 +264,12 @@ export const useDailyRecommendation = () => {
       setRecommendationSongIds(newSongIds);
       setIsLoading(false);
     }, 150);
-  }, [batchOffset, recommendationSongIds, generateRecommendationInternal, saveRecommendationToStorage]);
+  }, [
+    batchOffset,
+    recommendationSongIds,
+    generateRecommendationInternal,
+    saveRecommendationToStorage,
+  ]);
 
   useEffect(() => {
     queueMicrotask(loadRecommendation);
@@ -273,6 +277,8 @@ export const useDailyRecommendation = () => {
 
   useEffect(() => {
     if (songs.length > 0 && recommendationSongIds.length === 0) {
+      // 首次有歌单时自动补一次推荐，属与外部 store 同步的初始化
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadRecommendation();
     }
   }, [songs.length, recommendationSongIds.length, loadRecommendation]);
@@ -289,13 +295,15 @@ export const useDailyRecommendation = () => {
 
   const switchMode = useCallback(
     (newMode: DailyRecommendationMode) => {
-      setCustomMode(newMode);
       if (typeof window !== "undefined") {
         localStorage.removeItem(RECOMMENDATION_KEY);
       }
       setIsLoading(true);
       setTimeout(() => {
-        const newSongIds = generateRecommendationInternal();
+        // 必须把所选模式传进去：generateRecommendationInternal 的形参 customMode
+        // 会遮蔽同名 state，不传参就会落到 getDailyRecommendationMode() 的时段默认值，
+        // 用户点的模式等于没生效（原实现把新模式写进了一个没人读的 state）。
+        const newSongIds = generateRecommendationInternal(newMode);
         saveRecommendationToStorage(newSongIds);
         setRecommendationSongIds(newSongIds);
         setIsLoading(false);
