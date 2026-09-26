@@ -20,7 +20,6 @@ export interface FloatingDockStateProps {
   className?: string;
 }
 
-
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
@@ -37,7 +36,10 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
   const playerSong = usePlayerStore((state) => state.currentSong);
   const currentSong = audioSong || playerSong;
 
-  const isLoading = useAudioStore((state) => state.isLoading) || usePlayerStore((state) => state.isLoading);
+  // 两个 store 各自订阅后再合并（不能写成 `a || b`：那会让右侧 hook 条件执行）
+  const audioIsLoading = useAudioStore((state) => state.isLoading);
+  const playerIsLoading = usePlayerStore((state) => state.isLoading);
+  const isLoading = audioIsLoading || playerIsLoading;
 
   const [isHovered, setIsHovered] = useState(false);
   const [showPlayOverlay, setShowPlayOverlay] = useState(false);
@@ -104,8 +106,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
             : {
                 opacity: 0.1,
                 scale: 1,
-                background:
-                  "radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)",
+                background: "radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)",
               }
         }
         transition={{
@@ -128,7 +129,8 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
         style={{
           minWidth: 64,
           height: 64,
-          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.20) 100%)",
+          background:
+            "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.20) 100%)",
           backdropFilter: "blur(48px) saturate(200%)",
           WebkitBackdropFilter: "blur(48px) saturate(200%)",
           border: "1px solid rgba(255, 255, 255, 0.28)",
@@ -150,11 +152,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
         >
           {/* Inner Cover Container */}
           <div className="relative w-full h-full rounded-full overflow-hidden shadow-inner ring-1 ring-white/20 bg-neutral-950">
-            <div
-              className={`absolute inset-0 ${
-                isPlaying ? "animate-spin-slow" : ""
-              }`}
-            >
+            <div className={`absolute inset-0 ${isPlaying ? "animate-spin-slow" : ""}`}>
               <Image
                 src={currentSong?.cover || DEFAULT_COVER_SRC}
                 alt={currentSong?.title || "Now Playing"}
@@ -196,9 +194,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
 
         {/* Dynamic Soundwave & Restore Indicator Content */}
         <div
-          className={`flex flex-col justify-center items-center gap-1 ${
-            isLeft ? "pr-1" : "pl-1"
-          }`}
+          className={`flex flex-col justify-center items-center gap-1 ${isLeft ? "pr-1" : "pl-1"}`}
         >
           {/* 3 Mini Bouncing Soundwave Bars (Pure White Liquid Glass) */}
           <div className="flex items-end justify-center gap-[2.5px] h-3.5 w-3.5">
@@ -238,7 +234,6 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
             })}
           </div>
 
-
           {/* Hover Expand Chevron Hint */}
           <motion.div
             className="text-white/60 group-hover:text-white transition-colors"
@@ -276,9 +271,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
               transition={{ duration: 0.15 }}
             >
               <span>{isPlaying ? currentSong?.title || "正在播放" : "点击唤醒"}</span>
-              <span className="text-white/40 text-[9px]">
-                {isLeft ? "向右拉出" : "向左拉出"}
-              </span>
+              <span className="text-white/40 text-[9px]">{isLeft ? "向右拉出" : "向左拉出"}</span>
             </motion.div>
           )}
         </AnimatePresence>
