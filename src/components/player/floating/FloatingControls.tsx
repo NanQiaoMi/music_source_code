@@ -1,20 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence, useAnimationFrame } from "framer-motion";
 import { useAudioStore, type LoopMode } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
-import {
-  Heart,
-  SkipBack,
-  SkipForward,
-  Repeat,
-  Repeat1,
-  Shuffle,
-  Disc3,
-} from "lucide-react";
+import { Heart, SkipBack, SkipForward, Repeat, Repeat1, Shuffle } from "lucide-react";
 import { FloatingSpeedControl } from "./FloatingSpeedControl";
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
@@ -270,20 +262,18 @@ export const HeartFavoriteButton: React.FC<HeartFavoriteButtonProps> = ({
           "rgba(255, 255, 255, 0.6)",
           "rgba(255, 255, 255, 0.4)",
         ];
-        const newParticles: HeartParticle[] = Array.from({ length: particleCount }).map(
-          (_, i) => {
-            const angle = (i / particleCount) * (Math.PI * 2) + (Math.random() * 0.4 - 0.2);
-            const distance = 24 + Math.random() * 20;
-            return {
-              id: Date.now() + i,
-              x: Math.cos(angle) * distance,
-              y: Math.sin(angle) * distance,
-              scale: 0.6 + Math.random() * 0.7,
-              color: colors[i % colors.length],
-              rotation: Math.random() * 360,
-            };
-          }
-        );
+        const newParticles: HeartParticle[] = Array.from({ length: particleCount }).map((_, i) => {
+          const angle = (i / particleCount) * (Math.PI * 2) + (Math.random() * 0.4 - 0.2);
+          const distance = 24 + Math.random() * 20;
+          return {
+            id: Date.now() + i,
+            x: Math.cos(angle) * distance,
+            y: Math.sin(angle) * distance,
+            scale: 0.6 + Math.random() * 0.7,
+            color: colors[i % colors.length],
+            rotation: Math.random() * 360,
+          };
+        });
 
         setParticles(newParticles);
         setTimeout(() => setParticles([]), 700);
@@ -350,7 +340,6 @@ export const HeartFavoriteButton: React.FC<HeartFavoriteButtonProps> = ({
     </div>
   );
 };
-
 
 // ---------------------------------------------------------------------------
 // 4. Jelly Elastic Feedback Button (Squash & Stretch)
@@ -435,7 +424,6 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
   const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
   const isPlaying = audioIsPlaying || playerIsPlaying;
 
-  const isLoading = useAudioStore((state) => state.isLoading) || usePlayerStore((state) => state.isLoading);
   const togglePlay = () => {
     const nextPlaying = !isPlaying;
     useAudioStore.getState().setIsPlaying(nextPlaying);
@@ -489,11 +477,7 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
           animate={isLoopFlipping ? { rotate: [0, 180, 360], scale: [1, 1.25, 1] } : {}}
           transition={{ duration: 0.45 }}
         >
-          {loopMode === "single" ? (
-            <Repeat1 className="w-4 h-4" />
-          ) : (
-            <Repeat className="w-4 h-4" />
-          )}
+          {loopMode === "single" ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
         </motion.button>
       )}
 
@@ -538,24 +522,16 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
           }`}
           whileHover={{ scale: 1.12 }}
           whileTap={{ scale: 0.88 }}
-          animate={
-            isShuffleWobble
-              ? { rotate: [-16, 16, -8, 8, 0], scale: [1, 1.2, 0.95, 1] }
-              : {}
-          }
+          animate={isShuffleWobble ? { rotate: [-16, 16, -8, 8, 0], scale: [1, 1.2, 0.95, 1] } : {}}
           transition={{ duration: 0.45 }}
         >
           <Shuffle className="w-4 h-4" />
         </motion.button>
       )}
 
-
       {/* 6. Playback Speed Control (Icon by default, click to expand) */}
       {showSpeedControl && (
-        <FloatingSpeedControl
-          menuPosition="top"
-          buttonSize={compact ? "sm" : "md"}
-        />
+        <FloatingSpeedControl menuPosition="top" buttonSize={compact ? "sm" : "md"} />
       )}
 
       {/* 7. Heart Favorite Button */}

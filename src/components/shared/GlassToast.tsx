@@ -6,14 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore, ToastMessage } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
-import {
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  X,
-  Sparkles,
-  Music,
-} from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, X, Sparkles, Music } from "lucide-react";
 
 interface ParsedMessage {
   isPlayback: boolean;
@@ -35,9 +28,7 @@ function parseToastMessage(rawMessage: string): ParsedMessage {
     trimmed.startsWith("正在播放:") ||
     trimmed.startsWith("正在播放：")
   ) {
-    const clean = trimmed
-      .replace(/^[▶\s]*(正在播放|播放)[：:\s]*/, "")
-      .trim();
+    const clean = trimmed.replace(/^[▶\s]*(正在播放|播放)[：:\s]*/, "").trim();
 
     // 匹配 《歌名》 · 歌手 / 专辑 结构
     const bookMatch = clean.match(/^《([^》]+)》(.*)$/);
@@ -110,11 +101,7 @@ const ToastLeadingElement: React.FC<{
     return (
       <div className="relative w-6 h-6 rounded-full overflow-hidden bg-black/60 border border-white/20 shrink-0 shadow-sm flex items-center justify-center">
         {coverUrl ? (
-          <img
-            src={coverUrl}
-            alt="Cover"
-            className="w-full h-full object-cover"
-          />
+          <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
         ) : (
           <Music className="w-3 h-3 text-emerald-400" />
         )}
@@ -153,8 +140,11 @@ const ToastLeadingElement: React.FC<{
 
 const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
   const removeToast = useUIStore((state) => state.removeToast);
-  const currentSong =
-    useAudioStore((state) => state.currentSong) || usePlayerStore((state) => state.currentSong);
+  // 两个 store 必须各自无条件订阅再合并：写成 `a || b` 会让右侧 hook 在左侧
+  // 为真时整轮不执行，hook 数量随渲染跳变 → React 抛 "Rendered more hooks..."
+  const audioCurrentSong = useAudioStore((state) => state.currentSong);
+  const playerCurrentSong = usePlayerStore((state) => state.currentSong);
+  const currentSong = audioCurrentSong || playerCurrentSong;
 
   const parsed = useMemo(() => parseToastMessage(toast.message), [toast.message]);
   const durationSec = (toast.duration || 3000) / 1000;
@@ -175,11 +165,7 @@ const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
       className="relative group flex items-center gap-2.5 px-3 py-1.5 bg-[#080a12]/92 hover:bg-[#0c0e18]/95 backdrop-blur-2xl rounded-full border border-white/[0.12] shadow-[0_12px_36px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.15)] pointer-events-auto select-none font-sans text-white max-w-sm sm:max-w-md transition-colors"
     >
       {/* 头部微缩封面 / 图标 */}
-      <ToastLeadingElement
-        type={toast.type}
-        isPlayback={parsed.isPlayback}
-        coverUrl={coverUrl}
-      />
+      <ToastLeadingElement type={toast.type} isPlayback={parsed.isPlayback} coverUrl={coverUrl} />
 
       {/* 消息主体结构化排版 */}
       <div className="flex items-center gap-1.5 min-w-0 flex-1 pr-1">
