@@ -32,6 +32,12 @@ import {
   makeCacheKey,
 } from "@/services/networkAudioCache";
 import { triggerBackgroundCache } from "@/hooks/useNetworkAudioCache";
+import {
+  createBackgroundCacheScheduler,
+  DEFAULT_BACKGROUND_CACHE_DELAY_MS,
+  DEFAULT_BACKGROUND_CACHE_MAX_ATTEMPTS,
+  DEFAULT_BACKGROUND_CACHE_MIN_BUFFER_SECONDS,
+} from "@/lib/audio/backgroundCacheScheduler";
 import { audioPrefetcher } from "@/lib/audio/audioPrefetcher";
 import { BlobUrlRegistry } from "@/services/BlobUrlRegistry";
 import { useQueueStore } from "@/store/queueStore";
@@ -73,6 +79,26 @@ const _playbackRequestIdRef: { current: number } = { current: 0 };
 const handlePlayErrorSelfRef: {
   current: ((error: PlaybackErrorLike) => void) | null;
 } = { current: null };
+
+// ---- 网络歌曲的后台离线缓存调度 ----
+// 旧实现在 onPlaying 里立刻整段下载，而那一刻音频正抢同一条连接做首段缓冲，
+// 起播那几秒因此更容易卡。规则（让路多久 / 缓冲门槛 / 重试上限 / 换歌取消）
+// 都放在可单测的 backgroundCacheScheduler 里，这里只把它接到播放器的真实状态上。
+const backgroundCacheScheduler = createBackgroundCacheScheduler({
+  delayMs: DEFAULT_BACKGROUND_CACHE_DELAY_MS,
+  minBufferSeconds: DEFAULT_BACKGROUND_CACHE_MIN_BUFFER_SECONDS,
+  maxAttempts: DEFAULT_BACKGROUND_CACHE_MAX_ATTEMPTS,
+  getCurrentSongId: () => currentSongIdRef.current,
+  getBufferedSeconds: () => {
+    const audio = audioElementRef.current;
+    if (!audio || !audio.buffered.length) return 0;
+    return audio.buffered.end(audio.buffered.length - 1);
+  },
+  startCache: (song, src) => {
+    triggerBackgroundCache(song, src).catch(() => {});
+  },
+});
+
 const loadingInProgressSongIdRef: { current: string | null } = { current: null };
 const activeHookIds = new Set<string>();
 
@@ -492,7 +518,7 @@ const attachListeners = (
           );
       }
     }
-    // 对网络歌曲触发后台缓存（不阻塞播放）
+    // 后台缓存延后到缓冲就绪再发起（见 backgroundCacheScheduler），避免和首段缓冲抢带宽
     const currentSrc = audio.src;
     if (
       playingSong &&
@@ -502,7 +528,7 @@ const attachListeners = (
       currentSrc &&
       !currentSrc.startsWith("blob:")
     ) {
-      triggerBackgroundCache(playingSong, currentSrc).catch(() => {});
+      backgroundCacheScheduler.schedule(playingSong, currentSrc);
     }
   };
   const onPlay = () => {
@@ -1061,6 +1087,8 @@ export const useAudioPlayer = () => {
         lastToastSongIdRef.current = null;
         rescueInProgressRef.current = false;
         rescuedUrlsRef.current.clear();
+        // 上一首的后台缓存还没发起就换歌了 —— 取消，别给旧歌白拉几十 MB
+        backgroundCacheScheduler.cancel();
         if (waitingTimeoutRef.current) {
           clearTimeout(waitingTimeoutRef.current);
           waitingTimeoutRef.current = null;

@@ -12,6 +12,8 @@ export interface ThemeColors {
 
 // 颜色缓存
 const colorCache = new Map<string, ThemeColors>();
+// 进行中的取色任务（同一封面共享一次解码+采样）
+const inflightColorCache = new Map<string, Promise<ThemeColors>>();
 const CACHE_SIZE_LIMIT = 50;
 
 // 默认颜色方案 - 极夜冷钛极简（Minimalist Pure Titanium & Slate Gray）
@@ -45,32 +47,32 @@ export const lightModeColors: ThemeColors = {
  * 使用优化的算法，采样像素并聚类分析
  */
 export function extractColorsFromImage(imageUrl: string): Promise<ThemeColors> {
-  return new Promise((resolve) => {
-    // 快速过滤空值、默认封面或本地伪协议
-    if (
-      !imageUrl ||
-      typeof imageUrl !== "string" ||
-      !imageUrl.trim() ||
-      imageUrl === "/default-cover.svg" ||
-      imageUrl.startsWith("stored://") ||
-      imageUrl.startsWith("local://")
-    ) {
-      resolve(defaultColors);
-      return;
-    }
+  // 快速过滤空值、默认封面或本地伪协议
+  if (
+    !imageUrl ||
+    typeof imageUrl !== "string" ||
+    !imageUrl.trim() ||
+    imageUrl === "/default-cover.svg" ||
+    imageUrl.startsWith("stored://") ||
+    imageUrl.startsWith("local://")
+  ) {
+    return Promise.resolve(defaultColors);
+  }
 
-    // 检查缓存
-    if (colorCache.has(imageUrl)) {
-      resolve(colorCache.get(imageUrl)!);
-      return;
-    }
+  // 已有结果
+  if (colorCache.has(imageUrl)) return Promise.resolve(colorCache.get(imageUrl)!);
 
-    // 运行环境检查
-    if (typeof window === "undefined" || typeof Image === "undefined") {
-      resolve(defaultColors);
-      return;
-    }
+  // 同一张封面"正在进行中"的取色：切歌瞬间动态主题 / 流体背景 / 页面背景 /
+  // 专辑主题（×2 个挂载点）/ 悬浮光晕会同时打进来。colorCache 只存已 resolved 的值，
+  // 不共享进行中任务的话，每张封面会被并行解码 5 遍、跑 5 轮量化 —— 正落在起播卡顿窗口里。
+  const inflight = inflightColorCache.get(imageUrl);
+  if (inflight) return inflight;
 
+  if (typeof window === "undefined" || typeof Image === "undefined") {
+    return Promise.resolve(defaultColors);
+  }
+
+  const promise = new Promise<ThemeColors>((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
 
@@ -116,6 +118,15 @@ export function extractColorsFromImage(imageUrl: string): Promise<ThemeColors> {
       finish(defaultColors);
     }
   });
+
+  inflightColorCache.set(imageUrl, promise);
+  const settled = () => {
+    // 结果已由 finish 写进 colorCache；这里只摘掉占位，避免失败结果被永久锁死
+    if (inflightColorCache.get(imageUrl) === promise) inflightColorCache.delete(imageUrl);
+  };
+  promise.then(settled, settled);
+
+  return promise;
 }
 
 /**
@@ -235,7 +246,8 @@ function performColorExtraction(img: HTMLImageElement): ThemeColors {
     // 计算文字颜色（根据背景亮度）
     const bgBrightness = (background.r * 299 + background.g * 587 + background.b * 114) / 1000;
     const textColor = bgBrightness > 128 ? "rgb(30, 30, 30)" : "rgb(255, 255, 255)";
-    const textMutedColor = bgBrightness > 128 ? "rgba(30, 30, 30, 0.6)" : "rgba(255, 255, 255, 0.6)";
+    const textMutedColor =
+      bgBrightness > 128 ? "rgba(30, 30, 30, 0.6)" : "rgba(255, 255, 255, 0.6)";
 
     return {
       primary: `rgb(${adjustedPrimary.r}, ${adjustedPrimary.g}, ${adjustedPrimary.b})`,
@@ -402,6 +414,7 @@ function adjustForUI(
  */
 export function clearColorCache(): void {
   colorCache.clear();
+  inflightColorCache.clear();
 }
 
 /**

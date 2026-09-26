@@ -315,20 +315,26 @@ export const Player3D: React.FC = () => {
   const abLoopEnabled = useABLoopStore((state) => state.isEnabled);
   const pointA = useABLoopStore((state) => state.pointA);
   const pointB = useABLoopStore((state) => state.pointB);
-  const { setCurrentView, setIsTransitioning, panels, togglePanel } = useUIStore();
+  // 这三个 store 必须逐字段订阅：写成 `const {...} = useXStore()`（无选择器）
+  // 会订阅整个 state，播放期间 timeupdate 每秒多次写 currentTime 就会
+  // 把这个大组件整体重渲染一遍。动作是稳定引用，只有下面几个**值**会触发重渲染。
+  const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const setIsTransitioning = useUIStore((state) => state.setIsTransitioning);
+  const panels = useUIStore((state) => state.panels);
+  const togglePanel = useUIStore((state) => state.togglePanel);
   const isQueueOpen = Boolean(panels?.shelf3D || panels?.queue);
-  const { isFavorite, toggleFavorite } = useFavoritesStore();
-  const {
-    setIsPlaying,
-    nextSong,
-    prevSong,
-    seekTo,
-    volume,
-    isMuted,
-    toggleMute,
-    setVolume,
-    loopMode,
-  } = useAudioStore();
+  const isFavorite = useFavoritesStore((state) => state.isFavorite);
+  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
+
+  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const nextSong = useAudioStore((state) => state.nextSong);
+  const prevSong = useAudioStore((state) => state.prevSong);
+  const seekTo = useAudioStore((state) => state.seekTo);
+  const volume = useAudioStore((state) => state.volume);
+  const isMuted = useAudioStore((state) => state.isMuted);
+  const toggleMute = useAudioStore((state) => state.toggleMute);
+  const setVolume = useAudioStore((state) => state.setVolume);
+  const loopMode = useAudioStore((state) => state.loopMode);
 
   const [breathingEffectEnabled] = useState(true);
   const [showFullscreenLyrics, setShowFullscreenLyrics] = useState(false);
@@ -566,7 +572,9 @@ export const Player3D: React.FC = () => {
                     onClick={async () => {
                       try {
                         await AudioEngine.getInstance().resume();
-                      } catch {}
+                      } catch {
+                        // 自动播放策略拒绝时仍要切换状态，交给用户手动再点一次
+                      }
                       setIsPlaying(!isPlaying);
                     }}
                     disabled={!currentSong}
