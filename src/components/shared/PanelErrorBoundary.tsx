@@ -7,6 +7,12 @@ interface Props {
   children: ReactNode;
   panelName?: string;
   onClose?: () => void;
+  /**
+   * 崩溃后静默降级（渲染 null），不弹全屏模态。
+   * 用于 toast / 悬浮层这类**非必要** UI：它们挂了不该挡住主界面和播放。
+   * 错误仍会经 componentDidCatch 打到 console，开发面板照常可见。
+   */
+  silent?: boolean;
 }
 
 interface State {
@@ -50,6 +56,9 @@ export class PanelErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      // 非必要 UI 走静默降级：主界面与播放继续可用
+      if (this.props.silent) return null;
+
       return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-8 bg-black/60 backdrop-blur-md">
           <div className="relative w-full max-w-md bg-[#1a1a2e]/90 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl p-8 text-center">

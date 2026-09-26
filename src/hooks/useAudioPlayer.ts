@@ -946,7 +946,7 @@ export const useAudioPlayer = () => {
     return () => {
       activeHookIds.delete(hookId);
     };
-  }, [audioElement, hookId]);
+  }, [audioElement, hookId, handlePlayError]);
 
   // Sync state with shared element whenever it changes
   useEffect(() => {

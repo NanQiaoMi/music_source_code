@@ -89,9 +89,11 @@ export const MusicCardStack: React.FC = () => {
 
     const foundIdx = displaySongs.findIndex((s) => s.id === currentSong.id);
     if (foundIdx >= 0) {
+      // 聚焦到当前曲目属派生态同步，且已被 prevSongIdRef 去重，不会级联渲染
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCenterIndex(foundIdx);
     }
-  }, [currentSong?.id, displaySongs]);
+  }, [currentSong, displaySongs]);
 
   // 切换焦点专辑时防抖同步当前选中的歌曲（延迟 320ms，等切歌弹簧运动完全就绪后再触发背景色彩提取）
   useEffect(() => {
@@ -168,7 +170,9 @@ export const MusicCardStack: React.FC = () => {
               saveCoverToCache(card.id, stored.coverData, stored.coverData).catch(() => {});
               return;
             }
-          } catch {}
+          } catch {
+            // 卡片交互失败不影响其余卡片
+          }
         }
 
         // 3. 尝试全网多源嗅探高清封面
@@ -185,7 +189,9 @@ export const MusicCardStack: React.FC = () => {
               useQueueStore.getState().updateSong(card.id, { cover: onlineCover });
               saveCoverToCache(card.id, onlineCover, onlineCover).catch(() => {});
             }
-          } catch {}
+          } catch {
+            // 卡片交互失败不影响其余卡片
+          }
         }
       });
     }, 800);
@@ -470,9 +476,7 @@ export const MusicCardStack: React.FC = () => {
                       {/* 顺时针物理真实多角度彩虹高光扫光 */}
                       <div
                         className={`absolute inset-0 rounded-full pointer-events-none ${
-                          isPlayingThis
-                            ? "animate-conic-sweep-active"
-                            : "animate-conic-sweep-idle"
+                          isPlayingThis ? "animate-conic-sweep-active" : "animate-conic-sweep-idle"
                         }`}
                         style={{
                           background:

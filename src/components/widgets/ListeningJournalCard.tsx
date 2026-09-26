@@ -10,7 +10,11 @@ export function ListeningJournalCard() {
   const getWeek = useListeningJournalStore((state) => state.getWeek);
   const setSelectedDate = useListeningJournalStore((state) => state.setSelectedDate);
   const openPanel = useUIStore((state) => state.openPanel);
-  const week = useMemo(() => getWeek(), [getWeek, days]);
+  // days 不直接参与计算，但 getWeek 读的是 store，必须靠它触发重算
+  const week = useMemo(() => {
+    void days;
+    return getWeek();
+  }, [getWeek, days]);
   const totalMinutes = week.reduce((sum, day) => sum + day.totalMinutes, 0);
   const activeDays = week.filter((day) => day.totalMinutes > 0).length;
 
@@ -28,9 +32,7 @@ export function ListeningJournalCard() {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">听歌日记</h3>
-            <p className="text-sm text-white/50">
-              本地七天笔记、心情和听歌深度记录。
-            </p>
+            <p className="text-sm text-white/50">本地七天笔记、心情和听歌深度记录。</p>
           </div>
         </div>
         <div className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/55">

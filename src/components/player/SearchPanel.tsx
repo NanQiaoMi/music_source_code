@@ -12,7 +12,6 @@ import {
   User,
   Disc,
   Loader2,
-  Trash2,
   ListPlus,
   Play,
   Plus,
@@ -25,7 +24,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useSleepTimerStore } from "@/store/sleepTimerStore";
 import Image from "next/image";
-import { parseSearchCommand, SEARCH_COMMAND_HINTS } from "@/lib/search/commandRouter";
+import { parseSearchCommand } from "@/lib/search/commandRouter";
 import { executeSearchCommand } from "@/lib/search/commandExecutor";
 import { Settings2, Sliders, Check } from "lucide-react";
 
@@ -58,7 +57,8 @@ const SEARCH_TYPES: { value: SearchType; label: string; icon: typeof Music }[] =
   { value: "album", label: "专辑", icon: Disc },
 ];
 
-const SOURCE_TABS = [
+// 未接线的平台页签配置，_ 前缀标记保留
+const _SOURCE_TABS = [
   { key: "all", label: "全网聚合" },
   { key: "netease", label: "网易云" },
   { key: "qq", label: "QQ 音乐" },
@@ -142,9 +142,9 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     setPage,
     setFilterType,
     setDurationRange,
-    setSourceFilter,
-    clearFilters,
-    clearHistory,
+    setSourceFilter: _setSourceFilter,
+    clearFilters: _clearFilters,
+    clearHistory: _clearHistory,
     addRecentCommand,
     setCommandFeedback,
   } = useSearchStore();
@@ -167,7 +167,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isListening, setIsListening] = useState(false);
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null);
-  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [_isInputFocused, setIsInputFocused] = useState(false);
   const [showSourceQuickToggle, setShowSourceQuickToggle] = useState(false);
 
   const enabledSources = useMemo(() => {
@@ -357,7 +357,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     [search, setQuery, songs]
   );
 
-  const handleHistoryClick = useCallback(
+  const _handleHistoryClick = useCallback(
     (historyQuery: string) => {
       setQuery(historyQuery);
       search(songs);
@@ -407,6 +407,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       playSong,
       prevSong,
       search,
+      setCommandFeedback,
       setIsPlaying,
       setQuery,
       setSleepTimer,
@@ -432,7 +433,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     { label: "长 (>6m)", value: "long", range: { min: 361, max: Number.MAX_SAFE_INTEGER } },
   ];
 
-  const sourceOptions = useMemo(() => {
+  const _sourceOptions = useMemo(() => {
     const sources = Array.from(new Set(songs.map((song) => song.source).filter(Boolean))).sort();
     return ["all", ...sources];
   }, [songs]);
@@ -523,7 +524,10 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                 title={isListening ? "正在聆听..." : "语音搜索"}
               >
                 {isListening ? (
-                  <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 0.5 }}>
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ repeat: Infinity, duration: 0.5 }}
+                  >
                     <Mic className="w-3.5 h-3.5" />
                   </motion.div>
                 ) : (
@@ -631,7 +635,11 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                       className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white/80 focus:outline-none cursor-pointer transition-colors"
                     >
                       {FILTER_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value} className="bg-[#0f111a] text-white">
+                        <option
+                          key={opt.value}
+                          value={opt.value}
+                          className="bg-[#0f111a] text-white"
+                        >
                           {opt.label}
                         </option>
                       ))}
@@ -639,13 +647,19 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                     <select
                       value={selectedDuration}
                       onChange={(e) => {
-                        const option = durationOptions.find((item) => item.value === e.target.value);
+                        const option = durationOptions.find(
+                          (item) => item.value === e.target.value
+                        );
                         setDurationRange(option?.range ?? null);
                       }}
                       className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white/80 focus:outline-none cursor-pointer transition-colors"
                     >
                       {durationOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value} className="bg-[#0f111a] text-white">
+                        <option
+                          key={opt.value}
+                          value={opt.value}
+                          className="bg-[#0f111a] text-white"
+                        >
                           {opt.label}
                         </option>
                       ))}
@@ -694,171 +708,171 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
 
                 {/* Scrollable Results & History Container */}
                 <div className="max-h-[48vh] overflow-y-auto custom-scrollbar flex flex-col p-2.5 gap-2">
-
-                {/* Feedback */}
-                {(voiceFeedback || commandFeedback) && (
-                  <div className="text-[11px] px-1">
-                    {voiceFeedback ? (
-                      <span className="text-yellow-300/90">{voiceFeedback}</span>
-                    ) : (
-                      <span className="text-emerald-300/80">{commandFeedback}</span>
-                    )}
-                  </div>
-                )}
-
-                {/* History and Commands when no query */}
-                {!query && recentSearches.length > 0 && (
-                  <div className="flex flex-col gap-1.5 pt-1">
-                    <div className="flex items-center justify-between text-[11px] text-white/40 px-1">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        最近搜索
-                      </span>
-                      <button
-                        onClick={clearRecentSearches}
-                        className="hover:text-white/70 transition-colors"
-                      >
-                        清空
-                      </button>
+                  {/* Feedback */}
+                  {(voiceFeedback || commandFeedback) && (
+                    <div className="text-[11px] px-1">
+                      {voiceFeedback ? (
+                        <span className="text-yellow-300/90">{voiceFeedback}</span>
+                      ) : (
+                        <span className="text-emerald-300/80">{commandFeedback}</span>
+                      )}
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {recentSearches.map((s, idx) => (
-                        <span
-                          key={idx}
-                          onClick={() => handleRecentSearchClick(s)}
-                          className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 text-white/70 text-xs cursor-pointer flex items-center gap-1 transition-colors"
-                        >
-                          {s}
-                          <X
-                            className="w-3 h-3 hover:text-white"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeRecentSearch(s);
-                            }}
-                          />
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Loading state */}
-                {isSearching && (
-                  <div className="py-6 flex items-center justify-center">
-                    <Loader2 className="w-5 h-5 text-white/50 animate-spin" />
-                  </div>
-                )}
-
-                {/* Empty State */}
-                {query && !isSearching && results.length === 0 && (
-                  <div className="py-5 text-center text-xs text-white/40">
-                    未找到与 “{query}” 相关的音乐
-                  </div>
-                )}
-
-                {/* Results List */}
-                {results.length > 0 && (
-                  <div className="flex flex-col gap-1 pt-1">
-                    <div className="flex items-center justify-between text-[11px] text-white/40 px-1 py-0.5">
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3 text-emerald-400" />
-                        搜索结果 ({totalResults})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handlePlayAllResults}
-                        className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
-                        title="播放全部搜索结果并加入播放列表"
-                      >
-                        <Play className="w-3 h-3 fill-white" />
-                        播放全部
-                      </button>
-                    </div>
-                    <div className="space-y-1">
-                      {results.map((song, idx) => (
-                        <div
-                          key={`${song.source || "src"}-${song.id || "id"}-${idx}`}
-                          onClick={() => handlePlaySong(song)}
-                          className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors group"
-                        >
-                          <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-white/5">
-                            <Image
-                              src={song.cover || DEFAULT_COVER_SRC}
-                              alt={song.title}
-                              fill
-                              className="object-cover"
-                              sizes="36px"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                              <Play className="w-4 h-4 text-white fill-white" />
-                            </div>
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-white truncate">{song.title}</span>
-                              {getSourceBadge(song.source)}
-                            </div>
-                            <div className="text-[11px] text-white/50 truncate mt-0.5">
-                              {song.artist} {song.album ? `• ${song.album}` : ""}
-                            </div>
-                          </div>
-
-                          <div className="text-[11px] text-white/40 font-mono tabular-nums shrink-0 mr-1">
-                            {formatDuration(song.duration)}
-                          </div>
-
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                            <button
-                              onClick={(e) => handleAddNext(e, song)}
-                              className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
-                              title="下一首播放"
-                            >
-                              <ListPlus className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={(e) => handleAddToQueue(e, song)}
-                              className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
-                              title="添加到队列"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Pagination if multiple pages */}
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-center gap-3 pt-2 mt-1 border-t border-white/10">
-                        <button
-                          disabled={page <= 1}
-                          onClick={() => setPage(page - 1)}
-                          className="px-2.5 py-0.5 rounded text-xs bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                        >
-                          上一页
-                        </button>
-                        <span className="text-[11px] text-white/40">
-                          {page} / {totalPages}
+                  {/* History and Commands when no query */}
+                  {!query && recentSearches.length > 0 && (
+                    <div className="flex flex-col gap-1.5 pt-1">
+                      <div className="flex items-center justify-between text-[11px] text-white/40 px-1">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          最近搜索
                         </span>
                         <button
-                          disabled={page >= totalPages}
-                          onClick={() => setPage(page + 1)}
-                          className="px-2.5 py-0.5 rounded text-xs bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          onClick={clearRecentSearches}
+                          className="hover:text-white/70 transition-colors"
                         >
-                          下一页
+                          清空
                         </button>
                       </div>
-                    )}
-                  </div>
-                )}
+                      <div className="flex flex-wrap gap-1.5">
+                        {recentSearches.map((s, idx) => (
+                          <span
+                            key={idx}
+                            onClick={() => handleRecentSearchClick(s)}
+                            className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 text-white/70 text-xs cursor-pointer flex items-center gap-1 transition-colors"
+                          >
+                            {s}
+                            <X
+                              className="w-3 h-3 hover:text-white"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeRecentSearch(s);
+                              }}
+                            />
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Loading state */}
+                  {isSearching && (
+                    <div className="py-6 flex items-center justify-center">
+                      <Loader2 className="w-5 h-5 text-white/50 animate-spin" />
+                    </div>
+                  )}
+
+                  {/* Empty State */}
+                  {query && !isSearching && results.length === 0 && (
+                    <div className="py-5 text-center text-xs text-white/40">
+                      未找到与 “{query}” 相关的音乐
+                    </div>
+                  )}
+
+                  {/* Results List */}
+                  {results.length > 0 && (
+                    <div className="flex flex-col gap-1 pt-1">
+                      <div className="flex items-center justify-between text-[11px] text-white/40 px-1 py-0.5">
+                        <span className="flex items-center gap-1">
+                          <TrendingUp className="w-3 h-3 text-emerald-400" />
+                          搜索结果 ({totalResults})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handlePlayAllResults}
+                          className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
+                          title="播放全部搜索结果并加入播放列表"
+                        >
+                          <Play className="w-3 h-3 fill-white" />
+                          播放全部
+                        </button>
+                      </div>
+                      <div className="space-y-1">
+                        {results.map((song, idx) => (
+                          <div
+                            key={`${song.source || "src"}-${song.id || "id"}-${idx}`}
+                            onClick={() => handlePlaySong(song)}
+                            className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors group"
+                          >
+                            <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-white/5">
+                              <Image
+                                src={song.cover || DEFAULT_COVER_SRC}
+                                alt={song.title}
+                                fill
+                                className="object-cover"
+                                sizes="36px"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <Play className="w-4 h-4 text-white fill-white" />
+                              </div>
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-medium text-white truncate">
+                                  {song.title}
+                                </span>
+                                {getSourceBadge(song.source)}
+                              </div>
+                              <div className="text-[11px] text-white/50 truncate mt-0.5">
+                                {song.artist} {song.album ? `• ${song.album}` : ""}
+                              </div>
+                            </div>
+
+                            <div className="text-[11px] text-white/40 font-mono tabular-nums shrink-0 mr-1">
+                              {formatDuration(song.duration)}
+                            </div>
+
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                              <button
+                                onClick={(e) => handleAddNext(e, song)}
+                                className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+                                title="下一首播放"
+                              >
+                                <ListPlus className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => handleAddToQueue(e, song)}
+                                className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+                                title="添加到队列"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Pagination if multiple pages */}
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-center gap-3 pt-2 mt-1 border-t border-white/10">
+                          <button
+                            disabled={page <= 1}
+                            onClick={() => setPage(page - 1)}
+                            className="px-2.5 py-0.5 rounded text-xs bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          >
+                            上一页
+                          </button>
+                          <span className="text-[11px] text-white/40">
+                            {page} / {totalPages}
+                          </span>
+                          <button
+                            disabled={page >= totalPages}
+                            onClick={() => setPage(page + 1)}
+                            className="px-2.5 py-0.5 rounded text-xs bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          >
+                            下一页
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </motion.div>
-      </div>
-    )}
-  </AnimatePresence>
+            )}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
-
