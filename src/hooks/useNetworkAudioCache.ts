@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   getCachedAudio,
+  getCachedAudioMeta,
   getCacheStats,
   saveCachedAudio,
   deleteCachedAudio,
@@ -15,6 +16,9 @@ import {
 import { Song } from "@/types/song";
 
 export type CacheStatus = "idle" | "caching" | "cached" | "error";
+
+/** 与 useAudioPlayer 挂在 window 上的同名字段对齐（本地声明，避免反向引入造成循环依赖） */
+type LiveSongWindow = Window & { __VIBE_CURRENT_SONG__?: Song | null };
 
 export interface NetworkCacheStats {
   count: number;
@@ -47,7 +51,9 @@ export async function checkIsCached(songId: string, source: string): Promise<boo
   const key = makeCacheKey(songId, source);
   if (cachedStatusMap.has(key)) return cachedStatusMap.get(key)!;
   try {
-    const cached = await getCachedAudio(songId, source);
+    // 必须走 meta 接口：getCachedAudio 会把整段音频二进制反序列化回主线程，
+    // 而这里只需要知道"存不存在"。每次起播都会调用这里。
+    const cached = await getCachedAudioMeta(songId, source);
     const result = cached !== null;
     cachedStatusMap.set(key, result);
     return result;
@@ -61,10 +67,7 @@ export async function checkIsCached(songId: string, source: string): Promise<boo
  * Also updates LRU timestamp.
  * Returns null if not cached.
  */
-export async function getOrCreateBlobUrl(
-  songId: string,
-  source: string
-): Promise<string | null> {
+export async function getOrCreateBlobUrl(songId: string, source: string): Promise<string | null> {
   try {
     const cached = await getCachedAudio(songId, source);
     if (!cached) return null;
@@ -109,13 +112,15 @@ export async function triggerBackgroundCache(song: Song, audioUrl: string): Prom
     });
 
     if (!response.ok) {
-      console.warn(`[NetworkAudioCache] Background cache fetch failed (${response.status}) for:`, song.title);
+      console.warn(
+        `[NetworkAudioCache] Background cache fetch failed (${response.status}) for:`,
+        song.title
+      );
       cachingTasks.delete(key);
       return;
     }
 
-    const contentType =
-      response.headers.get("content-type") || "audio/mpeg";
+    const contentType = response.headers.get("content-type") || "audio/mpeg";
     const fileData = await response.arrayBuffer();
 
     if (!fileData || fileData.byteLength === 0) {
@@ -124,10 +129,15 @@ export async function triggerBackgroundCache(song: Song, audioUrl: string): Prom
       return;
     }
 
-    const currentLiveSong = typeof window !== "undefined" ? (window as any).__VIBE_CURRENT_SONG__ || song : song;
+    const currentLiveSong =
+      typeof window !== "undefined"
+        ? (window as LiveSongWindow).__VIBE_CURRENT_SONG__ || song
+        : song;
     const lyricsToSave = song.lyrics || currentLiveSong?.lyrics || "";
-    const translationLyricsToSave = song.translationLyrics || currentLiveSong?.translationLyrics || "";
-    const coverToSave = (song.cover && song.cover !== "/default-cover.svg") ? song.cover : currentLiveSong?.cover;
+    const translationLyricsToSave =
+      song.translationLyrics || currentLiveSong?.translationLyrics || "";
+    const coverToSave =
+      song.cover && song.cover !== "/default-cover.svg" ? song.cover : currentLiveSong?.cover;
 
     const cached: CachedNetworkAudio = {
       cacheKey: key,
@@ -178,6 +188,9 @@ export function useNetworkAudioCache() {
   }, []);
 
   useEffect(() => {
+    // refreshStats 是 async：先 await getCacheStats() 才 setStats，并非 effect 内同步写状态，
+    // 规则的静态判断穿透不了 await，这里显式豁免
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshStats();
   }, [refreshStats]);
 
@@ -185,15 +198,12 @@ export function useNetworkAudioCache() {
     return isCachedSync(songId, source);
   }, []);
 
-  const getCacheStatus = useCallback(
-    (songId: string, source: string): CacheStatus => {
-      const key = makeCacheKey(songId, source);
-      if (cachingTasks.get(key) === true) return "caching";
-      if (cachedStatusMap.get(key) === true) return "cached";
-      return "idle";
-    },
-    []
-  );
+  const getCacheStatus = useCallback((songId: string, source: string): CacheStatus => {
+    const key = makeCacheKey(songId, source);
+    if (cachingTasks.get(key) === true) return "caching";
+    if (cachedStatusMap.get(key) === true) return "cached";
+    return "idle";
+  }, []);
 
   const deleteSongCache = useCallback(
     async (songId: string, source: string) => {

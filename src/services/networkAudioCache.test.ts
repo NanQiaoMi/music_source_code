@@ -1,4 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// IDB mock 天然是对 IDBRequest/IDBCursor 的部分实现，逐个补全类型只会掩盖被测行为
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   makeCacheKey,
   saveCachedAudio,
@@ -9,23 +11,34 @@ import {
   deleteCachedAudio,
   clearAllNetworkCache,
   updateLastPlayed,
-  createBlobUrlFromCache,
+  pruneCacheToLimit,
   CachedNetworkAudio,
 } from "./networkAudioCache";
 
-// Setup In-Memory IndexedDB Mock for Node/jsdom test runner
-function setupMockIndexedDB() {
-  const storeMap = new Map<string, any>();
+// 暴露给用例：用来模拟"meta store 尚未回填 / 升级失败"的降级路径
+let idbStores: { audio: Map<string, any>; meta: Map<string, any> } | null = null;
 
-  const mockStore = {
+// Setup In-Memory IndexedDB Mock for Node/jsdom test runner
+// 按 store 名分桶：networkAudio（含 fileData）与 networkAudioMeta 必须是两个独立的 Map，
+// 否则 put 会互相覆盖 —— 全量读与元数据读就测不出区别了。
+function setupMockIndexedDB() {
+  const audioMap = new Map<string, any>();
+  const metaMap = new Map<string, any>();
+  const storesByName: Record<string, Map<string, any>> = {
+    networkAudio: audioMap,
+    networkAudioMeta: metaMap,
+  };
+  idbStores = { audio: audioMap, meta: metaMap };
+
+  const makeStore = (map: Map<string, any>) => ({
     put: (item: any) => {
-      storeMap.set(item.cacheKey, item);
+      map.set(item.cacheKey, item);
       const req: any = { onsuccess: null, onerror: null };
       setTimeout(() => req.onsuccess?.({ target: { result: item.cacheKey } }), 0);
       return req;
     },
     get: (key: string) => {
-      const item = storeMap.get(key);
+      const item = map.get(key);
       const req: any = { onsuccess: null, onerror: null, result: item };
       setTimeout(() => {
         req.result = item;
@@ -34,13 +47,21 @@ function setupMockIndexedDB() {
       return req;
     },
     delete: (key: string) => {
-      storeMap.delete(key);
+      map.delete(key);
       const req: any = { onsuccess: null, onerror: null };
       setTimeout(() => req.onsuccess?.({ target: { result: undefined } }), 0);
       return req;
     },
+    count: () => {
+      const req: any = { onsuccess: null, onerror: null };
+      setTimeout(() => {
+        req.result = map.size;
+        req.onsuccess?.({ target: { result: map.size } });
+      }, 0);
+      return req;
+    },
     getAll: () => {
-      const items = Array.from(storeMap.values());
+      const items = Array.from(map.values());
       const req: any = { onsuccess: null, onerror: null, result: items };
       setTimeout(() => {
         req.result = items;
@@ -48,15 +69,35 @@ function setupMockIndexedDB() {
       }, 0);
       return req;
     },
+    openCursor: () => {
+      const items = Array.from(map.values());
+      let i = 0;
+      const req: any = { onsuccess: null, onerror: null };
+      const step = () => {
+        req.result =
+          i < items.length
+            ? {
+                value: items[i],
+                continue: () => {
+                  i++;
+                  setTimeout(step, 0);
+                },
+              }
+            : null;
+        req.onsuccess?.({ target: { result: req.result } });
+      };
+      setTimeout(step, 0);
+      return req;
+    },
     clear: () => {
-      storeMap.clear();
+      map.clear();
       const req: any = { onsuccess: null, onerror: null };
       setTimeout(() => req.onsuccess?.({ target: { result: undefined } }), 0);
       return req;
     },
     index: (name: string) => ({
       getAll: () => {
-        const items = Array.from(storeMap.values()).sort((a, b) => (a[name] || 0) - (b[name] || 0));
+        const items = Array.from(map.values()).sort((a, b) => (a[name] || 0) - (b[name] || 0));
         const req: any = { onsuccess: null, onerror: null, result: items };
         setTimeout(() => {
           req.result = items;
@@ -65,13 +106,23 @@ function setupMockIndexedDB() {
         return req;
       },
     }),
-  };
+  });
 
   const mockDB: any = {
-    objectStoreNames: { contains: () => true },
-    transaction: () => ({
-      objectStore: () => mockStore,
-    }),
+    objectStoreNames: { contains: (name: string) => name in storesByName },
+    // 业务代码依赖 tx.oncomplete 收尾（原 mock 没有，会永远不 resolve）
+    transaction: (names: string | string[]) => {
+      const list = Array.isArray(names) ? names : [names];
+      const stores = new Map<string, any>();
+      for (const n of list) {
+        stores.set(n, makeStore(storesByName[n] ?? audioMap));
+      }
+      const tx: any = { oncomplete: null, onerror: null, onabort: null, error: null };
+      tx.objectStore = (name: string) =>
+        stores.get(name) ?? makeStore(storesByName[name] ?? audioMap);
+      setTimeout(() => tx.oncomplete?.(), 0);
+      return tx;
+    },
   };
 
   const mockFactory = {
@@ -250,7 +301,10 @@ describe("NetworkAudioCache Service", () => {
 
     await updateLastPlayed("netease:t1");
 
-    const updated = await getCachedAudio("t1", "netease");
+    // LRU 时间戳现在只写 networkAudioMeta（读取方也只看它）。
+    // networkAudio 里同名字段是历史遗留、不再维护 —— 否则每次命中缓存播放
+    // 都得把整段音频读出来再写回去。
+    const updated = await getCachedAudioMeta("t1", "netease");
     expect(updated?.lastPlayedAt).toBeGreaterThan(initialTime);
   });
 
@@ -283,5 +337,66 @@ describe("NetworkAudioCache Service", () => {
     expect(makeCacheKey("12345", "qq")).toBe("qq:12345");
     expect(makeCacheKey("12345", undefined)).toBe("netease:12345");
     expect(makeCacheKey("12345", "")).toBe("netease:12345");
+  });
+
+  it("meta 记录缺失时仍能返回元数据，且不带 fileData", async () => {
+    const buf = new Uint8Array(64).buffer;
+    await saveCachedAudio({
+      cacheKey: "netease:fb1",
+      songId: "fb1",
+      source: "netease",
+      title: "降级读取",
+      artist: "Tester",
+      duration: 100,
+      fileData: buf,
+      fileType: "audio/mpeg",
+      originalUrl: "",
+      cachedAt: Date.now(),
+      lastPlayedAt: Date.now(),
+      fileSize: 64,
+    });
+
+    // 模拟升级没跑成 / 回填尚未完成：meta store 里没有这条
+    idbStores!.meta.clear();
+
+    const meta = await getCachedAudioMeta("fb1", "netease");
+    expect(meta).not.toBeNull();
+    expect(meta?.title).toBe("降级读取");
+    expect(meta?.fileSize).toBe(64);
+    expect((meta as any).fileData).toBeUndefined();
+  });
+
+  it("超过条数上限时按 lastPlayedAt 淘汰最旧的，并同时清掉两个 store", async () => {
+    const buf = new Uint8Array(8).buffer;
+    const base = 1_000_000;
+    // MAX_CACHE_COUNT = 200，存 201 条后应当淘汰 1 条最旧的
+    for (let i = 0; i < 201; i++) {
+      await saveCachedAudio({
+        cacheKey: `netease:prune-${i}`,
+        songId: `prune-${i}`,
+        source: "netease",
+        title: `Song ${i}`,
+        artist: "Tester",
+        duration: 100,
+        fileData: buf,
+        fileType: "audio/mpeg",
+        originalUrl: "",
+        cachedAt: base + i,
+        lastPlayedAt: base + i,
+        fileSize: 8,
+      });
+    }
+
+    await pruneCacheToLimit();
+
+    const stats = await getCacheStats();
+    expect(stats.count).toBe(200);
+
+    // lastPlayedAt 最小的那条应被删掉，且 networkAudio / networkAudioMeta 都要清干净
+    expect(await getCachedAudio("prune-0", "netease")).toBeNull();
+    expect(idbStores!.audio.has("netease:prune-0")).toBe(false);
+    expect(idbStores!.meta.has("netease:prune-0")).toBe(false);
+    // 最新的仍在
+    expect(idbStores!.meta.has("netease:prune-200")).toBe(true);
   });
 });

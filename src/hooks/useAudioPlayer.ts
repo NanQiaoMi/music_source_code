@@ -4,6 +4,7 @@ import { useEffect, useCallback, useState } from "react";
 import { useAudioStore, registerAudioSeekHandler } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useEQStore } from "@/store/eqStore";
+import type { Song } from "@/types/song";
 import {
   getStoredMusic,
   createBlobUrlFromStoredMusic,
@@ -21,7 +22,6 @@ import { deriveJournalMood } from "@/lib/journal/listeningJournal";
 import {
   MISSING_AUDIO_SOURCE_MESSAGE,
   createAudioElementLoadError,
-  hasPlayableAudioSource,
   logHandledAudioWarning,
 } from "@/lib/audio/playableAudioSource";
 import { multiSourceResolver } from "@/services/MultiSourceResolver";
@@ -52,9 +52,27 @@ export const rescueInProgressRef: { current: boolean } = { current: false };
 export const rescuedUrlsRef: { current: Set<string> } = { current: new Set() };
 export const songRescueAttemptsRef: { current: Map<string, number> } = { current: new Map() };
 export const failedUrlsRef: { current: Set<string> } = { current: new Set() };
-export const waitingTimeoutRef: { current: ReturnType<typeof setTimeout> | null } = { current: null };
+export const waitingTimeoutRef: { current: ReturnType<typeof setTimeout> | null } = {
+  current: null,
+};
 export const stutterRetryCountRef: { current: number } = { current: 0 };
-const playbackRequestIdRef: { current: number } = { current: 0 };
+// 起播缓冲保护窗口：新 src 加载后的这段时间内，onWaiting 不做自 seek。
+// 自 seek（audio.currentTime = cur）会中止在途的 Range 请求并重新发起，
+// 把已经缓冲的内容清零，表现为"卡 2 秒 → 重启 → 再卡 2 秒"。
+const INITIAL_BUFFERING_GRACE_MS = 8000;
+const stallGraceUntilRef: { current: number } = { current: 0 };
+
+function beginInitialBufferingWindow(): void {
+  stallGraceUntilRef.current = Date.now() + INITIAL_BUFFERING_GRACE_MS;
+}
+// 未接线的请求序号占位（保留以备切歌竞态打断使用），_ 前缀以示"已知未使用"
+const _playbackRequestIdRef: { current: number } = { current: 0 };
+// handlePlayError 抢救成功后会重试 play()，其失败要回到自身。
+// 直接写 handlePlayError 会构成"在声明前访问"（const 的 TDZ），运行时靠闭包侥幸生效；
+// 改为经由先声明的句柄转发，在 effect 中赋值（渲染期不允许修改 ref）。
+const handlePlayErrorSelfRef: {
+  current: ((error: PlaybackErrorLike) => void) | null;
+} = { current: null };
 const loadingInProgressSongIdRef: { current: string | null } = { current: null };
 const activeHookIds = new Set<string>();
 
@@ -82,6 +100,8 @@ type PlaybackErrorLike = {
 
 type AudioWindow = Window & {
   audioElementRef?: typeof audioElementRef;
+  /** 播放中曲目的全局镜像，供网络缓存回写歌词/封面时读取 */
+  __VIBE_CURRENT_SONG__?: Song | null;
 };
 
 function ensureAudioElements(): HTMLAudioElement | null {
@@ -236,19 +256,32 @@ const attachListeners = (
   detachListeners(audio);
 
   const {
-    setCurrentTime,
-    setDuration,
+    // 这两个只在组件外层的 effect deps 里用到，attachListeners 内部并未使用，_ 前缀标记
+    setCurrentTime: _setCurrentTime,
+    setDuration: _setDuration,
     setIsLoading,
     setError,
     nextSong,
     loopMode: _loopMode,
   } = useAudioStore.getState();
 
+  // timeupdate 在部分浏览器上可达每秒 10 次，而 audio-store / player-store 的 persist
+  // 会在**每次 setState** 时同步展开整个 state、JSON.stringify 并写 localStorage，
+  // 两个 store 叠加即每秒 20 次序列化 + 写盘 —— 这是"出声之后控件迟钝"的来源之一。
+  // 进度条按 4Hz 刷新已足够细腻；AB 循环与预取判断读的是 audio.currentTime 原值，
+  // 不受这里节流影响，暂停/结束时还会强制补写一次。
+  const TIMEUPDATE_THROTTLE_MS = 250;
+  let lastTimeUpdateWriteAt = 0;
+
   const onTimeUpdate = () => {
     const t = audio.currentTime;
     if (Number.isFinite(t)) {
-      useAudioStore.setState({ currentTime: t });
-      usePlayerStore.setState({ currentTime: t });
+      const now = Date.now();
+      if (now - lastTimeUpdateWriteAt >= TIMEUPDATE_THROTTLE_MS) {
+        lastTimeUpdateWriteAt = now;
+        useAudioStore.setState({ currentTime: t });
+        usePlayerStore.setState({ currentTime: t });
+      }
     }
 
     const abState = useABLoopStore.getState();
@@ -375,6 +408,9 @@ const attachListeners = (
     }
   };
   const onLoadStart = () => {
+    // 每次新资源开始加载都重开启播缓冲保护窗口（设置 src 会隐式触发 load 算法，
+    // 所以这里能覆盖主路径、试听抢救、onError 抢救与交叉淡入四条装载路径）
+    beginInitialBufferingWindow();
     useAudioStore.getState().setIsLoading(true);
     usePlayerStore.getState().setIsLoading(true);
   };
@@ -402,17 +438,24 @@ const attachListeners = (
       clearTimeout(waitingTimeoutRef.current);
     }
 
+    // 起播缓冲期内等更久再介入，并且不自 seek —— 否则会把在途请求打断、缓冲清零
+    const inInitialBuffering = Date.now() < stallGraceUntilRef.current;
+    const delay = inInitialBuffering ? 6000 : 2000;
+
     waitingTimeoutRef.current = setTimeout(() => {
       waitingTimeoutRef.current = null;
       if (stutterRetryCountRef.current < 2) {
         stutterRetryCountRef.current += 1;
         console.warn(
-          `[useAudioPlayer] Stutter detected (waiting > 2.0s), executing soft resume #${stutterRetryCountRef.current}`
+          `[useAudioPlayer] Stutter detected (waiting > ${(delay / 1000).toFixed(1)}s` +
+            `${inInitialBuffering ? ", 起播缓冲期" : ""}), executing soft resume #${stutterRetryCountRef.current}`
         );
         try {
-          const cur = audio.currentTime;
-          if (Number.isFinite(cur)) {
-            audio.currentTime = cur;
+          if (!inInitialBuffering) {
+            const cur = audio.currentTime;
+            if (Number.isFinite(cur)) {
+              audio.currentTime = cur;
+            }
           }
           if (isPlayingRef.current || !audio.paused) {
             audio.play().catch(handlePlayError);
@@ -423,7 +466,7 @@ const attachListeners = (
       } else {
         console.warn("[useAudioPlayer] Stutter recovery limit reached (max 2 retries per stall)");
       }
-    }, 2000);
+    }, delay);
   };
   const onPlaying = () => {
     if (waitingTimeoutRef.current) {
@@ -788,7 +831,7 @@ export const useAudioPlayer = () => {
               currentSong.source = rescued.source;
               useAudioStore.setState({ error: null });
               audio.load();
-              audio.play().catch(handlePlayError);
+              audio.play().catch((e) => handlePlayErrorSelfRef.current?.(e));
               return;
             }
           }
@@ -852,6 +895,10 @@ export const useAudioPlayer = () => {
     [setError, setIsPlaying, setIsLoading]
   );
 
+  useEffect(() => {
+    handlePlayErrorSelfRef.current = handlePlayError;
+  }, [handlePlayError]);
+
   // Initialization Effect
   useEffect(() => {
     activeHookIds.add(hookId);
@@ -883,12 +930,16 @@ export const useAudioPlayer = () => {
               .catch(() => {});
             activeAudio.play().catch(handlePlayError);
           }
-        } catch {}
+        } catch {
+          // 恢复播放失败时保持当前进度，交给上层错误处理
+        }
       }
       if (secondaryElementRef.current) {
         try {
           secondaryElementRef.current.currentTime = time;
-        } catch {}
+        } catch {
+          // 交叉淡入期间副元素可能尚未加载完元数据，seek 失败可忽略
+        }
       }
     });
 
@@ -951,7 +1002,7 @@ export const useAudioPlayer = () => {
       if (!audio || !currentSong) return;
 
       if (typeof window !== "undefined") {
-        (window as any).__VIBE_CURRENT_SONG__ = currentSong;
+        (window as AudioWindow).__VIBE_CURRENT_SONG__ = currentSong;
       }
 
       const songId = currentSong.id;
@@ -1202,7 +1253,9 @@ export const useAudioPlayer = () => {
                     offlineRec.translationLyrics = lrcData.translationLyrics;
                     await saveOfflineAudio(offlineRec);
                   }
-                } catch {}
+                } catch {
+                  // 离线记录回写失败不影响本次播放，歌词已写入 store
+                }
               }
             })
             .catch(() => {});
@@ -1233,7 +1286,9 @@ export const useAudioPlayer = () => {
                     offlineRec.cover = coverUrl;
                     await saveOfflineAudio(offlineRec);
                   }
-                } catch {}
+                } catch {
+                  // 离线记录回写失败不影响本次播放，封面已写入 store
+                }
               }
             })
             .catch(() => {});
