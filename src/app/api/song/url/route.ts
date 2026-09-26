@@ -1,5 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neteaseWeApiRequest } from "@/lib/netease/request";
+import { firstUsable } from "@/lib/resolve/urlRace";
+
+/** 官方通道与跨源嗅探共用的返回形状，便于并发后按优先级取用 */
+interface StreamCandidate {
+  url: string;
+  level: string;
+  br: number;
+  source: string;
+}
+
+interface KuwoSearchItem {
+  SONGNAME?: string;
+  NAME?: string;
+  ARTIST?: string;
+  AARTIST?: string;
+  DC_TARGETID?: string;
+  MUSICRID?: string;
+}
+
+interface KuwoSearchResponse {
+  abslist?: KuwoSearchItem[];
+}
 
 function normalizeString(str: string): string {
   if (!str) return "";
@@ -7,16 +29,44 @@ function normalizeString(str: string): string {
     .toLowerCase()
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
-    .replace(/[\(\[\{（【][^\)\]\}）】]*?[\)\]\}）】]/g, "")
+    .replace(/[([{（【][^)\]})】]*?[)\]})】]/g, "")
     .replace(/[^\p{L}\p{N}]/gu, "")
     .trim();
 }
 
 const NOISE_KEYWORDS = [
-  "伴奏", "instrumental", "inst", "片段", "dj", "慢摇", "串烧",
-  "电音版", "变调", "变速", "加速", "减速", "铃声", "remix", "cover",
-  "翻唱", "八音盒", "纯音乐", "试听", "重低音", "高燃", "bounce", "phonk",
-  "网友改编", "小提琴", "钢琴版", "萨克斯", "古筝", "吉他版", "气氛版", "氛围版", "搞笑版"
+  "伴奏",
+  "instrumental",
+  "inst",
+  "片段",
+  "dj",
+  "慢摇",
+  "串烧",
+  "电音版",
+  "变调",
+  "变速",
+  "加速",
+  "减速",
+  "铃声",
+  "remix",
+  "cover",
+  "翻唱",
+  "八音盒",
+  "纯音乐",
+  "试听",
+  "重低音",
+  "高燃",
+  "bounce",
+  "phonk",
+  "网友改编",
+  "小提琴",
+  "钢琴版",
+  "萨克斯",
+  "古筝",
+  "吉他版",
+  "气氛版",
+  "氛围版",
+  "搞笑版",
 ];
 
 function isNoiseCandidate(candidateTitle: string, targetTitle: string): boolean {
@@ -49,7 +99,11 @@ function calculateMatchScore(
   if (!normTargetTitle || !normCandTitle) return 0;
 
   // 杜绝拼接串烧
-  if (!targetTitle.includes("+") && !targetTitle.includes("＋") && (candidateTitle.includes("+") || candidateTitle.includes("＋"))) {
+  if (
+    !targetTitle.includes("+") &&
+    !targetTitle.includes("＋") &&
+    (candidateTitle.includes("+") || candidateTitle.includes("＋"))
+  ) {
     return -100;
   }
 
@@ -63,7 +117,10 @@ function calculateMatchScore(
   // 1. 歌名匹配
   if (normTargetTitle === normCandTitle) {
     score += 80;
-  } else if (normCandTitle.startsWith(normTargetTitle) || normTargetTitle.startsWith(normCandTitle)) {
+  } else if (
+    normCandTitle.startsWith(normTargetTitle) ||
+    normTargetTitle.startsWith(normCandTitle)
+  ) {
     score += 45;
   } else if (normCandTitle.includes(normTargetTitle) || normTargetTitle.includes(normCandTitle)) {
     score += 25;
@@ -75,13 +132,18 @@ function calculateMatchScore(
   if (normTargetArtist) {
     if (normTargetArtist === normCandArtist) {
       score += 50;
-    } else if (normCandArtist.includes(normTargetArtist) || normTargetArtist.includes(normCandArtist)) {
+    } else if (
+      normCandArtist.includes(normTargetArtist) ||
+      normTargetArtist.includes(normCandArtist)
+    ) {
       score += 35;
     } else if (normCandTitle.includes(normTargetArtist)) {
       score += 30; // 标题内嵌歌手名（如 "海阔天空（BEYOND）"）
     } else if (
-      (normTargetArtist.includes("beyond") && (normCandArtist.includes("黄家驹") || normCandTitle.includes("黄家驹"))) ||
-      (normTargetArtist.includes("黄家驹") && (normCandArtist.includes("beyond") || normCandTitle.includes("beyond")))
+      (normTargetArtist.includes("beyond") &&
+        (normCandArtist.includes("黄家驹") || normCandTitle.includes("黄家驹"))) ||
+      (normTargetArtist.includes("黄家驹") &&
+        (normCandArtist.includes("beyond") || normCandTitle.includes("beyond")))
     ) {
       score += 40; // 传奇乐队主唱别名关联匹配
     } else if (normTargetArtist === "未知歌手" || normCandArtist === "未知歌手") {
@@ -112,7 +174,10 @@ const ARTIST_ALIASES: Record<string, string[]> = {
 /**
  * 跨源智能匹配高可用母带音频流 (严格过滤噪音与翻唱，支持双层降级搜索与别名嗅探)
  */
-async function resolveCrossSourceAudio(title: string, artist: string): Promise<{ url: string; source: string } | null> {
+async function resolveCrossSourceAudio(
+  title: string,
+  artist: string
+): Promise<{ url: string; source: string } | null> {
   if (!title || !title.trim()) return null;
 
   const t = title.trim();
@@ -136,51 +201,63 @@ async function resolveCrossSourceAudio(title: string, artist: string): Promise<{
     }
   }
 
-  for (const query of Array.from(searchQueries)) {
+  // 并发发起每个查询变体。旧实现是串行 for：单条最多 搜索 3000ms + 转链 2500ms，
+  // 3~5 条串起来远超客户端 4000ms 的总预算，实际只有第一条有机会跑完、
+  // 一旦第一条打分不够后面全部来不及执行。
+  // calculateMatchScore 在歌手不匹配时直接返回 0（到不了 70 分门槛），
+  // 所以并发只是提升召回速度，并不会把别人的翻唱顶上来。
+  return firstUsable(Array.from(searchQueries).map((query) => tryKuwoQuery(title, artist, query)));
+}
+
+/** 单个查询变体：酷我搜索 → 打分选 rid → 转链。永不 reject。 */
+async function tryKuwoQuery(
+  title: string,
+  artist: string,
+  query: string
+): Promise<{ url: string; source: string } | null> {
+  try {
+    const kuwoSearch = `http://search.kuwo.cn/r.s?client=kt&all=${encodeURIComponent(query)}&pn=0&rn=30&uid=794766028&ver=kwplayer_ar_9.2.2.1&vipver=1&show_copyright_off=1&newver=1&ft=music&cluster=0&strategy=2012&encoding=utf8&rformat=json`;
+    const kwRes = await fetch(kuwoSearch, { signal: AbortSignal.timeout(3000) });
+    if (!kwRes.ok) return null;
+
+    const text = await kwRes.text();
+    const clean = text.replace(/&nbsp;/g, " ").replace(/'/g, '"');
+    let data: KuwoSearchResponse | null = null;
     try {
-      const kuwoSearch = `http://search.kuwo.cn/r.s?client=kt&all=${encodeURIComponent(query)}&pn=0&rn=30&uid=794766028&ver=kwplayer_ar_9.2.2.1&vipver=1&show_copyright_off=1&newver=1&ft=music&cluster=0&strategy=2012&encoding=utf8&rformat=json`;
-      const kwRes = await fetch(kuwoSearch, { signal: AbortSignal.timeout(3000) });
-      if (kwRes.ok) {
-        const text = await kwRes.text();
-        const clean = text.replace(/&nbsp;/g, " ").replace(/'/g, '"');
-        let data: any = null;
-        try {
-          data = JSON.parse(clean);
-        } catch {
-          data = null;
-        }
-        const list = data?.abslist || [];
-
-        let bestRid = "";
-        let highestScore = 0;
-
-        for (const item of list) {
-          const songName = item.SONGNAME || item.NAME || "";
-          const artistName = item.ARTIST || item.AARTIST || "";
-          const score = calculateMatchScore(title, artist, songName, artistName);
-          if (score > highestScore && score >= 70) {
-            highestScore = score;
-            bestRid = String(item.DC_TARGETID || item.MUSICRID || "").replace("MUSIC_", "");
-          }
-        }
-
-        if (bestRid) {
-          const streamUrlReq = `http://antiserver.kuwo.cn/anti.s?type=convert_url&rid=${bestRid}&format=mp3&response=url`;
-          const streamRes = await fetch(streamUrlReq, { signal: AbortSignal.timeout(2500) });
-          if (streamRes.ok) {
-            const streamUrl = (await streamRes.text()).trim();
-            if (streamUrl && streamUrl.startsWith("http")) {
-              return { url: streamUrl, source: "kuwo" };
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("[resolveCrossSourceAudio] Kuwo search error for:", query, e);
+      data = JSON.parse(clean);
+    } catch {
+      data = null;
     }
-  }
+    const list = data?.abslist || [];
 
-  return null;
+    let bestRid = "";
+    let highestScore = 0;
+
+    for (const item of list) {
+      const songName = item.SONGNAME || item.NAME || "";
+      const artistName = item.ARTIST || item.AARTIST || "";
+      const score = calculateMatchScore(title, artist, songName, artistName);
+      if (score > highestScore && score >= 70) {
+        highestScore = score;
+        bestRid = String(item.DC_TARGETID || item.MUSICRID || "").replace("MUSIC_", "");
+      }
+    }
+
+    if (!bestRid) return null;
+
+    const streamUrlReq = `http://antiserver.kuwo.cn/anti.s?type=convert_url&rid=${bestRid}&format=mp3&response=url`;
+    const streamRes = await fetch(streamUrlReq, { signal: AbortSignal.timeout(2500) });
+    if (!streamRes.ok) return null;
+
+    const streamUrl = (await streamRes.text()).trim();
+    if (streamUrl && streamUrl.startsWith("http")) {
+      return { url: streamUrl, source: "kuwo" };
+    }
+    return null;
+  } catch (e) {
+    console.warn("[resolveCrossSourceAudio] Kuwo search error for:", query, e);
+    return null;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -193,6 +270,55 @@ export async function GET(request: NextRequest) {
   const numericId = id.replace(/^[a-zA-Z_-]+/, "");
   const effectiveId = numericId || id;
 
+  // 官方通道与跨源嗅探**并发**启动，但按优先级接受（官方优先）。
+  // 旧实现是官方通道跑完才轮到跨源嗅探：网易云外链 HEAD 最多 3000ms，
+  // 而客户端给整条 /api/song/url 的预算只有 4000ms —— 跨源嗅探几乎永远
+  // 抢不到足够时间就被 abort，等于这条兜底在网易云路径上是失效的。
+  const officialPromise = resolveOfficialStream({
+    id,
+    effectiveId,
+    source,
+    request,
+  });
+
+  const crossPromise: Promise<StreamCandidate | null> | null = title
+    ? resolveCrossSourceAudio(title, artist).then((r) =>
+        r ? { url: r.url, level: "lossless", br: 320000, source: r.source } : null
+      )
+    : null;
+
+  // 两条分支的 fetch 都已发出，这里只是**按优先级依次接受**：
+  // 因为它们本来就在并发跑，顺序 await 的总耗时接近 max 而不是 sum。
+  // 优先级必须保持"官方 > 跨源"，与旧实现一致（跨源结果是跨平台转链，
+  // 不如官方通道可靠，不能因为更快就抢在前面）。
+  const officialHit = await officialPromise;
+  if (officialHit?.url) {
+    return NextResponse.json({ ...officialHit, code: 200 });
+  }
+
+  const crossHit = await crossPromise;
+  if (crossHit?.url) {
+    return NextResponse.json({ ...crossHit, code: 200 });
+  }
+
+  return NextResponse.json({ url: "", code: 404, message: "Song stream not found" });
+}
+
+interface OfficialStreamQuery {
+  id: string;
+  effectiveId: string;
+  source: string;
+  request: NextRequest;
+}
+
+/**
+ * 官方通道：酷我直连转链 + 网易云 WeAPI / 外链 CDN 校验。
+ * 顺序与旧实现一致（段内仍是串行、官方结果优先），只是不再自己去跑跨源嗅探
+ * —— 那部分已提到 GET 里与本函数并发。
+ */
+async function resolveOfficialStream(q: OfficialStreamQuery): Promise<StreamCandidate | null> {
+  const { id, effectiveId, source, request } = q;
+
   // 1. 酷我专区 (仅在明确指定 kuwo 或以 MUSIC_ 开头时调用)
   if (source === "kuwo" || source === "kw" || id.startsWith("MUSIC_") || id.startsWith("kw_")) {
     const kuwoCookie = request.headers.get("x-kuwo-cookie") || "";
@@ -201,33 +327,19 @@ export async function GET(request: NextRequest) {
         const rid = id.replace(/^(MUSIC_|kw_)/, "");
         const directRes = await fetch(
           `http://antiserver.kuwo.cn/anti.s?type=convert_url&rid=${rid}&format=mp3&response=url`,
-          { signal: AbortSignal.timeout(3000), headers: kuwoCookie ? { Cookie: kuwoCookie } : undefined }
+          {
+            signal: AbortSignal.timeout(3000),
+            headers: kuwoCookie ? { Cookie: kuwoCookie } : undefined,
+          }
         );
         if (directRes.ok) {
           const streamUrl = (await directRes.text()).trim();
           if (streamUrl && streamUrl.startsWith("http")) {
-            return NextResponse.json({
-              url: streamUrl,
-              level: "lossless",
-              br: 320000,
-              source: "kuwo",
-              code: 200,
-            });
+            return { url: streamUrl, level: "lossless", br: 320000, source: "kuwo" };
           }
         }
-      } catch {}
-    }
-
-    if (title) {
-      const kuwoRes = await resolveCrossSourceAudio(title, artist);
-      if (kuwoRes?.url) {
-        return NextResponse.json({
-          url: kuwoRes.url,
-          level: "lossless",
-          br: 320000,
-          source: "kuwo",
-          code: 200,
-        });
+      } catch {
+        // 酷我直连转链失败时交给并发的跨源嗅探分支
       }
     }
   }
@@ -250,20 +362,29 @@ export async function GET(request: NextRequest) {
         );
         const songData = weRes.body?.data?.[0];
         const isTrial =
-          Boolean(songData?.freeTrialInfo && (songData.freeTrialInfo.start > 0 || songData.freeTrialInfo.end > 0)) ||
+          Boolean(
+            songData?.freeTrialInfo &&
+            (songData.freeTrialInfo.start > 0 || songData.freeTrialInfo.end > 0)
+          ) ||
           Boolean(songData?.fee === 1 && (!neteaseCookie || neteaseCookie.length < 10)) ||
           Boolean(songData?.time && songData.time <= 95000);
 
-        if (songData?.url && songData.url.startsWith("http") && (songData.code === 200 || !songData.code) && !isTrial) {
-          return NextResponse.json({
+        if (
+          songData?.url &&
+          songData.url.startsWith("http") &&
+          (songData.code === 200 || !songData.code) &&
+          !isTrial
+        ) {
+          return {
             url: songData.url,
             level: songData.level || "standard",
             br: songData.br || 320000,
             source: "netease",
-            code: 200,
-          });
+          };
         }
-      } catch {}
+      } catch {
+        // WeAPI 失败或只给试听时继续走 2.2 外链 CDN 校验
+      }
     }
 
     // 2.2 网易云官方外链 CDN 校验
@@ -282,32 +403,17 @@ export async function GET(request: NextRequest) {
         });
 
         const location = headCheck.headers.get("location");
-        if (headCheck.status === 200 || (location && !location.includes("/404") && location.startsWith("http"))) {
-          return NextResponse.json({
-            url: location || directUrl,
-            level: "high",
-            br: 320000,
-            source: "netease",
-            code: 200,
-          });
+        if (
+          headCheck.status === 200 ||
+          (location && !location.includes("/404") && location.startsWith("http"))
+        ) {
+          return { url: location || directUrl, level: "high", br: 320000, source: "netease" };
         }
-      } catch {}
+      } catch {
+        // 外链 HEAD 校验失败时交给并发的跨源嗅探分支
+      }
     }
   }
 
-  // 3. 通用高可用公网音源嗅探 (酷我母带与全网高码率流)
-  if (title) {
-    const crossResult = await resolveCrossSourceAudio(title, artist);
-    if (crossResult?.url) {
-      return NextResponse.json({
-        url: crossResult.url,
-        level: "lossless",
-        br: 320000,
-        source: crossResult.source,
-        code: 200,
-      });
-    }
-  }
-
-  return NextResponse.json({ url: "", code: 404, message: "Song stream not found" });
+  return null;
 }
