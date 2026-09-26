@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useAudioSourceStore, AudioSourceType } from "@/store/audioSourceStore";
+import { AudioSourceType } from "@/store/audioSourceStore";
 import { Song } from "@/types/song";
 import { SongResult } from "@/types/aiAgent";
+import { firstUsable, takeWithin } from "@/lib/resolve/urlRace";
 
 export interface ResolvedAudioSource {
   url: string;
@@ -90,7 +91,7 @@ function normalizeString(str: string): string {
     .toLowerCase()
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
-    .replace(/[\(\[\{（【][^\)\]\}）】]*?[\)\]\}）】]/g, "")
+    .replace(/[([{（【][^)\]})】]*?[)\]})】]/g, "")
     .replace(/[^\p{L}\p{N}]/gu, "")
     .trim();
 }
@@ -230,6 +231,15 @@ function getApiBase(): string {
   return process.env.NEXT_PUBLIC_APP_URL || "http://127.0.0.1:3025";
 }
 
+/**
+ * 优先分支（洛雪 / 登录平台 VIP）的总预算，同时也是洛雪串行脚本循环的预算。
+ * 超过后转去接受次级分支（平台竞速 / 兜底）—— 它们从 t=0 就已并发在跑，
+ * 所以"转过去"通常只是读一个已经就绪的结果，不额外增加耗时。
+ * 洛雪必须串行（沙箱写 globalThis.lx，并发会互相覆盖），不封顶的话
+ * N 个脚本 × 单次 8s 超时 = 起播前几十秒空窗。
+ */
+const PREFERRED_BUDGET_MS = 2000;
+
 export class MultiSourceResolver {
   private static instance: MultiSourceResolver;
 
@@ -289,140 +299,133 @@ export class MultiSourceResolver {
     }
 
     const base = getApiBase();
+    const src = (query.source || "").toLowerCase();
+    const explicitLx = src === "lx_custom" || src === "lx";
 
-    // 1. 【优先平台登录 VIP 链路】
-    if (query.source) {
-      const src = query.source.toLowerCase();
-
-      // 洛雪扩展源：独立受控于脚本开关
-      if (src === "lx_custom" || src === "lx") {
-        const lxRes = await this.resolveLxScript(query);
-        if (lxRes?.url) {
-          MultiSourceResolver.resolvedUrlCache.set(cacheKey, {
-            result: lxRes,
-            expiry: Date.now() + 1800000,
-          });
-          return lxRes;
-        }
-      }
-
-      // 已登录对应平台：单源专属解析 (如 VIP Cookie 专属高清通道)
-      if (isPlatformLoggedIn(src)) {
-        let singleResult: ResolvedAudioSource | null = null;
-        if (src === "netease" || src === "wy") {
-          singleResult = await this.resolveNetease(query.id || "", query);
-        } else if (src === "qq" || src === "tx") {
-          singleResult = await this.resolveQQMusic(query);
-        } else if (src === "kugou" || src === "kg") {
-          singleResult = await this.resolveKugou(query);
-        } else if (src === "kuwo" || src === "kw") {
-          singleResult = await this.resolveKuwo(query);
-        } else if (src === "qishui") {
-          singleResult = await this.resolveQishui(query);
-        }
-
-        if (singleResult && singleResult.url) {
-          MultiSourceResolver.resolvedUrlCache.set(cacheKey, {
-            result: singleResult,
-            expiry: Date.now() + 1800000,
-          });
-          return singleResult;
-        }
-      }
-    }
-
-    // 2. 【多源竞速与洛雪解析】
+    // 解析模式必须在**发起分支之前**读取：lx_only 下不允许碰平台竞速与兜底
     const resolutionMode =
       typeof window !== "undefined"
         ? useSourceConfigStore.getState().resolutionMode
         : "hybrid_racing";
 
-    // 2.1 尝试洛雪扩展源 (若启用了脚本)
-    const lxRes = await this.resolveLxScript(query);
-    if (lxRes?.url) {
+    // ---- 以下分支全部在 t=0 同时发起，只是**按优先级依次接受** ----
+    // 旧实现是严格串行 await：洛雪（每脚本 8s 超时）→ 平台竞速 race 落空后还要
+    // allSettled 等最慢的 → 兜底 /api/song/url 才开始，累计最坏十几秒。
+    // 并发启动后总耗时接近 max 而非 sum，而接受顺序保持与旧实现一致。
+    const lxPromise = this.resolveLxScript(query);
+    const vipPromise =
+      query.source && isPlatformLoggedIn(src) ? this.resolveSinglePlatform(src, query) : null;
+    const platformPromise = resolutionMode === "lx_only" ? null : this.resolvePlatformRace(query);
+    const fallbackPromise =
+      resolutionMode === "lx_only" || !(query.title || query.id)
+        ? null
+        : this.resolveSongUrlFallback(query, base);
+
+    const remember = (result: ResolvedAudioSource): ResolvedAudioSource => {
       MultiSourceResolver.resolvedUrlCache.set(cacheKey, {
-        result: lxRes,
+        result,
         expiry: Date.now() + 1800000,
       });
-      return lxRes;
+      return result;
+    };
+
+    // 优先级与旧实现一致：显式洛雪源 > 登录平台 VIP 通道 > 洛雪。
+    // 每一级都有截止时间，否则一条迟迟无果的高优先级分支会挡住已经就绪的后继分支。
+    const preferred: (Promise<ResolvedAudioSource | null> | null)[] = explicitLx
+      ? [lxPromise, vipPromise]
+      : [vipPromise, lxPromise];
+
+    const deadline = Date.now() + PREFERRED_BUDGET_MS;
+    for (const branch of preferred) {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) break;
+      const hit = await takeWithin(branch, remaining);
+      if (hit?.url) return remember(hit);
     }
 
-    if (resolutionMode === "lx_only") {
-      return null;
-    }
+    // 次级分支：平台竞速取首个可用者（不再等最慢的那个），兜底从 t=0 就已在跑
+    const secondary = await firstUsable([platformPromise, fallbackPromise]);
+    if (secondary?.url) return remember(secondary);
 
-    // 2.2 尝试所有已登录平台的竞速任务
+    return null;
+  }
+
+  /** 已登录对应平台的单源专属解析（VIP Cookie 专属高清通道）。 */
+  private resolveSinglePlatform(
+    src: string,
+    query: SongMetadataQuery
+  ): Promise<ResolvedAudioSource | null> {
+    if (src === "netease" || src === "wy") {
+      return this.resolveNetease(query.id || "", query);
+    }
+    if (src === "qq" || src === "tx") {
+      return this.resolveQQMusic(query);
+    }
+    if (src === "kugou" || src === "kg") {
+      return this.resolveKugou(query);
+    }
+    if (src === "kuwo" || src === "kw") {
+      return this.resolveKuwo(query);
+    }
+    if (src === "qishui") {
+      return this.resolveQishui(query);
+    }
+    return Promise.resolve(null);
+  }
+
+  /**
+   * 所有已登录平台并发竞速，取**第一个可用**结果。
+   * 旧实现是 Promise.race 落空后补 Promise.allSettled —— 等于把耗时重新
+   * 拉平到最慢的那个平台（搜索+取链两跳可达 7s），竞速形同虚设。
+   */
+  private resolvePlatformRace(
+    query: SongMetadataQuery
+  ): Promise<ResolvedAudioSource | null> | null {
     const tasks: Promise<ResolvedAudioSource | null>[] = [];
     if (isPlatformLoggedIn("netease")) tasks.push(this.resolveNetease(query.id || "", query));
     if (isPlatformLoggedIn("qq")) tasks.push(this.resolveQQMusic(query));
     if (isPlatformLoggedIn("kugou")) tasks.push(this.resolveKugou(query));
     if (isPlatformLoggedIn("kuwo")) tasks.push(this.resolveKuwo(query));
     if (isPlatformLoggedIn("qishui")) tasks.push(this.resolveQishui(query));
+    if (tasks.length === 0) return null;
+    return firstUsable(tasks);
+  }
 
-    if (tasks.length > 0) {
-      try {
-        const raceResult = await Promise.race(
-          tasks.map((t) => t.then((res) => (res?.url ? res : Promise.reject())))
-        );
-        if (raceResult?.url) {
-          MultiSourceResolver.resolvedUrlCache.set(cacheKey, {
-            result: raceResult,
-            expiry: Date.now() + 1800000,
-          });
-          return raceResult;
-        }
-      } catch {}
+  /** 服务端高可用直链管道 /api/song/url。永不 reject。 */
+  private async resolveSongUrlFallback(
+    query: SongMetadataQuery,
+    base: string
+  ): Promise<ResolvedAudioSource | null> {
+    try {
+      const params = new URLSearchParams();
+      if (query.id) params.set("id", String(query.id));
+      if (query.title) params.set("title", query.title);
+      if (query.artist) params.set("artist", query.artist);
+      if (query.source) params.set("source", query.source);
 
-      const settled = await Promise.allSettled(tasks);
-      for (const r of settled) {
-        if (r.status === "fulfilled" && r.value?.url) {
-          MultiSourceResolver.resolvedUrlCache.set(cacheKey, {
-            result: r.value,
-            expiry: Date.now() + 1800000,
-          });
-          return r.value;
-        }
+      const res = await fetch(`${base}/api/song/url?${params.toString()}`, {
+        signal: AbortSignal.timeout(4000),
+        headers: query.source ? getPlatformHeaders(query.source) : {},
+      });
+      if (!res.ok) return null;
+
+      const data = await res.json();
+      if (data?.url && typeof data.url === "string" && data.url.startsWith("http")) {
+        return {
+          url: data.url,
+          source: data.source || "kuwo",
+          quality: data.level || "lossless",
+          format: data.url.includes(".flac") ? "flac" : "mp3",
+          bitrate: data.br || 320000,
+          isTrial: false,
+          name: `${query.title || "未知曲目"} (高可用母带流)`,
+        };
       }
+      return null;
+    } catch (err) {
+      console.warn("[MultiSourceResolver] Fallback /api/song/url resolution error:", err);
+      return null;
     }
-
-    // 3. 【高可用公网嗅探兜底】：调用服务端高可用直链管道 (/api/song/url)
-    if (query.title || query.id) {
-      try {
-        const params = new URLSearchParams();
-        if (query.id) params.set("id", String(query.id));
-        if (query.title) params.set("title", query.title);
-        if (query.artist) params.set("artist", query.artist);
-        if (query.source) params.set("source", query.source);
-
-        const res = await fetch(`${base}/api/song/url?${params.toString()}`, {
-          signal: AbortSignal.timeout(4000),
-          headers: query.source ? getPlatformHeaders(query.source) : {},
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.url && typeof data.url === "string" && data.url.startsWith("http")) {
-            const resolved: ResolvedAudioSource = {
-              url: data.url,
-              source: data.source || "kuwo",
-              quality: data.level || "lossless",
-              format: data.url.includes(".flac") ? "flac" : "mp3",
-              bitrate: data.br || 320000,
-              isTrial: false,
-              name: `${query.title || "未知曲目"} (高可用母带流)`,
-            };
-            MultiSourceResolver.resolvedUrlCache.set(cacheKey, {
-              result: resolved,
-              expiry: Date.now() + 1800000,
-            });
-            return resolved;
-          }
-        }
-      } catch (err) {
-        console.warn("[MultiSourceResolver] Fallback /api/song/url resolution error:", err);
-      }
-    }
-
-    return null;
   }
 
   /**
@@ -459,9 +462,23 @@ export class MultiSourceResolver {
         format: "mp3",
       };
 
+      // 沙箱写 globalThis.lx，脚本之间**必须串行**，否则会互相覆盖运行环境。
+      // 串行 + 每次请求 8s 超时意味着 N 个脚本最坏 N×8s，这里用总预算封顶。
+      const deadline = Date.now() + PREFERRED_BUDGET_MS;
       for (const script of enabledScripts) {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) {
+          console.warn(
+            `[MultiSourceResolver] LX script budget exhausted (${PREFERRED_BUDGET_MS}ms), ` +
+              `${enabledScripts.length} enabled script(s) not tried`
+          );
+          break;
+        }
         try {
-          const lxUrlResult = await LXRunner.getMusicUrl(script, songObj, "320k");
+          const lxUrlResult = await Promise.race([
+            LXRunner.getMusicUrl(script, songObj, "320k"),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), remaining)),
+          ]);
           if (
             lxUrlResult?.url &&
             lxUrlResult.url.startsWith("http") &&
@@ -477,9 +494,13 @@ export class MultiSourceResolver {
               name: `${query.title || "未知曲目"} (${script.name})`,
             };
           }
-        } catch {}
+        } catch {
+          // 单个脚本抛错继续试下一个（总预算见 deadline）
+        }
       }
-    } catch {}
+    } catch {
+      // 洛雪链路整体失败时回落到平台竞速与兜底分支
+    }
     return null;
   }
 
@@ -1092,7 +1113,9 @@ export class MultiSourceResolver {
             }
           }
         }
-      } catch {}
+      } catch {
+        // 网易云封面取不到就换下一个平台
+      }
     }
 
     // 优先 2: QQ 音乐 300x300 高清图 (需登录)
@@ -1111,7 +1134,9 @@ export class MultiSourceResolver {
             }
           }
         }
-      } catch {}
+      } catch {
+        // QQ 封面取不到就换下一个平台
+      }
     }
 
     // 优先 3: 酷狗 400x400 高清大图 (需登录)
@@ -1130,7 +1155,9 @@ export class MultiSourceResolver {
             }
           }
         }
-      } catch {}
+      } catch {
+        // 酷狗封面取不到就换下一个平台
+      }
     }
 
     return null;

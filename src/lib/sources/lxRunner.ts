@@ -145,7 +145,15 @@ export class LXRunner {
       (globalThis as any).lx = lxEnvironment;
       if (typeof window !== "undefined") (window as any).lx = lxEnvironment;
 
-      const fn = new Function("module", "exports", "console", "globalThis", "window", "process", scriptContent);
+      const fn = new Function(
+        "module",
+        "exports",
+        "console",
+        "globalThis",
+        "window",
+        "process",
+        scriptContent
+      );
 
       const fakeGlobal: any = {
         lx: lxEnvironment,
@@ -158,11 +166,20 @@ export class LXRunner {
         },
       };
 
-      fn(sandboxModule, sandboxModule.exports, fakeGlobal.console, fakeGlobal, fakeGlobal, undefined);
+      fn(
+        sandboxModule,
+        sandboxModule.exports,
+        fakeGlobal.console,
+        fakeGlobal,
+        fakeGlobal,
+        undefined
+      );
 
       const hasRequestHandler = Boolean(handlers["request"]);
       const hasExportSearch = typeof sandboxModule.exports?.search === "function";
-      const hasExportUrl = typeof sandboxModule.exports?.url === "function" || typeof sandboxModule.exports?.getMusicUrl === "function";
+      const hasExportUrl =
+        typeof sandboxModule.exports?.url === "function" ||
+        typeof sandboxModule.exports?.getMusicUrl === "function";
 
       const isValid = hasRequestHandler || hasExportSearch || hasExportUrl || Boolean(initedInfo);
 
@@ -208,7 +225,8 @@ export class LXRunner {
 
     if (script.scriptUrl) {
       try {
-        const res = await fetch(script.scriptUrl);
+        // 必须有超时：起播链路会 await 这次拉取，无超时意味着脚本 URL 慢就无限卡住
+        const res = await fetch(script.scriptUrl, { signal: AbortSignal.timeout(8000) });
         if (res.ok) {
           let code = "";
           const text = await res.text();
@@ -224,7 +242,10 @@ export class LXRunner {
           }
         }
       } catch (e) {
-        console.warn(`[LXRunner] Failed to load script ${script.name} from ${script.scriptUrl}:`, e);
+        console.warn(
+          `[LXRunner] Failed to load script ${script.name} from ${script.scriptUrl}:`,
+          e
+        );
       }
     }
 
@@ -251,7 +272,15 @@ export class LXRunner {
       (globalThis as any).lx = lxEnvironment;
       if (typeof window !== "undefined") (window as any).lx = lxEnvironment;
 
-      const fn = new Function("module", "exports", "console", "globalThis", "window", "process", rawCode);
+      const fn = new Function(
+        "module",
+        "exports",
+        "console",
+        "globalThis",
+        "window",
+        "process",
+        rawCode
+      );
       const fakeGlobal: any = {
         lx: lxEnvironment,
         module: sandboxModule,
@@ -302,7 +331,11 @@ export class LXRunner {
 
             if (result && typeof result === "string" && result.startsWith("http")) {
               return { url: result, quality };
-            } else if (result?.url && typeof result.url === "string" && result.url.startsWith("http")) {
+            } else if (
+              result?.url &&
+              typeof result.url === "string" &&
+              result.url.startsWith("http")
+            ) {
               return { url: result.url, quality: result.quality || quality };
             }
           } catch {
@@ -351,7 +384,15 @@ export class LXRunner {
           console,
         };
 
-        const fn = new Function("module", "exports", "console", "globalThis", "window", "process", rawCode);
+        const fn = new Function(
+          "module",
+          "exports",
+          "console",
+          "globalThis",
+          "window",
+          "process",
+          rawCode
+        );
         fn(sandboxModule, sandboxModule.exports, console, fakeGlobal, fakeGlobal, undefined);
         const engine = sandboxModule.exports;
 
@@ -370,14 +411,16 @@ export class LXRunner {
     try {
       const kw = encodeURIComponent(keyword.trim());
       const base = typeof window !== "undefined" ? window.location.origin : "";
-      
+
       const searchUrls = [
         `${base}/api/search?keywords=${kw}&limit=${limit}`,
         `${base}/api/qq/search?keywords=${kw}&limit=${limit}`,
       ];
 
       const responses = await Promise.allSettled(
-        searchUrls.map((u) => fetch(u, { signal: AbortSignal.timeout(4000) }).then((r) => (r.ok ? r.json() : null)))
+        searchUrls.map((u) =>
+          fetch(u, { signal: AbortSignal.timeout(4000) }).then((r) => (r.ok ? r.json() : null))
+        )
       );
 
       const mergedSongs: Song[] = [];
@@ -418,7 +461,7 @@ export class LXRunner {
   /**
    * 将外部脚本返回的数据规范化为 Song 对象
    */
-  private static normalizeSong(raw: any, scriptId: string): Song {
+  private static normalizeSong(raw: any, _scriptId: string): Song {
     return {
       id: String(raw.id || raw.songmid || raw.hash || `lx-${Date.now()}`),
       title: raw.title || raw.name || "未知曲目",
