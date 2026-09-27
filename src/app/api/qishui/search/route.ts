@@ -70,5 +70,10 @@ export async function GET(request: NextRequest) {
     },
   ];
 
-  return NextResponse.json({ songs: fallbackSongs, code: 200, count: fallbackSongs.length, source: "qishui" });
+  return NextResponse.json({
+    songs: fallbackSongs,
+    code: 200,
+    count: fallbackSongs.length,
+    source: "qishui",
+  });
 }

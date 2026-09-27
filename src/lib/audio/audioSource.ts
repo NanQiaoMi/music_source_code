@@ -56,7 +56,10 @@ export async function resolveAudioSourceBlob(
     const offline = await getOfflineAudio(String(song.id));
     if (offline && offline.fileData && offline.fileData.byteLength > 1000) {
       return {
-        blob: assertReadableBlob(new Blob([offline.fileData], { type: offline.mimeType || "audio/mpeg" }), song.title),
+        blob: assertReadableBlob(
+          new Blob([offline.fileData], { type: offline.mimeType || "audio/mpeg" }),
+          song.title
+        ),
         sourceLabel: `offline://${song.id}`,
         inferredFormat: inferFormat(song.format, undefined, offline.mimeType, "offline"),
       };

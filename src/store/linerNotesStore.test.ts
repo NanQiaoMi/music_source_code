@@ -57,9 +57,15 @@ describe("linerNotesStore", () => {
 
   it("identifies old repetitive fallback templates correctly", () => {
     expect(
-      isOldRepetitiveFallback("沉入深海三千米处的静止气压，任由《GOODNESS(FUNK)》的幽蓝微沙将一切应激情绪吞没。")
+      isOldRepetitiveFallback(
+        "沉入深海三千米处的静止气压，任由《GOODNESS(FUNK)》的幽蓝微沙将一切应激情绪吞没。"
+      )
     ).toBe(true);
-    expect(isOldRepetitiveFallback("沉入深海三千米处的静止气压，任由《晴天》的幽蓝潮汐将一切喧嚣悄然吞没。")).toBe(true);
+    expect(
+      isOldRepetitiveFallback(
+        "沉入深海三千米处的静止气压，任由《晴天》的幽蓝潮汐将一切喧嚣悄然吞没。"
+      )
+    ).toBe(true);
     expect(isOldRepetitiveFallback("暗金色的融化蜜糖裹着暖风")).toBe(false);
   });
 

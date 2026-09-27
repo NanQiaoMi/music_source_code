@@ -6,7 +6,7 @@
 }
 
 export interface SongStructureSection {
-  role: 'intro' | 'verse' | 'pre-chorus' | 'chorus' | 'bridge' | 'outro';
+  role: "intro" | "verse" | "pre-chorus" | "chorus" | "bridge" | "outro";
   startTime: number;
   endTime: number;
   averageEnergy: number;
@@ -22,7 +22,10 @@ export class AudioBeatTracker {
   /**
    * 实时从时域与频域数据中检测节拍冲击 (Transient Peak Detection)
    */
-  public processFrame(frequencyData: Uint8Array, currentTime: number): { isBeat: boolean; energy: number; impact: number } {
+  public processFrame(
+    frequencyData: Uint8Array,
+    currentTime: number
+  ): { isBeat: boolean; energy: number; impact: number } {
     let sum = 0;
     // 聚焦低频区 (20Hz - 250Hz, 约前 1/6 频段)
     const lowFreqLength = Math.floor(frequencyData.length / 6);
@@ -37,11 +40,14 @@ export class AudioBeatTracker {
     }
 
     const avgEnergy = this.energyHistory.reduce((a, b) => a + b, 0) / this.energyHistory.length;
-    const variance = this.energyHistory.reduce((a, b) => a + Math.pow(b - avgEnergy, 2), 0) / this.energyHistory.length;
+    const variance =
+      this.energyHistory.reduce((a, b) => a + Math.pow(b - avgEnergy, 2), 0) /
+      this.energyHistory.length;
     const dynamicThreshold = avgEnergy + Math.sqrt(variance) * 1.5;
 
     const timeSinceLastBeat = currentTime - this.lastBeatTime;
-    const isBeat = currentEnergy > dynamicThreshold && currentEnergy > 0.35 && timeSinceLastBeat > 0.22;
+    const isBeat =
+      currentEnergy > dynamicThreshold && currentEnergy > 0.35 && timeSinceLastBeat > 0.22;
 
     if (isBeat) {
       this.lastBeatTime = currentTime;

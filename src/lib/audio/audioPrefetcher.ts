@@ -37,7 +37,11 @@ class AudioPrefetcher {
     if (!song || !song.id) return null;
 
     // 1. If song already has a valid non-blob URL, preheat directly
-    if (song.audioUrl && !song.audioUrl.startsWith("blob:") && !song.audioUrl.startsWith("stored://")) {
+    if (
+      song.audioUrl &&
+      !song.audioUrl.startsWith("blob:") &&
+      !song.audioUrl.startsWith("stored://")
+    ) {
       this.preheatAudio(song.id, song.audioUrl);
       return song.audioUrl;
     }
@@ -102,7 +106,12 @@ class AudioPrefetcher {
    * Preheats initial audio buffer using a detached Audio element
    */
   private preheatAudio(songId: string, url: string): void {
-    if (typeof window === "undefined" || !url || url.startsWith("blob:") || url.startsWith("stored://")) {
+    if (
+      typeof window === "undefined" ||
+      !url ||
+      url.startsWith("blob:") ||
+      url.startsWith("stored://")
+    ) {
       return;
     }
 

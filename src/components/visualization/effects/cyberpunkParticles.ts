@@ -16,11 +16,56 @@ interface MasterCluster {
 }
 
 const MASTER_CLUSTERS: MasterCluster[] = [
-  { id: 0, name: "Nexus Prime Singularity", x: 0, y: 0, z: 0, radius: 16, hueOffset: 0, freqBand: 1 }, // 中心低音主脑
-  { id: 1, name: "Alpha Synapse Spiral", x: -480, y: -260, z: 220, radius: 11, hueOffset: 30, freqBand: 8 }, // 左上中低频中枢
-  { id: 2, name: "Cygnus Axon Arm", x: 520, y: -220, z: -200, radius: 10, hueOffset: 160, freqBand: 18 }, // 右上中频中枢
-  { id: 3, name: "Vela Deep Lattice", x: -420, y: 320, z: -160, radius: 10, hueOffset: 240, freqBand: 32 }, // 左下中高频中枢
-  { id: 4, name: "Orion Pulsar Stream", x: 460, y: 280, z: 240, radius: 12, hueOffset: 60, freqBand: 48 }, // 右下高频中枢
+  {
+    id: 0,
+    name: "Nexus Prime Singularity",
+    x: 0,
+    y: 0,
+    z: 0,
+    radius: 16,
+    hueOffset: 0,
+    freqBand: 1,
+  }, // 中心低音主脑
+  {
+    id: 1,
+    name: "Alpha Synapse Spiral",
+    x: -480,
+    y: -260,
+    z: 220,
+    radius: 11,
+    hueOffset: 30,
+    freqBand: 8,
+  }, // 左上中低频中枢
+  {
+    id: 2,
+    name: "Cygnus Axon Arm",
+    x: 520,
+    y: -220,
+    z: -200,
+    radius: 10,
+    hueOffset: 160,
+    freqBand: 18,
+  }, // 右上中频中枢
+  {
+    id: 3,
+    name: "Vela Deep Lattice",
+    x: -420,
+    y: 320,
+    z: -160,
+    radius: 10,
+    hueOffset: 240,
+    freqBand: 32,
+  }, // 左下中高频中枢
+  {
+    id: 4,
+    name: "Orion Pulsar Stream",
+    x: 460,
+    y: 280,
+    z: 240,
+    radius: 12,
+    hueOffset: 60,
+    freqBand: 48,
+  }, // 右下高频中枢
 ];
 
 export const drawCyberpunkParticles = ({
@@ -54,7 +99,7 @@ export const drawCyberpunkParticles = ({
     Math.min(1, refs.smoothBass.current * 0.88 + (isFinite(rawBass) ? rawBass : 0) * 0.12)
   );
   const smoothMidVal =
-    (refs.smoothMid ? refs.smoothMid.current : 0) * 0.90 + (isFinite(rawMid) ? rawMid : 0) * 0.10;
+    (refs.smoothMid ? refs.smoothMid.current : 0) * 0.9 + (isFinite(rawMid) ? rawMid : 0) * 0.1;
   if (!refs.smoothMid) (refs as any).smoothMid = { current: smoothMidVal };
   else refs.smoothMid.current = Math.max(0, Math.min(1, smoothMidVal));
   refs.smoothTreble.current = Math.max(
@@ -91,7 +136,7 @@ export const drawCyberpunkParticles = ({
   if (!isConstellationSchema) {
     const nodes = [];
     for (let i = 0; i < NODE_COUNT; i++) {
-      const clusterId = i < MASTER_CLUSTERS.length ? i : (i % MASTER_CLUSTERS.length);
+      const clusterId = i < MASTER_CLUSTERS.length ? i : i % MASTER_CLUSTERS.length;
       const isHubLeader = i < MASTER_CLUSTERS.length;
       const hub = MASTER_CLUSTERS[clusterId];
 
@@ -143,8 +188,15 @@ export const drawCyberpunkParticles = ({
   if (!refs.shockwaves || !refs.shockwaves.current) {
     (refs as any).shockwaves = { current: [] };
   }
-  const shockwaves: { x: number; y: number; radius: number; maxRadius: number; alpha: number; speed: number; hue: number }[] =
-    (refs as any).shockwaves.current;
+  const shockwaves: {
+    x: number;
+    y: number;
+    radius: number;
+    maxRadius: number;
+    alpha: number;
+    speed: number;
+    hue: number;
+  }[] = (refs as any).shockwaves.current;
 
   // 强节拍触发引力波 (重低音爆发且间隔充足，受星系演化速度精确调控)
   const evoSpeed = effectParams.speed || 1.0;
@@ -208,7 +260,14 @@ export const drawCyberpunkParticles = ({
     if (hubProj.depthAlpha < 0.05) continue;
 
     const nebRad = (180 + bass * 120) * hubProj.scale;
-    const nGrad = ctx.createRadialGradient(hubProj.x2d, hubProj.y2d, 10, hubProj.x2d, hubProj.y2d, nebRad);
+    const nGrad = ctx.createRadialGradient(
+      hubProj.x2d,
+      hubProj.y2d,
+      10,
+      hubProj.x2d,
+      hubProj.y2d,
+      nebRad
+    );
     const nHue = c === 0 ? amberGoldHue : (albumHue + hub.hueOffset) % 360;
     const nAlpha = (c === 0 ? 0.12 + bass * 0.12 : 0.05 + mid * 0.06) * hubProj.depthAlpha;
 
@@ -329,13 +388,20 @@ export const drawCyberpunkParticles = ({
       const pulseCount = 2;
       const pipePulseSpeed = 0.045; // 极慢流光，单次传输约 20 秒
       for (let p = 0; p < pulseCount; p++) {
-        const pulseT = ((t * (effectParams.pulseSpeed || 1.0) * pipePulseSpeed + (p / pulseCount) + c1 * 0.2) % 1);
+        const pulseT =
+          (t * (effectParams.pulseSpeed || 1.0) * pipePulseSpeed + p / pulseCount + c1 * 0.2) % 1;
         const px = hub1.x2d + (hub2.x2d - hub1.x2d) * pulseT;
         const py = hub1.y2d + (hub2.y2d - hub1.y2d) * pulseT;
 
         const pulseGlow = ctx.createRadialGradient(px, py, 0, px, py, 14 * hub1.scale);
-        pulseGlow.addColorStop(0, `hsla(${platinumWhiteHue}, 100%, 98%, ${Math.min(1, pipeAlpha * 2.5)})`);
-        pulseGlow.addColorStop(0.4, `hsla(${amberGoldHue}, 100%, 75%, ${Math.min(0.6, pipeAlpha * 1.5)})`);
+        pulseGlow.addColorStop(
+          0,
+          `hsla(${platinumWhiteHue}, 100%, 98%, ${Math.min(1, pipeAlpha * 2.5)})`
+        );
+        pulseGlow.addColorStop(
+          0.4,
+          `hsla(${amberGoldHue}, 100%, 75%, ${Math.min(0.6, pipeAlpha * 1.5)})`
+        );
         pulseGlow.addColorStop(1, "transparent");
 
         ctx.fillStyle = pulseGlow;
@@ -369,11 +435,15 @@ export const drawCyberpunkParticles = ({
         edgeCount++;
         const distFactor = 1 - dist3D / MAX_CONNECT_DIST;
         const avgAlpha = (n1.depthAlpha + n2.depthAlpha) * 0.5;
-        const axonAlpha = distFactor * distFactor * (0.10 + mid * 0.25 + (n1.val + n2.val) * 0.25) * avgAlpha;
+        const axonAlpha =
+          distFactor * distFactor * (0.1 + mid * 0.25 + (n1.val + n2.val) * 0.25) * avgAlpha;
 
         const axonHue = (i + j) % 2 === 0 ? amberGoldHue : albumHue;
         ctx.strokeStyle = `hsla(${axonHue}, 90%, 75%, ${axonAlpha})`;
-        ctx.lineWidth = Math.max(0.4, (0.6 + bass * 0.6) * ((n1.scale + n2.scale) * 0.5) * distFactor);
+        ctx.lineWidth = Math.max(
+          0.4,
+          (0.6 + bass * 0.6) * ((n1.scale + n2.scale) * 0.5) * distFactor
+        );
         ctx.beginPath();
         ctx.moveTo(n1.x2d, n1.y2d);
         ctx.lineTo(n2.x2d, n2.y2d);
@@ -381,7 +451,7 @@ export const drawCyberpunkParticles = ({
 
         // 突触微观光子专属慢速滑行
         if (distFactor > 0.55 && (n1.val > 0.4 || n2.val > 0.4)) {
-          const pt = ((t * 0.05 + i * 0.17) % 1);
+          const pt = (t * 0.05 + i * 0.17) % 1;
           const px = n1.x2d + (n2.x2d - n1.x2d) * pt;
           const py = n1.y2d + (n2.y2d - n1.y2d) * pt;
 
@@ -407,8 +477,13 @@ export const drawCyberpunkParticles = ({
 
     const isHub = n.isHubLeader;
     const sizeMultiplier = effectParams.particleSize ? effectParams.particleSize / 1.0 : 1.0;
-    const dynamicRad = (n.radius * (isHub ? 1 + bass * 0.35 : 1 + n.val * 0.45)) * n.scale * sizeMultiplier;
-    const nodeHue = isHub ? (n.id === 0 ? platinumWhiteHue : amberGoldHue) : ((albumHue + n.clusterId * 40) % 360);
+    const dynamicRad =
+      n.radius * (isHub ? 1 + bass * 0.35 : 1 + n.val * 0.45) * n.scale * sizeMultiplier;
+    const nodeHue = isHub
+      ? n.id === 0
+        ? platinumWhiteHue
+        : amberGoldHue
+      : (albumHue + n.clusterId * 40) % 360;
     const nodeAlpha = Math.min(1, n.depthAlpha * (isHub ? 0.95 : 0.45 + n.val * 0.55));
 
     // 1. 双层柔和发光能量光晕 (Bloom Halo - 精致收敛)
@@ -468,8 +543,16 @@ export const drawCyberpunkParticles = ({
   const padX = 32;
   const padY = 44;
   ctx.fillText("3D CYBERNETIC NEURAL CONSTELLATION // V9.0", padX, padY);
-  ctx.fillText(`SYNAPSE NODES: 100 CLUSTERS  |  COHERENCE: ${(98.4 + Math.sin(t) * 1.2).toFixed(1)}%`, padX, padY + 13);
-  ctx.fillText(`SYNAPTIC FLUX: ${(78.5 + bass * 21.5).toFixed(1)}%  |  DEPTH: 1550 LY`, padX, padY + 26);
+  ctx.fillText(
+    `SYNAPSE NODES: 100 CLUSTERS  |  COHERENCE: ${(98.4 + Math.sin(t) * 1.2).toFixed(1)}%`,
+    padX,
+    padY + 13
+  );
+  ctx.fillText(
+    `SYNAPTIC FLUX: ${(78.5 + bass * 21.5).toFixed(1)}%  |  DEPTH: 1550 LY`,
+    padX,
+    padY + 26
+  );
 
   ctx.restore();
 };

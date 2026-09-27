@@ -264,7 +264,8 @@ export const useUIStore = create<UIState>()(
 
       isFullscreenLyrics: false,
       setIsFullscreenLyrics: (isFullscreen) => set({ isFullscreenLyrics: isFullscreen }),
-      toggleFullscreenLyrics: () => set((state) => ({ isFullscreenLyrics: !state.isFullscreenLyrics })),
+      toggleFullscreenLyrics: () =>
+        set((state) => ({ isFullscreenLyrics: !state.isFullscreenLyrics })),
 
       isSettingsOpen: false,
       setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),

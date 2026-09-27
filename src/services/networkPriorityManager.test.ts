@@ -27,13 +27,10 @@ describe("networkPriorityManager", () => {
     networkPriorityManager.setAudioBuffering(true);
     let p2Executed = false;
 
-    const p2Promise = networkPriorityManager.schedule(
-      NetworkPriority.P2_BACKGROUND,
-      async () => {
-        p2Executed = true;
-        return "p2_done";
-      }
-    );
+    const p2Promise = networkPriorityManager.schedule(NetworkPriority.P2_BACKGROUND, async () => {
+      p2Executed = true;
+      return "p2_done";
+    });
 
     // Give microtasks a tick
     await new Promise((r) => setTimeout(r, 20));

@@ -41,14 +41,12 @@ describe("useAudioPlayer - Stream Anti-Stutter & Rescue Architecture", () => {
       expect(getPlayableStreamUrl("blob:http://localhost:3000/12345")).toBe(
         "blob:http://localhost:3000/12345"
       );
-      expect(getPlayableStreamUrl("data:audio/mp3;base64,AAAA")).toBe(
-        "data:audio/mp3;base64,AAAA"
-      );
+      expect(getPlayableStreamUrl("data:audio/mp3;base64,AAAA")).toBe("data:audio/mp3;base64,AAAA");
       expect(getPlayableStreamUrl("stored://local-song-1")).toBe("stored://local-song-1");
       expect(getPlayableStreamUrl("local://my-track.flac")).toBe("local://my-track.flac");
-      expect(getPlayableStreamUrl("/api/audio/proxy?url=https%3A%2F%2Fexample.com%2Fsong.mp3")).toBe(
-        "/api/audio/proxy?url=https%3A%2F%2Fexample.com%2Fsong.mp3"
-      );
+      expect(
+        getPlayableStreamUrl("/api/audio/proxy?url=https%3A%2F%2Fexample.com%2Fsong.mp3")
+      ).toBe("/api/audio/proxy?url=https%3A%2F%2Fexample.com%2Fsong.mp3");
     });
 
     it("should wrap external http/https URLs with proxy endpoint", () => {

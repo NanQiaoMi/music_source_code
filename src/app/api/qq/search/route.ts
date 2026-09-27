@@ -17,11 +17,15 @@ export async function GET(request: NextRequest) {
   const cookie = request.headers.get("x-qq-cookie") || "";
   if (!cookie || cookie.trim().length < 5) {
     return NextResponse.json(
-      { songs: [], code: 401, message: "QQ Music authentication required. Please login first.", source: "qq" },
+      {
+        songs: [],
+        code: 401,
+        message: "QQ Music authentication required. Please login first.",
+        source: "qq",
+      },
       { status: 401 }
     );
   }
-
 
   const { searchParams } = new URL(request.url);
   const keywords = searchParams.get("keywords") || searchParams.get("s") || "";
@@ -59,7 +63,10 @@ export async function GET(request: NextRequest) {
 
       const rawList = data?.data?.song?.list || data?.song?.list || data?.data?.list || [];
       if (rawList.length === 0) {
-        console.warn("[api/qq/search] rawList empty. data preview:", JSON.stringify(data).slice(0, 300));
+        console.warn(
+          "[api/qq/search] rawList empty. data preview:",
+          JSON.stringify(data).slice(0, 300)
+        );
       }
       const songs = rawList.map((s: any) => {
         const songmid = String(s.songmid || s.songid || "");

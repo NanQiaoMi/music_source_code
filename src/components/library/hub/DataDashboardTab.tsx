@@ -72,7 +72,10 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
     {
       title: "离线就绪曲目",
       value: `${storageDetails.offlineAudioCount} 首`,
-      sub: activeCount > 0 ? `下载中 ${activeCount} 首 · 速度 ${totalSpeedFormatted}` : "纯离线即开即播已就绪",
+      sub:
+        activeCount > 0
+          ? `下载中 ${activeCount} 首 · 速度 ${totalSpeedFormatted}`
+          : "纯离线即开即播已就绪",
       icon: Download,
       color: "from-white/[0.06] to-white/[0.02]",
       border: "border-white/[0.08]",
@@ -119,19 +122,17 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
               className={`p-4 rounded-3xl bg-gradient-to-br ${card.color} border ${card.border} backdrop-blur-2xl transition-all hover:scale-[1.02] hover:border-white/30 cursor-pointer group shadow-[0_10px_30px_rgba(0,0,0,0.4)]`}
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-white/60">
-                  {card.title}
-                </span>
-                <div className={`p-2 rounded-2xl bg-white/10 ${card.iconColor} group-hover:scale-110 transition-transform shadow-inner`}>
+                <span className="text-xs font-medium text-white/60">{card.title}</span>
+                <div
+                  className={`p-2 rounded-2xl bg-white/10 ${card.iconColor} group-hover:scale-110 transition-transform shadow-inner`}
+                >
                   <Icon className="w-4 h-4" />
                 </div>
               </div>
               <div className="text-2xl font-black text-white font-mono tracking-tight leading-none mb-1.5">
                 {card.value}
               </div>
-              <div className="text-[11px] text-white/50 truncate font-sans">
-                {card.sub}
-              </div>
+              <div className="text-[11px] text-white/50 truncate font-sans">{card.sub}</div>
             </div>
           );
         })}
@@ -146,9 +147,7 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
               <HardDrive className="w-4 h-4 text-white/80" />
               存储容量与细分配额
             </h4>
-            <span className="text-[10px] font-mono text-white/40">
-              IndexedDB 沙盒
-            </span>
+            <span className="text-[10px] font-mono text-white/40">IndexedDB 沙盒</span>
           </div>
 
           <div className="my-auto py-2">
@@ -195,9 +194,7 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
               <Zap className="w-4 h-4 text-white/80" />
               音质层级分布与码率分析
             </h4>
-            <span className="text-[10px] text-white/40">
-              点击柱状条联动筛选
-            </span>
+            <span className="text-[10px] text-white/40">点击柱状条联动筛选</span>
           </div>
 
           <QualityDistributionChart
@@ -208,7 +205,9 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
           />
 
           <div className="flex items-center justify-between text-[11px] text-white/60 mt-3 p-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
-            <span>✨ 想寻找更多未收录高解析母带？可使用全新「全网聚搜」探索落雪特供源与六大平台。</span>
+            <span>
+              ✨ 想寻找更多未收录高解析母带？可使用全新「全网聚搜」探索落雪特供源与六大平台。
+            </span>
             <button
               onClick={() => onNavigateTab("lx_search")}
               className="px-3 py-1 rounded-xl bg-white text-black font-semibold hover:bg-white/90 transition-all shrink-0 ml-2 shadow-sm active:scale-95"
@@ -228,9 +227,7 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
               <Cloud className="w-4 h-4 text-white/80" />
               多平台音源资产构成
             </h4>
-            <span className="text-[10px] font-mono text-white/40">
-              {songs.length} 首总计
-            </span>
+            <span className="text-[10px] font-mono text-white/40">{songs.length} 首总计</span>
           </div>
 
           <PlatformDonutChart stats={platformStats} />

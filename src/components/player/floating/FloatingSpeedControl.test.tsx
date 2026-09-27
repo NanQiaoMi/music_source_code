@@ -85,7 +85,9 @@ describe("FloatingSpeedControl", () => {
       root.render(<FloatingSpeedControl />);
     });
 
-    const trigger = container.querySelector('[data-testid="floating-speed-trigger"]') as HTMLButtonElement;
+    const trigger = container.querySelector(
+      '[data-testid="floating-speed-trigger"]'
+    ) as HTMLButtonElement;
     act(() => {
       trigger.click();
       vi.advanceTimersByTime(300);
@@ -102,13 +104,17 @@ describe("FloatingSpeedControl", () => {
       root.render(<FloatingSpeedControl />);
     });
 
-    const trigger = container.querySelector('[data-testid="floating-speed-trigger"]') as HTMLButtonElement;
+    const trigger = container.querySelector(
+      '[data-testid="floating-speed-trigger"]'
+    ) as HTMLButtonElement;
     act(() => {
       trigger.click();
       vi.advanceTimersByTime(300);
     });
 
-    const chip125 = container.querySelector('[data-testid="speed-preset-1.25"]') as HTMLButtonElement;
+    const chip125 = container.querySelector(
+      '[data-testid="speed-preset-1.25"]'
+    ) as HTMLButtonElement;
     expect(chip125).toBeTruthy();
 
     act(() => {
@@ -127,13 +133,17 @@ describe("FloatingSpeedControl", () => {
       root.render(<FloatingSpeedControl />);
     });
 
-    const trigger = container.querySelector('[data-testid="floating-speed-trigger"]') as HTMLButtonElement;
+    const trigger = container.querySelector(
+      '[data-testid="floating-speed-trigger"]'
+    ) as HTMLButtonElement;
     act(() => {
       trigger.click();
       vi.advanceTimersByTime(300);
     });
 
-    const resetButton = container.querySelector('[data-testid="speed-reset-button"]') as HTMLButtonElement;
+    const resetButton = container.querySelector(
+      '[data-testid="speed-reset-button"]'
+    ) as HTMLButtonElement;
     expect(resetButton).toBeTruthy();
 
     act(() => {
@@ -149,7 +159,9 @@ describe("FloatingSpeedControl", () => {
       root.render(<FloatingSpeedControl />);
     });
 
-    const trigger = container.querySelector('[data-testid="floating-speed-trigger"]') as HTMLButtonElement;
+    const trigger = container.querySelector(
+      '[data-testid="floating-speed-trigger"]'
+    ) as HTMLButtonElement;
     act(() => {
       trigger.click();
       vi.advanceTimersByTime(300);
@@ -169,7 +181,9 @@ describe("FloatingSpeedControl", () => {
       root.render(<FloatingSpeedControl />);
     });
 
-    const trigger = container.querySelector('[data-testid="floating-speed-trigger"]') as HTMLButtonElement;
+    const trigger = container.querySelector(
+      '[data-testid="floating-speed-trigger"]'
+    ) as HTMLButtonElement;
     act(() => {
       trigger.click();
       vi.advanceTimersByTime(300);
@@ -184,7 +198,9 @@ describe("FloatingSpeedControl", () => {
 
     expect(useAudioStore.getState().playbackRate).toBe(1.05);
 
-    const minusBtn = container.querySelector('[data-testid="speed-step-minus"]') as HTMLButtonElement;
+    const minusBtn = container.querySelector(
+      '[data-testid="speed-step-minus"]'
+    ) as HTMLButtonElement;
     expect(minusBtn).toBeTruthy();
 
     act(() => {
@@ -200,7 +216,9 @@ describe("FloatingSpeedControl", () => {
       root.render(<FloatingSpeedControl />);
     });
 
-    const trigger = container.querySelector('[data-testid="floating-speed-trigger"]') as HTMLButtonElement;
+    const trigger = container.querySelector(
+      '[data-testid="floating-speed-trigger"]'
+    ) as HTMLButtonElement;
     act(() => {
       trigger.click();
       vi.advanceTimersByTime(300);
@@ -210,4 +228,3 @@ describe("FloatingSpeedControl", () => {
     expect(container.textContent).toContain("±0.05x 精度");
   });
 });
-

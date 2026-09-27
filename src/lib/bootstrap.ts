@@ -24,7 +24,9 @@ export async function bootstrapApp() {
         currentTime: usePlayerStore.getState().currentTime || 0,
         duration: usePlayerStore.getState().duration || restoredSong.duration || 0,
       });
-      console.log(`[Bootstrap] 🎵 已恢复上次播放歌曲: 《${restoredSong.title}》- ${restoredSong.artist}`);
+      console.log(
+        `[Bootstrap] 🎵 已恢复上次播放歌曲: 《${restoredSong.title}》- ${restoredSong.artist}`
+      );
     }
 
     if (restoredQueue && restoredQueue.length > 0) {

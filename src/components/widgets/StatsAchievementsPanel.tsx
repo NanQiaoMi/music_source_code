@@ -126,9 +126,7 @@ export const StatsAchievementsPanel: React.FC<StatsAchievementsPanelProps> = ({
             </div>
             <div>
               <h2 className="text-2xl font-semibold text-white">统计与成就</h2>
-              <p className="text-sm text-white/60">
-                听歌概览、洞察、进度和每日历史。
-              </p>
+              <p className="text-sm text-white/60">听歌概览、洞察、进度和每日历史。</p>
             </div>
           </div>
           <button
@@ -185,9 +183,7 @@ function OverviewTab({ stats }: { stats: ListeningStats }) {
     <div className="space-y-6">
       <div>
         <h3 className="text-xl font-semibold text-white">核心指标</h3>
-        <p className="mt-1 text-sm text-white/50">
-          听歌深度、多样性和完成度的简要概览。
-        </p>
+        <p className="mt-1 text-sm text-white/50">听歌深度、多样性和完成度的简要概览。</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
@@ -211,16 +207,8 @@ function OverviewTab({ stats }: { stats: ListeningStats }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <FavoriteCard
-          label="最爱歌手"
-          value={stats.favoriteArtist}
-          fallback="暂无最爱歌手"
-        />
-        <FavoriteCard
-          label="最爱歌曲"
-          value={stats.favoriteSong}
-          fallback="暂无最爱歌曲"
-        />
+        <FavoriteCard label="最爱歌手" value={stats.favoriteArtist} fallback="暂无最爱歌手" />
+        <FavoriteCard label="最爱歌曲" value={stats.favoriteSong} fallback="暂无最爱歌曲" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -243,22 +231,17 @@ function OverviewTab({ stats }: { stats: ListeningStats }) {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.08] p-5">
-          <div className="mb-2 text-xs uppercase tracking-wider text-amber-200/60">
-            建议下一步
-          </div>
+          <div className="mb-2 text-xs uppercase tracking-wider text-amber-200/60">建议下一步</div>
           <div className="text-2xl font-semibold text-white">{nextAction}</div>
           <div className="mt-2 text-sm text-white/55">
             基于完成率、跳过率、探索度、重播和当前趋势生成。
           </div>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <div className="mb-2 text-xs uppercase tracking-wider text-white/40">
-            最活跃时段
-          </div>
+          <div className="mb-2 text-xs uppercase tracking-wider text-white/40">最活跃时段</div>
           <div className="text-2xl font-semibold text-white">{topWindow.label}</div>
           <div className="mt-2 text-sm text-white/50">
-            {topWindow.count} 次播放在此时段。可用于推荐和默认
-            播放列表时间安排。
+            {topWindow.count} 次播放在此时段。可用于推荐和默认 播放列表时间安排。
           </div>
         </div>
       </div>
@@ -532,11 +515,7 @@ function AchievementsTab({
           achievements={spotlight.nearlyUnlocked}
           showProgress
         />
-        <SpotlightCard
-          title="推荐推送"
-          empty="暂无推荐。"
-          achievements={spotlight.recommended}
-        />
+        <SpotlightCard title="推荐推送" empty="暂无推荐。" achievements={spotlight.recommended} />
       </div>
 
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
@@ -686,9 +665,7 @@ function DailyHistoryTab({ stats }: { stats: ListeningStats }) {
     <div className="space-y-6">
       <div>
         <h3 className="text-xl font-semibold text-white">每日历史</h3>
-        <p className="mt-1 text-sm text-white/50">
-          最近听歌活动，按最新排序。
-        </p>
+        <p className="mt-1 text-sm text-white/50">最近听歌活动，按最新排序。</p>
       </div>
 
       {dailyData.length === 0 ? (

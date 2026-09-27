@@ -7,8 +7,12 @@ describe("EndpointCircuitBreaker", () => {
   });
 
   it("should extract host correctly from URLs", () => {
-    expect(endpointCircuitBreaker.extractHost("https://api.huibq.com/api/v1")).toBe("api.huibq.com");
-    expect(endpointCircuitBreaker.extractHost("http://175.27.166.236:8080/wy")).toBe("175.27.166.236:8080");
+    expect(endpointCircuitBreaker.extractHost("https://api.huibq.com/api/v1")).toBe(
+      "api.huibq.com"
+    );
+    expect(endpointCircuitBreaker.extractHost("http://175.27.166.236:8080/wy")).toBe(
+      "175.27.166.236:8080"
+    );
     expect(endpointCircuitBreaker.extractHost("music.163.com")).toBe("music.163.com");
   });
 
@@ -33,7 +37,9 @@ describe("EndpointCircuitBreaker", () => {
 
     const coolingList = endpointCircuitBreaker.getCoolingHosts();
     expect(coolingList.find((c) => c.host === "api.lingchuan.com")?.failureCount).toBe(2);
-    expect(coolingList.find((c) => c.host === "api.lingchuan.com")?.remainingSeconds).toBeGreaterThan(250);
+    expect(
+      coolingList.find((c) => c.host === "api.lingchuan.com")?.remainingSeconds
+    ).toBeGreaterThan(250);
   });
 
   it("should clear cooling on success", () => {

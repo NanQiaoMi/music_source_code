@@ -50,7 +50,9 @@ export class AudioContextWatchdog {
       const isPlaying = useAudioStore.getState().isPlaying;
 
       if ((state === "suspended" || (state as string) === "interrupted") && isPlaying) {
-        console.warn(`[AudioContextWatchdog] ⚠️ 捕获 AudioContext 异常状态 [${state}]，触发 0ms 自动自愈恢复...`);
+        console.warn(
+          `[AudioContextWatchdog] ⚠️ 捕获 AudioContext 异常状态 [${state}]，触发 0ms 自动自愈恢复...`
+        );
         ctx.resume().catch((err) => {
           console.error("[AudioContextWatchdog] AudioContext 自愈恢复失败:", err);
         });
@@ -117,7 +119,9 @@ export class AudioContextWatchdog {
       const registry = BlobUrlRegistry.getInstance();
       const currentBlobSize = registry.getSize();
       if (currentBlobSize > 50) {
-        console.info(`[AudioContextWatchdog] 🧹 心跳巡检：修剪非活跃 Blob 缓存 (当前 ${currentBlobSize} 个)`);
+        console.info(
+          `[AudioContextWatchdog] 🧹 心跳巡检：修剪非活跃 Blob 缓存 (当前 ${currentBlobSize} 个)`
+        );
       }
 
       // 3. 音频上下文存活探测

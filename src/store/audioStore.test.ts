@@ -205,4 +205,3 @@ describe("audioStore playback sync", () => {
     expect(usePlayerStore.getState().duration).toBe(195);
   });
 });
-

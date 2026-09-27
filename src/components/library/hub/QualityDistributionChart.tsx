@@ -98,19 +98,13 @@ export const QualityDistributionChart: React.FC<QualityDistributionChartProps> =
                   <Icon className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <span className="font-semibold text-white tracking-tight">
-                    {item.label}
-                  </span>
-                  <span className="text-[10px] text-white/40 ml-1.5 font-mono">
-                    {item.sub}
-                  </span>
+                  <span className="font-semibold text-white tracking-tight">{item.label}</span>
+                  <span className="text-[10px] text-white/40 ml-1.5 font-mono">{item.sub}</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white font-mono">
-                  {item.count} 首
-                </span>
+                <span className="text-xs font-bold text-white font-mono">{item.count} 首</span>
                 <span className="text-[11px] font-mono text-white/50 w-11 text-right">
                   {item.percent}%
                 </span>

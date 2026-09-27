@@ -4,18 +4,18 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
 import { useProfessionalModeStore, PROFESSIONAL_FEATURE_INFO } from "@/store/professionalModeStore";
-import { 
-  X, 
-  Settings, 
-  RefreshCw, 
-  Activity, 
-  Stethoscope, 
-  ArrowRightLeft, 
-  Scissors, 
-  Fingerprint, 
-  Disc3, 
-  SlidersHorizontal, 
-  Bot 
+import {
+  X,
+  Settings,
+  RefreshCw,
+  Activity,
+  Stethoscope,
+  ArrowRightLeft,
+  Scissors,
+  Fingerprint,
+  Disc3,
+  SlidersHorizontal,
+  Bot,
 } from "lucide-react";
 import { HealthCheckPanel } from "./HealthCheckPanel";
 
@@ -157,34 +157,34 @@ export function ProfessionalToolsPanel({
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0, scale: 0.95, filter: "blur(20px)" },
-    visible: { 
-      opacity: 1, 
-      scale: 1, 
+    visible: {
+      opacity: 1,
+      scale: 1,
       filter: "blur(0px)",
-      transition: { 
-        type: "spring" as const, 
-        damping: 30, 
+      transition: {
+        type: "spring" as const,
+        damping: 30,
         stiffness: 400,
         staggerChildren: 0.05,
-        delayChildren: 0.05
-      }
+        delayChildren: 0.05,
+      },
     },
-    exit: { 
-      opacity: 0, 
-      scale: 0.95, 
+    exit: {
+      opacity: 0,
+      scale: 0.95,
       filter: "blur(20px)",
-      transition: { duration: 0.25, ease: "easeOut" as const }
-    }
+      transition: { duration: 0.25, ease: "easeOut" as const },
+    },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 30, scale: 0.95 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
       scale: 1,
-      transition: { type: "spring" as const, damping: 25, stiffness: 400 }
-    }
+      transition: { type: "spring" as const, damping: 25, stiffness: 400 },
+    },
   };
 
   return (
@@ -199,7 +199,7 @@ export function ProfessionalToolsPanel({
           className="absolute inset-0 bg-black/50 backdrop-blur-xl pointer-events-auto"
           onClick={onClose}
         />
-        
+
         {/* Main Panel */}
         <motion.div
           variants={containerVariants}
@@ -209,23 +209,23 @@ export function ProfessionalToolsPanel({
           className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[32px] border border-white/10 bg-zinc-950/70 backdrop-blur-[64px] shadow-2xl shadow-black/80 pointer-events-auto flex flex-col"
         >
           {/* Ambient Glow Effects (Breathing) */}
-          <motion.div 
-            animate={{ 
+          <motion.div
+            animate={{
               scale: [1, 1.1, 1],
-              opacity: [0.15, 0.25, 0.15] 
+              opacity: [0.15, 0.25, 0.15],
             }}
             transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500/30 rounded-full blur-[120px] pointer-events-none" 
+            className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500/30 rounded-full blur-[120px] pointer-events-none"
           />
-          <motion.div 
-            animate={{ 
+          <motion.div
+            animate={{
               scale: [1, 1.2, 1],
-              opacity: [0.1, 0.2, 0.1] 
+              opacity: [0.1, 0.2, 0.1],
             }}
             transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-500/30 rounded-full blur-[120px] pointer-events-none" 
+            className="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-500/30 rounded-full blur-[120px] pointer-events-none"
           />
-          
+
           {/* Header */}
           <div className="relative flex items-center justify-between p-8 pb-6 border-b border-white/[0.08]">
             <div className="flex items-center gap-5">
@@ -255,12 +255,12 @@ export function ProfessionalToolsPanel({
           {/* Content Area */}
           <div className="relative flex-1 overflow-y-auto p-8 custom-scrollbar">
             {!isProfessionalMode ? (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col items-center justify-center h-64 text-center"
               >
-                <motion.div 
+                <motion.div
                   animate={{ y: [0, -10, 0] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                   className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-white/10 shadow-inner backdrop-blur-md"
@@ -286,39 +286,46 @@ export function ProfessionalToolsPanel({
                       disabled={!tool.enabled}
                       className={`
                         relative overflow-hidden text-left group
-                        ${tool.colSpan === 2 ? 'md:col-span-2' : 'col-span-1'}
-                        ${tool.colSpan === 2 ? 'p-8' : 'p-6'}
+                        ${tool.colSpan === 2 ? "md:col-span-2" : "col-span-1"}
+                        ${tool.colSpan === 2 ? "p-8" : "p-6"}
                         rounded-[28px] border transition-all duration-400 ease-out
-                        ${tool.enabled
-                          ? "bg-white/[0.04] border-white/10 hover:bg-white/[0.08] hover:border-white/20 hover:shadow-2xl hover:shadow-black/40"
-                          : "bg-white/[0.01] border-white/5 opacity-50 cursor-not-allowed"
+                        ${
+                          tool.enabled
+                            ? "bg-white/[0.04] border-white/10 hover:bg-white/[0.08] hover:border-white/20 hover:shadow-2xl hover:shadow-black/40"
+                            : "bg-white/[0.01] border-white/5 opacity-50 cursor-not-allowed"
                         }
                       `}
                     >
                       {/* Hover Gradient Background */}
                       {tool.enabled && (
-                        <div className={`absolute inset-0 bg-gradient-to-br ${tool.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                        <div
+                          className={`absolute inset-0 bg-gradient-to-br ${tool.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
+                        />
                       )}
-                      
+
                       <div className="relative z-10 flex flex-col h-full justify-between">
                         <div className="flex items-start justify-between mb-6">
-                          <div className={`
-                            ${tool.colSpan === 2 ? 'p-4' : 'p-3'} 
+                          <div
+                            className={`
+                            ${tool.colSpan === 2 ? "p-4" : "p-3"} 
                             bg-white/[0.06] rounded-2xl border border-white/10 shadow-inner backdrop-blur-md
                             group-hover:scale-110 group-hover:rotate-3 transition-all duration-400 ease-out
-                          `}>
+                          `}
+                          >
                             {tool.icon}
                           </div>
                           {tool.enabled && (
-                            <motion.div 
+                            <motion.div
                               animate={{ opacity: [0.4, 1, 0.4] }}
                               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                              className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" 
+                              className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]"
                             />
                           )}
                         </div>
                         <div>
-                          <h3 className={`${tool.colSpan === 2 ? 'text-2xl' : 'text-lg'} text-white/95 font-bold mb-2 tracking-tight`}>
+                          <h3
+                            className={`${tool.colSpan === 2 ? "text-2xl" : "text-lg"} text-white/95 font-bold mb-2 tracking-tight`}
+                          >
                             {tool.name}
                           </h3>
                           <p className="text-white/50 text-sm leading-relaxed font-medium">
@@ -331,7 +338,7 @@ export function ProfessionalToolsPanel({
                 </div>
 
                 {/* Enabled Features Pill List */}
-                <motion.div 
+                <motion.div
                   variants={itemVariants}
                   className="p-6 rounded-[28px] bg-white/[0.03] border border-white/[0.08] shadow-inner flex flex-col sm:flex-row sm:items-center justify-between gap-5 backdrop-blur-sm"
                 >

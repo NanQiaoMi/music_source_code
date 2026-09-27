@@ -6,13 +6,17 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id") || "";
   const queryCookie = searchParams.get("cookie") || "";
-  const headerCookie = request.headers.get("x-netease-cookie") || request.headers.get("cookie") || "";
+  const headerCookie =
+    request.headers.get("x-netease-cookie") || request.headers.get("cookie") || "";
   const cookie = queryCookie || headerCookie;
   const offset = Math.max(0, parseInt(searchParams.get("offset") || "0", 10));
   const limit = Math.min(2000, Math.max(1, parseInt(searchParams.get("limit") || "100", 10)));
 
   if (!id) {
-    return NextResponse.json({ code: 400, message: "Missing playlist id", songs: [] }, { status: 400 });
+    return NextResponse.json(
+      { code: 400, message: "Missing playlist id", songs: [] },
+      { status: 400 }
+    );
   }
 
   try {
@@ -32,7 +36,12 @@ export async function GET(request: NextRequest) {
 
     let rawTracks: any[] = [];
 
-    if (offset === 0 && Array.isArray(playlist?.tracks) && playlist.tracks.length > 0 && limit <= playlist.tracks.length) {
+    if (
+      offset === 0 &&
+      Array.isArray(playlist?.tracks) &&
+      playlist.tracks.length > 0 &&
+      limit <= playlist.tracks.length
+    ) {
       rawTracks = playlist.tracks.slice(0, limit);
     } else if (allTrackIds.length > 0) {
       const targetIds = allTrackIds.slice(offset, offset + limit);
@@ -75,11 +84,15 @@ export async function GET(request: NextRequest) {
       const artist = Array.isArray(t.ar)
         ? t.ar.map((a: any) => a.name).join("/")
         : Array.isArray(t.artists)
-        ? t.artists.map((a: any) => a.name).join("/")
-        : "未知歌手";
+          ? t.artists.map((a: any) => a.name).join("/")
+          : "未知歌手";
 
       const cover = t.al?.picUrl || t.album?.picUrl || "/default-cover.svg";
-      const duration = t.dt ? Math.round(t.dt / 1000) : t.duration ? Math.round(t.duration / 1000) : 240;
+      const duration = t.dt
+        ? Math.round(t.dt / 1000)
+        : t.duration
+          ? Math.round(t.duration / 1000)
+          : 240;
 
       return {
         id: songId,

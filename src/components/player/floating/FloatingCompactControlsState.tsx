@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useRef, useState, memo } from "react";
@@ -224,7 +223,10 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
         </div>
 
         {/* 3. 右侧控制按钮组 (0ms 零延迟极速响应) */}
-        <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="flex items-center gap-1.5 flex-shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* 歌词按钮 */}
           <button
             type="button"

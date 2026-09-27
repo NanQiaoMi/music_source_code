@@ -262,7 +262,10 @@ export const createBlobUrlFromStoredMusic = (music: StoredMusic): string => {
   if (!music || !music.fileData) return "";
   try {
     const mimeType = music.fileType || "audio/mpeg";
-    const blob = music.fileData instanceof Blob ? music.fileData : new Blob([music.fileData], { type: mimeType });
+    const blob =
+      music.fileData instanceof Blob
+        ? music.fileData
+        : new Blob([music.fileData], { type: mimeType });
     return BlobUrlRegistry.getInstance().register(blob, `stored_${music.id}`);
   } catch (e) {
     console.error("Failed to create blob URL from stored music:", e);
@@ -274,7 +277,10 @@ export const createBlobUrlFromOfflineAudio = (record: OfflineAudioRecord): strin
   if (!record || !record.fileData) return "";
   try {
     const mimeType = record.mimeType || "audio/mpeg";
-    const blob = record.fileData instanceof Blob ? record.fileData : new Blob([record.fileData], { type: mimeType });
+    const blob =
+      record.fileData instanceof Blob
+        ? record.fileData
+        : new Blob([record.fileData], { type: mimeType });
     return BlobUrlRegistry.getInstance().register(blob, `offline_${record.songId}`);
   } catch (e) {
     console.error("Failed to create blob URL from offline audio:", e);

@@ -81,9 +81,7 @@ export function SmartMixSessionCard() {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">智能混音</h3>
-            <p className="text-sm text-white/50">
-              从一首种子曲目和三个简单控制创建播放队列。
-            </p>
+            <p className="text-sm text-white/50">从一首种子曲目和三个简单控制创建播放队列。</p>
           </div>
         </div>
         <div className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/55">

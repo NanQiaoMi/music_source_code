@@ -40,13 +40,21 @@ describe("LiquidGlassFilter & Mineradio Liquid Glass Engine", () => {
     expect(MINERADIO_LIQUID_GLASS_SHADOW_LAYERS.length).toBe(8);
 
     // Layer 1: Top edge specular rim
-    expect(MINERADIO_LIQUID_GLASS_SHADOW_LAYERS[0]).toBe("inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.65)");
+    expect(MINERADIO_LIQUID_GLASS_SHADOW_LAYERS[0]).toBe(
+      "inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.65)"
+    );
     // Layer 2: Internal caustic glow
-    expect(MINERADIO_LIQUID_GLASS_SHADOW_LAYERS[1]).toBe("inset 0 0 24px 2px rgba(255, 255, 255, 0.14)");
+    expect(MINERADIO_LIQUID_GLASS_SHADOW_LAYERS[1]).toBe(
+      "inset 0 0 24px 2px rgba(255, 255, 255, 0.14)"
+    );
     // Layer 3: Bottom ambient bounce
-    expect(MINERADIO_LIQUID_GLASS_SHADOW_LAYERS[2]).toBe("inset 0 -1.5px 2px 0 rgba(255, 255, 255, 0.20)");
+    expect(MINERADIO_LIQUID_GLASS_SHADOW_LAYERS[2]).toBe(
+      "inset 0 -1.5px 2px 0 rgba(255, 255, 255, 0.20)"
+    );
     // Layer 4: Deep inner occlusion
-    expect(MINERADIO_LIQUID_GLASS_SHADOW_LAYERS[3]).toBe("inset 0 12px 28px -10px rgba(0, 0, 0, 0.18)");
+    expect(MINERADIO_LIQUID_GLASS_SHADOW_LAYERS[3]).toBe(
+      "inset 0 12px 28px -10px rgba(0, 0, 0, 0.18)"
+    );
     // Layer 5: Contact base shadow
     expect(MINERADIO_LIQUID_GLASS_SHADOW_LAYERS[4]).toBe("0 2px 4px 0 rgba(0, 0, 0, 0.12)");
     // Layer 6: Near-field atmospheric dispersion

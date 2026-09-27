@@ -28,7 +28,8 @@ export const FloatingOneLineLyricPreview: React.FC<FloatingOneLineLyricPreviewPr
 
     const lyricList = lyrics.merged;
     const currentLyricIndex = getCurrentLyricIndex(currentTime);
-    const activeLyric = currentLyricIndex >= 0 ? lyricList[currentLyricIndex] : (lyricList[0] || null);
+    const activeLyric =
+      currentLyricIndex >= 0 ? lyricList[currentLyricIndex] : lyricList[0] || null;
 
     if (!activeLyric) return null;
 
