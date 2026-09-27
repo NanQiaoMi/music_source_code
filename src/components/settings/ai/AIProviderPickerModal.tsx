@@ -4,8 +4,8 @@ import React, { useState } from "react";
 import { PROVIDER_PRESETS } from "./providerPresets";
 import { ProviderPreset, CategoryFilter } from "./types";
 import { ProviderLogo } from "./ProviderLogo";
-import { X, Search, Sparkles, Plus, Check } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { X, Search, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface AIProviderPickerModalProps {
   isOpen: boolean;
@@ -32,8 +32,7 @@ export const AIProviderPickerModal: React.FC<AIProviderPickerModalProps> = ({
   if (!isOpen) return null;
 
   const filteredPresets = PROVIDER_PRESETS.filter((preset) => {
-    const matchCategory =
-      activeCategory === "all" || preset.category === activeCategory;
+    const matchCategory = activeCategory === "all" || preset.category === activeCategory;
     const query = searchQuery.toLowerCase().trim();
     const matchQuery =
       !query ||

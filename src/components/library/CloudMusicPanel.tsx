@@ -2,38 +2,19 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Heart,
-  Music,
-  ListMusic,
-  Play,
-  Plus,
-  ListPlus,
-  RefreshCw,
-  Download,
-  Check,
-  ChevronRight,
-  ArrowLeft,
-  Search,
-  Crown,
-  Sparkles,
-  ShieldCheck,
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { Heart, Play, Plus, ListPlus, RefreshCw, Download, ArrowLeft, Search } from "lucide-react";
 import Image from "next/image";
 import { useUserAccountStore, CloudPlaylist } from "@/store/userAccountStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useIntegratedAudioPipeline } from "@/lib/audio/useIntegratedAudioPipeline";
-import { Song } from "@/types/song";
 
 interface CloudMusicPanelProps {
   onOpenAccountModal?: () => void;
 }
 
-export const CloudMusicPanel: React.FC<CloudMusicPanelProps> = ({
-  onOpenAccountModal,
-}) => {
+export const CloudMusicPanel: React.FC<CloudMusicPanelProps> = ({ onOpenAccountModal }) => {
   const {
     neteaseUser,
     userPlaylists,
@@ -53,10 +34,10 @@ export const CloudMusicPanel: React.FC<CloudMusicPanelProps> = ({
   const [cachedSongIds, setCachedSongIds] = useState<Set<string>>(new Set());
   const [isCaching, setIsCaching] = useState(false);
 
-  const { playTrackWithPipeline } = useIntegratedAudioPipeline();
+  const { playTrackWithPipeline: _playTrackWithPipeline } = useIntegratedAudioPipeline();
   const addToQueue = useQueueStore((state) => state.addToQueue);
   const insertNext = useQueueStore((state) => state.insertNext);
-  const setQueue = useQueueStore((state) => state.setQueue);
+  const _setQueue = useQueueStore((state) => state.setQueue);
 
   // 挂载时若已登录但无歌单，则拉取一次
   useEffect(() => {
@@ -333,9 +314,7 @@ export const CloudMusicPanel: React.FC<CloudMusicPanelProps> = ({
               <span className="text-[13px]">正在从云端拉取曲目与无损直链...</span>
             </div>
           ) : filteredSongs.length === 0 ? (
-            <div className="py-12 text-center text-[#86868b] text-[13px]">
-              未找到匹配歌曲
-            </div>
+            <div className="py-12 text-center text-[#86868b] text-[13px]">未找到匹配歌曲</div>
           ) : (
             <div className="rounded-[22px] bg-white/[0.03] border border-white/[0.05] divide-y divide-white/[0.04] overflow-hidden">
               {filteredSongs.map((song, idx) => {
@@ -345,7 +324,9 @@ export const CloudMusicPanel: React.FC<CloudMusicPanelProps> = ({
                     key={song.id || idx}
                     onClick={() => {
                       const songIdx = activePlaylistSongs.findIndex((s) => s.id === song.id);
-                      useAudioStore.getState().playQueue(activePlaylistSongs, songIdx >= 0 ? songIdx : idx);
+                      useAudioStore
+                        .getState()
+                        .playQueue(activePlaylistSongs, songIdx >= 0 ? songIdx : idx);
                     }}
                     className="flex items-center justify-between p-3.5 hover:bg-white/[0.03] cursor-pointer transition-colors group"
                   >
@@ -354,7 +335,12 @@ export const CloudMusicPanel: React.FC<CloudMusicPanelProps> = ({
                         {idx + 1}
                       </span>
                       <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-white/10 shrink-0 shadow-sm">
-                        <Image src={song.cover || "/default-cover.svg"} alt={song.title} fill className="object-cover" />
+                        <Image
+                          src={song.cover || "/default-cover.svg"}
+                          alt={song.title}
+                          fill
+                          className="object-cover"
+                        />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                           <Play className="w-4 h-4 fill-white text-white" />
                         </div>

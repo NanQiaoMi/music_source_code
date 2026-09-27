@@ -3,7 +3,7 @@
 import React from "react";
 import { AIConfig } from "@/store/aiStore";
 import { PROMPT_PRESETS } from "../promptPresets";
-import { Sliders, Sparkles, Wand2, Info } from "lucide-react";
+import { Sliders, Sparkles } from "lucide-react";
 
 interface AIParametersTabProps {
   config: AIConfig;
@@ -17,9 +17,20 @@ export const AIParametersTab: React.FC<AIParametersTabProps> = ({ config, onUpda
   const systemPrompt = config.systemPrompt ?? "";
 
   const getTemperatureBadge = (val: number) => {
-    if (val < 0.45) return { label: "严谨求实 · 乐理解析", color: "text-blue-400 bg-blue-500/10 border-blue-500/20" };
-    if (val <= 0.95) return { label: "均衡流畅 · 默认推荐", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" };
-    return { label: "诗意发散 · 艺术通感", color: "text-purple-400 bg-purple-500/10 border-purple-500/20" };
+    if (val < 0.45)
+      return {
+        label: "严谨求实 · 乐理解析",
+        color: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+      };
+    if (val <= 0.95)
+      return {
+        label: "均衡流畅 · 默认推荐",
+        color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+      };
+    return {
+      label: "诗意发散 · 艺术通感",
+      color: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+    };
   };
 
   const tempBadge = getTemperatureBadge(temperature);
@@ -40,7 +51,9 @@ export const AIParametersTab: React.FC<AIParametersTabProps> = ({ config, onUpda
               <label className="text-[12px] font-medium text-white/80">
                 Temperature (随机性 / 创造力)
               </label>
-              <span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${tempBadge.color}`}>
+              <span
+                className={`px-2 py-0.5 rounded text-[10px] font-medium border ${tempBadge.color}`}
+              >
                 {tempBadge.label}
               </span>
             </div>
@@ -69,9 +82,7 @@ export const AIParametersTab: React.FC<AIParametersTabProps> = ({ config, onUpda
           {/* Top_P */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-[12px] font-medium text-white/80">
-                Top_P (核心采样概率)
-              </label>
+              <label className="text-[12px] font-medium text-white/80">Top_P (核心采样概率)</label>
               <span className="text-[12px] font-mono text-purple-300 font-semibold">
                 {topP.toFixed(2)}
               </span>
@@ -151,9 +162,7 @@ export const AIParametersTab: React.FC<AIParametersTabProps> = ({ config, onUpda
                     T:{preset.temperature}
                   </span>
                 </div>
-                <p className="text-[10px] text-white/50 line-clamp-1 mt-1">
-                  {preset.description}
-                </p>
+                <p className="text-[10px] text-white/50 line-clamp-1 mt-1">{preset.description}</p>
               </button>
             );
           })}

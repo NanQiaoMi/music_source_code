@@ -1,7 +1,7 @@
 import React, { act } from "react";
 import type { ImgHTMLAttributes } from "react";
 import { createRoot, Root } from "react-dom/client";
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FloatingAmbientGlow } from "./FloatingAmbientGlow";
 import {
@@ -185,12 +185,7 @@ describe("FloatingControls", () => {
 
   it("renders VinylRecord with cover and groove details", () => {
     const html = renderToStaticMarkup(
-      <VinylRecord
-        coverUrl="/cover.jpg"
-        title="Cyber Rhythm"
-        isPlaying={true}
-        size={56}
-      />
+      <VinylRecord coverUrl="/cover.jpg" title="Cyber Rhythm" isPlaying={true} size={56} />
     );
     expect(html).toContain('title="Cyber Rhythm"');
     expect(html).toContain('src="/cover.jpg"');
@@ -290,9 +285,7 @@ describe("FloatingPillState", () => {
     const root: Root = createRoot(container);
 
     await act(async () => {
-      root.render(
-        <FloatingPillState onExpand={onExpand} showGlow={true} showBorderBeam={true} />
-      );
+      root.render(<FloatingPillState onExpand={onExpand} showGlow={true} showBorderBeam={true} />);
     });
 
     expect(container.innerHTML).toContain('data-floating-state="pill"');
@@ -436,5 +429,3 @@ describe("FloatingCompactControlsState (Level 2 Island Controls)", () => {
     container.remove();
   });
 });
-
-

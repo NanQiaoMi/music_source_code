@@ -79,7 +79,9 @@ vi.mock("framer-motion", async () => {
         if (!el) return;
         const leaveHandler = (e: MouseEvent) => {
           if (typeof onMouseLeave === "function") {
-            (onMouseLeave as unknown as (e: React.MouseEvent<HTMLElement>) => void)(e as unknown as React.MouseEvent<HTMLElement>);
+            (onMouseLeave as unknown as (e: React.MouseEvent<HTMLElement>) => void)(
+              e as unknown as React.MouseEvent<HTMLElement>
+            );
           }
         };
         el.addEventListener("mouseleave", leaveHandler);
@@ -87,12 +89,7 @@ vi.mock("framer-motion", async () => {
       }, [onMouseLeave]);
 
       return (
-        <div
-          ref={setRefs}
-          onMouseLeave={onMouseLeave}
-          onPointerLeave={onPointerLeave}
-          {...props}
-        />
+        <div ref={setRefs} onMouseLeave={onMouseLeave} onPointerLeave={onPointerLeave} {...props} />
       );
     }
   );
@@ -145,12 +142,14 @@ function removeSpeechRecognition() {
   delete speechWindow.webkitSpeechRecognition;
 }
 
-function getVoiceButton(container: HTMLElement) {
+function _getVoiceButton(container: HTMLElement) {
   const input = container.querySelector(
     'input[placeholder="搜索歌曲、歌手、专辑..."]'
   ) as HTMLInputElement | null;
   expect(input).not.toBeNull();
-  const button = input?.parentElement?.querySelector('button[title*="语音"]') ?? input?.parentElement?.nextElementSibling;
+  const button =
+    input?.parentElement?.querySelector('button[title*="语音"]') ??
+    input?.parentElement?.nextElementSibling;
   return button as HTMLButtonElement;
 }
 

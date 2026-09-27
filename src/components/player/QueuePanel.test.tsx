@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// 测试桩（React/Store mock、部分状态对象）用宽松类型是刻意的，收紧只会引入与被测逻辑无关的噪音
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
@@ -47,7 +49,13 @@ describe("QueuePanel", () => {
     });
 
     useAudioStore.setState({
-      currentSong: { id: "song-1", title: "Midnight City", artist: "M83", duration: 240, source: "local" },
+      currentSong: {
+        id: "song-1",
+        title: "Midnight City",
+        artist: "M83",
+        duration: 240,
+        source: "local",
+      },
       isPlaying: true,
     });
   });
@@ -108,7 +116,9 @@ describe("QueuePanel", () => {
       searchBtn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const searchInput = container.querySelector('input[placeholder*="在队列中搜索"]') as HTMLInputElement;
+    const searchInput = container.querySelector(
+      'input[placeholder*="在队列中搜索"]'
+    ) as HTMLInputElement;
     expect(searchInput).not.toBeNull();
 
     await act(async () => {

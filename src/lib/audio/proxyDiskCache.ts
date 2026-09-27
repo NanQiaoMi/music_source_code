@@ -181,7 +181,7 @@ export function cacheStreamAndTee(
   (async () => {
     const reader = streamForDisk.getReader();
     try {
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
         if (value && writeStream && !writeStream.destroyed) {
@@ -193,7 +193,8 @@ export function cacheStreamAndTee(
       if (writeStream) {
         writeStream.end(async () => {
           // Verify size
-          const isComplete = expectedLength > 0 ? totalWritten >= expectedLength : totalWritten > 50000;
+          const isComplete =
+            expectedLength > 0 ? totalWritten >= expectedLength : totalWritten > 50000;
           if (isComplete) {
             try {
               if (fs.existsSync(partPath)) {
@@ -250,7 +251,9 @@ export async function pruneLruCacheIfNeeded(): Promise<void> {
           totalSize += stat.size;
           entries.push({ key, meta, size: stat.size });
         }
-      } catch {}
+      } catch {
+        // 单条缓存条目读取/删除失败则跳过该条
+      }
     }
 
     if (totalSize > MAX_CACHE_SIZE_BYTES) {
@@ -265,7 +268,9 @@ export async function pruneLruCacheIfNeeded(): Promise<void> {
           if (fs.existsSync(binPath)) await fs.promises.unlink(binPath);
           if (fs.existsSync(metaPath)) await fs.promises.unlink(metaPath);
           totalSize -= entry.size;
-        } catch {}
+        } catch {
+          // 单条缓存条目删除失败则跳过该条
+        }
       }
     }
   } catch (e) {

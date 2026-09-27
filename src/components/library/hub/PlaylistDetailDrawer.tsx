@@ -7,30 +7,20 @@ import Image from "next/image";
 import {
   X,
   Play,
-  Pause,
   Download,
   CheckSquare,
   Square,
   Music,
   Loader2,
-  Sparkles,
-  User,
   Headphones,
-  Plus,
-  Radio,
   Search,
   Heart,
   ListPlus,
   FolderPlus,
-  Share2,
-  RotateCcw,
   ArrowLeft,
-  Sliders,
   Activity,
-  Layers,
   Clock,
   Disc3,
-  Check,
   Flame,
   Zap,
 } from "lucide-react";
@@ -75,7 +65,7 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [activeTab, setActiveTab] = useState<"tracks" | "dna">("tracks");
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [_actionNotice, setActionNotice] = useState<string | null>(null);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -120,7 +110,7 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
   const isAudioPlaying = audioIsPlaying || playerIsPlaying;
 
   const playQueue = useAudioStore((state) => state.playQueue);
-  const playSong = useAudioStore((state) => state.playSong);
+  const _playSong = useAudioStore((state) => state.playSong);
   const addToQueue = useQueueStore((state) => state.addToQueue);
   const addToNext = useQueueStore((state) => state.addToNext);
   const addBatchDownloads = useOfflineDownloadStore((state) => state.addBatchDownloads);
@@ -146,7 +136,9 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
 
     try {
       // 方式 A: 优先调用本地 API Proxy (支持超大歌单分批与公共免密代理)
-      const res = await fetch(`/api/playlist/tracks?id=${encodeURIComponent(playlistId)}&limit=1000`);
+      const res = await fetch(
+        `/api/playlist/tracks?id=${encodeURIComponent(playlistId)}&limit=1000`
+      );
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.songs) && data.songs.length > 0) {
@@ -159,12 +151,20 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
       // 方式 B: 调用用户账号 Store 的全量解析通道
       setLoadingProgress("正在通过已授权账号解析全量曲目...");
       const accountStore = useUserAccountStore.getState();
-      const songs = await accountStore.fetchAllPlaylistTracks(playlistId, (playlistSource as any) || "netease");
+      const songs = await accountStore.fetchAllPlaylistTracks(
+        playlistId,
+        (playlistSource as any) || "netease"
+      );
       if (Array.isArray(songs) && songs.length > 0) {
         setTracks(songs);
       } else {
         // 方式 C: 单页 500 首保底
-        const singleBatch = await accountStore.fetchPlaylistTracks(playlistId, (playlistSource as any) || "netease", 0, 500);
+        const singleBatch = await accountStore.fetchPlaylistTracks(
+          playlistId,
+          (playlistSource as any) || "netease",
+          0,
+          500
+        );
         if (Array.isArray(singleBatch) && singleBatch.length > 0) {
           setTracks(singleBatch);
         }
@@ -180,6 +180,8 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
 
   useEffect(() => {
     if (isOpen && playlist) {
+      // 抽屉打开时重置曲目列表（跟随外部开关）
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTracks([]);
       setSelectedIds(new Set());
       setIsMultiSelectMode(false);
@@ -246,7 +248,7 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
       .slice(0, 6);
 
     const hiresCount = tracks.filter(
-      (t) => (t.format === "flac" || (t.title && t.title.includes("24bit")))
+      (t) => t.format === "flac" || (t.title && t.title.includes("24bit"))
     ).length;
 
     return {
@@ -354,7 +356,9 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
       const next = [newPl, ...list];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       importSongs(toDownload);
-      showNotice(`📥 已提交 ${toDownload.length} 首歌曲至离线下载队列，可在【离线下载】中查看进度！`);
+      showNotice(
+        `📥 已提交 ${toDownload.length} 首歌曲至离线下载队列，可在【离线下载】中查看进度！`
+      );
     } catch {
       showNotice(`已提交 ${toDownload.length} 首歌曲下载任务`);
     }
@@ -405,11 +409,16 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
     ? Math.max(0, Math.floor(relativeScroll / ITEM_HEIGHT) - OVERSCAN)
     : 0;
   const endIndex = isVirtualized
-    ? Math.min(filteredTracks.length, Math.ceil((relativeScroll + viewportHeight) / ITEM_HEIGHT) + OVERSCAN)
+    ? Math.min(
+        filteredTracks.length,
+        Math.ceil((relativeScroll + viewportHeight) / ITEM_HEIGHT) + OVERSCAN
+      )
     : filteredTracks.length;
 
   const topPadding = isVirtualized ? startIndex * ITEM_HEIGHT : 0;
-  const bottomPadding = isVirtualized ? Math.max(0, (filteredTracks.length - endIndex) * ITEM_HEIGHT) : 0;
+  const bottomPadding = isVirtualized
+    ? Math.max(0, (filteredTracks.length - endIndex) * ITEM_HEIGHT)
+    : 0;
   const visibleTracks = isVirtualized ? filteredTracks.slice(startIndex, endIndex) : filteredTracks;
 
   return (
@@ -450,7 +459,11 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
 
             <div className="flex items-center gap-3">
               <span className="px-2.5 py-0.5 text-[10px] font-mono rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold uppercase tracking-wider">
-                {playlist.source === "netease" ? "网易云音乐" : playlist.source === "qq" ? "QQ音乐" : playlist.source.toUpperCase()}
+                {playlist.source === "netease"
+                  ? "网易云音乐"
+                  : playlist.source === "qq"
+                    ? "QQ音乐"
+                    : playlist.source.toUpperCase()}
               </span>
 
               <button
@@ -512,9 +525,7 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
                     <span className="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold font-mono">
                       歌单
                     </span>
-                    <span className="text-xs text-white/40 font-mono">
-                      ID: {playlist.id}
-                    </span>
+                    <span className="text-xs text-white/40 font-mono">ID: {playlist.id}</span>
                     {playlistStats.hiresCount > 0 && (
                       <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
                         💎 包含 {playlistStats.hiresCount} 首母带高解析
@@ -542,13 +553,16 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
                     <span>·</span>
                     <span className="flex items-center gap-1">
                       <Music className="w-3.5 h-3.5 text-emerald-400" />
-                      <strong>{tracks.length > 0 ? tracks.length : playlist.trackCount}</strong> 首歌曲
+                      <strong>
+                        {tracks.length > 0 ? tracks.length : playlist.trackCount}
+                      </strong>{" "}
+                      首歌曲
                     </span>
 
                     <span>·</span>
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                      约 <strong>{playlistStats.totalHours}</strong> 小时
+                      <Clock className="w-3.5 h-3.5 text-cyan-400" />约{" "}
+                      <strong>{playlistStats.totalHours}</strong> 小时
                     </span>
 
                     {playlist.createTime && (
@@ -557,7 +571,8 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
                         <span className="text-white/40">
                           {typeof playlist.createTime === "number"
                             ? new Date(playlist.createTime).toLocaleDateString()
-                            : playlist.createTime} 创建
+                            : playlist.createTime}{" "}
+                          创建
                         </span>
                       </>
                     )}
@@ -709,13 +724,17 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
                 {isLoading ? (
                   <div className="py-20 flex flex-col items-center justify-center text-white/50 gap-3">
                     <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-                    <p className="text-xs font-semibold">{loadingProgress || "正在拉取全量母带曲目..."}</p>
+                    <p className="text-xs font-semibold">
+                      {loadingProgress || "正在拉取全量母带曲目..."}
+                    </p>
                   </div>
                 ) : filteredTracks.length === 0 ? (
                   <div className="py-20 flex flex-col items-center justify-center text-white/40 gap-3">
                     <Music className="w-10 h-10 opacity-25" />
                     <p className="text-xs">
-                      {searchQuery ? `未找到与「${searchQuery}」匹配的歌曲` : "歌单内暂无可解析曲目"}
+                      {searchQuery
+                        ? `未找到与「${searchQuery}」匹配的歌曲`
+                        : "歌单内暂无可解析曲目"}
                     </p>
                     {searchQuery && (
                       <button
@@ -750,8 +769,8 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
                             isCurrent
                               ? "bg-emerald-500/15 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.15)]"
                               : isSelected
-                              ? "bg-cyan-500/15 border border-cyan-500/30"
-                              : "hover:bg-white/[0.05] border border-transparent"
+                                ? "bg-cyan-500/15 border border-cyan-500/30"
+                                : "hover:bg-white/[0.05] border border-transparent"
                           }`}
                         >
                           {/* 序号 / 选择框 / 正在播放波形 */}
@@ -773,9 +792,15 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
                               </button>
                             ) : isCurrent ? (
                               <div className="flex items-end justify-center gap-0.5 w-4 h-4 text-emerald-400">
-                                <span className={`w-1 bg-emerald-400 rounded-full ${isAudioPlaying ? "animate-pulse h-4" : "h-2"}`} />
-                                <span className={`w-1 bg-emerald-400 rounded-full ${isAudioPlaying ? "animate-bounce h-3" : "h-3"}`} />
-                                <span className={`w-1 bg-emerald-400 rounded-full ${isAudioPlaying ? "animate-pulse h-4" : "h-1"}`} />
+                                <span
+                                  className={`w-1 bg-emerald-400 rounded-full ${isAudioPlaying ? "animate-pulse h-4" : "h-2"}`}
+                                />
+                                <span
+                                  className={`w-1 bg-emerald-400 rounded-full ${isAudioPlaying ? "animate-bounce h-3" : "h-3"}`}
+                                />
+                                <span
+                                  className={`w-1 bg-emerald-400 rounded-full ${isAudioPlaying ? "animate-pulse h-4" : "h-1"}`}
+                                />
                               </div>
                             ) : (
                               <span className="text-xs font-mono text-white/30 group-hover:hidden">
@@ -810,9 +835,11 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
 
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
-                                <span className={`text-xs font-semibold truncate ${
-                                  isCurrent ? "text-emerald-300 font-bold" : "text-white/90"
-                                }`}>
+                                <span
+                                  className={`text-xs font-semibold truncate ${
+                                    isCurrent ? "text-emerald-300 font-bold" : "text-white/90"
+                                  }`}
+                                >
                                   {song.title}
                                 </span>
 
@@ -892,7 +919,9 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
                         </div>
                       );
                     })}
-                    {bottomPadding > 0 && <div style={{ height: bottomPadding }} aria-hidden="true" />}
+                    {bottomPadding > 0 && (
+                      <div style={{ height: bottomPadding }} aria-hidden="true" />
+                    )}
                   </div>
                 )}
               </div>
@@ -985,7 +1014,11 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
               >
                 <span className="font-bold text-white flex items-center gap-1.5">
                   <CheckSquare className="w-4 h-4 text-cyan-400" />
-                  已选择 <strong className="text-cyan-300 font-mono text-sm">{selectedIds.size}</strong> 首歌曲
+                  已选择{" "}
+                  <strong className="text-cyan-300 font-mono text-sm">
+                    {selectedIds.size}
+                  </strong>{" "}
+                  首歌曲
                 </span>
 
                 <div className="h-4 w-px bg-white/15" />

@@ -5,16 +5,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
   AlertCircle,
-  AlertTriangle,
   CheckCircle,
-  Clock,
   Download,
   FileText,
   Flame,
   Image as ImageIcon,
   Music,
   RefreshCw,
-  Sparkles,
   Trash2,
   X,
   ShieldCheck,
@@ -25,7 +22,7 @@ import {
   HealthIssueGroup,
   useLibraryHealthStore,
 } from "@/store/libraryHealthStore";
-import { HealthIssueType, Song } from "@/types/song";
+import { HealthIssueType } from "@/types/song";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { purgeInvalidSongs, evaluateSongIntegrity, PurgeReport } from "@/services/songPurgeService";
 import {
@@ -170,24 +167,21 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
     setActiveTab("results");
   }, [nextAction.target, startScan]);
 
-  const handleExecutePurge = useCallback(
-    async (targetIds: string[]) => {
-      if (targetIds.length === 0) return;
-      setIsPurging(true);
-      setSongsToPurgeConfirm(null);
+  const handleExecutePurge = useCallback(async (targetIds: string[]) => {
+    if (targetIds.length === 0) return;
+    setIsPurging(true);
+    setSongsToPurgeConfirm(null);
 
-      try {
-        const report = await purgeInvalidSongs(targetIds);
-        setPurgeFeedback(report);
-        setTimeout(() => setPurgeFeedback(null), 5000);
-      } catch (err) {
-        console.error("Failed to purge songs:", err);
-      } finally {
-        setIsPurging(false);
-      }
-    },
-    []
-  );
+    try {
+      const report = await purgeInvalidSongs(targetIds);
+      setPurgeFeedback(report);
+      setTimeout(() => setPurgeFeedback(null), 5000);
+    } catch (err) {
+      console.error("Failed to purge songs:", err);
+    } finally {
+      setIsPurging(false);
+    }
+  }, []);
 
   const downloadReport = () => {
     const reportJson = exportHealthReport();
@@ -281,7 +275,8 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
                 <span>
-                  已彻底清理 <strong>{purgeFeedback.purgedCount}</strong> 首无实际信息/异常音乐，曲库与本地存储已彻底同步！
+                  已彻底清理 <strong>{purgeFeedback.purgedCount}</strong>{" "}
+                  首无实际信息/异常音乐，曲库与本地存储已彻底同步！
                 </span>
               </div>
               <button
@@ -354,8 +349,12 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
                 {localScanning && (
                   <div className="flex flex-col items-center py-8">
                     <RefreshCw className="mb-3 h-8 w-8 animate-spin text-emerald-400" />
-                    <p className="text-sm font-medium text-white/80">正在对曲库进行逐曲深度巡检...</p>
-                    <p className="text-xs text-white/40 mt-1">分析音频源可播性、元数据完整度与本地存储状态</p>
+                    <p className="text-sm font-medium text-white/80">
+                      正在对曲库进行逐曲深度巡检...
+                    </p>
+                    <p className="text-xs text-white/40 mt-1">
+                      分析音频源可播性、元数据完整度与本地存储状态
+                    </p>
                   </div>
                 )}
               </div>
@@ -445,7 +444,9 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
                 </div>
 
                 <p className="text-xs text-white/70 leading-relaxed">
-                  即将永久彻底删除 <strong>{songsToPurgeConfirm.length}</strong> 首无实际信息或死链音乐。该操作将级联清理曲库列表、播放队列、封面缓存及本地 IndexedDB 存储。
+                  即将永久彻底删除 <strong>{songsToPurgeConfirm.length}</strong>{" "}
+                  首无实际信息或死链音乐。该操作将级联清理曲库列表、播放队列、封面缓存及本地
+                  IndexedDB 存储。
                 </p>
 
                 <div className="mt-3 max-h-36 overflow-y-auto custom-scrollbar rounded-xl bg-black/30 p-2 text-[11px] text-white/60 space-y-1">

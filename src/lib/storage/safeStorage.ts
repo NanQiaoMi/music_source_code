@@ -147,7 +147,7 @@ export function createSafeStorage(storeName?: string): StateStorage {
 
       try {
         window.localStorage.setItem(name, value);
-      } catch (err: any) {
+      } catch (_err: any) {
         // 捕获 QuotaExceededError，执行静默瘦身自愈
         try {
           compactExistingStorage();

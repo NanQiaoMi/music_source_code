@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { AIConfig } from "@/store/aiStore";
-import { X, Download, Upload, Copy, Check, AlertTriangle, FileText } from "lucide-react";
+import { X, Download, Upload, Copy, Check, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface AIImportExportModalProps {

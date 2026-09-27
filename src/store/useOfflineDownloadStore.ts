@@ -166,7 +166,12 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
       }
 
       // 2. 次选：如果歌曲对象带有合法非占位直链
-      if (!targetUrl && song.audioUrl && !song.audioUrl.includes("/placeholder") && !song.audioUrl.includes("outer/url?id=")) {
+      if (
+        !targetUrl &&
+        song.audioUrl &&
+        !song.audioUrl.includes("/placeholder") &&
+        !song.audioUrl.includes("outer/url?id=")
+      ) {
         targetUrl = song.audioUrl;
       }
 
@@ -244,7 +249,7 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
       let lastSpeedCalcTime = Date.now();
       let bytesSinceLastCalc = 0;
 
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -293,8 +298,9 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
       }
 
       await finalizeDownload(song, combined.buffer, contentType, task.quality);
-    } catch (err: any) {
-      if (err.name === "AbortError") {
+    } catch (err) {
+      const abortLike = err as { name?: string };
+      if (abortLike.name === "AbortError") {
         set((state) => ({
           tasks: {
             ...state.tasks,
@@ -315,7 +321,7 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
             [songId]: {
               ...state.tasks[songId],
               status: "error",
-              error: err.message || "下载失败",
+              error: err instanceof Error && err.message ? err.message : "下载失败",
               speed: 0,
               speedFormatted: "错误",
             },
@@ -340,7 +346,7 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
 
     // 优先拉取并固化高品质 LRC 歌词与翻译歌词
     let lrc = song.lyrics;
-    let transLrc = (song as any).translationLyrics;
+    let transLrc = song.translationLyrics;
     if (!lrc && (song.id || song.title)) {
       try {
         const lrcRes = await multiSourceResolver.fetchOnlineLyrics(
@@ -372,7 +378,7 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
       cover: song.cover,
       lyrics: lrc,
       translationLyrics: transLrc,
-      format: (song as any).format,
+      format: song.format,
       source: song.source || "online",
       quality: quality || "lossless",
       mimeType: mimeType || "audio/mpeg",
@@ -571,7 +577,9 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
       Object.keys(abortControllers).forEach((id) => {
         try {
           abortControllers[id]?.abort();
-        } catch {}
+        } catch {
+          // 已完成/不存在的下载任务 abort 失败可忽略
+        }
         delete abortControllers[id];
       });
       set({ tasks: {}, activeCount: 0 });
@@ -623,14 +631,18 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
                       await saveOfflineAudio(rec);
                       updatedCount++;
                     }
-                  } catch {}
+                  } catch {
+                    // 离线歌词回写失败不影响本次播放
+                  }
                 })
               );
             }
             if (updatedCount > 0) {
               const refreshed = await getAllOfflineAudios();
               set({ offlineRecords: refreshed });
-              console.info(`[useOfflineDownloadStore] ✨ 已自动为 ${updatedCount} 首历史离线歌曲静默补全并固化 LRC 歌词！`);
+              console.info(
+                `[useOfflineDownloadStore] ✨ 已自动为 ${updatedCount} 首历史离线歌曲静默补全并固化 LRC 歌词！`
+              );
             }
           }, 300);
         }

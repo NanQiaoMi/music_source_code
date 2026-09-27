@@ -6,7 +6,6 @@ import {
   X,
   Palette,
   Check,
-  Save,
   Download,
   Upload,
   Sparkles,
@@ -21,7 +20,7 @@ import {
   Paintbrush,
   Disc,
   Layout,
-  Plus
+  Plus,
 } from "lucide-react";
 import {
   HALO_SKINS,
@@ -427,7 +426,7 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                         </motion.button>
                       )}
                     </div>
-                    
+
                     <div className="grid grid-cols-4 gap-4">
                       {builtInSkins.map((skin) => (
                         <SkinCard
@@ -445,7 +444,9 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                     <div className="mb-4 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-purple-400" />
-                        <h3 className="text-lg font-semibold text-white/90">Halo 光晕音效与动态光环</h3>
+                        <h3 className="text-lg font-semibold text-white/90">
+                          Halo 光晕音效与动态光环
+                        </h3>
                       </div>
                       <HaloPreviewCanvas skin={activeHalo} renderMode={haloRenderMode} />
                     </div>
@@ -462,7 +463,10 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                               : "border-white/5 bg-white/[0.02] hover:bg-white/[0.06]"
                           }`}
                         >
-                          <div className="w-6 h-1 rounded-full mb-2" style={{ background: halo.accent }} />
+                          <div
+                            className="w-6 h-1 rounded-full mb-2"
+                            style={{ background: halo.accent }}
+                          />
                           <h4 className="text-sm font-medium text-white">{halo.name}</h4>
                           <p className="text-xs text-white/40 truncate">{halo.description}</p>
                         </motion.button>
@@ -517,7 +521,9 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
 
                           <div className="space-y-5">
                             <div>
-                              <label className="text-white/60 text-sm font-medium mb-2 block">皮肤名称</label>
+                              <label className="text-white/60 text-sm font-medium mb-2 block">
+                                皮肤名称
+                              </label>
                               <input
                                 type="text"
                                 value={customSkinDraft.name || ""}
@@ -530,7 +536,9 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                             </div>
 
                             <div>
-                              <label className="text-white/60 text-sm font-medium mb-2 block">主题调色板</label>
+                              <label className="text-white/60 text-sm font-medium mb-2 block">
+                                主题调色板
+                              </label>
                               <div className="flex flex-wrap gap-3">
                                 {colorPresets.map((preset) => (
                                   <motion.button
@@ -562,27 +570,37 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                             </div>
 
                             <div>
-                              <label className="text-white/60 text-sm font-medium mb-2 block">深色背景底色</label>
+                              <label className="text-white/60 text-sm font-medium mb-2 block">
+                                深色背景底色
+                              </label>
                               <div className="flex gap-3">
                                 <div className="relative">
                                   <input
                                     type="color"
                                     value={customSkinDraft.background || "#0f0f23"}
                                     onChange={(e) =>
-                                      setCustomSkinDraft({ ...customSkinDraft, background: e.target.value })
+                                      setCustomSkinDraft({
+                                        ...customSkinDraft,
+                                        background: e.target.value,
+                                      })
                                     }
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                   />
-                                  <div 
+                                  <div
                                     className="w-12 h-12 rounded-xl border-2 border-white/20 shadow-inner"
-                                    style={{ backgroundColor: customSkinDraft.background || "#0f0f23" }}
+                                    style={{
+                                      backgroundColor: customSkinDraft.background || "#0f0f23",
+                                    }}
                                   />
                                 </div>
                                 <input
                                   type="text"
                                   value={customSkinDraft.background || ""}
                                   onChange={(e) =>
-                                    setCustomSkinDraft({ ...customSkinDraft, background: e.target.value })
+                                    setCustomSkinDraft({
+                                      ...customSkinDraft,
+                                      background: e.target.value,
+                                    })
                                   }
                                   placeholder="如: rgb(15, 15, 35) 或 #0f0f23"
                                   className="flex-1 px-4 py-3 bg-black/20 rounded-xl border border-white/5 text-white placeholder-white/30 text-sm outline-none focus:border-purple-500/50 transition-all"
@@ -616,18 +634,18 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                   className="space-y-8 h-full flex flex-col"
                 >
                   <div className="flex-shrink-0 flex items-center justify-center p-12 bg-black/20 rounded-[32px] border border-white/5 relative overflow-hidden group">
-                     {/* Breathing animated background behind halo */}
-                     <motion.div 
-                        className="absolute inset-0 bg-gradient-to-br opacity-20"
-                        style={{ 
-                          backgroundImage: `radial-gradient(circle at center, ${activeHalo.accent} 0%, transparent 70%)`
-                        }}
-                        animate={{ opacity: [0.1, 0.3, 0.1] }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                     />
-                     <div className="relative z-10 transform scale-150 drop-shadow-2xl">
-                       <HaloPreviewCanvas skin={activeHalo} renderMode={haloRenderMode} />
-                     </div>
+                    {/* Breathing animated background behind halo */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-br opacity-20"
+                      style={{
+                        backgroundImage: `radial-gradient(circle at center, ${activeHalo.accent} 0%, transparent 70%)`,
+                      }}
+                      animate={{ opacity: [0.1, 0.3, 0.1] }}
+                      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                    <div className="relative z-10 transform scale-150 drop-shadow-2xl">
+                      <HaloPreviewCanvas skin={activeHalo} renderMode={haloRenderMode} />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 flex-1">
@@ -649,7 +667,7 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                         />
                         <h4 className="text-base font-medium text-white mb-1">{halo.name}</h4>
                         <p className="text-sm text-white/50">{halo.description}</p>
-                        
+
                         {activeHalo.id === halo.id && (
                           <div className="absolute top-5 right-5">
                             <motion.div
@@ -711,11 +729,26 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                           className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] transition-all text-left group"
                         >
                           <div className="flex gap-2 mb-3">
-                            <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: theme.colors.primary }} />
-                            <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: theme.colors.secondary }} />
-                            <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: theme.colors.accent }} />
-                            <div className="w-6 h-6 rounded-full shadow-sm border border-white/10" style={{ backgroundColor: theme.colors.surface }} />
-                            <div className="w-6 h-6 rounded-full shadow-sm border border-white/10" style={{ backgroundColor: theme.colors.background }} />
+                            <div
+                              className="w-6 h-6 rounded-full shadow-sm"
+                              style={{ backgroundColor: theme.colors.primary }}
+                            />
+                            <div
+                              className="w-6 h-6 rounded-full shadow-sm"
+                              style={{ backgroundColor: theme.colors.secondary }}
+                            />
+                            <div
+                              className="w-6 h-6 rounded-full shadow-sm"
+                              style={{ backgroundColor: theme.colors.accent }}
+                            />
+                            <div
+                              className="w-6 h-6 rounded-full shadow-sm border border-white/10"
+                              style={{ backgroundColor: theme.colors.surface }}
+                            />
+                            <div
+                              className="w-6 h-6 rounded-full shadow-sm border border-white/10"
+                              style={{ backgroundColor: theme.colors.background }}
+                            />
                           </div>
                           <p className="text-white text-sm font-medium">{theme.name}</p>
                         </motion.button>
@@ -734,9 +767,18 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
                           >
                             <div className="flex items-center gap-4">
                               <div className="flex -space-x-2">
-                                <div className="w-8 h-8 rounded-full border-2 border-[#1a1a1f]" style={{ backgroundColor: theme.colors.primary }} />
-                                <div className="w-8 h-8 rounded-full border-2 border-[#1a1a1f]" style={{ backgroundColor: theme.colors.secondary }} />
-                                <div className="w-8 h-8 rounded-full border-2 border-[#1a1a1f]" style={{ backgroundColor: theme.colors.accent }} />
+                                <div
+                                  className="w-8 h-8 rounded-full border-2 border-[#1a1a1f]"
+                                  style={{ backgroundColor: theme.colors.primary }}
+                                />
+                                <div
+                                  className="w-8 h-8 rounded-full border-2 border-[#1a1a1f]"
+                                  style={{ backgroundColor: theme.colors.secondary }}
+                                />
+                                <div
+                                  className="w-8 h-8 rounded-full border-2 border-[#1a1a1f]"
+                                  style={{ backgroundColor: theme.colors.accent }}
+                                />
                               </div>
                               <span className="text-white font-medium">{theme.name}</span>
                             </div>
@@ -771,7 +813,17 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
 
 // Extracted Sub-components for Cleaner Code
 
-function SidebarItem({ icon, label, isActive, onClick }: { icon: React.ReactNode, label: string, isActive: boolean, onClick: () => void }) {
+function SidebarItem({
+  icon,
+  label,
+  isActive,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
@@ -780,20 +832,30 @@ function SidebarItem({ icon, label, isActive, onClick }: { icon: React.ReactNode
       }`}
     >
       {isActive && (
-        <motion.div 
+        <motion.div
           layoutId="sidebar-active-indicator"
           className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-white rounded-r-full"
         />
       )}
-      <div className={`${isActive ? "text-white" : ""}`}>
-        {icon}
-      </div>
+      <div className={`${isActive ? "text-white" : ""}`}>{icon}</div>
       <span className="text-sm font-medium tracking-wide">{label}</span>
     </button>
   );
 }
 
-function SkinCard({ skin, isActive, onClick, onDelete, isCustom }: { skin: PlayerSkin, isActive: boolean, onClick: () => void, onDelete?: () => void, isCustom?: boolean }) {
+function SkinCard({
+  skin,
+  isActive,
+  onClick,
+  onDelete,
+  isCustom,
+}: {
+  skin: PlayerSkin;
+  isActive: boolean;
+  onClick: () => void;
+  onDelete?: () => void;
+  isCustom?: boolean;
+}) {
   return (
     <motion.div
       data-player-skin-id={skin.id}
@@ -803,33 +865,49 @@ function SkinCard({ skin, isActive, onClick, onDelete, isCustom }: { skin: Playe
       onClick={onClick}
     >
       {isActive && (
-        <motion.div 
+        <motion.div
           className="absolute -inset-2 rounded-3xl opacity-20 blur-xl"
           style={{ backgroundColor: skin.primary }}
           animate={{ opacity: [0.15, 0.3, 0.15], scale: [0.95, 1.05, 0.95] }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
         />
       )}
-      <div className={`relative h-full p-4 rounded-[20px] transition-all duration-300 border backdrop-blur-md overflow-hidden ${
-        isActive 
-          ? "bg-white/15 border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.2)]" 
-          : "bg-white/[0.04] border-white/10 hover:bg-white/[0.08] hover:border-white/20"
-      }`}>
-        
+      <div
+        className={`relative h-full p-4 rounded-[20px] transition-all duration-300 border backdrop-blur-md overflow-hidden ${
+          isActive
+            ? "bg-white/15 border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.2)]"
+            : "bg-white/[0.04] border-white/10 hover:bg-white/[0.08] hover:border-white/20"
+        }`}
+      >
         {/* Abstract background blobs for visual flair */}
-        <div className="absolute top-[-20%] right-[-20%] w-[80%] h-[80%] rounded-full opacity-20 blur-2xl pointer-events-none" style={{ backgroundColor: skin.primary }} />
-        <div className="absolute bottom-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full opacity-20 blur-xl pointer-events-none" style={{ backgroundColor: skin.secondary }} />
+        <div
+          className="absolute top-[-20%] right-[-20%] w-[80%] h-[80%] rounded-full opacity-20 blur-2xl pointer-events-none"
+          style={{ backgroundColor: skin.primary }}
+        />
+        <div
+          className="absolute bottom-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full opacity-20 blur-xl pointer-events-none"
+          style={{ backgroundColor: skin.secondary }}
+        />
 
         <div className="flex gap-1.5 mb-6 relative z-10">
-          <div className="w-8 h-8 rounded-full shadow-lg" style={{ backgroundColor: skin.primary }} />
-          <div className="w-8 h-8 rounded-full shadow-lg -ml-3" style={{ backgroundColor: skin.secondary }} />
-          <div className="w-8 h-8 rounded-full shadow-lg -ml-3 border border-white/20" style={{ backgroundColor: skin.accent }} />
+          <div
+            className="w-8 h-8 rounded-full shadow-lg"
+            style={{ backgroundColor: skin.primary }}
+          />
+          <div
+            className="w-8 h-8 rounded-full shadow-lg -ml-3"
+            style={{ backgroundColor: skin.secondary }}
+          />
+          <div
+            className="w-8 h-8 rounded-full shadow-lg -ml-3 border border-white/20"
+            style={{ backgroundColor: skin.accent }}
+          />
         </div>
-        
+
         <p className="text-white text-sm font-medium tracking-wide relative z-10">{skin.name}</p>
 
         {isActive && (
-          <motion.div 
+          <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="absolute top-3 right-3 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md z-10"
@@ -840,7 +918,10 @@ function SkinCard({ skin, isActive, onClick, onDelete, isCustom }: { skin: Playe
 
         {isCustom && onDelete && (
           <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
             className="absolute top-3 right-3 w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
           >
             <Trash2 className="w-3 h-3" />

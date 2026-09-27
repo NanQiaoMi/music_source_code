@@ -12,8 +12,6 @@ import {
   Edit2,
   Check,
   AlertCircle,
-  Sparkles,
-  ChevronRight,
 } from "lucide-react";
 import { useAIAgentStore } from "@/store/useAIAgentStore";
 import { AgentSessionMeta } from "@/types/aiAgent";

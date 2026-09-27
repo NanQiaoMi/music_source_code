@@ -11,7 +11,6 @@ import {
   Sliders,
   CheckCircle2,
   RefreshCw,
-  FileText,
   AlertCircle,
   Copy,
   Layers,
@@ -67,8 +66,14 @@ export const HealthStorageTab: React.FC = () => {
     dedupGroups.forEach((group) => {
       // Sort by lossless quality priority
       const sorted = [...group.songs].sort((a, b) => {
-        const aScore = (a as any).isLossless || a.title.toLowerCase().includes("flac") ? 10 : 1;
-        const bScore = (b as any).isLossless || b.title.toLowerCase().includes("flac") ? 10 : 1;
+        const aScore =
+          (a as { isLossless?: boolean }).isLossless || a.title.toLowerCase().includes("flac")
+            ? 10
+            : 1;
+        const bScore =
+          (b as { isLossless?: boolean }).isLossless || b.title.toLowerCase().includes("flac")
+            ? 10
+            : 1;
         return bScore - aScore;
       });
 
@@ -165,9 +170,7 @@ export const HealthStorageTab: React.FC = () => {
               }`}
             >
               <div className="text-sm font-mono">{gb} GB</div>
-              <div className="text-[10px] opacity-50 mt-0.5">
-                约存 {gb * 200} 首无损
-              </div>
+              <div className="text-[10px] opacity-50 mt-0.5">约存 {gb * 200} 首无损</div>
             </button>
           ))}
         </div>
@@ -218,7 +221,10 @@ export const HealthStorageTab: React.FC = () => {
           {dedupGroups.length > 0 ? (
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
               {dedupGroups.map((group, idx) => (
-                <div key={idx} className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs">
+                <div
+                  key={idx}
+                  className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs"
+                >
                   <div className="flex items-center justify-between font-semibold text-white">
                     <span className="truncate">{group.key}</span>
                     <span className="text-[10px] text-white/70 font-mono">
@@ -253,13 +259,12 @@ export const HealthStorageTab: React.FC = () => {
               </h4>
             </div>
 
-            <span className="text-[10px] text-white/70 font-mono">
-              5 大源在线巡检
-            </span>
+            <span className="text-[10px] text-white/70 font-mono">5 大源在线巡检</span>
           </div>
 
           <p className="text-xs text-white/50 leading-relaxed">
-            当某首网络歌曲因原平台 VIP 限制或版权失效时，自动向其他 4 个平台（网易云/QQ/酷狗/酷我/汽水）发起模糊匹配并无缝替换可用直链。
+            当某首网络歌曲因原平台 VIP 限制或版权失效时，自动向其他 4
+            个平台（网易云/QQ/酷狗/酷我/汽水）发起模糊匹配并无缝替换可用直链。
           </p>
 
           <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-xs space-y-2">
@@ -300,7 +305,8 @@ export const HealthStorageTab: React.FC = () => {
         </div>
 
         <p className="text-xs text-white/50 leading-relaxed">
-          MIMI 现已启用 LocalStorage（轻量状态/界面视图/断点记忆）与 IndexedDB（全量队列/离线缓存/AI会话）双层持久化体系。在此可进行状态完整性诊断、全量配置备份导出或在遇到脏数据时执行一键安全重置。
+          MIMI 现已启用 LocalStorage（轻量状态/界面视图/断点记忆）与
+          IndexedDB（全量队列/离线缓存/AI会话）双层持久化体系。在此可进行状态完整性诊断、全量配置备份导出或在遇到脏数据时执行一键安全重置。
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -363,7 +369,11 @@ export const HealthStorageTab: React.FC = () => {
           <button
             type="button"
             onClick={() => {
-              if (window.confirm("⚠️ 确定要重置应用状态缓存吗？\n该操作将清除视图设置与搜索缓存，但不会删除您已下载的离线音乐文件。")) {
+              if (
+                window.confirm(
+                  "⚠️ 确定要重置应用状态缓存吗？\n该操作将清除视图设置与搜索缓存，但不会删除您已下载的离线音乐文件。"
+                )
+              ) {
                 try {
                   const keepOffline = localStorage.getItem("mimimusic_offline_downloads");
                   localStorage.clear();

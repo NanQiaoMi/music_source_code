@@ -2,9 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  useFloatingDebugStore,
-} from "@/store/floatingDebugStore";
+import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import type { FloatingPlayerState } from "./useFloatingDragPhysics";
 import {
   Sliders,
@@ -62,7 +60,8 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
   // Real-time FPS telemetry calculation
   const [fps, setFps] = useState<number>(60);
   const frameCountRef = useRef(0);
-  const lastTimeRef = useRef(performance.now());
+  // 惰性 ref：useRef 的初始值每轮渲染都会求值，performance.now() 属渲染期副作用
+  const lastTimeRef = useRef<number>(0);
 
   useEffect(() => {
     let animId: number;
@@ -70,9 +69,7 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
     const measureFps = (now: number) => {
       frameCountRef.current++;
       if (now - lastTimeRef.current >= 500) {
-        const measured = Math.round(
-          (frameCountRef.current * 1000) / (now - lastTimeRef.current)
-        );
+        const measured = Math.round((frameCountRef.current * 1000) / (now - lastTimeRef.current));
         setFps(measured);
         frameCountRef.current = 0;
         lastTimeRef.current = now;
@@ -80,6 +77,7 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
       animId = requestAnimationFrame(measureFps);
     };
 
+    lastTimeRef.current = performance.now();
     animId = requestAnimationFrame(measureFps);
     return () => cancelAnimationFrame(animId);
   }, []);
@@ -176,11 +174,7 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
                 <span className="text-white/50 text-[10px]">FPS:</span>
                 <span
                   className={`font-bold tabular-nums text-[11px] ${
-                    fps >= 55
-                      ? "text-emerald-400"
-                      : fps >= 38
-                        ? "text-amber-400"
-                        : "text-rose-400"
+                    fps >= 55 ? "text-emerald-400" : fps >= 38 ? "text-amber-400" : "text-rose-400"
                   }`}
                 >
                   {fps}
@@ -348,7 +342,6 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
                   </button>
                 </div>
 
-
                 <div className="grid grid-cols-2 gap-1.5 mt-1">
                   <button
                     type="button"
@@ -376,7 +369,6 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
                     <span>Dock Right 右侧</span>
                   </button>
                 </div>
-
               </div>
             )}
           </motion.div>

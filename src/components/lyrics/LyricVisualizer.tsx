@@ -29,7 +29,7 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
     fontSize,
     fontFamily,
     fontWeight,
-    opacity,
+    opacity: _opacity,
     alignment,
     currentLineColor,
     inactiveLineColor,
@@ -104,6 +104,8 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
 
   useEffect(() => {
     if (isInstrumentalOrShort) {
+      // 纯音乐/超短曲时把歌词偏移归零（跟随外部派生值）
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOffsetY(0);
       return;
     }

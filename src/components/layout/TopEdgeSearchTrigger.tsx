@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useUIStore } from "@/store/uiStore";
 
 export function TopEdgeSearchTrigger() {
-  const isSearchOpen = useUIStore((state) => state.panels.search);
+  const _isSearchOpen = useUIStore((state) => state.panels.search);
   const openPanel = useUIStore((state) => state.openPanel);
   const touchStartYRef = useRef<number | null>(null);
 

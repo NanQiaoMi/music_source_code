@@ -12,18 +12,16 @@ export interface FloatingPlayerProps {
   className?: string;
 }
 
-export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
-  className = "",
-}) => {
+export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({ className = "" }) => {
   const audioSong = useAudioStore((state) => state.currentSong);
   const playerSong = usePlayerStore((state) => state.currentSong);
   const currentSong = audioSong || playerSong;
 
   const audioIsPlaying = useAudioStore((state) => state.isPlaying);
   const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
-  const isPlaying = audioIsPlaying || playerIsPlaying;
+  const _isPlaying = audioIsPlaying || playerIsPlaying;
 
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const _setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const volume = useAudioStore((state) => state.volume);
   const setVolume = useAudioStore((state) => state.setVolume);
   const toggleMute = useAudioStore((state) => state.toggleMute);
@@ -35,40 +33,43 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
   const dragStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const elementStartPosRef = useRef<{ x: number; y: number }>({ x: 28, y: 280 });
 
-  const handlePointerDown = useCallback((clientX: number, clientY: number) => {
-    setIsDragging(true);
-    dragStartPosRef.current = { x: clientX, y: clientY };
-    elementStartPosRef.current = { ...position };
+  const handlePointerDown = useCallback(
+    (clientX: number, clientY: number) => {
+      setIsDragging(true);
+      dragStartPosRef.current = { x: clientX, y: clientY };
+      elementStartPosRef.current = { ...position };
 
-    const handlePointerMove = (e: MouseEvent | TouchEvent) => {
-      const curX = "touches" in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
-      const curY = "touches" in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
-      const dx = curX - dragStartPosRef.current.x;
-      const dy = curY - dragStartPosRef.current.y;
+      const handlePointerMove = (e: MouseEvent | TouchEvent) => {
+        const curX = "touches" in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+        const curY = "touches" in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+        const dx = curX - dragStartPosRef.current.x;
+        const dy = curY - dragStartPosRef.current.y;
 
-      // 限制在屏幕可视范围内
-      const maxX = typeof window !== "undefined" ? window.innerWidth - 380 : 800;
-      const maxY = typeof window !== "undefined" ? window.innerHeight - 70 : 600;
+        // 限制在屏幕可视范围内
+        const maxX = typeof window !== "undefined" ? window.innerWidth - 380 : 800;
+        const maxY = typeof window !== "undefined" ? window.innerHeight - 70 : 600;
 
-      const newX = Math.max(12, Math.min(maxX, elementStartPosRef.current.x + dx));
-      const newY = Math.max(12, Math.min(maxY, elementStartPosRef.current.y + dy));
+        const newX = Math.max(12, Math.min(maxX, elementStartPosRef.current.x + dx));
+        const newY = Math.max(12, Math.min(maxY, elementStartPosRef.current.y + dy));
 
-      setPosition({ x: newX, y: newY });
-    };
+        setPosition({ x: newX, y: newY });
+      };
 
-    const handlePointerUp = () => {
-      setIsDragging(false);
-      window.removeEventListener("mousemove", handlePointerMove);
-      window.removeEventListener("mouseup", handlePointerUp);
-      window.removeEventListener("touchmove", handlePointerMove);
-      window.removeEventListener("touchend", handlePointerUp);
-    };
+      const handlePointerUp = () => {
+        setIsDragging(false);
+        window.removeEventListener("mousemove", handlePointerMove);
+        window.removeEventListener("mouseup", handlePointerUp);
+        window.removeEventListener("touchmove", handlePointerMove);
+        window.removeEventListener("touchend", handlePointerUp);
+      };
 
-    window.addEventListener("mousemove", handlePointerMove);
-    window.addEventListener("mouseup", handlePointerUp);
-    window.addEventListener("touchmove", handlePointerMove, { passive: true });
-    window.addEventListener("touchend", handlePointerUp);
-  }, [position]);
+      window.addEventListener("mousemove", handlePointerMove);
+      window.addEventListener("mouseup", handlePointerUp);
+      window.addEventListener("touchmove", handlePointerMove, { passive: true });
+      window.addEventListener("touchend", handlePointerUp);
+    },
+    [position]
+  );
 
   const dragHandlers = {
     onMouseDown: (e: React.MouseEvent) => {
@@ -87,7 +88,10 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+      if (
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+      ) {
         return;
       }
 

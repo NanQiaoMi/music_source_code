@@ -28,15 +28,25 @@ export async function GET(request: NextRequest) {
   const qqCookie = request.headers.get("x-qq-cookie") || "";
 
   if (source === "netease" && (!neteaseCookie || neteaseCookie.trim().length < 5)) {
-    return NextResponse.json({ playlists: [], code: 401, message: "NetEase authentication required." }, { status: 401 });
+    return NextResponse.json(
+      { playlists: [], code: 401, message: "NetEase authentication required." },
+      { status: 401 }
+    );
   }
 
   if (source === "qq" && (!qqCookie || qqCookie.trim().length < 5)) {
-    return NextResponse.json({ playlists: [], code: 401, message: "QQ Music authentication required." }, { status: 401 });
+    return NextResponse.json(
+      { playlists: [], code: 401, message: "QQ Music authentication required." },
+      { status: 401 }
+    );
   }
 
   // 1. 网易云歌单搜索 (type=1000 为歌单)
-  if ((source === "all" || source === "netease") && neteaseCookie && neteaseCookie.trim().length >= 5) {
+  if (
+    (source === "all" || source === "netease") &&
+    neteaseCookie &&
+    neteaseCookie.trim().length >= 5
+  ) {
     try {
       const neteaseUrl = `https://music.163.com/api/search/get/web?csrf_token=&s=${encoded}&type=1000&offset=0&total=true&limit=${limit}`;
       const res = await fetch(neteaseUrl, {
@@ -50,7 +60,7 @@ export async function GET(request: NextRequest) {
       if (res.ok) {
         const data = await res.json();
         const rawList = data?.result?.playlists || [];
-        rawList.forEach((p: any) => {
+        rawList.forEach((p: RawNeteasePlaylist) => {
           playlists.push({
             id: String(p.id),
             name: p.name || "精选歌单",
@@ -83,7 +93,7 @@ export async function GET(request: NextRequest) {
       if (res.ok) {
         const data = await res.json();
         const rawList = data?.data?.list || [];
-        rawList.forEach((p: any) => {
+        rawList.forEach((p: RawQqPlaylist) => {
           playlists.push({
             id: String(p.dissid || p.dirid || ""),
             name: p.dissname || p.songlist_name || "QQ音乐歌单",
@@ -106,5 +116,29 @@ export async function GET(request: NextRequest) {
     code: 200,
     count: playlists.length,
   });
+}
 
+/** 网易云歌单搜索接口的原始返回项（外部 JSON，字段可选） */
+interface RawNeteasePlaylist {
+  id?: string | number;
+  name?: string;
+  coverImgUrl?: string;
+  creator?: { nickname?: string };
+  playCount?: number;
+  trackCount?: number;
+  description?: string;
+}
+
+/** QQ 音乐歌单搜索接口的原始返回项（外部 JSON，字段可选） */
+interface RawQqPlaylist {
+  dissid?: string | number;
+  dirid?: string | number;
+  dissname?: string;
+  songlist_name?: string;
+  imgurl?: string;
+  creator?: { name?: string };
+  nickname?: string;
+  listennum?: number;
+  song_count?: number;
+  desc?: string;
 }

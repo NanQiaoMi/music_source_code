@@ -29,7 +29,7 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
   dragHandlers,
   className = "",
   showGlow = true,
-  showBorderBeam = true,
+  showBorderBeam: _showBorderBeam = true,
 }) => {
   const audioIsPlaying = useAudioStore((state) => state.isPlaying);
   const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
@@ -39,7 +39,7 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
   const playerSong = usePlayerStore((state) => state.currentSong);
   const currentSong = audioSong || playerSong;
 
-  const [isHovered, setIsHovered] = useState(false);
+  const [_isHovered, setIsHovered] = useState(false);
   const textContainerRef = useRef<HTMLDivElement | null>(null);
   const textContentRef = useRef<HTMLHeadingElement | null>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -124,7 +124,8 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
         style={{
           width: 340,
           height: 58,
-          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.20) 100%)",
+          background:
+            "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.20) 100%)",
           backdropFilter: "blur(48px) saturate(200%)",
           WebkitBackdropFilter: "blur(48px) saturate(200%)",
           border: "1px solid rgba(255, 255, 255, 0.28)",
@@ -226,6 +227,3 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
     </motion.div>
   );
 };
-
-
-

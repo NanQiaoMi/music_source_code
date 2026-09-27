@@ -93,7 +93,9 @@ export class BlobUrlRegistry {
     if (typeof window !== "undefined" && typeof window.URL?.revokeObjectURL === "function") {
       try {
         URL.revokeObjectURL(url);
-      } catch {}
+      } catch {
+        // revoke 失败（地址已释放/非 blob）可忽略
+      }
     }
   }
 

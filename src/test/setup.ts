@@ -40,3 +40,14 @@ Object.defineProperty(HTMLCanvasElement.prototype, "toDataURL", {
   configurable: true,
   value: vi.fn(() => "data:image/png;base64,"),
 });
+
+// jsdom 不实现 ResizeObserver，组件用它跟踪尺寸时会在测试里直接抛 ReferenceError。
+// 给一个 no-op 实现：组件在 observe 之前已经同步测过一次尺寸，无需回调即可渲染。
+if (typeof globalThis.ResizeObserver === "undefined") {
+  class ResizeObserverStub implements ResizeObserver {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+}

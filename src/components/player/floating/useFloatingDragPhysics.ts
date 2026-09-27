@@ -69,7 +69,6 @@ const DEFAULT_PILL_DIM: DimensionConfig = { width: 180, height: 56 };
 const DEFAULT_EXPANDED_DIM: DimensionConfig = { width: 350, height: 480 };
 const DEFAULT_DOCK_DIM: DimensionConfig = { width: 64, height: 64 };
 
-
 interface PointerSample {
   x: number;
   y: number;
@@ -91,7 +90,6 @@ export interface UseFloatingDragPhysicsReturn {
   setPosition: React.Dispatch<React.SetStateAction<Position>>;
   clampPosition: (pos: Position, state?: FloatingPlayerState) => Position;
 }
-
 
 /**
  * Custom hook for floating window drag dynamics with inertial fling decay,
@@ -124,15 +122,17 @@ export function useFloatingDragPhysics(
   // Refs for tracking during high-frequency gesture events
   const positionRef = useRef<Position>(initialPosition);
   const playerStateRef = useRef<FloatingPlayerState>(initialState);
-  const velocityRef = useRef<Velocity>({ x: 0, y: 0 });
+  const _velocityRef = useRef<Velocity>({ x: 0, y: 0 });
   const isDraggingRef = useRef<boolean>(false);
-  const dragStartRef = useRef<{ clientX: number; clientY: number; startX: number; startY: number }>({
-    clientX: 0,
-    clientY: 0,
-    startX: 0,
-    startY: 0,
-  });
-  const pointerHistoryRef = useRef<PointerSample[]>([]);
+  const dragStartRef = useRef<{ clientX: number; clientY: number; startX: number; startY: number }>(
+    {
+      clientX: 0,
+      clientY: 0,
+      startX: 0,
+      startY: 0,
+    }
+  );
+  const _pointerHistoryRef = useRef<PointerSample[]>([]);
   const samplesRef = useRef<PointerSample[]>([]);
   const prevWindowSizeRef = useRef<{ width: number; height: number }>({
     width: typeof window !== "undefined" ? window.innerWidth : 1200,
@@ -148,7 +148,6 @@ export function useFloatingDragPhysics(
   useEffect(() => {
     positionRef.current = position;
   }, [position]);
-
 
   // Unified state dispatcher that executes optional onStateChange callback
   const setPlayerState: React.Dispatch<React.SetStateAction<FloatingPlayerState>> = useCallback(
@@ -292,7 +291,6 @@ export function useFloatingDragPhysics(
     ]
   );
 
-
   /**
    * Calculate pointer release velocity using timestamped sliding window
    */
@@ -427,7 +425,8 @@ export function useFloatingDragPhysics(
   const startDrag = useCallback(
     (clientX: number, clientY: number, target: HTMLElement) => {
       // Don't initiate drag on interactive buttons, inputs, sliders
-      const isInteractive = target.closest(".control-interactive, button, input, a, [role='slider']") !== null;
+      const isInteractive =
+        target.closest(".control-interactive, button, input, a, [role='slider']") !== null;
       if (isInteractive) {
         return;
       }

@@ -63,7 +63,7 @@ interface AzureBirdEntity {
   floatPhase: number;
 }
 
-let localRipples: WaterRipple[] = [];
+const localRipples: WaterRipple[] = [];
 let localPetals: GoldenPetal[] = [];
 let localParticles: DustParticle[] = [];
 let localCranes: CraneEntity[] = [];
@@ -121,25 +121,113 @@ function initLivingElements(width: number, height: number) {
 
   // 1. 晴空丹顶瑞鹤 (3只，悠扬高翔向素月)
   localCranes = [
-    { relX: 0.32, relY: 0.14, scale: 0.70, speed: 0.00038, wingFreq: 2.1, phase: 0.0, floatPhase: 0.0 },
-    { relX: 0.25, relY: 0.18, scale: 0.58, speed: 0.00038, wingFreq: 2.2, phase: 1.2, floatPhase: 1.5 },
-    { relX: 0.18, relY: 0.22, scale: 0.48, speed: 0.00038, wingFreq: 2.0, phase: 2.4, floatPhase: 3.1 },
+    {
+      relX: 0.32,
+      relY: 0.14,
+      scale: 0.7,
+      speed: 0.00038,
+      wingFreq: 2.1,
+      phase: 0.0,
+      floatPhase: 0.0,
+    },
+    {
+      relX: 0.25,
+      relY: 0.18,
+      scale: 0.58,
+      speed: 0.00038,
+      wingFreq: 2.2,
+      phase: 1.2,
+      floatPhase: 1.5,
+    },
+    {
+      relX: 0.18,
+      relY: 0.22,
+      scale: 0.48,
+      speed: 0.00038,
+      wingFreq: 2.0,
+      phase: 2.4,
+      floatPhase: 3.1,
+    },
   ];
 
   // 2. 远山平沙落雁长空雁阵 (V形人字雁阵，共 6 只大雁)
   localGeese = [
-    { relX: 0.68, relY: 0.23, scale: 0.36, speed: 0.00050, wingFreq: 3.2, phase: 0.0, floatPhase: 0.0 }, // 领头雁
-    { relX: 0.64, relY: 0.25, scale: 0.33, speed: 0.00050, wingFreq: 3.2, phase: 0.6, floatPhase: 0.4 }, // 左翼1
-    { relX: 0.60, relY: 0.27, scale: 0.30, speed: 0.00050, wingFreq: 3.1, phase: 1.2, floatPhase: 0.8 }, // 左翼2
-    { relX: 0.65, relY: 0.21, scale: 0.33, speed: 0.00050, wingFreq: 3.3, phase: 0.8, floatPhase: 0.5 }, // 右翼1
-    { relX: 0.62, relY: 0.19, scale: 0.30, speed: 0.00050, wingFreq: 3.2, phase: 1.5, floatPhase: 0.9 }, // 右翼2
-    { relX: 0.59, relY: 0.17, scale: 0.27, speed: 0.00050, wingFreq: 3.4, phase: 2.1, floatPhase: 1.3 }, // 右翼3
+    {
+      relX: 0.68,
+      relY: 0.23,
+      scale: 0.36,
+      speed: 0.0005,
+      wingFreq: 3.2,
+      phase: 0.0,
+      floatPhase: 0.0,
+    }, // 领头雁
+    {
+      relX: 0.64,
+      relY: 0.25,
+      scale: 0.33,
+      speed: 0.0005,
+      wingFreq: 3.2,
+      phase: 0.6,
+      floatPhase: 0.4,
+    }, // 左翼1
+    {
+      relX: 0.6,
+      relY: 0.27,
+      scale: 0.3,
+      speed: 0.0005,
+      wingFreq: 3.1,
+      phase: 1.2,
+      floatPhase: 0.8,
+    }, // 左翼2
+    {
+      relX: 0.65,
+      relY: 0.21,
+      scale: 0.33,
+      speed: 0.0005,
+      wingFreq: 3.3,
+      phase: 0.8,
+      floatPhase: 0.5,
+    }, // 右翼1
+    {
+      relX: 0.62,
+      relY: 0.19,
+      scale: 0.3,
+      speed: 0.0005,
+      wingFreq: 3.2,
+      phase: 1.5,
+      floatPhase: 0.9,
+    }, // 右翼2
+    {
+      relX: 0.59,
+      relY: 0.17,
+      scale: 0.27,
+      speed: 0.0005,
+      wingFreq: 3.4,
+      phase: 2.1,
+      floatPhase: 1.3,
+    }, // 右翼3
   ];
 
   // 3. 近水汀洲青鸟/翠鸟 (2只，低空穿云掠水，灵巧轻快)
   localAzureBirds = [
-    { relX: 0.14, relY: 0.51, scale: 0.42, speed: 0.00075, wingFreq: 4.8, phase: 0.0, floatPhase: 0.0 },
-    { relX: 0.08, relY: 0.54, scale: 0.36, speed: 0.00075, wingFreq: 5.0, phase: 1.8, floatPhase: 1.2 },
+    {
+      relX: 0.14,
+      relY: 0.51,
+      scale: 0.42,
+      speed: 0.00075,
+      wingFreq: 4.8,
+      phase: 0.0,
+      floatPhase: 0.0,
+    },
+    {
+      relX: 0.08,
+      relY: 0.54,
+      scale: 0.36,
+      speed: 0.00075,
+      wingFreq: 5.0,
+      phase: 1.8,
+      floatPhase: 1.2,
+    },
   ];
 
   initialized = true;
@@ -212,7 +300,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
   }
 
   // 泛音微波涟漪生成
-  if (smoothTreble > 0.36 && t - lastRippleTime > 0.30) {
+  if (smoothTreble > 0.36 && t - lastRippleTime > 0.3) {
     lastRippleTime = t;
     if (localRipples.length < 5) {
       localRipples.push({
@@ -257,7 +345,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
   skyGrad.addColorStop(0, "#05131c");
   skyGrad.addColorStop(0.28, "#092330");
   skyGrad.addColorStop(0.52, "#0f3744");
-  skyGrad.addColorStop(0.70, "#0c2e38");
+  skyGrad.addColorStop(0.7, "#0c2e38");
   skyGrad.addColorStop(0.86, "#082027");
   skyGrad.addColorStop(1, "#030f13");
   ctx.fillStyle = skyGrad;
@@ -270,7 +358,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
     20,
     scrollX + scrollW * 0.48,
     scrollY + scrollH * 0.32,
-    scrollW * 0.60
+    scrollW * 0.6
   );
   skyBloom.addColorStop(0, "rgba(28, 105, 125, 0.18)");
   skyBloom.addColorStop(0.45, "rgba(18, 72, 85, 0.08)");
@@ -281,7 +369,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
   // ─── 2.1 宋代写意白玉素月与月华氛晕 (Ethereal Song Dynasty Moon) ───
   const moonX = scrollX + scrollW * 0.82;
   const moonY = scrollY + scrollH * 0.15;
-  const moonR = Math.min(scrollW, scrollH) * 0.040;
+  const moonR = Math.min(scrollW, scrollH) * 0.04;
   drawSongDynastyMoon(ctx, moonX, moonY, moonR, t, smoothMid);
 
   // ─── 3. 晴空白鹭 · 仙鹤群飞 & 远天落雁阵 (Cranes & Wild Geese) ───
@@ -294,12 +382,60 @@ export function drawOrientalLandscape(context: EffectContext): void {
 
   // 经典北宋全景长卷（左侧峰峦高耸如黛，中景叠翠连绵，右侧清波荡漾映素月）
   const mountainPalette = [
-    { fillTop: "#1c586a", fillBottom: "#0b252e", alpha: 0.60, baseY: 0.29, speed: 0.16, freq: 1.9, phase: 0.0 },
-    { fillTop: "#186576", fillBottom: "#092e38", alpha: 0.72, baseY: 0.25, speed: 0.24, freq: 2.7, phase: 1.8 },
-    { fillTop: "#13746c", fillBottom: "#073934", alpha: 0.82, baseY: 0.21, speed: 0.36, freq: 3.5, phase: 3.5 },
-    { fillTop: "#10806e", fillBottom: "#064035", alpha: 0.90, baseY: 0.17, speed: 0.48, freq: 4.3, phase: 5.2 },
-    { fillTop: "#0d6e57", fillBottom: "#05362a", alpha: 0.96, baseY: 0.14, speed: 0.62, freq: 5.1, phase: 6.9 },
-    { fillTop: "#0a5a44", fillBottom: "#04291e", alpha: 1.00, baseY: 0.11, speed: 0.78, freq: 5.9, phase: 8.6 },
+    {
+      fillTop: "#1c586a",
+      fillBottom: "#0b252e",
+      alpha: 0.6,
+      baseY: 0.29,
+      speed: 0.16,
+      freq: 1.9,
+      phase: 0.0,
+    },
+    {
+      fillTop: "#186576",
+      fillBottom: "#092e38",
+      alpha: 0.72,
+      baseY: 0.25,
+      speed: 0.24,
+      freq: 2.7,
+      phase: 1.8,
+    },
+    {
+      fillTop: "#13746c",
+      fillBottom: "#073934",
+      alpha: 0.82,
+      baseY: 0.21,
+      speed: 0.36,
+      freq: 3.5,
+      phase: 3.5,
+    },
+    {
+      fillTop: "#10806e",
+      fillBottom: "#064035",
+      alpha: 0.9,
+      baseY: 0.17,
+      speed: 0.48,
+      freq: 4.3,
+      phase: 5.2,
+    },
+    {
+      fillTop: "#0d6e57",
+      fillBottom: "#05362a",
+      alpha: 0.96,
+      baseY: 0.14,
+      speed: 0.62,
+      freq: 5.1,
+      phase: 6.9,
+    },
+    {
+      fillTop: "#0a5a44",
+      fillBottom: "#04291e",
+      alpha: 1.0,
+      baseY: 0.11,
+      speed: 0.78,
+      freq: 5.9,
+      phase: 8.6,
+    },
   ];
 
   for (let layer = 0; layer < 6; layer++) {
@@ -307,7 +443,9 @@ export function drawOrientalLandscape(context: EffectContext): void {
     const layerDepth = (layer + 1) / 6;
     const basePeakHeight = scrollH * (config.baseY * 0.95);
     const layerTime = t * config.speed;
-    const layerAmp = (basePeakHeight * 0.34 + breathFactor * 12 * layerDepth) * (1 + (layer >= 3 ? midVibe * 0.02 : 0));
+    const layerAmp =
+      (basePeakHeight * 0.34 + breathFactor * 12 * layerDepth) *
+      (1 + (layer >= 3 ? midVibe * 0.02 : 0));
 
     ctx.beginPath();
     ctx.moveTo(scrollX, bottomY);
@@ -324,9 +462,9 @@ export function drawOrientalLandscape(context: EffectContext): void {
       // 多八度连绵优雅正弦叠加 (错落起伏，无突兀断层)
       const h1 = Math.sin(normX * config.freq + layerTime + config.phase);
       const h2 = Math.cos(normX * (config.freq * 2.2) - layerTime * 0.5 + config.phase * 1.3);
-      const h3 = Math.sin(normX * (config.freq * 4.5) + layerTime * 0.8) * 0.20;
+      const h3 = Math.sin(normX * (config.freq * 4.5) + layerTime * 0.8) * 0.2;
       const h4 = Math.cos(normX * 18.0 - layerTime * 1.2) * 0.06;
-      const mountainCurve = (h1 * 0.58 + h2 * 0.30 + h3 + h4);
+      const mountainCurve = h1 * 0.58 + h2 * 0.3 + h3 + h4;
 
       const y = waterY - basePeakHeight - mountainCurve * layerAmp;
       ptsX[ptIndex] = x;
@@ -372,11 +510,12 @@ export function drawOrientalLandscape(context: EffectContext): void {
         const segmentAlpha = Math.min(1.0, audioGold * Math.pow(peakRelHeight, 1.35));
 
         if (segmentAlpha > 0.03) {
-          ctx.strokeStyle = layer === 5 
-            ? `rgba(250, 218, 92, ${segmentAlpha})` 
-            : layer === 4 
-              ? `rgba(242, 195, 75, ${segmentAlpha * 0.9})` 
-              : `rgba(100, 220, 180, ${segmentAlpha * 0.75})`;
+          ctx.strokeStyle =
+            layer === 5
+              ? `rgba(250, 218, 92, ${segmentAlpha})`
+              : layer === 4
+                ? `rgba(242, 195, 75, ${segmentAlpha * 0.9})`
+                : `rgba(100, 220, 180, ${segmentAlpha * 0.75})`;
           ctx.lineWidth = layer === 5 ? 1.0 : 0.8;
           ctx.beginPath();
           ctx.moveTo(px1, py1);
@@ -389,9 +528,31 @@ export function drawOrientalLandscape(context: EffectContext): void {
 
     // 在远景层（Layer 1）与中景层（Layer 3）后方分别穿插流体丝绢烟岚
     if (layer === 1) {
-      drawSilkMistRibbon(ctx, scrollX, scrollY, scrollW, scrollH * 0.44, scrollH * 0.055, t * 1.2, 0.22, smoothTreble, goldGlow);
+      drawSilkMistRibbon(
+        ctx,
+        scrollX,
+        scrollY,
+        scrollW,
+        scrollH * 0.44,
+        scrollH * 0.055,
+        t * 1.2,
+        0.22,
+        smoothTreble,
+        goldGlow
+      );
     } else if (layer === 3) {
-      drawSilkMistRibbon(ctx, scrollX, scrollY, scrollW, scrollH * 0.54, scrollH * 0.045, t * 1.6 + 2.0, 0.16, smoothTreble, goldGlow);
+      drawSilkMistRibbon(
+        ctx,
+        scrollX,
+        scrollY,
+        scrollW,
+        scrollH * 0.54,
+        scrollH * 0.045,
+        t * 1.6 + 2.0,
+        0.16,
+        smoothTreble,
+        goldGlow
+      );
     }
   }
   ctx.globalAlpha = 1.0;
@@ -447,7 +608,8 @@ export function drawOrientalLandscape(context: EffectContext): void {
   for (let w = 0; w < waveCount; w++) {
     const waveY = waterY + ((w + 1) / (waveCount + 1)) * waterH;
     const wavePhase = t * 1.1 + w * 0.75;
-    const waveAlpha = (0.06 + Math.sin(wavePhase) * 0.03 + smoothTreble * 0.08) * (w > 6 ? 0.5 : 1.0);
+    const waveAlpha =
+      (0.06 + Math.sin(wavePhase) * 0.03 + smoothTreble * 0.08) * (w > 6 ? 0.5 : 1.0);
 
     ctx.strokeStyle = `rgba(253, 224, 71, ${Math.max(0, waveAlpha) * goldGlow})`;
     ctx.lineWidth = 0.8;
@@ -585,7 +747,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
   ctx.stroke();
 
   // 内层微润细线 (0.5px 仿古制双宣嵌边)
-  ctx.strokeStyle = `rgba(254, 243, 199, ${0.10 * goldGlow})`;
+  ctx.strokeStyle = `rgba(254, 243, 199, ${0.1 * goldGlow})`;
   ctx.lineWidth = 0.5;
   roundRect(ctx, scrollX + 3, scrollY + 3, scrollW - 6, scrollH - 6, 14);
   ctx.stroke();
@@ -632,8 +794,8 @@ function drawFlockOfCranes(
     ctx.beginPath();
     ctx.moveTo(8, -1);
     ctx.quadraticCurveTo(15, -4, 20, -2); // 鹤喙
-    ctx.quadraticCurveTo(12, 1, 0, 0);    // 身躯
-    ctx.quadraticCurveTo(-6, 2, -10, 0);  // 尾羽
+    ctx.quadraticCurveTo(12, 1, 0, 0); // 身躯
+    ctx.quadraticCurveTo(-6, 2, -10, 0); // 尾羽
     ctx.fill();
 
     // 2. 丹顶 (朱砂点)
@@ -710,7 +872,7 @@ function drawWildGeeseFlock(
     ctx.scale(g.scale, g.scale);
     ctx.globalAlpha = Math.max(0, gooseAlpha);
 
-    const wingAngle = Math.sin(t * g.wingFreq * 4.2 + g.phase + smoothTreble * 2.0) * 0.40;
+    const wingAngle = Math.sin(t * g.wingFreq * 4.2 + g.phase + smoothTreble * 2.0) * 0.4;
 
     // 大雁水墨剪影（流线身躯、伸展长颈、弧形双翼）
     ctx.fillStyle = "rgba(14, 30, 36, 0.92)";
@@ -780,7 +942,9 @@ function drawAzureWaterBirds(
     if (normX > 0.92) birdAlpha *= (1.0 - normX) / 0.08;
 
     const bx = scrollX + normX * scrollW;
-    const by = scrollY + (b.relY + Math.sin(t * 3.0 + b.floatPhase) * 0.018 + Math.cos(t * 1.5) * 0.008) * scrollH;
+    const by =
+      scrollY +
+      (b.relY + Math.sin(t * 3.0 + b.floatPhase) * 0.018 + Math.cos(t * 1.5) * 0.008) * scrollH;
 
     ctx.save();
     ctx.translate(bx, by);
@@ -859,7 +1023,10 @@ function drawSilkMistRibbon(
 
   const grad = ctx.createLinearGradient(0, yCenter - thickness, 0, yCenter + thickness);
   grad.addColorStop(0, "rgba(215, 238, 242, 0)");
-  grad.addColorStop(0.5, `rgba(225, 245, 248, ${alphaBase * (1 + smoothTreble * 0.45 * goldGlow)})`);
+  grad.addColorStop(
+    0.5,
+    `rgba(225, 245, 248, ${alphaBase * (1 + smoothTreble * 0.45 * goldGlow)})`
+  );
   grad.addColorStop(1, "rgba(215, 238, 242, 0)");
 
   ctx.fillStyle = grad;
@@ -910,7 +1077,7 @@ function drawDetailedBoatWithLongReflection(
   for (let r = 0; r < 3; r++) {
     const ripPhase = (t * 0.45 + r * 0.33) % 1.0;
     const ripR = 5 + ripPhase * 26;
-    const ripAlpha = (1.0 - ripPhase) * 0.20 * (0.8 + smoothBass * 0.4);
+    const ripAlpha = (1.0 - ripPhase) * 0.2 * (0.8 + smoothBass * 0.4);
     ctx.strokeStyle = `rgba(130, 225, 215, ${ripAlpha})`;
     ctx.lineWidth = 0.65;
     ctx.beginPath();
@@ -977,7 +1144,7 @@ function drawDetailedBoatWithLongReflection(
   const lanternPulse = 0.82 + Math.sin(t * 3.2) * 0.18 + smoothMid * 0.35;
   const lanternGlow = ctx.createRadialGradient(lanternX, lanternY, 0.5, lanternX, lanternY, 22);
   lanternGlow.addColorStop(0, `rgba(255, 248, 220, ${0.98 * lanternPulse})`);
-  lanternGlow.addColorStop(0.3, `rgba(245, 158, 11, ${0.60 * lanternPulse * goldGlow})`);
+  lanternGlow.addColorStop(0.3, `rgba(245, 158, 11, ${0.6 * lanternPulse * goldGlow})`);
   lanternGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = lanternGlow;
   ctx.beginPath();
@@ -1093,7 +1260,7 @@ function drawWaterShoals(
   const shoals = [
     { x: scrollX + scrollW * 0.12, w: scrollW * 0.22, h: 7.5, color: "#0d3b36", alpha: 0.65 },
     { x: scrollX + scrollW * 0.46, w: scrollW * 0.18, h: 5.5, color: "#0a2f2b", alpha: 0.55 },
-    { x: scrollX + scrollW * 0.78, w: scrollW * 0.26, h: 8.5, color: "#0e423a", alpha: 0.70 },
+    { x: scrollX + scrollW * 0.78, w: scrollW * 0.26, h: 8.5, color: "#0e423a", alpha: 0.7 },
   ];
 
   for (let i = 0; i < shoals.length; i++) {
@@ -1132,8 +1299,8 @@ function drawSongDynastyMoon(
   moonX: number,
   moonY: number,
   moonR: number,
-  t: number,
-  smoothMid: number
+  _t: number,
+  _smoothMid: number
 ) {
   ctx.save();
 
@@ -1148,7 +1315,12 @@ function drawSongDynastyMoon(
   ctx.fill();
 
   // 2. 玉润月轮本体 (柔焦白玉透青)
-  const moonGrad = ctx.createLinearGradient(moonX - moonR * 0.7, moonY - moonR * 0.7, moonX + moonR * 0.8, moonY + moonR * 0.8);
+  const moonGrad = ctx.createLinearGradient(
+    moonX - moonR * 0.7,
+    moonY - moonR * 0.7,
+    moonX + moonR * 0.8,
+    moonY + moonR * 0.8
+  );
   moonGrad.addColorStop(0, "rgba(255, 254, 245, 0.94)");
   moonGrad.addColorStop(0.55, "rgba(242, 250, 248, 0.82)");
   moonGrad.addColorStop(0.85, "rgba(218, 238, 238, 0.55)");
@@ -1247,7 +1419,7 @@ function drawWaterHorizonMist(
 /**
  * 宋代水村水榭山居 (Waterside Thatched Pavilion & Warm Lattice Light)
  */
-function drawWatersidePavilion(
+function _drawWatersidePavilion(
   ctx: CanvasRenderingContext2D,
   px: number,
   py: number,
@@ -1259,9 +1431,9 @@ function drawWatersidePavilion(
   ctx.save();
 
   // 1. 水面微波暖灯倒影 (Warm Window Light Reflection on Lake)
-  const winPulse = 0.85 + Math.sin(t * 2.8) * 0.15 + smoothMid * 0.30;
+  const winPulse = 0.85 + Math.sin(t * 2.8) * 0.15 + smoothMid * 0.3;
   const reflGrad = ctx.createLinearGradient(px, py + 2, px, py + 18);
-  reflGrad.addColorStop(0, `rgba(254, 215, 120, ${0.40 * winPulse * goldGlow})`);
+  reflGrad.addColorStop(0, `rgba(254, 215, 120, ${0.4 * winPulse * goldGlow})`);
   reflGrad.addColorStop(0.6, `rgba(245, 158, 11, ${0.15 * winPulse})`);
   reflGrad.addColorStop(1, "rgba(245, 158, 11, 0)");
 
@@ -1289,7 +1461,7 @@ function drawWatersidePavilion(
   // 4. 暖黄隔扇窗扉 (Warm Lattice Window)
   const winGlow = ctx.createRadialGradient(px, py - 6.5, 0.5, px, py - 6.5, 8);
   winGlow.addColorStop(0, `rgba(255, 248, 220, ${0.98 * winPulse})`);
-  winGlow.addColorStop(0.4, `rgba(251, 191, 36, ${0.70 * winPulse * goldGlow})`);
+  winGlow.addColorStop(0.4, `rgba(251, 191, 36, ${0.7 * winPulse * goldGlow})`);
   winGlow.addColorStop(1, "rgba(245, 158, 11, 0)");
   ctx.fillStyle = winGlow;
   ctx.beginPath();
@@ -1332,7 +1504,13 @@ function drawWatersidePavilion(
 /**
  * 宣和古制椭圆朱砂引首印 (“妙品”阴文)
  */
-function drawOvalLeadSeal(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+function drawOvalLeadSeal(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
   ctx.save();
   const sealGrad = ctx.createLinearGradient(x - w / 2, y - h / 2, x + w / 2, y + h / 2);
   sealGrad.addColorStop(0, "#c2382f");
@@ -1370,4 +1548,3 @@ function drawOvalLeadSeal(ctx: CanvasRenderingContext2D, x: number, y: number, w
 
   ctx.restore();
 }
-

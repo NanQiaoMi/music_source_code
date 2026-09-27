@@ -60,7 +60,7 @@ export const formatStorageBytes = (bytes: number): string => {
   return `${(bytes / Math.pow(1024, i)).toFixed(i > 1 ? 2 : 0)} ${units[i]}`;
 };
 
-export const useStorageAnalyticsStore = create<StorageAnalyticsState>((set, get) => ({
+export const useStorageAnalyticsStore = create<StorageAnalyticsState>((set, _get) => ({
   storageDetails: {
     localMusicBytes: 0,
     localMusicCount: 0,
@@ -115,7 +115,7 @@ export const useStorageAnalyticsStore = create<StorageAnalyticsState>((set, get)
       let hires = 0;
       let flac = 0;
       let high320 = 0;
-      let standard128 = 0;
+      const standard128 = 0;
 
       // Platform stats
       let netease = 0;
@@ -140,17 +140,30 @@ export const useStorageAnalyticsStore = create<StorageAnalyticsState>((set, get)
         else if (src.includes("kugou")) kugou++;
         else if (src.includes("kuwo")) kuwo++;
         else if (src.includes("qishui")) qishui++;
-        else if (src.includes("local") || song.audioUrl?.startsWith("stored://") || song.audioUrl?.startsWith("blob:")) local++;
+        else if (
+          src.includes("local") ||
+          song.audioUrl?.startsWith("stored://") ||
+          song.audioUrl?.startsWith("blob:")
+        )
+          local++;
         else netease++;
 
         // Quality detection
         const title = (song.title || "").toLowerCase();
         const album = (song.album || "").toLowerCase();
-        if (title.includes("hi-res") || album.includes("hi-res") || (song as any).quality === "hires") {
+        if (
+          title.includes("hi-res") ||
+          album.includes("hi-res") ||
+          (song as { quality?: string }).quality === "hires"
+        ) {
           hires++;
-        } else if (title.includes("flac") || (song as any).quality === "lossless" || (song as any).isLossless) {
+        } else if (
+          title.includes("flac") ||
+          (song as { quality?: string }).quality === "lossless" ||
+          (song as { isLossless?: boolean }).isLossless
+        ) {
           flac++;
-        } else if (title.includes("320k") || (song as any).quality === "320k") {
+        } else if (title.includes("320k") || (song as { quality?: string }).quality === "320k") {
           high320++;
         } else {
           // Default estimation
@@ -184,15 +197,17 @@ export const useStorageAnalyticsStore = create<StorageAnalyticsState>((set, get)
       const lyricsCoverage = Math.round((withLyrics / total) * 100);
       const activeSourceRate = Math.round((validSources / total) * 100);
       const dedupHealth = Math.max(0, 100 - Math.round((duplicatesCount / total) * 100));
-      const offlineRate = Math.round(((storage.localMusicCount + storage.offlineAudioCount) / total) * 100);
+      const offlineRate = Math.round(
+        ((storage.localMusicCount + storage.offlineAudioCount) / total) * 100
+      );
 
       const overallScore = Math.round(
         losslessRate * 0.2 +
-        coverCoverage * 0.15 +
-        lyricsCoverage * 0.15 +
-        activeSourceRate * 0.25 +
-        dedupHealth * 0.15 +
-        Math.min(100, offlineRate * 2) * 0.10
+          coverCoverage * 0.15 +
+          lyricsCoverage * 0.15 +
+          activeSourceRate * 0.25 +
+          dedupHealth * 0.15 +
+          Math.min(100, offlineRate * 2) * 0.1
       );
 
       // Generate diagnostics

@@ -2,11 +2,11 @@
 "use client";
 
 import React, { useEffect, useCallback, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useAudioStore, type EQPreset as AudioEQPreset } from "@/store/audioStore";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
-import { Waves, X, RotateCcw, Check, Sparkles, Activity } from "lucide-react";
+import { Waves, X, RotateCcw } from "lucide-react";
 
 export interface EQPresetUI {
   id: AudioEQPreset;
@@ -179,8 +179,12 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose 
             <div className="relative w-full h-[90px] rounded-xl overflow-hidden bg-black/30 border border-white/5">
               {/* 零刻度虚线 */}
               <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-white/10 border-dashed" />
-              <div className="absolute top-2 left-3 text-[10px] font-mono text-white/30">+12 dB</div>
-              <div className="absolute bottom-2 left-3 text-[10px] font-mono text-white/30">-12 dB</div>
+              <div className="absolute top-2 left-3 text-[10px] font-mono text-white/30">
+                +12 dB
+              </div>
+              <div className="absolute bottom-2 left-3 text-[10px] font-mono text-white/30">
+                -12 dB
+              </div>
               <div className="absolute top-1/2 -translate-y-1/2 left-3 text-[10px] font-mono text-[#2997ff]/60">
                 0 dB
               </div>

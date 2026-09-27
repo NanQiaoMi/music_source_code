@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   getCacheKey,
   getCacheFilePath,
@@ -8,6 +8,7 @@ import {
   CacheMeta,
 } from "./proxyDiskCache";
 import fs from "fs";
+import path from "path";
 
 describe("proxyDiskCache", () => {
   const testUrl = "http://example.com/audio/test.mp3";
@@ -31,7 +32,7 @@ describe("proxyDiskCache", () => {
     const metaPath = getCacheMetaPath(testKey);
 
     const dummyData = Buffer.alloc(10000, 65); // 10KB
-    fs.mkdirSync(require("path").dirname(filePath), { recursive: true });
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, dummyData);
 
     const meta: CacheMeta = {
@@ -59,6 +60,8 @@ describe("proxyDiskCache", () => {
     try {
       fs.unlinkSync(filePath);
       fs.unlinkSync(metaPath);
-    } catch {}
+    } catch {
+      // 临时文件清理失败可忽略
+    }
   });
 });

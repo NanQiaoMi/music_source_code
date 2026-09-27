@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Sparkles, Server, Cpu, Bot } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 interface ProviderLogoProps {
   providerId?: string;
@@ -31,7 +31,14 @@ export const ProviderLogo: React.FC<ProviderLogoProps> = ({
           fill="url(#deepseek-grad)"
         />
         <defs>
-          <linearGradient id="deepseek-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id="deepseek-grad"
+            x1="2"
+            y1="2"
+            x2="22"
+            y2="22"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop stopColor="#0066FF" />
             <stop offset="1" stopColor="#00D2FF" />
           </linearGradient>
@@ -59,7 +66,14 @@ export const ProviderLogo: React.FC<ProviderLogoProps> = ({
         />
         <circle cx="12" cy="12" r="2" fill="#00E599" />
         <defs>
-          <linearGradient id="sensenova-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id="sensenova-grad"
+            x1="2"
+            y1="2"
+            x2="22"
+            y2="22"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop stopColor="#00B96B" />
             <stop offset="1" stopColor="#00E599" />
           </linearGradient>
@@ -96,7 +110,11 @@ export const ProviderLogo: React.FC<ProviderLogoProps> = ({
     );
   }
 
-  if (normalized.includes("qwen") || normalized.includes("dashscope") || normalized.includes("aliyun")) {
+  if (
+    normalized.includes("qwen") ||
+    normalized.includes("dashscope") ||
+    normalized.includes("aliyun")
+  ) {
     return (
       <svg
         width={size}
@@ -120,7 +138,14 @@ export const ProviderLogo: React.FC<ProviderLogoProps> = ({
         />
         <circle cx="12" cy="12" r="2.5" fill="#FF6A00" />
         <defs>
-          <linearGradient id="qwen-grad" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id="qwen-grad"
+            x1="3"
+            y1="2"
+            x2="21"
+            y2="22"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop stopColor="#FF6A00" />
             <stop offset="1" stopColor="#FFB300" />
           </linearGradient>
@@ -146,7 +171,14 @@ export const ProviderLogo: React.FC<ProviderLogoProps> = ({
         />
         <circle cx="15.5" cy="8.5" r="1.5" fill="#10A37F" />
         <defs>
-          <linearGradient id="moonshot-grad" x1="3" y1="3" x2="12" y2="21" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id="moonshot-grad"
+            x1="3"
+            y1="3"
+            x2="12"
+            y2="21"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop stopColor="#10A37F" />
             <stop offset="1" stopColor="#34D399" />
           </linearGradient>
@@ -171,7 +203,14 @@ export const ProviderLogo: React.FC<ProviderLogoProps> = ({
         <circle cx="12" cy="16" r="2.5" fill="#2563EB" />
         <path d="M8 10L16 10L12 16Z" stroke="white" strokeWidth="1.2" strokeLinejoin="round" />
         <defs>
-          <linearGradient id="zhipu-grad" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id="zhipu-grad"
+            x1="3"
+            y1="3"
+            x2="21"
+            y2="21"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop stopColor="#2563EB" />
             <stop offset="1" stopColor="#38BDF8" />
           </linearGradient>
@@ -238,7 +277,14 @@ export const ProviderLogo: React.FC<ProviderLogoProps> = ({
           fill="url(#gemini-grad)"
         />
         <defs>
-          <linearGradient id="gemini-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id="gemini-grad"
+            x1="2"
+            y1="2"
+            x2="22"
+            y2="22"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop stopColor="#4285F4" />
             <stop offset="0.33" stopColor="#9B72CB" />
             <stop offset="0.66" stopColor="#D96570" />

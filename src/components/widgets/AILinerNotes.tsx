@@ -17,6 +17,8 @@ export const AILinerNotes: React.FC = () => {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // 挂载标记 / 挂载后拉取当前曲目的 AI 笔记
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -47,6 +49,8 @@ export const AILinerNotes: React.FC = () => {
     if (!mounted) return;
 
     if (currentSong?.id) {
+      // 挂载标记 / 挂载后拉取当前曲目的 AI 笔记
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchNotesForCurrentSong(false);
     } else {
       setDisplayNote(null);

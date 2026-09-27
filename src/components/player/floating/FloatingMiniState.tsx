@@ -30,7 +30,7 @@ export const FloatingMiniState: React.FC<FloatingMiniStateProps> = ({
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const currentSong = useAudioStore((state) => state.currentSong);
 
-  const [isHovered, setIsHovered] = useState(false);
+  const [_isHovered, setIsHovered] = useState(false);
   const pointerDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -103,7 +103,8 @@ export const FloatingMiniState: React.FC<FloatingMiniStateProps> = ({
         style={{
           width: 175,
           height: 52,
-          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.20) 100%)",
+          background:
+            "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.20) 100%)",
           backdropFilter: "blur(48px) saturate(200%)",
           WebkitBackdropFilter: "blur(48px) saturate(200%)",
           border: "1px solid rgba(255, 255, 255, 0.28)",

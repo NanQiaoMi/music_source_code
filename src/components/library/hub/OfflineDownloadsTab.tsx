@@ -1,10 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  useOfflineDownloadStore,
-  DownloadTask,
-} from "@/store/useOfflineDownloadStore";
+import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useAudioStore } from "@/store/audioStore";
 import { formatStorageBytes } from "@/store/useStorageAnalyticsStore";
 import {
@@ -16,11 +13,9 @@ import {
   RotateCw,
   FolderDown,
   Pin,
-  Sparkles,
   Sliders,
   XCircle,
   Search,
-  FileAudio,
 } from "lucide-react";
 import { Song } from "@/types/song";
 
@@ -57,7 +52,13 @@ export const OfflineDownloadsTab: React.FC = () => {
   }, [loadOfflineRecords]);
 
   const taskList = Object.values(tasks).sort((a, b) => b.addedAt - a.addedAt);
-  const activeTasks = taskList.filter((t) => t.status === "downloading" || t.status === "pending" || t.status === "paused" || t.status === "error");
+  const activeTasks = taskList.filter(
+    (t) =>
+      t.status === "downloading" ||
+      t.status === "pending" ||
+      t.status === "paused" ||
+      t.status === "error"
+  );
 
   const filteredOffline = offlineRecords.filter((rec) => {
     if (!offlineSearch) return true;
@@ -91,15 +92,16 @@ export const OfflineDownloadsTab: React.FC = () => {
 
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white tracking-tight">
-                离线下载调度中枢
-              </h3>
+              <h3 className="text-sm font-bold text-white tracking-tight">离线下载调度中枢</h3>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.08] text-white/80 font-bold border border-white/[0.12]">
                 {activeCount > 0 ? `下载中 ${activeCount}` : "就绪空闲"}
               </span>
             </div>
             <p className="text-xs text-white/50 font-mono mt-0.5 flex items-center gap-2">
-              <span>当前瞬时速率: <strong className="text-white font-bold">{totalSpeedFormatted}</strong></span>
+              <span>
+                当前瞬时速率:{" "}
+                <strong className="text-white font-bold">{totalSpeedFormatted}</strong>
+              </span>
               <span>·</span>
               <span>队列中: {taskList.length} 个任务</span>
             </p>
@@ -117,11 +119,21 @@ export const OfflineDownloadsTab: React.FC = () => {
               onChange={(e) => setConcurrency(Number(e.target.value))}
               className="bg-transparent text-white font-bold font-mono text-xs focus:outline-none cursor-pointer"
             >
-              <option value="1" className="bg-[#12121a] text-white">1 线程</option>
-              <option value="2" className="bg-[#12121a] text-white">2 线程</option>
-              <option value="3" className="bg-[#12121a] text-white">3 线程</option>
-              <option value="4" className="bg-[#12121a] text-white">4 线程</option>
-              <option value="5" className="bg-[#12121a] text-white">5 线程</option>
+              <option value="1" className="bg-[#12121a] text-white">
+                1 线程
+              </option>
+              <option value="2" className="bg-[#12121a] text-white">
+                2 线程
+              </option>
+              <option value="3" className="bg-[#12121a] text-white">
+                3 线程
+              </option>
+              <option value="4" className="bg-[#12121a] text-white">
+                4 线程
+              </option>
+              <option value="5" className="bg-[#12121a] text-white">
+                5 线程
+              </option>
             </select>
           </div>
 
@@ -269,17 +281,15 @@ export const OfflineDownloadsTab: React.FC = () => {
                         isError
                           ? "bg-rose-500"
                           : isPaused
-                          ? "bg-amber-400"
-                          : "bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_8px_rgba(56,189,248,0.6)]"
+                            ? "bg-amber-400"
+                            : "bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_8px_rgba(56,189,248,0.6)]"
                       }`}
                       style={{ width: `${t.progress}%` }}
                     />
                   </div>
 
                   {isError && t.error && (
-                    <p className="text-[10px] text-rose-400 font-mono truncate">
-                      错误: {t.error}
-                    </p>
+                    <p className="text-[10px] text-rose-400 font-mono truncate">错误: {t.error}</p>
                   )}
                 </div>
               );
@@ -334,7 +344,7 @@ export const OfflineDownloadsTab: React.FC = () => {
                 lyrics: record.lyrics,
                 translationLyrics: record.translationLyrics,
                 audioUrl: `offline://${record.songId}`,
-                source: (record.source as any) || "offline",
+                source: record.source || "offline",
               };
 
               return (
@@ -361,7 +371,8 @@ export const OfflineDownloadsTab: React.FC = () => {
                         )}
                       </p>
                       <p className="text-[11px] text-white/45 truncate mt-0.5 font-mono">
-                        {record.artist} · {formatStorageBytes(record.fileSize)} · {record.quality.toUpperCase()}
+                        {record.artist} · {formatStorageBytes(record.fileSize)} ·{" "}
+                        {record.quality.toUpperCase()}
                       </p>
                     </div>
                   </div>
@@ -413,7 +424,9 @@ export const OfflineDownloadsTab: React.FC = () => {
           </div>
         ) : (
           <div className="py-12 text-center text-white/40 text-xs">
-            {isLoadingRecords ? "正在加载离线曲库..." : "暂无已下载离线的歌曲，在云端歌单或单曲中点击「离线下载」即可高速存入本地。"}
+            {isLoadingRecords
+              ? "正在加载离线曲库..."
+              : "暂无已下载离线的歌曲，在云端歌单或单曲中点击「离线下载」即可高速存入本地。"}
           </div>
         )}
       </div>

@@ -2,26 +2,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  Sparkles,
-  Download,
-  Upload,
-  RotateCcw,
-  ArrowLeft,
-  Check,
-  Zap,
-  Layers,
-  HelpCircle,
-} from "lucide-react";
-import { useAIStore, AIConfig } from "@/store/aiStore";
+import { motion } from "framer-motion";
+import { X, Sparkles, Upload, RotateCcw, ArrowLeft, Layers } from "lucide-react";
+import { useAIStore } from "@/store/aiStore";
 import { useGlassToast } from "@/components/shared/GlassToast";
 import { AIEndpointList } from "./ai/AIEndpointList";
 import { AIDetailTabs } from "./ai/AIDetailTabs";
 import { AIProviderPickerModal } from "./ai/AIProviderPickerModal";
 import { AIImportExportModal } from "./ai/AIImportExportModal";
-import { PROVIDER_PRESETS } from "./ai/providerPresets";
 import { ProviderPreset } from "./ai/types";
 
 interface AISettingsPanelProps {
@@ -57,6 +45,8 @@ export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClos
   useEffect(() => {
     if (configs.length > 0) {
       if (!selectedConfigId || !configs.some((c) => c.id === selectedConfigId)) {
+        // 初始化选中的接口配置（跟随外部 configs）
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedConfigId(activeConfigId || configs[0].id);
       }
     } else {

@@ -8,16 +8,7 @@ import { AIPlaygroundTab } from "./tabs/AIPlaygroundTab";
 import { AIAdvancedNetworkTab } from "./tabs/AIAdvancedNetworkTab";
 import { ProviderLogo } from "./ProviderLogo";
 import { findPresetById, detectProviderFromUrl } from "./providerPresets";
-import {
-  Link2,
-  Sliders,
-  Terminal,
-  Shield,
-  RefreshCcw,
-  Sparkles,
-  Zap,
-  Check,
-} from "lucide-react";
+import { Link2, Sliders, Terminal, Shield, RefreshCcw, Check } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface AIDetailTabsProps {
@@ -147,13 +138,9 @@ export const AIDetailTabs: React.FC<AIDetailTabsProps> = ({
             isFetchingModels={isFetchingModels}
           />
         )}
-        {activeTab === "parameters" && (
-          <AIParametersTab config={config} onUpdate={onUpdate} />
-        )}
+        {activeTab === "parameters" && <AIParametersTab config={config} onUpdate={onUpdate} />}
         {activeTab === "playground" && <AIPlaygroundTab config={config} />}
-        {activeTab === "network" && (
-          <AIAdvancedNetworkTab config={config} onUpdate={onUpdate} />
-        )}
+        {activeTab === "network" && <AIAdvancedNetworkTab config={config} onUpdate={onUpdate} />}
       </div>
     </div>
   );

@@ -73,8 +73,11 @@ export async function GET(request: NextRequest) {
           content,
         });
       }
-    } catch (e: any) {
-      return NextResponse.json({ code: 500, message: e.message }, { status: 500 });
+    } catch (e) {
+      return NextResponse.json(
+        { code: 500, message: e instanceof Error ? e.message : String(e) },
+        { status: 500 }
+      );
     }
   }
 

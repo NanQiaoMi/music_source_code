@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnimationPreset, AnimationTrack } from "@/lib/visualization/animationTypes";
 import type { EffectPlugin, EffectPreset } from "@/lib/visualization/types";
-import type { LyricLine } from "@/services/lyricsSearchService";
 import type { Song } from "@/types/song";
 import { setEmotionCallbacks, useEmotionStore } from "./emotionStore";
 import { useAnimationStore } from "./animationStore";

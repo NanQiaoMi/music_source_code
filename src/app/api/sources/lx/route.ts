@@ -30,9 +30,12 @@ export async function GET(request: NextRequest) {
         { status: 502 }
       );
     }
-  } catch (err: any) {
+  } catch (err) {
     return NextResponse.json(
-      { code: 500, message: err?.message || "Script download error" },
+      {
+        code: 500,
+        message: err instanceof Error && err.message ? err.message : "Script download error",
+      },
       { status: 500 }
     );
   }

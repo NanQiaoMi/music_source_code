@@ -2,7 +2,7 @@
 
 import React from "react";
 import { HealthRadarMetrics, DiagnosticItem } from "@/store/useStorageAnalyticsStore";
-import { Activity, ShieldCheck, AlertTriangle, Sparkles, CheckCircle2 } from "lucide-react";
+import { Activity, ShieldCheck, AlertTriangle, Sparkles } from "lucide-react";
 
 interface LibraryHealthRadarProps {
   metrics: HealthRadarMetrics;
@@ -34,13 +34,15 @@ export const LibraryHealthRadar: React.FC<LibraryHealthRadarProps> = ({
   const angleStep = (Math.PI * 2) / sides;
 
   // Compute radar polygon points
-  const points = dimensions.map((dim, i) => {
-    const angle = i * angleStep - Math.PI / 2;
-    const r = (Math.max(10, Math.min(100, dim.value)) / 100) * maxRadius;
-    const x = center + r * Math.cos(angle);
-    const y = center + r * Math.sin(angle);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(" ");
+  const points = dimensions
+    .map((dim, i) => {
+      const angle = i * angleStep - Math.PI / 2;
+      const r = (Math.max(10, Math.min(100, dim.value)) / 100) * maxRadius;
+      const x = center + r * Math.cos(angle);
+      const y = center + r * Math.sin(angle);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
 
   // Grid level webs
   const levels = [0.33, 0.66, 1.0];
@@ -59,13 +61,15 @@ export const LibraryHealthRadar: React.FC<LibraryHealthRadarProps> = ({
         <svg width={size} height={size} className="overflow-visible">
           {/* Background web rings */}
           {levels.map((lvl, lIdx) => {
-            const levelPoints = dimensions.map((_, i) => {
-              const angle = i * angleStep - Math.PI / 2;
-              const r = lvl * maxRadius;
-              const x = center + r * Math.cos(angle);
-              const y = center + r * Math.sin(angle);
-              return `${x.toFixed(1)},${y.toFixed(1)}`;
-            }).join(" ");
+            const levelPoints = dimensions
+              .map((_, i) => {
+                const angle = i * angleStep - Math.PI / 2;
+                const r = lvl * maxRadius;
+                const x = center + r * Math.cos(angle);
+                const y = center + r * Math.sin(angle);
+                return `${x.toFixed(1)},${y.toFixed(1)}`;
+              })
+              .join(" ");
 
             return (
               <polygon
@@ -142,12 +146,16 @@ export const LibraryHealthRadar: React.FC<LibraryHealthRadarProps> = ({
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-white/80" />
-            <h4 className="text-xs font-bold text-white tracking-tight">
-              曲库健康诊断与优化
-            </h4>
+            <h4 className="text-xs font-bold text-white tracking-tight">曲库健康诊断与优化</h4>
           </div>
-          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${getScoreColor(metrics.overallScore)} font-mono`}>
-            {metrics.overallScore >= 90 ? "状态极佳" : metrics.overallScore >= 75 ? "运行良好" : "建议体检"}
+          <span
+            className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${getScoreColor(metrics.overallScore)} font-mono`}
+          >
+            {metrics.overallScore >= 90
+              ? "状态极佳"
+              : metrics.overallScore >= 75
+                ? "运行良好"
+                : "建议体检"}
           </span>
         </div>
 
@@ -159,8 +167,8 @@ export const LibraryHealthRadar: React.FC<LibraryHealthRadarProps> = ({
                 item.type === "danger"
                   ? "bg-rose-500/[0.06] border-rose-500/25"
                   : item.type === "warning"
-                  ? "bg-amber-500/[0.06] border-amber-500/25"
-                  : "bg-white/[0.04] border-white/[0.08] hover:border-white/[0.16]"
+                    ? "bg-amber-500/[0.06] border-amber-500/25"
+                    : "bg-white/[0.04] border-white/[0.08] hover:border-white/[0.16]"
               }`}
             >
               <div className="flex items-start gap-2.5 min-w-0 pr-2">

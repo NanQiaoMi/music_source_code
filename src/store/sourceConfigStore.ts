@@ -200,9 +200,13 @@ interface SourceConfigState {
   resetToDefaults: () => void;
 
   // UI Modal
-  openManagementModal: (initialTab?: "matrix" | "lx_scripts" | "diagnostics" | "backup" | "offline_cache") => void;
+  openManagementModal: (
+    initialTab?: "matrix" | "lx_scripts" | "diagnostics" | "backup" | "offline_cache"
+  ) => void;
   closeManagementModal: () => void;
-  setActiveManagementTab: (tab: "matrix" | "lx_scripts" | "diagnostics" | "backup" | "offline_cache") => void;
+  setActiveManagementTab: (
+    tab: "matrix" | "lx_scripts" | "diagnostics" | "backup" | "offline_cache"
+  ) => void;
 }
 
 export const DEFAULT_BUILTIN_LX_SCRIPTS: LXCustomScript[] = [
@@ -290,7 +294,9 @@ export const useSourceConfigStore = create<SourceConfigState>()(
         if (id === "local") return true;
         if (id === "lx_custom") {
           const state = get();
-          return Boolean(state.sources.lx_custom?.enabled && state.lxScripts.some((s) => s.enabled));
+          return Boolean(
+            state.sources.lx_custom?.enabled && state.lxScripts.some((s) => s.enabled)
+          );
         }
         const state = get();
         const source = state.sources[id];
@@ -428,13 +434,18 @@ export const useSourceConfigStore = create<SourceConfigState>()(
 
       syncBuiltinDesktopSources: async () => {
         try {
-          if (typeof window === "undefined" || !window.location?.origin || window.location.origin === "null") return;
+          if (
+            typeof window === "undefined" ||
+            !window.location?.origin ||
+            window.location.origin === "null"
+          )
+            return;
           const origin = window.location.origin;
           const res = await fetch(`${origin}/api/sources/builtin`);
           if (!res.ok) return;
           const data = await res.json();
           if (data && Array.isArray(data.sources)) {
-            data.sources.forEach((builtin: any) => {
+            data.sources.forEach((builtin: RawBuiltinSource) => {
               if (builtin.content) {
                 LXRunner.cacheScriptCode(builtin.id, builtin.content);
               }
@@ -444,7 +455,7 @@ export const useSourceConfigStore = create<SourceConfigState>()(
               const existingMap = new Map(state.lxScripts.map((s) => [s.id, s]));
               const updatedList: LXCustomScript[] = [...state.lxScripts];
 
-              data.sources.forEach((builtin: any) => {
+              data.sources.forEach((builtin: RawBuiltinSource) => {
                 const existing = existingMap.get(builtin.id);
                 if (existing) {
                   existing.name = builtin.name;
@@ -503,7 +514,7 @@ export const useSourceConfigStore = create<SourceConfigState>()(
           timestamp: Date.now(),
           activePreset,
           sources,
-          lxScripts: lxScripts.map(({ scriptContent, ...meta }) => meta),
+          lxScripts: lxScripts.map(({ scriptContent: _scriptContent, ...meta }) => meta),
         };
         return JSON.stringify(exportData, null, 2);
       },
@@ -571,7 +582,7 @@ export const useSourceConfigStore = create<SourceConfigState>()(
       })),
       partialize: (state) => ({
         sources: state.sources,
-        lxScripts: state.lxScripts.map(({ scriptContent, ...meta }) => meta),
+        lxScripts: state.lxScripts.map(({ scriptContent: _scriptContent, ...meta }) => meta),
         activePreset: state.activePreset,
         resolutionMode: state.resolutionMode,
       }),
@@ -583,3 +594,12 @@ export function isSourceUsable(sourceId: MusicSourceId): boolean {
   return useSourceConfigStore.getState().isSourceUsable(sourceId);
 }
 
+/** 内置音源清单接口的原始返回项（外部 JSON；name/version 等为 LXCustomScript 必填字段） */
+interface RawBuiltinSource {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  content?: string;
+}

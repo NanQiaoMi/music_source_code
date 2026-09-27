@@ -13,7 +13,10 @@ const DB_VERSION = 1;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
-function getIDBDatabase(dbName = DEFAULT_DB_NAME, storeName = DEFAULT_STORE_NAME): Promise<IDBDatabase> {
+function getIDBDatabase(
+  dbName = DEFAULT_DB_NAME,
+  storeName = DEFAULT_STORE_NAME
+): Promise<IDBDatabase> {
   if (typeof window === "undefined" || !window.indexedDB) {
     return Promise.reject(new Error("IndexedDB is not available in current environment"));
   }
@@ -83,7 +86,7 @@ export const indexedDbStorage: StateStorage = {
     }
     try {
       const db = await getIDBDatabase();
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve, _reject) => {
         try {
           const transaction = db.transaction([DEFAULT_STORE_NAME], "readwrite");
           const store = transaction.objectStore(DEFAULT_STORE_NAME);

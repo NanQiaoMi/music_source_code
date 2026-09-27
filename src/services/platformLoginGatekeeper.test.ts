@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useUserAccountStore, isPlatformLoggedIn, handlePlatformSessionExpired } from "@/store/userAccountStore";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// 测试桩（React/Store mock、部分状态对象）用宽松类型是刻意的，收紧只会引入与被测逻辑无关的噪音
+import { describe, it, expect, beforeEach } from "vitest";
+import {
+  useUserAccountStore,
+  isPlatformLoggedIn,
+  handlePlatformSessionExpired,
+} from "@/store/userAccountStore";
 import { useSourceConfigStore, isSourceUsable } from "@/store/sourceConfigStore";
 import { multiSourceResolver } from "@/services/MultiSourceResolver";
 
@@ -17,13 +23,49 @@ describe("Platform Login Gatekeeper & Link Guard", () => {
     // Reset sourceConfigStore
     useSourceConfigStore.setState({
       sources: {
-        local: { id: "local", name: "本地母带", enabled: true, priority: 1, qualityPreference: "hires" },
-        netease: { id: "netease", name: "网易云音乐", enabled: true, priority: 2, qualityPreference: "flac" },
+        local: {
+          id: "local",
+          name: "本地母带",
+          enabled: true,
+          priority: 1,
+          qualityPreference: "hires",
+        },
+        netease: {
+          id: "netease",
+          name: "网易云音乐",
+          enabled: true,
+          priority: 2,
+          qualityPreference: "flac",
+        },
         qq: { id: "qq", name: "QQ 音乐", enabled: true, priority: 3, qualityPreference: "flac" },
-        kugou: { id: "kugou", name: "酷狗音乐", enabled: true, priority: 4, qualityPreference: "flac" },
-        kuwo: { id: "kuwo", name: "酷我音乐", enabled: true, priority: 5, qualityPreference: "flac" },
-        qishui: { id: "qishui", name: "汽水音乐", enabled: true, priority: 6, qualityPreference: "320k" },
-        lx_custom: { id: "lx_custom", name: "落雪母带", enabled: false, priority: 7, qualityPreference: "hires" },
+        kugou: {
+          id: "kugou",
+          name: "酷狗音乐",
+          enabled: true,
+          priority: 4,
+          qualityPreference: "flac",
+        },
+        kuwo: {
+          id: "kuwo",
+          name: "酷我音乐",
+          enabled: true,
+          priority: 5,
+          qualityPreference: "flac",
+        },
+        qishui: {
+          id: "qishui",
+          name: "汽水音乐",
+          enabled: true,
+          priority: 6,
+          qualityPreference: "320k",
+        },
+        lx_custom: {
+          id: "lx_custom",
+          name: "落雪母带",
+          enabled: false,
+          priority: 7,
+          qualityPreference: "hires",
+        },
       } as any,
       lxScripts: [],
       resolutionMode: "hybrid_racing",

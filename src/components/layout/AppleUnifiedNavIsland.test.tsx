@@ -2,7 +2,6 @@ import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AppleUnifiedNavIsland } from "./AppleUnifiedNavIsland";
-import { useUIStore } from "@/store/uiStore";
 
 vi.mock("framer-motion", () => ({
   /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -10,7 +9,7 @@ vi.mock("framer-motion", () => ({
     {},
     {
       get: (_, prop: string) => {
-        return ({ children, animate, transition, ...props }: any) => {
+        return ({ children, _animate, _transition, ...props }: any) => {
           return React.createElement(prop, props, children);
         };
       },

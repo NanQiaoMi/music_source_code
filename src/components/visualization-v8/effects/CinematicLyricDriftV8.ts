@@ -6,7 +6,6 @@ import {
   RenderContext,
   AudioData,
   EffectParameterMap,
-  EffectParameterDefinition,
 } from "@/lib/visualization/types";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
@@ -364,11 +363,7 @@ function findActiveLyricIndex(lyrics: ParsedLrcLine[], time: number): number {
 /**
  * 智能语义字符插值（标点符号微停顿）
  */
-function calculateSmartProgress(
-  elapsed: number,
-  duration: number,
-  text: string
-): number {
+function calculateSmartProgress(elapsed: number, duration: number, text: string): number {
   if (duration <= 0 || elapsed <= 0) return 0;
   if (elapsed >= duration) return 1.0;
 
@@ -483,7 +478,8 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
   id: "cinematic-lyric-drift-v8",
   name: "弧光伴字",
   category: "space",
-  description: "Apple Music 4K 液态流光视差引擎：封面自适应色彩网格、纯重低音呼吸、月光水银巨幕扫光与 8px 物理弹簧微滑",
+  description:
+    "Apple Music 4K 液态流光视差引擎：封面自适应色彩网格、纯重低音呼吸、月光水银巨幕扫光与 8px 物理弹簧微滑",
   preferredEngine: "canvas",
 
   parameters: [
@@ -889,21 +885,13 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
       // 纯重低音呼吸脉冲
       const bassExpand = 1.0 + state.smoothedBass * 0.22 * bassPulse;
       const curRadius = blob.baseRadius * bassExpand;
-      const alpha =
-        blob.alpha * ambientBrightness * (0.85 + state.smoothedBass * 0.25 * bassPulse);
+      const alpha = blob.alpha * ambientBrightness * (0.85 + state.smoothedBass * 0.25 * bassPulse);
 
       const r = Math.round(blob.r);
       const g = Math.round(blob.g);
       const b = Math.round(blob.b);
 
-      const blobGrad = c2d.createRadialGradient(
-        blob.x,
-        blob.y,
-        0,
-        blob.x,
-        blob.y,
-        curRadius
-      );
+      const blobGrad = c2d.createRadialGradient(blob.x, blob.y, 0, blob.x, blob.y, curRadius);
       blobGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`);
       blobGrad.addColorStop(0.45, `rgba(${r}, ${g}, ${b}, ${(alpha * 0.45).toFixed(3)})`);
       blobGrad.addColorStop(0.8, `rgba(${r}, ${g}, ${b}, ${(alpha * 0.1).toFixed(3)})`);
@@ -1021,7 +1009,7 @@ export const CinematicLyricDriftV8Effect: EffectPlugin = {
     }
   },
 
-  resize(width: number, height: number) {
+  resize(_width: number, _height: number) {
     // Canvas dimensions updated automatically
   },
 

@@ -151,7 +151,7 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
     lineHeight: _lineHeight,
     fontFamily,
     fontWeight,
-    opacity,
+    opacity: _opacity,
     alignment,
     animationType: _animationType,
     animationSpeed: _animationSpeed,
@@ -292,6 +292,8 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
   // 计算偏移量以居中当前歌词
   useEffect(() => {
     if (isInstrumentalOrShort) {
+      // 纯音乐/超短曲时把歌词偏移归零（跟随外部派生值）
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOffsetY(0);
       return;
     }

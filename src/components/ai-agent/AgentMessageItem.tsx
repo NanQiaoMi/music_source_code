@@ -12,7 +12,6 @@ import {
   ListPlus,
   Key,
   ArrowRight,
-  Sparkles,
   Search,
   Moon,
   Radio,

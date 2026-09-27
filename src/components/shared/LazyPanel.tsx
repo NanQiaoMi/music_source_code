@@ -51,6 +51,8 @@ export function LazyPanel({
 
   React.useEffect(() => {
     if (isOpen) {
+      // 记录面板是否已挂载过，一次性标记
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHasMounted(true);
     }
   }, [isOpen]);

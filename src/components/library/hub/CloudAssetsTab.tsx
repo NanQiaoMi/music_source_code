@@ -7,20 +7,15 @@ import { usePlaylistStore } from "@/store/playlistStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useAudioStore } from "@/store/audioStore";
 import {
-  Cloud,
-  CheckCircle2,
   RefreshCw,
   Download,
   Play,
   QrCode,
   KeyRound,
-  ExternalLink,
   Music2,
   FolderHeart,
   Search,
-  Sparkles,
 } from "lucide-react";
-import { Song } from "@/types/song";
 import { PlaylistDetailDrawer, DrawerPlaylistInfo } from "./PlaylistDetailDrawer";
 
 export const CloudAssetsTab: React.FC = () => {
@@ -31,7 +26,7 @@ export const CloudAssetsTab: React.FC = () => {
     qishuiUser,
     userPlaylists,
     fetchUserPlaylists,
-    fetchPlaylistTracks,
+    fetchPlaylistTracks: _fetchPlaylistTracks,
     fetchAllPlaylistTracks,
   } = useUserAccountStore();
   const { openManagementModal } = useSourceConfigStore();
@@ -43,24 +38,28 @@ export const CloudAssetsTab: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
-  const [selectedDrawerPlaylist, setSelectedDrawerPlaylist] = useState<DrawerPlaylistInfo | null>(null);
+  const [selectedDrawerPlaylist, setSelectedDrawerPlaylist] = useState<DrawerPlaylistInfo | null>(
+    null
+  );
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const handleOpenPlaylistDetail = (pl: any) => {
+  const handleOpenPlaylistDetail = (pl: CloudPlaylistDetail) => {
     const userForSource =
       pl.source === "netease"
         ? neteaseUser
         : pl.source === "qq"
-        ? qqUser
-        : pl.source === "kugou"
-        ? kugouUser
-        : qishuiUser;
+          ? qqUser
+          : pl.source === "kugou"
+            ? kugouUser
+            : qishuiUser;
 
     setSelectedDrawerPlaylist({
       id: String(pl.id),
       name: pl.name || "云端歌单",
       coverImgUrl: pl.coverImgUrl || "/default-cover.svg",
-      creatorName: userForSource?.nickname || (pl.source === "netease" ? "网易云音乐" : pl.source === "qq" ? "QQ音乐" : "云端资产"),
+      creatorName:
+        userForSource?.nickname ||
+        (pl.source === "netease" ? "网易云音乐" : pl.source === "qq" ? "QQ音乐" : "云端资产"),
       creatorAvatarUrl: userForSource?.avatarUrl,
       playCount: pl.playCount || 0,
       trackCount: pl.trackCount || 0,
@@ -196,14 +195,14 @@ export const CloudAssetsTab: React.FC = () => {
                     className="w-2.5 h-2.5 rounded-full shadow-sm"
                     style={{ backgroundColor: p.accent }}
                   />
-                  <span className="text-xs font-bold text-white tracking-tight">
-                    {p.name}
-                  </span>
+                  <span className="text-xs font-bold text-white tracking-tight">{p.name}</span>
                 </div>
 
-                <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${
-                  isAuthed ? p.badgeColor : "bg-white/5 text-white/40 border-white/10"
-                }`}>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${
+                    isAuthed ? p.badgeColor : "bg-white/5 text-white/40 border-white/10"
+                  }`}
+                >
                   {isAuthed ? "已连接" : "未登录"}
                 </span>
               </div>
@@ -267,9 +266,7 @@ export const CloudAssetsTab: React.FC = () => {
               云端歌单资产库 ({userPlaylists.length} 个歌单)
             </h4>
           </div>
-          <span className="text-[10px] text-white/40">
-            支持一键整单下载缓存至本地
-          </span>
+          <span className="text-[10px] text-white/40">支持一键整单下载缓存至本地</span>
         </div>
 
         {userPlaylists.length > 0 ? (
@@ -308,7 +305,9 @@ export const CloudAssetsTab: React.FC = () => {
                         setSyncFeedback(`⏳ 正在拉取「${pl.name}」全部曲目详情...`);
                         let tracks = await fetchAllPlaylistTracks(pl.id, pl.source);
                         if (!tracks || tracks.length === 0) {
-                          const res = await fetch(`/api/playlist/tracks?id=${encodeURIComponent(pl.id)}&limit=500`);
+                          const res = await fetch(
+                            `/api/playlist/tracks?id=${encodeURIComponent(pl.id)}&limit=500`
+                          );
                           if (res.ok) {
                             const d = await res.json();
                             tracks = d.songs || [];
@@ -316,7 +315,9 @@ export const CloudAssetsTab: React.FC = () => {
                         }
                         if (tracks && tracks.length > 0) {
                           addBatchDownloads(tracks);
-                          setSyncFeedback(`🚀 已将「${pl.name}」全部 ${tracks.length} 首歌曲加入离线下载队列！`);
+                          setSyncFeedback(
+                            `🚀 已将「${pl.name}」全部 ${tracks.length} 首歌曲加入离线下载队列！`
+                          );
                           setTimeout(() => setSyncFeedback(null), 3500);
                         }
                       }}
@@ -333,7 +334,9 @@ export const CloudAssetsTab: React.FC = () => {
                         setSyncFeedback(`⏳ 正在准备播放「${pl.name}」...`);
                         let tracks = await fetchAllPlaylistTracks(pl.id, pl.source);
                         if (!tracks || tracks.length === 0) {
-                          const res = await fetch(`/api/playlist/tracks?id=${encodeURIComponent(pl.id)}&limit=500`);
+                          const res = await fetch(
+                            `/api/playlist/tracks?id=${encodeURIComponent(pl.id)}&limit=500`
+                          );
                           if (res.ok) {
                             const d = await res.json();
                             tracks = d.songs || [];
@@ -458,3 +461,14 @@ export const CloudAssetsTab: React.FC = () => {
     </div>
   );
 };
+
+/** 云端歌单（用于打开详情抽屉） */
+interface CloudPlaylistDetail {
+  id?: string | number;
+  name?: string;
+  coverImgUrl?: string;
+  playCount?: number;
+  trackCount?: number;
+  source?: string;
+  description?: string;
+}

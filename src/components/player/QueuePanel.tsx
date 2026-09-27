@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ListMusic,
@@ -14,8 +14,6 @@ import {
   Search,
   Disc3,
   CornerDownRight,
-  Music2,
-  Clock,
   Download,
 } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
@@ -93,7 +91,11 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
 
   // Auto-scroll current song into view when opening
   useEffect(() => {
-    if (isOpen && activeItemRef.current && typeof activeItemRef.current.scrollIntoView === "function") {
+    if (
+      isOpen &&
+      activeItemRef.current &&
+      typeof activeItemRef.current.scrollIntoView === "function"
+    ) {
       activeItemRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [isOpen, currentIndex]);
@@ -447,7 +449,9 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
               <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/70 text-[10px]">Q</span>
               <span>唤出 / 收起</span>
               <span className="text-white/20">·</span>
-              <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/70 text-[10px]">ESC</span>
+              <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/70 text-[10px]">
+                ESC
+              </span>
               <span>退出</span>
             </div>
             <button
