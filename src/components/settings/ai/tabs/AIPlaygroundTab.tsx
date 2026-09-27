@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { AIConfig } from "@/store/aiStore";
 import { DiagnosticResult } from "../types";
 import {
@@ -16,17 +16,29 @@ import {
   Check,
   RotateCcw,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 interface AIPlaygroundTabProps {
   config: AIConfig;
 }
 
 const SAMPLE_PROMPTS = [
-  { label: "分析情绪转折", prompt: "请简要分析皇后乐队《Bohemian Rhapsody》的结构转折与情绪高潮设计。" },
-  { label: "雨夜爵士推荐", prompt: "推荐 3 首适合下雨天深夜聆听的 Chill Jazz / 慢摇爵士曲目并说明理由。" },
-  { label: "解构编曲空间", prompt: "从现代混音与立体声像的角度，简要评价一首好听的 Vaporwave（蒸汽波）音乐特点。" },
-  { label: "歌词意境解读", prompt: "用简练而富有诗意的三句话，解读歌词'原谅我这一生不羁放纵爱自由'的艺术意境。" },
+  {
+    label: "分析情绪转折",
+    prompt: "请简要分析皇后乐队《Bohemian Rhapsody》的结构转折与情绪高潮设计。",
+  },
+  {
+    label: "雨夜爵士推荐",
+    prompt: "推荐 3 首适合下雨天深夜聆听的 Chill Jazz / 慢摇爵士曲目并说明理由。",
+  },
+  {
+    label: "解构编曲空间",
+    prompt: "从现代混音与立体声像的角度，简要评价一首好听的 Vaporwave（蒸汽波）音乐特点。",
+  },
+  {
+    label: "歌词意境解读",
+    prompt: "用简练而富有诗意的三句话，解读歌词'原谅我这一生不羁放纵爱自由'的艺术意境。",
+  },
 ];
 
 export const AIPlaygroundTab: React.FC<AIPlaygroundTabProps> = ({ config }) => {
@@ -35,7 +47,7 @@ export const AIPlaygroundTab: React.FC<AIPlaygroundTabProps> = ({ config }) => {
   const [outputContent, setOutputContent] = useState("");
   const [diagnostics, setDiagnostics] = useState<DiagnosticResult | null>(null);
   const [copied, setCopied] = useState(false);
-  const [streamProgress, setStreamProgress] = useState(0);
+  const [_streamProgress, setStreamProgress] = useState(0);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -68,6 +80,8 @@ export const AIPlaygroundTab: React.FC<AIPlaygroundTabProps> = ({ config }) => {
     setDiagnostics(null);
     setStreamProgress(0);
 
+    // 计时点在异步请求处理内，不在渲染期；编译器规则无法区分
+    // eslint-disable-next-line react-hooks/purity
     const startTime = performance.now();
     let firstTokenTime = 0;
 
@@ -94,6 +108,7 @@ export const AIPlaygroundTab: React.FC<AIPlaygroundTabProps> = ({ config }) => {
         signal: abortControllerRef.current.signal,
       });
 
+      // eslint-disable-next-line react-hooks/purity
       const endTime = performance.now();
       const totalLatency = Math.round(endTime - startTime);
 
@@ -104,13 +119,16 @@ export const AIPlaygroundTab: React.FC<AIPlaygroundTabProps> = ({ config }) => {
 
         let advice = "请检查端点 URL、API Key 与模型名称是否正确。";
         if (status === 401) {
-          advice = "身份鉴权失败（401 Unauthorized）。请核对 API Key 是否正确、是否已过期或是否有该模型的调用权限。";
+          advice =
+            "身份鉴权失败（401 Unauthorized）。请核对 API Key 是否正确、是否已过期或是否有该模型的调用权限。";
         } else if (status === 404) {
           advice = `未找到目标模型或接口路径（404 Not Found）。当前模型 "${config.model}" 可能在上游不可用，请点击【连接与模型】中的【拉取可用模型】重新选择。`;
         } else if (status === 429) {
-          advice = "触发调用频率限制或账户余额不足（429 Too Many Requests / Quota Exceeded）。请检查您的服务商账户余额与并发限额。";
+          advice =
+            "触发调用频率限制或账户余额不足（429 Too Many Requests / Quota Exceeded）。请检查您的服务商账户余额与并发限额。";
         } else if (status === 504 || status === 408) {
-          advice = "请求超时（Timeout）。上游大模型生成耗时较长或网络连接不稳定，请尝试调小 max_tokens 或更换更快的推理模型。";
+          advice =
+            "请求超时（Timeout）。上游大模型生成耗时较长或网络连接不稳定，请尝试调小 max_tokens 或更换更快的推理模型。";
         }
 
         setDiagnostics({
@@ -126,9 +144,7 @@ export const AIPlaygroundTab: React.FC<AIPlaygroundTabProps> = ({ config }) => {
 
       const data = await response.json();
       const reply =
-        data?.choices?.[0]?.message?.content ||
-        data?.output?.text ||
-        JSON.stringify(data, null, 2);
+        data?.choices?.[0]?.message?.content || data?.output?.text || JSON.stringify(data, null, 2);
 
       firstTokenTime = Math.round(totalLatency * 0.45);
       const totalTokens = data?.usage?.total_tokens || Math.round(reply.length / 2);
@@ -159,13 +175,15 @@ export const AIPlaygroundTab: React.FC<AIPlaygroundTabProps> = ({ config }) => {
         tokensPerSec: isFinite(tokensPerSec) ? tokensPerSec : undefined,
       });
     } catch (err: unknown) {
+      // eslint-disable-next-line react-hooks/purity
       const endTime = performance.now();
       const isAbort = err instanceof Error && err.name === "AbortError";
       if (!isAbort) {
         setDiagnostics({
           status: "error",
           message: err instanceof Error ? err.message : "未知网络请求故障",
-          advice: "请检查本机网络环境，若使用本地模型（Ollama/LM Studio），请确保本地服务处于运行中且允许跨域请求。",
+          advice:
+            "请检查本机网络环境，若使用本地模型（Ollama/LM Studio），请确保本地服务处于运行中且允许跨域请求。",
           latency: Math.round(endTime - startTime),
         });
       }
@@ -185,9 +203,7 @@ export const AIPlaygroundTab: React.FC<AIPlaygroundTabProps> = ({ config }) => {
       {/* 快捷测试药丸 */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-[12px] font-medium text-white/70">
-            音乐测试 Prompt 快捷注入
-          </span>
+          <span className="text-[12px] font-medium text-white/70">音乐测试 Prompt 快捷注入</span>
           <span className="text-[11px] text-white/40">点击直接发送</span>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -320,7 +336,11 @@ export const AIPlaygroundTab: React.FC<AIPlaygroundTabProps> = ({ config }) => {
               onClick={handleCopyOutput}
               className="flex items-center gap-1 text-[11px] text-white/40 hover:text-white/80 transition-colors"
             >
-              {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+              {copied ? (
+                <Check className="w-3 h-3 text-emerald-400" />
+              ) : (
+                <Copy className="w-3 h-3" />
+              )}
               <span>{copied ? "已复制" : "复制全文"}</span>
             </button>
           )}

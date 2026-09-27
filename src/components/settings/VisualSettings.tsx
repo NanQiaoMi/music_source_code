@@ -2,8 +2,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Gauge, Sliders, RotateCcw, X, Check, Activity } from "lucide-react";
+import { motion } from "framer-motion";
+import { Sparkles, Gauge, RotateCcw, X, Check, Activity } from "lucide-react";
 import {
   usePerformanceV8Store,
   VISUAL_PERFORMANCE_PRESETS,

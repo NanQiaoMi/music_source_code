@@ -9,39 +9,22 @@ import {
   Code2,
   Activity,
   Download,
-  Upload,
   RefreshCw,
   Plus,
   Trash2,
   CheckCircle2,
   AlertTriangle,
   XCircle,
-  ExternalLink,
   Sparkles,
   Zap,
   HardDrive,
-  Globe,
-  Settings2,
-  KeyRound,
   Play,
   RotateCcw,
   Lock,
 } from "lucide-react";
-import {
-  useSourceConfigStore,
-  PRESET_SCHEMES,
-  isSourceUsable,
-} from "@/store/sourceConfigStore";
-import {
-  useUserAccountStore,
-  isPlatformLoggedIn,
-  PlatformType,
-} from "@/store/userAccountStore";
-import {
-  MusicSourceId,
-  QualityTier,
-  LXCustomScript,
-} from "@/types/sourceConfig";
+import { useSourceConfigStore, PRESET_SCHEMES, isSourceUsable } from "@/store/sourceConfigStore";
+import { useUserAccountStore, isPlatformLoggedIn, PlatformType } from "@/store/userAccountStore";
+import { QualityTier } from "@/types/sourceConfig";
 import { LXRunner } from "@/lib/sources/lxRunner";
 import { useNetworkAudioCache } from "@/hooks/useNetworkAudioCache";
 import { getAllCachedAudioMeta, CachedNetworkAudioMeta } from "@/services/networkAudioCache";
@@ -68,10 +51,10 @@ export function SourceManagementModal() {
     setSourceConfig,
     setSourceQuality,
     setSourcePriority,
-    setSourceCredentials,
+    setSourceCredentials: _setSourceCredentials,
     updateAllHealth,
     addLXScript,
-    updateLXScript,
+    updateLXScript: _updateLXScript,
     removeLXScript,
     toggleLXScript,
     syncBuiltinDesktopSources,
@@ -141,8 +124,11 @@ export function SourceManagementModal() {
           setIsTestingScript(false);
           return;
         }
-      } catch (e: any) {
-        setTestResult({ success: false, message: `网络请求失败: ${e.message}` });
+      } catch (e) {
+        setTestResult({
+          success: false,
+          message: `网络请求失败: ${e instanceof Error ? e.message : String(e)}`,
+        });
         setIsTestingScript(false);
         return;
       }
@@ -269,7 +255,9 @@ export function SourceManagementModal() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveManagementTab(tab.id as any)}
+                  onClick={() =>
+                    setActiveManagementTab(tab.id as Parameters<typeof setActiveManagementTab>[0])
+                  }
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                     isSelected
                       ? "bg-white text-black font-semibold shadow-lg shadow-white/10"
@@ -330,7 +318,8 @@ export function SourceManagementModal() {
 
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-white/50 font-medium">
-                    已启用 {sourceList.filter((s) => s.enabled).length} / {sourceList.length} 个音源通道
+                    已启用 {sourceList.filter((s) => s.enabled).length} / {sourceList.length}{" "}
+                    个音源通道
                   </span>
                   <div className="flex items-center gap-2">
                     <button
@@ -372,7 +361,9 @@ export function SourceManagementModal() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-2.5">
-                            <span className={`w-2.5 h-2.5 rounded-full ${src.dotColor} shadow-sm`} />
+                            <span
+                              className={`w-2.5 h-2.5 rounded-full ${src.dotColor} shadow-sm`}
+                            />
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-semibold text-white">{src.name}</span>
@@ -399,7 +390,9 @@ export function SourceManagementModal() {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  useUserAccountStore.getState().setActivePlatform(src.id as PlatformType);
+                                  useUserAccountStore
+                                    .getState()
+                                    .setActivePlatform(src.id as PlatformType);
                                   useUserAccountStore.getState().setIsAccountModalOpen(true);
                                 }}
                                 className="px-2 py-1 rounded-lg bg-[#0071e3]/20 hover:bg-[#0071e3]/30 text-[#2997ff] text-[11px] font-medium border border-[#0071e3]/40 transition-colors"
@@ -431,7 +424,9 @@ export function SourceManagementModal() {
                         {isEnabled && (
                           <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 text-xs">
                             <div>
-                              <label className="text-[10px] text-white/40 block mb-1">音质偏好</label>
+                              <label className="text-[10px] text-white/40 block mb-1">
+                                音质偏好
+                              </label>
                               <select
                                 value={src.qualityPreference}
                                 onChange={(e) =>
@@ -440,7 +435,11 @@ export function SourceManagementModal() {
                                 className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none cursor-pointer"
                               >
                                 {QUALITY_OPTIONS.map((opt) => (
-                                  <option key={opt.value} value={opt.value} className="bg-[#121626]">
+                                  <option
+                                    key={opt.value}
+                                    value={opt.value}
+                                    className="bg-[#121626]"
+                                  >
                                     {opt.label}
                                   </option>
                                 ))}
@@ -448,7 +447,9 @@ export function SourceManagementModal() {
                             </div>
 
                             <div>
-                              <label className="text-[10px] text-white/40 block mb-1">抢答优先级 (1-10)</label>
+                              <label className="text-[10px] text-white/40 block mb-1">
+                                抢答优先级 (1-10)
+                              </label>
                               <input
                                 type="number"
                                 min={1}
@@ -504,7 +505,9 @@ export function SourceManagementModal() {
                       type="button"
                       onClick={async () => {
                         await syncBuiltinDesktopSources();
-                        alert("🎉 已成功载入并同步本地桌面 4 套音源库（独家v4.0、聚合9.3特供版、野草、野花）！");
+                        alert(
+                          "🎉 已成功载入并同步本地桌面 4 套音源库（独家v4.0、聚合9.3特供版、野草、野花）！"
+                        );
                       }}
                       className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm"
                       title="从桌面音源目录一键刷新并载入最新脚本"
@@ -717,7 +720,9 @@ export function SourceManagementModal() {
                           <span className={`w-2.5 h-2.5 rounded-full ${src.dotColor}`} />
                           <div>
                             <div className="text-xs font-semibold text-white">{src.name}</div>
-                            <div className="text-[10px] text-white/40">{health.message || "就绪"}</div>
+                            <div className="text-[10px] text-white/40">
+                              {health.message || "就绪"}
+                            </div>
                           </div>
                         </div>
 
@@ -732,10 +737,10 @@ export function SourceManagementModal() {
                               isNormal
                                 ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
                                 : isDegraded
-                                ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                                : isError
-                                ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
-                                : "bg-white/10 text-white/60 border-white/10"
+                                  ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                  : isError
+                                    ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                                    : "bg-white/10 text-white/60 border-white/10"
                             }`}
                           >
                             {isNormal && <CheckCircle2 className="w-3 h-3" />}
@@ -795,7 +800,9 @@ export function SourceManagementModal() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-white">配置备份与导入导出</h4>
-                      <p className="text-[11px] text-white/50">支持将当前 7 大音源配置方案导出为 JSON 备份</p>
+                      <p className="text-[11px] text-white/50">
+                        支持将当前 7 大音源配置方案导出为 JSON 备份
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
@@ -839,9 +846,7 @@ export function SourceManagementModal() {
             )}
 
             {/* TAB 5: 离线缓存管理 */}
-            {activeManagementTab === "offline_cache" && (
-              <OfflineCacheTab />
-            )}
+            {activeManagementTab === "offline_cache" && <OfflineCacheTab />}
           </div>
         </motion.div>
       </div>
@@ -868,6 +873,8 @@ function OfflineCacheTab() {
   }, []);
 
   React.useEffect(() => {
+    // 挂载时拉取曲库列表（调用外部接口）
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadSongs();
   }, [loadSongs]);
 
@@ -902,7 +909,7 @@ function OfflineCacheTab() {
       album: item.album,
       duration: item.duration || 0,
       cover: item.cover,
-      source: src as any,
+      source: src,
       audioUrl: `cached://${src}/${item.songId}`,
     });
   };
@@ -930,7 +937,8 @@ function OfflineCacheTab() {
           <div>
             <div className="text-[11px] text-white/50 font-medium">占用本地磁盘</div>
             <div className="text-xl font-bold text-white tracking-tight">
-              {stats.totalSizeMB} <span className="text-xs font-normal text-white/40">MB / 4000 MB</span>
+              {stats.totalSizeMB}{" "}
+              <span className="text-xs font-normal text-white/40">MB / 4000 MB</span>
             </div>
           </div>
         </div>
@@ -941,9 +949,7 @@ function OfflineCacheTab() {
           </div>
           <div>
             <div className="text-[11px] text-white/50 font-medium">离线播放特性</div>
-            <div className="text-sm font-semibold text-purple-300">
-              0ms 秒开 · 自动 LRU
-            </div>
+            <div className="text-sm font-semibold text-purple-300">0ms 秒开 · 自动 LRU</div>
           </div>
         </div>
       </div>
@@ -959,7 +965,10 @@ function OfflineCacheTab() {
             className="w-full sm:max-w-xs bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-cyan-500/50"
           />
           <button
-            onClick={() => { refreshStats(); loadSongs(); }}
+            onClick={() => {
+              refreshStats();
+              loadSongs();
+            }}
             className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
             title="刷新列表"
           >
@@ -988,13 +997,17 @@ function OfflineCacheTab() {
         ) : filteredSongs.length === 0 ? (
           <div className="py-12 text-center text-white/40 text-xs space-y-1">
             <p>暂无已缓存的网络歌曲</p>
-            <p className="text-[11px] text-white/30">播放网络歌曲后，系统会自动在后台完成二进制无损缓存</p>
+            <p className="text-[11px] text-white/30">
+              播放网络歌曲后，系统会自动在后台完成二进制无损缓存
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-white/5 max-h-[320px] overflow-y-auto custom-scrollbar">
             {filteredSongs.map((item) => {
               const sizeMB = item.fileSize ? (item.fileSize / 1024 / 1024).toFixed(1) : "0.0";
-              const cachedTimeStr = item.cachedAt ? new Date(item.cachedAt).toLocaleDateString() : "未知时间";
+              const cachedTimeStr = item.cachedAt
+                ? new Date(item.cachedAt).toLocaleDateString()
+                : "未知时间";
               const displaySource = (item.source || "NET").toUpperCase();
               const displayFormat = item.fileType?.split("/")[1]?.toUpperCase() || "MP3";
 
@@ -1014,7 +1027,9 @@ function OfflineCacheTab() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-white truncate">{item.title || "未知曲目"}</span>
+                        <span className="text-xs font-semibold text-white truncate">
+                          {item.title || "未知曲目"}
+                        </span>
                         <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/5 text-white/60 font-mono">
                           {displaySource}
                         </span>

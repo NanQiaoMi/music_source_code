@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// 测试桩（React/Store mock、部分状态对象）用宽松类型是刻意的，收紧只会引入与被测逻辑无关的噪音
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MultiPlatformAccountModal } from "./MultiPlatformAccountModal";
-import { useUserAccountStore } from "@/store/userAccountStore";
 
 vi.mock("@/lib/audio/useIntegratedAudioPipeline", () => ({
   useIntegratedAudioPipeline: () => ({
@@ -20,13 +21,10 @@ vi.mock("@/store/audioStore", () => ({
 }));
 
 vi.mock("@/store/queueStore", () => ({
-  useQueueStore: Object.assign(
-    (selector: any) => selector({ setQueue: vi.fn(), queue: [] }),
-    {
-      getState: () => ({ setQueue: vi.fn(), queue: [] }),
-      setState: vi.fn(),
-    }
-  ),
+  useQueueStore: Object.assign((selector: any) => selector({ setQueue: vi.fn(), queue: [] }), {
+    getState: () => ({ setQueue: vi.fn(), queue: [] }),
+    setState: vi.fn(),
+  }),
 }));
 
 const mockAccountState = {
@@ -79,13 +77,10 @@ const mockAccountState = {
 };
 
 vi.mock("@/store/userAccountStore", () => ({
-  useUserAccountStore: Object.assign(
-    () => mockAccountState,
-    {
-      getState: () => mockAccountState,
-      setState: vi.fn(),
-    }
-  ),
+  useUserAccountStore: Object.assign(() => mockAccountState, {
+    getState: () => mockAccountState,
+    setState: vi.fn(),
+  }),
 }));
 
 describe("MultiPlatformAccountModal", () => {
@@ -94,7 +89,9 @@ describe("MultiPlatformAccountModal", () => {
   });
 
   it("renders modal header, user info, and playlists when open", () => {
-    const html = renderToStaticMarkup(<MultiPlatformAccountModal isOpen={true} onClose={vi.fn()} />);
+    const html = renderToStaticMarkup(
+      <MultiPlatformAccountModal isOpen={true} onClose={vi.fn()} />
+    );
 
     expect(html).toContain("多平台账号与云端资产");
     expect(html).toContain("云端直连");
@@ -108,7 +105,9 @@ describe("MultiPlatformAccountModal", () => {
   });
 
   it("returns null when isOpen is false", () => {
-    const html = renderToStaticMarkup(<MultiPlatformAccountModal isOpen={false} onClose={vi.fn()} />);
+    const html = renderToStaticMarkup(
+      <MultiPlatformAccountModal isOpen={false} onClose={vi.fn()} />
+    );
     expect(html).toBe("");
   });
 });

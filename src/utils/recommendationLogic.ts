@@ -358,24 +358,41 @@ export function scoreSongForRecommendation(
 
   // 5. 时段氛围契合度
   if (context.mode) {
-    const titleAndGenre = `${song.title || ""} ${song.genre || ""} ${song.album || ""}`.toLowerCase();
+    const titleAndGenre =
+      `${song.title || ""} ${song.genre || ""} ${song.album || ""}`.toLowerCase();
     const modeName = (
       context.mode.name ||
-      (context.mode as any).title ||
+      (context.mode as { title?: string }).title ||
       ""
     ).toLowerCase();
     if (modeName.includes("专注") || modeName.includes("下午") || modeName.includes("focus")) {
-      const isFocusFriendly = /focus|acoustic|piano|lofi|ambient|instrumental|chill|吉他|钢琴|民谣|纯音乐|慢|安静/i.test(titleAndGenre);
+      const isFocusFriendly =
+        /focus|acoustic|piano|lofi|ambient|instrumental|chill|吉他|钢琴|民谣|纯音乐|慢|安静/i.test(
+          titleAndGenre
+        );
       if (isFocusFriendly) {
         score += 15;
       }
-    } else if (modeName.includes("沉浸") || modeName.includes("深夜") || modeName.includes("夜晚") || modeName.includes("night")) {
-      const isNightFriendly = /night|dream|ambient|ballad|slow|soul|jazz|夜|梦|星|晚安|轻/i.test(titleAndGenre);
+    } else if (
+      modeName.includes("沉浸") ||
+      modeName.includes("深夜") ||
+      modeName.includes("夜晚") ||
+      modeName.includes("night")
+    ) {
+      const isNightFriendly = /night|dream|ambient|ballad|slow|soul|jazz|夜|梦|星|晚安|轻/i.test(
+        titleAndGenre
+      );
       if (isNightFriendly) {
         score += 15;
       }
-    } else if (modeName.includes("活力") || modeName.includes("早间") || modeName.includes("morning")) {
-      const isMorningFriendly = /morning|sun|bright|energy|pop|rock|dance|早|晨|光|燃|活力/i.test(titleAndGenre);
+    } else if (
+      modeName.includes("活力") ||
+      modeName.includes("早间") ||
+      modeName.includes("morning")
+    ) {
+      const isMorningFriendly = /morning|sun|bright|energy|pop|rock|dance|早|晨|光|燃|活力/i.test(
+        titleAndGenre
+      );
       if (isMorningFriendly) {
         score += 15;
       }
@@ -492,14 +509,10 @@ export interface DailyRecommendationResult {
 
 export function getDailyRecommendationMode(hour?: number): DailyRecommendationMode {
   const h = hour ?? new Date().getHours();
-  if (h >= 5 && h < 11)
-    return AVAILABLE_RECOMMENDATION_MODES[2]; // 早间活力
-  if (h >= 11 && h < 14)
-    return AVAILABLE_RECOMMENDATION_MODES[3]; // 午间放松
-  if (h >= 14 && h < 17)
-    return AVAILABLE_RECOMMENDATION_MODES[0]; // 下午专注
-  if (h >= 17 && h < 21)
-    return AVAILABLE_RECOMMENDATION_MODES[4]; // 傍晚平衡
+  if (h >= 5 && h < 11) return AVAILABLE_RECOMMENDATION_MODES[2]; // 早间活力
+  if (h >= 11 && h < 14) return AVAILABLE_RECOMMENDATION_MODES[3]; // 午间放松
+  if (h >= 14 && h < 17) return AVAILABLE_RECOMMENDATION_MODES[0]; // 下午专注
+  if (h >= 17 && h < 21) return AVAILABLE_RECOMMENDATION_MODES[4]; // 傍晚平衡
   return AVAILABLE_RECOMMENDATION_MODES[1]; // 深夜沉浸
 }
 
@@ -516,7 +529,7 @@ export function generateDailyRecommendationGroups(
 
   // 1. 区分全新候选曲目与上一批已展示曲目，确保「换一批」能探索新歌
   let freshCandidates: ScoredRecommendation[] = [];
-  let shownCandidates: ScoredRecommendation[] = [];
+  const shownCandidates: ScoredRecommendation[] = [];
 
   if (excludeSongIds && excludeSongIds.size > 0) {
     for (const item of scored) {
@@ -530,12 +543,8 @@ export function generateDailyRecommendationGroups(
     freshCandidates = [...scored];
   }
 
-  freshCandidates.sort(
-    (a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title)
-  );
-  shownCandidates.sort(
-    (a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title)
-  );
+  freshCandidates.sort((a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title));
+  shownCandidates.sort((a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title));
 
   let byScore: ScoredRecommendation[] = [];
   if (freshCandidates.length >= 4) {
@@ -550,7 +559,8 @@ export function generateDailyRecommendationGroups(
   } else if (freshCandidates.length > 0) {
     // 部分新歌置顶，其余由上一批曲目经偏移轮换后补齐
     const rotatedShown = [...shownCandidates];
-    const shift = batchOffset > 0 && rotatedShown.length > 0 ? batchOffset % rotatedShown.length : 0;
+    const shift =
+      batchOffset > 0 && rotatedShown.length > 0 ? batchOffset % rotatedShown.length : 0;
     byScore = [...freshCandidates, ...rotatedShown.slice(shift), ...rotatedShown.slice(0, shift)];
   } else {
     // 曲库全部歌曲均已在上一批展示（如曲库只有 4 首演示歌曲），按偏移值对原列表进行旋转

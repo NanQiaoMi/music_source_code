@@ -7,15 +7,11 @@ import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { GlassPanel } from "@/components/shared/Glass";
 import {
-  Wrench,
   Activity,
-  Repeat,
   Sliders,
   Type,
   Volume2,
   VolumeX,
-  Gauge,
-  Sparkles,
   ChevronRight,
   Disc3,
   Search,
@@ -32,7 +28,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   isOpen,
   onClose,
   onOpenEQ,
-  onOpenVisualSettings,
+  onOpenVisualSettings: _onOpenVisualSettings,
 }) => {
   const volume = useAudioStore((state) => state.volume);
   const setVolume = useAudioStore((state) => state.setVolume);
@@ -100,7 +96,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         {/* 1. 快捷工具与空间舞台 */}
         <div
           className={`space-y-2 ${
-            matchesSetting("tools professional visual abloop lyrics 工具 专业 可视化 循环 歌词 舞台 唱片架")
+            matchesSetting(
+              "tools professional visual abloop lyrics 工具 专业 可视化 循环 歌词 舞台 唱片架"
+            )
               ? ""
               : "hidden"
           }`}
@@ -176,7 +174,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <span className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wider">
               主音量控制
             </span>
-            <span className="text-[11px] font-mono text-[#2997ff]">{Math.round(volume * 100)}%</span>
+            <span className="text-[11px] font-mono text-[#2997ff]">
+              {Math.round(volume * 100)}%
+            </span>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center gap-3">
@@ -212,7 +212,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               播放速度
             </span>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono text-[#2997ff]">{playbackRate.toFixed(2)}x</span>
+              <span className="text-[11px] font-mono text-[#2997ff]">
+                {playbackRate.toFixed(2)}x
+              </span>
               {Math.abs(playbackRate - 1.0) > 0.01 && (
                 <button
                   type="button"

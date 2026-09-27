@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// 测试桩（React/Store mock、部分状态对象）用宽松类型是刻意的，收紧只会引入与被测逻辑无关的噪音
 import { describe, it, expect, vi, afterEach } from "vitest";
 import type { Song } from "@/types/song";
 import {
@@ -329,7 +331,9 @@ describe("recommendationLogic", () => {
       // The new Hero must NOT be the same as batch 1!
       expect(batch2HeroId).not.toBe(batch1HeroId);
       // New batch prioritizes fresh songs that were not shown in batch 1
-      const newSongsInBatch2 = batch2.orderedSongs.slice(0, 4).filter((s) => !batch1DisplayedIds.has(s.id));
+      const newSongsInBatch2 = batch2.orderedSongs
+        .slice(0, 4)
+        .filter((s) => !batch1DisplayedIds.has(s.id));
       expect(newSongsInBatch2.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -348,7 +352,14 @@ describe("recommendationLogic", () => {
         skippedSongIds: new Set<string>(),
       };
 
-      const batch1 = generateDailyRecommendationGroups(demoSongs, context, undefined, 4, undefined, 0);
+      const batch1 = generateDailyRecommendationGroups(
+        demoSongs,
+        context,
+        undefined,
+        4,
+        undefined,
+        0
+      );
       const batch2 = generateDailyRecommendationGroups(
         demoSongs,
         context,

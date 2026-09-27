@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { useOfflineDownloadStore } from "./useOfflineDownloadStore";
 import { Song } from "@/types/song";
 

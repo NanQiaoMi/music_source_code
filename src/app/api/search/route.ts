@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-
   const { searchParams } = new URL(request.url);
   const keywords = searchParams.get("keywords") || searchParams.get("s") || "";
   const limit = parseInt(searchParams.get("limit") || "100", 10);
@@ -37,13 +36,13 @@ export async function GET(request: NextRequest) {
     if (res.ok) {
       const data = await res.json();
       const rawSongs = data?.result?.songs || [];
-      const songs = rawSongs.map((s: any) => {
+      const songs = rawSongs.map((s: RawNeteaseSong) => {
         const songId = String(s.id);
         const artist = Array.isArray(s.ar)
-          ? s.ar.map((a: any) => a.name).join("/")
+          ? s.ar.map((a: RawArtistRef) => a.name).join("/")
           : Array.isArray(s.artists)
-          ? s.artists.map((a: any) => a.name).join("/")
-          : s.artist?.name || "未知歌手";
+            ? s.artists.map((a: RawArtistRef) => a.name).join("/")
+            : s.artist?.name || "未知歌手";
         const cover =
           s.al?.picUrl ||
           s.album?.picUrl ||
@@ -57,7 +56,11 @@ export async function GET(request: NextRequest) {
           title: s.name || "未知曲目",
           artist,
           album: s.al?.name || s.album?.name || "精选大碟",
-          duration: s.dt ? Math.round(s.dt / 1000) : (s.duration ? Math.round(s.duration / 1000) : 240),
+          duration: s.dt
+            ? Math.round(s.dt / 1000)
+            : s.duration
+              ? Math.round(s.duration / 1000)
+              : 240,
           cover: cover || "/default-cover.svg",
           source: "netease",
           audioUrl: `https://music.163.com/song/media/outer/url?id=${songId}.mp3`,
@@ -74,3 +77,25 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ songs: [], code: 500, message: "Search failed" });
 }
 
+interface RawArtistRef {
+  name?: string;
+  img1v1Url?: string;
+}
+
+/** 网易云搜索接口的原始返回项（外部 JSON，字段可选） */
+interface RawNeteaseSong {
+  id?: string | number;
+  name?: string;
+  ar?: RawArtistRef[];
+  artists?: RawArtistRef[];
+  artist?: { name?: string };
+  al?: { name?: string; picUrl?: string; pic_str?: string };
+  album?: {
+    name?: string;
+    picUrl?: string;
+    blurPicUrl?: string;
+    artist?: { img1v1Url?: string };
+  };
+  dt?: number;
+  duration?: number;
+}

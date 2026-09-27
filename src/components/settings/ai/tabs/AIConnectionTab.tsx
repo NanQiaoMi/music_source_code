@@ -11,10 +11,8 @@ import {
   Copy,
   Check,
   RefreshCcw,
-  Sparkles,
   ExternalLink,
   ChevronDown,
-  Layers,
   Search,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -114,9 +112,7 @@ export const AIConnectionTab: React.FC<AIConnectionTabProps> = ({
       <div className="space-y-4">
         {/* 端点显示名称 */}
         <div className="space-y-1.5">
-          <label className="block text-[12px] font-medium text-white/70">
-            端点备注名称
-          </label>
+          <label className="block text-[12px] font-medium text-white/70">端点备注名称</label>
           <input
             type="text"
             value={config.name}
@@ -211,9 +207,7 @@ export const AIConnectionTab: React.FC<AIConnectionTabProps> = ({
                   : "text-purple-400 hover:text-purple-300"
               }`}
             >
-              <RefreshCcw
-                className={`w-3 h-3 ${isFetchingModels ? "animate-spin" : ""}`}
-              />
+              <RefreshCcw className={`w-3 h-3 ${isFetchingModels ? "animate-spin" : ""}`} />
               <span>{isFetchingModels ? "正在拉取..." : "拉取可用模型"}</span>
             </button>
           </div>

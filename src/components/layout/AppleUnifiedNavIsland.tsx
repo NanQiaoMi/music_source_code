@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Radio,
@@ -80,6 +80,8 @@ export function AppleUnifiedNavIsland({
   // 当全局搜索打开时，自动收起展开中的导航子菜单，保持界面整洁下移
   useEffect(() => {
     if (isSearchOpen && activeHubId !== null) {
+      // 关闭全局搜索时收起导航子菜单，与外部 UI 状态同步
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveHubId(null);
     }
   }, [isSearchOpen, activeHubId]);
@@ -364,9 +366,7 @@ export function AppleUnifiedNavIsland({
                   />
                 )}
 
-                <span className="shrink-0 flex items-center justify-center">
-                  {hub.icon}
-                </span>
+                <span className="shrink-0 flex items-center justify-center">{hub.icon}</span>
                 <span className="whitespace-nowrap">{hub.label}</span>
 
                 <motion.div

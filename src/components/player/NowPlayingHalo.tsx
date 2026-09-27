@@ -39,47 +39,49 @@ function getCanvasContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D |
   }
 }
 
-export const NowPlayingHalo: React.FC<NowPlayingHaloProps> = React.memo(({
-  currentTime: propCurrentTime,
-  isPlaying,
-  level = 0,
-  size = 72,
-  className = "",
-}) => {
-  const storeTime = useAudioStore((state) => state.currentTime);
-  const currentTime = propCurrentTime !== undefined ? propCurrentTime : storeTime;
+export const NowPlayingHalo: React.FC<NowPlayingHaloProps> = React.memo(
+  function NowPlayingHaloInner({
+    currentTime: propCurrentTime,
+    isPlaying,
+    level = 0,
+    size = 72,
+    className = "",
+  }) {
+    const storeTime = useAudioStore((state) => state.currentTime);
+    const currentTime = propCurrentTime !== undefined ? propCurrentTime : storeTime;
 
-  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
-  const activeHalo = usePlayerSkinStore((state) => state.getActiveHalo());
-  const targetFps = usePerformanceV8Store((state) => state.config.targetFPS);
-  const renderMode: HaloRenderMode = getHaloRenderMode({
-    targetFps,
-    reducedMotion: prefersReducedMotion(),
-  });
-
-  React.useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const context = getCanvasContext(canvas);
-    if (!context) return;
-
-    paintHaloPreview(context as unknown as HaloPaintContext, activeHalo, {
-      currentTime: isPlaying ? currentTime : 0,
-      level: clamp01(level),
-      renderMode,
+    const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+    const activeHalo = usePlayerSkinStore((state) => state.getActiveHalo());
+    const targetFps = usePerformanceV8Store((state) => state.config.targetFPS);
+    const renderMode: HaloRenderMode = getHaloRenderMode({
+      targetFps,
+      reducedMotion: prefersReducedMotion(),
     });
-  }, [activeHalo, currentTime, isPlaying, level, renderMode]);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      aria-label={`${activeHalo.name} now playing halo`}
-      data-halo-render-mode={renderMode}
-      data-halo-skin={activeHalo.id}
-      height={size}
-      width={size}
-      className={`pointer-events-none absolute left-1/2 top-1/2 z-0 max-w-none -translate-x-1/2 -translate-y-1/2 rounded-full ${className}`}
-    />
-  );
-});
+    React.useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const context = getCanvasContext(canvas);
+      if (!context) return;
+
+      paintHaloPreview(context as unknown as HaloPaintContext, activeHalo, {
+        currentTime: isPlaying ? currentTime : 0,
+        level: clamp01(level),
+        renderMode,
+      });
+    }, [activeHalo, currentTime, isPlaying, level, renderMode]);
+
+    return (
+      <canvas
+        ref={canvasRef}
+        aria-label={`${activeHalo.name} now playing halo`}
+        data-halo-render-mode={renderMode}
+        data-halo-skin={activeHalo.id}
+        height={size}
+        width={size}
+        className={`pointer-events-none absolute left-1/2 top-1/2 z-0 max-w-none -translate-x-1/2 -translate-y-1/2 rounded-full ${className}`}
+      />
+    );
+  }
+);

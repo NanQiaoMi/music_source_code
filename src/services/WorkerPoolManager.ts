@@ -4,12 +4,13 @@
  * 并支持任务排队与 45s 空闲超时终止，防止多文件转码/波形提取时 Worker 实例暴增导致内存耗尽。
  */
 
-export interface WorkerTask<TInput = any, TOutput = any> {
+export interface WorkerTask<TInput = unknown, TOutput = unknown> {
   id: string;
   data: TInput;
   transferables?: Transferable[];
-  resolve: (value: TOutput) => void;
-  reject: (reason: any) => void;
+  // 用方法签名而非属性签名：方法保留双向变型，泛型任务才能入队到 WorkerTask[] 统一队列
+  resolve(value: TOutput): void;
+  reject(reason: unknown): void;
   timeoutMs?: number;
 }
 
@@ -53,7 +54,7 @@ export class WorkerPoolManager {
     return new Worker(this.workerScriptUrl, { type: "module" });
   }
 
-  public execute<TInput = any, TOutput = any>(
+  public execute<TInput = unknown, TOutput = unknown>(
     data: TInput,
     transferables?: Transferable[],
     timeoutMs = 60000

@@ -47,8 +47,9 @@ const safeStateStorage: StateStorage = {
     try {
       if (typeof window === "undefined") return;
       localStorage.setItem(name, value);
-    } catch (e: any) {
-      if (e?.name === "QuotaExceededError" || e?.code === 22) {
+    } catch (e) {
+      const quotaErr = e as { name?: string; code?: number };
+      if (quotaErr?.name === "QuotaExceededError" || quotaErr?.code === 22) {
         try {
           // 配额超限时自动清理旧版缓存
           localStorage.removeItem("journal-store-v1");
@@ -63,7 +64,9 @@ const safeStateStorage: StateStorage = {
     try {
       if (typeof window === "undefined") return;
       localStorage.removeItem(name);
-    } catch {}
+    } catch {
+      // key 不存在时的删除失败可忽略
+    }
   },
 };
 

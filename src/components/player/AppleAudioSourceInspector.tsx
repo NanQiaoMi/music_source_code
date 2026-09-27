@@ -8,14 +8,9 @@ import { networkPriorityManager } from "@/services/networkPriorityManager";
 import {
   X,
   CheckCircle2,
-  Lock,
   Activity,
-  Layers,
   Zap,
-  Cpu,
-  Radio,
   Sparkles,
-  Music,
   ShieldCheck,
   HardDrive,
   RefreshCw,
@@ -27,13 +22,15 @@ interface AppleAudioSourceInspectorProps {
   onClose: () => void;
 }
 
-export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps> = ({ onClose }) => {
+export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps> = ({
+  onClose,
+}) => {
   const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentTime = useAudioStore((state) => state.currentTime);
+  const _currentTime = useAudioStore((state) => state.currentTime);
 
   const [activeTab, setActiveTab] = useState<"sources" | "stream" | "dsp" | "decrypt">("sources");
-  const [liveBpm, setLiveBpm] = useState(128);
+  const [liveBpm, _setLiveBpm] = useState(128);
   const [simulatedEnergy, setSimulatedEnergy] = useState({ low: 0.65, mid: 0.42, snap: 0.81 });
   const [coolingHosts, setCoolingHosts] = useState<CoolingHostInfo[]>(() =>
     endpointCircuitBreaker.getCoolingHosts()
@@ -49,6 +46,8 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
   };
 
   useEffect(() => {
+    // 刷新熔断冷却中的音源（读外部服务状态）
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshCoolingHosts();
   }, [activeTab]);
 
@@ -186,10 +185,30 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
                 <h5 className="text-xs font-semibold text-[#858585] px-1">全网多源降级路由链路</h5>
                 <div className="space-y-1.5">
                   {[
-                    { platform: "网易云音乐 (原生)", status: "已就绪", role: "第一优先级 · 试听嗅探", active: true },
-                    { platform: "QQ 音乐 (VIP/Free)", status: "已连接", role: "第二优先级 · 备用无损替代", active: true },
-                    { platform: "酷狗音乐 (高解析)", status: "已就绪", role: "第三优先级 · 指纹 Hash 匹配", active: true },
-                    { platform: "汽水音乐 (Spade解密)", status: "实时解密就绪", role: "第四优先级 · 独家音源解密", active: true },
+                    {
+                      platform: "网易云音乐 (原生)",
+                      status: "已就绪",
+                      role: "第一优先级 · 试听嗅探",
+                      active: true,
+                    },
+                    {
+                      platform: "QQ 音乐 (VIP/Free)",
+                      status: "已连接",
+                      role: "第二优先级 · 备用无损替代",
+                      active: true,
+                    },
+                    {
+                      platform: "酷狗音乐 (高解析)",
+                      status: "已就绪",
+                      role: "第三优先级 · 指纹 Hash 匹配",
+                      active: true,
+                    },
+                    {
+                      platform: "汽水音乐 (Spade解密)",
+                      status: "实时解密就绪",
+                      role: "第四优先级 · 独家音源解密",
+                      active: true,
+                    },
                   ].map((item, idx) => (
                     <div
                       key={idx}
@@ -197,10 +216,14 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
                     >
                       <div className="flex items-center gap-2.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#0071e3]" />
-                        <span className="font-semibold text-[#1d1d1f] dark:text-white">{item.platform}</span>
+                        <span className="font-semibold text-[#1d1d1f] dark:text-white">
+                          {item.platform}
+                        </span>
                       </div>
                       <span className="text-[#858585]">{item.role}</span>
-                      <span className="font-mono text-[11px] font-bold text-[#34c759]">{item.status}</span>
+                      <span className="font-mono text-[11px] font-bold text-[#34c759]">
+                        {item.status}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -250,17 +273,27 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
                 <h5 className="text-xs font-semibold text-[#858585]">三级网络并发调度队列</h5>
                 <div className="space-y-1.5 text-xs">
                   <div className="flex items-center justify-between p-2 rounded-lg bg-black/5 dark:bg-white/5">
-                    <span className="font-semibold text-[#1d1d1f] dark:text-white">P0 · 音频拉流与直链嗅探</span>
-                    <span className="font-mono text-[#34c759] font-bold">独占最高通道 (零阻塞)</span>
+                    <span className="font-semibold text-[#1d1d1f] dark:text-white">
+                      P0 · 音频拉流与直链嗅探
+                    </span>
+                    <span className="font-mono text-[#34c759] font-bold">
+                      独占最高通道 (零阻塞)
+                    </span>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded-lg bg-black/5 dark:bg-white/5">
-                    <span className="font-semibold text-[#1d1d1f] dark:text-white">P1 · 歌词解析与封面拉取</span>
+                    <span className="font-semibold text-[#1d1d1f] dark:text-white">
+                      P1 · 歌词解析与封面拉取
+                    </span>
                     <span className="font-mono text-[#0071e3] font-bold">动态并发保护</span>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded-lg bg-black/5 dark:bg-white/5">
-                    <span className="font-semibold text-[#1d1d1f] dark:text-white">P2 · AI 通感笔记与预加载</span>
+                    <span className="font-semibold text-[#1d1d1f] dark:text-white">
+                      P2 · AI 通感笔记与预加载
+                    </span>
                     <span className="font-mono text-[#ff9500] font-bold">
-                      {networkPriorityManager.isAudioBuffering() ? "音频缓冲中 · 自动挂起" : "就绪 · 零抢占"}
+                      {networkPriorityManager.isAudioBuffering()
+                        ? "音频缓冲中 · 自动挂起"
+                        : "就绪 · 零抢占"}
                     </span>
                   </div>
                 </div>
@@ -271,7 +304,9 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <Server className="w-3.5 h-3.5 text-[#858585]" />
-                    <span className="text-xs font-semibold text-[#858585]">第三方接口动态熔断心跳池</span>
+                    <span className="text-xs font-semibold text-[#858585]">
+                      第三方接口动态熔断心跳池
+                    </span>
                   </div>
                   <button
                     type="button"
@@ -383,7 +418,8 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
               <div className="p-3.5 rounded-xl bg-[#0071e3]/5 border border-[#0071e3]/15 flex items-center gap-3">
                 <Activity className="w-5 h-5 text-[#0071e3] shrink-0" />
                 <p className="text-xs text-[#1d1d1f] dark:text-[#f5f5f7] leading-relaxed">
-                  已启用下拍 (Downbeat) 智能锚定，小节强拍已与 3D 粒子流场地貌、电影机镜头推拉与发光歌词实现物理对齐。
+                  已启用下拍 (Downbeat) 智能锚定，小节强拍已与 3D
+                  粒子流场地貌、电影机镜头推拉与发光歌词实现物理对齐。
                 </p>
               </div>
             </div>
@@ -426,7 +462,8 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
                   <span className="font-mono text-[#0071e3] font-bold">48.2 MB/s (零拷贝)</span>
                 </div>
                 <p className="text-[#858585] text-[11px] leading-relaxed">
-                  音频数据流在内存缓冲区中完成实时解密并直接送入 Web Audio API 单例，不产生多余临时文件，保障发烧级低延迟。
+                  音频数据流在内存缓冲区中完成实时解密并直接送入 Web Audio API
+                  单例，不产生多余临时文件，保障发烧级低延迟。
                 </p>
               </div>
             </div>
@@ -435,9 +472,7 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
 
         {/* 底部 Apple Pill 按钮 */}
         <div className="px-6 py-4 border-t border-black/5 dark:border-white/10 bg-white/60 dark:bg-[#252528]/60 backdrop-blur-xl flex items-center justify-between">
-          <span className="text-xs text-[#858585]">
-            MIMI Music Player · Next-Gen Audio Engine
-          </span>
+          <span className="text-xs text-[#858585]">MIMI Music Player · Next-Gen Audio Engine</span>
           <button
             type="button"
             onClick={onClose}

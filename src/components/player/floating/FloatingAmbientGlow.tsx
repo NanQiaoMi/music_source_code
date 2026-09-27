@@ -65,10 +65,12 @@ export const FloatingAmbientGlow: React.FC<FloatingAmbientGlowProps> = ({
   }, [realtimeCoordinates, currentSong?.id, emotionMap, globalEmotion]);
 
   // Color extraction from cover art
-  const [extractedColors, setExtractedColors] = useState<[string, string, string] | null>(null);
+  const [_extractedColors, setExtractedColors] = useState<[string, string, string] | null>(null);
 
   useEffect(() => {
     if (!currentSong?.cover || typeof window === "undefined") {
+      // 封面取色的异步结果写回，回调式更新而非渲染期同步
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setExtractedColors(null);
       return;
     }
@@ -90,9 +92,18 @@ export const FloatingAmbientGlow: React.FC<FloatingAmbientGlowProps> = ({
         ctx.drawImage(img, 0, 0, 32, 32);
         const data = ctx.getImageData(0, 0, 32, 32).data;
 
-        let r1 = 0, g1 = 0, b1 = 0, count1 = 0;
-        let r2 = 0, g2 = 0, b2 = 0, count2 = 0;
-        let r3 = 0, g3 = 0, b3 = 0, count3 = 0;
+        let r1 = 0,
+          g1 = 0,
+          b1 = 0,
+          count1 = 0;
+        let r2 = 0,
+          g2 = 0,
+          b2 = 0,
+          count2 = 0;
+        let r3 = 0,
+          g3 = 0,
+          b3 = 0,
+          count3 = 0;
 
         for (let i = 0; i < data.length; i += 16) {
           const r = data[i];
@@ -104,17 +115,35 @@ export const FloatingAmbientGlow: React.FC<FloatingAmbientGlowProps> = ({
           // Bucket pixels into quadrants for color variation
           const index = (i / 16) % 3;
           if (index === 0) {
-            r1 += r; g1 += g; b1 += b; count1++;
+            r1 += r;
+            g1 += g;
+            b1 += b;
+            count1++;
           } else if (index === 1) {
-            r2 += r; g2 += g; b2 += b; count2++;
+            r2 += r;
+            g2 += g;
+            b2 += b;
+            count2++;
           } else {
-            r3 += r; g3 += g; b3 += b; count3++;
+            r3 += r;
+            g3 += g;
+            b3 += b;
+            count3++;
           }
         }
 
-        const c1 = count1 > 0 ? `rgba(${Math.round(r1 / count1)}, ${Math.round(g1 / count1)}, ${Math.round(b1 / count1)}, 0.65)` : DEFAULT_GRADIENT_PALETTES.default[0];
-        const c2 = count2 > 0 ? `rgba(${Math.round(r2 / count2)}, ${Math.round(g2 / count2)}, ${Math.round(b2 / count2)}, 0.6)` : DEFAULT_GRADIENT_PALETTES.default[1];
-        const c3 = count3 > 0 ? `rgba(${Math.round(r3 / count3)}, ${Math.round(g3 / count3)}, ${Math.round(b3 / count3)}, 0.55)` : DEFAULT_GRADIENT_PALETTES.default[2];
+        const c1 =
+          count1 > 0
+            ? `rgba(${Math.round(r1 / count1)}, ${Math.round(g1 / count1)}, ${Math.round(b1 / count1)}, 0.65)`
+            : DEFAULT_GRADIENT_PALETTES.default[0];
+        const c2 =
+          count2 > 0
+            ? `rgba(${Math.round(r2 / count2)}, ${Math.round(g2 / count2)}, ${Math.round(b2 / count2)}, 0.6)`
+            : DEFAULT_GRADIENT_PALETTES.default[1];
+        const c3 =
+          count3 > 0
+            ? `rgba(${Math.round(r3 / count3)}, ${Math.round(g3 / count3)}, ${Math.round(b3 / count3)}, 0.55)`
+            : DEFAULT_GRADIENT_PALETTES.default[2];
 
         setExtractedColors([c1, c2, c3]);
       } catch {
@@ -134,13 +163,8 @@ export const FloatingAmbientGlow: React.FC<FloatingAmbientGlowProps> = ({
   // Dynamic monochrome liquid glass palettes (strict grayscale, no colors)
   const activePalette = useMemo<[string, string, string]>(() => {
     if (fallbackColors) return fallbackColors;
-    return [
-      "rgba(255, 255, 255, 0.14)",
-      "rgba(255, 255, 255, 0.08)",
-      "rgba(255, 255, 255, 0.03)",
-    ];
+    return ["rgba(255, 255, 255, 0.14)", "rgba(255, 255, 255, 0.08)", "rgba(255, 255, 255, 0.03)"];
   }, [fallbackColors]);
-
 
   // Calculate dynamic breathing parameters based on arousal
   const arousal = currentEmotion.y; // -1 to 1
@@ -232,4 +256,3 @@ export const FloatingAmbientGlow: React.FC<FloatingAmbientGlowProps> = ({
     </div>
   );
 };
-

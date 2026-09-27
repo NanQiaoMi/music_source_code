@@ -71,7 +71,7 @@ function isTokenMatched(field: string, token: string): boolean {
 
   // 对 <=2 字符的 ASCII 短词（如 "A", "JJ", "DJ"），要求匹配独立单词而非单词内部子串
   if (t.length <= 2 && /^[a-z0-9]+$/i.test(t)) {
-    const words = f.split(/[\s\-_/.,()\[\]{}（）【】]+/).filter(Boolean);
+    const words = f.split(/[\s\-_/.,()[\]{}（）【】]+/).filter(Boolean);
     return words.some((w) => w === t);
   }
   return true;
@@ -118,7 +118,11 @@ function scoreSong(song: Song, query: string, searchType: SearchType): number {
   if (tokens.length > 1) {
     let matchedCount = 0;
     for (const token of tokens) {
-      if (isTokenMatched(title, token) || isTokenMatched(artist, token) || isTokenMatched(album, token)) {
+      if (
+        isTokenMatched(title, token) ||
+        isTokenMatched(artist, token) ||
+        isTokenMatched(album, token)
+      ) {
         matchedCount++;
       }
     }
@@ -130,7 +134,9 @@ function scoreSong(song: Song, query: string, searchType: SearchType): number {
   // 3. 在线多源搜索结果（由各平台接口检索返回，天然具备相关性）保底加权
   if (song.source && song.source !== "local" && song.source !== "upload") {
     if (score === 0) {
-      const hasAnyToken = tokens.some((t) => isTokenMatched(title, t) || isTokenMatched(artist, t) || isTokenMatched(album, t));
+      const hasAnyToken = tokens.some(
+        (t) => isTokenMatched(title, t) || isTokenMatched(artist, t) || isTokenMatched(album, t)
+      );
       score = hasAnyToken ? 50 : 30;
     } else {
       score += 10;
@@ -253,12 +259,27 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     set({ activeSourceTab, page: 1 });
     const { query, searchType, filters, pageSize, segmentedResults, lastSearchSongs } = get();
     const targetSongs = getSongsForSourceTab(activeSourceTab, segmentedResults, lastSearchSongs);
-    const { paged, total } = filterAndPageSongs(targetSongs, query, searchType, filters, 1, pageSize);
+    const { paged, total } = filterAndPageSongs(
+      targetSongs,
+      query,
+      searchType,
+      filters,
+      1,
+      pageSize
+    );
     set({ results: paged, totalResults: total });
   },
 
   search: (songs) => {
-    const { query, searchType, filters, page, pageSize, lastSearchSongs, activeSourceTab } = get();
+    const {
+      query,
+      searchType,
+      filters,
+      page,
+      pageSize,
+      lastSearchSongs,
+      activeSourceTab: _activeSourceTab,
+    } = get();
     const localCorpus = songs && songs.length > 0 ? songs : lastSearchSongs;
 
     if (!query.trim()) {
@@ -385,9 +406,24 @@ export const useSearchStore = create<SearchState>((set, get) => ({
 
   setPage: (page) => {
     set({ page });
-    const { activeSourceTab, segmentedResults, lastSearchSongs, query, searchType, filters, pageSize } = get();
+    const {
+      activeSourceTab,
+      segmentedResults,
+      lastSearchSongs,
+      query,
+      searchType,
+      filters,
+      pageSize,
+    } = get();
     const targetSongs = getSongsForSourceTab(activeSourceTab, segmentedResults, lastSearchSongs);
-    const { paged, total } = filterAndPageSongs(targetSongs, query, searchType, filters, page, pageSize);
+    const { paged, total } = filterAndPageSongs(
+      targetSongs,
+      query,
+      searchType,
+      filters,
+      page,
+      pageSize
+    );
     set({ results: paged, totalResults: total });
   },
 
@@ -452,10 +488,10 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     if (!trimmed) return;
 
     set((state) => {
-      const nextCommands = [trimmed, ...state.recentCommands.filter((item) => item !== trimmed)].slice(
-        0,
-        5
-      );
+      const nextCommands = [
+        trimmed,
+        ...state.recentCommands.filter((item) => item !== trimmed),
+      ].slice(0, 5);
       return { recentCommands: nextCommands };
     });
   },

@@ -290,7 +290,9 @@ export function extractInlineToolCalls(content: string): {
       try {
         const parsed = JSON.parse(body.trim());
         Object.assign(args, parsed);
-      } catch {}
+      } catch {
+        // 参数解析失败时沿用默认值，继续走后续候选
+      }
     }
 
     toolCalls.push({
@@ -323,7 +325,9 @@ export function extractInlineToolCalls(content: string): {
             },
           });
         }
-      } catch {}
+      } catch {
+        // 单个工具调用组装失败则丢弃该条，不影响其余候选
+      }
     }
   }
 
@@ -391,10 +395,10 @@ export async function runAgentConversation({
   const isBrowser = typeof window !== "undefined";
 
   let currentConfig = config;
-  let remainingFallbacks = [...fallbackConfigs];
+  const remainingFallbacks = [...fallbackConfigs];
   let url = isBrowser ? "/api/ai/chat" : resolveChatCompletionsUrl(currentConfig.baseUrl);
 
-  let openAIMessages = formatMessagesForOpenAI(currentMessages, playbackContext);
+  const openAIMessages = formatMessagesForOpenAI(currentMessages, playbackContext);
   const maxIterations = 5;
   let supportsTools = true;
   let accumulatedSongResults: SongResult[] = [];

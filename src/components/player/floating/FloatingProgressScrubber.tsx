@@ -28,7 +28,7 @@ function formatTime(seconds: number): string {
 export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> = ({
   className = "",
   showVolume = true,
-  compact = false,
+  compact: _compact = false,
   onSeekStart,
   onSeekEnd,
 }) => {
@@ -52,6 +52,20 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
     time: number;
   }>({ visible: false, x: 0, time: 0 });
 
+  // tooltip 钳制用的进度条宽度。渲染期不能读 ref（ref 是渲染外的可变容器，
+  // 读它既不响应式、又在并发渲染下可能拿到不一致的值），改用 ResizeObserver 写进 state，
+  // 顺带让窗口缩放时钳制范围跟着更新。
+  const [progressBarWidth, setProgressBarWidth] = useState(300);
+  useEffect(() => {
+    const el = progressBarRef.current;
+    if (!el) return;
+    const update = () => setProgressBarWidth(el.clientWidth || 300);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Volume scrubbing states
   const volumeBarRef = useRef<HTMLDivElement | null>(null);
   const [isHoveringVolume, setIsHoveringVolume] = useState(false);
@@ -63,8 +77,7 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
       ? Math.min(Math.max((currentTime / duration) * 100, 0), 100)
       : 0;
 
-  const displayProgressPercent =
-    scrubPercent !== null ? scrubPercent * 100 : actualProgressPercent;
+  const displayProgressPercent = scrubPercent !== null ? scrubPercent * 100 : actualProgressPercent;
 
   // Track progress scrubbing pointer logic
   const calculateProgressFromPointer = useCallback(
@@ -100,7 +113,7 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
     };
 
     const handlePointerUp = (ev: PointerEvent) => {
-      const { ratio: finalRatio, time: finalTime } = calculateProgressFromPointer(ev.clientX);
+      const { ratio: _finalRatio, time: finalTime } = calculateProgressFromPointer(ev.clientX);
       seekTo(finalTime);
       onSeekEnd?.(finalTime);
 
@@ -130,16 +143,13 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
   };
 
   // Volume pointer interactions
-  const calculateVolumeFromPointer = useCallback(
-    (clientX: number) => {
-      const bar = volumeBarRef.current;
-      if (!bar) return 0;
-      const rect = bar.getBoundingClientRect();
-      const clampedX = Math.max(0, Math.min(clientX - rect.left, rect.width));
-      return clampedX / rect.width;
-    },
-    []
-  );
+  const calculateVolumeFromPointer = useCallback((clientX: number) => {
+    const bar = volumeBarRef.current;
+    if (!bar) return 0;
+    const rect = bar.getBoundingClientRect();
+    const clampedX = Math.max(0, Math.min(clientX - rect.left, rect.width));
+    return clampedX / rect.width;
+  }, []);
 
   const handleVolumePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -190,13 +200,7 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
               transition={{ type: "spring", stiffness: 500, damping: 28 }}
               className="absolute -top-9 z-30 pointer-events-none -translate-x-1/2"
               style={{
-                left: Math.max(
-                  24,
-                  Math.min(
-                    tooltipState.x,
-                    (progressBarRef.current?.clientWidth || 300) - 24
-                  )
-                ),
+                left: Math.max(24, Math.min(tooltipState.x, progressBarWidth - 24)),
               }}
             >
               <div className="relative px-2.5 py-1 rounded-lg bg-black/85 backdrop-blur-xl border border-white/20 text-white font-mono text-[11px] font-semibold tracking-wider shadow-[0_8px_20px_rgba(0,0,0,0.6)] flex items-center gap-1">
@@ -261,12 +265,8 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
 
         {/* Timestamps */}
         <div className="flex items-center justify-between text-[10px] font-mono text-white/50 tracking-wider">
-          <span className="tabular-nums font-medium text-white/80">
-            {formatTime(currentTime)}
-          </span>
-          <span className="tabular-nums">
-            {formatTime(duration)}
-          </span>
+          <span className="tabular-nums font-medium text-white/80">{formatTime(currentTime)}</span>
+          <span className="tabular-nums">{formatTime(duration)}</span>
         </div>
       </div>
 
@@ -312,7 +312,6 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
               />
             </div>
           </div>
-
 
           {/* Real-time Percentage Badge */}
           <div className="w-8 text-right text-[10px] font-mono text-white/50 tabular-nums">

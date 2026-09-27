@@ -6,7 +6,6 @@ import { useAudioStore } from "@/store/audioStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { Playlist, Song } from "@/types/song";
 import {
-  FolderHeart,
   Plus,
   Play,
   Download,
@@ -23,7 +22,8 @@ const STORAGE_KEY = "vibe_custom_playlists_v1";
 export const PlaylistHubTab: React.FC = () => {
   const { songs: librarySongs } = usePlaylistStore();
   const { playSong } = useAudioStore();
-  const { addBatchDownloads, isSongOffline, offlineRecords, loadOfflineRecords } = useOfflineDownloadStore();
+  const { addBatchDownloads, isSongOffline, offlineRecords, loadOfflineRecords } =
+    useOfflineDownloadStore();
 
   useEffect(() => {
     loadOfflineRecords();
@@ -39,9 +39,9 @@ export const PlaylistHubTab: React.FC = () => {
       cover: r.cover || "/default-cover.svg",
       lyrics: r.lyrics,
       translationLyrics: r.translationLyrics,
-      source: (r.source as any) || "offline",
+      source: r.source || "offline",
       audioUrl: `offline://${r.songId}`,
-      format: (r as any).format || "mp3",
+      format: (r as { format?: string }).format || "mp3",
     }));
   }, [offlineRecords]);
 
@@ -77,6 +77,8 @@ export const PlaylistHubTab: React.FC = () => {
               ? offlineSongs[0].cover
               : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&h=800&fit=crop",
           songs: offlineSongs,
+          // 展示用的合成歌单，createdAt 只能取当前时刻；仅用于渲染，不落盘
+          // eslint-disable-next-line react-hooks/purity
           createdAt: Date.now(),
         });
       }
@@ -100,16 +102,29 @@ export const PlaylistHubTab: React.FC = () => {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          // 挂载时从 localStorage 恢复歌单——同步外部存储本就是 effect 的职责
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setPlaylists(parsed);
-          setActivePlaylistId((prev) => (parsed.some((p: Playlist) => p.id === prev) ? prev : parsed[0].id));
+          setActivePlaylistId((prev) =>
+            parsed.some((p: Playlist) => p.id === prev) ? prev : parsed[0].id
+          );
         }
       }
-    } catch {}
+    } catch {
+      // 单条歌单项处理失败不影响整页
+    }
   }, []);
 
   // Sync library songs into default playlist if empty
   useEffect(() => {
-    if (playlists.length === 1 && playlists[0].id === "default-favorites" && playlists[0].songs.length === 0 && librarySongs.length > 0) {
+    if (
+      playlists.length === 1 &&
+      playlists[0].id === "default-favorites" &&
+      playlists[0].songs.length === 0 &&
+      librarySongs.length > 0
+    ) {
+      // 挂载时从 localStorage 恢复歌单——同步外部存储本就是 effect 的职责
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPlaylists([
         {
           id: "default-favorites",
@@ -167,7 +182,8 @@ export const PlaylistHubTab: React.FC = () => {
     savePlaylists(next);
   };
 
-  const activePlaylist = allPlaylists.find((p: Playlist) => p.id === activePlaylistId) || allPlaylists[0];
+  const activePlaylist =
+    allPlaylists.find((p: Playlist) => p.id === activePlaylistId) || allPlaylists[0];
   const playlistSongs: Song[] = activePlaylist?.songs || [];
 
   const filteredSongs = playlistSongs.filter((s: Song) => {
@@ -292,7 +308,9 @@ export const PlaylistHubTab: React.FC = () => {
         {/* 左侧歌单列表 (4 栅格) */}
         <div className="lg:col-span-4 p-4 rounded-3xl bg-white/[0.04] border border-white/[0.12] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] space-y-2">
           <div className="flex items-center justify-between px-2 mb-2">
-            <span className="text-xs font-bold text-white/70">所有歌单 ({allPlaylists.length})</span>
+            <span className="text-xs font-bold text-white/70">
+              所有歌单 ({allPlaylists.length})
+            </span>
           </div>
 
           <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
@@ -314,8 +332,8 @@ export const PlaylistHubTab: React.FC = () => {
                         ? "bg-cyan-500/20 border-cyan-400/50 text-white shadow-sm ring-1 ring-cyan-400/30"
                         : "bg-white/15 border-white/30 text-white shadow-sm ring-1 ring-white/20"
                       : isOfflineVault
-                      ? "bg-cyan-950/20 border-cyan-500/20 hover:bg-cyan-900/30 text-cyan-200"
-                      : "bg-white/[0.02] border-white/5 hover:bg-white/[0.06] text-white/70 hover:text-white"
+                        ? "bg-cyan-950/20 border-cyan-500/20 hover:bg-cyan-900/30 text-cyan-200"
+                        : "bg-white/[0.02] border-white/5 hover:bg-white/[0.06] text-white/70 hover:text-white"
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -406,7 +424,9 @@ export const PlaylistHubTab: React.FC = () => {
                     onClick={() => {
                       if (playlistSongs.length > 0) {
                         addBatchDownloads(playlistSongs);
-                        setActionFeedback(`🚀 正在批量下载整张歌单 (${playlistSongs.length} 首)...`);
+                        setActionFeedback(
+                          `🚀 正在批量下载整张歌单 (${playlistSongs.length} 首)...`
+                        );
                         setTimeout(() => setActionFeedback(null), 3000);
                       }
                     }}
@@ -450,7 +470,9 @@ export const PlaylistHubTab: React.FC = () => {
                   ) : (
                     <Square className="w-4 h-4 text-white/40" />
                   )}
-                  <span>全选 ({selectedSongIds.size}/{filteredSongs.length})</span>
+                  <span>
+                    全选 ({selectedSongIds.size}/{filteredSongs.length})
+                  </span>
                 </button>
 
                 <div className="relative flex items-center">
@@ -550,7 +572,8 @@ export const PlaylistHubTab: React.FC = () => {
               {selectedSongIds.size > 0 && (
                 <div className="p-3 rounded-2xl bg-purple-950/80 border border-purple-500/30 backdrop-blur-2xl flex items-center justify-between gap-3 shadow-xl animate-fade-in">
                   <span className="text-xs text-white font-medium">
-                    已选中 <strong className="text-purple-300">{selectedSongIds.size}</strong> 首歌曲
+                    已选中 <strong className="text-purple-300">{selectedSongIds.size}</strong>{" "}
+                    首歌曲
                   </span>
 
                   <div className="flex items-center gap-2">

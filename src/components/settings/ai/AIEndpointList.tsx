@@ -2,20 +2,10 @@
 
 import React, { useState } from "react";
 import { AIConfig } from "@/store/aiStore";
-import { ProviderPreset, CategoryFilter } from "./types";
+import { CategoryFilter } from "./types";
 import { findPresetById, detectProviderFromUrl } from "./providerPresets";
 import { ProviderLogo } from "./ProviderLogo";
-import {
-  Search,
-  Plus,
-  RefreshCcw,
-  Copy,
-  Trash2,
-  Check,
-  Radio,
-  Zap,
-  Sparkles,
-} from "lucide-react";
+import { Search, Plus, RefreshCcw, Copy, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface AIEndpointListProps {
@@ -54,8 +44,7 @@ export const AIEndpointList: React.FC<AIEndpointListProps> = ({
 
   const filteredConfigs = configs.filter((c) => {
     const preset = findPresetById(c.providerId) || detectProviderFromUrl(c.baseUrl);
-    const matchCategory =
-      activeCategory === "all" || preset.category === activeCategory;
+    const matchCategory = activeCategory === "all" || preset.category === activeCategory;
     const query = searchQuery.toLowerCase().trim();
     const matchQuery =
       !query ||

@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, Clipboard, Download, Loader2, Edit3, ImagePlus, LayoutTemplate, Settings2 } from "lucide-react";
+import { X, Check, Clipboard, Download, Loader2, Settings2 } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
-import { usePosterV2Store } from "@/store/posterV2Store";
 import { toast } from "@/components/shared/GlassToast";
 import FabricCanvas from "./FabricCanvas";
 import FabricControls from "./FabricControls";
@@ -15,7 +14,11 @@ interface FabricSharePanelProps {
   onSwitchBack?: () => void;
 }
 
-export const FabricSharePanel: React.FC<FabricSharePanelProps> = ({ isOpen, onClose, onSwitchBack }) => {
+export const FabricSharePanel: React.FC<FabricSharePanelProps> = ({
+  isOpen,
+  onClose,
+  onSwitchBack,
+}) => {
   const currentSong = useAudioStore((state) => state.currentSong);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -33,8 +36,8 @@ export const FabricSharePanel: React.FC<FabricSharePanelProps> = ({ isOpen, onCl
 
     if (isCopy) {
       fetch(dataUrl)
-        .then(res => res.blob())
-        .then(blob => {
+        .then((res) => res.blob())
+        .then((blob) => {
           navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
           setCopied(true);
           toast.success("已复制到剪贴板");
@@ -93,7 +96,9 @@ export const FabricSharePanel: React.FC<FabricSharePanelProps> = ({ isOpen, onCl
                 <Loader2 className="w-16 h-16 text-pink-500 animate-spin" />
                 <div className="absolute inset-0 border-4 border-pink-500/20 rounded-full animate-pulse" />
               </div>
-              <h3 className="text-white mt-6 text-xl font-bold tracking-widest uppercase">System Rendering</h3>
+              <h3 className="text-white mt-6 text-xl font-bold tracking-widest uppercase">
+                System Rendering
+              </h3>
               <p className="text-white/50 text-sm mt-2">Exporting 4K High-Res Poster...</p>
             </motion.div>
           )}
@@ -108,7 +113,9 @@ export const FabricSharePanel: React.FC<FabricSharePanelProps> = ({ isOpen, onCl
             <div>
               <h2 className="text-white text-2xl font-bold tracking-wide">Poster Editor V2</h2>
               <div className="flex items-center gap-2 mt-1">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-pink-500/20 text-pink-400 border border-pink-500/30">PRO</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-pink-500/20 text-pink-400 border border-pink-500/30">
+                  PRO
+                </span>
                 <p className="text-white/50 text-xs">Canvas Rendering Engine Active</p>
               </div>
             </div>
@@ -139,17 +146,21 @@ export const FabricSharePanel: React.FC<FabricSharePanelProps> = ({ isOpen, onCl
               <div className="absolute top-6 left-6 z-20 flex flex-col gap-2 pointer-events-none">
                 <div className="bg-black/60 backdrop-blur-xl rounded-full px-5 py-2.5 flex items-center gap-3 border border-white/10 shadow-xl">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_#22c55e]" />
-                  <span className="text-white/80 text-xs font-bold tracking-widest uppercase">Canvas Live Preview</span>
+                  <span className="text-white/80 text-xs font-bold tracking-widest uppercase">
+                    Canvas Live Preview
+                  </span>
                 </div>
                 <div className="bg-black/40 backdrop-blur-md rounded-xl px-4 py-2 border border-white/5 inline-flex flex-col gap-1 w-max">
                   <span className="text-white/40 text-[10px] uppercase">Controls</span>
-                  <span className="text-white/70 text-xs">Drag elements to move • Scroll to zoom • Corner to scale</span>
+                  <span className="text-white/70 text-xs">
+                    Drag elements to move • Scroll to zoom • Corner to scale
+                  </span>
                 </div>
               </div>
 
               <div className="flex-1 w-full h-full flex items-center justify-center overflow-hidden relative p-8">
-                <FabricCanvas 
-                  song={currentSong} 
+                <FabricCanvas
+                  song={currentSong}
                   exportTrigger={exportTrigger}
                   copyTrigger={copyTrigger}
                   onExportComplete={handleExportComplete}
@@ -173,11 +184,13 @@ export const FabricSharePanel: React.FC<FabricSharePanelProps> = ({ isOpen, onCl
                   >
                     {copied ? (
                       <>
-                        <Check className="w-5 h-5 text-emerald-400" /> <span className="text-emerald-400">Copied</span>
+                        <Check className="w-5 h-5 text-emerald-400" />{" "}
+                        <span className="text-emerald-400">Copied</span>
                       </>
                     ) : (
                       <>
-                        <Clipboard className="w-5 h-5 group-hover:scale-110 transition-transform" /> Copy
+                        <Clipboard className="w-5 h-5 group-hover:scale-110 transition-transform" />{" "}
+                        Copy
                       </>
                     )}
                   </button>

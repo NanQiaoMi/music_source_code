@@ -31,14 +31,14 @@ describe("BlobUrlRegistry", () => {
     const dummyBlob = new Blob(["test"]);
 
     const url1 = registry.register(dummyBlob, "cover");
-    const url2 = registry.register(dummyBlob, "cover");
-    const url3 = registry.register(dummyBlob, "cover");
+    const _url2 = registry.register(dummyBlob, "cover");
+    const _url3 = registry.register(dummyBlob, "cover");
 
     expect(registry.getSize()).toBe(3);
     expect(revokedUrls.length).toBe(0);
 
     // Registering 4th url should evict url1 (the oldest)
-    const url4 = registry.register(dummyBlob, "cover");
+    const _url4 = registry.register(dummyBlob, "cover");
     expect(registry.getSize()).toBe(3);
     expect(revokedUrls).toContain(url1);
     expect(registry.getSize()).toBe(3);

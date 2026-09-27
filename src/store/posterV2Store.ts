@@ -48,24 +48,29 @@ export interface PosterV2State {
   artistTransform: ElementTransform;
   qrTransform: ElementTransform;
   brandTransform: ElementTransform;
-  
+
   // Specific settings
   coverRadius: number;
 
   // Actions
-  updateGlobal: (updates: Partial<Omit<PosterV2State, "updateGlobal" | "updateTransform" | "resetToTemplate">>) => void;
-  updateTransform: (element: "cover" | "title" | "artist" | "qr" | "brand", updates: Partial<ElementTransform>) => void;
+  updateGlobal: (
+    updates: Partial<Omit<PosterV2State, "updateGlobal" | "updateTransform" | "resetToTemplate">>
+  ) => void;
+  updateTransform: (
+    element: "cover" | "title" | "artist" | "qr" | "brand",
+    updates: Partial<ElementTransform>
+  ) => void;
   resetToTemplate: (template: PosterTemplate) => void;
 }
 
-export const usePosterV2Store = create<PosterV2State>((set, get) => ({
+export const usePosterV2Store = create<PosterV2State>((set, _get) => ({
   template: "apple",
   aspectRatio: 0.5625, // 9:16
   primaryColor: "#fa2d48",
   blurIntensity: 1.2,
   noiseOpacity: 0.2,
   overlayDepth: 0.4,
-  
+
   lyricColor: "rgba(255,255,255,0.9)",
   lyricFont: "sans",
   lyricAlignment: "center",
@@ -85,18 +90,19 @@ export const usePosterV2Store = create<PosterV2State>((set, get) => ({
   coverRadius: 0.15,
 
   updateGlobal: (updates) => set((state) => ({ ...state, ...updates })),
-  
-  updateTransform: (element, updates) => set((state) => {
-    const key = `${element}Transform` as keyof PosterV2State;
-    return {
-      [key]: {
-        ...(state[key] as ElementTransform),
-        ...updates
-      }
-    };
-  }),
+
+  updateTransform: (element, updates) =>
+    set((state) => {
+      const key = `${element}Transform` as keyof PosterV2State;
+      return {
+        [key]: {
+          ...(state[key] as ElementTransform),
+          ...updates,
+        },
+      };
+    }),
 
   resetToTemplate: (template) => {
     set({ template });
-  }
+  },
 }));

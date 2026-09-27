@@ -5,12 +5,13 @@ import { useCallback } from "react";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useAudioSourceStore } from "@/store/audioSourceStore";
-import { multiSourceResolver, SongMetadataQuery, ResolvedAudioSource } from "@/services/MultiSourceResolver";
 import { beatMapAnalyzer, BeatMapData } from "@/services/BeatMapAnalyzer";
 import { Song } from "@/types/song";
 
 export function useIntegratedAudioPipeline() {
-  const setCurrentSong = useAudioStore((state) => (state as any).setCurrentSong || (state as any).playSong);
+  const setCurrentSong = useAudioStore(
+    (state) => (state as any).setCurrentSong || (state as any).playSong
+  );
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
 
   /**
@@ -27,7 +28,12 @@ export function useIntegratedAudioPipeline() {
       } else {
         usePlayerStore.getState().setCurrentSong(song);
         usePlayerStore.getState().setIsPlaying(true);
-        useAudioStore.setState({ currentSong: song, isPlaying: true, error: null, isLoading: true });
+        useAudioStore.setState({
+          currentSong: song,
+          isPlaying: true,
+          error: null,
+          isLoading: true,
+        });
         if (setCurrentSong) {
           setCurrentSong(song);
         }
@@ -39,7 +45,10 @@ export function useIntegratedAudioPipeline() {
       if (targetUrl) {
         setTimeout(async () => {
           try {
-            const beatMap: BeatMapData = await beatMapAnalyzer.analyzeAudioUrl(targetUrl, song.id || song.title);
+            const beatMap: BeatMapData = await beatMapAnalyzer.analyzeAudioUrl(
+              targetUrl,
+              song.id || song.title
+            );
             useAudioSourceStore.getState().setCurrentBeatMap(beatMap);
           } catch (e) {
             console.warn("[IntegratedPipeline] Background BeatMap analysis skipped:", e);

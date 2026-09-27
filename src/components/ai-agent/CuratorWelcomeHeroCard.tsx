@@ -232,7 +232,6 @@ export const CuratorWelcomeHeroCard: React.FC<CuratorWelcomeHeroCardProps> = Rea
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <div className="relative w-9 h-9 rounded-xl bg-black/40 border border-white/[0.15] overflow-hidden flex items-center justify-center shrink-0 shadow-inner">
                     {currentSong.cover ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={currentSong.cover}
                         alt={currentSong.title}

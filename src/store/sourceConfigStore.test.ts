@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { useSourceConfigStore, PRESET_SCHEMES } from "./sourceConfigStore";
+import { useSourceConfigStore } from "./sourceConfigStore";
 
 describe("sourceConfigStore", () => {
   beforeEach(() => {
@@ -55,9 +55,9 @@ describe("sourceConfigStore", () => {
     expect(useSourceConfigStore.getState().lxScripts.some((s) => s.id === id)).toBe(true);
 
     store.updateLXScript(id, { name: "Updated Source Name" });
-    expect(
-      useSourceConfigStore.getState().lxScripts.find((s) => s.id === id)?.name
-    ).toBe("Updated Source Name");
+    expect(useSourceConfigStore.getState().lxScripts.find((s) => s.id === id)?.name).toBe(
+      "Updated Source Name"
+    );
 
     store.removeLXScript(id);
     expect(useSourceConfigStore.getState().lxScripts.some((s) => s.id === id)).toBe(false);

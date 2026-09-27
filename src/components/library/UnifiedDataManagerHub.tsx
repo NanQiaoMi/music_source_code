@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
 import { useStorageAnalyticsStore, formatStorageBytes } from "@/store/useStorageAnalyticsStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
@@ -47,7 +46,11 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
 }) => {
   const { setCurrentView, closePanel } = useUIStore();
   const { storageDetails, usagePercent, refreshAnalytics } = useStorageAnalyticsStore();
-  const { activeCount, totalSpeedFormatted, offlineRecords } = useOfflineDownloadStore();
+  const {
+    activeCount,
+    totalSpeedFormatted,
+    offlineRecords: _offlineRecords,
+  } = useOfflineDownloadStore();
   const { songs } = usePlaylistStore();
   const { activeHubTab, setActiveHubTab } = useDataManagerStore();
 
@@ -100,12 +103,21 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
     { id: "dashboard", label: "全景看板", icon: LayoutDashboard, badge: null },
     { id: "lx_search", label: "全网聚搜", icon: Sparkles, badge: isAnyLoggedIn ? "✦" : "🔒" },
     { id: "cloud", label: "云端曲库", icon: Cloud, badge: isAnyLoggedIn ? "☁" : "🔒" },
-    { id: "downloads", label: "离线下载", icon: Download, badge: activeCount > 0 ? `${activeCount}` : null },
+    {
+      id: "downloads",
+      label: "离线下载",
+      icon: Download,
+      badge: activeCount > 0 ? `${activeCount}` : null,
+    },
     { id: "playlists", label: "歌单编排", icon: FolderHeart, badge: null },
-    { id: "local", label: "本地导入", icon: HardDriveDownload, badge: `${storageDetails.localMusicCount}` },
+    {
+      id: "local",
+      label: "本地导入",
+      icon: HardDriveDownload,
+      badge: `${storageDetails.localMusicCount}`,
+    },
     { id: "health_storage", label: "存储体检", icon: ShieldCheck, badge: null },
   ];
-
 
   const handleClose = () => {
     if (onClose) onClose();
@@ -169,12 +181,18 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
                     : "text-white/55 hover:text-white hover:bg-white/[0.06] border border-transparent"
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 transition-colors ${isActive ? "text-white scale-105" : "text-white/60"}`} />
+                <Icon
+                  className={`w-3.5 h-3.5 transition-colors ${isActive ? "text-white scale-105" : "text-white/60"}`}
+                />
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className={`text-[9px] font-mono px-1 rounded-full border font-bold transition-all ${
-                    isActive ? "bg-white text-black border-white" : "bg-white/[0.08] text-white/70 border-white/[0.15]"
-                  }`}>
+                  <span
+                    className={`text-[9px] font-mono px-1 rounded-full border font-bold transition-all ${
+                      isActive
+                        ? "bg-white text-black border-white"
+                        : "bg-white/[0.08] text-white/70 border-white/[0.15]"
+                    }`}
+                  >
                     {tab.badge}
                   </span>
                 )}
@@ -187,7 +205,9 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
         <div className="flex items-center gap-3 shrink-0">
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-xs font-mono">
             <HardDrive className="w-3.5 h-3.5 text-white/60" />
-            <span className="text-white/80">{formatStorageBytes(storageDetails.totalUsageBytes)}</span>
+            <span className="text-white/80">
+              {formatStorageBytes(storageDetails.totalUsageBytes)}
+            </span>
             <span className="text-white/30">/</span>
             <span className="text-white/50">{usagePercent.toFixed(0)}%</span>
           </div>
@@ -212,7 +232,9 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
               type="button"
               onClick={() => handleSelectTab(tab.id as HubTabKey)}
               className={`relative flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap cursor-pointer transition-all duration-150 active:scale-95 ${
-                isActive ? "bg-white/[0.15] text-white font-bold border border-white/[0.20] shadow-sm" : "bg-white/[0.04] text-white/60 hover:text-white"
+                isActive
+                  ? "bg-white/[0.15] text-white font-bold border border-white/[0.20] shadow-sm"
+                  : "bg-white/[0.04] text-white/60 hover:text-white"
               }`}
             >
               <Icon className={`w-3.5 h-3.5 ${isActive ? "text-white" : ""}`} />
@@ -233,7 +255,9 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
         {visitedTabs.has("dashboard") && (
           <div
             className={`w-full transition-opacity duration-150 transform-gpu ${
-              activeTab === "dashboard" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
+              activeTab === "dashboard"
+                ? "block opacity-100"
+                : "hidden opacity-0 pointer-events-none"
             }`}
           >
             <DataDashboardTab onNavigateTab={(tab) => handleSelectTab(tab as HubTabKey)} />
@@ -243,7 +267,9 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
         {visitedTabs.has("lx_search") && (
           <div
             className={`w-full transition-opacity duration-150 transform-gpu ${
-              activeTab === "lx_search" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
+              activeTab === "lx_search"
+                ? "block opacity-100"
+                : "hidden opacity-0 pointer-events-none"
             }`}
           >
             <LxMusicSearchTab />
@@ -263,7 +289,9 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
         {visitedTabs.has("downloads") && (
           <div
             className={`w-full transition-opacity duration-150 transform-gpu ${
-              activeTab === "downloads" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
+              activeTab === "downloads"
+                ? "block opacity-100"
+                : "hidden opacity-0 pointer-events-none"
             }`}
           >
             <OfflineDownloadsTab />
@@ -273,7 +301,9 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
         {visitedTabs.has("playlists") && (
           <div
             className={`w-full transition-opacity duration-150 transform-gpu ${
-              activeTab === "playlists" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
+              activeTab === "playlists"
+                ? "block opacity-100"
+                : "hidden opacity-0 pointer-events-none"
             }`}
           >
             <PlaylistHubTab />
@@ -295,7 +325,9 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
         {visitedTabs.has("health_storage") && (
           <div
             className={`w-full transition-opacity duration-150 transform-gpu ${
-              activeTab === "health_storage" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
+              activeTab === "health_storage"
+                ? "block opacity-100"
+                : "hidden opacity-0 pointer-events-none"
             }`}
           >
             <HealthStorageTab />

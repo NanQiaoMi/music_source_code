@@ -29,7 +29,7 @@ const TARGETS: DiagnoseTarget[] = [
   },
 ];
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   const healthResults: Partial<Record<MusicSourceId, SourceHealthStatus>> = {
     local: {
       status: "normal",
@@ -72,12 +72,15 @@ export async function GET(request: NextRequest) {
           message: `响应异常 (HTTP ${res.status})`,
         };
       }
-    } catch (err: any) {
+    } catch (err) {
       healthResults[id] = {
         status: "error",
         latencyMs: 4000,
         lastChecked: Date.now(),
-        message: err.name === "TimeoutError" ? "连接超时 (>4000ms)" : "网络请求失败",
+        message:
+          err instanceof Error && err.name === "TimeoutError"
+            ? "连接超时 (>4000ms)"
+            : "网络请求失败",
       };
     }
   });

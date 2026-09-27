@@ -29,7 +29,7 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
     let step = 0;
     const targetFill = Math.max(0.08, Math.min(0.98, usagePercent / 100));
     let currentFill = 0.05;
-    let isMounted = true;
+    const isMounted = true;
 
     const render = () => {
       if (!isMounted) return;
@@ -78,7 +78,7 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
 
       // Water wave calculation
       const waveHeight = 6;
-      const baseWaterY = height - (height * currentFill);
+      const baseWaterY = height - height * currentFill;
 
       // Back wave (Subtle deep titanium)
       ctx.beginPath();
@@ -126,7 +126,8 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
       const bubbleCount = 4;
       for (let b = 0; b < bubbleCount; b++) {
         const bx = centerX + Math.sin(step + b * 2) * (radius * 0.45);
-        const by = baseWaterY + 15 + ((step * 18 + b * 22) % Math.max(10, height - baseWaterY - 10));
+        const by =
+          baseWaterY + 15 + ((step * 18 + b * 22) % Math.max(10, height - baseWaterY - 10));
         ctx.beginPath();
         ctx.arc(bx, by, 1.5 + (b % 2), 0, Math.PI * 2);
         ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
@@ -171,9 +172,7 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
         <div className="text-xs font-semibold text-white/90 font-mono">
           {formatStorageBytes(usedBytes)} / {formatStorageBytes(quotaBytes)}
         </div>
-        <div className="text-[10px] text-white/40 mt-0.5">
-          本地 IndexedDB & 离线沙盒空间
-        </div>
+        <div className="text-[10px] text-white/40 mt-0.5">本地 IndexedDB & 离线沙盒空间</div>
       </div>
     </div>
   );

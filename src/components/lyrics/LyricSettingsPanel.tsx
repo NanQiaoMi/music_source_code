@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   useLyricSettingsStore,
   LyricAlignment,
@@ -47,7 +47,7 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
     lineHeight,
     fontFamily,
     fontWeight,
-    opacity,
+    opacity: _opacity,
     alignment,
     animationType,
     animationSpeed,
@@ -79,7 +79,7 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
     setTextShadowColor,
     setTextShadowBlur,
     setTextStroke,
-    setTextStrokeColor,
+    textStrokeColor: _setTextStrokeColor,
     setTextStrokeWidth,
     applyPreset,
     resetSettings,
@@ -311,7 +311,9 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                             <span className="text-sm font-bold text-white">{info.title}</span>
                             {isSelected && <Check className="w-4 h-4 text-[#0071e3]" />}
                           </div>
-                          <p className="text-xs text-white/50 mt-0.5 leading-relaxed">{info.desc}</p>
+                          <p className="text-xs text-white/50 mt-0.5 leading-relaxed">
+                            {info.desc}
+                          </p>
                         </div>
                       </button>
                     );
@@ -495,7 +497,11 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                 <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/10">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-xl bg-white/10 text-white">
-                      {showTranslation ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 text-white/40" />}
+                      {showTranslation ? (
+                        <Eye className="w-4 h-4" />
+                      ) : (
+                        <EyeOff className="w-4 h-4 text-white/40" />
+                      )}
                     </div>
                     <div>
                       <div className="text-xs font-bold text-white">显示歌词翻译</div>
@@ -521,7 +527,11 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                 <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/10">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-xl bg-white/10 text-white">
-                      {showTransliteration ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 text-white/40" />}
+                      {showTransliteration ? (
+                        <Eye className="w-4 h-4" />
+                      ) : (
+                        <EyeOff className="w-4 h-4 text-white/40" />
+                      )}
                     </div>
                     <div>
                       <div className="text-xs font-bold text-white">显示拼音 / 罗马音</div>
@@ -551,9 +561,21 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                 </h4>
                 <div className="space-y-1.5">
                   {[
-                    { value: "fade" as LyricAnimationType, label: "柔和淡入淡出", desc: "平缓自然的透明度渐变" },
-                    { value: "scroll" as LyricAnimationType, label: "丝滑平滑滚动", desc: "弹性阻尼流畅滚动居中" },
-                    { value: "rhythm" as LyricAnimationType, label: "节拍律动同步", desc: "跟随底鼓与瞬态击打呼吸" },
+                    {
+                      value: "fade" as LyricAnimationType,
+                      label: "柔和淡入淡出",
+                      desc: "平缓自然的透明度渐变",
+                    },
+                    {
+                      value: "scroll" as LyricAnimationType,
+                      label: "丝滑平滑滚动",
+                      desc: "弹性阻尼流畅滚动居中",
+                    },
+                    {
+                      value: "rhythm" as LyricAnimationType,
+                      label: "节拍律动同步",
+                      desc: "跟随底鼓与瞬态击打呼吸",
+                    },
                   ].map((option) => (
                     <button
                       key={option.value}
@@ -582,7 +604,9 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
                   <div className="flex justify-between text-xs">
                     <span className="text-white/70">动画速率</span>
-                    <span className="text-[#0071e3] font-mono font-bold">{animationSpeed.toFixed(1)}x</span>
+                    <span className="text-[#0071e3] font-mono font-bold">
+                      {animationSpeed.toFixed(1)}x
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -598,7 +622,9 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                 <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
                   <div className="flex justify-between text-xs">
                     <span className="text-white/70">律动强度</span>
-                    <span className="text-[#0071e3] font-mono font-bold">{Math.round(animationIntensity * 100)}%</span>
+                    <span className="text-[#0071e3] font-mono font-bold">
+                      {Math.round(animationIntensity * 100)}%
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -693,7 +719,9 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                   <div className="pt-2 border-t border-white/10 space-y-2.5">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-white/70">光晕扩散半径</span>
-                      <span className="font-mono text-[#0071e3] font-bold">{textShadowBlur} px</span>
+                      <span className="font-mono text-[#0071e3] font-bold">
+                        {textShadowBlur} px
+                      </span>
                     </div>
                     <input
                       type="range"
@@ -733,7 +761,9 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
                   <div className="pt-2 border-t border-white/10 space-y-2.5">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-white/70">描边粗细</span>
-                      <span className="font-mono text-[#0071e3] font-bold">{textStrokeWidth} px</span>
+                      <span className="font-mono text-[#0071e3] font-bold">
+                        {textStrokeWidth} px
+                      </span>
                     </div>
                     <input
                       type="range"

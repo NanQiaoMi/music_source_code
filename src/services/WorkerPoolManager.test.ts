@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// 测试桩（React/Store mock、部分状态对象）用宽松类型是刻意的，收紧只会引入与被测逻辑无关的噪音
+/* eslint-disable @typescript-eslint/no-unsafe-function-type */
+// Worker 事件桩只需"能被调用"，用具体函数签名会与调用方的 (e: MessageEvent) 产生逆变冲突
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { WorkerPoolManager } from "./WorkerPoolManager";
 
@@ -7,7 +11,10 @@ class MockWorker {
   private listeners: Map<string, Set<Function>> = new Map();
   public terminated = false;
 
-  constructor(public scriptUrl: string | URL, public options?: any) {}
+  constructor(
+    public scriptUrl: string | URL,
+    public options?: any
+  ) {}
 
   addEventListener(type: string, listener: Function) {
     if (!this.listeners.has(type)) {

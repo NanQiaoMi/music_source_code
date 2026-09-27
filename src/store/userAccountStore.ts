@@ -81,7 +81,12 @@ interface UserAccountState {
   loginWithCookie: (platform: PlatformType, cookie: string) => Promise<boolean>;
   logout: (platform: PlatformType) => Promise<void>;
   fetchUserPlaylists: () => Promise<void>;
-  fetchPlaylistTracks: (playlistId: string, source?: PlatformType, offset?: number, limit?: number) => Promise<Song[]>;
+  fetchPlaylistTracks: (
+    playlistId: string,
+    source?: PlatformType,
+    offset?: number,
+    limit?: number
+  ) => Promise<Song[]>;
   fetchAllPlaylistTracks: (playlistId: string, source?: PlatformType) => Promise<Song[]>;
   loadMorePlaylistTracks: () => Promise<Song[]>;
 }
@@ -125,19 +130,31 @@ export const useUserAccountStore = create<UserAccountState>()(
 
         const state = get();
         if (norm === "netease" || norm === "wy") {
-          return Boolean(state.neteaseUser?.loggedIn || (state.neteaseCookie && state.neteaseCookie.trim().length > 10));
+          return Boolean(
+            state.neteaseUser?.loggedIn ||
+            (state.neteaseCookie && state.neteaseCookie.trim().length > 10)
+          );
         }
         if (norm === "qq" || norm === "tx") {
-          return Boolean(state.qqUser?.loggedIn || (state.qqCookie && state.qqCookie.trim().length > 5));
+          return Boolean(
+            state.qqUser?.loggedIn || (state.qqCookie && state.qqCookie.trim().length > 5)
+          );
         }
         if (norm === "kugou" || norm === "kg") {
-          return Boolean(state.kugouUser?.loggedIn || (state.kugouCookie && state.kugouCookie.trim().length > 5));
+          return Boolean(
+            state.kugouUser?.loggedIn || (state.kugouCookie && state.kugouCookie.trim().length > 5)
+          );
         }
         if (norm === "kuwo" || norm === "kw") {
-          return Boolean(state.kuwoUser?.loggedIn || (state.kuwoCookie && state.kuwoCookie.trim().length > 5));
+          return Boolean(
+            state.kuwoUser?.loggedIn || (state.kuwoCookie && state.kuwoCookie.trim().length > 5)
+          );
         }
         if (norm === "qishui") {
-          return Boolean(state.qishuiUser?.loggedIn || (state.qishuiCookie && state.qishuiCookie.trim().length > 5));
+          return Boolean(
+            state.qishuiUser?.loggedIn ||
+            (state.qishuiCookie && state.qishuiCookie.trim().length > 5)
+          );
         }
         return false;
       },
@@ -156,8 +173,20 @@ export const useUserAccountStore = create<UserAccountState>()(
 
       handlePlatformSessionExpired: (platform: PlatformType | string, reason?: string) => {
         const norm = (platform || "").toLowerCase().trim();
-        const p = (norm === "wy" ? "netease" : norm === "tx" ? "qq" : norm === "kg" ? "kugou" : norm === "kw" ? "kuwo" : norm) as PlatformType;
-        console.warn(`[userAccountStore] Session expired for platform: ${p}, reason: ${reason || "401 Unauthorized"}`);
+        const p = (
+          norm === "wy"
+            ? "netease"
+            : norm === "tx"
+              ? "qq"
+              : norm === "kg"
+                ? "kugou"
+                : norm === "kw"
+                  ? "kuwo"
+                  : norm
+        ) as PlatformType;
+        console.warn(
+          `[userAccountStore] Session expired for platform: ${p}, reason: ${reason || "401 Unauthorized"}`
+        );
         const state = get();
         if (p === "netease") {
           set({ neteaseUser: { ...state.neteaseUser, loggedIn: false, vipLabel: "已过期" } });
@@ -171,7 +200,6 @@ export const useUserAccountStore = create<UserAccountState>()(
           set({ qishuiUser: { ...state.qishuiUser, loggedIn: false, vipLabel: "已过期" } });
         }
       },
-
 
       userPlaylists: [],
       isLoadingPlaylists: false,
@@ -210,7 +238,9 @@ export const useUserAccountStore = create<UserAccountState>()(
                   vipLevel: data.vipLevel,
                   isVip: Boolean(data.isVip),
                   isSvip: Boolean(data.isSvip),
-                  vipLabel: data.vipLabel || (data.isSvip ? "黑胶 SVIP" : data.isVip ? "黑胶 VIP" : "标准会员"),
+                  vipLabel:
+                    data.vipLabel ||
+                    (data.isSvip ? "黑胶 SVIP" : data.isVip ? "黑胶 VIP" : "标准会员"),
                   hasCookie: true,
                 },
               });
@@ -307,7 +337,9 @@ export const useUserAccountStore = create<UserAccountState>()(
             return;
           }
 
-          const createRes = await fetch(`${API_BASE}/api/login/qr/create?key=${encodeURIComponent(unikey)}&timestamp=${Date.now()}`);
+          const createRes = await fetch(
+            `${API_BASE}/api/login/qr/create?key=${encodeURIComponent(unikey)}&timestamp=${Date.now()}`
+          );
           if (!createRes.ok) {
             set({ qrError: "生成二维码图片失败", isPollingQr: false });
             return;
@@ -332,10 +364,14 @@ export const useUserAccountStore = create<UserAccountState>()(
         if (!qrKey) return { code: 800, message: "二维码未生成" };
 
         try {
-          const res = await fetch(`${API_BASE}/api/login/qr/check?key=${encodeURIComponent(qrKey)}&timestamp=${Date.now()}`);
+          const res = await fetch(
+            `${API_BASE}/api/login/qr/check?key=${encodeURIComponent(qrKey)}&timestamp=${Date.now()}`
+          );
           if (!res.ok) return { code: 500, message: "网络异常" };
           const data = await res.json();
-          const code = data.code || (data.status === "AUTHORIZED" ? 803 : data.status === "EXPIRED" ? 800 : 801);
+          const code =
+            data.code ||
+            (data.status === "AUTHORIZED" ? 803 : data.status === "EXPIRED" ? 800 : 801);
 
           set({ qrStatus: code });
 
@@ -350,8 +386,13 @@ export const useUserAccountStore = create<UserAccountState>()(
             set({ isPollingQr: false });
           }
 
-          return { code, message: data.message || (code === 803 ? "授权成功" : code === 802 ? "待在手机上确认" : "等待扫码") };
-        } catch (e) {
+          return {
+            code,
+            message:
+              data.message ||
+              (code === 803 ? "授权成功" : code === 802 ? "待在手机上确认" : "等待扫码"),
+          };
+        } catch (_e) {
           return { code: 500, message: "检查状态失败" };
         }
       },
@@ -416,9 +457,12 @@ export const useUserAccountStore = create<UserAccountState>()(
           else if (platform === "qishui") url = `${API_BASE}/api/qishui/logout`;
 
           await fetch(url, { method: "POST" }).catch(() => {});
-        } catch {}
+        } catch {
+          // 登录态上报失败不影响本地会话
+        }
 
-        if (platform === "netease") set({ neteaseCookie: "", neteaseUser: defaultUserProfile, userPlaylists: [] });
+        if (platform === "netease")
+          set({ neteaseCookie: "", neteaseUser: defaultUserProfile, userPlaylists: [] });
         else if (platform === "qq") set({ qqCookie: "", qqUser: defaultUserProfile });
         else if (platform === "kugou") set({ kugouCookie: "", kugouUser: defaultUserProfile });
         else if (platform === "kuwo") set({ kuwoCookie: "", kuwoUser: defaultUserProfile });
@@ -445,7 +489,7 @@ export const useUserAccountStore = create<UserAccountState>()(
           const list: CloudPlaylist[] = [];
 
           if (Array.isArray(data.playlists)) {
-            data.playlists.forEach((pl: any, idx: number) => {
+            data.playlists.forEach((pl: RawCloudPlaylist, idx: number) => {
               list.push({
                 id: String(pl.id),
                 name: pl.name || "未命名歌单",
@@ -466,15 +510,23 @@ export const useUserAccountStore = create<UserAccountState>()(
         }
       },
 
-      fetchPlaylistTracks: async (playlistId: string, source: PlatformType = "netease", offset = 0, limit = 100) => {
+      fetchPlaylistTracks: async (
+        playlistId: string,
+        source: PlatformType = "netease",
+        offset = 0,
+        limit = 100
+      ) => {
         const { neteaseCookie } = get();
         set({ isLoadingTracks: true });
 
         try {
           let url = `${API_BASE}/api/playlist/tracks?id=${encodeURIComponent(playlistId)}&offset=${offset}&limit=${limit}`;
-          if (source === "qq") url = `${API_BASE}/api/qq/playlist/tracks?id=${encodeURIComponent(playlistId)}&offset=${offset}&limit=${limit}`;
-          else if (source === "kugou") url = `${API_BASE}/api/kugou/playlist/tracks?id=${encodeURIComponent(playlistId)}&offset=${offset}&limit=${limit}`;
-          else if (source === "qishui") url = `${API_BASE}/api/qishui/playlist/tracks?id=${encodeURIComponent(playlistId)}&offset=${offset}&limit=${limit}`;
+          if (source === "qq")
+            url = `${API_BASE}/api/qq/playlist/tracks?id=${encodeURIComponent(playlistId)}&offset=${offset}&limit=${limit}`;
+          else if (source === "kugou")
+            url = `${API_BASE}/api/kugou/playlist/tracks?id=${encodeURIComponent(playlistId)}&offset=${offset}&limit=${limit}`;
+          else if (source === "qishui")
+            url = `${API_BASE}/api/qishui/playlist/tracks?id=${encodeURIComponent(playlistId)}&offset=${offset}&limit=${limit}`;
 
           const res = await fetch(url, {
             headers: {
@@ -491,10 +543,14 @@ export const useUserAccountStore = create<UserAccountState>()(
 
           const rawList = data.songs || data.tracks || [];
           if (Array.isArray(rawList)) {
-            rawList.forEach((s: any) => {
+            rawList.forEach((s: RawPlaylistSong) => {
               const songId = String(s.id || s.songmid || s.hash || "");
               const songName = s.name || s.title || "";
-              const artistName = s.artist || (Array.isArray(s.artists) ? s.artists.map((a: any) => a.name).join("/") : "未知歌手");
+              const artistName =
+                s.artist ||
+                (Array.isArray(s.artists)
+                  ? s.artists.map((a: { name?: string }) => a.name).join("/")
+                  : "未知歌手");
 
               if (songName) {
                 songs.push({
@@ -502,7 +558,9 @@ export const useUserAccountStore = create<UserAccountState>()(
                   title: songName,
                   artist: artistName,
                   album: s.album || s.albumName || "精选专辑",
-                  duration: s.duration ? Math.round(s.duration > 1000 ? s.duration / 1000 : s.duration) : 240,
+                  duration: s.duration
+                    ? Math.round(s.duration > 1000 ? s.duration / 1000 : s.duration)
+                    : 240,
                   cover: s.cover || s.picUrl || s.albumPic || "/default-cover.svg",
                   source,
                   audioUrl: s.url || `https://music.163.com/song/media/outer/url?id=${songId}.mp3`,
@@ -513,7 +571,7 @@ export const useUserAccountStore = create<UserAccountState>()(
           }
 
           const hasMore = Boolean(data.hasMore);
-          const total = data.trackCount || (offset + songs.length);
+          const total = data.trackCount || offset + songs.length;
           const merged = offset === 0 ? songs : [...get().activePlaylistSongs, ...songs];
 
           set({
@@ -552,9 +610,20 @@ export const useUserAccountStore = create<UserAccountState>()(
       },
 
       loadMorePlaylistTracks: async () => {
-        const { activePlaylistId, activePlaylistSource, activePlaylistSongs, isLoadingTracks, hasMoreTracks } = get();
+        const {
+          activePlaylistId,
+          activePlaylistSource,
+          activePlaylistSongs,
+          isLoadingTracks,
+          hasMoreTracks,
+        } = get();
         if (!activePlaylistId || isLoadingTracks || !hasMoreTracks) return [];
-        return get().fetchPlaylistTracks(activePlaylistId, activePlaylistSource, activePlaylistSongs.length, 100);
+        return get().fetchPlaylistTracks(
+          activePlaylistId,
+          activePlaylistSource,
+          activePlaylistSongs.length,
+          100
+        );
       },
     }),
     {
@@ -592,8 +661,40 @@ export function hasAnyPlatformLoggedIn(): boolean {
   );
 }
 
-export function handlePlatformSessionExpired(platform: PlatformType | string, reason?: string): void {
+export function handlePlatformSessionExpired(
+  platform: PlatformType | string,
+  reason?: string
+): void {
   useUserAccountStore.getState().handlePlatformSessionExpired(platform, reason);
 }
 
+/** 云歌单接口的原始返回项（外部 JSON，字段可选） */
+interface RawCloudPlaylist {
+  id?: string | number;
+  name?: string;
+  coverImgUrl?: string;
+  cover?: string;
+  trackCount?: number;
+  songCount?: number;
+  playCount?: number;
+  specialType?: number;
+  description?: string;
+}
 
+/** 歌单曲目接口的原始返回项（外部 JSON，字段可选） */
+interface RawPlaylistSong {
+  id?: string | number;
+  songmid?: string;
+  hash?: string;
+  name?: string;
+  title?: string;
+  artist?: string;
+  artists?: { name?: string }[];
+  album?: string;
+  albumName?: string;
+  duration?: number;
+  cover?: string;
+  picUrl?: string;
+  albumPic?: string;
+  url?: string;
+}
