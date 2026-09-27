@@ -103,7 +103,7 @@ class TactileSoundEngine {
     const type = options.type ?? "gear";
 
     // Slight frequency modulation based on gear detent step for authentic analog mechanical tooth feel
-    const detentFactor = 1 + (((step % 5) - 2) * 0.035);
+    const detentFactor = 1 + ((step % 5) - 2) * 0.035;
     const freq = Math.max(200, Math.min(4000, baseFreq * pitchShift * detentFactor));
 
     const now = ctx.currentTime;

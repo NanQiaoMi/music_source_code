@@ -7,11 +7,15 @@ export async function GET(request: NextRequest) {
   const cookie = request.headers.get("x-kugou-cookie") || "";
   if (!cookie || cookie.trim().length < 5) {
     return NextResponse.json(
-      { songs: [], code: 401, message: "KuGou authentication required. Please login first.", source: "kugou" },
+      {
+        songs: [],
+        code: 401,
+        message: "KuGou authentication required. Please login first.",
+        source: "kugou",
+      },
       { status: 401 }
     );
   }
-
 
   const { searchParams } = new URL(request.url);
   const keywords = searchParams.get("keywords") || searchParams.get("s") || "";
@@ -67,5 +71,10 @@ export async function GET(request: NextRequest) {
     console.error("[api/kugou/search] Kugou search error:", err);
   }
 
-  return NextResponse.json({ songs: [], code: 500, message: "Kugou search failed", source: "kugou" });
+  return NextResponse.json({
+    songs: [],
+    code: 500,
+    message: "Kugou search failed",
+    source: "kugou",
+  });
 }

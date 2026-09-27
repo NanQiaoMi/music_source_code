@@ -222,9 +222,7 @@ function SavedPlaylistsTab({
       <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
         <FolderOpen className="mx-auto mb-3 h-8 w-8 text-white/35" />
         <h3 className="mb-2 text-lg font-semibold text-white">暂无播放列表</h3>
-        <p className="text-sm text-white/50">
-          保存智能混音，将其转化为可复用的自定义播放列表。
-        </p>
+        <p className="text-sm text-white/50">保存智能混音，将其转化为可复用的自定义播放列表。</p>
       </div>
     );
   }
@@ -305,9 +303,7 @@ function DeduplicateTab({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-white">重复扫描器</h3>
-          <p className="text-sm text-white/50">
-            查找重复的歌手/标题组合，保留最佳副本。
-          </p>
+          <p className="text-sm text-white/50">查找重复的歌手/标题组合，保留最佳副本。</p>
         </div>
         <div className="flex gap-2">
           <button

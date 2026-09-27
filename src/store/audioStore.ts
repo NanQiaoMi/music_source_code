@@ -713,10 +713,16 @@ registerAudioStoreSync((playerState) => {
   if (playerState.isPlaying !== undefined && playerState.isPlaying !== currentAudio.isPlaying) {
     updates.isPlaying = playerState.isPlaying;
   }
-  if (playerState.currentSong !== undefined && playerState.currentSong?.id !== currentAudio.currentSong?.id) {
+  if (
+    playerState.currentSong !== undefined &&
+    playerState.currentSong?.id !== currentAudio.currentSong?.id
+  ) {
     updates.currentSong = playerState.currentSong;
   }
-  if (playerState.currentTime !== undefined && playerState.currentTime !== currentAudio.currentTime) {
+  if (
+    playerState.currentTime !== undefined &&
+    playerState.currentTime !== currentAudio.currentTime
+  ) {
     updates.currentTime = playerState.currentTime;
   }
   if (playerState.duration !== undefined && playerState.duration !== currentAudio.duration) {
@@ -731,7 +737,10 @@ registerAudioStoreSync((playerState) => {
   if (playerState.isMuted !== undefined && playerState.isMuted !== currentAudio.isMuted) {
     updates.isMuted = playerState.isMuted;
   }
-  if (playerState.playbackRate !== undefined && playerState.playbackRate !== currentAudio.playbackRate) {
+  if (
+    playerState.playbackRate !== undefined &&
+    playerState.playbackRate !== currentAudio.playbackRate
+  ) {
     updates.playbackRate = playerState.playbackRate;
   }
   if (playerState.loopMode !== undefined && playerState.loopMode !== currentAudio.loopMode) {
@@ -749,7 +758,10 @@ useAudioStore.subscribe((state, prev) => {
   if (state.isPlaying !== prev.isPlaying && state.isPlaying !== playerState.isPlaying) {
     updates.isPlaying = state.isPlaying;
   }
-  if (state.currentSong?.id !== prev.currentSong?.id && state.currentSong?.id !== playerState.currentSong?.id) {
+  if (
+    state.currentSong?.id !== prev.currentSong?.id &&
+    state.currentSong?.id !== playerState.currentSong?.id
+  ) {
     updates.currentSong = state.currentSong;
   }
   if (state.currentTime !== prev.currentTime && state.currentTime !== playerState.currentTime) {
@@ -777,4 +789,3 @@ useAudioStore.subscribe((state, prev) => {
     usePlayerStore.setState(updates);
   }
 });
-

@@ -12,10 +12,7 @@ export {
 
 export { FloatingDockState, type FloatingDockStateProps } from "./FloatingDockState";
 
-export {
-  FloatingAmbientGlow,
-  type FloatingAmbientGlowProps,
-} from "./FloatingAmbientGlow";
+export { FloatingAmbientGlow, type FloatingAmbientGlowProps } from "./FloatingAmbientGlow";
 
 export {
   FloatingControls,
@@ -30,45 +27,27 @@ export {
   type JellyButtonProps,
 } from "./FloatingControls";
 
-export {
-  FloatingPillState,
-  type FloatingPillStateProps,
-} from "./FloatingPillState";
+export { FloatingPillState, type FloatingPillStateProps } from "./FloatingPillState";
 
-export {
-  FloatingWaveformGlow,
-  type FloatingWaveformGlowProps,
-} from "./FloatingWaveformGlow";
+export { FloatingWaveformGlow, type FloatingWaveformGlowProps } from "./FloatingWaveformGlow";
 
-export {
-  FloatingSpectrumGlow,
-  type FloatingSpectrumGlowProps,
-} from "./FloatingSpectrumGlow";
+export { FloatingSpectrumGlow, type FloatingSpectrumGlowProps } from "./FloatingSpectrumGlow";
 
 export {
   FloatingProgressScrubber,
   type FloatingProgressScrubberProps,
 } from "./FloatingProgressScrubber";
 
-export {
-  FloatingExpandedState,
-  type FloatingExpandedStateProps,
-} from "./FloatingExpandedState";
+export { FloatingExpandedState, type FloatingExpandedStateProps } from "./FloatingExpandedState";
 
-export {
-  FloatingMiniState,
-  type FloatingMiniStateProps,
-} from "./FloatingMiniState";
+export { FloatingMiniState, type FloatingMiniStateProps } from "./FloatingMiniState";
 
 export {
   FloatingCompactControlsState,
   type FloatingCompactControlsStateProps,
 } from "./FloatingCompactControlsState";
 
-export {
-  FloatingDebugHUD,
-  type FloatingDebugHUDProps,
-} from "./FloatingDebugHUD";
+export { FloatingDebugHUD, type FloatingDebugHUDProps } from "./FloatingDebugHUD";
 
 export {
   LiquidGlassFilter,
@@ -80,9 +59,4 @@ export {
   MINERADIO_LIQUID_GLASS_STYLE,
 } from "./LiquidGlassFilter";
 
-export {
-  FloatingSpeedControl,
-  type FloatingSpeedControlProps,
-} from "./FloatingSpeedControl";
-
-
+export { FloatingSpeedControl, type FloatingSpeedControlProps } from "./FloatingSpeedControl";

@@ -9,7 +9,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-
   const { searchParams } = new URL(request.url);
   const mid = searchParams.get("mid") || searchParams.get("id") || "";
   const title = searchParams.get("title") || searchParams.get("name") || "";
@@ -46,4 +45,3 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ url: "", code: 404, message: "QQ song stream not found" });
 }
-

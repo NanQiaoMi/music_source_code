@@ -33,7 +33,12 @@ interface BiquadFilterState {
   y2: number;
 }
 
-function makeBiquad(type: "lowpass" | "highpass", freq: number, q: number, sr: number): BiquadFilterState {
+function makeBiquad(
+  type: "lowpass" | "highpass",
+  freq: number,
+  q: number,
+  sr: number
+): BiquadFilterState {
   freq = Math.max(8, Math.min(freq, sr * 0.45));
   const w0 = (2 * Math.PI * freq) / sr;
   const cos = Math.cos(w0);

@@ -31,7 +31,8 @@ export const MINERADIO_LIQUID_GLASS_SHADOW = MINERADIO_LIQUID_GLASS_SHADOW_LAYER
 export const MINERADIO_LIQUID_GLASS_CLASS = "mineradio-liquid-glass";
 
 export const MINERADIO_LIQUID_GLASS_STYLE: React.CSSProperties = {
-  background: "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.22) 100%)",
+  background:
+    "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.22) 100%)",
   backdropFilter: "blur(48px) saturate(200%)",
   WebkitBackdropFilter: "blur(48px) saturate(200%)",
   border: "1px solid rgba(255, 255, 255, 0.28)",
@@ -161,12 +162,7 @@ export const LiquidGlassFilter: React.FC<LiquidGlassFilterProps> = ({
               yChannelSelector="B"
               result="dispRed"
             />
-            <feOffset
-              in="dispRed"
-              dx={centerDelta * 1.0}
-              dy="0"
-              result="dispRedShifted"
-            />
+            <feOffset in="dispRed" dx={centerDelta * 1.0} dy="0" result="dispRedShifted" />
             <feMerge result="dispRedAligned">
               <feMergeNode in="SourceGraphic" />
               <feMergeNode in="dispRedShifted" />
@@ -187,12 +183,7 @@ export const LiquidGlassFilter: React.FC<LiquidGlassFilterProps> = ({
               yChannelSelector="B"
               result="dispGreen"
             />
-            <feOffset
-              in="dispGreen"
-              dx={centerDelta * 0.5}
-              dy="0"
-              result="dispGreenShifted"
-            />
+            <feOffset in="dispGreen" dx={centerDelta * 0.5} dy="0" result="dispGreenShifted" />
             <feMerge result="dispGreenAligned">
               <feMergeNode in="SourceGraphic" />
               <feMergeNode in="dispGreenShifted" />
@@ -213,12 +204,7 @@ export const LiquidGlassFilter: React.FC<LiquidGlassFilterProps> = ({
               yChannelSelector="B"
               result="dispBlue"
             />
-            <feOffset
-              in="dispBlue"
-              dx="0"
-              dy="0"
-              result="dispBlueShifted"
-            />
+            <feOffset in="dispBlue" dx="0" dy="0" result="dispBlueShifted" />
             <feMerge result="dispBlueAligned">
               <feMergeNode in="SourceGraphic" />
               <feMergeNode in="dispBlueShifted" />
@@ -235,7 +221,11 @@ export const LiquidGlassFilter: React.FC<LiquidGlassFilterProps> = ({
             <feBlend in="rgBlend" in2="bluePass" mode="screen" result="chromaticDispersion" />
 
             {/* Final smooth subtle Gaussian anti-aliasing */}
-            <feGaussianBlur in="chromaticDispersion" stdDeviation="0.4" result="finalLiquidOutput" />
+            <feGaussianBlur
+              in="chromaticDispersion"
+              stdDeviation="0.4"
+              result="finalLiquidOutput"
+            />
           </filter>
         </defs>
       </svg>

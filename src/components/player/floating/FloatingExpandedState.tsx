@@ -95,7 +95,8 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
       className={`relative w-[340px] select-none rounded-[36px] mineradio-liquid-glass overflow-visible flex flex-col p-4 gap-3 text-white ${className}`}
       style={{
         touchAction: "none",
-        background: "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.25) 100%)",
+        background:
+          "linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(20, 20, 30, 0.25) 100%)",
         backdropFilter: "blur(48px) saturate(200%)",
         WebkitBackdropFilter: "blur(48px) saturate(200%)",
         border: "1px solid rgba(255, 255, 255, 0.28)",
@@ -148,7 +149,6 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
       <motion.div
         variants={itemVariants}
         className="drag-handle relative w-full flex items-center justify-between pt-0.5 cursor-grab active:cursor-grabbing z-20"
-
         onMouseDown={dragHandlers?.onMouseDown}
         onTouchStart={dragHandlers?.onTouchStart}
       >
@@ -270,15 +270,8 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
       </motion.div>
 
       {/* 7. Playback Controls Bar with FloatingControls */}
-      <motion.div
-        variants={itemVariants}
-        className="flex items-center justify-center px-1"
-      >
-        <FloatingControls
-          showShuffleAndLoop={true}
-          showFavorite={false}
-          compact={false}
-        />
+      <motion.div variants={itemVariants} className="flex items-center justify-center px-1">
+        <FloatingControls showShuffleAndLoop={true} showFavorite={false} compact={false} />
       </motion.div>
 
       {/* 8. Quick "Expand Full Immersive Player" Frosted Pill */}
@@ -296,6 +289,3 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
     </motion.div>
   );
 };
-
-
-

@@ -3,7 +3,15 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { BeatMapData } from "@/services/BeatMapAnalyzer";
 import { createSafeStorage } from "@/lib/storage/safeStorage";
 
-export type AudioSourceType = "netease" | "qq" | "kugou" | "kuwo" | "qishui" | "local" | "lx_custom" | "cross_matched";
+export type AudioSourceType =
+  | "netease"
+  | "qq"
+  | "kugou"
+  | "kuwo"
+  | "qishui"
+  | "local"
+  | "lx_custom"
+  | "cross_matched";
 export type PreferredQuality = "hires" | "lossless" | "high" | "standard";
 
 export interface AudioSourceSettingsState {

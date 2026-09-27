@@ -35,7 +35,10 @@ export function weapi(object: Record<string, unknown>): { params: string; encSec
 
   const step1 = aesEncrypt(Buffer.from(text, "utf8"), presetKey, iv);
   const params = aesEncrypt(Buffer.from(step1, "utf8"), Buffer.from(secretKey, "utf8"), iv);
-  const encSecKey = rsaEncrypt(Buffer.from(secretKey.split("").reverse().join(""), "utf8"), publicKey);
+  const encSecKey = rsaEncrypt(
+    Buffer.from(secretKey.split("").reverse().join(""), "utf8"),
+    publicKey
+  );
 
   return { params, encSecKey };
 }

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
@@ -191,7 +190,9 @@ export const FloatingSpeedControl: React.FC<FloatingSpeedControlProps> = ({
                     className="flex items-center gap-1.5 text-[11px] px-2.5 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer shadow-sm font-sans"
                     title="恢复为 1.00x 原速"
                   >
-                    <span className="font-semibold tabular-nums text-[#2997ff]">{playbackRate.toFixed(2)}x</span>
+                    <span className="font-semibold tabular-nums text-[#2997ff]">
+                      {playbackRate.toFixed(2)}x
+                    </span>
                     <span className="flex items-center gap-1 text-[10px] text-white/80">
                       <RotateCcw className="w-2.5 h-2.5 text-cyan-300" />
                       恢复原速

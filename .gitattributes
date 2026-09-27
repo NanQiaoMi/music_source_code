@@ -1,0 +1,42 @@
+# 统一行尾为 LF。
+#
+# 为什么需要这个文件：Windows 下 core.autocrlf=true 会把文件检出成 CRLF，
+# 而 prettier 的 endOfLine 默认是 lf。结果就是工作区里 659 个文件全是 CRLF，
+# `npx eslint` 一次性报出 129172 条 prettier/prettier 错误——全部是行尾，
+# 却把真正的 lint 错误完全淹没（一度 316 条真错误就藏在这堆噪音里）。
+#
+# 索引里本来就是 LF（autocrlf 提交时会转换），所以这个改动不改任何仓库内容，
+# 只是让检出后的文件也保持 LF，从而 prettier/eslint 从源头就干净。
+* text=auto eol=lf
+
+# cmd 批处理是唯一的例外：CRLF 才是 cmd.exe 的原生格式，
+# 标签/goto 在部分 Windows 版本下对 LF-only 文件不可靠。
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二进制：text=auto 已经能自动识别，这里再显式声明一遍，
+# 避免将来有人给这些扩展名加了内容改动时被误判成文本做行尾转换。
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.bmp binary
+*.avif binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+*.mp3 binary
+*.flac binary
+*.wav binary
+*.ogg binary
+*.m4a binary
+*.zip binary
+*.7z binary
+*.gz binary
+*.tar binary
+*.pdf binary
+*.wasm binary

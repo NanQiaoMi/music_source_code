@@ -71,11 +71,7 @@ export class CinematicDirector {
         break;
       }
       case "wide-sweep": {
-        this.targetPose.position.set(
-          Math.sin(time * 0.15) * 3.5,
-          2.4,
-          7.0
-        );
+        this.targetPose.position.set(Math.sin(time * 0.15) * 3.5, 2.4, 7.0);
         this.targetPose.fov = 55;
         break;
       }

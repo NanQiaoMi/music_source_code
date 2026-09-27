@@ -1,6 +1,6 @@
 /**
  * Multi-Source Endpoint Circuit Breaker
- * 
+ *
  * 阶梯式熔断冷却机制：
  * - 首次失败 (502 / ECONNRESET / Timeout / 404)：冷却 1 分钟
  * - 连续失败 ≥ 2 次：冷却 5 分钟

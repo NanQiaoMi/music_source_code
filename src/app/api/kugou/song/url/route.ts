@@ -9,7 +9,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-
   const { searchParams } = new URL(request.url);
   const hash = searchParams.get("hash") || searchParams.get("id") || "";
   const title = searchParams.get("title") || searchParams.get("name") || "";
@@ -76,4 +75,3 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ url: "", code: 404, message: "Kugou song stream not found" });
 }
-

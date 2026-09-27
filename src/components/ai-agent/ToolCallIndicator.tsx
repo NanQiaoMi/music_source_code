@@ -21,10 +21,7 @@ export interface ToolCallIndicatorProps {
   toolName?: string | null;
 }
 
-const TOOL_CONFIG: Record<
-  string,
-  { label: string; icon: React.FC<{ className?: string }> }
-> = {
+const TOOL_CONFIG: Record<string, { label: string; icon: React.FC<{ className?: string }> }> = {
   search_songs: {
     label: "正在全网与本地曲库检索相关曲目...",
     icon: Search,

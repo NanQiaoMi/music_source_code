@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useRef } from "react";
@@ -87,13 +86,19 @@ export const HoverHub: React.FC<HoverHubProps> = ({
   };
 
   return (
-    <div className="relative flex-shrink-0" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+    <div
+      className="relative flex-shrink-0"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <button
         type="button"
         className="h-9 px-3 rounded-xl flex items-center gap-2 transition-all duration-300 group relative whitespace-nowrap flex-shrink-0 select-none text-left"
         style={{
           background: isOpen ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.04)",
-          border: isOpen ? "1px solid rgba(255, 255, 255, 0.15)" : "1px solid rgba(255, 255, 255, 0.05)",
+          border: isOpen
+            ? "1px solid rgba(255, 255, 255, 0.15)"
+            : "1px solid rgba(255, 255, 255, 0.05)",
           color: isOpen ? "#ffffff" : "rgba(255, 255, 255, 0.75)",
         }}
       >

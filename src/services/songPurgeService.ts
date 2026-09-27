@@ -79,7 +79,9 @@ export function evaluateSongIntegrity(song: Song): InvalidSongEvaluation {
 /**
  * Scans a list of songs and extracts all invalid/unplayable song records.
  */
-export function scanInvalidSongs(songs: Song[]): Array<{ song: Song; evaluation: InvalidSongEvaluation }> {
+export function scanInvalidSongs(
+  songs: Song[]
+): Array<{ song: Song; evaluation: InvalidSongEvaluation }> {
   return songs
     .map((song) => ({
       song,

@@ -16,16 +16,32 @@ export async function GET(request: NextRequest) {
     });
 
     const code = result.body?.code ?? (result.status === 200 ? 801 : 500);
-    const message = result.body?.message || (code === 803 ? "授权登录成功" : code === 802 ? "待确认" : code === 800 ? "二维码已过期" : "等待扫码");
+    const message =
+      result.body?.message ||
+      (code === 803
+        ? "授权登录成功"
+        : code === 802
+          ? "待确认"
+          : code === 800
+            ? "二维码已过期"
+            : "等待扫码");
 
     // 提取 cookie 字符串
-    const cookie = result.cookieStr || (Array.isArray(result.cookie) ? result.cookie.join("; ") : "");
+    const cookie =
+      result.cookieStr || (Array.isArray(result.cookie) ? result.cookie.join("; ") : "");
 
     const response = NextResponse.json({
       code,
       message,
       cookie,
-      status: code === 803 ? "AUTHORIZED" : code === 802 ? "PENDING_CONFIRM" : code === 800 ? "EXPIRED" : "WAITING",
+      status:
+        code === 803
+          ? "AUTHORIZED"
+          : code === 802
+            ? "PENDING_CONFIRM"
+            : code === 800
+              ? "EXPIRED"
+              : "WAITING",
       body: result.body,
     });
 

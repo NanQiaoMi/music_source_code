@@ -11,13 +11,16 @@ interface AppleAudioSourceIndicatorProps {
   className?: string;
 }
 
-export const AppleAudioSourceIndicator: React.FC<AppleAudioSourceIndicatorProps> = ({ className = "" }) => {
+export const AppleAudioSourceIndicator: React.FC<AppleAudioSourceIndicatorProps> = ({
+  className = "",
+}) => {
   const currentSong = useAudioStore((state) => state.currentSong);
   const [isManagerOpen, setIsManagerOpen] = useState(false);
 
   const format = (currentSong as any)?.format?.toUpperCase() || "FLAC";
   const quality = (currentSong as any)?.quality || "Hi-Res Lossless";
-  const sourceName = (currentSong as any)?.sourceLabel || (currentSong as any)?.source || "多源聚合";
+  const sourceName =
+    (currentSong as any)?.sourceLabel || (currentSong as any)?.source || "多源聚合";
 
   return (
     <>

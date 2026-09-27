@@ -1,11 +1,4 @@
-export type MusicSourceId =
-  | "netease"
-  | "qq"
-  | "kugou"
-  | "kuwo"
-  | "qishui"
-  | "local"
-  | "lx_custom";
+export type MusicSourceId = "netease" | "qq" | "kugou" | "kuwo" | "qishui" | "local" | "lx_custom";
 
 export type QualityTier = "auto" | "128k" | "320k" | "flac" | "hires";
 
@@ -61,5 +54,8 @@ export interface PresetScheme {
   id: string;
   name: string;
   description: string;
-  config: Record<MusicSourceId, { enabled: boolean; qualityPreference: QualityTier; priority: number }>;
+  config: Record<
+    MusicSourceId,
+    { enabled: boolean; qualityPreference: QualityTier; priority: number }
+  >;
 }

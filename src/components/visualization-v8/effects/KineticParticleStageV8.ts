@@ -2,7 +2,12 @@
 "use client";
 
 import * as THREE from "three";
-import { EffectPlugin, RenderContext, AudioData, EffectParameterMap } from "@/lib/visualization/types";
+import {
+  EffectPlugin,
+  RenderContext,
+  AudioData,
+  EffectParameterMap,
+} from "@/lib/visualization/types";
 import { useAudioStore } from "@/store/audioStore";
 
 interface DissolveParticle {
@@ -78,7 +83,10 @@ function renderCanvas2D(
       const screenY = originY + (worldY + (r - rows * 0.5) * 22) * scale;
       const ptSize = Math.max(1.0, (1.8 - zProgress * 0.8) * scale * 2.0);
 
-      const colorFactor = Math.min(1, Math.max(0, (xProgress + 1) * 0.5 + Math.sin(time + dist) * 0.2));
+      const colorFactor = Math.min(
+        1,
+        Math.max(0, (xProgress + 1) * 0.5 + Math.sin(time + dist) * 0.2)
+      );
       let rVal = 168;
       let gVal = 85;
       let bVal = 247;
@@ -115,7 +123,10 @@ function renderCanvas2D(
   c.transform(1, -0.14, 0.2, 1, 0, 0);
 
   const fontSize = Math.max(26, Math.min(60, Math.floor(w * 0.04)));
-  c.font = "800 " + fontSize + "px 'Cinzel Decorative', 'PingFang SC', 'Segoe UI', -apple-system, sans-serif";
+  c.font =
+    "800 " +
+    fontSize +
+    "px 'Cinzel Decorative', 'PingFang SC', 'Segoe UI', -apple-system, sans-serif";
   c.textAlign = "center";
   c.textBaseline = "middle";
 

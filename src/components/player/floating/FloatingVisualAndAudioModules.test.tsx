@@ -27,11 +27,7 @@ vi.mock("next/image", () => ({
 }));
 
 vi.mock("@/components/player/NowPlayingHalo", () => ({
-  NowPlayingHalo: ({
-    currentTime: _c,
-    isPlaying: _p,
-    ...props
-  }: Record<string, unknown>) => (
+  NowPlayingHalo: ({ currentTime: _c, isPlaying: _p, ...props }: Record<string, unknown>) => (
     <div data-testid="now-playing-halo" {...props} />
   ),
 }));
@@ -174,9 +170,7 @@ describe("Floating Player Audio & Touch Modules", () => {
       expect(wrapper).toBeTruthy();
 
       act(() => {
-        wrapper?.dispatchEvent(
-          new MouseEvent("pointerdown", { clientX: 100, bubbles: true })
-        );
+        wrapper?.dispatchEvent(new MouseEvent("pointerdown", { clientX: 100, bubbles: true }));
       });
 
       expect(seekSpy).toHaveBeenCalled();
@@ -258,8 +252,8 @@ describe("Floating Player Audio & Touch Modules", () => {
         root?.render(<FloatingExpandedState onCollapse={vi.fn()} />);
       });
 
-      const spectrumTabBtn = Array.from(container?.querySelectorAll("button") || []).find(
-        (b) => b.textContent?.includes("频谱")
+      const spectrumTabBtn = Array.from(container?.querySelectorAll("button") || []).find((b) =>
+        b.textContent?.includes("频谱")
       );
       expect(spectrumTabBtn).toBeTruthy();
 
@@ -292,11 +286,7 @@ describe("Floating Player Audio & Touch Modules", () => {
 
       act(() => {
         root?.render(
-          <FloatingDebugHUD
-            isOpen={true}
-            onStateChange={stateChangeMock}
-            currentState="pill"
-          />
+          <FloatingDebugHUD isOpen={true} onStateChange={stateChangeMock} currentState="pill" />
         );
       });
 
@@ -304,9 +294,9 @@ describe("Floating Player Audio & Touch Modules", () => {
       expect(container?.textContent).toContain("Stiffness (刚度)");
 
       // Test force switch state buttons
-      const expandedStateBtn = Array.from(
-        container?.querySelectorAll("button") || []
-      ).find((b) => b.textContent?.includes("Expanded 展开"));
+      const expandedStateBtn = Array.from(container?.querySelectorAll("button") || []).find((b) =>
+        b.textContent?.includes("Expanded 展开")
+      );
 
       expect(expandedStateBtn).toBeTruthy();
 

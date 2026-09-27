@@ -14,7 +14,8 @@ interface DarkCinemaFloatingCardProps {
 
 const DarkCinemaProgressBar: React.FC<{ duration: number }> = React.memo(({ duration }) => {
   const currentTime = useAudioStore((state) => state.currentTime);
-  const progressPercent = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
+  const progressPercent =
+    duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
 
   return (
     <div className="relative w-full h-1 bg-white/15 rounded-full overflow-hidden">

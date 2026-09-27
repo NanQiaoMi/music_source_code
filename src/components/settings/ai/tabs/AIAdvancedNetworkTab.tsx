@@ -9,10 +9,7 @@ interface AIAdvancedNetworkTabProps {
   onUpdate: (updates: Partial<AIConfig>) => void;
 }
 
-export const AIAdvancedNetworkTab: React.FC<AIAdvancedNetworkTabProps> = ({
-  config,
-  onUpdate,
-}) => {
+export const AIAdvancedNetworkTab: React.FC<AIAdvancedNetworkTabProps> = ({ config, onUpdate }) => {
   const timeout = config.timeout ?? 30000;
   const stream = config.stream ?? true;
   const customHeaders = config.customHeaders ?? {};
@@ -87,7 +84,11 @@ export const AIAdvancedNetworkTab: React.FC<AIAdvancedNetworkTabProps> = ({
 
         <div className="flex items-center justify-between text-[11px] text-white/40 pt-1 border-t border-white/[0.06]">
           <span>备用端点候选池状态：</span>
-          <span className={availableFallbacksCount > 0 ? "text-purple-300 font-medium" : "text-amber-300/80"}>
+          <span
+            className={
+              availableFallbacksCount > 0 ? "text-purple-300 font-medium" : "text-amber-300/80"
+            }
+          >
             {availableFallbacksCount > 0
               ? `已就绪 ${availableFallbacksCount} 个有效备用端点`
               : "暂无其他已填 Key 的备用端点（可在左侧添加更多端点以实现容灾）"}
@@ -108,9 +109,7 @@ export const AIAdvancedNetworkTab: React.FC<AIAdvancedNetworkTabProps> = ({
               <Radio className="w-3.5 h-3.5 text-cyan-400" />
               <span>流式传输 (Server-Sent Events / SSE)</span>
             </div>
-            <p className="text-[11px] text-white/40">
-              逐字流式打字输出，显著降低首字等待感 (TTFT)
-            </p>
+            <p className="text-[11px] text-white/40">逐字流式打字输出，显著降低首字等待感 (TTFT)</p>
           </div>
           <button
             type="button"

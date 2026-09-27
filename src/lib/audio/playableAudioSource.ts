@@ -31,7 +31,10 @@ export function hasPlayableAudioSource(song: AudioSourceSong): boolean {
   }
   // 在线平台音源（netease, qq, kugou, kuwo, qishui, lx_custom 等）支持在播放时动态嗅探解析真实音频流
   return Boolean(
-    (song.source && song.source !== "local" && song.source !== "upload" && song.source !== "demo") ||
+    (song.source &&
+      song.source !== "local" &&
+      song.source !== "upload" &&
+      song.source !== "demo") ||
     (song.id && String(song.id).trim().length > 0 && !String(song.id).startsWith("demo-"))
   );
 }

@@ -187,7 +187,9 @@ export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   if (isV2) {
-    return <FabricSharePanel isOpen={isOpen} onClose={onClose} onSwitchBack={() => setIsV2(false)} />;
+    return (
+      <FabricSharePanel isOpen={isOpen} onClose={onClose} onSwitchBack={() => setIsV2(false)} />
+    );
   }
 
   return (

@@ -5,7 +5,8 @@ import { neteaseWeApiRequest } from "@/lib/netease/request";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const queryCookie = searchParams.get("cookie") || "";
-  const headerCookie = request.headers.get("x-netease-cookie") || request.headers.get("cookie") || "";
+  const headerCookie =
+    request.headers.get("x-netease-cookie") || request.headers.get("cookie") || "";
   const cookie = queryCookie || headerCookie;
   let uid = searchParams.get("uid") || request.headers.get("x-user-id") || "";
 

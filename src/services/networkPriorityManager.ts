@@ -1,11 +1,11 @@
 /**
  * Network Priority Manager
- * 
+ *
  * 严格三级优先级网络调度队列：
  * - P0 (Critical): 音频流代理 (/api/audio/proxy)、音频直链嗅探 (独占通道，零等待)
  * - P1 (High): 当前播放曲目歌词、高清专辑封面
  * - P2 (Background): AI 歌词笔记生成 (/api/ai/chat)、后台大歌单离线同步、预拉取
- * 
+ *
  * 调度规则：
  * - 当音频处于拉流加载或缓冲中断时 (isAudioBuffering = true)，自动挂起 P2 任务，保障带宽与 TCP 连接池；
  * - 音频平稳播放或就绪后，唤醒并放行 P2 队列任务。
