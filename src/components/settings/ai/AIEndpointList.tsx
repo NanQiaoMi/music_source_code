@@ -5,7 +5,7 @@ import { AIConfig } from "@/store/aiStore";
 import { CategoryFilter } from "./types";
 import { findPresetById, detectProviderFromUrl } from "./providerPresets";
 import { ProviderLogo } from "./ProviderLogo";
-import { Search, Plus, RefreshCcw, Copy, Trash2 } from "lucide-react";
+import { Search, Plus, RefreshCcw, Copy, Trash2, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface AIEndpointListProps {
@@ -157,6 +157,17 @@ export const AIEndpointList: React.FC<AIEndpointListProps> = ({
                           未测试
                         </span>
                       )}
+
+                      {/* 端点状态之外的另一回事：点是通的，但你填的这把 key 已经没用了 */}
+                      {config.keyRejectedAt ? (
+                        <span
+                          className="flex items-center gap-1 text-[10px] text-amber-400 font-mono"
+                          title="你填写的密钥已被上游拒绝，当前由服务端内置密钥顶上。到详情页更新，或清空改用内置。"
+                        >
+                          <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
+                          密钥失效·已用服务端密钥
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>

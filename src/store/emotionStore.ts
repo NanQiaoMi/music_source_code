@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { saveSongEmotions, loadSongEmotions } from "@/services/metadataStorage";
 import { EmotionPoint, EmotionCoordinate } from "@/types/emotion";
 import { toast } from "@/components/shared/GlassToast";
+import { noteChatKeyOutcome } from "@/store/aiStore";
 import type { Song } from "@/types/song";
 
 interface AIConfig {
@@ -287,7 +288,7 @@ export const useEmotionStore = create<EmotionState>()(
 
           if (!song || !config.apiKey) {
             console.error("Missing song, config or API key", { song, config });
-            if (!config.apiKey) toast.warning("鏈厤缃湁鏁堢殑 AI 鎺ュ彛");
+            if (!config.apiKey) toast.warning("未配置有效的 AI 接口");
             return;
           }
 
@@ -328,6 +329,8 @@ Return format: {"v": number, "e": number, "d": string}`;
             }),
             signal,
           });
+          // 我们的 key 被上游拒、服务端密钥顶上时，标记到配置上
+          noteChatKeyOutcome(config.id, response);
 
           if (!response.ok) throw new Error(`API Error: ${response.status}`);
 

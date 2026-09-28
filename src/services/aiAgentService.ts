@@ -1,4 +1,4 @@
-import { AIConfig } from "@/store/aiStore";
+import { AIConfig, noteChatKeyOutcome } from "@/store/aiStore";
 import { AgentMessage, SongResult, ToolCall } from "@/types/aiAgent";
 import { AI_AGENT_TOOLS, executeTool } from "./aiAgentTools";
 
@@ -518,6 +518,9 @@ export async function runAgentConversation({
     if (!response) {
       throw new Error("未能获取到有效的服务响应");
     }
+
+    // 服务端拿我们的 key 被拒、改用自己的密钥顶上时，标记到配置上给设置页提示
+    if (currentConfig.id) noteChatKeyOutcome(currentConfig.id, response);
 
     const data: ChatCompletionResponse = await response.json();
     if (data.error) {

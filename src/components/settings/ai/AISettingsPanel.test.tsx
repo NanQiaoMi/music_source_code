@@ -144,4 +144,48 @@ describe("AISettingsPanel", () => {
     expect(container.textContent).toContain("模型生成动力学参数");
     expect(container.textContent).toContain("音乐场景专属 Prompt 预设人设");
   });
+
+  it("没有失效标记时不显示任何密钥警告", async () => {
+    await act(async () => {
+      root.render(<AISettingsPanel isOpen={true} onClose={() => {}} />);
+    });
+
+    expect(container.textContent).not.toContain("密钥失效");
+    expect(container.textContent).not.toContain("你填写的密钥已被拒绝");
+  });
+
+  it("密钥被服务端顶上后，列表和详情页都显示常驻警告", async () => {
+    useAIStore.setState({
+      configs: useAIStore
+        .getState()
+        .configs.map((c) => (c.id === "cfg-1" ? { ...c, keyRejectedAt: Date.now() } : c)),
+    });
+
+    await act(async () => {
+      root.render(<AISettingsPanel isOpen={true} onClose={() => {}} />);
+    });
+
+    // 端点列表状态行：与「在线/异常/未测试」并列的常驻标记
+    expect(container.textContent).toContain("密钥失效·已用服务端密钥");
+    // 详情页头部：说明后果与处置方式
+    expect(container.textContent).toContain("你填写的密钥已被拒绝");
+    // 端点本身是通的，不能被误报成离线
+    expect(container.textContent).toContain("280ms");
+  });
+
+  it("只有被拒的那条配置显示警告", async () => {
+    useAIStore.setState({
+      configs: useAIStore
+        .getState()
+        .configs.map((c) => (c.id === "cfg-2" ? { ...c, keyRejectedAt: Date.now() } : c)),
+    });
+
+    await act(async () => {
+      root.render(<AISettingsPanel isOpen={true} onClose={() => {}} />);
+    });
+
+    expect(container.textContent).toContain("密钥失效·已用服务端密钥");
+    // 详情页看的是选中的 cfg-1，它没被拒，所以详情页不该出现警告
+    expect(container.textContent).not.toContain("你填写的密钥已被拒绝");
+  });
 });
