@@ -16,6 +16,7 @@ Execute in order. No step skipped, no step reordered.
 6. On `exit` — run the cleanup at the bottom.
 
 Harness policy:
+
 - **Claude Code**: run the poll as a **background task** (no short timeout). The harness notifies you when it completes, so the main conversation stays free. Do not block the shell.
 - **Cursor**: run the poll in the **foreground** (blocking shell — not a background terminal, not a subagent). Cursor background terminals and subagents do not reliably resume the chat with poll stdout.
 - **Codex**: run the poll in the **foreground** (blocking shell — not a background task, not a subagent). Codex background exec sessions do not reliably surface poll stdout back into the conversation at the moment events arrive, so a "fire-and-forget" background poll will stall live mode.
@@ -110,11 +111,11 @@ Before writing a single line of code, name each variant.
 
 **For freeform (`action` is `impeccable`, or the user supplied a free prompt):** each variant must anchor to a different **archetype** — a real-world design analogue specific enough to be recognizable at a glance. Not "modern landing page." Not "minimal product hero." Examples:
 
-- *Broadsheet masthead with rule-divided columns* (think NYT print edition)
-- *Klim Type Foundry specimen page* (dense, technical, catalog-driven)
-- *Japanese print-poster minimalism with a single oversize glyph*
-- *Bloomberg Terminal status bar*
-- *Condé Nast Traveler feature layout*
+- _Broadsheet masthead with rule-divided columns_ (think NYT print edition)
+- _Klim Type Foundry specimen page_ (dense, technical, catalog-driven)
+- _Japanese print-poster minimalism with a single oversize glyph_
+- _Bloomberg Terminal status bar_
+- _Condé Nast Traveler feature layout_
 
 Then commit each variant to a different **primary axis** of difference:
 
@@ -153,7 +154,7 @@ If two of them rhyme ("both use big type" / "both are stacks of sections" / "bot
 
 ### 5. Apply the freeform prompt (if present)
 
-`event.freeformPrompt` is the user's ceiling on direction — all variants must honor it — but still explore meaningfully different *interpretations*. "Make it feel like a newspaper front page" → variant 1 = broadsheet masthead + rule-divided columns, variant 2 = tabloid headline + single dominant image, variant 3 = minimalist editorial with oversized drop cap. Not three newspapers in the same voice.
+`event.freeformPrompt` is the user's ceiling on direction — all variants must honor it — but still explore meaningfully different _interpretations_. "Make it feel like a newspaper front page" → variant 1 = broadsheet masthead + rule-divided columns, variant 2 = tabloid headline + single dominant image, variant 3 = minimalist editorial with oversized drop cap. Not three newspapers in the same voice.
 
 ### 6. Write all variants in a single edit
 
@@ -227,7 +228,9 @@ Each variant can expose **coarse** knobs alongside the full HTML/CSS replacement
 **How to declare.** Put a JSON manifest on the variant wrapper:
 
 ```html
-<div data-impeccable-variant="1" data-impeccable-params='[
+<div
+  data-impeccable-variant="1"
+  data-impeccable-params='[
   {"id":"color-amount","kind":"range","min":0,"max":1,"step":0.05,"default":0.5,"label":"Color amount"},
   {"id":"density","kind":"steps","default":"snug","label":"Density","options":[
     {"value":"airy","label":"Airy"},
@@ -235,7 +238,8 @@ Each variant can expose **coarse** knobs alongside the full HTML/CSS replacement
     {"value":"packed","label":"Packed"}
   ]},
   {"id":"serif","kind":"toggle","default":false,"label":"Serif display"}
-]'>
+]'
+>
   ...variant content...
 </div>
 ```
@@ -363,6 +367,7 @@ Dedupe is the browser's job (one prefetch per unique pathname per session) — t
 ## Exit
 
 The user can stop live mode by:
+
 - Saying "stop live mode" / "exit live" in chat
 - Closing the browser tab (SSE drops, poll returns `exit` after 8s)
 - The browser's exit button
@@ -378,6 +383,7 @@ node .agents/skills/impeccable/scripts/live-server.mjs stop
 Stops the HTTP server and runs `live-inject.mjs --remove` to strip `localhost:…/live.js` from the HTML entry. To stop the server but keep the inject tag (for a quick restart), use `stop --keep-inject`. `config.json` persists for future sessions.
 
 Then:
+
 - Remove any leftover variant wrappers (search for `impeccable-variants-start` markers).
 - Remove any leftover carbonize blocks (search for `impeccable-carbonize-start` markers).
 
@@ -407,21 +413,21 @@ Schema:
 
 **Glob syntax.** `**` matches any number of path segments (including zero), `*` matches any characters except `/`, `?` matches a single character except `/`. Paths are always relative to the project root with forward slashes.
 
-| Framework | `files` | `insertBefore` | `commentSyntax` |
-|-----------|---------|----------------|-----------------|
-| SPA with single shell (Vite / React / Plain HTML) | `["index.html"]` | `</body>` | `html` |
-| Next.js (App Router) | `["app/layout.tsx"]` | `</body>` | `jsx` |
-| Next.js (Pages) | `["pages/_document.tsx"]` | `</body>` | `jsx` |
-| Nuxt | `["app.vue"]` | `</body>` | `html` |
-| Svelte / SvelteKit | `["src/app.html"]` | `</body>` | `html` |
-| Astro | `[" <root layout .astro>"]` | `</body>` | `html` |
-| Multi-page (separate HTML per route) | `["public/**/*.html"]` — a glob covering the served directory | `</body>` | `html` |
+| Framework                                         | `files`                                                       | `insertBefore` | `commentSyntax` |
+| ------------------------------------------------- | ------------------------------------------------------------- | -------------- | --------------- |
+| SPA with single shell (Vite / React / Plain HTML) | `["index.html"]`                                              | `</body>`      | `html`          |
+| Next.js (App Router)                              | `["app/layout.tsx"]`                                          | `</body>`      | `jsx`           |
+| Next.js (Pages)                                   | `["pages/_document.tsx"]`                                     | `</body>`      | `jsx`           |
+| Nuxt                                              | `["app.vue"]`                                                 | `</body>`      | `html`          |
+| Svelte / SvelteKit                                | `["src/app.html"]`                                            | `</body>`      | `html`          |
+| Astro                                             | `[" <root layout .astro>"]`                                   | `</body>`      | `html`          |
+| Multi-page (separate HTML per route)              | `["public/**/*.html"]` — a glob covering the served directory | `</body>`      | `html`          |
 
 Pick an anchor that exists in every file (`</body>` almost always works). Use `insertAfter` if the anchor should match **after** a specific line.
 
 For multi-page sites, **prefer a glob over a literal file list**. New pages added later are picked up automatically on the next `live-inject.mjs` run; no config maintenance needed.
 
-For multi-page sites whose pages are *rebuilt* by a generator (Astro, static-site generators, custom scripts like `build-sub-pages.js`), the inject survives only until the next regeneration. Re-run `live.mjs` after each build. Accept is unaffected — it writes to true source via the fallback flow.
+For multi-page sites whose pages are _rebuilt_ by a generator (Astro, static-site generators, custom scripts like `build-sub-pages.js`), the inject survives only until the next regeneration. Re-run `live.mjs` after each build. Accept is unaffected — it writes to true source via the fallback flow.
 
 ### Drift-heal warning
 
@@ -431,7 +437,7 @@ On every `live.mjs` boot, after inject, the project is scanned for HTML files un
 {
   "ok": true,
   "serverPort": 8400,
-  "pageFiles": [ "..." ],
+  "pageFiles": ["..."],
   "configDrift": {
     "orphans": ["public/new-section/index.html", "public/docs/new-command.html"],
     "orphanCount": 2,
@@ -461,14 +467,14 @@ Otherwise, run the detection helper:
 node .agents/skills/impeccable/scripts/detect-csp.mjs
 ```
 
-Output: `{ shape, signals }` where `shape` is one of `append-arrays`, `append-string`, `middleware`, `meta-tag`, or `null`. The shape is named by *patch mechanism*, so one template covers many frameworks.
+Output: `{ shape, signals }` where `shape` is one of `append-arrays`, `append-string`, `middleware`, `meta-tag`, or `null`. The shape is named by _patch mechanism_, so one template covers many frameworks.
 
 - **`null`** — no CSP; skip to writing `config.json` with `cspChecked: true`.
-- **`append-arrays`** — CSP defined as structured directive arrays. Auto-patchable. See *append-arrays* below. Covers:
+- **`append-arrays`** — CSP defined as structured directive arrays. Auto-patchable. See _append-arrays_ below. Covers:
   - Monorepo helpers with `additionalScriptSrc` / `additionalConnectSrc` options (Next.js + shared config package)
   - SvelteKit `kit.csp.directives`
   - Nuxt `nuxt-security` module's `contentSecurityPolicy`
-- **`append-string`** — CSP written as a literal value string. Auto-patchable. See *append-string* below. Covers:
+- **`append-string`** — CSP written as a literal value string. Auto-patchable. See _append-string_ below. Covers:
   - Inline `next.config.*` `headers()` with a CSP literal
   - Nuxt `routeRules` / `nitro.routeRules` headers
 - **`middleware`** or **`meta-tag`** — rarer. Detected but not auto-patched in v1. Show the user the detected files and ask them to add `http://localhost:8400` to `script-src` and `connect-src` manually, then mark `cspChecked: true` and proceed.
@@ -498,17 +504,17 @@ CSP expressed as structured directive arrays. Patch mechanism: declare a dev-onl
 
 ```ts
 // Dev-only allowance so impeccable live mode can load. Guarded by NODE_ENV.
-const __impeccableLiveDev =
-  process.env.NODE_ENV === "development" ? ["http://localhost:8400"] : [];
+const __impeccableLiveDev = process.env.NODE_ENV === "development" ? ["http://localhost:8400"] : [];
 ```
 
 **Append `...__impeccableLiveDev` to the script-src and connect-src directive arrays.** Per-framework specifics:
 
-- **Next.js + monorepo helper** — edit the *app's* `next.config.*` (not the shared helper), appending to `additionalScriptSrc` and `additionalConnectSrc` passed into `createBaseNextConfig` (or equivalent). Keeps the shared package clean.
+- **Next.js + monorepo helper** — edit the _app's_ `next.config.*` (not the shared helper), appending to `additionalScriptSrc` and `additionalConnectSrc` passed into `createBaseNextConfig` (or equivalent). Keeps the shared package clean.
 - **SvelteKit** — edit `svelte.config.js`, appending to `kit.csp.directives['script-src']` and `kit.csp.directives['connect-src']`.
 - **Nuxt + nuxt-security** — edit `nuxt.config.*`, appending to `security.headers.contentSecurityPolicy['script-src']` and `['connect-src']`.
 
 Reference outputs:
+
 - `tests/framework-fixtures/nextjs-turborepo/expected-after-patch.ts` (Next.js)
 - `tests/framework-fixtures/sveltekit-csp/expected-after-patch.js` (SvelteKit)
 
@@ -520,21 +526,23 @@ CSP built as a literal value string. Two-point patch: declare a dev-only string 
 
 ```ts
 // Dev-only allowance so impeccable live mode can load.
-const __impeccableLiveDev =
-  process.env.NODE_ENV === "development" ? " http://localhost:8400" : "";
+const __impeccableLiveDev = process.env.NODE_ENV === "development" ? " http://localhost:8400" : "";
 ```
 
 Then in the CSP value string:
+
 - `script-src 'self' 'unsafe-inline'` → `` `script-src 'self' 'unsafe-inline'${__impeccableLiveDev}` ``
 - `connect-src 'self'` → `` `connect-src 'self'${__impeccableLiveDev}` ``
 
 (Leading space on the dev string so it concatenates cleanly into the existing value. Convert the literal CSP directives into template strings as part of the edit if they aren't already.)
 
 Per-framework specifics:
+
 - **Next.js inline `headers()`** — edit `next.config.*`, splicing the variable into the CSP value.
 - **Nuxt `routeRules`** — edit `nuxt.config.*`, splicing into the CSP in `routeRules['/**'].headers['Content-Security-Policy']`.
 
 Reference outputs:
+
 - `tests/framework-fixtures/nextjs-inline-csp/expected-after-patch.js` (Next.js)
 - `tests/framework-fixtures/nuxt-csp/expected-after-patch.ts` (Nuxt)
 

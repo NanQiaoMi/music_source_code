@@ -99,6 +99,7 @@ Architecture and handoff:
 ### Task 1: Stabilize The Current Branch Before More Feature Work
 
 **Status**
+
 - [ ] Task complete
 
 **Dependencies:** None
@@ -182,6 +183,7 @@ git commit --no-verify -m "chore: stabilize current feature iteration baseline"
 ### Task 2: Finish Share Poster Workshop As A Real Creative Tool
 
 **Status**
+
 - [ ] Task complete
 
 **Dependencies:** Task 1
@@ -281,6 +283,7 @@ git commit --no-verify -m "feat(social): complete poster workshop export flow"
 ### Task 3: Upgrade Daily Recommendations Into A Feedback Loop
 
 **Status**
+
 - [ ] Task complete
 
 **Dependencies:** Task 1
@@ -298,7 +301,9 @@ it("removes dismissed songs from active recommendations", () => {
   store.refreshRecommendations([songA, songB], createContext());
   store.dismissRecommendation(songA.id);
 
-  expect(useRecommendationStore.getState().recommendations.map((item) => item.song.id)).not.toContain(songA.id);
+  expect(
+    useRecommendationStore.getState().recommendations.map((item) => item.song.id)
+  ).not.toContain(songA.id);
 });
 
 it("filters negative-feedback artists when fallback recommendations are generated", () => {
@@ -367,6 +372,7 @@ git commit --no-verify -m "feat(recommendation): add feedback-driven daily recom
 ### Task 4: Make Queue And Search Work Together As A Command Center
 
 **Status**
+
 - [ ] Task complete
 
 **Dependencies:** Task 1
@@ -385,7 +391,11 @@ it("insertNext places a song after the current index", () => {
   store.setCurrentIndex(0);
   store.insertNext(songC);
 
-  expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual([songA.id, songC.id, songB.id]);
+  expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual([
+    songA.id,
+    songC.id,
+    songB.id,
+  ]);
 });
 
 it("clearPlayed keeps the current song as the first item", () => {
@@ -452,6 +462,7 @@ git commit --no-verify -m "feat(player): connect search and queue command workfl
 ### Task 5: Finish Audio Effects Panel With Presets, Morphing, And Safe Persistence
 
 **Status**
+
 - [ ] Task complete
 
 **Dependencies:** Task 1
@@ -467,7 +478,9 @@ Create or extend `src/store/audioEffectsStore.test.ts`:
 it("saves and restores user presets without mutating built-in presets", () => {
   const store = useAudioEffectsStore.getState();
   store.savePreset("My Preset");
-  const saved = useAudioEffectsStore.getState().userPresets.find((preset) => preset.name === "My Preset");
+  const saved = useAudioEffectsStore
+    .getState()
+    .userPresets.find((preset) => preset.name === "My Preset");
 
   expect(saved).toBeDefined();
   store.applyPreset(saved!.id);
@@ -535,6 +548,7 @@ git commit --no-verify -m "feat(audio): complete effects preset workflow"
 ### Task 6: Replace Mock Professional Processing With Honest Local Processing States
 
 **Status**
+
 - [ ] Task complete
 
 **Dependencies:** Task 1, Task 5
@@ -618,6 +632,7 @@ git commit --no-verify -m "fix(audio): replace mock processing completions with 
 ### Task 7: Improve Lyrics Recovery And Readability
 
 **Status**
+
 - [ ] Task complete
 
 **Dependencies:** Task 1
@@ -690,6 +705,7 @@ git commit --no-verify -m "feat(lyrics): improve lyrics recovery and readability
 ### Task 8: Decouple Store-To-Store Reads Behind Focused Selectors Or Coordinators
 
 **Status**
+
 - [ ] Task complete
 
 **Dependencies:** Task 3, Task 4
@@ -760,6 +776,7 @@ git commit --no-verify -m "refactor(store): decouple recommendation inputs and r
 ### Task 9: Add Visual Performance Presets And Degraded-Mode Controls
 
 **Status**
+
 - [ ] Task complete
 
 **Dependencies:** Task 1, Task 8
@@ -822,6 +839,7 @@ git commit --no-verify -m "feat(viz): add performance presets and reduced-motion
 ### Task 10: Repair Agent-Facing Documentation And Update Roadmap Reality
 
 **Status**
+
 - [ ] Task complete
 
 **Dependencies:** Tasks 1-9

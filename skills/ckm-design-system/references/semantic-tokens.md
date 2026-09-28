@@ -211,5 +211,5 @@ Semantic tokens enable instant theme switching:
 
 ```js
 // Toggle dark mode
-document.documentElement.classList.toggle('dark');
+document.documentElement.classList.toggle("dark");
 ```

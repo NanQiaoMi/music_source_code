@@ -96,7 +96,6 @@ $env:VIBE_MODELS_DIR = "$env:LOCALAPPDATA\MIMI Music Player\models"
 python -m uvicorn main:app --port 8000
 ```
 
-
 ### 健康检查
 
 ```bash

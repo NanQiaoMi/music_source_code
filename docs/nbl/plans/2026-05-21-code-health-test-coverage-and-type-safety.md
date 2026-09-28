@@ -391,9 +391,11 @@ Stores to test (8 files):
 ## Execution Strategy
 
 ### Solo execution order
+
 Part A (1 -> 2) -> Part B (3 -> 4 -> 5) -> Part C (6 -> 7 -> 8) -> Part D (9 -> 10 -> 11) -> Part E (12).
 
 ### Parallel strategy (subagent-driven)
+
 - **Wave 1:** Tasks 1, 6, 7, 8 (auto-fix + store tests are fully disjoint).
 - **Wave 2 (after 1):** Tasks 2, 3, 4, 5 (lint fixes by rule, non-overlapping files).
 - **Wave 3:** Task 9 (type definitions).
@@ -401,14 +403,15 @@ Part A (1 -> 2) -> Part B (3 -> 4 -> 5) -> Part C (6 -> 7 -> 8) -> Part D (9 -> 
 - **Wave 5:** Task 12 (final gate).
 
 ### Estimated effort
-| Part | Tasks | Errors resolved | Tests added | Commits |
-|------|-------|----------------|-------------|---------|
-| A | 2 | 356 | 0 | 2 |
-| B | 3 | 111 | 0 | 3 |
-| C | 3 | 0 | ~44 specs | 3 |
-| D | 3 | ~140 | 0 | 3 |
-| E | 1 | remaining | 0 | 1 |
-| **Total** | **12** | **~583 -> 0** | **~44** | **12** |
+
+| Part      | Tasks  | Errors resolved | Tests added | Commits |
+| --------- | ------ | --------------- | ----------- | ------- |
+| A         | 2      | 356             | 0           | 2       |
+| B         | 3      | 111             | 0           | 3       |
+| C         | 3      | 0               | ~44 specs   | 3       |
+| D         | 3      | ~140            | 0           | 3       |
+| E         | 1      | remaining       | 0           | 1       |
+| **Total** | **12** | **~583 -> 0**   | **~44**     | **12**  |
 
 ---
 

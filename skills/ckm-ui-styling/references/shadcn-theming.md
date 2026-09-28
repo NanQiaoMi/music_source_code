@@ -7,30 +7,33 @@ Theme configuration, CSS variables, dark mode, and component customization.
 ### Next.js App Router
 
 **1. Install next-themes:**
+
 ```bash
 npm install next-themes
 ```
 
 **2. Create theme provider:**
+
 ```tsx
 // components/theme-provider.tsx
-"use client"
+"use client";
 
-import * as React from "react"
-import { ThemeProvider as NextThemesProvider } from "next-themes"
+import * as React from "react";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
 
 export function ThemeProvider({
   children,
   ...props
 }: React.ComponentProps<typeof NextThemesProvider>) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
 }
 ```
 
 **3. Wrap app:**
+
 ```tsx
 // app/layout.tsx
-import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeProvider } from "@/components/theme-provider";
 
 export default function RootLayout({ children }) {
   return (
@@ -46,18 +49,19 @@ export default function RootLayout({ children }) {
         </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }
 ```
 
 **4. Theme toggle component:**
+
 ```tsx
-import { Moon, Sun } from "lucide-react"
-import { useTheme } from "next-themes"
-import { Button } from "@/components/ui/button"
+import { Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { Button } from "@/components/ui/button";
 
 export function ThemeToggle() {
-  const { setTheme, theme } = useTheme()
+  const { setTheme, theme } = useTheme();
 
   return (
     <Button
@@ -69,7 +73,7 @@ export function ThemeToggle() {
       <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
       <span className="sr-only">Toggle theme</span>
     </Button>
-  )
+  );
 }
 ```
 
@@ -80,15 +84,16 @@ Use similar approach with next-themes or implement custom solution:
 ```javascript
 // Store preference
 function toggleDarkMode() {
-  const isDark = document.documentElement.classList.toggle('dark')
-  localStorage.setItem('theme', isDark ? 'dark' : 'light')
+  const isDark = document.documentElement.classList.toggle("dark");
+  localStorage.setItem("theme", isDark ? "dark" : "light");
 }
 
 // Initialize on load
-if (localStorage.theme === 'dark' ||
-    (!('theme' in localStorage) &&
-     window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-  document.documentElement.classList.add('dark')
+if (
+  localStorage.theme === "dark" ||
+  (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches)
+) {
+  document.documentElement.classList.add("dark");
 }
 ```
 
@@ -140,14 +145,16 @@ shadcn/ui uses CSS variables for theming. Variables defined in `globals.css`:
 ### Color Format
 
 Values use HSL format without `hsl()` wrapper for better opacity control:
+
 ```css
---primary: 222.2 47.4% 11.2%;  /* H S L */
+--primary: 222.2 47.4% 11.2%; /* H S L */
 ```
 
 Usage in Tailwind:
+
 ```css
 background: hsl(var(--primary));
-background: hsl(var(--primary) / 0.5);  /* 50% opacity */
+background: hsl(var(--primary) / 0.5); /* 50% opacity */
 ```
 
 ## Tailwind Configuration
@@ -194,7 +201,7 @@ export default {
       },
     },
   },
-}
+};
 ```
 
 ## Color Customization
@@ -205,12 +212,12 @@ Change colors by modifying CSS variables in `globals.css`:
 
 ```css
 :root {
-  --primary: 262.1 83.3% 57.8%;  /* Purple */
+  --primary: 262.1 83.3% 57.8%; /* Purple */
   --primary-foreground: 210 20% 98%;
 }
 
 .dark {
-  --primary: 263.4 70% 50.4%;  /* Darker purple */
+  --primary: 263.4 70% 50.4%; /* Darker purple */
   --primary-foreground: 210 20% 98%;
 }
 ```
@@ -238,6 +245,7 @@ Create theme variants with data attributes:
 ```
 
 Apply theme:
+
 ```tsx
 <div data-theme="violet">
   <Button>Violet theme</Button>
@@ -276,12 +284,15 @@ const buttonVariants = cva(
       size: "default",
     },
   }
-)
+);
 ```
 
 Usage:
+
 ```tsx
-<Button variant="gradient" size="xl">Custom Button</Button>
+<Button variant="gradient" size="xl">
+  Custom Button
+</Button>
 ```
 
 ### Customize Styles
@@ -290,19 +301,18 @@ Modify base styles in component:
 
 ```tsx
 // components/ui/card.tsx
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-xl border bg-card text-card-foreground shadow-lg",  // Modified
-      className
-    )}
-    {...props}
-  />
-))
+const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "rounded-xl border bg-card text-card-foreground shadow-lg", // Modified
+        className
+      )}
+      {...props}
+    />
+  )
+);
 ```
 
 ### Override with className
@@ -351,15 +361,16 @@ Control border radius globally:
 
 ```css
 :root {
-  --radius: 0.5rem;  /* Default */
-  --radius: 0rem;    /* Sharp corners */
-  --radius: 1rem;    /* Rounded */
+  --radius: 0.5rem; /* Default */
+  --radius: 0rem; /* Sharp corners */
+  --radius: 1rem; /* Rounded */
 }
 ```
 
 Components use radius variable:
+
 ```tsx
-className="rounded-lg"  /* Uses var(--radius) */
+className = "rounded-lg"; /* Uses var(--radius) */
 ```
 
 ## Best Practices

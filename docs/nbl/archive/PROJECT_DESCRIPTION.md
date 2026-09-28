@@ -1,4 +1,3 @@
-
 # Vibe Music Player 项目描述文档
 
 ## 1. 项目概述
@@ -13,12 +12,12 @@
 
 ### 1.2 版本信息
 
-| 属性 | 值 |
-|------|-----|
-| 当前版本 | V8.0 |
+| 属性     | 值                |
+| -------- | ----------------- |
+| 当前版本 | V8.0              |
 | 项目名称 | Vibe Music Player |
-| 许可证 | MIT License |
-| 开发状态 | 活跃开发中 |
+| 许可证   | MIT License       |
+| 开发状态 | 活跃开发中        |
 
 ---
 
@@ -26,49 +25,49 @@
 
 ### 2.1 前端技术栈
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| **Next.js** | ^16.2.4 | React 全栈框架 |
-| **React** | ^19.2.5 | UI 组件库 |
-| **TypeScript** | ^5.4.3 | 类型安全 |
-| **Tailwind CSS** | ^3.4.1 | 原子化 CSS 框架 |
-| **Framer Motion** | ^12.38.0 | 动画库 |
-| **Zustand** | ^5.0.12 | 状态管理 |
-| **Three.js** | ^0.183.2 | WebGL 3D 渲染 |
-| **Lucide React** | ^1.9.0 | 图标库 |
+| 技术              | 版本     | 用途            |
+| ----------------- | -------- | --------------- |
+| **Next.js**       | ^16.2.4  | React 全栈框架  |
+| **React**         | ^19.2.5  | UI 组件库       |
+| **TypeScript**    | ^5.4.3   | 类型安全        |
+| **Tailwind CSS**  | ^3.4.1   | 原子化 CSS 框架 |
+| **Framer Motion** | ^12.38.0 | 动画库          |
+| **Zustand**       | ^5.0.12  | 状态管理        |
+| **Three.js**      | ^0.183.2 | WebGL 3D 渲染   |
+| **Lucide React**  | ^1.9.0   | 图标库          |
 
 ### 2.2 可视化技术
 
-| 技术 | 用途 |
-|------|------|
-| **Canvas 2D** | 2D 渲染引擎（频谱、粒子、波形等） |
+| 技术                 | 用途                              |
+| -------------------- | --------------------------------- |
+| **Canvas 2D**        | 2D 渲染引擎（频谱、粒子、波形等） |
 | **Three.js (WebGL)** | 3D 渲染引擎（星场、隧道、雕塑等） |
-| **Web Audio API** | 实时音频分析与处理 |
+| **Web Audio API**    | 实时音频分析与处理                |
 
 ### 2.3 后端技术栈（可选）
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| **FastAPI** | ≥0.109.0 | Python Web API 框架 |
-| **Uvicorn** | ≥0.27.0 | ASGI 服务器 |
-| **PyTorch** | ≥2.1.0 | AI 模型推理 |
-| **ModelScope** | ≥1.14.0 | AI 模型管理 |
-| **Transformers** | ≥4.36.0 | NLP 模型支持 |
+| 技术             | 版本     | 用途                |
+| ---------------- | -------- | ------------------- |
+| **FastAPI**      | ≥0.109.0 | Python Web API 框架 |
+| **Uvicorn**      | ≥0.27.0  | ASGI 服务器         |
+| **PyTorch**      | ≥2.1.0   | AI 模型推理         |
+| **ModelScope**   | ≥1.14.0  | AI 模型管理         |
+| **Transformers** | ≥4.36.0  | NLP 模型支持        |
 
 ### 2.4 桌面应用技术
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| **Electron** | ^41.1.0 | 跨平台桌面应用框架 |
-| **electron-builder** | ^26.8.1 | 应用打包工具 |
+| 技术                 | 版本    | 用途               |
+| -------------------- | ------- | ------------------ |
+| **Electron**         | ^41.1.0 | 跨平台桌面应用框架 |
+| **electron-builder** | ^26.8.1 | 应用打包工具       |
 
 ### 2.5 开发工具
 
-| 工具 | 用途 |
-|------|------|
-| **ESLint** | 代码规范检查 |
-| **Prettier** | 代码格式化 |
-| **PostCSS** | CSS 后处理 |
+| 工具             | 用途           |
+| ---------------- | -------------- |
+| **ESLint**       | 代码规范检查   |
+| **Prettier**     | 代码格式化     |
+| **PostCSS**      | CSS 后处理     |
 | **Autoprefixer** | CSS 兼容性处理 |
 
 ---
@@ -234,18 +233,18 @@ interface AudioState {
   volume: number;
   isMuted: boolean;
   playbackRate: number;
-  loopMode: LoopMode;  // "none" | "single" | "all" | "shuffle"
-  
+  loopMode: LoopMode; // "none" | "single" | "all" | "shuffle"
+
   // 当前歌曲信息
   currentSong: Song | null;
   queue: Song[];
   currentIndex: number;
-  
+
   // 均衡器设置
-  eqBands: number[];  // 30段均衡器
+  eqBands: number[]; // 30段均衡器
   currentEQPreset: EQPreset;
   isEQEnabled: boolean;
-  
+
   // 音频增强
   stereoEnhance: number;
   surroundSound: number;
@@ -253,9 +252,9 @@ interface AudioState {
   trebleBoost: number;
   vocalEnhance: number;
   loudnessNormalization: boolean;
-  
+
   // 高级功能
-  gaplessPlayback: boolean;  // 无缝播放
+  gaplessPlayback: boolean; // 无缝播放
   fadeInDuration: number;
   fadeOutDuration: number;
 }
@@ -272,7 +271,7 @@ class AudioGraphManager {
   private masterGain: GainNode;
   private analyser: AnalyserNode;
   private compressor: DynamicsCompressorNode;
-  
+
   // 创建各种音频节点
   createSourceNode(id, audioElement): MediaElementAudioSourceNode;
   createGainNode(id, gain): GainNode;
@@ -285,14 +284,14 @@ class AudioGraphManager {
 
 ```typescript
 interface AudioData {
-  frequencyData: Uint8Array;   // 频率数据
-  waveformData: Uint8Array;    // 波形数据
-  bass: number;                // 低频能量 (0-1)
-  mid: number;                 // 中频能量 (0-1)
-  treble: number;              // 高频能量 (0-1)
-  full: number;                // 全频能量 (0-1)
-  isBeat: boolean;             // 是否检测到节拍
-  bpm: number;                 // 节拍速度
+  frequencyData: Uint8Array; // 频率数据
+  waveformData: Uint8Array; // 波形数据
+  bass: number; // 低频能量 (0-1)
+  mid: number; // 中频能量 (0-1)
+  treble: number; // 高频能量 (0-1)
+  full: number; // 全频能量 (0-1)
+  isBeat: boolean; // 是否检测到节拍
+  bpm: number; // 节拍速度
 }
 ```
 
@@ -310,7 +309,7 @@ interface EffectPlugin {
   description: string;           // 效果描述
   preferredEngine: RenderEngine; // 首选渲染引擎
   parameters: EffectParameterDefinition[];  // 参数定义
-  
+
   // 生命周期方法
   init: (ctx: RenderContext) =&gt; void;
   render: (ctx: RenderContext, audioData: AudioData, params: Record&lt;string, any&gt;) =&gt; void;
@@ -321,56 +320,57 @@ interface EffectPlugin {
 
 #### 4.2.2 效果分类
 
-| 分类 | ID | 数量 | 代表效果 |
-|------|-----|------|----------|
-| **频谱类** | `spectrum` | 4 | 镜像频谱、环形频谱、频谱瀑布、频谱螺旋 |
-| **粒子类** | `particles` | 8 | 粒子爆发、粒子网格、粒子流场、粒子轨迹、粒子星云、粒子引力、粒子旋涡、音频爆炸 |
-| **形状类** | `shapes` | 5 | 波形、音频形状、音频绘画、振动几何、音频水晶 |
-| **几何类** | `geometry` | 2 | 分形几何、万花筒 |
-| **物理类** | `physics` | 1 | 弹簧系统 |
-| **空间类** | `space` | 5 | 星场穿越、隧道飞行、3D网格、音频雕塑、音频液体 |
+| 分类       | ID          | 数量 | 代表效果                                                                       |
+| ---------- | ----------- | ---- | ------------------------------------------------------------------------------ |
+| **频谱类** | `spectrum`  | 4    | 镜像频谱、环形频谱、频谱瀑布、频谱螺旋                                         |
+| **粒子类** | `particles` | 8    | 粒子爆发、粒子网格、粒子流场、粒子轨迹、粒子星云、粒子引力、粒子旋涡、音频爆炸 |
+| **形状类** | `shapes`    | 5    | 波形、音频形状、音频绘画、振动几何、音频水晶                                   |
+| **几何类** | `geometry`  | 2    | 分形几何、万花筒                                                               |
+| **物理类** | `physics`   | 1    | 弹簧系统                                                                       |
+| **空间类** | `space`     | 5    | 星场穿越、隧道飞行、3D网格、音频雕塑、音频液体                                 |
 
 #### 4.2.3 25种可视化效果清单
 
-| 序号 | 效果ID | 名称 | 渲染引擎 | 描述 |
-|------|--------|------|----------|------|
-| 1 | spectrum-modern | 镜像频谱 | Canvas | 现代胶囊状频谱柱，支持镜像显示 |
-| 2 | ring-spectrum-v8 | 环形频谱 | Canvas | 环形排列的频谱显示 |
-| 3 | spectrum-waterfall-v8 | 频谱瀑布 | Canvas | 滚动式频谱瀑布效果 |
-| 4 | spectrum-spiral-v8 | 频谱螺旋 | Canvas | 螺旋状频谱排列 |
-| 5 | particle-burst | 粒子爆发 | Canvas | 音频驱动的粒子从中心爆发 |
-| 6 | particle-grid-v8 | 粒子网格 | Canvas | 粒子连接形成网格 |
-| 7 | particle-flow-field-v8 | 粒子流场 | Canvas | 流动场中的粒子效果 |
-| 8 | particle-trail-v8 | 粒子轨迹 | Canvas | 粒子拖尾轨迹效果 |
-| 9 | particle-nebula-v8 | 粒子星云 | WebGL | 3D 星云粒子效果 |
-| 10 | particle-gravity-v8 | 粒子引力 | Canvas | 引力场粒子系统 |
-| 11 | particle-vortex-v8 | 粒子旋涡 | Canvas | 旋涡状粒子效果 |
-| 12 | particle-explosion-v8 | 音频爆炸 | Canvas | 音频触发的爆炸效果 |
-| 13 | waveform-v8 | 波形V8 | Canvas | 经典音频波形显示 |
-| 14 | audio-shape-v8 | 音频形状 | Canvas | 几何形状随音频变形 |
-| 15 | audio-painting-v8 | 音频绘画 | Canvas | 抽象画笔绘画效果 |
-| 16 | vibration-geometry-v8 | 振动几何 | Canvas | 几何形状振动效果 |
-| 17 | audio-crystal-v8 | 音频水晶 | WebGL | 3D 水晶折射效果 |
-| 18 | fractal-geometry-v8 | 分形几何 | Canvas | 分形图形生成 |
-| 19 | kaleidoscope-v8 | 万花筒 | Canvas | 镜像万花筒效果 |
-| 20 | spring-system-v8 | 弹簧系统 | Canvas | 物理弹簧模拟 |
-| 21 | star-field-v8 | 星场穿越 | WebGL | 3D 星场飞行效果 |
-| 22 | tunnel-flight-v8 | 隧道飞行 | WebGL | 3D 隧道飞行效果 |
-| 23 | space-grid-v8 | 3D网格 | WebGL | 空间网格波浪效果 |
-| 24 | audio-sculpture-v8 | 音频雕塑 | WebGL | 3D 雕塑变形效果 |
-| 25 | audio-liquid-v8 | 音频液体 | WebGL | 流体模拟效果 |
+| 序号 | 效果ID                 | 名称     | 渲染引擎 | 描述                           |
+| ---- | ---------------------- | -------- | -------- | ------------------------------ |
+| 1    | spectrum-modern        | 镜像频谱 | Canvas   | 现代胶囊状频谱柱，支持镜像显示 |
+| 2    | ring-spectrum-v8       | 环形频谱 | Canvas   | 环形排列的频谱显示             |
+| 3    | spectrum-waterfall-v8  | 频谱瀑布 | Canvas   | 滚动式频谱瀑布效果             |
+| 4    | spectrum-spiral-v8     | 频谱螺旋 | Canvas   | 螺旋状频谱排列                 |
+| 5    | particle-burst         | 粒子爆发 | Canvas   | 音频驱动的粒子从中心爆发       |
+| 6    | particle-grid-v8       | 粒子网格 | Canvas   | 粒子连接形成网格               |
+| 7    | particle-flow-field-v8 | 粒子流场 | Canvas   | 流动场中的粒子效果             |
+| 8    | particle-trail-v8      | 粒子轨迹 | Canvas   | 粒子拖尾轨迹效果               |
+| 9    | particle-nebula-v8     | 粒子星云 | WebGL    | 3D 星云粒子效果                |
+| 10   | particle-gravity-v8    | 粒子引力 | Canvas   | 引力场粒子系统                 |
+| 11   | particle-vortex-v8     | 粒子旋涡 | Canvas   | 旋涡状粒子效果                 |
+| 12   | particle-explosion-v8  | 音频爆炸 | Canvas   | 音频触发的爆炸效果             |
+| 13   | waveform-v8            | 波形V8   | Canvas   | 经典音频波形显示               |
+| 14   | audio-shape-v8         | 音频形状 | Canvas   | 几何形状随音频变形             |
+| 15   | audio-painting-v8      | 音频绘画 | Canvas   | 抽象画笔绘画效果               |
+| 16   | vibration-geometry-v8  | 振动几何 | Canvas   | 几何形状振动效果               |
+| 17   | audio-crystal-v8       | 音频水晶 | WebGL    | 3D 水晶折射效果                |
+| 18   | fractal-geometry-v8    | 分形几何 | Canvas   | 分形图形生成                   |
+| 19   | kaleidoscope-v8        | 万花筒   | Canvas   | 镜像万花筒效果                 |
+| 20   | spring-system-v8       | 弹簧系统 | Canvas   | 物理弹簧模拟                   |
+| 21   | star-field-v8          | 星场穿越 | WebGL    | 3D 星场飞行效果                |
+| 22   | tunnel-flight-v8       | 隧道飞行 | WebGL    | 3D 隧道飞行效果                |
+| 23   | space-grid-v8          | 3D网格   | WebGL    | 空间网格波浪效果               |
+| 24   | audio-sculpture-v8     | 音频雕塑 | WebGL    | 3D 雕塑变形效果                |
+| 25   | audio-liquid-v8        | 音频液体 | WebGL    | 流体模拟效果                   |
 
 #### 4.2.4 参数系统
 
 每个效果支持三层参数模式：
 
-| 模式 | 参数数量 | 适用场景 |
-|------|----------|----------|
-| **基础模式** | 3-5个 | 普通用户快速调整 |
-| **专业模式** | 10-15个 | 进阶用户精细控制 |
-| **专家模式** | 全部 | 专业用户深度定制 |
+| 模式         | 参数数量 | 适用场景         |
+| ------------ | -------- | ---------------- |
+| **基础模式** | 3-5个    | 普通用户快速调整 |
+| **专业模式** | 10-15个  | 进阶用户精细控制 |
+| **专家模式** | 全部     | 专业用户深度定制 |
 
 参数类型支持：
+
 - `number` - 数值滑块
 - `color` - 颜色选择器
 - `boolean` - 开关切换
@@ -430,21 +430,21 @@ interface EffectPreset {
 
 #### 4.4.1 同步模式
 
-| 模式 | 描述 |
-|------|------|
-| **音频同步** | 参数随音乐节拍/频谱变化 |
-| **时间轴同步** | 基于时间线的关键帧动画 |
-| **混合模式** | 音频 + 时间轴双重驱动 |
+| 模式           | 描述                    |
+| -------------- | ----------------------- |
+| **音频同步**   | 参数随音乐节拍/频谱变化 |
+| **时间轴同步** | 基于时间线的关键帧动画  |
+| **混合模式**   | 音频 + 时间轴双重驱动   |
 
 #### 4.4.2 动画预设
 
-| 预设名称 | 描述 |
-|---------|------|
-| 跟随节拍 | 参数随音乐节拍变化 |
+| 预设名称 | 描述                 |
+| -------- | -------------------- |
+| 跟随节拍 | 参数随音乐节拍变化   |
 | 低频驱动 | 主要响应低频（贝斯） |
-| 全频响应 | 响应全频段频谱 |
-| 渐变变化 | 参数缓慢平滑过渡 |
-| 脉冲效果 | 节拍时产生脉冲 |
+| 全频响应 | 响应全频段频谱       |
+| 渐变变化 | 参数缓慢平滑过渡     |
+| 脉冲效果 | 节拍时产生脉冲       |
 
 ### 4.5 手势控制系统
 
@@ -468,11 +468,11 @@ interface EffectPreset {
 #### 4.6.2 性能档位
 
 | 档位 | 帧率目标 | 粒子限制 | WebGL 质量 |
-|------|---------|---------|-----------|
-| 低 | 30fps | 1000 | 低 |
-| 中 | 30fps | 3000 | 中 |
-| 高 | 60fps | 8000 | 高 |
-| 极致 | 60fps+ | 20000+ | 超高 |
+| ---- | -------- | -------- | ---------- |
+| 低   | 30fps    | 1000     | 低         |
+| 中   | 30fps    | 3000     | 中         |
+| 高   | 60fps    | 8000     | 高         |
+| 极致 | 60fps+   | 20000+   | 超高       |
 
 ---
 
@@ -482,45 +482,45 @@ interface EffectPreset {
 
 项目采用统一的玻璃拟态（Glassmorphism）设计语言：
 
-| 组件 | 描述 |
-|------|------|
-| `GlassCard` | 玻璃卡片容器 |
+| 组件          | 描述         |
+| ------------- | ------------ |
+| `GlassCard`   | 玻璃卡片容器 |
 | `GlassButton` | 玻璃风格按钮 |
 | `GlassSlider` | 玻璃风格滑块 |
-| `GlassToast` | 玻璃风格通知 |
+| `GlassToast`  | 玻璃风格通知 |
 
 ### 5.2 核心 UI 组件
 
-| 组件 | 功能 |
-|------|------|
-| `MusicCardStack` | 堆叠式音乐卡片交互 |
-| `Player3D` | 3D 立体播放器 |
-| `LyricVisualizer` | 歌词可视化显示 |
-| `FullscreenLyrics` | 全屏歌词模式 |
-| `DesktopLyrics` | 桌面歌词（Electron） |
-| `AudioEqualizer` | 音频均衡器界面 |
-| `SearchPanel` | 搜索面板 |
-| `SettingsPanel` | 设置面板 |
-| `QueuePanel` | 播放队列面板 |
-| `HistoryPanel` | 播放历史面板 |
-| `SmartPlaylistPanel` | 智能播放列表 |
-| `LocalMusicManager` | 本地音乐管理器 |
+| 组件                 | 功能                 |
+| -------------------- | -------------------- |
+| `MusicCardStack`     | 堆叠式音乐卡片交互   |
+| `Player3D`           | 3D 立体播放器        |
+| `LyricVisualizer`    | 歌词可视化显示       |
+| `FullscreenLyrics`   | 全屏歌词模式         |
+| `DesktopLyrics`      | 桌面歌词（Electron） |
+| `AudioEqualizer`     | 音频均衡器界面       |
+| `SearchPanel`        | 搜索面板             |
+| `SettingsPanel`      | 设置面板             |
+| `QueuePanel`         | 播放队列面板         |
+| `HistoryPanel`       | 播放历史面板         |
+| `SmartPlaylistPanel` | 智能播放列表         |
+| `LocalMusicManager`  | 本地音乐管理器       |
 
 ### 5.3 专业功能组件
 
-| 组件 | 功能 |
-|------|------|
-| `AudioProcessingPanel` | 音频处理面板 |
-| `FormatConverter` | 格式转换器 |
-| `TrackCutter` | 音轨切割器 |
-| `DSDConverter` | DSD 格式转换 |
-| `FingerprintScannerPanel` | 音频指纹扫描 |
-| `BatchMetadataEditor` | 批量元数据编辑 |
-| `LyricsSearchPanel` | 歌词搜索 |
-| `LyricsImportPanel` | 歌词导入 |
-| `CrossfadeMixer` | 交叉淡入淡出混音 |
-| `RecordingPanel` | 录音面板 |
-| `SpeechSynthesisPanel` | 语音合成面板 |
+| 组件                      | 功能             |
+| ------------------------- | ---------------- |
+| `AudioProcessingPanel`    | 音频处理面板     |
+| `FormatConverter`         | 格式转换器       |
+| `TrackCutter`             | 音轨切割器       |
+| `DSDConverter`            | DSD 格式转换     |
+| `FingerprintScannerPanel` | 音频指纹扫描     |
+| `BatchMetadataEditor`     | 批量元数据编辑   |
+| `LyricsSearchPanel`       | 歌词搜索         |
+| `LyricsImportPanel`       | 歌词导入         |
+| `CrossfadeMixer`          | 交叉淡入淡出混音 |
+| `RecordingPanel`          | 录音面板         |
+| `SpeechSynthesisPanel`    | 语音合成面板     |
 
 ---
 
@@ -530,31 +530,31 @@ interface EffectPreset {
 
 项目使用 Zustand 进行集中式状态管理，包含以下主要 Store：
 
-| Store | 文件 | 职责 |
-|-------|------|------|
-| `audioStore` | `audioStore.ts` | 音频播放状态、均衡器、音效 |
-| `visualizationV8Store` | `visualizationV8Store.ts` | 可视化效果状态 |
-| `animationStore` | `animationStore.ts` | 动画系统状态 |
-| `presetStore` | `presetStore.ts` | 预设管理状态 |
-| `performanceV8Store` | `performanceV8Store.ts` | 性能监控状态 |
-| `uiStore` | `uiStore.ts` | UI 交互状态 |
-| `playlistStore` | `playlistStore.ts` | 播放列表状态 |
-| `queueStore` | `queueStore.ts` | 播放队列状态 |
-| `favoritesStore` | `favoritesStore.ts` | 收藏状态 |
-| `searchStore` | `searchStore.ts` | 搜索状态 |
-| `gestureStore` | `gestureStore.ts` | 手势控制状态 |
-| `audioEffectsStore` | `audioEffectsStore.ts` | 音频效果状态 |
-| `lyricSettingsStore` | `lyricSettingsStore.ts` | 歌词设置状态 |
-| `sleepTimerStore` | `sleepTimerStore.ts` | 睡眠定时器状态 |
-| `smartPlaylistStore` | `smartPlaylistStore.ts` | 智能播放列表状态 |
-| `backupRestoreStore` | `backupRestoreStore.ts` | 备份恢复状态 |
-| `crossfadeStore` | `crossfadeStore.ts` | 交叉淡入淡出状态 |
-| `recordingStore` | `recordingStore.ts` | 录音状态 |
-| `formatConversionStore` | `formatConversionStore.ts` | 格式转换状态 |
-| `hiresStore` | `hiresStore.ts` | Hi-Res 音频状态 |
-| `dsdProcessingStore` | `dsdProcessingStore.ts` | DSD 处理状态 |
-| `libraryHealthStore` | `libraryHealthStore.ts` | 音乐库健康状态 |
-| `statsAchievementsStore` | `statsAchievementsStore.ts` | 统计成就状态 |
+| Store                    | 文件                        | 职责                       |
+| ------------------------ | --------------------------- | -------------------------- |
+| `audioStore`             | `audioStore.ts`             | 音频播放状态、均衡器、音效 |
+| `visualizationV8Store`   | `visualizationV8Store.ts`   | 可视化效果状态             |
+| `animationStore`         | `animationStore.ts`         | 动画系统状态               |
+| `presetStore`            | `presetStore.ts`            | 预设管理状态               |
+| `performanceV8Store`     | `performanceV8Store.ts`     | 性能监控状态               |
+| `uiStore`                | `uiStore.ts`                | UI 交互状态                |
+| `playlistStore`          | `playlistStore.ts`          | 播放列表状态               |
+| `queueStore`             | `queueStore.ts`             | 播放队列状态               |
+| `favoritesStore`         | `favoritesStore.ts`         | 收藏状态                   |
+| `searchStore`            | `searchStore.ts`            | 搜索状态                   |
+| `gestureStore`           | `gestureStore.ts`           | 手势控制状态               |
+| `audioEffectsStore`      | `audioEffectsStore.ts`      | 音频效果状态               |
+| `lyricSettingsStore`     | `lyricSettingsStore.ts`     | 歌词设置状态               |
+| `sleepTimerStore`        | `sleepTimerStore.ts`        | 睡眠定时器状态             |
+| `smartPlaylistStore`     | `smartPlaylistStore.ts`     | 智能播放列表状态           |
+| `backupRestoreStore`     | `backupRestoreStore.ts`     | 备份恢复状态               |
+| `crossfadeStore`         | `crossfadeStore.ts`         | 交叉淡入淡出状态           |
+| `recordingStore`         | `recordingStore.ts`         | 录音状态                   |
+| `formatConversionStore`  | `formatConversionStore.ts`  | 格式转换状态               |
+| `hiresStore`             | `hiresStore.ts`             | Hi-Res 音频状态            |
+| `dsdProcessingStore`     | `dsdProcessingStore.ts`     | DSD 处理状态               |
+| `libraryHealthStore`     | `libraryHealthStore.ts`     | 音乐库健康状态             |
+| `statsAchievementsStore` | `statsAchievementsStore.ts` | 统计成就状态               |
 
 ### 6.2 状态持久化
 
@@ -599,10 +599,10 @@ export const useAudioStore = create&lt;AudioState&gt;()(
 
 后端集成了多个 AI 模型：
 
-| 模型 | 框架 | 用途 |
-|------|------|------|
-| Paraformer | FunASR | 语音识别 |
-| SamBERT | KantTS | 语音合成 |
+| 模型              | 框架       | 用途      |
+| ----------------- | ---------- | --------- |
+| Paraformer        | FunASR     | 语音识别  |
+| SamBERT           | KantTS     | 语音合成  |
 | ModelScope Models | ModelScope | 多模态 AI |
 
 ### 7.3 启动方式
@@ -628,11 +628,11 @@ npm run start-full
 
 ### 8.2 构建目标
 
-| 平台 | 格式 |
-|------|------|
-| Windows | portable |
-| macOS | dmg, zip |
-| Linux | AppImage, deb |
+| 平台    | 格式          |
+| ------- | ------------- |
+| Windows | portable      |
+| macOS   | dmg, zip      |
+| Linux   | AppImage, deb |
 
 ### 8.3 构建命令
 
@@ -656,12 +656,12 @@ npm run build:electron:linux
 
 项目使用 Web Workers 进行耗时任务的后台处理：
 
-| Worker | 功能 |
-|--------|------|
-| `waveform.worker.ts` | 波形数据计算 |
+| Worker                  | 功能         |
+| ----------------------- | ------------ |
+| `waveform.worker.ts`    | 波形数据计算 |
 | `fingerprint.worker.ts` | 音频指纹生成 |
-| `dsd.worker.ts` | DSD 格式处理 |
-| `conversion.worker.ts` | 音频格式转换 |
+| `dsd.worker.ts`         | DSD 格式处理 |
+| `conversion.worker.ts`  | 音频格式转换 |
 
 ---
 
@@ -692,20 +692,20 @@ npm run dev
 
 ### 10.3 可用脚本
 
-| 命令 | 功能 |
-|------|------|
-| `npm run dev` | 启动开发服务器 |
-| `npm run dev:electron` | 启动 Electron 开发模式 |
-| `npm run dev:full` | 启动完整开发环境 |
-| `npm run build` | 构建生产版本 |
-| `npm run build:electron` | 构建 Electron 应用 |
-| `npm start` | 启动生产服务器 |
-| `npm run lint` | 代码规范检查 |
-| `npm run format` | 代码格式化 |
-| `npm run clean` | 清理构建缓存 |
-| `npm run reset` | 完全重置项目 |
-| `npm run backend` | 启动后端服务 |
-| `npm run start-full` | 启动完整服务 |
+| 命令                     | 功能                   |
+| ------------------------ | ---------------------- |
+| `npm run dev`            | 启动开发服务器         |
+| `npm run dev:electron`   | 启动 Electron 开发模式 |
+| `npm run dev:full`       | 启动完整开发环境       |
+| `npm run build`          | 构建生产版本           |
+| `npm run build:electron` | 构建 Electron 应用     |
+| `npm start`              | 启动生产服务器         |
+| `npm run lint`           | 代码规范检查           |
+| `npm run format`         | 代码格式化             |
+| `npm run clean`          | 清理构建缓存           |
+| `npm run reset`          | 完全重置项目           |
+| `npm run backend`        | 启动后端服务           |
+| `npm run start-full`     | 启动完整服务           |
 
 ### 10.4 添加新的可视化效果
 
@@ -727,13 +727,21 @@ export const MyCustomEffect: EffectPlugin = {
       mode: "basic",
       min: 0,
       max: 100,
-      default: 50
-    }
+      default: 50,
+    },
   ],
-  init(ctx) { /* 初始化逻辑 */ },
-  render(ctx, audioData, params) { /* 渲染逻辑 */ },
-  resize(width, height) { /* 尺寸调整 */ },
-  destroy() { /* 清理资源 */ }
+  init(ctx) {
+    /* 初始化逻辑 */
+  },
+  render(ctx, audioData, params) {
+    /* 渲染逻辑 */
+  },
+  resize(width, height) {
+    /* 尺寸调整 */
+  },
+  destroy() {
+    /* 清理资源 */
+  },
 };
 ```
 
@@ -742,34 +750,35 @@ export const MyCustomEffect: EffectPlugin = {
 
 ### 10.5 项目配置文件
 
-| 文件 | 用途 |
-|------|------|
-| `package.json` | 项目依赖和脚本 |
-| `next.config.js` | Next.js 配置 |
-| `tsconfig.json` | TypeScript 配置 |
+| 文件                 | 用途              |
+| -------------------- | ----------------- |
+| `package.json`       | 项目依赖和脚本    |
+| `next.config.js`     | Next.js 配置      |
+| `tsconfig.json`      | TypeScript 配置   |
 | `tailwind.config.ts` | Tailwind CSS 配置 |
-| `postcss.config.js` | PostCSS 配置 |
-| `.eslintrc.json` | ESLint 规则 |
-| `.prettierrc` | Prettier 格式规则 |
+| `postcss.config.js`  | PostCSS 配置      |
+| `.eslintrc.json`     | ESLint 规则       |
+| `.prettierrc`        | Prettier 格式规则 |
 
 ---
 
 ## 11. 快捷键
 
-| 快捷键 | 功能 |
-|--------|------|
-| `←` `→` | 切换歌曲卡片 |
-| `Enter` / `空格` | 选择卡片 |
-| `P` | 切换性能监控面板 |
-| `S` | 切换设置面板 |
-| `C` | 切换控制面板 |
-| `ESC` | 退出全屏/返回 |
+| 快捷键           | 功能             |
+| ---------------- | ---------------- |
+| `←` `→`          | 切换歌曲卡片     |
+| `Enter` / `空格` | 选择卡片         |
+| `P`              | 切换性能监控面板 |
+| `S`              | 切换设置面板     |
+| `C`              | 切换控制面板     |
+| `ESC`            | 退出全屏/返回    |
 
 ---
 
 ## 12. 更新日志
 
 ### V8.0 (2026-03-30)
+
 - ✅ 25种专业可视化效果
 - ✅ 双渲染引擎（Canvas 2D + WebGL）
 - ✅ 三层参数系统（基础/专业/专家）
@@ -781,6 +790,7 @@ export const MyCustomEffect: EffectPlugin = {
 - ✅ 内存优化与对象池
 
 ### V7.0 (2026-03-28)
+
 - 玻璃拟态 UI 设计
 - 动态渐变背景
 - 堆叠音乐卡片交互
@@ -816,4 +826,3 @@ export const MyCustomEffect: EffectPlugin = {
 **文档版本**: V1.0  
 **最后更新**: 2026-05-01  
 **项目状态**: ✅ 活跃开发中
-

@@ -13,6 +13,7 @@
 ### Task 0.1: 提交文档体系
 
 **状态**
+
 - [ ] 任务完成
 
 **Dependencies:** None
@@ -21,6 +22,7 @@
 - [ ] **Step 1: 确认所有文档文件已创建**
 
 检查以下文件是否存在：
+
 ```
 AGENTS.md
 docs/nbl/PROCESS.md
@@ -49,6 +51,7 @@ git commit --no-verify -m "docs: add AGENTS.md and docs/nbl/ development documen
 ### Task 0.2: Prettier 全项目格式化
 
 **状态**
+
 - [ ] 任务完成
 
 **Dependencies:** None
@@ -87,6 +90,7 @@ Configuration: semi=true, printWidth=100, tabWidth=2, singleQuote=false"
 ### Task 0.3: 激活 CI 测试步骤
 
 **状态**
+
 - [ ] 任务完成
 
 **Dependencies:** Task 0.2 (确保格式化后代码可构建)
@@ -97,15 +101,17 @@ Configuration: semi=true, printWidth=100, tabWidth=2, singleQuote=false"
 取消测试步骤注释：
 
 从：
+
 ```yaml
-      # - name: Run Tests (Vitest)
-      #   run: npm run test:coverage
+# - name: Run Tests (Vitest)
+#   run: npm run test:coverage
 ```
 
 改为：
+
 ```yaml
-      - name: Run Tests (Vitest)
-        run: npm run test
+- name: Run Tests (Vitest)
+  run: npm run test
 ```
 
 - [ ] **Step 2: 设置 vitest.config.ts 的最小覆盖率门禁**
@@ -113,6 +119,7 @@ Configuration: semi=true, printWidth=100, tabWidth=2, singleQuote=false"
 编辑 `vitest.config.ts`：
 
 从：
+
 ```typescript
 coverage: {
   provider: 'v8',
@@ -122,6 +129,7 @@ coverage: {
 ```
 
 改为：
+
 ```typescript
 coverage: {
   provider: 'v8',
@@ -159,6 +167,7 @@ git commit --no-verify -m "ci: enable test step and add coverage threshold in CI
 ### Task 0.4: 更新 PR Template 和 Changelog
 
 **状态**
+
 - [ ] 任务完成
 
 **Dependencies:** None
@@ -169,6 +178,7 @@ git commit --no-verify -m "ci: enable test step and add coverage threshold in CI
 将 Changelog 路径引用从 `docs/CHANGELOG.md` 改为 `docs/nbl/CHANGELOG.md`，并在检查清单顶部的关联中引用 `AGENTS.md`。
 
 在文件末尾添加一行：
+
 ```
 - [ ] 关联 AGENTS.md/docs/nbl 文档已更新（如适用）
 ```
@@ -176,6 +186,7 @@ git commit --no-verify -m "ci: enable test step and add coverage threshold in CI
 - [ ] **Step 2: 创建新的 `docs/nbl/CHANGELOG.md`**
 
 内容：
+
 ```markdown
 # Changelog
 
