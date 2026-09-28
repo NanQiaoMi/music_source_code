@@ -126,7 +126,7 @@ export function VisualizationViewV8() {
           animate={{ opacity: 1 }}
           className="text-white/60 text-lg"
         >
-          鍒濆鍖栦腑...
+          初始化中...
         </motion.div>
       </div>
     );
@@ -234,21 +234,21 @@ export function VisualizationViewV8() {
                     }}
                     className="rounded-xl bg-white px-3 py-2 text-sm font-medium text-black transition hover:bg-white/90 disabled:opacity-50"
                   >
-                    鍒囨崲 Canvas
+                    切换 Canvas
                   </button>
                   <button
                     type="button"
                     onClick={() => setPerformanceLevel("low")}
                     className="rounded-xl bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
                   >
-                    闄嶄綆璐ㄩ噺
+                    降低质量
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowControlDrawer(true)}
                     className="rounded-xl bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
                   >
-                    鎵撳紑鎺у埗
+                    打开控制
                   </button>
                 </div>
                 <p className="mt-3 text-xs text-white/35">
@@ -273,7 +273,7 @@ export function VisualizationViewV8() {
       <button
         onClick={() => setShowControlDrawer(true)}
         className="absolute bottom-6 right-6 z-30 w-12 h-12 rounded-2xl bg-[#1c1c1e]/70 backdrop-blur-[48px] backdrop-saturate-[200%] border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] flex items-center justify-center hover:bg-[#1c1c1e]/90 transition-all"
-        title="鏁堟灉鎺у埗 (C)"
+        title="效果控制 (C)"
       >
         <Settings className="w-5 h-5 text-white/80" />
       </button>

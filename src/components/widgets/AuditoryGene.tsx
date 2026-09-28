@@ -105,7 +105,7 @@ export const AuditoryGene: React.FC = () => {
             <div className="flex items-center gap-2 mb-1">
               <Activity className="w-3 h-3 text-indigo-400 animate-pulse" />
               <span className="text-[10px] font-black tracking-[0.5em] text-white/80 uppercase">
-                鍚鍩哄洜瑙ｆ瀯
+                听觉基因解构
               </span>
             </div>
             <span className="text-[10px] font-medium tracking-[0.2em] text-white/20 uppercase italic">
@@ -147,13 +147,13 @@ export const AuditoryGene: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <div className="text-sm font-black text-white/40 uppercase tracking-widest italic">
-                  鏆傛湭寤虹珛绁炵粡杩炴帴
+                  暂未建立神经连接
                 </div>
                 <button
                   onClick={handleGenerate}
                   className="text-[10px] font-black text-indigo-400 hover:text-indigo-300 underline underline-offset-8 uppercase tracking-widest"
                 >
-                  鐐瑰嚮寮€鍚垵濮嬪寲鍗忚
+                  点击开启初始化协议
                 </button>
               </div>
             </div>
@@ -179,11 +179,11 @@ export const AuditoryGene: React.FC = () => {
                 <div className="flex items-center gap-3 opacity-30">
                   <BrainCircuit className="w-3.5 h-3.5" />
                   <span className="text-[9px] font-black tracking-[0.3em] uppercase">
-                    娣卞害瑙ｆ瀯 / NEURAL ANALYSIS
+                    深度解构 / NEURAL ANALYSIS
                   </span>
                 </div>
                 <p className="text-[13px] text-white/50 leading-relaxed font-medium italic selection:bg-white/10 pl-1">
-                  {dnaJournal.description || "姝ｅ湪閫氳繃鎯呮劅鏄熷浘鍒嗘瀽浣犵殑瀹＄編鍋忓ソ..."}
+                  {dnaJournal.description || "正在通过情感星图分析你的审美偏好..."}
                 </p>
               </div>
 
@@ -191,7 +191,7 @@ export const AuditoryGene: React.FC = () => {
               <div className="grid grid-cols-2 gap-4 pt-8 border-t border-white/5">
                 <div className="space-y-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                   <div className="text-[8px] font-black tracking-widest uppercase text-white/20">
-                    涓诲娴佹淳 / DOMINANCE
+                    主导流派 / DOMINANCE
                   </div>
                   <div className="text-[12px] font-bold tracking-[0.1em] text-white/70 uppercase truncate">
                     {dnaJournal.genre}
@@ -199,7 +199,7 @@ export const AuditoryGene: React.FC = () => {
                 </div>
                 <div className="space-y-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                   <div className="text-[8px] font-black tracking-widest uppercase text-white/20">
-                    娲昏穬鏃舵 / RHYTHM
+                    活跃时段 / RHYTHM
                   </div>
                   <div className="text-[12px] font-bold tracking-[0.1em] text-white/70">
                     {summary.dominantPeriod}
@@ -207,7 +207,7 @@ export const AuditoryGene: React.FC = () => {
                 </div>
                 <div className="space-y-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                   <div className="text-[8px] font-black tracking-widest uppercase text-white/20">
-                    鎺㈢储鍊惧悜 / DISCOVERY
+                    探索倾向 / DISCOVERY
                   </div>
                   <div className="text-[12px] font-bold tracking-[0.1em] text-white/70">
                     {summary.explorationScore}%
@@ -215,7 +215,7 @@ export const AuditoryGene: React.FC = () => {
                 </div>
                 <div className="space-y-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                   <div className="text-[8px] font-black tracking-widest uppercase text-white/20">
-                    瀹屾暣鍚畬鐜?/ FOCUS
+                    完整听完率 / FOCUS
                   </div>
                   <div className="text-[12px] font-bold tracking-[0.1em] text-white/70">
                     {summary.completionRate}%
@@ -248,12 +248,12 @@ export const AuditoryGene: React.FC = () => {
                 </div>
                 <div className="rounded-2xl border border-indigo-500/10 bg-indigo-500/[0.04] p-4">
                   <div className="text-[9px] font-black tracking-[0.3em] text-indigo-300/70 uppercase">
-                    鐢诲儚缁撹 / 画像摘要
+                    画像结论 / 画像摘要
                   </div>
                   <p className="mt-2 text-sm leading-relaxed text-white/65">
                     浣犵殑鏀跺惉涔犳儻鏇村亸鍚?
                     <span className="text-white"> {summary.dominantPeriod} </span>
-                    鑺傚緥锛屼富瀵奸鏍奸泦涓湪
+                    节律，主导风格集中在
                     <span className="text-white">
                       {" "}
                       {summary.dominantGenres.join(" / ") || dnaJournal.genre}{" "}
@@ -261,10 +261,10 @@ export const AuditoryGene: React.FC = () => {
                     锛岃繎鏈熸暣浣撶儹搴?
                     <span className="text-white">
                       {summary.trend === "rising"
-                        ? " 姝ｅ湪涓婂崌"
+                        ? " 正在上升"
                         : summary.trend === "cooling"
-                          ? " 姝ｅ湪闄嶆俯"
-                          : " 淇濇寔绋冲畾"}
+                          ? " 正在降温"
+                          : " 保持稳定"}
                     </span>
                     銆?
                   </p>
