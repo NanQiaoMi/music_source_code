@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { AIConfig } from "@/store/aiStore";
+import { AIConfig, noteChatKeyOutcome } from "@/store/aiStore";
 import { DiagnosticResult } from "../types";
 import {
   Send,
@@ -107,6 +107,8 @@ export const AIPlaygroundTab: React.FC<AIPlaygroundTabProps> = ({ config }) => {
         }),
         signal: abortControllerRef.current.signal,
       });
+      // 我们的 key 被上游拒、服务端密钥顶上时，标记到配置上
+      noteChatKeyOutcome(config.id, response);
 
       // eslint-disable-next-line react-hooks/purity
       const endTime = performance.now();

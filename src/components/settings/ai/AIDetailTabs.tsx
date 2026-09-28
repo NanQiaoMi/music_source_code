@@ -8,7 +8,7 @@ import { AIPlaygroundTab } from "./tabs/AIPlaygroundTab";
 import { AIAdvancedNetworkTab } from "./tabs/AIAdvancedNetworkTab";
 import { ProviderLogo } from "./ProviderLogo";
 import { findPresetById, detectProviderFromUrl } from "./providerPresets";
-import { Link2, Sliders, Terminal, Shield, RefreshCcw, Check } from "lucide-react";
+import { Link2, Sliders, Terminal, Shield, RefreshCcw, Check, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface AIDetailTabsProps {
@@ -76,6 +76,15 @@ export const AIDetailTabs: React.FC<AIDetailTabsProps> = ({
             <p className="text-[11px] font-mono text-white/40 mt-0.5 truncate max-w-xs sm:max-w-md">
               {config.baseUrl} · {config.model || "未指定模型"}
             </p>
+            {config.keyRejectedAt ? (
+              <p
+                className="flex items-center gap-1.5 text-[11px] text-amber-400 mt-1.5"
+                title="服务端已用内置密钥顶上，所以对话仍能进行。"
+              >
+                <AlertTriangle className="w-3 h-3 shrink-0" />
+                你填写的密钥已被拒绝，当前使用服务端内置密钥——在「连接与模型」里更新，或清空改用内置。
+              </p>
+            ) : null}
           </div>
         </div>
 

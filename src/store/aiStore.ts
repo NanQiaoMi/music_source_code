@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { toast } from "@/components/shared/GlassToast";
 
 export interface AIConfig {
   baseUrl: string;
@@ -9,6 +10,12 @@ export interface AIConfig {
   id: string;
   lastTested?: number;
   status: "idle" | "testing" | "online" | "offline";
+  /**
+   * 调用方填的 key 被上游拒绝、由服务端环境变量密钥顶上的时刻。
+   * 只表示「这把 key 已失效」，不表示端点不通——端点状态仍看 `status`。
+   * 用户改了 `apiKey` 会清掉。
+   */
+  keyRejectedAt?: number;
   // Enhanced attributes
   providerId?: string;
   latency?: number;
@@ -175,6 +182,9 @@ function normalizePersistedAIConfig(value: unknown): AIConfig | null {
   if (typeof value.lastTested === "number" && Number.isFinite(value.lastTested)) {
     config.lastTested = value.lastTested;
   }
+  if (typeof value.keyRejectedAt === "number" && Number.isFinite(value.keyRejectedAt)) {
+    config.keyRejectedAt = value.keyRejectedAt;
+  }
   if (typeof value.providerId === "string") {
     config.providerId = value.providerId;
   }
@@ -291,9 +301,21 @@ export const useAIStore = create<AIState>()(
       },
 
       updateConfig: (id, updates) => {
-        set((state) => ({
-          configs: state.configs.map((c) => (c.id === id ? { ...c, ...updates } : c)),
-        }));
+        set((state) => {
+          const current = state.configs.find((c) => c.id === id);
+          // 换了密钥就说明用户动过手：「已失效」标记作废，也允许之后再次提示
+          const keyChanged =
+            !!current && typeof updates.apiKey === "string" && updates.apiKey !== current.apiKey;
+          if (keyChanged) keyRejectWarned.delete(id);
+
+          return {
+            configs: state.configs.map((c) =>
+              c.id !== id
+                ? c
+                : { ...c, ...updates, ...(keyChanged ? { keyRejectedAt: undefined } : {}) }
+            ),
+          };
+        });
       },
 
       setActiveConfig: (id) => set({ activeConfigId: id }),
@@ -395,6 +417,8 @@ export const useAIStore = create<AIState>()(
               }),
             });
             ok = response.ok;
+            // 服务端密钥顶上了 → 说明这把 key 已经失效，标记并提示一次
+            noteChatKeyOutcome(id, response);
           } else {
             const baseUrl = config.baseUrl.replace(/\/$/, "");
             const url = baseUrl.endsWith("/v1") ? `${baseUrl}/models` : `${baseUrl}/v1/models`;
@@ -493,3 +517,55 @@ export const useAIStore = create<AIState>()(
     }
   )
 );
+
+/**
+ * `/api/ai/chat` 成功时若带这个响应头，说明调用方填的 key 已被上游拒绝、
+ * 实际是服务端环境变量密钥顶上的（见 src/app/api/ai/chat/route.ts）。
+ */
+export const KEY_FALLBACK_HEADER = "x-mimi-key-fallback";
+
+/** 每个配置每次会话只提示一次，避免连续调用时刷屏 */
+const keyRejectWarned = new Set<string>();
+
+/**
+ * 依据 `/api/ai/chat` 的响应头，给配置打上「密钥已失效」标记。
+ *
+ * 只在服务端明确回退时才打标记：拿不到头（直连上游）或非 2xx（端点不通、
+ * 限流…）一律不动，否则会把「端点异常」误报成「密钥失效」。
+ *
+ * 这是挂在对话主路径上的**诊断旁路**：宁可漏标，也绝不能因为它抛错
+ * 把整次 AI 调用打断，所以整个函数吞异常。
+ */
+export function noteChatKeyOutcome(
+  configId: string,
+  response: {
+    ok?: boolean;
+    headers?: { get(name: string): string | null } | null;
+  } | null
+): boolean {
+  try {
+    if (!response?.ok || response.headers?.get(KEY_FALLBACK_HEADER) !== "1") return false;
+
+    const state = useAIStore.getState();
+    const config = state.configs.find((c) => c.id === configId);
+    if (!config || config.keyRejectedAt) return false;
+
+    useAIStore.setState({
+      configs: state.configs.map((c) =>
+        c.id === configId ? { ...c, keyRejectedAt: Date.now() } : c
+      ),
+    });
+
+    if (!keyRejectWarned.has(configId)) {
+      keyRejectWarned.add(configId);
+      toast.warning(
+        "AI 密钥已失效，当前使用服务端内置密钥；请到 AI 设置更新，或清空改用内置",
+        8000
+      );
+    }
+    return true;
+  } catch (e) {
+    console.warn("[aiStore] 写入「密钥已失效」标记失败:", e);
+    return false;
+  }
+}
