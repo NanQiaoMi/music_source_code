@@ -26,14 +26,14 @@
 
 ### 2.1 分支命名规范
 
-| 分支类型 | 命名格式 | 示例 | 来源 | 合并目标 |
-|----------|----------|------|------|----------|
-| 主分支 | `master` | `master` | — | — |
-| 功能分支 | `feature/<scope>-<desc>` | `feature/store-audio-decouple` | master | master |
-| Bug 修复 | `fix/<scope>-<desc>` | `fix/player-memory-leak` | master | master |
-| 发布分支 | `release/v<版本>` | `release/v0.3.0` | master | master + tag |
-| 热修复 | `hotfix/<desc>` | `hotfix/crash-empty-queue` | master | master |
-| 实验/重构 | `experiment/<desc>` | `experiment/webgpu-renderer` | master | 废弃或合并到 feature |
+| 分支类型  | 命名格式                 | 示例                           | 来源   | 合并目标             |
+| --------- | ------------------------ | ------------------------------ | ------ | -------------------- |
+| 主分支    | `master`                 | `master`                       | —      | —                    |
+| 功能分支  | `feature/<scope>-<desc>` | `feature/store-audio-decouple` | master | master               |
+| Bug 修复  | `fix/<scope>-<desc>`     | `fix/player-memory-leak`       | master | master               |
+| 发布分支  | `release/v<版本>`        | `release/v0.3.0`               | master | master + tag         |
+| 热修复    | `hotfix/<desc>`          | `hotfix/crash-empty-queue`     | master | master               |
+| 实验/重构 | `experiment/<desc>`      | `experiment/webgpu-renderer`   | master | 废弃或合并到 feature |
 
 ### 2.2 功能分支生命周期
 
@@ -68,35 +68,35 @@
 
 ### 3.2 Type 类型
 
-| Type | 含义 | 示例 |
-|------|------|------|
-| `feat` | 新功能 | `feat(player): add crossfade transition` |
-| `fix` | Bug 修复 | `fix(audio): fix memory leak in AudioEngine` |
-| `refactor` | 重构 | `refactor(store): extract coordinator layer` |
-| `perf` | 性能优化 | `perf(viz): add object pooling for particles` |
-| `test` | 测试相关 | `test(utils): add formatTime edge cases` |
-| `docs` | 文档 | `docs: add AGENTS.md entry point` |
-| `style` | 代码格式 | `style: fix prettier formatting in audioStore` |
-| `chore` | 构建/工具 | `chore: update eslint config` |
-| `ci` | CI/CD | `ci: enable test step in pipeline` |
+| Type       | 含义      | 示例                                           |
+| ---------- | --------- | ---------------------------------------------- |
+| `feat`     | 新功能    | `feat(player): add crossfade transition`       |
+| `fix`      | Bug 修复  | `fix(audio): fix memory leak in AudioEngine`   |
+| `refactor` | 重构      | `refactor(store): extract coordinator layer`   |
+| `perf`     | 性能优化  | `perf(viz): add object pooling for particles`  |
+| `test`     | 测试相关  | `test(utils): add formatTime edge cases`       |
+| `docs`     | 文档      | `docs: add AGENTS.md entry point`              |
+| `style`    | 代码格式  | `style: fix prettier formatting in audioStore` |
+| `chore`    | 构建/工具 | `chore: update eslint config`                  |
+| `ci`       | CI/CD     | `ci: enable test step in pipeline`             |
 
 ### 3.3 Scope 类型
 
-| Scope | 对应模块 |
-|-------|----------|
-| `player` | 播放器核心 |
-| `audio` | 音频引擎/处理 |
-| `viz` | 可视化系统 |
-| `emotion` | 情感矩阵/AI |
-| `ui` | 通用 UI 组件 |
-| `store` | 状态管理 |
-| `coordinator` | 中间协调层 |
-| `electron` | Electron 桌面端 |
-| `backend` | Python 后端 |
-| `lib` | 工具库/服务 |
-| `lyrics` | 歌词系统 |
-| `gesture` | 手势控制 |
-| `settings` | 设置面板 |
+| Scope         | 对应模块        |
+| ------------- | --------------- |
+| `player`      | 播放器核心      |
+| `audio`       | 音频引擎/处理   |
+| `viz`         | 可视化系统      |
+| `emotion`     | 情感矩阵/AI     |
+| `ui`          | 通用 UI 组件    |
+| `store`       | 状态管理        |
+| `coordinator` | 中间协调层      |
+| `electron`    | Electron 桌面端 |
+| `backend`     | Python 后端     |
+| `lib`         | 工具库/服务     |
+| `lyrics`      | 歌词系统        |
+| `gesture`     | 手势控制        |
+| `settings`    | 设置面板        |
 
 ### 3.4 提交规范
 
@@ -173,11 +173,11 @@ wip
 
 ### 5.2 Review 态度
 
-| 标签 | 含义 | 处理方式 |
-|------|------|----------|
-| blocking | 必须修复才能合并 | 作者必须处理 |
-| suggestion | 建议优化 | 作者可自行决定 |
-| nitpick | 细微风格问题 | 可忽略或后续处理 |
+| 标签       | 含义             | 处理方式         |
+| ---------- | ---------------- | ---------------- |
+| blocking   | 必须修复才能合并 | 作者必须处理     |
+| suggestion | 建议优化         | 作者可自行决定   |
+| nitpick    | 细微风格问题     | 可忽略或后续处理 |
 
 ---
 
@@ -236,11 +236,11 @@ wip
 
 遵循 SemVer: `主版本.次版本.补丁`
 
-| 版本变更 | 条件 | 示例 |
-|----------|------|------|
-| 主版本 | 破坏性变更 | 1.0.0 → 2.0.0 |
-| 次版本 | 新功能（向后兼容） | 0.2.0 → 0.3.0 |
-| 补丁 | Bug 修复 | 0.2.0 → 0.2.1 |
+| 版本变更 | 条件               | 示例          |
+| -------- | ------------------ | ------------- |
+| 主版本   | 破坏性变更         | 1.0.0 → 2.0.0 |
+| 次版本   | 新功能（向后兼容） | 0.2.0 → 0.3.0 |
+| 补丁     | Bug 修复           | 0.2.0 → 0.2.1 |
 
 ### 7.2 发版步骤
 

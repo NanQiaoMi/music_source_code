@@ -25,6 +25,7 @@
 Vibe Music Player 是一个具有沉浸式UI体验的高级音乐播放器，集成了专业级的AI/Agent驱动功能。该项目基于现代Web技术构建，支持手势控制、智能推荐、12种AI模型集成、25种专业可视化效果等功能。
 
 ### 核心特色
+
 - 🤖 MediaPipe 手势识别控制
 - 🧠 智能推荐算法系统
 - 🎯 12种专业AI模型集成
@@ -38,18 +39,19 @@ Vibe Music Player 是一个具有沉浸式UI体验的高级音乐播放器，集
 
 ### 核心组件
 
-| 组件名 | 文件路径 | 用途 |
-|--------|---------|------|
+| 组件名                | 文件路径                               | 用途             |
+| --------------------- | -------------------------------------- | ---------------- |
 | **GestureController** | `src/components/GestureController.tsx` | 手势控制器主组件 |
-| **useHandGesture** | `src/hooks/useHandGesture.ts` | 手势识别Hook |
-| **VirtualCursor** | `src/components/VirtualCursor.tsx` | 虚拟光标显示 |
-| **gestureStore** | `src/store/gestureStore.ts` | 手势状态管理 |
+| **useHandGesture**    | `src/hooks/useHandGesture.ts`          | 手势识别Hook     |
+| **VirtualCursor**     | `src/components/VirtualCursor.tsx`     | 虚拟光标显示     |
+| **gestureStore**      | `src/store/gestureStore.ts`            | 手势状态管理     |
 
 ### 技术实现
 
 使用 **@mediapipe/hands** 进行实时手势识别，通过摄像头捕捉手部21个骨骼关键点（Landmarks）。
 
 #### 手部骨骼关键点
+
 - **WRIST** (0) - 手腕
 - **THUMB_TIP** (4) - 拇指指尖
 - **INDEX_TIP** (8) - 食指指尖
@@ -57,11 +59,11 @@ Vibe Music Player 是一个具有沉浸式UI体验的高级音乐播放器，集
 
 #### 手势动作
 
-| 手势 | 功能 |
-|------|------|
+| 手势         | 功能         |
+| ------------ | ------------ |
 | **捏合手势** | 模拟鼠标点击 |
-| **左手挥手** | 上一首歌曲 |
-| **右手挥手** | 下一首歌曲 |
+| **左手挥手** | 上一首歌曲   |
+| **右手挥手** | 下一首歌曲   |
 | **手部移动** | 控制虚拟光标 |
 
 ### 功能特性
@@ -96,14 +98,14 @@ Vibe Music Player 是一个具有沉浸式UI体验的高级音乐播放器，集
 
 ### 核心组件
 
-| 组件名 | 文件路径 | 用途 |
-|--------|---------|------|
-| **InstantMix** | `src/components/InstantMix.tsx` | 灵感瞬间（智能随机） |
-| **SmartRandomModal** | `src/components/SmartRandomModal.tsx` | 智能偏好矩阵 |
-| **SmartPlaylistPanel** | `src/components/SmartPlaylistPanel.tsx` | 智能歌单面板 |
-| **DailyRecommendation** | `src/components/DailyRecommendation.tsx` | 每日推荐 |
-| **recommendationLogic** | `src/utils/recommendationLogic.ts` | 推荐算法逻辑 |
-| **statsAchievementsStore** | `src/store/statsAchievementsStore.ts` | 统计成就状态 |
+| 组件名                     | 文件路径                                 | 用途                 |
+| -------------------------- | ---------------------------------------- | -------------------- |
+| **InstantMix**             | `src/components/InstantMix.tsx`          | 灵感瞬间（智能随机） |
+| **SmartRandomModal**       | `src/components/SmartRandomModal.tsx`    | 智能偏好矩阵         |
+| **SmartPlaylistPanel**     | `src/components/SmartPlaylistPanel.tsx`  | 智能歌单面板         |
+| **DailyRecommendation**    | `src/components/DailyRecommendation.tsx` | 每日推荐             |
+| **recommendationLogic**    | `src/utils/recommendationLogic.ts`       | 推荐算法逻辑         |
+| **statsAchievementsStore** | `src/store/statsAchievementsStore.ts`    | 统计成就状态         |
 
 ### 算法实现
 
@@ -138,6 +140,7 @@ getFreshnessScore(song, now) {
 #### 3. 欧几里得距离算法
 
 2D偏好选择器：
+
 - **X轴**：新鲜度倾向（左：少听的歌，右：多听的歌）
 - **Y轴**：风格倾向（下：风格相似，上：风格跳跃）
 
@@ -149,12 +152,12 @@ getSmartScore(song, params, maxPlayCount, now) {
   // x < -0.3: 偏好少听的歌
   // x > 0.3: 偏好多听的歌
   // 中间: 平滑过渡
-  
+
   // Y轴倾向性
   // y < -0.3: 偏好风格相似
   // y > 0.3: 偏好风格跳跃
   // 中间: 平滑过渡
-  
+
   // 最终加权得分
   return (freshnessScore * abs(x)) + (similarityScore * abs(y))
 }
@@ -162,9 +165,9 @@ getSmartScore(song, params, maxPlayCount, now) {
 
 ### 成就系统
 
-| 成就名 | 解锁条件 |
-|--------|---------|
-| **极致主义者** | 将点拖动到四个角落的最边缘 |
+| 成就名         | 解锁条件                    |
+| -------------- | --------------------------- |
+| **极致主义者** | 将点拖动到四个角落的最边缘  |
 | **深海探险家** | 左上角（极少听 + 风格跳跃） |
 
 ### 功能特性
@@ -214,45 +217,45 @@ backend/
 
 #### 语音识别（3个模型）
 
-| 模型ID | ModelScope模型 | 功能 |
-|--------|---------------|------|
-| **whisper-tiny** | `damo/speech_whisper-tiny-en_asr` | 英文语音识别（轻量快速） |
-| **whisper-base** | `damo/speech_whisper-base-en_asr` | 英文语音识别（标准准确） |
-| **paraformer-zh** | `damo/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch` | 中文语音识别（高精度） |
+| 模型ID            | ModelScope模型                                                            | 功能                     |
+| ----------------- | ------------------------------------------------------------------------- | ------------------------ |
+| **whisper-tiny**  | `damo/speech_whisper-tiny-en_asr`                                         | 英文语音识别（轻量快速） |
+| **whisper-base**  | `damo/speech_whisper-base-en_asr`                                         | 英文语音识别（标准准确） |
+| **paraformer-zh** | `damo/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch` | 中文语音识别（高精度）   |
 
 #### 机器翻译（4个模型）
 
-| 模型ID | ModelScope模型 | 功能 |
-|--------|---------------|------|
-| **opus-mt-en-zh** | `damo/nlp_csanmt_translation_en2zh` | 英文→中文翻译 |
-| **opus-mt-zh-en** | `damo/nlp_csanmt_translation_zh2en` | 中文→英文翻译 |
-| **nllb-200** | `damo/nlp_m2m_meta-nllb-200-distilled-600m_translation` | 200+语言多语翻译 |
+| 模型ID            | ModelScope模型                                          | 功能             |
+| ----------------- | ------------------------------------------------------- | ---------------- |
+| **opus-mt-en-zh** | `damo/nlp_csanmt_translation_en2zh`                     | 英文→中文翻译    |
+| **opus-mt-zh-en** | `damo/nlp_csanmt_translation_zh2en`                     | 中文→英文翻译    |
+| **nllb-200**      | `damo/nlp_m2m_meta-nllb-200-distilled-600m_translation` | 200+语言多语翻译 |
 
 #### 文本理解（1个模型）
 
-| 模型ID | ModelScope模型 | 功能 |
-|--------|---------------|------|
+| 模型ID           | ModelScope模型                                         | 功能         |
+| ---------------- | ------------------------------------------------------ | ------------ |
 | **bert-chinese** | `damo/nlp_structbert_sentiment-analysis_chinese-large` | 中文情感分析 |
 
 #### 音频处理（2个模型）
 
-| 模型ID | ModelScope模型 | 功能 |
-|--------|---------------|------|
+| 模型ID            | ModelScope模型                       | 功能         |
+| ----------------- | ------------------------------------ | ------------ |
 | **wav2vec2-base** | `damo/speech_wav2vec2-base-960h_asr` | 音频特征提取 |
-| **hubert-base** | `damo/speech_hubert-large_asr` | 音频特征提取 |
+| **hubert-base**   | `damo/speech_hubert-large_asr`       | 音频特征提取 |
 
 #### 语音合成（1个模型）
 
-| 模型ID | ModelScope模型 | 功能 |
-|--------|---------------|------|
+| 模型ID         | ModelScope模型                              | 功能         |
+| -------------- | ------------------------------------------- | ------------ |
 | **sambert-zh** | `damo/speech_sambert-hifigan_tts_zh-cn_16k` | 中文语音合成 |
 
 #### 视觉处理（2个模型）
 
-| 模型ID | ModelScope模型 | 功能 |
-|--------|---------------|------|
-| **vit-base** | `damo/cv_vit-base_image-classification_ImageNet1k` | 图像分类 |
-| **clip-vit** | `damo/multi-modal_clip-vit-base-patch16_zh` | 图像-文本匹配 |
+| 模型ID       | ModelScope模型                                     | 功能          |
+| ------------ | -------------------------------------------------- | ------------- |
+| **vit-base** | `damo/cv_vit-base_image-classification_ImageNet1k` | 图像分类      |
+| **clip-vit** | `damo/multi-modal_clip-vit-base-patch16_zh`        | 图像-文本匹配 |
 
 ### RESTful API接口
 
@@ -263,6 +266,7 @@ GET /api/health
 ```
 
 响应：
+
 ```json
 {
   "status": "healthy",
@@ -381,7 +385,7 @@ class ModelScopeLoader:
         self.task = task
         self.pipeline = None
         self.is_loaded = False
-    
+
     async def load(self):
         """加载模型"""
         self.pipeline = pipeline(
@@ -390,7 +394,7 @@ class ModelScopeLoader:
         )
         self.is_loaded = True
         return True
-    
+
     async def infer(self, *args, **kwargs):
         """模型推理"""
         return self.pipeline(*args, **kwargs)
@@ -446,10 +450,10 @@ class ModelScopeLoader:
 
 #### 支持的模型
 
-| 模型 | 功能 |
-|------|------|
+| 模型         | 功能                        |
+| ------------ | --------------------------- |
 | **ViT Base** | 图像分类（ImageNet 1k类别） |
-| **CLIP ViT** | 图像-文本匹配、图文检索 |
+| **CLIP ViT** | 图像-文本匹配、图文检索     |
 
 ### 音频处理面板
 
@@ -487,23 +491,23 @@ class ModelScopeLoader:
 
 ### 15种专业音频效果
 
-| 效果ID | 效果名称 | 技术实现 |
-|--------|---------|---------|
-| **autoPan** | 8D环绕音 | StereoPannerNode + Oscillator |
-| **reverb** | 演唱会现场 | ConvolverNode（混响） |
-| **stereoWidener** | 多维拓宽 | Haas effect（哈斯效应） |
-| **nightcore** | 夜核模式 | BiquadFilterNode（highshelf） |
-| **vaporwave** | 蒸汽波 | BiquadFilterNode（lowpass） |
-| **cassette** | 卡带机失真 | WaveShaperNode + Oscillator |
-| **tremolo** | 颤音冲浪 | Oscillator + GainNode |
-| **underwater** | 水下潜听 | BiquadFilterNode + DelayNode |
-| **vinyl** | 黑胶唱片 | BiquadFilterNode + WaveShaperNode |
-| **talkie** | 对讲机/AM广播 | BiquadFilterNode + WaveShaperNode |
-| **megaBass** | 深海巨响 | BiquadFilterNode（lowshelf） |
-| **asmr** | 颅内高潮 | BiquadFilterNode + DynamicsCompressor |
-| **phaser** | 极化迷幻 | BiquadFilterNode（allpass） + Oscillator |
-| **vocalRemove** | KTV伴奏 | BiquadFilterNode（bandpass） |
-| **bitcrusher** | 像素粉碎 | WaveShaperNode（bitcrush） |
+| 效果ID            | 效果名称      | 技术实现                                 |
+| ----------------- | ------------- | ---------------------------------------- |
+| **autoPan**       | 8D环绕音      | StereoPannerNode + Oscillator            |
+| **reverb**        | 演唱会现场    | ConvolverNode（混响）                    |
+| **stereoWidener** | 多维拓宽      | Haas effect（哈斯效应）                  |
+| **nightcore**     | 夜核模式      | BiquadFilterNode（highshelf）            |
+| **vaporwave**     | 蒸汽波        | BiquadFilterNode（lowpass）              |
+| **cassette**      | 卡带机失真    | WaveShaperNode + Oscillator              |
+| **tremolo**       | 颤音冲浪      | Oscillator + GainNode                    |
+| **underwater**    | 水下潜听      | BiquadFilterNode + DelayNode             |
+| **vinyl**         | 黑胶唱片      | BiquadFilterNode + WaveShaperNode        |
+| **talkie**        | 对讲机/AM广播 | BiquadFilterNode + WaveShaperNode        |
+| **megaBass**      | 深海巨响      | BiquadFilterNode（lowshelf）             |
+| **asmr**          | 颅内高潮      | BiquadFilterNode + DynamicsCompressor    |
+| **phaser**        | 极化迷幻      | BiquadFilterNode（allpass） + Oscillator |
+| **vocalRemove**   | KTV伴奏       | BiquadFilterNode（bandpass）             |
+| **bitcrusher**    | 像素粉碎      | WaveShaperNode（bitcrush）               |
 
 ### 音频节点链
 
@@ -541,79 +545,79 @@ destinationNode（输出）
 
 #### 频谱类（4种）
 
-| 效果ID | 效果名称 | 描述 |
-|--------|---------|------|
-| **spectrum-v8** | 频谱V8 | 经典柱状频谱 |
-| **ring-spectrum-v8** | 环形频谱 | 360度环形频谱 |
+| 效果ID                    | 效果名称 | 描述           |
+| ------------------------- | -------- | -------------- |
+| **spectrum-v8**           | 频谱V8   | 经典柱状频谱   |
+| **ring-spectrum-v8**      | 环形频谱 | 360度环形频谱  |
 | **spectrum-waterfall-v8** | 频谱瀑布 | 滚动式频谱瀑布 |
-| **spectrum-spiral-v8** | 频谱螺旋 | 螺旋状频谱排列 |
+| **spectrum-spiral-v8**    | 频谱螺旋 | 螺旋状频谱排列 |
 
 #### 粒子类（8种）
 
-| 效果ID | 效果名称 | 描述 |
-|--------|---------|------|
-| **particle-burst** | 粒子爆发 | 音频驱动粒子爆发 |
-| **particle-grid-v8** | 粒子网格 | 粒子连接网格 |
-| **particle-flow-field-v8** | 粒子流场 | 流动场粒子效果 |
-| **particle-trail-v8** | 粒子轨迹 | 粒子轨迹拖尾 |
-| **particle-nebula-v8** | 粒子星云 | 3D星云效果 |
-| **particle-gravity-v8** | 粒子引力 | 引力场粒子系统 |
-| **particle-vortex-v8** | 粒子旋涡 | 旋涡粒子效果 |
-| **particle-explosion-v8** | 音频爆炸 | 音频触发爆炸 |
+| 效果ID                     | 效果名称 | 描述             |
+| -------------------------- | -------- | ---------------- |
+| **particle-burst**         | 粒子爆发 | 音频驱动粒子爆发 |
+| **particle-grid-v8**       | 粒子网格 | 粒子连接网格     |
+| **particle-flow-field-v8** | 粒子流场 | 流动场粒子效果   |
+| **particle-trail-v8**      | 粒子轨迹 | 粒子轨迹拖尾     |
+| **particle-nebula-v8**     | 粒子星云 | 3D星云效果       |
+| **particle-gravity-v8**    | 粒子引力 | 引力场粒子系统   |
+| **particle-vortex-v8**     | 粒子旋涡 | 旋涡粒子效果     |
+| **particle-explosion-v8**  | 音频爆炸 | 音频触发爆炸     |
 
 #### 形状类（5种）
 
-| 效果ID | 效果名称 | 描述 |
-|--------|---------|------|
-| **waveform-v8** | 波形V8 | 音频波形显示 |
-| **audio-shape-v8** | 音频形状 | 几何形状变形 |
-| **audio-painting-v8** | 音频绘画 | 抽象画笔绘画 |
+| 效果ID                    | 效果名称 | 描述         |
+| ------------------------- | -------- | ------------ |
+| **waveform-v8**           | 波形V8   | 音频波形显示 |
+| **audio-shape-v8**        | 音频形状 | 几何形状变形 |
+| **audio-painting-v8**     | 音频绘画 | 抽象画笔绘画 |
 | **vibration-geometry-v8** | 振动几何 | 几何形状振动 |
-| **audio-crystal-v8** | 音频水晶 | 3D水晶折射 |
+| **audio-crystal-v8**      | 音频水晶 | 3D水晶折射   |
 
 #### 几何类（2种）
 
-| 效果ID | 效果名称 | 描述 |
-|--------|---------|------|
+| 效果ID                  | 效果名称 | 描述         |
+| ----------------------- | -------- | ------------ |
 | **fractal-geometry-v8** | 分形几何 | 分形图形生成 |
-| **kaleidoscope-v8** | 万花筒 | 镜像万花筒 |
+| **kaleidoscope-v8**     | 万花筒   | 镜像万花筒   |
 
 #### 物理类（1种）
 
-| 效果ID | 效果名称 | 描述 |
-|--------|---------|------|
+| 效果ID               | 效果名称 | 描述         |
+| -------------------- | -------- | ------------ |
 | **spring-system-v8** | 弹簧系统 | 物理弹簧模拟 |
 
 #### 空间类（5种）
 
-| 效果ID | 效果名称 | 描述 |
-|--------|---------|------|
-| **star-field-v8** | 星场穿越 | 3D星场飞行 |
-| **tunnel-flight-v8** | 隧道飞行 | 3D隧道穿越 |
-| **space-grid-v8** | 3D网格 | 空间网格波浪 |
-| **audio-sculpture-v8** | 音频雕塑 | 3D雕塑变形 |
-| **audio-liquid-v8** | 音频液体 | 流体网格模拟 |
+| 效果ID                 | 效果名称 | 描述         |
+| ---------------------- | -------- | ------------ |
+| **star-field-v8**      | 星场穿越 | 3D星场飞行   |
+| **tunnel-flight-v8**   | 隧道飞行 | 3D隧道穿越   |
+| **space-grid-v8**      | 3D网格   | 空间网格波浪 |
+| **audio-sculpture-v8** | 音频雕塑 | 3D雕塑变形   |
+| **audio-liquid-v8**    | 音频液体 | 流体网格模拟 |
 
 ### 核心组件
 
-| 组件名 | 文件路径 | 用途 |
-|--------|---------|------|
-| **VisualizationViewV8** | `src/components/visualization-v8/VisualizationViewV8.tsx` | 可视化主视图 |
-| **RenderEngineManager** | `src/components/visualization-v8/engines/RenderEngineManager.tsx` | 双渲染引擎管理 |
-| **EffectPluginSystem** | `src/components/visualization-v8/effects/` | 效果插件系统 |
-| **PresetManagerPanel** | `src/components/visualization-v8/panels/PresetManagerPanel.tsx` | 预设管理面板 |
-| **AnimationTimelinePanel** | `src/components/visualization-v8/panels/AnimationTimelinePanel.tsx` | 动画时间轴面板 |
-| **PerformanceMonitorPanel** | `src/components/visualization-v8/panels/PerformanceMonitorPanel.tsx` | 性能监控面板 |
-| **useVisualizationV8** | `src/hooks/useVisualizationV8.ts` | 可视化Hook |
-| **visualizationV8Store** | `src/store/visualizationV8Store.ts` | 可视化状态 |
+| 组件名                      | 文件路径                                                             | 用途           |
+| --------------------------- | -------------------------------------------------------------------- | -------------- |
+| **VisualizationViewV8**     | `src/components/visualization-v8/VisualizationViewV8.tsx`            | 可视化主视图   |
+| **RenderEngineManager**     | `src/components/visualization-v8/engines/RenderEngineManager.tsx`    | 双渲染引擎管理 |
+| **EffectPluginSystem**      | `src/components/visualization-v8/effects/`                           | 效果插件系统   |
+| **PresetManagerPanel**      | `src/components/visualization-v8/panels/PresetManagerPanel.tsx`      | 预设管理面板   |
+| **AnimationTimelinePanel**  | `src/components/visualization-v8/panels/AnimationTimelinePanel.tsx`  | 动画时间轴面板 |
+| **PerformanceMonitorPanel** | `src/components/visualization-v8/panels/PerformanceMonitorPanel.tsx` | 性能监控面板   |
+| **useVisualizationV8**      | `src/hooks/useVisualizationV8.ts`                                    | 可视化Hook     |
+| **visualizationV8Store**    | `src/store/visualizationV8Store.ts`                                  | 可视化状态     |
 
 ### 三层参数系统
 
-| 模式 | 参数数量 | 目标用户 |
-|------|---------|---------|
-| **基础模式** | 3-5个核心参数 | 普通用户 |
-| **专业模式** | 10-15个详细参数 | 进阶用户 |
-| **专家模式** | 所有技术参数 | 专业用户/开发者 |
+| 模式         | 参数数量        | 目标用户        |
+| ------------ | --------------- | --------------- |
+| **基础模式** | 3-5个核心参数   | 普通用户        |
+| **专业模式** | 10-15个详细参数 | 进阶用户        |
+| **专家模式** | 所有技术参数    | 专业用户/开发者 |
 
 ### 预设管理系统
 
@@ -628,21 +632,21 @@ destinationNode（输出）
 
 #### 同步模式
 
-| 模式 | 描述 |
-|------|------|
-| **音频同步** | 参数随音乐节拍/频谱实时变化 |
-| **时间轴同步** | 基于关键帧的时间轴动画 |
-| **混合模式** | 音频驱动 + 关键帧动画结合 |
+| 模式           | 描述                        |
+| -------------- | --------------------------- |
+| **音频同步**   | 参数随音乐节拍/频谱实时变化 |
+| **时间轴同步** | 基于关键帧的时间轴动画      |
+| **混合模式**   | 音频驱动 + 关键帧动画结合   |
 
 #### 动画预设
 
-| 预设名称 | 描述 | 适用场景 |
-|---------|------|---------|
-| **跟随节拍** | 参数随音乐节拍变化 | 电子、舞曲 |
+| 预设名称     | 描述                 | 适用场景     |
+| ------------ | -------------------- | ------------ |
+| **跟随节拍** | 参数随音乐节拍变化   | 电子、舞曲   |
 | **低频驱动** | 主要响应低频（贝斯） | 摇滚、重金属 |
-| **全频响应** | 响应全频段频谱 | 古典、爵士 |
-| **渐变变化** | 参数缓慢平滑过渡 | 氛围音乐 |
-| **脉冲效果** | 节拍时产生脉冲 | 动感音乐 |
+| **全频响应** | 响应全频段频谱       | 古典、爵士   |
+| **渐变变化** | 参数缓慢平滑过渡     | 氛围音乐     |
+| **脉冲效果** | 节拍时产生脉冲       | 动感音乐     |
 
 ### 性能监控
 
@@ -656,29 +660,29 @@ destinationNode（输出）
 
 #### 性能档位
 
-| 档位 | 帧率目标 | 粒子限制 | 后处理 | WebGL质量 |
-|------|---------|---------|--------|-----------|
-| **低** | 30fps | 1000 | 关闭 | 低 |
-| **中** | 30fps | 3000 | 基础 | 中 |
-| **高** | 60fps | 8000 | 完整 | 高 |
-| **极致** | 60fps+ | 20000+ | 完整+自定义 | 超高 |
+| 档位     | 帧率目标 | 粒子限制 | 后处理      | WebGL质量 |
+| -------- | -------- | -------- | ----------- | --------- |
+| **低**   | 30fps    | 1000     | 关闭        | 低        |
+| **中**   | 30fps    | 3000     | 基础        | 中        |
+| **高**   | 60fps    | 8000     | 完整        | 高        |
+| **极致** | 60fps+   | 20000+   | 完整+自定义 | 超高      |
 
 ### 效果插件接口
 
 ```typescript
 interface EffectPlugin {
-  id: string;                          // 唯一标识符
-  name: string;                        // 显示名称
-  category: EffectCategory;            // 效果分类
-  description: string;                 // 效果描述
-  thumbnail?: string;                  // 缩略图URL
-  preferredEngine: RenderEngine;       // 偏好渲染引擎
+  id: string; // 唯一标识符
+  name: string; // 显示名称
+  category: EffectCategory; // 效果分类
+  description: string; // 效果描述
+  thumbnail?: string; // 缩略图URL
+  preferredEngine: RenderEngine; // 偏好渲染引擎
   parameters: EffectParameterDefinition[]; // 参数定义
-  
-  init(ctx: RenderContext): void;      // 初始化
-  render(ctx: RenderContext, audioData: AudioData, params: object): void;  // 渲染
-  resize(width: number, height: number): void;  // 调整大小
-  destroy(): void;                     // 销毁
+
+  init(ctx: RenderContext): void; // 初始化
+  render(ctx: RenderContext, audioData: AudioData, params: object): void; // 渲染
+  resize(width: number, height: number): void; // 调整大小
+  destroy(): void; // 销毁
 }
 ```
 
@@ -688,44 +692,44 @@ interface EffectPlugin {
 
 ### 前端技术栈
 
-| 技术 | 版本/说明 | 用途 |
-|------|----------|------|
-| **Next.js** | 14.1.4 | React框架，SSR/SSG |
-| **React** | 18.2.0 | UI库，Concurrent Features |
-| **TypeScript** | 5.4.3 | 类型安全编程 |
-| **Tailwind CSS** | 3.4.1 | 原子化CSS框架 |
-| **Framer Motion** | 11.0.0 | 动画库 |
-| **Zustand** | 4.5.2 | 轻量级状态管理 |
-| **Three.js** | 0.183.2 | 3D图形库 |
-| **@mediapipe/hands** | 0.4.1675469240 | 手势识别 |
-| **@xenova/transformers** | 2.17.2 | 浏览器端ML |
-| **Web Audio API** | - | 音频处理 |
-| **Canvas 2D API** | - | 2D渲染 |
+| 技术                     | 版本/说明      | 用途                      |
+| ------------------------ | -------------- | ------------------------- |
+| **Next.js**              | 14.1.4         | React框架，SSR/SSG        |
+| **React**                | 18.2.0         | UI库，Concurrent Features |
+| **TypeScript**           | 5.4.3          | 类型安全编程              |
+| **Tailwind CSS**         | 3.4.1          | 原子化CSS框架             |
+| **Framer Motion**        | 11.0.0         | 动画库                    |
+| **Zustand**              | 4.5.2          | 轻量级状态管理            |
+| **Three.js**             | 0.183.2        | 3D图形库                  |
+| **@mediapipe/hands**     | 0.4.1675469240 | 手势识别                  |
+| **@xenova/transformers** | 2.17.2         | 浏览器端ML                |
+| **Web Audio API**        | -              | 音频处理                  |
+| **Canvas 2D API**        | -              | 2D渲染                    |
 
 ### 后端技术栈
 
-| 技术 | 用途 |
-|------|------|
-| **Python** | 3.10+ |
-| **FastAPI** | Web API框架 |
-| **Uvicorn** | ASGI服务器 |
-| **PyTorch** | 机器学习框架 |
-| **ModelScope** | AI模型平台 |
+| 技术             | 用途                      |
+| ---------------- | ------------------------- |
+| **Python**       | 3.10+                     |
+| **FastAPI**      | Web API框架               |
+| **Uvicorn**      | ASGI服务器                |
+| **PyTorch**      | 机器学习框架              |
+| **ModelScope**   | AI模型平台                |
 | **Transformers** | Hugging Face Transformers |
-| **OpenCV** | 计算机视觉 |
-| **Librosa** | 音频处理 |
-| **SoundFile** | 音频文件处理 |
-| **NumPy** | 科学计算 |
+| **OpenCV**       | 计算机视觉                |
+| **Librosa**      | 音频处理                  |
+| **SoundFile**    | 音频文件处理              |
+| **NumPy**        | 科学计算                  |
 
 ### 桌面技术栈
 
-| 技术 | 用途 |
-|------|------|
-| **Electron** | 41.1.0 | 桌面应用框架 |
-| **electron-builder** | 26.8.1 | 应用打包工具 |
-| **concurrently** | 9.2.1 | 并发执行命令 |
-| **wait-on** | 9.0.4 | 等待资源就绪 |
-| **cross-env** | 10.1.0 | 跨平台环境变量 |
+| 技术                 | 用途   |
+| -------------------- | ------ | -------------- |
+| **Electron**         | 41.1.0 | 桌面应用框架   |
+| **electron-builder** | 26.8.1 | 应用打包工具   |
+| **concurrently**     | 9.2.1  | 并发执行命令   |
+| **wait-on**          | 9.0.4  | 等待资源就绪   |
+| **cross-env**        | 10.1.0 | 跨平台环境变量 |
 
 ---
 
@@ -733,29 +737,29 @@ interface EffectPlugin {
 
 ### 1. 全栈AI集成
 
-| 层级 | 功能 | 状态 |
-|------|------|------|
-| **前端** | MediaPipe手势识别 | ✅ 完成 |
-| | 浏览器端ML（@xenova/transformers） | ✅ 完成 |
-| **后端** | ModelScope AI模型平台 | ✅ 完成 |
-| | 12个专业AI模型集成 | ✅ 完成 |
-| | RESTful API接口 | ✅ 完成 |
+| 层级     | 功能                               | 状态    |
+| -------- | ---------------------------------- | ------- |
+| **前端** | MediaPipe手势识别                  | ✅ 完成 |
+|          | 浏览器端ML（@xenova/transformers） | ✅ 完成 |
+| **后端** | ModelScope AI模型平台              | ✅ 完成 |
+|          | 12个专业AI模型集成                 | ✅ 完成 |
+|          | RESTful API接口                    | ✅ 完成 |
 
 ### 2. 智能音乐系统
 
-| 功能 | 状态 |
-|------|------|
+| 功能                         | 状态    |
+| ---------------------------- | ------- |
 | 智能推荐算法（欧几里得距离） | ✅ 完成 |
-| 25种音频可视化效果 | ✅ 完成 |
-| 15种专业音频效果 | ✅ 完成 |
-| 手势控制播放器 | ✅ 完成 |
-| 2D偏好矩阵选择器 | ✅ 完成 |
-| 成就系统 | ✅ 完成 |
+| 25种音频可视化效果           | ✅ 完成 |
+| 15种专业音频效果             | ✅ 完成 |
+| 手势控制播放器               | ✅ 完成 |
+| 2D偏好矩阵选择器             | ✅ 完成 |
+| 成就系统                     | ✅ 完成 |
 
 ### 3. 完整AI功能
 
-| 类别 | 模型数 | 状态 |
-|------|--------|------|
+| 类别         | 模型数  | 状态    |
+| ------------ | ------- | ------- |
 | **语音识别** | 3个模型 | ✅ 完成 |
 | **机器翻译** | 4个模型 | ✅ 完成 |
 | **文本理解** | 1个模型 | ✅ 完成 |
@@ -765,14 +769,14 @@ interface EffectPlugin {
 
 ### 4. 可视化系统
 
-| 特性 | 状态 |
-|------|------|
-| 25种专业可视化效果 | ✅ 完成 |
+| 特性                            | 状态    |
+| ------------------------------- | ------- |
+| 25种专业可视化效果              | ✅ 完成 |
 | 双渲染引擎（Canvas 2D + WebGL） | ✅ 完成 |
-| 三层参数系统 | ✅ 完成 |
-| 完整预设管理系统 | ✅ 完成 |
-| 关键帧动画系统 | ✅ 完成 |
-| 实时性能监控 | ✅ 完成 |
+| 三层参数系统                    | ✅ 完成 |
+| 完整预设管理系统                | ✅ 完成 |
+| 关键帧动画系统                  | ✅ 完成 |
+| 实时性能监控                    | ✅ 完成 |
 
 ### 5. 技术创新
 
@@ -789,6 +793,7 @@ interface EffectPlugin {
 ## 项目亮点
 
 ### 技术创新
+
 - 🎨 25种专业可视化效果
 - 🚀 双渲染引擎架构
 - ⚙️ 三层参数系统
@@ -798,12 +803,14 @@ interface EffectPlugin {
 - 👆 手势识别控制
 
 ### 用户体验
+
 - 💎 玻璃拟态UI
 - 🎭 多种交互方式
 - 👁️ 实时预览
 - ✨ 流畅动画
 
 ### 性能优化
+
 - 🖥️ DPR自适应
 - 🗃️ 对象池技术
 - 🎚️ 多档位性能控制
@@ -813,23 +820,25 @@ interface EffectPlugin {
 
 ## 版本历史
 
-| 版本 | 日期 | 主要更新 |
-|------|------|---------|
-| **V8.0** | 2026-03-30 | 25种可视化效果、双引擎、预设系统、动画时间轴 |
+| 版本     | 日期       | 主要更新                                                 |
+| -------- | ---------- | -------------------------------------------------------- |
+| **V8.0** | 2026-03-30 | 25种可视化效果、双引擎、预设系统、动画时间轴             |
 | **V7.0** | 2026-03-28 | 玻璃拟态UI、手势控制、虚拟光标、3D播放器、10种基础可视化 |
-| **V6.0** | 更早 | 基础音乐播放功能、简单音频可视化、传统UI设计 |
+| **V6.0** | 更早       | 基础音乐播放功能、简单音频可视化、传统UI设计             |
 
 ---
 
 ## 未来展望
 
 ### 短期计划
+
 - [ ] 增加更多可视化效果
 - [ ] 优化移动端体验
 - [ ] 增强预设市场功能
 - [ ] 性能持续优化
 
 ### 长期规划
+
 - [ ] 插件SDK开发
 - [ ] 自定义Shader支持
 - [ ] MIDI设备支持
@@ -856,6 +865,7 @@ Vibe Music Player 项目展示了**现代AI/ML技术在音乐播放器领域的�
 ### 学习价值
 
 对于AI和开发者来说，这个项目提供了：
+
 - 完整的现代Web应用架构参考
 - 音频可视化效果实现示例
 - Zustand状态管理最佳实践

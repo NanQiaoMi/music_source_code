@@ -1,0 +1,42 @@
+# prettier 的忽略清单。
+#
+# 为什么需要：prettier 默认不读 .gitignore（本项目 3.8.3 也确实不读），
+# 直接跑 `prettier --write "**/*.{json,css,md}"` 会把 .venv/ 里的
+# 第三方包元数据一起重写——那是 Python 虚拟环境，动它没有意义，
+# 重排坏了还会连带搞坏依赖。.venv/.gitignore 里写着 `*`，git 看得见，
+# prettier 看不见，所以必须在这里再声明一次。
+
+# Python 虚拟环境
+.venv/
+venv/
+__pycache__/
+
+# 依赖与构建产物
+node_modules/
+.next/
+out/
+build/
+dist/
+coverage/
+
+# 锁文件：缩进和换行由包管理器生成，手工格式化会制造无意义 diff
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# 压缩产物
+*.min.js
+*.min.css
+*.min.json
+
+# 下面几个文件 prettier 处理后会**损坏内容**，不是排版差异，逐个还原过并实测确认：
+#
+# 1) 编号列表写在粗体标题后面、且没有空行、且不从 1 开始 —— CommonMark 不允许这种
+#    列表打断段落，prettier 会把整块折成一行，还丢掉折点处的空格（`（0 错误）10.`）：
+docs/nbl/archive/V5_ITERATION_TASK.md
+docs/nbl/archive/PROJECT_INTRODUCTION.md
+#
+# 2) 连续下划线填写位（`_________________`）被 prettier 当成强调符转义，
+#    渲染出来从空白栏变成一堆星号：
+docs/nbl/archive/V7.0_FINAL_ACCEPTANCE.md
+skills/ckm-brand/references/approval-checklist.md

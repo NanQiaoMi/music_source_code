@@ -19,11 +19,11 @@ Three-layer token system for scalable, themeable design systems.
 
 ## Why Three Layers?
 
-| Layer | Purpose | When to Change |
-|-------|---------|----------------|
+| Layer     | Purpose                     | When to Change        |
+| --------- | --------------------------- | --------------------- |
 | Primitive | Base values (colors, sizes) | Rarely - foundational |
-| Semantic | Meaning assignment | Theme switching |
-| Component | Component customization | Per-component needs |
+| Semantic  | Meaning assignment          | Theme switching       |
+| Component | Component customization     | Per-component needs   |
 
 ## Layer 1: Primitive Tokens
 
@@ -32,16 +32,16 @@ Raw design values without semantic meaning.
 ```css
 :root {
   /* Colors */
-  --color-gray-50: #F9FAFB;
+  --color-gray-50: #f9fafb;
   --color-gray-900: #111827;
-  --color-blue-500: #3B82F6;
-  --color-blue-600: #2563EB;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
 
   /* Spacing (4px base) */
-  --space-1: 0.25rem;  /* 4px */
-  --space-2: 0.5rem;   /* 8px */
-  --space-4: 1rem;     /* 16px */
-  --space-6: 1.5rem;   /* 24px */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-4: 1rem; /* 16px */
+  --space-6: 1.5rem; /* 24px */
 
   /* Typography */
   --font-size-sm: 0.875rem;
@@ -148,14 +148,14 @@ Examples:
 
 ## Categories
 
-| Category | Examples |
-|----------|----------|
-| color | primary, secondary, muted, destructive |
-| space | 1, 2, 4, 8, section, component |
-| font-size | xs, sm, base, lg, xl |
-| radius | sm, default, lg, full |
-| shadow | sm, default, lg |
-| duration | fast, normal, slow |
+| Category  | Examples                               |
+| --------- | -------------------------------------- |
+| color     | primary, secondary, muted, destructive |
+| space     | 1, 2, 4, 8, section, component         |
+| font-size | xs, sm, base, lg, xl                   |
+| radius    | sm, default, lg, full                  |
+| shadow    | sm, default, lg                        |
+| duration  | fast, normal, slow                     |
 
 ## File Organization
 
@@ -186,16 +186,18 @@ Or single file with layer comments:
 ## Migration from Flat Tokens
 
 Before (flat):
+
 ```css
---button-primary-bg: #2563EB;
---button-secondary-bg: #F3F4F6;
+--button-primary-bg: #2563eb;
+--button-secondary-bg: #f3f4f6;
 ```
 
 After (three-layer):
+
 ```css
 /* Primitive */
---color-blue-600: #2563EB;
---color-gray-100: #F3F4F6;
+--color-blue-600: #2563eb;
+--color-gray-100: #f3f4f6;
 
 /* Semantic */
 --color-primary: var(--color-blue-600);

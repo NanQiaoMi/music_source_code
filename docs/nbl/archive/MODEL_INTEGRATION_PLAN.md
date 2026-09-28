@@ -16,45 +16,47 @@
 ## 🛠️ 技术栈选型（已确认）
 
 ### 后端技术栈
-| 组件 | 技术选型 | 说明 |
-|------|----------|------|
-| Web 框架 | FastAPI + Uvicorn | 已有的后端框架，保持不变 |
-| AI 框架 | ModelScope | 阿里的国内 AI 平台，下载更快，中文模型优化好 |
-| 模型加载 | 预加载所有 12 个模型 | 服务启动时一次性加载全部模型 |
-| API 风格 | RESTful API | 前端通过 HTTP 请求调用 |
-| 错误处理 | HTTP 状态码 + 统一 JSON | 两者结合 |
-| 文件上传限制 | 音频 100MB，图像 20MB | 宽松限制 |
-| 日志级别 | 详细日志（DEBUG/INFO/WARN/ERROR） | 详细记录所有事件 |
+
+| 组件         | 技术选型                          | 说明                                         |
+| ------------ | --------------------------------- | -------------------------------------------- |
+| Web 框架     | FastAPI + Uvicorn                 | 已有的后端框架，保持不变                     |
+| AI 框架      | ModelScope                        | 阿里的国内 AI 平台，下载更快，中文模型优化好 |
+| 模型加载     | 预加载所有 12 个模型              | 服务启动时一次性加载全部模型                 |
+| API 风格     | RESTful API                       | 前端通过 HTTP 请求调用                       |
+| 错误处理     | HTTP 状态码 + 统一 JSON           | 两者结合                                     |
+| 文件上传限制 | 音频 100MB，图像 20MB             | 宽松限制                                     |
+| 日志级别     | 详细日志（DEBUG/INFO/WARN/ERROR） | 详细记录所有事件                             |
 
 ### 前端技术栈
-| 组件 | 技术选型 | 说明 |
-|------|----------|------|
-| 框架 | Next.js 14.1.4 | 已有的前端框架 |
-| UI 风格 | Glassmorphism（玻璃拟态） | 延续现有风格，半透明+渐变 |
-| 状态管理 | Zustand | 已有的状态管理 |
-| API 客户端 | Fetch API | 直接调用后端 FastAPI |
-| 重试机制 | 单独重试 + 全局重试 | 两者都支持 |
-| 启动反馈 | 每个模型详细加载状态 | 逐个显示 |
-| CORS | 开发环境允许跨域 | 生产环境 Nginx 反向代理 |
+
+| 组件       | 技术选型                  | 说明                      |
+| ---------- | ------------------------- | ------------------------- |
+| 框架       | Next.js 14.1.4            | 已有的前端框架            |
+| UI 风格    | Glassmorphism（玻璃拟态） | 延续现有风格，半透明+渐变 |
+| 状态管理   | Zustand                   | 已有的状态管理            |
+| API 客户端 | Fetch API                 | 直接调用后端 FastAPI      |
+| 重试机制   | 单独重试 + 全局重试       | 两者都支持                |
+| 启动反馈   | 每个模型详细加载状态      | 逐个显示                  |
+| CORS       | 开发环境允许跨域          | 生产环境 Nginx 反向代理   |
 
 ---
 
 ## 🤖 12 个模型功能映射（推荐 ModelScope 模型）
 
-| 序号 | 模型 ID | 推荐 ModelScope 模型 | 功能分类 | 具体功能 |
-|------|---------|---------------------|---------|---------|
-| 1 | whisper-tiny | `damo/speech_whisper-tiny-en_asr` | 语音识别 | 通用语音识别（小体积，快速） |
-| 2 | whisper-base | `damo/speech_whisper-base-en_asr` | 语音识别 | 通用语音识别（标准体积，更准确） |
-| 3 | paraformer-zh | `damo/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch` | 语音识别 | 专门针对中文优化的语音识别 |
-| 4 | opus-mt-en-zh | `damo/nlp_csanmt_translation_en2zh` | 翻译 | 英语 → 中文翻译 |
-| 5 | opus-mt-zh-en | `damo/nlp_csanmt_translation_zh2en` | 翻译 | 中文 → 英语翻译 |
-| 6 | nllb-200 | `damo/nlp_m2m_meta-nllb-200-distilled-600m_translation` | 翻译 | 200+ 语言多语言翻译 |
-| 7 | bert-chinese | `damo/nlp_structbert_sentiment-analysis_chinese-large` | 文本理解 | 中文文本分类、情感分析 |
-| 8 | wav2vec2-base | `damo/speech_wav2vec2-base-960h_asr` | 音频处理 | 音频特征提取、音乐分类 |
-| 9 | hubert-base | `damo/speech_hubert-large_asr` | 音频处理 | 音频特征提取、语音表示 |
-| 10 | sambert-zh | `damo/speech_sambert-hifigan_tts_zh-cn_16k` | 语音合成 | 中文文本转语音 |
-| 11 | vit-base | `damo/cv_vit-base_image-classification_ImageNet1k` | 视觉 | 专辑封面图像分类 |
-| 12 | clip-vit | `damo/multi-modal_clip-vit-base-patch16_zh` | 视觉 | 图像-文本匹配、图文检索 |
+| 序号 | 模型 ID       | 推荐 ModelScope 模型                                                      | 功能分类 | 具体功能                         |
+| ---- | ------------- | ------------------------------------------------------------------------- | -------- | -------------------------------- |
+| 1    | whisper-tiny  | `damo/speech_whisper-tiny-en_asr`                                         | 语音识别 | 通用语音识别（小体积，快速）     |
+| 2    | whisper-base  | `damo/speech_whisper-base-en_asr`                                         | 语音识别 | 通用语音识别（标准体积，更准确） |
+| 3    | paraformer-zh | `damo/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch` | 语音识别 | 专门针对中文优化的语音识别       |
+| 4    | opus-mt-en-zh | `damo/nlp_csanmt_translation_en2zh`                                       | 翻译     | 英语 → 中文翻译                  |
+| 5    | opus-mt-zh-en | `damo/nlp_csanmt_translation_zh2en`                                       | 翻译     | 中文 → 英语翻译                  |
+| 6    | nllb-200      | `damo/nlp_m2m_meta-nllb-200-distilled-600m_translation`                   | 翻译     | 200+ 语言多语言翻译              |
+| 7    | bert-chinese  | `damo/nlp_structbert_sentiment-analysis_chinese-large`                    | 文本理解 | 中文文本分类、情感分析           |
+| 8    | wav2vec2-base | `damo/speech_wav2vec2-base-960h_asr`                                      | 音频处理 | 音频特征提取、音乐分类           |
+| 9    | hubert-base   | `damo/speech_hubert-large_asr`                                            | 音频处理 | 音频特征提取、语音表示           |
+| 10   | sambert-zh    | `damo/speech_sambert-hifigan_tts_zh-cn_16k`                               | 语音合成 | 中文文本转语音                   |
+| 11   | vit-base      | `damo/cv_vit-base_image-classification_ImageNet1k`                        | 视觉     | 专辑封面图像分类                 |
+| 12   | clip-vit      | `damo/multi-modal_clip-vit-base-patch16_zh`                               | 视觉     | 图像-文本匹配、图文检索          |
 
 ---
 
@@ -150,21 +152,21 @@ pydub>=0.25.0
 class Settings:
     app_name: str = "Vibe Music Player Backend"
     app_version: str = "2.0.0"
-    
+
     # 模型目录
     models_dir: Path = Path(__file__).parent.parent.parent / "public" / "models"
-    
+
     # 文件上传限制
     max_audio_size_mb: int = 100
     max_image_size_mb: int = 20
-    
+
     # 支持的音频格式
     supported_audio_formats: list = [".wav", ".mp3", ".webm", ".ogg", ".flac"]
-    
+
     # TTS 输出配置
     tts_format: str = "mp3"
     tts_bitrate: str = "128k"
-    
+
     # 12 个模型完整配置
     model_configs: dict = {
         "whisper-tiny": {
@@ -267,7 +269,7 @@ logger = logging.getLogger(__name__)
 
 class ModelScopeLoader:
     """ModelScope 模型加载器"""
-    
+
     def __init__(self, model_path: str, model_id: str, task: str):
         self.model_path = model_path
         self.model_id = model_id
@@ -275,34 +277,34 @@ class ModelScopeLoader:
         self.pipeline = None
         self.is_loaded = False
         self.load_error = None
-    
+
     async def load(self) -> bool:
         """加载模型"""
         try:
             logger.info(f"开始加载模型: {self.model_id}")
-            
+
             # 优先从本地加载，如果没有则从 ModelScope 下载
             self.pipeline = pipeline(
                 task=self.task,
                 model=self.model_id,
                 model_revision='master',
             )
-            
+
             self.is_loaded = True
             logger.info(f"✅ 模型加载成功: {self.model_id}")
             return True
-            
+
         except Exception as e:
             self.load_error = str(e)
             logger.error(f"❌ 模型加载失败: {self.model_id}, 错误: {e}")
             return False
-    
+
     async def infer(self, *args, **kwargs):
         """模型推理"""
         if not self.is_loaded:
             raise RuntimeError(f"Model {self.model_id} not loaded")
         return self.pipeline(*args, **kwargs)
-    
+
     def get_status(self) -> dict:
         """获取模型状态"""
         return {
@@ -332,35 +334,35 @@ class ModelStatus:
 
 class ModelManager:
     """模型管理器"""
-    
+
     def __init__(self):
         self.loaders: Dict[str, ModelScopeLoader] = {}
         self.status: Dict[str, ModelStatus] = {}
         self.load_progress: Dict[str, float] = {}
-    
+
     async def preload_all_models(self):
         """预加载所有 12 个模型"""
         logger.info("=" * 60)
         logger.info("开始预加载所有 12 个模型...")
         logger.info("=" * 60)
-        
+
         success_count = 0
-        
+
         for model_id, config in settings.model_configs.items():
             try:
                 self.status[model_id] = ModelStatus.LOADING
                 self.load_progress[model_id] = 0
-                
+
                 logger.info(f"[{success_count + 1}/12] 正在加载: {model_id}")
-                
+
                 loader = ModelScopeLoader(
                     model_path=str(settings.models_dir / model_id),
                     model_id=config["model_id"],
                     task=config["task"],
                 )
-                
+
                 success = await loader.load()
-                
+
                 if success:
                     self.loaders[model_id] = loader
                     self.status[model_id] = ModelStatus.LOADED
@@ -371,17 +373,17 @@ class ModelManager:
                     self.status[model_id] = ModelStatus.ERROR
                     self.load_progress[model_id] = 0
                     logger.warning(f"⚠️  跳过 {model_id}，继续加载其他模型")
-                    
+
             except Exception as e:
                 self.status[model_id] = ModelStatus.ERROR
                 self.load_progress[model_id] = 0
                 logger.error(f"❌ {model_id} 加载异常: {e}")
                 logger.warning(f"⚠️  跳过 {model_id}，继续加载其他模型")
-        
+
         logger.info("=" * 60)
         logger.info(f"预加载完成！成功: {success_count}/12")
         logger.info("=" * 60)
-    
+
     def get_all_status(self) -> List[dict]:
         """获取所有模型状态"""
         result = []
@@ -396,24 +398,24 @@ class ModelManager:
                 "is_loaded": model_id in self.loaders,
             })
         return result
-    
+
     def get_loader(self, model_id: str) -> ModelScopeLoader:
         """获取模型加载器"""
         if model_id not in self.loaders:
             raise RuntimeError(f"Model {model_id} not loaded")
         return self.loaders[model_id]
-    
+
     async def reload_model(self, model_id: str) -> bool:
         """重新加载单个模型"""
         if model_id not in settings.model_configs:
             raise ValueError(f"Unknown model: {model_id}")
-        
+
         config = settings.model_configs[model_id]
-        
+
         # 卸载旧模型
         if model_id in self.loaders:
             del self.loaders[model_id]
-        
+
         # 加载新模型
         self.status[model_id] = ModelStatus.LOADING
         loader = ModelScopeLoader(
@@ -421,24 +423,24 @@ class ModelManager:
             model_id=config["model_id"],
             task=config["task"],
         )
-        
+
         success = await loader.load()
-        
+
         if success:
             self.loaders[model_id] = loader
             self.status[model_id] = ModelStatus.LOADED
         else:
             self.status[model_id] = ModelStatus.ERROR
-        
+
         return success
-    
+
     async def reload_all_models(self):
         """重新加载所有模型"""
         # 清空现有模型
         self.loaders.clear()
         self.status.clear()
         self.load_progress.clear()
-        
+
         # 重新加载
         await self.preload_all_models()
 
@@ -480,6 +482,7 @@ app.add_middleware(
 ### 7. API 路由模块（第一阶段核心）
 
 #### 语音识别 API (`backend/api/speech.py`)
+
 ```python
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel
@@ -523,10 +526,10 @@ async def recognize_audio_file(
         file_size_mb = file.size / (1024 * 1024)
         if file_size_mb > 100:
             raise HTTPException(status_code=400, detail="Audio file too large (max 100MB)")
-        
+
         # 读取音频数据
         audio_data = await file.read()
-        
+
         # 调用语音识别服务
         result = await speech_recognition_service.recognize(
             audio_data=audio_data,
@@ -534,9 +537,9 @@ async def recognize_audio_file(
             language=language,
             generate_word_timestamps=generate_word_timestamps,
         )
-        
+
         return SpeechRecognitionResponse(**result)
-        
+
     except Exception as e:
         return SpeechRecognitionResponse(
             success=False,
@@ -545,6 +548,7 @@ async def recognize_audio_file(
 ```
 
 #### 翻译 API (`backend/api/translation.py`)
+
 ```python
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -579,9 +583,9 @@ async def translate_text(request: TranslationRequest):
             target_language=request.target_language,
             model_id=request.model_id,
         )
-        
+
         return TranslationResponse(**result)
-        
+
     except Exception as e:
         return TranslationResponse(
             success=False,
@@ -596,12 +600,14 @@ async def translate_text(request: TranslationRequest):
 ### 1. AI 模型总控面板 (`src/components/AIModelDashboard.tsx`)
 
 **功能：**
+
 - 显示 12 个模型的加载状态（逐个显示）
 - 每个模型单独重试按钮
 - 全局一键重新加载所有模型
 - 显示每个模型的详细信息（描述、分类）
 
 **UI 设计（玻璃拟态）：**
+
 ```
 ┌───────────────────────────────────────────────────────┐
 │  🤖 AI 模型总控面板                              │
@@ -619,6 +625,7 @@ async def translate_text(request: TranslationRequest):
 ```
 
 ### 2. 语音识别面板 (`SpeechRecognitionPanel.tsx`)
+
 - 🎤 实时录音
 - 📁 音频文件上传（WAV/MP3/WebM/OGG/FLAC）
 - 📝 实时转写显示
@@ -626,6 +633,7 @@ async def translate_text(request: TranslationRequest):
 - 🔄 模型选择（3个模型）
 
 ### 3. 翻译面板 (`TranslationPanel.tsx`)
+
 - 📝 源文本输入
 - 🌐 语言选择（200+种）
 - 📊 翻译结果显示
@@ -638,9 +646,11 @@ async def translate_text(request: TranslationRequest):
 ## 🚀 开发阶段规划（已确认分阶段实施）
 
 ### 第一阶段：核心基础（当前阶段）
+
 **范围**：配置 + 模型加载器 + 语音识别 + 翻译
 
 **任务清单：**
+
 - [ ] 更新 `backend/requirements.txt`
 - [ ] 重构 `backend/core/config.py`（12个模型完整配置）
 - [ ] 重写 `backend/core/model_loader.py`（ModelScope）
@@ -658,6 +668,7 @@ async def translate_text(request: TranslationRequest):
 - [ ] 第一阶段审核与测试
 
 ### 第二阶段：扩展功能
+
 - [ ] 创建文本理解模块
 - [ ] 创建音频处理模块
 - [ ] 创建语音合成模块（MP3 128kbps）
@@ -665,6 +676,7 @@ async def translate_text(request: TranslationRequest):
 - [ ] 对应前端组件
 
 ### 第三阶段：集成与测试
+
 - [ ] 端到端测试
 - [ ] 错误处理优化
 - [ ] 性能优化
@@ -674,43 +686,55 @@ async def translate_text(request: TranslationRequest):
 ## ⚠️ 关键技术难点与解决方案（已确认）
 
 ### 难点 1：12 个模型预加载的内存占用
+
 **风险**：12 个模型可能占用 5GB+ 内存
 **解决方案**：
+
 - 提供内存统计显示
 - 失败时跳过该模型，继续加载其他（已确认）
 - 添加内存警告阈值
 
 ### 难点 2：ModelScope 模型加载失败
+
 **风险**：网络问题、权限问题、模型不存在
 **解决方案**：
+
 - 完善的错误捕获和重试机制
 - 友好的错误提示
 - 模型加载日志实时显示
 - 失败时跳过，不影响整体（已确认）
 
 ### 难点 3：音频格式兼容性
+
 **风险**：MP3、WAV、WebM、OGG、FLAC
 **解决方案**：
+
 - 使用 librosa + pydub 统一处理
 - 格式自动检测和转换
 - 清晰的格式支持说明（最全格式已确认）
 
 ### 难点 4：移动端兼容性
+
 **风险**：手机浏览器性能限制
 **解决方案**：
+
 - 响应式设计
 - 移动端优化的 UI
 - 大模型在移动端提示用户
 
 ### 难点 5：用户隐私与安全
+
 **风险**：音频/图像数据处理
 **解决方案**：
+
 - 所有数据本地处理，不上传
 - 清晰的隐私说明
 - 权限请求友好提示
 
 ### 难点 6：CORS 跨域问题
+
 **解决方案**：
+
 - 开发环境配置 CORS 允许 localhost:3025（已确认）
 - 生产环境 Nginx 反向代理（已确认）
 
@@ -719,6 +743,7 @@ async def translate_text(request: TranslationRequest):
 ## ✅ 验收标准
 
 ### 后端验收
+
 - [ ] 所有 12 个模型预加载（失败跳过）
 - [ ] 所有 API 接口正常响应
 - [ ] 统一错误响应格式（HTTP + JSON）
@@ -726,6 +751,7 @@ async def translate_text(request: TranslationRequest):
 - [ ] 文件上传限制生效（音频100MB，图像20MB）
 
 ### 前端验收
+
 - [ ] AIModelDashboard 显示 12 个模型状态
 - [ ] 每个模型单独重试 + 全局重试
 - [ ] 6 个功能面板完整实现
@@ -737,12 +763,12 @@ async def translate_text(request: TranslationRequest):
 
 ## 📅 预计开发时间
 
-| 阶段 | 预计时间 |
-|------|---------|
-| 第一阶段：核心基础 | 4-6 小时 |
-| 第二阶段：扩展功能 | 6-8 小时 |
-| 第三阶段：集成与测试 | 2-3 小时 |
-| **总计** | **12-17 小时** |
+| 阶段                 | 预计时间       |
+| -------------------- | -------------- |
+| 第一阶段：核心基础   | 4-6 小时       |
+| 第二阶段：扩展功能   | 6-8 小时       |
+| 第三阶段：集成与测试 | 2-3 小时       |
+| **总计**             | **12-17 小时** |
 
 ---
 

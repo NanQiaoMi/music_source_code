@@ -6,18 +6,18 @@
 
 ## 快速定位
 
-| 你需要 | 查看 |
-|--------|------|
-| 当前要做什么 | `docs/nbl/ROADMAP.md` |
-| 开发流程规范 | `docs/nbl/PROCESS.md` |
-| 编码/测试规范 | `docs/nbl/CODING_STANDARDS.md` |
-| 系统架构 | `docs/nbl/ARCHITECTURE.md` |
-| 当前迭代实施计划 | `docs/nbl/plans/` 目录 |
-| 技术设计方案 | `docs/nbl/specs/` 目录 |
-| 设计系统 | `DESIGN.md` |
-| 产品策略 | `PRODUCT.md` |
-| 启动指南 | `STARTUP_GUIDE.md` |
-| 历史文档（已归档） | `docs/nbl/archive/` 目录 |
+| 你需要             | 查看                           |
+| ------------------ | ------------------------------ |
+| 当前要做什么       | `docs/nbl/ROADMAP.md`          |
+| 开发流程规范       | `docs/nbl/PROCESS.md`          |
+| 编码/测试规范      | `docs/nbl/CODING_STANDARDS.md` |
+| 系统架构           | `docs/nbl/ARCHITECTURE.md`     |
+| 当前迭代实施计划   | `docs/nbl/plans/` 目录         |
+| 技术设计方案       | `docs/nbl/specs/` 目录         |
+| 设计系统           | `DESIGN.md`                    |
+| 产品策略           | `PRODUCT.md`                   |
+| 启动指南           | `STARTUP_GUIDE.md`             |
+| 历史文档（已归档） | `docs/nbl/archive/` 目录       |
 
 ---
 
@@ -32,15 +32,15 @@
 
 ### 技术栈
 
-| 领域 | 方案 |
-|------|------|
+| 领域     | 方案                                            |
+| -------- | ----------------------------------------------- |
 | 核心框架 | Next.js 16 + React 19 + TypeScript 5.4 (strict) |
-| 状态管理 | Zustand 5（部分 persist 中间件） |
-| 动画 | Framer Motion 12 + Spring Physics |
-| 3D 渲染 | Three.js 0.183 |
-| 样式 | Tailwind CSS 3.4 + OKLCH Tokens |
-| 音频引擎 | Web Audio API（AudioContext Singleton） |
-| AI 分析 | Python FastAPI + ModelScope |
+| 状态管理 | Zustand 5（部分 persist 中间件）                |
+| 动画     | Framer Motion 12 + Spring Physics               |
+| 3D 渲染  | Three.js 0.183                                  |
+| 样式     | Tailwind CSS 3.4 + OKLCH Tokens                 |
+| 音频引擎 | Web Audio API（AudioContext Singleton）         |
+| AI 分析  | Python FastAPI + ModelScope                     |
 
 ---
 

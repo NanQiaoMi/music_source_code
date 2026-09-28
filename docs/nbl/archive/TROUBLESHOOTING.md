@@ -3,10 +3,13 @@
 ## 一、常见问题类型
 
 ### 1. localStorage 配额超限问题
+
 **错误信息**: `QuotaExceededError: Failed to execute 'setItem' on 'Storage'`
 
 ### 2. Next.js 构建缓存损坏问题
+
 **错误信息**:
+
 - `Cannot find module './22.js'`
 - `Cannot find module for page: /_document`
 - `PageNotFoundError: Cannot find module`
@@ -16,16 +19,18 @@
 ## 二、快速恢复方案（按顺序执行）
 
 ### 步骤 1: 清理浏览器 localStorage
+
 打开浏览器控制台（F12），执行以下命令：
 
 ```javascript
-localStorage.removeItem('vibe-music-ai-preferences');
-localStorage.removeItem('vibe-music-preferences');
+localStorage.removeItem("vibe-music-ai-preferences");
+localStorage.removeItem("vibe-music-preferences");
 localStorage.clear(); // 可选，清空所有数据
 location.reload(); // 刷新页面
 ```
 
 ### 步骤 2: 清理 Next.js 构建缓存
+
 在项目根目录下执行：
 
 ```powershell
@@ -55,6 +60,7 @@ npm run dev
 文件位置: `src/ai/store/aiStore.ts`
 
 确保配置如下：
+
 - ✅ 只持久化必要的小数据
 - ✅ 不持久化 `models` 数组
 - ✅ 不持久化 `engine` 或 `isInitialized`
@@ -123,6 +129,7 @@ Write-Host "========================================" -ForegroundColor Cyan
 ```
 
 使用方法：
+
 ```powershell
 .\scripts\cleanup.ps1
 npm run build
@@ -178,6 +185,7 @@ npm run build
 ## 七、联系支持
 
 如果以上方案都无法解决问题，请提供以下信息：
+
 1. Node.js 版本 (`node -v`)
 2. npm 版本 (`npm -v`)
 3. 完整的错误信息和调用栈

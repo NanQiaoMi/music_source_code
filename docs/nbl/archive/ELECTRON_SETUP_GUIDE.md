@@ -8,17 +8,20 @@
 ## 📋 已完成的工作
 
 ### 1. Electron 基础框架
+
 - ✅ `electron/main/index.js` - 主进程文件
 - ✅ `electron/preload/index.js` - 预加载脚本
 - ✅ `src/types/electron.d.ts` - TypeScript 类型定义
 
 ### 2. 桌面功能实现
+
 - ✅ **桌面歌词窗口** - 无边框、透明、置顶、可拖动
 - ✅ **系统托盘** - 快捷菜单、播放控制、歌词开关
 - ✅ **IPC 通信** - 主进程与渲染进程通信机制
 - ✅ **窗口管理** - 主窗口、桌面歌词窗口生命周期管理
 
 ### 3. 前端集成
+
 - ✅ `src/hooks/useElectron.ts` - Electron Hook
 - ✅ `src/components/features-v7/DesktopLyrics.tsx` - 桌面歌词组件
 - ✅ `src/components/features-v7/DesktopLyricsToggle.tsx` - 桌面歌词切换按钮
@@ -53,31 +56,17 @@ npm install --save-dev electron electron-builder concurrently wait-on cross-env
     "directories": {
       "output": "dist-electron"
     },
-    "files": [
-      ".next/**/*",
-      "electron/**/*",
-      "public/**/*",
-      "package.json"
-    ],
+    "files": [".next/**/*", "electron/**/*", "public/**/*", "package.json"],
     "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ],
+      "target": ["nsis", "portable"],
       "icon": "public/default-cover.ico"
     },
     "mac": {
-      "target": [
-        "dmg",
-        "zip"
-      ],
+      "target": ["dmg", "zip"],
       "icon": "public/default-cover.icns"
     },
     "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
+      "target": ["AppImage", "deb"],
       "icon": "public/default-cover.png"
     }
   }
@@ -113,12 +102,14 @@ npm run build:electron
 ## 🎯 功能说明
 
 ### 1. 桌面歌词
+
 - 点击播放器界面右下角的绿色按钮（MonitorPlay 图标）
 - 或通过系统托盘菜单启用桌面歌词
 - 歌词窗口无边框、透明、置顶显示
 - 鼠标事件穿透，不影响其他操作
 
 ### 2. 系统托盘
+
 - 右键托盘图标打开快捷菜单
 - 支持播放/暂停、上一首、下一首
 - 支持显示/隐藏主窗口
@@ -141,13 +132,19 @@ await window.electronAPI.updateLyrics(lyricsData);
 // 更新歌曲信息
 await window.electronAPI.updateSongInfo({
   title: "歌曲名",
-  artist: "艺术家"
+  artist: "艺术家",
 });
 
 // 监听播放控制
-window.electronAPI.onTogglePlay(() => { /* ... */ });
-window.electronAPI.onPrevSong(() => { /* ... */ });
-window.electronAPI.onNextSong(() => { /* ... */ });
+window.electronAPI.onTogglePlay(() => {
+  /* ... */
+});
+window.electronAPI.onPrevSong(() => {
+  /* ... */
+});
+window.electronAPI.onNextSong(() => {
+  /* ... */
+});
 ```
 
 ---
@@ -179,20 +176,25 @@ vibe-music-player/
 ## ⚠️ 注意事项
 
 ### 核心禁令重申
+
 - ❌ **绝对不要**修改现有三个核心界面（资料库、播放器、全屏歌词）
 - ✅ 所有新增功能通过独立组件/窗口实现
 
 ### 图标准备
+
 打包前需要准备以下图标文件：
+
 - `public/default-cover.ico` - Windows 图标
 - `public/default-cover.icns` - macOS 图标
 - `public/default-cover.png` - Linux 图标（512x512）
 
 ### 开发模式
+
 - 开发模式下，Electron 会加载 `http://localhost:3025`
 - 请确保 Next.js 开发服务器正常运行
 
 ### 生产模式
+
 - 生产模式下，Electron 会加载构建后的 Next.js 文件
 - 需要先运行 `npm run build` 构建 Next.js
 

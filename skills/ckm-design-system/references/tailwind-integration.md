@@ -15,7 +15,7 @@ Map design system tokens to Tailwind CSS configuration.
 @layer base {
   :root {
     /* Primitives */
-    --color-blue-600: 37 99 235;  /* HSL: 217 91% 60% */
+    --color-blue-600: 37 99 235; /* HSL: 217 91% 60% */
 
     /* Semantic */
     --background: 0 0% 100%;
@@ -61,55 +61,55 @@ Map design system tokens to Tailwind CSS configuration.
 ### tailwind.config.ts
 
 ```typescript
-import type { Config } from 'tailwindcss'
+import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: ['class'],
-  content: ['./src/**/*.{ts,tsx}'],
+  darkMode: ["class"],
+  content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
         },
         muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))',
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
         },
         accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
         },
         destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))',
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
         },
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
         card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
         },
       },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
       },
     },
   },
   plugins: [],
-}
+};
 
-export default config
+export default config;
 ```
 
 ## HSL Format Benefits
@@ -165,9 +165,15 @@ background-color: hsl(217 91% 60% / 0.5);
   }
 
   /* Sizes */
-  .btn-sm { @apply h-8 px-3 text-xs; }
-  .btn-md { @apply h-10 px-4 text-sm; }
-  .btn-lg { @apply h-12 px-6 text-base; }
+  .btn-sm {
+    @apply h-8 px-3 text-xs;
+  }
+  .btn-md {
+    @apply h-10 px-4 text-sm;
+  }
+  .btn-lg {
+    @apply h-12 px-6 text-base;
+  }
 }
 ```
 
@@ -220,12 +226,12 @@ theme: {
 ```typescript
 // Toggle dark mode
 function toggleDarkMode() {
-  document.documentElement.classList.toggle('dark')
+  document.documentElement.classList.toggle("dark");
 }
 
 // System preference
-if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-  document.documentElement.classList.add('dark')
+if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+  document.documentElement.classList.add("dark");
 }
 ```
 

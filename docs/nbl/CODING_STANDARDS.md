@@ -30,11 +30,11 @@ function formatTime(seconds: number): string {
 
 ### 渐进式修复策略
 
-| Phase | 目标 | 方法 |
-|-------|------|------|
-| Phase 0 | 修复 prettier 格式问题 | `npx prettier --write src/` |
-| Phase 1-3 | 抑制新增的 lint 错误 | 新代码严格遵循规范 |
-| Phase 4 | 清零所有存量错误 | 批量修复 no-explicit-any + no-unused-vars |
+| Phase     | 目标                   | 方法                                      |
+| --------- | ---------------------- | ----------------------------------------- |
+| Phase 0   | 修复 prettier 格式问题 | `npx prettier --write src/`               |
+| Phase 1-3 | 抑制新增的 lint 错误   | 新代码严格遵循规范                        |
+| Phase 4   | 清零所有存量错误       | 批量修复 no-explicit-any + no-unused-vars |
 
 ---
 
@@ -164,12 +164,12 @@ import type { Track } from "@/types";
 
 ### 5.1 测试层级
 
-| 层级 | 覆盖范围 | 工具 | 目标覆盖率 |
-|------|----------|------|-----------|
-| Unit | 工具函数、纯逻辑 | Vitest | ≥80% |
-| Component | 组件渲染、交互 | Vitest + jsdom | ≥60% |
-| Integration | Store + 组件联动 | Vitest | ≥40% |
-| E2E | 核心用户流程 | Playwright（未来） | 关键路径 |
+| 层级        | 覆盖范围         | 工具               | 目标覆盖率 |
+| ----------- | ---------------- | ------------------ | ---------- |
+| Unit        | 工具函数、纯逻辑 | Vitest             | ≥80%       |
+| Component   | 组件渲染、交互   | Vitest + jsdom     | ≥60%       |
+| Integration | Store + 组件联动 | Vitest             | ≥40%       |
+| E2E         | 核心用户流程     | Playwright（未来） | 关键路径   |
 
 ### 5.2 命名规范
 

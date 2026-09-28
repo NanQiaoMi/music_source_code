@@ -46,16 +46,16 @@ src/
 
 ### 1.2 技术选型说明
 
-| 技术 | 版本 | 用途 |
-|-----|------|------|
-| Next.js | 14.1.4 | React框架，服务端渲染 |
-| React | 18.2.0 | UI库 |
-| TypeScript | 5.x | 类型安全 |
-| Zustand | 4.5.2 | 状态管理（轻量级Redux替代） |
-| Framer Motion | 11.x | 动画库 |
-| Tailwind CSS | 3.x | CSS框架 |
-| Lucide React | 0.577.0 | 图标库 |
-| jsmediatags | 3.9.7 | 音频元数据读取 |
+| 技术          | 版本    | 用途                        |
+| ------------- | ------- | --------------------------- |
+| Next.js       | 14.1.4  | React框架，服务端渲染       |
+| React         | 18.2.0  | UI库                        |
+| TypeScript    | 5.x     | 类型安全                    |
+| Zustand       | 4.5.2   | 状态管理（轻量级Redux替代） |
+| Framer Motion | 11.x    | 动画库                      |
+| Tailwind CSS  | 3.x     | CSS框架                     |
+| Lucide React  | 0.577.0 | 图标库                      |
+| jsmediatags   | 3.9.7   | 音频元数据读取              |
 
 ---
 
@@ -66,12 +66,14 @@ src/
 **功能说明**: 项目主入口，集成所有面板和功能
 
 **核心特性**:
+
 - 双视图切换：Home视图（音乐卡片）、Player视图（3D播放器）
 - 工具栏面板：20+功能面板入口
 - Apple风格设计：玻璃拟态、渐变背景
 - 响应式布局：支持PC/平板/手机
 
 **面板列表**:
+
 1. 播放队列 - 查看/编辑当前播放队列
 2. 历史记录 - 播放历史
 3. 设置面板 - 全局设置
@@ -92,6 +94,7 @@ src/
 18. 歌词搜索 - 歌词搜索与管理
 
 **关键代码结构**:
+
 ```typescript
 // 视图状态
 const { currentView } = useUIStore();
@@ -119,6 +122,7 @@ const [showHistory, setShowHistory] = useState(false);
 **功能说明**: 以3D卡片堆栈形式展示本地音乐库
 
 **核心特性**:
+
 - 3D卡片堆叠效果
 - 滑动切换歌曲
 - 点击卡片播放
@@ -132,6 +136,7 @@ const [showHistory, setShowHistory] = useState(false);
 **功能说明**: 沉浸式3D播放界面
 
 **核心特性**:
+
 - 旋转专辑封面
 - 进度条控制
 - 播放/暂停、上一首/下一首
@@ -147,6 +152,7 @@ const [showHistory, setShowHistory] = useState(false);
 **功能说明**: Home视图下的迷你播放器
 
 **核心特性**:
+
 - 底部悬浮显示
 - 播放控制
 - 进度条
@@ -160,6 +166,7 @@ const [showHistory, setShowHistory] = useState(false);
 ### 3.1 音频状态 (src/store/audioStore.ts)
 
 **核心状态**:
+
 ```typescript
 interface AudioState {
   isPlaying: boolean;
@@ -168,19 +175,20 @@ interface AudioState {
   volume: number;
   isMuted: boolean;
   playbackRate: number;
-  loopMode: LoopMode;  // none | single | all | shuffle
+  loopMode: LoopMode; // none | single | all | shuffle
   currentSong: Song | null;
   queue: Song[];
   currentIndex: number;
   isLoading: boolean;
   error: AudioError | null;
-  eqBands: number[];  // 10段EQ
+  eqBands: number[]; // 10段EQ
   currentEQPreset: string;
   isEQEnabled: boolean;
 }
 ```
 
 **核心方法**:
+
 - `playSong(song)` - 播放指定歌曲
 - `togglePlay()` - 播放/暂停切换
 - `nextSong()` / `prevSong()` - 上一首/下一首
@@ -192,6 +200,7 @@ interface AudioState {
 ### 3.2 播放列表 (src/store/playlistStore.ts)
 
 **核心状态**:
+
 ```typescript
 interface PlaylistState {
   songs: Song[];
@@ -216,6 +225,7 @@ interface Song {
 ```
 
 **核心方法**:
+
 - `initializePlaylist()` - 初始化播放列表
 - `addSong(song)` - 添加歌曲
 - `removeSong(songId)` - 移除歌曲
@@ -225,6 +235,7 @@ interface Song {
 ### 3.3 UI状态 (src/store/uiStore.ts)
 
 **核心状态**:
+
 ```typescript
 interface UIState {
   currentView: "home" | "player";
@@ -234,12 +245,14 @@ interface UIState {
 ```
 
 **核心方法**:
+
 - `setView(view)` - 切换视图
 - `toggleSidebar()` - 切换侧边栏
 
 ### 3.4 视觉设置 (src/store/visualSettingsStore.ts)
 
 **核心状态**:
+
 ```typescript
 interface VisualSettingsState {
   theme: "light" | "dark" | "oled";
@@ -260,6 +273,7 @@ interface VisualSettingsState {
 ### 3.5 歌词设置 (src/store/lyricSettingsStore.ts)
 
 **核心状态**:
+
 ```typescript
 interface LyricSettingsState {
   fontSize: number;
@@ -278,6 +292,7 @@ interface LyricSettingsState {
 ### 3.6 歌词搜索 (src/store/lyricsSearchStore.ts) - V3.5新增
 
 **核心状态**:
+
 ```typescript
 interface LyricsSearchState {
   searchQuery: string;
@@ -292,6 +307,7 @@ interface LyricsSearchState {
 ```
 
 **核心方法**:
+
 - `searchLyrics(title, artist?)` - 搜索歌词
 - `selectLyrics(lyrics)` - 选择歌词
 - `toggleFavoriteLyrics(lyrics)` - 收藏/取消收藏
@@ -301,6 +317,7 @@ interface LyricsSearchState {
 ### 3.7 智能推荐 (src/store/recommendationStore.ts) - V3.5新增
 
 **核心状态**:
+
 ```typescript
 interface RecommendationState {
   playHistory: PlayRecord[];
@@ -310,6 +327,7 @@ interface RecommendationState {
 ```
 
 **核心方法**:
+
 - `recordPlay(song)` - 记录播放
 - `getRecommendations()` - 获取推荐
 - `getFavoriteArtists()` - 获取最爱歌手
@@ -318,6 +336,7 @@ interface RecommendationState {
 ### 3.8 音乐源 (src/store/musicSourceStore.ts)
 
 **核心状态**:
+
 ```typescript
 interface MusicSourceState {
   sources: MusicSource[];
@@ -338,20 +357,22 @@ interface MusicSource {
 ### 3.9 在线音乐 (src/store/onlineMusicStore.ts)
 
 **核心状态**:
+
 ```typescript
 interface OnlineMusicState {
   searchQuery: string;
   searchResults: SearchResult[];
   isLoading: boolean;
   searchHistory: string[];
-  searchType: SearchType;  // all | song | artist | album
-  sortType: SortType;  // default | title | artist | duration
+  searchType: SearchType; // all | song | artist | album
+  sortType: SortType; // default | title | artist | duration
 }
 ```
 
 ### 3.10 睡眠定时 (src/store/sleepTimerStore.ts)
 
 **核心状态**:
+
 ```typescript
 interface SleepTimerState {
   isActive: boolean;
@@ -367,50 +388,50 @@ interface SleepTimerState {
 
 ### 4.1 玻璃拟态组件
 
-| 组件 | 说明 | 文件 |
-|-----|------|------|
+| 组件        | 说明     | 文件            |
+| ----------- | -------- | --------------- |
 | GlassButton | 玻璃按钮 | GlassButton.tsx |
-| GlassCard | 玻璃卡片 | GlassCard.tsx |
+| GlassCard   | 玻璃卡片 | GlassCard.tsx   |
 | GlassSlider | 玻璃滑块 | GlassSlider.tsx |
-| GlassToast | 玻璃提示 | GlassToast.tsx |
+| GlassToast  | 玻璃提示 | GlassToast.tsx  |
 
 ### 4.2 功能面板组件
 
-| 组件 | 说明 |
-|-----|------|
-| QueuePanel | 播放队列面板 |
-| HistoryPanel | 历史记录面板 |
-| SettingsPanel | 设置面板 |
-| SleepTimerPanel | 睡眠定时面板 |
-| SearchPanel | 本地搜索面板 |
-| LyricSettingsPanel | 歌词设置面板 |
-| AudioEqualizer | 均衡器面板 |
-| VisualSettingsPanel | 视觉设置面板 |
-| KeyboardShortcutsHelp | 快捷键帮助 |
-| DailyRecommendation | 每日推荐 |
-| ListeningHistory | 听歌历史 |
-| LyricsImportPanel | 歌词导入 |
-| OfflineCachePanel | 离线缓存 |
-| SharePanel | 分享面板 |
-| PlayerSkinsPanel | 播放器皮肤 |
-| MusicSourcePanel | 音乐源管理 |
-| OnlineSearchPanel | 在线搜索面板 |
-| LyricsSearchPanel | 歌词搜索面板 - V3.5新增 |
+| 组件                  | 说明                    |
+| --------------------- | ----------------------- |
+| QueuePanel            | 播放队列面板            |
+| HistoryPanel          | 历史记录面板            |
+| SettingsPanel         | 设置面板                |
+| SleepTimerPanel       | 睡眠定时面板            |
+| SearchPanel           | 本地搜索面板            |
+| LyricSettingsPanel    | 歌词设置面板            |
+| AudioEqualizer        | 均衡器面板              |
+| VisualSettingsPanel   | 视觉设置面板            |
+| KeyboardShortcutsHelp | 快捷键帮助              |
+| DailyRecommendation   | 每日推荐                |
+| ListeningHistory      | 听歌历史                |
+| LyricsImportPanel     | 歌词导入                |
+| OfflineCachePanel     | 离线缓存                |
+| SharePanel            | 分享面板                |
+| PlayerSkinsPanel      | 播放器皮肤              |
+| MusicSourcePanel      | 音乐源管理              |
+| OnlineSearchPanel     | 在线搜索面板            |
+| LyricsSearchPanel     | 歌词搜索面板 - V3.5新增 |
 
 ### 4.3 特色组件
 
-| 组件 | 说明 |
-|-----|------|
-| Player3D | 3D播放器 |
-| FloatingPlayer | 悬浮播放器 |
-| MusicCardStack | 音乐卡片堆栈 |
-| FullscreenLyrics | 全屏歌词 |
-| LyricVisualizer | 歌词可视化 |
-| AppleMusicVisualizer | Apple风格可视化 |
-| AppleDateTime | Apple风格时间显示 |
-| GestureController | 手势控制器 |
-| VirtualCursor | 虚拟光标 |
-| Background | 动态背景 |
+| 组件                 | 说明              |
+| -------------------- | ----------------- |
+| Player3D             | 3D播放器          |
+| FloatingPlayer       | 悬浮播放器        |
+| MusicCardStack       | 音乐卡片堆栈      |
+| FullscreenLyrics     | 全屏歌词          |
+| LyricVisualizer      | 歌词可视化        |
+| AppleMusicVisualizer | Apple风格可视化   |
+| AppleDateTime        | Apple风格时间显示 |
+| GestureController    | 手势控制器        |
+| VirtualCursor        | 虚拟光标          |
+| Background           | 动态背景          |
 
 ---
 
@@ -421,6 +442,7 @@ interface SleepTimerState {
 **功能**: 读取音频文件内嵌的元数据
 
 **核心方法**:
+
 ```typescript
 export async function readAudioMetadata(file: File): Promise<{
   title: string;
@@ -431,7 +453,7 @@ export async function readAudioMetadata(file: File): Promise<{
   track: number;
   cover: string | null;
   lyrics: string | null;
-}>
+}>;
 ```
 
 ### 5.2 本地音乐服务 (src/services/localMusicService.ts)
@@ -439,6 +461,7 @@ export async function readAudioMetadata(file: File): Promise<{
 **功能**: 本地音乐文件导入和管理
 
 **核心方法**:
+
 - `importAudioFiles(files)` - 导入音频文件
 - `scanDirectory()` - 扫描目录
 - `getAudioDuration(file)` - 获取音频时长
@@ -448,6 +471,7 @@ export async function readAudioMetadata(file: File): Promise<{
 **功能**: 歌词解析和管理
 
 **核心方法**:
+
 - `parseLRC(lrcContent)` - 解析LRC格式歌词
 - `parseLyricsFromFile(file)` - 从文件解析歌词
 
@@ -456,11 +480,12 @@ export async function readAudioMetadata(file: File): Promise<{
 **功能**: 音乐源API适配器
 
 **核心方法**:
+
 ```typescript
 export class MusicSourceApiService {
-  search(keyword, type, sourceId?)  // 搜索音乐
-  getSongUrl(songId, source)         // 获取歌曲URL
-  getSources()                        // 获取所有音源
+  search(keyword, type, sourceId?); // 搜索音乐
+  getSongUrl(songId, source); // 获取歌曲URL
+  getSources(); // 获取所有音源
 }
 ```
 
@@ -469,11 +494,12 @@ export class MusicSourceApiService {
 **功能**: 歌词搜索和解析
 
 **核心方法**:
+
 ```typescript
 export class LyricsSearchService {
-  searchLyrics(title, artist?)        // 搜索歌词
-  getLyricsBySong(songTitle, songArtist)  // 根据歌曲获取歌词
-  parseLyrics(lrcContent)             // 解析LRC歌词
+  searchLyrics(title, artist?); // 搜索歌词
+  getLyricsBySong(songTitle, songArtist); // 根据歌曲获取歌词
+  parseLyrics(lrcContent); // 解析LRC歌词
 }
 ```
 
@@ -483,30 +509,30 @@ export class LyricsSearchService {
 
 ### 6.1 音频相关
 
-| Hook | 说明 |
-|-----|------|
-| useAudioPlayer | 音频播放器控制 |
+| Hook             | 说明           |
+| ---------------- | -------------- |
+| useAudioPlayer   | 音频播放器控制 |
 | useAudioMetadata | 音频元数据读取 |
-| useDynamicTheme | 动态主题切换 |
-| useAlbumTheme | 专辑主题提取 |
+| useDynamicTheme  | 动态主题切换   |
+| useAlbumTheme    | 专辑主题提取   |
 
 ### 6.2 歌词相关
 
-| Hook | 说明 |
-|-----|------|
-| useLyricParser | 歌词解析 |
+| Hook                    | 说明         |
+| ----------------------- | ------------ |
+| useLyricParser          | 歌词解析     |
 | useBilingualLyricParser | 双语歌词解析 |
 
 ### 6.3 其他
 
-| Hook | 说明 |
-|-----|------|
-| useDailyRecommendation | 每日推荐 |
-| useListeningHistory | 听歌历史 |
-| useKeyboardShortcuts | 键盘快捷键 |
-| useHandGesture | 手势识别 |
-| useOfflineCache | 离线缓存 |
-| useOnlineMusicSearch | 在线音乐搜索 |
+| Hook                   | 说明         |
+| ---------------------- | ------------ |
+| useDailyRecommendation | 每日推荐     |
+| useListeningHistory    | 听歌历史     |
+| useKeyboardShortcuts   | 键盘快捷键   |
+| useHandGesture         | 手势识别     |
+| useOfflineCache        | 离线缓存     |
+| useOnlineMusicSearch   | 在线音乐搜索 |
 
 ---
 
@@ -515,6 +541,7 @@ export class LyricsSearchService {
 ### 7.1 添加新功能面板
 
 1. **创建组件**: 在 `src/components/` 下创建新组件
+
 ```typescript
 // src/components/NewFeaturePanel.tsx
 export default function NewFeaturePanel({ isOpen, onClose }) {
@@ -531,11 +558,13 @@ export default function NewFeaturePanel({ isOpen, onClose }) {
 ```
 
 2. **添加状态**: 在 `src/app/page.tsx` 中添加状态
+
 ```typescript
 const [showNewFeature, setShowNewFeature] = useState(false);
 ```
 
 3. **添加工具栏按钮**: 在 `src/app/page.tsx` 工具栏中添加按钮
+
 ```typescript
 <button onClick={() => setShowNewFeature(true)}>
   <Icon />
@@ -543,6 +572,7 @@ const [showNewFeature, setShowNewFeature] = useState(false);
 ```
 
 4. **添加面板组件**: 在 `src/app/page.tsx` 底部添加面板
+
 ```typescript
 <NewFeaturePanel
   isOpen={showNewFeature}
@@ -553,6 +583,7 @@ const [showNewFeature, setShowNewFeature] = useState(false);
 ### 7.2 添加新的Store
 
 1. **创建Store**: 在 `src/store/` 下创建新文件
+
 ```typescript
 // src/store/newFeatureStore.ts
 import { create } from "zustand";
@@ -573,6 +604,7 @@ export const useNewFeatureStore = create<NewFeatureState>()(
 ```
 
 2. **使用Store**: 在组件中使用
+
 ```typescript
 const { state, method } = useNewFeatureStore();
 ```
@@ -645,9 +677,11 @@ transform: "translateZ(0)"
 ```typescript
 // Zustand persist中间件
 persist(
-  (set, get) => ({ /* state */ }),
+  (set, get) => ({
+    /* state */
+  }),
   { name: "storage-key" }
-)
+);
 ```
 
 ---
@@ -655,12 +689,15 @@ persist(
 ## 10. 常见问题
 
 ### Q: 如何添加新的音频格式支持？
+
 A: 查看 `src/services/audioMetadata.ts`，扩展元数据读取逻辑
 
 ### Q: 如何添加新的主题？
+
 A: 修改 `src/store/visualSettingsStore.ts`，添加主题预设
 
 ### Q: 如何优化性能？
+
 A: 1. 使用React.memo 2. 避免不必要的重渲染 3. 使用Web Workers处理大数据
 
 ---

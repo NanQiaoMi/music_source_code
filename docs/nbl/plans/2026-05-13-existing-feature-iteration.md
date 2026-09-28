@@ -404,9 +404,9 @@ export function getTopTimeWindow(hourlyDistribution: Record<number, number>): {
   label: string;
   startHour: number;
   count: number;
-}
+};
 
-export function getListeningNextAction(summary: ListeningInsightSummary): string
+export function getListeningNextAction(summary: ListeningInsightSummary): string;
 ```
 
 Return concrete labels:

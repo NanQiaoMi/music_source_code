@@ -1,11 +1,7 @@
 {
   "root": true,
   "parser": "@typescript-eslint/parser",
-  "plugins": [
-    "@typescript-eslint",
-    "react",
-    "prettier"
-  ],
+  "plugins": ["@typescript-eslint", "react", "prettier"],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
@@ -33,12 +29,7 @@
     "react/no-unknown-property": [
       "error",
       {
-        "ignore": [
-          "directory",
-          "webkitdirectory",
-          "jsx",
-          "global"
-        ]
+        "ignore": ["directory", "webkitdirectory", "jsx", "global"]
       }
     ]
   }

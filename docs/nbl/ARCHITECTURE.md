@@ -123,15 +123,15 @@ src/
 
 ### 关键组件交互
 
-| 组件 | 职责 | 依赖 |
-|------|------|------|
-| `AudioEngine` | AudioContext 单例，管理主音频图 | 无 |
-| `DSPProcessor` | 模块化 DSP 链（EQ/压缩/混响/延迟/失真等） | AudioEngine |
-| `AudioEffectsManager` | 17 种创意效果，动态重连音频图 | AudioEngine |
-| `CrossfadeMixer` | 情感感知交叉淡入淡出 | AudioEngine |
-| `AudioGraphManager` | 编程式音频节点图构建 | AudioEngine |
-| `useAudioPlayer` | React hook 封装，事件监听 | audioStore, AudioEngine |
-| `AudioVisualizerManager` | 桥接 AnalyserNode → 可视化 | AudioEngine |
+| 组件                     | 职责                                      | 依赖                    |
+| ------------------------ | ----------------------------------------- | ----------------------- |
+| `AudioEngine`            | AudioContext 单例，管理主音频图           | 无                      |
+| `DSPProcessor`           | 模块化 DSP 链（EQ/压缩/混响/延迟/失真等） | AudioEngine             |
+| `AudioEffectsManager`    | 17 种创意效果，动态重连音频图             | AudioEngine             |
+| `CrossfadeMixer`         | 情感感知交叉淡入淡出                      | AudioEngine             |
+| `AudioGraphManager`      | 编程式音频节点图构建                      | AudioEngine             |
+| `useAudioPlayer`         | React hook 封装，事件监听                 | audioStore, AudioEngine |
+| `AudioVisualizerManager` | 桥接 AnalyserNode → 可视化                | AudioEngine             |
 
 ---
 
@@ -139,19 +139,19 @@ src/
 
 ### 4.1 Store 分类
 
-| 类别 | Store 列表 | 数量 |
-|------|-----------|------|
-| 核心播放 | `audioStore`, `playerStore`, `queueStore`, `eqStore` | 4 |
-| 音频效果 | `audioEffectsStore`, `audioProcessingStore`, `crossfadeStore` | 3 |
-| 音频扩展 | `dsdProcessingStore`, `formatConversionStore`, `recordingStore`, `trackCuttingStore`, `waveformStore`, `hiresStore` | 6 |
-| 播放控制 | `abLoopStore`, `sleepTimerStore`, `spectrumStore` | 3 |
-| AI/情感 | `emotionStore`, `aiStore`, `linerNotesStore`, `knowledgeStore`, `recommendationStore` | 5 |
-| 可视化 | `visualizationStore`, `visualizationV8Store`, `visualSettingsStore`, `totemStore`, `performanceV8Store` | 5 |
-| UI | `uiStore`, `animationStore`, `gestureStore` | 3 |
-| 库 | `playlistStore`, `playlistGroupStore`, `smartPlaylistStore`, `libraryManagerStore`, `libraryHealthStore` | 5 |
-| 数据 | `favoritesStore`, `lyricsCoverStore`, `lyricsSearchStore`, `lyricSettingsStore`, `metadataEditorStore`, `searchStore`, `backupRestoreStore` | 7 |
-| 其他 | `statsAchievementsStore`, `professionalModeStore`, `healthCheckStore`, `fingerprintStore`, `presetStore` | 5 |
-| **总计** | | **46** |
+| 类别     | Store 列表                                                                                                                                  | 数量   |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 核心播放 | `audioStore`, `playerStore`, `queueStore`, `eqStore`                                                                                        | 4      |
+| 音频效果 | `audioEffectsStore`, `audioProcessingStore`, `crossfadeStore`                                                                               | 3      |
+| 音频扩展 | `dsdProcessingStore`, `formatConversionStore`, `recordingStore`, `trackCuttingStore`, `waveformStore`, `hiresStore`                         | 6      |
+| 播放控制 | `abLoopStore`, `sleepTimerStore`, `spectrumStore`                                                                                           | 3      |
+| AI/情感  | `emotionStore`, `aiStore`, `linerNotesStore`, `knowledgeStore`, `recommendationStore`                                                       | 5      |
+| 可视化   | `visualizationStore`, `visualizationV8Store`, `visualSettingsStore`, `totemStore`, `performanceV8Store`                                     | 5      |
+| UI       | `uiStore`, `animationStore`, `gestureStore`                                                                                                 | 3      |
+| 库       | `playlistStore`, `playlistGroupStore`, `smartPlaylistStore`, `libraryManagerStore`, `libraryHealthStore`                                    | 5      |
+| 数据     | `favoritesStore`, `lyricsCoverStore`, `lyricsSearchStore`, `lyricSettingsStore`, `metadataEditorStore`, `searchStore`, `backupRestoreStore` | 7      |
+| 其他     | `statsAchievementsStore`, `professionalModeStore`, `healthCheckStore`, `fingerprintStore`, `presetStore`                                    | 5      |
+| **总计** |                                                                                                                                             | **46** |
 
 ### 4.2 当前耦合问题（需 Phase 1 解决）
 
@@ -172,26 +172,28 @@ src/
 
 ## 5. 技术决策记录
 
-| 决策 | 选择 | 理由 |
-|------|------|------|
-| 构建模式 | Static Export | 适配 Electron，不需要 Node.js 服务器 |
-| 状态管理 | Zustand | 轻量、TypeScript 友好、无需 Provider |
-| 样式方案 | Tailwind + OKLCH | 设计系统一致性、Apple 风格玻璃拟态 |
-| 动画引擎 | Framer Motion | React 集成度最高、Spring Physics 支持 |
-| 音频引擎 | Web Audio API | 浏览器原生、低延迟、无需外部依赖 |
-| 可视化渲染 | Canvas 2D + WebGL | 28 个效果覆盖 2D/3D 全场景 |
-| 持久化 | localStorage (Zustand persist) | 简单、无服务器依赖 |
+| 决策       | 选择                           | 理由                                  |
+| ---------- | ------------------------------ | ------------------------------------- |
+| 构建模式   | Static Export                  | 适配 Electron，不需要 Node.js 服务器  |
+| 状态管理   | Zustand                        | 轻量、TypeScript 友好、无需 Provider  |
+| 样式方案   | Tailwind + OKLCH               | 设计系统一致性、Apple 风格玻璃拟态    |
+| 动画引擎   | Framer Motion                  | React 集成度最高、Spring Physics 支持 |
+| 音频引擎   | Web Audio API                  | 浏览器原生、低延迟、无需外部依赖      |
+| 可视化渲染 | Canvas 2D + WebGL              | 28 个效果覆盖 2D/3D 全场景            |
+| 持久化     | localStorage (Zustand persist) | 简单、无服务器依赖                    |
 
 ---
 
 ## 6. 外部依赖
 
 ### 前端运行时
+
 - `next`: 16.2.4 | `react`: 19.2.5 | `typescript`: 5.4.3
 - `zustand`: 5.x | `framer-motion`: 12.x | `three`: 0.183
 - `tailwindcss`: 3.4.x | `lucide-react`: 1.9
 - `@ffmpeg/ffmpeg`: 0.12 | `@xenova/transformers`: 2.17
 
 ### 后端
+
 - `fastapi` | `uvicorn` | `modelscope` | `torch`
 - 12 个 AI 模型（情感分析、语音识别、TTS 等）

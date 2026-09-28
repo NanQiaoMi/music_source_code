@@ -81,6 +81,7 @@ Verified on 2026-05-20 in `D:\26project\music_source_code_V1.1_full\music_source
 ### Task 1: Smart Playlist Rule Builder
 
 **Files:**
+
 - Create: `src/lib/smart-playlist/ruleEngine.ts`
 - Create: `src/lib/smart-playlist/ruleEngine.test.ts`
 - Modify: `src/store/smartPlaylistStore.ts`
@@ -118,25 +119,54 @@ function rule(overrides: Partial<SmartPlaylistRule>): SmartPlaylistRule {
 describe("evaluateSmartPlaylistRules", () => {
   it("matches text contains and notContains operators", () => {
     expect(evaluateSmartPlaylistRules(song, [rule({ value: "city" })], {})).toBe(true);
-    expect(evaluateSmartPlaylistRules(song, [rule({ operator: "notContains", value: "city" })], {})).toBe(false);
+    expect(
+      evaluateSmartPlaylistRules(song, [rule({ operator: "notContains", value: "city" })], {})
+    ).toBe(false);
   });
 
   it("matches numeric duration comparisons", () => {
-    expect(evaluateSmartPlaylistRules(song, [rule({ field: "duration", operator: "greaterThan", value: 200 })], {})).toBe(true);
-    expect(evaluateSmartPlaylistRules(song, [rule({ field: "duration", operator: "lessThan", value: 200 })], {})).toBe(false);
+    expect(
+      evaluateSmartPlaylistRules(
+        song,
+        [rule({ field: "duration", operator: "greaterThan", value: 200 })],
+        {}
+      )
+    ).toBe(true);
+    expect(
+      evaluateSmartPlaylistRules(
+        song,
+        [rule({ field: "duration", operator: "lessThan", value: 200 })],
+        {}
+      )
+    ).toBe(false);
   });
 
   it("uses injected emotion data for quadrant rules", () => {
     const emotions: RuleEmotionMap = { s1: { x: 0.4, y: 0.8 } };
-    expect(evaluateSmartPlaylistRules(song, [rule({ field: "emotion", operator: "inQuadrant", value: "Q1" })], emotions)).toBe(true);
-    expect(evaluateSmartPlaylistRules(song, [rule({ field: "emotion", operator: "inQuadrant", value: "Q3" })], emotions)).toBe(false);
+    expect(
+      evaluateSmartPlaylistRules(
+        song,
+        [rule({ field: "emotion", operator: "inQuadrant", value: "Q1" })],
+        emotions
+      )
+    ).toBe(true);
+    expect(
+      evaluateSmartPlaylistRules(
+        song,
+        [rule({ field: "emotion", operator: "inQuadrant", value: "Q3" })],
+        emotions
+      )
+    ).toBe(false);
   });
 
   it("requires all rules to match", () => {
     expect(
       evaluateSmartPlaylistRules(
         song,
-        [rule({ field: "artist", value: "m83" }), rule({ field: "album", operator: "contains", value: "rush" })],
+        [
+          rule({ field: "artist", value: "m83" }),
+          rule({ field: "album", operator: "contains", value: "rush" }),
+        ],
         {}
       )
     ).toBe(false);
@@ -172,7 +202,11 @@ function textValue(song: Song, field: SmartPlaylistRule["field"]): string {
   return "";
 }
 
-function matchesText(actual: string, operator: SmartPlaylistRule["operator"], expected: string): boolean {
+function matchesText(
+  actual: string,
+  operator: SmartPlaylistRule["operator"],
+  expected: string
+): boolean {
   const left = actual.toLowerCase();
   const right = expected.toLowerCase();
   if (operator === "contains") return left.includes(right);
@@ -182,7 +216,11 @@ function matchesText(actual: string, operator: SmartPlaylistRule["operator"], ex
   return true;
 }
 
-function matchesNumber(actual: number, operator: SmartPlaylistRule["operator"], expected: number): boolean {
+function matchesNumber(
+  actual: number,
+  operator: SmartPlaylistRule["operator"],
+  expected: number
+): boolean {
   if (operator === "greaterThan") return actual > expected;
   if (operator === "lessThan") return actual < expected;
   if (operator === "equals") return actual === expected;
@@ -190,7 +228,10 @@ function matchesNumber(actual: number, operator: SmartPlaylistRule["operator"], 
   return true;
 }
 
-function matchesQuadrant(point: { x: number; y: number } | undefined, value: string | number): boolean {
+function matchesQuadrant(
+  point: { x: number; y: number } | undefined,
+  value: string | number
+): boolean {
   if (!point) return false;
   const quadrant = String(value);
   if (quadrant === "Q1") return point.x > 0 && point.y > 0;
@@ -269,6 +310,7 @@ git commit --no-verify -m "feat(smart-playlist): add usable rule builder"
 ### Task 2: Library Health Actionable Results
 
 **Files:**
+
 - Modify: `src/components/library/LibraryHealthPanel.tsx`
 - Modify: `src/store/libraryHealthStore.ts`
 - Modify: `src/store/libraryHealthStore.test.ts`
@@ -325,6 +367,7 @@ git commit --no-verify -m "feat(library): make health results actionable"
 ### Task 3: Typed Stats View Models And Listening Insights Polish
 
 **Files:**
+
 - Create: `src/lib/stats/viewModels.ts`
 - Create: `src/lib/stats/viewModels.test.ts`
 - Modify: `src/components/widgets/StatsAchievementsPanel.tsx`
@@ -360,7 +403,12 @@ export interface DailyHistoryRow {
 export function buildOverviewMetrics(stats: ListeningStats): MetricCardModel[] {
   return [
     { id: "plays", label: "Total plays", value: String(stats.totalPlayCount || 0), tone: "amber" },
-    { id: "time", label: "Listening time", value: `${Math.floor((stats.totalListenTime || 0) / 3600)}h`, tone: "emerald" },
+    {
+      id: "time",
+      label: "Listening time",
+      value: `${Math.floor((stats.totalListenTime || 0) / 3600)}h`,
+      tone: "emerald",
+    },
     { id: "artists", label: "Artists", value: String(stats.uniqueArtists || 0), tone: "violet" },
     { id: "albums", label: "Albums", value: String(stats.uniqueAlbums || 0), tone: "blue" },
     { id: "songs", label: "Songs", value: String(stats.uniqueSongs || 0), tone: "pink" },
@@ -418,6 +466,7 @@ git commit --no-verify -m "refactor(stats): add typed dashboard view models"
 ### Task 4: Search `/sleep` Command Integration
 
 **Files:**
+
 - Modify: `src/lib/search/commandRouter.test.ts`
 - Modify: `src/components/player/SearchPanel.tsx`
 - Modify: `src/store/sleepTimerStore.ts` if needed
@@ -462,6 +511,7 @@ git commit --no-verify -m "feat(search): execute sleep timer command"
 ### Task 5: Smart Mix Sessions MVP
 
 **Files:**
+
 - Create: `src/lib/mix/sessionBuilder.ts`
 - Create: `src/lib/mix/sessionBuilder.test.ts`
 - Create: `src/store/smartMixStore.ts`
@@ -545,6 +595,7 @@ git commit --no-verify -m "feat(mix): add smart mix sessions mvp"
 ### Task 6: Local Listening Journal
 
 **Files:**
+
 - Create: `src/lib/journal/listeningJournal.ts`
 - Create: `src/lib/journal/listeningJournal.test.ts`
 - Create: `src/store/listeningJournalStore.ts`
@@ -615,6 +666,7 @@ git commit --no-verify -m "feat(journal): add local listening journal"
 ### Task 7: Replace Global Music-Time Hack In V8 Effects
 
 **Files:**
+
 - Create: `src/lib/visualization/audioSnapshot.ts`
 - Create: `src/lib/visualization/audioSnapshot.test.ts`
 - Modify: `src/components/visualization-v8/effects/ResonanceTotemV8.ts`
@@ -635,7 +687,9 @@ export interface VisualizationAudioSnapshot {
   isPlaying: boolean;
 }
 
-export function createAudioSnapshot(input: Partial<VisualizationAudioSnapshot>): VisualizationAudioSnapshot {
+export function createAudioSnapshot(
+  input: Partial<VisualizationAudioSnapshot>
+): VisualizationAudioSnapshot {
   return {
     currentTime: Math.max(0, input.currentTime || 0),
     duration: Math.max(0, input.duration || 0),
@@ -678,6 +732,7 @@ git commit --no-verify -m "refactor(visualization): pass typed audio snapshot to
 ### Task 8: Final Test, Build, Smoke, And Plan Status
 
 **Files:**
+
 - Modify: `docs/nbl/ROADMAP.md`
 - Modify: `docs/nbl/plans/INDEX.md`
 - Modify: `docs/nbl/CHANGELOG.md` if present or create it if missing

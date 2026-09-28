@@ -170,9 +170,9 @@ models_to_download = [
 for model_info in models_to_download:
     print(f"\n正在下载: {model_info['name']}")
     print(f"模型 ID: {model_info['model_id']}")
-    
+
     local_dir = os.path.join(MODELS_DIR, model_info['local_path'])
-    
+
     try:
         model_dir = snapshot_download(
             model_info['model_id'],
@@ -205,6 +205,7 @@ dir public\models\whisper-tiny
 ```
 
 确保每个模型目录下都有必要的文件，例如：
+
 - `config.json`
 - `model.onnx` 或 `model.pt`
 - `tokenizer.json`（如适用）
@@ -227,6 +228,7 @@ npm run dev
 ### Q: 下载速度很慢怎么办？
 
 A: ModelScope 在中国境内速度很快，如果仍然很慢，可以：
+
 - 检查网络连接
 - 尝试使用代理或 VPN
 - 使用 Python 脚本方式下载，可以断点续传
@@ -238,6 +240,7 @@ A: 使用 Python 脚本的 `snapshot_download` 函数支持断点续传，重新
 ### Q: 模型文件太大怎么办？
 
 A: 您可以选择性地下载需要的模型，不必下载所有模型。推荐先下载以下核心模型：
+
 - Whisper Tiny（语音识别，150MB）
 - OPUS-MT 英中/中英翻译（各 280MB）
 - BERT 中文（412MB）
@@ -259,6 +262,7 @@ A: 可以！只要模型文件结构兼容，您可以将任何来源的模型�
 ## 技术支持
 
 如果遇到问题，请检查：
+
 1. Python 版本是否 >= 3.7
 2. ModelScope SDK 是否正确安装
 3. 网络连接是否正常

@@ -13,6 +13,7 @@
 ### Task 1.1: 设计 Coordinator 层接口规范
 
 **状态**
+
 - [ ] 任务完成
 
 **Dependencies:** None
@@ -64,6 +65,7 @@ git commit --no-verify -m "feat(coordinator): add Coordinator type definitions
 ### Task 1.2: 实现 AudioCoordinator + QueueCoordinator
 
 **状态**
+
 - [ ] 任务完成
 
 **Dependencies:** Task 1.1
@@ -171,6 +173,7 @@ git commit --no-verify -m "feat(coordinator): implement AudioCoordinator and Que
 ### Task 1.3: 替换 emotionStore 直接 import → Coordinator
 
 **状态**
+
 - [ ] 任务完成
 
 **Dependencies:** Task 1.2
@@ -212,6 +215,7 @@ git commit --no-verify -m "refactor(store): replace direct store imports with Co
 ### Task 1.4: 消除动态 require()
 
 **状态**
+
 - [ ] 任务完成
 
 **Dependencies:** Task 1.1
@@ -255,6 +259,7 @@ git commit --no-verify -m "refactor(store): replace dynamic require() with stati
 ### Task 1.5: 拆分 audioStore
 
 **状态**
+
 - [ ] 任务完成
 
 **Dependencies:** Task 1.4
@@ -320,7 +325,12 @@ export const usePlayerStore = create<PlayerState>()(
     }),
     {
       name: "mimi-player",
-      partialize: (state) => ({ volume: state.volume, muted: state.muted, playbackRate: state.playbackRate, loopMode: state.loopMode }),
+      partialize: (state) => ({
+        volume: state.volume,
+        muted: state.muted,
+        playbackRate: state.playbackRate,
+        loopMode: state.loopMode,
+      }),
     }
   )
 );
@@ -362,6 +372,7 @@ git commit --no-verify -m "refactor(store): split audioStore into playerStore (c
 ### Task 1.6: 统一 Song 类型
 
 **状态**
+
 - [ ] 任务完成
 
 **Dependencies:** Task 1.4
