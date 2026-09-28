@@ -115,10 +115,10 @@ function getQuadrant(x: number, y: number): string {
 }
 
 const QUADRANT_LABELS: Record<string, string> = {
-  Q1: "楂樿兘鏄庝寒",
-  Q2: "鎮蹭激闃存殫",
-  Q3: "骞抽潤浣庢矇",
-  Q4: "娆㈠揩鏄庝寒",
+  Q1: "高能明亮",
+  Q2: "悲伤阴暗",
+  Q3: "平静低沉",
+  Q4: "欢快明亮",
 };
 
 export const useEmotionStore = create<EmotionState>()(
@@ -354,7 +354,7 @@ Return format: {"v": number, "e": number, "d": string}`;
 
             if (isNaN(v)) v = 0;
             if (isNaN(e)) e = 0;
-            const d = String(result.d ?? result.description ?? "AI 鏆傛棤鎻忚堪");
+            const d = String(result.d ?? result.description ?? "AI 暂无描述");
 
             const { points } = get();
 
