@@ -2345,3 +2345,68 @@ Task 8 留的待校准项，本次在 `/data-manager` 实测：
    `HeaderToolbar.test` 断言的「管理曲库」文本仍在
 
 **教训**：绝对居中 + 固定断点无法保证不重叠；能用布局引擎解决的，不要用断点数字赌。
+
+---
+
+## 八、代码评审与收口（执行期追加）
+
+### 8.1 两轮独立评审
+
+改造完成后跑了两轮独立评审（Stage 1 规格符合性、Stage 2 代码质量）：
+
+- Stage 1：`SPEC: 4 处不符`（1 重要 + 3 次要）
+- Stage 2：`QUALITY: 9 处问题`（0 重要 / 6 次要 / 3 吹毛求疵）
+
+其中「重要」的 1 处正是 Task 9 自身——验收结论与实测数据没写进计划，已补（§七），
+并由此追加了 Task 12。其余按下节收口。
+
+### 8.2 收口清单（提交 50d1c56 / d49100e / d1a9ed8，合并 9b9c856）
+
+| #   | 问题                                                                                                            | 处理                                                                                      |
+| --- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 1   | 5 个 Tab 各复制一份完全相同的错误横幅                                                                           | 抽出 `ui/settings/ErrorBanner`；未传 `onRetry` 不渲染重试钮，额外动作走 `children`        |
+| 2   | `LxScriptsTab` 的「同步本地 4 大音源」自弹两个阻塞式 `alert`                                                    | 改走外壳 `onRetry`，加载态与失败横幅统一由外壳管；成功的反馈是列表与计数更新              |
+| 3   | `AppleUnifiedNavIsland` 注释写 ≤1199px，且把重叠归因给「岛压住右集群」                                          | 实际断点是 1319；该归因源于旧的 `absolute` 居中布局，已在 `51522e0` 失效，注释改写        |
+| 4   | `SourceHealthSummary` 的 `probing` / `onRunDiagnostics` 与各 Tab 的 `isDiagnosing` / `onRunDiagnose` 同义不同名 | 统一到后者                                                                                |
+| 5   | `OfflineCacheTab` 借用外壳的音源同步 `error`；自己的 `loadSongs` 失败却被静默吞成空列表                         | 去掉三个 props，加载与失败自持；读失败保留上次列表 + 横幅，空列表时不再冒充「还没有缓存」 |
+| 6   | `SourceMatrixTab` / `DiagnosticsTab` 各有一个只包一层的 `handleResetDefaults`                                   | 删掉，直接用 store 上的 `resetToDefaults`                                                 |
+
+**明确不改**（依 AGENTS.md「不要删除不确定的代码」与用户已推迟的决定）：
+
+- `SourceManagementModal` 中 `setSourceCredentials` / `updateLXScript` 取别名挂起
+  （`_setSourceCredentials` / `_updateLXScript`）——保留待用
+- `DiagnosticsTab` 的 `onCancel` / `progress`——用户已表示推迟，外壳暂不接线
+- `SettingRow` 的 `icon` prop——暂留
+
+### 8.3 第 5 项的证据强度
+
+新用例（`OfflineCacheTab.states.test.tsx`）已**对着改动前的实现跑过**：
+旧实现下断言 `IndexedDB 打不开` 失败，确认它是真回归护栏，不是照抄实现。
+（旧实现把异常 catch 掉再 `setCachedSongs([])`，读失败看起来就像「缓存被清空了」。）
+
+### 8.4 验收与回归
+
+```
+npx tsc --noEmit                                 → 通过
+npx eslint <改动目录>                             → 干净（全仓 19,790 项为既有基线）
+npx prettier --check <改动文件>                   → 全部符合
+npx vitest run src/components/ui/settings src/components/sources
+                                                 → 12 文件 / 47 用例通过
+npx vitest run（分支上）                          → 163 文件 / 830 用例通过
+npx vitest run（合并后的 master）                 → 163 文件 / 830 用例通过
+```
+
+浏览器实测（`npm run dev` @3025，改动后的 master）：
+
+- 顶栏三档 1024 / 1280 / 1440：`overlaps: []`，`sourceBtnHit: HIT-self`
+- 音源管理模态框：5 个 Tab 均可切换；洛雪页点「同步本地 4 大音源」后
+  **无阻塞弹窗、无错误横幅**，列表显示 4 个音源
+- 离线缓存页：三张统计卡 + 空态正常渲染，无横幅（读取成功）
+
+### 8.5 遗留（未做，已知）
+
+1. **`UnifiedDataManagerHub` 未跟上断点策略**：它仍用 CSS `lg:`（=1024），
+   尚未实测其顶栏在 1024 下是否溢出。Task 1 / Task 12 只覆盖了 `HeaderToolbar`。
+2. **`0734396` 把约 14 个文件的中文翻成了英文**（中文行数 637 → 224），造成中英混排。
+   已量化上报，**是否回退由用户决定**，本次未动。
+3. 前后对比截图未入库（只在会话内呈现），本文档以实测数据代替。
