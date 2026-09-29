@@ -1513,7 +1513,7 @@ git commit -m "feat(sources): 补齐空态/加载态/错误态与重试入口"
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 3
 **Parallelizable:** Yes（与 Task 4、5、6 并行）
@@ -2082,10 +2082,13 @@ describe("useMediaQuery", () => {
 | 1 顶栏响应式 | 完成并合并 | 测试 +4（772→776）；`useMediaQuery` 改用 `useSyncExternalStore`，测试改 `createRoot` + `act` |
 | 2 分组基础件 | 完成并合并 | 新增 2 文件 / 11 用例（772→783） |
 | 3 按 Tab 拆文件 | 完成并合并 | `SourceManagementModal` 1067→**174** 行；测试 **152/788 逐字一致** |
+| 4 音源列表改组行 | 完成并合并 | 新增 1 文件 / 3 用例（791→794）；与 T5 冲突 3 处已解 |
+| 5 健康摘要 | 完成并合并 | 新增 2 文件 / 4 用例（791→795）；冲突面 3 hunk 全在文件顶部 |
+| 7 长任务进度 | 完成并合并（原 NEEDS_CONTEXT 已按裁定收敛） | 新增 2 文件 / 3 用例（795→798） |
 | 8 看板主角指标 | 完成并合并 | 新增 1 文件 / 3 用例（788→791） |
-| 合并态 | — | **153 文件 / 791 测试**，tsc / lint / prettier 全绿 |
+| 合并态（Task 7 后） | — | **156 文件 / 801 测试**，tsc / lint / prettier 全绿 |
 
-待办：Task 4 / 5 / 6 / 7（均依赖 Task 2 + Task 3，已就绪）、Task 9 收口。
+待办：Task 6（进行中）、Task 10（外壳接线，依赖 Task 3+6）、Task 9 收口（全局两阶段评审 + 主工作树浏览器验证）。
 
 ### 已知偏差（Task 9 或后续需处理）
 
@@ -2119,3 +2122,129 @@ describe("useMediaQuery", () => {
    - 溢出菜单原先无法用外部点击 / Esc 收起：既有 effect 只清 `activeHubId`、依赖也只有它
    - `subscribe(query)` 每次渲染新建导致 `useSyncExternalStore` 退订重订 → 用 `useMemo` 按 `query` 记住
    - 两项均补了测试；摘掉修复后该用例 `1 failed | 2 passed`，恢复后 `3 passed`
+
+---
+
+## Task 10: 外壳接线——把三态能力真正接上（执行期追加）
+
+**追加理由**：Task 6 交付的 `loading` / `error` / `onRetry` 与 Task 7 交付的 `progress` / `onCancel`
+都是**可选 props**，默认 `undefined` 时不改变任何渲染。数据源都在外壳
+`src/components/sources/SourceManagementModal.tsx` 里，而该文件在 Task 4–7 中被列为不可改动，
+因此单独成任务。测速的确定进度与取消经用户裁定**不做**（见第六节决策 1）。
+
+**状态**
+
+- [ ] 任务完成
+
+**Dependencies:** Task 3, Task 6
+**Parallelizable:** No（唯一触碰外壳的任务，需独占该文件）
+
+- [ ] **Step 1: 找到外壳里真实存在的异步数据源**
+
+Run: `grep -n "useEffect\|await fetch\|syncBuiltinDesktopSources\|catch" src/components/sources/SourceManagementModal.tsx | head -20`
+
+预期能看到挂载时触发的 `syncBuiltinDesktopSources`（洛雪/内置源同步）。以实际读到的为准。
+
+- [ ] **Step 2: 写失败测试**
+
+新建 `src/components/sources/SourceManagementModal.states.test.tsx`：
+
+```tsx
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { useSourceConfigStore } from "@/store/sourceConfigStore";
+import { SourceManagementModal } from "./SourceManagementModal";
+
+describe("SourceManagementModal 三态接线", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useSourceConfigStore.setState({
+      sources: { ...useSourceConfigStore.getState().sources },
+      isManagementModalOpen: true,
+      activeManagementTab: "matrix",
+    });
+  });
+
+  it("同步进行中时把 loading 传给当前 Tab", async () => {
+    // 让外壳进入同步中：把同步入口 mock 成未完成
+    // 具体做法以 Step 1 找到的真实入口为准
+    const html = renderToStaticMarkup(<SourceManagementModal />);
+    expect(html.length).toBeGreaterThan(0);
+    expect(html).not.toContain("data-skeleton");
+  });
+
+  it("同步失败时把 error 与 onRetry 传给当前 Tab", async () => {
+    const html = renderToStaticMarkup(<SourceManagementModal />);
+    expect(html).not.toContain("上游配置拉取失败");
+  });
+});
+```
+
+上面两条是**占位骨架**——必须按 Step 1 找到的真实异步入口改成可断言的用例
+（例如 mock 该入口使其 reject，断言出现错误文案与「重试」）。
+**如果你判断在静态渲染下无法可靠驱动这两种状态，停下报 `NEEDS_CONTEXT` 说明原因，不要写空断言。**
+
+- [ ] **Step 3: 实现外壳状态**
+
+在 `SourceManagementModal` 内：
+
+1. 新增 state（名字按仓库习惯，示意）：
+```tsx
+const [sourcesLoading, setSourcesLoading] = useState(false);
+const [sourcesError, setSourcesError] = useState<string | null>(null);
+```
+
+2. 包裹真实的异步入口：
+```tsx
+const runSync = useCallback(async () => {
+  setSourcesLoading(true);
+  setSourcesError(null);
+  try {
+    await syncBuiltinDesktopSources();
+  } catch (e) {
+    setSourcesError(e instanceof Error ? e.message : "源配置同步失败");
+  } finally {
+    setSourcesLoading(false);
+  }
+}, [syncBuiltinDesktopSources]);
+
+useEffect(() => { void runSync(); }, [runSync]);
+```
+
+3. 把状态透传给 5 个 Tab：
+```tsx
+<SourceMatrixTab sourceList={...} isDiagnosing={...} onRunDiagnose={...}
+  loading={sourcesLoading} error={sourcesError} onRetry={runSync} />
+```
+其余 4 个 Tab 同样传（它们若已声明这些可选 props）。
+
+- [ ] **Step 4: 确认通过**
+
+Run: `npx vitest run src/components/sources/`
+Expected: 全绿，且 Step 2 的用例由 FAIL 变 PASS
+
+- [ ] **Step 5: 全量回归**
+
+Run: `npx vitest run 2>&1 | grep -E "Test Files|Tests "`
+Expected: 全部 passed、**0 failed**
+Run: `npx tsc --noEmit` → exit 0
+Run: `npm run lint` → exit 0
+Run: `npx prettier --check src/components/sources/` → 通过
+
+- [ ] **Step 6: 浏览器冒烟（在主工作树）**
+
+外壳接线只有在真实 app 里才能验证异步路径。本任务合并回主工作树后，
+由协调者执行：打开音源管理 → 观察骨架/错误态是否出现、点「重试」是否重跑。
+若协调者尚未合并，本步骤标注 `DEFERRED`。
+
+- [ ] **Step 7: 提交**
+
+```bash
+git add src/components/sources/
+git commit -m "feat(sources): 外壳接线 loading/error/retry，三态真正生效"
+```
+
+**明确不做（用户裁定）**：批量测速的确定进度与取消接线。
+`diagnose` 是一次 `Promise.all` 打 5 个端点、单请求 ≤4 秒，
+客户端拆成 5 次请求反而更慢；Task 7 交付的不确定进度条已够用，
+`useCancellableTask` 留作原语，等真正长的任务（离线下载已有自己的 `t.progress` 与 `cancelDownload`）再接。
