@@ -8,6 +8,10 @@ interface DiagnosticsTabProps {
   isDiagnosing: boolean;
   diagnoseMessage: string | null;
   onRunDiagnose: () => void;
+  /** 取消入口。外壳尚未接线（诊断循环在 SourceManagementModal 内），未提供时不渲染取消按钮。 */
+  onCancel?: () => void;
+  /** 0~1 的确定进度。外壳尚未提供逐单元进度，缺省时渲染不确定态进度条。 */
+  progress?: number;
 }
 
 export function DiagnosticsTab({
@@ -15,7 +19,15 @@ export function DiagnosticsTab({
   isDiagnosing,
   diagnoseMessage,
   onRunDiagnose,
+  onCancel,
+  progress,
 }: DiagnosticsTabProps) {
+  const clampedProgress =
+    typeof progress === "number" && Number.isFinite(progress)
+      ? Math.min(1, Math.max(0, progress))
+      : null;
+  const percent = clampedProgress === null ? 0 : Math.round(clampedProgress * 100);
+
   return (
     <>
       {/* TAB 3: 一键健康诊断 */}
@@ -36,6 +48,40 @@ export function DiagnosticsTab({
             <span>{isDiagnosing ? "诊断中..." : "一键全面体检"}</span>
           </button>
         </div>
+
+        {isDiagnosing && (
+          <div className="flex items-center gap-3" role="status" aria-live="polite">
+            <div
+              className="flex-1 h-1 rounded-full bg-white/10 overflow-hidden"
+              role="progressbar"
+              aria-label="体检进度"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              {...(clampedProgress === null ? {} : { "aria-valuenow": percent })}
+            >
+              <div
+                className={`h-full bg-[#2997ff] ${
+                  clampedProgress === null
+                    ? "w-full animate-pulse"
+                    : "transition-[width] duration-200"
+                }`}
+                style={clampedProgress === null ? undefined : { width: `${percent}%` }}
+              />
+            </div>
+            {clampedProgress !== null && (
+              <span className="text-[11px] tabular-nums text-white/55">{percent}%</span>
+            )}
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="text-[12px] text-white/60 hover:text-white transition-colors cursor-pointer"
+              >
+                取消
+              </button>
+            )}
+          </div>
+        )}
 
         {diagnoseMessage && <div className="text-xs text-cyan-300/90 px-1">{diagnoseMessage}</div>}
 
