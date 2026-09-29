@@ -11,7 +11,7 @@ const base: HealthRow[] = [
 describe("SourceHealthSummary", () => {
   it("aggregates counts into one line", () => {
     const html = renderToStaticMarkup(
-      <SourceHealthSummary sources={base} onRunDiagnostics={() => undefined} />
+      <SourceHealthSummary sources={base} onRunDiagnose={() => undefined} />
     );
     expect(html).toContain("1 在线");
     expect(html).toContain("1 需处理");
@@ -20,14 +20,14 @@ describe("SourceHealthSummary", () => {
 
   it("renders per-source latency inline", () => {
     const html = renderToStaticMarkup(
-      <SourceHealthSummary sources={base} onRunDiagnostics={() => undefined} />
+      <SourceHealthSummary sources={base} onRunDiagnose={() => undefined} />
     );
     expect(html).toContain("88ms");
   });
 
-  it("shows a running state while probing", () => {
+  it("shows a running state while diagnosing", () => {
     const html = renderToStaticMarkup(
-      <SourceHealthSummary sources={base} probing onRunDiagnostics={() => undefined} />
+      <SourceHealthSummary sources={base} isDiagnosing onRunDiagnose={() => undefined} />
     );
     expect(html).toContain("测速中");
   });
@@ -36,7 +36,7 @@ describe("SourceHealthSummary", () => {
     const html = renderToStaticMarkup(
       <SourceHealthSummary
         sources={[{ id: "netease", name: "网易云音乐", status: "idle", latencyMs: null }]}
-        onRunDiagnostics={() => undefined}
+        onRunDiagnose={() => undefined}
       />
     );
     expect(html).toContain("尚未测速");

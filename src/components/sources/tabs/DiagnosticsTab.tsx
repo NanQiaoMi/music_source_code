@@ -3,6 +3,7 @@
 import { Activity, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 import { SingleSourceConfig } from "@/types/sourceConfig";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
+import { ErrorBanner } from "@/components/ui/settings";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/Glass";
 
 interface DiagnosticsTabProps {
@@ -39,25 +40,8 @@ export function DiagnosticsTab({
       : null;
   const percent = clampedProgress === null ? 0 : Math.round(clampedProgress * 100);
 
-  const handleResetDefaults = () => {
-    useSourceConfigStore.getState().resetToDefaults();
-  };
-
   // 非阻断错误横幅：仅提示上游故障，不遮挡网格内的实时健康数据。
-  const errorBanner = error ? (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-2.5">
-      <span className="text-[12.5px] text-rose-200">{error}</span>
-      <div className="flex gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={onRetry}
-          className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/20 text-[12px] text-white transition-colors"
-        >
-          重试
-        </button>
-      </div>
-    </div>
-  ) : null;
+  const errorBanner = error ? <ErrorBanner message={error} onRetry={onRetry} /> : null;
 
   return (
     <>
@@ -131,7 +115,7 @@ export function DiagnosticsTab({
                 title="还没有可诊断的音源"
                 description="恢复默认配置后即可对 7 大平台通道做全链路健康体检"
                 actionLabel="恢复默认"
-                onAction={handleResetDefaults}
+                onAction={useSourceConfigStore.getState().resetToDefaults}
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

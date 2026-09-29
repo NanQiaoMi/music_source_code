@@ -1,3 +1,5 @@
+export { ErrorBanner } from "./ErrorBanner";
+export type { ErrorBannerProps } from "./ErrorBanner";
 export { StatusDot } from "./StatusDot";
 export type { StatusKind, StatusDotProps } from "./StatusDot";
 export { SettingSection } from "./SettingSection";

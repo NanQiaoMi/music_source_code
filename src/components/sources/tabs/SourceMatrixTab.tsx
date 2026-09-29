@@ -8,6 +8,7 @@ import { useUserAccountStore, isPlatformLoggedIn, PlatformType } from "@/store/u
 import { QualityTier, SingleSourceConfig } from "@/types/sourceConfig";
 import type { MusicSourceId } from "@/types/sourceConfig";
 import {
+  ErrorBanner,
   SettingSection,
   SettingRow,
   SourceHealthSummary,
@@ -56,37 +57,24 @@ export function SourceMatrixTab({
     setSourceQuality,
     setSourcePriority,
     setSourceConfig,
+    resetToDefaults,
   } = useSourceConfigStore();
 
   /** 同一时刻只展开一行：描述、登录入口与配置表单都收在这里面 */
   const [expandedId, setExpandedId] = useState<MusicSourceId | null>(null);
 
-  const handleResetDefaults = () => {
-    useSourceConfigStore.getState().resetToDefaults();
-  };
-
   // 非阻断错误横幅：同步失败时挂在正常内容上方，不再整块替换列表
   // （本地 store 里本就有的音源数据应当照常显示，仅额外提示上游故障）。
   const errorBanner = error ? (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-2.5">
-      <span className="text-[12.5px] text-rose-200">{error}</span>
-      <div className="flex gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={onRetry}
-          className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/20 text-[12px] text-white transition-colors"
-        >
-          重试
-        </button>
-        <button
-          type="button"
-          onClick={handleResetDefaults}
-          className="h-7 px-3 rounded-full bg-white/[0.06] hover:bg-white/10 text-[12px] text-white/70 transition-colors"
-        >
-          恢复默认
-        </button>
-      </div>
-    </div>
+    <ErrorBanner message={error} onRetry={onRetry}>
+      <button
+        type="button"
+        onClick={resetToDefaults}
+        className="h-7 px-3 rounded-full bg-white/[0.06] hover:bg-white/10 text-[12px] text-white/70 transition-colors"
+      >
+        恢复默认
+      </button>
+    </ErrorBanner>
   ) : null;
 
   // 三态分派（优先级 loading > 横幅 + （空态 | 正常内容））。
@@ -107,7 +95,7 @@ export function SourceMatrixTab({
           title="还没有可用音源"
           description="导入或恢复默认配置后即可管理 7 大平台通道"
           actionLabel="恢复默认"
-          onAction={handleResetDefaults}
+          onAction={resetToDefaults}
         />
       </>
     );
@@ -259,8 +247,8 @@ export function SourceMatrixTab({
       {errorBanner}
       <SourceHealthSummary
         sources={healthRows}
-        probing={isDiagnosing}
-        onRunDiagnostics={onRunDiagnose}
+        isDiagnosing={isDiagnosing}
+        onRunDiagnose={onRunDiagnose}
       />
 
       {/* TAB 1: 音源矩阵控制台 */}

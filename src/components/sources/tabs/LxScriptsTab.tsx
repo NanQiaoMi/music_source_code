@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { X, Code2, Sparkles, Plus, Trash2, CheckCircle2, AlertTriangle, Play } from "lucide-react";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
 import { LXRunner } from "@/lib/sources/lxRunner";
+import { ErrorBanner } from "@/components/ui/settings";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/Glass";
 
 interface LxScriptsTabProps {
@@ -18,8 +19,7 @@ interface LxScriptsTabProps {
 
 export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}) {
   // 订阅整店以便状态变化时重渲染；动作来自 hook。
-  const { addLXScript, removeLXScript, toggleLXScript, syncBuiltinDesktopSources } =
-    useSourceConfigStore();
+  const { addLXScript, removeLXScript, toggleLXScript } = useSourceConfigStore();
   // 脚本列表直接读当前值：renderToStaticMarkup 下 hook 快照是初始值（getInitialState），
   // 而空态判据必须反映「此刻」的 store，故用 getState 读取，客户端也由上面的订阅保证更新。
   const lxScripts = useSourceConfigStore.getState().lxScripts;
@@ -88,20 +88,7 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
   }, [addLXScript, newScriptName, newScriptAuthor, newScriptUrl, newScriptCode]);
 
   // 非阻断错误横幅：仅提示上游故障，不遮挡本地已有的脚本列表。
-  const errorBanner = error ? (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-2.5">
-      <span className="text-[12.5px] text-rose-200">{error}</span>
-      <div className="flex gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={onRetry}
-          className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/20 text-[12px] text-white transition-colors"
-        >
-          重试
-        </button>
-      </div>
-    </div>
-  ) : null;
+  const errorBanner = error ? <ErrorBanner message={error} onRetry={onRetry} /> : null;
 
   return (
     <>
@@ -120,22 +107,17 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {/* 走外壳的 onRetry（即 runSourceSync）：加载态与失败横幅都由外壳统一管理，
+                这里不再自行 alert——一是 alert 会阻塞界面，二是失败已经被上方横幅说清楚了。
+                同步成功的反馈是列表/计数随之更新。 */}
             <button
               type="button"
-              onClick={async () => {
-                try {
-                  await syncBuiltinDesktopSources();
-                  alert(
-                    "🎉 已成功载入并同步本地桌面 4 套音源库（独家v4.0、聚合9.3特供版、野草、野花）！"
-                  );
-                } catch (e) {
-                  alert(`同步失败：${e instanceof Error ? e.message : "未知错误"}`);
-                }
-              }}
-              className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm"
+              onClick={onRetry}
+              disabled={loading}
+              className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-default"
               title="从桌面音源目录一键刷新并载入最新脚本"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className={`w-3.5 h-3.5 ${loading ? "animate-pulse" : ""}`} />
               <span>同步本地 4 大音源</span>
             </button>
 

@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { Download, RotateCcw } from "lucide-react";
 import { useSourceConfigStore, PRESET_SCHEMES } from "@/store/sourceConfigStore";
+import { ErrorBanner } from "@/components/ui/settings";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/Glass";
 
 interface BackupTabProps {
@@ -56,20 +57,7 @@ export function BackupTab({ loading, error, onRetry }: BackupTabProps = {}) {
     );
   }
 
-  const errorBanner = error ? (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-2.5">
-      <span className="text-[12.5px] text-rose-200">{error}</span>
-      <div className="flex gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={onRetry}
-          className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/20 text-[12px] text-white transition-colors"
-        >
-          重试
-        </button>
-      </div>
-    </div>
-  ) : null;
+  const errorBanner = error ? <ErrorBanner message={error} onRetry={onRetry} /> : null;
 
   if (Object.keys(sources).length === 0) {
     return (
