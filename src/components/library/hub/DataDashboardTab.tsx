@@ -123,8 +123,13 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
   ];
 
   return (
-    // pb 是播放条避让高度：播放条固定在底部，内容根容器要留出这段空白
-    <div className="animate-fade-in select-none pb-[104px]">
+    // 这里曾有一层 pb-[104px]「播放条避让」，实测后撤掉了：
+    // standalone 路由与面板两种用法下，页面里唯一的 position:fixed 元素是
+    // `fixed inset-0 pointer-events-none z-0` 的氛围背景，不是底部播放条；
+    // 而 FloatingPlayer 是 left:28/top:280 的**可拖拽浮层**，不是固定底栏。
+    // 即那个假设（播放条固定在底部）不成立，这 104px 只是多余的底部空白。
+    // 将来若真的加了底部固定条，再按实测高度补避让。
+    <div className="animate-fade-in select-none">
       {/* 顶部标题与一键刷新 */}
       <div className="flex items-center justify-between mb-6">
         <div>
