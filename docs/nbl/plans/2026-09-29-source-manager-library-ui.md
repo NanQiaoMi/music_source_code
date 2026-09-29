@@ -2070,25 +2070,24 @@ describe("useMediaQuery", () => {
 - 本项目的 `using-git-worktrees` / `subagent-driven-development` skill **只有 SKILL.md、无配套脚本与 prompt 模板**，
   因此 worktree 增删改用原生命令，implementer prompt 由协调者按 skill 明示的契约撰写
 
-
 ---
 
 ## 六、执行进展与已知偏差（执行中追加）
 
 ### 进度
 
-| Task | 状态 | 关键数字 |
-| --- | --- | --- |
-| 1 顶栏响应式 | 完成并合并 | 测试 +4（772→776）；`useMediaQuery` 改用 `useSyncExternalStore`，测试改 `createRoot` + `act` |
-| 2 分组基础件 | 完成并合并 | 新增 2 文件 / 11 用例（772→783） |
-| 3 按 Tab 拆文件 | 完成并合并 | `SourceManagementModal` 1067→**174** 行；测试 **152/788 逐字一致** |
-| 4 音源列表改组行 | 完成并合并 | 新增 1 文件 / 3 用例（791→794）；与 T5 冲突 3 处已解 |
-| 5 健康摘要 | 完成并合并 | 新增 2 文件 / 4 用例（791→795）；冲突面 3 hunk 全在文件顶部 |
-| 7 长任务进度 | 完成并合并（原 NEEDS_CONTEXT 已按裁定收敛） | 新增 2 文件 / 3 用例（795→798） |
-| 8 看板主角指标 | 完成并合并 | 新增 1 文件 / 3 用例（788→791） |
-| 6 三态接入 | 完成并合并 | 新增 5 个 states 测试文件 / 20 用例（801→821） |
-| 10 外壳接线 | 完成并合并 | 新增 1 测试文件 / 2 用例（821→823） |
-| 合并态（Task 10 后） | — | **162 文件 / 823 测试**，tsc / lint / prettier 全绿 |
+| Task                 | 状态                                        | 关键数字                                                                                     |
+| -------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| 1 顶栏响应式         | 完成并合并                                  | 测试 +4（772→776）；`useMediaQuery` 改用 `useSyncExternalStore`，测试改 `createRoot` + `act` |
+| 2 分组基础件         | 完成并合并                                  | 新增 2 文件 / 11 用例（772→783）                                                             |
+| 3 按 Tab 拆文件      | 完成并合并                                  | `SourceManagementModal` 1067→**174** 行；测试 **152/788 逐字一致**                           |
+| 4 音源列表改组行     | 完成并合并                                  | 新增 1 文件 / 3 用例（791→794）；与 T5 冲突 3 处已解                                         |
+| 5 健康摘要           | 完成并合并                                  | 新增 2 文件 / 4 用例（791→795）；冲突面 3 hunk 全在文件顶部                                  |
+| 7 长任务进度         | 完成并合并（原 NEEDS_CONTEXT 已按裁定收敛） | 新增 2 文件 / 3 用例（795→798）                                                              |
+| 8 看板主角指标       | 完成并合并                                  | 新增 1 文件 / 3 用例（788→791）                                                              |
+| 6 三态接入           | 完成并合并                                  | 新增 5 个 states 测试文件 / 20 用例（801→821）                                               |
+| 10 外壳接线          | 完成并合并                                  | 新增 1 测试文件 / 2 用例（821→823）                                                          |
+| 合并态（Task 10 后） | —                                           | **162 文件 / 823 测试**，tsc / lint / prettier 全绿                                          |
 
 待办：Task 11（让同步失败可见，依赖 Task 6+10）、Task 9 收口（全局两阶段评审 + 主工作树浏览器验证）。
 
@@ -2146,9 +2145,7 @@ catch (e) { console.warn(…); }                  // 网络异常 → 只 warn
 ```ts
 it("surfaces a failed builtin sync instead of swallowing it", async () => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
-  await expect(
-    useSourceConfigStore.getState().syncBuiltinDesktopSources()
-  ).rejects.toThrow(/500/);
+  await expect(useSourceConfigStore.getState().syncBuiltinDesktopSources()).rejects.toThrow(/500/);
   vi.unstubAllGlobals();
 });
 
@@ -2157,17 +2154,15 @@ it("surfaces a malformed builtin payload", async () => {
     "fetch",
     vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ sources: "nope" }) })
   );
-  await expect(
-    useSourceConfigStore.getState().syncBuiltinDesktopSources()
-  ).rejects.toThrow();
+  await expect(useSourceConfigStore.getState().syncBuiltinDesktopSources()).rejects.toThrow();
   vi.unstubAllGlobals();
 });
 
 it("surfaces a network failure", async () => {
   vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
-  await expect(
-    useSourceConfigStore.getState().syncBuiltinDesktopSources()
-  ).rejects.toThrow("network down");
+  await expect(useSourceConfigStore.getState().syncBuiltinDesktopSources()).rejects.toThrow(
+    "network down"
+  );
   vi.unstubAllGlobals();
 });
 ```
@@ -2228,20 +2223,22 @@ it("错误以横幅呈现，且不遮挡已有内容", async () => {
 横幅形态（保持一致，5 处相同）：
 
 ```tsx
-{error && (
-  <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-2.5">
-    <span className="text-[12.5px] text-rose-200">{error}</span>
-    <div className="flex gap-2 shrink-0">
-      <button
-        type="button"
-        onClick={onRetry}
-        className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/20 text-[12px] text-white transition-colors"
-      >
-        重试
-      </button>
+{
+  error && (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-2.5">
+      <span className="text-[12.5px] text-rose-200">{error}</span>
+      <div className="flex gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/20 text-[12px] text-white transition-colors"
+        >
+          重试
+        </button>
+      </div>
     </div>
-  </div>
-)}
+  );
+}
 ```
 
 - **空态判据随之调整**：原来 `error` 优先于空态；改成横幅后，`error` 与「空态/正常内容」可以**同时出现**
@@ -2278,3 +2275,73 @@ git add src/store/sourceConfigStore.ts src/store/sourceConfigStore.test.ts \
         src/components/sources/
 git commit -m "fix(sources): 同步失败不再被吞掉，错误改以非阻断横幅呈现"
 ```
+
+---
+
+## 七、Task 9 收口结果 与 Task 12（执行期追加）
+
+### Task 9 实测结果（主工作树，dev server 3025）
+
+**三档宽度顶栏重叠归零**（每档均先重载，保证渲染与视口一致——预览面板会节流，仅 resize 不触发 React 重渲染，直接量会读到旧宽度的渲染结果）：
+
+| 视口 | overlaps | 「音源管理」elementFromPoint | 导航岛                | 右侧集群           |
+| ---- | -------- | ---------------------------- | --------------------- | ------------------ |
+| 1024 | `[]`     | `HIT-self`                   | 紧凑（收 5 个微按钮） | 图标化             |
+| 1280 | `[]`     | `HIT-self`                   | 紧凑                  | **文字标签全保留** |
+| 1440 | `[]`     | `HIT-self`                   | **全量**              | 文字标签全保留     |
+
+**两屏改造后形态**（截图在会话中呈现，未入库——见下方说明）：
+
+- 音源管理：分组标题「官方音源 / 扩展」+ 圆角组容器 + 行间发丝线；每行只有
+  名称 + 至多 1 个 badge + 状态点 + 开关，描述与「去登录」只在展开态；所有行等高；
+  顶部新增「音源健康 N 在线 / M 未测 + 快速测速 + 就地延迟」摘要条
+- 曲库看板：四组主角指标（存储与配额 / 音质与编码 / 云端账号 / 曲库健康）各成一段，
+  620 KB 升为大号 hero；无横向溢出
+
+**截图未提交入库的说明**：预览面板的截图是直接呈现在会话里的图像，不入磁盘；
+而把 6 张二进制截图提交进仓库，对这份「验收证据」而言收益低于噪声（且仓库已有
+「不提交构建产物」的取向）。故本轮以会话内呈现完成「前后对比」，不入库。
+若确需归档，可另行用系统截图工具补。
+
+### Task 9 的第三项：pb-[104px] 播放条避让 —— 实测证伪，已撤
+
+Task 8 留的待校准项，本次在 `/data-manager` 实测：
+
+- 页面内 `position: fixed` 元素**只有 1 个**，是 `fixed inset-0 pointer-events-none z-0`
+  的全屏氛围背景，**不是底部播放条**
+- `FloatingPlayer` 的唯一守卫是 `if (!currentSong) return null`（不看路由），
+  而它是 `left:28 / top:280` 的**可拖拽浮层**，本就不是固定底栏
+  → 底部内边距对它毫无避让作用
+
+结论：那 104px 只是看板底部的一段死空白，已撤掉（提交 `d31755a`）。
+将来若真的引入底部固定条，再按实测高度补。
+
+### Task 12：顶栏真正修复（追加任务）
+
+**Task 1 的断点方案不成立，Task 9 实测才暴露。**
+
+导航岛用 `absolute left-1/2` 绝对居中，脱离文档流，与右侧集群互不让位。
+判据是 `岛右缘 ≤ 右集群左缘`，与总宽是否够用无关。实测（改动前）：
+
+```
+1280   岛 289–991（宽 702）   右集群 811–1256   重叠 180px
+1024   岛 206–818（宽 612）   右集群 656–1000   重叠 162px
+```
+
+按 `640 + 岛宽/2 ≤ 右集群起点` 反推：绝对居中下全量布局要到 **1592px** 才不重叠，
+1440 都会撞。而 Task 1 只把微按钮断点设为 ≤1199，省下的 ~90px 远远不够。
+
+**改法**（提交 `51522e0`）：
+
+1. 导航岛改为 **flex 兄弟**（`flex-1 min-w-0` 居中）——由布局引擎保证永不重叠，
+   不再靠调断点赌宽度
+2. 两档降级，让文字标签尽量晚地收起：
+   - `<1320`：岛收起 5 个微按钮（左侧计数同时让位）
+   - `<1150`：右侧四个入口压成 36px 图标圆钮
+3. 图标化时**保留 `title` 属性**（`HeaderToolbar.test` 断言的
+   「多平台账号与云端资产」是 title，不能丢）
+4. 测试安全性依据：jsdom **不实现 `matchMedia`**（`undefined`），
+   故 `useMediaQuery` 恒返回 `false`、测试走非紧凑分支，
+   `HeaderToolbar.test` 断言的「管理曲库」文本仍在
+
+**教训**：绝对居中 + 固定断点无法保证不重叠；能用布局引擎解决的，不要用断点数字赌。
