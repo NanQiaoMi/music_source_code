@@ -1943,3 +1943,129 @@ git commit -m "docs: 音源管理与曲库看板改造前后截图存档"
 ---
 
 **Execution Mode:** parallel
+
+---
+
+## 五、执行勘误（写完计划后复核发现，以本节为准）
+
+### 5.1 Task 1 Step 1/3 修正：`useMediaQuery` 的实现与测试
+
+**原实现的问题**：`useState(false)` + effect 里再同步，会导致
+(a) `renderToStaticMarkup` 不执行 effect，测试里永远读到 `false`，宽度断言无法生效；
+(b) SSR 渲染 `false`、客户端首帧 `true` → React 水合不匹配告警（本项目验收要求控制台 0 error）。
+
+**修正后的实现**（替换原 Step 3 的 `src/hooks/useMediaQuery.ts` 全文）：
+
+```ts
+"use client";
+
+import { useSyncExternalStore } from "react";
+
+function subscribe(query: string) {
+  return (onChange: () => void) => {
+    if (typeof window === "undefined" || !window.matchMedia) return () => undefined;
+    const mql = window.matchMedia(query);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  };
+}
+
+/**
+ * 订阅一条 CSS 媒体查询。
+ * 用 useSyncExternalStore 而非 useState+effect：
+ *  - getServerSnapshot 返回 false，水合时与服务端一致，不会产生不匹配告警；
+ *  - 水合完成后 React 会静默重渲染成真实值。
+ */
+export function useMediaQuery(query: string): boolean {
+  return useSyncExternalStore(
+    subscribe(query),
+    () =>
+      typeof window !== "undefined" && window.matchMedia ? window.matchMedia(query).matches : false,
+    () => false
+  );
+}
+```
+
+**修正后的测试**（替换原 Step 1 的 `src/hooks/useMediaQuery.test.ts` 全文；
+因 `getServerSnapshot` 恒为 false，必须真实渲染 + `act`，项目已有先例 `AISettingsPanel.test.tsx`）：
+
+```tsx
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { act } from "react";
+import { createRoot, Root } from "react-dom/client";
+import { useMediaQuery } from "./useMediaQuery";
+
+function stubViewport(width: number) {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn().mockImplementation((query: string) => {
+      const max = /max-width:\s*(\d+)/.exec(query);
+      const matches = max ? width <= Number(max[1]) : false;
+      return { matches, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    })
+  );
+}
+
+function Probe({ query }: { query: string }) {
+  const matches = useMediaQuery(query);
+  return <span data-matches={String(matches)} />;
+}
+
+let container: HTMLDivElement;
+let root: Root;
+
+beforeEach(() => {
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+
+afterEach(async () => {
+  await act(async () => root.unmount());
+  container.remove();
+  vi.unstubAllGlobals();
+});
+
+describe("useMediaQuery", () => {
+  it("is true when the viewport satisfies a max-width query", async () => {
+    stubViewport(1024);
+    await act(async () => root.render(<Probe query="(max-width: 1199px)" />));
+    expect(container.querySelector("[data-matches]")?.getAttribute("data-matches")).toBe("true");
+  });
+
+  it("is false above the breakpoint", async () => {
+    stubViewport(1280);
+    await act(async () => root.render(<Probe query="(max-width: 1199px)" />));
+    expect(container.querySelector("[data-matches]")?.getAttribute("data-matches")).toBe("false");
+  });
+});
+```
+
+**连带影响**：原 Step 1 里的 `src/hooks/testRenderHook.ts` **不再需要，不要创建**。
+原 Step 5 的 `AppleUnifiedNavIsland.responsive.test.tsx` 同理不能用
+`renderToStaticMarkup`，必须改成 `createRoot` + `act` + `vi.mock("framer-motion")`
+（`motion.*` 降级为同名原生标签，参照 `AISettingsPanel.test.tsx` 的写法），
+断言改为对 `container.innerHTML` 做 `toContain`。
+
+### 5.2 浏览器验证的位置（覆盖 Task 1 Step 11、Task 8 Step 7、Task 9）
+
+并行执行采用隔离 worktree。**dev server 固定跑在主工作树的 3025 端口**
+（`useOfflineDownloadStore.ts` 与后端 CORS 均硬编码 3025，无法另开端口），
+因此**任何 worktree 里的改动预览面板都看不到**。
+
+规则：
+
+- Task 1–8 的子代理**只做代码与测试**，遇到计划里的「浏览器实测/截图」步骤直接跳过并在报告中标注 `DEFERRED`
+- 所有浏览器验证（三档宽度重叠归零、两屏前后截图、播放条避让）统一收口到 **Task 9**，
+  由主协调者在**主工作树** `D:\26project\music_source_code_V1.1_full\music_source_code` 执行
+- Task 9 的前置条件因此变为：所有任务已合并回 merge 分支 → 合并回主工作树 → 再做浏览器验证
+
+### 5.3 执行环境
+
+- merge worktree：`.worktrees/source-manager-library-ui-merge`（分支 `feature/source-manager-library-ui-merge`）
+- 任务 worktree：`.worktrees/source-manager-library-ui-task{N}`（分支 `feature/source-manager-library-ui-task{N}`，父为 merge 分支）
+- **无需 link `node_modules`**：`.worktrees/` 位于仓库内，Node 模块解析会向上找到根目录的 `node_modules`；
+  已实测在 worktree 内 `npx vitest run src/hooks` → 14 passed
+- 每个 worktree 需补拷 `.env.local`（未被 git 跟踪，新建 worktree 拿不到）
+- 本项目的 `using-git-worktrees` / `subagent-driven-development` skill **只有 SKILL.md、无配套脚本与 prompt 模板**，
+  因此 worktree 增删改用原生命令，implementer prompt 由协调者按 skill 明示的契约撰写
