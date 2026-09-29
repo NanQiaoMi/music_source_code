@@ -193,13 +193,7 @@ export function SourceManagementModal() {
               <BackupTab loading={sourcesLoading} error={sourcesError} onRetry={runSourceSync} />
             )}
 
-            {activeManagementTab === "offline_cache" && (
-              <OfflineCacheTab
-                loading={sourcesLoading}
-                error={sourcesError}
-                onRetry={runSourceSync}
-              />
-            )}
+            {activeManagementTab === "offline_cache" && <OfflineCacheTab />}
           </div>
         </motion.div>
       </div>

@@ -5,30 +5,31 @@ import { Download, HardDrive, Sparkles, RefreshCw, Trash2, Play } from "lucide-r
 import { useNetworkAudioCache } from "@/hooks/useNetworkAudioCache";
 import { getAllCachedAudioMeta, CachedNetworkAudioMeta } from "@/services/networkAudioCache";
 import { useAudioStore } from "@/store/audioStore";
-import { EmptyState, LoadingSkeleton } from "@/components/shared/Glass";
+import { ErrorBanner } from "@/components/ui/settings";
+import { EmptyState } from "@/components/shared/Glass";
 
-interface OfflineCacheTabProps {
-  /** 缓存列表拉取中。缺省（undefined）时保持原有渲染，由外壳 Task 10 接线。 */
-  loading?: boolean;
-  /** 拉取失败文案。缺省时不渲染错误态。 */
-  error?: string | null;
-  /** 错误态「重试」回调。缺省时按钮仍渲染但为空操作。 */
-  onRetry?: () => void;
-}
-
-export function OfflineCacheTab({ loading, error, onRetry }: OfflineCacheTabProps = {}) {
+/**
+ * 离线缓存页不接外壳的 loading/error：那是「音源配置同步」的状态，
+ * 与本页要读的 IndexedDB 缓存列表是两回事。本页的加载与失败全部由 loadSongs 自己管，
+ * 否则会出现「音源同步失败 → 离线缓存页也报错」这种张冠李戴的提示。
+ */
+export function OfflineCacheTab() {
   const { stats, clearAllCache, deleteSongCache, refreshStats } = useNetworkAudioCache();
   const [cachedSongs, setCachedSongs] = useState<CachedNetworkAudioMeta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const loadSongs = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const list = await getAllCachedAudioMeta();
       setCachedSongs(list.sort((a, b) => b.lastPlayedAt - a.lastPlayedAt));
-    } catch {
-      setCachedSongs([]);
+    } catch (e) {
+      // 以前这里静默吞掉异常并置空列表，读失败看起来就像「缓存被清空了」。
+      // 现在保留上一次已知的列表，只把失败原因挂到横幅上交给用户决定是否重试。
+      setLoadError(e instanceof Error ? e.message : "读取本地缓存数据库失败");
     } finally {
       setIsLoading(false);
     }
@@ -76,20 +77,9 @@ export function OfflineCacheTab({ loading, error, onRetry }: OfflineCacheTabProp
     });
   };
 
-  // 非阻断错误横幅：仅提示上游故障，不遮挡本地已缓存的歌曲列表。
-  const errorBanner = error ? (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-2.5">
-      <span className="text-[12.5px] text-rose-200">{error}</span>
-      <div className="flex gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={onRetry}
-          className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/20 text-[12px] text-white transition-colors"
-        >
-          重试
-        </button>
-      </div>
-    </div>
+  // 非阻断错误横幅：读失败时挂在列表容器之上，不遮挡上一次已读到的缓存数据。
+  const errorBanner = loadError ? (
+    <ErrorBanner message={loadError} onRetry={() => void loadSongs()} />
   ) : null;
 
   return (
@@ -166,19 +156,20 @@ export function OfflineCacheTab({ loading, error, onRetry }: OfflineCacheTabProp
           )}
         </div>
 
-        {/* Cached Songs List：三态分派（优先级 loading > 横幅 + （空态 | 列表））。
+        {/* Cached Songs List：三态分派（优先级 读取中 > 横幅 + （失败/空态 | 列表））。
             顶部统计卡保留在上方，仅替换列表区。
             错误不再阻断：横幅挂在列表容器之上，不遮挡本地已缓存数据。 */}
-        {!loading && errorBanner}
+        {errorBanner}
         <div className="border border-white/10 rounded-2xl bg-white/[0.01] overflow-hidden">
-          {loading ? (
-            <div data-skeleton="true" className="space-y-3 p-4">
-              <LoadingSkeleton count={3} variant="card" />
-            </div>
-          ) : isLoading ? (
+          {isLoading ? (
             <div className="py-12 flex flex-col items-center justify-center text-white/40 text-xs gap-2">
               <RefreshCw className="w-5 h-5 animate-spin" />
               <span>正在读取本地 IndexedDB 缓存数据库...</span>
+            </div>
+          ) : cachedSongs.length === 0 && loadError ? (
+            // 读失败时不再冒充「还没有缓存」——那是把故障说成了空库。
+            <div className="py-12 text-center text-white/40 text-xs">
+              本地缓存数据库读取失败，请点上方「重试」重新载入
             </div>
           ) : cachedSongs.length === 0 ? (
             <EmptyState
