@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { RefreshCw, Zap, Lock } from "lucide-react";
 import { useSourceConfigStore, isSourceUsable } from "@/store/sourceConfigStore";
 import { useUserAccountStore, isPlatformLoggedIn, PlatformType } from "@/store/userAccountStore";
 import { QualityTier, SingleSourceConfig } from "@/types/sourceConfig";
+import type { MusicSourceId } from "@/types/sourceConfig";
+import { SettingSection, SettingRow, type StatusKind } from "@/components/ui/settings";
 
 const QUALITY_OPTIONS: { value: QualityTier; label: string; tag: string }[] = [
   { value: "auto", label: "自适应最高 (Auto)", tag: "AUTO" },
@@ -13,6 +16,11 @@ const QUALITY_OPTIONS: { value: QualityTier; label: string; tag: string }[] = [
   { value: "320k", label: "极高品 320kbps", tag: "320K" },
   { value: "128k", label: "标准 128kbps (省流)", tag: "128K" },
 ];
+
+/** 需要登录后才能解码的平台 */
+const OFFICIAL_IDS: MusicSourceId[] = ["netease", "qq", "kugou", "kuwo", "qishui"];
+/** 本地母带与洛雪自定义脚本，无需平台登录 */
+const EXTENDED_IDS: MusicSourceId[] = ["local", "lx_custom"];
 
 interface SourceMatrixTabProps {
   sourceList: SingleSourceConfig[];
@@ -29,6 +37,142 @@ export function SourceMatrixTab({ sourceList, isDiagnosing, onRunDiagnose }: Sou
     setSourcePriority,
     setSourceConfig,
   } = useSourceConfigStore();
+
+  /** 同一时刻只展开一行：描述、登录入口与配置表单都收在这里面 */
+  const [expandedId, setExpandedId] = useState<MusicSourceId | null>(null);
+
+  const sourceById = new Map(sourceList.map((src) => [src.id, src]));
+
+  const statusOf = (src: SingleSourceConfig): StatusKind => {
+    if (!isSourceUsable(src.id)) return "idle";
+    switch (src.health?.status) {
+      case "normal":
+        return "ok";
+      case "degraded":
+        return "warn";
+      case "error":
+        return "error";
+      default:
+        return "idle";
+    }
+  };
+
+  const renderRow = (id: MusicSourceId) => {
+    const src = sourceById.get(id);
+    if (!src) return null;
+
+    const isNetwork = id !== "local" && id !== "lx_custom";
+    const isLogged = isNetwork ? isPlatformLoggedIn(id) : true;
+    const isEnabled = src.enabled && isLogged;
+    const expanded = expandedId === id;
+    const latencyMs = src.health && src.health.latencyMs > 0 ? src.health.latencyMs : undefined;
+
+    const openLogin = () => {
+      // 未登录时点击开关 / 登录入口自动定向打开登录弹窗
+      useUserAccountStore.getState().setActivePlatform(id as PlatformType);
+      useUserAccountStore.getState().setIsAccountModalOpen(true);
+    };
+
+    const handleToggle = () => {
+      if (isNetwork && !isLogged) {
+        openLogin();
+        return;
+      }
+      toggleSource(id);
+    };
+
+    return (
+      <SettingRow
+        key={id}
+        title={src.name}
+        badge={!isLogged ? "需登录" : undefined}
+        status={statusOf(src)}
+        latencyMs={latencyMs}
+        description={src.description}
+        control={
+          <button
+            type="button"
+            onClick={handleToggle}
+            aria-label={`${src.name} 开关`}
+            className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+              isEnabled ? "bg-cyan-500" : "bg-white/15"
+            }`}
+          >
+            <motion.div
+              layout
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              className={`w-4 h-4 rounded-full bg-white absolute top-1 shadow-md ${
+                isEnabled ? "right-1" : "left-1"
+              }`}
+            />
+          </button>
+        }
+        expandable
+        expanded={expanded}
+        onToggle={() => setExpandedId((prev) => (prev === id ? null : id))}
+      >
+        {/* 以下全部只在展开态渲染，保证默认态每行等高 */}
+        <p className="text-[12px] leading-relaxed text-white/50 mb-3">{src.description}</p>
+
+        {!isLogged && (
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              type="button"
+              onClick={openLogin}
+              className="px-2 py-1 rounded-lg bg-[#0071e3]/20 hover:bg-[#0071e3]/30 text-[#2997ff] text-[11px] font-medium border border-[#0071e3]/40 transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Lock className="w-3 h-3" />
+              <span>去登录</span>
+            </button>
+          </div>
+        )}
+
+        {isEnabled && (
+          <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/10 text-xs">
+            <div>
+              <label className="text-[10px] text-white/40 block mb-1">音质偏好</label>
+              <select
+                value={src.qualityPreference}
+                onChange={(e) => setSourceQuality(src.id, e.target.value as QualityTier)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none cursor-pointer"
+              >
+                {QUALITY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-[#121626]">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-white/40 block mb-1">抢答优先级 (1-10)</label>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={src.priority}
+                onChange={(e) => setSourcePriority(src.id, parseInt(e.target.value, 10) || 1)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none"
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="text-[10px] text-white/40 block mb-1">
+                自定义镜像 / 反代 API 基址 (可选)
+              </label>
+              <input
+                type="text"
+                placeholder="留空使用默认服务端代理 (如 https://proxy.music.com)"
+                value={src.customApiBase}
+                onChange={(e) => setSourceConfig(src.id, { customApiBase: e.target.value })}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-[11px] focus:outline-none placeholder-white/25"
+              />
+            </div>
+          </div>
+        )}
+      </SettingRow>
+    );
+  };
 
   return (
     <>
@@ -88,141 +232,13 @@ export function SourceMatrixTab({ sourceList, isDiagnosing, onRunDiagnose }: Sou
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          {sourceList.map((src) => {
-            const isNetwork = src.id !== "local" && src.id !== "lx_custom";
-            const isLogged = isNetwork ? isPlatformLoggedIn(src.id) : true;
-            const isUsable = isSourceUsable(src.id);
-            const isEnabled = src.enabled && isLogged;
+        <SettingSection title="官方音源" description="需要登录后才能解码的平台">
+          {OFFICIAL_IDS.map(renderRow)}
+        </SettingSection>
 
-            const handleToggle = () => {
-              if (isNetwork && !isLogged) {
-                // 未登录时点击开关自动定向打开登录弹窗
-                useUserAccountStore.getState().setActivePlatform(src.id as PlatformType);
-                useUserAccountStore.getState().setIsAccountModalOpen(true);
-                return;
-              }
-              toggleSource(src.id);
-            };
-
-            return (
-              <div
-                key={src.id}
-                className={`p-4 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
-                  isUsable
-                    ? "bg-white/[0.04] border-white/20 shadow-md"
-                    : "bg-white/[0.01] border-white/5 opacity-60"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className={`w-2.5 h-2.5 rounded-full ${src.dotColor} shadow-sm`} />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-white">{src.name}</span>
-                        <span
-                          className={`px-1.5 py-0.2 rounded text-[10px] font-semibold border ${src.badgeColor}`}
-                        >
-                          {src.badgeName}
-                        </span>
-                        {isNetwork && !isLogged && (
-                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                            <Lock className="w-2.5 h-2.5" />
-                            <span>需登录解锁</span>
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-white/45 mt-0.5 line-clamp-1">
-                        {src.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {isNetwork && !isLogged && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          useUserAccountStore.getState().setActivePlatform(src.id as PlatformType);
-                          useUserAccountStore.getState().setIsAccountModalOpen(true);
-                        }}
-                        className="px-2 py-1 rounded-lg bg-[#0071e3]/20 hover:bg-[#0071e3]/30 text-[#2997ff] text-[11px] font-medium border border-[#0071e3]/40 transition-colors"
-                      >
-                        去登录
-                      </button>
-                    )}
-
-                    {/* Switch toggle */}
-                    <button
-                      type="button"
-                      onClick={handleToggle}
-                      className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                        isEnabled ? "bg-cyan-500" : "bg-white/15"
-                      }`}
-                    >
-                      <motion.div
-                        layout
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                        className={`w-4 h-4 rounded-full bg-white absolute top-1 shadow-md ${
-                          isEnabled ? "right-1" : "left-1"
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Config Controls */}
-                {isEnabled && (
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 text-xs">
-                    <div>
-                      <label className="text-[10px] text-white/40 block mb-1">音质偏好</label>
-                      <select
-                        value={src.qualityPreference}
-                        onChange={(e) => setSourceQuality(src.id, e.target.value as QualityTier)}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none cursor-pointer"
-                      >
-                        {QUALITY_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value} className="bg-[#121626]">
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] text-white/40 block mb-1">
-                        抢答优先级 (1-10)
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={10}
-                        value={src.priority}
-                        onChange={(e) =>
-                          setSourcePriority(src.id, parseInt(e.target.value, 10) || 1)
-                        }
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="col-span-2">
-                      <label className="text-[10px] text-white/40 block mb-1">
-                        自定义镜像 / 反代 API 基址 (可选)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="留空使用默认服务端代理 (如 https://proxy.music.com)"
-                        value={src.customApiBase}
-                        onChange={(e) => setSourceConfig(src.id, { customApiBase: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-[11px] focus:outline-none placeholder-white/25"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <SettingSection title="扩展" description="本地母带与洛雪自定义脚本">
+          {EXTENDED_IDS.map(renderRow)}
+        </SettingSection>
       </div>
     </>
   );
