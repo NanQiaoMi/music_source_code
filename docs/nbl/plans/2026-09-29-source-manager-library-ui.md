@@ -925,7 +925,7 @@ git commit -m "feat(ui): 新增 SettingSection/SettingRow/StatusDot 分组基础
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** None
 **Parallelizable:** Yes（与 Task 1、Task 2 互不依赖）
@@ -1732,7 +1732,7 @@ git commit -m "feat(sources): 长任务进度与可取消"
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 2
 **Parallelizable:** Yes（可与 Task 4–7 并行；依赖 Task 2 的基础件）
@@ -2069,3 +2069,41 @@ describe("useMediaQuery", () => {
 - 每个 worktree 需补拷 `.env.local`（未被 git 跟踪，新建 worktree 拿不到）
 - 本项目的 `using-git-worktrees` / `subagent-driven-development` skill **只有 SKILL.md、无配套脚本与 prompt 模板**，
   因此 worktree 增删改用原生命令，implementer prompt 由协调者按 skill 明示的契约撰写
+
+
+---
+
+## 六、执行进展与已知偏差（执行中追加）
+
+### 进度
+
+| Task | 状态 | 关键数字 |
+| --- | --- | --- |
+| 1 顶栏响应式 | 完成并合并 | 测试 +4（772→776）； 改  +  测试 |
+| 2 分组基础件 | 完成并合并 | 新增 2 文件 / 11 用例（772→783） |
+| 3 按 Tab 拆文件 | 完成并合并 |  1067→**174** 行；测试 **152/788 逐字一致** |
+| 8 看板主角指标 | 完成并合并 | 新增 1 文件 / 3 用例（788→791） |
+| 合并态 | — | **153 文件 / 791 测试**，tsc/lint/prettier 全绿 |
+
+### 已知偏差（Task 9 或后续需处理）
+
+1. **Tab 本地 state 现在随切 Tab 卸载而重置**（Task 3 顾虑，属计划 Step 2/4「局部 state 一并搬进」的必然结果）
+   - 影响：BackupTab 的导入 JSON 文本、LxScriptsTab 的新增脚本表单与测试结果，切走再回来会清空
+   - 拆分前这些 state 活在外壳，切走再切回仍在
+   - 单 Tab 内的渲染与交互完全不变；测试数逐字一致即证
+   - 若要求跨 Tab 保持 → 需把这几个 state 提回外壳再 props 下传（Task 4–7 触碰 SourceMatrixTab，届时一并评估）
+
+2. ** 的前提存疑**（Task 8）
+   - 计划假设播放条是固定底栏，但实际  是  的**可拖拽浮层**，不是 fixed bottom bar
+   - 子代理在  /  /  /  均未找到可引用的高度常量
+   - Task 9 必须实测：确认遮挡是否真实存在 → 存在则用实测值或改用别的避让方式（z-index / 内容外边距），不存在则撤掉这段 padding
+
+3. ** 未接 standalone 分支**
+   - 该组件没有  prop，接线要改 （超出 Task 8「只改一个文件」范围）
+   - 当前  也带 104px padding； 是浮层，standalone 下多余 padding 影响很小
+   - Task 9 若要求区分，需父级传参
+
+4. **计划原文的两处笔误（已按实测纠正）**
+   - Task 1 Step 1 文件名  含 JSX 解析不了 → 实际用 
+   - Task 2 Step 10 期望数字算错（实际 2 文件 / 10 用例 +1 条守卫 = 11）
+   - 各 Task Step 1 的「148/772」基线已过期 → 派发时按当前实测值下发
