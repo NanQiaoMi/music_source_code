@@ -116,7 +116,7 @@ AI 找歌(790-888)   × 全局搜索(809-837)/全屏沉浸(839-867)/隔空手势
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** None
 **Parallelizable:** Yes
@@ -562,7 +562,7 @@ git commit -m "fix(header): 窄屏收起导航岛微按钮，消除顶栏按钮�
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** None
 **Parallelizable:** Yes（与 Task 1、Task 3 无耦合）
