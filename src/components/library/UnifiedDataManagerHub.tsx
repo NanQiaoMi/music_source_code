@@ -152,7 +152,9 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
               <Music2 className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-1.5 leading-tight">
+              {/* 标题不能换行：中文可在任意两字之间断行，一旦被挤窄就会变成一列竖排的
+                  单字（2026-09-30 在 1024px 实测到过），故锁 nowrap。 */}
+              <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-1.5 leading-tight whitespace-nowrap">
                 资料库资产管理中枢
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/70 border border-white/[0.10] font-medium">
                   ✦ 全景中枢
@@ -165,8 +167,16 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
           </div>
         </div>
 
-        {/* 中间：6 大分类 Tab Pills (纯 CSS GPU 零重排超快响应) */}
-        <div className="hidden lg:flex items-center gap-1 p-1 rounded-2xl bg-black/40 border border-white/[0.08] shadow-inner backdrop-blur-md">
+        {/* 中间：7 大分类 Tab Pills (纯 CSS GPU 零重排超快响应)
+
+            断点用实测宽度而不是 lg(1024)：这行三块加起来，左 396 + Pills 798 + 右 123
+            + 左右内边距 64 = **1381px** 才放得下（2026-09-30 在 1600px 视口量得）。
+            Pills 内是 whitespace-nowrap，flex 的 min-width:auto 让它不肯收缩，
+            于是在 1024~1380 之间它会把右侧状态胶囊直接顶出视口——而页面是
+            overflow-x:hidden，既不出现滚动条也不报错，只是被悄悄裁掉一段。
+            所以这条 Pill 行只在真的放得下时才进顶栏，其余宽度交给下面那行横向滚动的
+            二级 Tab（那套布局本来就有，1024 以下一直在用）。 */}
+        <div className="hidden min-[1400px]:flex items-center gap-1 p-1 rounded-2xl bg-black/40 border border-white/[0.08] shadow-inner backdrop-blur-md">
           {navTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -221,8 +231,8 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
         </div>
       </header>
 
-      {/* 移动端小屏二级分类 Tab */}
-      <div className="flex lg:hidden overflow-x-auto px-4 py-2 bg-black/40 border-b border-white/[0.08] gap-1.5 shrink-0 custom-scrollbar z-20">
+      {/* 二级分类 Tab：顶栏那行 Pill 放不下时（<1400px）由它接管，横向可滚动 */}
+      <div className="flex min-[1400px]:hidden overflow-x-auto px-4 py-2 bg-black/40 border-b border-white/[0.08] gap-1.5 shrink-0 custom-scrollbar z-20">
         {navTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
