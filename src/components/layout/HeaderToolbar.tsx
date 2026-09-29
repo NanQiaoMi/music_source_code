@@ -11,12 +11,17 @@ import { useSourceConfigStore } from "@/store/sourceConfigStore";
 
 import { Logo } from "@/components/layout/Logo";
 import { AppleUnifiedNavIsland } from "@/components/layout/AppleUnifiedNavIsland";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 export function HeaderToolbar() {
   const { currentView, openPanel } = useUIStore();
   const { songs } = usePlaylistStore();
   const { neteaseUser } = useUserAccountStore();
   const { openManagementModal } = useSourceConfigStore();
+  // 岛的微按钮组在 <1320 收起（见 AppleUnifiedNavIsland），此时左侧计数也让位
+  const isCompactHeader = useMediaQuery("(max-width: 1319px)");
+  // 再窄一档才把右侧四个入口压成图标，尽量晚地丢掉文字标签
+  const isVeryNarrow = useMediaQuery("(max-width: 1149px)");
 
   return (
     <motion.header
@@ -38,53 +43,73 @@ export function HeaderToolbar() {
               <span className="text-[13px] font-semibold text-white tracking-tight leading-none whitespace-nowrap">
                 音乐库
               </span>
-              <span className="text-[11px] text-[#86868b] font-medium leading-none whitespace-nowrap">
-                {songs.length > 0 ? `${songs.length} 首歌曲` : "多平台云音乐已就绪"}
-              </span>
+              {!isCompactHeader && (
+                <span className="text-[11px] text-[#86868b] font-medium leading-none whitespace-nowrap">
+                  {songs.length > 0 ? `${songs.length} 首歌曲` : "多平台云音乐已就绪"}
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* 中间栏: 绝对居中在视口中央的悬浮玻璃岛 (绝对几何对称) */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex justify-center items-center pointer-events-auto">
+        {/* 中间栏: 悬浮玻璃岛。
+            这里刻意**不再用 absolute left-1/2 绝对居中**：绝对定位使它脱离文档流，
+            与右侧集群互不让位，只要 岛右缘 > 右集群左缘 就必然重叠（实测 1280 重叠 180px、
+            1024 重叠 162px，且「音源管理」按钮会被别的按钮盖住点不到）。
+            改为 flex 兄弟后由布局引擎保证永不重叠，文字标签也只在真的放不下时才收起。 */}
+        <div className="flex-1 min-w-0 flex justify-center items-center z-20 pointer-events-auto px-2">
           <AppleUnifiedNavIsland />
         </div>
 
         {/* 右侧栏: AI 找歌 + 音源管理 + 多平台账号胶囊 + 管理曲库 */}
         <div className="flex items-center justify-end gap-2.5 shrink-0 z-10 ml-auto">
-          {/* AI 找歌助手入口 */}
+          {/* AI 找歌助手入口（窄屏只留图标） */}
           <button
             type="button"
             onClick={() => openPanel("aiAgent")}
-            className="h-[36px] px-3 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] shadow-sm flex items-center gap-1.5 transition-all active:scale-[0.98] group shrink-0"
+            className={`h-[36px] rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] shadow-sm flex items-center transition-all active:scale-[0.98] group shrink-0 ${
+              isVeryNarrow ? "w-9 justify-center px-0" : "px-3 gap-1.5"
+            }`}
             title="AI 找歌助手"
           >
-            <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse shrink-0" />
+            {!isVeryNarrow && (
+              <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse shrink-0" />
+            )}
             <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-            <span className="text-[12px] font-medium text-white/90 group-hover:text-white whitespace-nowrap">
-              AI 找歌
-            </span>
+            {!isVeryNarrow && (
+              <span className="text-[12px] font-medium text-white/90 group-hover:text-white whitespace-nowrap">
+                AI 找歌
+              </span>
+            )}
           </button>
 
-          {/* 音源管理中心入口 */}
+          {/* 音源管理中心入口（窄屏只留图标） */}
           <button
             type="button"
             onClick={() => openManagementModal()}
-            className="h-[36px] px-3 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] shadow-sm flex items-center gap-1.5 transition-all active:scale-[0.98] group shrink-0"
+            className={`h-[36px] rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] shadow-sm flex items-center transition-all active:scale-[0.98] group shrink-0 ${
+              isVeryNarrow ? "w-9 justify-center px-0" : "px-3 gap-1.5"
+            }`}
             title="全网多音源矩阵与扩展管理中心"
           >
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+            {!isVeryNarrow && (
+              <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+            )}
             <Radio className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-[12px] font-medium text-white/90 group-hover:text-white whitespace-nowrap">
-              音源管理
-            </span>
+            {!isVeryNarrow && (
+              <span className="text-[12px] font-medium text-white/90 group-hover:text-white whitespace-nowrap">
+                音源管理
+              </span>
+            )}
           </button>
 
-          {/* Apple ID 风格多平台账号胶囊 */}
+          {/* Apple ID 风格多平台账号胶囊（窄屏只留头像） */}
           <button
             type="button"
             onClick={() => openPanel("accountCenter")}
-            className="h-[36px] px-3 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] shadow-sm flex items-center gap-2 transition-all active:scale-[0.98] group shrink-0"
+            className={`h-[36px] rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] shadow-sm flex items-center transition-all active:scale-[0.98] group shrink-0 ${
+              isVeryNarrow ? "w-9 justify-center px-0" : "px-3 gap-2"
+            }`}
             title="多平台账号与云端资产"
           >
             {neteaseUser.avatarUrl ? (
@@ -96,26 +121,32 @@ export function HeaderToolbar() {
                 <Crown className="w-3 h-3" />
               </div>
             )}
-            <span className="text-[12px] font-medium text-white/90 group-hover:text-white max-w-[90px] md:max-w-[120px] truncate whitespace-nowrap">
-              {neteaseUser.nickname || "登录云音乐"}
-            </span>
-            {neteaseUser.isVip && (
-              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-                VIP
-              </span>
+            {!isVeryNarrow && (
+              <>
+                <span className="text-[12px] font-medium text-white/90 group-hover:text-white max-w-[90px] md:max-w-[120px] truncate whitespace-nowrap">
+                  {neteaseUser.nickname || "登录云音乐"}
+                </span>
+                {neteaseUser.isVip && (
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                    VIP
+                  </span>
+                )}
+              </>
             )}
           </button>
 
-          {/* Apple 磨砂高光「管理曲库」胶囊 */}
+          {/* Apple 磨砂高光「管理曲库」胶囊（窄屏只留图标） */}
           <motion.a
             href="/data-manager"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="h-[36px] px-3.5 rounded-full bg-white/[0.08] hover:bg-white/[0.16] border border-white/10 text-white text-[12px] font-medium flex items-center gap-1.5 transition-all shadow-sm whitespace-nowrap shrink-0"
+            className={`h-[36px] rounded-full bg-white/[0.08] hover:bg-white/[0.16] border border-white/10 text-white text-[12px] font-medium flex items-center transition-all shadow-sm whitespace-nowrap shrink-0 ${
+              isVeryNarrow ? "w-9 justify-center px-0" : "px-3.5 gap-1.5"
+            }`}
             title="导入与管理曲库"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>管理曲库</span>
+            {!isVeryNarrow && <span>管理曲库</span>}
           </motion.a>
         </div>
       </div>

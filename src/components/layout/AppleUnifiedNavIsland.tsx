@@ -28,10 +28,12 @@ import {
   Scissors,
   HardDrive,
   Settings,
+  MoreHorizontal,
 } from "lucide-react";
 import { useUIStore, PanelName } from "@/store/uiStore";
 import { useGestureStore } from "@/store/gestureStore";
 import { useVisualizationV8Store } from "@/store/visualizationV8Store";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 export interface NavHubSubItem {
   id: PanelName | string;
@@ -55,6 +57,32 @@ export interface AppleUnifiedNavIslandProps {
   hasActiveToast?: boolean;
 }
 
+function QuickActionMenuItem({
+  title,
+  onClick,
+  active,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  active?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 text-[13px] transition-colors ${
+        active ? "text-[#2997ff] bg-[#0071e3]/15" : "text-white/80 hover:bg-white/[0.08]"
+      }`}
+      title={title}
+    >
+      <span className="shrink-0 opacity-80">{children}</span>
+      <span className="truncate">{title}</span>
+    </button>
+  );
+}
+
 export function AppleUnifiedNavIsland({
   isSearchOpen: isSearchOpenProp,
   hasActiveToast: hasActiveToastProp,
@@ -70,6 +98,10 @@ export function AppleUnifiedNavIsland({
   const storeHasToast = Array.isArray(toasts) && toasts.length > 0;
   const hasActiveToast = hasActiveToastProp ?? storeHasToast;
   const { isEnabled: isGestureEnabled, toggleGestureEnabled } = useGestureStore();
+  // ≤1319px 时把微按钮组收进溢出菜单，把横向空间留给岛内主导航与右侧入口。
+  // （不再有「重叠」问题：HeaderToolbar 已把岛改成 flex 兄弟，见其注释。）
+  const isCompactHeader = useMediaQuery("(max-width: 1319px)");
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const [activeHubId, setActiveHubId] = useState<string | null>(null);
   const [hoveredHubId, setHoveredHubId] = useState<string | null>(null);
@@ -269,17 +301,22 @@ export function AppleUnifiedNavIsland({
     const handleClickOutside = (e: MouseEvent) => {
       if (islandRef.current && !islandRef.current.contains(e.target as Node)) {
         setActiveHubId(null);
+        // 溢出菜单挂在导航岛内部，岛外点击也必须收起，
+        // 否则窄屏打开「更多快捷操作」后只能靠再点一次按钮或选中菜单项才能关掉。
+        setMoreOpen(false);
       }
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setActiveHubId(null);
+        setMoreOpen(false);
       }
     };
     const handleWheel = () => {
       if (activeHubId !== null) {
         setActiveHubId(null);
       }
+      setMoreOpen(false);
     };
 
     window.addEventListener("mousedown", handleClickOutside);
@@ -290,7 +327,7 @@ export function AppleUnifiedNavIsland({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("wheel", handleWheel);
     };
-  }, [activeHubId]);
+  }, [activeHubId, moreOpen]);
 
   const handleMouseEnterHub = (hubId: string) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -452,7 +489,12 @@ export function AppleUnifiedNavIsland({
         {/* 2. 微细半透明分割线 */}
         <div className="w-[1px] h-3.5 bg-white/10 mx-1 shrink-0" />
 
-        {/* 3. 快捷微按钮组 (搜索 / 全屏 / 手势 / 快捷键) */}
+        {/* 3. 快捷微按钮组 (搜索 / 全屏 / 手势 / 快捷键)
+            宽屏内联；≤1319px 收进「更多」溢出菜单，只留搜索。
+            这条断点最初的理由是「导航岛会压住右侧集群」——那个理由是错的：
+            当时岛用 absolute left-1/2 居中、脱离了文档流，才会与右侧集群重叠；
+            现在 HeaderToolbar 已把岛改回 flex 兄弟（见该文件注释），重叠在布局上不可能发生，
+            所以这里收起只是为了窄屏下少占一点横向空间。 */}
         <div className="flex items-center gap-0.5 px-0.5">
           <button
             type="button"
@@ -463,49 +505,110 @@ export function AppleUnifiedNavIsland({
             <Search className="w-3.5 h-3.5" />
           </button>
 
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.12] transition-all hover:scale-105 active:scale-95"
-            title={isFullscreen ? "退出全屏" : "全屏沉浸"}
-          >
-            {isFullscreen ? (
-              <Minimize2 className="w-3.5 h-3.5" />
-            ) : (
-              <Maximize2 className="w-3.5 h-3.5" />
-            )}
-          </button>
+          {isCompactHeader ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMoreOpen((v) => !v)}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.12] transition-all hover:scale-105 active:scale-95"
+                title="更多快捷操作"
+                aria-expanded={moreOpen}
+              >
+                <MoreHorizontal className="w-3.5 h-3.5" />
+              </button>
+              {moreOpen && (
+                <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl bg-[#16161a]/95 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden z-50 py-1">
+                  <QuickActionMenuItem
+                    title={isFullscreen ? "退出全屏" : "全屏沉浸"}
+                    onClick={() => {
+                      toggleFullscreen();
+                      setMoreOpen(false);
+                    }}
+                  >
+                    {isFullscreen ? (
+                      <Minimize2 className="w-4 h-4" />
+                    ) : (
+                      <Maximize2 className="w-4 h-4" />
+                    )}
+                  </QuickActionMenuItem>
+                  <QuickActionMenuItem
+                    title="隔空手势控制"
+                    active={isGestureEnabled}
+                    onClick={() => {
+                      toggleGestureEnabled();
+                      setMoreOpen(false);
+                    }}
+                  >
+                    <Hand className="w-4 h-4" />
+                  </QuickActionMenuItem>
+                  <QuickActionMenuItem
+                    title="键盘快捷键"
+                    onClick={() => {
+                      openPanel("keyboardShortcuts");
+                      setMoreOpen(false);
+                    }}
+                  >
+                    <Keyboard className="w-4 h-4" />
+                  </QuickActionMenuItem>
+                  <QuickActionMenuItem
+                    title="偏好设置"
+                    onClick={() => {
+                      openPanel("settings");
+                      setMoreOpen(false);
+                    }}
+                  >
+                    <Settings className="w-4 h-4" />
+                  </QuickActionMenuItem>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.12] transition-all hover:scale-105 active:scale-95"
+                title={isFullscreen ? "退出全屏" : "全屏沉浸"}
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="w-3.5 h-3.5" />
+                ) : (
+                  <Maximize2 className="w-3.5 h-3.5" />
+                )}
+              </button>
 
-          <button
-            type="button"
-            onClick={toggleGestureEnabled}
-            className={`w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 ${
-              isGestureEnabled
-                ? "bg-[#0071e3]/30 text-[#2997ff] border border-[#0071e3]/40"
-                : "text-white/60 hover:text-white hover:bg-white/[0.12]"
-            }`}
-            title="隔空手势控制"
-          >
-            <Hand className="w-3.5 h-3.5" />
-          </button>
+              <button
+                type="button"
+                onClick={toggleGestureEnabled}
+                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 ${
+                  isGestureEnabled
+                    ? "bg-[#0071e3]/30 text-[#2997ff] border border-[#0071e3]/40"
+                    : "text-white/60 hover:text-white hover:bg-white/[0.12]"
+                }`}
+                title="隔空手势控制"
+              >
+                <Hand className="w-3.5 h-3.5" />
+              </button>
 
-          <button
-            type="button"
-            onClick={() => openPanel("keyboardShortcuts")}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.12] transition-all hover:scale-105 active:scale-95"
-            title="键盘快捷键"
-          >
-            <Keyboard className="w-3.5 h-3.5" />
-          </button>
+              <button
+                type="button"
+                onClick={() => openPanel("keyboardShortcuts")}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.12] transition-all hover:scale-105 active:scale-95"
+                title="键盘快捷键"
+              >
+                <Keyboard className="w-3.5 h-3.5" />
+              </button>
 
-          <button
-            type="button"
-            onClick={() => openPanel("settings")}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.12] transition-all hover:scale-105 active:scale-95"
-            title="偏好设置"
-          >
-            <Settings className="w-3.5 h-3.5" />
-          </button>
+              <button
+                type="button"
+                onClick={() => openPanel("settings")}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.12] transition-all hover:scale-105 active:scale-95"
+                title="偏好设置"
+              >
+                <Settings className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </motion.div>

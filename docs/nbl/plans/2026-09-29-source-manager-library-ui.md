@@ -116,7 +116,7 @@ AI 找歌(790-888)   × 全局搜索(809-837)/全屏沉浸(839-867)/隔空手势
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** None
 **Parallelizable:** Yes
@@ -562,7 +562,7 @@ git commit -m "fix(header): 窄屏收起导航岛微按钮，消除顶栏按钮�
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** None
 **Parallelizable:** Yes（与 Task 1、Task 3 无耦合）
@@ -925,7 +925,7 @@ git commit -m "feat(ui): 新增 SettingSection/SettingRow/StatusDot 分组基础
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** None
 **Parallelizable:** Yes（与 Task 1、Task 2 互不依赖）
@@ -1022,7 +1022,7 @@ git commit -m "refactor(sources): 按 Tab 拆分 SourceManagementModal，零行�
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 2, Task 3
 **Parallelizable:** No（需先有基础件与拆分后的 Tab 文件）
@@ -1162,7 +1162,7 @@ git commit -m "feat(sources): 音源列表改用分组行，描述与登录收�
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 2, Task 3
 **Parallelizable:** Yes（与 Task 4、6、7 并行）
@@ -1347,7 +1347,7 @@ git commit -m "feat(sources): 顶部健康摘要 + 测速延迟就地展示"
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 2, Task 3
 **Parallelizable:** Yes（与 Task 4、5、7 并行）
@@ -1513,7 +1513,7 @@ git commit -m "feat(sources): 补齐空态/加载态/错误态与重试入口"
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 3
 **Parallelizable:** Yes（与 Task 4、5、6 并行）
@@ -1732,7 +1732,7 @@ git commit -m "feat(sources): 长任务进度与可取消"
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 2
 **Parallelizable:** Yes（可与 Task 4–7 并行；依赖 Task 2 的基础件）
@@ -1943,3 +1943,405 @@ git commit -m "docs: 音源管理与曲库看板改造前后截图存档"
 ---
 
 **Execution Mode:** parallel
+
+---
+
+## 五、执行勘误（写完计划后复核发现，以本节为准）
+
+### 5.1 Task 1 Step 1/3 修正：`useMediaQuery` 的实现与测试
+
+**原实现的问题**：`useState(false)` + effect 里再同步，会导致
+(a) `renderToStaticMarkup` 不执行 effect，测试里永远读到 `false`，宽度断言无法生效；
+(b) SSR 渲染 `false`、客户端首帧 `true` → React 水合不匹配告警（本项目验收要求控制台 0 error）。
+
+**修正后的实现**（替换原 Step 3 的 `src/hooks/useMediaQuery.ts` 全文）：
+
+```ts
+"use client";
+
+import { useSyncExternalStore } from "react";
+
+function subscribe(query: string) {
+  return (onChange: () => void) => {
+    if (typeof window === "undefined" || !window.matchMedia) return () => undefined;
+    const mql = window.matchMedia(query);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  };
+}
+
+/**
+ * 订阅一条 CSS 媒体查询。
+ * 用 useSyncExternalStore 而非 useState+effect：
+ *  - getServerSnapshot 返回 false，水合时与服务端一致，不会产生不匹配告警；
+ *  - 水合完成后 React 会静默重渲染成真实值。
+ */
+export function useMediaQuery(query: string): boolean {
+  return useSyncExternalStore(
+    subscribe(query),
+    () =>
+      typeof window !== "undefined" && window.matchMedia ? window.matchMedia(query).matches : false,
+    () => false
+  );
+}
+```
+
+**修正后的测试**（替换原 Step 1 的 `src/hooks/useMediaQuery.test.ts` 全文；
+因 `getServerSnapshot` 恒为 false，必须真实渲染 + `act`，项目已有先例 `AISettingsPanel.test.tsx`）：
+
+```tsx
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { act } from "react";
+import { createRoot, Root } from "react-dom/client";
+import { useMediaQuery } from "./useMediaQuery";
+
+function stubViewport(width: number) {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn().mockImplementation((query: string) => {
+      const max = /max-width:\s*(\d+)/.exec(query);
+      const matches = max ? width <= Number(max[1]) : false;
+      return { matches, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    })
+  );
+}
+
+function Probe({ query }: { query: string }) {
+  const matches = useMediaQuery(query);
+  return <span data-matches={String(matches)} />;
+}
+
+let container: HTMLDivElement;
+let root: Root;
+
+beforeEach(() => {
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+
+afterEach(async () => {
+  await act(async () => root.unmount());
+  container.remove();
+  vi.unstubAllGlobals();
+});
+
+describe("useMediaQuery", () => {
+  it("is true when the viewport satisfies a max-width query", async () => {
+    stubViewport(1024);
+    await act(async () => root.render(<Probe query="(max-width: 1199px)" />));
+    expect(container.querySelector("[data-matches]")?.getAttribute("data-matches")).toBe("true");
+  });
+
+  it("is false above the breakpoint", async () => {
+    stubViewport(1280);
+    await act(async () => root.render(<Probe query="(max-width: 1199px)" />));
+    expect(container.querySelector("[data-matches]")?.getAttribute("data-matches")).toBe("false");
+  });
+});
+```
+
+**连带影响**：原 Step 1 里的 `src/hooks/testRenderHook.ts` **不再需要，不要创建**。
+原 Step 5 的 `AppleUnifiedNavIsland.responsive.test.tsx` 同理不能用
+`renderToStaticMarkup`，必须改成 `createRoot` + `act` + `vi.mock("framer-motion")`
+（`motion.*` 降级为同名原生标签，参照 `AISettingsPanel.test.tsx` 的写法），
+断言改为对 `container.innerHTML` 做 `toContain`。
+
+### 5.2 浏览器验证的位置（覆盖 Task 1 Step 11、Task 8 Step 7、Task 9）
+
+并行执行采用隔离 worktree。**dev server 固定跑在主工作树的 3025 端口**
+（`useOfflineDownloadStore.ts` 与后端 CORS 均硬编码 3025，无法另开端口），
+因此**任何 worktree 里的改动预览面板都看不到**。
+
+规则：
+
+- Task 1–8 的子代理**只做代码与测试**，遇到计划里的「浏览器实测/截图」步骤直接跳过并在报告中标注 `DEFERRED`
+- 所有浏览器验证（三档宽度重叠归零、两屏前后截图、播放条避让）统一收口到 **Task 9**，
+  由主协调者在**主工作树** `D:\26project\music_source_code_V1.1_full\music_source_code` 执行
+- Task 9 的前置条件因此变为：所有任务已合并回 merge 分支 → 合并回主工作树 → 再做浏览器验证
+
+### 5.3 执行环境
+
+- merge worktree：`.worktrees/source-manager-library-ui-merge`（分支 `feature/source-manager-library-ui-merge`）
+- 任务 worktree：`.worktrees/source-manager-library-ui-task{N}`（分支 `feature/source-manager-library-ui-task{N}`，父为 merge 分支）
+- **无需 link `node_modules`**：`.worktrees/` 位于仓库内，Node 模块解析会向上找到根目录的 `node_modules`；
+  已实测在 worktree 内 `npx vitest run src/hooks` → 14 passed
+- 每个 worktree 需补拷 `.env.local`（未被 git 跟踪，新建 worktree 拿不到）
+- 本项目的 `using-git-worktrees` / `subagent-driven-development` skill **只有 SKILL.md、无配套脚本与 prompt 模板**，
+  因此 worktree 增删改用原生命令，implementer prompt 由协调者按 skill 明示的契约撰写
+
+---
+
+## 六、执行进展与已知偏差（执行中追加）
+
+### 进度
+
+| Task                 | 状态                                        | 关键数字                                                                                     |
+| -------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| 1 顶栏响应式         | 完成并合并                                  | 测试 +4（772→776）；`useMediaQuery` 改用 `useSyncExternalStore`，测试改 `createRoot` + `act` |
+| 2 分组基础件         | 完成并合并                                  | 新增 2 文件 / 11 用例（772→783）                                                             |
+| 3 按 Tab 拆文件      | 完成并合并                                  | `SourceManagementModal` 1067→**174** 行；测试 **152/788 逐字一致**                           |
+| 4 音源列表改组行     | 完成并合并                                  | 新增 1 文件 / 3 用例（791→794）；与 T5 冲突 3 处已解                                         |
+| 5 健康摘要           | 完成并合并                                  | 新增 2 文件 / 4 用例（791→795）；冲突面 3 hunk 全在文件顶部                                  |
+| 7 长任务进度         | 完成并合并（原 NEEDS_CONTEXT 已按裁定收敛） | 新增 2 文件 / 3 用例（795→798）                                                              |
+| 8 看板主角指标       | 完成并合并                                  | 新增 1 文件 / 3 用例（788→791）                                                              |
+| 6 三态接入           | 完成并合并                                  | 新增 5 个 states 测试文件 / 20 用例（801→821）                                               |
+| 10 外壳接线          | 完成并合并                                  | 新增 1 测试文件 / 2 用例（821→823）                                                          |
+| 合并态（Task 10 后） | —                                           | **162 文件 / 823 测试**，tsc / lint / prettier 全绿                                          |
+
+待办：Task 11（让同步失败可见，依赖 Task 6+10）、Task 9 收口（全局两阶段评审 + 主工作树浏览器验证）。
+
+**新增已知偏差 6（Task 6 续做）**：`LxScriptsTab.tsx:25` 与 `BackupTab.tsx:23` 用
+`useSourceConfigStore.getState()` 读空态判据，而不是 hook 返回值。
+
+根因是那 4 个 states 测试用 `setState` + `renderToStaticMarkup` 驱动，而 SSR 路径下
+zustand 的 `getServerSnapshot` 返回初始值，hook 看到的永远是默认值——即**测试的驱动方式与组件的取数方式不兼容**。
+续做代理选择改组件迁就测试，方向反了（本应是改测试）。
+
+功能上正确：无选择器的整店订阅仍在，客户端 store 一变就重渲染，值始终是新的。
+但属非惯用写法，且有注释说明。**Task 10 把数据改为 prop 下传后，这两处 `getState()` 可一并去掉。**
+
+**另一处同类问题**：`DiagnosticsTab.states.test.tsx` 的 `MINIMAL_PROPS` 原用 `} as const;`，
+使 `sourceList` 变成 `readonly []`，与 `sourceList: SingleSourceConfig[]` 不兼容，导致 `tsc` 退出码 2。
+续做代理改成显式类型，**4 条断言的期望文案与驱动方式一字未动**。
+
+---
+
+## Task 11: 让同步失败可见（非阻断横幅）（执行期追加）
+
+**追加理由**：Task 10 把 `loading` / `error` / `onRetry` 接到了 5 个 Tab，但**错误分支在生产里永远不可达**——
+`syncBuiltinDesktopSources`（`sourceConfigStore.ts:435-487`）有三条路径都在吞错：
+
+```ts
+if (!res.ok) return;                            // HTTP 500/404 → 静默返回
+if (data && Array.isArray(data.sources)) { … }  // 响应格式异常 → 静默跳过
+catch (e) { console.warn(…); }                  // 网络异常 → 只 warn
+```
+
+于是用户「拉取失败时给出重试入口」这条需求并未落地。
+
+同时 Task 6 把 `error` 实现成了**整块替换内容**（优先级 `loading > error > 空态 > 正常`）。
+`/api/sources/builtin` 是本地路由，瞬时失败会让**整个音源列表被错误卡片盖掉**——
+而那些数据本就在 store 里、本该照常显示。用户裁定改为**非阻断横幅**。
+
+**状态**
+
+- [ ] 任务完成
+
+**Dependencies:** Task 6, Task 10
+**Parallelizable:** No（独占 store action 与 5 个 Tab）
+
+### 前置事实（已实测）
+
+- `syncBuiltinDesktopSources` 调用方只有两处：
+  - `SourceManagementModal.tsx:38`（Task 10 已包 `try/catch`，会把异常转成 `sourcesError`）
+  - `LxScriptsTab.tsx:110` 的「同步本地 4 大音源」按钮：`await syncBuiltinDesktopSources()` 后**无条件** `alert("🎉 已成功载入…")`，**没有 try/catch**
+- `sourceConfigStore.test.ts` 现有 5 条用例，**没有一条覆盖这个 action**
+
+### Step 1: 写 store action 的失败测试
+
+在 `src/store/sourceConfigStore.test.ts` 追加：
+
+```ts
+it("surfaces a failed builtin sync instead of swallowing it", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+  await expect(useSourceConfigStore.getState().syncBuiltinDesktopSources()).rejects.toThrow(/500/);
+  vi.unstubAllGlobals();
+});
+
+it("surfaces a malformed builtin payload", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ sources: "nope" }) })
+  );
+  await expect(useSourceConfigStore.getState().syncBuiltinDesktopSources()).rejects.toThrow();
+  vi.unstubAllGlobals();
+});
+
+it("surfaces a network failure", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+  await expect(useSourceConfigStore.getState().syncBuiltinDesktopSources()).rejects.toThrow(
+    "network down"
+  );
+  vi.unstubAllGlobals();
+});
+```
+
+（`vi` 需在文件顶部 import；若已有 `vi` 则复用。非浏览器环境该 action 会提前 return，
+测试里需保证 `window.location.origin` 可读——jsdom 默认满足。）
+
+### Step 2: 确认失败
+
+Run: `npx vitest run src/store/sourceConfigStore.test.ts`
+Expected: **FAIL**（三条都因「不抛错」而失败）
+
+### Step 3: 改 store action
+
+`src/store/sourceConfigStore.ts` 的 `syncBuiltinDesktopSources`：
+
+- 保留开头的静默 `return`（SSR / `origin === "null"`）——**那不是失败**，不该抛
+- `if (!res.ok)` → `throw new Error(\`音源配置拉取失败 (HTTP ${res.status})\`)`
+- 响应不是 `{ sources: [...] }` → `throw new Error("音源配置响应格式异常")`
+- `catch` 里**保留 `console.warn` 供诊断，然后 `throw e`**
+
+### Step 4: 确认通过
+
+Run: `npx vitest run src/store/sourceConfigStore.test.ts`
+Expected: **PASS**（原 5 条 + 新 3 条）
+
+### Step 5: 写「非阻断横幅」的失败测试
+
+在 `src/components/sources/tabs/SourceMatrixTab.states.test.tsx` 追加：
+
+```ts
+it("错误以横幅呈现，且不遮挡已有内容", async () => {
+  const { SourceMatrixTab } = await import("./SourceMatrixTab");
+  const html = renderToStaticMarkup(
+    <SourceMatrixTab
+      sourceList={[/* 至少一个真实音源配置 */]}
+      isDiagnosing={false}
+      onRunDiagnose={() => undefined}
+      error="上游配置拉取失败"
+      onRetry={() => undefined}
+    />
+  );
+  expect(html).toContain("上游配置拉取失败");
+  expect(html).toContain("重试");
+  // 关键：内容仍在，没有被错误卡片替换掉
+  expect(html).toContain("官方音源");
+});
+```
+
+**第 6 步会连带影响既有断言**：现有「加载失败渲染错误态与重试」用例在
+`sourceList={[]}` 下断言错误文案——改成横幅后**仍应通过**（文案与「重试」都还在）。
+若某条既有断言因「不再整块替换」而失效，**逐条说明原因后再改**，不要整文件重写。
+
+### Step 6: 实现非阻断横幅（5 个 Tab）
+
+把每个 Tab 的 `if (error) return (<错误卡片>)` 改成：**不 return，改为在正常内容之前渲染一条横幅**。
+
+横幅形态（保持一致，5 处相同）：
+
+```tsx
+{
+  error && (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-2.5">
+      <span className="text-[12.5px] text-rose-200">{error}</span>
+      <div className="flex gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/20 text-[12px] text-white transition-colors"
+        >
+          重试
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+- **空态判据随之调整**：原来 `error` 优先于空态；改成横幅后，`error` 与「空态/正常内容」可以**同时出现**
+  （同步失败 + 本地确实没有音源 → 横幅 + 空态，信息更完整）
+- `loading` 仍保持**整块替换**（骨架屏），优先级 `loading > （横幅 + 空态 | 正常）`
+
+### Step 7: 处理 LxScriptsTab 的同步按钮
+
+`src/components/sources/tabs/LxScriptsTab.tsx:110` 的按钮改为：
+
+```tsx
+onClick={async () => {
+  try {
+    await syncBuiltinDesktopSources();
+    alert("🎉 已成功载入并同步本地桌面 4 套音源库（独家v4.0、聚合9.3特供版、野草、野花）！");
+  } catch (e) {
+    alert(`同步失败：${e instanceof Error ? e.message : "未知错误"}`);
+  }
+}}
+```
+
+### Step 8: 全量回归
+
+Run: `npx vitest run 2>&1 | grep -E "Test Files|Tests "`
+Expected: 全部 passed、**0 failed**
+Run: `npx tsc --noEmit` → exit 0
+Run: `npm run lint` → exit 0
+Run: `npx prettier --check src/` → 通过
+
+### Step 9: 提交
+
+```bash
+git add src/store/sourceConfigStore.ts src/store/sourceConfigStore.test.ts \
+        src/components/sources/
+git commit -m "fix(sources): 同步失败不再被吞掉，错误改以非阻断横幅呈现"
+```
+
+---
+
+## 七、Task 9 收口结果 与 Task 12（执行期追加）
+
+### Task 9 实测结果（主工作树，dev server 3025）
+
+**三档宽度顶栏重叠归零**（每档均先重载，保证渲染与视口一致——预览面板会节流，仅 resize 不触发 React 重渲染，直接量会读到旧宽度的渲染结果）：
+
+| 视口 | overlaps | 「音源管理」elementFromPoint | 导航岛                | 右侧集群           |
+| ---- | -------- | ---------------------------- | --------------------- | ------------------ |
+| 1024 | `[]`     | `HIT-self`                   | 紧凑（收 5 个微按钮） | 图标化             |
+| 1280 | `[]`     | `HIT-self`                   | 紧凑                  | **文字标签全保留** |
+| 1440 | `[]`     | `HIT-self`                   | **全量**              | 文字标签全保留     |
+
+**两屏改造后形态**（截图在会话中呈现，未入库——见下方说明）：
+
+- 音源管理：分组标题「官方音源 / 扩展」+ 圆角组容器 + 行间发丝线；每行只有
+  名称 + 至多 1 个 badge + 状态点 + 开关，描述与「去登录」只在展开态；所有行等高；
+  顶部新增「音源健康 N 在线 / M 未测 + 快速测速 + 就地延迟」摘要条
+- 曲库看板：四组主角指标（存储与配额 / 音质与编码 / 云端账号 / 曲库健康）各成一段，
+  620 KB 升为大号 hero；无横向溢出
+
+**截图未提交入库的说明**：预览面板的截图是直接呈现在会话里的图像，不入磁盘；
+而把 6 张二进制截图提交进仓库，对这份「验收证据」而言收益低于噪声（且仓库已有
+「不提交构建产物」的取向）。故本轮以会话内呈现完成「前后对比」，不入库。
+若确需归档，可另行用系统截图工具补。
+
+### Task 9 的第三项：pb-[104px] 播放条避让 —— 实测证伪，已撤
+
+Task 8 留的待校准项，本次在 `/data-manager` 实测：
+
+- 页面内 `position: fixed` 元素**只有 1 个**，是 `fixed inset-0 pointer-events-none z-0`
+  的全屏氛围背景，**不是底部播放条**
+- `FloatingPlayer` 的唯一守卫是 `if (!currentSong) return null`（不看路由），
+  而它是 `left:28 / top:280` 的**可拖拽浮层**，本就不是固定底栏
+  → 底部内边距对它毫无避让作用
+
+结论：那 104px 只是看板底部的一段死空白，已撤掉（提交 `d31755a`）。
+将来若真的引入底部固定条，再按实测高度补。
+
+### Task 12：顶栏真正修复（追加任务）
+
+**Task 1 的断点方案不成立，Task 9 实测才暴露。**
+
+导航岛用 `absolute left-1/2` 绝对居中，脱离文档流，与右侧集群互不让位。
+判据是 `岛右缘 ≤ 右集群左缘`，与总宽是否够用无关。实测（改动前）：
+
+```
+1280   岛 289–991（宽 702）   右集群 811–1256   重叠 180px
+1024   岛 206–818（宽 612）   右集群 656–1000   重叠 162px
+```
+
+按 `640 + 岛宽/2 ≤ 右集群起点` 反推：绝对居中下全量布局要到 **1592px** 才不重叠，
+1440 都会撞。而 Task 1 只把微按钮断点设为 ≤1199，省下的 ~90px 远远不够。
+
+**改法**（提交 `51522e0`）：
+
+1. 导航岛改为 **flex 兄弟**（`flex-1 min-w-0` 居中）——由布局引擎保证永不重叠，
+   不再靠调断点赌宽度
+2. 两档降级，让文字标签尽量晚地收起：
+   - `<1320`：岛收起 5 个微按钮（左侧计数同时让位）
+   - `<1150`：右侧四个入口压成 36px 图标圆钮
+3. 图标化时**保留 `title` 属性**（`HeaderToolbar.test` 断言的
+   「多平台账号与云端资产」是 title，不能丢）
+4. 测试安全性依据：jsdom **不实现 `matchMedia`**（`undefined`），
+   故 `useMediaQuery` 恒返回 `false`、测试走非紧凑分支，
+   `HeaderToolbar.test` 断言的「管理曲库」文本仍在
+
+**教训**：绝对居中 + 固定断点无法保证不重叠；能用布局引擎解决的，不要用断点数字赌。
