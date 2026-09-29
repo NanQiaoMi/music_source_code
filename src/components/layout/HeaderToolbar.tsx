@@ -11,12 +11,15 @@ import { useSourceConfigStore } from "@/store/sourceConfigStore";
 
 import { Logo } from "@/components/layout/Logo";
 import { AppleUnifiedNavIsland } from "@/components/layout/AppleUnifiedNavIsland";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 export function HeaderToolbar() {
   const { currentView, openPanel } = useUIStore();
   const { songs } = usePlaylistStore();
   const { neteaseUser } = useUserAccountStore();
   const { openManagementModal } = useSourceConfigStore();
+  const isCompactHeader = useMediaQuery("(max-width: 1199px)");
+  const isVeryNarrow = useMediaQuery("(max-width: 1099px)");
 
   return (
     <motion.header
@@ -38,9 +41,11 @@ export function HeaderToolbar() {
               <span className="text-[13px] font-semibold text-white tracking-tight leading-none whitespace-nowrap">
                 音乐库
               </span>
-              <span className="text-[11px] text-[#86868b] font-medium leading-none whitespace-nowrap">
-                {songs.length > 0 ? `${songs.length} 首歌曲` : "多平台云音乐已就绪"}
-              </span>
+              {!isCompactHeader && (
+                <span className="text-[11px] text-[#86868b] font-medium leading-none whitespace-nowrap">
+                  {songs.length > 0 ? `${songs.length} 首歌曲` : "多平台云音乐已就绪"}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -61,9 +66,11 @@ export function HeaderToolbar() {
           >
             <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse shrink-0" />
             <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-            <span className="text-[12px] font-medium text-white/90 group-hover:text-white whitespace-nowrap">
-              AI 找歌
-            </span>
+            {!isVeryNarrow && (
+              <span className="text-[12px] font-medium text-white/90 group-hover:text-white whitespace-nowrap">
+                AI 找歌
+              </span>
+            )}
           </button>
 
           {/* 音源管理中心入口 */}
@@ -75,9 +82,11 @@ export function HeaderToolbar() {
           >
             <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
             <Radio className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-[12px] font-medium text-white/90 group-hover:text-white whitespace-nowrap">
-              音源管理
-            </span>
+            {!isVeryNarrow && (
+              <span className="text-[12px] font-medium text-white/90 group-hover:text-white whitespace-nowrap">
+                音源管理
+              </span>
+            )}
           </button>
 
           {/* Apple ID 风格多平台账号胶囊 */}
