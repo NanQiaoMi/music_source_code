@@ -4,7 +4,9 @@ import { motion } from "framer-motion";
 import { RefreshCw, Zap, Lock } from "lucide-react";
 import { useSourceConfigStore, isSourceUsable } from "@/store/sourceConfigStore";
 import { useUserAccountStore, isPlatformLoggedIn, PlatformType } from "@/store/userAccountStore";
-import { QualityTier, SingleSourceConfig } from "@/types/sourceConfig";
+import { QualityTier, SingleSourceConfig, SourceHealthStatus } from "@/types/sourceConfig";
+import { SourceHealthSummary, HealthRow } from "@/components/ui/settings/SourceHealthSummary";
+import { StatusKind } from "@/components/ui/settings/StatusDot";
 
 const QUALITY_OPTIONS: { value: QualityTier; label: string; tag: string }[] = [
   { value: "auto", label: "自适应最高 (Auto)", tag: "AUTO" },
@@ -13,6 +15,13 @@ const QUALITY_OPTIONS: { value: QualityTier; label: string; tag: string }[] = [
   { value: "320k", label: "极高品 320kbps", tag: "320K" },
   { value: "128k", label: "标准 128kbps (省流)", tag: "128K" },
 ];
+
+const HEALTH_STATUS_MAP: Record<SourceHealthStatus["status"], StatusKind> = {
+  normal: "ok",
+  degraded: "warn",
+  error: "error",
+  untested: "idle",
+};
 
 interface SourceMatrixTabProps {
   sourceList: SingleSourceConfig[];
@@ -30,8 +39,22 @@ export function SourceMatrixTab({ sourceList, isDiagnosing, onRunDiagnose }: Sou
     setSourceConfig,
   } = useSourceConfigStore();
 
+  const healthRows: HealthRow[] = sourceList.map((src) => ({
+    id: src.id,
+    name: src.name,
+    status: HEALTH_STATUS_MAP[src.health.status] ?? "idle",
+    latencyMs:
+      src.health.status === "untested" || !src.health.lastChecked ? null : src.health.latencyMs,
+  }));
+
   return (
     <>
+      <SourceHealthSummary
+        sources={healthRows}
+        probing={isDiagnosing}
+        onRunDiagnostics={onRunDiagnose}
+      />
+
       {/* TAB 1: 音源矩阵控制台 */}
       <div className="space-y-5">
         {/* 🚀 解析链路通道选择器 */}
