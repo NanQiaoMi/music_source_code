@@ -14,6 +14,7 @@ import {
   type HealthRow,
   type StatusKind,
 } from "@/components/ui/settings";
+import { EmptyState, LoadingSkeleton } from "@/components/shared/Glass";
 
 const QUALITY_OPTIONS: { value: QualityTier; label: string; tag: string }[] = [
   { value: "auto", label: "自适应最高 (Auto)", tag: "AUTO" },
@@ -32,9 +33,22 @@ interface SourceMatrixTabProps {
   sourceList: SingleSourceConfig[];
   isDiagnosing: boolean;
   onRunDiagnose: () => void;
+  /** 上游配置拉取中。缺省（undefined）时保持原有渲染，由外壳 Task 10 接线。 */
+  loading?: boolean;
+  /** 拉取失败文案。缺省时不渲染错误态。 */
+  error?: string | null;
+  /** 错误态「重试」回调。缺省时按钮仍渲染但为空操作。 */
+  onRetry?: () => void;
 }
 
-export function SourceMatrixTab({ sourceList, isDiagnosing, onRunDiagnose }: SourceMatrixTabProps) {
+export function SourceMatrixTab({
+  sourceList,
+  isDiagnosing,
+  onRunDiagnose,
+  loading,
+  error,
+  onRetry,
+}: SourceMatrixTabProps) {
   const {
     resolutionMode,
     setResolutionMode,
@@ -46,6 +60,55 @@ export function SourceMatrixTab({ sourceList, isDiagnosing, onRunDiagnose }: Sou
 
   /** 同一时刻只展开一行：描述、登录入口与配置表单都收在这里面 */
   const [expandedId, setExpandedId] = useState<MusicSourceId | null>(null);
+
+  const handleResetDefaults = () => {
+    useSourceConfigStore.getState().resetToDefaults();
+  };
+
+  // 三态分派（优先级 loading > error > 空态 > 正常）。
+  // 三者都由可选 props / 本组件 sourceList 推导，缺省时渲染与接线前完全一致。
+  if (loading) {
+    return (
+      <div data-skeleton="true" className="space-y-3">
+        <LoadingSkeleton count={4} variant="card" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] px-5 py-6">
+        <p className="text-[13px] text-rose-200">{error}</p>
+        <div className="mt-3 flex gap-2">
+          <button
+            type="button"
+            onClick={onRetry}
+            className="h-8 px-3.5 rounded-full bg-white/10 hover:bg-white/20 text-[12.5px] text-white transition-colors"
+          >
+            重试
+          </button>
+          <button
+            type="button"
+            onClick={handleResetDefaults}
+            className="h-8 px-3.5 rounded-full bg-white/[0.06] hover:bg-white/10 text-[12.5px] text-white/70 transition-colors"
+          >
+            恢复默认
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (sourceList.length === 0) {
+    return (
+      <EmptyState
+        title="还没有可用音源"
+        description="导入或恢复默认配置后即可管理 7 大平台通道"
+        actionLabel="恢复默认"
+        onAction={handleResetDefaults}
+      />
+    );
+  }
 
   const sourceById = new Map(sourceList.map((src) => [src.id, src]));
 

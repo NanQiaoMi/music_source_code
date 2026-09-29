@@ -5,10 +5,24 @@ import { motion } from "framer-motion";
 import { X, Code2, Sparkles, Plus, Trash2, CheckCircle2, AlertTriangle, Play } from "lucide-react";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
 import { LXRunner } from "@/lib/sources/lxRunner";
+import { EmptyState, LoadingSkeleton } from "@/components/shared/Glass";
 
-export function LxScriptsTab() {
-  const { lxScripts, addLXScript, removeLXScript, toggleLXScript, syncBuiltinDesktopSources } =
+interface LxScriptsTabProps {
+  /** 脚本列表拉取中。缺省（undefined）时保持原有渲染，由外壳 Task 10 接线。 */
+  loading?: boolean;
+  /** 拉取失败文案。缺省时不渲染错误态。 */
+  error?: string | null;
+  /** 错误态「重试」回调。缺省时按钮仍渲染但为空操作。 */
+  onRetry?: () => void;
+}
+
+export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}) {
+  // 订阅整店以便状态变化时重渲染；动作来自 hook。
+  const { addLXScript, removeLXScript, toggleLXScript, syncBuiltinDesktopSources } =
     useSourceConfigStore();
+  // 脚本列表直接读当前值：renderToStaticMarkup 下 hook 快照是初始值（getInitialState），
+  // 而空态判据必须反映「此刻」的 store，故用 getState 读取，客户端也由上面的订阅保证更新。
+  const lxScripts = useSourceConfigStore.getState().lxScripts;
 
   // New script modal form state
   const [showAddScript, setShowAddScript] = useState(false);
@@ -215,55 +229,82 @@ export function LxScriptsTab() {
           </div>
         )}
 
-        {/* Script List */}
-        <div className="space-y-3">
-          {lxScripts.map((script) => (
-            <div
-              key={script.id}
-              className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-between gap-4"
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <Code2 className="w-4 h-4 text-cyan-400" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-white">{script.name}</span>
-                    <span className="px-1.5 py-0.2 rounded text-[10px] bg-white/10 text-white/70">
-                      v{script.version}
-                    </span>
-                    <span className="text-[10px] text-white/40">作者: {script.author}</span>
-                  </div>
-                  <p className="text-xs text-white/50 mt-1">{script.description}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => toggleLXScript(script.id)}
-                  className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                    script.enabled ? "bg-cyan-500" : "bg-white/15"
-                  }`}
-                >
-                  <motion.div
-                    layout
-                    className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 ${
-                      script.enabled ? "right-1" : "left-1"
-                    }`}
-                  />
-                </button>
-                <button
-                  onClick={() => removeLXScript(script.id)}
-                  className="w-7 h-7 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 flex items-center justify-center transition-colors"
-                  title="删除"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+        {/* Script List：三态分派（优先级 loading > error > 空态 > 列表）。
+            标题栏保留在上方，仅替换列表区，保证既有默认渲染不变。 */}
+        {loading ? (
+          <div data-skeleton="true" className="space-y-3">
+            <LoadingSkeleton count={3} variant="card" />
+          </div>
+        ) : error ? (
+          <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] px-5 py-6">
+            <p className="text-[13px] text-rose-200">{error}</p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={onRetry}
+                className="h-8 px-3.5 rounded-full bg-white/10 hover:bg-white/20 text-[12.5px] text-white transition-colors"
+              >
+                重试
+              </button>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : lxScripts.length === 0 ? (
+          <EmptyState
+            title="还没有自定义脚本"
+            description="添加洛雪自定义源脚本，或同步本地桌面音源后即可在此管理"
+            actionLabel="添加扩展源"
+            onAction={() => setShowAddScript(true)}
+          />
+        ) : (
+          <div className="space-y-3">
+            {lxScripts.map((script) => (
+              <div
+                key={script.id}
+                className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-between gap-4"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <Code2 className="w-4 h-4 text-cyan-400" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-white">{script.name}</span>
+                      <span className="px-1.5 py-0.2 rounded text-[10px] bg-white/10 text-white/70">
+                        v{script.version}
+                      </span>
+                      <span className="text-[10px] text-white/40">作者: {script.author}</span>
+                    </div>
+                    <p className="text-xs text-white/50 mt-1">{script.description}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleLXScript(script.id)}
+                    className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                      script.enabled ? "bg-cyan-500" : "bg-white/15"
+                    }`}
+                  >
+                    <motion.div
+                      layout
+                      className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 ${
+                        script.enabled ? "right-1" : "left-1"
+                      }`}
+                    />
+                  </button>
+                  <button
+                    onClick={() => removeLXScript(script.id)}
+                    className="w-7 h-7 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 flex items-center justify-center transition-colors"
+                    title="删除"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </>
   );
