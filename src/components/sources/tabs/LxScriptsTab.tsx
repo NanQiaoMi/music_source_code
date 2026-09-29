@@ -87,6 +87,22 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
     setTestResult(null);
   }, [addLXScript, newScriptName, newScriptAuthor, newScriptUrl, newScriptCode]);
 
+  // 非阻断错误横幅：仅提示上游故障，不遮挡本地已有的脚本列表。
+  const errorBanner = error ? (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-2.5">
+      <span className="text-[12.5px] text-rose-200">{error}</span>
+      <div className="flex gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/20 text-[12px] text-white transition-colors"
+        >
+          重试
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <>
       {/* TAB 2: 洛雪 / 自定义脚本 */}
@@ -107,10 +123,14 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
             <button
               type="button"
               onClick={async () => {
-                await syncBuiltinDesktopSources();
-                alert(
-                  "🎉 已成功载入并同步本地桌面 4 套音源库（独家v4.0、聚合9.3特供版、野草、野花）！"
-                );
+                try {
+                  await syncBuiltinDesktopSources();
+                  alert(
+                    "🎉 已成功载入并同步本地桌面 4 套音源库（独家v4.0、聚合9.3特供版、野草、野花）！"
+                  );
+                } catch (e) {
+                  alert(`同步失败：${e instanceof Error ? e.message : "未知错误"}`);
+                }
               }}
               className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm"
               title="从桌面音源目录一键刷新并载入最新脚本"
@@ -229,81 +249,74 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
           </div>
         )}
 
-        {/* Script List：三态分派（优先级 loading > error > 空态 > 列表）。
-            标题栏保留在上方，仅替换列表区，保证既有默认渲染不变。 */}
+        {/* Script List：三态分派（优先级 loading > 横幅 + （空态 | 列表））。
+            标题栏保留在上方，仅替换列表区，保证既有默认渲染不变。
+            错误不再阻断：横幅可与空态或正常列表同时出现。 */}
         {loading ? (
           <div data-skeleton="true" className="space-y-3">
             <LoadingSkeleton count={3} variant="card" />
           </div>
-        ) : error ? (
-          <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] px-5 py-6">
-            <p className="text-[13px] text-rose-200">{error}</p>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={onRetry}
-                className="h-8 px-3.5 rounded-full bg-white/10 hover:bg-white/20 text-[12.5px] text-white transition-colors"
-              >
-                重试
-              </button>
-            </div>
-          </div>
-        ) : lxScripts.length === 0 ? (
-          <EmptyState
-            title="还没有自定义脚本"
-            description="添加洛雪自定义源脚本，或同步本地桌面音源后即可在此管理"
-            actionLabel="添加扩展源"
-            onAction={() => setShowAddScript(true)}
-          />
         ) : (
-          <div className="space-y-3">
-            {lxScripts.map((script) => (
-              <div
-                key={script.id}
-                className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-between gap-4"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                    <Code2 className="w-4 h-4 text-cyan-400" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-white">{script.name}</span>
-                      <span className="px-1.5 py-0.2 rounded text-[10px] bg-white/10 text-white/70">
-                        v{script.version}
-                      </span>
-                      <span className="text-[10px] text-white/40">作者: {script.author}</span>
+          <>
+            {errorBanner}
+            {lxScripts.length === 0 ? (
+              <EmptyState
+                title="还没有自定义脚本"
+                description="添加洛雪自定义源脚本，或同步本地桌面音源后即可在此管理"
+                actionLabel="添加扩展源"
+                onAction={() => setShowAddScript(true)}
+              />
+            ) : (
+              <div className="space-y-3">
+                {lxScripts.map((script) => (
+                  <div
+                    key={script.id}
+                    className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-between gap-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <Code2 className="w-4 h-4 text-cyan-400" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-white">{script.name}</span>
+                          <span className="px-1.5 py-0.2 rounded text-[10px] bg-white/10 text-white/70">
+                            v{script.version}
+                          </span>
+                          <span className="text-[10px] text-white/40">作者: {script.author}</span>
+                        </div>
+                        <p className="text-xs text-white/50 mt-1">{script.description}</p>
+                      </div>
                     </div>
-                    <p className="text-xs text-white/50 mt-1">{script.description}</p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => toggleLXScript(script.id)}
-                    className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                      script.enabled ? "bg-cyan-500" : "bg-white/15"
-                    }`}
-                  >
-                    <motion.div
-                      layout
-                      className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 ${
-                        script.enabled ? "right-1" : "left-1"
-                      }`}
-                    />
-                  </button>
-                  <button
-                    onClick={() => removeLXScript(script.id)}
-                    className="w-7 h-7 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 flex items-center justify-center transition-colors"
-                    title="删除"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleLXScript(script.id)}
+                        className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                          script.enabled ? "bg-cyan-500" : "bg-white/15"
+                        }`}
+                      >
+                        <motion.div
+                          layout
+                          className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 ${
+                            script.enabled ? "right-1" : "left-1"
+                          }`}
+                        />
+                      </button>
+                      <button
+                        onClick={() => removeLXScript(script.id)}
+                        className="w-7 h-7 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 flex items-center justify-center transition-colors"
+                        title="删除"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </>

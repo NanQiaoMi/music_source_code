@@ -442,47 +442,53 @@ export const useSourceConfigStore = create<SourceConfigState>()(
             return;
           const origin = window.location.origin;
           const res = await fetch(`${origin}/api/sources/builtin`);
-          if (!res.ok) return;
+          if (!res.ok) {
+            throw new Error(`音源配置拉取失败 (HTTP ${res.status})`);
+          }
           const data = await res.json();
-          if (data && Array.isArray(data.sources)) {
+          if (!data || !Array.isArray(data.sources)) {
+            throw new Error("音源配置响应格式异常");
+          }
+
+          data.sources.forEach((builtin: RawBuiltinSource) => {
+            if (builtin.content) {
+              LXRunner.cacheScriptCode(builtin.id, builtin.content);
+            }
+          });
+
+          set((state) => {
+            const existingMap = new Map(state.lxScripts.map((s) => [s.id, s]));
+            const updatedList: LXCustomScript[] = [...state.lxScripts];
+
             data.sources.forEach((builtin: RawBuiltinSource) => {
-              if (builtin.content) {
-                LXRunner.cacheScriptCode(builtin.id, builtin.content);
+              const existing = existingMap.get(builtin.id);
+              if (existing) {
+                existing.name = builtin.name;
+                existing.version = builtin.version;
+                existing.description = builtin.description;
+                existing.author = builtin.author;
+                existing.lastUpdated = Date.now();
+              } else {
+                updatedList.push({
+                  id: builtin.id,
+                  name: builtin.name,
+                  author: builtin.author,
+                  version: builtin.version,
+                  description: builtin.description,
+                  scriptUrl: `/api/sources/builtin?id=${builtin.id}`,
+                  enabled: true,
+                  lastUpdated: Date.now(),
+                  supportedActions: ["search", "songUrl", "lyric", "pic"],
+                });
               }
             });
 
-            set((state) => {
-              const existingMap = new Map(state.lxScripts.map((s) => [s.id, s]));
-              const updatedList: LXCustomScript[] = [...state.lxScripts];
-
-              data.sources.forEach((builtin: RawBuiltinSource) => {
-                const existing = existingMap.get(builtin.id);
-                if (existing) {
-                  existing.name = builtin.name;
-                  existing.version = builtin.version;
-                  existing.description = builtin.description;
-                  existing.author = builtin.author;
-                  existing.lastUpdated = Date.now();
-                } else {
-                  updatedList.push({
-                    id: builtin.id,
-                    name: builtin.name,
-                    author: builtin.author,
-                    version: builtin.version,
-                    description: builtin.description,
-                    scriptUrl: `/api/sources/builtin?id=${builtin.id}`,
-                    enabled: true,
-                    lastUpdated: Date.now(),
-                    supportedActions: ["search", "songUrl", "lyric", "pic"],
-                  });
-                }
-              });
-
-              return { lxScripts: updatedList };
-            });
-          }
+            return { lxScripts: updatedList };
+          });
         } catch (e) {
+          // 保留诊断日志，但不再吞错：调用方需要知道同步失败以给出重试入口
           console.warn("[sourceConfigStore] syncBuiltinDesktopSources error:", e);
+          throw e;
         }
       },
 

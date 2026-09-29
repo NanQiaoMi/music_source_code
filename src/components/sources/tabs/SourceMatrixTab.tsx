@@ -65,8 +65,32 @@ export function SourceMatrixTab({
     useSourceConfigStore.getState().resetToDefaults();
   };
 
-  // 三态分派（优先级 loading > error > 空态 > 正常）。
-  // 三者都由可选 props / 本组件 sourceList 推导，缺省时渲染与接线前完全一致。
+  // 非阻断错误横幅：同步失败时挂在正常内容上方，不再整块替换列表
+  // （本地 store 里本就有的音源数据应当照常显示，仅额外提示上游故障）。
+  const errorBanner = error ? (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-2.5">
+      <span className="text-[12.5px] text-rose-200">{error}</span>
+      <div className="flex gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/20 text-[12px] text-white transition-colors"
+        >
+          重试
+        </button>
+        <button
+          type="button"
+          onClick={handleResetDefaults}
+          className="h-7 px-3 rounded-full bg-white/[0.06] hover:bg-white/10 text-[12px] text-white/70 transition-colors"
+        >
+          恢复默认
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  // 三态分派（优先级 loading > 横幅 + （空态 | 正常内容））。
+  // 错误不再阻断：横幅可与空态或正常矩阵同时出现。
   if (loading) {
     return (
       <div data-skeleton="true" className="space-y-3">
@@ -75,38 +99,17 @@ export function SourceMatrixTab({
     );
   }
 
-  if (error) {
-    return (
-      <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] px-5 py-6">
-        <p className="text-[13px] text-rose-200">{error}</p>
-        <div className="mt-3 flex gap-2">
-          <button
-            type="button"
-            onClick={onRetry}
-            className="h-8 px-3.5 rounded-full bg-white/10 hover:bg-white/20 text-[12.5px] text-white transition-colors"
-          >
-            重试
-          </button>
-          <button
-            type="button"
-            onClick={handleResetDefaults}
-            className="h-8 px-3.5 rounded-full bg-white/[0.06] hover:bg-white/10 text-[12.5px] text-white/70 transition-colors"
-          >
-            恢复默认
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   if (sourceList.length === 0) {
     return (
-      <EmptyState
-        title="还没有可用音源"
-        description="导入或恢复默认配置后即可管理 7 大平台通道"
-        actionLabel="恢复默认"
-        onAction={handleResetDefaults}
-      />
+      <>
+        {errorBanner}
+        <EmptyState
+          title="还没有可用音源"
+          description="导入或恢复默认配置后即可管理 7 大平台通道"
+          actionLabel="恢复默认"
+          onAction={handleResetDefaults}
+        />
+      </>
     );
   }
 
@@ -253,6 +256,7 @@ export function SourceMatrixTab({
 
   return (
     <>
+      {errorBanner}
       <SourceHealthSummary
         sources={healthRows}
         probing={isDiagnosing}
