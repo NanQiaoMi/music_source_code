@@ -23,13 +23,31 @@ export function SourceManagementModal() {
     updateLXScript: _updateLXScript,
   } = useSourceConfigStore();
 
-  useEffect(() => {
-    syncBuiltinDesktopSources();
-  }, [syncBuiltinDesktopSources]);
-
   // Local states
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [diagnoseMessage, setDiagnoseMessage] = useState<string | null>(null);
+
+  // 三态接线：把「即发即忘」的同步包成带 loading/error 的可重试任务，再传给 5 个 Tab。
+  const [sourcesLoading, setSourcesLoading] = useState(false);
+  const [sourcesError, setSourcesError] = useState<string | null>(null);
+
+  const runSourceSync = useCallback(async () => {
+    setSourcesLoading(true);
+    setSourcesError(null);
+    try {
+      await syncBuiltinDesktopSources();
+    } catch (e) {
+      setSourcesError(e instanceof Error ? e.message : "音源配置同步失败");
+    } finally {
+      setSourcesLoading(false);
+    }
+  }, [syncBuiltinDesktopSources]);
+
+  useEffect(() => {
+    // 挂载时拉取上游配置：runSourceSync 会在开始/结束时切换 loading，属预期的同步状态更新。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void runSourceSync();
+  }, [runSourceSync]);
 
   // Run full health check
   const handleRunDiagnose = useCallback(async () => {
@@ -149,10 +167,15 @@ export function SourceManagementModal() {
                 sourceList={sourceList}
                 isDiagnosing={isDiagnosing}
                 onRunDiagnose={handleRunDiagnose}
+                loading={sourcesLoading}
+                error={sourcesError}
+                onRetry={runSourceSync}
               />
             )}
 
-            {activeManagementTab === "lx_scripts" && <LxScriptsTab />}
+            {activeManagementTab === "lx_scripts" && (
+              <LxScriptsTab loading={sourcesLoading} error={sourcesError} onRetry={runSourceSync} />
+            )}
 
             {activeManagementTab === "diagnostics" && (
               <DiagnosticsTab
@@ -160,12 +183,23 @@ export function SourceManagementModal() {
                 isDiagnosing={isDiagnosing}
                 diagnoseMessage={diagnoseMessage}
                 onRunDiagnose={handleRunDiagnose}
+                loading={sourcesLoading}
+                error={sourcesError}
+                onRetry={runSourceSync}
               />
             )}
 
-            {activeManagementTab === "backup" && <BackupTab />}
+            {activeManagementTab === "backup" && (
+              <BackupTab loading={sourcesLoading} error={sourcesError} onRetry={runSourceSync} />
+            )}
 
-            {activeManagementTab === "offline_cache" && <OfflineCacheTab />}
+            {activeManagementTab === "offline_cache" && (
+              <OfflineCacheTab
+                loading={sourcesLoading}
+                error={sourcesError}
+                onRetry={runSourceSync}
+              />
+            )}
           </div>
         </motion.div>
       </div>
