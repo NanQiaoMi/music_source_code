@@ -4,16 +4,25 @@ import React, { useEffect } from "react";
 import { useStorageAnalyticsStore, formatStorageBytes } from "@/store/useStorageAnalyticsStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
+import { useUserAccountStore } from "@/store/userAccountStore";
+import { SettingSection, SettingRow, StatusDot, type StatusKind } from "@/components/ui/settings";
 import { LiquidStorageGauge } from "./LiquidStorageGauge";
 import { QualityDistributionChart } from "./QualityDistributionChart";
 import { PlatformDonutChart } from "./PlatformDonutChart";
 import { LibraryHealthRadar } from "./LibraryHealthRadar";
-import { HardDrive, Music, Cloud, Download, RefreshCw, Zap } from "lucide-react";
+import { HardDrive, Cloud, RefreshCw, Zap } from "lucide-react";
 
 interface DataDashboardTabProps {
   onNavigateTab: (tabKey: string) => void;
   onFilterQuality?: (quality: string | null) => void;
 }
+
+/** 覆盖率类指标：越高越好，按阈值落到四种状态位 */
+const coverageTone = (score: number): StatusKind => {
+  if (score >= 90) return "ok";
+  if (score >= 75) return "warn";
+  return "error";
+};
 
 export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
   onNavigateTab,
@@ -32,62 +41,92 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
   } = useStorageAnalyticsStore();
   const { activeCount, totalSpeedFormatted } = useOfflineDownloadStore();
 
+  // 与音源管理、顶栏同源的账号状态：逐字段订阅，避免选择器返回新对象触发重渲染
+  const neteaseUser = useUserAccountStore((state) => state.neteaseUser);
+  const qqUser = useUserAccountStore((state) => state.qqUser);
+  const kugouUser = useUserAccountStore((state) => state.kugouUser);
+  const kuwoUser = useUserAccountStore((state) => state.kuwoUser);
+  const qishuiUser = useUserAccountStore((state) => state.qishuiUser);
+
   useEffect(() => {
     if (storageDetails.totalUsageBytes === 0 && songs.length > 0) {
       refreshAnalytics(songs);
     }
   }, [songs, refreshAnalytics, storageDetails.totalUsageBytes]);
 
-  const summaryCards = [
+  const usedText = formatStorageBytes(storageDetails.totalUsageBytes);
+  const quotaText = formatStorageBytes(storageDetails.quotaBytes);
+  // 阈值与 useStorageAnalyticsStore 生成的「存储空间」诊断保持一致，避免同屏两种口径
+  const usageTone: StatusKind = usagePercent > 80 ? "error" : usagePercent > 60 ? "warn" : "ok";
+
+  const platforms = [
     {
-      title: "已用存储空间",
-      value: formatStorageBytes(storageDetails.totalUsageBytes),
-      sub: `配额 ${formatStorageBytes(storageDetails.quotaBytes)} (${usagePercent.toFixed(1)}%)`,
-      icon: HardDrive,
-      color: "from-white/[0.06] to-white/[0.02]",
-      border: "border-white/[0.08]",
-      iconColor: "text-white/80",
-      actionKey: "health_storage",
+      id: "netease",
+      name: "网易云音乐",
+      loggedIn: Boolean(neteaseUser?.loggedIn),
+      nickname: neteaseUser?.nickname,
+    },
+    { id: "qq", name: "QQ音乐", loggedIn: Boolean(qqUser?.loggedIn), nickname: qqUser?.nickname },
+    {
+      id: "kugou",
+      name: "酷狗音乐",
+      loggedIn: Boolean(kugouUser?.loggedIn),
+      nickname: kugouUser?.nickname,
     },
     {
-      title: "曲库总资产",
+      id: "kuwo",
+      name: "酷我音乐",
+      loggedIn: Boolean(kuwoUser?.loggedIn),
+      nickname: kuwoUser?.nickname,
+    },
+    {
+      id: "qishui",
+      name: "汽水音乐",
+      loggedIn: Boolean(qishuiUser?.loggedIn),
+      nickname: qishuiUser?.nickname,
+    },
+  ];
+  const loggedInCount = platforms.filter((p) => p.loggedIn).length;
+
+  // 曲库健康：数量类指标由健康雷达的覆盖率反推，与雷达展示的百分比口径一致
+  const missingCover = Math.max(
+    0,
+    songs.length - Math.round((healthRadar.coverCoverage / 100) * songs.length)
+  );
+  const brokenSource = Math.max(
+    0,
+    songs.length - Math.round((healthRadar.activeSourceRate / 100) * songs.length)
+  );
+  const healthItems: { label: string; value: string; tone: StatusKind }[] = [
+    {
+      label: "曲库总资产",
       value: `${songs.length} 首`,
-      sub: `包含本地 ${storageDetails.localMusicCount} 首 · 云端 ${Math.max(0, songs.length - storageDetails.localMusicCount)} 首`,
-      icon: Music,
-      color: "from-white/[0.06] to-white/[0.02]",
-      border: "border-white/[0.08]",
-      iconColor: "text-white/80",
-      actionKey: "playlists",
+      tone: songs.length > 0 ? "ok" : "idle",
     },
     {
-      title: "多平台云源",
-      value: `${platformStats.netease + platformStats.qq + platformStats.kugou + platformStats.kuwo + platformStats.qishui > 0 ? "5 大平台" : "全网直连"}`,
-      sub: "网易云 · QQ音乐 · 酷狗 · 酷我 · 汽水",
-      icon: Cloud,
-      color: "from-white/[0.06] to-white/[0.02]",
-      border: "border-white/[0.08]",
-      iconColor: "text-white/80",
-      actionKey: "cloud",
+      label: "缺失封面",
+      value: `${missingCover} 首`,
+      tone: coverageTone(healthRadar.coverCoverage),
     },
     {
-      title: "离线就绪曲目",
-      value: `${storageDetails.offlineAudioCount} 首`,
-      sub:
-        activeCount > 0
-          ? `下载中 ${activeCount} 首 · 速度 ${totalSpeedFormatted}`
-          : "纯离线即开即播已就绪",
-      icon: Download,
-      color: "from-white/[0.06] to-white/[0.02]",
-      border: "border-white/[0.08]",
-      iconColor: "text-white/80",
-      actionKey: "downloads",
+      label: "无法解析",
+      value: `${brokenSource} 首`,
+      tone: coverageTone(healthRadar.activeSourceRate),
     },
   ];
 
+  const storageBreakdown = [
+    { label: "本地音频", bytes: storageDetails.localMusicBytes, strong: true },
+    { label: "网络离线", bytes: storageDetails.offlineAudioBytes, strong: true },
+    { label: "封面缓存", bytes: storageDetails.coversBytes, strong: false },
+    { label: "歌词与索引", bytes: storageDetails.lyricsBytes, strong: false },
+  ];
+
   return (
-    <div className="space-y-6 animate-fade-in select-none">
+    // pb 是播放条避让高度：播放条固定在底部，内容根容器要留出这段空白
+    <div className="animate-fade-in select-none pb-[104px]">
       {/* 顶部标题与一键刷新 */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
             全景数据资产与存储看板
@@ -111,46 +150,33 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
         </button>
       </div>
 
-      {/* 4 核心指标 Bento 卡片 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {summaryCards.map((card, i) => {
-          const Icon = card.icon;
-          return (
-            <div
-              key={i}
-              onClick={() => onNavigateTab(card.actionKey)}
-              className={`p-4 rounded-3xl bg-gradient-to-br ${card.color} border ${card.border} backdrop-blur-2xl transition-all hover:scale-[1.02] hover:border-white/30 cursor-pointer group shadow-[0_10px_30px_rgba(0,0,0,0.4)]`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-white/60">{card.title}</span>
-                <div
-                  className={`p-2 rounded-2xl bg-white/10 ${card.iconColor} group-hover:scale-110 transition-transform shadow-inner`}
-                >
-                  <Icon className="w-4 h-4" />
-                </div>
+      {/* ① 存储与配额 */}
+      <SettingSection
+        title="存储与配额"
+        description="本地数据卷与配额占用"
+        action={
+          <span className="text-[11px] text-white/40 tabular-nums">
+            {`${usedText} / ${quotaText}`}
+          </span>
+        }
+      >
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <HardDrive className="w-3.5 h-3.5 text-white/70" />
+                <span className="text-xs font-medium text-white/60">已用存储空间</span>
+                <StatusDot status={usageTone} label={`${usagePercent.toFixed(1)}%`} />
               </div>
-              <div className="text-2xl font-black text-white font-mono tracking-tight leading-none mb-1.5">
-                {card.value}
+              <div className="mt-2 text-3xl font-black text-white font-mono tracking-tight leading-none">
+                {usedText}
               </div>
-              <div className="text-[11px] text-white/50 truncate font-sans">{card.sub}</div>
+              <div className="mt-1.5 text-[11px] text-white/50 tabular-nums">{`配额 ${quotaText}`}</div>
             </div>
-          );
-        })}
-      </div>
-
-      {/* 主数据可视化 Grid (2 列大图表) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 左侧：存储水波球 + 细分容量占比 (5 栅格) */}
-        <div className="lg:col-span-5 p-5 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-bold text-white tracking-tight flex items-center gap-1.5">
-              <HardDrive className="w-4 h-4 text-white/80" />
-              存储容量与细分配额
-            </h4>
-            <span className="text-[10px] font-mono text-white/40">IndexedDB 沙盒</span>
+            <span className="shrink-0 text-[10px] font-mono text-white/40">IndexedDB 沙盒</span>
           </div>
 
-          <div className="my-auto py-2">
+          <div className="my-3">
             <LiquidStorageGauge
               usedBytes={storageDetails.totalUsageBytes}
               quotaBytes={storageDetails.quotaBytes}
@@ -159,36 +185,46 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
           </div>
 
           {/* 细分容量 Breakdown 列表 */}
-          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/[0.08] text-xs">
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.04]">
-              <span className="text-white/60 text-[11px]">本地音频:</span>
-              <span className="font-mono text-white font-semibold text-[11px]">
-                {formatStorageBytes(storageDetails.localMusicBytes)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.04]">
-              <span className="text-white/60 text-[11px]">网络离线:</span>
-              <span className="font-mono text-white font-semibold text-[11px]">
-                {formatStorageBytes(storageDetails.offlineAudioBytes)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.04]">
-              <span className="text-white/60 text-[11px]">封面缓存:</span>
-              <span className="font-mono text-white/90 font-semibold text-[11px]">
-                {formatStorageBytes(storageDetails.coversBytes)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.04]">
-              <span className="text-white/60 text-[11px]">歌词与索引:</span>
-              <span className="font-mono text-white/90 font-semibold text-[11px]">
-                {formatStorageBytes(storageDetails.lyricsBytes)}
-              </span>
-            </div>
+          <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/[0.08] text-xs">
+            {storageBreakdown.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-center justify-between p-2 rounded-xl bg-white/[0.04]"
+              >
+                <span className="text-white/60 text-[11px]">{item.label}:</span>
+                <span
+                  className={`font-mono font-semibold text-[11px] ${
+                    item.strong ? "text-white" : "text-white/90"
+                  }`}
+                >
+                  {formatStorageBytes(item.bytes)}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* 右侧：音质层级分布与联动筛选 (7 栅格) */}
-        <div className="lg:col-span-7 p-5 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col justify-between">
+        <div className="border-t border-white/[0.05]">
+          <SettingRow
+            title="离线就绪曲目"
+            subtitle={
+              activeCount > 0
+                ? `下载中 ${activeCount} 首 · 速度 ${totalSpeedFormatted}`
+                : "纯离线即开即播已就绪"
+            }
+            status={storageDetails.offlineAudioCount > 0 ? "ok" : "idle"}
+            trailing={
+              <span className="text-[12.5px] font-semibold tabular-nums text-white/85">
+                {`${storageDetails.offlineAudioCount} 首`}
+              </span>
+            }
+          />
+        </div>
+      </SettingSection>
+
+      {/* ② 音质与编码 */}
+      <SettingSection title="音质与编码" description="按码率分档统计曲目数量">
+        <div className="p-5">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-xs font-bold text-white tracking-tight flex items-center gap-1.5">
               <Zap className="w-4 h-4 text-white/80" />
@@ -216,12 +252,32 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
             </button>
           </div>
         </div>
-      </div>
+      </SettingSection>
 
-      {/* 底部数据可视化 Grid (平台甜甜圈 + 六维健康雷达) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 多源平台甜甜圈图 (5 栅格) */}
-        <div className="lg:col-span-5 p-5 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+      {/* ③ 云端账号 */}
+      <SettingSection
+        title="云端账号"
+        description="与音源管理同源的登录状态"
+        action={
+          <span className="text-[11px] text-white/40 tabular-nums">
+            {`${loggedInCount} / ${platforms.length} 已登录`}
+          </span>
+        }
+      >
+        {platforms.map((p) => (
+          <SettingRow
+            key={p.id}
+            title={p.name}
+            status={p.loggedIn ? "ok" : "idle"}
+            trailing={
+              <span className="text-[12px] text-white/45">
+                {p.loggedIn ? p.nickname || "已登录" : "未登录"}
+              </span>
+            }
+          />
+        ))}
+
+        <div className="border-t border-white/[0.05] p-5">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-xs font-bold text-white tracking-tight flex items-center gap-1.5">
               <Cloud className="w-4 h-4 text-white/80" />
@@ -232,9 +288,24 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
 
           <PlatformDonutChart stats={platformStats} />
         </div>
+      </SettingSection>
 
-        {/* 曲库健康雷达与自愈建议 (7 栅格) */}
-        <div className="lg:col-span-7 p-5 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+      {/* ④ 曲库健康 */}
+      <SettingSection title="曲库健康" description="总数、缺失封面、无法解析">
+        {healthItems.map((h) => (
+          <SettingRow
+            key={h.label}
+            title={h.label}
+            status={h.tone}
+            trailing={
+              <span className="text-[12.5px] font-semibold tabular-nums text-white/85">
+                {h.value}
+              </span>
+            }
+          />
+        ))}
+
+        <div className="border-t border-white/[0.05] p-5">
           <LibraryHealthRadar
             metrics={healthRadar}
             diagnostics={diagnostics}
@@ -246,7 +317,7 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
             }}
           />
         </div>
-      </div>
+      </SettingSection>
     </div>
   );
 };
