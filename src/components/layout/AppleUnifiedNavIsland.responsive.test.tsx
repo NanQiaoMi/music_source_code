@@ -67,4 +67,36 @@ describe("AppleUnifiedNavIsland responsive quick buttons", () => {
     expect(html).not.toContain('title="偏好设置"');
     expect(html).not.toContain('title="隔空手势控制"');
   });
+
+  it("closes the overflow menu on Escape and on outside click", async () => {
+    stubViewport(1024);
+    await renderIsland();
+
+    const more = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.getAttribute("title") === "更多快捷操作"
+    );
+    expect(more).toBeTruthy();
+
+    // 展开：菜单项出现（窄屏下内联按钮已被收起，故可作为唯一判据）
+    await act(async () => {
+      more!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.innerHTML).toContain('title="偏好设置"');
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(container.innerHTML).not.toContain('title="偏好设置"');
+
+    // 再展开，点岛外收起
+    await act(async () => {
+      more!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.innerHTML).toContain('title="偏好设置"');
+
+    await act(async () => {
+      document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    });
+    expect(container.innerHTML).not.toContain('title="偏好设置"');
+  });
 });

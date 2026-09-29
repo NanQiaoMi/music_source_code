@@ -300,17 +300,22 @@ export function AppleUnifiedNavIsland({
     const handleClickOutside = (e: MouseEvent) => {
       if (islandRef.current && !islandRef.current.contains(e.target as Node)) {
         setActiveHubId(null);
+        // 溢出菜单挂在导航岛内部，岛外点击也必须收起，
+        // 否则窄屏打开「更多快捷操作」后只能靠再点一次按钮或选中菜单项才能关掉。
+        setMoreOpen(false);
       }
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setActiveHubId(null);
+        setMoreOpen(false);
       }
     };
     const handleWheel = () => {
       if (activeHubId !== null) {
         setActiveHubId(null);
       }
+      setMoreOpen(false);
     };
 
     window.addEventListener("mousedown", handleClickOutside);
@@ -321,7 +326,7 @@ export function AppleUnifiedNavIsland({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("wheel", handleWheel);
     };
-  }, [activeHubId]);
+  }, [activeHubId, moreOpen]);
 
   const handleMouseEnterHub = (hubId: string) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
