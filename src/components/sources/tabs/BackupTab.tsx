@@ -3,10 +3,24 @@
 import { useState, useCallback } from "react";
 import { Download, RotateCcw } from "lucide-react";
 import { useSourceConfigStore, PRESET_SCHEMES } from "@/store/sourceConfigStore";
+import { EmptyState, LoadingSkeleton } from "@/components/shared/Glass";
 
-export function BackupTab() {
+interface BackupTabProps {
+  /** 预设/备份数据拉取中。缺省（undefined）时保持原有渲染，由外壳 Task 10 接线。 */
+  loading?: boolean;
+  /** 拉取失败文案。缺省时不渲染错误态。 */
+  error?: string | null;
+  /** 错误态「重试」回调。缺省时按钮仍渲染但为空操作。 */
+  onRetry?: () => void;
+}
+
+export function BackupTab({ loading, error, onRetry }: BackupTabProps = {}) {
+  // 订阅整店以便状态变化时重渲染；动作来自 hook。
   const { activePreset, exportConfigJson, importConfigJson, resetToDefaults, applyPreset } =
     useSourceConfigStore();
+  // 音源表直接读当前值：renderToStaticMarkup 下 hook 快照是初始值（getInitialState），
+  // 而空态判据必须反映「此刻」的 store，故用 getState 读取，客户端也由上面的订阅保证更新。
+  const sources = useSourceConfigStore.getState().sources;
 
   const [importJsonText, setImportJsonText] = useState("");
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
@@ -31,6 +45,43 @@ export function BackupTab() {
       setImportFeedback("JSON 格式错误或缺少必填字段，导入失败。");
     }
   }, [importConfigJson, importJsonText]);
+
+  // 三态分派（优先级 loading > error > 空态 > 正常），全部由可选 props / 本组件 sources 推导。
+  if (loading) {
+    return (
+      <div data-skeleton="true" className="space-y-3">
+        <LoadingSkeleton count={4} variant="card" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] px-5 py-6">
+        <p className="text-[13px] text-rose-200">{error}</p>
+        <div className="mt-3 flex gap-2">
+          <button
+            type="button"
+            onClick={onRetry}
+            className="h-8 px-3.5 rounded-full bg-white/10 hover:bg-white/20 text-[12.5px] text-white transition-colors"
+          >
+            重试
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (Object.keys(sources).length === 0) {
+    return (
+      <EmptyState
+        title="还没有任何可用音源"
+        description="恢复默认配置后即可套用预设方案并导出备份"
+        actionLabel="恢复默认"
+        onAction={resetToDefaults}
+      />
+    );
+  }
 
   return (
     <>

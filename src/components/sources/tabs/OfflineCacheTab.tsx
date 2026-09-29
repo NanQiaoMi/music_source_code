@@ -5,8 +5,18 @@ import { Download, HardDrive, Sparkles, RefreshCw, Trash2, Play } from "lucide-r
 import { useNetworkAudioCache } from "@/hooks/useNetworkAudioCache";
 import { getAllCachedAudioMeta, CachedNetworkAudioMeta } from "@/services/networkAudioCache";
 import { useAudioStore } from "@/store/audioStore";
+import { EmptyState, LoadingSkeleton } from "@/components/shared/Glass";
 
-export function OfflineCacheTab() {
+interface OfflineCacheTabProps {
+  /** 缓存列表拉取中。缺省（undefined）时保持原有渲染，由外壳 Task 10 接线。 */
+  loading?: boolean;
+  /** 拉取失败文案。缺省时不渲染错误态。 */
+  error?: string | null;
+  /** 错误态「重试」回调。缺省时按钮仍渲染但为空操作。 */
+  onRetry?: () => void;
+}
+
+export function OfflineCacheTab({ loading, error, onRetry }: OfflineCacheTabProps = {}) {
   const { stats, clearAllCache, deleteSongCache, refreshStats } = useNetworkAudioCache();
   const [cachedSongs, setCachedSongs] = useState<CachedNetworkAudioMeta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -140,20 +150,38 @@ export function OfflineCacheTab() {
           )}
         </div>
 
-        {/* Cached Songs List */}
+        {/* Cached Songs List：三态分派（优先级 loading > error > 空态 > 列表）。
+            顶部统计卡保留在上方，仅替换列表区。 */}
         <div className="border border-white/10 rounded-2xl bg-white/[0.01] overflow-hidden">
-          {isLoading ? (
+          {loading ? (
+            <div data-skeleton="true" className="space-y-3 p-4">
+              <LoadingSkeleton count={3} variant="card" />
+            </div>
+          ) : error ? (
+            <div className="m-4 rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] px-5 py-6">
+              <p className="text-[13px] text-rose-200">{error}</p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="h-8 px-3.5 rounded-full bg-white/10 hover:bg-white/20 text-[12.5px] text-white transition-colors"
+                >
+                  重试
+                </button>
+              </div>
+            </div>
+          ) : isLoading ? (
             <div className="py-12 flex flex-col items-center justify-center text-white/40 text-xs gap-2">
               <RefreshCw className="w-5 h-5 animate-spin" />
               <span>正在读取本地 IndexedDB 缓存数据库...</span>
             </div>
+          ) : cachedSongs.length === 0 ? (
+            <EmptyState
+              title="还没有缓存的歌曲"
+              description="播放网络歌曲后，系统会自动在后台完成二进制无损缓存"
+            />
           ) : filteredSongs.length === 0 ? (
-            <div className="py-12 text-center text-white/40 text-xs space-y-1">
-              <p>暂无已缓存的网络歌曲</p>
-              <p className="text-[11px] text-white/30">
-                播放网络歌曲后，系统会自动在后台完成二进制无损缓存
-              </p>
-            </div>
+            <div className="py-12 text-center text-white/40 text-xs">没有匹配的缓存歌曲</div>
           ) : (
             <div className="divide-y divide-white/5 max-h-[320px] overflow-y-auto custom-scrollbar">
               {filteredSongs.map((item) => {
