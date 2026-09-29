@@ -1022,7 +1022,7 @@ git commit -m "refactor(sources): 按 Tab 拆分 SourceManagementModal，零行�
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 2, Task 3
 **Parallelizable:** No（需先有基础件与拆分后的 Tab 文件）
@@ -1162,7 +1162,7 @@ git commit -m "feat(sources): 音源列表改用分组行，描述与登录收�
 
 **状态**
 
-- [ ] 任务完成
+- [x] 任务完成
 
 **Dependencies:** Task 2, Task 3
 **Parallelizable:** Yes（与 Task 4、6、7 并行）
