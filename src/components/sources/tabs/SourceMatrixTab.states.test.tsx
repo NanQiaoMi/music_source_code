@@ -63,6 +63,23 @@ describe("SourceMatrixTab 状态", () => {
     expect(html).toContain("重试");
   });
 
+  it("错误以横幅呈现，且不遮挡已有内容", async () => {
+    const { SourceMatrixTab } = await import("./SourceMatrixTab");
+    const html = renderToStaticMarkup(
+      <SourceMatrixTab
+        sourceList={[makeSource("netease", "网易云音乐")]}
+        isDiagnosing={false}
+        onRunDiagnose={() => undefined}
+        error="上游配置拉取失败"
+        onRetry={() => undefined}
+      />
+    );
+    expect(html).toContain("上游配置拉取失败");
+    expect(html).toContain("重试");
+    // 关键：内容仍在，没有被错误卡片替换掉
+    expect(html).toContain("官方音源");
+  });
+
   it("默认（无三态 props）渲染不变", async () => {
     const { SourceMatrixTab } = await import("./SourceMatrixTab");
     const html = renderToStaticMarkup(

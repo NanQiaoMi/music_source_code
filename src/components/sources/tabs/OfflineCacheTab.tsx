@@ -76,6 +76,22 @@ export function OfflineCacheTab({ loading, error, onRetry }: OfflineCacheTabProp
     });
   };
 
+  // 非阻断错误横幅：仅提示上游故障，不遮挡本地已缓存的歌曲列表。
+  const errorBanner = error ? (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-2.5">
+      <span className="text-[12.5px] text-rose-200">{error}</span>
+      <div className="flex gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/20 text-[12px] text-white transition-colors"
+        >
+          重试
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <>
       <div className="space-y-4">
@@ -150,25 +166,14 @@ export function OfflineCacheTab({ loading, error, onRetry }: OfflineCacheTabProp
           )}
         </div>
 
-        {/* Cached Songs List：三态分派（优先级 loading > error > 空态 > 列表）。
-            顶部统计卡保留在上方，仅替换列表区。 */}
+        {/* Cached Songs List：三态分派（优先级 loading > 横幅 + （空态 | 列表））。
+            顶部统计卡保留在上方，仅替换列表区。
+            错误不再阻断：横幅挂在列表容器之上，不遮挡本地已缓存数据。 */}
+        {!loading && errorBanner}
         <div className="border border-white/10 rounded-2xl bg-white/[0.01] overflow-hidden">
           {loading ? (
             <div data-skeleton="true" className="space-y-3 p-4">
               <LoadingSkeleton count={3} variant="card" />
-            </div>
-          ) : error ? (
-            <div className="m-4 rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] px-5 py-6">
-              <p className="text-[13px] text-rose-200">{error}</p>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={onRetry}
-                  className="h-8 px-3.5 rounded-full bg-white/10 hover:bg-white/20 text-[12.5px] text-white transition-colors"
-                >
-                  重试
-                </button>
-              </div>
             </div>
           ) : isLoading ? (
             <div className="py-12 flex flex-col items-center justify-center text-white/40 text-xs gap-2">

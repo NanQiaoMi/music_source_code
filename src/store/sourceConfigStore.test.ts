@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useSourceConfigStore } from "./sourceConfigStore";
 
 describe("sourceConfigStore", () => {
@@ -77,5 +77,30 @@ describe("sourceConfigStore", () => {
     const success = store.importConfigJson(exported);
     expect(success).toBe(true);
     expect(useSourceConfigStore.getState().sources.kuwo.qualityPreference).toBe("hires");
+  });
+
+  it("surfaces a failed builtin sync instead of swallowing it", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+    await expect(useSourceConfigStore.getState().syncBuiltinDesktopSources()).rejects.toThrow(
+      /500/
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it("surfaces a malformed builtin payload", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ sources: "nope" }) })
+    );
+    await expect(useSourceConfigStore.getState().syncBuiltinDesktopSources()).rejects.toThrow();
+    vi.unstubAllGlobals();
+  });
+
+  it("surfaces a network failure", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+    await expect(useSourceConfigStore.getState().syncBuiltinDesktopSources()).rejects.toThrow(
+      "network down"
+    );
+    vi.unstubAllGlobals();
   });
 });

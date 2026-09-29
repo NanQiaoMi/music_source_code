@@ -46,7 +46,8 @@ export function BackupTab({ loading, error, onRetry }: BackupTabProps = {}) {
     }
   }, [importConfigJson, importJsonText]);
 
-  // 三态分派（优先级 loading > error > 空态 > 正常），全部由可选 props / 本组件 sources 推导。
+  // 三态分派（优先级 loading > 横幅 + （空态 | 正常）），全部由可选 props / 本组件 sources 推导。
+  // 错误不再阻断：横幅可与空态或正常备份面板同时出现。
   if (loading) {
     return (
       <div data-skeleton="true" className="space-y-3">
@@ -55,36 +56,38 @@ export function BackupTab({ loading, error, onRetry }: BackupTabProps = {}) {
     );
   }
 
-  if (error) {
-    return (
-      <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] px-5 py-6">
-        <p className="text-[13px] text-rose-200">{error}</p>
-        <div className="mt-3 flex gap-2">
-          <button
-            type="button"
-            onClick={onRetry}
-            className="h-8 px-3.5 rounded-full bg-white/10 hover:bg-white/20 text-[12.5px] text-white transition-colors"
-          >
-            重试
-          </button>
-        </div>
+  const errorBanner = error ? (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-2.5">
+      <span className="text-[12.5px] text-rose-200">{error}</span>
+      <div className="flex gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/20 text-[12px] text-white transition-colors"
+        >
+          重试
+        </button>
       </div>
-    );
-  }
+    </div>
+  ) : null;
 
   if (Object.keys(sources).length === 0) {
     return (
-      <EmptyState
-        title="还没有任何可用音源"
-        description="恢复默认配置后即可套用预设方案并导出备份"
-        actionLabel="恢复默认"
-        onAction={resetToDefaults}
-      />
+      <>
+        {errorBanner}
+        <EmptyState
+          title="还没有任何可用音源"
+          description="恢复默认配置后即可套用预设方案并导出备份"
+          actionLabel="恢复默认"
+          onAction={resetToDefaults}
+        />
+      </>
     );
   }
 
   return (
     <>
+      {errorBanner}
       {/* TAB 4: 预设方案与备份 */}
       <div className="space-y-5">
         <div>
