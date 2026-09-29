@@ -98,8 +98,8 @@ export function AppleUnifiedNavIsland({
   const storeHasToast = Array.isArray(toasts) && toasts.length > 0;
   const hasActiveToast = hasActiveToastProp ?? storeHasToast;
   const { isEnabled: isGestureEnabled, toggleGestureEnabled } = useGestureStore();
-  // ≤1199px 时把微按钮组收进溢出菜单——它是顶栏重叠的主因
-  const isCompactHeader = useMediaQuery("(max-width: 1199px)");
+  // ≤1319px 时把微按钮组收进溢出菜单——导航岛在窄屏会挤到右侧集群
+  const isCompactHeader = useMediaQuery("(max-width: 1319px)");
   const [moreOpen, setMoreOpen] = useState(false);
 
   const [activeHubId, setActiveHubId] = useState<string | null>(null);
