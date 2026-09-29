@@ -2087,9 +2087,10 @@ describe("useMediaQuery", () => {
 | 7 长任务进度 | 完成并合并（原 NEEDS_CONTEXT 已按裁定收敛） | 新增 2 文件 / 3 用例（795→798） |
 | 8 看板主角指标 | 完成并合并 | 新增 1 文件 / 3 用例（788→791） |
 | 6 三态接入 | 完成并合并 | 新增 5 个 states 测试文件 / 20 用例（801→821） |
-| 合并态（Task 6 后） | — | **161 文件 / 821 测试**，tsc / lint / prettier 全绿 |
+| 10 外壳接线 | 完成并合并 | 新增 1 测试文件 / 2 用例（821→823） |
+| 合并态（Task 10 后） | — | **162 文件 / 823 测试**，tsc / lint / prettier 全绿 |
 
-待办：Task 10（外壳接线，依赖 Task 3+6，已就绪）、Task 9 收口（全局两阶段评审 + 主工作树浏览器验证）。
+待办：Task 11（让同步失败可见，依赖 Task 6+10）、Task 9 收口（全局两阶段评审 + 主工作树浏览器验证）。
 
 **新增已知偏差 6（Task 6 续做）**：`LxScriptsTab.tsx:25` 与 `BackupTab.tsx:23` 用
 `useSourceConfigStore.getState()` 读空态判据，而不是 hook 返回值。
@@ -2104,3 +2105,176 @@ zustand 的 `getServerSnapshot` 返回初始值，hook 看到的永远是默认�
 **另一处同类问题**：`DiagnosticsTab.states.test.tsx` 的 `MINIMAL_PROPS` 原用 `} as const;`，
 使 `sourceList` 变成 `readonly []`，与 `sourceList: SingleSourceConfig[]` 不兼容，导致 `tsc` 退出码 2。
 续做代理改成显式类型，**4 条断言的期望文案与驱动方式一字未动**。
+
+---
+
+## Task 11: 让同步失败可见（非阻断横幅）（执行期追加）
+
+**追加理由**：Task 10 把 `loading` / `error` / `onRetry` 接到了 5 个 Tab，但**错误分支在生产里永远不可达**——
+`syncBuiltinDesktopSources`（`sourceConfigStore.ts:435-487`）有三条路径都在吞错：
+
+```ts
+if (!res.ok) return;                            // HTTP 500/404 → 静默返回
+if (data && Array.isArray(data.sources)) { … }  // 响应格式异常 → 静默跳过
+catch (e) { console.warn(…); }                  // 网络异常 → 只 warn
+```
+
+于是用户「拉取失败时给出重试入口」这条需求并未落地。
+
+同时 Task 6 把 `error` 实现成了**整块替换内容**（优先级 `loading > error > 空态 > 正常`）。
+`/api/sources/builtin` 是本地路由，瞬时失败会让**整个音源列表被错误卡片盖掉**——
+而那些数据本就在 store 里、本该照常显示。用户裁定改为**非阻断横幅**。
+
+**状态**
+
+- [ ] 任务完成
+
+**Dependencies:** Task 6, Task 10
+**Parallelizable:** No（独占 store action 与 5 个 Tab）
+
+### 前置事实（已实测）
+
+- `syncBuiltinDesktopSources` 调用方只有两处：
+  - `SourceManagementModal.tsx:38`（Task 10 已包 `try/catch`，会把异常转成 `sourcesError`）
+  - `LxScriptsTab.tsx:110` 的「同步本地 4 大音源」按钮：`await syncBuiltinDesktopSources()` 后**无条件** `alert("🎉 已成功载入…")`，**没有 try/catch**
+- `sourceConfigStore.test.ts` 现有 5 条用例，**没有一条覆盖这个 action**
+
+### Step 1: 写 store action 的失败测试
+
+在 `src/store/sourceConfigStore.test.ts` 追加：
+
+```ts
+it("surfaces a failed builtin sync instead of swallowing it", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+  await expect(
+    useSourceConfigStore.getState().syncBuiltinDesktopSources()
+  ).rejects.toThrow(/500/);
+  vi.unstubAllGlobals();
+});
+
+it("surfaces a malformed builtin payload", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ sources: "nope" }) })
+  );
+  await expect(
+    useSourceConfigStore.getState().syncBuiltinDesktopSources()
+  ).rejects.toThrow();
+  vi.unstubAllGlobals();
+});
+
+it("surfaces a network failure", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+  await expect(
+    useSourceConfigStore.getState().syncBuiltinDesktopSources()
+  ).rejects.toThrow("network down");
+  vi.unstubAllGlobals();
+});
+```
+
+（`vi` 需在文件顶部 import；若已有 `vi` 则复用。非浏览器环境该 action 会提前 return，
+测试里需保证 `window.location.origin` 可读——jsdom 默认满足。）
+
+### Step 2: 确认失败
+
+Run: `npx vitest run src/store/sourceConfigStore.test.ts`
+Expected: **FAIL**（三条都因「不抛错」而失败）
+
+### Step 3: 改 store action
+
+`src/store/sourceConfigStore.ts` 的 `syncBuiltinDesktopSources`：
+
+- 保留开头的静默 `return`（SSR / `origin === "null"`）——**那不是失败**，不该抛
+- `if (!res.ok)` → `throw new Error(\`音源配置拉取失败 (HTTP ${res.status})\`)`
+- 响应不是 `{ sources: [...] }` → `throw new Error("音源配置响应格式异常")`
+- `catch` 里**保留 `console.warn` 供诊断，然后 `throw e`**
+
+### Step 4: 确认通过
+
+Run: `npx vitest run src/store/sourceConfigStore.test.ts`
+Expected: **PASS**（原 5 条 + 新 3 条）
+
+### Step 5: 写「非阻断横幅」的失败测试
+
+在 `src/components/sources/tabs/SourceMatrixTab.states.test.tsx` 追加：
+
+```ts
+it("错误以横幅呈现，且不遮挡已有内容", async () => {
+  const { SourceMatrixTab } = await import("./SourceMatrixTab");
+  const html = renderToStaticMarkup(
+    <SourceMatrixTab
+      sourceList={[/* 至少一个真实音源配置 */]}
+      isDiagnosing={false}
+      onRunDiagnose={() => undefined}
+      error="上游配置拉取失败"
+      onRetry={() => undefined}
+    />
+  );
+  expect(html).toContain("上游配置拉取失败");
+  expect(html).toContain("重试");
+  // 关键：内容仍在，没有被错误卡片替换掉
+  expect(html).toContain("官方音源");
+});
+```
+
+**第 6 步会连带影响既有断言**：现有「加载失败渲染错误态与重试」用例在
+`sourceList={[]}` 下断言错误文案——改成横幅后**仍应通过**（文案与「重试」都还在）。
+若某条既有断言因「不再整块替换」而失效，**逐条说明原因后再改**，不要整文件重写。
+
+### Step 6: 实现非阻断横幅（5 个 Tab）
+
+把每个 Tab 的 `if (error) return (<错误卡片>)` 改成：**不 return，改为在正常内容之前渲染一条横幅**。
+
+横幅形态（保持一致，5 处相同）：
+
+```tsx
+{error && (
+  <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-2.5">
+    <span className="text-[12.5px] text-rose-200">{error}</span>
+    <div className="flex gap-2 shrink-0">
+      <button
+        type="button"
+        onClick={onRetry}
+        className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/20 text-[12px] text-white transition-colors"
+      >
+        重试
+      </button>
+    </div>
+  </div>
+)}
+```
+
+- **空态判据随之调整**：原来 `error` 优先于空态；改成横幅后，`error` 与「空态/正常内容」可以**同时出现**
+  （同步失败 + 本地确实没有音源 → 横幅 + 空态，信息更完整）
+- `loading` 仍保持**整块替换**（骨架屏），优先级 `loading > （横幅 + 空态 | 正常）`
+
+### Step 7: 处理 LxScriptsTab 的同步按钮
+
+`src/components/sources/tabs/LxScriptsTab.tsx:110` 的按钮改为：
+
+```tsx
+onClick={async () => {
+  try {
+    await syncBuiltinDesktopSources();
+    alert("🎉 已成功载入并同步本地桌面 4 套音源库（独家v4.0、聚合9.3特供版、野草、野花）！");
+  } catch (e) {
+    alert(`同步失败：${e instanceof Error ? e.message : "未知错误"}`);
+  }
+}}
+```
+
+### Step 8: 全量回归
+
+Run: `npx vitest run 2>&1 | grep -E "Test Files|Tests "`
+Expected: 全部 passed、**0 failed**
+Run: `npx tsc --noEmit` → exit 0
+Run: `npm run lint` → exit 0
+Run: `npx prettier --check src/` → 通过
+
+### Step 9: 提交
+
+```bash
+git add src/store/sourceConfigStore.ts src/store/sourceConfigStore.test.ts \
+        src/components/sources/
+git commit -m "fix(sources): 同步失败不再被吞掉，错误改以非阻断横幅呈现"
+```
