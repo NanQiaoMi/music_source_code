@@ -192,7 +192,7 @@ private void assertRelationCount(Long deptId, DepartmentBusinessTypeEnum type, i
 
 ### 查询不受 Controller 事务影响
 
-- 使用 Mapper 直接查询，不走 Controller 事���
+- 使用 Mapper 直接查询，不走 Controller 事务
 - 总能读取到最新提交的数据，验证准确
 
 ### 名称查询说明
