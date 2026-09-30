@@ -51,12 +51,24 @@ async function renderIsland() {
 }
 
 describe("AppleUnifiedNavIsland responsive quick buttons", () => {
-  it("renders all five quick buttons at 1440", async () => {
-    stubViewport(1440);
+  it("renders all five quick buttons at 1800", async () => {
+    stubViewport(1800);
     const html = await renderIsland();
     expect(html).toContain('title="全局搜索 (⌘K / Ctrl+K)"');
     expect(html).toContain('title="偏好设置"');
     expect(html).not.toContain('title="更多快捷操作"');
+  });
+
+  // 断点值由「岛要在窗口居中」倒推（见 headerBreakpoints.ts），边界两侧都钉一下，
+  // 免得以后有人凭感觉把数字调小又悄悄让顶栏失去居中能力。
+  it("keeps quick buttons inline at 1680 (boundary)", async () => {
+    stubViewport(1680);
+    expect(await renderIsland()).not.toContain('title="更多快捷操作"');
+  });
+
+  it("collapses at 1679 (boundary)", async () => {
+    stubViewport(1679);
+    expect(await renderIsland()).toContain('title="更多快捷操作"');
   });
 
   it("collapses to search + overflow at 1024", async () => {

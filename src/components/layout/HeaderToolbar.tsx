@@ -12,16 +12,19 @@ import { useSourceConfigStore } from "@/store/sourceConfigStore";
 import { Logo } from "@/components/layout/Logo";
 import { AppleUnifiedNavIsland } from "@/components/layout/AppleUnifiedNavIsland";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import {
+  HEADER_COMPACT_QUERY,
+  HEADER_ICON_ONLY_QUERY,
+} from "@/components/layout/headerBreakpoints";
 
 export function HeaderToolbar() {
   const { currentView, openPanel } = useUIStore();
   const { songs } = usePlaylistStore();
   const { neteaseUser } = useUserAccountStore();
   const { openManagementModal } = useSourceConfigStore();
-  // 岛的微按钮组在 <1320 收起（见 AppleUnifiedNavIsland），此时左侧计数也让位
-  const isCompactHeader = useMediaQuery("(max-width: 1319px)");
-  // 再窄一档才把右侧四个入口压成图标，尽量晚地丢掉文字标签
-  const isVeryNarrow = useMediaQuery("(max-width: 1149px)");
+  // 两档断点的数字来历见 headerBreakpoints.ts（由「岛要居中」这条要求倒推）
+  const isCompactHeader = useMediaQuery(HEADER_COMPACT_QUERY);
+  const isVeryNarrow = useMediaQuery(HEADER_ICON_ONLY_QUERY);
 
   return (
     <motion.header
