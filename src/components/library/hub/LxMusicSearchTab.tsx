@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
@@ -150,6 +150,12 @@ export const LxMusicSearchTab: React.FC = () => {
 
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const searchRequestSequence = useRef(0);
+
+  const invalidatePendingSearch = useCallback(() => {
+    searchRequestSequence.current += 1;
+    setIsSearching(false);
+  }, []);
 
   // 表格多选
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -249,13 +255,19 @@ export const LxMusicSearchTab: React.FC = () => {
   // 执行搜索
   const handleSearch = useCallback(
     async (queryText?: string, targetTab = activeTab, targetMode = searchMode) => {
+      const requestSequence = ++searchRequestSequence.current;
+      const isCurrentRequest = () => searchRequestSequence.current === requestSequence;
       const q = (queryText !== undefined ? queryText : keyword).trim();
-      if (!q) return;
       setSearchError(null);
+      if (!q) {
+        setIsSearching(false);
+        return;
+      }
 
       if (!isTabUsable(targetTab)) {
         setSongResults([]);
         setPlaylistResults([]);
+        setIsSearching(false);
         return;
       }
 
@@ -263,6 +275,7 @@ export const LxMusicSearchTab: React.FC = () => {
       if (targetMode === "songs" && searchMemoryCache.has(cacheKey)) {
         setSongResults(searchMemoryCache.get(cacheKey)!);
         setSelectedIds(new Set());
+        setIsSearching(false);
         return;
       }
 
@@ -273,6 +286,7 @@ export const LxMusicSearchTab: React.FC = () => {
         if (targetMode === "songs") {
           if (targetTab === "all") {
             const seg = await multiSourceResolver.searchOnlineMusicSegmented(q);
+            if (!isCurrentRequest()) return;
             setSongResults(seg.all);
             searchMemoryCache.set(cacheKey, seg.all);
           } else if (targetTab === "lx_custom") {
@@ -292,6 +306,7 @@ export const LxMusicSearchTab: React.FC = () => {
                 supportedActions: ["search" as const],
               };
             const list = await LXRunner.search(activeScript, q, 1, 100);
+            if (!isCurrentRequest()) return;
             setSongResults(list);
             searchMemoryCache.set(cacheKey, list);
           } else {
@@ -310,6 +325,7 @@ export const LxMusicSearchTab: React.FC = () => {
             const res = await fetch(targetUrl, { headers });
             if (!res.ok) throw new Error(`Song search failed: ${res.status}`);
             const data = await res.json();
+            if (!isCurrentRequest()) return;
             const songs = Array.isArray(data.songs) ? data.songs : [];
             setSongResults(songs);
             searchMemoryCache.set(cacheKey, songs);
@@ -328,14 +344,16 @@ export const LxMusicSearchTab: React.FC = () => {
           );
           if (!res.ok) throw new Error(`Playlist search failed: ${res.status}`);
           const data = await res.json();
+          if (!isCurrentRequest()) return;
           setPlaylistResults(Array.isArray(data.playlists) ? data.playlists : []);
         }
       } catch (e) {
+        if (!isCurrentRequest()) return;
         console.warn("[LxMusicSearchTab] Search error:", e);
         setSearchError("网络连接失败或服务暂不可用，请重试。");
         showToast("搜索接口响应异常，请重试");
       } finally {
-        setIsSearching(false);
+        if (isCurrentRequest()) setIsSearching(false);
       }
     },
     [
@@ -353,6 +371,8 @@ export const LxMusicSearchTab: React.FC = () => {
 
   const triggerSearchOrPromptLogin = useCallback(() => {
     if (isCurrentTabLocked) {
+      invalidatePendingSearch();
+      setSearchError(null);
       const tabLabel = SOURCE_TABS.find((t) => t.id === activeTab)?.label || "该平台";
       showToast(`🔒 【${tabLabel}】尚未登录，请先登录开启链路`);
       if (activeTab !== "all" && activeTab !== "lx_custom") {
@@ -362,7 +382,7 @@ export const LxMusicSearchTab: React.FC = () => {
       return;
     }
     handleSearch();
-  }, [isCurrentTabLocked, activeTab, showToast, handleSearch]);
+  }, [isCurrentTabLocked, activeTab, showToast, handleSearch, invalidatePendingSearch]);
 
   // 初始加载：仅在有已登录平台或可用脚本时才触发默认搜索
   useEffect(() => {
@@ -378,6 +398,7 @@ export const LxMusicSearchTab: React.FC = () => {
     setActiveTab(tab);
     setSearchError(null);
     if (!isTabUsable(tab)) {
+      invalidatePendingSearch();
       setSongResults([]);
       setPlaylistResults([]);
       return;
@@ -390,6 +411,9 @@ export const LxMusicSearchTab: React.FC = () => {
     setSearchMode(mode);
     if (isTabUsable(activeTab)) {
       handleSearch(keyword, activeTab, mode);
+    } else {
+      invalidatePendingSearch();
+      setSearchError(null);
     }
   };
 
