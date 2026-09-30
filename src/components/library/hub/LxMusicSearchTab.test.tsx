@@ -7,6 +7,22 @@ import { LxMusicSearchTab } from "./LxMusicSearchTab";
 import { useDataManagerStore } from "@/store/useDataManagerStore";
 import { useUserAccountStore } from "@/store/userAccountStore";
 
+const searchOnlineMusicSegmentedMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    all: [
+      {
+        id: "song-1",
+        title: "晴天",
+        artist: "周杰伦",
+        album: "叶惠美",
+        duration: 269,
+        cover: "/default-cover.svg",
+        source: "kuwo",
+      },
+    ],
+  })
+);
+
 vi.mock("framer-motion", () => ({
   motion: new Proxy(
     {},
@@ -51,19 +67,7 @@ vi.mock("@/store/useOfflineDownloadStore", () => ({
 
 vi.mock("@/services/MultiSourceResolver", () => ({
   multiSourceResolver: {
-    searchOnlineMusicSegmented: vi.fn().mockResolvedValue({
-      all: [
-        {
-          id: "song-1",
-          title: "晴天",
-          artist: "周杰伦",
-          album: "叶惠美",
-          duration: 269,
-          cover: "/default-cover.svg",
-          source: "kuwo",
-        },
-      ],
-    }),
+    searchOnlineMusicSegmented: searchOnlineMusicSegmentedMock,
   },
 }));
 
@@ -161,6 +165,51 @@ describe("LxMusicSearchTab", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(String(fetchMock.mock.calls[1][0])).toContain(encodeURIComponent(query));
     expect(String(fetchMock.mock.calls[1][0])).toContain("/api/search");
+    expect(container.textContent).toContain("未检索到相关曲目");
+  });
+
+  it("shows the retry state when aggregate providers fail, then shows empty after an empty success", async () => {
+    useDataManagerStore.setState({
+      keyword: "aggregate-retry-query-983",
+      activeSourceTab: "all",
+      searchMode: "songs",
+      songResults: [],
+      playlistResults: [],
+    });
+
+    searchOnlineMusicSegmentedMock.mockReset();
+    searchOnlineMusicSegmentedMock
+      .mockRejectedValueOnce(new Error("all aggregate providers failed"))
+      .mockResolvedValueOnce({ all: [] } as any);
+
+    await act(async () => {
+      root.render(<LxMusicSearchTab />);
+    });
+
+    await act(async () => {
+      useUserAccountStore.setState({
+        neteaseUser: { ...useUserAccountStore.getState().neteaseUser, loggedIn: true },
+      });
+    });
+    const searchButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("检索")
+    );
+    await act(async () => {
+      searchButton?.click();
+    });
+
+    expect(searchOnlineMusicSegmentedMock).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain("搜索请求失败");
+
+    const retryButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("重试")
+    );
+    await act(async () => {
+      retryButton?.click();
+    });
+
+    expect(searchOnlineMusicSegmentedMock).toHaveBeenCalledTimes(2);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
     expect(container.textContent).toContain("未检索到相关曲目");
   });
 

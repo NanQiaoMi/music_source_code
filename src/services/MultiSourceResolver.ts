@@ -980,7 +980,10 @@ export class MultiSourceResolver {
       all: [],
     };
 
+    let attemptedProviderCount = 0;
+    let successfulProviderCount = 0;
     const fetchTasks = endpoints.map(async (ep) => {
+      attemptedProviderCount += 1;
       try {
         const r = await fetch(ep.url, { signal: AbortSignal.timeout(2800), headers: ep.headers });
         if (r.status === 401) {
@@ -989,6 +992,7 @@ export class MultiSourceResolver {
         }
         if (!r.ok) return { key: ep.key, songs: [] };
         const data = await r.json();
+        successfulProviderCount += 1;
         return { key: ep.key, songs: Array.isArray(data.songs) ? data.songs : [] };
       } catch {
         return { key: ep.key, songs: [] };
@@ -1005,6 +1009,7 @@ export class MultiSourceResolver {
 
     const lxTask = async () => {
       if (!isLxEnabled) return { key: "lx_custom", songs: [] };
+      attemptedProviderCount += 1;
       try {
         const lxScripts =
           typeof window !== "undefined" ? useSourceConfigStore.getState().lxScripts : [];
@@ -1019,6 +1024,7 @@ export class MultiSourceResolver {
           supportedActions: ["search" as const],
         };
         const lxSongs = await LXRunner.search(activeScript, keywords.trim(), 1, 100);
+        successfulProviderCount += 1;
         return { key: "lx_custom", songs: lxSongs };
       } catch {
         return { key: "lx_custom", songs: [] };
@@ -1026,6 +1032,9 @@ export class MultiSourceResolver {
     };
 
     const responses = await Promise.allSettled([...fetchTasks, lxTask()]);
+    if (attemptedProviderCount > 0 && successfulProviderCount === 0) {
+      throw new Error("All enabled music search providers failed");
+    }
 
     const seen = new Set<string>();
 
