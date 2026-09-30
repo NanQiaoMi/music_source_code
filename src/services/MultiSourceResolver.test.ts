@@ -5,6 +5,14 @@ const h = vi.hoisted(() => ({
   config: {
     resolutionMode: "hybrid_racing" as string,
     lxScripts: [] as { id: string; name: string; enabled: boolean; scriptContent: string }[],
+    sources: {
+      netease: { enabled: true },
+      qq: { enabled: true },
+      kugou: { enabled: false },
+      kuwo: { enabled: false },
+      qishui: { enabled: false },
+      lx_custom: { enabled: false },
+    },
   },
   loggedIn: false,
 }));
@@ -27,7 +35,7 @@ vi.mock("@/store/userAccountStore", () => ({
 vi.mock("@/store/audioSourceStore", () => ({ AudioSourceType: {} }));
 
 vi.mock("@/lib/sources/lxRunner", () => ({
-  LXRunner: { getMusicUrl: vi.fn() },
+  LXRunner: { getMusicUrl: vi.fn(), search: vi.fn() },
 }));
 
 import { MultiSourceResolver } from "./MultiSourceResolver";
@@ -70,6 +78,7 @@ beforeEach(() => {
   h.config.lxScripts = [LX_SCRIPT];
   h.loggedIn = false;
   (LXRunner.getMusicUrl as ReturnType<typeof vi.fn>).mockReset();
+  vi.mocked(LXRunner.search).mockReset();
 });
 
 afterEach(() => {
@@ -172,4 +181,93 @@ describe("MultiSourceResolver.resolvePlayableAudio 并发改造", () => {
     expect(second?.url).toBe(first?.url);
     expect(mock.mock.calls.length).toBe(callsAfterFirst);
   }, 15000);
+});
+
+describe("MultiSourceResolver.searchOnlineMusicSegmented provider failures", () => {
+  beforeEach(() => {
+    h.loggedIn = true;
+    h.config.lxScripts = [];
+    h.config.sources = {
+      netease: { enabled: true },
+      qq: { enabled: true },
+      kugou: { enabled: false },
+      kuwo: { enabled: false },
+      qishui: { enabled: false },
+      lx_custom: { enabled: false },
+    };
+  });
+
+  it("reports failure when every attempted provider request fails", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("/api/search?")) throw new Error("network unavailable");
+      return { ok: false, status: 503, json: async () => ({}) } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(resolver.searchOnlineMusicSegmented("all-providers-fail-2026")).rejects.toThrow(
+      /all enabled music search providers failed/i
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps an empty result when at least one provider succeeds without matches", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("/api/search?")) throw new Error("network unavailable");
+      return { ok: true, status: 200, json: async () => ({ songs: [] }) } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await resolver.searchOnlineMusicSegmented("partial-success-empty-2026");
+
+    expect(result.all).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves the empty result when no provider is available to attempt", async () => {
+    h.loggedIn = false;
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await resolver.searchOnlineMusicSegmented("no-provider-available-2026");
+
+    expect(result.all).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("counts a successful empty LX script result as a successful provider", async () => {
+    h.loggedIn = false;
+    h.config.lxScripts = [LX_SCRIPT];
+    h.config.sources = {
+      netease: { enabled: false },
+      qq: { enabled: false },
+      kugou: { enabled: false },
+      kuwo: { enabled: false },
+      qishui: { enabled: false },
+      lx_custom: { enabled: true },
+    };
+    vi.mocked(LXRunner.search).mockResolvedValue([]);
+
+    const result = await resolver.searchOnlineMusicSegmented("lx-empty-success-2026");
+
+    expect(result.all).toEqual([]);
+    expect(LXRunner.search).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports failure when the only enabled LX provider fails", async () => {
+    h.loggedIn = false;
+    h.config.lxScripts = [LX_SCRIPT];
+    h.config.sources = {
+      netease: { enabled: false },
+      qq: { enabled: false },
+      kugou: { enabled: false },
+      kuwo: { enabled: false },
+      qishui: { enabled: false },
+      lx_custom: { enabled: true },
+    };
+    vi.mocked(LXRunner.search).mockRejectedValue(new Error("script and fallback failed"));
+
+    await expect(resolver.searchOnlineMusicSegmented("lx-provider-fails-2026")).rejects.toThrow(
+      /all enabled music search providers failed/i
+    );
+  });
 });

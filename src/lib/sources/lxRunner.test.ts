@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { LXRunner } from "./lxRunner";
 
 describe("LXRunner", () => {
@@ -59,5 +59,78 @@ describe("LXRunner", () => {
     expect(songs[0].id).toBe("test-123");
     expect(songs[0].title).toBe("七里香 Live");
     expect(songs[0].source).toBe("lx_custom");
+  });
+
+  it("preserves a successful empty custom script search without trying fallback APIs", async () => {
+    const script = {
+      id: "empty-success-script",
+      name: "Empty Search Source",
+      author: "Tester",
+      version: "1.0.0",
+      description: "",
+      scriptContent: `module.exports = { search: async () => [] };`,
+      enabled: true,
+      lastUpdated: Date.now(),
+      supportedActions: ["search" as const],
+    };
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const songs = await LXRunner.search(script, "no matches");
+
+    expect(songs).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("throws when every fallback search API request fails", async () => {
+    const script = {
+      id: "fallback-failure-script",
+      name: "Fallback Failure Source",
+      author: "Tester",
+      version: "1.0.0",
+      description: "",
+      scriptContent: `module.exports = {};`,
+      enabled: true,
+      lastUpdated: Date.now(),
+      supportedActions: ["search" as const],
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("/api/search?")) throw new Error("network unavailable");
+      return { ok: false, status: 503, json: async () => ({}) } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(LXRunner.search(script, "unavailable query")).rejects.toThrow(
+      /all fallback search providers failed/i
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps an empty fallback result when one API responds successfully and another fails", async () => {
+    const script = {
+      id: "partial-fallback-script",
+      name: "Partial Fallback Source",
+      author: "Tester",
+      version: "1.0.0",
+      description: "",
+      scriptContent: `module.exports = {};`,
+      enabled: true,
+      lastUpdated: Date.now(),
+      supportedActions: ["search" as const],
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("/api/search?")) throw new Error("one provider unavailable");
+      return { ok: true, status: 200, json: async () => ({ songs: [] }) } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const songs = await LXRunner.search(script, "partial fallback query");
+
+    expect(songs).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 });

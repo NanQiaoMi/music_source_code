@@ -8,6 +8,7 @@ describe("DataDashboardTab 主角指标", () => {
     expect(html).toContain("已用存储");
     expect(html).toMatch(/\d+(\.\d+)?\s*(KB|MB|GB|B)/);
     expect(html).toContain("配额");
+    expect(html).toContain("backdrop-blur-[24px]");
   });
 
   it("四类主角指标各自成组，不再平铺同级", async () => {

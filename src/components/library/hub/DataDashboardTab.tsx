@@ -6,6 +6,7 @@ import { usePlaylistStore } from "@/store/playlistStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useUserAccountStore } from "@/store/userAccountStore";
 import { SettingSection, SettingRow, StatusDot, type StatusKind } from "@/components/ui/settings";
+import { GlassCard } from "@/components/shared/Glass/GlassCard";
 import { LiquidStorageGauge } from "./LiquidStorageGauge";
 import { QualityDistributionChart } from "./QualityDistributionChart";
 import { PlatformDonutChart } from "./PlatformDonutChart";
@@ -123,17 +124,11 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
   ];
 
   return (
-    // 这里曾有一层 pb-[104px]「播放条避让」，实测后撤掉了：
-    // standalone 路由与面板两种用法下，页面里唯一的 position:fixed 元素是
-    // `fixed inset-0 pointer-events-none z-0` 的氛围背景，不是底部播放条；
-    // 而 FloatingPlayer 是 left:28/top:280 的**可拖拽浮层**，不是固定底栏。
-    // 即那个假设（播放条固定在底部）不成立，这 104px 只是多余的底部空白。
-    // 将来若真的加了底部固定条，再按实测高度补避让。
     <div className="animate-fade-in select-none">
       {/* 顶部标题与一键刷新 */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+      <div className="flex min-w-0 items-center justify-between gap-3 mb-6">
+        <div className="min-w-0">
+          <h3 className="text-base font-bold text-white tracking-tight flex flex-wrap items-center gap-2">
             全景数据资产与存储看板
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-white/[0.08] text-white/80 border border-white/[0.15]">
               LIVE METRICS
@@ -148,7 +143,7 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
           type="button"
           onClick={() => refreshAnalytics(songs)}
           disabled={isAnalyzing}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/[0.08] hover:bg-white/[0.16] text-white text-xs font-semibold border border-white/[0.12] transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm"
+          className="flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/[0.08] hover:bg-white/[0.16] text-white text-xs font-semibold border border-white/[0.12] transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isAnalyzing ? "animate-spin text-white/90" : ""}`} />
           <span>{isAnalyzing ? "正在诊断..." : "重新体检"}</span>
@@ -156,76 +151,100 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
       </div>
 
       {/* ① 存储与配额 */}
-      <SettingSection
-        title="存储与配额"
-        description="本地数据卷与配额占用"
-        action={
-          <span className="text-[11px] text-white/40 tabular-nums">
+      <section className="mb-7" aria-labelledby="storage-quota-heading">
+        <div className="flex min-w-0 items-end justify-between gap-3 px-1 mb-2">
+          <div className="min-w-0">
+            <h3
+              id="storage-quota-heading"
+              className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55"
+            >
+              存储与配额
+            </h3>
+            <p className="mt-1 text-[12px] leading-relaxed text-white/40">本地数据卷与配额占用</p>
+          </div>
+          <span className="shrink-0 text-[11px] text-white/50 tabular-nums">
             {`${usedText} / ${quotaText}`}
           </span>
-        }
-      >
-        <div className="p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <HardDrive className="w-3.5 h-3.5 text-white/70" />
-                <span className="text-xs font-medium text-white/60">已用存储空间</span>
-                <StatusDot status={usageTone} label={`${usagePercent.toFixed(1)}%`} />
+        </div>
+
+        <GlassCard
+          hover={false}
+          rounded="2xl"
+          className="border-cyan-300/20 shadow-[0_24px_70px_rgba(0,0,0,0.45)]"
+          style={{
+            background:
+              "linear-gradient(125deg, rgba(22, 32, 48, 0.94), rgba(15, 19, 30, 0.92) 58%, rgba(28, 20, 42, 0.9))",
+            borderColor: "rgba(110, 206, 255, 0.2)",
+          }}
+        >
+          <div className="relative z-10 p-4 sm:p-5 lg:p-7">
+            <div className="grid min-w-0 grid-cols-1 items-center gap-5 lg:grid-cols-[minmax(0,1fr)_14rem] lg:gap-8">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <HardDrive className="w-4 h-4 text-cyan-200/80" />
+                  <span className="text-xs font-medium text-white/65">已用存储空间</span>
+                  <StatusDot status={usageTone} label={`${usagePercent.toFixed(1)}%`} />
+                </div>
+                <div className="mt-3 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="text-4xl sm:text-5xl font-black text-white font-mono tracking-tight leading-none">
+                    {usedText}
+                  </span>
+                  <span className="text-xs text-white/50 tabular-nums">配额 {quotaText}</span>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-mono text-white/45">
+                  <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-1">
+                    IndexedDB 沙盒
+                  </span>
+                  <span>本地数据与离线缓存占用</span>
+                </div>
+
+                <div className="mt-5 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
+                  {storageBreakdown.map((item) => (
+                    <div
+                      key={item.label}
+                      className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2.5"
+                    >
+                      <span className="truncate text-[11px] text-white/60">{item.label}</span>
+                      <span
+                        className={`shrink-0 font-mono text-[11px] font-semibold tabular-nums ${
+                          item.strong ? "text-white" : "text-white/75"
+                        }`}
+                      >
+                        {formatStorageBytes(item.bytes)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="mt-2 text-3xl font-black text-white font-mono tracking-tight leading-none">
-                {usedText}
+
+              <div className="flex min-w-0 justify-center rounded-2xl border border-white/[0.07] bg-black/15 p-3 sm:p-4">
+                <LiquidStorageGauge
+                  usedBytes={storageDetails.totalUsageBytes}
+                  quotaBytes={storageDetails.quotaBytes}
+                  usagePercent={usagePercent}
+                />
               </div>
-              <div className="mt-1.5 text-[11px] text-white/50 tabular-nums">{`配额 ${quotaText}`}</div>
             </div>
-            <span className="shrink-0 text-[10px] font-mono text-white/40">IndexedDB 沙盒</span>
           </div>
 
-          <div className="my-3">
-            <LiquidStorageGauge
-              usedBytes={storageDetails.totalUsageBytes}
-              quotaBytes={storageDetails.quotaBytes}
-              usagePercent={usagePercent}
+          <div className="relative z-10 border-t border-white/[0.08] bg-black/10">
+            <SettingRow
+              title="离线就绪曲目"
+              subtitle={
+                activeCount > 0
+                  ? `下载中 ${activeCount} 首 · 速度 ${totalSpeedFormatted}`
+                  : "纯离线即开即播已就绪"
+              }
+              status={storageDetails.offlineAudioCount > 0 ? "ok" : "idle"}
+              trailing={
+                <span className="text-[12.5px] font-semibold tabular-nums text-white/85">
+                  {`${storageDetails.offlineAudioCount} 首`}
+                </span>
+              }
             />
           </div>
-
-          {/* 细分容量 Breakdown 列表 */}
-          <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/[0.08] text-xs">
-            {storageBreakdown.map((item) => (
-              <div
-                key={item.label}
-                className="flex items-center justify-between p-2 rounded-xl bg-white/[0.04]"
-              >
-                <span className="text-white/60 text-[11px]">{item.label}:</span>
-                <span
-                  className={`font-mono font-semibold text-[11px] ${
-                    item.strong ? "text-white" : "text-white/90"
-                  }`}
-                >
-                  {formatStorageBytes(item.bytes)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="border-t border-white/[0.05]">
-          <SettingRow
-            title="离线就绪曲目"
-            subtitle={
-              activeCount > 0
-                ? `下载中 ${activeCount} 首 · 速度 ${totalSpeedFormatted}`
-                : "纯离线即开即播已就绪"
-            }
-            status={storageDetails.offlineAudioCount > 0 ? "ok" : "idle"}
-            trailing={
-              <span className="text-[12.5px] font-semibold tabular-nums text-white/85">
-                {`${storageDetails.offlineAudioCount} 首`}
-              </span>
-            }
-          />
-        </div>
-      </SettingSection>
+        </GlassCard>
+      </section>
 
       {/* ② 音质与编码 */}
       <SettingSection title="音质与编码" description="按码率分档统计曲目数量">
