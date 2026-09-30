@@ -100,3 +100,17 @@ describe("SourceManagementModal 三态接线", () => {
     expect(html).not.toContain("重试");
   });
 });
+
+describe("SourceManagementModal 外观与可访问性", () => {
+  it("使用可滚动的窄屏玻璃面板并提供可见键盘焦点和可命名关闭按钮", async () => {
+    const html = await renderModal();
+
+    expect(html).toContain("p-2.5 sm:p-4 lg:p-6");
+    expect(html).toContain("max-h-[90dvh]");
+    expect(html).toContain("min-h-0 overflow-y-auto");
+    expect(html).toContain('aria-label="关闭音源管理"');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain("from-cyan-500 to-blue-500");
+    expect(html).toContain("focus-visible:ring-2");
+  });
+});

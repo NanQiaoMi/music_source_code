@@ -188,13 +188,13 @@ export function SourceMatrixTab({
         )}
 
         {isEnabled && (
-          <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/10 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-3 border-t border-white/10 text-xs">
             <div>
               <label className="text-[10px] text-white/40 block mb-1">音质偏好</label>
               <select
                 value={src.qualityPreference}
                 onChange={(e) => setSourceQuality(src.id, e.target.value as QualityTier)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none cursor-pointer"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 focus-visible:border-cyan-300/50 cursor-pointer"
               >
                 {QUALITY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value} className="bg-[#121626]">
@@ -212,11 +212,11 @@ export function SourceMatrixTab({
                 max={10}
                 value={src.priority}
                 onChange={(e) => setSourcePriority(src.id, parseInt(e.target.value, 10) || 1)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 focus-visible:border-cyan-300/50"
               />
             </div>
 
-            <div className="col-span-2">
+            <div className="col-span-1 sm:col-span-2">
               <label className="text-[10px] text-white/40 block mb-1">
                 自定义镜像 / 反代 API 基址 (可选)
               </label>
@@ -225,7 +225,7 @@ export function SourceMatrixTab({
                 placeholder="留空使用默认服务端代理 (如 https://proxy.music.com)"
                 value={src.customApiBase}
                 onChange={(e) => setSourceConfig(src.id, { customApiBase: e.target.value })}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-[11px] focus:outline-none placeholder-white/25"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-white text-[11px] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 focus-visible:border-cyan-300/50 placeholder-white/25"
               />
             </div>
           </div>
