@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-09-30
+
+### Added
+
+- Added a compact fixed playback dock for `/data-manager`; it reads the existing playback and queue stores, and the manager route hosts the existing queue panel while the home floating player stays on the home page.
+- Added library search failure feedback and retry states, including a playlist search route response for provider-wide failures.
+- Added regression coverage for client-side library navigation, playback-store fallback, queue divergence/removal and duplicate-ID boundaries, manager queue-panel open/close, search failure and out-of-order request boundaries (including keyword edits and unmount/remount), responsive library sections and script cards, reduced-motion behavior, and the source manager tabs.
+
+### Changed
+
+- Changed the toolbar and navigation-island library entries to client-side navigation so route changes retain the root audio owner.
+- Unified the seven library sections around a responsive 1720px content shell, glass storage dashboard, and bottom safe space; aligned the five-tab source manager modal and narrow script cards with the same cyan/blue glass styling and scoped reduced-motion behavior.
+- Updated playlist search to return 503 only when at least one provider was attempted and all attempted providers failed; successful empty results, partial successes, and no-attempt results keep their success behavior and schema.
+
+### Fixed
+
+- Fixed manager next/previous actions to align by the active song ID; if the playing song was removed from the queue, Next selects the visible current-index candidate and Previous selects the item before it. Single-item playback remains available, and shuffle keeps its existing random behavior.
+- Fixed the manager queue button so it opens the existing QueuePanel on `/data-manager` and resets shared panel state when the panel closes.
+- Fixed the dock display to follow the home floating player’s PlayerStore fallback when AudioStore has no current song.
+- Fixed duplicate-song queue navigation to preserve QueueStore.currentIndex when that index points to the active song.
+- Fixed queue-panel duplicate entries so only the active index is highlighted and a single-row removal preserves other entries with the same song ID.
+- Fixed aggregate search failures being shown as empty results; successful empty results remain distinguishable from request failures.
+- Fixed stale library-search requests from replacing newer results/errors or clearing newer loading state after source, mode, or keyword changes.
+- Fixed in-flight searches from an unmounted library-search tab writing into shared search state after the tab is remounted.
+- Fixed a blank library workspace after reload when Zustand restored a non-default active section before the Keep-Alive visited-section set caught up; the restored section now renders immediately and stays mounted after switching away.
+- Fixed the source-management modal and its matrix/script switches to respect the system reduced-motion preference without changing homepage motion.
+- Fixed narrow source-script rows so descriptive text can wrap while switch and delete actions remain usable.
+- Replaced the manager queue-panel test's fixed delay with a condition-based wait for lazy content.
+
+### Verified
+
+- Focused regression suite passed: 20 files, 128 tests, including persisted-section hydration, the manager queue-panel host, duplicate-ID queue alignment/removal, deferred search-request races across edits and unmount/remount, reduced-motion behavior, queue/search stores, and listening-insights smoke tests.
+- `npx tsc --noEmit --incremental false --pretty false`, scoped ESLint over changed TS/TSX files, Prettier over changed files, and `git diff --check` passed.
+- `npm run build` passed and generated 28 static pages plus `/api/playlist/search`. Next emitted a workspace-root warning because both the primary repository and isolated worktree contain a `package-lock.json`.
+- Browser review passed for both library entry paths, all seven sections at 1024px, 1280px, 1440px, and 1780px, 320px source-script cards, the five source-modal tabs, and the persisted non-default section after a production-page reload. Search failure and retry were visible at 375px, 768px, 1024px, 1280px, 1440px, and 1780px. The document stayed within each viewport; the content shell capped at 1720px and reserved 128px at the bottom from 1024px upward. Reduced-motion behavior is component-tested but was not checked through an OS preference toggle in the browser.
+- Real audio-continuity checks for a currently playing track, paused track, or live provider were not run: the isolated browser preview had no current playback session and no authenticated online provider. Store tests cover those state boundaries; they are not runtime audio evidence.
+
 ## 2026-05-25
 
 ### Added
