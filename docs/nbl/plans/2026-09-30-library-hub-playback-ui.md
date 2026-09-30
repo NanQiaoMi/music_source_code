@@ -377,7 +377,7 @@ SourceManagementModal.tsx 保持响应式宽度 w-full max-w-4xl、max-h-[90dvh]
 
 **状态**
 
-- [ ] 完成
+- [x] 完成
 
 **Dependencies:** Task 1, Task 2, Task 3, Task 4, Task 5, Task 6
 **Parallelizable:** No（需合并全部改动后做全量回归）
@@ -434,9 +434,9 @@ npm run build
 
 已更新 docs/nbl/CHANGELOG.md，记录导航、底部播放栏、七区统一、搜索失败态、源弹窗及验证边界。已核对 docs/nbl/checklists/existing-feature-release-checklist.md：自动化队列 smoke 已通过；真实播放/暂停/切歌和登录源验证因隔离预览无当前曲目/登录凭证未执行；歌词、可视化、备份与设置编辑项不属于本轮范围。
 
-- [ ] **Step 5：提交、合并和回归**
+- [x] **Step 5：提交、合并和回归**
 
-检查 git status --short，只暂存本计划变更文件，不包含密钥、本地配置、IDE 缓存或构建产物。确认所有任务分支改动已先提交并合入集成工作树后，使用 `git merge --no-ff fix/library-hub-playback-ui-merge` 将集成结果合入本次功能分支，再以 `git merge --no-ff fix/library-hub-playback-ui` 合入稳定分支 master。合并后重跑 Task 7 Step 1 与 npm run build，确认 master 无本轮未提交改动。若有冲突，在功能分支解决并重新验证后再合并；不改写共享历史。
+已确认工作树未包含用户未提交改动。集成分支 `fix/library-hub-playback-ui-merge` 的代码与文档提交已用 `--no-ff` 合入功能分支 `fix/library-hub-playback-ui`，再以 `--no-ff` 合入稳定分支 `master`；代码合并提交为 `901c6a5`。合入 master 后重跑本计划 Step 1 定向测试（20 个文件、128 项通过）、TypeScript、改动文件 ESLint、Prettier、`git diff --check` 和 `npm run build`，均通过。生产构建生成 `/data-manager` 与 `/api/playlist/search`；Next.js 未报告额外 worktree lockfile 警告。未推送远程、未创建 PR。
 
 ## 3. 依赖关系与执行分组
 
