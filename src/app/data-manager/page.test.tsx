@@ -12,12 +12,11 @@ vi.mock("@/components/library/UnifiedDataManagerHub", () => ({
   UnifiedDataManagerHub: () => <main data-testid="library-manager" />,
 }));
 
-vi.mock("@/components/shared/LazyPanel", () => ({
-  createLazyPanelComponent: (name: string) => name,
-  LazyPanel: ({ name, isOpen, onClose }: { name: string; isOpen: boolean; onClose: () => void }) =>
+vi.mock("@/components/player/QueuePanel", () => ({
+  QueuePanel: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) =>
     isOpen ? (
-      <section role="dialog" aria-label="播放队列" data-panel-name={name}>
-        <button type="button" onClick={onClose}>
+      <section role="dialog" aria-label="播放队列" data-testid="loaded-queue-panel">
+        <button type="button" aria-label="关闭队列" onClick={onClose}>
           关闭队列
         </button>
       </section>
@@ -40,19 +39,23 @@ describe("/data-manager queue panel host", () => {
     container.remove();
   });
 
-  it("opens and closes the reusable queue panel when the dock changes queue state", async () => {
+  it("lazy loads the QueuePanel on the manager route and resets queue state when closed", async () => {
     await act(async () => root.render(<DataManagerPage />));
 
     await act(async () => useUIStore.getState().openPanel("queue"));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
 
+    expect(
+      container.querySelector('[data-testid="loaded-queue-panel"]'),
+      container.innerHTML
+    ).not.toBeNull();
     expect(container.querySelector('[role="dialog"][aria-label="播放队列"]')).not.toBeNull();
-    expect(container.querySelector('[data-panel-name="dataManagerQueue"]')).not.toBeNull();
 
     await act(async () => {
-      container.querySelector<HTMLButtonElement>("button")?.click();
+      container.querySelector<HTMLButtonElement>('[aria-label="关闭队列"]')?.click();
     });
 
     expect(useUIStore.getState().panels.queue).toBe(false);
-    expect(container.querySelector('[role="dialog"][aria-label="播放队列"]')).toBeNull();
+    expect(container.querySelector('[data-testid="loaded-queue-panel"]')).toBeNull();
   });
 });
