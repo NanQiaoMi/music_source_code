@@ -101,4 +101,38 @@ describe("UnifiedDataManagerHub", () => {
     expect(container.textContent).toContain("本地导入");
     expect(container.textContent).toContain("存储体检");
   });
+
+  it("uses one width-safe 1720px workspace and preserves the 1400px navigation handoff", async () => {
+    await act(async () => {
+      root.render(<UnifiedDataManagerHub initialTab="dashboard" />);
+    });
+
+    const main = container.querySelector("main");
+    expect(main?.className).toContain("max-w-[1720px]");
+    expect(main?.className).toContain("min-w-0");
+
+    const wideNavigation = Array.from(container.querySelectorAll("header > div")).find((element) =>
+      element.className.includes("min-[1400px]:flex")
+    );
+    const compactNavigation = Array.from(container.querySelectorAll("div")).find(
+      (element) =>
+        element.className.includes("min-[1400px]:hidden") &&
+        element.className.includes("overflow-x-auto")
+    );
+
+    expect(wideNavigation).toBeDefined();
+    expect(compactNavigation).toBeDefined();
+  });
+
+  it("reserves manager dock space only on the standalone page", async () => {
+    await act(async () => {
+      root.render(<UnifiedDataManagerHub initialTab="dashboard" isStandalonePage />);
+    });
+    expect(container.querySelector("main")?.className.split(" ")).toContain("pb-32");
+
+    await act(async () => {
+      root.render(<UnifiedDataManagerHub initialTab="dashboard" />);
+    });
+    expect(container.querySelector("main")?.className.split(" ")).not.toContain("pb-32");
+  });
 });
