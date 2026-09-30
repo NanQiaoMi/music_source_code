@@ -116,6 +116,13 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
       );
   }, [queue, searchQuery]);
 
+  const playbackQueueIndex = useMemo(() => {
+    if (!currentSong) return currentIndex;
+    if (queue[currentIndex]?.id === currentSong.id) return currentIndex;
+    const matchingIndex = queue.findIndex((song) => song.id === currentSong.id);
+    return matchingIndex >= 0 ? matchingIndex : currentIndex;
+  }, [currentSong, currentIndex, queue]);
+
   // Total duration calculation
   const totalDurationText = useMemo(() => {
     const totalSecs = queue.reduce((acc, song) => acc + (song.duration || 0), 0);
@@ -317,13 +324,14 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
               </div>
             ) : (
               filteredQueue.map(({ song, originalIndex }) => {
-                const isCurrent =
-                  (currentSong && currentSong.id === song.id) || currentIndex === originalIndex;
+                const isCurrent = playbackQueueIndex === originalIndex;
                 const coverSrc = song.cover && song.cover.trim() ? song.cover : DEFAULT_COVER_SRC;
 
                 return (
                   <div
                     key={`${song.id}-${originalIndex}`}
+                    data-queue-index={originalIndex}
+                    aria-current={isCurrent ? "true" : undefined}
                     ref={isCurrent ? activeItemRef : null}
                     onClick={() => handleTrackClick(originalIndex)}
                     className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-2xl cursor-pointer transition-all duration-200 border ${

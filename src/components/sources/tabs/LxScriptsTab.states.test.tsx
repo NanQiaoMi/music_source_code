@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
 
@@ -37,5 +39,56 @@ describe("LxScriptsTab 状态", () => {
     expect(html).not.toContain("data-skeleton");
     expect(html).not.toContain("重试");
     expect(html).toContain("洛雪 / 自定义 JS 脚本扩展引擎");
+  });
+
+  it("新建脚本表单在窄屏堆叠前两项并保留键盘焦点样式", async () => {
+    const { LxScriptsTab } = await import("./LxScriptsTab");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    try {
+      await act(async () => root.render(<LxScriptsTab />));
+
+      const addButton = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
+        (button) => button.textContent?.includes("添加扩展源")
+      );
+      expect(addButton).toBeDefined();
+      await act(async () => addButton?.click());
+
+      const nameInput = container.querySelector<HTMLInputElement>(
+        'input[placeholder="例如: 六音无损源 v2"]'
+      );
+      const formGrid = nameInput?.parentElement?.parentElement;
+      expect(formGrid?.className).toContain("grid-cols-1");
+      expect(formGrid?.className).toContain("sm:grid-cols-2");
+      expect(nameInput?.className).toContain("focus-visible:ring-2");
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+    }
+  });
+
+  it("脚本列表为窄屏文本保留可收缩列并允许元信息换行", async () => {
+    const { LxScriptsTab } = await import("./LxScriptsTab");
+    useSourceConfigStore.setState({
+      lxScripts: [
+        {
+          id: "responsive-script",
+          name: "测试用长标题扩展音源",
+          author: "测试作者",
+          version: "1.0.0",
+          description: "窄屏脚本卡片说明",
+          enabled: true,
+          lastUpdated: 0,
+          supportedActions: ["search"],
+        },
+      ],
+    });
+
+    const html = renderToStaticMarkup(<LxScriptsTab />);
+
+    expect(html).toContain("min-w-0 flex-1");
+    expect(html).toContain("flex flex-wrap items-center gap-x-2 gap-y-1");
   });
 });

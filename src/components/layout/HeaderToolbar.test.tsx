@@ -9,6 +9,11 @@ const mocks = vi.hoisted(() => ({
   toggleFullscreen: vi.fn(),
   toggleGestureEnabled: vi.fn(),
   setCurrentView: vi.fn(),
+  push: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mocks.push }),
 }));
 
 // 用 Object.assign 挂上 getState：导航岛在 effect 里会调 useUIStore.getState()，
@@ -64,6 +69,7 @@ describe("HeaderToolbar", () => {
     mocks.toggleFullscreen.mockClear();
     mocks.toggleGestureEnabled.mockClear();
     mocks.setCurrentView.mockClear();
+    mocks.push.mockClear();
   });
 
   it("renders header toolbar with logo, library count, and user account capsule", () => {
@@ -125,6 +131,48 @@ describe("HeaderToolbar", () => {
       expect(html).not.toContain(">音源管理<");
       expect(html).toContain('title="导入与管理曲库"');
       expect(html).toContain('title="全网多音源矩阵与扩展管理中心"');
+    });
+  });
+
+  describe("library manager navigation", () => {
+    let container: HTMLDivElement;
+    let root: Root;
+
+    beforeEach(() => {
+      vi.stubGlobal(
+        "matchMedia",
+        vi.fn().mockImplementation((media: string) => ({
+          matches: false,
+          media,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }))
+      );
+    });
+
+    afterEach(async () => {
+      await act(async () => root?.unmount());
+      container?.remove();
+      vi.unstubAllGlobals();
+    });
+
+    it("uses client navigation without allowing a document navigation", async () => {
+      container = document.createElement("div");
+      document.body.appendChild(container);
+      root = createRoot(container);
+
+      await act(async () => root.render(<HeaderToolbar />));
+
+      const entry = container.querySelector<HTMLAnchorElement>('a[title="导入与管理曲库"]');
+      expect(entry).not.toBeNull();
+      const hrefBeforeClick = window.location.href;
+      const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+
+      await act(async () => entry?.dispatchEvent(click));
+
+      expect(mocks.push).toHaveBeenCalledWith("/data-manager");
+      expect(click.defaultPrevented).toBe(true);
+      expect(window.location.href).toBe(hrefBeforeClick);
     });
   });
 });

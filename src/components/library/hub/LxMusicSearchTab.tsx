@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
@@ -18,6 +18,7 @@ import {
   Music2,
   FolderHeart,
   Loader2,
+  RefreshCw,
   Flame,
   SlidersHorizontal,
   Lock,
@@ -148,6 +149,28 @@ export const LxMusicSearchTab: React.FC = () => {
   } = useDataManagerStore();
 
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const searchRequestSequence = useRef(0);
+
+  const invalidatePendingSearch = useCallback(() => {
+    searchRequestSequence.current += 1;
+    setIsSearching(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      searchRequestSequence.current += 1;
+    };
+  }, []);
+
+  const updateKeyword = useCallback(
+    (nextKeyword: string) => {
+      invalidatePendingSearch();
+      setSearchError(null);
+      setKeyword(nextKeyword);
+    },
+    [invalidatePendingSearch, setKeyword]
+  );
 
   // 表格多选
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -247,12 +270,19 @@ export const LxMusicSearchTab: React.FC = () => {
   // 执行搜索
   const handleSearch = useCallback(
     async (queryText?: string, targetTab = activeTab, targetMode = searchMode) => {
+      const requestSequence = ++searchRequestSequence.current;
+      const isCurrentRequest = () => searchRequestSequence.current === requestSequence;
       const q = (queryText !== undefined ? queryText : keyword).trim();
-      if (!q) return;
+      setSearchError(null);
+      if (!q) {
+        setIsSearching(false);
+        return;
+      }
 
       if (!isTabUsable(targetTab)) {
         setSongResults([]);
         setPlaylistResults([]);
+        setIsSearching(false);
         return;
       }
 
@@ -260,6 +290,7 @@ export const LxMusicSearchTab: React.FC = () => {
       if (targetMode === "songs" && searchMemoryCache.has(cacheKey)) {
         setSongResults(searchMemoryCache.get(cacheKey)!);
         setSelectedIds(new Set());
+        setIsSearching(false);
         return;
       }
 
@@ -270,6 +301,7 @@ export const LxMusicSearchTab: React.FC = () => {
         if (targetMode === "songs") {
           if (targetTab === "all") {
             const seg = await multiSourceResolver.searchOnlineMusicSegmented(q);
+            if (!isCurrentRequest()) return;
             setSongResults(seg.all);
             searchMemoryCache.set(cacheKey, seg.all);
           } else if (targetTab === "lx_custom") {
@@ -289,6 +321,7 @@ export const LxMusicSearchTab: React.FC = () => {
                 supportedActions: ["search" as const],
               };
             const list = await LXRunner.search(activeScript, q, 1, 100);
+            if (!isCurrentRequest()) return;
             setSongResults(list);
             searchMemoryCache.set(cacheKey, list);
           } else {
@@ -305,14 +338,12 @@ export const LxMusicSearchTab: React.FC = () => {
             const cookie = getPlatformCookie(targetTab);
             const headers: HeadersInit = cookie ? { [`x-${targetTab}-cookie`]: cookie } : {};
             const res = await fetch(targetUrl, { headers });
-            if (res.ok) {
-              const data = await res.json();
-              const songs = Array.isArray(data.songs) ? data.songs : [];
-              setSongResults(songs);
-              searchMemoryCache.set(cacheKey, songs);
-            } else {
-              setSongResults([]);
-            }
+            if (!res.ok) throw new Error(`Song search failed: ${res.status}`);
+            const data = await res.json();
+            if (!isCurrentRequest()) return;
+            const songs = Array.isArray(data.songs) ? data.songs : [];
+            setSongResults(songs);
+            searchMemoryCache.set(cacheKey, songs);
           }
         } else {
           // 歌单搜索
@@ -326,18 +357,18 @@ export const LxMusicSearchTab: React.FC = () => {
             `/api/playlist/search?keywords=${encodeURIComponent(q)}&limit=60&source=${targetTab === "all" ? "all" : targetTab}`,
             { headers }
           );
-          if (res.ok) {
-            const data = await res.json();
-            setPlaylistResults(Array.isArray(data.playlists) ? data.playlists : []);
-          } else {
-            setPlaylistResults([]);
-          }
+          if (!res.ok) throw new Error(`Playlist search failed: ${res.status}`);
+          const data = await res.json();
+          if (!isCurrentRequest()) return;
+          setPlaylistResults(Array.isArray(data.playlists) ? data.playlists : []);
         }
       } catch (e) {
+        if (!isCurrentRequest()) return;
         console.warn("[LxMusicSearchTab] Search error:", e);
+        setSearchError("网络连接失败或服务暂不可用，请重试。");
         showToast("搜索接口响应异常，请重试");
       } finally {
-        setIsSearching(false);
+        if (isCurrentRequest()) setIsSearching(false);
       }
     },
     [
@@ -355,6 +386,8 @@ export const LxMusicSearchTab: React.FC = () => {
 
   const triggerSearchOrPromptLogin = useCallback(() => {
     if (isCurrentTabLocked) {
+      invalidatePendingSearch();
+      setSearchError(null);
       const tabLabel = SOURCE_TABS.find((t) => t.id === activeTab)?.label || "该平台";
       showToast(`🔒 【${tabLabel}】尚未登录，请先登录开启链路`);
       if (activeTab !== "all" && activeTab !== "lx_custom") {
@@ -364,7 +397,7 @@ export const LxMusicSearchTab: React.FC = () => {
       return;
     }
     handleSearch();
-  }, [isCurrentTabLocked, activeTab, showToast, handleSearch]);
+  }, [isCurrentTabLocked, activeTab, showToast, handleSearch, invalidatePendingSearch]);
 
   // 初始加载：仅在有已登录平台或可用脚本时才触发默认搜索
   useEffect(() => {
@@ -378,7 +411,9 @@ export const LxMusicSearchTab: React.FC = () => {
   // 切换音源 Tab 时触发
   const handleTabChange = (tab: SearchSourceTab) => {
     setActiveTab(tab);
+    setSearchError(null);
     if (!isTabUsable(tab)) {
+      invalidatePendingSearch();
       setSongResults([]);
       setPlaylistResults([]);
       return;
@@ -391,6 +426,9 @@ export const LxMusicSearchTab: React.FC = () => {
     setSearchMode(mode);
     if (isTabUsable(activeTab)) {
       handleSearch(keyword, activeTab, mode);
+    } else {
+      invalidatePendingSearch();
+      setSearchError(null);
     }
   };
 
@@ -613,20 +651,85 @@ export const LxMusicSearchTab: React.FC = () => {
     );
   };
 
+  const renderLockedSourceState = () => {
+    const isLxSource = activeTab === "lx_custom";
+    const isAllSources = activeTab === "all";
+    const platformLabel = SOURCE_TABS.find((tab) => tab.id === activeTab)?.label || activeTab;
+    const heading = isAllSources
+      ? searchMode === "songs"
+        ? "全网音乐搜索链路未开启"
+        : "全网歌单检索链路未开启"
+      : isLxSource
+        ? searchMode === "songs"
+          ? "落雪特供音源脚本未启用"
+          : "落雪音源歌单功能未开启"
+        : searchMode === "songs"
+          ? `【${platformLabel}】链路未连接`
+          : `【${platformLabel}】歌单检索未开启`;
+    const description = isAllSources
+      ? "您尚未登录任何网络音乐平台。根据安全规范，未登录状态下全网搜索与母带流解析处于关闭保护状态。"
+      : isLxSource
+        ? "当前未启用自定义落雪音源脚本。请进入音源管理启用脚本后即可解锁检索。"
+        : "未登录的音乐平台默认关闭搜索与歌单链路。请先登录该平台账号以开启在线检索。";
+
+    return (
+      <div
+        data-state="locked"
+        role="status"
+        aria-live="polite"
+        className="min-h-80 flex flex-col items-center justify-center text-center p-6 sm:p-8 space-y-4"
+      >
+        <div className="w-16 h-16 rounded-3xl bg-white/[0.06] border border-white/[0.12] flex items-center justify-center text-white/80 shadow-lg">
+          <Lock className="w-8 h-8" />
+        </div>
+        <div className="space-y-1.5 max-w-md">
+          <h4 className="text-[17px] font-semibold text-white tracking-tight">{heading}</h4>
+          <p className="text-[13px] text-white/50 leading-relaxed">{description}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (isLxSource) {
+              openManagementModal("lx_scripts");
+              return;
+            }
+            if (!isAllSources) {
+              useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
+            }
+            useUserAccountStore.getState().setIsAccountModalOpen(true);
+          }}
+          className="px-6 py-2.5 rounded-full bg-white text-black hover:bg-white/90 text-xs font-semibold tracking-tight shadow-[0_2px_12px_rgba(255,255,255,0.25)] flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+        >
+          {isLxSource ? (
+            <>
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>打开音源管理配置脚本</span>
+            </>
+          ) : (
+            <>
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>立即登录账号开启链路</span>
+            </>
+          )}
+        </button>
+      </div>
+    );
+  };
+
   return (
-    <div className="relative w-full h-full flex flex-col gap-5 select-none font-sans">
+    <div className="relative w-full h-full min-w-0 flex flex-col gap-5 select-none font-sans overflow-x-hidden">
       {/* ── 顶部控制中枢 Bento ── */}
-      <div className="p-5 md:p-6 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col gap-4">
+      <div className="min-w-0 p-4 sm:p-5 md:p-6 rounded-3xl bg-gradient-to-br from-white/[0.055] via-white/[0.03] to-cyan-950/[0.12] border border-white/[0.10] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col gap-4">
         {/* 第一行：搜索框 + 模式胶囊切换 + 音质过滤与播放全部 */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
           {/* 搜索框 */}
-          <div className="relative flex-1 w-full flex items-center">
-            <div className="relative w-full flex items-center bg-white/[0.04] hover:bg-white/[0.07] focus-within:bg-white/[0.09] border border-white/[0.10] focus-within:border-white/40 focus-within:shadow-[0_0_24px_rgba(255,255,255,0.08)] rounded-2xl px-4 py-2.5 transition-all shadow-inner group">
+          <div className="relative flex min-w-0 flex-1 w-full items-center">
+            <div className="relative flex min-w-0 w-full items-center bg-white/[0.04] hover:bg-white/[0.07] focus-within:bg-white/[0.09] border border-white/[0.10] focus-within:border-white/40 focus-within:shadow-[0_0_24px_rgba(255,255,255,0.08)] rounded-2xl px-3 sm:px-4 py-2.5 transition-all shadow-inner group">
               <Search className="w-4 h-4 text-white/70 shrink-0 mr-3 group-focus-within:scale-110 transition-transform" />
               <input
                 type="text"
                 value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
+                onChange={(e) => updateKeyword(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") triggerSearchOrPromptLogin();
                 }}
@@ -635,12 +738,12 @@ export const LxMusicSearchTab: React.FC = () => {
                     ? `【${SOURCE_TABS.find((t) => t.id === activeTab)?.label || "该平台"}】尚未登录，请先登录开启链路...`
                     : "搜索全网海量歌曲、歌手、专辑或落雪特供母带..."
                 }
-                className="w-full bg-transparent text-sm text-white placeholder-white/40 focus:outline-none"
+                className="w-full min-w-0 bg-transparent text-sm text-white placeholder-white/40 focus:outline-none"
               />
               {keyword && (
                 <button
                   type="button"
-                  onClick={() => setKeyword("")}
+                  onClick={() => updateKeyword("")}
                   className="w-6 h-6 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -671,7 +774,7 @@ export const LxMusicSearchTab: React.FC = () => {
           </div>
 
           {/* 右侧功能组：解析通道模式 & 歌曲/歌单切换 & 音质过滤 */}
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-between lg:justify-end shrink-0">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3 w-full xl:w-auto justify-start xl:justify-end">
             {/* 🚀 解析链路通道选择器：全网智能聚合 vs 纯落雪音源 */}
             <div className="flex items-center bg-black/40 border border-white/[0.08] p-1 rounded-2xl">
               <button
@@ -775,7 +878,7 @@ export const LxMusicSearchTab: React.FC = () => {
         </div>
 
         {/* 第二行：多音源切换 Tab 栏 & 音源管理配置快捷入口 */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pt-1 border-t border-white/[0.08]">
+        <div className="flex min-w-0 flex-col xl:flex-row items-start xl:items-center justify-between gap-4 pt-1 border-t border-white/[0.08]">
           {/* 多音源切换 Tab 栏 */}
           <div className="flex flex-wrap items-center gap-2">
             {SOURCE_TABS.map((tab) => {
@@ -817,7 +920,7 @@ export const LxMusicSearchTab: React.FC = () => {
           </div>
 
           {/* 热门搜索标签 */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar text-xs text-white/40 shrink-0">
+          <div className="flex min-w-0 max-w-full w-full xl:w-auto items-center gap-2 overflow-x-auto no-scrollbar text-xs text-white/40 xl:shrink-0">
             <span className="shrink-0 flex items-center gap-1 text-xs font-semibold text-white/60">
               <Flame className="w-3.5 h-3.5 text-white/60" /> 热搜:
             </span>
@@ -826,7 +929,7 @@ export const LxMusicSearchTab: React.FC = () => {
                 key={tag}
                 type="button"
                 onClick={() => {
-                  setKeyword(tag);
+                  updateKeyword(tag);
                   if (isCurrentTabLocked) {
                     triggerSearchOrPromptLogin();
                     return;
@@ -876,11 +979,42 @@ export const LxMusicSearchTab: React.FC = () => {
       </div>
 
       {/* ── 主体展示区 (全宽度、高呼吸感表格与卡片) ── */}
-      <div className="flex-1 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col">
+      <div className="flex-1 min-w-0 rounded-3xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-3xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col">
         {isSearching ? (
-          <div className="h-96 flex flex-col items-center justify-center text-white/40 gap-3">
+          <div
+            data-state="loading"
+            role="status"
+            aria-live="polite"
+            className="min-h-80 flex flex-col items-center justify-center text-white/40 gap-3 p-6"
+          >
             <Loader2 className="w-10 h-10 animate-spin text-emerald-400" />
             <p className="text-sm font-medium">正在全网检索高保真母带音频资源...</p>
+          </div>
+        ) : isCurrentTabLocked ? (
+          renderLockedSourceState()
+        ) : searchError ? (
+          <div
+            data-state="error"
+            role="alert"
+            aria-live="assertive"
+            className="min-h-80 flex flex-col items-center justify-center text-center gap-3 p-6"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-rose-400/10 border border-rose-300/20 flex items-center justify-center text-rose-200">
+              <X className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-white">搜索请求失败</h4>
+              <p className="text-xs text-white/50">{searchError}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSearch()}
+              disabled={isSearching}
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/[0.14] disabled:opacity-50"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              重试
+            </button>
           </div>
         ) : searchMode === "songs" ? (
           /* 单曲模式表格 */
@@ -934,7 +1068,12 @@ export const LxMusicSearchTab: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="h-96 flex flex-col items-center justify-center text-white/40 gap-3">
+              <div
+                data-state="empty"
+                role="status"
+                aria-live="polite"
+                className="min-h-80 flex flex-col items-center justify-center text-white/40 gap-3 p-6"
+              >
                 <Music2 className="w-12 h-12 opacity-30" />
                 <p className="text-sm">未检索到相关曲目，请尝试更换关键词或切换音源</p>
               </div>
@@ -1065,7 +1204,7 @@ export const LxMusicSearchTab: React.FC = () => {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setKeyword(song.artist);
+                            updateKeyword(song.artist);
                             handleSearch(song.artist);
                           }}
                           className="text-xs text-white/60 hover:text-white truncate hover:underline transition-colors text-left"
@@ -1173,7 +1312,12 @@ export const LxMusicSearchTab: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className="h-96 flex flex-col items-center justify-center text-white/40 gap-3">
+            <div
+              data-state="empty"
+              role="status"
+              aria-live="polite"
+              className="min-h-80 flex flex-col items-center justify-center text-white/40 gap-3 p-6"
+            >
               <FolderHeart className="w-12 h-12 opacity-30" />
               <p className="text-sm">未检索到相关歌单，请尝试更换关键词</p>
             </div>

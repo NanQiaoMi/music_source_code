@@ -21,7 +21,9 @@ vi.mock("framer-motion", () => ({
 }));
 
 vi.mock("next/image", () => ({
-  default: (props: any) => <img {...props} alt={props.alt || ""} />,
+  default: ({ fill: _fill, sizes: _sizes, unoptimized: _unoptimized, ...props }: any) => (
+    <img {...props} alt={props.alt || ""} />
+  ),
 }));
 
 describe("QueuePanel", () => {
@@ -85,6 +87,44 @@ describe("QueuePanel", () => {
     expect(container.textContent).toContain("2 首");
     expect(container.textContent).toContain("Midnight City");
     expect(container.textContent).toContain("Starboy");
+  });
+
+  it("marks and removes one duplicate queue occurrence by its index", async () => {
+    const activeSong = {
+      id: "repeated-song",
+      title: "Repeated Track",
+      artist: "M83",
+      duration: 240,
+      source: "local",
+    };
+    useQueueStore.setState({
+      queue: [
+        activeSong,
+        { id: "song-2", title: "Starboy", artist: "The Weeknd", duration: 230, source: "netease" },
+        { ...activeSong, title: "Repeated Track (queued again)" },
+      ],
+      currentIndex: 2,
+    });
+    useAudioStore.setState({ currentSong: activeSong, isPlaying: true });
+
+    await act(async () => root.render(<QueuePanel isOpen={true} onClose={vi.fn()} />));
+
+    const currentRows = container.querySelectorAll('[aria-current="true"]');
+    expect(currentRows).toHaveLength(1);
+    expect(currentRows[0].getAttribute("data-queue-index")).toBe("2");
+
+    const firstDuplicateRow = container.querySelector('[data-queue-index="0"]');
+    await act(async () => {
+      firstDuplicateRow
+        ?.querySelector<HTMLButtonElement>('[title="移出队列"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual([
+      "song-2",
+      "repeated-song",
+    ]);
+    expect(useQueueStore.getState().currentIndex).toBe(1);
   });
 
   it("opens full-screen shelf3D panel when clicking 3D button", async () => {

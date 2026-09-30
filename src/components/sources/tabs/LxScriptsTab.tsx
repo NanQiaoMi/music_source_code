@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { X, Code2, Sparkles, Plus, Trash2, CheckCircle2, AlertTriangle, Play } from "lucide-react";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
 import { LXRunner } from "@/lib/sources/lxRunner";
@@ -18,6 +18,7 @@ interface LxScriptsTabProps {
 }
 
 export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}) {
+  const shouldReduceMotion = useReducedMotion() ?? false;
   // 订阅整店以便状态变化时重渲染；动作来自 hook。
   const { addLXScript, removeLXScript, toggleLXScript } = useSourceConfigStore();
   // 脚本列表直接读当前值：renderToStaticMarkup 下 hook 快照是初始值（getInitialState），
@@ -114,7 +115,7 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
               type="button"
               onClick={onRetry}
               disabled={loading}
-              className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-default"
+              className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#090b13]"
               title="从桌面音源目录一键刷新并载入最新脚本"
             >
               <Sparkles className={`w-3.5 h-3.5 ${loading ? "animate-pulse" : ""}`} />
@@ -124,7 +125,7 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
             <button
               type="button"
               onClick={() => setShowAddScript(true)}
-              className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/20 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#090b13]"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>添加扩展源</span>
@@ -138,14 +139,16 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-cyan-300">新建自定义音源脚本</span>
               <button
+                type="button"
                 onClick={() => setShowAddScript(false)}
-                className="text-white/50 hover:text-white"
+                aria-label="关闭新建脚本"
+                className="text-white/50 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#090b13] rounded-md"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[11px] text-white/50 block mb-1">源名称 *</label>
                 <input
@@ -153,7 +156,7 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
                   placeholder="例如: 六音无损源 v2"
                   value={newScriptName}
                   onChange={(e) => setNewScriptName(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 focus-visible:border-cyan-300/50"
                 />
               </div>
               <div>
@@ -163,7 +166,7 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
                   placeholder="例如: LX Dev / 1.0.0"
                   value={newScriptAuthor}
                   onChange={(e) => setNewScriptAuthor(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 focus-visible:border-cyan-300/50"
                 />
               </div>
             </div>
@@ -177,7 +180,7 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
                 placeholder="https://raw.githubusercontent.com/.../custom_source.js"
                 value={newScriptUrl}
                 onChange={(e) => setNewScriptUrl(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 focus-visible:border-cyan-300/50"
               />
             </div>
 
@@ -188,7 +191,7 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
                 placeholder="module.exports = { search: async function(kw) { ... } };"
                 value={newScriptCode}
                 onChange={(e) => setNewScriptCode(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-lg p-2 font-mono text-[11px] text-emerald-300 focus:outline-none"
+                className="w-full bg-black/40 border border-white/10 rounded-lg p-2 font-mono text-[11px] text-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 focus-visible:border-cyan-300/50"
               />
             </div>
 
@@ -253,25 +256,31 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
                 {lxScripts.map((script) => (
                   <div
                     key={script.id}
-                    className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-between gap-4"
+                    className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
                       <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 mt-0.5">
                         <Code2 className="w-4 h-4 text-cyan-400" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-white">{script.name}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="break-words text-sm font-semibold text-white">
+                            {script.name}
+                          </span>
                           <span className="px-1.5 py-0.2 rounded text-[10px] bg-white/10 text-white/70">
                             v{script.version}
                           </span>
-                          <span className="text-[10px] text-white/40">作者: {script.author}</span>
+                          <span className="break-words text-[10px] text-white/40">
+                            作者: {script.author}
+                          </span>
                         </div>
-                        <p className="text-xs text-white/50 mt-1">{script.description}</p>
+                        <p className="mt-1 break-words text-xs text-white/50">
+                          {script.description}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex shrink-0 items-center justify-end gap-3">
                       <button
                         type="button"
                         onClick={() => toggleLXScript(script.id)}
@@ -280,7 +289,8 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
                         }`}
                       >
                         <motion.div
-                          layout
+                          layout={!shouldReduceMotion}
+                          transition={shouldReduceMotion ? { duration: 0 } : undefined}
                           className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 ${
                             script.enabled ? "right-1" : "left-1"
                           }`}

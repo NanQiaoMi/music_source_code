@@ -4,6 +4,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Crown, Plus, Radio, Sparkles } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useUIStore } from "@/store/uiStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useUserAccountStore } from "@/store/userAccountStore";
@@ -18,6 +19,7 @@ import {
 } from "@/components/layout/headerBreakpoints";
 
 export function HeaderToolbar() {
+  const router = useRouter();
   const { currentView, openPanel } = useUIStore();
   const { songs } = usePlaylistStore();
   const { neteaseUser } = useUserAccountStore();
@@ -147,6 +149,19 @@ export function HeaderToolbar() {
           {/* Apple 磨砂高光「管理曲库」胶囊（窄屏只留图标） */}
           <motion.a
             href="/data-manager"
+            onClick={(event) => {
+              if (
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              ) {
+                return;
+              }
+              event.preventDefault();
+              router.push("/data-manager");
+            }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className={`h-[36px] rounded-full bg-white/[0.08] hover:bg-white/[0.16] border border-white/10 text-white text-[12px] font-medium flex items-center transition-all shadow-sm whitespace-nowrap shrink-0 ${

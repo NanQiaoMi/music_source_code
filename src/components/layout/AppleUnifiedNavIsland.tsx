@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 import {
   Radio,
   Type,
@@ -88,6 +89,7 @@ export function AppleUnifiedNavIsland({
   isSearchOpen: isSearchOpenProp,
   hasActiveToast: hasActiveToastProp,
 }: AppleUnifiedNavIslandProps = {}) {
+  const router = useRouter();
   const openPanel = useUIStore((state) => state.openPanel);
   const isFullscreen = useUIStore((state) => state.isFullscreen);
   const toggleFullscreen = useUIStore((state) => state.toggleFullscreen);
@@ -223,7 +225,7 @@ export function AppleUnifiedNavIsland({
           label: "音乐库管理器",
           icon: <Database className="w-4 h-4 text-emerald-400" />,
           action: () => {
-            window.location.href = "/data-manager";
+            router.push("/data-manager");
           },
           desc: "全库索引与批量管理",
         },
