@@ -34,9 +34,15 @@ export function HeaderToolbar() {
       className="absolute top-0 left-0 right-0 z-50 pt-3 pb-3 px-4 md:px-6 select-none font-sans antialiased pointer-events-none"
       style={{ willChange: "transform, opacity" }}
     >
-      <div className="relative flex items-center justify-between max-w-[1800px] mx-auto w-full min-h-[44px] pointer-events-auto">
-        {/* 左侧栏: Apple 磨砂高光 Logo 徽标胶囊 */}
-        <div className="flex items-center justify-start shrink-0 min-w-0 z-10">
+      <div className="relative flex items-center max-w-[1800px] mx-auto w-full min-h-[44px] pointer-events-auto">
+        {/* 左侧栏: Apple 磨砂高光 Logo 徽标胶囊。
+            左右两栏都用 flex-1（basis 0）等分剩余空间，而**不是** shrink-0：
+            只有两栏等宽，夹在中间的岛才落在窗口中线上。
+            若左右各自按内容宽度（左 ~141、右 ~446），岛就只在「剩余空间」里居中，
+            中心会固定左偏 (右宽−左宽)/2 —— 1780px 窗口下实测偏 152px，肉眼很明显。
+            两侧 flex 项的 min-width 默认是 min-content，所以窄到放不下时
+            会自动退回「在剩余空间里居中」，此时仍有各自的 min-content 兜底。 */}
+        <div className="flex-1 flex items-center justify-start z-10">
           <div className="h-[36px] px-3 rounded-full bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.08] backdrop-blur-xl shadow-sm flex items-center gap-2 transition-all">
             <Logo size={22} className="shrink-0" />
             <div className="flex items-baseline gap-1.5 min-w-0">
@@ -53,16 +59,16 @@ export function HeaderToolbar() {
         </div>
 
         {/* 中间栏: 悬浮玻璃岛。
-            这里刻意**不再用 absolute left-1/2 绝对居中**：绝对定位使它脱离文档流，
-            与右侧集群互不让位，只要 岛右缘 > 右集群左缘 就必然重叠（实测 1280 重叠 180px、
-            1024 重叠 162px，且「音源管理」按钮会被别的按钮盖住点不到）。
-            改为 flex 兄弟后由布局引擎保证永不重叠，文字标签也只在真的放不下时才收起。 */}
-        <div className="flex-1 min-w-0 flex justify-center items-center z-20 pointer-events-auto px-2">
+            不回到 absolute left-1/2：绝对定位使它脱离文档流、与右侧集群互不让位，
+            只要 岛右缘 > 右集群左缘 就必然重叠（实测 1280 重叠 180px、1024 重叠 162px，
+            且「音源管理」按钮会被别的按钮盖住点不到）。留在文档流里由布局引擎保证永不重叠，
+            居中则交给上面两栏的 flex-1 等宽来完成。 */}
+        <div className="shrink-0 flex justify-center items-center z-20 pointer-events-auto px-2">
           <AppleUnifiedNavIsland />
         </div>
 
-        {/* 右侧栏: AI 找歌 + 音源管理 + 多平台账号胶囊 + 管理曲库 */}
-        <div className="flex items-center justify-end gap-2.5 shrink-0 z-10 ml-auto">
+        {/* 右侧栏: AI 找歌 + 音源管理 + 多平台账号胶囊 + 管理曲库（等宽见左侧栏注释） */}
+        <div className="flex-1 flex items-center justify-end gap-2.5 z-10">
           {/* AI 找歌助手入口（窄屏只留图标） */}
           <button
             type="button"
