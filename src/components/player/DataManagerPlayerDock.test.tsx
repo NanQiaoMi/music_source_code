@@ -86,10 +86,10 @@ const resetPlaybackStores = () => {
 
 const loadDock = async () => {
   const module = await import("./DataManagerPlayerDock").catch(() => null);
-  expect(module?.DataManagerPlayerDock, "DataManagerPlayerDock should be exported").toBeTypeOf(
-    "function"
-  );
-  return module?.DataManagerPlayerDock;
+  const component = module?.DataManagerPlayerDock;
+  expect(component, "DataManagerPlayerDock should be exported").toBeTypeOf("function");
+  if (!component) throw new Error("DataManagerPlayerDock should be exported");
+  return component;
 };
 
 const renderDock = async (container: HTMLDivElement) => {
