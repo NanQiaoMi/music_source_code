@@ -31,26 +31,46 @@ export function DataManagerPlayerDock() {
   const isLoading = audioIsLoading || playerIsLoading;
   const error = useAudioStore((state) => state.error);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
-  const nextSong = useAudioStore((state) => state.nextSong);
-  const prevSong = useAudioStore((state) => state.prevSong);
   const seekTo = useAudioStore((state) => state.seekTo);
   const queue = useQueueStore((state) => state.queue);
   const openPanel = useUIStore((state) => state.openPanel);
 
-  const syncVisibleQueueToAudioStore = () => {
-    const { queue: visibleQueue, currentIndex } = useQueueStore.getState();
-    useAudioStore.setState({ queue: visibleQueue, currentIndex });
+  const handleQueueSkip = (direction: "previous" | "next") => {
+    const { queue: visibleQueue, currentIndex: visibleIndex } = useQueueStore.getState();
+    if (visibleQueue.length === 0) return;
+    const safeVisibleIndex = Math.max(0, Math.min(visibleIndex, visibleQueue.length - 1));
+
+    const activeSong =
+      useAudioStore.getState().currentSong || usePlayerStore.getState().currentSong;
+    const activeIndex = activeSong
+      ? visibleQueue.findIndex((song) => song.id === activeSong.id)
+      : -1;
+    const audioState = useAudioStore.getState();
+
+    if (activeIndex >= 0 || audioState.loopMode === "shuffle") {
+      useAudioStore.setState({
+        queue: visibleQueue,
+        currentIndex: activeIndex >= 0 ? activeIndex : safeVisibleIndex,
+      });
+      const alignedAudioState = useAudioStore.getState();
+      if (direction === "next") alignedAudioState.nextSong();
+      else alignedAudioState.prevSong();
+      return;
+    }
+
+    // If the playing song was removed from the visible queue, currentIndex points at the next
+    // candidate. Select that item for Next; Previous selects the item immediately before it.
+    const targetIndex =
+      direction === "next"
+        ? safeVisibleIndex
+        : (safeVisibleIndex - 1 + visibleQueue.length) % visibleQueue.length;
+    audioState.playQueue(visibleQueue, targetIndex);
   };
 
-  const handleNextSong = () => {
-    syncVisibleQueueToAudioStore();
-    nextSong();
-  };
-
-  const handlePreviousSong = () => {
-    syncVisibleQueueToAudioStore();
-    prevSong();
-  };
+  const currentSongIsQueued = Boolean(
+    currentSong && queue.some((song) => song.id === currentSong.id)
+  );
+  const isQueueSkipDisabled = currentSongIsQueued ? queue.length <= 1 : queue.length === 0;
 
   if (!currentSong) return null;
 
@@ -138,8 +158,8 @@ export function DataManagerPlayerDock() {
               type="button"
               aria-label="上一首"
               title="上一首"
-              disabled={queue.length <= 1}
-              onClick={handlePreviousSong}
+              disabled={isQueueSkipDisabled}
+              onClick={() => handleQueueSkip("previous")}
               className="flex h-7 w-7 items-center justify-center rounded-full text-white/65 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 sm:h-9 sm:w-9"
             >
               <SkipBack aria-hidden="true" className="h-4 w-4" />
@@ -161,8 +181,8 @@ export function DataManagerPlayerDock() {
               type="button"
               aria-label="下一首"
               title="下一首"
-              disabled={queue.length <= 1}
-              onClick={handleNextSong}
+              disabled={isQueueSkipDisabled}
+              onClick={() => handleQueueSkip("next")}
               className="flex h-7 w-7 items-center justify-center rounded-full text-white/65 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 sm:h-9 sm:w-9"
             >
               <SkipForward aria-hidden="true" className="h-4 w-4" />

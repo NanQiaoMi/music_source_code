@@ -301,6 +301,145 @@ describe("DataManagerPlayerDock", () => {
     expect(useQueueStore.getState().currentIndex).toBe(1);
   });
 
+  it("aligns a queued current song by id before advancing", async () => {
+    useAudioStore.setState({
+      currentSong: firstSong,
+      currentTime: 14,
+      duration: firstSong.duration,
+      isPlaying: true,
+      queue: [firstSong, staleSong],
+      currentIndex: 1,
+      loopMode: "all",
+    });
+    useQueueStore.setState({ queue: [firstSong, secondSong, thirdSong], currentIndex: 2 });
+    root = await renderDock(container);
+
+    await clickButton(container.querySelector<HTMLButtonElement>('[aria-label="下一首"]'));
+
+    expect(useAudioStore.getState().currentSong?.id).toBe(secondSong.id);
+    expect(useQueueStore.getState().currentIndex).toBe(1);
+  });
+
+  it("selects the visible current-index candidate when the playing song was removed", async () => {
+    useAudioStore.setState({
+      currentSong: staleSong,
+      currentTime: 14,
+      duration: staleSong.duration,
+      isPlaying: true,
+      queue: [staleSong, secondSong],
+      currentIndex: 0,
+      loopMode: "all",
+    });
+    useQueueStore.setState({ queue: [firstSong, secondSong], currentIndex: 0 });
+    root = await renderDock(container);
+
+    await clickButton(container.querySelector<HTMLButtonElement>('[aria-label="下一首"]'));
+
+    expect(useAudioStore.getState().currentSong?.id).toBe(firstSong.id);
+    expect(useQueueStore.getState().currentIndex).toBe(0);
+  });
+
+  it("selects the queue item immediately before its current-index candidate when going back", async () => {
+    useAudioStore.setState({
+      currentSong: staleSong,
+      currentTime: 14,
+      duration: staleSong.duration,
+      isPlaying: true,
+      queue: [staleSong, thirdSong],
+      currentIndex: 0,
+      loopMode: "all",
+    });
+    useQueueStore.setState({ queue: [firstSong, secondSong, thirdSong], currentIndex: 1 });
+    root = await renderDock(container);
+
+    await clickButton(container.querySelector<HTMLButtonElement>('[aria-label="上一首"]'));
+
+    expect(useAudioStore.getState().currentSong?.id).toBe(firstSong.id);
+    expect(useQueueStore.getState().currentIndex).toBe(0);
+  });
+
+  it("keeps a single visible candidate playable after the current song was removed", async () => {
+    useAudioStore.setState({
+      currentSong: staleSong,
+      currentTime: 14,
+      duration: staleSong.duration,
+      isPlaying: true,
+      queue: [staleSong],
+      currentIndex: 0,
+      loopMode: "none",
+    });
+    useQueueStore.setState({ queue: [firstSong], currentIndex: 0 });
+    root = await renderDock(container);
+
+    const nextButton = container.querySelector<HTMLButtonElement>('[aria-label="下一首"]');
+    expect(nextButton?.disabled).toBe(false);
+    await clickButton(nextButton);
+
+    expect(useAudioStore.getState().currentSong?.id).toBe(firstSong.id);
+  });
+
+  it("preserves manual skip and single-loop mode while the current song is queued", async () => {
+    useAudioStore.setState({
+      currentSong: firstSong,
+      currentTime: 14,
+      duration: firstSong.duration,
+      isPlaying: true,
+      queue: [firstSong, staleSong],
+      currentIndex: 0,
+      loopMode: "single",
+    });
+    useQueueStore.setState({ queue: [firstSong, secondSong], currentIndex: 0 });
+    root = await renderDock(container);
+
+    await clickButton(container.querySelector<HTMLButtonElement>('[aria-label="下一首"]'));
+
+    expect(useAudioStore.getState().currentSong?.id).toBe(secondSong.id);
+    expect(useAudioStore.getState().loopMode).toBe("single");
+  });
+
+  it("keeps shuffle selection random after aligning the current queued song", async () => {
+    useAudioStore.setState({
+      currentSong: firstSong,
+      currentTime: 14,
+      duration: firstSong.duration,
+      isPlaying: true,
+      queue: [firstSong, staleSong],
+      currentIndex: 1,
+      loopMode: "shuffle",
+    });
+    useQueueStore.setState({ queue: [firstSong, secondSong, thirdSong], currentIndex: 2 });
+    const random = vi.spyOn(Math, "random").mockReturnValue(0.75);
+    root = await renderDock(container);
+
+    await clickButton(container.querySelector<HTMLButtonElement>('[aria-label="下一首"]'));
+
+    expect(useAudioStore.getState().currentSong?.id).toBe(thirdSong.id);
+    expect(useAudioStore.getState().loopMode).toBe("shuffle");
+    random.mockRestore();
+  });
+
+  it("does not expose skip actions when the visible queue is empty", async () => {
+    useAudioStore.setState({
+      currentSong: firstSong,
+      currentTime: 14,
+      duration: firstSong.duration,
+      isPlaying: true,
+      queue: [firstSong],
+      currentIndex: 0,
+    });
+    useQueueStore.setState({ queue: [], currentIndex: 0 });
+    root = await renderDock(container);
+
+    const previousButton = container.querySelector<HTMLButtonElement>('[aria-label="上一首"]');
+    const nextButton = container.querySelector<HTMLButtonElement>('[aria-label="下一首"]');
+
+    expect(previousButton?.disabled).toBe(true);
+    expect(nextButton?.disabled).toBe(true);
+    await clickButton(previousButton);
+    await clickButton(nextButton);
+    expect(useAudioStore.getState().currentSong?.id).toBe(firstSong.id);
+  });
+
   it.each([
     { isLoading: true, error: null, status: "正在加载" },
     {
