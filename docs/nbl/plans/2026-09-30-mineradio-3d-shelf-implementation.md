@@ -136,8 +136,9 @@ Level 2:           Task 5 (global spec/quality review, fixes, static validation)
 
 - `git diff --check 1c37aad..HEAD`：通过。
 - `npx eslint src/components/library/Shelf3DView.tsx src/components/library/shelf3dMotion.ts src/components/library/Shelf3DStaticFallback.tsx --max-warnings=99999`：通过。
-- `npx tsc --noEmit --incremental false --pretty false`：通过。首次与生产构建并行执行时，`npm run clean` 清理 `.next` 导致缺少生成类型；在构建结束后顺序重跑通过。
-- `npm run build`：通过，编译、类型检查、28 个静态页面生成及构建追踪均完成。Next.js 输出多 lockfile 导致的 workspace root 提示，不影响构建。
+- `npx tsc --noEmit --incremental false --pretty false`：在生产构建结束后顺序运行，退出码为 0。首次并行启动时，构建的 `npm run clean` 清理 `.next`，导致独立检查暂时找不到生成类型；顺序重跑通过。
+- `npm run build`：最终变更检查通过，编译、类型检查、28 个静态页面生成及构建追踪均完成。Next.js 输出多 lockfile 的 workspace root 提示及 Browserslist 数据较旧提示，不影响构建。
+- 代码复核：覆盖四项生命周期/回退问题及分类切换复核，最终复核未发现剩余具体问题。
 - Vitest、浏览器交互和设备验收：未执行；没有用户明确要求运行测试，且本计划禁止把未执行项标记为通过。
 - 开发服务：保持原有 `3025` 监听进程不变；未在主工作区重建 `.next`。
 
