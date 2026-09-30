@@ -5,6 +5,7 @@ export interface SpringState {
 
 const MAX_SPRING_STEP_SECONDS = 0.032;
 const EXPONENTIAL_UNDERFLOW_LIMIT = 745;
+const MAX_ENVELOPE_STEP_MS = 32;
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
@@ -121,6 +122,7 @@ export function readBandEnergy(
 
 /**
  * Smooths a normalized envelope with separate attack and release time constants.
+ * The frame interval is capped at 32 ms; invalid intervals act as zero.
  * Zero time constants snap to the target; negative or invalid time constants hold.
  */
 export function approachEnvelope(
@@ -137,7 +139,7 @@ export function approachEnvelope(
     return safeTarget;
   }
 
-  const dt = Number.isNaN(dtMs) ? 0 : Math.max(0, dtMs);
+  const dt = Number.isFinite(dtMs) ? Math.max(0, Math.min(MAX_ENVELOPE_STEP_MS, dtMs)) : 0;
   if (dt === 0) {
     return safeCurrent;
   }
