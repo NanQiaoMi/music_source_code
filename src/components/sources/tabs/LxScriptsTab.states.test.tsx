@@ -68,4 +68,27 @@ describe("LxScriptsTab 状态", () => {
       container.remove();
     }
   });
+
+  it("脚本列表为窄屏文本保留可收缩列并允许元信息换行", async () => {
+    const { LxScriptsTab } = await import("./LxScriptsTab");
+    useSourceConfigStore.setState({
+      lxScripts: [
+        {
+          id: "responsive-script",
+          name: "测试用长标题扩展音源",
+          author: "测试作者",
+          version: "1.0.0",
+          description: "窄屏脚本卡片说明",
+          enabled: true,
+          lastUpdated: 0,
+          supportedActions: ["search"],
+        },
+      ],
+    });
+
+    const html = renderToStaticMarkup(<LxScriptsTab />);
+
+    expect(html).toContain("min-w-0 flex-1");
+    expect(html).toContain("flex flex-wrap items-center gap-x-2 gap-y-1");
+  });
 });

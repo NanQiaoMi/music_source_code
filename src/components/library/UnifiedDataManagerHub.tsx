@@ -71,12 +71,14 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
 
   const activeTab = activeHubTab || initialTab;
   const [visitedTabs, setVisitedTabs] = useState<Set<HubTabKey>>(new Set([activeTab]));
+  const shouldRenderTab = (tab: HubTabKey) => visitedTabs.has(tab) || activeTab === tab;
 
   const handleSelectTab = (tab: HubTabKey) => {
     setActiveHubTab(tab);
     setVisitedTabs((prev) => {
-      if (prev.has(tab)) return prev;
+      if (prev.has(activeTab) && prev.has(tab)) return prev;
       const next = new Set(prev);
+      next.add(activeTab);
       next.add(tab);
       return next;
     });
@@ -265,7 +267,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
           isStandalonePage ? "pb-32 md:pb-32" : "pb-4 md:pb-6"
         }`}
       >
-        {visitedTabs.has("dashboard") && (
+        {shouldRenderTab("dashboard") && (
           <div
             className={`w-full transition-opacity duration-150 transform-gpu ${
               activeTab === "dashboard"
@@ -277,7 +279,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
           </div>
         )}
 
-        {visitedTabs.has("lx_search") && (
+        {shouldRenderTab("lx_search") && (
           <div
             className={`w-full transition-opacity duration-150 transform-gpu ${
               activeTab === "lx_search"
@@ -289,7 +291,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
           </div>
         )}
 
-        {visitedTabs.has("cloud") && (
+        {shouldRenderTab("cloud") && (
           <div
             className={`w-full transition-opacity duration-150 transform-gpu ${
               activeTab === "cloud" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
@@ -299,7 +301,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
           </div>
         )}
 
-        {visitedTabs.has("downloads") && (
+        {shouldRenderTab("downloads") && (
           <div
             className={`w-full transition-opacity duration-150 transform-gpu ${
               activeTab === "downloads"
@@ -311,7 +313,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
           </div>
         )}
 
-        {visitedTabs.has("playlists") && (
+        {shouldRenderTab("playlists") && (
           <div
             className={`w-full transition-opacity duration-150 transform-gpu ${
               activeTab === "playlists"
@@ -323,7 +325,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
           </div>
         )}
 
-        {visitedTabs.has("local") && (
+        {shouldRenderTab("local") && (
           <div
             className={`w-full transition-opacity duration-150 transform-gpu ${
               activeTab === "local" ? "block opacity-100" : "hidden opacity-0 pointer-events-none"
@@ -335,7 +337,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
           </div>
         )}
 
-        {visitedTabs.has("health_storage") && (
+        {shouldRenderTab("health_storage") && (
           <div
             className={`w-full transition-opacity duration-150 transform-gpu ${
               activeTab === "health_storage"

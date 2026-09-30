@@ -43,12 +43,12 @@ describe("/data-manager queue panel host", () => {
     await act(async () => root.render(<DataManagerPage />));
 
     await act(async () => useUIStore.getState().openPanel("queue"));
-    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    await act(async () => {
+      await vi.waitFor(() =>
+        expect(container.querySelector('[data-testid="loaded-queue-panel"]')).not.toBeNull()
+      );
+    });
 
-    expect(
-      container.querySelector('[data-testid="loaded-queue-panel"]'),
-      container.innerHTML
-    ).not.toBeNull();
     expect(container.querySelector('[role="dialog"][aria-label="播放队列"]')).not.toBeNull();
 
     await act(async () => {

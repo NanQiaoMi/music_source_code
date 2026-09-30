@@ -157,6 +157,21 @@ export const LxMusicSearchTab: React.FC = () => {
     setIsSearching(false);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      searchRequestSequence.current += 1;
+    };
+  }, []);
+
+  const updateKeyword = useCallback(
+    (nextKeyword: string) => {
+      invalidatePendingSearch();
+      setSearchError(null);
+      setKeyword(nextKeyword);
+    },
+    [invalidatePendingSearch, setKeyword]
+  );
+
   // 表格多选
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -714,7 +729,7 @@ export const LxMusicSearchTab: React.FC = () => {
               <input
                 type="text"
                 value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
+                onChange={(e) => updateKeyword(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") triggerSearchOrPromptLogin();
                 }}
@@ -728,7 +743,7 @@ export const LxMusicSearchTab: React.FC = () => {
               {keyword && (
                 <button
                   type="button"
-                  onClick={() => setKeyword("")}
+                  onClick={() => updateKeyword("")}
                   className="w-6 h-6 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -914,7 +929,7 @@ export const LxMusicSearchTab: React.FC = () => {
                 key={tag}
                 type="button"
                 onClick={() => {
-                  setKeyword(tag);
+                  updateKeyword(tag);
                   if (isCurrentTabLocked) {
                     triggerSearchOrPromptLogin();
                     return;
@@ -1189,7 +1204,7 @@ export const LxMusicSearchTab: React.FC = () => {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setKeyword(song.artist);
+                            updateKeyword(song.artist);
                             handleSearch(song.artist);
                           }}
                           className="text-xs text-white/60 hover:text-white truncate hover:underline transition-colors text-left"

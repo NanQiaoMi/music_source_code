@@ -256,25 +256,31 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
                 {lxScripts.map((script) => (
                   <div
                     key={script.id}
-                    className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-between gap-4"
+                    className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
                       <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 mt-0.5">
                         <Code2 className="w-4 h-4 text-cyan-400" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-white">{script.name}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="break-words text-sm font-semibold text-white">
+                            {script.name}
+                          </span>
                           <span className="px-1.5 py-0.2 rounded text-[10px] bg-white/10 text-white/70">
                             v{script.version}
                           </span>
-                          <span className="text-[10px] text-white/40">作者: {script.author}</span>
+                          <span className="break-words text-[10px] text-white/40">
+                            作者: {script.author}
+                          </span>
                         </div>
-                        <p className="text-xs text-white/50 mt-1">{script.description}</p>
+                        <p className="mt-1 break-words text-xs text-white/50">
+                          {script.description}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex shrink-0 items-center justify-end gap-3">
                       <button
                         type="button"
                         onClick={() => toggleLXScript(script.id)}

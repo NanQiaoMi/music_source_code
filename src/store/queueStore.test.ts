@@ -184,6 +184,22 @@ describe("queueStore", () => {
       expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual(["a", "b"]);
     });
 
+    it("should remove only the selected duplicate queue occurrence and keep the active index aligned", () => {
+      const repeatedSong = createMockSong("repeat");
+      const activeDuplicate = { ...repeatedSong, title: "Active duplicate" };
+      const store = useQueueStore.getState();
+
+      store.setQueue([repeatedSong, createMockSong("middle"), activeDuplicate]);
+      store.setCurrentIndex(2);
+      store.removeFromQueue(0);
+
+      expect(useQueueStore.getState().queue.map((song) => song.title)).toEqual([
+        "Song middle",
+        "Active duplicate",
+      ]);
+      expect(useQueueStore.getState().currentIndex).toBe(1);
+    });
+
     it("should move a later queue item directly after the current song", () => {
       const store = useQueueStore.getState();
       store.setQueue([

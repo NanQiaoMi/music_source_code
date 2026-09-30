@@ -448,4 +448,139 @@ describe("LxMusicSearchTab", () => {
     });
     expect(container.querySelector('[data-state="loading"]')).toBeNull();
   });
+
+  it("invalidates a pending request when the keyword input changes", async () => {
+    const oldRequest = deferred<any>();
+    useDataManagerStore.setState({
+      keyword: "edit-keyword-old-query-104",
+      activeSourceTab: "all",
+      searchMode: "songs",
+      songResults: [],
+      playlistResults: [],
+    });
+    searchOnlineMusicSegmentedMock.mockReset().mockReturnValueOnce(oldRequest.promise);
+
+    await act(async () => root.render(<LxMusicSearchTab />));
+    await act(async () => {
+      useUserAccountStore.setState({ neteaseUser: { loggedIn: true } as any });
+    });
+    const searchButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("检索")
+    );
+    await act(async () => searchButton?.click());
+
+    const input = container.querySelector<HTMLInputElement>('input[type="text"]');
+    expect(input).not.toBeNull();
+    await act(async () => {
+      const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      valueSetter?.call(input, "edit-keyword-new-query-104");
+      input?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    await act(async () => {
+      oldRequest.resolve({ all: [makeSong("edit-stale-result", "编辑前旧结果")] });
+      await oldRequest.promise;
+    });
+
+    expect(useDataManagerStore.getState().keyword).toBe("edit-keyword-new-query-104");
+    expect(useDataManagerStore.getState().songResults).toEqual([]);
+    expect(container.textContent).not.toContain("编辑前旧结果");
+  });
+
+  it("invalidates a pending request when the clear-keyword control is used", async () => {
+    const oldRequest = deferred<any>();
+    useDataManagerStore.setState({
+      keyword: "clear-keyword-old-query-105",
+      activeSourceTab: "all",
+      searchMode: "songs",
+      songResults: [],
+      playlistResults: [],
+    });
+    searchOnlineMusicSegmentedMock.mockReset().mockReturnValueOnce(oldRequest.promise);
+
+    await act(async () => root.render(<LxMusicSearchTab />));
+    await act(async () => {
+      useUserAccountStore.setState({ neteaseUser: { loggedIn: true } as any });
+    });
+    const searchButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("检索")
+    );
+    await act(async () => searchButton?.click());
+
+    const input = container.querySelector<HTMLInputElement>('input[type="text"]');
+    const clearButton = input?.parentElement?.querySelectorAll("button")[0];
+    expect(clearButton).toBeDefined();
+    await act(async () => clearButton?.click());
+
+    await act(async () => {
+      oldRequest.resolve({ all: [makeSong("clear-stale-result", "清空前旧结果")] });
+      await oldRequest.promise;
+    });
+
+    expect(useDataManagerStore.getState().keyword).toBe("");
+    expect(useDataManagerStore.getState().songResults).toEqual([]);
+    expect(container.textContent).not.toContain("清空前旧结果");
+  });
+
+  it("does not let an unmounted search instance overwrite results after remount", async () => {
+    const oldRequest = deferred<any>();
+    const newRequest = deferred<any>();
+    useDataManagerStore.setState({
+      keyword: "unmount-old-query-106",
+      activeSourceTab: "all",
+      searchMode: "songs",
+      songResults: [],
+      playlistResults: [],
+    });
+    searchOnlineMusicSegmentedMock
+      .mockReset()
+      .mockReturnValueOnce(oldRequest.promise)
+      .mockReturnValueOnce(newRequest.promise);
+
+    await act(async () => root.render(<LxMusicSearchTab />));
+    await act(async () => {
+      useUserAccountStore.setState({ neteaseUser: { loggedIn: true } as any });
+    });
+    const firstSearchButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("检索")
+    );
+    await act(async () => firstSearchButton?.click());
+    await act(async () => root.unmount());
+
+    useDataManagerStore.setState({
+      keyword: "unmount-new-query-106",
+      activeSourceTab: "all",
+      searchMode: "songs",
+      songResults: [],
+      playlistResults: [],
+    });
+    useUserAccountStore.setState({ neteaseUser: { loggedIn: false } as any });
+    root = createRoot(container);
+    await act(async () => root.render(<LxMusicSearchTab />));
+    await act(async () => {
+      useUserAccountStore.setState({ neteaseUser: { loggedIn: true } as any });
+    });
+    const secondSearchButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("检索")
+    );
+    await act(async () => secondSearchButton?.click());
+
+    await act(async () => {
+      oldRequest.resolve({ all: [makeSong("unmounted-stale", "卸载前旧结果")] });
+      await oldRequest.promise;
+    });
+    expect(useDataManagerStore.getState().songResults).toEqual([]);
+    expect(container.querySelector('[data-state="loading"]')).not.toBeNull();
+
+    await act(async () => {
+      newRequest.resolve({ all: [makeSong("remounted-current", "重新挂载新结果")] });
+      await newRequest.promise;
+    });
+
+    expect(useDataManagerStore.getState().songResults.map((song) => song.id)).toEqual([
+      "remounted-current",
+    ]);
+    expect(container.textContent).toContain("重新挂载新结果");
+    expect(container.textContent).not.toContain("卸载前旧结果");
+  });
 });
