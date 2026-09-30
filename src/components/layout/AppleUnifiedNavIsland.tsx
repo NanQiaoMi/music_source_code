@@ -34,6 +34,7 @@ import { useUIStore, PanelName } from "@/store/uiStore";
 import { useGestureStore } from "@/store/gestureStore";
 import { useVisualizationV8Store } from "@/store/visualizationV8Store";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { HEADER_COMPACT_QUERY } from "@/components/layout/headerBreakpoints";
 
 export interface NavHubSubItem {
   id: PanelName | string;
@@ -98,9 +99,9 @@ export function AppleUnifiedNavIsland({
   const storeHasToast = Array.isArray(toasts) && toasts.length > 0;
   const hasActiveToast = hasActiveToastProp ?? storeHasToast;
   const { isEnabled: isGestureEnabled, toggleGestureEnabled } = useGestureStore();
-  // ≤1319px 时把微按钮组收进溢出菜单，把横向空间留给岛内主导航与右侧入口。
-  // （不再有「重叠」问题：HeaderToolbar 已把岛改成 flex 兄弟，见其注释。）
-  const isCompactHeader = useMediaQuery("(max-width: 1319px)");
+  // 微按钮组收起（并让出左侧计数）的断点由 HeaderToolbar 共用，数字来历见 headerBreakpoints.ts：
+  // 岛收起后宽 612，配上右集群全量标签 446，正好让「岛居中」在 1600 以上成立。
+  const isCompactHeader = useMediaQuery(HEADER_COMPACT_QUERY);
   const [moreOpen, setMoreOpen] = useState(false);
 
   const [activeHubId, setActiveHubId] = useState<string | null>(null);
@@ -490,11 +491,12 @@ export function AppleUnifiedNavIsland({
         <div className="w-[1px] h-3.5 bg-white/10 mx-1 shrink-0" />
 
         {/* 3. 快捷微按钮组 (搜索 / 全屏 / 手势 / 快捷键)
-            宽屏内联；≤1319px 收进「更多」溢出菜单，只留搜索。
+            宽屏内联；<1680 收进「更多」溢出菜单，只留搜索。
             这条断点最初的理由是「导航岛会压住右侧集群」——那个理由是错的：
             当时岛用 absolute left-1/2 居中、脱离了文档流，才会与右侧集群重叠；
-            现在 HeaderToolbar 已把岛改回 flex 兄弟（见该文件注释），重叠在布局上不可能发生，
-            所以这里收起只是为了窄屏下少占一点横向空间。 */}
+            现在 HeaderToolbar 已把岛改回 flex 兄弟（见该文件注释），重叠在布局上不可能发生。
+            现在它服务于另一条要求：岛要在窗口居中，就得让左右两栏等宽，
+            而岛全量时宽 703，需要 1643px 才放得下（算法见 headerBreakpoints.ts）。 */}
         <div className="flex items-center gap-0.5 px-0.5">
           <button
             type="button"
