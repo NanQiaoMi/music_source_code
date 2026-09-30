@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as THREE from "three";
 import { getAudioAnalyser, getAudioContext } from "@/hooks/useAudioPlayer";
 import { usePlaylistStore, Song } from "@/store/playlistStore";
@@ -71,15 +71,23 @@ export interface ShelfItem {
 const SHELF_MAX_RENDER = 11;
 const HALF_WINDOW = Math.floor(SHELF_MAX_RENDER / 2); // 5
 
+function getClampedShelfIndex(index: number, count: number): number {
+  if (count <= 0 || !Number.isFinite(index)) return 0;
+  return Math.max(0, Math.min(count - 1, Math.trunc(index)));
+}
+
 // Only successfully loaded covers enter this shared, bounded image cache.
 const MAX_COVER_IMAGES = 18;
 const MAX_PENDING_COVER_IMAGES = 24;
+const PENDING_COVER_TIMEOUT_MS = 15_000;
 const FAILED_COVER_RETRY_MS = 60_000;
 const coverImageCache = new Map<string, HTMLImageElement>();
-const pendingCoverImages = new Map<
-  string,
-  { image: HTMLImageElement; callbacks: Set<() => void> }
->();
+interface PendingCoverImageRequest {
+  image: HTMLImageElement;
+  callbacks: Set<() => void>;
+  timeoutId: ReturnType<typeof setTimeout> | null;
+}
+const pendingCoverImages = new Map<string, PendingCoverImageRequest>();
 const failedCoverImages = new Map<string, number>();
 const MAX_FAILED_COVER_IMAGES = 32;
 const MAX_SCENE_TEXTURES = 16;
@@ -133,23 +141,44 @@ function getOrLoadCoverImage(
   if (pendingCoverImages.size >= MAX_PENDING_COVER_IMAGES) return null;
 
   const image = new Image();
-  const callbacks = new Set<() => void>([onLoaded]);
-  pendingCoverImages.set(url, { image, callbacks });
+  const request: PendingCoverImageRequest = {
+    image,
+    callbacks: new Set([onLoaded]),
+    timeoutId: null,
+  };
+  pendingCoverImages.set(url, request);
+  const releasePendingRequest = () => {
+    if (pendingCoverImages.get(url) !== request) return false;
+    pendingCoverImages.delete(url);
+    if (request.timeoutId !== null) {
+      clearTimeout(request.timeoutId);
+      request.timeoutId = null;
+    }
+    image.onload = null;
+    image.onerror = null;
+    return true;
+  };
+  request.timeoutId = setTimeout(() => {
+    if (!releasePendingRequest()) return;
+    request.callbacks.clear();
+  }, PENDING_COVER_TIMEOUT_MS);
   image.crossOrigin = "anonymous";
   image.onload = () => {
-    const request = pendingCoverImages.get(url);
-    pendingCoverImages.delete(url);
+    if (!releasePendingRequest()) return;
     if (image.naturalWidth > 0 && image.naturalHeight > 0) {
       failedCoverImages.delete(url);
       rememberCoverImage(url, image);
-      request?.callbacks.forEach((callback) => callback());
+      request.callbacks.forEach((callback) => callback());
+      request.callbacks.clear();
       return;
     }
     rememberFailedCoverImage(url);
+    request.callbacks.clear();
   };
   image.onerror = () => {
-    pendingCoverImages.delete(url);
+    if (!releasePendingRequest()) return;
     rememberFailedCoverImage(url);
+    request.callbacks.clear();
   };
   image.src = url;
   return null;
@@ -783,11 +812,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const activeIndexRef = useRef<number>(0);
   const shelfItemsRef = useRef<ShelfItem[]>(activeShelfItems);
 
-  // 索引/交互回调里读它，属于渲染之后的时机；渲染期直接写 ref 违反 react-hooks/refs
-  useEffect(() => {
-    shelfItemsRef.current = activeShelfItems;
-  }, [activeShelfItems]);
-
   // Interaction & Physics refs
   const isDraggingRef = useRef(false);
   const dragVelocityRef = useRef(0);
@@ -826,6 +850,17 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     edgeMaterial: THREE.MeshBasicMaterial;
   }
   const cardSlotsRef = useRef<CardSlot[]>([]);
+
+  useLayoutEffect(() => {
+    if (shelfItemsRef.current === activeShelfItems) return;
+    shelfItemsRef.current = activeShelfItems;
+    const nextIndex = getClampedShelfIndex(activeIndex, activeShelfItems.length);
+    activeIndexRef.current = nextIndex;
+    targetScrollRef.current = nextIndex;
+    currentScrollRef.current = nextIndex;
+    lastDetentStepRef.current = nextIndex;
+    scrollVelocityRef.current = 0;
+  }, [activeShelfItems, activeIndex]);
 
   // 切换展示模式 (Side Shelf ⇋ Stage Shelf)
   const toggleDisplayMode = useCallback(() => {
@@ -870,6 +905,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     let frequencyData = new Uint8Array(0);
     let lowEnvelope = 0;
     let highEnvelope = 0;
+    let audioWasValid = false;
     let qualityTier = 0;
     let pixelRatio = 0;
     let adaptiveQualityActive = false;
@@ -879,6 +915,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     let frameTimes: number[] = [];
     let frameTimeHead = 0;
     let disposed = false;
+    let rendererLifecycleDisposed = false;
+    let teardownRendererLifecycle: (() => void) | null = null;
 
     const stopAnimation = () => {
       if (frameRequestId !== null) {
@@ -1129,7 +1167,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       targetModeBlendRef.current = displayModeRef.current === "side" ? 1 : 0;
       applyQuality(qualityTier);
 
-      let lastDetentStep = Math.round(currentScrollRef.current);
+      lastDetentStepRef.current = Math.round(currentScrollRef.current);
       let afterglowPhase = 0;
       let revealRendererStatus = true;
       const onAnimationFrame = (time: number) => {
@@ -1210,10 +1248,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         const dynamicBankRoll = Math.max(-0.15, Math.min(0.15, scrollVelocity * 0.012));
         const dynamicYawLead = Math.max(-0.12, Math.min(0.12, scrollVelocity * 0.01));
 
-        if (centerVirtualIndex !== lastDetentStep) {
+        if (centerVirtualIndex !== lastDetentStepRef.current) {
           const detentVelocity = Math.abs(scrollVelocity);
           playMechanicalGearTick(centerVirtualIndex, 1.0 + Math.min(detentVelocity, 1.5));
-          lastDetentStep = centerVirtualIndex;
           lastDetentStepRef.current = centerVirtualIndex;
           const currentItems = shelfItemsRef.current;
           if (currentItems.length > 0) {
@@ -1288,12 +1325,15 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           frequencyData.fill(0);
           lowTarget = 0;
           highTarget = 0;
-          lowEnvelope = 0;
-          highEnvelope = 0;
+          lowEnvelope = approachEnvelope(lowEnvelope, 0, dtMs, 80, 300);
+          highEnvelope = approachEnvelope(highEnvelope, 0, dtMs, 80, 300);
+          audioWasValid = false;
           analyser = null;
         } else {
-          lowEnvelope = approachEnvelope(lowEnvelope, lowTarget, dtMs, 80, 280);
-          highEnvelope = approachEnvelope(highEnvelope, highTarget, dtMs, 80, 280);
+          const attackMs = audioWasValid ? 80 : 400;
+          lowEnvelope = approachEnvelope(lowEnvelope, lowTarget, dtMs, attackMs, 300);
+          highEnvelope = approachEnvelope(highEnvelope, highTarget, dtMs, attackMs, 300);
+          audioWasValid = true;
         }
 
         afterglowPhase += dt;
@@ -1389,7 +1429,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         try {
           rendererInstance.render(sceneInstance, cameraInstance);
         } catch {
-          stopAnimation();
+          teardownRendererLifecycle?.();
           setWebglStatus("unavailable");
           return;
         }
@@ -1424,6 +1464,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         if (event.matches) {
           lowEnvelope = 0;
           highEnvelope = 0;
+          audioWasValid = false;
           frequencyData.fill(0);
         }
         if (particleGeo) particles.visible = !event.matches;
@@ -1465,26 +1506,13 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         else applyQuality(qualityTier);
       };
 
-      canvas.addEventListener("webglcontextlost", onContextLost, false);
-      canvas.addEventListener("webglcontextrestored", onContextRestored, false);
-      document.addEventListener("visibilitychange", onVisibilityChange);
-      if (typeof reducedMotionQuery.addEventListener === "function") {
-        reducedMotionQuery.addEventListener("change", onReducedMotionChange);
-      } else {
-        reducedMotionQuery.addListener(onReducedMotionChange);
-      }
       const resizeObserver =
         typeof ResizeObserver !== "undefined" ? new ResizeObserver(resizeRenderer) : null;
-      resizeObserver?.observe(container);
-      if (!resizeObserver) window.addEventListener("resize", resizeRenderer);
-
-      if (frameTimeHead === 0) {
-        nextQualityCheckAt = performance.now() + 1000;
-      }
-      startAnimation();
-
-      return () => {
+      const teardownRenderer = () => {
+        if (rendererLifecycleDisposed) return;
+        rendererLifecycleDisposed = true;
         effectActive = false;
+        stopAnimation();
         canvas.removeEventListener("webglcontextlost", onContextLost, false);
         canvas.removeEventListener("webglcontextrestored", onContextRestored, false);
         document.removeEventListener("visibilitychange", onVisibilityChange);
@@ -1495,21 +1523,36 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         }
         resizeObserver?.disconnect();
         if (!resizeObserver) window.removeEventListener("resize", resizeRenderer);
-        const pointerId = activePointerIdRef.current;
-        if (pointerId !== null && canvas.hasPointerCapture(pointerId)) {
-          canvas.releasePointerCapture(pointerId);
-        }
-        activePointerIdRef.current = null;
-        isDraggingRef.current = false;
-        hasDraggedRef.current = false;
+        releasePointerOnResize();
         disposeScene();
       };
+      teardownRendererLifecycle = teardownRenderer;
+
+      canvas.addEventListener("webglcontextlost", onContextLost, false);
+      canvas.addEventListener("webglcontextrestored", onContextRestored, false);
+      document.addEventListener("visibilitychange", onVisibilityChange);
+      if (typeof reducedMotionQuery.addEventListener === "function") {
+        reducedMotionQuery.addEventListener("change", onReducedMotionChange);
+      } else {
+        reducedMotionQuery.addListener(onReducedMotionChange);
+      }
+      resizeObserver?.observe(container);
+      if (!resizeObserver) window.addEventListener("resize", resizeRenderer);
+
+      if (frameTimeHead === 0) {
+        nextQualityCheckAt = performance.now() + 1000;
+      }
+      startAnimation();
+
+      return teardownRenderer;
     } catch {
+      teardownRendererLifecycle?.();
       effectActive = false;
       disposeScene();
       const failureStatusTimer = setTimeout(() => setWebglStatus("unavailable"), 0);
       return () => {
         clearTimeout(failureStatusTimer);
+        teardownRendererLifecycle?.();
         disposeScene();
       };
     }
@@ -1958,7 +2001,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
   if (!isOpen) return null;
 
-  const currentActiveItem = activeShelfItems[activeIndex];
+  const displayedActiveIndex = getClampedShelfIndex(activeIndex, activeShelfItems.length);
+  const currentActiveItem = activeShelfItems[displayedActiveIndex];
 
   // 详情面板过滤后的曲目列表
   const filteredDetailSongs =
@@ -2014,7 +2058,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
                 subtitle,
                 cover,
               }))}
-              activeIndex={activeIndex}
+              activeIndex={displayedActiveIndex}
               onSelect={selectFallbackIndex}
               onPlay={handleFallbackPlay}
               onPrevious={handleFallbackPrevious}
