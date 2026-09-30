@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { ListMusic, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
 import { formatTime } from "@/utils/formatTime";
@@ -11,11 +12,23 @@ import { formatTime } from "@/utils/formatTime";
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 export function DataManagerPlayerDock() {
-  const currentSong = useAudioStore((state) => state.currentSong);
-  const currentTime = useAudioStore((state) => state.currentTime);
-  const duration = useAudioStore((state) => state.duration || state.currentSong?.duration || 0);
-  const isPlaying = useAudioStore((state) => state.isPlaying);
-  const isLoading = useAudioStore((state) => state.isLoading);
+  const audioSong = useAudioStore((state) => state.currentSong);
+  const playerSong = usePlayerStore((state) => state.currentSong);
+  const currentSong = audioSong || playerSong;
+  const audioCurrentTime = useAudioStore((state) => state.currentTime);
+  const playerCurrentTime = usePlayerStore((state) => state.currentTime);
+  const currentTime = audioSong ? audioCurrentTime : playerCurrentTime;
+  const audioDuration = useAudioStore((state) => state.duration);
+  const playerDuration = usePlayerStore((state) => state.duration);
+  const duration = audioSong
+    ? audioDuration || audioSong.duration || 0
+    : playerDuration || playerSong?.duration || 0;
+  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
+  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
+  const isPlaying = audioIsPlaying || playerIsPlaying;
+  const audioIsLoading = useAudioStore((state) => state.isLoading);
+  const playerIsLoading = usePlayerStore((state) => state.isLoading);
+  const isLoading = audioIsLoading || playerIsLoading;
   const error = useAudioStore((state) => state.error);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const nextSong = useAudioStore((state) => state.nextSong);
@@ -23,6 +36,21 @@ export function DataManagerPlayerDock() {
   const seekTo = useAudioStore((state) => state.seekTo);
   const queue = useQueueStore((state) => state.queue);
   const openPanel = useUIStore((state) => state.openPanel);
+
+  const syncVisibleQueueToAudioStore = () => {
+    const { queue: visibleQueue, currentIndex } = useQueueStore.getState();
+    useAudioStore.setState({ queue: visibleQueue, currentIndex });
+  };
+
+  const handleNextSong = () => {
+    syncVisibleQueueToAudioStore();
+    nextSong();
+  };
+
+  const handlePreviousSong = () => {
+    syncVisibleQueueToAudioStore();
+    prevSong();
+  };
 
   if (!currentSong) return null;
 
@@ -111,7 +139,7 @@ export function DataManagerPlayerDock() {
               aria-label="上一首"
               title="上一首"
               disabled={queue.length <= 1}
-              onClick={prevSong}
+              onClick={handlePreviousSong}
               className="flex h-7 w-7 items-center justify-center rounded-full text-white/65 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 sm:h-9 sm:w-9"
             >
               <SkipBack aria-hidden="true" className="h-4 w-4" />
@@ -134,7 +162,7 @@ export function DataManagerPlayerDock() {
               aria-label="下一首"
               title="下一首"
               disabled={queue.length <= 1}
-              onClick={nextSong}
+              onClick={handleNextSong}
               className="flex h-7 w-7 items-center justify-center rounded-full text-white/65 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 sm:h-9 sm:w-9"
             >
               <SkipForward aria-hidden="true" className="h-4 w-4" />

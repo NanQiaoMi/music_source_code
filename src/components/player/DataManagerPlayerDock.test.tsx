@@ -60,6 +60,15 @@ const thirdSong: Song = {
   audioUrl: "file:///north-star.mp3",
 };
 
+const staleSong: Song = {
+  id: "song-stale",
+  title: "Stale Queue Entry",
+  artist: "Mimi",
+  duration: 195,
+  source: "local",
+  audioUrl: "file:///stale-queue-entry.mp3",
+};
+
 const resetPlaybackStores = () => {
   useAudioStore.setState({
     currentSong: null,
@@ -238,6 +247,58 @@ describe("DataManagerPlayerDock", () => {
 
     await clickButton(container.querySelector<HTMLButtonElement>('[aria-label^="播放队列"]'));
     expect(useUIStore.getState().panels.queue).toBe(true);
+  });
+
+  it("advances through QueueStore's visible queue when AudioStore has an older queue", async () => {
+    useAudioStore.setState({
+      currentSong: firstSong,
+      currentTime: 14,
+      duration: firstSong.duration,
+      isPlaying: true,
+      queue: [firstSong, staleSong],
+      currentIndex: 0,
+      loopMode: "all",
+    });
+    useQueueStore.setState({ queue: [firstSong, secondSong, thirdSong], currentIndex: 0 });
+    root = await renderDock(container);
+
+    await clickButton(container.querySelector<HTMLButtonElement>('[aria-label="下一首"]'));
+
+    expect(useAudioStore.getState().currentSong?.id).toBe(secondSong.id);
+    expect(useAudioStore.getState().queue.map((song) => song.id)).toEqual([
+      firstSong.id,
+      secondSong.id,
+      thirdSong.id,
+    ]);
+    expect(useAudioStore.getState().currentIndex).toBe(1);
+    expect(useAudioStore.getState().loopMode).toBe("all");
+    expect(useQueueStore.getState().currentIndex).toBe(1);
+  });
+
+  it("moves back through QueueStore's visible queue when AudioStore has an older queue", async () => {
+    useAudioStore.setState({
+      currentSong: thirdSong,
+      currentTime: 29,
+      duration: thirdSong.duration,
+      isPlaying: true,
+      queue: [firstSong, staleSong],
+      currentIndex: 0,
+      loopMode: "all",
+    });
+    useQueueStore.setState({ queue: [firstSong, secondSong, thirdSong], currentIndex: 2 });
+    root = await renderDock(container);
+
+    await clickButton(container.querySelector<HTMLButtonElement>('[aria-label="上一首"]'));
+
+    expect(useAudioStore.getState().currentSong?.id).toBe(secondSong.id);
+    expect(useAudioStore.getState().queue.map((song) => song.id)).toEqual([
+      firstSong.id,
+      secondSong.id,
+      thirdSong.id,
+    ]);
+    expect(useAudioStore.getState().currentIndex).toBe(1);
+    expect(useAudioStore.getState().loopMode).toBe("all");
+    expect(useQueueStore.getState().currentIndex).toBe(1);
   });
 
   it.each([
