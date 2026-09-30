@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as THREE from "three";
+import { getAudioAnalyser, getAudioContext } from "@/hooks/useAudioPlayer";
 import { usePlaylistStore, Song } from "@/store/playlistStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
@@ -12,6 +13,8 @@ import { useUserAccountStore } from "@/store/userAccountStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useIntegratedAudioPipeline } from "@/lib/audio/useIntegratedAudioPipeline";
 import { useUIStore } from "@/store/uiStore";
+import { approachEnvelope, readBandEnergy, stepCriticalSpring } from "./shelf3dMotion";
+import Shelf3DStaticFallback from "./Shelf3DStaticFallback";
 import {
   playTactileTick,
   playMechanicalGearTick,
@@ -68,44 +71,132 @@ export interface ShelfItem {
 const SHELF_MAX_RENDER = 11;
 const HALF_WINDOW = Math.floor(SHELF_MAX_RENDER / 2); // 5
 
-// 封面图片内存缓存
+function getClampedShelfIndex(index: number, count: number): number {
+  if (count <= 0 || !Number.isFinite(index)) return 0;
+  return Math.max(0, Math.min(count - 1, Math.trunc(index)));
+}
+
+// Only successfully loaded covers enter this shared, bounded image cache.
+const MAX_COVER_IMAGES = 18;
+const MAX_PENDING_COVER_IMAGES = 24;
+const PENDING_COVER_TIMEOUT_MS = 15_000;
+const FAILED_COVER_RETRY_MS = 60_000;
 const coverImageCache = new Map<string, HTMLImageElement>();
-// Three.js 显存级持久化 CanvasTexture 缓存 (按 item.id + active 状态缓存，切歌时 0 耗时纹理指针直连，实现真 120 FPS 满帧流转)
-const threeTextureCache = new Map<string, THREE.CanvasTexture>();
+interface PendingCoverImageRequest {
+  image: HTMLImageElement;
+  callbacks: Set<() => void>;
+  timeoutId: ReturnType<typeof setTimeout> | null;
+}
+const pendingCoverImages = new Map<string, PendingCoverImageRequest>();
+const failedCoverImages = new Map<string, number>();
+const MAX_FAILED_COVER_IMAGES = 32;
+const MAX_SCENE_TEXTURES = 16;
+
+function rememberCoverImage(url: string, image: HTMLImageElement) {
+  coverImageCache.delete(url);
+  coverImageCache.set(url, image);
+  while (coverImageCache.size > MAX_COVER_IMAGES) {
+    const oldestUrl = coverImageCache.keys().next().value;
+    if (oldestUrl === undefined) break;
+    coverImageCache.delete(oldestUrl);
+  }
+}
+
+function rememberFailedCoverImage(url: string) {
+  failedCoverImages.delete(url);
+  failedCoverImages.set(url, Date.now());
+  while (failedCoverImages.size > MAX_FAILED_COVER_IMAGES) {
+    const oldestUrl = failedCoverImages.keys().next().value;
+    if (oldestUrl === undefined) break;
+    failedCoverImages.delete(oldestUrl);
+  }
+}
 
 function getOrLoadCoverImage(
   url: string | undefined,
   onLoaded: () => void
 ): HTMLImageElement | null {
   if (!url) return null;
-  if (coverImageCache.has(url)) {
-    const img = coverImageCache.get(url)!;
-    return img.complete ? img : null;
+  const cachedImage = coverImageCache.get(url);
+  if (cachedImage) {
+    if (cachedImage.complete && cachedImage.naturalWidth > 0) {
+      coverImageCache.delete(url);
+      coverImageCache.set(url, cachedImage);
+      return cachedImage;
+    }
+    coverImageCache.delete(url);
   }
 
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.src = url;
-  img.onload = () => {
-    coverImageCache.set(url, img);
-    onLoaded();
+  const failedAt = failedCoverImages.get(url);
+  if (failedAt !== undefined) {
+    if (Date.now() - failedAt < FAILED_COVER_RETRY_MS) return null;
+    failedCoverImages.delete(url);
+  }
+
+  const pending = pendingCoverImages.get(url);
+  if (pending) {
+    pending.callbacks.add(onLoaded);
+    return null;
+  }
+  if (pendingCoverImages.size >= MAX_PENDING_COVER_IMAGES) return null;
+
+  const image = new Image();
+  const request: PendingCoverImageRequest = {
+    image,
+    callbacks: new Set([onLoaded]),
+    timeoutId: null,
   };
-  img.onerror = () => {
-    coverImageCache.set(url, img);
+  pendingCoverImages.set(url, request);
+  const releasePendingRequest = () => {
+    if (pendingCoverImages.get(url) !== request) return false;
+    pendingCoverImages.delete(url);
+    if (request.timeoutId !== null) {
+      clearTimeout(request.timeoutId);
+      request.timeoutId = null;
+    }
+    image.onload = null;
+    image.onerror = null;
+    return true;
   };
-  coverImageCache.set(url, img);
+  request.timeoutId = setTimeout(() => {
+    if (!releasePendingRequest()) return;
+    request.callbacks.clear();
+  }, PENDING_COVER_TIMEOUT_MS);
+  image.crossOrigin = "anonymous";
+  image.onload = () => {
+    if (!releasePendingRequest()) return;
+    if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+      failedCoverImages.delete(url);
+      rememberCoverImage(url, image);
+      request.callbacks.forEach((callback) => callback());
+      request.callbacks.clear();
+      return;
+    }
+    rememberFailedCoverImage(url);
+    request.callbacks.clear();
+  };
+  image.onerror = () => {
+    if (!releasePendingRequest()) return;
+    rememberFailedCoverImage(url);
+    request.callbacks.clear();
+  };
+  image.src = url;
   return null;
 }
 
-// 获取或创建持久化卡片 CanvasTexture 纹理 (Apple 顶级灰度透明液态玻璃与高光倒角)
+// 获取或创建持久化卡片 CanvasTexture 纹理 (暗色剧场卡片)
 function getOrCreateCardTexture(
   item: ShelfItem,
   isActive: boolean,
-  indexLabel: number
+  indexLabel: number,
+  textureCache: Map<string, THREE.CanvasTexture>
 ): THREE.CanvasTexture {
   const cacheKey = `${item.id}_${item.cover || "none"}_${isActive ? "1" : "0"}_${indexLabel}`;
-  if (threeTextureCache.has(cacheKey)) {
-    return threeTextureCache.get(cacheKey)!;
+  const cachedTexture = textureCache.get(cacheKey);
+  if (cachedTexture) {
+    textureCache.delete(cacheKey);
+    textureCache.set(cacheKey, cachedTexture);
+    return cachedTexture;
   }
 
   const w = 640;
@@ -113,7 +204,16 @@ function getOrCreateCardTexture(
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d");
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.generateMipmaps = false;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+
+  if (!ctx) {
+    textureCache.set(cacheKey, texture);
+    return texture;
+  }
 
   // 1. 卡片主体背景 - 极度通透的深黑灰液态玻璃底板
   drawRoundedRect(ctx, 14, 14, w - 28, h - 28, 36);
@@ -130,28 +230,16 @@ function getOrCreateCardTexture(
   ctx.fillStyle = bgGrad;
   ctx.fill();
 
-  // 2. 双层物理折射高光边缘 (硬件加速矢量双层描边，零 CPU shadowBlur 开销)
+  // 2. 暖中性细边，保持封面成为卡片最强色源
   ctx.save();
   drawRoundedRect(ctx, 14, 14, w - 28, h - 28, 36);
   if (isActive) {
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-    ctx.lineWidth = 6;
-    ctx.stroke();
-
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.92)";
+    ctx.strokeStyle = "rgba(238, 226, 208, 0.22)";
     ctx.lineWidth = 2.5;
     ctx.stroke();
-
-    const topGlint = ctx.createLinearGradient(50, 14, w - 50, 14);
-    topGlint.addColorStop(0, "rgba(255, 255, 255, 0)");
-    topGlint.addColorStop(0.5, "rgba(255, 255, 255, 1.0)");
-    topGlint.addColorStop(1, "rgba(255, 255, 255, 0)");
-    ctx.strokeStyle = topGlint;
-    ctx.lineWidth = 3.5;
-    ctx.stroke();
   } else {
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
-    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = "rgba(220, 210, 194, 0.10)";
+    ctx.lineWidth = 1.4;
     ctx.stroke();
   }
   ctx.restore();
@@ -185,31 +273,26 @@ function getOrCreateCardTexture(
   const coverX = (w - coverSize) / 2;
   const coverY = 92;
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.generateMipmaps = false;
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-
   const img = getOrLoadCoverImage(item.cover, () => {
+    if (textureCache.get(cacheKey) !== texture) return;
+    const loadedImg = coverImageCache.get(item.cover);
+    if (!loadedImg || loadedImg.naturalWidth <= 0) return;
     ctx.save();
     drawRoundedRect(ctx, coverX, coverY, coverSize, coverSize, 28);
     ctx.clip();
-    const loadedImg = getOrLoadCoverImage(item.cover, () => {});
-    if (loadedImg) {
-      ctx.drawImage(loadedImg, coverX, coverY, coverSize, coverSize);
-      const glassSheen = ctx.createLinearGradient(
-        coverX,
-        coverY,
-        coverX + coverSize,
-        coverY + coverSize
-      );
-      glassSheen.addColorStop(0, "rgba(255, 255, 255, 0.22)");
-      glassSheen.addColorStop(0.3, "rgba(255, 255, 255, 0.05)");
-      glassSheen.addColorStop(0.6, "transparent");
-      glassSheen.addColorStop(1, "rgba(0, 0, 0, 0.65)");
-      ctx.fillStyle = glassSheen;
-      ctx.fillRect(coverX, coverY, coverSize, coverSize);
-    }
+    ctx.drawImage(loadedImg, coverX, coverY, coverSize, coverSize);
+    const glassSheen = ctx.createLinearGradient(
+      coverX,
+      coverY,
+      coverX + coverSize,
+      coverY + coverSize
+    );
+    glassSheen.addColorStop(0, "rgba(255, 255, 255, 0.05)");
+    glassSheen.addColorStop(0.3, "rgba(255, 255, 255, 0.015)");
+    glassSheen.addColorStop(0.6, "transparent");
+    glassSheen.addColorStop(1, "rgba(0, 0, 0, 0.18)");
+    ctx.fillStyle = glassSheen;
+    ctx.fillRect(coverX, coverY, coverSize, coverSize);
     ctx.restore();
     texture.needsUpdate = true;
   });
@@ -257,10 +340,10 @@ function getOrCreateCardTexture(
     coverX + coverSize,
     coverY + coverSize
   );
-  glassSheen.addColorStop(0, "rgba(255, 255, 255, 0.22)");
-  glassSheen.addColorStop(0.3, "rgba(255, 255, 255, 0.05)");
+  glassSheen.addColorStop(0, "rgba(255, 255, 255, 0.08)");
+  glassSheen.addColorStop(0.3, "rgba(255, 255, 255, 0.02)");
   glassSheen.addColorStop(0.6, "transparent");
-  glassSheen.addColorStop(1, "rgba(0, 0, 0, 0.65)");
+  glassSheen.addColorStop(1, "rgba(0, 0, 0, 0.25)");
   ctx.fillStyle = glassSheen;
   ctx.fillRect(coverX, coverY, coverSize, coverSize);
   ctx.restore();
@@ -304,8 +387,8 @@ function getOrCreateCardTexture(
     ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
   }
   ctx.fill();
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.32)";
-  ctx.lineWidth = 1.8;
+  ctx.strokeStyle = "rgba(238, 226, 208, 0.16)";
+  ctx.lineWidth = 1.4;
   ctx.stroke();
 
   ctx.fillStyle = "#FFFFFF";
@@ -318,7 +401,7 @@ function getOrCreateCardTexture(
   ctx.restore();
 
   texture.needsUpdate = true;
-  threeTextureCache.set(cacheKey, texture);
+  textureCache.set(cacheKey, texture);
   return texture;
 }
 
@@ -342,183 +425,6 @@ function drawRoundedRect(
   ctx.lineTo(x, y + radius);
   ctx.quadraticCurveTo(x, y, x + radius, y);
   ctx.closePath();
-}
-
-// 烘焙 128x128 径向高斯柔焦微光贴图 (中心聚光、边缘平滑衰减，彻底消除方块感)
-function createBokehTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 128;
-  canvas.height = 128;
-  const ctx = canvas.getContext("2d")!;
-  const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  grad.addColorStop(0, "rgba(255, 255, 255, 1.0)");
-  grad.addColorStop(0.2, "rgba(255, 255, 255, 0.85)");
-  grad.addColorStop(0.45, "rgba(240, 248, 255, 0.35)");
-  grad.addColorStop(0.75, "rgba(210, 230, 255, 0.08)");
-  grad.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 128, 128);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-  return texture;
-}
-
-// 烘焙 1024x1024 顶级发光舞台光环地台贴图 (多重同心光环、向心辐射线、外发光虚化)
-function createStageHaloTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1024;
-  canvas.height = 1024;
-  const ctx = canvas.getContext("2d")!;
-  const cx = 512;
-  const cy = 512;
-
-  // 1. 中心聚光大圆台底色
-  const baseGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 500);
-  baseGrad.addColorStop(0, "rgba(99, 140, 255, 0.42)");
-  baseGrad.addColorStop(0.18, "rgba(79, 102, 241, 0.28)");
-  baseGrad.addColorStop(0.38, "rgba(30, 58, 138, 0.16)");
-  baseGrad.addColorStop(0.65, "rgba(15, 23, 42, 0.06)");
-  baseGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = baseGrad;
-  ctx.fillRect(0, 0, 1024, 1024);
-
-  // 2. 多重同心科技发光光环 (Concentric Stage Rings)
-  const rings = [
-    { r: 120, width: 2.2, alpha: 0.7, glow: 0.4 },
-    { r: 230, width: 2.5, alpha: 0.55, glow: 0.35 },
-    { r: 350, width: 3.2, alpha: 0.5, glow: 0.3 },
-    { r: 450, width: 2.0, alpha: 0.28, glow: 0.15 },
-  ];
-
-  rings.forEach((ring) => {
-    // 宽外发光
-    ctx.strokeStyle = `rgba(129, 140, 248, ${ring.glow})`;
-    ctx.lineWidth = ring.width * 3.5;
-    ctx.beginPath();
-    ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 核心高亮细线
-    ctx.strokeStyle = `rgba(224, 231, 255, ${ring.alpha})`;
-    ctx.lineWidth = ring.width;
-    ctx.beginPath();
-    ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
-    ctx.stroke();
-  });
-
-  // 3. 舞台向心辐射流光微线 (Radial Compass Rays)
-  const rayCount = 32;
-  for (let i = 0; i < rayCount; i++) {
-    const angle = (i / rayCount) * Math.PI * 2;
-    const isMajor = i % 4 === 0;
-    const innerR = 140;
-    const outerR = 440;
-
-    const x1 = cx + Math.cos(angle) * innerR;
-    const y1 = cy + Math.sin(angle) * innerR;
-    const x2 = cx + Math.cos(angle) * outerR;
-    const y2 = cy + Math.sin(angle) * outerR;
-
-    ctx.strokeStyle = isMajor ? "rgba(199, 210, 254, 0.40)" : "rgba(147, 197, 253, 0.14)";
-    ctx.lineWidth = isMajor ? 1.8 : 1.0;
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-  }
-
-  // 4. 环形刻度微点阵 (Concentric Dot Array)
-  const dotCount = 64;
-  for (let i = 0; i < dotCount; i++) {
-    const angle = (i / dotCount) * Math.PI * 2;
-    const r = 350;
-    const dx = cx + Math.cos(angle) * r;
-    const dy = cy + Math.sin(angle) * r;
-    ctx.fillStyle = i % 8 === 0 ? "rgba(255, 255, 255, 0.85)" : "rgba(165, 180, 252, 0.45)";
-    ctx.beginPath();
-    ctx.arc(dx, dy, i % 8 === 0 ? 2.5 : 1.4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-  return texture;
-}
-
-// 烘焙舞台垂直聚光光锥贴图 (Volumetric Spotlight Beam Texture)
-function createSpotlightBeamTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 512;
-  const ctx = canvas.getContext("2d")!;
-
-  // 纵向从顶到底衰减
-  const vGrad = ctx.createLinearGradient(128, 0, 128, 512);
-  vGrad.addColorStop(0, "rgba(255, 255, 255, 0.70)");
-  vGrad.addColorStop(0.12, "rgba(199, 210, 254, 0.42)");
-  vGrad.addColorStop(0.4, "rgba(129, 140, 248, 0.20)");
-  vGrad.addColorStop(0.75, "rgba(99, 102, 241, 0.08)");
-  vGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-  ctx.fillStyle = vGrad;
-  ctx.fillRect(0, 0, 256, 512);
-
-  // 横向双侧柔焦羽化遮罩
-  ctx.globalCompositeOperation = "destination-in";
-  const hGrad = ctx.createLinearGradient(0, 0, 256, 0);
-  hGrad.addColorStop(0, "rgba(0, 0, 0, 0)");
-  hGrad.addColorStop(0.28, "rgba(255, 255, 255, 0.65)");
-  hGrad.addColorStop(0.5, "rgba(255, 255, 255, 1.0)");
-  hGrad.addColorStop(0.72, "rgba(255, 255, 255, 0.65)");
-  hGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = hGrad;
-  ctx.fillRect(0, 0, 256, 512);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-  return texture;
-}
-
-// 烘焙 3D 宏大天幕极光贴图 (Epic Stage Aurora Nebula)
-function createStageNebulaTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 512;
-  const ctx = canvas.getContext("2d")!;
-
-  const nGrad = ctx.createRadialGradient(256, 220, 20, 256, 256, 256);
-  nGrad.addColorStop(0, "rgba(99, 102, 241, 0.48)");
-  nGrad.addColorStop(0.25, "rgba(59, 130, 246, 0.32)");
-  nGrad.addColorStop(0.55, "rgba(147, 51, 234, 0.18)");
-  nGrad.addColorStop(0.82, "rgba(15, 23, 42, 0.06)");
-  nGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = nGrad;
-  ctx.fillRect(0, 0, 512, 512);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-  return texture;
-}
-
-// 烘焙超大柔焦景深光斑贴图 (Large Bokeh Disc Texture)
-function createLargeBokehTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 128;
-  canvas.height = 128;
-  const ctx = canvas.getContext("2d")!;
-
-  const bGrad = ctx.createRadialGradient(64, 64, 4, 64, 64, 60);
-  bGrad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
-  bGrad.addColorStop(0.35, "rgba(199, 210, 254, 0.65)");
-  bGrad.addColorStop(0.7, "rgba(147, 197, 253, 0.20)");
-  bGrad.addColorStop(0.95, "rgba(129, 140, 248, 0.04)");
-  bGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = bGrad;
-  ctx.fillRect(0, 0, 128, 128);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-  return texture;
 }
 
 export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
@@ -581,6 +487,19 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const [showDetailPanel, setShowDetailPanel] = useState<boolean>(false);
   const [selectedShelfItem, setSelectedShelfItem] = useState<ShelfItem | null>(null);
   const [trackSearchQuery, setTrackSearchQuery] = useState<string>("");
+  const isAudioPlayingRef = useRef(isAudioPlaying);
+  const currentPlayingSongRef = useRef(currentPlayingSong);
+  const displayModeRef = useRef(displayMode);
+  const reducedMotionRef = useRef(false);
+
+  useEffect(() => {
+    isAudioPlayingRef.current = isAudioPlaying;
+    currentPlayingSongRef.current = currentPlayingSong;
+  }, [isAudioPlaying, currentPlayingSong]);
+
+  useEffect(() => {
+    displayModeRef.current = displayMode;
+  }, [displayMode]);
 
   // 构建歌单列表 (Playlists Mode，智能补全并确保不展示空 0 首)
   const playlistItems = useMemo<ShelfItem[]>(() => {
@@ -893,11 +812,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const activeIndexRef = useRef<number>(0);
   const shelfItemsRef = useRef<ShelfItem[]>(activeShelfItems);
 
-  // 索引/交互回调里读它，属于渲染之后的时机；渲染期直接写 ref 违反 react-hooks/refs
-  useEffect(() => {
-    shelfItemsRef.current = activeShelfItems;
-  }, [activeShelfItems]);
-
   // Interaction & Physics refs
   const isDraggingRef = useRef(false);
   const dragVelocityRef = useRef(0);
@@ -911,6 +825,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const reactUpdateTimerRef = useRef<NodeJS.Timeout | null>(null);
   const modeBlendRef = useRef(displayMode === "side" ? 1.0 : 0.0);
   const targetModeBlendRef = useRef(displayMode === "side" ? 1.0 : 0.0);
+  const scrollVelocityRef = useRef(0);
+  const modeBlendVelocityRef = useRef(0);
+  const activePointerIdRef = useRef<number | null>(null);
 
   // Mouse Parallax & 3D Gyroscope Tilt
   const mouseParallaxRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
@@ -920,23 +837,30 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cardsGroupRef = useRef<THREE.Group | null>(null);
-  const particlesRef = useRef<THREE.Points | null>(null);
   const contactShadowMeshRef = useRef<THREE.Mesh | null>(null);
-  const stageHaloMeshRef = useRef<THREE.Mesh | null>(null);
-  const spotlightConeRef = useRef<THREE.Mesh | null>(null);
-  const bokehOrbsRef = useRef<THREE.Points | null>(null);
-  const nebulaMeshRef = useRef<THREE.Mesh | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  const [webglStatus, setWebglStatus] = useState<"ready" | "unavailable" | "lost">("ready");
+  const [rendererGeneration, setRendererGeneration] = useState(0);
 
   // Virtualized Card Meshes
   interface CardSlot {
     mesh: THREE.Mesh;
     currentItemId: string | null;
     isActive: boolean;
-    rhythmPhase: number;
-    floatPhase: number;
+    edgeMaterial: THREE.MeshBasicMaterial;
   }
   const cardSlotsRef = useRef<CardSlot[]>([]);
+
+  useLayoutEffect(() => {
+    if (shelfItemsRef.current === activeShelfItems) return;
+    shelfItemsRef.current = activeShelfItems;
+    const nextIndex = getClampedShelfIndex(activeIndex, activeShelfItems.length);
+    activeIndexRef.current = nextIndex;
+    targetScrollRef.current = nextIndex;
+    currentScrollRef.current = nextIndex;
+    lastDetentStepRef.current = nextIndex;
+    scrollVelocityRef.current = 0;
+  }, [activeShelfItems, activeIndex]);
 
   // 切换展示模式 (Side Shelf ⇋ Stage Shelf)
   const toggleDisplayMode = useCallback(() => {
@@ -948,561 +872,756 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     });
   }, []);
 
-  // 初始化 Three.js 3D 舞台
+  const handleBrowseTypeChange = useCallback((nextBrowseType: ShelfBrowseType) => {
+    playTactileTick({ type: "snap" });
+    setBrowseType(nextBrowseType);
+    setActiveIndex(0);
+    activeIndexRef.current = 0;
+    targetScrollRef.current = 0;
+    currentScrollRef.current = 0;
+    lastDetentStepRef.current = 0;
+    scrollVelocityRef.current = 0;
+    dragVelocityRef.current = 0;
+  }, []);
+
+  // The renderer lifetime follows panel/renderer lifecycle only. Playback and mode state
+  // are sampled from refs so play/pause never rebuilds WebGL resources.
   useEffect(() => {
-    // 关闭面板时必须整块跳过、从而触发上一次的清理函数。
-    // 组件 return null 只是卸载了 canvas 元素，而渲染循环跑在闭包捕获的那个画布上，
-    // 会继续往已脱离文档的 WebGL 上下文里画，直到下一次 isPlaying 变化才停 —— 这是一条失控循环。
     if (!isOpen) return;
-    if (!canvasRef.current || !containerRef.current) return;
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
 
-    const width = containerRef.current.clientWidth || window.innerWidth;
-    const height = containerRef.current.clientHeight || window.innerHeight;
+    let scene: THREE.Scene | null = null;
+    let camera: THREE.PerspectiveCamera | null = null;
+    let renderer: THREE.WebGLRenderer | null = null;
+    let floorGeo: THREE.PlaneGeometry | null = null;
+    let floorMat: THREE.MeshStandardMaterial | null = null;
+    let floorSeamGeo: THREE.PlaneGeometry | null = null;
+    let floorSeamMat: THREE.MeshBasicMaterial | null = null;
+    let shadowTexture: THREE.Texture | null = null;
+    let contactShadowGeo: THREE.PlaneGeometry | null = null;
+    let contactShadowMat: THREE.MeshBasicMaterial | null = null;
+    let particleGeo: THREE.BufferGeometry | null = null;
+    let particleMat: THREE.PointsMaterial | null = null;
+    let cardGeo: THREE.PlaneGeometry | null = null;
+    let edgeGeo: THREE.ShapeGeometry | null = null;
+    let slots: CardSlot[] = [];
+    const sceneTextureCache = new Map<string, THREE.CanvasTexture>();
+    let frameRequestId: number | null = null;
+    let animationRunning = false;
+    let effectActive = true;
+    let contextLost = false;
+    let lastFrameTime: number | null = null;
+    let analyser: AnalyserNode | null = null;
+    let frequencyData = new Uint8Array(0);
+    let lowEnvelope = 0;
+    let highEnvelope = 0;
+    let audioWasValid = false;
+    let qualityTier = 0;
+    let pixelRatio = 0;
+    let adaptiveQualityActive = false;
+    let slowFpsDurationMs = 0;
+    let fastFpsDurationMs = 0;
+    let nextQualityCheckAt = 0;
+    let frameTimes: number[] = [];
+    let frameTimeHead = 0;
+    let disposed = false;
+    let rendererLifecycleDisposed = false;
+    let teardownRendererLifecycle: (() => void) | null = null;
 
-    // 1. Scene
-    const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x050711, 0.022);
-    sceneRef.current = scene;
-
-    // 2. Camera
-    const camera = new THREE.PerspectiveCamera(48, width / height, 0.1, 100);
-    camera.position.set(0, 0.35, 6.6);
-    cameraRef.current = camera;
-
-    // 3. Renderer
-    const renderer = new THREE.WebGLRenderer({
-      canvas: canvasRef.current,
-      antialias: true,
-      alpha: true,
-      powerPreference: "high-performance",
-    });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
-    rendererRef.current = renderer;
-
-    // 4. Lights (纯净白光、柔和环境光与聚光焦点灯)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.25);
-    scene.add(ambientLight);
-
-    const mainLight = new THREE.PointLight(0xffffff, 3.6, 25);
-    mainLight.position.set(0, 3.2, 5.2);
-    scene.add(mainLight);
-
-    const fillLight = new THREE.PointLight(0x93c5fd, 2.2, 22);
-    fillLight.position.set(-4.5, -0.4, 3.5);
-    scene.add(fillLight);
-
-    const rimLight = new THREE.DirectionalLight(0xe0e7ff, 1.4);
-    rimLight.position.set(6, 6, -2);
-    scene.add(rimLight);
-
-    // 5. Cards Group
-    const cardsGroup = new THREE.Group();
-    cardsGroupRef.current = cardsGroup;
-    scene.add(cardsGroup);
-
-    // 6. 舞台深邃黑曜石镜面地面与透视全息地网
-    const floorGeo = new THREE.PlaneGeometry(60, 60, 24, 24);
-    const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x050811,
-      roughness: 0.15,
-      metalness: 0.85,
-    });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -2.0;
-    scene.add(floor);
-
-    // 舞台全息流光透视地网 (0.22 优雅可见)
-    const grid = new THREE.GridHelper(44, 36, 0x6366f1, 0x1e293b);
-    grid.position.y = -1.99;
-    if (grid.material instanceof THREE.Material) {
-      grid.material.transparent = true;
-      grid.material.opacity = 0.22;
-    }
-    scene.add(grid);
-
-    // 6.1 舞台光环核心地台 (Stage Halo Luminous Pedestal)
-    const stageHaloTexture = createStageHaloTexture();
-    const stageHaloGeo = new THREE.PlaneGeometry(32, 26);
-    const stageHaloMat = new THREE.MeshBasicMaterial({
-      map: stageHaloTexture,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      opacity: 0.92,
-    });
-    const stageHaloMesh = new THREE.Mesh(stageHaloGeo, stageHaloMat);
-    stageHaloMesh.rotation.x = -Math.PI / 2;
-    stageHaloMesh.position.set(0, -1.97, 0.4);
-    stageHaloMeshRef.current = stageHaloMesh;
-    scene.add(stageHaloMesh);
-
-    // 6.2 3D 垂直聚光光锥 (Volumetric Stage Spotlight Cone)
-    const spotlightTexture = createSpotlightBeamTexture();
-    const spotlightGeo = new THREE.CylinderGeometry(0.7, 5.0, 10.0, 32, 1, true);
-    const spotlightMat = new THREE.MeshBasicMaterial({
-      map: spotlightTexture,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      opacity: 0.18,
-      side: THREE.DoubleSide,
-    });
-    const spotlightMesh = new THREE.Mesh(spotlightGeo, spotlightMat);
-    spotlightMesh.position.set(0, 3.0, 0.8);
-    spotlightConeRef.current = spotlightMesh;
-    scene.add(spotlightMesh);
-
-    // 7. 高斯径向渐变柔和地面微光投影 (Smooth Gaussian Radial Contact Halo)
-    const shadowCanvas = document.createElement("canvas");
-    shadowCanvas.width = 512;
-    shadowCanvas.height = 512;
-    const sCtx = shadowCanvas.getContext("2d")!;
-    const sGrad = sCtx.createRadialGradient(256, 256, 10, 256, 256, 240);
-    sGrad.addColorStop(0, "rgba(255, 255, 255, 0.38)");
-    sGrad.addColorStop(0.3, "rgba(147, 197, 253, 0.18)");
-    sGrad.addColorStop(0.65, "rgba(99, 102, 241, 0.06)");
-    sGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-    sCtx.fillStyle = sGrad;
-    sCtx.fillRect(0, 0, 512, 512);
-
-    const shadowTexture = new THREE.CanvasTexture(shadowCanvas);
-    const contactShadowGeo = new THREE.PlaneGeometry(5.6, 3.6);
-    const contactShadowMat = new THREE.MeshBasicMaterial({
-      map: shadowTexture,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-    const contactShadowMesh = new THREE.Mesh(contactShadowGeo, contactShadowMat);
-    contactShadowMesh.rotation.x = -Math.PI / 2;
-    contactShadowMesh.position.set(0, -1.96, 0.9);
-    contactShadowMeshRef.current = contactShadowMesh;
-    scene.add(contactShadowMesh);
-
-    // 8. 空间微光星尘 (220 颗多色微光粒子)
-    const particleCount = 220;
-    const particleGeo = new THREE.BufferGeometry();
-    const particlePos = new Float32Array(particleCount * 3);
-    const particleColors = new Float32Array(particleCount * 3);
-    const colorChoices = [
-      new THREE.Color(0xffffff),
-      new THREE.Color(0x93c5fd),
-      new THREE.Color(0xc7d2fe),
-      new THREE.Color(0xfef08a),
-    ];
-    for (let p = 0; p < particleCount; p++) {
-      const idx = p * 3;
-      particlePos[idx] = (Math.random() - 0.5) * 28;
-      particlePos[idx + 1] = (Math.random() - 0.5) * 16 + 1.2;
-      particlePos[idx + 2] = (Math.random() - 0.5) * 20;
-
-      const c = colorChoices[p % colorChoices.length];
-      particleColors[idx] = c.r;
-      particleColors[idx + 1] = c.g;
-      particleColors[idx + 2] = c.b;
-    }
-    particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePos, 3));
-    particleGeo.setAttribute("color", new THREE.BufferAttribute(particleColors, 3));
-
-    const bokehTexture = createBokehTexture();
-    const particleMat = new THREE.PointsMaterial({
-      size: 0.22,
-      map: bokehTexture,
-      transparent: true,
-      opacity: 0.6,
-      vertexColors: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-    const particles = new THREE.Points(particleGeo, particleMat);
-    particlesRef.current = particles;
-    scene.add(particles);
-
-    // 8.1 空间超大柔焦景深光斑 (18 颗前/中景大型 Bokeh Orbs)
-    const largeBokehCount = 18;
-    const largeBokehGeo = new THREE.BufferGeometry();
-    const largeBokehPos = new Float32Array(largeBokehCount * 3);
-    for (let p = 0; p < largeBokehCount; p++) {
-      const idx = p * 3;
-      largeBokehPos[idx] = (Math.random() - 0.5) * 24;
-      largeBokehPos[idx + 1] = (Math.random() - 0.5) * 12 + 0.5;
-      largeBokehPos[idx + 2] = (Math.random() - 0.5) * 14 + 1.0;
-    }
-    largeBokehGeo.setAttribute("position", new THREE.BufferAttribute(largeBokehPos, 3));
-    const largeBokehTexture = createLargeBokehTexture();
-    const largeBokehMat = new THREE.PointsMaterial({
-      size: 1.1,
-      map: largeBokehTexture,
-      transparent: true,
-      opacity: 0.28,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      color: 0xc7d2fe,
-    });
-    const largeBokehPoints = new THREE.Points(largeBokehGeo, largeBokehMat);
-    bokehOrbsRef.current = largeBokehPoints;
-    scene.add(largeBokehPoints);
-
-    // 8.2 3D 宏大天幕极光星云背景板 (Z: -9.5)
-    const nebulaTexture = createStageNebulaTexture();
-    const nebulaGeo = new THREE.PlaneGeometry(54, 34);
-    const nebulaMat = new THREE.MeshBasicMaterial({
-      map: nebulaTexture,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      color: new THREE.Color(0x6366f1),
-      opacity: 0.65,
-    });
-    const nebulaMesh = new THREE.Mesh(nebulaGeo, nebulaMat);
-    nebulaMesh.position.set(0, 2.8, -9.5);
-    nebulaMeshRef.current = nebulaMesh;
-    scene.add(nebulaMesh);
-
-    // 9. 创建 11 张虚拟化卡片 Mesh (Three.js 显存级持久化纹理直连)
-    const cardGeo = new THREE.PlaneGeometry(1.95, 2.45);
-    const slots: CardSlot[] = [];
-
-    for (let i = 0; i < SHELF_MAX_RENDER; i++) {
-      const cardMat = new THREE.MeshStandardMaterial({
-        roughness: 0.14,
-        metalness: 0.2,
-        transparent: true,
-        side: THREE.DoubleSide,
-      });
-
-      const mesh = new THREE.Mesh(cardGeo, cardMat);
-      mesh.userData = { slotIndex: i };
-      cardsGroup.add(mesh);
-
-      slots.push({
-        mesh,
-        currentItemId: null,
-        isActive: false,
-        rhythmPhase: Math.random() * 10,
-        floatPhase: i * 0.75,
-      });
-    }
-    cardSlotsRef.current = slots;
-
-    // 10. 渲染动画循环 (融合物理缓动与连续呼吸浮动)
-    let lastTime = performance.now();
-    const animate = (time: number) => {
-      const dt = Math.min((time - lastTime) / 1000, 0.1);
-      lastTime = time;
-
-      // 模式平滑插值 (0 = stage, 1 = side)
-      modeBlendRef.current += (targetModeBlendRef.current - modeBlendRef.current) * 0.08;
-      const modeBlend = modeBlendRef.current;
-
-      // 滚动位置平滑弹簧衰减 (拖拽时高响应 0.28，释放后丝滑减速 0.16)
-      const lerpSpeed = isDraggingRef.current ? 0.28 : 0.16;
-      currentScrollRef.current += (targetScrollRef.current - currentScrollRef.current) * lerpSpeed;
-      const scrollPos = currentScrollRef.current;
-      const centerVirtualIndex = Math.round(scrollPos);
-      const scrollVelocity = targetScrollRef.current - currentScrollRef.current;
-
-      // 动态速度倾角与转弯侧倾微动效 (Dynamic Velocity Bank & Yaw)
-      const dynamicBankRoll = Math.max(-0.15, Math.min(0.15, scrollVelocity * 0.04));
-      const dynamicYawLead = Math.max(-0.12, Math.min(0.12, scrollVelocity * 0.03));
-
-      // 检测是否跨越刻度并发出 PSP 机械齿轮咔哒音效
-      if (centerVirtualIndex !== lastDetentStepRef.current) {
-        const vel = Math.abs(targetScrollRef.current - currentScrollRef.current);
-        playMechanicalGearTick(centerVirtualIndex, 1.0 + Math.min(vel, 1.5));
-        lastDetentStepRef.current = centerVirtualIndex;
-
-        const currentItems = shelfItemsRef.current;
-        if (currentItems.length > 0) {
-          const normIdx =
-            ((centerVirtualIndex % currentItems.length) + currentItems.length) %
-            currentItems.length;
-          activeIndexRef.current = normIdx;
-
-          // 节流 React state 更新，避免高速切歌时每秒触发 30 次 DOM/HUD 重渲染造成 Three.js 掉帧
-          if (!reactUpdateTimerRef.current) {
-            reactUpdateTimerRef.current = setTimeout(() => {
-              reactUpdateTimerRef.current = null;
-              setActiveIndex(activeIndexRef.current);
-            }, 40);
-          }
-        }
+    const stopAnimation = () => {
+      if (frameRequestId !== null) {
+        cancelAnimationFrame(frameRequestId);
+        frameRequestId = null;
       }
-
-      // 鼠标视差与模式切换镜头景深推拉 (Camera Dolly Push/Pull on Mode Switch)
-      const mp = mouseParallaxRef.current;
-      mp.x += (mp.targetX - mp.x) * 0.05;
-      mp.y += (mp.targetY - mp.y) * 0.05;
-
-      if (cameraRef.current) {
-        const dollyZ = Math.sin(modeBlend * Math.PI) * 0.28;
-        cameraRef.current.position.x = mp.x * 0.65;
-        cameraRef.current.position.y = 0.35 + mp.y * 0.4;
-        cameraRef.current.position.z = 6.6 - dollyZ;
-        cameraRef.current.lookAt(0, 0, 0);
-      }
-
-      // 空间星尘粒子自转与音律呼吸微动效
-      if (particlesRef.current) {
-        particlesRef.current.rotation.y += 0.0003;
-        const pulseScale = 1.0 + Math.sin(time * 0.002) * 0.05;
-        particlesRef.current.scale.set(pulseScale, pulseScale, pulseScale);
-      }
-
-      // 前景柔焦大光斑轻柔漂移与视差浮动
-      if (bokehOrbsRef.current) {
-        bokehOrbsRef.current.rotation.y -= 0.00015;
-        bokehOrbsRef.current.position.y = Math.sin(time * 0.0008) * 0.12;
-      }
-
-      // 舞台光环核心地台微旋呼吸
-      if (stageHaloMeshRef.current) {
-        stageHaloMeshRef.current.rotation.z = Math.sin(time * 0.0003) * 0.025;
-        const mat = stageHaloMeshRef.current.material as THREE.MeshBasicMaterial;
-        mat.opacity = 0.86 + Math.sin(time * 0.002) * 0.08;
-      }
-
-      // 垂直聚光光锥动态呼吸与向心微移
-      if (spotlightConeRef.current) {
-        spotlightConeRef.current.position.x = THREE.MathUtils.lerp(0, -0.6, modeBlend);
-        spotlightConeRef.current.rotation.z = Math.sin(time * 0.0008) * 0.015;
-        const mat = spotlightConeRef.current.material as THREE.MeshBasicMaterial;
-        mat.opacity = 0.16 + Math.sin(time * 0.0025) * 0.04;
-      }
-
-      // 宏大天幕星云轻柔呼吸
-      if (nebulaMeshRef.current) {
-        const nebScale = 1.0 + Math.sin(time * 0.0007) * 0.03;
-        nebulaMeshRef.current.scale.set(nebScale, nebScale, 1.0);
-      }
-
-      // 地面接触光晕动态跟随
-      if (contactShadowMeshRef.current) {
-        const shadowX = THREE.MathUtils.lerp(0, -1.25, modeBlend);
-        contactShadowMeshRef.current.position.x = shadowX;
-        contactShadowMeshRef.current.position.z = THREE.MathUtils.lerp(0.9, 0.8, modeBlend);
-      }
-
-      // 虚拟化卡片位置与姿态计算
-      const currentItems = shelfItemsRef.current;
-      const totalItems = currentItems.length;
-
-      if (totalItems > 0) {
-        for (let k = 0; k < SHELF_MAX_RENDER; k++) {
-          const slot = cardSlotsRef.current[k];
-          if (!slot) continue;
-
-          // 该槽位对应的相对偏移量 (-5 .. +5 连续浮点)
-          const slotRelOffset = k - HALF_WINDOW;
-          const fractionalOffset = slotRelOffset - (scrollPos - centerVirtualIndex);
-          const absOffset = Math.abs(fractionalOffset);
-
-          // 对应的真实项目索引
-          const itemIndex =
-            (((centerVirtualIndex + slotRelOffset) % totalItems) + totalItems) % totalItems;
-          const item = currentItems[itemIndex];
-
-          // 更新节奏与悬浮呼吸相位
-          slot.rhythmPhase += dt * 4.5;
-          slot.floatPhase += dt * 1.8;
-
-          // 显存级持久化纹理秒级指针对接 (零 CPU Canvas 栅格化，零显存上载阻塞，真 120 FPS 满帧流转)
-          const isSlotActive = absOffset < 0.5;
-          if (slot.currentItemId !== item.id || slot.isActive !== isSlotActive) {
-            const targetTex = getOrCreateCardTexture(item, isSlotActive, itemIndex);
-            const mat = slot.mesh.material as THREE.MeshStandardMaterial;
-            if (mat.map !== targetTex) {
-              mat.map = targetTex;
-              mat.needsUpdate = true;
-            }
-            slot.currentItemId = item.id;
-            slot.isActive = isSlotActive;
-          }
-
-          // 呼吸浮动位移微动效 (Breathing Float Amplitude)
-          const floatY = Math.sin(slot.floatPhase) * (isSlotActive ? 0.045 : 0.02);
-          const floatZ = Math.cos(slot.floatPhase * 0.8) * (isSlotActive ? 0.03 : 0.01);
-          const tiltRoll = Math.sin(slot.floatPhase * 0.6) * 0.015;
-
-          // === 1. 舞台展开模式 (Stage Shelf) - 经典 Apple Cover Flow 空间对称向心弧面 ===
-          const sign = Math.sign(fractionalOffset);
-          const u = Math.min(absOffset, 1.0); // 核心中心展开区 (0..1)
-          const v = Math.max(0, absOffset - 1.0); // 远端延伸区 (>1)
-
-          // X 轴位移：中心卡片精准固定在 x=0，两侧卡片平滑对称展开，消除任何偏移错位
-          const stagePx = sign * (u * 1.9 + v * 1.22);
-          // Y 轴微下沉与呼吸浮动
-          const stagePy = -u * 0.015 - v * 0.025 + floatY;
-          // Z 轴深度：中心突出前置 (Z=1.15)，两侧平滑推入景深
-          const stagePz = 1.15 - u * 0.85 - v * 0.65 + floatZ;
-          // Y 轴旋转：精准向心偏转 + 动态转向侧倾
-          const stageFocalZ = 4.0;
-          const stageRotY = -Math.atan2(stagePx, stageFocalZ - stagePz) * 1.25 + dynamicYawLead;
-          const stageRotX = mp.y * 0.08 + tiltRoll;
-          const stageRotZ = -mp.x * 0.02 + dynamicBankRoll;
-          // 缩放：中心 1.22x + 磁吸微突
-          const centerOvershoot = Math.max(0, 1.0 - absOffset * 2.0);
-          const stageScale = 1.22 - u * 0.26 - v * 0.05 + centerOvershoot * 0.025;
-
-          // === 2. 侧栏透视模式 (Side Shelf) - 经典 Apple 偏左侧向 Cover Flow 尊享立体阵列 ===
-          const sideCenterX = -0.32; // 当前激活卡片偏左黄金分割点
-          // 左右非对称侧向梯级步进（左侧紧凑收拢，右侧展开深远透视通道）
-          const sideStepX =
-            sign < 0
-              ? u * 1.45 + v * 0.6 // 左侧紧凑向左展开
-              : u * 1.65 + v * 0.72; // 右侧开阔向右延伸
-          const sidePx = sideCenterX + sign * sideStepX;
-          const sidePy = -u * 0.015 - v * 0.025 + floatY;
-          const sidePz = 1.2 - u * 0.55 - v * 0.4 + floatZ;
-
-          // Smoothstep S 型翻转过渡：在 [-0.85, 0.85] 范围内平滑旋转，两侧锁定在黄金 55° 侧倾角
-          const flipProgress = Math.max(-1.0, Math.min(1.0, fractionalOffset / 0.85));
-          const smoothFlip = Math.sign(flipProgress) * Math.pow(Math.abs(flipProgress), 0.75);
-          const sideTargetRotY = -smoothFlip * THREE.MathUtils.degToRad(55);
-          const sideRotY = sideTargetRotY + dynamicYawLead * 0.6;
-          const sideRotX = 0.03 + mp.y * 0.07 + tiltRoll;
-          const sideRotZ = -mp.x * 0.015 + dynamicBankRoll * 0.6;
-          const sideScale = 1.2 - u * 0.24 - v * 0.05 + centerOvershoot * 0.02;
-
-          // === 3. 模式平滑形变插值 (Stage <-> Side 400ms Morphing) ===
-          const finalPx = THREE.MathUtils.lerp(stagePx, sidePx, modeBlend);
-          const finalPy = THREE.MathUtils.lerp(stagePy, sidePy, modeBlend);
-          const finalPz = THREE.MathUtils.lerp(stagePz, sidePz, modeBlend);
-          const finalRotX = THREE.MathUtils.lerp(stageRotX, sideRotX, modeBlend);
-          const finalRotY = THREE.MathUtils.lerp(stageRotY, sideRotY, modeBlend);
-          const finalRotZ = THREE.MathUtils.lerp(stageRotZ, sideRotZ, modeBlend);
-          const finalScale = THREE.MathUtils.lerp(stageScale, sideScale, modeBlend);
-
-          slot.mesh.position.set(finalPx, finalPy, finalPz);
-          slot.mesh.rotation.set(finalRotX, finalRotY, finalRotZ);
-          slot.mesh.scale.set(finalScale, finalScale, finalScale);
-
-          // 远端平滑景深消隐与雾化衰减
-          const opacity = Math.max(0, Math.min(1, 1.0 - Math.max(0, absOffset - 3.2) * 0.35));
-          const mat = slot.mesh.material as THREE.MeshStandardMaterial;
-          mat.opacity = opacity;
-          slot.mesh.visible = opacity > 0.01;
-        }
-      }
-
-      renderer.render(scene, camera);
-      animFrameRef.current = requestAnimationFrame(animate);
+      animFrameRef.current = null;
+      animationRunning = false;
+      lastFrameTime = null;
     };
 
-    animFrameRef.current = requestAnimationFrame(animate);
-
-    // 窗口尺寸自适应
-    const handleResize = () => {
-      if (!containerRef.current || !rendererRef.current || !cameraRef.current) return;
-      const nw = containerRef.current.clientWidth;
-      const nh = containerRef.current.clientHeight;
-      cameraRef.current.aspect = nw / nh;
-      cameraRef.current.updateProjectionMatrix();
-      rendererRef.current.setSize(nw, nh);
-    };
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    const disposeScene = () => {
+      if (disposed) return;
+      disposed = true;
+      stopAnimation();
       if (reactUpdateTimerRef.current) {
         clearTimeout(reactUpdateTimerRef.current);
         reactUpdateTimerRef.current = null;
       }
-      renderer.dispose();
-      particleGeo.dispose();
-      particleMat.dispose();
-      largeBokehGeo.dispose();
-      largeBokehMat.dispose();
-      largeBokehTexture.dispose();
-      stageHaloGeo.dispose();
-      stageHaloMat.dispose();
-      stageHaloTexture.dispose();
-      spotlightGeo.dispose();
-      spotlightMat.dispose();
-      spotlightTexture.dispose();
-      nebulaGeo.dispose();
-      nebulaMat.dispose();
-      nebulaTexture.dispose();
-      floorGeo.dispose();
-      floorMat.dispose();
-      contactShadowGeo.dispose();
-      contactShadowMat.dispose();
-      cardGeo.dispose();
-      slots.forEach((s) => {
-        (s.mesh.material as THREE.Material).dispose();
+      slots.forEach(({ mesh, edgeMaterial }) => {
+        scene?.remove(mesh);
+        (mesh.material as THREE.Material).dispose();
+        edgeMaterial.dispose();
       });
-      threeTextureCache.forEach((tex) => tex.dispose());
-      threeTextureCache.clear();
+      sceneTextureCache.forEach((texture) => texture.dispose());
+      sceneTextureCache.clear();
+      cardGeo?.dispose();
+      edgeGeo?.dispose();
+      particleGeo?.dispose();
+      particleMat?.dispose();
+      floorGeo?.dispose();
+      floorMat?.dispose();
+      floorSeamGeo?.dispose();
+      floorSeamMat?.dispose();
+      contactShadowGeo?.dispose();
+      contactShadowMat?.dispose();
+      shadowTexture?.dispose();
+      renderer?.dispose();
+      if (sceneRef.current === scene) sceneRef.current = null;
+      if (cameraRef.current === camera) cameraRef.current = null;
+      if (rendererRef.current === renderer) rendererRef.current = null;
+      if (cardsGroupRef.current && scene?.children.includes(cardsGroupRef.current)) {
+        cardsGroupRef.current = null;
+      }
+      contactShadowMeshRef.current = null;
+      cardSlotsRef.current = [];
     };
-  }, [isAudioPlaying, isOpen]);
+
+    const qualityForWidth = (width: number) => (width < 768 ? 2 : width < 1280 ? 1 : 0);
+    const pixelRatioCaps = [1.75, 1.35, 1.0];
+    const particleCounts = [42, 22, 8];
+    const applyQuality = (nextTier: number) => {
+      qualityTier = Math.max(0, Math.min(2, nextTier));
+      if (particleGeo) particleGeo.setDrawRange(0, particleCounts[qualityTier]);
+      const desiredPixelRatio = Math.min(window.devicePixelRatio || 1, pixelRatioCaps[qualityTier]);
+      if (renderer && Math.abs(desiredPixelRatio - pixelRatio) > 0.01) {
+        renderer.setPixelRatio(desiredPixelRatio);
+        pixelRatio = desiredPixelRatio;
+      }
+      if (renderer) {
+        renderer.setSize(
+          Math.max(1, container.clientWidth),
+          Math.max(1, container.clientHeight),
+          false
+        );
+      }
+    };
+
+    const trimSceneTextureCache = () => {
+      if (sceneTextureCache.size <= MAX_SCENE_TEXTURES) return;
+      const activeTextures = new Set(
+        slots
+          .map((slot) => (slot.mesh.material as THREE.MeshStandardMaterial).map)
+          .filter((texture): texture is THREE.Texture => texture !== null)
+      );
+      for (const [key, texture] of sceneTextureCache) {
+        if (sceneTextureCache.size <= MAX_SCENE_TEXTURES) break;
+        if (activeTextures.has(texture)) continue;
+        sceneTextureCache.delete(key);
+        texture.dispose();
+      }
+    };
+
+    const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    reducedMotionRef.current = reducedMotionQuery.matches;
+
+    try {
+      const width = Math.max(1, container.clientWidth || window.innerWidth);
+      const height = Math.max(1, container.clientHeight || window.innerHeight);
+      qualityTier = qualityForWidth(width);
+
+      const sceneInstance = new THREE.Scene();
+      scene = sceneInstance;
+      sceneInstance.fog = new THREE.FogExp2(0x080706, 0.022);
+      sceneRef.current = sceneInstance;
+
+      const cameraInstance = new THREE.PerspectiveCamera(48, width / height, 0.1, 100);
+      camera = cameraInstance;
+      cameraInstance.position.set(0, 0.35, 6.6);
+      cameraRef.current = cameraInstance;
+
+      const rendererInstance = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance",
+      });
+      renderer = rendererInstance;
+      rendererInstance.toneMapping = THREE.ACESFilmicToneMapping;
+      rendererInstance.toneMappingExposure = 1.0;
+      rendererRef.current = rendererInstance;
+
+      const ambientLight = new THREE.AmbientLight(0xe8e2d8, 0.72);
+      sceneInstance.add(ambientLight);
+      const mainLight = new THREE.PointLight(0xf3e7d5, 2.5, 24);
+      mainLight.position.set(0, 3.6, 4.8);
+      sceneInstance.add(mainLight);
+      const fillLight = new THREE.PointLight(0xd8d5cf, 0.95, 20);
+      fillLight.position.set(-4.5, -0.4, 3.5);
+      sceneInstance.add(fillLight);
+      const rimLight = new THREE.DirectionalLight(0xe4ddd2, 0.8);
+      rimLight.position.set(6, 6, -2);
+      sceneInstance.add(rimLight);
+
+      const cardsGroup = new THREE.Group();
+      cardsGroupRef.current = cardsGroup;
+      sceneInstance.add(cardsGroup);
+
+      floorGeo = new THREE.PlaneGeometry(60, 60, 24, 24);
+      floorMat = new THREE.MeshStandardMaterial({
+        color: 0x11100e,
+        roughness: 0.9,
+        metalness: 0.04,
+      });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = -2.0;
+      sceneInstance.add(floor);
+
+      floorSeamGeo = new THREE.PlaneGeometry(60, 0.012);
+      floorSeamMat = new THREE.MeshBasicMaterial({
+        color: 0x62584b,
+        transparent: true,
+        opacity: 0.09,
+        depthWrite: false,
+      });
+      [-3.8, -6.2].forEach((z) => {
+        const seam = new THREE.Mesh(floorSeamGeo!, floorSeamMat!);
+        seam.rotation.x = -Math.PI / 2;
+        seam.position.set(0, -1.988, z);
+        sceneInstance.add(seam);
+      });
+
+      const shadowCanvas = document.createElement("canvas");
+      shadowCanvas.width = 512;
+      shadowCanvas.height = 512;
+      const shadowContext = shadowCanvas.getContext("2d");
+      if (shadowContext) {
+        const gradient = shadowContext.createRadialGradient(256, 256, 10, 256, 256, 240);
+        gradient.addColorStop(0, "rgba(224, 208, 183, 0.24)");
+        gradient.addColorStop(0.32, "rgba(204, 185, 156, 0.12)");
+        gradient.addColorStop(0.68, "rgba(166, 148, 122, 0.035)");
+        gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+        shadowContext.fillStyle = gradient;
+        shadowContext.fillRect(0, 0, 512, 512);
+        shadowTexture = new THREE.CanvasTexture(shadowCanvas);
+      } else {
+        shadowTexture = new THREE.DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1, THREE.RGBAFormat);
+        shadowTexture.needsUpdate = true;
+      }
+      contactShadowGeo = new THREE.PlaneGeometry(5.2, 3.2);
+      const contactShadowMaterial = new THREE.MeshBasicMaterial({
+        map: shadowTexture,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false,
+      });
+      contactShadowMat = contactShadowMaterial;
+      const contactShadowMesh = new THREE.Mesh(contactShadowGeo, contactShadowMaterial);
+      contactShadowMesh.rotation.x = -Math.PI / 2;
+      contactShadowMesh.position.set(0, -1.985, 0.9);
+      contactShadowMeshRef.current = contactShadowMesh;
+      sceneInstance.add(contactShadowMesh);
+
+      const particleCount = particleCounts[qualityTier];
+      particleGeo = new THREE.BufferGeometry();
+      const particlePositions = new Float32Array(42 * 3);
+      for (let p = 0; p < 42; p += 1) {
+        const offset = p * 3;
+        particlePositions[offset] = (Math.random() - 0.5) * 26;
+        particlePositions[offset + 1] = Math.random() * 5 + 2.0;
+        particlePositions[offset + 2] = -Math.random() * 13 - 1.5;
+      }
+      particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
+      particleGeo.setDrawRange(0, particleCount);
+      particleMat = new THREE.PointsMaterial({
+        size: 0.055,
+        color: 0xa99c89,
+        transparent: true,
+        opacity: 0.14,
+        blending: THREE.NormalBlending,
+        depthWrite: false,
+      });
+      const particles = new THREE.Points(particleGeo, particleMat);
+      particles.visible = !reducedMotionRef.current;
+      sceneInstance.add(particles);
+
+      cardGeo = new THREE.PlaneGeometry(1.95, 2.45);
+      const edgeShape = new THREE.Shape();
+      edgeShape.moveTo(-0.955, -1.205);
+      edgeShape.lineTo(0.955, -1.205);
+      edgeShape.lineTo(0.955, 1.205);
+      edgeShape.lineTo(-0.955, 1.205);
+      edgeShape.closePath();
+      const edgeHole = new THREE.Path();
+      edgeHole.moveTo(-0.935, -1.185);
+      edgeHole.lineTo(-0.935, 1.185);
+      edgeHole.lineTo(0.935, 1.185);
+      edgeHole.lineTo(0.935, -1.185);
+      edgeHole.closePath();
+      edgeShape.holes.push(edgeHole);
+      edgeGeo = new THREE.ShapeGeometry(edgeShape);
+      slots = [];
+      for (let i = 0; i < SHELF_MAX_RENDER; i += 1) {
+        const cardMat = new THREE.MeshStandardMaterial({
+          roughness: 0.56,
+          metalness: 0.08,
+          transparent: true,
+          side: THREE.DoubleSide,
+        });
+        const mesh = new THREE.Mesh(cardGeo, cardMat);
+        mesh.userData = { slotIndex: i };
+        const edgeMaterial = new THREE.MeshBasicMaterial({
+          color: 0xe8d4b8,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+        const edgeLight = new THREE.Mesh(edgeGeo, edgeMaterial);
+        edgeLight.position.z = 0.012;
+        edgeLight.renderOrder = 2;
+        mesh.add(edgeLight);
+        cardsGroup.add(mesh);
+        slots.push({ mesh, currentItemId: null, isActive: false, edgeMaterial });
+      }
+      cardSlotsRef.current = slots;
+      targetModeBlendRef.current = displayModeRef.current === "side" ? 1 : 0;
+      applyQuality(qualityTier);
+
+      lastDetentStepRef.current = Math.round(currentScrollRef.current);
+      let afterglowPhase = 0;
+      let revealRendererStatus = true;
+      const onAnimationFrame = (time: number) => {
+        frameRequestId = null;
+        animFrameRef.current = null;
+        if (!effectActive || contextLost || document.visibilityState === "hidden") {
+          stopAnimation();
+          return;
+        }
+
+        const dt =
+          lastFrameTime === null
+            ? 1 / 60
+            : Math.max(0, Math.min(0.032, (time - lastFrameTime) / 1000));
+        lastFrameTime = time;
+        const dtMs = dt * 1000;
+
+        frameTimes.push(time);
+        while (frameTimeHead < frameTimes.length && frameTimes[frameTimeHead] < time - 5000) {
+          frameTimeHead += 1;
+        }
+        if (time >= nextQualityCheckAt) {
+          const elapsed = Math.max(1, time - (nextQualityCheckAt - 1000));
+          if (time - (frameTimes[frameTimeHead] ?? time) >= 4500) {
+            const sampleSpan = Math.min(5000, time - frameTimes[frameTimeHead]);
+            const averageFps =
+              ((frameTimes.length - frameTimeHead) * 1000) / Math.max(1, sampleSpan);
+            if (averageFps < 45) {
+              slowFpsDurationMs += elapsed;
+              fastFpsDurationMs = 0;
+            } else if (averageFps > 55) {
+              fastFpsDurationMs += elapsed;
+              slowFpsDurationMs = 0;
+            } else {
+              slowFpsDurationMs = 0;
+              fastFpsDurationMs = 0;
+            }
+            if (slowFpsDurationMs >= 3000 && qualityTier < 2) {
+              adaptiveQualityActive = true;
+              slowFpsDurationMs = 0;
+              applyQuality(qualityTier + 1);
+            } else if (fastFpsDurationMs >= 10_000 && qualityTier > 0) {
+              adaptiveQualityActive = true;
+              fastFpsDurationMs = 0;
+              applyQuality(qualityTier - 1);
+            }
+          }
+          nextQualityCheckAt = time + 1000;
+          if (frameTimeHead > 240) {
+            frameTimes = frameTimes.slice(frameTimeHead);
+            frameTimeHead = 0;
+          }
+        }
+
+        const scrollState = stepCriticalSpring(
+          { position: currentScrollRef.current, velocity: scrollVelocityRef.current },
+          targetScrollRef.current,
+          dt,
+          isDraggingRef.current ? 24 : 18
+        );
+        currentScrollRef.current = scrollState.position;
+        scrollVelocityRef.current = scrollState.velocity;
+        const scrollPos = scrollState.position;
+        const centerVirtualIndex = Math.round(scrollPos);
+
+        const modeState = reducedMotionRef.current
+          ? { position: targetModeBlendRef.current, velocity: 0 }
+          : stepCriticalSpring(
+              { position: modeBlendRef.current, velocity: modeBlendVelocityRef.current },
+              targetModeBlendRef.current,
+              dt,
+              16
+            );
+        modeBlendRef.current = modeState.position;
+        modeBlendVelocityRef.current = modeState.velocity;
+        const modeBlend = modeState.position;
+        const scrollVelocity = scrollState.velocity;
+        const dynamicBankRoll = Math.max(-0.15, Math.min(0.15, scrollVelocity * 0.012));
+        const dynamicYawLead = Math.max(-0.12, Math.min(0.12, scrollVelocity * 0.01));
+
+        if (centerVirtualIndex !== lastDetentStepRef.current) {
+          const detentVelocity = Math.abs(scrollVelocity);
+          playMechanicalGearTick(centerVirtualIndex, 1.0 + Math.min(detentVelocity, 1.5));
+          lastDetentStepRef.current = centerVirtualIndex;
+          const currentItems = shelfItemsRef.current;
+          if (currentItems.length > 0) {
+            const normalizedIndex =
+              ((centerVirtualIndex % currentItems.length) + currentItems.length) %
+              currentItems.length;
+            activeIndexRef.current = normalizedIndex;
+            if (!reactUpdateTimerRef.current) {
+              reactUpdateTimerRef.current = setTimeout(() => {
+                reactUpdateTimerRef.current = null;
+                setActiveIndex(activeIndexRef.current);
+              }, 40);
+            }
+          }
+        }
+
+        const parallax = mouseParallaxRef.current;
+        const parallaxAlpha = 1 - Math.exp(-dt * 12);
+        parallax.x += (parallax.targetX - parallax.x) * parallaxAlpha;
+        parallax.y += (parallax.targetY - parallax.y) * parallaxAlpha;
+        const dollyZ = Math.sin(modeBlend * Math.PI) * 0.28;
+        cameraInstance.position.x = parallax.x * 0.65;
+        cameraInstance.position.y = 0.35 + parallax.y * 0.4;
+        cameraInstance.position.z = 6.6 - dollyZ;
+        cameraInstance.lookAt(0, 0, 0);
+
+        const shadowX = THREE.MathUtils.lerp(0, -0.32, modeBlend);
+        contactShadowMeshRef.current?.position.set(
+          shadowX,
+          -1.985,
+          THREE.MathUtils.lerp(0.9, 0.8, modeBlend)
+        );
+
+        let audioIsValid = false;
+        let lowTarget = 0;
+        let highTarget = 0;
+        if (
+          !reducedMotionRef.current &&
+          isAudioPlayingRef.current &&
+          currentPlayingSongRef.current
+        ) {
+          try {
+            const audioContext = getAudioContext();
+            const sharedAnalyser = getAudioAnalyser();
+            if (audioContext?.state === "running" && sharedAnalyser) {
+              analyser = sharedAnalyser;
+              if (frequencyData.length !== analyser.frequencyBinCount) {
+                frequencyData = new Uint8Array(analyser.frequencyBinCount);
+              }
+              analyser.getByteFrequencyData(frequencyData);
+              lowTarget = readBandEnergy(
+                frequencyData,
+                audioContext.sampleRate,
+                analyser.fftSize,
+                35,
+                180
+              );
+              highTarget = readBandEnergy(
+                frequencyData,
+                audioContext.sampleRate,
+                analyser.fftSize,
+                3200,
+                12000
+              );
+              audioIsValid = true;
+            }
+          } catch {
+            audioIsValid = false;
+          }
+        }
+        if (!audioIsValid) {
+          frequencyData.fill(0);
+          lowTarget = 0;
+          highTarget = 0;
+          lowEnvelope = approachEnvelope(lowEnvelope, 0, dtMs, 80, 300);
+          highEnvelope = approachEnvelope(highEnvelope, 0, dtMs, 80, 300);
+          audioWasValid = false;
+          analyser = null;
+        } else {
+          const attackMs = audioWasValid ? 80 : 400;
+          lowEnvelope = approachEnvelope(lowEnvelope, lowTarget, dtMs, attackMs, 300);
+          highEnvelope = approachEnvelope(highEnvelope, highTarget, dtMs, attackMs, 300);
+          audioWasValid = true;
+        }
+
+        afterglowPhase += dt;
+        const slowAfterglow = reducedMotionRef.current
+          ? 0
+          : 0.012 * (0.5 + 0.5 * Math.sin(afterglowPhase * 0.28));
+        contactShadowMaterial.opacity = 0.22 + slowAfterglow + lowEnvelope * 0.12;
+
+        const currentItems = shelfItemsRef.current;
+        const totalItems = currentItems.length;
+        let textureCacheNeedsTrim = false;
+        if (totalItems > 0) {
+          for (let k = 0; k < SHELF_MAX_RENDER; k += 1) {
+            const slot = slots[k];
+            if (!slot) continue;
+            const slotRelOffset = k - HALF_WINDOW;
+            const fractionalOffset = slotRelOffset - (scrollPos - centerVirtualIndex);
+            const absOffset = Math.abs(fractionalOffset);
+            const itemIndex =
+              (((centerVirtualIndex + slotRelOffset) % totalItems) + totalItems) % totalItems;
+            const item = currentItems[itemIndex];
+            const isSlotActive = absOffset < 0.5;
+            const stableItemKey = `${item.id}_${item.cover}`;
+            if (slot.currentItemId !== stableItemKey || slot.isActive !== isSlotActive) {
+              const targetTexture = getOrCreateCardTexture(
+                item,
+                isSlotActive,
+                itemIndex,
+                sceneTextureCache
+              );
+              const material = slot.mesh.material as THREE.MeshStandardMaterial;
+              if (material.map !== targetTexture) {
+                material.map = targetTexture;
+                material.needsUpdate = true;
+              }
+              slot.currentItemId = stableItemKey;
+              slot.isActive = isSlotActive;
+              textureCacheNeedsTrim = true;
+            }
+
+            const sign = Math.sign(fractionalOffset);
+            const nearOffset = Math.min(absOffset, 1.0);
+            const farOffset = Math.max(0, absOffset - 1.0);
+            const stageX = sign * (nearOffset * 1.9 + farOffset * 1.22);
+            const stageY = -nearOffset * 0.015 - farOffset * 0.025;
+            const stageZ = 1.15 - nearOffset * 0.85 - farOffset * 0.65;
+            const stageRotY = -Math.atan2(stageX, 4.0 - stageZ) * 1.25 + dynamicYawLead;
+            const stageRotX = parallax.y * 0.08;
+            const stageRotZ = -parallax.x * 0.02 + dynamicBankRoll;
+            const centerOvershoot = Math.max(0, 1.0 - absOffset * 2.0);
+            const stageScale =
+              1.22 - nearOffset * 0.26 - farOffset * 0.05 + centerOvershoot * 0.025;
+
+            const sideCenterX = -0.32;
+            const sideStepX =
+              sign < 0 ? nearOffset * 1.45 + farOffset * 0.6 : nearOffset * 1.65 + farOffset * 0.72;
+            const sideX = sideCenterX + sign * sideStepX;
+            const sideY = -nearOffset * 0.015 - farOffset * 0.025;
+            const sideZ = 1.2 - nearOffset * 0.55 - farOffset * 0.4;
+            const flipProgress = Math.max(-1.0, Math.min(1.0, fractionalOffset / 0.85));
+            const smoothFlip = Math.sign(flipProgress) * Math.pow(Math.abs(flipProgress), 0.75);
+            const sideRotY = -smoothFlip * THREE.MathUtils.degToRad(55) + dynamicYawLead * 0.6;
+            const sideRotX = 0.03 + parallax.y * 0.07;
+            const sideRotZ = -parallax.x * 0.015 + dynamicBankRoll * 0.6;
+            const sideScale = 1.2 - nearOffset * 0.24 - farOffset * 0.05 + centerOvershoot * 0.02;
+
+            slot.mesh.position.set(
+              THREE.MathUtils.lerp(stageX, sideX, modeBlend),
+              THREE.MathUtils.lerp(stageY, sideY, modeBlend),
+              THREE.MathUtils.lerp(stageZ, sideZ, modeBlend)
+            );
+            slot.mesh.rotation.set(
+              THREE.MathUtils.lerp(stageRotX, sideRotX, modeBlend),
+              THREE.MathUtils.lerp(stageRotY, sideRotY, modeBlend),
+              THREE.MathUtils.lerp(stageRotZ, sideRotZ, modeBlend)
+            );
+            const scale = THREE.MathUtils.lerp(stageScale, sideScale, modeBlend);
+            slot.mesh.scale.set(scale, scale, scale);
+
+            const farFade = THREE.MathUtils.smoothstep(absOffset, 2, 5.5);
+            const material = slot.mesh.material as THREE.MeshStandardMaterial;
+            material.opacity = 1 - farFade * 0.7;
+            slot.edgeMaterial.opacity = isSlotActive ? highEnvelope * 0.65 : 0;
+            slot.mesh.visible = material.opacity > 0.01;
+          }
+          if (textureCacheNeedsTrim) trimSceneTextureCache();
+        } else {
+          slots.forEach((slot) => {
+            slot.mesh.visible = false;
+          });
+        }
+
+        try {
+          rendererInstance.render(sceneInstance, cameraInstance);
+        } catch {
+          teardownRendererLifecycle?.();
+          setWebglStatus("unavailable");
+          return;
+        }
+        if (revealRendererStatus) {
+          revealRendererStatus = false;
+          setWebglStatus("ready");
+        }
+        frameRequestId = requestAnimationFrame(onAnimationFrame);
+        animFrameRef.current = frameRequestId;
+      };
+
+      const startAnimation = () => {
+        if (
+          !effectActive ||
+          animationRunning ||
+          contextLost ||
+          document.visibilityState === "hidden"
+        )
+          return;
+        animationRunning = true;
+        lastFrameTime = null;
+        frameRequestId = requestAnimationFrame(onAnimationFrame);
+        animFrameRef.current = frameRequestId;
+      };
+
+      const onVisibilityChange = () => {
+        if (document.visibilityState === "hidden") stopAnimation();
+        else startAnimation();
+      };
+      const onReducedMotionChange = (event: MediaQueryListEvent) => {
+        reducedMotionRef.current = event.matches;
+        if (event.matches) {
+          lowEnvelope = 0;
+          highEnvelope = 0;
+          audioWasValid = false;
+          frequencyData.fill(0);
+        }
+        if (particleGeo) particles.visible = !event.matches;
+      };
+      const onContextLost = (event: Event) => {
+        event.preventDefault();
+        contextLost = true;
+        stopAnimation();
+        setActiveIndex(activeIndexRef.current);
+        setWebglStatus("lost");
+      };
+      const onContextRestored = () => {
+        if (!effectActive || !contextLost) return;
+        contextLost = false;
+        setRendererGeneration((generation) => generation + 1);
+      };
+      const releasePointerOnResize = () => {
+        const pointerId = activePointerIdRef.current;
+        if (pointerId !== null && canvas.hasPointerCapture(pointerId)) {
+          try {
+            canvas.releasePointerCapture(pointerId);
+          } catch {
+            // Resize can race with a browser-driven pointer cancellation.
+          }
+        }
+        activePointerIdRef.current = null;
+        isDraggingRef.current = false;
+        hasDraggedRef.current = false;
+        dragVelocityRef.current = 0;
+      };
+      const resizeRenderer = () => {
+        const nextWidth = Math.max(1, container.clientWidth);
+        const nextHeight = Math.max(1, container.clientHeight);
+        releasePointerOnResize();
+        cameraInstance.aspect = nextWidth / nextHeight;
+        cameraInstance.updateProjectionMatrix();
+        rendererInstance.setSize(nextWidth, nextHeight, false);
+        if (!adaptiveQualityActive) applyQuality(qualityForWidth(nextWidth));
+        else applyQuality(qualityTier);
+      };
+
+      const resizeObserver =
+        typeof ResizeObserver !== "undefined" ? new ResizeObserver(resizeRenderer) : null;
+      const teardownRenderer = () => {
+        if (rendererLifecycleDisposed) return;
+        rendererLifecycleDisposed = true;
+        effectActive = false;
+        stopAnimation();
+        canvas.removeEventListener("webglcontextlost", onContextLost, false);
+        canvas.removeEventListener("webglcontextrestored", onContextRestored, false);
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+        if (typeof reducedMotionQuery.removeEventListener === "function") {
+          reducedMotionQuery.removeEventListener("change", onReducedMotionChange);
+        } else {
+          reducedMotionQuery.removeListener(onReducedMotionChange);
+        }
+        resizeObserver?.disconnect();
+        if (!resizeObserver) window.removeEventListener("resize", resizeRenderer);
+        releasePointerOnResize();
+        disposeScene();
+      };
+      teardownRendererLifecycle = teardownRenderer;
+
+      canvas.addEventListener("webglcontextlost", onContextLost, false);
+      canvas.addEventListener("webglcontextrestored", onContextRestored, false);
+      document.addEventListener("visibilitychange", onVisibilityChange);
+      if (typeof reducedMotionQuery.addEventListener === "function") {
+        reducedMotionQuery.addEventListener("change", onReducedMotionChange);
+      } else {
+        reducedMotionQuery.addListener(onReducedMotionChange);
+      }
+      resizeObserver?.observe(container);
+      if (!resizeObserver) window.addEventListener("resize", resizeRenderer);
+
+      if (frameTimeHead === 0) {
+        nextQualityCheckAt = performance.now() + 1000;
+      }
+      startAnimation();
+
+      return teardownRenderer;
+    } catch {
+      teardownRendererLifecycle?.();
+      effectActive = false;
+      disposeScene();
+      const failureStatusTimer = setTimeout(() => setWebglStatus("unavailable"), 0);
+      return () => {
+        clearTimeout(failureStatusTimer);
+        teardownRendererLifecycle?.();
+        disposeScene();
+      };
+    }
+  }, [isOpen, rendererGeneration]);
 
   // 相对刻度滚动 (带音效)
   const scrollToRelative = useCallback((delta: number) => {
     targetScrollRef.current += delta;
   }, []);
 
-  // 鼠标滚轮接管
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    if ((e.target as HTMLElement).closest(".shelf-hud-interactive, .custom-scrollbar")) {
-      return;
-    }
-    e.preventDefault();
-    const delta = Math.sign(e.deltaY || e.deltaX) * 0.85;
-    targetScrollRef.current += delta;
-  }, []);
+  // 播放指定卡片 (歌单模式下整单播放，单曲模式下单曲播放)
+  const handlePlayShelfItem = useCallback(
+    async (index: number) => {
+      const cur = activeShelfItems[index];
+      if (!cur) return;
+      playCardSelectTick();
 
-  // 播放当前选中的卡片 (歌单模式下整单播放，单曲模式下单曲播放)
-  const handlePlayCurrent = useCallback(async () => {
-    const curIdx = activeIndexRef.current ?? activeIndex;
-    const cur = activeShelfItems[curIdx] || activeShelfItems[activeIndex];
-    if (!cur) return;
-    playCardSelectTick();
-
-    if (cur.type === "playlist") {
-      if (cur.id.startsWith("cloud-pl-")) {
-        const realId = cur.id.replace("cloud-pl-", "");
-        try {
-          const res = await fetch(
-            `/api/playlist/tracks?id=${encodeURIComponent(realId)}&limit=500`
-          );
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data.songs) && data.songs.length > 0) {
-              setQueue(data.songs);
-              playTrackWithPipeline(data.songs[0]);
-              return;
+      if (cur.type === "playlist") {
+        if (cur.id.startsWith("cloud-pl-")) {
+          const realId = cur.id.replace("cloud-pl-", "");
+          try {
+            const res = await fetch(
+              `/api/playlist/tracks?id=${encodeURIComponent(realId)}&limit=500`
+            );
+            if (res.ok) {
+              const data = await res.json();
+              if (Array.isArray(data.songs) && data.songs.length > 0) {
+                setQueue(data.songs);
+                playTrackWithPipeline(data.songs[0]);
+                return;
+              }
             }
+          } catch {
+            /* 忽略：失败时保持当前状态 */
           }
-        } catch {
-          /* 忽略：失败时保持当前状态 */
+        }
+
+        if (cur.songs && cur.songs.length > 0) {
+          setQueue(cur.songs);
+          playTrackWithPipeline(cur.songs[0]);
+        }
+      } else if (cur.song) {
+        if (currentPlayingSong?.id === cur.song.id) {
+          if (togglePlay) togglePlay();
+        } else {
+          setQueue(activeShelfItems.map((item) => item.song || item.songs[0]).filter(Boolean));
+          playTrackWithPipeline(cur.song);
         }
       }
+    },
+    [activeShelfItems, currentPlayingSong, playTrackWithPipeline, togglePlay, setQueue]
+  );
 
-      if (cur.songs && cur.songs.length > 0) {
-        setQueue(cur.songs);
-        playTrackWithPipeline(cur.songs[0]);
-      }
-    } else if (cur.song) {
-      if (currentPlayingSong?.id === cur.song.id) {
-        if (togglePlay) togglePlay();
-      } else {
-        setQueue(activeShelfItems.map((item) => item.song || item.songs[0]).filter(Boolean));
-        playTrackWithPipeline(cur.song);
-      }
-    }
-  }, [
-    activeShelfItems,
-    activeIndex,
-    currentPlayingSong,
-    playTrackWithPipeline,
-    togglePlay,
-    setQueue,
-  ]);
+  const handlePlayCurrent = useCallback(() => {
+    const currentIndex = activeIndexRef.current ?? activeIndex;
+    return handlePlayShelfItem(currentIndex);
+  }, [activeIndex, handlePlayShelfItem]);
 
   // 打开曲目二级详情瀑布流面板
   const handleOpenDetail = useCallback(() => {
@@ -1532,97 +1651,287 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     }
   }, [activeShelfItems, activeIndex]);
 
-  // 鼠标手势拖拽与 3D 卡片直接点击 (Raycaster Direct Hit)
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest(".shelf-hud-interactive, button, input")) {
+  const selectFallbackIndex = useCallback((index: number) => {
+    const count = shelfItemsRef.current.length;
+    if (count <= 0) return;
+    const normalizedIndex = ((Math.trunc(index) % count) + count) % count;
+    activeIndexRef.current = normalizedIndex;
+    setActiveIndex(normalizedIndex);
+    targetScrollRef.current = normalizedIndex;
+    currentScrollRef.current = normalizedIndex;
+    scrollVelocityRef.current = 0;
+  }, []);
+
+  const handleFallbackPrevious = useCallback(() => {
+    selectFallbackIndex(activeIndexRef.current - 1);
+  }, [selectFallbackIndex]);
+
+  const handleFallbackNext = useCallback(() => {
+    selectFallbackIndex(activeIndexRef.current + 1);
+  }, [selectFallbackIndex]);
+
+  const handleFallbackPlay = useCallback(
+    (index: number) => {
+      selectFallbackIndex(index);
+      void handlePlayShelfItem(index);
+    },
+    [handlePlayShelfItem, selectFallbackIndex]
+  );
+
+  // WebGL Pointer Events: capture keeps drags coherent outside the canvas; HUD is a sibling
+  // above the canvas and is also explicitly excluded if event routing changes in the future.
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
+    const target = event.target as HTMLElement;
+    if (
+      !event.isPrimary ||
+      event.button !== 0 ||
+      target.closest(".shelf-hud-interactive, button, input, textarea, select, [contenteditable]")
+    )
       return;
-    }
+
+    activePointerIdRef.current = event.pointerId;
     isDraggingRef.current = true;
     hasDraggedRef.current = false;
     dragVelocityRef.current = 0;
     lastDragTimeRef.current = performance.now();
-    prevMouseXRef.current = e.clientX;
-    mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+    prevMouseXRef.current = event.clientX;
+    mouseDownPosRef.current = { x: event.clientX, y: event.clientY };
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      activePointerIdRef.current = null;
+      isDraggingRef.current = false;
+    }
+    if (event.pointerType === "touch") event.preventDefault();
   }, []);
 
-  const handleMouseMoveParallax = useCallback((e: React.MouseEvent) => {
-    if (isDraggingRef.current) {
+  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (isDraggingRef.current && activePointerIdRef.current === event.pointerId) {
       const now = performance.now();
-      const dt = Math.max(1, now - lastDragTimeRef.current);
-      const deltaX = e.clientX - prevMouseXRef.current;
-
-      if (Math.abs(e.clientX - mouseDownPosRef.current.x) > 4) {
-        hasDraggedRef.current = true;
-      }
-
-      // 记录滑动速度 (用于惯性释放)
-      const instantVelocity = (-deltaX * 0.007) / (dt / 16.6);
+      const dtMs = Math.max(1, now - lastDragTimeRef.current);
+      const deltaX = event.clientX - prevMouseXRef.current;
+      const totalDistance = Math.hypot(
+        event.clientX - mouseDownPosRef.current.x,
+        event.clientY - mouseDownPosRef.current.y
+      );
+      if (totalDistance > 6) hasDraggedRef.current = true;
+      const deltaScroll = -deltaX * 0.0075;
+      const instantVelocity = (deltaScroll * 1000) / dtMs;
       dragVelocityRef.current = dragVelocityRef.current * 0.6 + instantVelocity * 0.4;
       lastDragTimeRef.current = now;
-      prevMouseXRef.current = e.clientX;
-
-      targetScrollRef.current -= deltaX * 0.0075;
+      prevMouseXRef.current = event.clientX;
+      targetScrollRef.current += deltaScroll;
+      if (hasDraggedRef.current && event.pointerType === "touch") event.preventDefault();
     }
 
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const nx = (e.clientX - rect.left) / rect.width - 0.5;
-      const ny = (e.clientY - rect.top) / rect.height - 0.5;
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      const nx = (event.clientX - rect.left) / rect.width - 0.5;
+      const ny = (event.clientY - rect.top) / rect.height - 0.5;
       mouseParallaxRef.current.targetX = nx;
       mouseParallaxRef.current.targetY = -ny;
     }
   }, []);
 
-  const handleMouseUp = useCallback(
-    (e: React.MouseEvent) => {
-      if (isDraggingRef.current) {
-        isDraggingRef.current = false;
-        // 惯性释放衰减
-        const fling = Math.max(-2.5, Math.min(2.5, dragVelocityRef.current * 2.2));
-        targetScrollRef.current = Math.round(targetScrollRef.current + fling);
-        dragVelocityRef.current = 0;
+  const finishPointer = useCallback(
+    (event: React.PointerEvent<HTMLCanvasElement>, cancelled: boolean) => {
+      if (activePointerIdRef.current !== event.pointerId) return;
+      const canvas = event.currentTarget;
+      const wasDragged = hasDraggedRef.current;
+      isDraggingRef.current = false;
+      activePointerIdRef.current = null;
+      if (canvas.hasPointerCapture(event.pointerId)) {
+        try {
+          canvas.releasePointerCapture(event.pointerId);
+        } catch {
+          // Pointer cancellation may release capture before this handler runs.
+        }
       }
 
-      // 如果未发生明显拖拽，则触发 3D 卡片精准 Raycast 射线拾取
-      if (!hasDraggedRef.current && cameraRef.current && cardsGroupRef.current) {
-        const mx = (e.clientX / window.innerWidth) * 2 - 1;
-        const my = -(e.clientY / window.innerHeight) * 2 + 1;
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(new THREE.Vector2(mx, my), cameraRef.current);
-
-        const meshes = cardSlotsRef.current.map((s) => s.mesh);
-        const intersects = raycaster.intersectObjects(meshes, false);
-
-        if (intersects.length > 0) {
-          const hitMesh = intersects[0].object as THREE.Mesh;
-          const slotIdx = hitMesh.userData?.slotIndex;
-          if (slotIdx != null) {
-            const slotRelOffset = slotIdx - HALF_WINDOW;
-            const scrollPos = currentScrollRef.current;
-            const centerVirtualIndex = Math.round(scrollPos);
-            const fractionalOffset = slotRelOffset - (scrollPos - centerVirtualIndex);
-            const absOffset = Math.abs(fractionalOffset);
-
-            if (absOffset < 0.5) {
-              // 点击的是中心活跃卡片
-              const uv = intersects[0].uv;
-              if (uv && uv.y < 0.24) {
-                // 点击在底部操作按钮区
-                handlePlayCurrent();
-              } else {
-                // 点击在卡片主体：直接展开曲目详情
-                handleOpenDetail();
-              }
-            } else {
-              // 点击侧边卡片：平滑滚动到该卡片为中心
-              targetScrollRef.current += Math.round(fractionalOffset);
-              playCardSelectTick();
-            }
-          }
+      if (wasDragged) {
+        if (cancelled) {
+          targetScrollRef.current = Math.round(targetScrollRef.current);
+        } else {
+          const fling = Math.max(-2.5, Math.min(2.5, dragVelocityRef.current * 0.12));
+          targetScrollRef.current = Math.round(targetScrollRef.current + fling);
         }
+        dragVelocityRef.current = 0;
+        hasDraggedRef.current = false;
+        return;
+      }
+      if (cancelled || !cameraRef.current || !cardsGroupRef.current) return;
+
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const mx = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const my = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(new THREE.Vector2(mx, my), cameraRef.current);
+      const meshes = cardSlotsRef.current.map((slot) => slot.mesh);
+      const intersects = raycaster.intersectObjects(meshes, false);
+      if (intersects.length === 0) return;
+
+      const hitMesh = intersects[0].object as THREE.Mesh;
+      const slotIndex = hitMesh.userData?.slotIndex;
+      if (slotIndex == null) return;
+      const slotRelOffset = slotIndex - HALF_WINDOW;
+      const scrollPos = currentScrollRef.current;
+      const centerVirtualIndex = Math.round(scrollPos);
+      const fractionalOffset = slotRelOffset - (scrollPos - centerVirtualIndex);
+      if (Math.abs(fractionalOffset) < 0.5) {
+        const uv = intersects[0].uv;
+        if (uv && uv.y < 0.24) void handlePlayCurrent();
+        else handleOpenDetail();
+      } else {
+        targetScrollRef.current += Math.round(fractionalOffset);
+        playCardSelectTick();
       }
     },
     [handlePlayCurrent, handleOpenDetail]
+  );
+
+  const handlePointerUp = useCallback(
+    (event: React.PointerEvent<HTMLCanvasElement>) => {
+      finishPointer(event, false);
+    },
+    [finishPointer]
+  );
+
+  const handlePointerCancel = useCallback(
+    (event: React.PointerEvent<HTMLCanvasElement>) => {
+      finishPointer(event, true);
+    },
+    [finishPointer]
+  );
+
+  const fallbackSwipeRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startIndex: number;
+    moved: boolean;
+    captured: boolean;
+  } | null>(null);
+  const suppressFallbackClickRef = useRef(false);
+  const fallbackClickResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleFallbackPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!event.isPrimary || event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    const button = target.closest("button");
+    const buttonLabel = button?.getAttribute("aria-label") || "";
+    if (
+      target.closest(".shelf-hud-interactive") ||
+      buttonLabel === "上一首" ||
+      buttonLabel === "下一首" ||
+      button?.textContent?.includes("播放当前曲目")
+    )
+      return;
+
+    fallbackSwipeRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startIndex: activeIndexRef.current,
+      moved: false,
+      captured: false,
+    };
+  }, []);
+
+  const handleFallbackPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const swipe = fallbackSwipeRef.current;
+    if (!swipe || swipe.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - swipe.startX;
+    const deltaY = event.clientY - swipe.startY;
+    if (Math.abs(deltaX) > 8 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      swipe.moved = true;
+      event.preventDefault();
+      if (!swipe.captured) {
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          swipe.captured = true;
+        } catch {
+          // Keep tracking while events remain inside the fallback stage.
+        }
+      }
+    }
+  }, []);
+
+  const finishFallbackPointer = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>, cancelled: boolean) => {
+      const swipe = fallbackSwipeRef.current;
+      if (!swipe || swipe.pointerId !== event.pointerId) return;
+      fallbackSwipeRef.current = null;
+      if (swipe.captured && event.currentTarget.hasPointerCapture(event.pointerId)) {
+        try {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        } catch {
+          // The browser may have already released capture after pointercancel.
+        }
+      }
+      const distance = event.clientX - swipe.startX;
+      if (cancelled || !swipe.moved || Math.abs(distance) < 24) return;
+      suppressFallbackClickRef.current = true;
+      if (fallbackClickResetTimerRef.current) clearTimeout(fallbackClickResetTimerRef.current);
+      fallbackClickResetTimerRef.current = setTimeout(() => {
+        suppressFallbackClickRef.current = false;
+        fallbackClickResetTimerRef.current = null;
+      }, 500);
+      const width = Math.max(1, event.currentTarget.clientWidth);
+      const steps = Math.max(1, Math.round(Math.abs(distance) / Math.max(48, width * 0.12)));
+      selectFallbackIndex(swipe.startIndex + (distance < 0 ? steps : -steps));
+    },
+    [selectFallbackIndex]
+  );
+
+  const handleFallbackPointerUp = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      finishFallbackPointer(event, false);
+    },
+    [finishFallbackPointer]
+  );
+
+  const handleFallbackPointerCancel = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      finishFallbackPointer(event, true);
+    },
+    [finishFallbackPointer]
+  );
+
+  const handleFallbackClickCapture = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (!suppressFallbackClickRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    suppressFallbackClickRef.current = false;
+    if (fallbackClickResetTimerRef.current) {
+      clearTimeout(fallbackClickResetTimerRef.current);
+      fallbackClickResetTimerRef.current = null;
+    }
+  }, []);
+
+  const handleWheel = useCallback(
+    (event: React.WheelEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.closest(".shelf-hud-interactive, .custom-scrollbar")) return;
+      event.preventDefault();
+      const direction = Math.sign(event.deltaY || event.deltaX);
+      if (webglStatus === "ready") {
+        targetScrollRef.current += direction * 0.85;
+      } else if (direction !== 0) {
+        selectFallbackIndex(activeIndexRef.current + (direction > 0 ? 1 : -1));
+      }
+    },
+    [webglStatus, selectFallbackIndex]
+  );
+
+  useEffect(
+    () => () => {
+      if (fallbackClickResetTimerRef.current) {
+        clearTimeout(fallbackClickResetTimerRef.current);
+        fallbackClickResetTimerRef.current = null;
+      }
+    },
+    []
   );
 
   // 详情面板内整单入队
@@ -1648,12 +1957,23 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (
+        target?.isContentEditable ||
+        target?.closest(
+          "input, textarea, select, button, a, [role='button'], [role='combobox'], [tabindex]:not([tabindex='-1'])"
+        )
+      )
+        return;
+
       if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
         e.preventDefault();
-        scrollToRelative(-1);
+        if (webglStatus === "ready") scrollToRelative(-1);
+        else handleFallbackPrevious();
       } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
         e.preventDefault();
-        scrollToRelative(1);
+        if (webglStatus === "ready") scrollToRelative(1);
+        else handleFallbackNext();
       } else if (e.code === "Space") {
         e.preventDefault();
         handlePlayCurrent();
@@ -1679,7 +1999,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     isOpen,
+    webglStatus,
     scrollToRelative,
+    handleFallbackPrevious,
+    handleFallbackNext,
     handlePlayCurrent,
     toggleDisplayMode,
     handleOpenDetail,
@@ -1690,7 +2013,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
   if (!isOpen) return null;
 
-  const currentActiveItem = activeShelfItems[activeIndex];
+  const displayedActiveIndex = getClampedShelfIndex(activeIndex, activeShelfItems.length);
+  const currentActiveItem = activeShelfItems[displayedActiveIndex];
 
   // 详情面板过滤后的曲目列表
   const filteredDetailSongs =
@@ -1703,77 +2027,63 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`fixed inset-0 z-50 w-full h-full min-h-[520px] ${transparentBg ? "bg-transparent pointer-events-none" : "bg-[#030408]"} overflow-hidden select-none flex flex-col justify-between p-6 ${className}`}
-      style={
-        transparentBg
-          ? undefined
+      className={`fixed inset-0 z-50 h-[100dvh] min-h-0 w-full ${transparentBg ? "bg-transparent pointer-events-none" : "bg-[#050505]"} flex flex-col justify-between gap-2 overflow-hidden px-2 py-2 select-none sm:gap-3 sm:px-4 ${className}`}
+      style={{
+        paddingTop: "max(env(safe-area-inset-top), 8px)",
+        paddingRight: "max(env(safe-area-inset-right), 8px)",
+        paddingBottom: "max(env(safe-area-inset-bottom), 8px)",
+        paddingLeft: "max(env(safe-area-inset-left), 8px)",
+        ...(transparentBg
+          ? {}
           : {
               background:
-                "radial-gradient(ellipse 130% 90% at 50% 28%, #0e172e 0%, #080c18 45%, #030408 85%, #010204 100%)",
-            }
-      }
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMoveParallax}
-      onMouseUp={handleMouseUp}
+                "radial-gradient(ellipse 74% 65% at 50% 42%, #181511 0%, #0c0b09 58%, #050505 100%)",
+            }),
+      }}
       onWheel={handleWheel}
     >
-      {/* ── 动态自适应极光与舞台弥散流光背景 (Atmospheric Aurora Mesh) ── */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
-        {/* 顶部主舞台氛围光穹顶 */}
-        <div
-          className="absolute -top-[25%] left-1/2 -translate-x-1/2 w-[1350px] h-[850px] rounded-full blur-[130px] opacity-55 transition-all duration-1000"
-          style={{
-            background:
-              browseType === "favorites"
-                ? "radial-gradient(circle, rgba(244,63,94,0.55) 0%, rgba(168,85,247,0.30) 45%, transparent 70%)"
-                : browseType === "recent"
-                  ? "radial-gradient(circle, rgba(245,158,11,0.55) 0%, rgba(239,68,68,0.30) 45%, transparent 70%)"
-                  : browseType === "daily"
-                    ? "radial-gradient(circle, rgba(16,185,129,0.55) 0%, rgba(6,182,212,0.30) 45%, transparent 70%)"
-                    : "radial-gradient(circle, rgba(99,102,241,0.55) 0%, rgba(59,130,246,0.35) 45%, transparent 70%)",
-          }}
-        />
-
-        {/* 舞台顶棚柔焦聚光光晕 (Concert Theater Ceiling Spotlight Wash) */}
-        <div
-          className="absolute top-[6%] left-1/2 -translate-x-1/2 w-[720px] h-[460px] rounded-[100%] blur-[90px] opacity-40 transition-all duration-1000 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse, rgba(199,210,254,0.35) 0%, rgba(129,140,248,0.18) 45%, transparent 75%)",
-          }}
-        />
-
-        {/* 底部舞台地面反光与舞台光环地面外溢 (Stage Floor Specular Wash) */}
-        <div
-          className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-[1100px] h-[420px] rounded-[100%] blur-[90px] opacity-55 pointer-events-none transition-all duration-1000"
-          style={{
-            background:
-              browseType === "favorites"
-                ? "radial-gradient(ellipse, rgba(244,63,94,0.35) 0%, rgba(168,85,247,0.20) 40%, transparent 75%)"
-                : browseType === "recent"
-                  ? "radial-gradient(ellipse, rgba(245,158,11,0.35) 0%, rgba(239,68,68,0.20) 40%, transparent 75%)"
-                  : browseType === "daily"
-                    ? "radial-gradient(ellipse, rgba(16,185,129,0.35) 0%, rgba(6,182,212,0.20) 40%, transparent 75%)"
-                    : "radial-gradient(ellipse, rgba(99,102,241,0.35) 0%, rgba(59,130,246,0.20) 40%, transparent 75%)",
-          }}
-        />
-
-        {/* 舞台顶端与地平流光透视细线 */}
-        <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-        <div className="absolute bottom-[23%] left-[12%] right-[12%] h-[1px] bg-gradient-to-r from-transparent via-indigo-400/25 to-transparent pointer-events-none blur-[0.5px]" />
-      </div>
-
       {/* 3D WebGL Canvas */}
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-auto cursor-grab active:cursor-grabbing z-10"
+        className={`absolute inset-0 z-10 h-full w-full touch-none ${webglStatus === "ready" ? "pointer-events-auto cursor-grab active:cursor-grabbing" : "pointer-events-none opacity-0"}`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
       />
 
-      {/* ── 顶部控制栏 (Apple Monochrome Liquid Glass Top HUD) ── */}
-      <div className="relative z-20 flex items-center justify-between w-full max-w-7xl mx-auto px-3.5 sm:px-5 py-2 bg-white/[0.06] border border-white/[0.18] rounded-3xl backdrop-blur-[56px] backdrop-saturate-[180%] shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_1.5px_rgba(255,255,255,0.3)] shelf-hud-interactive gap-2 sm:gap-3 overflow-hidden select-none">
-        <div className="mineradio-glass-specular-glint" />
+      {webglStatus !== "ready" && (
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center overflow-y-auto px-2 pt-16 pb-20 sm:px-6"
+          onPointerDown={handleFallbackPointerDown}
+          onPointerMove={handleFallbackPointerMove}
+          onPointerUp={handleFallbackPointerUp}
+          onPointerCancel={handleFallbackPointerCancel}
+          onClickCapture={handleFallbackClickCapture}
+          style={{ touchAction: "pan-y" }}
+        >
+          <div className="w-full max-w-6xl">
+            <Shelf3DStaticFallback
+              items={activeShelfItems.map(({ id, title, subtitle, cover }) => ({
+                id,
+                title,
+                subtitle,
+                cover,
+              }))}
+              activeIndex={displayedActiveIndex}
+              onSelect={selectFallbackIndex}
+              onPlay={handleFallbackPlay}
+              onPrevious={handleFallbackPrevious}
+              onNext={handleFallbackNext}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── 顶部暗色剧场控制栏 ── */}
+      <div className="relative z-30 mx-auto flex max-h-[32dvh] w-full max-w-7xl flex-wrap items-center justify-between gap-2 overflow-y-auto rounded-3xl border border-white/[0.11] bg-black/50 px-2 py-2 shadow-[0_16px_42px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.08)] backdrop-blur-2xl shelf-hud-interactive select-none sm:gap-3 sm:px-4 xl:flex-nowrap">
         {/* 左侧标题与模式 */}
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        <div className="flex max-w-full shrink-0 items-center gap-2.5 sm:gap-3">
           <div className="flex items-center gap-2 text-white shrink-0">
             <div className="w-8 h-8 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] shrink-0">
               <Disc3 className="w-4 h-4 text-white animate-spin-slow" />
@@ -1807,14 +2117,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         </div>
 
         {/* 中间主分类与歌单切换器 (Playlists vs Tracks vs Favorites vs Recent vs Daily) */}
-        <div className="flex items-center gap-0.5 sm:gap-1 bg-black/40 p-1 rounded-2xl border border-white/10 shrink-0">
+        <div className="order-3 flex w-full min-w-0 shrink-0 items-center gap-0.5 overflow-x-auto rounded-2xl border border-white/10 bg-black/40 p-1 sm:gap-1 xl:order-none xl:w-auto">
           <button
             type="button"
-            onClick={() => {
-              playTactileTick({ type: "snap" });
-              setBrowseType("playlists");
-              targetScrollRef.current = 0;
-            }}
+            onClick={() => handleBrowseTypeChange("playlists")}
             className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "playlists"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
@@ -1827,11 +2133,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              playTactileTick({ type: "snap" });
-              setBrowseType("tracks");
-              targetScrollRef.current = 0;
-            }}
+            onClick={() => handleBrowseTypeChange("tracks")}
             className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "tracks"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
@@ -1844,11 +2146,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              playTactileTick({ type: "snap" });
-              setBrowseType("favorites");
-              targetScrollRef.current = 0;
-            }}
+            onClick={() => handleBrowseTypeChange("favorites")}
             className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "favorites"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
@@ -1861,11 +2159,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              playTactileTick({ type: "snap" });
-              setBrowseType("recent");
-              targetScrollRef.current = 0;
-            }}
+            onClick={() => handleBrowseTypeChange("recent")}
             className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "recent"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
@@ -1878,28 +2172,20 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              playTactileTick({ type: "snap" });
-              setBrowseType("offline");
-              targetScrollRef.current = 0;
-            }}
+            onClick={() => handleBrowseTypeChange("offline")}
             className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "offline"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
                 : "text-white/60 hover:text-white"
             }`}
           >
-            <Download className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+            <Download className="w-3.5 h-3.5 shrink-0 text-white/65" />
             <span>离线曲库 {offlineSongs.length > 0 ? `(${offlineSongs.length})` : ""}</span>
           </button>
 
           <button
             type="button"
-            onClick={() => {
-              playTactileTick({ type: "snap" });
-              setBrowseType("daily");
-              targetScrollRef.current = 0;
-            }}
+            onClick={() => handleBrowseTypeChange("daily")}
             className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "daily"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
@@ -1912,7 +2198,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         </div>
 
         {/* 右侧搜索与退出 */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="order-2 flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto xl:order-none">
           <div className="relative flex items-center shrink-0">
             <Search className="w-3.5 h-3.5 text-white/40 absolute left-2.5 shrink-0 pointer-events-none" />
             <input
@@ -1953,7 +2239,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
       {/* ── 3D 二级曲目详情瀑布流面板 (Mineradio 3D Tracklist Billboard) ── */}
       {showDetailPanel && selectedShelfItem && (
-        <div className="relative z-30 max-w-3xl w-full mx-auto my-auto bg-black/75 border border-white/[0.22] rounded-[36px] p-6 backdrop-blur-[64px] backdrop-saturate-[190%] shadow-[0_32px_90px_rgba(0,0,0,0.95),inset_0_1.5px_2px_rgba(255,255,255,0.35)] animate-in fade-in zoom-in-95 duration-200 shelf-hud-interactive">
+        <div className="relative z-40 my-auto max-h-[78dvh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-white/[0.22] bg-black/75 p-4 shadow-[0_32px_90px_rgba(0,0,0,0.95),inset_0_1.5px_2px_rgba(255,255,255,0.35)] backdrop-blur-[64px] backdrop-saturate-[190%] animate-in fade-in zoom-in-95 duration-200 shelf-hud-interactive sm:rounded-[36px] sm:p-6">
           {/* 面板头部 */}
           <div className="flex items-start justify-between border-b border-white/10 pb-5 mb-4">
             <div className="flex items-center gap-5">
@@ -1993,8 +2279,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           </div>
 
           {/* 快捷操作条与曲目搜索 */}
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2.5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <button
                 type="button"
                 onClick={async () => {
@@ -2138,23 +2424,25 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         </div>
       )}
 
-      {/* ── 底部当前卡片控制器 (Apple Liquid Glass Floating HUD) ── */}
-      <div className="relative z-20 flex items-center justify-between w-full max-w-4xl mx-auto px-6 py-3 bg-white/[0.07] border border-white/[0.20] rounded-full backdrop-blur-[56px] backdrop-saturate-[180%] shadow-[0_24px_60px_rgba(0,0,0,0.9),inset_0_1.5px_2px_rgba(255,255,255,0.35)] shelf-hud-interactive overflow-hidden">
-        <div className="mineradio-glass-specular-glint" />
+      {/* ── 底部暗色剧场控制器 ── */}
+      <div className="relative z-30 mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-1.5 rounded-3xl border border-white/[0.12] bg-black/55 px-2 py-2 shadow-[0_20px_48px_rgba(0,0,0,0.62),inset_0_1px_1px_rgba(255,255,255,0.08)] backdrop-blur-2xl shelf-hud-interactive sm:gap-3 sm:rounded-full sm:px-4 sm:py-2.5">
         {/* 左侧上一首按钮 */}
         <button
           type="button"
-          onClick={() => scrollToRelative(-1)}
-          className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/15 transition-all active:scale-90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
+          onClick={() => {
+            if (webglStatus === "ready") scrollToRelative(-1);
+            else handleFallbackPrevious();
+          }}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] transition-all hover:bg-white/20 hover:text-white active:scale-90"
           title="上一张 (Left / Up)"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
 
         {/* 中间信息与播放控制 (包含微缩封面、标题与声波) */}
-        <div className="flex items-center gap-4 md:gap-5 min-w-0">
+        <div className="order-2 flex min-w-0 flex-1 flex-wrap items-center justify-center gap-2 sm:gap-3 md:gap-5">
           {/* 微缩封面与状态 */}
-          <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-white/10 border border-white/20 shadow-md flex-shrink-0">
+          <div className="relative hidden h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-white/10 shadow-md sm:block">
             <img
               src={currentActiveItem?.cover || "/default-cover.svg"}
               alt={currentActiveItem?.title || "Cover"}
@@ -2162,7 +2450,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             />
           </div>
 
-          <div className="text-left min-w-0 max-w-[240px] md:max-w-[280px]">
+          <div className="min-w-0 max-w-[132px] text-left sm:max-w-[200px] md:max-w-[280px]">
             <div className="flex items-center gap-1.5 whitespace-nowrap">
               <span className="text-[10px] uppercase font-bold tracking-wider text-white/60 whitespace-nowrap">
                 {displayMode === "stage" ? "STAGE FOCUS" : "SIDE FOCUS"}
@@ -2183,7 +2471,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           <button
             type="button"
             onClick={handlePlayCurrent}
-            className="flex items-center gap-2 bg-white text-black hover:bg-white/90 font-bold text-xs px-4 md:px-5 py-2.5 rounded-full shadow-[0_0_25px_rgba(255,255,255,0.35)] transition-all active:scale-95 shrink-0 whitespace-nowrap cursor-pointer"
+            className="flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-white px-3 py-2.5 text-xs font-bold text-black shadow-[0_0_25px_rgba(255,255,255,0.35)] transition-all hover:bg-white/90 active:scale-95 sm:px-4 md:px-5"
           >
             {currentActiveItem?.type === "song" &&
             currentPlayingSong?.id === currentActiveItem.song?.id &&
@@ -2205,7 +2493,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           <button
             type="button"
             onClick={handleOpenDetail}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3.5 md:px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all active:scale-95 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] shrink-0 whitespace-nowrap cursor-pointer"
+            className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2.5 text-xs font-semibold text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] transition-all hover:bg-white/20 active:scale-95 sm:px-3.5 md:px-4"
           >
             <ListMusic className="w-4 h-4 text-white/80 shrink-0" />
             <span className="whitespace-nowrap">曲目列表</span>
@@ -2215,8 +2503,11 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         {/* 右侧下一首按钮 */}
         <button
           type="button"
-          onClick={() => scrollToRelative(1)}
-          className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/15 transition-all active:scale-90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]"
+          onClick={() => {
+            if (webglStatus === "ready") scrollToRelative(1);
+            else handleFallbackNext();
+          }}
+          className="order-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] transition-all hover:bg-white/20 hover:text-white active:scale-90"
           title="下一张 (Right / Down)"
         >
           <ChevronRight className="w-5 h-5" />
