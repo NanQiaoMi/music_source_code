@@ -970,39 +970,42 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       const height = Math.max(1, container.clientHeight || window.innerHeight);
       qualityTier = qualityForWidth(width);
 
-      scene = new THREE.Scene();
-      scene.fog = new THREE.FogExp2(0x080706, 0.022);
-      sceneRef.current = scene;
+      const sceneInstance = new THREE.Scene();
+      scene = sceneInstance;
+      sceneInstance.fog = new THREE.FogExp2(0x080706, 0.022);
+      sceneRef.current = sceneInstance;
 
-      camera = new THREE.PerspectiveCamera(48, width / height, 0.1, 100);
-      camera.position.set(0, 0.35, 6.6);
-      cameraRef.current = camera;
+      const cameraInstance = new THREE.PerspectiveCamera(48, width / height, 0.1, 100);
+      camera = cameraInstance;
+      cameraInstance.position.set(0, 0.35, 6.6);
+      cameraRef.current = cameraInstance;
 
-      renderer = new THREE.WebGLRenderer({
+      const rendererInstance = new THREE.WebGLRenderer({
         canvas,
         antialias: true,
         alpha: true,
         powerPreference: "high-performance",
       });
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.0;
-      rendererRef.current = renderer;
+      renderer = rendererInstance;
+      rendererInstance.toneMapping = THREE.ACESFilmicToneMapping;
+      rendererInstance.toneMappingExposure = 1.0;
+      rendererRef.current = rendererInstance;
 
       const ambientLight = new THREE.AmbientLight(0xe8e2d8, 0.72);
-      scene.add(ambientLight);
+      sceneInstance.add(ambientLight);
       const mainLight = new THREE.PointLight(0xf3e7d5, 2.5, 24);
       mainLight.position.set(0, 3.6, 4.8);
-      scene.add(mainLight);
+      sceneInstance.add(mainLight);
       const fillLight = new THREE.PointLight(0xd8d5cf, 0.95, 20);
       fillLight.position.set(-4.5, -0.4, 3.5);
-      scene.add(fillLight);
+      sceneInstance.add(fillLight);
       const rimLight = new THREE.DirectionalLight(0xe4ddd2, 0.8);
       rimLight.position.set(6, 6, -2);
-      scene.add(rimLight);
+      sceneInstance.add(rimLight);
 
       const cardsGroup = new THREE.Group();
       cardsGroupRef.current = cardsGroup;
-      scene.add(cardsGroup);
+      sceneInstance.add(cardsGroup);
 
       floorGeo = new THREE.PlaneGeometry(60, 60, 24, 24);
       floorMat = new THREE.MeshStandardMaterial({
@@ -1013,7 +1016,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       const floor = new THREE.Mesh(floorGeo, floorMat);
       floor.rotation.x = -Math.PI / 2;
       floor.position.y = -2.0;
-      scene.add(floor);
+      sceneInstance.add(floor);
 
       floorSeamGeo = new THREE.PlaneGeometry(60, 0.012);
       floorSeamMat = new THREE.MeshBasicMaterial({
@@ -1026,7 +1029,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         const seam = new THREE.Mesh(floorSeamGeo!, floorSeamMat!);
         seam.rotation.x = -Math.PI / 2;
         seam.position.set(0, -1.988, z);
-        scene!.add(seam);
+        sceneInstance.add(seam);
       });
 
       const shadowCanvas = document.createElement("canvas");
@@ -1047,17 +1050,18 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         shadowTexture.needsUpdate = true;
       }
       contactShadowGeo = new THREE.PlaneGeometry(5.2, 3.2);
-      contactShadowMat = new THREE.MeshBasicMaterial({
+      const contactShadowMaterial = new THREE.MeshBasicMaterial({
         map: shadowTexture,
         transparent: true,
         opacity: 0.22,
         depthWrite: false,
       });
-      const contactShadowMesh = new THREE.Mesh(contactShadowGeo, contactShadowMat);
+      contactShadowMat = contactShadowMaterial;
+      const contactShadowMesh = new THREE.Mesh(contactShadowGeo, contactShadowMaterial);
       contactShadowMesh.rotation.x = -Math.PI / 2;
       contactShadowMesh.position.set(0, -1.985, 0.9);
       contactShadowMeshRef.current = contactShadowMesh;
-      scene.add(contactShadowMesh);
+      sceneInstance.add(contactShadowMesh);
 
       const particleCount = particleCounts[qualityTier];
       particleGeo = new THREE.BufferGeometry();
@@ -1080,7 +1084,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       });
       const particles = new THREE.Points(particleGeo, particleMat);
       particles.visible = !reducedMotionRef.current;
-      scene.add(particles);
+      sceneInstance.add(particles);
 
       cardGeo = new THREE.PlaneGeometry(1.95, 2.45);
       const edgeShape = new THREE.Shape();
@@ -1131,7 +1135,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       const onAnimationFrame = (time: number) => {
         frameRequestId = null;
         animFrameRef.current = null;
-        if (!effectActive || contextLost || document.visibilityState === "hidden" || !renderer) {
+        if (!effectActive || contextLost || document.visibilityState === "hidden") {
           stopAnimation();
           return;
         }
@@ -1231,10 +1235,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         parallax.x += (parallax.targetX - parallax.x) * parallaxAlpha;
         parallax.y += (parallax.targetY - parallax.y) * parallaxAlpha;
         const dollyZ = Math.sin(modeBlend * Math.PI) * 0.28;
-        camera.position.x = parallax.x * 0.65;
-        camera.position.y = 0.35 + parallax.y * 0.4;
-        camera.position.z = 6.6 - dollyZ;
-        camera.lookAt(0, 0, 0);
+        cameraInstance.position.x = parallax.x * 0.65;
+        cameraInstance.position.y = 0.35 + parallax.y * 0.4;
+        cameraInstance.position.z = 6.6 - dollyZ;
+        cameraInstance.lookAt(0, 0, 0);
 
         const shadowX = THREE.MathUtils.lerp(0, -0.32, modeBlend);
         contactShadowMeshRef.current?.position.set(
@@ -1296,7 +1300,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         const slowAfterglow = reducedMotionRef.current
           ? 0
           : 0.012 * (0.5 + 0.5 * Math.sin(afterglowPhase * 0.28));
-        contactShadowMat.opacity = 0.22 + slowAfterglow + lowEnvelope * 0.12;
+        contactShadowMaterial.opacity = 0.22 + slowAfterglow + lowEnvelope * 0.12;
 
         const currentItems = shelfItemsRef.current;
         const totalItems = currentItems.length;
@@ -1383,7 +1387,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         }
 
         try {
-          renderer.render(scene, camera);
+          rendererInstance.render(sceneInstance, cameraInstance);
         } catch {
           stopAnimation();
           setWebglStatus("unavailable");
@@ -1402,8 +1406,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           !effectActive ||
           animationRunning ||
           contextLost ||
-          document.visibilityState === "hidden" ||
-          !renderer
+          document.visibilityState === "hidden"
         )
           return;
         animationRunning = true;
@@ -1455,9 +1458,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         const nextWidth = Math.max(1, container.clientWidth);
         const nextHeight = Math.max(1, container.clientHeight);
         releasePointerOnResize();
-        camera.aspect = nextWidth / nextHeight;
-        camera.updateProjectionMatrix();
-        renderer!.setSize(nextWidth, nextHeight, false);
+        cameraInstance.aspect = nextWidth / nextHeight;
+        cameraInstance.updateProjectionMatrix();
+        rendererInstance.setSize(nextWidth, nextHeight, false);
         if (!adaptiveQualityActive) applyQuality(qualityForWidth(nextWidth));
         else applyQuality(qualityTier);
       };
