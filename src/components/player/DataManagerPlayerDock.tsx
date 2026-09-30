@@ -43,7 +43,9 @@ export function DataManagerPlayerDock() {
     const activeSong =
       useAudioStore.getState().currentSong || usePlayerStore.getState().currentSong;
     const activeIndex = activeSong
-      ? visibleQueue.findIndex((song) => song.id === activeSong.id)
+      ? visibleQueue[visibleIndex]?.id === activeSong.id
+        ? visibleIndex
+        : visibleQueue.findIndex((song) => song.id === activeSong.id)
       : -1;
     const audioState = useAudioStore.getState();
 

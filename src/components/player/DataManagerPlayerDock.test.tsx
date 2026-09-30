@@ -320,6 +320,46 @@ describe("DataManagerPlayerDock", () => {
     expect(useQueueStore.getState().currentIndex).toBe(1);
   });
 
+  it("uses QueueStore's current occurrence when the current song ID appears more than once", async () => {
+    const repeatedQueue = [firstSong, secondSong, firstSong, thirdSong];
+    useAudioStore.setState({
+      currentSong: firstSong,
+      currentTime: 14,
+      duration: firstSong.duration,
+      isPlaying: true,
+      queue: [firstSong, secondSong, thirdSong],
+      currentIndex: 0,
+      loopMode: "all",
+    });
+    useQueueStore.setState({ queue: repeatedQueue, currentIndex: 2 });
+    root = await renderDock(container);
+
+    await clickButton(container.querySelector<HTMLButtonElement>('[aria-label="下一首"]'));
+
+    expect(useAudioStore.getState().currentSong?.id).toBe(thirdSong.id);
+    expect(useQueueStore.getState().currentIndex).toBe(3);
+  });
+
+  it("uses the repeated current song occurrence when moving to the previous song", async () => {
+    const repeatedQueue = [firstSong, secondSong, firstSong, thirdSong];
+    useAudioStore.setState({
+      currentSong: firstSong,
+      currentTime: 14,
+      duration: firstSong.duration,
+      isPlaying: true,
+      queue: [firstSong, secondSong, thirdSong],
+      currentIndex: 0,
+      loopMode: "all",
+    });
+    useQueueStore.setState({ queue: repeatedQueue, currentIndex: 2 });
+    root = await renderDock(container);
+
+    await clickButton(container.querySelector<HTMLButtonElement>('[aria-label="上一首"]'));
+
+    expect(useAudioStore.getState().currentSong?.id).toBe(secondSong.id);
+    expect(useQueueStore.getState().currentIndex).toBe(1);
+  });
+
   it("selects the visible current-index candidate when the playing song was removed", async () => {
     useAudioStore.setState({
       currentSong: staleSong,
