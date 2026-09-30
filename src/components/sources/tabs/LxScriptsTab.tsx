@@ -114,7 +114,7 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
               type="button"
               onClick={onRetry}
               disabled={loading}
-              className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-default"
+              className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#090b13]"
               title="从桌面音源目录一键刷新并载入最新脚本"
             >
               <Sparkles className={`w-3.5 h-3.5 ${loading ? "animate-pulse" : ""}`} />
@@ -124,7 +124,7 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
             <button
               type="button"
               onClick={() => setShowAddScript(true)}
-              className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/20 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#090b13]"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>添加扩展源</span>
@@ -138,14 +138,16 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-cyan-300">新建自定义音源脚本</span>
               <button
+                type="button"
                 onClick={() => setShowAddScript(false)}
-                className="text-white/50 hover:text-white"
+                aria-label="关闭新建脚本"
+                className="text-white/50 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#090b13] rounded-md"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[11px] text-white/50 block mb-1">源名称 *</label>
                 <input
@@ -153,7 +155,7 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
                   placeholder="例如: 六音无损源 v2"
                   value={newScriptName}
                   onChange={(e) => setNewScriptName(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 focus-visible:border-cyan-300/50"
                 />
               </div>
               <div>
@@ -163,7 +165,7 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
                   placeholder="例如: LX Dev / 1.0.0"
                   value={newScriptAuthor}
                   onChange={(e) => setNewScriptAuthor(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 focus-visible:border-cyan-300/50"
                 />
               </div>
             </div>
@@ -177,7 +179,7 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
                 placeholder="https://raw.githubusercontent.com/.../custom_source.js"
                 value={newScriptUrl}
                 onChange={(e) => setNewScriptUrl(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 focus-visible:border-cyan-300/50"
               />
             </div>
 
@@ -188,7 +190,7 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
                 placeholder="module.exports = { search: async function(kw) { ... } };"
                 value={newScriptCode}
                 onChange={(e) => setNewScriptCode(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-lg p-2 font-mono text-[11px] text-emerald-300 focus:outline-none"
+                className="w-full bg-black/40 border border-white/10 rounded-lg p-2 font-mono text-[11px] text-emerald-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 focus-visible:border-cyan-300/50"
               />
             </div>
 
