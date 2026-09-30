@@ -27,11 +27,15 @@
 | src/components/library/hub/DataDashboardTab.test.tsx         | 固定四类指标结构和窄屏适配标记，保留既有数据口径。                                                                       |
 | src/components/library/hub/LxMusicSearchTab.tsx              | 优化搜索控件分组与间距；分别呈现锁定、空结果、加载和请求失败状态。                                                       |
 | src/components/library/hub/LxMusicSearchTab.test.tsx         | 覆盖搜索成功、空结果、未登录和请求失败后的重试入口。                                                                     |
+| src/services/MultiSourceResolver.ts                          | 仅当至少一个来源被实际尝试且全部失败时报告聚合搜索错误，保留部分成功和无可用来源的空结果。                               |
+| src/services/MultiSourceResolver.test.ts                     | 验证全部失败、部分成功空结果、无可尝试来源和空结果 LX 脚本边界。                                                         |
+| src/lib/sources/lxRunner.ts                                  | 内置搜索 fallback 的所有 API 均失败时抛错；脚本成功返回空数组仍视为正常结果。                                            |
+| src/lib/sources/lxRunner.test.ts                             | 验证 fallback 全失败、部分成功以及脚本成功空结果。                                                                       |
 | src/components/sources/SourceManagementModal.tsx             | 保留五个 Tab 和所有业务动作，统一标题、选中态、卡片表面、焦点与窄屏边距。                                                |
 | src/components/sources/SourceManagementModal.states.test.tsx | 保留同步错误测试，并覆盖弹窗语义和 Tab 可访问状态。                                                                      |
 | docs/nbl/CHANGELOG.md                                        | 记录本轮已实现并验证的 UI 与播放导航改动。                                                                               |
 
-不修改 Home View、Player View、全屏歌词核心视图；不修改音频解析、认证、搜索接口、队列持久化或 localStorage/IndexedDB 数据格式。不把第二个 HTMLAudioElement 引入资料库页。
+不修改 Home View、Player View、全屏歌词核心视图；不改变音频解析、认证、搜索 API 路由/请求参数/响应格式、队列持久化或 localStorage/IndexedDB 数据格式。内部聚合搜索仅将“有尝试且全部来源失败”改为可捕获 rejection，已有调用者各自处理失败。不得把第二个 HTMLAudioElement 引入资料库页。
 
 ## 2. 实施任务
 
@@ -307,6 +311,8 @@ DataDashboardTab.tsx 用主玻璃卡突出存储空间和配额；在同一信�
 - [ ] **Step 2：实现独立请求错误状态**
 
 LxMusicSearchTab.tsx 增加 searchError: string | null；每次发起请求前清除旧错误，在 catch 中写入错误并清空对应结果，finally 结束 loading。非 ok HTTP 响应也进入错误状态。渲染优先级固定为 loading → 登录锁定 → request error → no results → results；request error 的按钮再次调用当前搜索参数，不改认证逻辑。不同搜索模式清空各自结果，避免上一模式结果泄漏。
+
+实现检查发现聚合服务原本会将每个来源的网络异常吞成空数组，导致“全部来源都失败”误显示为空结果。为满足上述状态区分，MultiSourceResolver 仅在至少有一个来源被尝试且成功来源数为零时 reject；来源部分成功（即使成功响应为空）、没有可尝试来源、或 LX 脚本成功返回空数组时仍返回正常空结果。LXRunner 的内置 fallback 在所有 fallback API 均失败时 reject；搜索 store 和 AI 工具已有失败捕获路径，资料库页面显示该错误并提供重试。
 
 错误状态最小实现模式如下：
 
