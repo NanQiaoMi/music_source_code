@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
 import type { MusicSourceId, SingleSourceConfig } from "@/types/sourceConfig";
@@ -93,5 +95,39 @@ describe("SourceMatrixTab 状态", () => {
     expect(html).not.toContain("上游配置拉取失败");
     expect(html).toContain("网易云音乐");
     expect(html).toContain("核心播放链路模式");
+  });
+
+  it("展开音源设置时窄屏字段使用单列布局", async () => {
+    const { SourceMatrixTab } = await import("./SourceMatrixTab");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    try {
+      await act(async () => {
+        root.render(
+          <SourceMatrixTab
+            sourceList={[makeSource("local", "本地母带")]}
+            isDiagnosing={false}
+            onRunDiagnose={() => undefined}
+          />
+        );
+      });
+
+      const expandButton = Array.from(
+        container.querySelectorAll<HTMLButtonElement>("button[aria-expanded]")
+      ).find((button) => button.textContent?.includes("本地母带"));
+      expect(expandButton).toBeDefined();
+
+      await act(async () => expandButton?.click());
+
+      const settingsGrid = Array.from(container.querySelectorAll<HTMLDivElement>("div.grid")).find(
+        (element) => element.className.includes("grid-cols-1")
+      );
+      expect(settingsGrid?.className).toContain("sm:grid-cols-2");
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+    }
   });
 });

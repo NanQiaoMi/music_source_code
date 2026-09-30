@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
 
   const encoded = encodeURIComponent(keywords.trim());
   const playlists: OnlinePlaylistResult[] = [];
+  let attemptedProviderCount = 0;
+  let successfulProviderCount = 0;
 
   const neteaseCookie = request.headers.get("x-netease-cookie") || "";
   const qqCookie = request.headers.get("x-qq-cookie") || "";
@@ -49,6 +51,7 @@ export async function GET(request: NextRequest) {
   ) {
     try {
       const neteaseUrl = `https://music.163.com/api/search/get/web?csrf_token=&s=${encoded}&type=1000&offset=0&total=true&limit=${limit}`;
+      attemptedProviderCount += 1;
       const res = await fetch(neteaseUrl, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -72,6 +75,7 @@ export async function GET(request: NextRequest) {
             description: p.description || "",
           });
         });
+        successfulProviderCount += 1;
       }
     } catch (e) {
       console.warn("[api/playlist/search] NetEase playlist search error:", e);
@@ -82,6 +86,7 @@ export async function GET(request: NextRequest) {
   if ((source === "all" || source === "qq") && qqCookie && qqCookie.trim().length >= 5) {
     try {
       const qqUrl = `https://c.y.qq.com/soso/fcgi-bin/client_music_search_songlist?page_no=0&num_per_page=${limit}&query=${encoded}&format=json&inCharset=utf8&outCharset=utf-8`;
+      attemptedProviderCount += 1;
       const res = await fetch(qqUrl, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -105,10 +110,23 @@ export async function GET(request: NextRequest) {
             description: p.desc || "",
           });
         });
+        successfulProviderCount += 1;
       }
     } catch (e) {
       console.warn("[api/playlist/search] QQ playlist search error:", e);
     }
+  }
+
+  if (attemptedProviderCount > 0 && successfulProviderCount === 0) {
+    return NextResponse.json(
+      {
+        playlists: [],
+        code: 503,
+        count: 0,
+        message: "All playlist search providers failed.",
+      },
+      { status: 503 }
+    );
   }
 
   return NextResponse.json({

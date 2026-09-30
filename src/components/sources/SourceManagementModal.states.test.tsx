@@ -3,6 +3,8 @@ import { act } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
 
+const motionPreference = vi.hoisted(() => ({ reduce: false }));
+
 vi.mock("framer-motion", async () => {
   const React = await import("react");
   type MotionProps = {
@@ -37,16 +39,26 @@ vi.mock("framer-motion", async () => {
   const MotionDiv = ({
     whileHover: _whileHover,
     whileTap: _whileTap,
-    initial: _initial,
-    animate: _animate,
-    exit: _exit,
-    transition: _transition,
-    layout: _layout,
-    layoutId: _layoutId,
+    initial,
+    animate,
+    exit,
+    transition,
+    layout,
+    layoutId,
     ...props
-  }: MotionProps) => React.createElement("div", props);
+  }: MotionProps) =>
+    React.createElement("div", {
+      ...props,
+      "data-motion-initial": JSON.stringify(initial),
+      "data-motion-animate": JSON.stringify(animate),
+      "data-motion-exit": JSON.stringify(exit),
+      "data-motion-transition": JSON.stringify(transition),
+      "data-motion-layout": String(layout),
+      "data-motion-layout-id": String(layoutId),
+    });
 
   return {
+    useReducedMotion: () => motionPreference.reduce,
     AnimatePresence: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
     motion: {
@@ -61,6 +73,7 @@ let root: Root;
 
 beforeEach(() => {
   localStorage.clear();
+  motionPreference.reduce = false;
   useSourceConfigStore.setState({
     isManagementModalOpen: true,
     activeManagementTab: "matrix",
@@ -98,5 +111,70 @@ describe("SourceManagementModal 三态接线", () => {
     );
     const html = await renderModal();
     expect(html).not.toContain("重试");
+  });
+});
+
+describe("SourceManagementModal 外观与可访问性", () => {
+  it("使用可滚动的窄屏玻璃面板并提供可见键盘焦点和可命名关闭按钮", async () => {
+    const html = await renderModal();
+
+    expect(html).toContain("p-2.5 sm:p-4 lg:p-6");
+    expect(html).toContain("max-h-[90dvh]");
+    expect(html).toContain("min-h-0 overflow-y-auto");
+    expect(html).toContain('aria-label="关闭音源管理"');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain("from-cyan-500 to-blue-500");
+    expect(html).toContain("focus-visible:ring-2");
+  });
+
+  it("尊重系统减少动态效果偏好并停用弹窗位移与缩放", async () => {
+    motionPreference.reduce = true;
+    vi.spyOn(useSourceConfigStore.getState(), "syncBuiltinDesktopSources").mockResolvedValue(
+      undefined
+    );
+    await renderModal();
+
+    const motionNodes = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-motion-initial]")
+    );
+    expect(motionNodes).toHaveLength(2);
+    expect(motionNodes.every((node) => node.dataset.motionInitial === "false")).toBe(true);
+
+    const modalMotion = motionNodes.find((node) => node.className.includes("max-w-4xl"));
+    expect(modalMotion).toBeDefined();
+    expect(JSON.parse(modalMotion?.dataset.motionAnimate || "{}")).toEqual({
+      scale: 1,
+      opacity: 1,
+      y: 0,
+    });
+    expect(JSON.parse(modalMotion?.dataset.motionTransition || "{}")).toEqual({ duration: 0 });
+    expect(container.querySelector(".source-management-motion-scope")).not.toBeNull();
+    expect(container.querySelector('[data-motion-layout="true"]')).toBeNull();
+  });
+
+  it("减少动态效果时禁用自定义脚本开关的布局动画", async () => {
+    motionPreference.reduce = true;
+    vi.spyOn(useSourceConfigStore.getState(), "syncBuiltinDesktopSources").mockResolvedValue(
+      undefined
+    );
+    useSourceConfigStore.setState({
+      activeManagementTab: "lx_scripts",
+      lxScripts: [
+        {
+          id: "motion-test",
+          name: "Motion test",
+          author: "test",
+          version: "1",
+          description: "",
+          enabled: true,
+          lastUpdated: 0,
+          supportedActions: ["search"],
+        },
+      ],
+    });
+
+    await renderModal();
+
+    expect(container.querySelector('[data-motion-layout="true"]')).toBeNull();
   });
 });

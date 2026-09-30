@@ -225,8 +225,18 @@ export const useQueueStore = create<QueueState>()(
           const target = state.queue[index];
           if (!target) return {};
 
-          const next = bulkRemove(state, [target.id]);
-          return { queue: next.queue, currentIndex: next.currentIndex };
+          const queue = state.queue.filter((_, itemIndex) => itemIndex !== index);
+          const nextCurrentIndex =
+            index < state.currentIndex
+              ? state.currentIndex - 1
+              : index === state.currentIndex
+                ? Math.min(index, queue.length - 1)
+                : state.currentIndex;
+
+          return {
+            queue,
+            currentIndex: clampQueueIndex(nextCurrentIndex, queue.length),
+          };
         }),
 
       reorderQueue: (fromIndex, toIndex) =>

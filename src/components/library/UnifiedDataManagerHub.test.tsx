@@ -6,8 +6,10 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { UnifiedDataManagerHub } from "./UnifiedDataManagerHub";
 import { useUIStore } from "@/store/uiStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { useDataManagerStore } from "@/store/useDataManagerStore";
 
 vi.mock("framer-motion", () => ({
+  useReducedMotion: () => false,
   motion: new Proxy(
     {},
     {
@@ -100,5 +102,69 @@ describe("UnifiedDataManagerHub", () => {
     expect(container.textContent).toContain("歌单编排");
     expect(container.textContent).toContain("本地导入");
     expect(container.textContent).toContain("存储体检");
+  });
+
+  it("renders a persisted active tab after store hydration", async () => {
+    await act(async () => {
+      root.render(<UnifiedDataManagerHub initialTab="dashboard" />);
+    });
+
+    await act(async () => {
+      useDataManagerStore.getState().setActiveHubTab("lx_search");
+    });
+
+    const searchTab = container.querySelector('[data-testid="lx-search-tab"]');
+    expect(searchTab).not.toBeNull();
+    expect(searchTab?.parentElement?.className).toContain("block opacity-100");
+
+    const dashboardButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("全景看板")
+    );
+    expect(dashboardButton).toBeDefined();
+    await act(async () => dashboardButton?.click());
+    expect(container.querySelector('[data-testid="lx-search-tab"]')).toBe(searchTab);
+    expect(searchTab?.parentElement?.className).toContain("hidden opacity-0");
+
+    const searchButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("全网聚搜")
+    );
+    expect(searchButton).toBeDefined();
+    await act(async () => searchButton?.click());
+    expect(container.querySelector('[data-testid="lx-search-tab"]')).toBe(searchTab);
+    expect(searchTab?.parentElement?.className).toContain("block opacity-100");
+  });
+
+  it("uses one width-safe 1720px workspace and preserves the 1400px navigation handoff", async () => {
+    await act(async () => {
+      root.render(<UnifiedDataManagerHub initialTab="dashboard" />);
+    });
+
+    const main = container.querySelector("main");
+    expect(main?.className).toContain("max-w-[1720px]");
+    expect(main?.className).toContain("min-w-0");
+
+    const wideNavigation = Array.from(container.querySelectorAll("header > div")).find((element) =>
+      element.className.includes("min-[1400px]:flex")
+    );
+    const compactNavigation = Array.from(container.querySelectorAll("div")).find(
+      (element) =>
+        element.className.includes("min-[1400px]:hidden") &&
+        element.className.includes("overflow-x-auto")
+    );
+
+    expect(wideNavigation).toBeDefined();
+    expect(compactNavigation).toBeDefined();
+  });
+
+  it("reserves manager dock space only on the standalone page", async () => {
+    await act(async () => {
+      root.render(<UnifiedDataManagerHub initialTab="dashboard" isStandalonePage />);
+    });
+    expect(container.querySelector("main")?.className.split(" ")).toContain("pb-32");
+
+    await act(async () => {
+      root.render(<UnifiedDataManagerHub initialTab="dashboard" />);
+    });
+    expect(container.querySelector("main")?.className.split(" ")).not.toContain("pb-32");
   });
 });

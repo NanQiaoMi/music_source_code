@@ -418,10 +418,18 @@ export class LXRunner {
       ];
 
       const responses = await Promise.allSettled(
-        searchUrls.map((u) =>
-          fetch(u, { signal: AbortSignal.timeout(4000) }).then((r) => (r.ok ? r.json() : null))
-        )
+        searchUrls.map(async (url) => {
+          const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
+          if (!response.ok) throw new Error(`LX fallback search failed: ${response.status}`);
+          return response.json();
+        })
       );
+      const successfulResponses = responses.filter(
+        (result) => result.status === "fulfilled"
+      ).length;
+      if (successfulResponses === 0) {
+        throw new Error("All fallback search providers failed");
+      }
 
       const mergedSongs: Song[] = [];
       const seenTitles = new Set<string>();
@@ -453,6 +461,7 @@ export class LXRunner {
       }
     } catch (e) {
       console.warn("[LXRunner] Search aggregation error:", e);
+      throw new Error("All fallback search providers failed");
     }
 
     return [];
