@@ -872,6 +872,18 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     });
   }, []);
 
+  const handleBrowseTypeChange = useCallback((nextBrowseType: ShelfBrowseType) => {
+    playTactileTick({ type: "snap" });
+    setBrowseType(nextBrowseType);
+    setActiveIndex(0);
+    activeIndexRef.current = 0;
+    targetScrollRef.current = 0;
+    currentScrollRef.current = 0;
+    lastDetentStepRef.current = 0;
+    scrollVelocityRef.current = 0;
+    dragVelocityRef.current = 0;
+  }, []);
+
   // The renderer lifetime follows panel/renderer lifecycle only. Playback and mode state
   // are sampled from refs so play/pause never rebuilds WebGL resources.
   useEffect(() => {
@@ -2108,11 +2120,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         <div className="order-3 flex w-full min-w-0 shrink-0 items-center gap-0.5 overflow-x-auto rounded-2xl border border-white/10 bg-black/40 p-1 sm:gap-1 xl:order-none xl:w-auto">
           <button
             type="button"
-            onClick={() => {
-              playTactileTick({ type: "snap" });
-              setBrowseType("playlists");
-              targetScrollRef.current = 0;
-            }}
+            onClick={() => handleBrowseTypeChange("playlists")}
             className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "playlists"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
@@ -2125,11 +2133,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              playTactileTick({ type: "snap" });
-              setBrowseType("tracks");
-              targetScrollRef.current = 0;
-            }}
+            onClick={() => handleBrowseTypeChange("tracks")}
             className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "tracks"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
@@ -2142,11 +2146,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              playTactileTick({ type: "snap" });
-              setBrowseType("favorites");
-              targetScrollRef.current = 0;
-            }}
+            onClick={() => handleBrowseTypeChange("favorites")}
             className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "favorites"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
@@ -2159,11 +2159,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              playTactileTick({ type: "snap" });
-              setBrowseType("recent");
-              targetScrollRef.current = 0;
-            }}
+            onClick={() => handleBrowseTypeChange("recent")}
             className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "recent"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
@@ -2176,11 +2172,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              playTactileTick({ type: "snap" });
-              setBrowseType("offline");
-              targetScrollRef.current = 0;
-            }}
+            onClick={() => handleBrowseTypeChange("offline")}
             className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "offline"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
@@ -2193,11 +2185,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              playTactileTick({ type: "snap" });
-              setBrowseType("daily");
-              targetScrollRef.current = 0;
-            }}
+            onClick={() => handleBrowseTypeChange("daily")}
             className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap cursor-pointer ${
               browseType === "daily"
                 ? "bg-white/25 text-white font-bold shadow-[0_2px_12px_rgba(255,255,255,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.45)] border border-white/20"
