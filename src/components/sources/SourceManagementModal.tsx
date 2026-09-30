@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { X, Radio, Sliders, Code2, Activity, Download, HardDrive } from "lucide-react";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
 import { SourceMatrixTab } from "./tabs/SourceMatrixTab";
@@ -11,6 +11,7 @@ import { BackupTab } from "./tabs/BackupTab";
 import { OfflineCacheTab } from "./tabs/OfflineCacheTab";
 
 export function SourceManagementModal() {
+  const shouldReduceMotion = useReducedMotion() ?? false;
   const {
     sources,
     isManagementModalOpen,
@@ -75,22 +76,27 @@ export function SourceManagementModal() {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[99999] flex items-center justify-center p-2.5 sm:p-4 lg:p-6 select-none">
+      <div className="source-management-motion-scope fixed inset-0 z-[99999] flex items-center justify-center p-2.5 sm:p-4 lg:p-6 select-none">
         {/* Backdrop */}
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={shouldReduceMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={shouldReduceMotion ? { duration: 0 } : undefined}
           onClick={closeManagementModal}
           className="absolute inset-0 bg-black/80 backdrop-blur-md"
         />
 
         {/* Modal Window */}
         <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 20 }}
+          initial={shouldReduceMotion ? false : { scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          transition={{ type: "spring", stiffness: 350, damping: 30 }}
+          exit={
+            shouldReduceMotion ? { scale: 1, opacity: 0, y: 0 } : { scale: 0.95, opacity: 0, y: 20 }
+          }
+          transition={
+            shouldReduceMotion ? { duration: 0 } : { type: "spring", stiffness: 350, damping: 30 }
+          }
           className="relative w-full max-w-4xl max-h-[90dvh] min-h-0 bg-[#090b13]/95 border border-cyan-200/15 rounded-[28px] shadow-[0_24px_70px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.08)] overflow-hidden flex flex-col backdrop-blur-2xl"
         >
           {/* Header */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { X, Code2, Sparkles, Plus, Trash2, CheckCircle2, AlertTriangle, Play } from "lucide-react";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
 import { LXRunner } from "@/lib/sources/lxRunner";
@@ -18,6 +18,7 @@ interface LxScriptsTabProps {
 }
 
 export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}) {
+  const shouldReduceMotion = useReducedMotion() ?? false;
   // 订阅整店以便状态变化时重渲染；动作来自 hook。
   const { addLXScript, removeLXScript, toggleLXScript } = useSourceConfigStore();
   // 脚本列表直接读当前值：renderToStaticMarkup 下 hook 快照是初始值（getInitialState），
@@ -282,7 +283,8 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
                         }`}
                       >
                         <motion.div
-                          layout
+                          layout={!shouldReduceMotion}
+                          transition={shouldReduceMotion ? { duration: 0 } : undefined}
                           className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 ${
                             script.enabled ? "right-1" : "left-1"
                           }`}
