@@ -16,6 +16,7 @@
 
 ### Fixed
 
+- Fixed return-to-home navigation resetting playback by moving app bootstrap to the persistent root and making persisted playback restoration run once per client application lifecycle; failed service initialization can retry without overwriting playback changes.
 - Fixed manager next/previous actions to align by the active song ID; if the playing song was removed from the queue, Next selects the visible current-index candidate and Previous selects the item before it. Single-item playback remains available, and shuffle keeps its existing random behavior.
 - Fixed the manager queue button so it opens the existing QueuePanel on `/data-manager` and resets shared panel state when the panel closes.
 - Fixed the dock display to follow the home floating player’s PlayerStore fallback when AudioStore has no current song.
@@ -31,6 +32,9 @@
 
 ### Verified
 
+- Added regression coverage for one-time persisted playback restoration, retry-safe initialization, and manager-to-home client navigation while the root audio owner stays mounted. Focused result: 5 files, 26 tests passed; queue/search/listening-insights smoke result: 3 files, 32 tests passed.
+- `npx tsc --noEmit --incremental false --pretty false`, scoped ESLint, Prettier check, and `git diff --check` passed for the playback-continuity change; `npm run build` passed and generated both `/` and `/data-manager`.
+- A manual transition with a real authenticated online track was not run; playback continuity is covered by store/bootstrap regression tests, not claimed as live-provider evidence.
 - Focused regression suite passed: 20 files, 128 tests, including persisted-section hydration, the manager queue-panel host, duplicate-ID queue alignment/removal, deferred search-request races across edits and unmount/remount, reduced-motion behavior, queue/search stores, and listening-insights smoke tests.
 - `npx tsc --noEmit --incremental false --pretty false`, scoped ESLint over changed TS/TSX files, Prettier over changed files, and `git diff --check` passed.
 - `npm run build` passed and generated 28 static pages plus `/api/playlist/search`. Next emitted a workspace-root warning because both the primary repository and isolated worktree contain a `package-lock.json`.

@@ -7,6 +7,7 @@ import { AchievementToastContainer } from "@/components/shared/AchievementToast"
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { useMediaSession } from "@/hooks/useMediaSession";
 import { useElectron } from "@/hooks/useElectron";
+import { bootstrapApp } from "@/lib/bootstrap";
 import { compactExistingStorage } from "@/lib/storage/safeStorage";
 
 const FloatingPlayer = dynamic(
@@ -40,6 +41,7 @@ export function GlobalClientComponents() {
   // 应用初始化时自动自愈清理历史膨胀存储
   useEffect(() => {
     compactExistingStorage();
+    void bootstrapApp();
   }, []);
 
   return (

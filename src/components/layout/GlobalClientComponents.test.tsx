@@ -7,8 +7,11 @@ import { GlobalClientComponents } from "./GlobalClientComponents";
 const mocks = vi.hoisted(() => ({
   pathname: "/",
   useAudioPlayer: vi.fn(),
+  audioPlayerMounts: 0,
+  audioPlayerUnmounts: 0,
   useMediaSession: vi.fn(),
   useElectron: vi.fn(),
+  bootstrapApp: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -35,9 +38,20 @@ vi.mock("next/dynamic", () => ({
   },
 }));
 
-vi.mock("@/hooks/useAudioPlayer", () => ({ useAudioPlayer: mocks.useAudioPlayer }));
+vi.mock("@/hooks/useAudioPlayer", () => ({
+  useAudioPlayer: () => {
+    mocks.useAudioPlayer();
+    React.useEffect(() => {
+      mocks.audioPlayerMounts += 1;
+      return () => {
+        mocks.audioPlayerUnmounts += 1;
+      };
+    }, []);
+  },
+}));
 vi.mock("@/hooks/useMediaSession", () => ({ useMediaSession: mocks.useMediaSession }));
 vi.mock("@/hooks/useElectron", () => ({ useElectron: mocks.useElectron }));
+vi.mock("@/lib/bootstrap", () => ({ bootstrapApp: mocks.bootstrapApp }));
 vi.mock("@/lib/storage/safeStorage", () => ({ compactExistingStorage: vi.fn() }));
 vi.mock("@/components/player/FloatingPlayer", () => ({
   FloatingPlayer: () => <div data-testid="floating-player" />,
@@ -63,9 +77,12 @@ describe("GlobalClientComponents player routing", () => {
 
   beforeEach(() => {
     mocks.pathname = "/";
+    mocks.audioPlayerMounts = 0;
+    mocks.audioPlayerUnmounts = 0;
     mocks.useAudioPlayer.mockClear();
     mocks.useMediaSession.mockClear();
     mocks.useElectron.mockClear();
+    mocks.bootstrapApp.mockReset().mockResolvedValue(true);
     container = document.createElement("div");
     document.body.appendChild(container);
   });
@@ -89,6 +106,8 @@ describe("GlobalClientComponents player routing", () => {
     expect(container.querySelector('[data-testid="floating-player"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="manager-player-dock"]')).toBeNull();
     expect(mocks.useAudioPlayer).toHaveBeenCalledTimes(1);
+    expect(mocks.audioPlayerMounts).toBe(1);
+    expect(mocks.audioPlayerUnmounts).toBe(0);
     expect(mocks.useMediaSession).toHaveBeenCalledTimes(1);
     expect(mocks.useElectron).toHaveBeenCalledTimes(1);
   });
@@ -103,6 +122,25 @@ describe("GlobalClientComponents player routing", () => {
     expect(mocks.useAudioPlayer).toHaveBeenCalledTimes(1);
     expect(mocks.useMediaSession).toHaveBeenCalledTimes(1);
     expect(mocks.useElectron).toHaveBeenCalledTimes(1);
+  });
+
+  it("initializes shared services on direct manager entry and keeps one audio owner across navigation", async () => {
+    mocks.pathname = "/data-manager";
+
+    await renderRoot();
+
+    expect(container.querySelector('[data-testid="manager-player-dock"]')).not.toBeNull();
+    expect(mocks.bootstrapApp).toHaveBeenCalledTimes(1);
+
+    mocks.pathname = "/";
+    await act(async () => root?.render(<GlobalClientComponents />));
+    await act(async () => Promise.resolve());
+
+    expect(container.querySelector('[data-testid="floating-player"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="manager-player-dock"]')).toBeNull();
+    expect(mocks.bootstrapApp).toHaveBeenCalledTimes(1);
+    expect(mocks.audioPlayerMounts).toBe(1);
+    expect(mocks.audioPlayerUnmounts).toBe(0);
   });
 
   it("keeps the manager dock on nested library routes", async () => {
