@@ -23,6 +23,28 @@ const searchOnlineMusicSegmentedMock = vi.hoisted(() =>
   })
 );
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+function makeSong(id: string, title: string) {
+  return {
+    id,
+    title,
+    artist: "测试歌手",
+    album: "测试专辑",
+    duration: 180,
+    cover: "/default-cover.svg",
+    source: "netease",
+  };
+}
+
 vi.mock("framer-motion", () => ({
   motion: new Proxy(
     {},
@@ -270,5 +292,160 @@ describe("LxMusicSearchTab", () => {
     });
 
     expect(useUserAccountStore.getState().isAccountModalOpen).toBe(true);
+  });
+
+  it("ignores an older resolve after a newer keyword and source-tab search succeeds", async () => {
+    const oldRequest = deferred<any>();
+    const newRequest = deferred<any>();
+    const oldQuery = "stale-resolve-old-query-101";
+    const newQuery = "stale-resolve-new-query-101";
+
+    useDataManagerStore.setState({
+      keyword: oldQuery,
+      activeSourceTab: "all",
+      searchMode: "songs",
+      songResults: [],
+      playlistResults: [],
+    });
+    searchOnlineMusicSegmentedMock.mockReset().mockReturnValueOnce(oldRequest.promise);
+    const fetchMock = vi.fn().mockReturnValueOnce(newRequest.promise);
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => root.render(<LxMusicSearchTab />));
+    await act(async () => {
+      useUserAccountStore.setState({ neteaseUser: { loggedIn: true } as any });
+    });
+
+    const searchButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("检索")
+    );
+    await act(async () => searchButton?.click());
+
+    await act(async () => {
+      useDataManagerStore.setState({ keyword: newQuery });
+    });
+    const neteaseTab = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("网易云")
+    );
+    await act(async () => neteaseTab?.click());
+
+    await act(async () => {
+      newRequest.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ songs: [makeSong("new-result", "新查询结果")] }),
+      });
+      await newRequest.promise;
+    });
+    expect(useDataManagerStore.getState().songResults.map((song) => song.id)).toEqual([
+      "new-result",
+    ]);
+
+    await act(async () => {
+      oldRequest.resolve({ all: [makeSong("old-result", "旧查询结果")] });
+      await oldRequest.promise;
+    });
+
+    expect(useDataManagerStore.getState().songResults.map((song) => song.id)).toEqual([
+      "new-result",
+    ]);
+    expect(container.textContent).toContain("新查询结果");
+    expect(container.textContent).not.toContain("旧查询结果");
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(encodeURIComponent(newQuery)),
+      expect.any(Object)
+    );
+  });
+
+  it("ignores an older rejection after a newer keyword and mode search succeeds", async () => {
+    const oldRequest = deferred<any>();
+    const newRequest = deferred<any>();
+    const newQuery = "stale-reject-new-query-102";
+
+    useDataManagerStore.setState({
+      keyword: "stale-reject-old-query-102",
+      activeSourceTab: "all",
+      searchMode: "songs",
+      songResults: [],
+      playlistResults: [],
+    });
+    searchOnlineMusicSegmentedMock.mockReset().mockReturnValueOnce(oldRequest.promise);
+    vi.stubGlobal("fetch", vi.fn().mockReturnValueOnce(newRequest.promise));
+
+    await act(async () => root.render(<LxMusicSearchTab />));
+    await act(async () => {
+      useUserAccountStore.setState({ neteaseUser: { loggedIn: true } as any });
+    });
+
+    const searchButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("检索")
+    );
+    await act(async () => searchButton?.click());
+    await act(async () => {
+      useDataManagerStore.setState({ keyword: newQuery });
+    });
+    const playlistModeButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("歌单搜索")
+    );
+    await act(async () => playlistModeButton?.click());
+
+    await act(async () => {
+      newRequest.resolve({ ok: true, status: 200, json: async () => ({ playlists: [] }) });
+      await newRequest.promise;
+    });
+    expect(container.querySelector('[data-state="empty"]')).not.toBeNull();
+
+    await act(async () => {
+      oldRequest.reject(new Error("stale request rejected"));
+      await oldRequest.promise.catch(() => undefined);
+    });
+
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(container.querySelector('[data-state="empty"]')).not.toBeNull();
+    expect(useDataManagerStore.getState().searchMode).toBe("playlists");
+  });
+
+  it("keeps the loading state while the latest mode search is still pending", async () => {
+    const oldRequest = deferred<any>();
+    const newRequest = deferred<any>();
+
+    useDataManagerStore.setState({
+      keyword: "stale-finally-old-query-103",
+      activeSourceTab: "all",
+      searchMode: "songs",
+      songResults: [],
+      playlistResults: [],
+    });
+    searchOnlineMusicSegmentedMock.mockReset().mockReturnValueOnce(oldRequest.promise);
+    vi.stubGlobal("fetch", vi.fn().mockReturnValueOnce(newRequest.promise));
+
+    await act(async () => root.render(<LxMusicSearchTab />));
+    await act(async () => {
+      useUserAccountStore.setState({ neteaseUser: { loggedIn: true } as any });
+    });
+
+    const searchButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("检索")
+    );
+    await act(async () => searchButton?.click());
+    const playlistModeButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("歌单搜索")
+    );
+    await act(async () => playlistModeButton?.click());
+
+    expect(container.querySelector('[data-state="loading"]')).not.toBeNull();
+
+    await act(async () => {
+      oldRequest.resolve({ all: [makeSong("stale-result", "过期结果")] });
+      await oldRequest.promise;
+    });
+
+    expect(container.querySelector('[data-state="loading"]')).not.toBeNull();
+
+    await act(async () => {
+      newRequest.resolve({ ok: true, status: 200, json: async () => ({ playlists: [] }) });
+      await newRequest.promise;
+    });
+    expect(container.querySelector('[data-state="loading"]')).toBeNull();
   });
 });
