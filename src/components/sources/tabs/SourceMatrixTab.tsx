@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { RefreshCw, Zap, Lock } from "lucide-react";
 import { useSourceConfigStore, isSourceUsable } from "@/store/sourceConfigStore";
 import { useUserAccountStore, isPlatformLoggedIn, PlatformType } from "@/store/userAccountStore";
@@ -50,6 +50,7 @@ export function SourceMatrixTab({
   error,
   onRetry,
 }: SourceMatrixTabProps) {
+  const shouldReduceMotion = useReducedMotion() ?? false;
   const {
     resolutionMode,
     setResolutionMode,
@@ -159,8 +160,12 @@ export function SourceMatrixTab({
             }`}
           >
             <motion.div
-              layout
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              layout={!shouldReduceMotion}
+              transition={
+                shouldReduceMotion
+                  ? { duration: 0 }
+                  : { type: "spring", stiffness: 500, damping: 30 }
+              }
               className={`w-4 h-4 rounded-full bg-white absolute top-1 shadow-md ${
                 isEnabled ? "right-1" : "left-1"
               }`}
