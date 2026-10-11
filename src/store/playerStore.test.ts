@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { usePlayerStore } from "./playerStore";
+import { usePlaybackRuntimeStore } from "./playbackRuntimeStore";
 import { sanitizeSongForStorage } from "@/lib/storage/safeStorage";
 
 const mockSong = {
@@ -15,6 +16,7 @@ const mockSong = {
 
 describe("playerStore", () => {
   beforeEach(() => {
+    usePlaybackRuntimeStore.getState().reset();
     usePlayerStore.setState({
       currentSong: null,
       isPlaying: false,
@@ -61,14 +63,20 @@ describe("playerStore", () => {
     expect(usePlayerStore.getState().playbackRate).toBe(1.0);
   });
 
-  it("togglePlay flips playback state", () => {
+  it("togglePlay requests playback and can cancel a pending play without faking confirmed state", () => {
     const store = usePlayerStore.getState();
+    store.setCurrentSong(mockSong);
 
     store.togglePlay();
-    expect(usePlayerStore.getState().isPlaying).toBe(true);
+    const requestId = usePlaybackRuntimeStore.getState().requestId;
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+    expect(usePlaybackRuntimeStore.getState().shouldPlay).toBe(true);
+    expect(usePlaybackRuntimeStore.getState().phase).toBe("loading");
 
     store.togglePlay();
     expect(usePlayerStore.getState().isPlaying).toBe(false);
+    expect(usePlaybackRuntimeStore.getState().shouldPlay).toBe(false);
+    expect(usePlaybackRuntimeStore.getState().requestId).toBe(requestId + 1);
   });
 
   it("toggleMute flips mute state", () => {

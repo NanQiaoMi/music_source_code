@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { Song } from "@/types/song";
 import { createSafeStorage, sanitizeSongForStorage } from "@/lib/storage/safeStorage";
+import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 
 export type LoopMode = "none" | "single" | "all" | "shuffle";
 
@@ -78,8 +79,15 @@ export const usePlayerStore = create<PlayerState>()(
           return { currentSong: nextSong };
         }),
       setIsPlaying: (playing) => {
-        set({ isPlaying: playing });
-        audioStoreSyncListener?.({ isPlaying: playing });
+        const currentSong = _get().currentSong;
+        usePlaybackRuntimeStore
+          .getState()
+          .requestPlayback(
+            currentSong ? String(currentSong.id || currentSong.title || "") : null,
+            currentSong?.audioUrl || null,
+            playing
+          );
+        if (currentSong) set({ isLoading: playing });
       },
       setCurrentTime: (time) => {
         const t = Math.max(0, time);
@@ -118,9 +126,16 @@ export const usePlayerStore = create<PlayerState>()(
         audioStoreSyncListener?.({ loopMode: mode });
       },
       togglePlay: () => {
-        const nextPlaying = !_get().isPlaying;
-        set({ isPlaying: nextPlaying });
-        audioStoreSyncListener?.({ isPlaying: nextPlaying });
+        const nextPlaying = !usePlaybackRuntimeStore.getState().shouldPlay;
+        const currentSong = _get().currentSong;
+        usePlaybackRuntimeStore
+          .getState()
+          .requestPlayback(
+            currentSong ? String(currentSong.id || currentSong.title || "") : null,
+            currentSong?.audioUrl || null,
+            nextPlaying
+          );
+        if (currentSong) set({ isLoading: nextPlaying });
       },
       toggleMute: () => {
         const nextMuted = !_get().isMuted;
@@ -150,7 +165,7 @@ export const usePlayerStore = create<PlayerState>()(
 usePlayerStore.subscribe((state, prev) => {
   const updates: Partial<PlayerState> = {};
   if (state.isPlaying !== prev.isPlaying) updates.isPlaying = state.isPlaying;
-  if (state.currentSong?.id !== prev.currentSong?.id) updates.currentSong = state.currentSong;
+  if (state.currentSong !== prev.currentSong) updates.currentSong = state.currentSong;
   if (state.currentTime !== prev.currentTime) updates.currentTime = state.currentTime;
   if (state.duration !== prev.duration) updates.duration = state.duration;
   if (state.isLoading !== prev.isLoading) updates.isLoading = state.isLoading;

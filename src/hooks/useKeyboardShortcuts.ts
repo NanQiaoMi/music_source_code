@@ -105,7 +105,7 @@ export const useKeyboardShortcuts = () => {
           audioStore.setCurrentSong(audioStore.queue[0]);
           audioStore.setCurrentIndex(0);
         }
-        audioStore.setIsPlaying(!audioStore.isPlaying);
+        audioStore.togglePlaybackIntent();
         return;
       }
 

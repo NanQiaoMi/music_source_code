@@ -7,6 +7,7 @@ import { useQueueStore } from "@/store/queueStore";
 import { useVisualizationV8Store } from "@/store/visualizationV8Store";
 import { useSleepTimerStore } from "@/store/sleepTimerStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
+import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 
 /**
  * 歌曲运行时快速缓存，用于根据 ID 在工具调用间共享检索到的完整 Song 结构
@@ -457,7 +458,7 @@ export async function executeTool(
             return { success: true, message: "已暂停音乐播放" };
 
           case "toggle": {
-            const nextPlaying = !audioStore.isPlaying;
+            const nextPlaying = !usePlaybackRuntimeStore.getState().shouldPlay;
             audioStore.setIsPlaying(nextPlaying);
             return { success: true, message: nextPlaying ? "已开始播放" : "已暂停播放" };
           }

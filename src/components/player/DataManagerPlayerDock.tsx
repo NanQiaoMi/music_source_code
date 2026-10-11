@@ -30,7 +30,6 @@ export function DataManagerPlayerDock() {
   const playerIsLoading = usePlayerStore((state) => state.isLoading);
   const isLoading = audioIsLoading || playerIsLoading;
   const error = useAudioStore((state) => state.error);
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const seekTo = useAudioStore((state) => state.seekTo);
   const queue = useQueueStore((state) => state.queue);
   const openPanel = useUIStore((state) => state.openPanel);
@@ -170,7 +169,7 @@ export function DataManagerPlayerDock() {
               type="button"
               aria-label={isPlaying ? "暂停" : "播放"}
               title={isPlaying ? "暂停" : "播放"}
-              onClick={() => setIsPlaying(!isPlaying)}
+              onClick={() => useAudioStore.getState().togglePlaybackIntent()}
               className="flex h-8 w-8 items-center justify-center rounded-full border border-cyan-100/40 bg-gradient-to-br from-cyan-200 to-blue-400 text-slate-950 shadow-[0_4px_18px_rgba(34,211,238,0.25)] transition hover:brightness-110 active:scale-95 sm:h-10 sm:w-10"
             >
               {isPlaying ? (

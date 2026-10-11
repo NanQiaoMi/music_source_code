@@ -3,6 +3,8 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
+import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 import { Volume2, Volume1, VolumeX } from "lucide-react";
 
 export interface FloatingProgressScrubberProps {
@@ -32,9 +34,14 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
   onSeekStart,
   onSeekEnd,
 }) => {
-  const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentTime = useAudioStore((state) => state.currentTime);
-  const duration = useAudioStore((state) => state.duration);
+  const playbackSnapshot = usePlaybackClock();
+  const playbackPhase = usePlaybackRuntimeStore((state) => state.phase);
+  const storeTime = useAudioStore((state) => state.currentTime);
+  const storeDuration = useAudioStore((state) => state.duration);
+  const hasPlaybackTarget = playbackSnapshot.targetSongId !== null;
+  const currentTime = hasPlaybackTarget ? playbackSnapshot.currentTime : storeTime;
+  const duration = hasPlaybackTarget ? playbackSnapshot.duration : storeDuration;
+  const isPlaying = playbackPhase === "playing";
   const volume = useAudioStore((state) => state.volume);
   const isMuted = useAudioStore((state) => state.isMuted);
   const seekTo = useAudioStore((state) => state.seekTo);

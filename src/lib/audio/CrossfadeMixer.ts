@@ -9,6 +9,8 @@ export class CrossfadeMixer {
   private static instance: CrossfadeMixer;
   private context: AudioContext | null = null;
   private gainNodes: Map<HTMLAudioElement, GainNode> = new Map();
+  private elementGenerations = new WeakMap<HTMLAudioElement, number>();
+  private nextElementGeneration = 1;
   private currentAnimationId: number | null = null;
 
   private constructor() {
@@ -51,6 +53,49 @@ export class CrossfadeMixer {
     return gainNode;
   }
 
+  private claimElement(audio: HTMLAudioElement): number {
+    const generation = this.nextElementGeneration++;
+    this.elementGenerations.set(audio, generation);
+    return generation;
+  }
+
+  private ownsElement(audio: HTMLAudioElement, generation: number): boolean {
+    return this.elementGenerations.get(audio) === generation;
+  }
+
+  private resetElementGain(audio: HTMLAudioElement): void {
+    const gainNode = this.gainNodes.get(audio);
+    if (!gainNode || !this.context) return;
+
+    const now = this.context.currentTime;
+    gainNode.gain.cancelScheduledValues(now);
+    gainNode.gain.setValueAtTime(1, now);
+  }
+
+  /**
+   * Claims a deck for ordinary playback and removes any abandoned crossfade ramp.
+   */
+  public prepareForDirectPlayback(audio: HTMLAudioElement): void {
+    this.claimElement(audio);
+    this.resetElementGain(audio);
+  }
+
+  /**
+   * Stops a deck and invalidates any pending crossfade that still references it.
+   */
+  public pauseAndReset(audio: HTMLAudioElement, rewind = false): void {
+    this.claimElement(audio);
+    audio.pause();
+    if (rewind) {
+      try {
+        audio.currentTime = 0;
+      } catch {
+        /* ignore unavailable seek while media is changing */
+      }
+    }
+    this.resetElementGain(audio);
+  }
+
   /**
    * Calculates the dynamic crossfade duration.
    */
@@ -71,12 +116,18 @@ export class CrossfadeMixer {
   public async crossfade(
     fromAudio: HTMLAudioElement,
     toAudio: HTMLAudioElement,
-    duration: number
+    duration: number,
+    isCurrentRequest: () => boolean = () => true,
+    canCleanupFromAudio: () => boolean = () => true,
+    canCleanupToAudio: () => boolean = () => true
   ): Promise<void> {
     const fromGain = this.prepareElement(fromAudio);
     const toGain = this.prepareElement(toAudio);
 
     if (!fromGain || !toGain || !this.context) return;
+
+    const fromGeneration = this.claimElement(fromAudio);
+    const toGeneration = this.claimElement(toAudio);
 
     const now = this.context.currentTime;
 
@@ -92,28 +143,59 @@ export class CrossfadeMixer {
     try {
       await toAudio.play();
     } catch (e: LegacyAny) {
+      if (
+        !isCurrentRequest() ||
+        !this.ownsElement(fromAudio, fromGeneration) ||
+        !this.ownsElement(toAudio, toGeneration)
+      ) {
+        this.cleanupStaleDeck(toAudio, toGeneration, canCleanupToAudio);
+        this.cleanupStaleDeck(fromAudio, fromGeneration, canCleanupFromAudio);
+        return;
+      }
       const isAbort =
         e.name === "AbortError" || e.code === 20 || e.message?.includes("interrupted");
       if (!isAbort) {
         console.error("Crossfade play failed:", e);
       }
-      toGain.gain.setValueAtTime(1, now); // Fallback to instant play
+      this.resetElementGain(toAudio); // Fallback to instant play
+      return;
+    }
+
+    // A newer selection may have reused either deck while play() was pending.
+    if (
+      !isCurrentRequest() ||
+      !this.ownsElement(fromAudio, fromGeneration) ||
+      !this.ownsElement(toAudio, toGeneration)
+    ) {
+      this.cleanupStaleDeck(toAudio, toGeneration, canCleanupToAudio);
+      this.cleanupStaleDeck(fromAudio, fromGeneration, canCleanupFromAudio);
       return;
     }
 
     // Perform smooth linear ramps
-    fromGain.gain.linearRampToValueAtTime(0.001, now + duration);
-    toGain.gain.linearRampToValueAtTime(1, now + duration);
+    const fadeStart = this.context.currentTime;
+    fromGain.gain.cancelScheduledValues(fadeStart);
+    toGain.gain.cancelScheduledValues(fadeStart);
+    fromGain.gain.setValueAtTime(fromGain.gain.value, fadeStart);
+    toGain.gain.setValueAtTime(0, fadeStart);
+    fromGain.gain.linearRampToValueAtTime(0.001, fadeStart + duration);
+    toGain.gain.linearRampToValueAtTime(1, fadeStart + duration);
 
     // We don't block the UI with a long await anymore.
     // We use a timer just for the 'from' cleanup.
     setTimeout(
       () => {
         try {
-          if (fromAudio.paused === false) {
+          // A stale fade may still clean its outgoing deck if the deck was not
+          // reused as the active target of a newer playback request.
+          if (
+            this.ownsElement(fromAudio, fromGeneration) &&
+            canCleanupFromAudio() &&
+            fromAudio.paused === false
+          ) {
             fromAudio.pause();
             fromAudio.currentTime = 0;
-            fromGain.gain.setValueAtTime(1, this.context!.currentTime);
+            this.resetElementGain(fromAudio);
           }
         } catch {
           /* ignore */
@@ -121,5 +203,24 @@ export class CrossfadeMixer {
       },
       duration * 1000 + 100
     );
+  }
+
+  private cleanupStaleDeck(
+    audio: HTMLAudioElement,
+    generation: number,
+    canCleanup: () => boolean
+  ): void {
+    if (!this.ownsElement(audio, generation)) return;
+
+    if (canCleanup()) {
+      audio.pause();
+      try {
+        audio.currentTime = 0;
+      } catch {
+        /* ignore unavailable seek while media is changing */
+      }
+    }
+
+    this.resetElementGain(audio);
   }
 }

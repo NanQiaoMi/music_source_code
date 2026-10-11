@@ -425,9 +425,7 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
   const isPlaying = audioIsPlaying || playerIsPlaying;
 
   const togglePlay = () => {
-    const nextPlaying = !isPlaying;
-    useAudioStore.getState().setIsPlaying(nextPlaying);
-    usePlayerStore.getState().setIsPlaying(nextPlaying);
+    useAudioStore.getState().togglePlaybackIntent();
   };
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);

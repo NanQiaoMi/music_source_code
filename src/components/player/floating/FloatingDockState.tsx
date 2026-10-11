@@ -37,10 +37,6 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
   const currentSong = audioSong || playerSong;
 
   // 两个 store 各自订阅后再合并（不能写成 `a || b`：那会让右侧 hook 条件执行）
-  const audioIsLoading = useAudioStore((state) => state.isLoading);
-  const playerIsLoading = usePlayerStore((state) => state.isLoading);
-  const isLoading = audioIsLoading || playerIsLoading;
-
   const [isHovered, setIsHovered] = useState(false);
   const [showPlayOverlay, setShowPlayOverlay] = useState(false);
 
@@ -56,11 +52,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
 
   const handlePlayToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isLoading) {
-      const nextPlaying = !isPlaying;
-      useAudioStore.getState().setIsPlaying(nextPlaying);
-      usePlayerStore.getState().setIsPlaying(nextPlaying);
-    }
+    useAudioStore.getState().togglePlaybackIntent();
   };
 
   return (

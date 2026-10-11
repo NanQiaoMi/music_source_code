@@ -4,7 +4,6 @@ import React, { useCallback } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useAudioStore } from "@/store/audioStore";
-import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 import { Volume2, VolumeX, Music2, Maximize2 } from "lucide-react";
 import { NowPlayingHalo } from "@/components/player/NowPlayingHalo";
@@ -40,9 +39,7 @@ export const GlobalPlayerBar: React.FC = () => {
   const isLoading = useAudioStore((state) => state.isLoading);
 
   const handleTogglePlay = () => {
-    const nextPlaying = !isPlaying;
-    useAudioStore.getState().setIsPlaying(nextPlaying);
-    usePlayerStore.getState().setIsPlaying(nextPlaying);
+    useAudioStore.getState().togglePlaybackIntent();
   };
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);
@@ -147,7 +144,6 @@ export const GlobalPlayerBar: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.9 }}
               onClick={handleTogglePlay}
-              disabled={isLoading}
               className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-lg transition-transform active:scale-90 disabled:opacity-50"
             >
               {isLoading ? (

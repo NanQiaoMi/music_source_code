@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useCallback } from "react";
 import { useAudioStore } from "@/store/audioStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
+import { smoothAudioValue } from "@/lib/audio/audioMotionSmoothing";
 
 export interface FloatingSpectrumGlowProps {
   /** Optional audio element */
@@ -16,8 +17,8 @@ export interface FloatingSpectrumGlowProps {
   barCount?: number;
   /** Color theme palette */
   colorTheme?: "plasma" | "cyan-magenta" | "aurora";
-  /** Fallback idle animation when paused (default: true) */
-  enableIdlePulse?: boolean;
+  /** Render as a transparent analyzer layer over an existing surface. */
+  overlay?: boolean;
 }
 
 export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
@@ -26,13 +27,15 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
   height = 56,
   barCount = 32,
   colorTheme: _colorTheme = "plasma",
-  enableIdlePulse: _enableIdlePulse = true,
+  overlay = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const isVisibleRef = useRef<boolean>(true);
   const isRunningRef = useRef<boolean>(false);
+  const reducedMotionRef = useRef(false);
+  const lastFrameAtRef = useRef(0);
 
   // Audio frequency buffer
   const freqDataRef = useRef<Uint8Array | null>(null);
@@ -66,11 +69,23 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
 
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
+      if (typeof ctx.createLinearGradient !== "function") {
+        // Partial canvas contexts (for example jsdom or constrained webviews)
+        // cannot render the spectrum; stop cleanly instead of leaking RAF errors.
+        isRunningRef.current = false;
+        animFrameRef.current = null;
+        return;
+      }
 
       // 以画布元素自身的渲染尺寸为准：容器的 padding 与 border 不计入画布的内容盒，
       // 用容器尺寸取后备存储会比画布实际占位更高，画面被纵向压扁（圆点变扁椭圆）
       const width = canvas.clientWidth || container.clientWidth || 320;
       const canvasHeight = canvas.clientHeight || height || container.clientHeight || 56;
+      const frameTime = typeof performance !== "undefined" ? performance.now() : Date.now();
+      const deltaMs = lastFrameAtRef.current
+        ? Math.max(1, Math.min(64, frameTime - lastFrameAtRef.current))
+        : 16;
+      lastFrameAtRef.current = frameTime;
       const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
       const backingWidth = Math.round(width * dpr);
       const backingHeight = Math.round(canvasHeight * dpr);
@@ -86,7 +101,8 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
       ctx.clearRect(0, 0, width, canvasHeight);
 
       const analyser = getAudioAnalyser();
-      const hasLiveAudio = isPlaying && analyser && !!currentSong;
+      const hasLiveAudio =
+        isPlaying && analyser && analyser.context.state === "running" && !!currentSong;
 
       const bufferLength = analyser ? analyser.frequencyBinCount : 512;
       if (!freqDataRef.current || freqDataRef.current.length !== bufferLength) {
@@ -111,8 +127,6 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
       const maxBarHeight = canvasHeight * 0.88;
 
       let hasActiveSignal = false;
-      const time = Date.now() * 0.003;
-
       // 1. Prepare Liquid Glass Monochrome White Gradient
       const barGradient = ctx.createLinearGradient(0, canvasHeight, 0, canvasHeight - maxBarHeight);
       barGradient.addColorStop(0, "rgba(255, 255, 255, 0.15)");
@@ -132,18 +146,13 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
           // Mild high-frequency boost for visual balance
           const trebleBoost = 1 + (i / totalBars) * 0.45;
           rawNormalized = Math.min((byteVal / 255) * trebleBoost, 1);
-        } else if (isPlaying) {
-          // Subtle simulated rhythmic dance if playing without analyser hook
-          const wave = Math.sin(time + i * 0.25) * 0.35 + Math.cos(time * 1.5 - i * 0.15) * 0.25;
-          rawNormalized = Math.max(0.08, Math.min(Math.abs(wave), 0.7));
         } else {
-          // Paused state: slowly decay to 0
+          // Paused, suspended, or unavailable analysers decay to a quiet static state.
           rawNormalized = 0;
         }
 
-        // Smooth temporal interpolation
-        const smoothFactor = 0.35;
-        smoothedBars[i] = smoothedBars[i] + (rawNormalized - smoothedBars[i]) * smoothFactor;
+        // Time-based attack/release smoothing remains consistent if frame cadence changes.
+        smoothedBars[i] = smoothAudioValue(smoothedBars[i], rawNormalized, deltaMs);
         const currentHeight = Math.max(2, smoothedBars[i] * maxBarHeight);
 
         if (currentHeight > 3) {
@@ -210,8 +219,8 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
 
       ctx.restore();
 
-      // 智能休眠判断: 如果未播放且信号已全部衰减至 0，则停止 RAF
-      if (!isPlaying && !hasActiveSignal) {
+      // Stop sampling when playback/analyser is inactive or reduced motion is requested.
+      if (reducedMotionRef.current || ((!isPlaying || !hasLiveAudio) && !hasActiveSignal)) {
         isRunningRef.current = false;
         animFrameRef.current = null;
         return;
@@ -226,6 +235,7 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
   const startLoop = useCallback(() => {
     if (!isRunningRef.current && isVisibleRef.current) {
       isRunningRef.current = true;
+      lastFrameAtRef.current = 0;
       animFrameRef.current = requestAnimationFrame(renderFrame);
     }
   }, [renderFrame]);
@@ -239,17 +249,25 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
     }
   }, []);
 
-  // React to playback state changes
+  // Restart with the newest song/playback closure so a long-lived RAF cannot retain old metadata.
   useEffect(() => {
-    if (isPlaying && isVisibleRef.current) {
-      startLoop();
-    }
-  }, [isPlaying, startLoop]);
+    stopLoop();
+    if (currentSong && isVisibleRef.current) startLoop();
+  }, [currentSong, isPlaying, startLoop, stopLoop]);
 
   // Smart Visibility & IntersectionObserver for Energy Saving (智能休眠)
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    const reducedMotionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    reducedMotionRef.current = reducedMotionQuery?.matches === true;
+    const handleReducedMotionChange = (event: MediaQueryListEvent) => {
+      reducedMotionRef.current = event.matches;
+      stopLoop();
+      if (isVisibleRef.current && currentSong) startLoop();
+    };
+    reducedMotionQuery?.addEventListener?.("change", handleReducedMotionChange);
 
     let observer: IntersectionObserver | null = null;
     if (typeof IntersectionObserver !== "undefined") {
@@ -293,15 +311,28 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", handleVisibilityChange);
       }
+      reducedMotionQuery?.removeEventListener?.("change", handleReducedMotionChange);
       stopLoop();
     };
-  }, [isPlaying, startLoop, stopLoop]);
+  }, [currentSong, isPlaying, startLoop, stopLoop]);
 
   return (
     <div
       ref={containerRef}
       className={`relative select-none overflow-hidden rounded-xl bg-black/30 backdrop-blur-md p-1 border border-white/[0.06] ${className}`}
-      style={{ height, touchAction: "none" }}
+      style={
+        overlay
+          ? {
+              height,
+              touchAction: "none",
+              background: "transparent",
+              border: 0,
+              padding: 0,
+              backdropFilter: "none",
+              WebkitBackdropFilter: "none",
+            }
+          : { height, touchAction: "none" }
+      }
     >
       <canvas ref={canvasRef} className="w-full h-full block" />
     </div>

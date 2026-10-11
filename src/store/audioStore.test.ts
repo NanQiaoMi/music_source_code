@@ -1,6 +1,7 @@
 import { useAudioStore, registerAudioSeekHandler } from "./audioStore";
 import { usePlayerStore } from "./playerStore";
 import { useQueueStore } from "./queueStore";
+import { usePlaybackRuntimeStore } from "./playbackRuntimeStore";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { MISSING_AUDIO_SOURCE_MESSAGE } from "@/lib/audio/playableAudioSource";
 
@@ -18,6 +19,7 @@ function createMockSong(id: string) {
 describe("audioStore playback sync", () => {
   beforeEach(() => {
     localStorage.clear();
+    usePlaybackRuntimeStore.getState().reset();
 
     usePlayerStore.setState({
       currentSong: null,
@@ -170,6 +172,47 @@ describe("audioStore playback sync", () => {
 
     expect(useAudioStore.getState().currentSong?.id).toBe("2");
     expect(usePlayerStore.getState().currentSong?.id).toBe("2");
+  });
+
+  it("shows the requested track as loading without claiming it is playing", () => {
+    const song = createMockSong("loading-target");
+
+    useAudioStore.getState().playSong(song);
+
+    expect(useAudioStore.getState().currentSong?.id).toBe(song.id);
+    expect(usePlayerStore.getState().currentSong?.id).toBe(song.id);
+    expect(useAudioStore.getState().isLoading).toBe(true);
+    expect(usePlayerStore.getState().isLoading).toBe(true);
+    expect(useAudioStore.getState().isPlaying).toBe(false);
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+    expect(usePlaybackRuntimeStore.getState().phase).toBe("loading");
+    expect(usePlaybackRuntimeStore.getState().shouldPlay).toBe(true);
+  });
+
+  it("keeps a play request pending until a media event confirms playback", () => {
+    const song = createMockSong("pending-play");
+    useAudioStore.getState().setCurrentSong(song);
+
+    useAudioStore.getState().setIsPlaying(true);
+
+    expect(useAudioStore.getState().isPlaying).toBe(false);
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+    expect(usePlaybackRuntimeStore.getState().shouldPlay).toBe(true);
+    expect(usePlaybackRuntimeStore.getState().phase).toBe("loading");
+  });
+
+  it("lets any play toggle cancel a pending request without claiming playback", () => {
+    const song = createMockSong("cancel-pending-play");
+    useAudioStore.getState().playSong(song);
+
+    useAudioStore.getState().togglePlaybackIntent();
+
+    expect(usePlaybackRuntimeStore.getState().shouldPlay).toBe(false);
+    expect(usePlaybackRuntimeStore.getState().phase).toBe("paused");
+    expect(useAudioStore.getState().isPlaying).toBe(false);
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+    expect(useAudioStore.getState().isLoading).toBe(false);
+    expect(usePlayerStore.getState().isLoading).toBe(false);
   });
 
   it("should update both audioStore and playerStore currentTime and call registered audio seek handler", () => {
