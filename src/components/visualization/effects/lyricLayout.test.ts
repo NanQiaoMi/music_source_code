@@ -60,6 +60,22 @@ describe("layoutLyricUnits", () => {
     expect(layout[1].x).toBe(layout[0].x + layout[0].width);
   });
 
+  it("keeps a short three-character CJK phrase on one row when it fits comfortably", () => {
+    const layout = layoutLyricUnits(
+      Array.from("你好呀", (text, index) => ({
+        text,
+        start: index * 0.3,
+        end: (index + 1) * 0.3,
+        lineIndex: 0,
+      })),
+      makeOptions(640, "short-three-char-cjk")
+    );
+
+    expect(layout.map((item) => item.text).join("")).toBe("你好呀");
+    expect(rowsIn(layout)).toHaveLength(1);
+    expect(layout.map((item) => item.rowIndex)).toEqual([0, 0, 0]);
+  });
+
   it("keeps Latin timed words intact and shrinks an overwide word to the safe width", () => {
     const units = [
       { text: "go", start: 0, end: 0.4, lineIndex: 7 },

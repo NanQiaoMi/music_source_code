@@ -48,6 +48,7 @@ interface UnitPosition {
 
 const MAX_ROWS = 5;
 const MIN_ROWS = 2;
+const MAX_COMPACT_CJK_UNITS = 4;
 const SAFE_MARGIN_RATIO = 0.08;
 const MAX_SAFE_MARGIN = 24;
 const ROW_HEIGHT_RATIO = 1.32;
@@ -177,7 +178,7 @@ const packGroups = (
   const totalWidth = groupWidths.reduce((sum, width, index) => sum + width + groupGaps[index], 0);
   const maxRows = Math.min(MAX_ROWS, groups.length);
   const isCompactCjkPhrase =
-    groups.length <= MIN_ROWS &&
+    groups.length <= MAX_COMPACT_CJK_UNITS &&
     totalWidth <= contentWidth * ROW_FILL_RATIO &&
     groups.every((group) =>
       group.indexes.every((unitIndex) => {
