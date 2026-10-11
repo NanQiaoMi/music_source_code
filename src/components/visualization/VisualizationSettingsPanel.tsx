@@ -739,11 +739,11 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
               <div className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm text-white/80">书法字体风格</label>
+                    <label className="text-sm text-white/80">字体风格</label>
                     <span className="text-xs text-amber-300/80 font-mono bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                      {["洒脱行楷", "苍劲狂草", "典雅文楷", "金石宋韵"][
+                      {["现代极简", "经典雅致", "清雅文楷", "极简几何"][
                         Math.round(effectSettings.cinematicLyricDrift.fontStyle || 0)
-                      ] || "洒脱行楷"}
+                      ] || "现代极简"}
                     </span>
                   </div>
                   <input
@@ -763,11 +763,11 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm text-white/80">水墨调色板</label>
+                    <label className="text-sm text-white/80">色彩风格</label>
                     <span className="text-xs text-white/40 font-mono bg-white/5 px-2 py-0.5 rounded-md">
-                      {["洒金玄墨", "青黛冷月", "暮染丹青", "苍山松烟", "极简焦墨"][
+                      {["深海极光", "丝绒暮霭", "苍翠玉石", "极简黑曜", "银河星云"][
                         Math.round(effectSettings.cinematicLyricDrift.colorScheme || 0)
-                      ] || "洒金玄墨"}
+                      ] || "深海极光"}
                     </span>
                   </div>
                   <input
@@ -794,7 +794,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { heroFontSize: v })}
                 />
                 <SettingSlider
-                  label="流光羽化宽度"
+                  label="字缘柔光范围"
                   value={effectSettings.cinematicLyricDrift.shimmerFeather ?? 50}
                   min={20}
                   max={100}
@@ -804,7 +804,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   }
                 />
                 <SettingSlider
-                  label="背景流体速度"
+                  label="背景色斑漂移速度"
                   value={effectSettings.cinematicLyricDrift.fluidSpeed ?? 0.8}
                   min={0.2}
                   max={2.0}
@@ -812,7 +812,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { fluidSpeed: v })}
                 />
                 <SettingSlider
-                  label="弥散光晕强度"
+                  label="环境与局部光强"
                   value={effectSettings.cinematicLyricDrift.ambientGlowIntensity ?? 0.9}
                   min={0.2}
                   max={1.5}
@@ -822,7 +822,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   }
                 />
                 <SettingSlider
-                  label="胶片颗粒微粒"
+                  label="胶片颗粒强度"
                   value={effectSettings.cinematicLyricDrift.filmGrain ?? 0.15}
                   min={0.0}
                   max={0.5}
@@ -830,7 +830,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { filmGrain: v })}
                 />
                 <SettingSlider
-                  label="幽深暗角"
+                  label="暗角强度"
                   value={effectSettings.cinematicLyricDrift.vignetteStrength ?? 0.65}
                   min={0.0}
                   max={1.0}
