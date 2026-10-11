@@ -308,6 +308,7 @@ Task 1–4 → Task 6 集成验证与文档收尾（Task 5 获准后纳入）
 - 复核后补强：媒体事件先校验元素的实时 paused/ended/readyState/error，再进入 generation/deck/source 状态机；源归属接受请求 `src` 或浏览器最终 `currentSrc`，兼容重定向。CrossfadeMixer 按 deck generation 管理增益曲线：待播请求过期时只清理仍归它所有的 deck；直接播放接管时取消旧曲线并复位增益；暂停时同步停掉并复位两张 deck，避免连续切歌或暂停后静音、旧歌残响。交叉淡入从 `play()` 实际确认后的 AudioContext 时间开始，慢源等待不会消耗缓动时间；延迟清理前同样校验 deck 所有权。统一 `audioStore.togglePlaybackIntent()`，让非受保护的活跃按钮、Space 快捷键、推荐面板和 AI toggle 在 loading 期依据最新意图反转，不会读取尚未确认的 `isPlaying` 来重复播放。加载态主栏仍可点击以取消待播。
 - 动画复核：曲名改为同步进退场，最新目标不等旧标题退出；胶囊主按钮在 `prefers-reduced-motion` 下关闭 hover/tap 缩放。保留小位移、高阻尼 spring 和现有布局。
 - 自动化验证：11 个文件、87 项测试通过且无未处理错误；全部已改 TypeScript/TSX 文件 ESLint 通过；`npx tsc --noEmit` 通过；最新代码的 `npm run build` 通过。均在 `D:\26project\music_source_code_V1.1_full\_codex_player_sync_verify` 的同盘 detached 验证工作树执行，因为 C 盘 managed worktree 的 `node_modules` 联接会令 Next/Webpack 把 D 盘绝对路径误解为相对模块路径。构建仅提示 Browserslist 数据已 6 个月未更新。
+- 集成当前 `master` 后追加验证：14 个相关测试文件、120 项测试通过；合并范围内 TypeScript/TSX ESLint、`npx tsc --noEmit` 和生产构建均通过。验证工作树同步了当前 `master` 的 Folia 歌词改动与本分支文件，未发现播放时钟与歌词播放时钟实现冲突。
 - 页面验证：隔离工作树生产服务器运行于 `http://127.0.0.1:3027`，浏览器确认 Next 页面加载并显示“曲库暂无音乐”；当前没有可播放曲目，因此真实媒体起播、暂停/缓冲、连续切歌、seek、crossfade、后台恢复和动态频谱仍未验收。页面加载只证明生产页面可访问。
 - 未修改 `PlayerView.tsx`、`Player3D.tsx`、`LyricVisualizer.tsx`、`FullscreenLyrics.tsx`。主视图没有发现允许的外部动效插槽；如要完成截图主播放器转场，需要用户明确授权对 `Player3D.tsx` 做限定改动。另需加载可控本地音源后完成运行态验收。
 - `Player3D.tsx` 与 Home 主视图的 `MusicCardStack` 仍按旧视图状态决定主按钮重复点击语义；它们属于受保护主视图路径，本轮未改。共享时钟可通过 250ms 兼容桥更新这些视图，精细转场仅接入浮动胶囊；若要求受保护主视图的按钮也能在 loading 阶段取消待播，需要先明确其受保护文件的授权范围。
