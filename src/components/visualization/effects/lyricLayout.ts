@@ -176,7 +176,16 @@ const packGroups = (
   });
   const totalWidth = groupWidths.reduce((sum, width, index) => sum + width + groupGaps[index], 0);
   const maxRows = Math.min(MAX_ROWS, groups.length);
-  const minimumRows = Math.min(MIN_ROWS, maxRows);
+  const isCompactCjkPhrase =
+    groups.length <= MIN_ROWS &&
+    totalWidth <= contentWidth * ROW_FILL_RATIO &&
+    groups.every((group) =>
+      group.indexes.every((unitIndex) => {
+        const text = units[unitIndex].text;
+        return containsCjk(text) || isOnlyPunctuation(text) || isOnlyWhitespace(text);
+      })
+    );
+  const minimumRows = isCompactCjkPhrase ? 1 : Math.min(MIN_ROWS, maxRows);
   const estimatedRows = Math.ceil(totalWidth / Math.max(contentWidth * ROW_FILL_RATIO, 1));
   const targetRows = Math.min(maxRows, Math.max(minimumRows, estimatedRows));
   const targetRowWidth = totalWidth / targetRows;
@@ -241,12 +250,11 @@ const packGroups = (
 
 const createPackedLayout = (
   units: readonly LyricLayoutUnit[],
+  groups: UnitGroup[],
   contentWidth: number,
   fontSize: number,
-  measureText: LyricLayoutOptions["measureText"]
+  unitWidths: number[]
 ): PackedLayout => {
-  const groups = groupTimedUnits(units);
-  const unitWidths = units.map((unit) => measure(unit.text, fontSize, measureText));
   const packed = packGroups(groups, units, unitWidths, contentWidth, fontSize);
 
   return {
@@ -264,7 +272,16 @@ const fitUnitsToRows = (
   requestedFontSize: number,
   measureText: LyricLayoutOptions["measureText"]
 ): PackedLayout => {
-  const initial = createPackedLayout(units, contentWidth, requestedFontSize, measureText);
+  const groups = groupTimedUnits(units);
+  const measuredUnitWidths = units.map((unit) =>
+    measure(unit.text, requestedFontSize, measureText)
+  );
+  const createAtFontSize = (fontSize: number): PackedLayout => {
+    const widthScale = fontSize / requestedFontSize;
+    const unitWidths = measuredUnitWidths.map((width) => width * widthScale);
+    return createPackedLayout(units, groups, contentWidth, fontSize, unitWidths);
+  };
+  const initial = createAtFontSize(requestedFontSize);
   if (initial.fits) {
     return initial;
   }
@@ -272,11 +289,11 @@ const fitUnitsToRows = (
   const minimumFontSize = Math.min(requestedFontSize, Math.max(requestedFontSize / 4096, 0.01));
   let low = minimumFontSize;
   let high = requestedFontSize;
-  let best = createPackedLayout(units, contentWidth, minimumFontSize, measureText);
+  let best = createAtFontSize(minimumFontSize);
 
   for (let attempt = 0; attempt < 36; attempt += 1) {
     const candidateFontSize = (low + high) / 2;
-    const candidate = createPackedLayout(units, contentWidth, candidateFontSize, measureText);
+    const candidate = createAtFontSize(candidateFontSize);
 
     if (candidate.fits) {
       best = candidate;
@@ -385,7 +402,7 @@ export const layoutLyricUnits = (
       y: position?.y ?? 0,
       rowIndex: rowOfUnit[index] ?? 0,
       fontSize: layout.fontSize,
-      width: position?.width ?? measure(unit.text, layout.fontSize, options.measureText),
+      width: position?.width ?? layout.unitWidths[index] ?? 0,
     };
   });
 };

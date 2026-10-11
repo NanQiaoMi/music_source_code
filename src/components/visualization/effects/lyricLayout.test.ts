@@ -45,6 +45,21 @@ describe("layoutLyricUnits", () => {
     ]);
   });
 
+  it("keeps a short two-character CJK phrase on one row when it fits comfortably", () => {
+    const layout = layoutLyricUnits(
+      [
+        { text: "你", start: 0, end: 0.5, lineIndex: 0 },
+        { text: "好", start: 0.5, end: 1, lineIndex: 0 },
+      ],
+      makeOptions(640, "short-cjk")
+    );
+
+    expect(layout.map((item) => item.text).join("")).toBe("你好");
+    expect(rowsIn(layout)).toHaveLength(1);
+    expect(layout.map((item) => item.rowIndex)).toEqual([0, 0]);
+    expect(layout[1].x).toBe(layout[0].x + layout[0].width);
+  });
+
   it("keeps Latin timed words intact and shrinks an overwide word to the safe width", () => {
     const units = [
       { text: "go", start: 0, end: 0.4, lineIndex: 7 },
@@ -162,6 +177,29 @@ describe("layoutLyricUnits", () => {
     expect(rowsIn(layout).length).toBeGreaterThanOrEqual(2);
     expect(rowsIn(layout).length).toBeLessThanOrEqual(5);
     expect(Math.max(...rowsIn(layout))).toBeLessThan(5);
+  });
+
+  it("measures each timed unit once while fitting a long sentence to five rows", () => {
+    const longText = "春风又绿江南岸明月何时照我还".repeat(7) + "春风";
+    const units = Array.from(longText, (text, index) => ({
+      text,
+      start: index * 0.1,
+      end: (index + 1) * 0.1,
+      lineIndex: 15,
+    }));
+    let measurementCount = 0;
+    const layout = layoutLyricUnits(units, {
+      ...makeOptions(220, "measure-once"),
+      measureText: (text, fontSize) => {
+        measurementCount += 1;
+        return graphemes(text).length * fontSize * 0.5;
+      },
+    });
+
+    expect(units).toHaveLength(100);
+    expect(layout[0].fontSize).toBeLessThan(20);
+    expect(rowsIn(layout).length).toBeLessThanOrEqual(5);
+    expect(measurementCount).toBeLessThanOrEqual(units.length);
   });
 
   it("returns an empty layout for an empty input", () => {
