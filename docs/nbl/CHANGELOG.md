@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-12
+
+### Added
+
+- Added a deterministic LRC lyric timeline, stable short-line layout, and RAF-projected lyric playback clock for the Folia-inspired `温光浮字` stage.
+
+### Changed
+
+- Reworked `cinematicLyricDrift` into a layered lyric scene with estimated glyph highlighting, restrained lyric trails, warm light beams, bounded dust, song-info idle state, and reduced-motion behavior.
+- Updated the existing effect setting labels to match their new visual roles; preserved the effect ID and settings shape.
+- Refreshes the current media time and duration from the existing audio element when the visualization returns from a hidden page.
+
+### Verified
+
+- Focused Vitest checks passed: 3 files, 33 tests. Changed-file ESLint, strict TypeScript, Prettier, and `git diff --check` passed.
+- `npm run build` passed and generated 28 static pages plus the existing API routes. Next reported the workspace's multiple-lockfile root warning and an outdated Browserslist data notice.
+- A local production preview confirmed the effect selector and the no-track ambient state. Real audio playback, lyric progression, rate changes, seeks, track changes, narrow-screen playback, and OS reduced-motion playback were not verified because the preview had no playable audio session.
+
 ## 2026-09-30
 
 ### Added

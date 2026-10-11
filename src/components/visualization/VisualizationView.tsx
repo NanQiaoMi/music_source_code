@@ -95,7 +95,7 @@ export function VisualizationView() {
   const nextSong = useAudioStore((state) => state.nextSong);
   const { currentEffect, setCurrentEffect, effectSettings } = useVisualizationStore();
   const { currentTheme: _currentTheme } = useVisualSettingsStore();
-  const { seek } = useAudioPlayer();
+  const { seek, audioRef } = useAudioPlayer();
   const [showSettings, setShowSettings] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
   const [mouseIdle, setMouseIdle] = useState(false);
@@ -528,6 +528,18 @@ export function VisualizationView() {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
+        const activeAudio = audioRef.current;
+        if (
+          activeAudio &&
+          Number.isFinite(activeAudio.currentTime) &&
+          activeAudio.currentTime >= 0
+        ) {
+          currentTimeRef.current = activeAudio.currentTime;
+          useAudioStore.getState().setCurrentTime(activeAudio.currentTime);
+        }
+        if (activeAudio && Number.isFinite(activeAudio.duration) && activeAudio.duration > 0) {
+          useAudioStore.getState().setDuration(activeAudio.duration);
+        }
         if (!animationFrameRef.current) {
           animationFrameRef.current = requestAnimationFrame(draw);
         }
@@ -563,7 +575,7 @@ export function VisualizationView() {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
-  }, [currentView]);
+  }, [currentView, audioRef]);
 
   // 常驻挂载，靠透明度 / 可见性切换。
   // 原来这里是 `if (currentView !== "visualization") return null`，于是每次切进可视化界面
