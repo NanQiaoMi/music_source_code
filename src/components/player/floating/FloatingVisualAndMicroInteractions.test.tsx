@@ -89,6 +89,14 @@ vi.mock("framer-motion", async () => {
     ...props
   }: MotionProps) => ReactModule.createElement("h4", props);
 
+  const MotionP = ({
+    animate: _animate,
+    exit: _exit,
+    initial: _initial,
+    transition: _transition,
+    ...props
+  }: MotionProps) => ReactModule.createElement("p", props);
+
   const MotionPath = ({
     animate: _animate,
     exit: _exit,
@@ -106,8 +114,10 @@ vi.mock("framer-motion", async () => {
       div: MotionDiv,
       span: MotionSpan,
       h4: MotionH4,
+      p: MotionP,
       path: MotionPath,
     },
+    useReducedMotion: () => false,
     useAnimationFrame: (_callback: (time: number, delta: number) => void) => {},
   };
 });

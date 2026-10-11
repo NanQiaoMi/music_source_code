@@ -83,9 +83,8 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   const playQueue = useAudioStore((state) => state.playQueue);
   const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   // memo：handlePlaySong 与快捷键 effect 都依赖它，每轮新建会让监听反复重绑
-  const togglePlay = useCallback(() => setIsPlaying(!isPlaying), [setIsPlaying, isPlaying]);
+  const togglePlay = useCallback(() => useAudioStore.getState().togglePlaybackIntent(), []);
   const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
   const addNegativeFeedback = useRecommendationStore((state) => state.addNegativeFeedback);
   const clearNegativeFeedback = useRecommendationStore((state) => state.clearNegativeFeedback);

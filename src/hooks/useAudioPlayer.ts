@@ -43,6 +43,10 @@ import { BlobUrlRegistry } from "@/services/BlobUrlRegistry";
 import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
 import { useUserAccountStore, isPlatformLoggedIn, PlatformType } from "@/store/userAccountStore";
+import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
+import type { PlaybackMachineEvent } from "@/lib/audio/playbackStateMachine";
+import { playbackClock } from "@/lib/audio/PlaybackClock";
+import { shouldAcceptPlaybackMediaEvent } from "@/lib/audio/playbackMediaEventGuard";
 
 // Module-level shared state to persist across hook unmounts/remounts
 let audioInstance: HTMLAudioElement | null = null;
@@ -52,6 +56,8 @@ const secondaryElementRef: { current: HTMLAudioElement | null } = { current: nul
 const currentAudioUrlRef: { current: string | null } = { current: null };
 const isPlayingRef: { current: boolean } = { current: false };
 const currentSongIdRef: { current: string | null } = { current: null };
+const loadedSongIdRef: { current: string | null } = { current: null };
+const loadedSongSourceKeyRef: { current: string | null } = { current: null };
 const lastRecordedSongIdRef: { current: string | null } = { current: null };
 const lastToastSongIdRef: { current: string | null } = { current: null };
 export const rescueInProgressRef: { current: boolean } = { current: false };
@@ -71,13 +77,105 @@ const stallGraceUntilRef: { current: number } = { current: 0 };
 function beginInitialBufferingWindow(): void {
   stallGraceUntilRef.current = Date.now() + INITIAL_BUFFERING_GRACE_MS;
 }
-// 未接线的请求序号占位（保留以备切歌竞态打断使用），_ 前缀以示"已知未使用"
-const _playbackRequestIdRef: { current: number } = { current: 0 };
+const audioDeckIds = new WeakMap<HTMLAudioElement, string>();
+const audioRequestIds = new WeakMap<HTMLAudioElement, number>();
+let nextAudioDeckId = 1;
+
+function getAudioDeckId(audio: HTMLAudioElement): string {
+  let deckId = audioDeckIds.get(audio);
+  if (!deckId) {
+    deckId = `audio-deck-${nextAudioDeckId++}`;
+    audioDeckIds.set(audio, deckId);
+  }
+  return deckId;
+}
+
+function getMediaSourceIdentity(source: string): string {
+  if (typeof window === "undefined") return source;
+  try {
+    return new URL(source, window.location.href).href;
+  } catch {
+    return source;
+  }
+}
+
+function getPlaybackSongIdentity(song: Song | null): string | null {
+  return song ? String(song.id || song.title || "") || null : null;
+}
+
+function isCurrentPlaybackRequest(requestId: number, songId?: string): boolean {
+  const state = usePlaybackRuntimeStore.getState();
+  return state.requestId === requestId && (songId === undefined || state.targetSongId === songId);
+}
+
+function bindActivePlaybackDeck(
+  audio: HTMLAudioElement,
+  requestId: number,
+  songId: string | null,
+  source: string
+): void {
+  if (!isCurrentPlaybackRequest(requestId, songId ?? undefined)) return;
+  const sourceIdentity = getMediaSourceIdentity(source);
+  audioRequestIds.set(audio, requestId);
+  usePlaybackRuntimeStore
+    .getState()
+    .bindActiveDeck(requestId, songId, getAudioDeckId(audio), sourceIdentity);
+  playbackClock.attach(audio, requestId, songId, getAudioDeckId(audio), sourceIdentity);
+}
+
+function getCurrentAudioOwner(
+  audio: HTMLAudioElement
+): { requestId: number; deckId: string; source: string } | null {
+  const state = usePlaybackRuntimeStore.getState();
+  const requestId = audioRequestIds.get(audio);
+  const deckId = getAudioDeckId(audio);
+  if (
+    requestId === undefined ||
+    requestId !== state.requestId ||
+    deckId !== state.activeDeckId ||
+    !state.activeSource
+  ) {
+    return null;
+  }
+
+  const elementSource = audio.src ? getMediaSourceIdentity(audio.src) : null;
+  const currentSource = audio.currentSrc ? getMediaSourceIdentity(audio.currentSrc) : null;
+  // currentSrc may be the final redirect URL. The requested element src remains
+  // the canonical ownership key, while currentSrc is accepted as a fallback.
+  if (elementSource !== state.activeSource && currentSource !== state.activeSource) {
+    return null;
+  }
+
+  return { requestId, deckId, source: state.activeSource };
+}
+
+function dispatchCurrentAudioEvent(
+  audio: HTMLAudioElement,
+  type: Exclude<PlaybackMachineEvent["type"], "request" | "request-error" | "activate">,
+  message?: string
+): number | null {
+  const owner = getCurrentAudioOwner(audio);
+  if (!owner) return null;
+  const event = type === "error" ? { type, ...owner, message } : { type, ...owner };
+  usePlaybackRuntimeStore
+    .getState()
+    .dispatchMediaEvent(event as Exclude<PlaybackMachineEvent, { type: "request" }>);
+  return owner.requestId;
+}
+
+function dispatchPlaybackRequestError(requestId: number, message: string): void {
+  usePlaybackRuntimeStore.getState().dispatchMediaEvent({
+    type: "request-error",
+    requestId,
+    message,
+  });
+}
+
 // handlePlayError 抢救成功后会重试 play()，其失败要回到自身。
 // 直接写 handlePlayError 会构成"在声明前访问"（const 的 TDZ），运行时靠闭包侥幸生效；
 // 改为经由先声明的句柄转发，在 effect 中赋值（渲染期不允许修改 ref）。
 const handlePlayErrorSelfRef: {
-  current: ((error: PlaybackErrorLike) => void) | null;
+  current: ((error: PlaybackErrorLike, requestId?: number) => void) | null;
 } = { current: null };
 
 // ---- 网络歌曲的后台离线缓存调度 ----
@@ -99,7 +197,7 @@ const backgroundCacheScheduler = createBackgroundCacheScheduler({
   },
 });
 
-const loadingInProgressSongIdRef: { current: string | null } = { current: null };
+const loadingInProgressRequestIdRef: { current: number | null } = { current: null };
 const activeHookIds = new Set<string>();
 
 function isLeader(hookId: string): boolean {
@@ -198,13 +296,19 @@ function stopForMissingAudioSource(audio: HTMLAudioElement): void {
   }
   currentAudioUrlRef.current = null;
   currentSongIdRef.current = null;
+  loadedSongIdRef.current = null;
+  loadedSongSourceKeyRef.current = null;
   isPlayingRef.current = false;
   audio.removeAttribute("src");
   audio.src = "";
 
   const currentSong = usePlayerStore.getState().currentSong;
-  usePlayerStore.getState().setIsPlaying(false);
-  usePlayerStore.getState().setIsLoading(false);
+  const runtimeState = usePlaybackRuntimeStore.getState();
+  if (runtimeState.targetSongId === getPlaybackSongIdentity(currentSong)) {
+    dispatchPlaybackRequestError(runtimeState.requestId, MISSING_AUDIO_SOURCE_MESSAGE);
+  }
+  useAudioStore.setState({ isPlaying: false, isLoading: false });
+  usePlayerStore.setState({ isPlaying: false, isLoading: false });
 
   const src = currentSong?.source;
   const isNetworkPlatform =
@@ -273,11 +377,25 @@ function stopForMissingAudioSource(audio: HTMLAudioElement): void {
   }
 }
 
+function setConfirmedPlaybackState(isPlaying: boolean, isLoading: boolean): void {
+  useAudioStore.setState({ isPlaying, isLoading });
+  usePlayerStore.setState({ isPlaying, isLoading });
+}
+
+function syncPersistedPlaybackProgress(audio: HTMLAudioElement): void {
+  if (!getCurrentAudioOwner(audio)) return;
+  const currentTime = Number.isFinite(audio.currentTime) ? Math.max(0, audio.currentTime) : 0;
+  const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0;
+  useAudioStore.setState({ currentTime, duration });
+  usePlayerStore.setState({ currentTime, duration });
+  playbackClock.resync();
+}
+
 // Stable event handlers outside the hook to prevent duplicate listeners
 // and ensure we can attach them once to each audio element
 const attachListeners = (
   audio: ManagedAudioElement,
-  handlePlayError: (error: PlaybackErrorLike) => void
+  handlePlayError: (error: PlaybackErrorLike, requestId?: number) => void
 ) => {
   detachListeners(audio);
 
@@ -300,6 +418,7 @@ const attachListeners = (
   let lastTimeUpdateWriteAt = 0;
 
   const onTimeUpdate = () => {
+    if (!getCurrentAudioOwner(audio)) return;
     const t = audio.currentTime;
     if (Number.isFinite(t)) {
       const now = Date.now();
@@ -334,14 +453,14 @@ const attachListeners = (
     }
   };
   const onLoadedMetadata = () => {
+    const owner = getCurrentAudioOwner(audio);
+    if (!owner) return;
+    const requestId = owner.requestId;
     const d = audio.duration;
     if (d && !isNaN(d) && Number.isFinite(d)) {
       useAudioStore.setState({ duration: d });
       usePlayerStore.setState({ duration: d });
     }
-    useAudioStore.setState({ isLoading: false });
-    usePlayerStore.setState({ isLoading: false });
-
     // 播放速度恢复：确保流媒体元数据解析后精准恢复用户设置的目标倍速
     const currentRate =
       usePlayerStore.getState().playbackRate || useAudioStore.getState().playbackRate || 1.0;
@@ -399,6 +518,11 @@ const attachListeners = (
         )
         .then((rescued) => {
           if (
+            !isCurrentPlaybackRequest(requestId, getPlaybackSongIdentity(currentSong) ?? undefined)
+          ) {
+            return;
+          }
+          if (
             rescued?.url &&
             rescued.url !== currentSong.audioUrl &&
             !rescued.isTrial &&
@@ -407,15 +531,28 @@ const attachListeners = (
             const streamUrl = getPlayableStreamUrl(rescued.url);
             if (!failedUrlsRef.current.has(streamUrl)) {
               rescuedUrlsRef.current.add(streamUrl);
+              bindActivePlaybackDeck(
+                audio,
+                requestId,
+                getPlaybackSongIdentity(currentSong),
+                streamUrl
+              );
+              const mixer = CrossfadeMixer.getInstance();
+              mixer.prepareForDirectPlayback(audio);
+              if (secondaryElementRef.current && secondaryElementRef.current !== audio) {
+                mixer.pauseAndReset(secondaryElementRef.current, true);
+              }
               audio.src = streamUrl;
               currentAudioUrlRef.current = streamUrl;
               // 直接修改对象属性而不创建新引用，避免触发 Playback Effect 重执行导致状态重置
               currentSong.audioUrl = rescued.url;
               currentSong.source = rescued.source;
+              loadedSongIdRef.current = getPlaybackSongIdentity(currentSong);
+              loadedSongSourceKeyRef.current = `${currentSong.source || ""}\u0000${currentSong.audioUrl || ""}`;
               useAudioStore.setState({ error: null });
               audio.load();
               if (isPlayingRef.current) {
-                audio.play().catch(handlePlayError);
+                audio.play().catch((error) => handlePlayError(error, owner.requestId));
               }
             }
           }
@@ -427,13 +564,19 @@ const attachListeners = (
     }
   };
   const onDurationChange = () => {
+    if (!getCurrentAudioOwner(audio)) return;
     const d = audio.duration;
-    if (d && !isNaN(d)) {
+    if (d && Number.isFinite(d) && d > 0) {
       useAudioStore.getState().setDuration(d);
       usePlayerStore.getState().setDuration(d);
+    } else {
+      useAudioStore.setState({ duration: 0 });
+      usePlayerStore.setState({ duration: 0 });
     }
   };
   const onLoadStart = () => {
+    const requestId = dispatchCurrentAudioEvent(audio, "loadstart");
+    if (requestId === null) return;
     // 每次新资源开始加载都重开启播缓冲保护窗口（设置 src 会隐式触发 load 算法，
     // 所以这里能覆盖主路径、试听抢救、onError 抢救与交叉淡入四条装载路径）
     beginInitialBufferingWindow();
@@ -441,24 +584,42 @@ const attachListeners = (
     usePlayerStore.getState().setIsLoading(true);
   };
   const onCanPlay = () => {
+    const owner = getCurrentAudioOwner(audio);
+    if (!owner) return;
+    dispatchCurrentAudioEvent(audio, "canplay");
     if (waitingTimeoutRef.current) {
       clearTimeout(waitingTimeoutRef.current);
       waitingTimeoutRef.current = null;
     }
-    useAudioStore.getState().setIsLoading(false);
-    usePlayerStore.getState().setIsLoading(false);
+    if (!usePlaybackRuntimeStore.getState().shouldPlay) {
+      setConfirmedPlaybackState(false, false);
+    }
     const currentRate =
       usePlayerStore.getState().playbackRate || useAudioStore.getState().playbackRate || 1.0;
     if (audio.playbackRate !== currentRate) {
       audio.playbackRate = currentRate;
     }
     if (isPlayingRef.current) {
-      audio.play().catch(handlePlayError);
+      audio.play().catch((error) => handlePlayError(error, owner.requestId));
     }
   };
   const onWaiting = () => {
-    useAudioStore.getState().setIsLoading(true);
-    usePlayerStore.getState().setIsLoading(true);
+    const owner = getCurrentAudioOwner(audio);
+    if (
+      !owner ||
+      !shouldAcceptPlaybackMediaEvent("waiting", {
+        paused: audio.paused,
+        ended: audio.ended,
+        readyState: audio.readyState,
+        hasError: Boolean(audio.error),
+        shouldPlay: usePlaybackRuntimeStore.getState().shouldPlay,
+      })
+    ) {
+      return;
+    }
+    if (!usePlaybackRuntimeStore.getState().shouldPlay) return;
+    dispatchCurrentAudioEvent(audio, "waiting");
+    setConfirmedPlaybackState(false, true);
 
     if (waitingTimeoutRef.current) {
       clearTimeout(waitingTimeoutRef.current);
@@ -470,6 +631,15 @@ const attachListeners = (
 
     waitingTimeoutRef.current = setTimeout(() => {
       waitingTimeoutRef.current = null;
+      const currentOwner = getCurrentAudioOwner(audio);
+      if (
+        !currentOwner ||
+        currentOwner.requestId !== owner.requestId ||
+        currentOwner.source !== owner.source ||
+        !usePlaybackRuntimeStore.getState().shouldPlay
+      ) {
+        return;
+      }
       if (stutterRetryCountRef.current < 2) {
         stutterRetryCountRef.current += 1;
         console.warn(
@@ -484,7 +654,7 @@ const attachListeners = (
             }
           }
           if (isPlayingRef.current || !audio.paused) {
-            audio.play().catch(handlePlayError);
+            audio.play().catch((error) => handlePlayError(error, owner.requestId));
           }
         } catch (e) {
           console.warn("[useAudioPlayer] Stutter soft resume failed:", e);
@@ -495,14 +665,27 @@ const attachListeners = (
     }, delay);
   };
   const onPlaying = () => {
+    if (
+      !shouldAcceptPlaybackMediaEvent("playing", {
+        paused: audio.paused,
+        ended: audio.ended,
+        readyState: audio.readyState,
+        hasError: Boolean(audio.error),
+        shouldPlay: usePlaybackRuntimeStore.getState().shouldPlay,
+      })
+    ) {
+      return;
+    }
+    const requestId = dispatchCurrentAudioEvent(audio, "playing");
+    if (requestId === null || usePlaybackRuntimeStore.getState().phase !== "playing") return;
     if (waitingTimeoutRef.current) {
       clearTimeout(waitingTimeoutRef.current);
       waitingTimeoutRef.current = null;
     }
     stutterRetryCountRef.current = 0;
 
-    useAudioStore.getState().setIsLoading(false);
-    usePlayerStore.getState().setIsLoading(false);
+    setConfirmedPlaybackState(true, false);
+    syncPersistedPlaybackProgress(audio);
     // 仅在切歌或新曲目初次播放成功时弹出 Toast 提示（杜绝快进/倒退/拖动进度条 seek 时重复刷屏）
     const playingSong = usePlayerStore.getState().currentSong;
     if (playingSong && playingSong.title) {
@@ -532,27 +715,56 @@ const attachListeners = (
     }
   };
   const onPlay = () => {
-    isPlayingRef.current = true;
-    useAudioStore.getState().setIsPlaying(true);
-    usePlayerStore.getState().setIsPlaying(true);
+    // A play event reports intent only; the current source's `playing` event confirms playback.
   };
   const onPause = () => {
+    if (
+      !shouldAcceptPlaybackMediaEvent("pause", {
+        paused: audio.paused,
+        ended: audio.ended,
+        readyState: audio.readyState,
+        hasError: Boolean(audio.error),
+        shouldPlay: usePlaybackRuntimeStore.getState().shouldPlay,
+      })
+    ) {
+      return;
+    }
+    const runtime = usePlaybackRuntimeStore.getState();
+    if (runtime.shouldPlay && (runtime.phase === "loading" || runtime.phase === "buffering")) {
+      return;
+    }
+    const requestId = dispatchCurrentAudioEvent(audio, "pause");
+    if (requestId === null) return;
     if (waitingTimeoutRef.current) {
       clearTimeout(waitingTimeoutRef.current);
       waitingTimeoutRef.current = null;
     }
-    // 只有当 isPlayingRef 为 false 时才同步 store（杜绝浏览器在更换 src / load 阶段原生抛出 pause 事件导致状态被误重置）
-    if (!isPlayingRef.current) {
-      useAudioStore.getState().setIsPlaying(false);
-      usePlayerStore.getState().setIsPlaying(false);
-    }
+    isPlayingRef.current = false;
+    setConfirmedPlaybackState(false, false);
+    syncPersistedPlaybackProgress(audio);
   };
   const onEnded = () => {
+    if (
+      !shouldAcceptPlaybackMediaEvent("ended", {
+        paused: audio.paused,
+        ended: audio.ended,
+        readyState: audio.readyState,
+        hasError: Boolean(audio.error),
+        shouldPlay: usePlaybackRuntimeStore.getState().shouldPlay,
+      })
+    ) {
+      return;
+    }
+    const requestId = dispatchCurrentAudioEvent(audio, "ended");
+    if (requestId === null) return;
     if (waitingTimeoutRef.current) {
       clearTimeout(waitingTimeoutRef.current);
       waitingTimeoutRef.current = null;
     }
     stutterRetryCountRef.current = 0;
+    isPlayingRef.current = false;
+    setConfirmedPlaybackState(false, false);
+    syncPersistedPlaybackProgress(audio);
 
     // 播放结束双重保险触发离线持久化缓存
     const endedSong = usePlayerStore.getState().currentSong;
@@ -574,17 +786,30 @@ const attachListeners = (
       console.info("[useAudioPlayer] 🔁 触发单曲循环重播:", endedSong?.title);
       useAudioStore.getState().setCurrentTime(0);
       usePlayerStore.getState().setCurrentTime(0);
-      useAudioStore.getState().setIsPlaying(true);
-      usePlayerStore.getState().setIsPlaying(true);
-      isPlayingRef.current = true;
       audio.currentTime = 0;
-      audio.play().catch(handlePlayError);
+      const runtime = usePlaybackRuntimeStore.getState();
+      const replayRequestId = runtime.requestPlayback(
+        runtime.targetSongId,
+        runtime.targetSource,
+        true
+      );
+      isPlayingRef.current = true;
+      bindActivePlaybackDeck(
+        audio,
+        replayRequestId,
+        runtime.targetSongId,
+        currentAudioUrlRef.current || audio.src
+      );
+      audio.play().catch((error) => handlePlayError(error, replayRequestId));
     } else {
       nextSong();
     }
   };
   const onError = async (event: Event) => {
     const audioEl = event.target as HTMLAudioElement;
+    const owner = getCurrentAudioOwner(audioEl);
+    if (!owner) return;
+    const requestId = owner.requestId;
     const error = audioEl.error;
 
     if (waitingTimeoutRef.current) {
@@ -641,19 +866,33 @@ const attachListeners = (
           true
         );
 
+        if (
+          !isCurrentPlaybackRequest(requestId, getPlaybackSongIdentity(currentSong) ?? undefined)
+        ) {
+          return;
+        }
+
         if (rescued?.url && !failedUrlsRef.current.has(rescued.url)) {
           const streamUrl = getPlayableStreamUrl(rescued.url);
           if (!failedUrlsRef.current.has(streamUrl)) {
             rescuedUrlsRef.current.add(streamUrl);
+            bindActivePlaybackDeck(
+              audioEl,
+              requestId,
+              usePlaybackRuntimeStore.getState().targetSongId,
+              streamUrl
+            );
             audioEl.src = streamUrl;
             currentAudioUrlRef.current = streamUrl;
             // 直接修改属性而不创建新引用，避免触发 Playback Effect 级联重置
             currentSong.audioUrl = rescued.url;
             currentSong.source = rescued.source;
+            loadedSongIdRef.current = getPlaybackSongIdentity(currentSong);
+            loadedSongSourceKeyRef.current = `${currentSong.source || ""}\u0000${currentSong.audioUrl || ""}`;
             useAudioStore.setState({ error: null });
             audioEl.load();
             if (isPlayingRef.current) {
-              audioEl.play().catch(handlePlayError);
+              audioEl.play().catch((playError) => handlePlayError(playError, requestId));
             }
             return;
           }
@@ -667,14 +906,12 @@ const attachListeners = (
 
     // Graceful fallback when rescue limit is reached (sets error state, stops loading, shows 1 toast, never loops)
     const loadError = createAudioElementLoadError(error);
+    dispatchPlaybackRequestError(requestId, loadError.message);
     logHandledAudioWarning("Audio element load failed", loadError.message);
     setError(loadError);
     setIsLoading(false);
     isPlayingRef.current = false;
-    useAudioStore.getState().setIsPlaying(false);
-    usePlayerStore.getState().setIsPlaying(false);
-    useAudioStore.getState().setIsLoading(false);
-    usePlayerStore.getState().setIsLoading(false);
+    setConfirmedPlaybackState(false, false);
 
     if (songKey && lastToastSongIdRef.current !== `error-${songKey}`) {
       lastToastSongIdRef.current = `error-${songKey}`;
@@ -689,6 +926,7 @@ const attachListeners = (
   };
 
   const onRateChange = () => {
+    if (!getCurrentAudioOwner(audio)) return;
     const currentRate = audio.playbackRate;
     if (Number.isFinite(currentRate) && currentRate > 0) {
       const rounded = Math.round(currentRate * 100) / 100;
@@ -774,6 +1012,8 @@ export const useAudioPlayer = () => {
   );
 
   const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const shouldPlay = usePlaybackRuntimeStore((state) => state.shouldPlay);
+  const playbackRequestId = usePlaybackRuntimeStore((state) => state.requestId);
   const volume = usePlayerStore((state) => state.volume);
   const isMuted = usePlayerStore((state) => state.isMuted);
   const playbackRate = usePlayerStore((state) => state.playbackRate);
@@ -783,7 +1023,6 @@ export const useAudioPlayer = () => {
   const isEmotionCurveMode = useAudioStore((state) => state.isEmotionCurveMode);
   const loopMode = usePlayerStore((state) => state.loopMode);
 
-  const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
   const setCurrentTime = usePlayerStore((state) => state.setCurrentTime);
   const setDuration = usePlayerStore((state) => state.setDuration);
   const setIsLoading = usePlayerStore((state) => state.setIsLoading);
@@ -794,7 +1033,10 @@ export const useAudioPlayer = () => {
   const recordJournalPlay = useListeningJournalStore((state) => state.recordPlay);
 
   const handlePlayError = useCallback(
-    async (error: PlaybackErrorLike) => {
+    async (error: PlaybackErrorLike, requestId = usePlaybackRuntimeStore.getState().requestId) => {
+      if (!isCurrentPlaybackRequest(requestId) || !usePlaybackRuntimeStore.getState().shouldPlay) {
+        return;
+      }
       const playbackError = getPlaybackError(error);
       const message = getPlaybackErrorMessage(error);
       const isAbortError =
@@ -821,6 +1063,12 @@ export const useAudioPlayer = () => {
       }
 
       const currentSong = usePlayerStore.getState().currentSong;
+      if (
+        !currentSong ||
+        !isCurrentPlaybackRequest(requestId, getPlaybackSongIdentity(currentSong) ?? undefined)
+      ) {
+        return;
+      }
       const songKey = String(currentSong?.id || currentSong?.title || "");
       const rescueAttempts = songKey ? songRescueAttemptsRef.current.get(songKey) || 0 : 0;
 
@@ -847,17 +1095,38 @@ export const useAudioPlayer = () => {
             true
           );
 
+          if (
+            !isCurrentPlaybackRequest(requestId, getPlaybackSongIdentity(currentSong) ?? undefined)
+          ) {
+            return;
+          }
+
           if (rescued?.url && !failedUrlsRef.current.has(rescued.url)) {
             const streamUrl = getPlayableStreamUrl(rescued.url);
             if (!failedUrlsRef.current.has(streamUrl)) {
               rescuedUrlsRef.current.add(streamUrl);
+              bindActivePlaybackDeck(
+                audio,
+                requestId,
+                getPlaybackSongIdentity(currentSong),
+                streamUrl
+              );
+              const mixer = CrossfadeMixer.getInstance();
+              mixer.prepareForDirectPlayback(audio);
+              if (secondaryElementRef.current && secondaryElementRef.current !== audio) {
+                mixer.pauseAndReset(secondaryElementRef.current, true);
+              }
               audio.src = streamUrl;
               currentAudioUrlRef.current = streamUrl;
               currentSong.audioUrl = rescued.url;
               currentSong.source = rescued.source;
+              loadedSongIdRef.current = getPlaybackSongIdentity(currentSong);
+              loadedSongSourceKeyRef.current = `${currentSong.source || ""}\u0000${currentSong.audioUrl || ""}`;
               useAudioStore.setState({ error: null });
               audio.load();
-              audio.play().catch((e) => handlePlayErrorSelfRef.current?.(e));
+              audio
+                .play()
+                .catch((playError) => handlePlayErrorSelfRef.current?.(playError, requestId));
               return;
             }
           }
@@ -869,13 +1138,13 @@ export const useAudioPlayer = () => {
       }
 
       // Graceful fallback when rescue limit is reached (sets error state, stops loading, shows 1 toast, never loops)
+      if (!isCurrentPlaybackRequest(requestId, getPlaybackSongIdentity(currentSong) ?? undefined)) {
+        return;
+      }
       isPlayingRef.current = false;
-      setIsPlaying(false);
+      dispatchPlaybackRequestError(requestId, message);
+      setConfirmedPlaybackState(false, false);
       setIsLoading(false);
-      useAudioStore.getState().setIsPlaying(false);
-      usePlayerStore.getState().setIsPlaying(false);
-      useAudioStore.getState().setIsLoading(false);
-      usePlayerStore.getState().setIsLoading(false);
 
       if (
         message.includes("no supported sources") ||
@@ -918,7 +1187,7 @@ export const useAudioPlayer = () => {
           );
       }
     },
-    [setError, setIsPlaying, setIsLoading]
+    [setError, setIsLoading]
   );
 
   useEffect(() => {
@@ -954,7 +1223,8 @@ export const useAudioPlayer = () => {
             AudioEngine.getInstance()
               .resume()
               .catch(() => {});
-            activeAudio.play().catch(handlePlayError);
+            const requestId = usePlaybackRuntimeStore.getState().requestId;
+            activeAudio.play().catch((error) => handlePlayError(error, requestId));
           }
         } catch {
           // 恢复播放失败时保持当前进度，交给上层错误处理
@@ -1000,7 +1270,16 @@ export const useAudioPlayer = () => {
       usePlayerStore.setState({ currentTime: audio.currentTime });
     }
 
+    const handleVisiblePlaybackResync = () => {
+      if (document.visibilityState === "hidden") return;
+      playbackClock.handleVisibilityChange();
+      const activeAudio = audioElementRef.current;
+      if (activeAudio) syncPersistedPlaybackProgress(activeAudio);
+    };
+    document.addEventListener("visibilitychange", handleVisiblePlaybackResync);
+
     return () => {
+      document.removeEventListener("visibilitychange", handleVisiblePlaybackResync);
       detachListeners(audio);
       if (secondaryElementRef.current) {
         detachListeners(secondaryElementRef.current);
@@ -1031,19 +1310,31 @@ export const useAudioPlayer = () => {
         (window as AudioWindow).__VIBE_CURRENT_SONG__ = currentSong;
       }
 
-      const songId = currentSong.id;
-      const targetPlaying = isPlaying;
+      const songId = String(currentSong.id || currentSong.title || "");
+      const currentRuntime = usePlaybackRuntimeStore.getState();
+      const requestId =
+        currentRuntime.targetSongId === songId
+          ? currentRuntime.requestId
+          : usePlaybackRuntimeStore
+              .getState()
+              .requestPlayback(songId || null, currentSong.audioUrl || null, isPlaying, true);
+      if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
+      const targetPlaying = usePlaybackRuntimeStore.getState().shouldPlay;
       isPlayingRef.current = targetPlaying;
+      const targetSourceKey = `${currentSong.source || ""}\u0000${currentSong.audioUrl || ""}`;
+      const targetNeedsLoad =
+        loadedSongIdRef.current !== songId || loadedSongSourceKeyRef.current !== targetSourceKey;
 
       // 1. 同一首歌曲且已有音频流时：仅做播放/暂停状态同步，绝不重复加载或重置管道
-      if (
-        currentSongIdRef.current === songId &&
-        audio.src &&
-        currentAudioUrlRef.current &&
-        !audio.error
-      ) {
+      if (!targetNeedsLoad && audio.src && currentAudioUrlRef.current && !audio.error) {
+        bindActivePlaybackDeck(audio, requestId, songId || null, currentAudioUrlRef.current);
         if (targetPlaying) {
           if (audio.paused) {
+            const mixer = CrossfadeMixer.getInstance();
+            mixer.prepareForDirectPlayback(audio);
+            if (secondaryElementRef.current && secondaryElementRef.current !== audio) {
+              mixer.pauseAndReset(secondaryElementRef.current, true);
+            }
             // 仅当音频已播放至末尾且用户明确要求恢复播放时，才重置进度归零
             if (audio.ended) {
               audio.currentTime = 0;
@@ -1053,36 +1344,41 @@ export const useAudioPlayer = () => {
             try {
               await initializeAudioGraph(audio);
               await AudioEngine.getInstance().resume();
-              audio.play().catch(handlePlayError);
+              if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
+              audio.play().catch((error) => handlePlayError(error, requestId));
             } catch (e) {
-              handlePlayError(e as PlaybackErrorLike);
+              handlePlayError(e as PlaybackErrorLike, requestId);
             }
           }
         } else {
-          if (!audio.paused) {
-            audio.pause();
+          const mixer = CrossfadeMixer.getInstance();
+          mixer.pauseAndReset(audio);
+          if (secondaryElementRef.current && secondaryElementRef.current !== audio) {
+            mixer.pauseAndReset(secondaryElementRef.current, true);
           }
         }
         return;
       }
 
       // 如果这首歌曲正在嗅探解析中，不重复触发任务
-      if (loadingInProgressSongIdRef.current === songId && currentSongIdRef.current === songId) {
+      if (loadingInProgressRequestIdRef.current === requestId) {
         return;
       }
 
       const previousSongId = currentSongIdRef.current;
       currentSongIdRef.current = songId;
-      loadingInProgressSongIdRef.current = songId;
+      loadingInProgressRequestIdRef.current = requestId;
 
       setIsLoading(true);
       setError(null);
 
-      if (previousSongId !== songId) {
+      if (previousSongId !== songId || targetNeedsLoad) {
         if (currentAudioUrlRef.current?.startsWith("blob:")) {
           URL.revokeObjectURL(currentAudioUrlRef.current);
-          currentAudioUrlRef.current = null;
         }
+        currentAudioUrlRef.current = null;
+        loadedSongIdRef.current = null;
+        loadedSongSourceKeyRef.current = null;
         lastRecordedSongIdRef.current = null;
         lastToastSongIdRef.current = null;
         rescueInProgressRef.current = false;
@@ -1109,7 +1405,7 @@ export const useAudioPlayer = () => {
         if (currentSong.id) {
           try {
             const offlineRecord = await getOfflineAudio(String(currentSong.id));
-            if (currentSongIdRef.current !== songId) return;
+            if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
             if (
               offlineRecord &&
               offlineRecord.fileData &&
@@ -1154,7 +1450,7 @@ export const useAudioPlayer = () => {
           }
         }
 
-        if (currentSongIdRef.current !== songId) return;
+        if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
 
         // 1. ===== 本地用户自导入音乐 (stored://, local:// 或 source: local) =====
         if (
@@ -1168,7 +1464,7 @@ export const useAudioPlayer = () => {
               ? audioUrl.replace(/^(stored|local):\/\//, "")
               : String(currentSong.id);
           const storedMusic = await getStoredMusic(id);
-          if (currentSongIdRef.current !== songId) return;
+          if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
           if (storedMusic && storedMusic.fileData) {
             audioUrl = createBlobUrlFromStoredMusic(storedMusic);
             currentAudioUrlRef.current = audioUrl;
@@ -1179,7 +1475,7 @@ export const useAudioPlayer = () => {
           }
         }
 
-        if (currentSongIdRef.current !== songId) return;
+        if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
 
         // 2. ===== 临时流媒体网络缓存 (cached://) =====
         if (
@@ -1189,7 +1485,7 @@ export const useAudioPlayer = () => {
         ) {
           try {
             const cached = await getCachedAudio(currentSong.id, currentSong.source);
-            if (currentSongIdRef.current !== songId) return;
+            if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
             if (cached) {
               const cachedBlobUrl = createBlobUrlFromCache(cached);
               if (cachedBlobUrl) {
@@ -1215,7 +1511,7 @@ export const useAudioPlayer = () => {
           }
         }
 
-        if (currentSongIdRef.current !== songId) return;
+        if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
 
         // 3. ===== 仅在本地无缓存、或本地文件不存在/损坏时，才作为智能回退（Fallback）方案走网络音源嗅探 =====
         if (!isOfflineDirectHit) {
@@ -1239,7 +1535,7 @@ export const useAudioPlayer = () => {
                 album: currentSong.album,
                 source: currentSong.source,
               });
-              if (currentSongIdRef.current !== songId) return;
+              if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
               if (resolved?.url && !failedUrlsRef.current.has(resolved.url)) {
                 const streamUrl = getPlayableStreamUrl(resolved.url);
                 if (!failedUrlsRef.current.has(streamUrl)) {
@@ -1255,7 +1551,7 @@ export const useAudioPlayer = () => {
           }
         }
 
-        if (currentSongIdRef.current !== songId) return;
+        if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
 
         // 4. 歌词与封面：若本地尚未缓存歌词或封面，后台静默拉取并自动持久化固化至本地离线数据库
         if (!currentSong.lyrics && (currentSong.id || currentSong.title)) {
@@ -1267,7 +1563,7 @@ export const useAudioPlayer = () => {
               album: currentSong.album,
             })
             .then(async (lrcData) => {
-              if (lrcData.lyrics && currentSongIdRef.current === songId) {
+              if (lrcData.lyrics && isCurrentPlaybackRequest(requestId, songId || undefined)) {
                 currentSong.lyrics = lrcData.lyrics;
                 currentSong.translationLyrics = lrcData.translationLyrics;
                 useAudioStore
@@ -1301,7 +1597,7 @@ export const useAudioPlayer = () => {
               source: currentSong.source,
             })
             .then(async (coverUrl) => {
-              if (coverUrl && currentSongIdRef.current === songId) {
+              if (coverUrl && isCurrentPlaybackRequest(requestId, songId || undefined)) {
                 currentSong.cover = coverUrl;
                 useAudioStore.getState().updateCurrentSongCover(coverUrl);
 
@@ -1332,8 +1628,6 @@ export const useAudioPlayer = () => {
           stopForMissingAudioSource(audio);
           return;
         }
-        currentAudioUrlRef.current = streamUrl;
-
         if (targetPlaying) {
           try {
             await initializeAudioGraph(audio);
@@ -1343,7 +1637,7 @@ export const useAudioPlayer = () => {
           }
         }
 
-        if (currentSongIdRef.current !== songId) return;
+        if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
 
         if (targetPlaying && isEmotionCurveMode && previousSongId && secondaryElementRef.current) {
           const mixer = CrossfadeMixer.getInstance();
@@ -1354,27 +1648,65 @@ export const useAudioPlayer = () => {
           const toAudio = secondaryElementRef.current;
 
           const targetRate = usePlayerStore.getState().playbackRate || 1.0;
+          bindActivePlaybackDeck(toAudio, requestId, songId || null, streamUrl);
           toAudio.src = streamUrl;
+          currentAudioUrlRef.current = streamUrl;
+          loadedSongIdRef.current = songId;
+          loadedSongSourceKeyRef.current = `${currentSong.source || ""}\u0000${currentSong.audioUrl || ""}`;
           toAudio.defaultPlaybackRate = targetRate;
           toAudio.playbackRate = targetRate;
-          mixer.crossfade(fromAudio, toAudio, duration).catch(handlePlayError);
+          const targetDeckId = getAudioDeckId(toAudio);
+          const targetSource = getMediaSourceIdentity(streamUrl);
+          const isCurrentCrossfade = () => {
+            const runtime = usePlaybackRuntimeStore.getState();
+            return (
+              runtime.shouldPlay &&
+              isCurrentPlaybackRequest(requestId, songId || undefined) &&
+              runtime.activeDeckId === targetDeckId &&
+              runtime.activeSource === targetSource
+            );
+          };
+          mixer
+            .crossfade(
+              fromAudio,
+              toAudio,
+              duration,
+              isCurrentCrossfade,
+              () => audioElementRef.current !== fromAudio,
+              () => audioElementRef.current !== toAudio
+            )
+            .then(() => {
+              if (isCurrentPlaybackRequest(requestId, songId || undefined) && toAudio.paused) {
+                return handlePlayError(new Error("Crossfade target did not start"), requestId);
+              }
+            })
+            .catch((error) => handlePlayError(error, requestId));
 
           audioElementRef.current = toAudio;
           secondaryElementRef.current = fromAudio;
           setLocalAudioElement(toAudio);
         } else {
           const targetRate = usePlayerStore.getState().playbackRate || 1.0;
+          const mixer = CrossfadeMixer.getInstance();
+          mixer.prepareForDirectPlayback(audio);
+          if (secondaryElementRef.current && secondaryElementRef.current !== audio) {
+            mixer.pauseAndReset(secondaryElementRef.current, true);
+          }
+          bindActivePlaybackDeck(audio, requestId, songId || null, streamUrl);
           audio.src = streamUrl;
+          currentAudioUrlRef.current = streamUrl;
+          loadedSongIdRef.current = songId;
+          loadedSongSourceKeyRef.current = `${currentSong.source || ""}\u0000${currentSong.audioUrl || ""}`;
           audio.defaultPlaybackRate = targetRate;
           audio.playbackRate = targetRate;
           audio.load();
           if (targetPlaying) {
-            audio.play().catch(handlePlayError);
+            audio.play().catch((error) => handlePlayError(error, requestId));
           }
         }
       } finally {
-        if (loadingInProgressSongIdRef.current === songId) {
-          loadingInProgressSongIdRef.current = null;
+        if (loadingInProgressRequestIdRef.current === requestId) {
+          loadingInProgressRequestIdRef.current = null;
         }
       }
     };
@@ -1384,6 +1716,8 @@ export const useAudioPlayer = () => {
     hookId,
     currentSong,
     isPlaying,
+    shouldPlay,
+    playbackRequestId,
     isEmotionCurveMode,
     handlePlayError,
     setError,
@@ -1450,8 +1784,8 @@ export const useAudioPlayer = () => {
   }, [eqBands, isEQEnabled]);
 
   const togglePlay = useCallback(() => {
-    useAudioStore.getState().setIsPlaying(!isPlaying);
-  }, [isPlaying]);
+    useAudioStore.getState().togglePlaybackIntent();
+  }, []);
 
   const seek = useCallback(
     (time: number) => {

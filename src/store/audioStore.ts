@@ -12,8 +12,22 @@ import {
   createMissingAudioSourceError,
   hasPlayableAudioSource,
 } from "@/lib/audio/playableAudioSource";
+import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 
 export type { Song };
+
+const getPlaybackSongId = (song: Song | null): string | null =>
+  song ? String(song.id || song.title || "") || null : null;
+
+const startPlaybackRequest = (song: Song): void => {
+  usePlaybackRuntimeStore
+    .getState()
+    .requestPlayback(getPlaybackSongId(song), song.audioUrl || null, true, true);
+};
+
+const clearPlaybackRequest = (): void => {
+  usePlaybackRuntimeStore.getState().requestPlayback(null, null, false, true);
+};
 
 export type LoopMode = "none" | "single" | "all" | "shuffle";
 
@@ -103,6 +117,7 @@ interface AudioState {
   dynamicCrossfadeDuration: number;
 
   setIsPlaying: (playing: boolean) => void;
+  togglePlaybackIntent: () => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
   setVolume: (volume: number) => void;
@@ -270,14 +285,24 @@ export const useAudioStore = create<AudioState>()(
       setIsPlaying: (playing) => {
         const currentSong = usePlayerStore.getState().currentSong ?? get().currentSong;
         if (playing && currentSong && !hasPlayableAudioSource(currentSong)) {
-          usePlayerStore.getState().setIsPlaying(false);
+          usePlaybackRuntimeStore
+            .getState()
+            .requestPlayback(getPlaybackSongId(currentSong), currentSong.audioUrl || null, false);
           usePlayerStore.getState().setIsLoading(false);
           set({ isPlaying: false, isLoading: false, error: createMissingAudioSourceError() });
           return;
         }
 
         usePlayerStore.getState().setIsPlaying(playing);
-        set({ isPlaying: playing });
+        if (playing) {
+          set({ isLoading: true, error: null });
+        } else {
+          usePlayerStore.getState().setIsLoading(false);
+          set({ isLoading: false });
+        }
+      },
+      togglePlaybackIntent: () => {
+        get().setIsPlaying(!usePlaybackRuntimeStore.getState().shouldPlay);
       },
       setCurrentTime: (time) => {
         usePlayerStore.getState().setCurrentTime(time);
@@ -372,6 +397,7 @@ export const useAudioStore = create<AudioState>()(
         if (queue.length === 0) {
           const queueStore = useQueueStore.getState();
           if (queueStore.playThroughMode === "play-through") {
+            clearPlaybackRequest();
             usePlayerStore.getState().setCurrentSong(null);
             set({ currentSong: null, isPlaying: false });
             return;
@@ -382,21 +408,24 @@ export const useAudioStore = create<AudioState>()(
               queueStore.setQueue(recs);
               queueStore.setCurrentIndex(0);
               queueStore.addToHistory(recs[0]);
+              startPlaybackRequest(recs[0]);
               usePlayerStore.getState().setCurrentSong(recs[0]);
               set({
                 queue: recs,
                 currentIndex: 0,
                 currentSong: recs[0],
                 currentTime: 0,
-                isPlaying: true,
+                isPlaying: false,
                 isLoading: true,
                 error: null,
               });
             } else {
+              clearPlaybackRequest();
               usePlayerStore.getState().setCurrentSong(null);
               set({ currentSong: null, isPlaying: false });
             }
           } else {
+            clearPlaybackRequest();
             usePlayerStore.getState().setCurrentSong(null);
             set({ currentSong: null, isPlaying: false });
           }
@@ -409,6 +438,7 @@ export const useAudioStore = create<AudioState>()(
           nextIndex = Math.floor(Math.random() * queue.length);
         } else if (loopMode === "none" && currentIndex >= queue.length - 1) {
           // End of queue with no loop: stop playback
+          clearPlaybackRequest();
           usePlayerStore.getState().setCurrentSong(null);
           useQueueStore.getState().setCurrentIndex(0);
           set({ currentSong: null, isPlaying: false, currentTime: 0 });
@@ -418,8 +448,8 @@ export const useAudioStore = create<AudioState>()(
         }
         const nextSongItem = queue[nextIndex];
         const _queueStore = useQueueStore.getState();
+        startPlaybackRequest(nextSongItem);
         usePlayerStore.getState().setCurrentSong(nextSongItem);
-        usePlayerStore.getState().setIsPlaying(true);
         _queueStore.setCurrentIndex(nextIndex);
         _queueStore.addToHistory(nextSongItem);
 
@@ -427,7 +457,7 @@ export const useAudioStore = create<AudioState>()(
           currentIndex: nextIndex,
           currentSong: nextSongItem,
           currentTime: 0,
-          isPlaying: true,
+          isPlaying: false,
           isLoading: true,
           error: null,
         });
@@ -450,14 +480,14 @@ export const useAudioStore = create<AudioState>()(
         const queueStore = useQueueStore.getState();
         queueStore.setCurrentIndex(prevIndex);
         queueStore.addToHistory(prevSongItem);
+        startPlaybackRequest(prevSongItem);
         usePlayerStore.getState().setCurrentSong(prevSongItem);
-        usePlayerStore.getState().setIsPlaying(true);
 
         set({
           currentIndex: prevIndex,
           currentSong: prevSongItem,
           currentTime: 0,
-          isPlaying: true,
+          isPlaying: false,
           isLoading: true,
           error: null,
         });
@@ -512,13 +542,13 @@ export const useAudioStore = create<AudioState>()(
         queueStore.setQueue(fullQueue);
         queueStore.setCurrentIndex(startIdx);
         queueStore.addToHistory(song);
+        startPlaybackRequest(song);
         usePlayerStore.getState().setCurrentSong(song);
-        usePlayerStore.getState().setIsPlaying(true);
 
         set({
           currentSong: song,
           currentTime: 0,
-          isPlaying: true,
+          isPlaying: false,
           isLoading: true,
           error: null,
           queue: fullQueue,
@@ -546,15 +576,15 @@ export const useAudioStore = create<AudioState>()(
         queueStore.setQueue(songs);
         queueStore.setCurrentIndex(index);
         queueStore.addToHistory(song);
+        startPlaybackRequest(song);
         usePlayerStore.getState().setCurrentSong(song);
-        usePlayerStore.getState().setIsPlaying(true);
 
         set({
           queue: songs,
           currentIndex: index,
           currentSong: song,
           currentTime: 0,
-          isPlaying: true,
+          isPlaying: false,
           isLoading: true,
           error: null,
           isEmotionCurveMode: false,
@@ -647,15 +677,15 @@ export const useAudioStore = create<AudioState>()(
         queueStore.setQueue(newQueue);
         queueStore.setCurrentIndex(startIndex);
         queueStore.addToHistory(firstSong);
+        startPlaybackRequest(firstSong);
         usePlayerStore.getState().setCurrentSong(firstSong);
-        usePlayerStore.getState().setIsPlaying(true);
 
         set({
           queue: newQueue,
           currentIndex: startIndex,
           currentSong: firstSong,
           currentTime: 0,
-          isPlaying: true,
+          isPlaying: false,
           isLoading: true,
           error: null,
         });
@@ -715,7 +745,7 @@ registerAudioStoreSync((playerState) => {
   }
   if (
     playerState.currentSong !== undefined &&
-    playerState.currentSong?.id !== currentAudio.currentSong?.id
+    playerState.currentSong !== currentAudio.currentSong
   ) {
     updates.currentSong = playerState.currentSong;
   }
@@ -758,10 +788,7 @@ useAudioStore.subscribe((state, prev) => {
   if (state.isPlaying !== prev.isPlaying && state.isPlaying !== playerState.isPlaying) {
     updates.isPlaying = state.isPlaying;
   }
-  if (
-    state.currentSong?.id !== prev.currentSong?.id &&
-    state.currentSong?.id !== playerState.currentSong?.id
-  ) {
+  if (state.currentSong !== prev.currentSong && state.currentSong !== playerState.currentSong) {
     updates.currentSong = state.currentSong;
   }
   if (state.currentTime !== prev.currentTime && state.currentTime !== playerState.currentTime) {

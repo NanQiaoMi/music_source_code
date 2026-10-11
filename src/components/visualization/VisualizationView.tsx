@@ -84,7 +84,6 @@ export function VisualizationView() {
   const { currentView, setCurrentView, isTransitioning } = useUIStore();
   const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const themeColors = useUIStore((state) => state.themeColors);
   const _isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
   const isFullscreen = useUIStore((state) => state.isFullscreen);
@@ -575,7 +574,7 @@ export function VisualizationView() {
 
   const handleTogglePlay = () => {
     if (currentSong) {
-      setIsPlaying(!isPlaying);
+      useAudioStore.getState().togglePlaybackIntent();
     }
   };
 

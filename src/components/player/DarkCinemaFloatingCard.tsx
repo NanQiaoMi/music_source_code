@@ -3,7 +3,6 @@
 import React, { useCallback } from "react";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
-import { usePlayerStore } from "@/store/playerStore";
 import { Play, Pause, Disc } from "lucide-react";
 import { AppleAudioSourceIndicator } from "./AppleAudioSourceIndicator";
 
@@ -41,15 +40,10 @@ export const DarkCinemaFloatingCard: React.FC<DarkCinemaFloatingCardProps> = ({
   const artist = currentSong?.artist || "A-Lin [music]";
   const sourceLabel = currentSong?.album || "本地文件";
 
-  const handleToggle = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      const nextPlaying = !isPlaying;
-      useAudioStore.getState().setIsPlaying(nextPlaying);
-      usePlayerStore.getState().setIsPlaying(nextPlaying);
-    },
-    [isPlaying]
-  );
+  const handleToggle = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    useAudioStore.getState().togglePlaybackIntent();
+  }, []);
 
   return (
     <motion.div

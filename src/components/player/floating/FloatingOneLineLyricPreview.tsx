@@ -2,8 +2,8 @@
 
 import React, { memo } from "react";
 import { motion, Variants } from "framer-motion";
-import { useAudioStore } from "@/store/audioStore";
 import { useBilingualLyricParser } from "@/hooks/useBilingualLyricParser";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { Song } from "@/types/song";
 
 interface FloatingOneLineLyricPreviewProps {
@@ -18,7 +18,7 @@ interface FloatingOneLineLyricPreviewProps {
  */
 export const FloatingOneLineLyricPreview: React.FC<FloatingOneLineLyricPreviewProps> = memo(
   ({ currentSong, onExpand, variants }) => {
-    const currentTime = useAudioStore((state) => state.currentTime);
+    const { currentTime } = usePlaybackClock();
 
     const { lyrics, getCurrentLyricIndex } = useBilingualLyricParser(
       currentSong?.lyrics,

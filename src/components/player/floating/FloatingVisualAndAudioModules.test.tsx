@@ -79,6 +79,14 @@ vi.mock("framer-motion", async () => {
     ...props
   }: MotionProps) => ReactModule.createElement("path", { d, ...props });
 
+  const MotionP = ({
+    animate: _animate,
+    exit: _exit,
+    initial: _initial,
+    transition: _transition,
+    ...props
+  }: MotionProps) => ReactModule.createElement("p", props);
+
   return {
     AnimatePresence: ({ children }: { children: React.ReactNode }) =>
       ReactModule.createElement(ReactModule.Fragment, null, children),
@@ -86,6 +94,7 @@ vi.mock("framer-motion", async () => {
       div: MotionDiv,
       button: MotionButton,
       path: MotionPath,
+      p: MotionP,
     },
     useAnimationFrame: (_cb: () => void) => {},
     useMotionValue: (init: number) => ({

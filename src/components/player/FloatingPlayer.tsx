@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useCallback, useState, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
@@ -12,6 +12,7 @@ export interface FloatingPlayerProps {
 }
 
 export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({ className = "" }) => {
+  const prefersReducedMotion = useReducedMotion() === true;
   const audioSong = useAudioStore((state) => state.currentSong);
   const playerSong = usePlayerStore((state) => state.currentSong);
   const currentSong = audioSong || playerSong;
@@ -135,16 +136,19 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({ className = "" }
         touchAction: "none",
         willChange: isDragging ? "left, top" : "auto",
       }}
-      initial={{ opacity: 0, scale: 0.95, y: 12 }}
+      initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.95, y: 12 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95, y: 12 }}
-      transition={{ type: "spring", stiffness: 420, damping: 28 }}
+      exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.95, y: 12 }}
+      transition={
+        prefersReducedMotion ? { duration: 0.01 } : { type: "spring", stiffness: 420, damping: 28 }
+      }
     >
       {/* 唯一常驻 360px 单例胶囊控制器 (彻底杜绝多实例重叠) */}
       <FloatingCompactControlsState
         onExpandFull={() => setCurrentView("player")}
         onCollapseToMini={() => {}}
         dragHandlers={dragHandlers}
+        showGlow
       />
     </motion.aside>
   );
