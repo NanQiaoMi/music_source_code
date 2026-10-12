@@ -1,5 +1,7 @@
 # Folia 启发的「温光浮字」歌词视觉迁移实施计划
 
+> **状态：已取代。** 本计划实现的是把云阶、浮名、绘光融合的旧方案；用户指出它没有达到 Folia 的 MV 式画面。不要按此计划继续修改。新的唯一实施基线为 [Folia 绘光式歌词 MV 重做计划](./2026-10-12-folia-lyric-mv-implementation.md)。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: 推荐使用 `nbl.parallel-subagent-driven-development` 按任务执行；如用户选择串行方式则使用 `nbl.subagent-driven-development`。每项任务使用复选框追踪。
 
 **Goal:** 将「温光浮字」升级为云阶短行、浮名纵深和绘光暖色光场融合的 Canvas 歌词舞台，并保持 LRC 行时间、播放器状态、现有设置和持久化格式兼容。

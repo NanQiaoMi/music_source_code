@@ -786,7 +786,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                 </div>
 
                 <SettingSlider
-                  label="歌词字号"
+                  label="主镜头歌词字号"
                   value={effectSettings.cinematicLyricDrift.heroFontSize ?? 54}
                   min={36}
                   max={72}
@@ -794,7 +794,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { heroFontSize: v })}
                 />
                 <SettingSlider
-                  label="字缘柔光范围"
+                  label="舞台光束 / 字缘辉光"
                   value={effectSettings.cinematicLyricDrift.shimmerFeather ?? 50}
                   min={20}
                   max={100}
@@ -804,7 +804,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   }
                 />
                 <SettingSlider
-                  label="背景色斑漂移速度"
+                  label="镜头与灯光运动速度"
                   value={effectSettings.cinematicLyricDrift.fluidSpeed ?? 0.8}
                   min={0.2}
                   max={2.0}
@@ -812,7 +812,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { fluidSpeed: v })}
                 />
                 <SettingSlider
-                  label="环境与局部光强"
+                  label="舞台与字缘光强"
                   value={effectSettings.cinematicLyricDrift.ambientGlowIntensity ?? 0.9}
                   min={0.2}
                   max={1.5}
