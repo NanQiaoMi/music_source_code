@@ -27,6 +27,7 @@
 
 - Focused Vitest checks passed: 6 files, 79 tests. Changed-file ESLint, Prettier, `git diff --check`, strict TypeScript, and the Next.js 16 webpack production build passed; the build generated 28 static pages.
 - The local app returned HTTP 200 after the build. Dynamic lyric-shot playback, pause/rate/seek, and reduced-motion visuals remain unverified because the open player was already near the end of a track and advanced naturally; playback was not repositioned.
+- After merge `50da32a`, the master worktree repeated the 79 focused tests, changed-file ESLint/Prettier, `git diff --check`, webpack production build (28 static pages), and `npx tsc --noEmit --pretty false`; all passed. Next reported its existing multiple-lockfile root warning and stale Browserslist data notice.
 
 ## 2026-09-30
 

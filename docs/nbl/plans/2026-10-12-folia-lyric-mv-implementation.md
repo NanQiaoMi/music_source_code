@@ -1,6 +1,6 @@
 # 「温光浮字」Folia 绘光式歌词 MV 重做实施计划
 
-> 状态：实现与合并前静态验证完成；真实歌词播放动态核验未完成。唯一设计基线：[2026-10-12 重做规格](../specs/2026-10-12-folia-lyric-mv-design.md)。
+> 状态：已合并并通过合并后静态回归；真实歌词播放动态核验未完成。唯一设计基线：[2026-10-12 重做规格](../specs/2026-10-12-folia-lyric-mv-design.md)。
 >
 > 目标分支：feature/folia-faithful-visualizer；开始时基于当前本地 master 提交 424685b，工作树干净。
 
@@ -80,7 +80,7 @@
 - [x] **Step 2: lint 与格式检查**：本次变更的 TS/TSX 文件 ESLint 通过；Prettier 与 `git diff --check` 通过。
 - [x] **Step 3: 构建**：Next.js 16 webpack 生产构建通过并生成 28 个静态页面；随后串行运行 `npx tsc --noEmit --pretty false` 通过。
 - [ ] **Step 4: 本地动态核验**：通过实际歌曲观察至少前奏/歌词镜头/行交接/桥段/seek/暂停；能取到屏幕结果时记录证据。没有可播放歌曲则记为未执行，不做同步通过声明。
-- [ ] **Step 5: 完成分支生命周期**：审查最终 diff，提交功能分支；在稳定 master worktree 验证干净后做 `--no-ff` 合并，随后在 master 串行复跑受影响测试与生产构建。
+- [x] **Step 5: 完成分支生命周期**：最终 diff 已审查，功能分支 `5d5e1e5` 已 `--no-ff` 合并为 master 提交 `50da32a`；随后在 master worktree 重跑受影响测试、lint、格式检查、生产构建和独立 TypeScript 检查，均通过。
 
 **Dependencies:** Tasks 1–4. **Parallelizable:** No.
 
@@ -95,6 +95,7 @@
 
 - 本地 3025 页面在构建后仍返回 HTTP 200。浏览器里已有歌曲播放会在观察期间自然推进并自动切歌；为了不改动用户播放位置，本次没有 seek 到中段，因此前奏、歌词镜头进度、暂停/倍速/回退和尾卡的动态画面仍记为未验证。
 - 生产构建使用项目当前 Next 配置的 `.next` 目录；没有运行 `npm run clean`，也没有删除或重建既有 `out` 目录。
+- 合并后 master worktree 再次通过 6 个聚焦测试文件（79/79）、改动文件 ESLint、Prettier、`git diff --check`、`npx next build --webpack`（28 个静态页面）和 `npx tsc --noEmit --pretty false`。构建仅有已知的多锁文件 root 提示与过期 Browserslist 数据提示。
 
 ## 自审清单
 
