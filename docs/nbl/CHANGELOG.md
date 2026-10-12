@@ -22,12 +22,14 @@
 
 - Replaced the earlier rejected blended treatment with a whole-song Folia Lumiere-inspired lyric MV: deterministic intro/lyric/interlude/instrumental/outro shots, seven stage-light profiles, and lights-out/flare/focus transitions. The previous 2026-10-12 rendering entry above is historical and was superseded by this rework.
 - Preserved independent simultaneous LRC rows and estimated grapheme reveal timing; connected the existing motion-speed and glow settings to camera/light/fog/dust and stage illumination without changing persisted setting fields.
+- Corrected the first MV pass after user review: lyrics now compose as a moving focal subject within profile-specific scenes, with adjacent lyric depth, directional entrance, localized stage-light response, occasional safe CJK vertical layout, aligned translation-LRC subtitles, and sequential ending credits. Same-kind shots use a short focus pull, pauses keep low-amplitude stage atmosphere, and long instrumental tails remain on stage until the final seven seconds.
 
 ### Verified
 
 - Focused Vitest checks passed: 6 files, 79 tests. Changed-file ESLint, Prettier, `git diff --check`, strict TypeScript, and the Next.js 16 webpack production build passed; the build generated 28 static pages.
 - The local app returned HTTP 200 after the build. Dynamic lyric-shot playback, pause/rate/seek, and reduced-motion visuals remain unverified because the open player was already near the end of a track and advanced naturally; playback was not repositioned.
 - After merge `50da32a`, the master worktree repeated the 79 focused tests, changed-file ESLint/Prettier, `git diff --check`, webpack production build (28 static pages), and `npx tsc --noEmit --pretty false`; all passed. Next reported its existing multiple-lockfile root warning and stale Browserslist data notice.
+- Fidelity follow-up verification: 4 focused test files / 65 tests passed; changed-file ESLint, Prettier, `git diff --check`, `npm run build` (28 static pages), and sequential `npx tsc --noEmit --incremental false --pretty false` passed. Build warnings remain the multiple-lockfile workspace-root notice and stale Browserslist data. Live lyric playback, pause, seek, rate, and ending visuals remain unverified; the existing Chrome playback was left untouched.
 
 ## 2026-09-30
 

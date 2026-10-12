@@ -29,6 +29,10 @@ describe("compileLyricFilmProgram", () => {
     expect(program.shots.every((shot) => shot.kind === "instrumental")).toBe(true);
     expect(program.shots.every((shot) => shot.lineGroupIndices.length === 0)).toBe(true);
     expect(program.shots.every((shot) => shot.endTime - shot.startTime <= 7)).toBe(true);
+    expect(
+      program.shots.slice(0, -1).every((shot) => shot.transitionOut?.kind === "focus-pull")
+    ).toBe(true);
+    expect(program.shots.at(-1)?.transitionOut).toBeNull();
     expect(program.shots[0]?.startTime).toBe(0);
     expect(program.shots.at(-1)?.endTime).toBe(18);
     expect(
@@ -163,33 +167,53 @@ describe("compileLyricFilmProgram", () => {
     expect(program.shots.some((shot) => shot.kind === "interlude")).toBe(false);
   });
 
-  it("starts an outro after the estimated final lyric end and exposes that absolute boundary", () => {
+  it("starts the ending card after the estimated final lyric stage and exposes its absolute boundary", () => {
     const program = compileLyricFilmProgram([lyric(2, "最后一句", 0)], "outro", 12);
     const finalLyricShot = program.shots.find((shot) => shot.kind === "lyrics");
+    const instrumentalStage = program.shots.find((shot) => shot.kind === "interlude");
     const outro = program.shots.find((shot) => shot.kind === "outro");
 
     expect(program.lyricEndTime).toBeGreaterThan(2);
     expect(outro).toBeDefined();
     expect(outro?.lineGroupIndices).toEqual([]);
     expect(outro?.startTime).toBeGreaterThan(program.lyricEndTime!);
-    expect(finalLyricShot?.endTime).toBe(outro?.startTime);
+    expect(instrumentalStage?.startTime).toBe(finalLyricShot?.endTime);
+    expect(instrumentalStage?.endTime).toBe(outro?.startTime);
     expect(findLyricFilmShotAtTime(program, outro!.startTime)?.kind).toBe("outro");
   });
 
-  it("splits a long outro tail into continuous shots no longer than seven seconds", () => {
+  it("keeps the ending card to the final seven seconds after a long instrumental outro stage", () => {
     const program = compileLyricFilmProgram([lyric(4, "最后一句", 0)], "long-outro", 28);
     const outroShots = program.shots.filter((shot) => shot.kind === "outro");
+    const stageShots = program.shots.filter((shot) => shot.kind === "interlude");
+    const finalLyricShot = program.shots.find((shot) => shot.kind === "lyrics");
 
-    expect(outroShots.length).toBeGreaterThan(1);
-    expect(outroShots.every((shot) => shot.endTime - shot.startTime <= 7)).toBe(true);
-    expect(outroShots.every((shot) => shot.lineGroupIndices.length === 0)).toBe(true);
-    expect(outroShots[0]?.startTime).toBeGreaterThan(program.lyricEndTime!);
-    expect(outroShots.at(-1)?.endTime).toBe(program.duration);
+    expect(outroShots).toHaveLength(1);
+    expect(outroShots[0]?.startTime).toBe(program.duration - 7);
+    expect(outroShots[0]?.endTime).toBe(program.duration);
+    expect(outroShots[0]?.lineGroupIndices).toEqual([]);
+    expect(stageShots.length).toBeGreaterThan(1);
+    expect(stageShots.every((shot) => shot.endTime - shot.startTime <= 7)).toBe(true);
+    expect(stageShots[0]?.startTime).toBe(finalLyricShot?.endTime);
+    expect(stageShots.at(-1)?.endTime).toBe(outroShots[0]?.startTime);
     expect(
-      outroShots.every(
-        (shot, index) => index === 0 || outroShots[index - 1]?.endTime === shot.startTime
+      stageShots.every(
+        (shot, index) => index === 0 || stageShots[index - 1]?.endTime === shot.startTime
       )
     ).toBe(true);
+  });
+
+  it("shortens the ending card to the safe post-lyric time when the tail is shorter than seven seconds", () => {
+    const program = compileLyricFilmProgram([lyric(4, "最后一句", 0)], "short-outro", 7);
+    const finalLyricShot = program.shots.find((shot) => shot.kind === "lyrics");
+    const outro = program.shots.find((shot) => shot.kind === "outro");
+
+    expect(outro).toBeDefined();
+    expect(outro?.startTime).toBe(finalLyricShot?.endTime);
+    expect(outro?.startTime).toBeGreaterThanOrEqual(program.lyricEndTime!);
+    expect(outro?.endTime).toBe(program.duration);
+    expect(outro!.endTime - outro!.startTime).toBeGreaterThan(0);
+    expect(program.shots.every((shot) => shot.startTime >= 0 && shot.endTime <= 7)).toBe(true);
   });
 
   it("keeps lyric shots free of empty line references and within the preferred duration", () => {
@@ -215,13 +239,16 @@ describe("compileLyricFilmProgram", () => {
     expect(first.shots.every((shot) => shot.profile.length > 0)).toBe(true);
   });
 
-  it("avoids repeating adjacent profiles and transition kinds", () => {
+  it("avoids repeating adjacent profiles and major transition kinds", () => {
     const lines = Array.from({ length: 12 }, (_, index) => lyric(index * 5, `歌词${index}`, index));
     const program = compileLyricFilmProgram(lines, "variety", 64);
     const profiles: LyricFilmProfile[] = program.shots.map((shot) => shot.profile);
     const transitions: LyricFilmTransitionKind[] = program.shots
       .map((shot) => shot.transitionOut?.kind)
-      .filter((kind): kind is LyricFilmTransitionKind => kind !== undefined && kind !== null);
+      .filter(
+        (kind): kind is LyricFilmTransitionKind =>
+          kind !== undefined && kind !== null && kind !== "focus-pull"
+      );
 
     expect(profiles.every((profile, index) => index === 0 || profile !== profiles[index - 1])).toBe(
       true
@@ -231,7 +258,7 @@ describe("compileLyricFilmProgram", () => {
     );
   });
 
-  it("assigns a transition only to shots with a following scene", () => {
+  it("uses major transitions across scene kinds and gentle focus-pulls within one kind", () => {
     const program = compileLyricFilmProgram(
       [lyric(0, "第一句", 0), lyric(12, "下一句", 1)],
       "transitions",
@@ -239,8 +266,14 @@ describe("compileLyricFilmProgram", () => {
     );
     const finalShot = program.shots.at(-1);
 
-    expect(program.shots.slice(0, -1).every((shot) => shot.transitionOut !== null)).toBe(true);
     expect(finalShot?.transitionOut).toBeNull();
+    expect(
+      program.shots.slice(0, -1).every((shot, index) => {
+        const nextShot = program.shots[index + 1];
+        if (shot.kind !== nextShot?.kind) return shot.transitionOut !== null;
+        return shot.transitionOut?.kind === "focus-pull";
+      })
+    ).toBe(true);
     expect(
       program.shots
         .filter((shot) => shot.transitionOut)
@@ -251,6 +284,25 @@ describe("compileLyricFilmProgram", () => {
             shot.transitionOut!.endTime > shot.transitionOut!.startTime
         )
     ).toBe(true);
+  });
+
+  it("uses a short focus pull between consecutive same-kind shots with different profiles", () => {
+    const program = compileLyricFilmProgram(
+      Array.from({ length: 8 }, (_, index) => lyric(index * 2, `歌词${index}`, index)),
+      "lyric-focus-pull",
+      20
+    );
+    const repeatedKindBoundary = program.shots.findIndex(
+      (shot, index) =>
+        index < program.shots.length - 1 && shot.kind === program.shots[index + 1]?.kind
+    );
+    const outgoing = program.shots[repeatedKindBoundary];
+
+    expect(repeatedKindBoundary).toBeGreaterThanOrEqual(0);
+    expect(outgoing?.transitionOut?.kind).toBe("focus-pull");
+    expect(
+      outgoing!.transitionOut!.endTime - outgoing!.transitionOut!.startTime
+    ).toBeLessThanOrEqual(0.4);
   });
 
   it("uses absolute time for stable first, interior, and last shot lookup", () => {

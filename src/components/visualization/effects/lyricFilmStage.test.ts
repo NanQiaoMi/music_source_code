@@ -3,8 +3,10 @@ import {
   LYRIC_FILM_STAGE_LIMITS,
   drawLyricFilmStage,
   getLyricFilmStageParticleCount,
+  resolveLyricFilmStageRig,
   resolveLyricFilmStageFrame,
   resolveLyricFilmTransitionFrame,
+  sampleLyricFilmIllumination,
   type LyricFilmStageDrawInput,
   type LyricFilmStageInput,
   type LyricFilmStageTransition,
@@ -111,11 +113,42 @@ describe("resolveLyricFilmStageFrame", () => {
     expect(start.progress).toBe(0);
     expect(after.progress).toBe(1);
     expect(before.camera).toEqual(start.camera);
-    expect(middle.camera.zoom).toBeGreaterThanOrEqual(start.camera.zoom);
-    expect(after.camera.zoom).toBeGreaterThanOrEqual(start.camera.zoom);
-    expect(after.camera.zoom).toBeLessThanOrEqual(start.camera.zoom + 0.035);
+    expect(Math.abs(after.camera.zoom - start.camera.zoom)).toBeCloseTo(0.052, 4);
+    expect(
+      (middle.camera.zoom - start.camera.zoom) * (after.camera.zoom - start.camera.zoom)
+    ).toBeGreaterThan(0);
     expect(Math.abs(after.camera.x)).toBeLessThanOrEqual(0.08);
     expect(Math.abs(after.camera.y)).toBeLessThanOrEqual(0.08);
+  });
+
+  it("uses a single directional push-pull and horizontal move across each shot", () => {
+    const times = [10, 12.5, 15, 17.5, 20];
+    const seeds = [48271, 7, 13];
+    const followsOneDirection = (values: number[]) => {
+      const deltas = values.slice(1).map((value, index) => value - values[index]!);
+      const direction = Math.sign(deltas[deltas.length - 1]!);
+      return direction !== 0 && deltas.every((delta) => delta * direction >= -1e-9);
+    };
+    const zoomDirections = new Set<number>();
+    const panDirections = new Set<number>();
+
+    for (const seed of seeds) {
+      const frames = times.map((musicTime) =>
+        resolveLyricFilmStageFrame(makeInput({ musicTime, seed }))
+      );
+      const zooms = frames.map(({ camera }) => camera.zoom);
+      const pans = frames.map(({ camera }) => camera.x);
+
+      expect(Math.abs(zooms[zooms.length - 1]! - zooms[0]!)).toBeGreaterThan(0.02);
+      expect(Math.abs(pans[pans.length - 1]! - pans[0]!)).toBeGreaterThan(0.02);
+      expect(followsOneDirection(zooms)).toBe(true);
+      expect(followsOneDirection(pans)).toBe(true);
+      zoomDirections.add(Math.sign(zooms[zooms.length - 1]! - zooms[0]!));
+      panDirections.add(Math.sign(pans[pans.length - 1]! - pans[0]!));
+    }
+
+    expect(zoomDirections.size).toBe(2);
+    expect(panDirections.size).toBe(2);
   });
 
   it("freezes continuous camera and particle drift while reduced motion is enabled", () => {
@@ -131,6 +164,26 @@ describe("resolveLyricFilmStageFrame", () => {
     expect(late.particlePhase).toBe(early.particlePhase);
     expect(late.fogPhase).toBe(early.fogPhase);
     expect(late.profile).toBe("botanical");
+  });
+
+  it("keeps the camera still while paused but lets the low-amplitude stage atmosphere breathe", () => {
+    const pausedStart = resolveLyricFilmStageFrame(
+      makeInput({ musicTime: 15, isPlaying: false, ambientPhase: 0.2 })
+    );
+    const pausedLater = resolveLyricFilmStageFrame(
+      makeInput({ musicTime: 15, isPlaying: false, ambientPhase: 0.8 })
+    );
+    const reducedMotionStart = resolveLyricFilmStageFrame(
+      makeInput({ musicTime: 15, isPlaying: false, reducedMotion: true, ambientPhase: 0.2 })
+    );
+    const reducedMotionLater = resolveLyricFilmStageFrame(
+      makeInput({ musicTime: 15, isPlaying: false, reducedMotion: true, ambientPhase: 0.8 })
+    );
+
+    expect(pausedLater.camera).toEqual(pausedStart.camera);
+    expect(pausedLater.fogPhase).not.toBe(pausedStart.fogPhase);
+    expect(pausedLater.particlePhase).not.toBe(pausedStart.particlePhase);
+    expect(reducedMotionLater).toEqual(reducedMotionStart);
   });
 
   it("scales continuous motion speed without changing shot-time progress", () => {
@@ -228,6 +281,18 @@ describe("resolveLyricFilmTransitionFrame", () => {
     expect(LYRIC_FILM_STAGE_LIMITS.maxTransitionSeconds).toBeLessThanOrEqual(1.1);
   });
 
+  it("does not extend a transition beyond a very short shot", () => {
+    const frame = resolveLyricFilmTransitionFrame(
+      { kind: "focus-pull", duration: 0.8 },
+      10,
+      9.95,
+      false,
+      0.1
+    );
+
+    expect(frame?.progress).toBeCloseTo(0.5, 5);
+  });
+
   it("does not emit a transition when the descriptor or boundary is invalid", () => {
     expect(resolveLyricFilmTransitionFrame(null, 10, 9)).toBeNull();
     expect(
@@ -268,8 +333,8 @@ describe("drawLyricFilmStage", () => {
     const drawAlphaValues = ctx.drawAlphas.map(({ alpha }) => alpha);
     expect(Math.max(...drawAlphaValues)).toBeLessThanOrEqual(0.5);
     expect(Math.min(...drawAlphaValues)).toBeGreaterThanOrEqual(0);
-    expect(ctx.drawAlphas).toContainEqual({ method: "stroke", alpha: 0.12 });
-    expect(ctx.drawAlphas).not.toContainEqual({ method: "stroke", alpha: 0.06 });
+    expect(ctx.drawAlphas.some(({ method }) => method === "stroke")).toBe(true);
+    expect(drawAlphaValues.every((alpha) => alpha >= 0 && alpha <= 0.5)).toBe(true);
   });
 
   it("does no canvas work when caller opacity is zero", () => {
@@ -312,7 +377,12 @@ describe("drawLyricFilmStage", () => {
     });
 
     const maxFillAlpha = (alphas: typeof low.ctx.drawAlphas) =>
-      Math.max(...alphas.filter(({ method }) => method === "fill").map(({ alpha }) => alpha));
+      Math.max(
+        ...alphas
+          .filter(({ method }) => method === "fill")
+          .slice(0, 4)
+          .map(({ alpha }) => alpha)
+      );
     expect(maxFillAlpha(high.ctx.drawAlphas)).toBeGreaterThan(maxFillAlpha(low.ctx.drawAlphas));
     expect(Math.max(...high.ctx.globalAlphaValues)).toBeLessThanOrEqual(1);
     expect(high.ctx.stackDepth).toBe(0);
@@ -346,4 +416,63 @@ describe("drawLyricFilmStage", () => {
       expect(ctx.stackDepth).toBe(0);
     }
   );
+});
+
+describe("Lyric Film stage composition", () => {
+  it("gives each lighting profile a recognizable fixture layout", () => {
+    const profiles = [
+      "spotlight",
+      "prism",
+      "window",
+      "caustic",
+      "botanical",
+      "astral",
+      "motes",
+    ] as const;
+    const rigs = profiles.map((profile) => resolveLyricFilmStageRig(profile, 48271));
+    const fixtureLayouts = rigs.map((rig) => rig.geometry);
+    const lightLayouts = rigs.map((rig) =>
+      rig.lights.map(({ kind, x1, y1, x2, y2 }) => [kind, x1, y1, x2, y2].join(":")).join("|")
+    );
+
+    expect(new Set(fixtureLayouts).size).toBe(profiles.length);
+    expect(new Set(lightLayouts).size).toBe(profiles.length);
+  });
+
+  it("keeps the lyric band dim and returns a deterministic local light field", () => {
+    const profiles = [
+      "spotlight",
+      "prism",
+      "window",
+      "caustic",
+      "botanical",
+      "astral",
+      "motes",
+    ] as const;
+    const lyricPositions = [
+      [0.42, 0.31],
+      [0.5, 0.43],
+      [0.58, 0.5],
+      [0.42, 0.57],
+      [0.58, 0.69],
+    ] as const;
+    const maxLyricBandLight = Math.max(
+      ...profiles.flatMap((profile) => {
+        const profileFrame = resolveLyricFilmStageFrame(makeInput({ profile, seed: 48271 }));
+        return lyricPositions.map(([x, y]) => sampleLyricFilmIllumination(profileFrame, x, y));
+      })
+    );
+    const frame = resolveLyricFilmStageFrame(makeInput({ profile: "window", seed: 48271 }));
+    const center = sampleLyricFilmIllumination(frame, 0.5, 0.5);
+    const repeated = sampleLyricFilmIllumination(frame, 0.5, 0.5);
+    const floorLight = sampleLyricFilmIllumination(frame, 0.82, 0.86);
+
+    expect(center).toBe(repeated);
+    expect(center).toBeGreaterThanOrEqual(0);
+    expect(center).toBeLessThanOrEqual(0.3);
+    expect(maxLyricBandLight).toBeLessThanOrEqual(0.3);
+    expect(floorLight).toBeGreaterThan(center + 0.15);
+    expect(floorLight).toBeLessThanOrEqual(1);
+    expect(sampleLyricFilmIllumination(frame, Number.NaN, 0.5)).toBe(0);
+  });
 });

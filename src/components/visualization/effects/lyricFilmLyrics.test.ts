@@ -4,7 +4,8 @@ import {
   type LyricFilmProgram,
   type LyricFilmShot,
 } from "./lyricFilmProgram";
-import { resolveLyricFilmLyricRows } from "./lyricFilmLyrics";
+import { resolveLyricFilmLyricRows, resolveLyricFilmTranslation } from "./lyricFilmLyrics";
+import { groupLyricsByStart, parseTimedLyrics } from "./lyricTimeline";
 
 describe("resolveLyricFilmLyricRows", () => {
   it("keeps simultaneous source lines independent in the lyric window", () => {
@@ -71,5 +72,52 @@ describe("resolveLyricFilmLyricRows", () => {
     };
 
     expect(resolveLyricFilmLyricRows(program, interlude, 1)).toEqual([]);
+  });
+
+  it("keeps one nearby line on either side of the active lyric window", () => {
+    const program = compileLyricFilmProgram(
+      [
+        { start: 1, text: "第一句", ordinal: 0 },
+        { start: 4, text: "第二句", ordinal: 1 },
+        { start: 7, text: "第三句", ordinal: 2 },
+        { start: 10, text: "第四句", ordinal: 3 },
+      ],
+      "lyric-window-neighbors",
+      14
+    );
+    const laterShot = program.shots.find((candidate) => candidate.lineGroupIndices.includes(2))!;
+
+    const rows = resolveLyricFilmLyricRows(program, laterShot, 7.2);
+
+    expect(rows.map((row) => row.text)).toEqual(["第二句", "第三句", "第四句"]);
+    expect(rows.map((row) => row.role)).toEqual(["past", "active", "future"]);
+  });
+
+  it("shows only the timed translation currently in its line window", () => {
+    const sourceGroups = groupLyricsByStart(
+      parseTimedLyrics("[00:02.00]First source line\n[00:05.00]Second source line")
+    );
+    const translationGroups = groupLyricsByStart(
+      parseTimedLyrics("[00:02.25]第一句译文\n[00:05.20]第二句译文")
+    );
+
+    expect(resolveLyricFilmTranslation(translationGroups, sourceGroups, 1.9)).toBeNull();
+    expect(resolveLyricFilmTranslation(translationGroups, sourceGroups, 3)).toEqual(["第一句译文"]);
+    expect(resolveLyricFilmTranslation(translationGroups, sourceGroups, 5)).toEqual(["第二句译文"]);
+    expect(resolveLyricFilmTranslation(translationGroups, sourceGroups, 8)).toBeNull();
+  });
+
+  it("hides translations that are missing or timestamped against another source line", () => {
+    const sourceGroups = groupLyricsByStart(
+      parseTimedLyrics("[00:10]Source line one\n[00:12]Source line two")
+    );
+    const translationGroups = groupLyricsByStart(
+      parseTimedLyrics("[00:10]第一句译文\n[00:20]旧译文")
+    );
+
+    expect(resolveLyricFilmTranslation(translationGroups, sourceGroups, 10.5)).toEqual([
+      "第一句译文",
+    ]);
+    expect(resolveLyricFilmTranslation(translationGroups, sourceGroups, 12.5)).toBeNull();
   });
 });
