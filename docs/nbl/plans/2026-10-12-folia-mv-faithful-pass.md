@@ -1,6 +1,8 @@
 # Folia 式歌词 MV 保真修正实施计划
 
-> 状态：实现、代码审查、提交、合入本地 `master` 与合入后回归均已完成。基于用户对首轮 Folia 移植画面的反馈重新收敛验收；不沿用“基础分镜已完成”作为视觉通过证据。
+> 状态：旧 Canvas 实现已完成静态验证，但用户视觉验收未通过；已被 WebGL MV 重做规格取代，不得继续作为目标实施计划。
+>
+> 新规格：[Folia 式 WebGL 歌词 MV 重做](../specs/2026-10-13-folia-webgl-mv-design.md)。
 >
 > 开发分支：`feature/folia-mv-faithful-pass`，从本地 `master` 的 `cd77068` 创建。实现代码在独立 worktree 中完成，之后按分支生命周期合并。
 
