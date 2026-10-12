@@ -1,7 +1,12 @@
 import type { EffectContext } from "./types";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
-import { estimateLineUnits, parseTimedLyrics } from "./lyricTimeline";
+import {
+  estimateLineUnits,
+  groupLyricsByStart,
+  parseTimedLyrics,
+  type LyricLineGroup,
+} from "./lyricTimeline";
 import { layoutLyricUnits, type LyricLayoutItem } from "./lyricLayout";
 import {
   advanceLyricPlaybackClock,
@@ -14,11 +19,20 @@ import {
   type LyricFilmProgram,
   type LyricFilmShot,
 } from "./lyricFilmProgram";
-import { resolveLyricFilmLyricRows } from "./lyricFilmLyrics";
+import { resolveLyricFilmLyricRows, resolveLyricFilmTranslation } from "./lyricFilmLyrics";
+import {
+  expandLyricFilmVerticalUnits,
+  resolveLyricFilmComposition,
+  resolveLyricFilmCreditsFrame,
+  resolveLyricFilmGlyphFrame,
+  resolveLyricFilmVerticalSlot,
+  segmentLyricFilmGraphemes,
+} from "./lyricFilmComposition";
 import {
   drawLyricFilmStage,
   resolveLyricFilmStageFrame,
-  type LyricFilmStageCamera,
+  sampleLyricFilmIllumination,
+  type LyricFilmStageFrame,
   type LyricFilmStagePalette,
 } from "./lyricFilmStage";
 
@@ -31,12 +45,15 @@ interface ColorPalette {
   textUnsung: string;
   textPast: string;
   textFocus: string;
+  textWarm: string;
   shimmerAura: string;
 }
 
 interface LyricFilmRuntimeState extends LyricPlaybackClockState {
   songId: string | null;
   lyricsText: string;
+  translationLyricsText: string;
+  translationGroups: LyricLineGroup[];
   songDuration: number;
   programDuration: number;
   program: LyricFilmProgram | null;
@@ -44,6 +61,7 @@ interface LyricFilmRuntimeState extends LyricPlaybackClockState {
   smoothBass: number;
   smoothMid: number;
   smoothTreble: number;
+  ambientPhase: number;
 }
 
 interface ShotBlend {
@@ -62,6 +80,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textUnsung: "rgba(255, 255, 255, 0.30)",
     textPast: "rgba(255, 255, 255, 0.67)",
     textFocus: "#ffffff",
+    textWarm: "#ffd47e",
     shimmerAura: "rgba(180, 220, 255, 0.48)",
   },
   {
@@ -73,6 +92,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textUnsung: "rgba(255, 240, 235, 0.30)",
     textPast: "rgba(255, 245, 240, 0.69)",
     textFocus: "#fffaf5",
+    textWarm: "#ffd1a0",
     shimmerAura: "rgba(255, 210, 175, 0.52)",
   },
   {
@@ -84,6 +104,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textUnsung: "rgba(230, 255, 245, 0.30)",
     textPast: "rgba(240, 255, 250, 0.70)",
     textFocus: "#f5fff9",
+    textWarm: "#ffe1a3",
     shimmerAura: "rgba(180, 255, 220, 0.48)",
   },
   {
@@ -99,6 +120,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textUnsung: "rgba(255, 255, 255, 0.28)",
     textPast: "rgba(255, 255, 255, 0.65)",
     textFocus: "#ffffff",
+    textWarm: "#f6dfad",
     shimmerAura: "rgba(255, 255, 255, 0.42)",
   },
   {
@@ -110,6 +132,7 @@ const COLOR_PALETTES: ColorPalette[] = [
     textUnsung: "rgba(250, 235, 255, 0.30)",
     textPast: "rgba(252, 245, 255, 0.70)",
     textFocus: "#fffaff",
+    textWarm: "#ffd2a7",
     shimmerAura: "rgba(235, 195, 255, 0.5)",
   },
 ];
@@ -169,6 +192,8 @@ function createRuntimeState(): LyricFilmRuntimeState {
     ...createLyricPlaybackClock(),
     songId: null,
     lyricsText: "",
+    translationLyricsText: "",
+    translationGroups: [],
     songDuration: 0,
     programDuration: 0,
     program: null,
@@ -176,6 +201,7 @@ function createRuntimeState(): LyricFilmRuntimeState {
     smoothBass: 0,
     smoothMid: 0,
     smoothTreble: 0,
+    ambientPhase: 0,
   };
 }
 
@@ -229,11 +255,15 @@ function resetRuntimeForSong(
   state: LyricFilmRuntimeState,
   songId: string | null,
   lyricsText: string,
+  translationLyricsText: string,
   songDuration: number
 ): void {
   Object.assign(state, createLyricPlaybackClock());
   state.songId = songId;
   state.lyricsText = lyricsText;
+  state.translationLyricsText = translationLyricsText;
+  state.translationGroups = groupLyricsByStart(parseTimedLyrics(translationLyricsText));
+  state.ambientPhase = 0;
   state.programDuration = 0;
   state.program = null;
   state.layoutCache.clear();
@@ -275,10 +305,11 @@ function getLineLayout(
   fontFamily: string,
   fontSize: number,
   width: number,
-  dpr: number
+  dpr: number,
+  requestedMaxWidth: number
 ): LyricLayoutItem[] {
-  const maxWidth = Math.max(1, Math.min(width * 0.84, width - 24));
-  const cacheKey = [shot.id, row.id, width, dpr, fontFamily, fontSize].join("|");
+  const maxWidth = Math.max(1, Math.min(requestedMaxWidth, width - Math.min(24, width * 0.12)));
+  const cacheKey = [shot.id, row.id, width, maxWidth, dpr, fontFamily, fontSize].join("|");
   const cached = state.layoutCache.get(cacheKey);
   if (cached) return cached;
 
@@ -295,20 +326,26 @@ function getLineLayout(
   return layout;
 }
 
-function resolveComposition(seed: string, width: number, height: number): { x: number; y: number } {
-  const compositions = [
-    { x: -0.075, y: 0.49 },
-    { x: 0.065, y: 0.43 },
-    { x: -0.035, y: 0.56 },
-    { x: 0.045, y: 0.47 },
-    { x: 0, y: 0.52 },
-  ] as const;
-  const selected = compositions[hashString(seed) % compositions.length]!;
-  const aspectScale = clamp(width / Math.max(1, height), 0.45, 1.8);
-  return {
-    x: width * (0.5 + selected.x * aspectScale),
-    y: height * selected.y,
-  };
+function drawGlyphSparkle(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  alpha: number,
+  color: string
+): void {
+  if (alpha <= 0.01) return;
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha, 0, 1);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(0.8, size * 0.06);
+  ctx.beginPath();
+  ctx.moveTo(x, y - size);
+  ctx.lineTo(x, y + size);
+  ctx.moveTo(x - size, y);
+  ctx.lineTo(x + size, y);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawLyricRows(
@@ -325,8 +362,9 @@ function drawLyricRows(
   feather: number,
   glowIntensity: number,
   reducedMotion: boolean,
-  camera: LyricFilmStageCamera,
+  stageFrame: LyricFilmStageFrame,
   palette: ColorPalette,
+  translationGroups: readonly LyricLineGroup[],
   opacity: number
 ): void {
   if (shot.kind !== "lyrics" || opacity <= 0) return;
@@ -340,26 +378,44 @@ function drawLyricRows(
       .find((index) => (program.lineGroups[index]?.start ?? Infinity) <= musicTime) ?? groups[0];
   if (focusGroupIndex === undefined) return;
 
-  const composition = resolveComposition(shot.seed, width, height);
+  const activeText = rows.find((row) => row.role === "active")?.text ?? rows[0]?.text ?? "";
+  const composition = resolveLyricFilmComposition(
+    shot.seed,
+    shot.profile,
+    width,
+    height,
+    activeText
+  );
   const entry = reducedMotion ? 1 : smoothstep((musicTime - shot.startTime) / LYRIC_ENTRY_SECONDS);
   const visibility = clamp(opacity * entry, 0, 1);
+  const entryDistance = reducedMotion ? 0 : (1 - entry) * height * 0.045;
+  const entryX =
+    composition.entryDirection === "left"
+      ? -entryDistance
+      : composition.entryDirection === "right"
+        ? entryDistance
+        : 0;
+  const entryY =
+    composition.entryDirection === "top"
+      ? -entryDistance
+      : composition.entryDirection === "bottom"
+        ? entryDistance
+        : 0;
   const groupRowsByIndex = new Map<number, typeof rows>();
   for (const row of rows) {
     const groupRows = groupRowsByIndex.get(row.groupIndex) ?? [];
     groupRows.push(row);
     groupRowsByIndex.set(row.groupIndex, groupRows);
   }
-  const rowGap = Math.min(baseFontSize * 1.5, height * 0.095);
-  const maxWidth = Math.max(1, Math.min(width * 0.84, width - 24));
-  const originX = composition.x - maxWidth / 2;
+  const rowGap = Math.min(baseFontSize * 1.36, height * 0.092);
+  const originX = composition.centerX + entryX - composition.maxWidth / 2;
 
   ctx.save();
-  ctx.translate(width * (0.5 + camera.x), height * (0.5 + camera.y));
-  ctx.rotate(camera.rotation);
-  ctx.scale(camera.zoom, camera.zoom);
+  ctx.translate(width * (0.5 + stageFrame.camera.x), height * (0.5 + stageFrame.camera.y));
+  ctx.rotate(stageFrame.camera.rotation);
+  ctx.scale(stageFrame.camera.zoom, stageFrame.camera.zoom);
   ctx.translate(-width * 0.5, -height * 0.5);
   ctx.globalAlpha = visibility;
-  ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.filter = "none";
 
@@ -370,55 +426,158 @@ function drawLyricRows(
     const groupOffset = (rowPosition - (groupRows.length - 1) / 2) * rowGap;
     const relation = row.groupIndex - focusGroupIndex;
     const roleOffset = isFocusGroup ? 0 : relation < 0 ? -height * 0.19 : height * 0.19;
-    const fontScale = isFocusGroup ? (rowPosition === 0 ? 1 : 0.72) : 0.56;
+    const fontScale = isFocusGroup ? (rowPosition === 0 ? 1.22 : 0.8) : 0.62;
     const requestedFontSize = Math.max(12, baseFontSize * fontScale);
-    const layout = getLineLayout(state, ctx, row, shot, fontFamily, requestedFontSize, width, dpr);
+    const layout = getLineLayout(
+      state,
+      ctx,
+      row,
+      shot,
+      fontFamily,
+      requestedFontSize,
+      width,
+      dpr,
+      composition.maxWidth
+    );
     const age = Math.max(0, musicTime - row.revealEndTime);
     const pastFade =
       row.role === "past" ? 1 - 0.58 * clamp(age / TRAILING_LINE_FADE_SECONDS, 0, 1) : 1;
     const roleAlpha =
-      row.role === "active" ? (isFocusGroup ? 0.96 : 0.72) : row.role === "future" ? 0.27 : 0.56;
+      row.role === "active" ? (isFocusGroup ? 0.98 : 0.78) : row.role === "future" ? 0.48 : 0.62;
     const rowAlpha = clamp(roleAlpha * pastFade, 0, 1);
-    const rowCenterY = composition.y + roleOffset + groupOffset;
+    const rowCenterY = composition.centerY + entryY + roleOffset + groupOffset;
     const baseColor = row.role === "past" ? palette.textPast : palette.textUnsung;
+    const rowGraphemes = segmentLyricFilmGraphemes(row.text);
+    const cjkCount = rowGraphemes.filter((grapheme) =>
+      /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(grapheme)
+    ).length;
+    const useVertical =
+      composition.orientation === "vertical" &&
+      rowGraphemes.length > 0 &&
+      cjkCount / rowGraphemes.length >= 0.72;
+    const renderItems = useVertical ? expandLyricFilmVerticalUnits(layout) : layout;
 
     ctx.save();
     ctx.globalAlpha = visibility * rowAlpha;
-    ctx.font = `500 ${layout[0]?.fontSize ?? requestedFontSize}px ${fontFamily}`;
-    ctx.fillStyle = baseColor;
-    for (const item of layout) {
-      ctx.fillText(item.text, originX + item.x, rowCenterY + item.y);
-    }
+    ctx.textAlign = useVertical ? "center" : "left";
 
-    if (row.role === "active") {
-      ctx.fillStyle = palette.textFocus;
-      ctx.shadowColor = palette.shimmerAura;
-      ctx.shadowBlur = reducedMotion ? 0 : clamp(feather * 0.18, 1, 17) * glowIntensity;
-      for (const item of layout) {
-        const unitDuration = item.end - item.start;
-        const unitProgress =
-          unitDuration <= 0.00001
-            ? Number(musicTime >= item.end)
-            : clamp((musicTime - item.start) / unitDuration, 0, 1);
-        if (unitProgress <= 0) continue;
+    for (let itemIndex = 0; itemIndex < renderItems.length; itemIndex += 1) {
+      const item = renderItems[itemIndex]!;
+      const position = useVertical
+        ? resolveLyricFilmVerticalSlot({
+            itemIndex,
+            itemCount: renderItems.length,
+            centerX: composition.centerX + entryX,
+            centerY: rowCenterY,
+            width,
+            height,
+            maxWidth: composition.maxWidth,
+            fontSize: item.fontSize,
+            groupRowIndex: rowPosition,
+            groupRowCount: groupRows.length,
+          })
+        : { x: originX + item.x, y: rowCenterY + item.y, fontSize: item.fontSize };
+      const illumination = clamp(
+        sampleLyricFilmIllumination(
+          stageFrame,
+          position.x / Math.max(1, width),
+          position.y / Math.max(1, height)
+        ),
+        0,
+        1
+      );
+      const glyphFrame = resolveLyricFilmGlyphFrame({
+        seed: `${shot.seed}:${row.id}:${itemIndex}:${item.text}`,
+        startTime: item.start,
+        endTime: item.end,
+        musicTime,
+        x: position.x,
+        y: position.y,
+        fontSize: position.fontSize,
+      });
+      const isSung = row.role === "active" && musicTime >= item.end;
+      const isCurrent = row.role === "active" && musicTime >= item.start && musicTime < item.end;
+      ctx.font = `500 ${position.fontSize}px ${fontFamily}`;
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = isSung ? palette.textFocus : baseColor;
+      ctx.globalAlpha = visibility * rowAlpha * (isSung ? 0.82 : 0.46 + illumination * 0.36);
+      ctx.fillText(item.text, position.x, position.y);
 
-        ctx.globalAlpha = visibility * rowAlpha * (0.42 + 0.58 * smoothstep(unitProgress));
-        ctx.fillText(item.text, originX + item.x, rowCenterY + item.y);
+      if (row.role === "active" && glyphFrame.progress > 0) {
+        ctx.fillStyle = isCurrent ? palette.textWarm : palette.textFocus;
+        ctx.globalAlpha = visibility * rowAlpha * (isCurrent ? 0.82 + illumination * 0.18 : 0.78);
+        ctx.shadowColor = isCurrent ? palette.textWarm : palette.shimmerAura;
+        ctx.shadowBlur =
+          isCurrent && !reducedMotion
+            ? clamp(feather * 0.13, 2, 14) * glowIntensity * (0.58 + illumination * 0.42)
+            : 0;
+        ctx.fillText(
+          item.text,
+          reducedMotion ? position.x : glyphFrame.x,
+          reducedMotion ? position.y : glyphFrame.y
+        );
+        ctx.shadowBlur = 0;
+
+        if (isCurrent) {
+          const sparkleX = useVertical
+            ? position.x + position.fontSize * 0.38
+            : position.x + item.width;
+          const sparkleY = position.y - position.fontSize * 0.3;
+          drawGlyphSparkle(
+            ctx,
+            sparkleX,
+            sparkleY,
+            Math.max(2, position.fontSize * 0.11),
+            reducedMotion ? 0 : glyphFrame.sparkleAlpha * (0.45 + illumination * 0.55),
+            palette.textWarm
+          );
+        }
+      }
+
+      if (!reducedMotion && glyphFrame.trailAlpha > 0 && row.role !== "future") {
+        ctx.globalAlpha = visibility * rowAlpha * glyphFrame.trailAlpha;
+        ctx.fillStyle = palette.textWarm;
+        ctx.fillText(
+          item.text,
+          position.x - position.fontSize * 0.14,
+          position.y + position.fontSize * 0.025
+        );
       }
     }
     ctx.restore();
   }
   ctx.restore();
+
+  const subtitles = resolveLyricFilmTranslation(translationGroups, program.lineGroups, musicTime);
+  if (subtitles?.length) {
+    const subtitleSize = clamp(Math.min(width * 0.026, height * 0.034), 13, 22);
+    ctx.save();
+    ctx.globalAlpha = visibility * 0.84;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `400 ${subtitleSize}px ${fontFamily}`;
+    ctx.lineWidth = Math.max(2, subtitleSize * 0.22);
+    ctx.strokeStyle = "rgba(3, 7, 14, 0.82)";
+    ctx.fillStyle = palette.textPast;
+    subtitles.slice(0, 2).forEach((subtitle, index) => {
+      const y = height * 0.82 + index * subtitleSize * 1.28;
+      ctx.strokeText(subtitle, width * 0.5, y, width * 0.78);
+      ctx.fillText(subtitle, width * 0.5, y, width * 0.78);
+    });
+    ctx.restore();
+  }
 }
 
 function drawEndingCard(
   ctx: CanvasRenderingContext2D,
   musicTime: number,
   outroStartTime: number,
+  outroEndTime: number,
   width: number,
   height: number,
   title: string,
   artist: string,
+  album: string,
   fontFamily: string,
   palette: ColorPalette,
   reducedMotion: boolean,
@@ -426,46 +585,53 @@ function drawEndingCard(
 ): void {
   const displayTitle = title.trim();
   const displayArtist = artist.trim();
-  if ((!displayTitle && !displayArtist) || opacity <= 0) return;
-
-  const entry = reducedMotion ? 1 : smoothstep((musicTime - outroStartTime) / 0.72);
+  const displayAlbum = album.trim();
+  if ((!displayTitle && !displayArtist && !displayAlbum) || opacity <= 0) return;
+  const credits = resolveLyricFilmCreditsFrame(
+    outroStartTime,
+    outroEndTime,
+    musicTime,
+    displayTitle,
+    Boolean(displayArtist),
+    Boolean(displayAlbum),
+    reducedMotion
+  );
   const centerX = width * 0.5;
-  const centerY = height * 0.52;
+  const centerY = height * 0.47;
   const titleSize = clamp(Math.min(width * 0.066, height * 0.09), 22, 48);
   const artistSize = Math.max(13, titleSize * 0.42);
+  const albumSize = Math.max(11, artistSize * 0.82);
+  const visibleTitle = segmentLyricFilmGraphemes(displayTitle)
+    .slice(0, credits.titleVisibleGraphemes)
+    .join("");
 
   ctx.save();
-  ctx.globalAlpha = clamp(opacity * entry, 0, 1);
-  ctx.textAlign = "center";
+  ctx.globalAlpha = clamp(opacity * credits.cardOpacity, 0, 1);
+  ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  if (displayTitle) {
+  if (visibleTitle) {
     ctx.font = `600 ${titleSize}px ${fontFamily}`;
-    ctx.fillStyle = palette.textFocus;
+    ctx.fillStyle = palette.textWarm;
     ctx.shadowColor = palette.shimmerAura;
-    ctx.shadowBlur = reducedMotion ? 0 : 13;
-    ctx.fillText(
-      displayTitle,
-      centerX,
-      centerY - (displayArtist ? titleSize * 0.42 : 0),
-      width * 0.8
-    );
+    ctx.shadowBlur = reducedMotion ? 0 : 13 * clamp(0.4 + credits.cardOpacity * 0.6, 0, 1);
+    const totalTitleWidth = Math.min(ctx.measureText(displayTitle).width, width * 0.8);
+    ctx.fillText(visibleTitle, centerX - totalTitleWidth / 2, centerY, width * 0.8);
   }
   if (displayArtist) {
     ctx.shadowBlur = 0;
     ctx.font = `400 ${artistSize}px ${fontFamily}`;
     ctx.fillStyle = palette.textPast;
-    ctx.fillText(
-      displayArtist,
-      centerX,
-      centerY + (displayTitle ? titleSize * 0.82 : 0),
-      width * 0.76
-    );
+    ctx.globalAlpha = clamp(opacity * credits.artistOpacity, 0, 1);
+    ctx.textAlign = "center";
+    ctx.fillText(displayArtist, centerX, centerY + titleSize * 0.78, width * 0.76);
   }
-
-  ctx.font = `500 10px ${fontFamily}`;
-  ctx.fillStyle = palette.textUnsung;
-  ctx.letterSpacing = "0.24em";
-  ctx.fillText("片 尾", centerX, height * 0.71, width * 0.3);
+  if (displayAlbum) {
+    ctx.font = `400 ${albumSize}px ${fontFamily}`;
+    ctx.fillStyle = palette.textUnsung;
+    ctx.textAlign = "center";
+    ctx.globalAlpha = clamp(opacity * credits.albumOpacity, 0, 1);
+    ctx.fillText(displayAlbum, centerX, centerY + titleSize * 1.18, width * 0.68);
+  }
   ctx.restore();
 }
 
@@ -489,6 +655,7 @@ function drawShot(
   motionSpeed: number,
   title: string,
   artist: string,
+  album: string,
   opacity: number
 ): void {
   const transitionOut = shot.transitionOut
@@ -505,6 +672,7 @@ function drawShot(
     profile: shot.profile,
     transitionOut,
     motionSpeed,
+    ambientPhase: state.ambientPhase,
     isPlaying,
     reducedMotion,
   });
@@ -542,21 +710,22 @@ function drawShot(
       feather,
       glowIntensity,
       reducedMotion,
-      frame.camera,
+      frame,
       palette,
+      state.translationGroups,
       opacity
     );
   } else if (shot.kind === "outro") {
-    const outroStartTime =
-      program.shots.find((candidate) => candidate.kind === "outro")?.startTime ?? shot.startTime;
     drawEndingCard(
       ctx,
       musicTime,
-      outroStartTime,
+      shot.startTime,
+      shot.endTime,
       width,
       height,
       title,
       artist,
+      album,
       fontFamily,
       palette,
       reducedMotion,
@@ -769,6 +938,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext): void {
   const currentSong = audioState.currentSong ?? playerState.currentSong;
   const songId = currentSong?.id ?? null;
   const lyricsText = currentSong?.lyrics ?? "";
+  const translationLyricsText = currentSong?.translationLyrics ?? "";
   const mediaLoading = audioState.isLoading || playerState.isLoading;
   const songDuration = resolveSongDuration(
     currentSong,
@@ -783,12 +953,19 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext): void {
   const playbackRate = audioState.playbackRate ?? playerState.playbackRate ?? 1;
 
   if (state.songId !== songId) {
-    resetRuntimeForSong(state, songId, lyricsText, songDuration);
-  } else if (state.lyricsText !== lyricsText || state.songDuration !== songDuration) {
-    state.lyricsText = lyricsText;
-    rebuildProgram(state, lyricsText, songId, songDuration);
-  } else if (!state.program && currentSong) {
-    rebuildProgram(state, lyricsText, songId, songDuration);
+    resetRuntimeForSong(state, songId, lyricsText, translationLyricsText, songDuration);
+  } else {
+    if (state.lyricsText !== lyricsText || state.songDuration !== songDuration) {
+      state.lyricsText = lyricsText;
+      rebuildProgram(state, lyricsText, songId, songDuration);
+    }
+    if (state.translationLyricsText !== translationLyricsText) {
+      state.translationLyricsText = translationLyricsText;
+      state.translationGroups = groupLyricsByStart(parseTimedLyrics(translationLyricsText));
+    }
+    if (!state.program && currentSong) {
+      rebuildProgram(state, lyricsText, songId, songDuration);
+    }
   }
 
   const dtSeconds = state.initialized
@@ -823,6 +1000,11 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext): void {
   const feather = clamp(params?.shimmerFeather ?? 50, 0, 100);
   const glowIntensity = clamp(params?.ambientGlowIntensity ?? 0.9, 0, 1.5);
   const motionSpeed = clamp(params?.fluidSpeed ?? 0.8, 0, 2);
+  if (reducedMotion || isPlaying) {
+    state.ambientPhase = 0;
+  } else {
+    state.ambientPhase += dtSeconds * motionSpeed * 0.18;
+  }
   const filmGrain = clamp(params?.filmGrain ?? 0.15, 0, 0.7);
   const vignetteStrength = clamp(params?.vignetteStrength ?? 0.65, 0, 1);
   const dprValue = ctx.canvas.width / Math.max(1, width);
@@ -863,6 +1045,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext): void {
           motionSpeed,
           currentSong?.title ?? "",
           currentSong?.artist ?? "",
+          currentSong?.album ?? "",
           1
         );
 
@@ -887,6 +1070,7 @@ export function drawCinematicLyricDrift(effectCtx: EffectContext): void {
             motionSpeed,
             currentSong?.title ?? "",
             currentSong?.artist ?? "",
+            currentSong?.album ?? "",
             blend.progress
           );
         }

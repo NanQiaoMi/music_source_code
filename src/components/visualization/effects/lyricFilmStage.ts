@@ -23,6 +23,8 @@ export interface LyricFilmStageInput {
   transitionOut?: LyricFilmStageTransition | null;
   /** Multiplier for continuous stage motion; does not change shot-time progress. */
   motionSpeed?: number;
+  /** Low-amplitude atmosphere phase while music time is paused; ignored by reduced motion. */
+  ambientPhase?: number;
   isPlaying: boolean;
   reducedMotion: boolean;
 }
@@ -549,7 +551,8 @@ export function resolveLyricFilmTransitionFrame(
   transition: LyricFilmStageTransition | null | undefined,
   shotEndTime: number,
   musicTime: number,
-  reducedMotion = false
+  reducedMotion = false,
+  shotDuration = Number.POSITIVE_INFINITY
 ): LyricFilmStageTransitionFrame | null {
   if (
     !transition ||
@@ -561,11 +564,12 @@ export function resolveLyricFilmTransitionFrame(
     return null;
   }
 
-  const duration = clamp(
-    transition.duration,
-    LYRIC_FILM_STAGE_LIMITS.minTransitionSeconds,
-    LYRIC_FILM_STAGE_LIMITS.maxTransitionSeconds
+  const maximumDuration = Math.min(
+    LYRIC_FILM_STAGE_LIMITS.maxTransitionSeconds,
+    Math.max(0.001, finiteOr(shotDuration, Number.POSITIVE_INFINITY))
   );
+  const minimumDuration = Math.min(LYRIC_FILM_STAGE_LIMITS.minTransitionSeconds, maximumDuration);
+  const duration = clamp(transition.duration, minimumDuration, maximumDuration);
   const transitionStart = shotEndTime - duration;
   const progress = clamp((musicTime - transitionStart) / duration, 0, 1);
   const focus = Math.sin(Math.PI * progress);
@@ -602,8 +606,12 @@ export function resolveLyricFilmStageFrame(input: LyricFilmStageInput): LyricFil
     LYRIC_FILM_STAGE_LIMITS.maxMotionSpeed
   );
   const phaseRate = (0.72 + hashUnit(seed, 0x13a5) * 0.38) * motionSpeed;
-  const particlePhase = reducedMotion ? 0 : progress * TAU * phaseRate;
-  const fogPhase = reducedMotion ? 0 : particlePhase * 0.63 + hashUnit(seed, 0x27c1) * TAU;
+  const ambientPhase = reducedMotion || input.isPlaying ? 0 : finiteOr(input.ambientPhase ?? 0, 0);
+  const shotPhase = progress * TAU * phaseRate;
+  const particlePhase = reducedMotion ? 0 : shotPhase + ambientPhase;
+  const fogPhase = reducedMotion
+    ? 0
+    : shotPhase * 0.63 + hashUnit(seed, 0x27c1) * TAU + ambientPhase * 0.63;
   const shotTravel = progress * progress * (3 - 2 * progress);
   const zoomDirection = hashUnit(seed, 0x386b) < 0.5 ? -1 : 1;
   const panDirection = hashUnit(seed, 0x4a27) < 0.5 ? -1 : 1;
@@ -615,7 +623,8 @@ export function resolveLyricFilmStageFrame(input: LyricFilmStageInput): LyricFil
     input.transitionOut,
     endTime,
     musicTime,
-    reducedMotion
+    reducedMotion,
+    duration
   );
 
   return {
@@ -634,7 +643,8 @@ export function resolveLyricFilmStageFrame(input: LyricFilmStageInput): LyricFil
     },
     beamAngle:
       (hashUnit(seed, 0x7f19) - 0.5) * 0.36 +
-      motionScale * motionSpeed * (hashUnit(seed, 0xb26f) - 0.5) * 0.08 * shotTravel,
+      motionScale * motionSpeed * (hashUnit(seed, 0xb26f) - 0.5) * 0.08 * shotTravel +
+      (!reducedMotion && !input.isPlaying ? Math.sin(ambientPhase) * 0.018 : 0),
     beamIntensity: clamp(
       0.64 + hashUnit(seed, 0x8d57) * 0.16 + motionScale * 0.08 * Math.sin(particlePhase),
       0.5,

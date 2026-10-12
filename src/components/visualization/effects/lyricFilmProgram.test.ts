@@ -29,7 +29,10 @@ describe("compileLyricFilmProgram", () => {
     expect(program.shots.every((shot) => shot.kind === "instrumental")).toBe(true);
     expect(program.shots.every((shot) => shot.lineGroupIndices.length === 0)).toBe(true);
     expect(program.shots.every((shot) => shot.endTime - shot.startTime <= 7)).toBe(true);
-    expect(program.shots.every((shot) => shot.transitionOut === null)).toBe(true);
+    expect(
+      program.shots.slice(0, -1).every((shot) => shot.transitionOut?.kind === "focus-pull")
+    ).toBe(true);
+    expect(program.shots.at(-1)?.transitionOut).toBeNull();
     expect(program.shots[0]?.startTime).toBe(0);
     expect(program.shots.at(-1)?.endTime).toBe(18);
     expect(
@@ -236,13 +239,16 @@ describe("compileLyricFilmProgram", () => {
     expect(first.shots.every((shot) => shot.profile.length > 0)).toBe(true);
   });
 
-  it("avoids repeating adjacent profiles and transition kinds", () => {
+  it("avoids repeating adjacent profiles and major transition kinds", () => {
     const lines = Array.from({ length: 12 }, (_, index) => lyric(index * 5, `歌词${index}`, index));
     const program = compileLyricFilmProgram(lines, "variety", 64);
     const profiles: LyricFilmProfile[] = program.shots.map((shot) => shot.profile);
     const transitions: LyricFilmTransitionKind[] = program.shots
       .map((shot) => shot.transitionOut?.kind)
-      .filter((kind): kind is LyricFilmTransitionKind => kind !== undefined && kind !== null);
+      .filter(
+        (kind): kind is LyricFilmTransitionKind =>
+          kind !== undefined && kind !== null && kind !== "focus-pull"
+      );
 
     expect(profiles.every((profile, index) => index === 0 || profile !== profiles[index - 1])).toBe(
       true
@@ -252,7 +258,7 @@ describe("compileLyricFilmProgram", () => {
     );
   });
 
-  it("adds major transitions only where adjacent shots change scene kind", () => {
+  it("uses major transitions across scene kinds and gentle focus-pulls within one kind", () => {
     const program = compileLyricFilmProgram(
       [lyric(0, "第一句", 0), lyric(12, "下一句", 1)],
       "transitions",
@@ -264,7 +270,8 @@ describe("compileLyricFilmProgram", () => {
     expect(
       program.shots.slice(0, -1).every((shot, index) => {
         const nextShot = program.shots[index + 1];
-        return (shot.kind !== nextShot?.kind) === (shot.transitionOut !== null);
+        if (shot.kind !== nextShot?.kind) return shot.transitionOut !== null;
+        return shot.transitionOut?.kind === "focus-pull";
       })
     ).toBe(true);
     expect(
@@ -277,6 +284,25 @@ describe("compileLyricFilmProgram", () => {
             shot.transitionOut!.endTime > shot.transitionOut!.startTime
         )
     ).toBe(true);
+  });
+
+  it("uses a short focus pull between consecutive same-kind shots with different profiles", () => {
+    const program = compileLyricFilmProgram(
+      Array.from({ length: 8 }, (_, index) => lyric(index * 2, `歌词${index}`, index)),
+      "lyric-focus-pull",
+      20
+    );
+    const repeatedKindBoundary = program.shots.findIndex(
+      (shot, index) =>
+        index < program.shots.length - 1 && shot.kind === program.shots[index + 1]?.kind
+    );
+    const outgoing = program.shots[repeatedKindBoundary];
+
+    expect(repeatedKindBoundary).toBeGreaterThanOrEqual(0);
+    expect(outgoing?.transitionOut?.kind).toBe("focus-pull");
+    expect(
+      outgoing!.transitionOut!.endTime - outgoing!.transitionOut!.startTime
+    ).toBeLessThanOrEqual(0.4);
   });
 
   it("uses absolute time for stable first, interior, and last shot lookup", () => {

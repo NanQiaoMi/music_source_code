@@ -166,6 +166,26 @@ describe("resolveLyricFilmStageFrame", () => {
     expect(late.profile).toBe("botanical");
   });
 
+  it("keeps the camera still while paused but lets the low-amplitude stage atmosphere breathe", () => {
+    const pausedStart = resolveLyricFilmStageFrame(
+      makeInput({ musicTime: 15, isPlaying: false, ambientPhase: 0.2 })
+    );
+    const pausedLater = resolveLyricFilmStageFrame(
+      makeInput({ musicTime: 15, isPlaying: false, ambientPhase: 0.8 })
+    );
+    const reducedMotionStart = resolveLyricFilmStageFrame(
+      makeInput({ musicTime: 15, isPlaying: false, reducedMotion: true, ambientPhase: 0.2 })
+    );
+    const reducedMotionLater = resolveLyricFilmStageFrame(
+      makeInput({ musicTime: 15, isPlaying: false, reducedMotion: true, ambientPhase: 0.8 })
+    );
+
+    expect(pausedLater.camera).toEqual(pausedStart.camera);
+    expect(pausedLater.fogPhase).not.toBe(pausedStart.fogPhase);
+    expect(pausedLater.particlePhase).not.toBe(pausedStart.particlePhase);
+    expect(reducedMotionLater).toEqual(reducedMotionStart);
+  });
+
   it("scales continuous motion speed without changing shot-time progress", () => {
     const baseline = resolveLyricFilmStageFrame(makeInput({ musicTime: 14, motionSpeed: 1 }));
     const slower = resolveLyricFilmStageFrame(makeInput({ musicTime: 14, motionSpeed: 0.5 }));
@@ -259,6 +279,18 @@ describe("resolveLyricFilmTransitionFrame", () => {
     expect(tooLong?.progress).toBe(0);
     expect(LYRIC_FILM_STAGE_LIMITS.minTransitionSeconds).toBeGreaterThan(0);
     expect(LYRIC_FILM_STAGE_LIMITS.maxTransitionSeconds).toBeLessThanOrEqual(1.1);
+  });
+
+  it("does not extend a transition beyond a very short shot", () => {
+    const frame = resolveLyricFilmTransitionFrame(
+      { kind: "focus-pull", duration: 0.8 },
+      10,
+      9.95,
+      false,
+      0.1
+    );
+
+    expect(frame?.progress).toBeCloseTo(0.5, 5);
   });
 
   it("does not emit a transition when the descriptor or boundary is invalid", () => {

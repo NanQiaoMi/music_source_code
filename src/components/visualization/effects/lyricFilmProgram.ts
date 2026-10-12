@@ -394,10 +394,15 @@ function assignShotIdentityAndTransitions(
 
     const nextDraft = drafts[index + 1];
     let transitionOut: LyricFilmTransition | null = null;
-    if (nextDraft && draft.kind !== nextDraft.kind) {
-      const kind = chooseStable(TRANSITIONS, `${shotSeed}:transition`, previousTransition);
-      previousTransition = kind;
-      const desiredDuration = transitionDuration(kind, `${shotSeed}:transition-duration`);
+    if (nextDraft) {
+      const sameSceneKind = draft.kind === nextDraft.kind;
+      const kind = sameSceneKind
+        ? "focus-pull"
+        : chooseStable(TRANSITIONS, `${shotSeed}:transition`, previousTransition);
+      if (!sameSceneKind) previousTransition = kind;
+      const desiredDuration = sameSceneKind
+        ? 0.35
+        : transitionDuration(kind, `${shotSeed}:transition-duration`);
       const actualDuration = Math.min(desiredDuration, draft.endTime - draft.startTime);
       transitionOut = {
         kind,
