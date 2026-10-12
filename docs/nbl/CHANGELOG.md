@@ -18,6 +18,16 @@
 - `npm run build` passed and generated 28 static pages plus the existing API routes. Next reported the workspace's multiple-lockfile root warning and an outdated Browserslist data notice.
 - A local production preview confirmed the effect selector and the no-track ambient state. Real audio playback, lyric progression, rate changes, seeks, track changes, narrow-screen playback, and OS reduced-motion playback were not verified because the preview had no playable audio session.
 
+### Reworked
+
+- Replaced the earlier rejected blended treatment with a whole-song Folia Lumiere-inspired lyric MV: deterministic intro/lyric/interlude/instrumental/outro shots, seven stage-light profiles, and lights-out/flare/focus transitions. The previous 2026-10-12 rendering entry above is historical and was superseded by this rework.
+- Preserved independent simultaneous LRC rows and estimated grapheme reveal timing; connected the existing motion-speed and glow settings to camera/light/fog/dust and stage illumination without changing persisted setting fields.
+
+### Verified
+
+- Focused Vitest checks passed: 6 files, 79 tests. Changed-file ESLint, Prettier, `git diff --check`, strict TypeScript, and the Next.js 16 webpack production build passed; the build generated 28 static pages.
+- The local app returned HTTP 200 after the build. Dynamic lyric-shot playback, pause/rate/seek, and reduced-motion visuals remain unverified because the open player was already near the end of a track and advanced naturally; playback was not repositioned.
+
 ## 2026-09-30
 
 ### Added
