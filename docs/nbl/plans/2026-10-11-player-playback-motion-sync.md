@@ -1,9 +1,9 @@
 # 播放动态同步与非线性转场 — 实施计划
 
-> - **状态：** 核心安全范围已实施；主播放器 `Player3D.tsx` 转场仍受保护门约束，真实音源验收待执行
+> - **状态：** Task 1–5 已实施；真实音源验收待执行
 > - **设计依据：** [播放动态同步与非线性转场设计](../specs/2026-10-11-player-playback-motion-sync-design.md)
 > - **基线：** `b818db6`
-> - **工作分支：** `feature/player-playback-motion-sync`（从 `06bccd8` 创建）
+> - **工作分支：** 基础同步改动已合并；本轮 `Player3D` 动效在 `feature/player3d-motion-transitions` 实施
 
 ## 目标
 
@@ -227,19 +227,19 @@ Task 1–4 → Task 6 集成验证与文档收尾（Task 5 获准后纳入）
 
 **候选文件：** `src/components/player/Player3D.tsx`；不得修改 `src/components/layout/PlayerView.tsx`、`src/components/lyrics/LyricVisualizer.tsx`、`src/components/lyrics/FullscreenLyrics.tsx`。
 
-- [x] **Step 1：按 Task 0 结果检查扩展点**
+- [x] **Step 1：检查扩展点（未找到规则允许的外部 motion 插槽）**
 
-  如果找到规则允许的 motion 插槽/可替换子组件，在扩展点中接入共享 clock、confirmed playback phase 和目标曲目 generation；主视图歌词仍使用当前共同 store 快照，不重写 lyric 核心。
+  已确认没有无需触碰受保护子树的外部插槽，因此进入授权决策门；没有改用全局 CSS、DOM 注入或修改 PlayerView 的旁路。
 
 - [x] **Step 2：如果只能直接改 `Player3D.tsx`，停止该子任务**
 
   不用全局选择器、DOM 查找/注入、CSS 旁路或修改 PlayerView 来达成相同效果。先向用户呈现最小改动路径与精确文件，再由用户明确授权后继续。没有授权时，本轮交付 shared clock + 胶囊动画，主视图保留原转场。
 
-- [ ] **Step 3：获准后实现主视图动效**
+- [x] **Step 3：获准后实现主视图动效**
 
   若用户明确解除 `Player3D.tsx` 保护，仅修改封面/标题/专辑信息的曲目切换包裹与呼吸动效数据源；不改布局、歌词核心、队列和控制逻辑。封面 aura 只读取共享 analyzer snapshot；非 playing 状态停止呼吸。
 
-- [ ] **Step 4：验证 reduced motion 和快速切歌**
+- [x] **Step 4：验证 reduced motion 和快速切歌**
 
   检查首次打开、加载失败、连续 next、上一曲、暂停/缓冲/恢复、减少动态；任何旧曲退场都不能遮盖最新曲目或拦截控件点击。
 
@@ -291,13 +291,13 @@ Task 1–4 → Task 6 集成验证与文档收尾（Task 5 获准后纳入）
 - [x] 高频进度不写入持久化 store；localStorage key 与序列化字段未修改。
 - [x] 浮动胶囊切歌/按钮反馈采用短收束的非线性动画，支持 reduced motion。
 - [x] 音频响应复用现有 analyser，按帧间隔做 attack/release 平滑；无 analyser 时静态衰减。
-- [ ] 主播放器 `Player3D.tsx` 转场：无规则允许的外部 motion 插槽；等待明确解除文件保护。
+- [x] 主播放器 `Player3D.tsx` 转场：用户确认限定修改；只改封面/曲目信息转场、confirmed-playing 音频响应和主按钮播放意图，不改布局、歌词、队列或 PlayerView。
 - [ ] 真实音源下的首播/暂停/缓冲/连续切歌/seek/跨淡入/后台恢复验收；当前仅完成页面 HTTP 200 与组件级检查。
 - [x] 相关单测、lint、TypeScript 和生产构建已记录退出码；页面运行检查部分完成。
 
 ## 执行模式
 
-本计划为顺序依赖较强的音频状态/时钟改动，按单工作分支顺序执行。Task 1–4 的核心安全实现已完成；Task 5 和真实音源浏览器验收仍待完成。store、hook、事件所有权不可并发改写。
+本计划为顺序依赖较强的音频状态/时钟改动，按单工作分支顺序执行。Task 1–5 的核心实现已完成；真实音源浏览器验收仍待完成。store、hook、事件所有权不可并发改写。
 
 ## 实施记录（2026-10-12）
 
@@ -310,6 +310,16 @@ Task 1–4 → Task 6 集成验证与文档收尾（Task 5 获准后纳入）
 - 自动化验证：11 个文件、87 项测试通过且无未处理错误；全部已改 TypeScript/TSX 文件 ESLint 通过；`npx tsc --noEmit` 通过；最新代码的 `npm run build` 通过。均在 `D:\26project\music_source_code_V1.1_full\_codex_player_sync_verify` 的同盘 detached 验证工作树执行，因为 C 盘 managed worktree 的 `node_modules` 联接会令 Next/Webpack 把 D 盘绝对路径误解为相对模块路径。构建仅提示 Browserslist 数据已 6 个月未更新。
 - 集成当前 `master` 后追加验证：14 个相关测试文件、120 项测试通过；合并范围内 TypeScript/TSX ESLint、`npx tsc --noEmit` 和生产构建均通过。验证工作树同步了当前 `master` 的 Folia 歌词改动与本分支文件，未发现播放时钟与歌词播放时钟实现冲突。
 - 页面验证：隔离工作树生产服务器运行于 `http://127.0.0.1:3027`，浏览器确认 Next 页面加载并显示“曲库暂无音乐”；当前没有可播放曲目，因此真实媒体起播、暂停/缓冲、连续切歌、seek、crossfade、后台恢复和动态频谱仍未验收。页面加载只证明生产页面可访问。
-- 未修改 `PlayerView.tsx`、`Player3D.tsx`、`LyricVisualizer.tsx`、`FullscreenLyrics.tsx`。主视图没有发现允许的外部动效插槽；如要完成截图主播放器转场，需要用户明确授权对 `Player3D.tsx` 做限定改动。另需加载可控本地音源后完成运行态验收。
-- `Player3D.tsx` 与 Home 主视图的 `MusicCardStack` 仍按旧视图状态决定主按钮重复点击语义；它们属于受保护主视图路径，本轮未改。共享时钟可通过 250ms 兼容桥更新这些视图，精细转场仅接入浮动胶囊；若要求受保护主视图的按钮也能在 loading 阶段取消待播，需要先明确其受保护文件的授权范围。
+- 以下两条记录的是共享时钟/浮动胶囊基础阶段的范围（截至该阶段未修改 `Player3D.tsx`、等待受保护文件授权），已由末尾 2026-10-12 补充记录更新；当前工作区的实际边界与状态以该补充记录为准。
+- 基础阶段未修改 `PlayerView.tsx`、`Player3D.tsx`、`LyricVisualizer.tsx`、`FullscreenLyrics.tsx`。主视图没有发现允许的外部动效插槽；用户随后同意对 `Player3D.tsx` 做限定改动，具体范围见补充记录。另需加载可控本地音源后完成运行态验收。
+- 基础阶段 `Player3D.tsx` 与 Home 主视图的 `MusicCardStack` 仍按旧视图状态决定主按钮重复点击语义；该阶段未改这些受保护主视图路径。当前仅 `Player3D` 的主按钮按本轮授权接入播放意图 toggle；Home 主视图未改。共享时钟可通过 250ms 兼容桥更新其他视图。真实媒体运行态验收仍需有可播放曲目。
 - `FloatingSpectrumGlow` 遇到不具备 `createLinearGradient` 的部分 Canvas 2D context 时会停止该动效循环，避免在 jsdom/受限 WebView 上产生未处理 RAF 异常。
+
+## Player3D 动效补充记录（2026-10-12）
+
+- 用户确认保留截图布局，并同意按最小范围修改 `src/components/player/Player3D.tsx`；`PlayerView.tsx`、Home View、`LyricVisualizer.tsx`、`FullscreenLyrics.tsx` 均保持不变。
+- 封面与曲目信息采用 5px 位移、高阻尼 Framer Motion spring 转场；最新目标曲立即显示，退场层关闭指针事件。`prefers-reduced-motion` 下移除位移与连续响应。
+- 封面光晕/轻微缩放只在 playback runtime 确认为 `playing` 时启动，复用现有 analyser 并用 attack/release 平滑。暂停、缓冲、减少动态、卸载或页面隐藏时停止采样；页面恢复可见后只重启一个 RAF 循环。
+- 主按钮在点击手势内同步尝试 `AudioContext.resume()`，再立即切换最新播放意图；加载/缓冲期间显示静态状态环，实际播放图标仍由确认后的 `isPlaying` 状态驱动。浏览器拒绝恢复时不伪造 playing，继续由媒体事件确认。
+- 新增 `Player3D.test.tsx` 与 `player3dMotion.test.ts` 覆盖播放等待/暂停/减少动态/隐藏页面、非线性参数、analyser fallback 及退场层指针事件。`npm exec vitest -- run src/components/player/Player3D.test.tsx src/components/player/player3dMotion.test.ts` 通过（2 个文件、13 项测试）；改动的四个 TS/TSX 文件 ESLint 通过；`npm exec tsc -- --noEmit --pretty false` 通过；`npm run build` 通过并完成静态页面生成。构建仅报告多 lockfile workspace root 提示及 Browserslist 数据较旧；`git diff --check` 通过。
+- 真实音源尚未加入曲库，无法验证起播、缓冲、连续切歌、seek 和真实频谱；页面可访问或组件测试通过不能替代该项媒体运行时验收。

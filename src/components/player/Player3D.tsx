@@ -4,7 +4,8 @@ import React, { useState, useCallback, memo, useEffect, useRef } from "react";
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useReducedMotion } from "framer-motion";
+import type { MotionValue } from "framer-motion";
 import { useAudioStore, LoopMode } from "@/store/audioStore";
 import { MISSING_AUDIO_SOURCE_HELP_TEXT } from "@/lib/audio/playableAudioSource";
 import { useUIStore } from "@/store/uiStore";
@@ -12,8 +13,19 @@ import { useFavoritesStore } from "@/store/favoritesStore";
 import { useABLoopStore } from "@/store/abLoopStore";
 import { GlassProgressBar } from "@/components/shared/GlassProgressBar";
 import { useAlbumTheme } from "@/hooks/useAlbumTheme";
-import { AppleAudioSourceIndicator } from "@/components/player/AppleAudioSourceIndicator";
+import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
+import { AppleAudioSourceIndicator } from "@/components/player/AppleAudioSourceIndicator";
+import { smoothAudioValue } from "@/lib/audio/audioMotionSmoothing";
+import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
+import {
+  getPlayer3DAuraOpacity,
+  getPlayer3DCoverScale,
+  getPlayer3DTrackMotion,
+  isPlayer3DVisualsActive,
+  PLAYER3D_PRESENCE_MODE,
+  readPlayer3DAudioLevel,
+} from "@/components/player/player3dMotion";
 import {
   Sparkles,
   Play,
@@ -155,6 +167,8 @@ interface CoverWith3DEffectProps {
   title: string;
   isPlaying: boolean;
   albumId?: string;
+  auraOpacity: MotionValue<number>;
+  coverScale: MotionValue<number>;
 }
 
 const APPLE_SPRING_CONFIG = {
@@ -168,7 +182,7 @@ const APPLE_SPRING_CONFIG = {
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(
-  ({ cover, title, isPlaying, albumId }) => {
+  ({ cover, title, isPlaying, albumId, auraOpacity, coverScale }) => {
     const shouldReduceMotion = useReducedMotion();
     const [tilt, setTilt] = useState({ x: 0, y: 0 });
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -231,7 +245,7 @@ const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(
         animate={{
           rotateX: shouldReduceMotion ? 0 : tilt.x,
           rotateY: shouldReduceMotion ? 0 : tilt.y,
-          scale: isPlaying || shouldReduceMotion ? 1 : 0.95,
+          scale: isPlaying || shouldReduceMotion ? 1 : 0.99,
         }}
         transition={APPLE_SPRING_CONFIG}
         style={{
@@ -240,17 +254,17 @@ const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        <motion.div
-          className="relative w-full aspect-square"
-          animate={{
-            scale: isPlaying && !shouldReduceMotion ? [1, 1.018, 1] : 1,
-          }}
-          transition={
-            isPlaying && !shouldReduceMotion
-              ? { duration: 4.8, repeat: Infinity, ease: "easeInOut" }
-              : { duration: 0.5 }
-          }
-        >
+        <motion.div className="relative w-full aspect-square" style={{ scale: coverScale }}>
+          <motion.div
+            aria-hidden="true"
+            className="absolute -inset-4 rounded-[2.5rem] pointer-events-none"
+            style={{
+              opacity: auraOpacity,
+              background:
+                "radial-gradient(ellipse at center, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.18) 38%, transparent 72%)",
+              filter: "blur(24px)",
+            }}
+          />
           <div
             className="relative w-full h-full rounded-[2rem] overflow-hidden"
             style={{
@@ -275,15 +289,7 @@ const CoverWith3DEffect: React.FC<CoverWith3DEffectProps> = memo(
             <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/[0.08] via-transparent to-black/[0.15] pointer-events-none" />
             <div className="absolute inset-0 rounded-[2rem] ring-1 ring-inset ring-white/10" />
 
-            <motion.div
-              className="absolute inset-0 rounded-[2rem] bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0"
-              animate={{ opacity: isPlaying && !shouldReduceMotion ? [0, 0.32, 0] : 0 }}
-              transition={{
-                duration: 3.8,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
+            <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0" />
           </div>
 
           <motion.div
@@ -303,13 +309,18 @@ CoverWith3DEffect.displayName = "CoverWith3DEffect";
 export const Player3D: React.FC = () => {
   const shouldReduceMotion = useReducedMotion();
   const isPlaying = useAudioStore((state) => state.isPlaying);
+  const playbackPhase = usePlaybackRuntimeStore((state) => state.phase);
+  const isVisualPlaybackActive = isPlayer3DVisualsActive(
+    playbackPhase,
+    shouldReduceMotion === true
+  );
+  const isPlaybackPending = playbackPhase === "loading" || playbackPhase === "buffering";
   const audioDuration = useAudioStore((state) => state.duration);
   const currentSong = useAudioStore((state) => state.currentSong);
   const duration = audioDuration || currentSong?.duration || 0;
 
   const bufferedRanges = useAudioStore((state) => state.bufferedRanges);
   const { themeColors } = useAlbumTheme(currentSong?.cover);
-  const isLoading = useAudioStore((state) => state.isLoading);
   const error = useAudioStore((state) => state.error);
   const clearError = useAudioStore((state) => state.clearError);
   const abLoopEnabled = useABLoopStore((state) => state.isEnabled);
@@ -326,7 +337,6 @@ export const Player3D: React.FC = () => {
   const isFavorite = useFavoritesStore((state) => state.isFavorite);
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
 
-  const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const nextSong = useAudioStore((state) => state.nextSong);
   const prevSong = useAudioStore((state) => state.prevSong);
   const seekTo = useAudioStore((state) => state.seekTo);
@@ -338,6 +348,81 @@ export const Player3D: React.FC = () => {
 
   const [breathingEffectEnabled] = useState(true);
   const [showFullscreenLyrics, setShowFullscreenLyrics] = useState(false);
+  const audioLevelRef = useRef(0);
+  const audioLastFrameAtRef = useRef(0);
+  const frequencyDataRef = useRef<Uint8Array | null>(null);
+  const auraOpacity = useMotionValue(0);
+  const coverScale = useMotionValue(1);
+
+  useEffect(() => {
+    if (!isVisualPlaybackActive) {
+      audioLevelRef.current = 0;
+      auraOpacity.set(0);
+      coverScale.set(1);
+      return;
+    }
+
+    let frameId: number | null = null;
+    let isDocumentVisible = document.visibilityState === "visible";
+    audioLastFrameAtRef.current = 0;
+
+    const scheduleSample = () => {
+      if (isDocumentVisible && frameId === null) {
+        frameId = requestAnimationFrame(sampleAudioFrame);
+      }
+    };
+
+    const sampleAudioFrame = (timestamp: number) => {
+      frameId = null;
+      if (!isDocumentVisible) return;
+
+      const previousFrameAt = audioLastFrameAtRef.current;
+      const deltaMs = previousFrameAt ? Math.max(1, Math.min(64, timestamp - previousFrameAt)) : 16;
+      audioLastFrameAtRef.current = timestamp;
+
+      let targetLevel = 0;
+      try {
+        const analyser = getAudioAnalyser();
+        if (analyser) {
+          if (frequencyDataRef.current?.length !== analyser.frequencyBinCount) {
+            frequencyDataRef.current = new Uint8Array(analyser.frequencyBinCount);
+          }
+          targetLevel = readPlayer3DAudioLevel(analyser, frequencyDataRef.current);
+        }
+      } catch {
+        targetLevel = 0;
+      }
+
+      audioLevelRef.current = smoothAudioValue(audioLevelRef.current, targetLevel, deltaMs);
+      auraOpacity.set(getPlayer3DAuraOpacity(true, audioLevelRef.current));
+      coverScale.set(getPlayer3DCoverScale(true, audioLevelRef.current));
+      scheduleSample();
+    };
+
+    const handleVisibilityChange = () => {
+      isDocumentVisible = document.visibilityState === "visible";
+      audioLastFrameAtRef.current = 0;
+
+      if (isDocumentVisible) {
+        scheduleSample();
+      } else if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    scheduleSample();
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (frameId !== null) cancelAnimationFrame(frameId);
+      audioLastFrameAtRef.current = 0;
+      audioLevelRef.current = 0;
+      auraOpacity.set(0);
+      coverScale.set(1);
+    };
+  }, [auraOpacity, coverScale, isVisualPlaybackActive]);
 
   const handleBack = useCallback(() => {
     setIsTransitioning(true);
@@ -357,10 +442,12 @@ export const Player3D: React.FC = () => {
     [currentSong, toggleFavorite]
   );
 
+  const trackChangeMotion = getPlayer3DTrackMotion(shouldReduceMotion === true);
+
   return (
     <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
       <BreathingBorder
-        isPlaying={isPlaying}
+        isPlaying={isVisualPlaybackActive}
         isEnabled={breathingEffectEnabled && !shouldReduceMotion}
         intensity={1}
       />
@@ -376,26 +463,52 @@ export const Player3D: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             >
-              {currentSong ? (
-                <CoverWith3DEffect
-                  cover={currentSong.cover}
-                  title={currentSong.title}
-                  isPlaying={isPlaying}
-                  albumId={currentSong.id}
-                />
-              ) : (
-                <div
-                  className="relative w-full max-w-[500px] aspect-square rounded-[2rem] flex items-center justify-center"
-                  style={{
-                    background: "rgba(255,255,255,0.03)",
-                    boxShadow: "0 60px 100px rgba(0, 0, 0, 0.6)",
-                  }}
-                >
-                  <svg className="w-24 h-24 text-white/20" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 6v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-                  </svg>
-                </div>
-              )}
+              <AnimatePresence initial={false} mode={PLAYER3D_PRESENCE_MODE}>
+                {currentSong ? (
+                  <motion.div
+                    key={`cover-${currentSong.id}`}
+                    className="relative z-10 w-full"
+                    initial={trackChangeMotion.initial}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={trackChangeMotion.exit}
+                    transition={trackChangeMotion.transition}
+                  >
+                    <CoverWith3DEffect
+                      cover={currentSong.cover}
+                      title={currentSong.title}
+                      isPlaying={isVisualPlaybackActive}
+                      albumId={currentSong.id}
+                      auraOpacity={auraOpacity}
+                      coverScale={coverScale}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="empty-cover"
+                    className="relative z-10 w-full"
+                    initial={trackChangeMotion.initial}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={trackChangeMotion.exit}
+                    transition={trackChangeMotion.transition}
+                  >
+                    <div
+                      className="relative w-full max-w-[500px] aspect-square rounded-[2rem] flex items-center justify-center mx-auto"
+                      style={{
+                        background: "rgba(255,255,255,0.03)",
+                        boxShadow: "0 60px 100px rgba(0, 0, 0, 0.6)",
+                      }}
+                    >
+                      <svg
+                        className="w-24 h-24 text-white/20"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M12 6v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                      </svg>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <motion.div
                 className="mt-10 text-center lg:text-left max-w-md"
@@ -403,18 +516,31 @@ export const Player3D: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
-                <div className="px-4 mb-3 flex justify-center lg:justify-start">
-                  <AppleAudioSourceIndicator />
-                </div>
-                <h2 className="text-3xl font-bold text-white tracking-tight mb-3 truncate px-4">
-                  {currentSong?.title || "未选择歌曲"}
-                </h2>
-                <p className="text-white/50 text-lg truncate px-4">
-                  {currentSong?.artist || "请选择歌曲播放"}
-                </p>
-                {currentSong?.album && (
-                  <p className="text-white/30 text-sm mt-2 truncate px-4">{currentSong.album}</p>
-                )}
+                <AnimatePresence initial={false} mode={PLAYER3D_PRESENCE_MODE}>
+                  <motion.div
+                    key={`track-info-${currentSong?.id ?? "empty"}`}
+                    className="relative z-10"
+                    initial={trackChangeMotion.initial}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={trackChangeMotion.exit}
+                    transition={trackChangeMotion.transition}
+                  >
+                    <div className="px-4 mb-3 flex justify-center lg:justify-start">
+                      <AppleAudioSourceIndicator />
+                    </div>
+                    <h2 className="text-3xl font-bold text-white tracking-tight mb-3 truncate px-4">
+                      {currentSong?.title || "未选择歌曲"}
+                    </h2>
+                    <p className="text-white/50 text-lg truncate px-4">
+                      {currentSong?.artist || "请选择歌曲播放"}
+                    </p>
+                    {currentSong?.album && (
+                      <p className="text-white/30 text-sm mt-2 truncate px-4">
+                        {currentSong.album}
+                      </p>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
               </motion.div>
 
               <motion.div
@@ -569,17 +695,21 @@ export const Player3D: React.FC = () => {
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={async () => {
+                    onClick={() => {
                       try {
-                        await AudioEngine.getInstance().resume();
+                        void AudioEngine.getInstance()
+                          .resume()
+                          .catch(() => undefined);
                       } catch {
-                        // 自动播放策略拒绝时仍要切换状态，交给用户手动再点一次
+                        // Playback confirmation remains owned by the media event pipeline.
                       }
-                      setIsPlaying(!isPlaying);
+                      useAudioStore.getState().togglePlaybackIntent();
                     }}
                     disabled={!currentSong}
+                    aria-busy={isPlaybackPending}
+                    title={isPlaybackPending ? "正在加载或缓冲" : isPlaying ? "暂停" : "播放"}
                     className={`w-16 h-16 rounded-full bg-white flex items-center justify-center text-black shadow-[0_0_25px_rgba(255,255,255,0.4)] hover:shadow-[0_0_40px_rgba(255,255,255,0.6)] transition-all disabled:opacity-30 ${
-                      isLoading ? "animate-pulse" : ""
+                      isPlaybackPending ? "ring-4 ring-white/25" : ""
                     }`}
                   >
                     {isPlaying ? (
