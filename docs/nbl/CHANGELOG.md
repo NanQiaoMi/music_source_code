@@ -30,6 +30,7 @@
 - The local app returned HTTP 200 after the build. Dynamic lyric-shot playback, pause/rate/seek, and reduced-motion visuals remain unverified because the open player was already near the end of a track and advanced naturally; playback was not repositioned.
 - After merge `50da32a`, the master worktree repeated the 79 focused tests, changed-file ESLint/Prettier, `git diff --check`, webpack production build (28 static pages), and `npx tsc --noEmit --pretty false`; all passed. Next reported its existing multiple-lockfile root warning and stale Browserslist data notice.
 - Fidelity follow-up verification: 4 focused test files / 65 tests passed; changed-file ESLint, Prettier, `git diff --check`, `npm run build` (28 static pages), and sequential `npx tsc --noEmit --incremental false --pretty false` passed. Build warnings remain the multiple-lockfile workspace-root notice and stale Browserslist data. Live lyric playback, pause, seek, rate, and ending visuals remain unverified; the existing Chrome playback was left untouched.
+- Fidelity correction commit `e6d89bd` was merged into local `master` as `96aebf1`; the same 65 focused tests, changed-file ESLint/Prettier, `git diff --check`, production build (28 static pages), and standalone TypeScript check passed after merge. No remote push was performed.
 
 ## 2026-09-30
 

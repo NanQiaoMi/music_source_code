@@ -1,6 +1,6 @@
 # Folia 式歌词 MV 保真修正实施计划
 
-> 状态：代码实现与首轮验证完成；待全局审查、提交及合入本地 `master` 后补记回归结果。基于用户对首轮 Folia 移植画面的反馈重新收敛验收；不沿用“基础分镜已完成”作为视觉通过证据。
+> 状态：实现、代码审查、提交、合入本地 `master` 与合入后回归均已完成。基于用户对首轮 Folia 移植画面的反馈重新收敛验收；不沿用“基础分镜已完成”作为视觉通过证据。
 >
 > 开发分支：`feature/folia-mv-faithful-pass`，从本地 `master` 的 `cd77068` 创建。实现代码在独立 worktree 中完成，之后按分支生命周期合并。
 
@@ -74,4 +74,5 @@
 - TDD 补充回归先观察到 6 项预期失败。聚焦 Vitest：4 个文件、65 项通过。改动 TS 文件 ESLint、Prettier、`git diff --check` 均通过。
 - `npm run build` 通过并生成 28 个静态页面；随后 `npx tsc --noEmit --incremental false --pretty false` 通过。构建只报告已有多锁文件根目录提示与 Browserslist 数据较旧提示。
 - 未操作用户正在播放的 Chrome 会话；真实歌曲的歌词镜头、暂停、seek、倍速与片尾动态效果仍未核验。
-- 集成审查、提交、合入 `master` 和合入后的回归仍待完成。
+- 集成审查未发现剩余可复现问题；实现提交为 `e6d89bd`，以 merge commit `96aebf1` 合入本地 `master`。合入后复跑 4 个聚焦测试文件（65 项）、受影响文件 ESLint、Prettier、`git diff --check`、`npm run build`（28 个静态页面）及串行独立 TypeScript 检查，全部通过。
+- 未推送远程。动态播放仍未核验，视觉验收结论仅限源代码机制与静态验证，不宣称与 Folia 逐像素一致。
