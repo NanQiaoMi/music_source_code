@@ -62,6 +62,7 @@ const MAX_LINES_PER_SHOT = 2;
 const LONG_LINE_DURATION = 3.6;
 const BRIDGE_GAP = 4;
 const BRIDGE_HOLD = 0.6;
+const OUTRO_CARD_DURATION = 7;
 
 const PROFILES: readonly LyricFilmProfile[] = [
   "spotlight",
@@ -320,7 +321,11 @@ function planOutro(lyricEndTime: number, duration: number): ShotDraft[] {
   const startTime = Math.min(duration, lyricEndTime + BRIDGE_HOLD);
   if (startTime >= duration) return [];
 
-  return splitEmptyRange("outro", startTime, duration).map((shot) => ({ ...shot, lyricEndTime }));
+  const cardStartTime = Math.max(startTime, duration - OUTRO_CARD_DURATION);
+  return [
+    ...splitEmptyRange("interlude", startTime, cardStartTime),
+    ...splitEmptyRange("outro", cardStartTime, duration),
+  ].map((shot) => ({ ...shot, lyricEndTime }));
 }
 
 function splitEmptyRange(
@@ -389,7 +394,7 @@ function assignShotIdentityAndTransitions(
 
     const nextDraft = drafts[index + 1];
     let transitionOut: LyricFilmTransition | null = null;
-    if (nextDraft) {
+    if (nextDraft && draft.kind !== nextDraft.kind) {
       const kind = chooseStable(TRANSITIONS, `${shotSeed}:transition`, previousTransition);
       previousTransition = kind;
       const desiredDuration = transitionDuration(kind, `${shotSeed}:transition-duration`);
