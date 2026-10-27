@@ -13,7 +13,7 @@ import { multiSourceResolver } from "./MultiSourceResolver";
 import { useAudioStore } from "@/store/audioStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useQueueStore } from "@/store/queueStore";
-import { useVisualizationV8Store } from "@/store/visualizationV8Store";
+import { useVisualizationStore } from "@/store/visualizationStore";
 import { useSleepTimerStore } from "@/store/sleepTimerStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { Song } from "@/types/song";
@@ -77,12 +77,12 @@ vi.mock("@/store/queueStore", () => {
   };
 });
 
-vi.mock("@/store/visualizationV8Store", () => {
+vi.mock("@/store/visualizationStore", () => {
   const state = {
     setCurrentEffect: vi.fn(),
   };
   return {
-    useVisualizationV8Store: {
+    useVisualizationStore: {
       getState: vi.fn(() => state),
     },
   };
@@ -455,7 +455,7 @@ describe("aiAgentTools - Complete Player Tools Suite", () => {
 
   describe("executeTool - switch_visualizer", () => {
     it("should map Chinese names to correct effect ID and call store", async () => {
-      const visualState = useVisualizationV8Store.getState();
+      const visualState = useVisualizationStore.getState();
 
       const res1 = await executeTool("switch_visualizer", { effect: "水墨特效" });
       expect(res1.success).toBe(true);

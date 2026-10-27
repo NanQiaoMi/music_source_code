@@ -4,7 +4,7 @@ import { multiSourceResolver } from "@/services/MultiSourceResolver";
 import { useAudioStore, LoopMode } from "@/store/audioStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useQueueStore } from "@/store/queueStore";
-import { useVisualizationV8Store } from "@/store/visualizationV8Store";
+import { useVisualizationStore, VisualizationEffect } from "@/store/visualizationStore";
 import { useSleepTimerStore } from "@/store/sleepTimerStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
@@ -722,8 +722,7 @@ export async function executeTool(
         }
 
         const normalized = normalizeVisualizerEffect(rawEffect);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        useVisualizationV8Store.getState().setCurrentEffect(normalized as any);
+        useVisualizationStore.getState().setCurrentEffect(normalized as VisualizationEffect);
 
         return {
           success: true,

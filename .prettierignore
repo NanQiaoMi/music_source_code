@@ -18,6 +18,7 @@ out/
 build/
 dist/
 coverage/
+archive/
 
 # 锁文件：缩进和换行由包管理器生成，手工格式化会制造无意义 diff
 package-lock.json
