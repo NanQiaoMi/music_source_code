@@ -3,14 +3,14 @@
 > 上级：[总计划](../2026-10-21-architecture-performance-optimization.md) · [执行计划包 README](./README.md)
 > 状态口径：pending（未开始）/ in_progress（实现中）/ review（待复核）/ done（已合并且验收通过）/ blocked（阻塞，需写原因）
 > 规则：每完成一个子 PR 勾选对应任务下的子项；任务 done 必须附证据（命令/退出码/指标/截图）；阶段出口全部满足才能把阶段标记 done。
-> 更新时间：2026-10-27（S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3/S1-6 done；S1-7 独立分支待合并；S1-8a done）
+> 更新时间：2026-10-28（S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3/S1-6/S1-8 done；S1-7 独立分支待合并）
 
 ## 汇总
 
 | 阶段 | 任务数 | done | 子 PR（执行计划） | 阶段出口（摘要） | 状态 |
 |---|---:|---:|---:|---|---|
 | S0 止血与基线 | 7 | 4 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-3/S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策） |
-| S1 数据与播放正确性 | 10 | 4 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3/S1-6 done；S1-7 独立分支；S1-8a done，S1-8b 待；S1-4/S1-5/S1-9/S1-10 待） |
+| S1 数据与播放正确性 | 10 | 5 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3/S1-6/S1-8 done；S1-7 独立分支；S1-4/S1-5/S1-9/S1-10 待） |
 | S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
 | S3 外壳与订阅治理 | 10 | 0 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | pending |
 | S4 包体与加载 | 7 | 0 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | pending |
@@ -18,7 +18,7 @@
 | S6 状态架构收敛 | 12 | 0 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | pending |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **8** | **约 129** | — | in_progress |
+| **合计** | **74** | **9** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -48,7 +48,7 @@
 - [ ] S1-4 VibeMusicDB 统一 open/version v3 — owner: — | PR: 1 | 依赖: S0-6 | 验收: v1→v3 迁移测试；local:// 可播
 - [ ] S1-5 队列唯一权威 + QueueNavigator — owner: — | PR: 1-2 | 依赖: S1-3 | 验收: 删/排/清后 next/ended 一致
 - [x] S1-6 PlaybackMediaBridge 单例 — **done（2026-10-27，6a+6b）**：`src/lib/playback/mediaBridge.ts` 12 事件单订阅 + 引用计数 handler 栈（同元素只注册一次原生监听；释放非活动实例不剥离；全部释放才移除；timeupdate 250ms 节流且单点写 audio/player store；snapshot/subscribe/attachCount）。hook 接入：`useAudioPlayer` 的 `attachListeners` 改走 bridge 并返回 release，effect cleanup 按实例 release、移除实例级 detach/`_vibeCleanup` 依赖；onTimeUpdate 只保留 AB 循环/预取，store 写入交给 bridge。测试：bridge 7 + hook 14 通过；hooks/audio/playback 128 passed；全量 203 files/1274 tests passed；tsc 0、eslint 0。分支 `feature/arch-perf-s1-6a`+`feature/arch-perf-s1-6b`（隔离 worktree，未合并）。
-- [ ] S1-7 AudioContextWatchdog 懒 attach/detach — owner: — | PR: 1 | 依赖: S1-6 | 验收: start 先于 context 也能挂载
+- [x] S1-8 PlaybackRequestCoordinator + AbortSignal — **done（2026-10-28，8a+8b）**：协调器 + `throwIfAborted`/`combineSignals`（abort reason 统一 AbortError）；`resolvePlayableAudio`/audioSource/backgroundCache/prefetcher 可选 signal；`useAudioPlayer.managePlayback` 每次真实加载 begin token、signal 透传 resolver、5 处 await 后 throwIfAborted、finally complete、AbortError 静默；resolver fallback+5 平台 resolver 用 combineSignals 且 abort 不写 cache。验证：新增 `playback-cancellation.integration.test.ts`（连点 5 首仅 1 in-flight、前 4 signal aborted、stale 结果不写 store、abort 不污染 cache）；全量 **207 files / 1292 tests passed**；tsc/eslint 0。分支 `feature/arch-perf-s1-8a`+`feature/arch-perf-s1-8b`（未合并）。
 - [ ] S1-8 PlaybackRequestCoordinator + AbortSignal — **S1-8a done（2026-10-27）**：`src/lib/playback/requestCoordinator.ts` 新增 token 协调器（begin 自动 abort 上一请求、complete 只清当前、abortAll、isCurrent、signalOf、inFlight）+ `throwIfAborted` + `combineSignals` polyfill；6 用例通过（abort 旧请求/仅 1 in-flight/陈旧 token/complete 语义/abortAll/父 signal 透传），tsc/eslint 0。**S1-8b 进行中**：已完成 `resolvePlayableAudio` 可选 `{signal}`（含兼容旧 boolean、abort 不写 cache）、`resolveAudioSourceBlob` fetch signal、`triggerBackgroundCache` signal、`audioPrefetcher` signal；聚焦 4 文件 16 用例通过。**剩余**：resolver 内部 30+ fetch 透传、`useAudioPlayer` 接 coordinator、连点 5 首/旧结果不写 store 集成测试。分支 `feature/arch-perf-s1-8a` / `feature/arch-perf-s1-8b`（未合并）。
 - [ ] S1-9 首声并行化 — owner: — | PR: 1 | 依赖: S1-8 | 验收: 命中 P50<300ms/P95<800ms
 - [ ] S1-10 正确性集成测试矩阵 — owner: — | PR: 1 | 依赖: S1-2..S1-9 | 验收: 场景全部自动化
