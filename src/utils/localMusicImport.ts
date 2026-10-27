@@ -3,7 +3,7 @@ import { generateSongId } from "./songValidation";
 import { associateLyricsWithAudioFiles } from "@/services/lyricsService";
 import { saveMusicFile, StoredMusic } from "@/services/localMusicStorage";
 
-import jsmediatags, { type MediaTagResult } from "jsmediatags";
+import type { MediaTagResult } from "jsmediatags";
 
 export interface LocalImportResult {
   success: boolean;
@@ -25,15 +25,25 @@ function splitFilename(fileName: string) {
   return { artist: "Unknown Artist", title: name || fileName };
 }
 
-function extractMetadata(file: File): Promise<{
+async function extractMetadata(file: File): Promise<{
   title: string;
   artist: string;
   album: string;
   duration: number;
   cover?: string;
 }> {
+  const fallback = { ...splitFilename(file.name), album: "Unknown Album", duration: 0 };
+
+  let jsmediatags: (typeof import("jsmediatags"))["default"];
+  try {
+    // S4-1: load on demand so jsmediatags stays out of the initial route chunk.
+    ({ default: jsmediatags } = await import("jsmediatags"));
+  } catch (error) {
+    console.warn("[localMusicImport] jsmediatags 加载失败，降级文件名解析", error);
+    return fallback;
+  }
+
   return new Promise((resolve) => {
-    const fallback = { ...splitFilename(file.name), album: "Unknown Album", duration: 0 };
     jsmediatags.read(file, {
       onSuccess: (tag: MediaTagResult) => {
         const tags = tag.tags || {};

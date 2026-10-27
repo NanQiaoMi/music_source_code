@@ -20,7 +20,7 @@ import {
 import { associateLyricsWithAudioFiles } from "@/services/lyricsService";
 import Image from "next/image";
 
-import jsmediatags, { type MediaTagResult } from "jsmediatags";
+import type { MediaTagResult } from "jsmediatags";
 import { DIRECTORY_INPUT_PROPS } from "./directoryInputProps";
 
 // Supported audio formats
@@ -103,19 +103,28 @@ export const LocalMusicManager: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  const extractMetadata = (
+  const extractMetadata = async (
     file: File
   ): Promise<{ title: string; artist: string; album: string; cover?: string }> => {
+    const fileName = file.name.replace(/\.[^/.]+$/, "");
+    const parts = fileName.split(/\s*[-–—]\s*/);
+
+    const defaultResult = {
+      title: parts.length >= 2 ? parts[1].trim() : fileName.trim(),
+      artist: parts.length >= 2 ? parts[0].trim() : "未知艺术家",
+      album: "未知专辑",
+    };
+
+    let jsmediatags: (typeof import("jsmediatags"))["default"];
+    try {
+      // S4-1: load on demand so jsmediatags stays out of the initial route chunk.
+      ({ default: jsmediatags } = await import("jsmediatags"));
+    } catch (error) {
+      console.warn("[LocalMusicManager] jsmediatags 加载失败，降级文件名解析", error);
+      return defaultResult;
+    }
+
     return new Promise((resolve) => {
-      const fileName = file.name.replace(/\.[^/.]+$/, "");
-      const parts = fileName.split(/\s*[-–—]\s*/);
-
-      const defaultResult = {
-        title: parts.length >= 2 ? parts[1].trim() : fileName.trim(),
-        artist: parts.length >= 2 ? parts[0].trim() : "未知艺术家",
-        album: "未知专辑",
-      };
-
       jsmediatags.read(file, {
         onSuccess: async (tag: MediaTagResult) => {
           const tags = tag.tags || {};

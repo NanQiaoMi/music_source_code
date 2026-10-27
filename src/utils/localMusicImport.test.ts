@@ -108,4 +108,34 @@ describe("importLocalSongs", () => {
       })
     );
   });
+
+  it("still imports songs when jsmediatags fails to load", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.resetModules();
+    vi.doMock("jsmediatags", () => {
+      throw new Error("chunk load failed");
+    });
+
+    try {
+      const audioFile = new File([new Uint8Array([1, 2, 3])], "Artist - Track.mp3", {
+        type: "audio/mpeg",
+      });
+
+      const result = await importLocalSongs(createFileList([audioFile]));
+
+      expect(result.success).toBe(true);
+      expect(result.songs[0]).toMatchObject({
+        title: "Track",
+        artist: "Artist",
+        duration: 123,
+        lyrics: "[00:00.00]Lyric line",
+      });
+      expect(warn).toHaveBeenCalledWith(
+        "[localMusicImport] jsmediatags 加载失败，降级文件名解析",
+        expect.any(Error)
+      );
+    } finally {
+      vi.resetModules();
+    }
+  });
 });

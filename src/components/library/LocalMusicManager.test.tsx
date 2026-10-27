@@ -146,4 +146,52 @@ describe("LocalMusicManager", () => {
     expect(container.textContent).toContain("notes.txt");
     expect(mocks.saveMusicFile).not.toHaveBeenCalled();
   });
+
+  it("still imports songs when jsmediatags fails to load", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.resetModules();
+    vi.doMock("jsmediatags", () => {
+      throw new Error("chunk load failed");
+    });
+
+    class FakeAudio {
+      duration = 42;
+
+      addEventListener(_event: string, callback: () => void) {
+        queueMicrotask(callback);
+      }
+    }
+
+    vi.stubGlobal("Audio", FakeAudio);
+
+    try {
+      const { LocalMusicManager } = await import("./LocalMusicManager");
+      await act(async () => {
+        root.render(<LocalMusicManager />);
+      });
+
+      const fileInput = container.querySelector('input[accept*=".mp3"]');
+      expect(fileInput).toBeInstanceOf(HTMLInputElement);
+      setInputFiles(fileInput as HTMLInputElement, [
+        new File([new Uint8Array([1, 2, 3])], "Artist - Track.mp3", { type: "audio/mpeg" }),
+      ]);
+
+      await act(async () => {
+        fileInput?.dispatchEvent(new Event("change", { bubbles: true }));
+        await vi.waitFor(() => expect(mocks.saveMusicFile).toHaveBeenCalledTimes(1));
+      });
+
+      expect(mocks.saveMusicFile).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Track", artist: "Artist", duration: 42 })
+      );
+      expect(warn).toHaveBeenCalledWith(
+        "[LocalMusicManager] jsmediatags 加载失败，降级文件名解析",
+        expect.any(Error)
+      );
+      expect(container.textContent).toContain("Artist - Track.mp3");
+    } finally {
+      vi.resetModules();
+      vi.unstubAllGlobals();
+    }
+  });
 });

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   readTags: vi.fn(),
+  loadCount: 0,
 }));
 
 vi.mock("jsmediatags", () => ({
@@ -11,6 +12,19 @@ vi.mock("jsmediatags", () => ({
 }));
 
 import { batchExtractMetadata, extractAudioMetadata } from "./audioMetadata";
+
+/** Registers a fresh jsmediatags mock so the next lazy import has to go through it. */
+function stageJsmediatagsMock(loadError?: Error) {
+  vi.doMock("jsmediatags", () => {
+    mocks.loadCount += 1;
+    if (loadError) throw loadError;
+    return {
+      default: {
+        read: mocks.readTags,
+      },
+    };
+  });
+}
 
 class FakeAudio {
   duration = 88;
@@ -63,6 +77,47 @@ describe("audioMetadata", () => {
       fileType: "audio/mpeg",
       fileSize: 3,
     });
+  });
+
+  it("loads jsmediatags only when extraction starts", async () => {
+    mocks.loadCount = 0;
+    vi.resetModules();
+    stageJsmediatagsMock();
+
+    const fresh = await import("./audioMetadata");
+    expect(mocks.loadCount).toBe(0);
+
+    await fresh.extractAudioMetadata(
+      new File([new Uint8Array([1])], "Artist - Track.mp3", { type: "audio/mpeg" })
+    );
+
+    expect(mocks.loadCount).toBe(1);
+  });
+
+  it("falls back to filename metadata when jsmediatags fails to load", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.resetModules();
+    stageJsmediatagsMock(new Error("chunk load failed"));
+
+    try {
+      const fresh = await import("./audioMetadata");
+      const result = await fresh.extractAudioMetadata(
+        new File([new Uint8Array([1, 2])], "Artist – Track.mp3", { type: "audio/mpeg" })
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.metadata).toMatchObject({
+        title: "Track",
+        artist: "Artist",
+        album: "未知专辑",
+      });
+      expect(warn).toHaveBeenCalledWith(
+        "[audioMetadata] jsmediatags 加载失败，降级文件名解析",
+        expect.any(Error)
+      );
+    } finally {
+      vi.resetModules();
+    }
   });
 
   it("returns a readable batch error for unsupported files", async () => {

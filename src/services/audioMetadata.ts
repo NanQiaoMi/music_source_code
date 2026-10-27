@@ -1,7 +1,7 @@
 // Audio Metadata Extraction and Cache Service
 // Extracts and caches metadata from audio files (MP3, FLAC, WAV, etc.)
 
-import jsmediatags, { type MediaTags, type MediaTagResult } from "jsmediatags";
+import type { MediaTags, MediaTagResult } from "jsmediatags";
 
 export interface AudioMetadata {
   id: string;
@@ -174,6 +174,30 @@ function parseFilename(fileName: string): { title: string; artist: string } {
 }
 
 /**
+ * Filename-based fallback, shared by tag-read errors and lazy-load failures.
+ */
+async function buildFilenameFallback(
+  file: File,
+  id: string | undefined,
+  durationPromise: Promise<number>
+): Promise<AudioMetadata> {
+  const parsedFilename = parseFilename(file.name);
+  const duration = await durationPromise;
+
+  return {
+    id: id || generateMetadataId(file),
+    title: parsedFilename.title,
+    artist: parsedFilename.artist,
+    album: UNKNOWN_ALBUM,
+    duration: duration,
+    fileName: file.name,
+    fileType: file.type || getMimeTypeFromExtension(file.name),
+    fileSize: file.size,
+    extractedAt: Date.now(),
+  };
+}
+
+/**
  * Extract all metadata from an audio file
  */
 export async function extractAudioMetadata(
@@ -187,10 +211,22 @@ export async function extractAudioMetadata(
     };
   }
 
-  try {
-    // Get duration first (can be done in parallel)
-    const durationPromise = getAudioDuration(file);
+  // Duration probing does not need the tag library; start it before the lazy import.
+  const durationPromise = getAudioDuration(file);
 
+  let jsmediatags: (typeof import("jsmediatags"))["default"];
+  try {
+    // S4-1: load on demand so jsmediatags stays out of the initial route chunk.
+    ({ default: jsmediatags } = await import("jsmediatags"));
+  } catch (error) {
+    console.warn("[audioMetadata] jsmediatags 加载失败，降级文件名解析", error);
+    return {
+      success: true,
+      metadata: await buildFilenameFallback(file, id, durationPromise),
+    };
+  }
+
+  try {
     // Extract metadata using jsmediatags
     const metadataResult = await new Promise<AudioMetadata>((resolve) => {
       jsmediatags.read(file, {
@@ -226,20 +262,7 @@ export async function extractAudioMetadata(
         },
         onError: async () => {
           // Fallback to filename parsing if metadata extraction fails
-          const parsedFilename = parseFilename(file.name);
-          const duration = await durationPromise;
-
-          resolve({
-            id: id || generateMetadataId(file),
-            title: parsedFilename.title,
-            artist: parsedFilename.artist,
-            album: UNKNOWN_ALBUM,
-            duration: duration,
-            fileName: file.name,
-            fileType: file.type || getMimeTypeFromExtension(file.name),
-            fileSize: file.size,
-            extractedAt: Date.now(),
-          });
+          resolve(await buildFilenameFallback(file, id, durationPromise));
         },
       });
     });
