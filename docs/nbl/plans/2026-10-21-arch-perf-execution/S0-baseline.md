@@ -2,7 +2,7 @@
 
 > 上级计划：[架构与性能优化总计划](../2026-10-21-architecture-performance-optimization.md) §5 S0 / §6 / §8
 > 执行包：[README](./README.md) · [决策记录](./00-decisions.md) · [进度看板](./TRACKING.md)
-> 阶段：S0（7 个任务，约 9-10 个 PR）；预估：1-2 人日（单人）/ 2-3 人并行约 1 日；状态：**未开始**
+> 阶段：S0（7 个任务，约 9-10 个 PR）；预估：1-2 人日（单人）/ 2-3 人并行约 1 日；状态：**进行中（S0-1 已完成 2026-10-27）**
 > 规划快照：feature/gesture-air-control-overhaul @ `c73a872`（含 55 项未提交改动）；实施基线：master=`90c2152`，S0-1 处理后回到干净树
 > 规范依据：PROCESS.md:131-134（单 PR ≤400 行）、AGENTS.md、ROADMAP.md、总计划 §1.3 不变量
 

@@ -137,7 +137,7 @@
 
 | ID | 问题 | 推荐默认 | 阻塞任务 | 需谁确认 | 状态 |
 |---|---|---|---|---|---|
-| Q01 | 55 项手势改动如何处置（checkpoint / 拆 PR / 冻结 worktree） | checkpoint 保现场，再按模块拆 PR 合 master | S0-1 及全部基线 | 用户授权 | Pending |
+| Q01 | 55 项手势改动如何处置（checkpoint / 拆 PR / 冻结 worktree） | checkpoint 保现场，再按模块拆 PR 合 master | S0-1 及全部基线 | 用户授权 | **Accepted 2026-10-27：A（checkpoint）** — 分支 checkpoint/gesture-air-control-overhaul-20261027 @ 2b99173（123 files / +27,294/−1,967）；未 push；主工作区已干净 |
 | Q02 | GitHub branch protection / required checks / bot PAT 是否可用 | 可用则开 required checks；不可用则 CI 先 report-only | S0-2、S8-1 | 用户/仓库 owner | Pending |
 | Q03 | deploy.yml 中 Vercel 发布 job 去留 | 保留手动触发；移除 main 条件；归属由发布策略定 | S0-2、S8-5 | 用户/Lead | Pending |
 | Q04 | 新增 devDependency：fake-indexeddb（S1-4 测试）、dependency-cruiser（S6-12）、actionlint（S8 可选） | 批准（dev-only，不影响运行时/包体） | S1-4、S6-12、S8-1 | Lead | Pending |

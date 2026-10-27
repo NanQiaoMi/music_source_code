@@ -3,13 +3,13 @@
 > 上级：[总计划](../2026-10-21-architecture-performance-optimization.md) · [执行计划包 README](./README.md)
 > 状态口径：pending（未开始）/ in_progress（实现中）/ review（待复核）/ done（已合并且验收通过）/ blocked（阻塞，需写原因）
 > 规则：每完成一个子 PR 勾选对应任务下的子项；任务 done 必须附证据（命令/退出码/指标/截图）；阶段出口全部满足才能把阶段标记 done。
-> 更新时间：2026-10-22（S0-4/S0-6 done；S0-2 本地完成；S0-3 结论确定；S0-5/S0-7 部分；S1-1/S1-3 done）
+> 更新时间：2026-10-27（S0-1 完成 checkpoint；S0-4/S0-6 done；S0-2 本地完成；S0-3 结论确定；S0-5/S0-7 部分；S1-1/S1-3 done）
 
 ## 汇总
 
 | 阶段 | 任务数 | done | 子 PR（执行计划） | 阶段出口（摘要） | 状态 |
 |---|---:|---:|---:|---|---|
-| S0 止血与基线 | 7 | 2 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-4/S0-6 done；S0-2 本地完成；S0-1/3/5/7 待） |
+| S0 止血与基线 | 7 | 3 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-4/S0-6 done；S0-2 本地完成；S0-3/5/7 待） |
 | S1 数据与播放正确性 | 10 | 2 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-3 done） |
 | S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
 | S3 外壳与订阅治理 | 10 | 0 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | pending |
@@ -18,7 +18,7 @@
 | S6 状态架构收敛 | 12 | 0 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | pending |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **4** | **约 129** | — | in_progress |
+| **合计** | **74** | **5** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -30,7 +30,8 @@
 
 - [ ] **M0 出口门**：CI 在 master 全绿；基线 JSON 入库；文档事实校验通过；out 陈旧发布被阻断；55 项脏改已处理；D1-D8 已定稿。
   **2026-10-21 进展**：bundle/store-stats 基线已生成；docs-facts exit 0（ports 为 WARN）；CI 已改写但未 push 验证；脏改/out/ADR 仍待。
-- [ ] S0-1 处理 55 项未提交手势改动（需用户授权）— **blocked**：等待 Q01 授权（checkpoint / 拆 PR / 冻结 worktree）
+  **2026-10-27 进展**：脏改已按 Q01-A 落到 checkpoint 分支（干净树）；基线 tsc/vitest 复测通过；build 待 dev server 停止后补测；out/ADR 仍待。
+- [x] S0-1 处理 55 项未提交手势改动 — **done（2026-10-27，Q01-A）**：checkpoint/gesture-air-control-overhaul-20261027 @ 2b99173（123 files / +27,294/−1,967，含手势 WIP + handwritten MV + S0/S1 基线 + handover 文档）；主工作区已干净；原始 feature 分支仍在 c73a872。基线：tsc exit 0、vitest 208 files/1284 tests passed、eslint src（分块）0 errors/0 warnings、隔离 worktree build exit 0（28 static pages）；详见 evidence/S0-evidence.md
 - [ ] S0-2 CI 复活（master 触发 + tsc/lint/test/build）— **本地完成**：.github/workflows/deploy.yml 已重写（master 触发、concurrency、Node20、.next/tsbuildinfo 缓存、tsc→lint→test→build→bundle-report→store-gate→docs-facts、desktop/vercel 改为手动/tag）；YAML 校验通过；待 push 后验证 required checks
 - [ ] S0-3 构建产物与端口明确化 — **部分完成/结论确定**：scripts/verify-static-export.mjs（对陈旧 out 实测 exit 1）、scripts/build-static.mjs、scripts/verify-desktop-release-ready.mjs 已落地；build-desktop-win.ps1 + CI desktop job 接入 release guard（默认冻结）。实测 STATIC_EXPORT=1 next build 被 31 个 API route 阻断（D2-A 不可行，见 ADR 0002）；package.json 仍被脏改占用（端口 3024 未改），build:static 脚本接入待 S0-1
 - [x] S0-4 文档事实修正 — **done（部分文件）**：AGENTS.md/ARCHITECTURE.md 已按实测修正（60 stores / 19 hooks / 18 services / 4 workers；真实音频链；coordinator 死层；构建模式；AI 桩）；node scripts/check-docs-facts.mjs exit 0；ROADMAP/CHANGELOG 因脏改暂未动
@@ -143,7 +144,7 @@
 
 | 日期 | 任务 | 阻塞原因 | 解锁条件 | owner |
 |---|---|---|---|---|
-| 2026-10-21 | 全程序 | 55 项手势改动未处理（S0-1 需用户授权） | 用户确认 commit/拆 PR/冻结方式 | Lead |
+| 2026-10-21 | S0-1 | 55 项手势改动未处理 | **已解除 2026-10-27**：Q01-A checkpoint 2b99173，工作树干净 | Lead |
 | 2026-10-21 | S4-7 | D1 V8 处置未拍板 | 用户确认 D1 | Lead |
 | 2026-10-21 | S7-4 | D2 桌面运行时未拍板；静态导出已被 31 API routes 实测阻断（ADR 0002） | 用户确认 D2-B（本地 Next 运行时） | Lead |
 | 2026-10-21 | S3-2/S5-2 | D7 受保护视图改写授权 | 用户确认 D7 | Lead |
@@ -153,3 +154,4 @@
 | 日期 | 变更 | 说明 |
 |---|---|---|
 | 2026-10-21 | 创建看板 | 74 任务全部 pending；阶段出口门与阻塞项登记 |
+| 2026-10-27 | S0-1 done | Q01-A checkpoint 分支/提交 2b99173；工作树干净；tsc/vitest 基线复测通过 |

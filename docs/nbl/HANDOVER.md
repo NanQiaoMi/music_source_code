@@ -333,6 +333,8 @@ npm run build:backend:win  # PyInstaller（需 Python + 依赖）
 
 ## 9. 当前工作树状态（重要）
 
+> **2026-10-27 更新**：未提交快照已按 Q01-A 处理为 checkpoint 分支 `checkpoint/gesture-air-control-overhaul-20261027`（commit `2b99173`，123 files / +27,294/−1,967；含手势 WIP、handwritten MV、S0/S1 基线、交接文档）。主工作区现已干净；原 `feature/gesture-air-control-overhaul` 分支保持在 `c73a872`。后续按 S0/S1 计划拆分 ≤400 行 PR。
+
 本包是 **working tree 快照**，包含尚未提交的改动。base commit：`c73a872`（分支 `feature/gesture-air-control-overhaul`，落后 master 11 个提交）。
 
 未提交内容分两类（共 87 项 git status，含本交接文档与打包/环境模板脚本）：
