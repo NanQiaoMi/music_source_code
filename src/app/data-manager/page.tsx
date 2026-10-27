@@ -27,6 +27,7 @@ export default function DataManagerPage() {
         isOpen={isQueueOpen}
         onClose={() => closePanel("queue")}
         component={DataManagerQueuePanel}
+        keepAlive="always"
       />
     </div>
   );

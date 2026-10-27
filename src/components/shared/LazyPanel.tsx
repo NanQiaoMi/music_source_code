@@ -2,6 +2,7 @@
 
 import React, { Suspense, lazy, ComponentType } from "react";
 import { PanelErrorBoundary } from "./PanelErrorBoundary";
+import { PanelKeepAlive, PanelLifecycleProvider, usePanelRetained } from "./panelLifecycle";
 
 type PanelComponent = ComponentType<LegacyAny>;
 type PanelFactory = () => Promise<{ default: PanelComponent }>;
@@ -14,6 +15,7 @@ interface LazyPanelProps {
   onClose: () => void;
   component: LazyPanelComponent;
   extraProps?: Record<string, unknown>;
+  keepAlive?: PanelKeepAlive;
 }
 
 const componentCache = new Map<string, LazyPanelComponent>();
@@ -46,18 +48,21 @@ export function LazyPanel({
   onClose,
   component: LazyComponent,
   extraProps = {},
+  keepAlive = "lru",
 }: LazyPanelProps) {
   const [hasMounted, setHasMounted] = React.useState(isOpen);
+  const retained = usePanelRetained(name, keepAlive);
 
   React.useEffect(() => {
     if (isOpen) {
-      // 记录面板是否已挂载过，一次性标记
+      // 记录面板打开过；关闭后是否继续挂载由 keepAlive 档位与 LRU 保留集决定
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setHasMounted(true);
     }
   }, [isOpen]);
 
-  if (!isOpen && !hasMounted) return null;
+  // never 关闭即卸载；lru 仅保留最近打开的面板；always 始终保留
+  if (!isOpen && !(hasMounted && retained)) return null;
 
   return (
     <PanelErrorBoundary panelName={name} onClose={onClose}>
@@ -75,7 +80,9 @@ export function LazyPanel({
           ) : null
         }
       >
-        <LazyComponent isOpen={isOpen} onClose={onClose} {...extraProps} />
+        <PanelLifecycleProvider active={isOpen} name={name}>
+          <LazyComponent isOpen={isOpen} onClose={onClose} {...extraProps} />
+        </PanelLifecycleProvider>
       </Suspense>
     </PanelErrorBoundary>
   );

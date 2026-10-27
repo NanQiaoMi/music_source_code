@@ -1,10 +1,13 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { useUIStore } from "@/store/uiStore";
+import { PANEL_NAMES, useUIStore } from "@/store/uiStore";
+import type { PanelName } from "@/store/uiStore";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/shallow";
 import { createLazyPanelComponent, LazyPanel, prefetchPanel } from "@/components/shared/LazyPanel";
+import { PanelRetentionProvider } from "@/components/shared/panelLifecycle";
+import type { PanelKeepAlive } from "@/components/shared/panelLifecycle";
 
 // ─── Module Factories (Extracted for prefetching) ─────────────────
 const FACTORIES = {
@@ -124,6 +127,59 @@ const FACTORIES = {
     })),
 };
 
+export { FACTORIES };
+
+/**
+ * Panel lifecycle tiers (S3-6). Keep this map exhaustive over PanelName:
+ * always = keep the instance after close, lru = only the two most recently
+ * opened stay warm, never = unmount on close.
+ */
+export const KEEPALIVE_CONFIG = {
+  queue: "lru",
+  history: "lru",
+  settings: "lru",
+  sleepTimer: "lru",
+  search: "lru",
+  lyricSettings: "lru",
+  lyricsSearch: "lru",
+  lyricsImport: "lru",
+  lyricsCoverEditor: "lru",
+  eq: "always",
+  visualSettings: "always",
+  listeningHistory: "lru",
+  listeningJournal: "lru",
+  dailyRecommendation: "lru",
+  libraryManager: "lru",
+  smartPlaylist: "lru",
+  offlineCache: "lru",
+  share: "lru",
+  playerSkins: "lru",
+  keyboardShortcuts: "lru",
+  gestureSettings: "lru",
+  backupRestore: "lru",
+  statsAchievements: "lru",
+  professionalMode: "lru",
+  professionalTools: "lru",
+  formatConverter: "never",
+  dsdConverter: "never",
+  trackCutter: "never",
+  crossfadeMixer: "never",
+  fingerprintScanner: "never",
+  libraryHealth: "never",
+  instantMix: "lru",
+  smartMixSession: "lru",
+  smartRandom: "lru",
+  dnaJournal: "lru",
+  emotionMatrix: "lru",
+  aiSettings: "lru",
+  aiAgent: "lru",
+  shelf3D: "always",
+  audioSourceManager: "never",
+  cloudMusic: "lru",
+  accountCenter: "lru",
+  dataManager: "never",
+} as const satisfies Record<PanelName, PanelKeepAlive>;
+
 const PANEL_COMPONENTS = Object.fromEntries(
   Object.entries(FACTORIES).map(([name, factory]) => [
     name,
@@ -145,6 +201,12 @@ export function PanelOrchestrator() {
   const panels = useStoreWithEqualityFn(useUIStore, (s) => s.panels, shallow);
   const closePanel = useUIStore((s) => s.closePanel);
   const openPanel = useUIStore((s) => s.openPanel);
+
+  // LRU order only tracks lru-tier panels; always/never panels never consume a slot
+  const openLruPanels = React.useMemo(
+    () => PANEL_NAMES.filter((name) => panels[name] && KEEPALIVE_CONFIG[name] === "lru"),
+    [panels]
+  );
 
   // Prefetch priority modules on mount
   useEffect(() => {
@@ -171,304 +233,317 @@ export function PanelOrchestrator() {
   }, []);
 
   return (
-    <>
-      {/* Core panels */}
-      <LazyPanel
-        name="queue"
-        isOpen={panels.queue}
-        onClose={() => closePanel("queue")}
-        component={PANEL_COMPONENTS.queue}
-      />
-      <LazyPanel
-        name="history"
-        isOpen={panels.history}
-        onClose={() => closePanel("history")}
-        component={PANEL_COMPONENTS.history}
-      />
-      <LazyPanel
-        name="settings"
-        isOpen={panels.settings}
-        onClose={() => closePanel("settings")}
-        component={PANEL_COMPONENTS.settings}
-        extraProps={{
-          onOpenEQ: () => {
-            closePanel("settings");
-            openPanel("eq");
-          },
-          onOpenVisualSettings: () => {
-            closePanel("settings");
-            openPanel("visualSettings");
-          },
-        }}
-      />
-      <LazyPanel
-        name="sleepTimer"
-        isOpen={panels.sleepTimer}
-        onClose={() => closePanel("sleepTimer")}
-        component={PANEL_COMPONENTS.sleepTimer}
-      />
-      <LazyPanel
-        name="search"
-        isOpen={panels.search}
-        onClose={() => closePanel("search")}
-        component={PANEL_COMPONENTS.search}
-      />
+    <PanelRetentionProvider lruPanels={openLruPanels}>
+      <>
+        {/* Core panels */}
+        <LazyPanel
+          name="queue"
+          isOpen={panels.queue}
+          onClose={() => closePanel("queue")}
+          component={PANEL_COMPONENTS.queue}
+        />
+        <LazyPanel
+          name="history"
+          isOpen={panels.history}
+          onClose={() => closePanel("history")}
+          component={PANEL_COMPONENTS.history}
+        />
+        <LazyPanel
+          name="settings"
+          isOpen={panels.settings}
+          onClose={() => closePanel("settings")}
+          component={PANEL_COMPONENTS.settings}
+          extraProps={{
+            onOpenEQ: () => {
+              closePanel("settings");
+              openPanel("eq");
+            },
+            onOpenVisualSettings: () => {
+              closePanel("settings");
+              openPanel("visualSettings");
+            },
+          }}
+        />
+        <LazyPanel
+          name="sleepTimer"
+          isOpen={panels.sleepTimer}
+          onClose={() => closePanel("sleepTimer")}
+          component={PANEL_COMPONENTS.sleepTimer}
+        />
+        <LazyPanel
+          name="search"
+          isOpen={panels.search}
+          onClose={() => closePanel("search")}
+          component={PANEL_COMPONENTS.search}
+        />
 
-      {/* Lyrics panels */}
-      <LazyPanel
-        name="lyricSettings"
-        isOpen={panels.lyricSettings}
-        onClose={() => closePanel("lyricSettings")}
-        component={PANEL_COMPONENTS.lyricSettings}
-      />
-      <LazyPanel
-        name="lyricsSearch"
-        isOpen={panels.lyricsSearch}
-        onClose={() => closePanel("lyricsSearch")}
-        component={PANEL_COMPONENTS.lyricsSearch}
-      />
-      <LazyPanel
-        name="lyricsImport"
-        isOpen={panels.lyricsImport}
-        onClose={() => closePanel("lyricsImport")}
-        component={PANEL_COMPONENTS.lyricsImport}
-      />
-      <LazyPanel
-        name="lyricsCoverEditor"
-        isOpen={panels.lyricsCoverEditor}
-        onClose={() => closePanel("lyricsCoverEditor")}
-        component={PANEL_COMPONENTS.lyricsCoverEditor}
-      />
+        {/* Lyrics panels */}
+        <LazyPanel
+          name="lyricSettings"
+          isOpen={panels.lyricSettings}
+          onClose={() => closePanel("lyricSettings")}
+          component={PANEL_COMPONENTS.lyricSettings}
+        />
+        <LazyPanel
+          name="lyricsSearch"
+          isOpen={panels.lyricsSearch}
+          onClose={() => closePanel("lyricsSearch")}
+          component={PANEL_COMPONENTS.lyricsSearch}
+        />
+        <LazyPanel
+          name="lyricsImport"
+          isOpen={panels.lyricsImport}
+          onClose={() => closePanel("lyricsImport")}
+          component={PANEL_COMPONENTS.lyricsImport}
+        />
+        <LazyPanel
+          name="lyricsCoverEditor"
+          isOpen={panels.lyricsCoverEditor}
+          onClose={() => closePanel("lyricsCoverEditor")}
+          component={PANEL_COMPONENTS.lyricsCoverEditor}
+        />
 
-      {/* Audio and visual settings */}
-      <LazyPanel
-        name="eq"
-        isOpen={panels.eq}
-        onClose={() => closePanel("eq")}
-        component={PANEL_COMPONENTS.eq}
-      />
-      <LazyPanel
-        name="visualSettings"
-        isOpen={panels.visualSettings}
-        onClose={() => closePanel("visualSettings")}
-        component={PANEL_COMPONENTS.visualSettings}
-      />
+        {/* Audio and visual settings */}
+        <LazyPanel
+          name="eq"
+          isOpen={panels.eq}
+          onClose={() => closePanel("eq")}
+          component={PANEL_COMPONENTS.eq}
+          keepAlive={KEEPALIVE_CONFIG.eq}
+        />
+        <LazyPanel
+          name="visualSettings"
+          isOpen={panels.visualSettings}
+          onClose={() => closePanel("visualSettings")}
+          component={PANEL_COMPONENTS.visualSettings}
+          keepAlive={KEEPALIVE_CONFIG.visualSettings}
+        />
 
-      {/* Library and discovery */}
-      <LazyPanel
-        name="listeningHistory"
-        isOpen={panels.listeningHistory}
-        onClose={() => closePanel("listeningHistory")}
-        component={PANEL_COMPONENTS.listeningHistory}
-      />
-      <LazyPanel
-        name="listeningJournal"
-        isOpen={panels.listeningJournal}
-        onClose={() => closePanel("listeningJournal")}
-        component={PANEL_COMPONENTS.listeningJournal}
-      />
-      <LazyPanel
-        name="dailyRecommendation"
-        isOpen={panels.dailyRecommendation}
-        onClose={() => closePanel("dailyRecommendation")}
-        component={PANEL_COMPONENTS.dailyRecommendation}
-      />
-      <LazyPanel
-        name="libraryManager"
-        isOpen={panels.libraryManager}
-        onClose={() => closePanel("libraryManager")}
-        component={PANEL_COMPONENTS.libraryManager}
-      />
-      <LazyPanel
-        name="smartPlaylist"
-        isOpen={panels.smartPlaylist}
-        onClose={() => closePanel("smartPlaylist")}
-        component={PANEL_COMPONENTS.smartPlaylist}
-      />
+        {/* Library and discovery */}
+        <LazyPanel
+          name="listeningHistory"
+          isOpen={panels.listeningHistory}
+          onClose={() => closePanel("listeningHistory")}
+          component={PANEL_COMPONENTS.listeningHistory}
+        />
+        <LazyPanel
+          name="listeningJournal"
+          isOpen={panels.listeningJournal}
+          onClose={() => closePanel("listeningJournal")}
+          component={PANEL_COMPONENTS.listeningJournal}
+        />
+        <LazyPanel
+          name="dailyRecommendation"
+          isOpen={panels.dailyRecommendation}
+          onClose={() => closePanel("dailyRecommendation")}
+          component={PANEL_COMPONENTS.dailyRecommendation}
+        />
+        <LazyPanel
+          name="libraryManager"
+          isOpen={panels.libraryManager}
+          onClose={() => closePanel("libraryManager")}
+          component={PANEL_COMPONENTS.libraryManager}
+        />
+        <LazyPanel
+          name="smartPlaylist"
+          isOpen={panels.smartPlaylist}
+          onClose={() => closePanel("smartPlaylist")}
+          component={PANEL_COMPONENTS.smartPlaylist}
+        />
 
-      {/* Sharing and customization */}
-      <LazyPanel
-        name="offlineCache"
-        isOpen={panels.offlineCache}
-        onClose={() => closePanel("offlineCache")}
-        component={PANEL_COMPONENTS.offlineCache}
-      />
-      <LazyPanel
-        name="share"
-        isOpen={panels.share}
-        onClose={() => closePanel("share")}
-        component={PANEL_COMPONENTS.share}
-      />
-      <LazyPanel
-        name="playerSkins"
-        isOpen={panels.playerSkins}
-        onClose={() => closePanel("playerSkins")}
-        component={PANEL_COMPONENTS.playerSkins}
-      />
-      <LazyPanel
-        name="keyboardShortcuts"
-        isOpen={panels.keyboardShortcuts}
-        onClose={() => closePanel("keyboardShortcuts")}
-        component={PANEL_COMPONENTS.keyboardShortcuts}
-      />
-      <LazyPanel
-        name="gestureSettings"
-        isOpen={panels.gestureSettings}
-        onClose={() => closePanel("gestureSettings")}
-        component={PANEL_COMPONENTS.gestureSettings}
-      />
+        {/* Sharing and customization */}
+        <LazyPanel
+          name="offlineCache"
+          isOpen={panels.offlineCache}
+          onClose={() => closePanel("offlineCache")}
+          component={PANEL_COMPONENTS.offlineCache}
+        />
+        <LazyPanel
+          name="share"
+          isOpen={panels.share}
+          onClose={() => closePanel("share")}
+          component={PANEL_COMPONENTS.share}
+        />
+        <LazyPanel
+          name="playerSkins"
+          isOpen={panels.playerSkins}
+          onClose={() => closePanel("playerSkins")}
+          component={PANEL_COMPONENTS.playerSkins}
+        />
+        <LazyPanel
+          name="keyboardShortcuts"
+          isOpen={panels.keyboardShortcuts}
+          onClose={() => closePanel("keyboardShortcuts")}
+          component={PANEL_COMPONENTS.keyboardShortcuts}
+        />
+        <LazyPanel
+          name="gestureSettings"
+          isOpen={panels.gestureSettings}
+          onClose={() => closePanel("gestureSettings")}
+          component={PANEL_COMPONENTS.gestureSettings}
+        />
 
-      {/* Data and stats */}
-      <LazyPanel
-        name="backupRestore"
-        isOpen={panels.backupRestore}
-        onClose={() => closePanel("backupRestore")}
-        component={PANEL_COMPONENTS.backupRestore}
-      />
-      <LazyPanel
-        name="statsAchievements"
-        isOpen={panels.statsAchievements}
-        onClose={() => closePanel("statsAchievements")}
-        component={PANEL_COMPONENTS.statsAchievements}
-      />
+        {/* Data and stats */}
+        <LazyPanel
+          name="backupRestore"
+          isOpen={panels.backupRestore}
+          onClose={() => closePanel("backupRestore")}
+          component={PANEL_COMPONENTS.backupRestore}
+        />
+        <LazyPanel
+          name="statsAchievements"
+          isOpen={panels.statsAchievements}
+          onClose={() => closePanel("statsAchievements")}
+          component={PANEL_COMPONENTS.statsAchievements}
+        />
 
-      {/* Professional tools */}
-      <LazyPanel
-        name="professionalMode"
-        isOpen={panels.professionalMode}
-        onClose={() => closePanel("professionalMode")}
-        component={PANEL_COMPONENTS.professionalMode}
-      />
-      <LazyPanel
-        name="professionalTools"
-        isOpen={panels.professionalTools}
-        onClose={() => closePanel("professionalTools")}
-        component={PANEL_COMPONENTS.professionalTools}
-        extraProps={{
-          onOpenFormatConverter: () => openPanel("formatConverter"),
-          onOpenTrackCutter: () => openPanel("trackCutter"),
-          onOpenFingerprintScanner: () => openPanel("fingerprintScanner"),
-          onOpenDSDConverter: () => openPanel("dsdConverter"),
-          onOpenCrossfadeMixer: () => openPanel("crossfadeMixer"),
-          onOpenLibraryHealth: () => openPanel("libraryHealth"),
-        }}
-      />
-      <LazyPanel
-        name="formatConverter"
-        isOpen={panels.formatConverter}
-        onClose={() => closePanel("formatConverter")}
-        component={PANEL_COMPONENTS.formatConverter}
-      />
-      <LazyPanel
-        name="dsdConverter"
-        isOpen={panels.dsdConverter}
-        onClose={() => closePanel("dsdConverter")}
-        component={PANEL_COMPONENTS.dsdConverter}
-      />
-      <LazyPanel
-        name="trackCutter"
-        isOpen={panels.trackCutter}
-        onClose={() => closePanel("trackCutter")}
-        component={PANEL_COMPONENTS.trackCutter}
-      />
-      <LazyPanel
-        name="crossfadeMixer"
-        isOpen={panels.crossfadeMixer}
-        onClose={() => closePanel("crossfadeMixer")}
-        component={PANEL_COMPONENTS.crossfadeMixer}
-      />
-      <LazyPanel
-        name="fingerprintScanner"
-        isOpen={panels.fingerprintScanner}
-        onClose={() => closePanel("fingerprintScanner")}
-        component={PANEL_COMPONENTS.fingerprintScanner}
-      />
-      <LazyPanel
-        name="libraryHealth"
-        isOpen={panels.libraryHealth}
-        onClose={() => closePanel("libraryHealth")}
-        component={PANEL_COMPONENTS.libraryHealth}
-      />
+        {/* Professional tools */}
+        <LazyPanel
+          name="professionalMode"
+          isOpen={panels.professionalMode}
+          onClose={() => closePanel("professionalMode")}
+          component={PANEL_COMPONENTS.professionalMode}
+        />
+        <LazyPanel
+          name="professionalTools"
+          isOpen={panels.professionalTools}
+          onClose={() => closePanel("professionalTools")}
+          component={PANEL_COMPONENTS.professionalTools}
+          extraProps={{
+            onOpenFormatConverter: () => openPanel("formatConverter"),
+            onOpenTrackCutter: () => openPanel("trackCutter"),
+            onOpenFingerprintScanner: () => openPanel("fingerprintScanner"),
+            onOpenDSDConverter: () => openPanel("dsdConverter"),
+            onOpenCrossfadeMixer: () => openPanel("crossfadeMixer"),
+            onOpenLibraryHealth: () => openPanel("libraryHealth"),
+          }}
+        />
+        <LazyPanel
+          name="formatConverter"
+          isOpen={panels.formatConverter}
+          onClose={() => closePanel("formatConverter")}
+          component={PANEL_COMPONENTS.formatConverter}
+          keepAlive={KEEPALIVE_CONFIG.formatConverter}
+        />
+        <LazyPanel
+          name="dsdConverter"
+          isOpen={panels.dsdConverter}
+          onClose={() => closePanel("dsdConverter")}
+          component={PANEL_COMPONENTS.dsdConverter}
+          keepAlive={KEEPALIVE_CONFIG.dsdConverter}
+        />
+        <LazyPanel
+          name="trackCutter"
+          isOpen={panels.trackCutter}
+          onClose={() => closePanel("trackCutter")}
+          component={PANEL_COMPONENTS.trackCutter}
+          keepAlive={KEEPALIVE_CONFIG.trackCutter}
+        />
+        <LazyPanel
+          name="crossfadeMixer"
+          isOpen={panels.crossfadeMixer}
+          onClose={() => closePanel("crossfadeMixer")}
+          component={PANEL_COMPONENTS.crossfadeMixer}
+          keepAlive={KEEPALIVE_CONFIG.crossfadeMixer}
+        />
+        <LazyPanel
+          name="fingerprintScanner"
+          isOpen={panels.fingerprintScanner}
+          onClose={() => closePanel("fingerprintScanner")}
+          component={PANEL_COMPONENTS.fingerprintScanner}
+          keepAlive={KEEPALIVE_CONFIG.fingerprintScanner}
+        />
+        <LazyPanel
+          name="libraryHealth"
+          isOpen={panels.libraryHealth}
+          onClose={() => closePanel("libraryHealth")}
+          component={PANEL_COMPONENTS.libraryHealth}
+          keepAlive={KEEPALIVE_CONFIG.libraryHealth}
+        />
 
-      {/* Mix and intelligence */}
-      <LazyPanel
-        name="instantMix"
-        isOpen={panels.instantMix}
-        onClose={() => closePanel("instantMix")}
-        component={PANEL_COMPONENTS.instantMix}
-      />
-      <LazyPanel
-        name="smartMixSession"
-        isOpen={panels.smartMixSession}
-        onClose={() => closePanel("smartMixSession")}
-        component={PANEL_COMPONENTS.smartMixSession}
-      />
-      <LazyPanel
-        name="smartRandom"
-        isOpen={panels.smartRandom}
-        onClose={() => closePanel("smartRandom")}
-        component={PANEL_COMPONENTS.smartRandom}
-        extraProps={{ currentSong: undefined }}
-      />
-      <LazyPanel
-        name="dnaJournal"
-        isOpen={panels.dnaJournal}
-        onClose={() => closePanel("dnaJournal")}
-        component={PANEL_COMPONENTS.dnaJournal}
-      />
+        {/* Mix and intelligence */}
+        <LazyPanel
+          name="instantMix"
+          isOpen={panels.instantMix}
+          onClose={() => closePanel("instantMix")}
+          component={PANEL_COMPONENTS.instantMix}
+        />
+        <LazyPanel
+          name="smartMixSession"
+          isOpen={panels.smartMixSession}
+          onClose={() => closePanel("smartMixSession")}
+          component={PANEL_COMPONENTS.smartMixSession}
+        />
+        <LazyPanel
+          name="smartRandom"
+          isOpen={panels.smartRandom}
+          onClose={() => closePanel("smartRandom")}
+          component={PANEL_COMPONENTS.smartRandom}
+          extraProps={{ currentSong: undefined }}
+        />
+        <LazyPanel
+          name="dnaJournal"
+          isOpen={panels.dnaJournal}
+          onClose={() => closePanel("dnaJournal")}
+          component={PANEL_COMPONENTS.dnaJournal}
+        />
 
-      {/* Emotion Matrix */}
-      <LazyPanel
-        name="emotionMatrix"
-        isOpen={panels.emotionMatrix}
-        onClose={() => closePanel("emotionMatrix")}
-        component={PANEL_COMPONENTS.emotionMatrix}
-      />
+        {/* Emotion Matrix */}
+        <LazyPanel
+          name="emotionMatrix"
+          isOpen={panels.emotionMatrix}
+          onClose={() => closePanel("emotionMatrix")}
+          component={PANEL_COMPONENTS.emotionMatrix}
+        />
 
-      <LazyPanel
-        name="aiSettings"
-        isOpen={panels.aiSettings}
-        onClose={() => closePanel("aiSettings")}
-        component={PANEL_COMPONENTS.aiSettings}
-      />
-      <LazyPanel
-        name="aiAgent"
-        isOpen={panels.aiAgent}
-        onClose={() => closePanel("aiAgent")}
-        component={PANEL_COMPONENTS.aiAgent}
-      />
+        <LazyPanel
+          name="aiSettings"
+          isOpen={panels.aiSettings}
+          onClose={() => closePanel("aiSettings")}
+          component={PANEL_COMPONENTS.aiSettings}
+        />
+        <LazyPanel
+          name="aiAgent"
+          isOpen={panels.aiAgent}
+          onClose={() => closePanel("aiAgent")}
+          component={PANEL_COMPONENTS.aiAgent}
+        />
 
-      <LazyPanel
-        name="shelf3D"
-        isOpen={panels.shelf3D}
-        onClose={() => closePanel("shelf3D")}
-        component={PANEL_COMPONENTS.shelf3D}
-      />
+        <LazyPanel
+          name="shelf3D"
+          isOpen={panels.shelf3D}
+          onClose={() => closePanel("shelf3D")}
+          component={PANEL_COMPONENTS.shelf3D}
+          keepAlive={KEEPALIVE_CONFIG.shelf3D}
+        />
 
-      <LazyPanel
-        name="audioSourceManager"
-        isOpen={panels.audioSourceManager}
-        onClose={() => closePanel("audioSourceManager")}
-        component={PANEL_COMPONENTS.audioSourceManager}
-      />
-      <LazyPanel
-        name="cloudMusic"
-        isOpen={panels.cloudMusic}
-        onClose={() => closePanel("cloudMusic")}
-        component={PANEL_COMPONENTS.cloudMusic}
-      />
-      <LazyPanel
-        name="accountCenter"
-        isOpen={panels.accountCenter}
-        onClose={() => closePanel("accountCenter")}
-        component={PANEL_COMPONENTS.accountCenter}
-      />
-      <LazyPanel
-        name="dataManager"
-        isOpen={panels.dataManager}
-        onClose={() => closePanel("dataManager")}
-        component={PANEL_COMPONENTS.dataManager}
-      />
-    </>
+        <LazyPanel
+          name="audioSourceManager"
+          isOpen={panels.audioSourceManager}
+          onClose={() => closePanel("audioSourceManager")}
+          component={PANEL_COMPONENTS.audioSourceManager}
+          keepAlive={KEEPALIVE_CONFIG.audioSourceManager}
+        />
+        <LazyPanel
+          name="cloudMusic"
+          isOpen={panels.cloudMusic}
+          onClose={() => closePanel("cloudMusic")}
+          component={PANEL_COMPONENTS.cloudMusic}
+        />
+        <LazyPanel
+          name="accountCenter"
+          isOpen={panels.accountCenter}
+          onClose={() => closePanel("accountCenter")}
+          component={PANEL_COMPONENTS.accountCenter}
+        />
+        <LazyPanel
+          name="dataManager"
+          isOpen={panels.dataManager}
+          onClose={() => closePanel("dataManager")}
+          component={PANEL_COMPONENTS.dataManager}
+          keepAlive={KEEPALIVE_CONFIG.dataManager}
+        />
+      </>
+    </PanelRetentionProvider>
   );
 }
