@@ -136,17 +136,20 @@ function createListeners(audio: HTMLAudioElement): MediaEntry["listeners"] {
     if (!Number.isFinite(currentTime)) return;
 
     const now = Date.now();
-    if (now - entry.lastTimeUpdateAt < TIMEUPDATE_THROTTLE_MS) return;
-    entry.lastTimeUpdateAt = now;
+    const shouldPersist = now - entry.lastTimeUpdateAt >= TIMEUPDATE_THROTTLE_MS;
+    if (shouldPersist) {
+      entry.lastTimeUpdateAt = now;
+      useAudioStore.setState({ currentTime });
+      usePlayerStore.setState({ currentTime });
+      updateSnapshot({
+        ...runtimeOwnerPatch(),
+        currentTime,
+        duration: Number.isFinite(audio.duration) ? audio.duration : 0,
+        buffered: bufferedSeconds(audio),
+      });
+    }
 
-    useAudioStore.setState({ currentTime });
-    usePlayerStore.setState({ currentTime });
-    updateSnapshot({
-      ...runtimeOwnerPatch(),
-      currentTime,
-      duration: Number.isFinite(audio.duration) ? audio.duration : 0,
-      buffered: bufferedSeconds(audio),
-    });
+    // 原生事件频率仍驱动 AB 循环/预取；仅 store 写入被节流。
     handlers?.onTimeUpdate?.(currentTime);
   };
 

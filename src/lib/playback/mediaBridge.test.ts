@@ -67,7 +67,7 @@ describe("playbackMediaBridge (S1-6a core)", () => {
 
     expect(audioSetState).toHaveBeenCalledTimes(1);
     expect(playerSetState).toHaveBeenCalledTimes(1);
-    expect(onTimeUpdate).toHaveBeenCalledTimes(1);
+    expect(onTimeUpdate).toHaveBeenCalledTimes(10);
   });
 
   it("does not write progress when the element is not active", () => {

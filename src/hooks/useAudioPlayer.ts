@@ -17,6 +17,7 @@ import { useEmotionStore } from "@/store/emotionStore";
 import { useABLoopStore } from "@/store/abLoopStore";
 import { getAudioEffectsManager } from "@/lib/audio/AudioEffectsManager";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
+import { playbackMediaBridge } from "@/lib/playback/mediaBridge";
 import { CrossfadeMixer } from "@/lib/audio/CrossfadeMixer";
 import { deriveJournalMood } from "@/lib/journal/listeningJournal";
 import {
@@ -396,9 +397,7 @@ function syncPersistedPlaybackProgress(audio: HTMLAudioElement): void {
 const attachListeners = (
   audio: ManagedAudioElement,
   handlePlayError: (error: PlaybackErrorLike, requestId?: number) => void
-) => {
-  detachListeners(audio);
-
+): (() => void) => {
   const {
     // 这两个只在组件外层的 effect deps 里用到，attachListeners 内部并未使用，_ 前缀标记
     setCurrentTime: _setCurrentTime,
@@ -409,25 +408,10 @@ const attachListeners = (
     loopMode: _loopMode,
   } = useAudioStore.getState();
 
-  // timeupdate 在部分浏览器上可达每秒 10 次，而 audio-store / player-store 的 persist
-  // 会在**每次 setState** 时同步展开整个 state、JSON.stringify 并写 localStorage，
-  // 两个 store 叠加即每秒 20 次序列化 + 写盘 —— 这是"出声之后控件迟钝"的来源之一。
-  // 进度条按 4Hz 刷新已足够细腻；AB 循环与预取判断读的是 audio.currentTime 原值，
-  // 不受这里节流影响，暂停/结束时还会强制补写一次。
-  const TIMEUPDATE_THROTTLE_MS = 250;
-  let lastTimeUpdateWriteAt = 0;
-
+  // timeupdate 的节流与 store 写入由 playbackMediaBridge 统一负责（每个元素只写一次，
+  // 多实例不会重复写盘）；这里只处理 AB 循环与下一曲预取，仍按原生事件频率执行。
   const onTimeUpdate = () => {
     if (!getCurrentAudioOwner(audio)) return;
-    const t = audio.currentTime;
-    if (Number.isFinite(t)) {
-      const now = Date.now();
-      if (now - lastTimeUpdateWriteAt >= TIMEUPDATE_THROTTLE_MS) {
-        lastTimeUpdateWriteAt = now;
-        useAudioStore.setState({ currentTime: t });
-        usePlayerStore.setState({ currentTime: t });
-      }
-    }
 
     const abState = useABLoopStore.getState();
     if (abState.isEnabled && abState.pointA !== null && abState.pointB !== null) {
@@ -805,8 +789,8 @@ const attachListeners = (
       nextSong();
     }
   };
-  const onError = async (event: Event) => {
-    const audioEl = event.target as HTMLAudioElement;
+  const onError = async (event?: Event) => {
+    const audioEl = (event?.target as HTMLAudioElement | null) ?? audio;
     const owner = getCurrentAudioOwner(audioEl);
     if (!owner) return;
     const requestId = owner.requestId;
@@ -938,46 +922,31 @@ const attachListeners = (
     }
   };
 
-  audio.addEventListener("timeupdate", onTimeUpdate);
-  audio.addEventListener("loadedmetadata", onLoadedMetadata);
-  audio.addEventListener("durationchange", onDurationChange);
-  audio.addEventListener("loadstart", onLoadStart);
-  audio.addEventListener("canplay", onCanPlay);
-  audio.addEventListener("waiting", onWaiting);
-  audio.addEventListener("playing", onPlaying);
-  audio.addEventListener("play", onPlay);
-  audio.addEventListener("pause", onPause);
-  audio.addEventListener("ended", onEnded);
-  audio.addEventListener("error", onError);
-  audio.addEventListener("ratechange", onRateChange);
+  const release = playbackMediaBridge.attach(audio, {
+    onTimeUpdate: () => onTimeUpdate(),
+    onLoadedMetadata: () => onLoadedMetadata(),
+    onDurationChange: () => onDurationChange(),
+    onLoadStart: () => onLoadStart(),
+    onCanPlay: () => onCanPlay(),
+    onWaiting: () => onWaiting(),
+    onPlaying: () => onPlaying(),
+    onPlay: () => onPlay(),
+    onPause: () => onPause(),
+    onEnded: () => onEnded(),
+    onError: () => onError(),
+    onRateChange: () => onRateChange(),
+    isActive: () => Boolean(getCurrentAudioOwner(audio)),
+    onRelease: () => {
+      if (waitingTimeoutRef.current) {
+        clearTimeout(waitingTimeoutRef.current);
+        waitingTimeoutRef.current = null;
+      }
+    },
+  });
 
   audio._vibeListenersAttached = true;
-  audio._vibeCleanup = () => {
-    if (waitingTimeoutRef.current) {
-      clearTimeout(waitingTimeoutRef.current);
-      waitingTimeoutRef.current = null;
-    }
-    audio.removeEventListener("timeupdate", onTimeUpdate);
-    audio.removeEventListener("loadedmetadata", onLoadedMetadata);
-    audio.removeEventListener("durationchange", onDurationChange);
-    audio.removeEventListener("loadstart", onLoadStart);
-    audio.removeEventListener("canplay", onCanPlay);
-    audio.removeEventListener("waiting", onWaiting);
-    audio.removeEventListener("playing", onPlaying);
-    audio.removeEventListener("play", onPlay);
-    audio.removeEventListener("pause", onPause);
-    audio.removeEventListener("ended", onEnded);
-    audio.removeEventListener("error", onError);
-    audio.removeEventListener("ratechange", onRateChange);
-    audio._vibeListenersAttached = false;
-    audio._vibeCleanup = undefined;
-  };
-};
-
-const detachListeners = (audio: ManagedAudioElement) => {
-  if (typeof audio._vibeCleanup === "function") {
-    audio._vibeCleanup();
-  }
+  audio._vibeCleanup = release;
+  return release;
 };
 
 let isAudioGraphInitialized = false;
@@ -1249,10 +1218,10 @@ export const useAudioPlayer = () => {
     const audio = audioElementRef.current;
     if (!audio) return;
 
-    attachListeners(audio, handlePlayError);
-    if (secondaryElementRef.current) {
-      attachListeners(secondaryElementRef.current, handlePlayError);
-    }
+    const releasePrimary = attachListeners(audio, handlePlayError);
+    const releaseSecondary = secondaryElementRef.current
+      ? attachListeners(secondaryElementRef.current, handlePlayError)
+      : null;
 
     // Sync current values if already loaded
     if (audio.duration && !isNaN(audio.duration) && Number.isFinite(audio.duration)) {
@@ -1280,10 +1249,8 @@ export const useAudioPlayer = () => {
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisiblePlaybackResync);
-      detachListeners(audio);
-      if (secondaryElementRef.current) {
-        detachListeners(secondaryElementRef.current);
-      }
+      releasePrimary();
+      releaseSecondary?.();
     };
   }, [audioElement, handlePlayError, setDuration, setCurrentTime]);
 
