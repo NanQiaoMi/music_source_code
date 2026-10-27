@@ -3,14 +3,14 @@
 > 上级：[总计划](../2026-10-21-architecture-performance-optimization.md) · [执行计划包 README](./README.md)
 > 状态口径：pending（未开始）/ in_progress（实现中）/ review（待复核）/ done（已合并且验收通过）/ blocked（阻塞，需写原因）
 > 规则：每完成一个子 PR 勾选对应任务下的子项；任务 done 必须附证据（命令/退出码/指标/截图）；阶段出口全部满足才能把阶段标记 done。
-> 更新时间：2026-10-27（S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3 done）
+> 更新时间：2026-10-27（S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3 done；S1-6a done）
 
 ## 汇总
 
 | 阶段 | 任务数 | done | 子 PR（执行计划） | 阶段出口（摘要） | 状态 |
 |---|---:|---:|---:|---|---|
 | S0 止血与基线 | 7 | 4 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-3/S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策） |
-| S1 数据与播放正确性 | 10 | 3 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3 done；S1-4..S1-10 待） |
+| S1 数据与播放正确性 | 10 | 3 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3 done；S1-6a done，S1-6b 待；S1-4/S1-5/S1-8..S1-10 待） |
 | S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
 | S3 外壳与订阅治理 | 10 | 0 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | pending |
 | S4 包体与加载 | 7 | 0 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | pending |
@@ -47,7 +47,7 @@
 - [x] S1-3 启动压缩与配额策略修复 — **done（2026-10-22）**：safeStorage 不再截断 200/30，只在缩减 ≥2% 时写回；新增 quotaPolicy（逐级降级、绝不先删旧值）+ degradedNotifier（事件+节流 toast）；queue/recommendation/stats 三处写盘统一策略；queue 永不写空队列。测试：quotaPolicy 5 + safeStorage 5 + queue/recommendation/stats 40，全部通过；tsc/eslint 0
 - [ ] S1-4 VibeMusicDB 统一 open/version v3 — owner: — | PR: 1 | 依赖: S0-6 | 验收: v1→v3 迁移测试；local:// 可播
 - [ ] S1-5 队列唯一权威 + QueueNavigator — owner: — | PR: 1-2 | 依赖: S1-3 | 验收: 删/排/清后 next/ended 一致
-- [ ] S1-6 PlaybackMediaBridge 单例 — owner: — | PR: 1 | 依赖: S0-6 | 验收: 多实例卸载后事件仍分发
+- [ ] S1-6 PlaybackMediaBridge 单例 — **S1-6a done（2026-10-27）**：`src/lib/playback/mediaBridge.ts` 新增 12 事件单订阅层 + 引用计数 handler 栈（同元素多次 attach 只注册一次原生监听；卸载非活动实例不剥离；全部释放才移除；timeupdate 250ms 节流并单点写 audio/player store；snapshot/subscribe/attachCount）。`mediaBridge.test.ts` 7 用例通过（幂等 attach / 释放一个保留监听 / 释放最后移除 12 / 节流单写 / 非活动不写 / 订阅通知 / ended 快照），tsc/eslint 0。分支 `feature/arch-perf-s1-6a`（隔离 worktree，未合并）。**S1-6b 待做**：useAudioPlayer 接入 bridge（attach/release、去掉实例级 attach/detach、多实例 hook 测试）。
 - [ ] S1-7 AudioContextWatchdog 懒 attach/detach — owner: — | PR: 1 | 依赖: S1-6 | 验收: start 先于 context 也能挂载
 - [ ] S1-8 PlaybackRequestCoordinator + AbortSignal — owner: — | PR: 1-2 | 依赖: S1-6 | 验收: 连点 5 首仅 1 in-flight
 - [ ] S1-9 首声并行化 — owner: — | PR: 1 | 依赖: S1-8 | 验收: 命中 P50<300ms/P95<800ms
