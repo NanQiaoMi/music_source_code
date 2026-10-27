@@ -3,14 +3,14 @@
 > 上级：[总计划](../2026-10-21-architecture-performance-optimization.md) · [执行计划包 README](./README.md)
 > 状态口径：pending（未开始）/ in_progress（实现中）/ review（待复核）/ done（已合并且验收通过）/ blocked（阻塞，需写原因）
 > 规则：每完成一个子 PR 勾选对应任务下的子项；任务 done 必须附证据（命令/退出码/指标/截图）；阶段出口全部满足才能把阶段标记 done。
-> 更新时间：2026-10-27（S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3/S1-6 done；S1-7 独立分支待合并）
+> 更新时间：2026-10-27（S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3/S1-6 done；S1-7 独立分支待合并；S1-8a done）
 
 ## 汇总
 
 | 阶段 | 任务数 | done | 子 PR（执行计划） | 阶段出口（摘要） | 状态 |
 |---|---:|---:|---:|---|---|
 | S0 止血与基线 | 7 | 4 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-3/S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策） |
-| S1 数据与播放正确性 | 10 | 4 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3/S1-6 done；S1-7 独立分支；S1-4/S1-5/S1-8..S1-10 待） |
+| S1 数据与播放正确性 | 10 | 4 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3/S1-6 done；S1-7 独立分支；S1-8a done，S1-8b 待；S1-4/S1-5/S1-9/S1-10 待） |
 | S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
 | S3 外壳与订阅治理 | 10 | 0 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | pending |
 | S4 包体与加载 | 7 | 0 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | pending |
@@ -49,7 +49,7 @@
 - [ ] S1-5 队列唯一权威 + QueueNavigator — owner: — | PR: 1-2 | 依赖: S1-3 | 验收: 删/排/清后 next/ended 一致
 - [x] S1-6 PlaybackMediaBridge 单例 — **done（2026-10-27，6a+6b）**：`src/lib/playback/mediaBridge.ts` 12 事件单订阅 + 引用计数 handler 栈（同元素只注册一次原生监听；释放非活动实例不剥离；全部释放才移除；timeupdate 250ms 节流且单点写 audio/player store；snapshot/subscribe/attachCount）。hook 接入：`useAudioPlayer` 的 `attachListeners` 改走 bridge 并返回 release，effect cleanup 按实例 release、移除实例级 detach/`_vibeCleanup` 依赖；onTimeUpdate 只保留 AB 循环/预取，store 写入交给 bridge。测试：bridge 7 + hook 14 通过；hooks/audio/playback 128 passed；全量 203 files/1274 tests passed；tsc 0、eslint 0。分支 `feature/arch-perf-s1-6a`+`feature/arch-perf-s1-6b`（隔离 worktree，未合并）。
 - [ ] S1-7 AudioContextWatchdog 懒 attach/detach — owner: — | PR: 1 | 依赖: S1-6 | 验收: start 先于 context 也能挂载
-- [ ] S1-8 PlaybackRequestCoordinator + AbortSignal — owner: — | PR: 1-2 | 依赖: S1-6 | 验收: 连点 5 首仅 1 in-flight
+- [ ] S1-8 PlaybackRequestCoordinator + AbortSignal — **S1-8a done（2026-10-27）**：`src/lib/playback/requestCoordinator.ts` 新增 token 协调器（begin 自动 abort 上一请求、complete 只清当前、abortAll、isCurrent、signalOf、inFlight）+ `throwIfAborted` + `combineSignals` polyfill；6 用例通过（abort 旧请求/仅 1 in-flight/陈旧 token/complete 语义/abortAll/父 signal 透传），tsc/eslint 0。**S1-8b 待做**：MultiSourceResolver/audioSource/useNetworkAudioCache/prefetch 的 signal 贯穿 + useAudioPlayer 接线 + 连点 5 首集成测试。分支 `feature/arch-perf-s1-8a`（未合并）。
 - [ ] S1-9 首声并行化 — owner: — | PR: 1 | 依赖: S1-8 | 验收: 命中 P50<300ms/P95<800ms
 - [ ] S1-10 正确性集成测试矩阵 — owner: — | PR: 1 | 依赖: S1-2..S1-9 | 验收: 场景全部自动化
 
