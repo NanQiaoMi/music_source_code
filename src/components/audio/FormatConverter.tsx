@@ -6,6 +6,7 @@ import { resolveAudioSourceBlob } from "@/lib/audio/audioSource";
 import { runFormatConversionWorkerTask } from "@/lib/audio/formatConversionWorker";
 import { useFormatConversionStore, ConversionTask } from "@/store/formatConversionStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Disc3,
@@ -25,7 +26,7 @@ interface FormatConverterProps {
 }
 
 const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) => {
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const {
     tasks,
     settings,

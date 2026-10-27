@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOfflineCache } from "@/hooks/useOfflineCache";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import {
   X,
   Download,
@@ -35,7 +36,7 @@ export const OfflineCachePanel: React.FC<OfflineCachePanelProps> = ({ isOpen, on
     cacheAllSongs,
   } = useOfflineCache();
 
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const [activeTab, setActiveTab] = useState<"all" | "cached">("all");
 
   const stats = useMemo(() => getCacheStats(), [getCacheStats]);

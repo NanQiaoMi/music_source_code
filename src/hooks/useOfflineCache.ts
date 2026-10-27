@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { Song } from "@/types/song";
 import {
   saveMusicFile,
@@ -26,7 +27,7 @@ export interface OfflineCacheStats {
 }
 
 export const useOfflineCache = () => {
-  const { songs, updateSong: _updateSong } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const [cacheStatus, setCacheStatus] = useState<Record<string, CacheStatus>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isCaching, setIsCaching] = useState<string | null>(null);

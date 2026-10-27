@@ -6,6 +6,7 @@ import { renderCrossfadePreview } from "@/lib/audio/crossfadeRenderer";
 import { canRenderCrossfadePreview, detect } from "@/lib/audio/processingCapabilities";
 import { useCrossfadeStore } from "@/store/crossfadeStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Waves,
@@ -41,7 +42,7 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
     findCompatiblePairs,
   } = useCrossfadeStore();
 
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const [activeTab, setActiveTab] = useState<"analyze" | "queue" | "settings">("analyze");
   const [selectedSongs, setSelectedSongs] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(false);

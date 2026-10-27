@@ -60,7 +60,7 @@ vi.mock("framer-motion", () => ({
 }));
 
 vi.mock("@/store/playlistStore", () => ({
-  usePlaylistStore: () => ({ songs }),
+  usePlaylistStore: (selector: (state: { songs: typeof songs }) => unknown) => selector({ songs }),
 }));
 
 vi.mock("@/store/statsAchievementsStore", () => ({

@@ -9,6 +9,7 @@ import {
   getDSDRateFromFormat,
 } from "@/store/dsdProcessingStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { resolveDSDSourceBlob } from "@/lib/audio/dsdSource";
 import type { Song } from "@/types/song";
@@ -35,7 +36,7 @@ type DSDWorkerPayload = {
 };
 
 const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const {
     isEnabled: _isEnabled,
     settings,

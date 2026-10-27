@@ -24,6 +24,7 @@ import {
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistGroupStore, type PlaylistGroup } from "@/store/playlistGroupStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { CloudMusicPanel } from "@/components/library/CloudMusicPanel";
 import { Heart } from "lucide-react";
 
@@ -46,7 +47,7 @@ type TabId = (typeof TAB_ITEMS)[number]["id"];
 export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<TabId>("playlists");
   const [statusMessage, setStatusMessage] = useState("已保存的智能混音播放列表将显示在此。");
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const playQueue = useAudioStore((state) => state.playQueue);
   const { groups, deleteGroup } = usePlaylistGroupStore();
 

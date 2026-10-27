@@ -71,12 +71,12 @@ vi.mock("@/store/queueStore", () => ({
   }),
 }));
 
-vi.mock("@/store/playlistStore", () => ({
-  usePlaylistStore: () => ({
-    addSong: vi.fn(),
-    importSongs: vi.fn(),
-  }),
-}));
+vi.mock("@/store/playlistStore", () => {
+  const state = { addSong: vi.fn(), importSongs: vi.fn() };
+  return {
+    usePlaylistStore: (selector: (input: typeof state) => unknown) => selector(state),
+  };
+});
 
 vi.mock("@/store/useOfflineDownloadStore", () => ({
   useOfflineDownloadStore: () => ({

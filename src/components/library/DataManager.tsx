@@ -3,6 +3,18 @@
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePlaylistStore } from "@/store/playlistStore";
+import {
+  selectAddSong,
+  selectClearFilters,
+  selectExportSongs,
+  selectFilteredSongs,
+  selectImportSongs,
+  selectRemoveSong,
+  selectSearchQuery,
+  selectSearchSongs,
+  selectSongs,
+  selectUpdateSong,
+} from "@/store/selectors/playlistSelectors";
 import { Song } from "@/types/song";
 import { SongEditForm } from "./SongEditForm";
 import {
@@ -22,18 +34,16 @@ import { DIRECTORY_INPUT_PROPS } from "./directoryInputProps";
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 export const DataManager: React.FC = () => {
-  const {
-    songs,
-    filteredSongs,
-    searchQuery,
-    addSong,
-    updateSong,
-    removeSong,
-    searchSongs,
-    clearFilters,
-    importSongs,
-    exportSongs,
-  } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
+  const filteredSongs = usePlaylistStore(selectFilteredSongs);
+  const searchQuery = usePlaylistStore(selectSearchQuery);
+  const addSong = usePlaylistStore(selectAddSong);
+  const updateSong = usePlaylistStore(selectUpdateSong);
+  const removeSong = usePlaylistStore(selectRemoveSong);
+  const searchSongs = usePlaylistStore(selectSearchSongs);
+  const clearFilters = usePlaylistStore(selectClearFilters);
+  const importSongs = usePlaylistStore(selectImportSongs);
+  const exportSongs = usePlaylistStore(selectExportSongs);
 
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [showForm, setShowForm] = useState(false);

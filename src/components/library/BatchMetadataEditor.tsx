@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Edit2, Eye, Plus, Save, Trash2 } from "lucide-react";
 import { BatchEditOperation, useMetadataEditorStore } from "@/store/metadataEditorStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 
 type EditType = BatchEditOperation["type"];
 
@@ -29,7 +30,7 @@ const EDIT_TYPES: { value: EditType; label: string }[] = [
 ];
 
 export const BatchMetadataEditor: React.FC<BatchMetadataEditorProps> = ({ className = "" }) => {
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const {
     operations,
     previewChanges,

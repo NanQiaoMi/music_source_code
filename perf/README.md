@@ -9,7 +9,7 @@
 | 文件 | 说明 |
 |---|---|
 | scripts/perf/bundle-budget.mjs | 包体预算：rootMainFiles / 首页 script / CSS / async chunk / public 体积；支持 --check 与 --json |
-| scripts/perf/report-store-stats.mjs | Store 架构统计：store 数、persist key、整店订阅、store 依赖边/SCC、getState 分层；支持 --check 与 --json |
+| scripts/perf/report-store-stats.mjs | Store 架构统计：store 数、persist key、整店订阅、store 依赖边/SCC、getState 分层；支持 --check、--json 与 --store |
 | scripts/check-docs-facts.mjs | 文档事实校验：store 数、过期字样、CI 触发分支、端口一致性（warn）、INDEX 链接、执行计划包完整性 |
 | perf/budget.json | 包体阈值（baseline / target / hardMax） |
 | perf/bundle-baseline.json | 2026-10-21 包体基线快照 |
@@ -26,6 +26,7 @@
     node scripts/perf/report-store-stats.mjs
     node scripts/perf/report-store-stats.mjs --json perf/store-stats-baseline.json
     node scripts/perf/report-store-stats.mjs --check   # 不得比基线更差
+    node scripts/perf/report-store-stats.mjs --store usePlaylistStore  # 单 store 整店订阅数
 
     # 文档事实
     node scripts/check-docs-facts.mjs

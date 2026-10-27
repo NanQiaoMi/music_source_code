@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { useStorageAnalyticsStore, formatStorageBytes } from "@/store/useStorageAnalyticsStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useUserAccountStore } from "@/store/userAccountStore";
 import { SettingSection, SettingRow, StatusDot, type StatusKind } from "@/components/ui/settings";
@@ -29,7 +30,7 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
   onNavigateTab,
   onFilterQuality,
 }) => {
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const {
     storageDetails,
     usagePercent,

@@ -17,6 +17,7 @@ import {
 import { useAudioStore } from "@/store/audioStore";
 import { useEmotionStore } from "@/store/emotionStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { useQueueStore } from "@/store/queueStore";
 import {
   useSmartPlaylistStore,
@@ -82,7 +83,7 @@ function playSongs(songs: Song[]) {
 
 export const SmartPlaylistPanel: React.FC<SmartPlaylistPanelProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<TabId>("system");
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const emotionMap = useEmotionStore((state) => state.emotionMap);
   const {
     customPlaylists,

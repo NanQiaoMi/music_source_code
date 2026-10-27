@@ -117,7 +117,7 @@ vi.mock("framer-motion", async () => {
 });
 
 vi.mock("@/store/playlistStore", () => ({
-  usePlaylistStore: () => ({ songs: [] }),
+  usePlaylistStore: (selector: (state: { songs: never[] }) => unknown) => selector({ songs: [] }),
 }));
 
 vi.mock("@/store/audioStore", () => ({

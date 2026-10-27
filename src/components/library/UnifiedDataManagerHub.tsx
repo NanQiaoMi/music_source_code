@@ -5,6 +5,7 @@ import { useUIStore } from "@/store/uiStore";
 import { useStorageAnalyticsStore, formatStorageBytes } from "@/store/useStorageAnalyticsStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { useUserAccountStore } from "@/store/userAccountStore";
 import {
   LayoutDashboard,
@@ -51,7 +52,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
     totalSpeedFormatted,
     offlineRecords: _offlineRecords,
   } = useOfflineDownloadStore();
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const { activeHubTab, setActiveHubTab } = useDataManagerStore();
 
   const isAnyLoggedIn = useUserAccountStore((state) =>

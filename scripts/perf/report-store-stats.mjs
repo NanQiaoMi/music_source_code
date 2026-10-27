@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Store architecture stats: store count, persist keys, whole-store subscriptions, store graph, getState by layer.
-// Usage: node scripts/perf/report-store-stats.mjs [--check] [--json <path>]
+// Usage: node scripts/perf/report-store-stats.mjs [--check] [--json <path>] [--store <useXStore>]
 import fs from "node:fs";
 import path from "node:path";
 
@@ -12,6 +12,8 @@ const args = process.argv.slice(2);
 const check = args.includes("--check");
 const jsonIdx = args.indexOf("--json");
 const jsonOut = jsonIdx >= 0 ? args[jsonIdx + 1] : null;
+const storeIdx = args.indexOf("--store");
+const storeFilter = storeIdx >= 0 ? args[storeIdx + 1] : null;
 
 function walk(dir, out) {
   if (!fs.existsSync(dir)) return out;
@@ -124,6 +126,7 @@ let whole = 0;
 let selector = 0;
 let wholeOnlyFiles = 0;
 const wholeByFile = {};
+const wholeByStore = {};
 for (const p of files) {
   const text = fs.readFileSync(p, "utf8");
   const wholeRe = /use([A-Z][A-Za-z0-9_]*)Store\(\s*\)/g;
@@ -131,7 +134,11 @@ for (const p of files) {
   let wholeCount = 0;
   let anyCount = 0;
   let m;
-  while ((m = wholeRe.exec(text))) wholeCount += 1;
+  while ((m = wholeRe.exec(text))) {
+    wholeCount += 1;
+    const storeName = `use${m[1]}Store`;
+    wholeByStore[storeName] = (wholeByStore[storeName] || 0) + 1;
+  }
   while ((m = anyRe.exec(text))) anyCount += 1;
   if (wholeCount > 0) {
     whole += wholeCount;
@@ -165,6 +172,7 @@ const result = {
     selectorCalls: selector,
     wholeOnlyFiles,
     wholeRatioPct: Math.round((whole / Math.max(1, whole + selector)) * 1000) / 10,
+    wholeByStore: Object.fromEntries(Object.entries(wholeByStore).sort((a, b) => b[1] - a[1])),
     topWholeFiles: Object.entries(wholeByFile)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 15),
@@ -184,6 +192,9 @@ console.log("subscriptions " + result.subscriptions.totalCalls + " calls: whole 
 console.log("store graph   " + result.storeGraph.edges + " edges, SCC " + result.storeGraph.sccCount);
 console.log("getState      " + JSON.stringify(getStateByLayer));
 console.log("top whole     " + result.subscriptions.topWholeFiles.slice(0, 5).map((x) => x[0] + ":" + x[1]).join(", "));
+if (storeFilter) {
+  console.log("store whole   " + storeFilter + ": " + (wholeByStore[storeFilter] || 0));
+}
 
 if (jsonOut) {
   fs.writeFileSync(jsonOut, JSON.stringify(result, null, 2) + "\n");

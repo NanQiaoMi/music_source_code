@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Edit3, FileText, Image, Upload, X } from "lucide-react";
 import { CoverData, LyricData, useLyricsCoverStore } from "@/store/lyricsCoverStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import type { Song } from "@/types/song";
 
 interface LyricsCoverEditorProps {
@@ -22,7 +23,7 @@ type TabId = (typeof TAB_ITEMS)[number]["id"];
 export const LyricsCoverEditor: React.FC<LyricsCoverEditorProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<TabId>("lyrics");
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
 
   const {
     lyrics,

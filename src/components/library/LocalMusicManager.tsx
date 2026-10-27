@@ -3,6 +3,11 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePlaylistStore } from "@/store/playlistStore";
+import {
+  selectAddSong,
+  selectImportSongs,
+  selectRemoveSong,
+} from "@/store/selectors/playlistSelectors";
 import { Song } from "@/types/song";
 import { generateSongId } from "@/utils/songValidation";
 import {
@@ -29,7 +34,9 @@ interface ProcessingFile {
 }
 
 export const LocalMusicManager: React.FC = () => {
-  const { addSong, removeSong, importSongs } = usePlaylistStore();
+  const addSong = usePlaylistStore(selectAddSong);
+  const removeSong = usePlaylistStore(selectRemoveSong);
+  const importSongs = usePlaylistStore(selectImportSongs);
   const [localSongs, setLocalSongs] = useState<Song[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingFiles, setProcessingFiles] = useState<ProcessingFile[]>([]);

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useUserAccountStore } from "@/store/userAccountStore";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useAudioStore } from "@/store/audioStore";
 import {
@@ -30,7 +31,7 @@ export const CloudAssetsTab: React.FC = () => {
     fetchAllPlaylistTracks,
   } = useUserAccountStore();
   const { openManagementModal } = useSourceConfigStore();
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const { addBatchDownloads, addDownload, isSongOffline } = useOfflineDownloadStore();
   const { playSong, playQueue } = useAudioStore();
 

@@ -2,11 +2,12 @@
 
 import { useCallback } from "react";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { useQueueStore, HistorySong } from "@/store/queueStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 
 export const useMusicLibrarySync = () => {
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const { history, clearHistory } = useQueueStore();
   const { listeningStats, resetStats } = useStatsAchievementsStore();
 

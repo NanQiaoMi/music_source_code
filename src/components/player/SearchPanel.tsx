@@ -19,6 +19,7 @@ import {
 import { useSearchStore, SearchType, FilterType, SourceTabType } from "@/store/searchStore";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
@@ -150,7 +151,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   } = useSearchStore();
 
   const { sources: sourceMatrix, toggleSource, openManagementModal } = useSourceConfigStore();
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const addToQueue = useQueueStore((state) => state.addToQueue);
   const insertNext = useQueueStore((state) => state.insertNext);
   const clearQueue = useQueueStore((state) => state.clearQueue);

@@ -34,7 +34,8 @@ vi.mock("framer-motion", () => ({
 }));
 
 vi.mock("@/store/playlistStore", () => ({
-  usePlaylistStore: () => ({ songs: playlistState.songs }),
+  usePlaylistStore: (selector: (state: { songs: typeof playlistState.songs }) => unknown) =>
+    selector({ songs: playlistState.songs }),
 }));
 
 vi.mock("@/store/libraryHealthStore", async (importOriginal) => {

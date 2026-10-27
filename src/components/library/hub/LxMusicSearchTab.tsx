@@ -28,6 +28,7 @@ import type { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectAddSong, selectImportSongs } from "@/store/selectors/playlistSelectors";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useUserAccountStore, PlatformType } from "@/store/userAccountStore";
 import { multiSourceResolver } from "@/services/MultiSourceResolver";
@@ -191,8 +192,10 @@ export const LxMusicSearchTab: React.FC = () => {
   const { playSong: _playSong, playQueue } = useAudioStore();
   const { addToQueue, insertNext } = useQueueStore();
   const { addBatchDownloads, isSongOffline } = useOfflineDownloadStore();
-  // 未接线的歌单写入口，_ 前缀标记保留（AGENTS.md：优先标记而非删除）
-  const { addSong: _addSong, importSongs: _importSongs } = usePlaylistStore();
+  // 未接线的歌单写入口，_ 前缀标记保留（AGENTS.md：优先标记而非删除）；
+  // 改用动作 selector，动作引用稳定，不再整店订阅。
+  const _addSong = usePlaylistStore(selectAddSong);
+  const _importSongs = usePlaylistStore(selectImportSongs);
   const { lxScripts, openManagementModal, resolutionMode, setResolutionMode } =
     useSourceConfigStore();
 

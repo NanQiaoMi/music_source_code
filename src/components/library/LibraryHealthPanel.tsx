@@ -24,6 +24,7 @@ import {
 } from "@/store/libraryHealthStore";
 import { HealthIssueType } from "@/types/song";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { purgeInvalidSongs, evaluateSongIntegrity, PurgeReport } from "@/services/songPurgeService";
 import {
   getLibraryHealthNextAction,
@@ -73,7 +74,7 @@ function getSeverityClass(severity: string) {
 }
 
 export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, onClose }) => {
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const [activeTab, setActiveTab] = useState<"scan" | "results" | "settings">("scan");
   const [localScanning, setLocalScanning] = useState(false);
   const [isPurging, setIsPurging] = useState(false);

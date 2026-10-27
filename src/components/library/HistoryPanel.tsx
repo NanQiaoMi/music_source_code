@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useQueueStore, type HistorySong } from "@/store/queueStore";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { useUIStore } from "@/store/uiStore";
 import { formatTime } from "@/utils/formatTime";
 import { GlassDrawer } from "@/components/shared/Glass";
@@ -22,7 +23,7 @@ interface HistoryPanelProps {
 
 export const HistoryPanel: React.FC<HistoryPanelProps> = ({ isOpen, onClose }) => {
   const { history, clearHistory, addToQueue } = useQueueStore();
-  const { songs: librarySongs } = usePlaylistStore();
+  const librarySongs = usePlaylistStore(selectSongs);
   const playSong = useAudioStore((state) => state.playSong);
   const playQueue = useAudioStore((state) => state.playQueue);
   const showToast = useUIStore((state) => state.showToast);

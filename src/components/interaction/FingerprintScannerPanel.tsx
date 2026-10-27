@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Fingerprint, Trash2, Music, AlertCircle } from "lucide-react";
 import { useFingerprintStore } from "@/store/fingerprintStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 
 interface FingerprintScannerPanelProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ export const FingerprintScannerPanel: React.FC<FingerprintScannerPanelProps> = (
     clearFingerprints,
   } = useFingerprintStore();
 
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const [activeTab, setActiveTab] = useState<"scan" | "matches" | "settings">("scan");
 
   const startScan = useCallback(() => {

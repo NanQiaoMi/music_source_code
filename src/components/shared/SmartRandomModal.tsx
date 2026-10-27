@@ -8,6 +8,7 @@ import { GlassButton } from "@/components/shared/GlassButton";
 import { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { useListeningHistory } from "@/hooks/useListeningHistory";
 import {
   generateRecommendations,
@@ -32,7 +33,7 @@ export const SmartRandomModal: React.FC<SmartRandomModalProps> = ({
   onClose,
   currentSong,
 }) => {
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const playQueue = useAudioStore((state) => state.playQueue);
   const { getPlayCount, getLastPlayedAt } = useListeningHistory();
   const { unlockAchievement } = useStatsAchievementsStore();

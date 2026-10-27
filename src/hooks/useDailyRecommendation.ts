@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Song } from "@/types/song";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { useQueueStore } from "@/store/queueStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
@@ -27,7 +28,7 @@ export interface DailyRecommendation {
 const RECOMMENDATION_KEY = "daily_recommendation";
 
 export const useDailyRecommendation = () => {
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const { history } = useQueueStore();
   const { listeningStats } = useStatsAchievementsStore();
   const [recommendationSongIds, setRecommendationSongIds] = useState<string[]>([]);

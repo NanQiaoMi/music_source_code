@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { useAudioStore } from "@/store/audioStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { Playlist, Song } from "@/types/song";
@@ -20,7 +21,7 @@ import {
 const STORAGE_KEY = "vibe_custom_playlists_v1";
 
 export const PlaylistHubTab: React.FC = () => {
-  const { songs: librarySongs } = usePlaylistStore();
+  const librarySongs = usePlaylistStore(selectSongs);
   const { playSong } = useAudioStore();
   const { addBatchDownloads, isSongOffline, offlineRecords, loadOfflineRecords } =
     useOfflineDownloadStore();

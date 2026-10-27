@@ -4,6 +4,7 @@ import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, Shuffle, X, Zap } from "lucide-react";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
 import { useListeningHistory } from "@/hooks/useListeningHistory";
@@ -22,7 +23,7 @@ interface WeightedSong {
 const QUICK_OPTIONS = [5, 10, 20];
 
 export const InstantMix: React.FC<InstantMixProps> = ({ isOpen, onClose }) => {
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const playQueue = useAudioStore((state) => state.playQueue);
   const { getPlayCount, getLastPlayedAt } = useListeningHistory();
   const [customCount, setCustomCount] = useState<string>("");

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useEmotionStore } from "@/store/emotionStore";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { Music2 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { EmotionPoint } from "@/types/emotion";
@@ -75,7 +76,7 @@ const EmotionVisualizer: React.FC = () => {
   const [canvasMetrics, setCanvasMetrics] = useState({ width: 0, height: 0, clientWidth: 0 });
 
   const { playSong: audioPlaySong, currentSong: audioCurrentSong } = useAudioStore();
-  const { songs } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
   const { points, selectedIds, searchResults: _searchResults } = useEmotionStore();
 
   const getPixelPos = (p: { x: number; y: number }, w: number, h: number) => {

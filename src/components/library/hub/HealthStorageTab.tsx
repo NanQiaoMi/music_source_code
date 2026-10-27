@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useStorageAnalyticsStore, formatStorageBytes } from "@/store/useStorageAnalyticsStore";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { selectRemoveSong, selectSongs } from "@/store/selectors/playlistSelectors";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import {
   ShieldAlert,
@@ -19,7 +20,8 @@ import {
 import { Song } from "@/types/song";
 
 export const HealthStorageTab: React.FC = () => {
-  const { songs, removeSong } = usePlaylistStore();
+  const songs = usePlaylistStore(selectSongs);
+  const removeSong = usePlaylistStore(selectRemoveSong);
   const { storageDetails, usagePercent, refreshAnalytics } = useStorageAnalyticsStore();
   const { clearAllOffline } = useOfflineDownloadStore();
 
