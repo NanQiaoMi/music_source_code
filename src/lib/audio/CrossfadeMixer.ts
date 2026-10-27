@@ -1,5 +1,10 @@
 import { AudioEngine } from "./AudioEngine";
 import { useEmotionStore } from "@/store/emotionStore";
+import {
+  recordNodesCreated,
+  recordNodesReleased,
+  recordPendingCrossfadeTimers,
+} from "./audioGraphStats";
 
 /**
  * CrossfadeMixer handles smooth transitions between songs.
@@ -12,6 +17,8 @@ export class CrossfadeMixer {
   private elementGenerations = new WeakMap<HTMLAudioElement, number>();
   private nextElementGeneration = 1;
   private currentAnimationId: number | null = null;
+  // S2-3: 每次 crossfade 的收尾定时器都必须可取消，避免快速切歌堆积。
+  private pendingCleanupTimers: Set<ReturnType<typeof setTimeout>> = new Set();
 
   private constructor() {
     this.context = AudioEngine.getInstance().getContext();
@@ -28,11 +35,12 @@ export class CrossfadeMixer {
    * Prepares a gain node for an audio element and connects it to the main graph.
    */
   public prepareElement(audio: HTMLAudioElement): GainNode | null {
-    if (!this.context) return null;
+    const context = this.getContext();
+    if (!context) return null;
 
     let gainNode = this.gainNodes.get(audio);
     if (!gainNode) {
-      gainNode = this.context.createGain();
+      gainNode = context.createGain();
       gainNode.gain.value = 1;
 
       const source = AudioEngine.getInstance().createMediaSource(audio);
@@ -49,8 +57,63 @@ export class CrossfadeMixer {
         }
       }
       this.gainNodes.set(audio, gainNode);
+      recordNodesCreated("crossfade-gain");
     }
     return gainNode;
+  }
+
+  /** S2-3: deck 被永久丢弃时释放它的增益节点（播放路径只复用，不释放）。 */
+  public releaseElement(audio: HTMLAudioElement): void {
+    this.cancelPendingTimers();
+    const gainNode = this.gainNodes.get(audio);
+    if (!gainNode) return;
+
+    try {
+      gainNode.disconnect();
+    } catch {
+      // 已断开时忽略。
+    }
+    this.gainNodes.delete(audio);
+    recordNodesReleased("crossfade-gain");
+  }
+
+  /** S2-3: 生命周期探针——每个 deck 至多一个增益节点。 */
+  public getNodeCount(): number {
+    return this.gainNodes.size;
+  }
+
+  public getPendingTimerCount(): number {
+    return this.pendingCleanupTimers.size;
+  }
+
+  private getContext(): AudioContext | null {
+    if (!this.context || this.context.state === "closed") {
+      this.context = AudioEngine.getInstance().getContext();
+    }
+    return this.context;
+  }
+
+  private syncTimerCount(): void {
+    recordPendingCrossfadeTimers(this.pendingCleanupTimers.size);
+  }
+
+  private scheduleCleanup(callback: () => void, delayMs: number): void {
+    const timer = setTimeout(() => {
+      this.pendingCleanupTimers.delete(timer);
+      this.syncTimerCount();
+      callback();
+    }, delayMs);
+    this.pendingCleanupTimers.add(timer);
+    this.syncTimerCount();
+  }
+
+  /** S2-3: 切歌/停播时取消尚未执行的 crossfade 收尾，避免孤儿定时器。 */
+  public cancelPendingTimers(): void {
+    for (const timer of this.pendingCleanupTimers) {
+      clearTimeout(timer);
+    }
+    this.pendingCleanupTimers.clear();
+    this.syncTimerCount();
   }
 
   private claimElement(audio: HTMLAudioElement): number {
@@ -65,9 +128,10 @@ export class CrossfadeMixer {
 
   private resetElementGain(audio: HTMLAudioElement): void {
     const gainNode = this.gainNodes.get(audio);
-    if (!gainNode || !this.context) return;
+    const context = this.getContext();
+    if (!gainNode || !context) return;
 
-    const now = this.context.currentTime;
+    const now = context.currentTime;
     gainNode.gain.cancelScheduledValues(now);
     gainNode.gain.setValueAtTime(1, now);
   }
@@ -76,6 +140,7 @@ export class CrossfadeMixer {
    * Claims a deck for ordinary playback and removes any abandoned crossfade ramp.
    */
   public prepareForDirectPlayback(audio: HTMLAudioElement): void {
+    this.cancelPendingTimers();
     this.claimElement(audio);
     this.resetElementGain(audio);
   }
@@ -84,6 +149,7 @@ export class CrossfadeMixer {
    * Stops a deck and invalidates any pending crossfade that still references it.
    */
   public pauseAndReset(audio: HTMLAudioElement, rewind = false): void {
+    this.cancelPendingTimers();
     this.claimElement(audio);
     audio.pause();
     if (rewind) {
@@ -121,15 +187,19 @@ export class CrossfadeMixer {
     canCleanupFromAudio: () => boolean = () => true,
     canCleanupToAudio: () => boolean = () => true
   ): Promise<void> {
+    // 新手势接管时，上一次 fade 的收尾定时器必须失效，避免暂停已经被复用的 deck。
+    this.cancelPendingTimers();
+
     const fromGain = this.prepareElement(fromAudio);
     const toGain = this.prepareElement(toAudio);
+    const context = this.getContext();
 
-    if (!fromGain || !toGain || !this.context) return;
+    if (!fromGain || !toGain || !context) return;
 
     const fromGeneration = this.claimElement(fromAudio);
     const toGeneration = this.claimElement(toAudio);
 
-    const now = this.context.currentTime;
+    const now = context.currentTime;
 
     // Cancel LegacyAny ongoing ramps on BOTH nodes to prevent overlaps
     fromGain.gain.cancelScheduledValues(now);
@@ -173,7 +243,7 @@ export class CrossfadeMixer {
     }
 
     // Perform smooth linear ramps
-    const fadeStart = this.context.currentTime;
+    const fadeStart = context.currentTime;
     fromGain.gain.cancelScheduledValues(fadeStart);
     toGain.gain.cancelScheduledValues(fadeStart);
     fromGain.gain.setValueAtTime(fromGain.gain.value, fadeStart);
@@ -182,8 +252,8 @@ export class CrossfadeMixer {
     toGain.gain.linearRampToValueAtTime(1, fadeStart + duration);
 
     // We don't block the UI with a long await anymore.
-    // We use a timer just for the 'from' cleanup.
-    setTimeout(
+    // We use a tracked timer just for the 'from' cleanup (cancelled on the next switch).
+    this.scheduleCleanup(
       () => {
         try {
           // A stale fade may still clean its outgoing deck if the deck was not

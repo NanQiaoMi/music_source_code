@@ -2,6 +2,7 @@ import type { AudioEffectType } from "@/store/audioEffectsStore";
 import { getAudioContext } from "@/hooks/useAudioPlayer";
 import { usePlayerStore } from "@/store/playerStore";
 import { AudioEngine } from "./AudioEngine";
+import { recordNodesCreated } from "./audioGraphStats";
 
 // S2-2: AudioParam 平滑时间常数（秒），拖动时避免爆音/拉链噪声。
 const PARAM_SMOOTHING_SECONDS = 0.02;
@@ -305,6 +306,8 @@ export class AudioEffectsManager {
     await this.createReverbImpulse();
 
     this.isInitialized = true;
+    // S2-3: 效果链节点只在 init 时创建一次，之后重建只改接线。
+    recordNodesCreated("graph", this.getNodeCount());
   }
 
   private createDistortionCurve(node: WaveShaperNode, amount: number): void {
@@ -744,6 +747,23 @@ export class AudioEffectsManager {
 
   getGraphConnectCount(): number {
     return this.graphConnectCount;
+  }
+
+  /**
+   * S2-3: 效果链持有的固定节点数（init() 之后必须恒定）。
+   * sourceNode/destinationNode 是外部借用的节点，不计入本管理器。
+   */
+  getNodeCount(): number {
+    let count = 0;
+    for (const [key, value] of Object.entries(this)) {
+      if (key === "sourceNode" || key === "destinationNode") continue;
+      if (Array.isArray(value)) {
+        count += value.length;
+      } else if (value && typeof (value as AudioNode).connect === "function") {
+        count += 1;
+      }
+    }
+    return count;
   }
 
   /** 测试/性能探针：清空累计的图变更计数。 */

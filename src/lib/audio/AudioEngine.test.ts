@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AudioEngine } from "./AudioEngine";
+import { getAudioGraphStats, resetAudioGraphStats } from "./audioGraphStats";
 
 type ConnectableNode = {
   connect: ReturnType<typeof vi.fn>;
@@ -84,6 +85,7 @@ function destinationEdges(engine: AudioEngine): number {
 describe("AudioEngine", () => {
   beforeEach(() => {
     resetAudioEngine();
+    resetAudioGraphStats();
     vi.stubGlobal("AudioContext", FakeAudioContext);
     Object.defineProperty(window, "AudioContext", {
       configurable: true,
@@ -223,6 +225,26 @@ describe("AudioEngine", () => {
     engine.setOutputOwnedByEffects(false);
     engine.connectFallbackOutput();
     expect(destinationEdges(engine)).toBe(1);
+  });
+
+  it("releases a media source when its element is discarded, and not before", () => {
+    const engine = AudioEngine.getInstance();
+    const audio = document.createElement("audio");
+    engine.init(audio);
+    const sourceNode = engine.createMediaSource(audio)!;
+    const nodesBefore = engine.getNodeCount();
+
+    expect(engine.sourceElementCount).toBe(1);
+    expect(engine.releaseElement(audio)).toBe(true);
+
+    expect(sourceNode.disconnect).toHaveBeenCalled();
+    expect(engine.sourceElementCount).toBe(0);
+    expect(engine.getNodeCount()).toBe(nodesBefore - 1);
+    expect(getAudioGraphStats().mediaSourceNodes).toBe(0);
+
+    // 幂等：重复释放不再计入，避免计数器变负。
+    expect(engine.releaseElement(audio)).toBe(false);
+    expect(getAudioGraphStats().releasedNodes).toBe(1);
   });
 
   it("does not disconnect or reconnect if setEQEnabled is called with the same value", () => {

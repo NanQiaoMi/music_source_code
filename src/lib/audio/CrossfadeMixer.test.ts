@@ -9,6 +9,7 @@ const audioEngineMock = vi.hoisted(() => {
       linearRampToValueAtTime: ReturnType<typeof vi.fn>;
     };
     connect: ReturnType<typeof vi.fn>;
+    disconnect: ReturnType<typeof vi.fn>;
   }> = [];
   const sourceNode = { disconnect: vi.fn(), connect: vi.fn() };
   const context = {
@@ -22,6 +23,7 @@ const audioEngineMock = vi.hoisted(() => {
           linearRampToValueAtTime: vi.fn(),
         },
         connect: vi.fn(),
+        disconnect: vi.fn(),
       };
       gainNodes.push(node);
       return node;
@@ -191,6 +193,38 @@ describe("CrossfadeMixer request ownership", () => {
     mixer.prepareForDirectPlayback(toAudio);
     resolvePlay[1]?.();
     await newCrossfade;
+  });
+
+  it("cancels the pending deck cleanup when direct playback takes over", async () => {
+    const mixer = CrossfadeMixer.getInstance();
+    const fromAudio = createAudioElement();
+    const toAudio = createAudioElement();
+
+    await mixer.crossfade(fromAudio, toAudio, 0.4);
+    expect(mixer.getPendingTimerCount()).toBe(1);
+
+    mixer.prepareForDirectPlayback(fromAudio);
+    expect(mixer.getPendingTimerCount()).toBe(0);
+
+    vi.advanceTimersByTime(600);
+    expect(fromAudio.pause).not.toHaveBeenCalled();
+  });
+
+  it("reuses one gain node per deck and releases it only when the deck is discarded", () => {
+    const mixer = CrossfadeMixer.getInstance();
+    const audio = createAudioElement();
+
+    const first = mixer.prepareElement(audio);
+    expect(mixer.prepareElement(audio)).toBe(first);
+    expect(mixer.getNodeCount()).toBe(1);
+    expect(audioEngineMock.gainNodes).toHaveLength(1);
+
+    mixer.releaseElement(audio);
+    expect(first?.disconnect).toHaveBeenCalled();
+    expect(mixer.getNodeCount()).toBe(0);
+
+    mixer.releaseElement(audio);
+    expect(mixer.getNodeCount()).toBe(0);
   });
 
   it("pauses, rewinds, and normalizes a deck when playback is canceled", async () => {

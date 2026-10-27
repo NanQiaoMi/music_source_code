@@ -3,6 +3,8 @@
  * Centrally manages the global AudioContext and the main audio graph.
  * This class exists outside the React lifecycle to prevent audio glitches during re-renders.
  */
+import { recordNodesCreated, recordNodesReleased } from "./audioGraphStats";
+
 type AudioContextConstructor = new () => AudioContext;
 type AudioEngineWindow = Window & {
   webkitAudioContext?: AudioContextConstructor;
@@ -73,6 +75,9 @@ export class AudioEngine {
     this.masterGain.connect(this.analyser);
     this.connectFallbackOutput();
 
+    // S2-3: 固定图节点只创建一次（masterGain + analyser + 30 段 EQ）。
+    recordNodesCreated("graph", this.eqNodes.length + 2);
+
     return this.context;
   }
 
@@ -139,6 +144,7 @@ export class AudioEngine {
       try {
         const sourceNode = context.createMediaElementSource(audioElement);
         this.sourceNodes.set(audioElement, sourceNode);
+        recordNodesCreated("media-source");
         const entry = this.getEQChainEntry();
         if (entry) {
           sourceNode.connect(entry);
@@ -163,12 +169,47 @@ export class AudioEngine {
       try {
         sourceNode = context.createMediaElementSource(audioElement);
         this.sourceNodes.set(audioElement, sourceNode);
+        recordNodesCreated("media-source");
       } catch (e) {
         console.warn("AudioEngine: Could not create media source", e);
         return null;
       }
     }
     return sourceNode;
+  }
+
+  /**
+   * S2-3: 释放某个媒体元素拥有的 MediaElementSource。
+   * 只应在音频元素被永久丢弃时调用（同一元素无法二次 createMediaElementSource，
+   * 切歌只换 src，不换元素，因此播放路径不应调用这里）。
+   */
+  public releaseElement(audioElement: HTMLAudioElement): boolean {
+    const sourceNode = this.sourceNodes.get(audioElement);
+    if (!sourceNode) return false;
+
+    try {
+      sourceNode.disconnect();
+    } catch {
+      // 已断开时忽略。
+    }
+    this.sourceNodes.delete(audioElement);
+    recordNodesReleased("media-source");
+    return true;
+  }
+
+  /** S2-3: 生命周期探针——当前持有的图节点总数（创建后应恒定）。 */
+  public getNodeCount(): number {
+    return (
+      (this.masterGain ? 1 : 0) +
+      (this.analyser ? 1 : 0) +
+      this.eqNodes.length +
+      this.sourceNodes.size
+    );
+  }
+
+  /** S2-3: 当前仍持有 MediaElementSource 的元素数量。 */
+  public get sourceElementCount(): number {
+    return this.sourceNodes.size;
   }
 
   public getContext(): AudioContext | null {
