@@ -9,7 +9,7 @@ describe("handwritten palette", () => {
     expect(HANDWRITTEN_PALETTES.slice(0, 4).every(({ dark }) => !dark)).toBe(true);
   });
 
-  it("主调色的浅纸保持接近中性白而不是泛黄", () => {
+  it("主调色是低饱和暖米纸，而不是冷灰白", () => {
     const color = resolveHandwrittenPalette(0).paperBase;
     const channels = color
       .slice(1)
@@ -17,7 +17,10 @@ describe("handwritten palette", () => {
       ?.map((channel) => Number.parseInt(channel, 16));
 
     expect(channels).toHaveLength(3);
-    expect(Math.max(...channels!) - Math.min(...channels!)).toBeLessThanOrEqual(8);
-    expect(Math.min(...channels!)).toBeGreaterThanOrEqual(232);
+    const [red, , blue] = channels!;
+    // 暖纸：红通道高于蓝通道，差值控制在低饱和区间，仍保持亮纸而非米黄滤镜。
+    expect(red! - blue!).toBeGreaterThanOrEqual(8);
+    expect(red! - blue!).toBeLessThanOrEqual(24);
+    expect(Math.min(...channels!)).toBeGreaterThanOrEqual(220);
   });
 });

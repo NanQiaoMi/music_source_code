@@ -33,6 +33,23 @@ function endsWithOpeningPunctuation(text: string): boolean {
   return /[([{\u3010\u300a\u300c\u300e\u201c\u2018]$/u.test(text);
 }
 
+/**
+ * Chinese typography should not start a line with a particle/postposition
+ * ("的梦我知道" reads wrong), and should avoid ending one on a particle
+ * that clearly expects a following noun ("乡间的 / 歌谣"). Both are soft
+ * penalties so the DP may still choose them when every alternative overflows.
+ */
+const WEAK_LINE_START = /^[的地得着了过把被让给和与及或而就才吗呢吧啊呀哦么]/u;
+const WEAK_LINE_END = /[的地得着]$/u;
+
+function startsWithWeakLineChar(text: string): boolean {
+  return WEAK_LINE_START.test(text.trimStart());
+}
+
+function endsWithWeakLineChar(text: string): boolean {
+  return WEAK_LINE_END.test(text.trimEnd());
+}
+
 /** Split only a timed unit that cannot fit on a line; preserve its full LRC span. */
 export function prepareHandwrittenUnits(
   units: readonly TimedLyricUnit[],
@@ -92,7 +109,8 @@ export function layoutHandwrittenPlainText(
 export function wrapHandwrittenPhrase(
   units: readonly HandwrittenLayoutUnit[],
   maxWidth: number,
-  emphasis: HandwrittenLayoutEmphasis | null
+  emphasis: HandwrittenLayoutEmphasis | null,
+  maxLines?: number
 ): HandwrittenLayoutLine[] {
   const lines: HandwrittenLayoutLine[] = [];
   let lineItems: HandwrittenLayoutUnit[] = [];
@@ -207,7 +225,7 @@ export function wrapHandwrittenPhrase(
     }
   }
 
-  return balanceHandwrittenLines(lines, maxWidth, emphasis);
+  return balanceHandwrittenLines(lines, maxWidth, emphasis, maxLines);
 }
 
 /**
@@ -218,7 +236,8 @@ export function wrapHandwrittenPhrase(
 function balanceHandwrittenLines(
   greedyLines: readonly HandwrittenLayoutLine[],
   maxWidth: number,
-  emphasis: HandwrittenLayoutEmphasis | null
+  emphasis: HandwrittenLayoutEmphasis | null,
+  maxLines?: number
 ): HandwrittenLayoutLine[] {
   const items = greedyLines.flatMap((line) => line.items);
   if (items.length < 2 || !Number.isFinite(maxWidth) || maxWidth <= 0) return [...greedyLines];
@@ -237,11 +256,15 @@ function balanceHandwrittenLines(
   const minimumLineCount = Math.max(1, Math.ceil(totalWidth / maxWidth));
   const widthDrivenLineCount = Math.ceil(totalWidth / (maxWidth * 0.78));
   const phraseDrivenLineCount = totalWidth > maxWidth * 0.8 && phrasePauseCount >= 2 ? 3 : 1;
-  const lineCount = Math.max(
+  let lineCount = Math.max(
     minimumLineCount,
     Math.min(3, widthDrivenLineCount),
     phraseDrivenLineCount
   );
+  // 竖屏页面空间有限：允许调用方要求"能放下就别超过 N 行"，放不下时仍回落到最小行数。
+  if (maxLines && maxLines > 0) {
+    lineCount = Math.min(lineCount, Math.max(minimumLineCount, maxLines));
+  }
   if (
     lineCount <= 1 ||
     lineCount > MAX_BALANCED_LINE_COUNT ||
@@ -313,15 +336,24 @@ function balanceHandwrittenLines(
             const adjacentLatinWord =
               /[\p{Script=Latin}\p{N}]$/u.test(previousText) &&
               /^[\p{Script=Latin}\p{N}]/u.test(nextText);
-            breakPenalty = naturalPause
+            const splitsWord = !wordBreaks.has(end);
+            const danglingPrefix = /[小老阿第初]$/u.test(previousText.trimEnd());
+            const suffixStart = /^[虫子儿们头]/u.test(nextText.trimStart());
+            const basePenalty = naturalPause
               ? 0
-              : wordBreaks.has(end)
+              : splitsWord
                 ? adjacentLatinWord
-                  ? 0.04
-                  : 0.025
+                  ? 1.7
+                  : 1.9
                 : adjacentLatinWord
-                  ? 0.78
-                  : 0.72;
+                  ? 0.04
+                  : 0.03;
+            breakPenalty =
+              basePenalty +
+              (startsWithWeakLineChar(nextText) ? 1.35 : 0) +
+              (endsWithWeakLineChar(previousText) ? 0.5 : 0) +
+              (danglingPrefix ? 1.2 : 0) +
+              (suffixStart ? 1.1 : 0);
             if (
               !canKeepEmphasisTogether &&
               emphasis &&

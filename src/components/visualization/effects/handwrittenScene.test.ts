@@ -5,6 +5,8 @@ import {
   resolveDoodleProgress,
   resolveHandwrittenCameraFrame,
   resolveHandwrittenScene,
+  resolveIllustrationAccent,
+  resolveSemanticIllustrationKind,
   stableRandom,
 } from "./handwrittenScene";
 
@@ -130,15 +132,17 @@ describe("handwrittenScene", () => {
   });
 
   describe("页面装饰与大幅线稿", () => {
-    it("歌词页只留一个固定在页边的实体细节", () => {
+    it("歌词页的实体细节：胶带压住内容或页边，可选第二件实物，单页 ≤2", () => {
+      const secondKinds = new Set<string>();
       for (let index = 0; index < 12; index += 1) {
         const scene = resolveHandwrittenScene({
           ...BASE_INPUT,
           seed: `song-1:shot:${index}`,
         });
-        expect(scene.decorations.length).toBe(1);
+        expect(scene.decorations.length).toBeGreaterThanOrEqual(1);
+        expect(scene.decorations.length).toBeLessThanOrEqual(2);
+        expect(scene.decorations[0]?.kind).toBe("tape");
         for (const decoration of scene.decorations) {
-          expect(decoration.kind).toBe("tape");
           expect(decoration.x).toBeGreaterThanOrEqual(0);
           expect(decoration.x).toBeLessThanOrEqual(1);
           expect(decoration.y).toBeGreaterThanOrEqual(0);
@@ -153,8 +157,13 @@ describe("handwrittenScene", () => {
             "scrap",
             "polaroid",
           ]).toContain(decoration.kind);
+          if (decoration.kind === "scrap" || decoration.kind === "polaroid") {
+            expect(decoration.caption?.length).toBeGreaterThan(0);
+          }
         }
+        scene.decorations.slice(1).forEach((decoration) => secondKinds.add(decoration.kind));
       }
+      expect(secondKinds.size).toBeGreaterThanOrEqual(2);
     });
 
     it("歌词页不再把小图标撒在文字块与四角", () => {
@@ -167,13 +176,17 @@ describe("handwrittenScene", () => {
       }
     });
 
-    it("歌词页没有与歌词无关的日期和随机角标", () => {
+    it("歌词页的页边小字是日期与页码，不是随机角标", () => {
       for (let index = 0; index < 8; index += 1) {
         const scene = resolveHandwrittenScene({
           ...BASE_INPUT,
           seed: `song-1:shot:${index}`,
         });
-        expect(scene.notes.length).toBeLessThanOrEqual(1);
+        expect(scene.notes.length).toBeGreaterThanOrEqual(2);
+        expect(scene.notes.length).toBeLessThanOrEqual(3);
+        const date = scene.notes.find((note) => note.kind === "date");
+        expect(date?.text).toMatch(/^2026\.\d{2}\.\d{2}$/u);
+        expect(scene.notes.some((note) => note.kind === "page")).toBe(true);
         for (const note of scene.notes) {
           expect(note.text.length).toBeGreaterThan(0);
           expect(note.x).toBeGreaterThanOrEqual(0);
@@ -250,12 +263,12 @@ describe("handwrittenScene", () => {
       expect(projectedHeight).toBeGreaterThanOrEqual(height / 3);
     });
 
-    it("歌词页只保留一个边注、涂鸦和实体页饰作为视觉锚点", () => {
+    it("歌词页的视觉锚点预算：涂鸦 0、实体 ≤2、页边小字 ≤3", () => {
       const scene = resolveHandwrittenScene(BASE_INPUT);
 
-      expect(scene.notes.length).toBeLessThanOrEqual(1);
+      expect(scene.notes.length).toBeLessThanOrEqual(3);
       expect(scene.doodles.length).toBeLessThanOrEqual(1);
-      expect(scene.decorations.length).toBeLessThanOrEqual(1);
+      expect(scene.decorations.length).toBeLessThanOrEqual(2);
     });
 
     it("歌词块的预留区域在宽屏与竖屏都留在安全边界内", () => {
@@ -329,6 +342,38 @@ describe("handwrittenScene", () => {
         .map((time) => resolveHandwrittenCameraFrame(scene, time, 10, 20, false, 1));
 
       expect(reverse.reverse()).toEqual(forward);
+    });
+  });
+
+  describe("语义配图", () => {
+    it("歌词里的具体意象会替换插画主题", () => {
+      expect(resolveSemanticIllustrationKind("还记得你说家是唯一的城堡", "seed")).toBe("window");
+      expect(resolveSemanticIllustrationKind("童年的纸飞机 现在终于飞回我手里", "seed")).toBe(
+        "paperplane"
+      );
+      expect(resolveSemanticIllustrationKind("不要哭让萤火虫带着你逃跑", "seed")).toBe("rain");
+      expect(resolveSemanticIllustrationKind("阳光洒在路上就不怕心碎", "seed")).toBe("sun");
+      expect(resolveSemanticIllustrationKind("回家吧 回到最初的美好", "seed")).toBe("window");
+      expect(resolveSemanticIllustrationKind("随着稻香河流继续奔跑", "seed")).toMatch(
+        /^(wheat|sprig|flower)$/u
+      );
+    });
+
+    it("没有具体意象时返回 null，且同输入同一结果", () => {
+      expect(resolveSemanticIllustrationKind("多少人为生命在努力勇敢的走下去", "seed")).toBeNull();
+      expect(resolveSemanticIllustrationKind("   ", "seed")).toBeNull();
+      const first = resolveSemanticIllustrationKind("随着稻香河流继续奔跑", "seed-2");
+      expect(resolveSemanticIllustrationKind("随着稻香河流继续奔跑", "seed-2")).toBe(first);
+    });
+
+    it("叶/山也有对应主题，并给出配套笔触", () => {
+      expect(resolveSemanticIllustrationKind("一片叶子落在书页上", "seed")).toBe("leaf");
+      expect(resolveSemanticIllustrationKind("远处的山坡", "seed")).toBe("mountain");
+      expect(resolveIllustrationAccent("paperplane")).toBe("speed");
+      expect(resolveIllustrationAccent("rain")).toBe("drops");
+      expect(resolveIllustrationAccent("moon")).toBe("sparkle");
+      expect(resolveIllustrationAccent("window")).toBe("sill");
+      expect(resolveIllustrationAccent("leaf")).toBeNull();
     });
   });
 });

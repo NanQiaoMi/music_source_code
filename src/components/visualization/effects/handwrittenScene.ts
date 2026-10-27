@@ -187,14 +187,69 @@ export interface HandwrittenCameraFrame {
 }
 
 const PROFILE_ILLUSTRATIONS: Record<LyricFilmProfile, readonly HandwrittenDoodleKind[]> = {
-  spotlight: ["sprig", "wheat"],
-  prism: ["sprig", "wheat"],
-  window: ["sprig", "wheat"],
-  caustic: ["ripple", "sprig"],
-  botanical: ["wheat", "sprig"],
-  astral: ["moon", "sprig"],
-  motes: ["ripple", "wheat"],
+  spotlight: ["sprig", "paperplane", "window", "wheat", "leaf"],
+  prism: ["moon", "cloud", "paperplane", "ripple", "window"],
+  window: ["window", "rain", "cloud", "paperplane", "leaf"],
+  caustic: ["ripple", "leaf", "paperplane", "sprig", "rain"],
+  botanical: ["wheat", "sprig", "flower", "leaf", "mountain"],
+  astral: ["moon", "cloud", "paperplane", "leaf", "sprig"],
+  motes: ["ripple", "sun", "cloud", "paperplane", "leaf"],
 };
+
+/**
+ * 语义配图：歌词里出现"可画的具体物"时，优先把它画在页边，
+ * 让插画与这一句有关，而不是纯按 profile 轮换。
+ * 只是软匹配（命中才替换），命中多个时按规则顺序取第一个，保证确定性。
+ */
+const SEMANTIC_ILLUSTRATION_RULES: ReadonlyArray<{
+  pattern: RegExp;
+  kinds: readonly HandwrittenDoodleKind[];
+}> = [
+  { pattern: /纸飞机|飞机|翅膀|飞|风/u, kinds: ["paperplane"] },
+  { pattern: /雨|泪|哭|湿|淋/u, kinds: ["rain"] },
+  { pattern: /家|回|城堡|窗|门|归/u, kinds: ["window"] },
+  { pattern: /阳光|晴|太阳|笑|温暖|夏/u, kinds: ["sun"] },
+  { pattern: /梦|星|夜|月光|月亮|银河|光/u, kinds: ["moon"] },
+  { pattern: /稻|麦|田|乡/u, kinds: ["wheat"] },
+  { pattern: /落叶|树叶|树|叶|枝/u, kinds: ["leaf"] },
+  { pattern: /草|花|野|林/u, kinds: ["sprig", "flower"] },
+  { pattern: /山|峰|坡/u, kinds: ["mountain"] },
+  { pattern: /海|河|流|水|波|浪|潮/u, kinds: ["ripple"] },
+  { pattern: /云|天空|远|飘/u, kinds: ["cloud"] },
+];
+
+/** 从句子文本推测插画主题；没有具体意象时返回 null，由 profile 池决定。 */
+export function resolveSemanticIllustrationKind(
+  text: string,
+  seed: string | number
+): HandwrittenDoodleKind | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const rule = SEMANTIC_ILLUSTRATION_RULES.find(({ pattern }) => pattern.test(trimmed));
+  if (!rule) return null;
+  if (rule.kinds.length === 1) return rule.kinds[0]!;
+  return pickStable(rule.kinds, seed, `semantic-${rule.kinds.join("-")}`);
+}
+
+/** 语义插画的配套笔触：纸飞机配速度线，雨配落滴，月亮配闪点，窗配窗台线。 */
+export type HandwrittenIllustrationAccent = "speed" | "drops" | "sparkle" | "sill";
+
+export function resolveIllustrationAccent(
+  kind: HandwrittenDoodleKind
+): HandwrittenIllustrationAccent | null {
+  switch (kind) {
+    case "paperplane":
+      return "speed";
+    case "rain":
+      return "drops";
+    case "moon":
+      return "sparkle";
+    case "window":
+      return "sill";
+    default:
+      return null;
+  }
+}
 
 const LAYOUT_MAX_WIDTH: Record<HandwrittenLayoutKind, number> = {
   center: 0.74,
@@ -295,8 +350,12 @@ function resolveIllustrations(
     ? 0.29
     : isInstrumental
       ? 0.43
-      : clamp(anchorY + (stableRandom(seed, "ill-y") - 0.5) * 0.06, 0.26, 0.74);
-  const scale = isTall ? 4.6 : isInstrumental ? 3.9 : shotKind === "lyrics" ? 2.22 : 2.5;
+      : clamp(anchorY + (stableRandom(seed, "ill-y") - 0.5) * 0.12, 0.24, 0.78);
+  const scale = isTall
+    ? 4.55 + stableRandom(seed, "ill-scale") * 0.35
+    : isInstrumental
+      ? 3.55 + stableRandom(seed, "ill-scale") * 0.5
+      : 2.15 + stableRandom(seed, "ill-scale") * 0.4;
 
   return [
     {
@@ -304,7 +363,7 @@ function resolveIllustrations(
       x: baseX,
       y: baseY,
       scale,
-      rotation: (stableRandom(seed, "ill-rot") - 0.5) * (isTall ? 0.03 : 0.05),
+      rotation: (stableRandom(seed, "ill-rot") - 0.5) * (isTall ? 0.03 : 0.075),
       color: "pencil",
       delay: reducedMotion ? 0 : 0.2,
       duration: reducedMotion ? 0.001 : 1.45,
@@ -314,18 +373,151 @@ function resolveIllustrations(
   ];
 }
 
-/** 每页的实物装饰：胶带必须压住内容或纸边，再加 1 件其他实物；单页 ≤2 件。 */
-function resolveDecorations(anchorX: number): HandwrittenDecorationSpec[] {
-  return [
+/** 每页的实物装饰：胶带压住文字块上沿或纸边，再按概率配一件页边实物。 */
+function resolveDecorations(
+  shotKind: LyricFilmShotKind,
+  seed: string | number,
+  anchorX: number,
+  anchorY: number,
+  isTall: boolean
+): HandwrittenDecorationSpec[] {
+  if (shotKind === "instrumental") return [];
+  const decorations: HandwrittenDecorationSpec[] = [];
+  const tapeSide = stableRandom(seed, "tape-side") > 0.5 ? 1 : -1;
+  // 竖屏文字块较高，胶带压字会盖住上一行/未来行，固定在页边更干净。
+  const tapeOnText = !isTall && shotKind === "lyrics" && stableRandom(seed, "tape-on-text") < 0.62;
+  decorations.push({
+    kind: "tape",
+    x: tapeOnText
+      ? clamp(anchorX + tapeSide * (0.16 + stableRandom(seed, "tape-x") * 0.06), 0.14, 0.86)
+      : stableRandom(seed, "tape-edge") > 0.5
+        ? 0.84
+        : 0.16,
+    y: tapeOnText
+      ? clamp(anchorY - (0.1 + stableRandom(seed, "tape-y") * 0.035), 0.1, 0.82)
+      : 0.055,
+    scale: 0.32 + stableRandom(seed, "tape-scale") * 0.14,
+    rotation: (stableRandom(seed, "tape-rot") - 0.5) * 0.22,
+    flip: tapeSide > 0,
+  });
+
+  if (stableRandom(seed, "second-object") < 0.58) {
+    const roll = stableRandom(seed, "object-kind");
+    const awayX = anchorX < 0.5 ? 0.12 : 0.88;
+    const captionPool = ["10.20", "夜航手记", "第 3 次听", "慢一点", "晴", "雨停之后", "循环播放"];
+    if (roll < 0.36) {
+      decorations.push({
+        kind: "seal",
+        x: awayX,
+        y: 0.84 + stableRandom(seed, "seal-y") * 0.05,
+        scale: 0.42 + stableRandom(seed, "seal-scale") * 0.12,
+        rotation: -0.06 + stableRandom(seed, "seal-rot") * 0.1,
+        flip: false,
+        label: pickStable(["温光", "手书", "夜航", "浮字", "稻香"], seed, "seal-label"),
+      });
+    } else if (roll < 0.62) {
+      decorations.push({
+        kind: "scrap",
+        x: awayX === 0.12 ? 0.14 : 0.86,
+        y: 0.62 + stableRandom(seed, "scrap-y") * 0.12,
+        scale: 0.95 + stableRandom(seed, "scrap-scale") * 0.25,
+        rotation: (stableRandom(seed, "scrap-rot") - 0.5) * 0.26,
+        flip: false,
+        caption: pickStable(captionPool, seed, "scrap-caption"),
+      });
+    } else if (roll < 0.86) {
+      decorations.push({
+        kind: "polaroid",
+        x: awayX === 0.12 ? 0.14 : 0.86,
+        y: 0.68 + stableRandom(seed, "pol-y") * 0.1,
+        scale: 0.95 + stableRandom(seed, "pol-scale") * 0.22,
+        rotation: (stableRandom(seed, "pol-rot") - 0.5) * 0.22,
+        flip: false,
+        caption: pickStable(captionPool, seed, "pol-caption"),
+      });
+    } else if (roll < 0.95) {
+      decorations.push({
+        kind: "scrap",
+        x: awayX === 0.12 ? 0.86 : 0.14,
+        y: 0.24 + stableRandom(seed, "scrap2-y") * 0.08,
+        scale: 0.85 + stableRandom(seed, "scrap2-scale") * 0.2,
+        rotation: (stableRandom(seed, "scrap2-rot") - 0.5) * 0.24,
+        flip: false,
+        caption: pickStable(captionPool, seed, "scrap2-caption"),
+      });
+    } else {
+      decorations.push({
+        kind: "paperclip",
+        x: awayX === 0.12 ? 0.055 : 0.945,
+        y: 0.18 + stableRandom(seed, "clip-y") * 0.1,
+        scale: 0.5 + stableRandom(seed, "clip-scale") * 0.16,
+        rotation: 0.3,
+        flip: false,
+      });
+    }
+  }
+
+  return decorations;
+}
+
+/** 页边小字：日期 / 页码 / 批注。它们不是歌词，而是"这页纸被人用过"的证据。 */
+function resolveNotes(
+  shotKind: LyricFilmShotKind,
+  seed: string | number,
+  anchorX: number,
+  anchorY: number,
+  width: number,
+  height: number
+): HandwrittenNoteSpec[] {
+  const month = String(1 + Math.floor(stableRandom(seed, "note-month") * 12)).padStart(2, "0");
+  const day = String(1 + Math.floor(stableRandom(seed, "note-day") * 28)).padStart(2, "0");
+  const portrait = height > width;
+  const notes: HandwrittenNoteSpec[] = [
     {
-      kind: "tape",
-      x: anchorX < 0.5 ? 0.84 : 0.16,
-      y: 0.055,
-      scale: 0.34,
-      rotation: 0.018,
-      flip: anchorX > 0.5,
+      kind: "date",
+      x: portrait ? 0.8 : 0.87 + stableRandom(seed, "note-date-x") * 0.03,
+      y: 0.075 + stableRandom(seed, "note-date-y") * 0.02,
+      text: `2026.${month}.${day}`,
+      scale: 0.14 + stableRandom(seed, "note-date-scale") * 0.03,
+      rotation: (stableRandom(seed, "note-date-rot") - 0.5) * 0.06,
+      tone: "pencil",
+    },
+    {
+      kind: "page",
+      x: portrait ? 0.8 : 0.9,
+      y: 0.945,
+      text: `${String(2 + Math.floor(stableRandom(seed, "note-page") * 48)).padStart(2, "0")}`,
+      scale: 0.12 + stableRandom(seed, "note-page-scale") * 0.02,
+      rotation: 0,
+      tone: "pencil",
     },
   ];
+
+  if (shotKind === "lyrics" && stableRandom(seed, "note-caption-on") < 0.55) {
+    const captionPool = ["夜航手记", "第 3 次听", "慢一点", "雨停之后", "循环播放", "听完再走"];
+    const onLeft = anchorX > 0.5;
+    notes.push({
+      kind: "caption",
+      x: clamp(anchorX + (onLeft ? 0.28 : -0.28), 0.14, 0.86),
+      y: clamp(anchorY + (stableRandom(seed, "note-cap-y") - 0.5) * 0.3, 0.2, 0.82),
+      text: pickStable(captionPool, seed, "note-caption"),
+      scale: 0.16 + stableRandom(seed, "note-cap-scale") * 0.03,
+      rotation: (stableRandom(seed, "note-cap-rot") - 0.5) * 0.12,
+      tone: stableRandom(seed, "note-cap-tone") < 0.7 ? "pencil" : "ink",
+    });
+  } else if (shotKind !== "lyrics" && shotKind !== "intro" && shotKind !== "outro") {
+    notes.push({
+      kind: "symbol",
+      x: 0.12 + stableRandom(seed, "note-sym-x") * 0.04,
+      y: 0.86,
+      text: pickStable(["♪", "☾", "✎", "→"], seed, "note-symbol"),
+      scale: 0.2 + stableRandom(seed, "note-sym-scale") * 0.03,
+      rotation: (stableRandom(seed, "note-sym-rot") - 0.5) * 0.12,
+      tone: "pencil",
+    });
+  }
+
+  return notes;
 }
 
 function resolveLayout(
@@ -428,8 +620,8 @@ export function resolveHandwrittenScene(input: {
       safeHeight,
       input.reducedMotion
     ),
-    decorations: input.shotKind === "instrumental" ? [] : resolveDecorations(anchorX),
-    notes: [],
+    decorations: resolveDecorations(input.shotKind, seed, anchorX, anchorY, isTall),
+    notes: resolveNotes(input.shotKind, seed, anchorX, anchorY, safeWidth, safeHeight),
     emphasis: input.shotKind === "lyrics" ? resolveEmphasis(input.units, seed) : null,
     creditsVariant: pickStable(
       ["signature", "postcard", "vertical"] as const,

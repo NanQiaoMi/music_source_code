@@ -72,9 +72,12 @@ import {
   resolveDoodleProgress,
   resolveHandwrittenCameraFrame,
   resolveHandwrittenScene,
+  resolveIllustrationAccent,
+  resolveSemanticIllustrationKind,
   stableRandom,
   type HandwrittenCameraFrame,
   type HandwrittenDecorationSpec,
+  type HandwrittenIllustrationAccent,
   type HandwrittenSceneConfig,
 } from "./handwrittenScene";
 import {
@@ -505,7 +508,8 @@ function layoutHandwrittenText(
   fontFamily: string,
   fontSize: number,
   maxWidth: number,
-  emphasis: { unitIndex: number; unitCount: number; scaleBoost: number } | null = null
+  emphasis: { unitIndex: number; unitCount: number; scaleBoost: number } | null = null,
+  maxLines?: number
 ): HandwrittenLineLayout {
   const cacheKey = [
     shot.id,
@@ -518,6 +522,7 @@ function layoutHandwrittenText(
     fontSize,
     fontFamily,
     emphasis ? [emphasis.unitIndex, emphasis.unitCount, emphasis.scaleBoost].join(":") : "none",
+    maxLines ?? "none",
   ].join("|");
   const cached = state.layoutCache.get(cacheKey);
   if (cached) return cached;
@@ -537,9 +542,12 @@ function layoutHandwrittenText(
     return empty;
   }
 
-  const lines: HandwrittenLayoutLine[] = wrapHandwrittenPhrase(items, maxWidth, emphasis).map(
-    (line) => ({ ...line, y: 0 })
-  );
+  const lines: HandwrittenLayoutLine[] = wrapHandwrittenPhrase(
+    items,
+    maxWidth,
+    emphasis,
+    maxLines
+  ).map((line) => ({ ...line, y: 0 }));
   const lineHeight = fontSize * 1.36;
   const totalHeight = lines.length * lineHeight;
   lines.forEach((line, index) => {
@@ -759,6 +767,8 @@ function drawLyricRows(frame: ContentFrame, ctx: CanvasRenderingContext2D): void
   const activeText = focusRows[0]?.text ?? rows[0]?.text ?? "";
   let heroFontSize = resolveHeroFontSize(frame.settings, width, height, scene);
   const maxWidth = Math.max(120, Math.min(width * scene.maxWidthRatio, width * 0.9));
+  // 竖屏页面横向空间有限：主句最多排两行，避免 "回家吧 / 回到 / 最初的美好" 式碎行。
+  const portraitMaxLines = height / Math.max(1, width) > 1.3 ? 2 : undefined;
   const centerX = clamp(scene.anchorX * width, maxWidth / 2 + 8, width - maxWidth / 2 - 8);
   let translationLayout = resolveTranslationLayout(frame, ctx, heroFontSize, maxWidth);
 
@@ -847,7 +857,8 @@ function drawLyricRows(frame: ContentFrame, ctx: CanvasRenderingContext2D): void
           fontFamily,
           font,
           maxWidth,
-          rowEmphasis
+          rowEmphasis,
+          portraitMaxLines
         );
         if (layout.lines.length === 0) return;
         const rowHeight = layout.totalHeight + (rowIndex > 0 ? font * 0.36 : 0);
@@ -940,7 +951,7 @@ function drawLyricRows(frame: ContentFrame, ctx: CanvasRenderingContext2D): void
       const fade = mode === "past" ? 1 - 0.3 * clamp(age / 7, 0, 1) : 1;
       const alpha =
         frame.alpha *
-        (mode === "active" ? 1 : mode === "past" ? 0.26 * fade : 0.5) *
+        (mode === "active" ? 1 : mode === "past" ? 0.24 * fade : 0.32) *
         resolveHandwrittenRevealOpacity(reducedMotion, musicTime - shot.startTime);
       const blockCenterY = rowTop + rowLayout.rowHeight / 2;
       rowTop += rowLayout.rowHeight;
@@ -1564,18 +1575,338 @@ function drawEndingCredits(frame: ContentFrame, ctx: CanvasRenderingContext2D): 
   }
 }
 
+const CLOSING_BOOK_DURATION = 3.4;
+
+function easeInOutCubic(value: number): number {
+  const t = clamp(value, 0, 1);
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+}
+
+/**
+ * 合上本子：歌曲最后约 3.4 秒，右页朝左折起 → 纸背 → 封面压上。
+ * 折痕位置、阴影与封面淡入全部由 musicTime 派生，暂停 / seek 可复现；
+ * reducedMotion 下直接跳过，保留原来的落款页不动。
+ */
+function drawClosingBook(
+  frame: ContentFrame,
+  ctx: CanvasRenderingContext2D,
+  remaining: number
+): void {
+  const { width, height, palette, fontFamily, title, reducedMotion, quality } = frame;
+  if (reducedMotion) return;
+  const progress = clamp(1 - remaining / CLOSING_BOOK_DURATION, 0, 1);
+  if (progress <= 0.001) return;
+
+  // 1) 折页：一页纸从右侧翻过来，纸背（不透明）自右向左盖住页面；
+  //    折痕处压痕阴影 + 提亮边，纸背带一点点卷曲背光。
+  const fold = easeInOutCubic(clamp(progress / 0.8, 0, 1));
+  const creaseX = width * (1.04 - 1.14 * fold);
+  ctx.save();
+  if (creaseX > 0 && creaseX < width) {
+    const cast = ctx.createLinearGradient(Math.max(0, creaseX - width * 0.085), 0, creaseX, 0);
+    cast.addColorStop(0, withAlpha(palette.desk, 0));
+    cast.addColorStop(1, withAlpha(palette.desk, 0.2));
+    ctx.fillStyle = cast;
+    ctx.fillRect(0, 0, creaseX, height);
+  }
+  if (creaseX < width) {
+    const left = Math.max(0, creaseX);
+    const back = ctx.createLinearGradient(left, 0, width, 0);
+    back.addColorStop(0, palette.paperDeep);
+    back.addColorStop(0.22, palette.paperBase);
+    back.addColorStop(1, palette.paperLight);
+    ctx.fillStyle = back;
+    ctx.fillRect(left, 0, width - left, height);
+    // 靠折痕一侧的卷曲阴影，让纸背不是一块平色。
+    const curl = ctx.createLinearGradient(left, 0, left + width * 0.08, 0);
+    curl.addColorStop(0, withAlpha(palette.desk, 0.16));
+    curl.addColorStop(1, withAlpha(palette.desk, 0));
+    ctx.fillStyle = curl;
+    ctx.fillRect(left, 0, Math.min(width - left, width * 0.08), height);
+    // 折痕：外侧细影 + 内侧亮边 + 一道深压痕，画出纸的厚度。
+    ctx.strokeStyle = withAlpha(palette.desk, 0.28);
+    ctx.lineWidth = Math.max(2, width * 0.0024);
+    ctx.beginPath();
+    ctx.moveTo(left + 1.5, 0);
+    ctx.lineTo(left + 1.5, height);
+    ctx.stroke();
+    ctx.strokeStyle = withAlpha(palette.paperLight, 0.9);
+    ctx.lineWidth = Math.max(1.6, width * 0.0016);
+    ctx.beginPath();
+    ctx.moveTo(left, 0);
+    ctx.lineTo(left, height);
+    ctx.stroke();
+    ctx.strokeStyle = withAlpha(palette.desk, 0.34);
+    ctx.lineWidth = Math.max(1, width * 0.0012);
+    ctx.beginPath();
+    ctx.moveTo(left + 4, 0);
+    ctx.lineTo(left + 4, height);
+    ctx.stroke();
+    // 纸背的浅纤维：几道极淡横向擦痕，避免像纯色遮罩。
+    ctx.strokeStyle = palette.fiber;
+    ctx.lineWidth = 1;
+    for (let index = 0; index < 6; index += 1) {
+      const y = ((index + 0.5) / 6) * height + stableRandom("closing-fiber", `y${index}`) * 14;
+      ctx.beginPath();
+      ctx.moveTo(left + width * (0.08 + stableRandom("closing-fiber", `x${index}`) * 0.44), y);
+      ctx.lineTo(width * (0.56 + stableRandom("closing-fiber", `x2${index}`) * 0.4), y + 2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  // 2) 封面：翻页结束后压上暖深色封皮 + 书脊阴影 + 竖排书名 / 署名 / 完印。
+  const cover = smoothstep(clamp((progress - 0.62) / 0.23, 0, 1));
+  if (cover <= 0.002) return;
+  ctx.save();
+  ctx.globalAlpha = cover;
+  ctx.fillStyle = palette.desk;
+  ctx.fillRect(0, 0, width, height);
+  const sheen = ctx.createRadialGradient(
+    width * 0.3,
+    height * 0.2,
+    0,
+    width * 0.3,
+    height * 0.2,
+    Math.max(width, height) * 0.8
+  );
+  sheen.addColorStop(0, withAlpha(palette.lightWarm, 0.1));
+  sheen.addColorStop(1, withAlpha(palette.lightWarm, 0));
+  ctx.fillStyle = sheen;
+  ctx.fillRect(0, 0, width, height);
+  // 书脊：左侧一道装订阴影。
+  const spine = ctx.createLinearGradient(0, 0, width * 0.045, 0);
+  spine.addColorStop(0, withAlpha(palette.ink, 0.38));
+  spine.addColorStop(1, withAlpha(palette.ink, 0));
+  ctx.fillStyle = spine;
+  ctx.fillRect(0, 0, width * 0.045, height);
+  // 压印内框 + 书签带。
+  ctx.strokeStyle = withAlpha(palette.paperDeep, 0.18);
+  ctx.lineWidth = Math.max(1, Math.min(width, height) * 0.0014);
+  ctx.strokeRect(width * 0.07, height * 0.07, width * 0.86, height * 0.86);
+  const ribbonWidth = Math.min(width, height) * 0.014;
+  ctx.fillStyle = withAlpha(palette.accent, 0.5);
+  ctx.beginPath();
+  ctx.moveTo(width * 0.5 - ribbonWidth * 0.5, 0);
+  ctx.lineTo(width * 0.5 + ribbonWidth * 0.5, 0);
+  ctx.lineTo(width * 0.5 + ribbonWidth * 0.5, height * 0.12);
+  ctx.lineTo(width * 0.5, height * 0.12 - ribbonWidth * 0.7);
+  ctx.lineTo(width * 0.5 - ribbonWidth * 0.5, height * 0.12);
+  ctx.closePath();
+  ctx.fill();
+
+  const titleText = title.trim();
+  if (titleText) {
+    const titleGraphemes = segmentLyricFilmGraphemes(titleText);
+    const size = Math.min(width, height) * 0.1;
+    const columnX = width * 0.61;
+    const topY = height * 0.31;
+    ctx.fillStyle = withAlpha(palette.paperLight, 0.74);
+    ctx.font = `${size}px ${fontFamily}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    titleGraphemes.forEach((grapheme, index) => {
+      ctx.fillText(grapheme, columnX, topY + index * size * 1.12);
+    });
+    if (frame.artist.trim()) {
+      ctx.fillStyle = withAlpha(palette.paperLight, 0.46);
+      ctx.font = `${size * 0.3}px ${fontFamily}`;
+      ctx.fillText(
+        frame.artist.trim(),
+        columnX,
+        topY + titleGraphemes.length * size * 1.12 + size * 0.5
+      );
+    }
+  }
+  ctx.restore();
+
+  const sealProgress = clamp((progress - 0.9) / 0.1, 0, 1);
+  if (sealProgress > 0) {
+    drawHandwrittenSeal({
+      ctx,
+      palette,
+      fontFamily,
+      x: width * 0.78,
+      y: height * 0.74,
+      size: Math.min(width, height) * 0.058,
+      text: "完",
+      progress: sealProgress,
+      rotation: -0.07,
+      quality,
+    });
+  }
+}
+
+/** 页边小字：日期、页码、批注。它们不是歌词，而是"这页纸被人用过"的证据。 */
+function drawMarginalia(frame: ContentFrame, ctx: CanvasRenderingContext2D): void {
+  const { scene, width, height, palette, fontFamily, alpha, heroFontSize } = frame;
+  if (scene.notes.length === 0) return;
+  ctx.save();
+  for (const note of scene.notes) {
+    const fontSize = clamp(heroFontSize * note.scale, 9, 24);
+    if (!note.text) continue;
+    ctx.save();
+    ctx.translate(note.x * width, note.y * height);
+    ctx.rotate(note.rotation);
+    ctx.globalAlpha = alpha * (note.tone === "pencil" ? 0.68 : 0.55);
+    ctx.fillStyle = note.tone === "pencil" ? palette.inkSoft : palette.ink;
+    ctx.font = `400 ${fontSize}px ${fontFamily}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(note.text, 0, 0);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+/** 取该镜头首句的歌词文本，用于"这一页画什么"的语义配图（整个镜头内不变）。 */
+function resolveShotFocusText(program: LyricFilmProgram, shot: LyricFilmShot): string {
+  const groupIndexes = [...new Set(shot.lineGroupIndices ?? [])].sort(
+    (left, right) => left - right
+  );
+  if (groupIndexes.length === 0) return "";
+  let chosen = groupIndexes[0]!;
+  for (const index of groupIndexes) {
+    const group = program.lineGroups[index];
+    if (group && group.start <= shot.startTime + 0.05) chosen = index;
+  }
+  const group = program.lineGroups[chosen];
+  return (
+    group?.lines
+      .map((line) => line.text)
+      .join(" ")
+      .trim() ?? ""
+  );
+}
+
+/** 该镜头内全部句子的文本；主句没有具体意象时用于兜底匹配。 */
+function resolveShotAllText(program: LyricFilmProgram, shot: LyricFilmShot): string {
+  const groupIndexes = [...new Set(shot.lineGroupIndices ?? [])].sort(
+    (left, right) => left - right
+  );
+  return groupIndexes
+    .slice(0, 3)
+    .map((index) =>
+      program.lineGroups[index]?.lines
+        .map((line) => line.text)
+        .join(" ")
+        .trim()
+    )
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+/** 语义插画的配套小笔触：速度线 / 落滴 / 闪点 / 窗台线，让主体与页面发生关系。 */
+function drawIllustrationAccent(
+  ctx: CanvasRenderingContext2D,
+  palette: HandwrittenPalette,
+  centerX: number,
+  centerY: number,
+  radius: number,
+  rotation: number,
+  accent: HandwrittenIllustrationAccent,
+  alpha: number
+): void {
+  if (alpha <= 0.01 || radius <= 0) return;
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate(rotation);
+  ctx.strokeStyle = withAlpha(palette.inkSoft, 0.55);
+  ctx.lineWidth = Math.max(1.1, radius * 0.022);
+  ctx.lineCap = "round";
+  ctx.globalAlpha = alpha;
+  const line = (x1: number, y1: number, x2: number, y2: number) => {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  };
+  const r = radius;
+  if (accent === "speed") {
+    line(-r * 1.35, -r * 0.22, -r * 0.92, -r * 0.34);
+    line(-r * 1.2, r * 0.18, -r * 0.68, r * 0.04);
+    line(-r * 1.0, -r * 0.58, -r * 0.66, -r * 0.66);
+  } else if (accent === "drops") {
+    for (let index = 0; index < 3; index += 1) {
+      const offset = (index - 1) * r * 0.5;
+      line(offset, r * 0.98, offset - r * 0.08, r * 1.22);
+    }
+  } else if (accent === "sparkle") {
+    const plus = (x: number, y: number, size: number) => {
+      line(x - size, y, x + size, y);
+      line(x, y - size, x, y + size);
+    };
+    plus(r * 0.86, -r * 0.56, r * 0.12);
+    plus(r * 0.48, -r * 0.98, r * 0.08);
+  } else {
+    line(-r * 0.95, r * 0.74, r * 0.95, r * 0.74);
+    line(-r * 0.66, r * 0.84, -r * 0.12, r * 0.88);
+  }
+  ctx.restore();
+}
+
 /** 大幅铅笔线稿：给留白的一侧一个主体，像手账里配的小插画。 */
 function drawShotIllustrations(frame: ContentFrame, ctx: CanvasRenderingContext2D): void {
-  const { scene, width, height, musicTime, shot, palette, alpha, reducedMotion } = frame;
+  const { scene, width, height, musicTime, shot, palette, alpha, reducedMotion, program } = frame;
   const baseUnit = clamp(Math.min(width, height) * 0.08, 28, 92);
+  const semanticKind =
+    resolveSemanticIllustrationKind(resolveShotFocusText(program, shot), shot.seed) ??
+    resolveSemanticIllustrationKind(resolveShotAllText(program, shot), shot.seed);
   for (const illustration of scene.illustrations) {
     const progress = reducedMotion
       ? 1
       : clamp((musicTime - shot.startTime - illustration.delay) / illustration.duration, 0, 1);
     if (progress <= 0) continue;
+
+    const centerX = illustration.x * width;
+    const centerY = illustration.y * height;
+    const washRadius = baseUnit * illustration.scale * 0.85;
+    // 几何类插画（窗/雨/水纹）不铺圆形水彩晕，否则会被读成一团"色块"而不是线稿。
+    const illustrationKind = semanticKind ?? illustration.kind;
+    const showWashHalo =
+      illustrationKind !== "window" && illustrationKind !== "rain" && illustrationKind !== "ripple";
+    if (showWashHalo) {
+      // 插画底下先铺一层极淡的水彩晕，让铅笔稿有"被光染过"的焦点色。
+      const wash = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, washRadius);
+      wash.addColorStop(0, withAlpha(palette.highlight, 0.095));
+      wash.addColorStop(0.6, withAlpha(palette.highlight, 0.045));
+      wash.addColorStop(1, withAlpha(palette.highlight, 0));
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = wash;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, washRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // 第二块偏移的淡彩（强调色极低透明度），让水彩晕不是完美圆。
+      const accentAngle = illustration.rotation + 1.1;
+      const accentX = centerX + Math.cos(accentAngle) * washRadius * 0.24;
+      const accentY = centerY + Math.sin(accentAngle) * washRadius * 0.2;
+      const accentRadius = washRadius * 0.58;
+      const accentWash = ctx.createRadialGradient(
+        accentX,
+        accentY,
+        0,
+        accentX,
+        accentY,
+        accentRadius
+      );
+      accentWash.addColorStop(0, withAlpha(palette.accent, 0.05));
+      accentWash.addColorStop(1, withAlpha(palette.accent, 0));
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.9;
+      ctx.fillStyle = accentWash;
+      ctx.beginPath();
+      ctx.arc(accentX, accentY, accentRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     ctx.save();
-    ctx.globalAlpha = alpha * (illustration.color === "pencil" ? 0.66 : 0.36);
-    drawHandwrittenDoodle(illustration, {
+    ctx.globalAlpha = alpha * (illustration.color === "pencil" ? 0.74 : 0.36);
+    drawHandwrittenDoodle(semanticKind ? { ...illustration, kind: semanticKind } : illustration, {
       ctx,
       palette,
       width,
@@ -1587,6 +1918,20 @@ function drawShotIllustrations(frame: ContentFrame, ctx: CanvasRenderingContext2
       quality: frame.quality,
     });
     ctx.restore();
+
+    const accent = semanticKind ? resolveIllustrationAccent(semanticKind) : null;
+    if (accent) {
+      drawIllustrationAccent(
+        ctx,
+        palette,
+        centerX,
+        centerY,
+        washRadius * 0.62,
+        illustration.rotation,
+        accent,
+        alpha * progress
+      );
+    }
   }
 }
 
@@ -2055,6 +2400,7 @@ function drawShotContent(
   }
 
   drawShotDoodles(contentFrame, ctx, "front");
+  drawMarginalia(contentFrame, ctx);
   ctx.restore();
 }
 
@@ -2634,6 +2980,12 @@ function renderFrame(effectCtx: EffectContext): void {
       !isPlaying,
       quality
     );
+
+    // 收尾：最后几秒把这一页合上，停在封皮上（reducedMotion 下跳过）。
+    const remaining = Math.max(0, program.duration - musicTime);
+    if (remaining <= CLOSING_BOOK_DURATION && program.duration >= CLOSING_BOOK_DURATION) {
+      drawClosingBook(outgoingFrame, ctx, remaining);
+    }
   } finally {
     ctx.restore();
   }

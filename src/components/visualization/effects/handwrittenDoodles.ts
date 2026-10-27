@@ -25,6 +25,10 @@ export interface StrokeStyle {
   color: string;
   width: number;
   alpha: number;
+  /** 大尺幅插画：沿笔画撒少量炭笔颗粒，避免"矢量描边"感 */
+  grain?: boolean;
+  /** 颗粒尺寸的逆缩放：大插画经 ctx.scale 后颗粒不应变成粗黑点 */
+  grainScale?: number;
 }
 
 export interface DoodleOptions {
@@ -315,6 +319,8 @@ function drawStrokeSet(
   const quality = options.quality ?? 0;
   const stagger = 0.45;
   const unit = geometry.unit;
+  const completionAt = (index: number) =>
+    clamp(progress * (1 + stagger) - (index / strokes.length) * stagger, 0, 1);
 
   ctx.save();
   ctx.lineCap = "round";
@@ -322,11 +328,7 @@ function drawStrokeSet(
 
   for (let index = 0; index < strokes.length; index += 1) {
     const stroke = strokes[index]!;
-    const localProgress = clamp(
-      progress * (1 + stagger) - (index / strokes.length) * stagger,
-      0,
-      1
-    );
+    const localProgress = completionAt(index);
     if (localProgress <= 0) continue;
     const eased = easeOutCubic(localProgress);
     // 笔压：同一张涂鸦里每根线宽在 0.72–1.22 倍之间变化，而不是整齐的 2px 等宽线。
@@ -360,6 +362,35 @@ function drawStrokeSet(
   }
 
   ctx.restore();
+
+  if (style.grain && quality < 2 && progress > 0.35) {
+    // 沿笔画撒少量暗色颗粒：铅笔/炭笔在纸纤维上留下的断续笔痕。
+    ctx.save();
+    ctx.fillStyle = withAlpha(style.color, style.alpha * 0.5);
+    const grainScale = Math.max(1, style.grainScale ?? 1);
+    const grainBudget = Math.min(18, strokes.length * 3);
+    for (let index = 0; index < grainBudget; index += 1) {
+      const strokeIndex = Math.floor(
+        stableRandom(`${style.color}:g`, `s${index}`) * strokes.length
+      );
+      if (completionAt(strokeIndex) < 0.999) continue;
+      const stroke = strokes[strokeIndex];
+      if (!stroke) continue;
+      const points = stroke.variant0;
+      if (points.length === 0) continue;
+      const point =
+        points[Math.floor(stableRandom(`${style.color}:g`, `p${index}`) * points.length)]!;
+      const radius = (0.45 + stableRandom(`${style.color}:g`, `r${index}`) * 0.8) / grainScale;
+      const spreadX =
+        ((stableRandom(`${style.color}:g`, `x${index}`) - 0.5) * unit * 0.02) / grainScale;
+      const spreadY =
+        ((stableRandom(`${style.color}:g`, `y${index}`) - 0.5) * unit * 0.02) / grainScale;
+      ctx.beginPath();
+      ctx.arc(point.x * unit + spreadX, point.y * unit + spreadY, radius, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
 }
 
 function roleColor(palette: HandwrittenPalette, role: HandwrittenColorRole): string {
@@ -374,6 +405,23 @@ function roleColor(palette: HandwrittenPalette, role: HandwrittenColorRole): str
       return palette.ink;
   }
 }
+
+/**
+ * 大幅插画的"水彩铺底"：只在闭合轮廓内填一层极淡色，
+ * 让铅笔稿不再只是空线框（叶子、云、窗、花、月亮等）。
+ */
+const ILLUSTRATION_WASH: Partial<
+  Record<HandwrittenDoodleKind, { role: HandwrittenColorRole; alpha: number; stroke: number }>
+> = {
+  leaf: { role: "highlight", alpha: 0.16, stroke: 0 },
+  cloud: { role: "highlight", alpha: 0.1, stroke: 0 },
+  flower: { role: "accent", alpha: 0.1, stroke: 0 },
+  moon: { role: "highlight", alpha: 0.14, stroke: 0 },
+  window: { role: "highlight", alpha: 0.05, stroke: 0 },
+  mountain: { role: "highlight", alpha: 0.08, stroke: 0 },
+  sun: { role: "highlight", alpha: 0.1, stroke: 0 },
+  heart: { role: "accent", alpha: 0.1, stroke: 0 },
+};
 
 function roleAlpha(role: HandwrittenColorRole): number {
   switch (role) {
@@ -471,6 +519,28 @@ function doodleStrokes(kind: HandwrittenDoodleKind): Point[][] {
           { x: -0.74, y: 0.38 },
           { x: 0.7, y: 0.38 },
         ],
+        // 云的体积线：内部两道起伏 + 下方短雨线，避免只是一个轮廓。
+        [
+          { x: -0.58, y: 0.2 },
+          { x: -0.22, y: 0.1 },
+          { x: 0.16, y: 0.14 },
+        ],
+        [
+          { x: 0.28, y: 0.18 },
+          { x: 0.56, y: 0.1 },
+        ],
+        [
+          { x: -0.46, y: 0.54 },
+          { x: -0.52, y: 0.7 },
+        ],
+        [
+          { x: 0.0, y: 0.54 },
+          { x: 0.05, y: 0.7 },
+        ],
+        [
+          { x: 0.44, y: 0.52 },
+          { x: 0.5, y: 0.66 },
+        ],
       ];
     case "star":
       return [
@@ -544,9 +614,40 @@ function doodleStrokes(kind: HandwrittenDoodleKind): Point[][] {
           { x: -0.6, y: 0.42 },
           { x: -0.88, y: 0.36 },
         ],
+        // 主叶脉（略弯）+ 三对侧脉 + 叶柄，让它像速写而不是一枚图标。
         [
           { x: -0.74, y: 0.34 },
-          { x: 0.6, y: -0.32 },
+          { x: -0.3, y: 0.08 },
+          { x: 0.2, y: -0.16 },
+          { x: 0.62, y: -0.33 },
+        ],
+        [
+          { x: -0.5, y: -0.02 },
+          { x: -0.64, y: -0.3 },
+        ],
+        [
+          { x: -0.42, y: 0.02 },
+          { x: -0.4, y: 0.3 },
+        ],
+        [
+          { x: -0.1, y: -0.2 },
+          { x: -0.2, y: -0.42 },
+        ],
+        [
+          { x: -0.02, y: -0.16 },
+          { x: 0.06, y: 0.1 },
+        ],
+        [
+          { x: 0.28, y: -0.27 },
+          { x: 0.3, y: -0.44 },
+        ],
+        [
+          { x: 0.34, y: -0.22 },
+          { x: 0.46, y: -0.02 },
+        ],
+        [
+          { x: -0.86, y: 0.38 },
+          { x: -1.0, y: 0.52 },
         ],
       ];
     case "sprig":
@@ -689,12 +790,27 @@ function doodleStrokes(kind: HandwrittenDoodleKind): Point[][] {
       }
       return stalks;
     }
-    case "ripple":
+    case "ripple": {
+      // 水纹：三条压扁的同心弧 + 两道反光短线，避免三条完整圆弧读成"碗"。
+      const ring = (radiusX: number, radiusY: number, from: number, to: number) =>
+        circlePoints(1, 22, from, to).map((point) => ({
+          x: point.x * radiusX,
+          y: point.y * radiusY,
+        }));
       return [
-        circlePoints(0.9, 22, Math.PI * 0.08, Math.PI * 1.06),
-        circlePoints(0.65, 18, Math.PI * 0.02, Math.PI * 0.98),
-        circlePoints(0.4, 14, Math.PI * -0.02, Math.PI * 0.96),
+        ring(0.92, 0.3, Math.PI * 0.04, Math.PI * 1.04),
+        ring(0.64, 0.21, Math.PI * 0.1, Math.PI * 1.1),
+        ring(0.38, 0.13, Math.PI * 0.18, Math.PI * 1.02),
+        [
+          { x: -0.14, y: -0.02 },
+          { x: 0.22, y: 0.03 },
+        ],
+        [
+          { x: -0.04, y: 0.14 },
+          { x: 0.16, y: 0.17 },
+        ],
       ];
+    }
     case "rays": {
       const rays: Point[][] = [];
       for (let index = 0; index < 5; index += 1) {
@@ -717,86 +833,55 @@ function doodleStrokes(kind: HandwrittenDoodleKind): Point[][] {
     }
     case "window":
       return [
+        // 窗框双线：外框与内框错开一点，像用笔描过两遍；竖长比例更像窗。
         [
-          { x: -0.82, y: -0.92 },
-          { x: 0.7, y: -0.9 },
-          { x: 0.72, y: 0.84 },
-          { x: -0.8, y: 0.86 },
-          { x: -0.82, y: -0.92 },
+          { x: -0.5, y: -0.92 },
+          { x: 0.5, y: -0.9 },
+          { x: 0.52, y: 0.7 },
+          { x: -0.52, y: 0.72 },
+          { x: -0.5, y: -0.92 },
         ],
         [
-          { x: -0.82, y: -0.02 },
-          { x: 0.71, y: 0 },
+          { x: -0.42, y: -0.84 },
+          { x: 0.42, y: -0.82 },
+          { x: 0.44, y: 0.62 },
+          { x: -0.44, y: 0.64 },
+          { x: -0.42, y: -0.84 },
+        ],
+        // 一横一竖的窗棂
+        [
+          { x: 0.0, y: -0.84 },
+          { x: 0.0, y: 0.64 },
         ],
         [
-          { x: -0.06, y: -0.9 },
-          { x: -0.05, y: 0.85 },
+          { x: -0.44, y: -0.12 },
+          { x: 0.44, y: -0.1 },
+        ],
+        // 窗台：一道压线 + 一道外挑的边
+        [
+          { x: -0.66, y: 0.72 },
+          { x: 0.66, y: 0.7 },
         ],
         [
-          { x: -0.92, y: 0.86 },
-          { x: 0.82, y: 0.84 },
-          { x: 0.78, y: 0.96 },
-          { x: -0.88, y: 0.98 },
-          { x: -0.92, y: 0.86 },
+          { x: -0.62, y: 0.84 },
+          { x: 0.62, y: 0.82 },
         ],
-        // 两侧窗帘：上端收拢，下端微微飘起
+        // 窗台小盆栽：花盆 + 两片叶
         [
-          { x: -0.78, y: -0.88 },
-          { x: -0.62, y: -0.54 },
-          { x: -0.7, y: -0.2 },
-          { x: -0.58, y: 0.16 },
-          { x: -0.68, y: 0.42 },
+          { x: -0.24, y: 0.72 },
+          { x: -0.19, y: 0.92 },
+          { x: 0.03, y: 0.93 },
+          { x: 0.08, y: 0.72 },
         ],
         [
-          { x: -0.64, y: -0.88 },
-          { x: -0.5, y: -0.56 },
-          { x: -0.56, y: -0.24 },
-          { x: -0.46, y: 0.1 },
+          { x: -0.08, y: 0.72 },
+          { x: -0.16, y: 0.56 },
+          { x: -0.28, y: 0.5 },
         ],
         [
-          { x: 0.66, y: -0.86 },
-          { x: 0.5, y: -0.52 },
-          { x: 0.58, y: -0.18 },
-          { x: 0.46, y: 0.18 },
-          { x: 0.56, y: 0.44 },
-        ],
-        [
-          { x: 0.52, y: -0.86 },
-          { x: 0.38, y: -0.58 },
-          { x: 0.44, y: -0.26 },
-          { x: 0.34, y: 0.06 },
-        ],
-        // 窗台上的小盆栽
-        [
-          { x: -0.3, y: 0.9 },
-          { x: -0.24, y: 1.1 },
-          { x: 0.1, y: 1.1 },
-          { x: 0.16, y: 0.9 },
-          { x: -0.3, y: 0.9 },
-        ],
-        [
-          { x: -0.08, y: 0.9 },
-          { x: -0.18, y: 0.66 },
-          { x: -0.3, y: 0.58 },
-        ],
-        [
-          { x: -0.06, y: 0.9 },
-          { x: 0.02, y: 0.6 },
-          { x: 0.14, y: 0.56 },
-        ],
-        [
-          { x: -0.07, y: 0.88 },
-          { x: 0.18, y: 0.7 },
-          { x: 0.26, y: 0.62 },
-        ],
-        // 斜穿窗格的光线
-        [
-          { x: -0.5, y: -0.72 },
-          { x: 0.16, y: 0.52 },
-        ],
-        [
-          { x: -0.26, y: -0.78 },
-          { x: 0.36, y: 0.44 },
+          { x: -0.08, y: 0.72 },
+          { x: 0.01, y: 0.54 },
+          { x: 0.12, y: 0.5 },
         ],
       ];
     case "paperplane":
@@ -823,14 +908,24 @@ function doodleStrokes(kind: HandwrittenDoodleKind): Point[][] {
         circlePoints(0.82, 30).map((point) => ({ x: point.x, y: point.y * 0.9 })),
         circlePoints(0.6, 26, 0.4, 1.9).map((point) => ({ x: point.x, y: point.y * 0.9 })),
       ];
-    case "rain":
-      return Array.from({ length: 5 }, (_, index) => {
-        const x = -0.7 + index * 0.34;
+    case "rain": {
+      const drops: Point[][] = Array.from({ length: 8 }, (_, index) => {
+        const x = -0.82 + index * 0.23;
+        const startY = -0.82 + (index % 3) * 0.1;
+        const length = 0.5 + (index % 2) * 0.22;
         return [
-          { x, y: -0.8 },
-          { x: x - 0.16, y: -0.2 },
+          { x, y: startY },
+          { x: x - 0.16, y: startY + length },
         ];
       });
+      // 底部一小段积水弧，让"雨"不是一排斜线。
+      drops.push([
+        { x: -0.72, y: 0.64 },
+        { x: -0.1, y: 0.72 },
+        { x: 0.6, y: 0.6 },
+      ]);
+      return drops;
+    }
     case "mountain":
       return [
         [
@@ -1166,14 +1261,17 @@ export function drawHandwrittenDoodle(spec: HandwrittenDoodleSpec, options: Dood
     return;
   }
 
-  const desiredWidth = Math.max(2.2, unit * 0.036);
+  const isLargeIllustration = specScale >= 1.2;
+  const desiredWidth = Math.max(2.4, unit * (isLargeIllustration ? 0.056 : 0.042));
   const lineWidth = desiredWidth / specScale;
   // 手抖幅度在「单位形状空间」里（形状半径约 1），与画面尺寸/缩放无关，
   // 否则大插画的抖动会被 unit*scale 放大成乱线。
   const roughness =
-    spec.kind === "wheat"
-      ? 0.012 + stableRandom(spec.kind, "roughness") * 0.01
-      : 0.026 + stableRandom(spec.kind, "roughness") * 0.018;
+    spec.kind === "window"
+      ? 0.009 + stableRandom(spec.kind, "roughness") * 0.006
+      : spec.kind === "wheat" || spec.kind === "ripple"
+        ? 0.012 + stableRandom(spec.kind, "roughness") * 0.009
+        : 0.026 + stableRandom(spec.kind, "roughness") * 0.018;
   const rawStrokes = doodleStrokes(spec.kind);
   if (rawStrokes.length === 0) {
     ctx.restore();
@@ -1214,6 +1312,43 @@ export function drawHandwrittenDoodle(spec: HandwrittenDoodleSpec, options: Dood
     return;
   }
 
+  const wash = isLargeIllustration ? ILLUSTRATION_WASH[spec.kind] : undefined;
+  if (wash) {
+    const washStroke = geometry.strokes[Math.min(wash.stroke, geometry.strokes.length - 1)];
+    const washPoints = washStroke?.variant0;
+    if (washPoints && washPoints.length >= 3) {
+      ctx.save();
+      ctx.globalAlpha = visible * wash.alpha;
+      ctx.fillStyle = roleColor(palette, wash.role);
+      ctx.beginPath();
+      washPoints.forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point.x * unit, point.y * unit);
+        else ctx.lineTo(point.x * unit, point.y * unit);
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // 铅笔速写的"第二遍找形"：主轮廓下方偏移 1–2px 再画一遍，
+  // 形成真实手绘的双线/重描感；低画质档跳过。
+  if (isLargeIllustration && quality < 2 && visible > 0.3) {
+    const underDx = (stableRandom(`${spec.kind}:under`, "dx") - 0.5) * 3.2;
+    const underDy = (stableRandom(`${spec.kind}:under`, "dy") - 0.5) * 2.6;
+    ctx.save();
+    ctx.translate(underDx / specScale, underDy / specScale);
+    ctx.globalAlpha = visible * 0.26;
+    ctx.fillStyle = roleColor(palette, spec.color);
+    for (const stroke of geometry.strokes) {
+      const path = stroke.inkPath1 ?? stroke.inkPath0;
+      if (path) ctx.fill(path);
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   ctx.globalAlpha = 1;
   drawStrokeSet(
     ctx,
@@ -1223,10 +1358,87 @@ export function drawHandwrittenDoodle(spec: HandwrittenDoodleSpec, options: Dood
       color: roleColor(palette, spec.color),
       width: lineWidth,
       alpha: roleAlpha(spec.color) * 0.9,
+      grain: isLargeIllustration,
+      grainScale: specScale,
     },
     options,
     quality >= 2 ? 0 : boilVariant
   );
+
+  // 笔刷质感：大幅插画补「干笔飞白」——纸色笔触打断墨色，形成断墨与毛边。
+  // 飞白数量按笔画长度分配，长笔画（窗框 / 云轮廓 / 麦秆）才有连续干笔；
+  // 短笔画不打断墨，避免雨滴、叶脉被切成两截；弱机档整段跳过。
+  if (isLargeIllustration && quality < 2) {
+    const strokeCount = geometry.strokes.length;
+    ctx.save();
+    ctx.fillStyle = palette.paperLight;
+    for (let strokeIndex = 0; strokeIndex < strokeCount; strokeIndex += 1) {
+      const stroke = geometry.strokes[strokeIndex];
+      if (!stroke || stroke.variant0.length < 2 || stroke.length < 0.9) continue;
+      const completion = clamp(visible * 1.45 - (strokeIndex / strokeCount) * 0.45, 0, 1);
+      if (completion < 0.999) continue;
+      const notchCount = Math.min(18, Math.max(3, Math.round(stroke.length * 3)));
+      for (let slot = 0; slot < notchCount; slot += 1) {
+        const salt = `${strokeIndex}:${slot}`;
+        const pointIndex = Math.floor(
+          stableRandom(`${spec.kind}:dry`, `p${salt}`) * (stroke.variant0.length - 1)
+        );
+        const from = stroke.variant0[pointIndex]!;
+        const to = stroke.variant0[pointIndex + 1]!;
+        const angle = Math.atan2(to.y - from.y, to.x - from.x);
+        const along = stableRandom(`${spec.kind}:dry`, `t${salt}`);
+        const x = (from.x + (to.x - from.x) * along) * unit;
+        const y = (from.y + (to.y - from.y) * along) * unit;
+        const normalX = -Math.sin(angle);
+        const normalY = Math.cos(angle);
+        const edge = stableRandom(`${spec.kind}:dry`, `e${salt}`) < 0.45;
+        const sign = stableRandom(`${spec.kind}:dry`, `d${salt}`) < 0.5 ? -1 : 1;
+        // 毛边落在笔道边缘外侧，断墨落在笔道中间。
+        const across = edge
+          ? sign * lineWidth * (0.45 + stableRandom(`${spec.kind}:dry`, `a${salt}`) * 0.35)
+          : (stableRandom(`${spec.kind}:dry`, `a${salt}`) - 0.5) * lineWidth * 0.5;
+        const length = lineWidth * (1.1 + stableRandom(`${spec.kind}:dry`, `l${salt}`) * 2.1);
+        const thickness = lineWidth * (0.26 + stableRandom(`${spec.kind}:dry`, `w${salt}`) * 0.34);
+        ctx.globalAlpha = edge ? 0.9 : 0.84;
+        ctx.save();
+        ctx.translate(x + normalX * across, y + normalY * across);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, length, thickness, 0, 0, TAU);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    // 收笔干痕：在笔画的收笔处压一小段纸色细痕，像抬笔时笔毛蹭过。
+    ctx.fillStyle = palette.paperBase;
+    ctx.globalAlpha = 0.55;
+    for (let strokeIndex = 0; strokeIndex < Math.min(4, strokeCount); strokeIndex += 1) {
+      const stroke = geometry.strokes[strokeIndex];
+      if (!stroke || stroke.variant0.length < 2 || stroke.length < 0.9) continue;
+      const completion = clamp(visible * 1.45 - (strokeIndex / strokeCount) * 0.45, 0, 1);
+      if (completion < 0.999) continue;
+      const points = stroke.variant0;
+      const last = points[points.length - 1]!;
+      const prev = points[points.length - 2]!;
+      const angle = Math.atan2(last.y - prev.y, last.x - prev.x);
+      ctx.save();
+      ctx.translate(last.x * unit, last.y * unit);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.ellipse(
+        -lineWidth * 0.7,
+        0,
+        lineWidth * (1.2 + stableRandom(`${spec.kind}:dry`, `tl${strokeIndex}`) * 1.1),
+        lineWidth * 0.28,
+        0,
+        0,
+        TAU
+      );
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
   ctx.restore();
 }
 

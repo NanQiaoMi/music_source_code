@@ -101,6 +101,24 @@ describe("handwritten lyric layout", () => {
     expect(lines.at(-1)?.items.length).toBeGreaterThan(1);
   });
 
+  it("caps portrait lines at maxLines when the copy still fits", () => {
+    const units = ["风", "把 ", "夏", "天 ", "吹", "成"].map((text, index) => ({
+      text,
+      width: Array.from(text).length * (text.includes(" ") ? 15 : 10),
+      start: index,
+      end: index + 1,
+    }));
+    const full = wrapHandwrittenPhrase(units, 60, null);
+    const capped = wrapHandwrittenPhrase(units, 60, null, 2);
+
+    expect(full.length).toBeGreaterThan(2);
+    expect(capped.length).toBeLessThanOrEqual(2);
+    expect(capped.flatMap((line) => line.items.map((item) => item.text)).join("")).toBe(
+      units.map((item) => item.text).join("")
+    );
+    expect(capped.every((line) => line.width <= 60)).toBe(true);
+  });
+
   it("keeps CJK closing punctuation with the preceding phrase when wrapping", () => {
     const units = [
       { text: "潮", width: 30, start: 0, end: 1 },
