@@ -45,6 +45,18 @@ describe("PlaybackRequestCoordinator (S1-8a)", () => {
     expect(coordinator.isCurrent(second)).toBe(false);
   });
 
+  it("complete keeps inFlight at 0 and abortAll is safe with no active request", () => {
+    const coordinator = new PlaybackRequestCoordinator();
+    const token = coordinator.begin({ songId: "a", source: "netease" });
+    expect(coordinator.inFlight()).toBe(1);
+
+    coordinator.complete(token);
+    expect(coordinator.inFlight()).toBe(0);
+
+    expect(() => coordinator.abortAll("noop")).not.toThrow();
+    expect(coordinator.inFlight()).toBe(0);
+  });
+
   it("abortAll aborts the current request", () => {
     const coordinator = new PlaybackRequestCoordinator();
     const token = coordinator.begin({ songId: "a", source: "netease" });
