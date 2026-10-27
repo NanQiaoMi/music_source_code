@@ -29,8 +29,8 @@ const RECOMMENDATION_KEY = "daily_recommendation";
 
 export const useDailyRecommendation = () => {
   const songs = usePlaylistStore(selectSongs);
-  const { history } = useQueueStore();
-  const { listeningStats } = useStatsAchievementsStore();
+  const history = useQueueStore((state) => state.history);
+  const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
   const [recommendationSongIds, setRecommendationSongIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 

@@ -23,7 +23,8 @@ const storeState = vi.hoisted(() => ({
 }));
 
 vi.mock("@/store/abLoopStore", () => ({
-  useABLoopStore: () => storeState.state,
+  useABLoopStore: (selector?: (state: typeof storeState.state) => unknown) =>
+    selector ? selector(storeState.state) : storeState.state,
 }));
 
 describe("ABLoopPanel", () => {

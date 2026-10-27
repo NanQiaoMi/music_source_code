@@ -20,17 +20,15 @@ function formatTime(seconds: number): string {
 }
 
 export function RecordingPanel({ isOpen, onClose, canvasRef }: RecordingPanelProps) {
-  const {
-    status,
-    recordingTime,
-    videoUrl,
-    startRecording,
-    stopRecording,
-    setRecordingTime,
-    setVideoBlob,
-    clearRecording,
-    downloadRecording,
-  } = useRecordingStore();
+  const status = useRecordingStore((state) => state.status);
+  const recordingTime = useRecordingStore((state) => state.recordingTime);
+  const videoUrl = useRecordingStore((state) => state.videoUrl);
+  const startRecording = useRecordingStore((state) => state.startRecording);
+  const stopRecording = useRecordingStore((state) => state.stopRecording);
+  const setRecordingTime = useRecordingStore((state) => state.setRecordingTime);
+  const setVideoBlob = useRecordingStore((state) => state.setVideoBlob);
+  const clearRecording = useRecordingStore((state) => state.clearRecording);
+  const downloadRecording = useRecordingStore((state) => state.downloadRecording);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);

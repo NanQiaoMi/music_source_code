@@ -50,11 +50,14 @@ vi.mock("@/components/stats/StatsVisuals", () => ({
 }));
 
 vi.mock("@/store/statsAchievementsStore", () => ({
-  useStatsAchievementsStore: () => ({
-    listeningStats: stats,
-    achievements: [] as Achievement[],
-    unlockAchievement: vi.fn(),
-  }),
+  useStatsAchievementsStore: (selector?: (state: Record<string, unknown>) => unknown) => {
+    const state = {
+      listeningStats: stats,
+      achievements: [] as Achievement[],
+      unlockAchievement: vi.fn(),
+    };
+    return selector ? selector(state) : state;
+  },
 }));
 
 describe("StatsAchievementsPanel", () => {

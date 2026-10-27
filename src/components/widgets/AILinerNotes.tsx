@@ -10,8 +10,9 @@ import { useAIAgentStore } from "@/store/useAIAgentStore";
 
 export const AILinerNotes: React.FC = () => {
   const currentSong = useAudioStore((state) => state.currentSong);
-  const { getNotes, isGenerating } = useLinerNotesStore();
-  const { points } = useEmotionStore();
+  const getNotes = useLinerNotesStore((state) => state.getNotes);
+  const isGenerating = useLinerNotesStore((state) => state.isGenerating);
+  const points = useEmotionStore((state) => state.points);
 
   const [displayNote, setDisplayNote] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);

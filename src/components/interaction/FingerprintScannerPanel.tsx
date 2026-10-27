@@ -16,20 +16,18 @@ export const FingerprintScannerPanel: React.FC<FingerprintScannerPanelProps> = (
   isOpen,
   onClose,
 }) => {
-  const {
-    fingerprints,
-    isScanning,
-    scanProgress,
-    scannedCount,
-    totalCount,
-    matchThreshold,
-    setScanning,
-    setScanProgress,
-    setScannedCount,
-    setTotalCount,
-    setMatchThreshold,
-    clearFingerprints,
-  } = useFingerprintStore();
+  const fingerprints = useFingerprintStore((state) => state.fingerprints);
+  const isScanning = useFingerprintStore((state) => state.isScanning);
+  const scanProgress = useFingerprintStore((state) => state.scanProgress);
+  const scannedCount = useFingerprintStore((state) => state.scannedCount);
+  const totalCount = useFingerprintStore((state) => state.totalCount);
+  const matchThreshold = useFingerprintStore((state) => state.matchThreshold);
+  const setScanning = useFingerprintStore((state) => state.setScanning);
+  const setScanProgress = useFingerprintStore((state) => state.setScanProgress);
+  const setScannedCount = useFingerprintStore((state) => state.setScannedCount);
+  const setTotalCount = useFingerprintStore((state) => state.setTotalCount);
+  const setMatchThreshold = useFingerprintStore((state) => state.setMatchThreshold);
+  const clearFingerprints = useFingerprintStore((state) => state.clearFingerprints);
 
   const songs = usePlaylistStore(selectSongs);
   const [activeTab, setActiveTab] = useState<"scan" | "matches" | "settings">("scan");

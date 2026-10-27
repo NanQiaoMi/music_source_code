@@ -35,30 +35,28 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
   isOpen,
   onClose,
 }) => {
-  const {
-    activePlatform,
-    setActivePlatform,
-    neteaseUser,
-    qqUser,
-    kugouUser,
-    kuwoUser,
-    qishuiUser,
-    userPlaylists,
-    isLoadingPlaylists,
-    qrImg,
-    qrStatus,
-    qrCountdown,
-    qrError,
-    isPollingQr,
-    fetchLoginStatus,
-    generateNeteaseQr,
-    checkNeteaseQr,
-    stopQrPolling,
-    loginWithCookie,
-    logout,
-    fetchUserPlaylists,
-    fetchPlaylistTracks,
-  } = useUserAccountStore();
+  const activePlatform = useUserAccountStore((state) => state.activePlatform);
+  const setActivePlatform = useUserAccountStore((state) => state.setActivePlatform);
+  const neteaseUser = useUserAccountStore((state) => state.neteaseUser);
+  const qqUser = useUserAccountStore((state) => state.qqUser);
+  const kugouUser = useUserAccountStore((state) => state.kugouUser);
+  const kuwoUser = useUserAccountStore((state) => state.kuwoUser);
+  const qishuiUser = useUserAccountStore((state) => state.qishuiUser);
+  const userPlaylists = useUserAccountStore((state) => state.userPlaylists);
+  const isLoadingPlaylists = useUserAccountStore((state) => state.isLoadingPlaylists);
+  const qrImg = useUserAccountStore((state) => state.qrImg);
+  const qrStatus = useUserAccountStore((state) => state.qrStatus);
+  const qrCountdown = useUserAccountStore((state) => state.qrCountdown);
+  const qrError = useUserAccountStore((state) => state.qrError);
+  const isPollingQr = useUserAccountStore((state) => state.isPollingQr);
+  const fetchLoginStatus = useUserAccountStore((state) => state.fetchLoginStatus);
+  const generateNeteaseQr = useUserAccountStore((state) => state.generateNeteaseQr);
+  const checkNeteaseQr = useUserAccountStore((state) => state.checkNeteaseQr);
+  const stopQrPolling = useUserAccountStore((state) => state.stopQrPolling);
+  const loginWithCookie = useUserAccountStore((state) => state.loginWithCookie);
+  const logout = useUserAccountStore((state) => state.logout);
+  const fetchUserPlaylists = useUserAccountStore((state) => state.fetchUserPlaylists);
+  const fetchPlaylistTracks = useUserAccountStore((state) => state.fetchPlaylistTracks);
 
   const [cookieInput, setCookieInput] = useState("");
   const [showCookieDrawer, setShowCookieDrawer] = useState(false);

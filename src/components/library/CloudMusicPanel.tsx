@@ -14,19 +14,17 @@ interface CloudMusicPanelProps {
 }
 
 export const CloudMusicPanel: React.FC<CloudMusicPanelProps> = ({ onOpenAccountModal }) => {
-  const {
-    neteaseUser,
-    userPlaylists,
-    isLoadingPlaylists,
-    activePlaylistSongs,
-    isLoadingTracks,
-    hasMoreTracks,
-    trackTotalCount,
-    fetchUserPlaylists,
-    fetchPlaylistTracks,
-    loadMorePlaylistTracks,
-    setIsAccountModalOpen,
-  } = useUserAccountStore();
+  const neteaseUser = useUserAccountStore((state) => state.neteaseUser);
+  const userPlaylists = useUserAccountStore((state) => state.userPlaylists);
+  const isLoadingPlaylists = useUserAccountStore((state) => state.isLoadingPlaylists);
+  const activePlaylistSongs = useUserAccountStore((state) => state.activePlaylistSongs);
+  const isLoadingTracks = useUserAccountStore((state) => state.isLoadingTracks);
+  const hasMoreTracks = useUserAccountStore((state) => state.hasMoreTracks);
+  const trackTotalCount = useUserAccountStore((state) => state.trackTotalCount);
+  const fetchUserPlaylists = useUserAccountStore((state) => state.fetchUserPlaylists);
+  const fetchPlaylistTracks = useUserAccountStore((state) => state.fetchPlaylistTracks);
+  const loadMorePlaylistTracks = useUserAccountStore((state) => state.loadMorePlaylistTracks);
+  const setIsAccountModalOpen = useUserAccountStore((state) => state.setIsAccountModalOpen);
 
   const [selectedPlaylist, setSelectedPlaylist] = useState<CloudPlaylist | null>(null);
   const [songFilter, setSongFilter] = useState("");

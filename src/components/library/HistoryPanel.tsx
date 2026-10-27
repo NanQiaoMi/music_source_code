@@ -22,7 +22,9 @@ interface HistoryPanelProps {
 }
 
 export const HistoryPanel: React.FC<HistoryPanelProps> = ({ isOpen, onClose }) => {
-  const { history, clearHistory, addToQueue } = useQueueStore();
+  const history = useQueueStore((state) => state.history);
+  const clearHistory = useQueueStore((state) => state.clearHistory);
+  const addToQueue = useQueueStore((state) => state.addToQueue);
   const librarySongs = usePlaylistStore(selectSongs);
   const playSong = useAudioStore((state) => state.playSong);
   const playQueue = useAudioStore((state) => state.playQueue);

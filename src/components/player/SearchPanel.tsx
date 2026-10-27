@@ -117,40 +117,40 @@ const getSourceBadge = (source?: string) => {
 };
 
 export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
-  const {
-    query,
-    searchType,
-    activeSourceTab,
-    results,
-    segmentedResults,
-    recentSearches,
-    isSearching,
-    page,
-    pageSize,
-    totalResults,
-    filters,
-    searchHistory,
-    recentCommands,
-    commandFeedback,
-    setQuery,
-    setSearchType,
-    setActiveSourceTab,
-    search,
-    clearSearch,
-    removeRecentSearch,
-    clearRecentSearches,
-    setIsVoiceSearch,
-    setPage,
-    setFilterType,
-    setDurationRange,
-    setSourceFilter: _setSourceFilter,
-    clearFilters: _clearFilters,
-    clearHistory: _clearHistory,
-    addRecentCommand,
-    setCommandFeedback,
-  } = useSearchStore();
+  const query = useSearchStore((state) => state.query);
+  const searchType = useSearchStore((state) => state.searchType);
+  const activeSourceTab = useSearchStore((state) => state.activeSourceTab);
+  const results = useSearchStore((state) => state.results);
+  const segmentedResults = useSearchStore((state) => state.segmentedResults);
+  const recentSearches = useSearchStore((state) => state.recentSearches);
+  const isSearching = useSearchStore((state) => state.isSearching);
+  const page = useSearchStore((state) => state.page);
+  const pageSize = useSearchStore((state) => state.pageSize);
+  const totalResults = useSearchStore((state) => state.totalResults);
+  const filters = useSearchStore((state) => state.filters);
+  const searchHistory = useSearchStore((state) => state.searchHistory);
+  const recentCommands = useSearchStore((state) => state.recentCommands);
+  const commandFeedback = useSearchStore((state) => state.commandFeedback);
+  const setQuery = useSearchStore((state) => state.setQuery);
+  const setSearchType = useSearchStore((state) => state.setSearchType);
+  const setActiveSourceTab = useSearchStore((state) => state.setActiveSourceTab);
+  const search = useSearchStore((state) => state.search);
+  const clearSearch = useSearchStore((state) => state.clearSearch);
+  const removeRecentSearch = useSearchStore((state) => state.removeRecentSearch);
+  const clearRecentSearches = useSearchStore((state) => state.clearRecentSearches);
+  const setIsVoiceSearch = useSearchStore((state) => state.setIsVoiceSearch);
+  const setPage = useSearchStore((state) => state.setPage);
+  const setFilterType = useSearchStore((state) => state.setFilterType);
+  const setDurationRange = useSearchStore((state) => state.setDurationRange);
+  const _setSourceFilter = useSearchStore((state) => state.setSourceFilter);
+  const _clearFilters = useSearchStore((state) => state.clearFilters);
+  const _clearHistory = useSearchStore((state) => state.clearHistory);
+  const addRecentCommand = useSearchStore((state) => state.addRecentCommand);
+  const setCommandFeedback = useSearchStore((state) => state.setCommandFeedback);
 
-  const { sources: sourceMatrix, toggleSource, openManagementModal } = useSourceConfigStore();
+  const sourceMatrix = useSourceConfigStore((state) => state.sources);
+  const toggleSource = useSourceConfigStore((state) => state.toggleSource);
+  const openManagementModal = useSourceConfigStore((state) => state.openManagementModal);
   const songs = usePlaylistStore(selectSongs);
   const addToQueue = useQueueStore((state) => state.addToQueue);
   const insertNext = useQueueStore((state) => state.insertNext);

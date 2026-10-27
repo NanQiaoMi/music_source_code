@@ -15,8 +15,12 @@ export const KeyboardShortcutsSettings: React.FC<KeyboardShortcutsSettingsProps>
   isOpen,
   onClose,
 }) => {
-  const { defaults, overrides, setBinding, resetBinding, resetAll, getBinding } =
-    useKeyboardShortcutsStore();
+  const defaults = useKeyboardShortcutsStore((state) => state.defaults);
+  const overrides = useKeyboardShortcutsStore((state) => state.overrides);
+  const setBinding = useKeyboardShortcutsStore((state) => state.setBinding);
+  const resetBinding = useKeyboardShortcutsStore((state) => state.resetBinding);
+  const resetAll = useKeyboardShortcutsStore((state) => state.resetAll);
+  const getBinding = useKeyboardShortcutsStore((state) => state.getBinding);
   const [recordingId, setRecordingId] = useState<string | null>(null);
   const [conflictMsg, setConflictMsg] = useState<string>("");
   const [pendingKeys, setPendingKeys] = useState<string[]>([]);

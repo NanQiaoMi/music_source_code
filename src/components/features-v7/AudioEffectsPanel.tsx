@@ -33,28 +33,26 @@ const effectIcons: Partial<Record<AudioEffectType, React.ComponentType<{ classNa
 type PanelTab = "presets" | "scenes" | "effects";
 
 export function AudioEffectsPanel({ isOpen, onClose }: AudioEffectsPanelProps) {
-  const {
-    effects,
-    isEnabled,
-    setIsEnabled,
-    toggleEffect,
-    setEffectIntensity,
-    resetAllEffects,
-    activeScene,
-    applyScene,
-    clearScene,
-    randomize,
-    shuffleIntensity,
-    savedPresets,
-    savePreset,
-    loadPreset,
-    deletePreset,
-    presets,
-    activePresetId,
-    morphState,
-    morphTo,
-    setMorphT,
-  } = useAudioEffectsStore();
+  const effects = useAudioEffectsStore((state) => state.effects);
+  const isEnabled = useAudioEffectsStore((state) => state.isEnabled);
+  const setIsEnabled = useAudioEffectsStore((state) => state.setIsEnabled);
+  const toggleEffect = useAudioEffectsStore((state) => state.toggleEffect);
+  const setEffectIntensity = useAudioEffectsStore((state) => state.setEffectIntensity);
+  const resetAllEffects = useAudioEffectsStore((state) => state.resetAllEffects);
+  const activeScene = useAudioEffectsStore((state) => state.activeScene);
+  const applyScene = useAudioEffectsStore((state) => state.applyScene);
+  const clearScene = useAudioEffectsStore((state) => state.clearScene);
+  const randomize = useAudioEffectsStore((state) => state.randomize);
+  const shuffleIntensity = useAudioEffectsStore((state) => state.shuffleIntensity);
+  const savedPresets = useAudioEffectsStore((state) => state.savedPresets);
+  const savePreset = useAudioEffectsStore((state) => state.savePreset);
+  const loadPreset = useAudioEffectsStore((state) => state.loadPreset);
+  const deletePreset = useAudioEffectsStore((state) => state.deletePreset);
+  const presets = useAudioEffectsStore((state) => state.presets);
+  const activePresetId = useAudioEffectsStore((state) => state.activePresetId);
+  const morphState = useAudioEffectsStore((state) => state.morphState);
+  const morphTo = useAudioEffectsStore((state) => state.morphTo);
+  const setMorphT = useAudioEffectsStore((state) => state.setMorphT);
 
   const [activeTab, setActiveTab] = useState<PanelTab>("presets");
   const [presetName, setPresetName] = useState("");

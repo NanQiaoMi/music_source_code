@@ -19,16 +19,14 @@ const TIMER_OPTIONS = [
 ];
 
 export const SleepTimerPanel: React.FC<SleepTimerPanelProps> = ({ isOpen, onClose }) => {
-  const {
-    minutes,
-    remainingSeconds,
-    isActive,
-    setTimer,
-    startTimer,
-    pauseTimer,
-    resumeTimer,
-    cancelTimer,
-  } = useSleepTimerStore();
+  const minutes = useSleepTimerStore((state) => state.minutes);
+  const remainingSeconds = useSleepTimerStore((state) => state.remainingSeconds);
+  const isActive = useSleepTimerStore((state) => state.isActive);
+  const setTimer = useSleepTimerStore((state) => state.setTimer);
+  const startTimer = useSleepTimerStore((state) => state.startTimer);
+  const pauseTimer = useSleepTimerStore((state) => state.pauseTimer);
+  const resumeTimer = useSleepTimerStore((state) => state.resumeTimer);
+  const cancelTimer = useSleepTimerStore((state) => state.cancelTimer);
 
   const totalSeconds = useMemo(() => (minutes || 30) * 60, [minutes]);
   const progressRatio = useMemo(() => {

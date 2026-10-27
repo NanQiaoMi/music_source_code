@@ -5,7 +5,13 @@ import { usePosterV2Store } from "@/store/posterV2Store";
 import { Settings, Image as ImageIcon, Type, Layout } from "lucide-react";
 
 export default function FabricControls() {
-  const store = usePosterV2Store();
+  const updateTransform = usePosterV2Store((state) => state.updateTransform);
+  const updateGlobal = usePosterV2Store((state) => state.updateGlobal);
+  const aspectRatio = usePosterV2Store((state) => state.aspectRatio);
+  const primaryColor = usePosterV2Store((state) => state.primaryColor);
+  const coverTransform = usePosterV2Store((state) => state.coverTransform);
+  const titleTransform = usePosterV2Store((state) => state.titleTransform);
+  const artistTransform = usePosterV2Store((state) => state.artistTransform);
 
   const handleTransformChange = (
     element: "cover" | "title" | "artist",
@@ -14,9 +20,9 @@ export default function FabricControls() {
   ) => {
     // If scaleX changes, also change scaleY to maintain aspect ratio
     if (property === "scaleX") {
-      store.updateTransform(element, { scaleX: value, scaleY: value });
+      updateTransform(element, { scaleX: value, scaleY: value });
     } else {
-      store.updateTransform(element, { [property]: value });
+      updateTransform(element, { [property]: value });
     }
   };
 
@@ -25,7 +31,8 @@ export default function FabricControls() {
     element: "cover" | "title" | "artist",
     maxScale = 3
   ) => {
-    const transform = store[`${element}Transform`];
+    const transform =
+      element === "cover" ? coverTransform : element === "title" ? titleTransform : artistTransform;
 
     return (
       <div className="mb-6 bg-white/5 rounded-2xl p-4 border border-white/5">
@@ -95,26 +102,24 @@ export default function FabricControls() {
           <div>
             <div className="flex justify-between text-xs text-white/50 mb-1">
               <span>Aspect Ratio</span>
-              <span>
-                {store.aspectRatio === 0.5625 ? "9:16" : store.aspectRatio === 0.75 ? "3:4" : "1:1"}
-              </span>
+              <span>{aspectRatio === 0.5625 ? "9:16" : aspectRatio === 0.75 ? "3:4" : "1:1"}</span>
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => store.updateGlobal({ aspectRatio: 0.5625 })}
-                className={`flex-1 py-1 text-xs rounded-lg ${store.aspectRatio === 0.5625 ? "bg-pink-500 text-white" : "bg-white/10 text-white/60 hover:bg-white/20"}`}
+                onClick={() => updateGlobal({ aspectRatio: 0.5625 })}
+                className={`flex-1 py-1 text-xs rounded-lg ${aspectRatio === 0.5625 ? "bg-pink-500 text-white" : "bg-white/10 text-white/60 hover:bg-white/20"}`}
               >
                 9:16
               </button>
               <button
-                onClick={() => store.updateGlobal({ aspectRatio: 0.75 })}
-                className={`flex-1 py-1 text-xs rounded-lg ${store.aspectRatio === 0.75 ? "bg-pink-500 text-white" : "bg-white/10 text-white/60 hover:bg-white/20"}`}
+                onClick={() => updateGlobal({ aspectRatio: 0.75 })}
+                className={`flex-1 py-1 text-xs rounded-lg ${aspectRatio === 0.75 ? "bg-pink-500 text-white" : "bg-white/10 text-white/60 hover:bg-white/20"}`}
               >
                 3:4
               </button>
               <button
-                onClick={() => store.updateGlobal({ aspectRatio: 1 })}
-                className={`flex-1 py-1 text-xs rounded-lg ${store.aspectRatio === 1 ? "bg-pink-500 text-white" : "bg-white/10 text-white/60 hover:bg-white/20"}`}
+                onClick={() => updateGlobal({ aspectRatio: 1 })}
+                className={`flex-1 py-1 text-xs rounded-lg ${aspectRatio === 1 ? "bg-pink-500 text-white" : "bg-white/10 text-white/60 hover:bg-white/20"}`}
               >
                 1:1
               </button>
@@ -129,11 +134,11 @@ export default function FabricControls() {
               {["#fa2d48", "#111111", "#4f46e5", "#10b981", "#f59e0b"].map((color) => (
                 <button
                   key={color}
-                  onClick={() => store.updateGlobal({ primaryColor: color })}
+                  onClick={() => updateGlobal({ primaryColor: color })}
                   className="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110"
                   style={{
                     backgroundColor: color,
-                    borderColor: store.primaryColor === color ? "white" : "transparent",
+                    borderColor: primaryColor === color ? "white" : "transparent",
                   }}
                 />
               ))}

@@ -14,7 +14,8 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { defaults, getBinding } = useKeyboardShortcutsStore();
+  const defaults = useKeyboardShortcutsStore((state) => state.defaults);
+  const getBinding = useKeyboardShortcutsStore((state) => state.getBinding);
 
   if (!isOpen) return null;
 

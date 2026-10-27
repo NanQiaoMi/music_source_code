@@ -46,23 +46,21 @@ const severityColors: Record<
 };
 
 export function HealthCheckPanel({ isOpen, onClose }: HealthCheckPanelProps) {
-  const {
-    isRunning,
-    progress,
-    issues,
-    selectedIssues,
-    lastCheckTime,
-    totalSongsScanned,
-    startCheck,
-    stopCheck,
-    selectIssue,
-    selectAllIssues,
-    deselectAllIssues,
-    fixIssue,
-    fixSelectedIssues,
-    clearIssues,
-    dismissIssue,
-  } = useHealthCheckStore();
+  const isRunning = useHealthCheckStore((state) => state.isRunning);
+  const progress = useHealthCheckStore((state) => state.progress);
+  const issues = useHealthCheckStore((state) => state.issues);
+  const selectedIssues = useHealthCheckStore((state) => state.selectedIssues);
+  const lastCheckTime = useHealthCheckStore((state) => state.lastCheckTime);
+  const totalSongsScanned = useHealthCheckStore((state) => state.totalSongsScanned);
+  const startCheck = useHealthCheckStore((state) => state.startCheck);
+  const stopCheck = useHealthCheckStore((state) => state.stopCheck);
+  const selectIssue = useHealthCheckStore((state) => state.selectIssue);
+  const selectAllIssues = useHealthCheckStore((state) => state.selectAllIssues);
+  const deselectAllIssues = useHealthCheckStore((state) => state.deselectAllIssues);
+  const fixIssue = useHealthCheckStore((state) => state.fixIssue);
+  const fixSelectedIssues = useHealthCheckStore((state) => state.fixSelectedIssues);
+  const clearIssues = useHealthCheckStore((state) => state.clearIssues);
+  const dismissIssue = useHealthCheckStore((state) => state.dismissIssue);
 
   const formatTime = (timestamp: number | null) => {
     if (!timestamp) return "从未检查";

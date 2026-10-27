@@ -99,7 +99,9 @@ export const StatsAchievementsPanel: React.FC<StatsAchievementsPanelProps> = ({
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const { listeningStats, achievements, unlockAchievement } = useStatsAchievementsStore();
+  const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
+  const achievements = useStatsAchievementsStore((state) => state.achievements);
+  const unlockAchievement = useStatsAchievementsStore((state) => state.unlockAchievement);
 
   if (!isOpen) return null;
 

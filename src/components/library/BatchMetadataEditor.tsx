@@ -31,17 +31,15 @@ const EDIT_TYPES: { value: EditType; label: string }[] = [
 
 export const BatchMetadataEditor: React.FC<BatchMetadataEditorProps> = ({ className = "" }) => {
   const songs = usePlaylistStore(selectSongs);
-  const {
-    operations,
-    previewChanges,
-    regexPresets,
-    setSelectedSongs,
-    addOperation,
-    removeOperation,
-    clearOperations,
-    generatePreview,
-    applyChanges,
-  } = useMetadataEditorStore();
+  const operations = useMetadataEditorStore((state) => state.operations);
+  const previewChanges = useMetadataEditorStore((state) => state.previewChanges);
+  const regexPresets = useMetadataEditorStore((state) => state.regexPresets);
+  const setSelectedSongs = useMetadataEditorStore((state) => state.setSelectedSongs);
+  const addOperation = useMetadataEditorStore((state) => state.addOperation);
+  const removeOperation = useMetadataEditorStore((state) => state.removeOperation);
+  const clearOperations = useMetadataEditorStore((state) => state.clearOperations);
+  const generatePreview = useMetadataEditorStore((state) => state.generatePreview);
+  const applyChanges = useMetadataEditorStore((state) => state.applyChanges);
 
   const [activeTab, setActiveTab] = useState<"select" | "edit" | "preview">("select");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);

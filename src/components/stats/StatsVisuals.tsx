@@ -270,21 +270,23 @@ export const MoodFlow: React.FC<MoodProps> = ({ moodHistory }) => {
 // ─── Default export (existing StatsVisuals) ──────────────────────
 
 const StatsVisuals = () => {
-  const stats = useStatsAchievementsStore();
+  const getPlayTimeStats = useStatsAchievementsStore((state) => state.getPlayTimeStats);
+  const getTopPlayedSongs = useStatsAchievementsStore((state) => state.getTopPlayedSongs);
+  const getTopArtists = useStatsAchievementsStore((state) => state.getTopArtists);
 
   const playTimeStats = useMemo(
     () =>
-      stats.getPlayTimeStats?.() ?? {
+      getPlayTimeStats?.() ?? {
         today: 0,
         thisWeek: 0,
         thisMonth: 0,
         allTime: 0,
       },
-    [stats]
+    [getPlayTimeStats]
   );
 
-  const topSongs = useMemo(() => stats.getTopPlayedSongs?.(10) ?? [], [stats]);
-  const topArtists = useMemo(() => stats.getTopArtists?.(10) ?? [], [stats]);
+  const topSongs = useMemo(() => getTopPlayedSongs?.(10) ?? [], [getTopPlayedSongs]);
+  const topArtists = useMemo(() => getTopArtists?.(10) ?? [], [getTopArtists]);
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);

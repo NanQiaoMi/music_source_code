@@ -27,20 +27,18 @@ interface CrossfadeMixerProps {
 }
 
 const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
-  const {
-    settings,
-    bpmDatabase,
-    queue,
-    totalProcessed,
-    presets,
-    setSettings,
-    getBPMInfo,
-    addToQueue,
-    removeFromQueue,
-    clearQueue,
-    applyPreset,
-    findCompatiblePairs,
-  } = useCrossfadeStore();
+  const settings = useCrossfadeStore((state) => state.settings);
+  const bpmDatabase = useCrossfadeStore((state) => state.bpmDatabase);
+  const queue = useCrossfadeStore((state) => state.queue);
+  const totalProcessed = useCrossfadeStore((state) => state.totalProcessed);
+  const presets = useCrossfadeStore((state) => state.presets);
+  const setSettings = useCrossfadeStore((state) => state.setSettings);
+  const getBPMInfo = useCrossfadeStore((state) => state.getBPMInfo);
+  const addToQueue = useCrossfadeStore((state) => state.addToQueue);
+  const removeFromQueue = useCrossfadeStore((state) => state.removeFromQueue);
+  const clearQueue = useCrossfadeStore((state) => state.clearQueue);
+  const applyPreset = useCrossfadeStore((state) => state.applyPreset);
+  const findCompatiblePairs = useCrossfadeStore((state) => state.findCompatiblePairs);
 
   const songs = usePlaylistStore(selectSongs);
   const [activeTab, setActiveTab] = useState<"analyze" | "queue" | "settings">("analyze");

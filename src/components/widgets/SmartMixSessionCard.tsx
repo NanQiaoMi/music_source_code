@@ -18,8 +18,11 @@ const DEFAULT_KNOBS: SmartMixKnobs = {
 export function SmartMixSessionCard() {
   const songs = usePlaylistStore((state) => state.songs);
   const playQueue = useAudioStore((state) => state.playQueue);
-  const { currentSession, start, regenerate, commitToQueue, saveCurrentAsPlaylist } =
-    useSmartMixStore();
+  const currentSession = useSmartMixStore((state) => state.currentSession);
+  const start = useSmartMixStore((state) => state.start);
+  const regenerate = useSmartMixStore((state) => state.regenerate);
+  const commitToQueue = useSmartMixStore((state) => state.commitToQueue);
+  const saveCurrentAsPlaylist = useSmartMixStore((state) => state.saveCurrentAsPlaylist);
   const [knobs, setKnobs] = useState<SmartMixKnobs>(DEFAULT_KNOBS);
   const [selectedSeedId, setSelectedSeedId] = useState<string>("");
   const [playlistName, setPlaylistName] = useState("Smart Mix");

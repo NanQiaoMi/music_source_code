@@ -43,7 +43,8 @@ vi.mock("@/store/libraryHealthStore", async (importOriginal) => {
 
   return {
     ...actual,
-    useLibraryHealthStore: () => healthStoreState.state,
+    useLibraryHealthStore: (selector?: (state: typeof healthStoreState.state) => unknown) =>
+      selector ? selector(healthStoreState.state) : healthStoreState.state,
   };
 });
 

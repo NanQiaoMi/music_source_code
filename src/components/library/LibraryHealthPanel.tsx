@@ -81,17 +81,15 @@ export const LibraryHealthPanel: React.FC<LibraryHealthPanelProps> = ({ isOpen, 
   const [purgeFeedback, setPurgeFeedback] = useState<PurgeReport | null>(null);
   const [songsToPurgeConfirm, setSongsToPurgeConfirm] = useState<string[] | null>(null);
 
-  const {
-    healthReport,
-    autoScan,
-    setHealthReport,
-    setAutoScan,
-    setScanning,
-    setScanProgress,
-    ignoreIssue,
-    clearIssues,
-    exportHealthReport,
-  } = useLibraryHealthStore();
+  const healthReport = useLibraryHealthStore((state) => state.healthReport);
+  const autoScan = useLibraryHealthStore((state) => state.autoScan);
+  const setHealthReport = useLibraryHealthStore((state) => state.setHealthReport);
+  const setAutoScan = useLibraryHealthStore((state) => state.setAutoScan);
+  const setScanning = useLibraryHealthStore((state) => state.setScanning);
+  const setScanProgress = useLibraryHealthStore((state) => state.setScanProgress);
+  const ignoreIssue = useLibraryHealthStore((state) => state.ignoreIssue);
+  const clearIssues = useLibraryHealthStore((state) => state.clearIssues);
+  const exportHealthReport = useLibraryHealthStore((state) => state.exportHealthReport);
 
   const songLookup = useMemo(
     () =>

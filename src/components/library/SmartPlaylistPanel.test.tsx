@@ -90,20 +90,23 @@ vi.mock("@/components/shared/GlassToast", () => ({
 vi.mock("@/store/smartPlaylistStore", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/store/smartPlaylistStore")>();
 
+  const state = {
+    customPlaylists: [customPlaylist],
+    createSmartPlaylist: vi.fn(),
+    deleteSmartPlaylist: vi.fn(),
+    addRule: vi.fn(),
+    deleteRule: vi.fn(),
+    generatePlaylist: (playlist: SmartPlaylist) =>
+      playlist.rules.length === 0 ? songs : songs.filter((song) => song.artist === "M83"),
+    exportPlaylist: vi.fn(),
+    importPlaylist: vi.fn(),
+    getDefaultSmartPlaylists: () => [],
+  };
+
   return {
     ...actual,
-    useSmartPlaylistStore: () => ({
-      customPlaylists: [customPlaylist],
-      createSmartPlaylist: vi.fn(),
-      deleteSmartPlaylist: vi.fn(),
-      addRule: vi.fn(),
-      deleteRule: vi.fn(),
-      generatePlaylist: (playlist: SmartPlaylist) =>
-        playlist.rules.length === 0 ? songs : songs.filter((song) => song.artist === "M83"),
-      exportPlaylist: vi.fn(),
-      importPlaylist: vi.fn(),
-      getDefaultSmartPlaylists: () => [],
-    }),
+    useSmartPlaylistStore: (selector?: (snapshot: typeof state) => unknown) =>
+      selector ? selector(state) : state,
   };
 });
 

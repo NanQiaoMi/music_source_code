@@ -17,8 +17,10 @@ import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { summarizeListeningStats } from "@/utils/listeningInsights";
 
 export const AuditoryGene: React.FC = () => {
-  const { dnaJournal, isLoading, generateDNAJournal } = useKnowledgeStore();
-  const { points } = useEmotionStore();
+  const dnaJournal = useKnowledgeStore((state) => state.dnaJournal);
+  const isLoading = useKnowledgeStore((state) => state.isLoading);
+  const generateDNAJournal = useKnowledgeStore((state) => state.generateDNAJournal);
+  const points = useEmotionStore((state) => state.points);
   const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
   const [_isHovered, setIsHovered] = useState(false);
   const summary = summarizeListeningStats(listeningStats);

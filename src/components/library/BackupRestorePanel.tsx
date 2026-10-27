@@ -28,22 +28,20 @@ type TabId = (typeof TAB_ITEMS)[number]["id"];
 export const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<TabId>("backup");
 
-  const {
-    backups,
-    isBackingUp,
-    backupProgress,
-    isRestoring,
-    restoreProgress,
-    restoreError,
-    schedules,
-    createBackup,
-    downloadBackup,
-    deleteBackup,
-    restoreBackup,
-    uploadBackup,
-    addSchedule,
-    getBackupPreview,
-  } = useBackupRestoreStore();
+  const backups = useBackupRestoreStore((state) => state.backups);
+  const isBackingUp = useBackupRestoreStore((state) => state.isBackingUp);
+  const backupProgress = useBackupRestoreStore((state) => state.backupProgress);
+  const isRestoring = useBackupRestoreStore((state) => state.isRestoring);
+  const restoreProgress = useBackupRestoreStore((state) => state.restoreProgress);
+  const restoreError = useBackupRestoreStore((state) => state.restoreError);
+  const schedules = useBackupRestoreStore((state) => state.schedules);
+  const createBackup = useBackupRestoreStore((state) => state.createBackup);
+  const downloadBackup = useBackupRestoreStore((state) => state.downloadBackup);
+  const deleteBackup = useBackupRestoreStore((state) => state.deleteBackup);
+  const restoreBackup = useBackupRestoreStore((state) => state.restoreBackup);
+  const uploadBackup = useBackupRestoreStore((state) => state.uploadBackup);
+  const addSchedule = useBackupRestoreStore((state) => state.addSchedule);
+  const getBackupPreview = useBackupRestoreStore((state) => state.getBackupPreview);
 
   if (!isOpen) return null;
 

@@ -16,7 +16,11 @@ interface ProfessionalModeToggleProps {
 export const ProfessionalModeToggle: React.FC<ProfessionalModeToggleProps> = ({
   className = "",
 }) => {
-  const { isProfessionalMode, toggleMode, showModeSwitchAnimation } = useProfessionalModeStore();
+  const isProfessionalMode = useProfessionalModeStore((state) => state.isProfessionalMode);
+  const toggleMode = useProfessionalModeStore((state) => state.toggleMode);
+  const showModeSwitchAnimation = useProfessionalModeStore(
+    (state) => state.showModeSwitchAnimation
+  );
 
   return (
     <motion.button
@@ -78,13 +82,11 @@ export const ProfessionalModePanel: React.FC<ProfessionalModePanelProps> = ({
   isOpen,
   onClose,
 }) => {
-  const {
-    isProfessionalMode,
-    setProfessionalMode,
-    enabledFeatures,
-    toggleFeature,
-    resetToDefaults,
-  } = useProfessionalModeStore();
+  const isProfessionalMode = useProfessionalModeStore((state) => state.isProfessionalMode);
+  const setProfessionalMode = useProfessionalModeStore((state) => state.setProfessionalMode);
+  const enabledFeatures = useProfessionalModeStore((state) => state.enabledFeatures);
+  const toggleFeature = useProfessionalModeStore((state) => state.toggleFeature);
+  const resetToDefaults = useProfessionalModeStore((state) => state.resetToDefaults);
 
   const [showFeatureList, setShowFeatureList] = useState(false);
 

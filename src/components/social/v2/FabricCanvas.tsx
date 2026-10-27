@@ -31,7 +31,15 @@ export default function FabricCanvas({
     brand?: fabric.IText;
   }>({});
 
-  const store = usePosterV2Store();
+  const aspectRatio = usePosterV2Store((state) => state.aspectRatio);
+  const primaryColor = usePosterV2Store((state) => state.primaryColor);
+  const lyricColor = usePosterV2Store((state) => state.lyricColor);
+  const lyricAlignment = usePosterV2Store((state) => state.lyricAlignment);
+  const lineSpacing = usePosterV2Store((state) => state.lineSpacing);
+  const lyricFont = usePosterV2Store((state) => state.lyricFont);
+  const coverTransform = usePosterV2Store((state) => state.coverTransform);
+  const titleTransform = usePosterV2Store((state) => state.titleTransform);
+  const artistTransform = usePosterV2Store((state) => state.artistTransform);
 
   // We use this flag to prevent infinite loops when Canvas -> Store -> Canvas
   const isUpdatingFromCanvas = useRef(false);
@@ -47,8 +55,8 @@ export default function FabricCanvas({
 
     const canvas = new fabric.Canvas(canvasRef.current, {
       width: 600,
-      height: 600 / store.aspectRatio, // e.g. 600 / (9/16) = 1066.66
-      backgroundColor: store.primaryColor,
+      height: 600 / aspectRatio, // e.g. 600 / (9/16) = 1066.66
+      backgroundColor: primaryColor,
       preserveObjectStacking: true,
       selection: true, // Allow multiple selection
     });
@@ -110,9 +118,9 @@ export default function FabricCanvas({
           top: 620,
           fontFamily: "sans-serif",
           fontSize: 24,
-          fill: store.lyricColor,
-          textAlign: store.lyricAlignment,
-          lineHeight: store.lineSpacing,
+          fill: lyricColor,
+          textAlign: lyricAlignment,
+          lineHeight: lineSpacing,
         });
         objectsRef.current.lyrics = lyricsText;
         canvas.add(lyricsText);
@@ -213,76 +221,65 @@ export default function FabricCanvas({
     const obj = objectsRef.current.cover;
     if (obj) {
       obj.set({
-        left: store.coverTransform.x !== 0 ? store.coverTransform.x : obj.left,
-        top: store.coverTransform.y !== 0 ? store.coverTransform.y : obj.top,
-        scaleX: store.coverTransform.scaleX !== 1 ? store.coverTransform.scaleX : obj.scaleX,
-        scaleY: store.coverTransform.scaleY !== 1 ? store.coverTransform.scaleY : obj.scaleY,
+        left: coverTransform.x !== 0 ? coverTransform.x : obj.left,
+        top: coverTransform.y !== 0 ? coverTransform.y : obj.top,
+        scaleX: coverTransform.scaleX !== 1 ? coverTransform.scaleX : obj.scaleX,
+        scaleY: coverTransform.scaleY !== 1 ? coverTransform.scaleY : obj.scaleY,
       });
       fabricRef.current.requestRenderAll();
     }
-  }, [store.coverTransform]);
+  }, [coverTransform]);
 
   useEffect(() => {
     if (!fabricRef.current || isUpdatingFromCanvas.current) return;
     const obj = objectsRef.current.title;
     if (obj) {
       obj.set({
-        left: store.titleTransform.x !== 0 ? store.titleTransform.x : obj.left,
-        top: store.titleTransform.y !== 0 ? store.titleTransform.y : obj.top,
-        scaleX: store.titleTransform.scaleX !== 1 ? store.titleTransform.scaleX : obj.scaleX,
-        scaleY: store.titleTransform.scaleY !== 1 ? store.titleTransform.scaleY : obj.scaleY,
+        left: titleTransform.x !== 0 ? titleTransform.x : obj.left,
+        top: titleTransform.y !== 0 ? titleTransform.y : obj.top,
+        scaleX: titleTransform.scaleX !== 1 ? titleTransform.scaleX : obj.scaleX,
+        scaleY: titleTransform.scaleY !== 1 ? titleTransform.scaleY : obj.scaleY,
       });
       fabricRef.current.requestRenderAll();
     }
-  }, [store.titleTransform]);
+  }, [titleTransform]);
 
   useEffect(() => {
     if (!fabricRef.current || isUpdatingFromCanvas.current) return;
     const obj = objectsRef.current.artist;
     if (obj) {
       obj.set({
-        left: store.artistTransform.x !== 0 ? store.artistTransform.x : obj.left,
-        top: store.artistTransform.y !== 0 ? store.artistTransform.y : obj.top,
-        scaleX: store.artistTransform.scaleX !== 1 ? store.artistTransform.scaleX : obj.scaleX,
-        scaleY: store.artistTransform.scaleY !== 1 ? store.artistTransform.scaleY : obj.scaleY,
+        left: artistTransform.x !== 0 ? artistTransform.x : obj.left,
+        top: artistTransform.y !== 0 ? artistTransform.y : obj.top,
+        scaleX: artistTransform.scaleX !== 1 ? artistTransform.scaleX : obj.scaleX,
+        scaleY: artistTransform.scaleY !== 1 ? artistTransform.scaleY : obj.scaleY,
       });
       fabricRef.current.requestRenderAll();
     }
-  }, [store.artistTransform]);
+  }, [artistTransform]);
 
   // Global appearance syncing
   useEffect(() => {
     if (!fabricRef.current) return;
-    fabricRef.current.backgroundColor = store.primaryColor;
+    fabricRef.current.backgroundColor = primaryColor;
     // Update dimensions based on aspect ratio
     const width = 600;
-    const height = width / store.aspectRatio;
+    const height = width / aspectRatio;
     fabricRef.current.setDimensions({ width, height });
 
     // Update Lyric appearance
     if (objectsRef.current.lyrics) {
       objectsRef.current.lyrics.set({
-        fill: store.lyricColor,
-        textAlign: store.lyricAlignment,
-        lineHeight: store.lineSpacing,
+        fill: lyricColor,
+        textAlign: lyricAlignment,
+        lineHeight: lineSpacing,
         fontFamily:
-          store.lyricFont === "sans"
-            ? "sans-serif"
-            : store.lyricFont === "serif"
-              ? "serif"
-              : "monospace",
+          lyricFont === "sans" ? "sans-serif" : lyricFont === "serif" ? "serif" : "monospace",
       });
     }
 
     fabricRef.current.requestRenderAll();
-  }, [
-    store.aspectRatio,
-    store.primaryColor,
-    store.lyricColor,
-    store.lyricAlignment,
-    store.lineSpacing,
-    store.lyricFont,
-  ]);
+  }, [aspectRatio, primaryColor, lyricColor, lyricAlignment, lineSpacing, lyricFont]);
 
   // Export Logic
   const handleExport = useCallback(

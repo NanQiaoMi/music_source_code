@@ -27,22 +27,20 @@ interface FormatConverterProps {
 
 const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) => {
   const songs = usePlaylistStore(selectSongs);
-  const {
-    tasks,
-    settings,
-    isConverting,
-    totalConverted,
-    totalFailed,
-    setSettings,
-    addConversionTasks,
-    updateTaskProgress,
-    updateTaskStatus,
-    removeTask,
-    clearCompletedTasks,
-    setIsConverting,
-    incrementConverted,
-    incrementFailed,
-  } = useFormatConversionStore();
+  const tasks = useFormatConversionStore((state) => state.tasks);
+  const settings = useFormatConversionStore((state) => state.settings);
+  const isConverting = useFormatConversionStore((state) => state.isConverting);
+  const totalConverted = useFormatConversionStore((state) => state.totalConverted);
+  const totalFailed = useFormatConversionStore((state) => state.totalFailed);
+  const setSettings = useFormatConversionStore((state) => state.setSettings);
+  const addConversionTasks = useFormatConversionStore((state) => state.addConversionTasks);
+  const updateTaskProgress = useFormatConversionStore((state) => state.updateTaskProgress);
+  const updateTaskStatus = useFormatConversionStore((state) => state.updateTaskStatus);
+  const removeTask = useFormatConversionStore((state) => state.removeTask);
+  const clearCompletedTasks = useFormatConversionStore((state) => state.clearCompletedTasks);
+  const setIsConverting = useFormatConversionStore((state) => state.setIsConverting);
+  const incrementConverted = useFormatConversionStore((state) => state.incrementConverted);
+  const incrementFailed = useFormatConversionStore((state) => state.incrementFailed);
 
   const [selectedSongs, setSelectedSongs] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"select" | "queue" | "settings">("select");

@@ -13,7 +13,10 @@ interface JournalDayPanelProps {
 }
 
 export function JournalDayPanel({ isOpen, onClose }: JournalDayPanelProps) {
-  const { selectedDate, days, eventsByDate, appendNote } = useListeningJournalStore();
+  const selectedDate = useListeningJournalStore((state) => state.selectedDate);
+  const days = useListeningJournalStore((state) => state.days);
+  const eventsByDate = useListeningJournalStore((state) => state.eventsByDate);
+  const appendNote = useListeningJournalStore((state) => state.appendNote);
   const songs = usePlaylistStore((state) => state.songs);
   const [statusMessage, setStatusMessage] = useState("按回车或点击其他区域保存笔记。");
   const dayEvents = eventsByDate[selectedDate];

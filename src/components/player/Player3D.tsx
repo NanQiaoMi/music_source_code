@@ -326,7 +326,7 @@ export const Player3D: React.FC = () => {
   const abLoopEnabled = useABLoopStore((state) => state.isEnabled);
   const pointA = useABLoopStore((state) => state.pointA);
   const pointB = useABLoopStore((state) => state.pointB);
-  // 这三个 store 必须逐字段订阅：写成 `const {...} = useXStore()`（无选择器）
+  // 这三个 store 必须逐字段订阅：无选择器的整店订阅
   // 会订阅整个 state，播放期间 timeupdate 每秒多次写 currentTime 就会
   // 把这个大组件整体重渲染一遍。动作是稳定引用，只有下面几个**值**会触发重渲染。
   const setCurrentView = useUIStore((state) => state.setCurrentView);

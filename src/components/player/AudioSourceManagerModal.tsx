@@ -53,23 +53,21 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
 
   const showToast = useUIStore((state) => state.showToast);
 
-  const {
-    autoTrialFallback,
-    preferredQuality,
-    enableSpadeDecryption,
-    enableBeatAnalysis,
-    enableV8BeatPulse,
-    beatSensitivity,
-    currentBeatMap,
-    setAutoTrialFallback,
-    setPreferredQuality,
-    setEnableSpadeDecryption,
-    setEnableBeatAnalysis,
-    setEnableV8BeatPulse,
-    setBeatSensitivity,
-    setCurrentBeatMap,
-    resetSourceSettings,
-  } = useAudioSourceStore();
+  const autoTrialFallback = useAudioSourceStore((state) => state.autoTrialFallback);
+  const preferredQuality = useAudioSourceStore((state) => state.preferredQuality);
+  const enableSpadeDecryption = useAudioSourceStore((state) => state.enableSpadeDecryption);
+  const enableBeatAnalysis = useAudioSourceStore((state) => state.enableBeatAnalysis);
+  const enableV8BeatPulse = useAudioSourceStore((state) => state.enableV8BeatPulse);
+  const beatSensitivity = useAudioSourceStore((state) => state.beatSensitivity);
+  const currentBeatMap = useAudioSourceStore((state) => state.currentBeatMap);
+  const setAutoTrialFallback = useAudioSourceStore((state) => state.setAutoTrialFallback);
+  const setPreferredQuality = useAudioSourceStore((state) => state.setPreferredQuality);
+  const setEnableSpadeDecryption = useAudioSourceStore((state) => state.setEnableSpadeDecryption);
+  const setEnableBeatAnalysis = useAudioSourceStore((state) => state.setEnableBeatAnalysis);
+  const setEnableV8BeatPulse = useAudioSourceStore((state) => state.setEnableV8BeatPulse);
+  const setBeatSensitivity = useAudioSourceStore((state) => state.setBeatSensitivity);
+  const setCurrentBeatMap = useAudioSourceStore((state) => state.setCurrentBeatMap);
+  const resetSourceSettings = useAudioSourceStore((state) => state.resetSourceSettings);
 
   const [activeTab, setActiveTab] = useState<TabType>("track-sources");
   const [candidates, setCandidates] = useState<ResolvedAudioSource[]>([]);

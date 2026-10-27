@@ -36,7 +36,7 @@ export const SmartRandomModal: React.FC<SmartRandomModalProps> = ({
   const songs = usePlaylistStore(selectSongs);
   const playQueue = useAudioStore((state) => state.playQueue);
   const { getPlayCount, getLastPlayedAt } = useListeningHistory();
-  const { unlockAchievement } = useStatsAchievementsStore();
+  const unlockAchievement = useStatsAchievementsStore((state) => state.unlockAchievement);
   const controls = useAnimationControls();
 
   const [position, setPosition] = useState({ x: 0, y: 0 });

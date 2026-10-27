@@ -17,19 +17,17 @@ interface AISettingsPanelProps {
 }
 
 export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClose }) => {
-  const {
-    configs,
-    activeConfigId,
-    addConfig,
-    removeConfig,
-    updateConfig,
-    duplicateConfig,
-    setActiveConfig,
-    importConfigs,
-    resetToDefaultConfigs,
-    testConfig,
-    fetchModels,
-  } = useAIStore();
+  const configs = useAIStore((state) => state.configs);
+  const activeConfigId = useAIStore((state) => state.activeConfigId);
+  const addConfig = useAIStore((state) => state.addConfig);
+  const removeConfig = useAIStore((state) => state.removeConfig);
+  const updateConfig = useAIStore((state) => state.updateConfig);
+  const duplicateConfig = useAIStore((state) => state.duplicateConfig);
+  const setActiveConfig = useAIStore((state) => state.setActiveConfig);
+  const importConfigs = useAIStore((state) => state.importConfigs);
+  const resetToDefaultConfigs = useAIStore((state) => state.resetToDefaultConfigs);
+  const testConfig = useAIStore((state) => state.testConfig);
+  const fetchModels = useAIStore((state) => state.fetchModels);
 
   const { showToast } = useGlassToast();
 

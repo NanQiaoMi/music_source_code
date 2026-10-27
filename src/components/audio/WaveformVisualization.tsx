@@ -21,7 +21,10 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const [isReady, setIsReady] = useState(false);
 
-  const { isGenerating, generationProgress, waveformColor, backgroundColor } = useWaveformStore();
+  const isGenerating = useWaveformStore((state) => state.isGenerating);
+  const generationProgress = useWaveformStore((state) => state.generationProgress);
+  const waveformColor = useWaveformStore((state) => state.waveformColor);
+  const backgroundColor = useWaveformStore((state) => state.backgroundColor);
 
   useEffect(() => {
     const checkReady = () => {

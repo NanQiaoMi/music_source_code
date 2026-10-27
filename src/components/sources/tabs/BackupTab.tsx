@@ -16,12 +16,16 @@ interface BackupTabProps {
 }
 
 export function BackupTab({ loading, error, onRetry }: BackupTabProps = {}) {
-  // 订阅整店以便状态变化时重渲染；动作来自 hook。
-  const { activePreset, exportConfigJson, importConfigJson, resetToDefaults, applyPreset } =
-    useSourceConfigStore();
-  // 音源表直接读当前值：renderToStaticMarkup 下 hook 快照是初始值（getInitialState），
-  // 而空态判据必须反映「此刻」的 store，故用 getState 读取，客户端也由上面的订阅保证更新。
-  const sources = useSourceConfigStore.getState().sources;
+  // 逐个订阅本组件用到的字段；动作是稳定引用。
+  const activePreset = useSourceConfigStore((state) => state.activePreset);
+  const exportConfigJson = useSourceConfigStore((state) => state.exportConfigJson);
+  const importConfigJson = useSourceConfigStore((state) => state.importConfigJson);
+  const resetToDefaults = useSourceConfigStore((state) => state.resetToDefaults);
+  const applyPreset = useSourceConfigStore((state) => state.applyPreset);
+  // 音源表用选择器读「此刻」的 store：renderToStaticMarkup 下 hook 快照是初始值
+  // （getInitialState），而空态判据必须反映「此刻」的 store，故选择器内直接读 getState()；
+  // 选择器仍会在每次 store 更新时重算，变化时才重渲染。
+  const sources = useSourceConfigStore(() => useSourceConfigStore.getState().sources);
 
   const [importJsonText, setImportJsonText] = useState("");
   const [importFeedback, setImportFeedback] = useState<string | null>(null);

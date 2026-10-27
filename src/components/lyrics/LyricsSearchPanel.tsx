@@ -29,23 +29,21 @@ export default function LyricsSearchPanel({ isOpen, onClose }: LyricsSearchPanel
   const [editContent, setEditContent] = useState("");
   const [activeTab, setActiveTab] = useState<"search" | "favorites" | "history">("search");
 
-  const {
-    searchResults,
-    isLoading,
-    error,
-    currentLyrics,
-    parsedLyrics,
-    searchHistory,
-    favoriteLyrics,
-    lyricSourceState,
-    setCurrentSongId,
-    searchLyrics,
-    selectLyrics,
-    clearSearchHistory,
-    toggleFavoriteLyrics,
-    editLyrics,
-    autoMatchLyrics,
-  } = useLyricsSearchStore();
+  const searchResults = useLyricsSearchStore((state) => state.searchResults);
+  const isLoading = useLyricsSearchStore((state) => state.isLoading);
+  const error = useLyricsSearchStore((state) => state.error);
+  const currentLyrics = useLyricsSearchStore((state) => state.currentLyrics);
+  const parsedLyrics = useLyricsSearchStore((state) => state.parsedLyrics);
+  const searchHistory = useLyricsSearchStore((state) => state.searchHistory);
+  const favoriteLyrics = useLyricsSearchStore((state) => state.favoriteLyrics);
+  const lyricSourceState = useLyricsSearchStore((state) => state.lyricSourceState);
+  const setCurrentSongId = useLyricsSearchStore((state) => state.setCurrentSongId);
+  const searchLyrics = useLyricsSearchStore((state) => state.searchLyrics);
+  const selectLyrics = useLyricsSearchStore((state) => state.selectLyrics);
+  const clearSearchHistory = useLyricsSearchStore((state) => state.clearSearchHistory);
+  const toggleFavoriteLyrics = useLyricsSearchStore((state) => state.toggleFavoriteLyrics);
+  const editLyrics = useLyricsSearchStore((state) => state.editLyrics);
+  const autoMatchLyrics = useLyricsSearchStore((state) => state.autoMatchLyrics);
 
   const currentSong = useAudioStore((state) => state.currentSong);
   const openPanel = useUIStore((state) => state.openPanel);

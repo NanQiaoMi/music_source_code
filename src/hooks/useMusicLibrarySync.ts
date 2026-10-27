@@ -8,8 +8,10 @@ import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 
 export const useMusicLibrarySync = () => {
   const songs = usePlaylistStore(selectSongs);
-  const { history, clearHistory } = useQueueStore();
-  const { listeningStats, resetStats } = useStatsAchievementsStore();
+  const history = useQueueStore((state) => state.history);
+  const clearHistory = useQueueStore((state) => state.clearHistory);
+  const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
+  const resetStats = useStatsAchievementsStore((state) => state.resetStats);
 
   const syncQueueHistory = useCallback(() => {
     if (songs.length === 0) return;

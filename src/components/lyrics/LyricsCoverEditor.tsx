@@ -25,18 +25,16 @@ export const LyricsCoverEditor: React.FC<LyricsCoverEditorProps> = ({ isOpen, on
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const songs = usePlaylistStore(selectSongs);
 
-  const {
-    lyrics,
-    covers,
-    currentLyric,
-    loadLyric,
-    saveLyric,
-    importLRC,
-    exportLRC,
-    loadCover,
-    saveCover,
-    importCoverImage,
-  } = useLyricsCoverStore();
+  const lyrics = useLyricsCoverStore((state) => state.lyrics);
+  const covers = useLyricsCoverStore((state) => state.covers);
+  const currentLyric = useLyricsCoverStore((state) => state.currentLyric);
+  const loadLyric = useLyricsCoverStore((state) => state.loadLyric);
+  const saveLyric = useLyricsCoverStore((state) => state.saveLyric);
+  const importLRC = useLyricsCoverStore((state) => state.importLRC);
+  const exportLRC = useLyricsCoverStore((state) => state.exportLRC);
+  const loadCover = useLyricsCoverStore((state) => state.loadCover);
+  const saveCover = useLyricsCoverStore((state) => state.saveCover);
+  const importCoverImage = useLyricsCoverStore((state) => state.importCoverImage);
 
   if (!isOpen) return null;
 

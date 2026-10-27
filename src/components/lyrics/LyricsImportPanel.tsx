@@ -18,7 +18,9 @@ export const LyricsImportPanel: React.FC<LyricsImportPanelProps> = ({ isOpen, on
   const songs = usePlaylistStore(selectSongs);
   const updateSong = usePlaylistStore(selectUpdateSong);
   const currentSong = useAudioStore((state) => state.currentSong);
-  const { importManualLyrics, lyricSourceState, setCurrentSongId } = useLyricsSearchStore();
+  const importManualLyrics = useLyricsSearchStore((state) => state.importManualLyrics);
+  const lyricSourceState = useLyricsSearchStore((state) => state.lyricSourceState);
+  const setCurrentSongId = useLyricsSearchStore((state) => state.setCurrentSongId);
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
   const [lyricsContent, setLyricsContent] = useState("");
   const [isEditing, setIsEditing] = useState(false);

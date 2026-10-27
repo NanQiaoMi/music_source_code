@@ -40,50 +40,48 @@ export const LyricSettingsPanel: React.FC<LyricSettingsPanelProps> = ({ isOpen, 
   const [activeTab, setActiveTab] = useState<SettingsTab>("presets");
   const [activeReadablePreset, setActiveReadablePreset] = useState<string | null>(null);
 
-  const {
-    showTranslation,
-    showTransliteration,
-    fontSize,
-    lineHeight,
-    fontFamily,
-    fontWeight,
-    opacity: _opacity,
-    alignment,
-    animationType,
-    animationSpeed,
-    animationIntensity,
-    currentLineColor,
-    inactiveLineColor,
-    translationColor,
-    textShadow,
-    textShadowColor,
-    textShadowBlur,
-    textStroke,
-    textStrokeColor,
-    textStrokeWidth,
-    setShowTranslation,
-    setShowTransliteration,
-    setFontSize,
-    setLineHeight,
-    setFontFamily,
-    setFontWeight,
-    setOpacity,
-    setAlignment,
-    setAnimationType,
-    setAnimationSpeed,
-    setAnimationIntensity,
-    setCurrentLineColor,
-    setInactiveLineColor,
-    setTranslationColor,
-    setTextShadow,
-    setTextShadowColor,
-    setTextShadowBlur,
-    setTextStroke,
-    textStrokeColor: _setTextStrokeColor,
-    setTextStrokeWidth,
-    applyPreset,
-    resetSettings,
-  } = useLyricSettingsStore();
+  const showTranslation = useLyricSettingsStore((state) => state.showTranslation);
+  const showTransliteration = useLyricSettingsStore((state) => state.showTransliteration);
+  const fontSize = useLyricSettingsStore((state) => state.fontSize);
+  const lineHeight = useLyricSettingsStore((state) => state.lineHeight);
+  const fontFamily = useLyricSettingsStore((state) => state.fontFamily);
+  const fontWeight = useLyricSettingsStore((state) => state.fontWeight);
+  const _opacity = useLyricSettingsStore((state) => state.opacity);
+  const alignment = useLyricSettingsStore((state) => state.alignment);
+  const animationType = useLyricSettingsStore((state) => state.animationType);
+  const animationSpeed = useLyricSettingsStore((state) => state.animationSpeed);
+  const animationIntensity = useLyricSettingsStore((state) => state.animationIntensity);
+  const currentLineColor = useLyricSettingsStore((state) => state.currentLineColor);
+  const inactiveLineColor = useLyricSettingsStore((state) => state.inactiveLineColor);
+  const translationColor = useLyricSettingsStore((state) => state.translationColor);
+  const textShadow = useLyricSettingsStore((state) => state.textShadow);
+  const textShadowColor = useLyricSettingsStore((state) => state.textShadowColor);
+  const textShadowBlur = useLyricSettingsStore((state) => state.textShadowBlur);
+  const textStroke = useLyricSettingsStore((state) => state.textStroke);
+  const textStrokeColor = useLyricSettingsStore((state) => state.textStrokeColor);
+  const textStrokeWidth = useLyricSettingsStore((state) => state.textStrokeWidth);
+  const setShowTranslation = useLyricSettingsStore((state) => state.setShowTranslation);
+  const setShowTransliteration = useLyricSettingsStore((state) => state.setShowTransliteration);
+  const setFontSize = useLyricSettingsStore((state) => state.setFontSize);
+  const setLineHeight = useLyricSettingsStore((state) => state.setLineHeight);
+  const setFontFamily = useLyricSettingsStore((state) => state.setFontFamily);
+  const setFontWeight = useLyricSettingsStore((state) => state.setFontWeight);
+  const setOpacity = useLyricSettingsStore((state) => state.setOpacity);
+  const setAlignment = useLyricSettingsStore((state) => state.setAlignment);
+  const setAnimationType = useLyricSettingsStore((state) => state.setAnimationType);
+  const setAnimationSpeed = useLyricSettingsStore((state) => state.setAnimationSpeed);
+  const setAnimationIntensity = useLyricSettingsStore((state) => state.setAnimationIntensity);
+  const setCurrentLineColor = useLyricSettingsStore((state) => state.setCurrentLineColor);
+  const setInactiveLineColor = useLyricSettingsStore((state) => state.setInactiveLineColor);
+  const setTranslationColor = useLyricSettingsStore((state) => state.setTranslationColor);
+  const setTextShadow = useLyricSettingsStore((state) => state.setTextShadow);
+  const setTextShadowColor = useLyricSettingsStore((state) => state.setTextShadowColor);
+  const setTextShadowBlur = useLyricSettingsStore((state) => state.setTextShadowBlur);
+  const setTextStroke = useLyricSettingsStore((state) => state.setTextStroke);
+  const _setTextStrokeColor = useLyricSettingsStore((state) => state.textStrokeColor);
+  const setTextStrokeWidth = useLyricSettingsStore((state) => state.setTextStrokeWidth);
+  const applyPreset = useLyricSettingsStore((state) => state.applyPreset);
+  const resetSettings = useLyricSettingsStore((state) => state.resetSettings);
 
   const alignmentOptions = [
     { value: "left" as LyricAlignment, icon: AlignLeft, label: "左对齐" },

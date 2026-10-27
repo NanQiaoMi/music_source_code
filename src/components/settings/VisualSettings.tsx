@@ -114,21 +114,21 @@ function AppleRangeControl({
 }
 
 export const VisualSettingsPanel: React.FC<VisualSettingsPanelProps> = ({ isOpen, onClose }) => {
-  const {
-    blurIntensity,
-    shadowDepth,
-    animationSpeed,
-    perspectiveIntensity,
-    visualMode,
-    setBlurIntensity,
-    setShadowDepth,
-    setAnimationSpeed,
-    setPerspectiveIntensity,
-    setVisualMode,
-    resetSettings,
-  } = useVisualSettingsStore();
+  const blurIntensity = useVisualSettingsStore((state) => state.blurIntensity);
+  const shadowDepth = useVisualSettingsStore((state) => state.shadowDepth);
+  const animationSpeed = useVisualSettingsStore((state) => state.animationSpeed);
+  const perspectiveIntensity = useVisualSettingsStore((state) => state.perspectiveIntensity);
+  const visualMode = useVisualSettingsStore((state) => state.visualMode);
+  const setBlurIntensity = useVisualSettingsStore((state) => state.setBlurIntensity);
+  const setShadowDepth = useVisualSettingsStore((state) => state.setShadowDepth);
+  const setAnimationSpeed = useVisualSettingsStore((state) => state.setAnimationSpeed);
+  const setPerspectiveIntensity = useVisualSettingsStore((state) => state.setPerspectiveIntensity);
+  const setVisualMode = useVisualSettingsStore((state) => state.setVisualMode);
+  const resetSettings = useVisualSettingsStore((state) => state.resetSettings);
 
-  const { activePreset, config, setPerformancePreset } = usePerformanceV8Store();
+  const activePreset = usePerformanceV8Store((state) => state.activePreset);
+  const config = usePerformanceV8Store((state) => state.config);
+  const setPerformancePreset = usePerformanceV8Store((state) => state.setPerformancePreset);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;

@@ -20,7 +20,10 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const [isReady, setIsReady] = useState(false);
 
-  const { isSpectrumEnabled, barColor, backgroundColor, gridColor } = useSpectrumStore();
+  const isSpectrumEnabled = useSpectrumStore((state) => state.isSpectrumEnabled);
+  const barColor = useSpectrumStore((state) => state.barColor);
+  const backgroundColor = useSpectrumStore((state) => state.backgroundColor);
+  const gridColor = useSpectrumStore((state) => state.gridColor);
 
   useEffect(() => {
     const checkReady = () => {

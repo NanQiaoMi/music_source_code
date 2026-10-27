@@ -144,28 +144,26 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
 
   const { audioElement: _audioElement } = useAudioPlayer();
 
-  const {
-    showTranslation,
-    showTransliteration,
-    fontSize,
-    lineHeight: _lineHeight,
-    fontFamily,
-    fontWeight,
-    opacity: _opacity,
-    alignment,
-    animationType: _animationType,
-    animationSpeed: _animationSpeed,
-    animationIntensity: _animationIntensity,
-    currentLineColor,
-    inactiveLineColor,
-    translationColor,
-    textShadow,
-    textShadowColor,
-    textShadowBlur,
-    textStroke,
-    textStrokeColor,
-    textStrokeWidth,
-  } = useLyricSettingsStore();
+  const showTranslation = useLyricSettingsStore((state) => state.showTranslation);
+  const showTransliteration = useLyricSettingsStore((state) => state.showTransliteration);
+  const fontSize = useLyricSettingsStore((state) => state.fontSize);
+  const _lineHeight = useLyricSettingsStore((state) => state.lineHeight);
+  const fontFamily = useLyricSettingsStore((state) => state.fontFamily);
+  const fontWeight = useLyricSettingsStore((state) => state.fontWeight);
+  const _opacity = useLyricSettingsStore((state) => state.opacity);
+  const alignment = useLyricSettingsStore((state) => state.alignment);
+  const _animationType = useLyricSettingsStore((state) => state.animationType);
+  const _animationSpeed = useLyricSettingsStore((state) => state.animationSpeed);
+  const _animationIntensity = useLyricSettingsStore((state) => state.animationIntensity);
+  const currentLineColor = useLyricSettingsStore((state) => state.currentLineColor);
+  const inactiveLineColor = useLyricSettingsStore((state) => state.inactiveLineColor);
+  const translationColor = useLyricSettingsStore((state) => state.translationColor);
+  const textShadow = useLyricSettingsStore((state) => state.textShadow);
+  const textShadowColor = useLyricSettingsStore((state) => state.textShadowColor);
+  const textShadowBlur = useLyricSettingsStore((state) => state.textShadowBlur);
+  const textStroke = useLyricSettingsStore((state) => state.textStroke);
+  const textStrokeColor = useLyricSettingsStore((state) => state.textStrokeColor);
+  const textStrokeWidth = useLyricSettingsStore((state) => state.textStrokeWidth);
 
   const originalContent = originalLyrics || currentSong?.lyrics || "";
   const translationContent = translationLyrics || currentSong?.translationLyrics || "";

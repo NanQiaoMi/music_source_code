@@ -22,24 +22,22 @@ interface TrackCutterProps {
 }
 
 const TrackCutter: React.FC<TrackCutterProps> = ({ isOpen, onClose }) => {
-  const {
-    tasks,
-    settings,
-    totalCut,
-    totalFailed,
-    createTask,
-    updateTaskStatus,
-    setParsedCUE,
-    toggleTrackSelection,
-    selectAllTracks,
-    deselectAllTracks,
-    updateTrackStatus,
-    removeTask,
-    clearCompletedTasks: _clearCompletedTasks,
-    setSettings,
-    incrementCut,
-    incrementFailed: _incrementFailed,
-  } = useTrackCuttingStore();
+  const tasks = useTrackCuttingStore((state) => state.tasks);
+  const settings = useTrackCuttingStore((state) => state.settings);
+  const totalCut = useTrackCuttingStore((state) => state.totalCut);
+  const totalFailed = useTrackCuttingStore((state) => state.totalFailed);
+  const createTask = useTrackCuttingStore((state) => state.createTask);
+  const updateTaskStatus = useTrackCuttingStore((state) => state.updateTaskStatus);
+  const setParsedCUE = useTrackCuttingStore((state) => state.setParsedCUE);
+  const toggleTrackSelection = useTrackCuttingStore((state) => state.toggleTrackSelection);
+  const selectAllTracks = useTrackCuttingStore((state) => state.selectAllTracks);
+  const deselectAllTracks = useTrackCuttingStore((state) => state.deselectAllTracks);
+  const updateTrackStatus = useTrackCuttingStore((state) => state.updateTrackStatus);
+  const removeTask = useTrackCuttingStore((state) => state.removeTask);
+  const _clearCompletedTasks = useTrackCuttingStore((state) => state.clearCompletedTasks);
+  const setSettings = useTrackCuttingStore((state) => state.setSettings);
+  const incrementCut = useTrackCuttingStore((state) => state.incrementCut);
+  const _incrementFailed = useTrackCuttingStore((state) => state.incrementFailed);
 
   const [activeTab, setActiveTab] = useState<"upload" | "tracks" | "settings">("upload");
   const [currentTaskId, setCurrentLocalTaskId] = useState<string | null>(null);

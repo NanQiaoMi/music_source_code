@@ -20,23 +20,21 @@ function formatTime(seconds: number): string {
 }
 
 export function ABLoopPanel({ isOpen, onClose, currentTime, seekTo }: ABLoopPanelProps) {
-  const {
-    isEnabled,
-    pointA,
-    pointB,
-    isSettingPointA,
-    isSettingPointB,
-    loopCount,
-    toggleLoop,
-    setPointA,
-    setPointB,
-    clearPointA,
-    clearPointB,
-    clearBothPoints,
-    startSettingPointA,
-    startSettingPointB,
-    stopSettingPoint,
-  } = useABLoopStore();
+  const isEnabled = useABLoopStore((state) => state.isEnabled);
+  const pointA = useABLoopStore((state) => state.pointA);
+  const pointB = useABLoopStore((state) => state.pointB);
+  const isSettingPointA = useABLoopStore((state) => state.isSettingPointA);
+  const isSettingPointB = useABLoopStore((state) => state.isSettingPointB);
+  const loopCount = useABLoopStore((state) => state.loopCount);
+  const toggleLoop = useABLoopStore((state) => state.toggleLoop);
+  const setPointA = useABLoopStore((state) => state.setPointA);
+  const setPointB = useABLoopStore((state) => state.setPointB);
+  const clearPointA = useABLoopStore((state) => state.clearPointA);
+  const clearPointB = useABLoopStore((state) => state.clearPointB);
+  const clearBothPoints = useABLoopStore((state) => state.clearBothPoints);
+  const startSettingPointA = useABLoopStore((state) => state.startSettingPointA);
+  const startSettingPointB = useABLoopStore((state) => state.startSettingPointB);
+  const stopSettingPoint = useABLoopStore((state) => state.stopSettingPoint);
 
   const canLoop = pointA !== null && pointB !== null && pointA < pointB;
 

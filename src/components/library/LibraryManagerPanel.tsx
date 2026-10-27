@@ -49,20 +49,21 @@ export const LibraryManagerPanel: React.FC<LibraryManagerPanelProps> = ({ isOpen
   const [statusMessage, setStatusMessage] = useState("已保存的智能混音播放列表将显示在此。");
   const songs = usePlaylistStore(selectSongs);
   const playQueue = useAudioStore((state) => state.playQueue);
-  const { groups, deleteGroup } = usePlaylistGroupStore();
+  const groups = usePlaylistGroupStore((state) => state.groups);
+  const deleteGroup = usePlaylistGroupStore((state) => state.deleteGroup);
 
-  const {
-    duplicateGroups,
-    isScanningDuplicates,
-    duplicateScanProgress,
-    renameRules,
-    selectedRenameRule,
-    scanFilters,
-    libraryStats,
-    findDuplicates,
-    deleteSelectedDuplicates,
-    updateLibraryStats,
-  } = useLibraryManagerStore();
+  const duplicateGroups = useLibraryManagerStore((state) => state.duplicateGroups);
+  const isScanningDuplicates = useLibraryManagerStore((state) => state.isScanningDuplicates);
+  const duplicateScanProgress = useLibraryManagerStore((state) => state.duplicateScanProgress);
+  const renameRules = useLibraryManagerStore((state) => state.renameRules);
+  const selectedRenameRule = useLibraryManagerStore((state) => state.selectedRenameRule);
+  const scanFilters = useLibraryManagerStore((state) => state.scanFilters);
+  const libraryStats = useLibraryManagerStore((state) => state.libraryStats);
+  const findDuplicates = useLibraryManagerStore((state) => state.findDuplicates);
+  const deleteSelectedDuplicates = useLibraryManagerStore(
+    (state) => state.deleteSelectedDuplicates
+  );
+  const updateLibraryStats = useLibraryManagerStore((state) => state.updateLibraryStats);
 
   const customGroups = useMemo(() => groups.filter((group) => group.type === "custom"), [groups]);
 

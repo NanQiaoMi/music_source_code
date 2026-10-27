@@ -37,22 +37,20 @@ type DSDWorkerPayload = {
 
 const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
   const songs = usePlaylistStore(selectSongs);
-  const {
-    isEnabled: _isEnabled,
-    settings,
-    tasks,
-    totalProcessed,
-    totalFailed,
-    setEnabled: _setEnabled,
-    setSettings,
-    addTask,
-    updateTaskProgress,
-    updateTaskStatus,
-    removeTask,
-    clearCompletedTasks,
-    incrementProcessed,
-    incrementFailed,
-  } = useDSDProcessingStore();
+  const _isEnabled = useDSDProcessingStore((state) => state.isEnabled);
+  const settings = useDSDProcessingStore((state) => state.settings);
+  const tasks = useDSDProcessingStore((state) => state.tasks);
+  const totalProcessed = useDSDProcessingStore((state) => state.totalProcessed);
+  const totalFailed = useDSDProcessingStore((state) => state.totalFailed);
+  const _setEnabled = useDSDProcessingStore((state) => state.setEnabled);
+  const setSettings = useDSDProcessingStore((state) => state.setSettings);
+  const addTask = useDSDProcessingStore((state) => state.addTask);
+  const updateTaskProgress = useDSDProcessingStore((state) => state.updateTaskProgress);
+  const updateTaskStatus = useDSDProcessingStore((state) => state.updateTaskStatus);
+  const removeTask = useDSDProcessingStore((state) => state.removeTask);
+  const clearCompletedTasks = useDSDProcessingStore((state) => state.clearCompletedTasks);
+  const incrementProcessed = useDSDProcessingStore((state) => state.incrementProcessed);
+  const incrementFailed = useDSDProcessingStore((state) => state.incrementFailed);
   const reportUsage = useStatsAchievementsStore((state) => state.reportProToolsUsage);
 
   const [selectedSongs, setSelectedSongs] = useState<Set<string>>(new Set());

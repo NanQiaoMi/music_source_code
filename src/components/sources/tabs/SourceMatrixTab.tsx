@@ -51,15 +51,13 @@ export function SourceMatrixTab({
   onRetry,
 }: SourceMatrixTabProps) {
   const shouldReduceMotion = useReducedMotion() ?? false;
-  const {
-    resolutionMode,
-    setResolutionMode,
-    toggleSource,
-    setSourceQuality,
-    setSourcePriority,
-    setSourceConfig,
-    resetToDefaults,
-  } = useSourceConfigStore();
+  const resolutionMode = useSourceConfigStore((state) => state.resolutionMode);
+  const setResolutionMode = useSourceConfigStore((state) => state.setResolutionMode);
+  const toggleSource = useSourceConfigStore((state) => state.toggleSource);
+  const setSourceQuality = useSourceConfigStore((state) => state.setSourceQuality);
+  const setSourcePriority = useSourceConfigStore((state) => state.setSourcePriority);
+  const setSourceConfig = useSourceConfigStore((state) => state.setSourceConfig);
+  const resetToDefaults = useSourceConfigStore((state) => state.resetToDefaults);
 
   /** 同一时刻只展开一行：描述、登录入口与配置表单都收在这里面 */
   const [expandedId, setExpandedId] = useState<MusicSourceId | null>(null);

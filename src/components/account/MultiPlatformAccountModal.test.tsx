@@ -77,10 +77,14 @@ const mockAccountState = {
 };
 
 vi.mock("@/store/userAccountStore", () => ({
-  useUserAccountStore: Object.assign(() => mockAccountState, {
-    getState: () => mockAccountState,
-    setState: vi.fn(),
-  }),
+  useUserAccountStore: Object.assign(
+    (selector?: (state: typeof mockAccountState) => unknown) =>
+      selector ? selector(mockAccountState) : mockAccountState,
+    {
+      getState: () => mockAccountState,
+      setState: vi.fn(),
+    }
+  ),
 }));
 
 describe("MultiPlatformAccountModal", () => {

@@ -26,7 +26,10 @@ function getQuadrant(x: number, y: number): keyof typeof QUADRANT_GLOW {
 }
 
 export const GlassRadarWidget: React.FC = () => {
-  const { globalEmotion, setGlobalEmotion, emotionMap, saveSongEmotion } = useEmotionStore();
+  const globalEmotion = useEmotionStore((state) => state.globalEmotion);
+  const setGlobalEmotion = useEmotionStore((state) => state.setGlobalEmotion);
+  const emotionMap = useEmotionStore((state) => state.emotionMap);
+  const saveSongEmotion = useEmotionStore((state) => state.saveSongEmotion);
   const currentSong = useAudioStore((state) => state.currentSong);
 
   const currentEmotion = useMemo(

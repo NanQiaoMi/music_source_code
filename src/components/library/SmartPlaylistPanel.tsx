@@ -85,17 +85,15 @@ export const SmartPlaylistPanel: React.FC<SmartPlaylistPanelProps> = ({ isOpen, 
   const [activeTab, setActiveTab] = useState<TabId>("system");
   const songs = usePlaylistStore(selectSongs);
   const emotionMap = useEmotionStore((state) => state.emotionMap);
-  const {
-    customPlaylists,
-    createSmartPlaylist,
-    deleteSmartPlaylist,
-    addRule,
-    deleteRule,
-    generatePlaylist,
-    exportPlaylist,
-    importPlaylist,
-    getDefaultSmartPlaylists,
-  } = useSmartPlaylistStore();
+  const customPlaylists = useSmartPlaylistStore((state) => state.customPlaylists);
+  const createSmartPlaylist = useSmartPlaylistStore((state) => state.createSmartPlaylist);
+  const deleteSmartPlaylist = useSmartPlaylistStore((state) => state.deleteSmartPlaylist);
+  const addRule = useSmartPlaylistStore((state) => state.addRule);
+  const deleteRule = useSmartPlaylistStore((state) => state.deleteRule);
+  const generatePlaylist = useSmartPlaylistStore((state) => state.generatePlaylist);
+  const exportPlaylist = useSmartPlaylistStore((state) => state.exportPlaylist);
+  const importPlaylist = useSmartPlaylistStore((state) => state.importPlaylist);
+  const getDefaultSmartPlaylists = useSmartPlaylistStore((state) => state.getDefaultSmartPlaylists);
 
   if (!isOpen) return null;
 

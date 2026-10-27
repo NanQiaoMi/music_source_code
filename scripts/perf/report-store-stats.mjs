@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Store architecture stats: store count, persist keys, whole-store subscriptions, store graph, getState by layer.
-// Usage: node scripts/perf/report-store-stats.mjs [--check] [--json <path>] [--store <useXStore>]
+// Usage: node scripts/perf/report-store-stats.mjs [--check] [--max-whole <n>] [--json <path>] [--store <useXStore>]
 import fs from "node:fs";
 import path from "node:path";
 
@@ -14,6 +14,8 @@ const jsonIdx = args.indexOf("--json");
 const jsonOut = jsonIdx >= 0 ? args[jsonIdx + 1] : null;
 const storeIdx = args.indexOf("--store");
 const storeFilter = storeIdx >= 0 ? args[storeIdx + 1] : null;
+const maxWholeIdx = args.indexOf("--max-whole");
+const maxWhole = maxWholeIdx >= 0 ? Number(args[maxWholeIdx + 1]) : null;
 
 function walk(dir, out) {
   if (!fs.existsSync(dir)) return out;
@@ -199,6 +201,18 @@ if (storeFilter) {
 if (jsonOut) {
   fs.writeFileSync(jsonOut, JSON.stringify(result, null, 2) + "\n");
   console.log("[store-stats] wrote " + jsonOut);
+}
+
+if (maxWhole !== null) {
+  if (!Number.isFinite(maxWhole) || maxWhole < 0) {
+    console.error("[store-stats] --max-whole needs a non-negative number");
+    process.exit(2);
+  }
+  if (whole > maxWhole) {
+    console.error("[store-stats] FAIL: wholeCalls " + whole + " > budget " + maxWhole);
+    process.exit(1);
+  }
+  console.log("[store-stats] OK: wholeCalls " + whole + " <= " + maxWhole);
 }
 
 if (check) {
