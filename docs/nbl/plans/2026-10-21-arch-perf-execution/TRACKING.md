@@ -11,14 +11,14 @@
 |---|---:|---:|---:|---|---|
 | S0 止血与基线 | 7 | 4 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-3/S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策） |
 | S1 数据与播放正确性 | 10 | 5 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3/S1-6/S1-8 done；S1-7 独立分支；S1-4/S1-5/S1-9/S1-10 待） |
-| S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
+| S2 音频图与持久化 | 6 | 1 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | in_progress（S2-1 done；S2-2..S2-6 待） |
 | S3 外壳与订阅治理 | 10 | 0 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | pending |
 | S4 包体与加载 | 7 | 0 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | pending |
 | S5 渲染运行时 | 7 | 0 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | pending |
 | S6 状态架构收敛 | 12 | 0 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | pending |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **9** | **约 129** | — | in_progress |
+| **合计** | **74** | **10** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -56,7 +56,7 @@
 ## S2 音频图与持久化性能（M2，出口门）
 
 - [ ] **M2 出口门**：单入口混音（destination 入边=1）；写盘 ≤1/s；100 次切歌节点增量 0；听感 A/B 通过。
-- [ ] S2-1 单入口混音 + 音量单点 — owner: — | PR: 1 | 依赖: S1-6 | 验收: 入边=1；volume=0.5 输出 -6dB
+- [x] S2-1 单入口混音 + 音量单点 — **done（2026-10-28，96d320f）**：移除 analyser→destination 无条件边；effects 增加唯一 unity chainOutput 汇聚 reverb/lofi，no-effect 走 direct fallback；元素 volume 固定 1，用户音量/mute 仅 `AudioEngine.setVolume` 单点；重复 connect/rebuild/detach 均保持 destination 入边=1。测试：AudioEngine +4、audioGraphRouting 5、audioVolume 2，聚焦 17 passed；全量 211 files/1315 tests passed；tsc/eslint 0；volume=0.5 目标增益 −6.02dB。缺口：`audioGraphStats` dev probe 未加（S2-2 前补）；无真机 A/B/RMS 采样；AudioGraphManager 死代码仍含旧 destination 边（未启用）。分支 `feature/arch-perf-s2-1`（未合并）。
 - [ ] S2-2 效果参数增量更新 — owner: — | PR: 1 | 依赖: S2-1 | 验收: 拖动 100 次 connect=0
 - [ ] S2-3 AnalyserHub — owner: — | PR: 1 | 依赖: S2-1 | 验收: fftSize 稳定；每帧 0 分配
 - [ ] S2-4 播放写盘降频 — owner: — | PR: 1 | 依赖: S1-5 | 验收: ≤1 次/秒；恢复误差 ≤5s
