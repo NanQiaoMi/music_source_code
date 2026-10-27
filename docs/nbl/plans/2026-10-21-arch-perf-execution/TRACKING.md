@@ -80,7 +80,7 @@
 ## S4 包体与加载（M4，出口门）
 
 - [ ] **M4 出口门**：rootMain gzip ≤190KB；script ≤12；First Load / ≤1,700KB；V8 按 D1 处置；至少 2 个高频列表虚拟化。
-- [ ] S4-1 jsmediatags 动态化 — owner: — | PR: 1 | 依赖: S0-6 | 验收: 首屏标记消失
+- [ ] S4-1 jsmediatags 动态化 — **代码完成（2026-10-28，f4eed94）；E4-1 待 S4-3a 后复测** — owner: — | PR: 1（本分支 1a+1b 合并） | 依赖: S0-6。3 处静态 import 清零：audioMetadata.ts / localMusicImport.ts / LocalMusicManager.tsx 全部改函数内 `await import("jsmediatags")`（类型改 `import type`），调用方 async 化；加载失败降级文件名解析 + console.warn（3 个降级用例覆盖）；新增 `src/lib/perf/featureFlags.ts`（5 开关，构建期内联；off/false 关闭、"0" 仍取默认）+4 用例、`lazyImports.test.ts` 静态导入守卫。全量 216 files/1353 tests passed；tsc/eslint 0；build 32.3s。**E4-1 未达成**：jsmediatags 仍在 initial chunk `vendors-3aa69677`（48,863 B raw / 12,651 B gzip，rootMainFiles + / 与 /data-manager html），rootMain 969.3 KB raw/293 KB gzip 与 before 相同（`perf/s4-before.json`→`perf/s4-after-s41.json`）；根因是 next.config.js splitChunks vendor 组 `chunks:"all"`（S4-3 独占写作用域）。**未提交实验**：vendor 组改 `chunks:"initial"` 重建 → jsmediatags 移入 async chunk 3460.b97b22813fb3d57a.js（71,616 B），两个 html 引用=0，rootMain 23→19 files、969.3→749.5 KB raw、293→228.8 KB gzip；S4-3a 后需复测 E4-1 并回填。分支 `feature/arch-perf-s4-1`（未合并）。
 - [ ] S4-2 crypto-js 动态化/WebCrypto — owner: — | PR: 1 | 依赖: S4-1 | 验收: -84KB raw；LX 回归
 - [ ] S4-3 splitChunks 语义块 + 字体 preconnect — owner: — | PR: 1 | 依赖: S0-6 | 验收: script ≤12；碎片 ≤6
 - [ ] S4-4 CoverImage 统一组件（先 3 文件）— owner: — | PR: 1 | 依赖: 无 | 验收: 裸 img 归零（白名单）
