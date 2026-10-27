@@ -1,13 +1,17 @@
 "use client";
 
-import { useCallback, useRef, useEffect, useState, memo } from "react";
+import { useCallback, useRef, useEffect, useState, memo, useMemo } from "react";
+import type { CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
-import { useVisualizationStore, VisualizationEffect } from "@/store/visualizationStore";
-import { useVisualSettingsStore } from "@/store/visualSettingsStore";
+import {
+  useVisualizationStore,
+  VisualizationEffect,
+  EffectSettings,
+} from "@/store/visualizationStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
@@ -20,8 +24,10 @@ const VisualizationSettingsPanel = dynamic(
   () => import("./VisualizationSettingsPanel").then((m) => m.VisualizationSettingsPanel),
   { ssr: false }
 );
-const VisualizationProgressBar = dynamic(
-  () => import("./VisualizationProgressBar").then((m) => m.VisualizationProgressBar),
+// 进度条订阅 currentTime / duration / bufferedRanges，单独加载成子树：
+// 播放中的时间刷新只重渲染这一小块，不再牵动画布与整块控制层。
+const VisualizationProgressContainer = dynamic(
+  () => import("./VisualizationProgressContainer").then((m) => m.VisualizationProgressContainer),
   { ssr: false }
 );
 
@@ -80,21 +86,84 @@ const EFFECTS_LIST: { id: VisualizationEffect; name: string }[] = [
   { id: "gravitationalField", name: "重力场 (隐藏)" },
 ];
 
+// 画布滤镜/合成层样式只取决于当前效果与该效果的参数，和播放进度无关。
+// 提到模块级纯函数后可以直接单测，再用 useMemo 锁住引用：时间/缓冲以 4Hz 刷新时，
+// canvas 的 style prop 不会每次都换一个新对象。
+export function makeCanvasStyle(
+  currentEffect: VisualizationEffect,
+  effectSettings: EffectSettings
+): CSSProperties {
+  if (currentEffect === "spatialMesh") {
+    const blurVal = Math.min(effectSettings.spatialMesh.blurIntensity, 80);
+    return {
+      filter: `blur(${blurVal}px) saturate(1.8) contrast(1.1)`,
+      transform: "translateZ(0)",
+      willChange: "filter",
+    };
+  }
+  if (currentEffect === "organicFluid") {
+    return {
+      filter: `saturate(1.3) contrast(1.25) brightness(0.8) drop-shadow(0 0 40px rgba(0, 100, 255, 0.15))`,
+      transform: "translateZ(0)",
+      willChange: "filter",
+    };
+  }
+  if (currentEffect === "auroraWave") {
+    return { filter: `saturate(1.2) contrast(1.1)`, transform: "translateZ(0)" };
+  }
+  if (currentEffect === "nebulaField") {
+    return { filter: `saturate(1.3) brightness(1.1)`, transform: "translateZ(0)" };
+  }
+  if (currentEffect === "vinylGroove") {
+    return {
+      filter: `saturate(1.4) contrast(1.15) brightness(1.05) drop-shadow(0 0 40px rgba(100, 150, 255, 0.15))`,
+      transform: "translateZ(0)",
+      willChange: "filter",
+    };
+  }
+  if (currentEffect === "spectrumRing") {
+    return {
+      filter: `saturate(1.4) contrast(1.1) brightness(1.1) drop-shadow(0 0 30px rgba(255, 255, 255, 0.05))`,
+      transform: "translateZ(0)",
+      willChange: "filter",
+    };
+  }
+  if (currentEffect === "cinematicSilkAurora") {
+    return {
+      transform: "translateZ(0)",
+    };
+  }
+  return { transform: "translateZ(0)" };
+}
+
+export function useVisualizationCanvasStyle(
+  currentEffect: VisualizationEffect,
+  effectSettings: EffectSettings
+): CSSProperties {
+  return useMemo(
+    () => makeCanvasStyle(currentEffect, effectSettings),
+    [currentEffect, effectSettings]
+  );
+}
+
 export function VisualizationView() {
-  const { currentView, setCurrentView, isTransitioning } = useUIStore();
-  const currentSong = useAudioStore((state) => state.currentSong);
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  // 顶层只订阅"变了才值得整块重画"的字段：视图/主题/全屏/当前效果/歌曲身份。
+  // currentTime、duration、bufferedRanges 属于 4Hz 级高频刷新，已下沉到
+  // VisualizationProgressContainer；它们若留在这里，一次 timeupdate 就会重渲染
+  // 画布、14 个效果按钮与页眉页脚。
+  const currentView = useUIStore((state) => state.currentView);
+  const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const isTransitioning = useUIStore((state) => state.isTransitioning);
   const themeColors = useUIStore((state) => state.themeColors);
-  const _isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
   const isFullscreen = useUIStore((state) => state.isFullscreen);
   const toggleFullscreen = useUIStore((state) => state.toggleFullscreen);
-  const currentTime = useAudioStore((state) => state.currentTime);
-  const duration = useAudioStore((state) => state.duration);
-  const bufferedRanges = useAudioStore((state) => state.bufferedRanges);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);
-  const { currentEffect, setCurrentEffect, effectSettings } = useVisualizationStore();
-  const { currentTheme: _currentTheme } = useVisualSettingsStore();
+  const currentEffect = useVisualizationStore((state) => state.currentEffect);
+  const setCurrentEffect = useVisualizationStore((state) => state.setCurrentEffect);
+  const effectSettings = useVisualizationStore((state) => state.effectSettings);
   const { seek, audioRef } = useAudioPlayer();
   const [showSettings, setShowSettings] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
@@ -224,13 +293,6 @@ export function VisualizationView() {
       }
     };
   }, [currentView]);
-
-  const currentTimeRef = useRef(currentTime);
-
-  // Sync music time for shaders
-  useEffect(() => {
-    currentTimeRef.current = currentTime;
-  }, [currentTime]);
 
   const vizTargetHues = useRef({ primary: 280, secondary: 320, accent: 150 });
   const vizActiveHues = useRef({ primary: 280, secondary: 320, accent: 150 });
@@ -411,7 +473,9 @@ export function VisualizationView() {
           height: cssHeight,
           data: frameData,
           time: timestamp,
-          musicTime: currentTimeRef.current,
+          // 每帧直接读 store：4Hz 的 currentTime 更新不再经过 React 渲染，
+          // 也避免了"订阅 → 渲染 → effect 写 ref"这条链
+          musicTime: useAudioStore.getState().currentTime,
           params: settings[currentEff] || settings.spatialMesh,
 
           refs: {
@@ -534,7 +598,6 @@ export function VisualizationView() {
           Number.isFinite(activeAudio.currentTime) &&
           activeAudio.currentTime >= 0
         ) {
-          currentTimeRef.current = activeAudio.currentTime;
           useAudioStore.getState().setCurrentTime(activeAudio.currentTime);
         }
         if (activeAudio && Number.isFinite(activeAudio.duration) && activeAudio.duration > 0) {
@@ -590,49 +653,7 @@ export function VisualizationView() {
     }
   };
 
-  const getCanvasStyle = () => {
-    if (currentEffect === "spatialMesh") {
-      const blurVal = Math.min(effectSettings.spatialMesh.blurIntensity, 80);
-      return {
-        filter: `blur(${blurVal}px) saturate(1.8) contrast(1.1)`,
-        transform: "translateZ(0)",
-        willChange: "filter",
-      };
-    }
-    if (currentEffect === "organicFluid") {
-      return {
-        filter: `saturate(1.3) contrast(1.25) brightness(0.8) drop-shadow(0 0 40px rgba(0, 100, 255, 0.15))`,
-        transform: "translateZ(0)",
-        willChange: "filter",
-      };
-    }
-    if (currentEffect === "auroraWave") {
-      return { filter: `saturate(1.2) contrast(1.1)`, transform: "translateZ(0)" };
-    }
-    if (currentEffect === "nebulaField") {
-      return { filter: `saturate(1.3) brightness(1.1)`, transform: "translateZ(0)" };
-    }
-    if (currentEffect === "vinylGroove") {
-      return {
-        filter: `saturate(1.4) contrast(1.15) brightness(1.05) drop-shadow(0 0 40px rgba(100, 150, 255, 0.15))`,
-        transform: "translateZ(0)",
-        willChange: "filter",
-      };
-    }
-    if (currentEffect === "spectrumRing") {
-      return {
-        filter: `saturate(1.4) contrast(1.1) brightness(1.1) drop-shadow(0 0 30px rgba(255, 255, 255, 0.05))`,
-        transform: "translateZ(0)",
-        willChange: "filter",
-      };
-    }
-    if (currentEffect === "cinematicSilkAurora") {
-      return {
-        transform: "translateZ(0)",
-      };
-    }
-    return { transform: "translateZ(0)" };
-  };
+  const canvasStyle = useVisualizationCanvasStyle(currentEffect, effectSettings);
 
   const effectsList = EFFECTS_LIST;
 
@@ -654,7 +675,7 @@ export function VisualizationView() {
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full transition-[filter,transform,opacity] duration-1000 ease-out"
-        style={getCanvasStyle()}
+        style={canvasStyle}
       />
 
       {/* Album Art floating in center */}
@@ -818,12 +839,7 @@ export function VisualizationView() {
                   )}
 
                   <div className="w-full px-2">
-                    <VisualizationProgressBar
-                      currentTime={currentTime}
-                      duration={duration}
-                      bufferedRanges={bufferedRanges}
-                      onSeek={seek}
-                    />
+                    <VisualizationProgressContainer onSeek={seek} />
                   </div>
                 </div>
               </div>
