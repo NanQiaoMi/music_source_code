@@ -6,6 +6,7 @@ vi.mock("@/lib/audio/AudioEffectsManager", () => ({
   getAudioEffectsManager: () => ({
     setEffectEnabled: vi.fn(),
     setEffectIntensity: vi.fn(),
+    commitEffectIntensity: vi.fn(),
     reset: vi.fn(),
   }),
 }));

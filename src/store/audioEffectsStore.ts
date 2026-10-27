@@ -261,6 +261,7 @@ interface AudioEffectsState {
 
   toggleEffect: (effectId: AudioEffectType) => void;
   setEffectIntensity: (effectId: AudioEffectType, intensity: number) => void;
+  commitEffectIntensity: (effectId: AudioEffectType) => void;
   setIsEnabled: (enabled: boolean) => void;
   resetAllEffects: () => void;
   applyScene: (sceneId: string) => void;
@@ -303,6 +304,8 @@ function applyEffectConfig(
     next[id] = { ...next[id], enabled, intensity };
     manager.setEffectEnabled(id, enabled);
     manager.setEffectIntensity(id, intensity);
+    // S2-2: 非拖动的批量设定（预设/场景/随机）立即提交结构型参数（WaveShaper.curve）。
+    manager.commitEffectIntensity(id);
   }
 
   return next;
@@ -385,6 +388,10 @@ export const useAudioEffectsStore = create<AudioEffectsState>()(
         }));
       },
 
+      commitEffectIntensity: (effectId) => {
+        getAudioEffectsManager().commitEffectIntensity(effectId);
+      },
+
       setIsEnabled: (enabled) => {
         if (!enabled) getAudioEffectsManager().reset();
         set({ isEnabled: enabled });
@@ -442,6 +449,7 @@ export const useAudioEffectsStore = create<AudioEffectsState>()(
             const intensity = 0.2 + Math.random() * 0.7;
             next[id] = { ...next[id], intensity };
             manager.setEffectIntensity(id, intensity);
+            manager.commitEffectIntensity(id);
           }
           return { effects: next, activePresetId: null };
         });
