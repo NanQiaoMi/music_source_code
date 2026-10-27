@@ -42,7 +42,7 @@ export type HeadphonePreset =
 export interface PlaybackSliceState {
   isPlaying: boolean;
   currentTime: number;
-  persistedCurrentTime: number; // 磁盘持久化快照，用于 5s 节流与生命周期 flush
+  persistedCurrentTime: number; // 磁盘持久化快照（写盘节流由 storage 层统一处理）
   duration: number;
   loopMode: LoopMode;
   currentSong: Song | null;

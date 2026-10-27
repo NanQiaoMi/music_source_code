@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { Song } from "@/types/song";
-import { createSafeStorage, sanitizeSongForStorage } from "@/lib/storage/safeStorage";
+import { sanitizeSongForStorage } from "@/lib/storage/safeStorage";
+import { createThrottledStorage } from "@/lib/storage/throttledPersist";
 import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 
 export type LoopMode = "none" | "single" | "all" | "shuffle";
@@ -147,7 +148,8 @@ export const usePlayerStore = create<PlayerState>()(
     }),
     {
       name: "player-store",
-      storage: createJSONStorage(() => createSafeStorage("player-store")),
+      // S2-2：currentTime 高频更新（媒体桥 250ms），写盘由存储层节流到 <=1 次/秒
+      storage: createJSONStorage(() => createThrottledStorage("player-store")),
       partialize: (state) => ({
         currentSong: state.currentSong ? sanitizeSongForStorage(state.currentSong) : null,
         currentTime: typeof state.currentTime === "number" ? state.currentTime : 0,

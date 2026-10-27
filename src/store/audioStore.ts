@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { createSafeStorage, sanitizeSongForStorage } from "@/lib/storage/safeStorage";
+import { sanitizeSongForStorage } from "@/lib/storage/safeStorage";
+import { createThrottledStorage } from "@/lib/storage/throttledPersist";
 import { usePlayerStore, registerAudioStoreSync } from "./playerStore";
 import { useQueueStore } from "./queueStore";
 import {
@@ -44,10 +45,11 @@ export const useAudioStore = create<AudioStoreState>()(
     }),
     {
       name: "audio-store-v4",
-      storage: createJSONStorage(() => createSafeStorage("audio-store-v4")),
+      // S2-2：与 player-store 相同，写盘节流下沉到存储层，key/格式保持不变
+      storage: createJSONStorage(() => createThrottledStorage("audio-store-v4")),
       partialize: (state) => ({
         currentSong: state.currentSong ? sanitizeSongForStorage(state.currentSong) : null,
-        // 使用节流同步的 persistedCurrentTime，阻断每秒多次的磁盘 I/O 序列化
+        // persistedCurrentTime 与内存 currentTime 同步；写盘频率由 throttledPersist 控制
         currentTime:
           typeof state.persistedCurrentTime === "number" ? state.persistedCurrentTime : 0,
         duration: typeof state.duration === "number" ? state.duration : 0,

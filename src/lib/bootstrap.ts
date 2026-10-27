@@ -4,6 +4,7 @@ import { usePlayerStore } from "@/store/playerStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useQueueStore } from "@/store/queueStore";
 import { AudioContextWatchdog } from "@/lib/audio/AudioContextWatchdog";
+import { installFlushOnPageHide } from "@/lib/storage/throttledPersist";
 
 let bootstrapPromise: Promise<boolean> | null = null;
 let hasRestoredPlaybackState = false;
@@ -28,6 +29,9 @@ async function runBootstrap(): Promise<boolean> {
   console.log("[Bootstrap] Starting mimimusic initialization...");
 
   try {
+    // S2-2：页面隐藏/关闭时补写节流中的播放进度（幂等）
+    installFlushOnPageHide();
+
     // 1. 只在本次应用生命周期开始时恢复一次，路由返回主页不能重置播放中状态。
     if (!hasRestoredPlaybackState) {
       const restoredSong = usePlayerStore.getState().currentSong;

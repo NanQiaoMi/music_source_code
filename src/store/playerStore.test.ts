@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { usePlayerStore } from "./playerStore";
 import { usePlaybackRuntimeStore } from "./playbackRuntimeStore";
 import { sanitizeSongForStorage } from "@/lib/storage/safeStorage";
+import { flushAllThrottledStorages } from "@/lib/storage/throttledPersist";
 
 const mockSong = {
   id: "song-1",
@@ -111,6 +112,9 @@ describe("playerStore", () => {
     store.setIsMuted(true);
     store.setPlaybackRate(1.4);
     store.setLoopMode("single");
+
+    // S2-2：写盘被节流到 <=1 次/秒，断言前先同步落盘挂起值
+    flushAllThrottledStorages();
 
     const saved = localStorage.getItem("player-store");
     expect(saved).not.toBeNull();
