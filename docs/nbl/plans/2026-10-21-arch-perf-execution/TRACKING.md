@@ -12,13 +12,13 @@
 | S0 止血与基线 | 7 | 4 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-3/S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策） |
 | S1 数据与播放正确性 | 10 | 3 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3 done；S1-4..S1-10 待） |
 | S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
-| S3 外壳与订阅治理 | 10 | 1 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | in_progress（S3-1 done；S3-2..S3-10 待） |
+| S3 外壳与订阅治理 | 10 | 2 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | in_progress（S3-1/S3-3 done；S3-2/S3-4..S3-10 待） |
 | S4 包体与加载 | 7 | 0 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | pending |
 | S5 渲染运行时 | 7 | 0 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | pending |
 | S6 状态架构收敛 | 12 | 0 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | pending |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **8** | **约 129** | — | in_progress |
+| **合计** | **74** | **9** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -68,7 +68,7 @@
 - [ ] **M3 出口门**：组件层整店订阅 0（全仓 ≤10）；toast/面板不再重渲染 page；idle rAF ≤1；面板关闭 DOM 回收 ≥80%；包体不退化。
 - [x] S3-1 page selector + CssVarsStyle — **done（2026-10-28，722940f）**：page 改原子 currentView/isTransitioning selector，移除 styled-jsx 中 blur/animation 插值；新增 `VisualTokens`（仅订阅 blurIntensity/animationSpeed 写 CSS 变量，SSR 安全，3 tests）；globals.css 加 :root 默认防 FOUC；HomeView/PlayerView/HeaderToolbar/NavIsland/Apple3DQueueDrawer/useDynamicTheme 共 13 处整店调用清零。指标：whole 153→140、whole-only files 55→50、selector 481→504（本分支基线口径）；shell scope 13→0。全量 203 files/1270 tests passed；tsc/eslint 0。缺口：PanelOrchestrator 仍 shallow 整 panels map（S3-6 拆分）；useDynamicTheme 仍选 themeColors 字段；无 Profiler/截图证据；未跑 build。分支 `feature/arch-perf-s3-1`（未合并）。
 - [ ] S3-2 全局壳 selector（5 文件，D7 授权）— owner: — | PR: 1 | 依赖: S0-1 | 验收: 5 文件整店→0；截图一致
-- [ ] S3-3 VisualizationView selector + 进度下沉 — owner: — | PR: 1 | 依赖: S3-1 | 验收: viz commit 降 ≥80%
+- [x] S3-3 VisualizationView selector + 进度下沉 — **done（2026-10-28，24b9734）**：父组件仅原子 selector 稳定字段，移除 3 处整店订阅与 currentTime/duration/buffered；musicTime 改 rAF 内 getState 直读；canvas style 提纯函数+useMemo；新增 `VisualizationProgressContainer` 窄订阅渲染原进度条（动态加载不变）。Profiler 证据：10 次 currentTime 父组件 commits **10→0**（降 100%，目标≥80%），进度子树仍 10 次且文本更新；currentEffect 切换恰好 1 commit；report-store-stats whole 140→137、VisualizationView 3→0。全量 204 files/1277 tests passed；tsc/eslint 0。缺口：Profiler 测试 stub 了 dynamic/framer；无 dev 10s 实播与 14 效果截图；VisualizationSettingsPanel 仍有整店订阅（后续）。分支 `feature/arch-perf-s3-3`（未合并）。
 - [ ] S3-4 Player3D currentView 门控 — owner: — | PR: 1 | 依赖: 无 | 验收: Home 页 60s rAF=0
 - [ ] S3-5 浮动层 gating — owner: — | PR: 1 | 依赖: S3-4 | 验收: idle rAF ≤1
 - [ ] S3-6 LazyPanel LRU + deactivate — owner: — | PR: 1-2 | 依赖: S3-1 | 验收: DOM 回收 ≥80%
