@@ -10,7 +10,7 @@
 | 阶段 | 任务数 | done | 子 PR（执行计划） | 阶段出口（摘要） | 状态 |
 |---|---:|---:|---:|---|---|
 | S0 止血与基线 | 7 | 4 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-3/S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策） |
-| S1 数据与播放正确性 | 10 | 2 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-3 done） |
+| S1 数据与播放正确性 | 10 | 2 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-3 done；S1-2a done，2b 待） |
 | S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
 | S3 外壳与订阅治理 | 10 | 0 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | pending |
 | S4 包体与加载 | 7 | 0 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | pending |
@@ -43,7 +43,7 @@
 
 - [ ] **M1 出口门**：正确性场景（总计划 §9.2）全部自动化通过；旧备份/旧 key fixture 通过；无已知数据丢失路径。
 - [x] S1-1 storageRegistry v1 — **done（2026-10-21，提前落地）**：src/lib/storage/storageRegistry.ts（44 key/8 backup/owner+version+group+quotaPolicy）+ storageRegistry.test.ts 5 用例通过；依赖 S0-6 已满足；S1-2 可直接使用 registry
-- [ ] S1-2 备份/恢复修复（registry 槽位/rehydrate/泄漏/v5 schema）— owner: — | PR: 1-2 | 依赖: S1-1 | 验收: 备份→恢复→重载闭环
+- [ ] S1-2 备份/恢复修复（registry 槽位/rehydrate/泄漏/v5 schema）— **in_progress（2026-10-27，2a done）**：分支 feature/arch-perf-s1-2a @ 4f9325d（基于 checkpoint 6f7a3bc，隔离 worktree）；新增 backupSchema.ts（v5 payload / parse / v4 migration / 原子 restore / rollback snapshot）、rehydrateRegisteredStores.ts、重写 backupRestoreStore（8 个真实 registry key、v5 创建/恢复/预览/导入导出、v4 兼容、孤儿 body 清理、restoreReport）；3 个 fixtures + 14 tests；worktree 内全量 210 files/1291 tests、tsc/eslint/prettier 全绿。**2b 待做**：BackupRestorePanel 报告/unsupported/reload UI + panel tests；PR 拆分与合入 master 待办。
 - [x] S1-3 启动压缩与配额策略修复 — **done（2026-10-22）**：safeStorage 不再截断 200/30，只在缩减 ≥2% 时写回；新增 quotaPolicy（逐级降级、绝不先删旧值）+ degradedNotifier（事件+节流 toast）；queue/recommendation/stats 三处写盘统一策略；queue 永不写空队列。测试：quotaPolicy 5 + safeStorage 5 + queue/recommendation/stats 40，全部通过；tsc/eslint 0
 - [ ] S1-4 VibeMusicDB 统一 open/version v3 — owner: — | PR: 1 | 依赖: S0-6 | 验收: v1→v3 迁移测试；local:// 可播
 - [ ] S1-5 队列唯一权威 + QueueNavigator — owner: — | PR: 1-2 | 依赖: S1-3 | 验收: 删/排/清后 next/ended 一致
@@ -156,3 +156,4 @@
 | 2026-10-21 | 创建看板 | 74 任务全部 pending；阶段出口门与阻塞项登记 |
 | 2026-10-27 | S0-1 done | Q01-A checkpoint 分支/提交 2b99173；工作树干净；tsc/vitest/eslint/build 基线复测通过 |
 | 2026-10-27 | S0-3 done / S0-5 GC | 84305f6（端口/门禁/测试）；隔离 worktree `next start -p 3026` 的 `/` 与 `/data-manager` 均 200；195d996 + Q22 后 worktrees 25→6（19 removed，5 dirty skipped） |
+| 2026-10-27 | S1-2a done | feature/arch-perf-s1-2a @ 4f9325d：v5 schema/v4 migration/atomic restore/rehydrate/leak fixes；14 tests + 全量 210/1291 绿；2b UI 待 |
