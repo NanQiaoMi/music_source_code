@@ -2,7 +2,6 @@ import { useAudioStore } from "@/store/audioStore";
 import { useEmotionStore } from "@/store/emotionStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { usePlaylistStore } from "@/store/playlistStore";
-import { useQueueStore } from "@/store/queueStore";
 import { AudioContextWatchdog } from "@/lib/audio/AudioContextWatchdog";
 
 let bootstrapPromise: Promise<boolean> | null = null;
@@ -31,8 +30,6 @@ async function runBootstrap(): Promise<boolean> {
     // 1. 只在本次应用生命周期开始时恢复一次，路由返回主页不能重置播放中状态。
     if (!hasRestoredPlaybackState) {
       const restoredSong = usePlayerStore.getState().currentSong;
-      const restoredQueue = useQueueStore.getState().queue;
-      const restoredIndex = useQueueStore.getState().currentIndex;
 
       if (restoredSong) {
         useAudioStore.setState({
@@ -46,14 +43,8 @@ async function runBootstrap(): Promise<boolean> {
         );
       }
 
-      if (restoredQueue && restoredQueue.length > 0) {
-        useAudioStore.setState({
-          queue: restoredQueue,
-          currentIndex: restoredIndex || 0,
-        });
-        console.log(`[Bootstrap] 📋 已恢复上次播放队列: ${restoredQueue.length} 首歌曲`);
-      }
-
+      // S1-5: queue/currentIndex 已由 queueStore 自行持久化和恢复，
+      // 启动时不再复制到 audioStore（单向投影会处理镜像）。
       const restoredLoopMode = usePlayerStore.getState().loopMode;
       if (restoredLoopMode) {
         useAudioStore.setState({ loopMode: restoredLoopMode });

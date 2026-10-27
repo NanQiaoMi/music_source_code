@@ -150,10 +150,18 @@ export interface SourceSliceState {
   handleSourceError: (song: Song, error: unknown) => void;
 }
 
+/**
+ * @deprecated since S1-5. Read-only mirror of queueStore; owner = queueStore.
+ * Navigation must use advanceQueue / queueStore. Removal: S6-5.
+ */
 export interface LegacyQueueCompatibilityState {
+  /** @deprecated Read-only projection; write via queueStore.setQueue. */
   queue: Song[];
+  /** @deprecated Read-only projection; write via queueStore.setCurrentIndex. */
   currentIndex: number;
+  /** @deprecated Compatibility facade; forwards to queueStore.setQueue. */
   setQueue: (songs: Song[]) => void;
+  /** @deprecated Compatibility facade; forwards to queueStore.setCurrentIndex. */
   setCurrentIndex: (index: number) => void;
 }
 

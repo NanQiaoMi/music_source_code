@@ -47,6 +47,7 @@ import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 import type { PlaybackMachineEvent } from "@/lib/audio/playbackStateMachine";
 import { playbackClock } from "@/lib/audio/PlaybackClock";
 import { shouldAcceptPlaybackMediaEvent } from "@/lib/audio/playbackMediaEventGuard";
+import { computeNext } from "@/lib/playback/queueNavigator";
 
 // Module-level shared state to persist across hook unmounts/remounts
 let audioInstance: HTMLAudioElement | null = null;
@@ -405,7 +406,6 @@ const attachListeners = (
     setDuration: _setDuration,
     setIsLoading,
     setError,
-    nextSong,
     loopMode: _loopMode,
   } = useAudioStore.getState();
 
@@ -781,8 +781,16 @@ const attachListeners = (
     }
 
     const currentLoopMode = useAudioStore.getState().loopMode || usePlayerStore.getState().loopMode;
+    const queueSnapshot = useQueueStore.getState();
+    // 结束策略与手动切歌共用 QueueNavigator（单一权威队列快照）。
+    const endedResult = computeNext(
+      queueSnapshot.queue,
+      queueSnapshot.currentIndex,
+      currentLoopMode,
+      queueSnapshot.playThroughMode
+    );
 
-    if (currentLoopMode === "single") {
+    if (endedResult.reason === "single-loop") {
       console.info("[useAudioPlayer] 🔁 触发单曲循环重播:", endedSong?.title);
       useAudioStore.getState().setCurrentTime(0);
       usePlayerStore.getState().setCurrentTime(0);
@@ -802,7 +810,8 @@ const attachListeners = (
       );
       audio.play().catch((error) => handlePlayError(error, replayRequestId));
     } else {
-      nextSong();
+      // 与手动「下一首」共用 QueueNavigator：删歌/重排/清空后按 queueStore 最新快照推进。
+      useAudioStore.getState().nextSong();
     }
   };
   const onError = async (event: Event) => {

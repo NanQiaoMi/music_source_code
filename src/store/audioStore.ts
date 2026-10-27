@@ -30,16 +30,15 @@ export const useAudioStore = create<AudioStoreState>()(
       ...createDeviceSlice(set, get, api),
       ...createSourceSlice(set, get, api),
 
-      // 队列单一事实源对接：代理至 queueStore，杜绝双权威不一致
+      // 队列兼容字段（S1-5）：owner=queueStore，这里只是单向只读投影。
+      // 写入一律委托 queueStore，由模块底部订阅回填镜像，禁止反写。
       queue: useQueueStore.getState().queue ?? [],
       currentIndex: useQueueStore.getState().currentIndex ?? 0,
       setQueue: (songs: Song[]) => {
         useQueueStore.getState().setQueue(songs);
-        set({ queue: songs });
       },
       setCurrentIndex: (index: number) => {
         useQueueStore.getState().setCurrentIndex(index);
-        set({ currentIndex: index });
       },
     }),
     {
@@ -159,35 +158,16 @@ useAudioStore.subscribe((state, prev) => {
   if (Object.keys(updates).length > 0) {
     usePlayerStore.setState(updates);
   }
-
-  // 保证通过 useAudioStore.setState 注入的队列与索引与 queueStore 保持完全一致
-  if (state.queue !== prev.queue && state.queue !== useQueueStore.getState().queue) {
-    useQueueStore.getState().setQueue(state.queue);
-  }
-  if (
-    state.currentIndex !== prev.currentIndex &&
-    state.currentIndex !== useQueueStore.getState().currentIndex
-  ) {
-    useQueueStore.getState().setCurrentIndex(state.currentIndex);
-  }
 });
 
-// 单向事实源同步：queueStore 发生增删排时自动单向同步至 audioStore 镜像字段
-useQueueStore.subscribe((state, prev) => {
+// 单向投影（S1-5）：queueStore 是唯一 owner，audioStore 镜像不参与任何写路径。
+// 删除时机：S6-5；在此之前导航只读 queueStore，本投影仅服务遗留读点。
+useQueueStore.subscribe((state) => {
   const currentAudio = useAudioStore.getState();
-  const updates: Partial<AudioStoreState> = {};
-  if (state.queue !== prev.queue && state.queue !== currentAudio.queue) {
-    updates.queue = state.queue;
+  if (state.queue === currentAudio.queue && state.currentIndex === currentAudio.currentIndex) {
+    return;
   }
-  if (
-    state.currentIndex !== prev.currentIndex &&
-    state.currentIndex !== currentAudio.currentIndex
-  ) {
-    updates.currentIndex = state.currentIndex;
-  }
-  if (Object.keys(updates).length > 0) {
-    useAudioStore.setState(updates);
-  }
+  useAudioStore.setState({ queue: state.queue, currentIndex: state.currentIndex });
 });
 
 // ============================================================================

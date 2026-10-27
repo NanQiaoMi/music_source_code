@@ -1,9 +1,9 @@
 import { AudioSliceCreator, PlaybackSliceState, LoopMode, Song } from "./types";
 import { usePlayerStore } from "../playerStore";
 import { useQueueStore } from "../queueStore";
-import { useRecommendationStore } from "../recommendationStore";
 import { usePlaylistStore } from "../playlistStore";
 import { usePlaybackRuntimeStore } from "../playbackRuntimeStore";
+import { advanceQueue } from "@/lib/playback/queueNavigator";
 import {
   hasPlayableAudioSource,
   createMissingAudioSourceError,
@@ -195,124 +195,30 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
 
     nextSong: () => {
       flushProgressToStorage();
-      const queueStore = useQueueStore.getState();
-      const queue = queueStore.queue;
-      const { loopMode, currentSong } = get();
+      const result = advanceQueue("next", { currentSong: get().currentSong });
 
-      // 优先对齐当前队列与当前索引，防止跨组件直接调用 setState 时索引脱节
-      let currentIndex = queueStore.currentIndex;
-      if (get().currentIndex >= 0 && get().currentIndex < queue.length) {
-        currentIndex = get().currentIndex;
-      } else if (currentSong) {
-        const foundIndex = queue.findIndex((s) => s.id === currentSong.id);
-        if (foundIndex >= 0) {
-          currentIndex = foundIndex;
-        }
-      }
-
-      if (queue.length === 0) {
-        if (queueStore.playThroughMode === "play-through") {
-          clearPlaybackRequest();
-          usePlayerStore.getState().setCurrentSong(null);
-          set({ currentSong: null, isPlaying: false });
-          return;
-        }
-        if (loopMode !== "single" && loopMode !== "all") {
-          const recs = useRecommendationStore.getState().getRecommendations();
-          if (recs.length > 0) {
-            queueStore.setQueue(recs);
-            queueStore.setCurrentIndex(0);
-            queueStore.addToHistory(recs[0]);
-            startPlaybackRequest(recs[0]);
-            usePlayerStore.getState().setCurrentSong(recs[0]);
-            set({
-              currentSong: recs[0],
-              currentTime: 0,
-              persistedCurrentTime: 0,
-              isPlaying: false,
-              isLoading: true,
-              error: null,
-            });
-          } else {
-            clearPlaybackRequest();
-            usePlayerStore.getState().setCurrentSong(null);
-            set({ currentSong: null, isPlaying: false });
-          }
-        } else {
-          clearPlaybackRequest();
-          usePlayerStore.getState().setCurrentSong(null);
-          set({ currentSong: null, isPlaying: false });
-        }
-        return;
-      }
-
-      let nextIndex: number;
-      if (loopMode === "shuffle") {
-        nextIndex = Math.floor(Math.random() * queue.length);
-      } else if (loopMode === "none" && currentIndex >= queue.length - 1) {
+      if (!result.song) {
         clearPlaybackRequest();
-        usePlayerStore.getState().setCurrentSong(null);
-        queueStore.setCurrentIndex(0);
-        set({ currentSong: null, isPlaying: false, currentTime: 0, persistedCurrentTime: 0 });
+        usePlayerStore.setState({ isPlaying: false, isLoading: false });
+        set({ isPlaying: false, isLoading: false });
         return;
-      } else {
-        nextIndex = (currentIndex + 1) % queue.length;
       }
 
-      const nextSongItem = queue[nextIndex];
-      startPlaybackRequest(nextSongItem);
-      usePlayerStore.getState().setCurrentSong(nextSongItem);
-      queueStore.setCurrentIndex(nextIndex);
-      queueStore.addToHistory(nextSongItem);
-
-      set({
-        currentSong: nextSongItem,
-        currentTime: 0,
-        persistedCurrentTime: 0,
-        isPlaying: false,
-        isLoading: true,
-        error: null,
-      });
+      get().playSong(result.song);
     },
 
     prevSong: () => {
       flushProgressToStorage();
-      const queueStore = useQueueStore.getState();
-      const queue = queueStore.queue;
-      if (queue.length === 0) return;
+      const result = advanceQueue("prev", { currentSong: get().currentSong });
 
-      const { loopMode, currentSong } = get();
-      let currentIndex = queueStore.currentIndex;
-      if (get().currentIndex >= 0 && get().currentIndex < queue.length) {
-        currentIndex = get().currentIndex;
-      } else if (currentSong) {
-        const foundIndex = queue.findIndex((s) => s.id === currentSong.id);
-        if (foundIndex >= 0) {
-          currentIndex = foundIndex;
-        }
+      if (!result.song) {
+        clearPlaybackRequest();
+        usePlayerStore.setState({ isPlaying: false, isLoading: false });
+        set({ isPlaying: false, isLoading: false });
+        return;
       }
 
-      let prevIndex: number;
-      if (loopMode === "shuffle") {
-        prevIndex = Math.floor(Math.random() * queue.length);
-      } else {
-        prevIndex = (currentIndex - 1 + queue.length) % queue.length;
-      }
-
-      const prevSongItem = queue[prevIndex];
-      queueStore.setCurrentIndex(prevIndex);
-      queueStore.addToHistory(prevSongItem);
-      startPlaybackRequest(prevSongItem);
-      usePlayerStore.getState().setCurrentSong(prevSongItem);
-
-      set({
-        currentSong: prevSongItem,
-        currentTime: 0,
-        persistedCurrentTime: 0,
-        isPlaying: false,
-        isLoading: true,
-        error: null,
-      });
+      get().playSong(result.song);
     },
 
     setIsLoading: (loading) => {
@@ -339,7 +245,13 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       flushProgressToStorage();
       const queueStore = useQueueStore.getState();
       const currentQueue = queueStore.queue;
-      const queueIdx = currentQueue.findIndex((s) => s.id === song.id);
+      // Position is authoritative (duplicate ids are distinct queue entries):
+      // when the navigator already moved currentIndex, keep that occurrence.
+      const indexedSong = currentQueue[queueStore.currentIndex];
+      const queueIdx =
+        indexedSong && indexedSong.id === song.id
+          ? queueStore.currentIndex
+          : currentQueue.findIndex((s) => s.id === song.id);
 
       let fullQueue: Song[];
       let startIdx: number;

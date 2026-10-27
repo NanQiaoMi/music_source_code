@@ -172,7 +172,6 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
 
             const updatedQueue = [...useQueueStore.getState().queue, ...nextBatch];
             useQueueStore.getState().setQueue(updatedQueue);
-            useAudioStore.setState({ queue: updatedQueue });
             usePlaylistStore.getState().importSongs(nextBatch);
             currentOffset += nextBatch.length;
           }
