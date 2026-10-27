@@ -17,6 +17,11 @@ export class AudioEngine {
   private eqNodes: BiquadFilterNode[] = [];
   private isInitialized = false;
   private isEQEnabled = false;
+  // S2-1: destination 只允许一条入边。效果链接管输出后，引擎不再常连 destination。
+  private outputOwnedByEffects = false;
+  private fallbackConnected = false;
+  // setVolume 可能先于 AudioContext 创建（hook 挂载时），先记住，建图时落到 masterGain。
+  private userVolume = 1;
 
   private static EQ_FREQUENCIES = [
     20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600,
@@ -49,6 +54,7 @@ export class AudioEngine {
 
     // Create master nodes
     this.masterGain = this.context.createGain();
+    this.masterGain.gain.value = this.userVolume;
     this.analyser = this.context.createAnalyser();
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0.8;
@@ -65,7 +71,7 @@ export class AudioEngine {
     }
 
     this.masterGain.connect(this.analyser);
-    this.analyser.connect(this.context.destination);
+    this.connectFallbackOutput();
 
     return this.context;
   }
@@ -181,6 +187,38 @@ export class AudioEngine {
     return this.masterGain;
   }
 
+  public getDestination(): AudioNode | null {
+    return this.context?.destination ?? null;
+  }
+
+  /**
+   * S2-1: 效果链未接管输出时的唯一兜底入口（analyser -> destination）。
+   * 幂等：重复调用不会产生重复边。
+   */
+  public connectFallbackOutput(): void {
+    if (this.outputOwnedByEffects) return;
+    if (this.fallbackConnected) return;
+    if (!this.analyser || !this.context) return;
+
+    this.analyser.connect(this.context.destination);
+    this.fallbackConnected = true;
+  }
+
+  /**
+   * S2-1: 效果链接管 destination 前先摘掉兜底直连，保证 destination 始终只有一条入边。
+   */
+  public setOutputOwnedByEffects(owned: boolean): void {
+    if (owned && this.fallbackConnected && this.analyser && this.context) {
+      try {
+        this.analyser.disconnect(this.context.destination);
+      } catch {
+        // 已断开或上下文已关闭时忽略。
+      }
+      this.fallbackConnected = false;
+    }
+    this.outputOwnedByEffects = owned;
+  }
+
   public updateEQ(bands: number[]): void {
     if (!this.eqNodes.length || !this.context) return;
 
@@ -192,6 +230,7 @@ export class AudioEngine {
   }
 
   public setVolume(volume: number): void {
+    this.userVolume = volume;
     if (this.masterGain && this.context) {
       this.masterGain.gain.setTargetAtTime(volume, this.context.currentTime, 0.01);
     }

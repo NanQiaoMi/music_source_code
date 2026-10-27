@@ -1,11 +1,14 @@
 import type { AudioEffectType } from "@/store/audioEffectsStore";
 import { getAudioContext } from "@/hooks/useAudioPlayer";
 import { usePlayerStore } from "@/store/playerStore";
+import { AudioEngine } from "./AudioEngine";
 
 export class AudioEffectsManager {
   private context: AudioContext | null = null;
   private sourceNode: AudioNode | null = null;
   private destinationNode: AudioNode | null = null;
+  // S2-1: 效果链唯一汇点。所有子路径先汇入这里，再由这里单边连到 destination。
+  private chainOutput: GainNode | null = null;
 
   // 基础增益节点
   private originalGain: GainNode | null = null;
@@ -126,6 +129,10 @@ export class AudioEffectsManager {
     this.originalGain = this.context.createGain();
     this.wetGain = this.context.createGain();
     this.dryGain = this.context.createGain();
+
+    // S2-1: 效果链唯一输出汇点，保证 destination 只有一条入边（混响的干/湿两路在此合流）。
+    this.chainOutput = this.context.createGain();
+    this.chainOutput.gain.value = 1;
 
     // 8D 环绕音
     this.autoPanNode = this.context.createStereoPanner();
@@ -317,6 +324,9 @@ export class AudioEffectsManager {
     if (!this.isInitialized) return;
     if (!this.context) return;
 
+    // S2-1: 重连前先摘掉自己拥有的旧输出，避免 destination 出现重复入边。
+    this.disconnectOwnedOutput();
+
     this.sourceNode = source;
     this.destinationNode = destination;
 
@@ -325,13 +335,45 @@ export class AudioEffectsManager {
       this.originalPlaybackRate = mediaElement.playbackRate;
     }
 
+    AudioEngine.getInstance().setOutputOwnedByEffects(true);
     this.rebuildAudioChain();
   }
 
+  /**
+   * S2-1: 效果链退场，恢复 AudioEngine 的 analyser -> destination 兜底直连。
+   */
+  detach(): void {
+    this.disconnectOwnedOutput();
+    this.sourceNode = null;
+    this.destinationNode = null;
+    this.mediaElement = null;
+
+    const engine = AudioEngine.getInstance();
+    engine.setOutputOwnedByEffects(false);
+    engine.connectFallbackOutput();
+  }
+
+  private disconnectOwnedOutput(): void {
+    try {
+      this.sourceNode?.disconnect();
+    } catch {
+      // 节点可能已断开。
+    }
+    try {
+      this.chainOutput?.disconnect();
+    } catch {
+      // 节点可能已断开。
+    }
+  }
+
   private rebuildAudioChain(): void {
-    if (!this.context || !this.sourceNode || !this.destinationNode) return;
+    if (!this.context || !this.sourceNode || !this.destinationNode || !this.chainOutput) return;
 
     try {
+      // S2-1: 输入边和汇点输出边也必须先摘掉，否则每次重建都会叠加平行边。
+      this.sourceNode.disconnect();
+      this.chainOutput.disconnect();
+
       // 断开所有节点
       this.autoPanNode?.disconnect();
       this.reverbNode?.disconnect();
@@ -512,7 +554,7 @@ export class AudioEffectsManager {
       this.loFiPhoneLPF.frequency.value = 3000 - intensity * 1000; // 3000-2000
 
       this.loFiPhoneNoiseGain.gain.value = intensity * 0.05; // Add background static
-      this.loFiPhoneNoiseGain.connect(this.destinationNode); // Route static directly
+      this.loFiPhoneNoiseGain.connect(this.chainOutput); // Route static into the single sink
 
       currentNode.connect(this.loFiPhoneHPF);
       this.loFiPhoneHPF.connect(this.loFiPhoneDistortion);
@@ -593,11 +635,12 @@ export class AudioEffectsManager {
 
       const dryChain = currentNode;
       dryChain.connect(this.dryGain);
-      this.dryGain.connect(this.destinationNode);
+      this.dryGain.connect(this.chainOutput);
 
       currentNode.connect(this.reverbNode);
       this.reverbNode.connect(this.wetGain);
-      this.wetGain.connect(this.destinationNode);
+      this.wetGain.connect(this.chainOutput);
+      this.chainOutput.connect(this.destinationNode);
       return;
     }
 
@@ -614,7 +657,8 @@ export class AudioEffectsManager {
       currentNode = gainNode;
     }
 
-    currentNode.connect(this.destinationNode);
+    currentNode.connect(this.chainOutput);
+    this.chainOutput.connect(this.destinationNode);
   }
 
   setEffectEnabled(effect: AudioEffectType, enabled: boolean): void {
