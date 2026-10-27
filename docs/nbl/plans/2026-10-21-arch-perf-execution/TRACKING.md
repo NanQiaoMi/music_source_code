@@ -12,13 +12,13 @@
 | S0 止血与基线 | 7 | 4 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-3/S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策） |
 | S1 数据与播放正确性 | 10 | 3 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3 done；S1-4..S1-10 待） |
 | S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
-| S3 外壳与订阅治理 | 10 | 2 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | in_progress（S3-1/S3-3 done；S3-2/S3-4..S3-10 待） |
+| S3 外壳与订阅治理 | 10 | 3 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | in_progress（S3-1/S3-3/S3-8 done；S3-2/S3-4..S3-7/S3-9/S3-10 待） |
 | S4 包体与加载 | 7 | 0 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | pending |
 | S5 渲染运行时 | 7 | 0 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | pending |
 | S6 状态架构收敛 | 12 | 0 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | pending |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **9** | **约 129** | — | in_progress |
+| **合计** | **74** | **10** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -73,7 +73,7 @@
 - [ ] S3-5 浮动层 gating — owner: — | PR: 1 | 依赖: S3-4 | 验收: idle rAF ≤1
 - [ ] S3-6 LazyPanel LRU + deactivate — owner: — | PR: 1-2 | 依赖: S3-1 | 验收: DOM 回收 ≥80%
 - [ ] S3-7 重复宿主清理（toast/SourceManagementModal）— owner: — | PR: 1 | 依赖: S3-1 | 验收: 实例数=1
-- [ ] S3-8 playlistStore 29 处整店订阅清零 — owner: — | PR: 2 | 依赖: S3-1 | 验收: whole=0
+- [x] S3-8 playlistStore 29 处整店订阅清零 — **done（2026-10-28，674a481）**：新增 `playlistSelectors.ts`（字段+7 action 稳定 selector），28 处消费方全部改窄订阅（HeaderToolbar 已于 S3-2 修）；`MusicLibrarySyncProvider` 改 boolean hasSongs；测试 mocks 适配；新增 selectors 3 + Profiler 订阅隔离 6 用例；report 脚本新增 `--store` 与 wholeByStore。指标：playlistStore whole **28→0**，全局 whole **137→109（21.2%→16.5%）**，whole-only files 50→33，selector 509→551。全量 206 files/1286 tests passed；tsc/eslint 0。缺口：`report-store-stats --check` 因**既有 stale baseline**（59/43 vs 60/44）仍 fail，需批准后重建 baseline；未做 DataManager 300ms debounce；无 dev 10 键 profiling；TRACKING 已补。分支 `feature/arch-perf-s3-8`（未合并）。
 - [ ] S3-9 预取策略 — owner: — | PR: 1 | 依赖: S0-6 | 验收: 5s 内动态 import ≤3
 - [ ] S3-10 Top-20 整店订阅清理 — owner: — | PR: 1 | 依赖: S3-2 | 验收: 组件整店=0
 
