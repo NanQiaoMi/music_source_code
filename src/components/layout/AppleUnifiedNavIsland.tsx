@@ -63,16 +63,19 @@ function QuickActionMenuItem({
   title,
   onClick,
   active,
+  panelPrefetch,
   children,
 }: {
   title: string;
   onClick: () => void;
   active?: boolean;
+  panelPrefetch?: PanelName;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
+      data-panel-prefetch={panelPrefetch}
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-3 py-2.5 text-[13px] transition-colors ${
         active ? "text-[#2997ff] bg-[#0071e3]/15" : "text-white/80 hover:bg-white/[0.08]"
@@ -503,6 +506,7 @@ export function AppleUnifiedNavIsland({
         <div className="flex items-center gap-0.5 px-0.5">
           <button
             type="button"
+            data-panel-prefetch="search"
             onClick={() => openPanel("search")}
             className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.12] transition-all hover:scale-105 active:scale-95"
             title="全局搜索 (⌘K / Ctrl+K)"
@@ -566,6 +570,7 @@ export function AppleUnifiedNavIsland({
                   </QuickActionMenuItem>
                   <QuickActionMenuItem
                     title="偏好设置"
+                    panelPrefetch="settings"
                     onClick={() => {
                       openPanel("settings");
                       setMoreOpen(false);
@@ -615,6 +620,7 @@ export function AppleUnifiedNavIsland({
 
               <button
                 type="button"
+                data-panel-prefetch="settings"
                 onClick={() => openPanel("settings")}
                 className="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.12] transition-all hover:scale-105 active:scale-95"
                 title="偏好设置"

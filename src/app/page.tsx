@@ -80,12 +80,8 @@ export default function Home() {
 
   useEffect(() => {
     useUIStore.getState().restorePersistedView();
-    bootstrapApp().then(() => {
-      // Prefetch heavy views in background after core is ready
-      import("@/components/layout/PlayerView");
-      import("@/components/visualization/VisualizationView");
-      import("@/components/features-v7/FeatureButtonsContainer");
-    });
+    // 重视图由上方 next/dynamic 声明按需加载；此处不再重复预取（S3-9）。
+    void bootstrapApp();
   }, []);
 
   return (

@@ -192,6 +192,7 @@ export function DataManagerPlayerDock() {
 
           <button
             type="button"
+            data-panel-prefetch="queue"
             aria-label={`播放队列，${queue.length}首`}
             title="打开播放队列"
             onClick={() => openPanel("queue")}

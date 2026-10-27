@@ -187,6 +187,33 @@ const PANEL_COMPONENTS = Object.fromEntries(
   ])
 ) as Record<keyof typeof FACTORIES, ReturnType<typeof createLazyPanelComponent>>;
 
+// ─── S3-9 prefetch policy (idle + intent) ────────────────────────
+// Only the two likeliest panels are warmed after idle; every other panel waits
+// for a pointer intent on a [data-panel-prefetch] entry.
+const IDLE_PREFETCH_PANELS = ["queue", "search"] as const;
+const IDLE_PREFETCH_TIMEOUT_MS = 2000;
+const IDLE_FALLBACK_DELAY_MS = 3000;
+const PANEL_PREFETCH_ATTR = "data-panel-prefetch";
+
+function isDataSaverEnabled(): boolean {
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+  return connection?.saveData === true;
+}
+
+/** Run after the browser is idle; Safari lacks requestIdleCallback, so fall back to a timer. */
+function runWhenIdle(callback: () => void): () => void {
+  if (typeof window.requestIdleCallback === "function") {
+    const handle = window.requestIdleCallback(callback, { timeout: IDLE_PREFETCH_TIMEOUT_MS });
+
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(handle);
+    };
+  }
+
+  const timer = window.setTimeout(callback, IDLE_FALLBACK_DELAY_MS);
+  return () => window.clearTimeout(timer);
+}
+
 /**
  * PanelOrchestrator - Central controller for all feature panels.
  *
@@ -208,28 +235,37 @@ export function PanelOrchestrator() {
     [panels]
   );
 
-  // Prefetch priority modules on mount
+  // S3-9: warm only the two likeliest panels once the page is idle.
   useEffect(() => {
-    const prefetchModules = async () => {
-      // Delay prefetching slightly to not compete with initial page load
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+    if (isDataSaverEnabled()) return;
 
-      // High priority (User likely to click)
-      prefetchPanel("queue", FACTORIES.queue);
-      prefetchPanel("search", FACTORIES.search);
-      prefetchPanel("settings", FACTORIES.settings);
-      prefetchPanel("history", FACTORIES.history);
+    return runWhenIdle(() => {
+      for (const name of IDLE_PREFETCH_PANELS) {
+        prefetchPanel(name, FACTORIES[name]);
+      }
+    });
+  }, []);
 
-      // Medium priority (Secondary tools)
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      prefetchPanel("eq", FACTORIES.eq);
-      prefetchPanel("visualSettings", FACTORIES.visualSettings);
-      prefetchPanel("lyricsSearch", FACTORIES.lyricsSearch);
-      prefetchPanel("smartPlaylist", FACTORIES.smartPlaylist);
-      prefetchPanel("playerSkins", FACTORIES.playerSkins);
+  // S3-9: hovering a marked entry loads its panel chunk before the click.
+  useEffect(() => {
+    const seen = new WeakSet<Element>();
+
+    const handlePointerOver = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const entry = target.closest<HTMLElement>(`[${PANEL_PREFETCH_ATTR}]`);
+      if (!entry || seen.has(entry)) return;
+
+      const name = entry.dataset.panelPrefetch;
+      if (!name || !(name in FACTORIES)) return;
+
+      seen.add(entry);
+      prefetchPanel(name, FACTORIES[name as keyof typeof FACTORIES]);
     };
 
-    prefetchModules();
+    document.addEventListener("pointerover", handlePointerOver, { passive: true });
+    return () => document.removeEventListener("pointerover", handlePointerOver);
   }, []);
 
   return (
