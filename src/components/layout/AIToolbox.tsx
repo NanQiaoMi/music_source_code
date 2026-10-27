@@ -58,9 +58,12 @@ const ITEM_VARIANTS = {
 
 export const AIToolbox: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { openPanel, togglePanel, panels } = useUIStore();
-  const { clearCache } = useLinerNotesStore();
-  const { isEnabled, toggleEnabled } = useAIStore();
+  const openPanel = useUIStore((state) => state.openPanel);
+  const togglePanel = useUIStore((state) => state.togglePanel);
+  const panels = useUIStore((state) => state.panels);
+  const clearCache = useLinerNotesStore((state) => state.clearCache);
+  const isEnabled = useAIStore((state) => state.isEnabled);
+  const toggleEnabled = useAIStore((state) => state.toggleEnabled);
   const { showToast } = useGlassToast();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 

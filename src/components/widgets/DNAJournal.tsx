@@ -20,10 +20,12 @@ import { useGlassToast } from "@/components/shared/GlassToast";
 import { useAIStore } from "@/store/aiStore";
 
 export const DNAJournal: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
-  const { dnaJournal, isLoading, generateDNAJournal } = useKnowledgeStore();
-  const { points } = useEmotionStore();
+  const dnaJournal = useKnowledgeStore((state) => state.dnaJournal);
+  const isLoading = useKnowledgeStore((state) => state.isLoading);
+  const generateDNAJournal = useKnowledgeStore((state) => state.generateDNAJournal);
+  const points = useEmotionStore((state) => state.points);
   const { showToast } = useGlassToast();
-  const { isEnabled } = useAIStore();
+  const isEnabled = useAIStore((state) => state.isEnabled);
   const [_isHovered, setIsHovered] = useState(false);
 
   const handleGenerate = () => {

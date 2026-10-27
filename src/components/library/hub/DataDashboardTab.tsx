@@ -31,17 +31,16 @@ export const DataDashboardTab: React.FC<DataDashboardTabProps> = ({
   onFilterQuality,
 }) => {
   const songs = usePlaylistStore(selectSongs);
-  const {
-    storageDetails,
-    usagePercent,
-    qualityStats,
-    platformStats,
-    healthRadar,
-    diagnostics,
-    isAnalyzing,
-    refreshAnalytics,
-  } = useStorageAnalyticsStore();
-  const { activeCount, totalSpeedFormatted } = useOfflineDownloadStore();
+  const storageDetails = useStorageAnalyticsStore((state) => state.storageDetails);
+  const usagePercent = useStorageAnalyticsStore((state) => state.usagePercent);
+  const qualityStats = useStorageAnalyticsStore((state) => state.qualityStats);
+  const platformStats = useStorageAnalyticsStore((state) => state.platformStats);
+  const healthRadar = useStorageAnalyticsStore((state) => state.healthRadar);
+  const diagnostics = useStorageAnalyticsStore((state) => state.diagnostics);
+  const isAnalyzing = useStorageAnalyticsStore((state) => state.isAnalyzing);
+  const refreshAnalytics = useStorageAnalyticsStore((state) => state.refreshAnalytics);
+  const activeCount = useOfflineDownloadStore((state) => state.activeCount);
+  const totalSpeedFormatted = useOfflineDownloadStore((state) => state.totalSpeedFormatted);
 
   // 与音源管理、顶栏同源的账号状态：逐字段订阅，避免选择器返回新对象触发重渲染
   const neteaseUser = useUserAccountStore((state) => state.neteaseUser);

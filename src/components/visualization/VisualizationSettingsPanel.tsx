@@ -63,16 +63,14 @@ const SettingSlider = ({
 };
 
 export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSettingsPanelProps) {
-  const {
-    currentEffect,
-    effectSettings,
-    updateEffectSettings,
-    savePreset,
-    presets,
-    loadPreset,
-    deletePreset,
-    currentPresetId,
-  } = useVisualizationStore();
+  const currentEffect = useVisualizationStore((state) => state.currentEffect);
+  const effectSettings = useVisualizationStore((state) => state.effectSettings);
+  const updateEffectSettings = useVisualizationStore((state) => state.updateEffectSettings);
+  const savePreset = useVisualizationStore((state) => state.savePreset);
+  const presets = useVisualizationStore((state) => state.presets);
+  const loadPreset = useVisualizationStore((state) => state.loadPreset);
+  const deletePreset = useVisualizationStore((state) => state.deletePreset);
+  const currentPresetId = useVisualizationStore((state) => state.currentPresetId);
   const reportUsage = useStatsAchievementsStore((state) => state.reportProToolsUsage);
   const [presetName, setPresetName] = useState("");
   const [showSaveDialog, setShowSaveDialog] = useState(false);

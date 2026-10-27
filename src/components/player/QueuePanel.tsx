@@ -40,10 +40,16 @@ interface QueuePanelProps {
 }
 
 export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
-  const { queue, currentIndex, removeFromQueue, clearQueue, moveToNext } = useQueueStore();
-  const { currentSong, isPlaying } = useAudioStore();
+  const queue = useQueueStore((state) => state.queue);
+  const currentIndex = useQueueStore((state) => state.currentIndex);
+  const removeFromQueue = useQueueStore((state) => state.removeFromQueue);
+  const clearQueue = useQueueStore((state) => state.clearQueue);
+  const moveToNext = useQueueStore((state) => state.moveToNext);
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const isPlaying = useAudioStore((state) => state.isPlaying);
   const openPanel = useUIStore((state) => state.openPanel);
-  const { offlineRecords, loadOfflineRecords } = useOfflineDownloadStore();
+  const offlineRecords = useOfflineDownloadStore((state) => state.offlineRecords);
+  const loadOfflineRecords = useOfflineDownloadStore((state) => state.loadOfflineRecords);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);

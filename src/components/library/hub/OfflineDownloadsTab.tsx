@@ -20,30 +20,30 @@ import {
 import { Song } from "@/types/song";
 
 export const OfflineDownloadsTab: React.FC = () => {
-  const {
-    tasks,
-    activeCount,
-    concurrencyLimit,
-    totalSpeedFormatted,
-    offlineRecords,
-    isLoadingRecords,
-    setConcurrency,
-    pauseDownload,
-    resumeDownload,
-    cancelDownload,
-    pauseAll,
-    resumeAll,
-    clearCompleted,
-    clearAllTasks,
-    clearFailedOrPausedTasks,
-    loadOfflineRecords,
-    deleteOfflineSong,
-    clearAllOffline,
-    togglePinSong,
-    exportSongAsFile,
-  } = useOfflineDownloadStore();
+  const tasks = useOfflineDownloadStore((state) => state.tasks);
+  const activeCount = useOfflineDownloadStore((state) => state.activeCount);
+  const concurrencyLimit = useOfflineDownloadStore((state) => state.concurrencyLimit);
+  const totalSpeedFormatted = useOfflineDownloadStore((state) => state.totalSpeedFormatted);
+  const offlineRecords = useOfflineDownloadStore((state) => state.offlineRecords);
+  const isLoadingRecords = useOfflineDownloadStore((state) => state.isLoadingRecords);
+  const setConcurrency = useOfflineDownloadStore((state) => state.setConcurrency);
+  const pauseDownload = useOfflineDownloadStore((state) => state.pauseDownload);
+  const resumeDownload = useOfflineDownloadStore((state) => state.resumeDownload);
+  const cancelDownload = useOfflineDownloadStore((state) => state.cancelDownload);
+  const pauseAll = useOfflineDownloadStore((state) => state.pauseAll);
+  const resumeAll = useOfflineDownloadStore((state) => state.resumeAll);
+  const clearCompleted = useOfflineDownloadStore((state) => state.clearCompleted);
+  const clearAllTasks = useOfflineDownloadStore((state) => state.clearAllTasks);
+  const clearFailedOrPausedTasks = useOfflineDownloadStore(
+    (state) => state.clearFailedOrPausedTasks
+  );
+  const loadOfflineRecords = useOfflineDownloadStore((state) => state.loadOfflineRecords);
+  const deleteOfflineSong = useOfflineDownloadStore((state) => state.deleteOfflineSong);
+  const clearAllOffline = useOfflineDownloadStore((state) => state.clearAllOffline);
+  const togglePinSong = useOfflineDownloadStore((state) => state.togglePinSong);
+  const exportSongAsFile = useOfflineDownloadStore((state) => state.exportSongAsFile);
 
-  const { playSong } = useAudioStore();
+  const playSong = useAudioStore((state) => state.playSong);
   const [offlineSearch, setOfflineSearch] = useState("");
   const [exportFeedback, setExportFeedback] = useState<string | null>(null);
 

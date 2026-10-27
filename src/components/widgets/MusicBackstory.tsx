@@ -8,10 +8,14 @@ import { useAudioStore } from "@/store/audioStore";
 import { useLyricsCoverStore } from "@/store/lyricsCoverStore";
 
 export const MusicBackstory: React.FC = () => {
-  const { currentSong } = useAudioStore();
-  const { backstories, metaphors, isLoading, fetchBackstory, fetchMetaphors, lastRawResponse } =
-    useKnowledgeStore();
-  const { loadLyric } = useLyricsCoverStore();
+  const currentSong = useAudioStore((state) => state.currentSong);
+  const backstories = useKnowledgeStore((state) => state.backstories);
+  const metaphors = useKnowledgeStore((state) => state.metaphors);
+  const isLoading = useKnowledgeStore((state) => state.isLoading);
+  const fetchBackstory = useKnowledgeStore((state) => state.fetchBackstory);
+  const fetchMetaphors = useKnowledgeStore((state) => state.fetchMetaphors);
+  const lastRawResponse = useKnowledgeStore((state) => state.lastRawResponse);
+  const loadLyric = useLyricsCoverStore((state) => state.loadLyric);
 
   const [isVisible, setIsVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);

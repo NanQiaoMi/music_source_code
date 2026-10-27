@@ -128,26 +128,24 @@ const HOT_SEARCH_TAGS = [
 const searchMemoryCache = new Map<string, Song[]>();
 
 export const LxMusicSearchTab: React.FC = () => {
-  const {
-    keyword,
-    setKeyword,
-    activeSourceTab: activeTab,
-    setActiveSourceTab: setActiveTab,
-    searchMode,
-    setSearchMode,
-    qualityFilter,
-    setQualityFilter,
-    songResults,
-    setSongResults,
-    playlistResults,
-    setPlaylistResults,
-    sortField,
-    setSortField,
-    sortOrder,
-    setSortOrder,
-    selectedScriptId,
-    setSelectedScriptId,
-  } = useDataManagerStore();
+  const keyword = useDataManagerStore((state) => state.keyword);
+  const setKeyword = useDataManagerStore((state) => state.setKeyword);
+  const activeTab = useDataManagerStore((state) => state.activeSourceTab);
+  const setActiveTab = useDataManagerStore((state) => state.setActiveSourceTab);
+  const searchMode = useDataManagerStore((state) => state.searchMode);
+  const setSearchMode = useDataManagerStore((state) => state.setSearchMode);
+  const qualityFilter = useDataManagerStore((state) => state.qualityFilter);
+  const setQualityFilter = useDataManagerStore((state) => state.setQualityFilter);
+  const songResults = useDataManagerStore((state) => state.songResults);
+  const setSongResults = useDataManagerStore((state) => state.setSongResults);
+  const playlistResults = useDataManagerStore((state) => state.playlistResults);
+  const setPlaylistResults = useDataManagerStore((state) => state.setPlaylistResults);
+  const sortField = useDataManagerStore((state) => state.sortField);
+  const setSortField = useDataManagerStore((state) => state.setSortField);
+  const sortOrder = useDataManagerStore((state) => state.sortOrder);
+  const setSortOrder = useDataManagerStore((state) => state.setSortOrder);
+  const selectedScriptId = useDataManagerStore((state) => state.selectedScriptId);
+  const setSelectedScriptId = useDataManagerStore((state) => state.setSelectedScriptId);
 
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -189,15 +187,20 @@ export const LxMusicSearchTab: React.FC = () => {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const { playSong: _playSong, playQueue } = useAudioStore();
-  const { addToQueue, insertNext } = useQueueStore();
-  const { addBatchDownloads, isSongOffline } = useOfflineDownloadStore();
+  const _playSong = useAudioStore((state) => state.playSong);
+  const playQueue = useAudioStore((state) => state.playQueue);
+  const addToQueue = useQueueStore((state) => state.addToQueue);
+  const insertNext = useQueueStore((state) => state.insertNext);
+  const addBatchDownloads = useOfflineDownloadStore((state) => state.addBatchDownloads);
+  const isSongOffline = useOfflineDownloadStore((state) => state.isSongOffline);
   // 未接线的歌单写入口，_ 前缀标记保留（AGENTS.md：优先标记而非删除）；
   // 改用动作 selector，动作引用稳定，不再整店订阅。
   const _addSong = usePlaylistStore(selectAddSong);
   const _importSongs = usePlaylistStore(selectImportSongs);
-  const { lxScripts, openManagementModal, resolutionMode, setResolutionMode } =
-    useSourceConfigStore();
+  const lxScripts = useSourceConfigStore((state) => state.lxScripts);
+  const openManagementModal = useSourceConfigStore((state) => state.openManagementModal);
+  const resolutionMode = useSourceConfigStore((state) => state.resolutionMode);
+  const setResolutionMode = useSourceConfigStore((state) => state.setResolutionMode);
 
   const neteaseUser = useUserAccountStore((state) => state.neteaseUser);
   const qqUser = useUserAccountStore((state) => state.qqUser);

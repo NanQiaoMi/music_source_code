@@ -20,20 +20,21 @@ import {
 import { PlaylistDetailDrawer, DrawerPlaylistInfo } from "./PlaylistDetailDrawer";
 
 export const CloudAssetsTab: React.FC = () => {
-  const {
-    neteaseUser,
-    qqUser,
-    kugouUser,
-    qishuiUser,
-    userPlaylists,
-    fetchUserPlaylists,
-    fetchPlaylistTracks: _fetchPlaylistTracks,
-    fetchAllPlaylistTracks,
-  } = useUserAccountStore();
-  const { openManagementModal } = useSourceConfigStore();
+  const neteaseUser = useUserAccountStore((state) => state.neteaseUser);
+  const qqUser = useUserAccountStore((state) => state.qqUser);
+  const kugouUser = useUserAccountStore((state) => state.kugouUser);
+  const qishuiUser = useUserAccountStore((state) => state.qishuiUser);
+  const userPlaylists = useUserAccountStore((state) => state.userPlaylists);
+  const fetchUserPlaylists = useUserAccountStore((state) => state.fetchUserPlaylists);
+  const _fetchPlaylistTracks = useUserAccountStore((state) => state.fetchPlaylistTracks);
+  const fetchAllPlaylistTracks = useUserAccountStore((state) => state.fetchAllPlaylistTracks);
+  const openManagementModal = useSourceConfigStore((state) => state.openManagementModal);
   const songs = usePlaylistStore(selectSongs);
-  const { addBatchDownloads, addDownload, isSongOffline } = useOfflineDownloadStore();
-  const { playSong, playQueue } = useAudioStore();
+  const addBatchDownloads = useOfflineDownloadStore((state) => state.addBatchDownloads);
+  const addDownload = useOfflineDownloadStore((state) => state.addDownload);
+  const isSongOffline = useOfflineDownloadStore((state) => state.isSongOffline);
+  const playSong = useAudioStore((state) => state.playSong);
+  const playQueue = useAudioStore((state) => state.playQueue);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);

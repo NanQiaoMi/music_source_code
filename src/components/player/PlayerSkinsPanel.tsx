@@ -133,7 +133,8 @@ const SKINS_STORAGE_KEY = "player_custom_skins";
 export const usePlayerSkins = () => {
   const activeBaseSkinId = usePlayerSkinStore((state) => state.activeBaseSkinId);
   const setActiveBaseSkinId = usePlayerSkinStore((state) => state.setActiveBaseSkinId);
-  const { setThemeColors, setIsDynamicTheme } = useUIStore();
+  const setThemeColors = useUIStore((state) => state.setThemeColors);
+  const setIsDynamicTheme = useUIStore((state) => state.setIsDynamicTheme);
   const [customSkins, setCustomSkins] = useState<PlayerSkin[]>([]);
 
   const currentSkin = useMemo(
@@ -253,15 +254,13 @@ export const PlayerSkinsPanel: React.FC<PlayerSkinsPanelProps> = ({ isOpen, onCl
   const activeHaloId = usePlayerSkinStore((state) => state.activeHaloId);
   const setActiveHaloId = usePlayerSkinStore((state) => state.setActiveHaloId);
 
-  const {
-    customThemes,
-    exportCurrentTheme,
-    importTheme,
-    applyTheme,
-    deleteCustomTheme,
-    getBuiltInThemes,
-  } = useVisualSettingsStore();
-  const { config: performanceConfig } = usePerformanceV8Store();
+  const customThemes = useVisualSettingsStore((state) => state.customThemes);
+  const exportCurrentTheme = useVisualSettingsStore((state) => state.exportCurrentTheme);
+  const importTheme = useVisualSettingsStore((state) => state.importTheme);
+  const applyTheme = useVisualSettingsStore((state) => state.applyTheme);
+  const deleteCustomTheme = useVisualSettingsStore((state) => state.deleteCustomTheme);
+  const getBuiltInThemes = useVisualSettingsStore((state) => state.getBuiltInThemes);
+  const performanceConfig = usePerformanceV8Store((state) => state.config);
 
   const [builtInThemes] = useState<ThemeConfig[]>(() => getBuiltInThemes());
 

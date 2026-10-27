@@ -12,17 +12,17 @@ import { OfflineCacheTab } from "./tabs/OfflineCacheTab";
 
 export function SourceManagementModal() {
   const shouldReduceMotion = useReducedMotion() ?? false;
-  const {
-    sources,
-    isManagementModalOpen,
-    activeManagementTab,
-    updateAllHealth,
-    syncBuiltinDesktopSources,
-    closeManagementModal,
-    setActiveManagementTab,
-    setSourceCredentials: _setSourceCredentials,
-    updateLXScript: _updateLXScript,
-  } = useSourceConfigStore();
+  const sources = useSourceConfigStore((state) => state.sources);
+  const isManagementModalOpen = useSourceConfigStore((state) => state.isManagementModalOpen);
+  const activeManagementTab = useSourceConfigStore((state) => state.activeManagementTab);
+  const updateAllHealth = useSourceConfigStore((state) => state.updateAllHealth);
+  const syncBuiltinDesktopSources = useSourceConfigStore(
+    (state) => state.syncBuiltinDesktopSources
+  );
+  const closeManagementModal = useSourceConfigStore((state) => state.closeManagementModal);
+  const setActiveManagementTab = useSourceConfigStore((state) => state.setActiveManagementTab);
+  const _setSourceCredentials = useSourceConfigStore((state) => state.setSourceCredentials);
+  const _updateLXScript = useSourceConfigStore((state) => state.updateLXScript);
 
   // Local states
   const [isDiagnosing, setIsDiagnosing] = useState(false);

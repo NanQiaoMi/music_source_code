@@ -7,7 +7,7 @@ import { Zap } from "lucide-react";
 import { AudioEffectsPanel } from "./AudioEffectsPanel";
 
 export function AudioEnhancementToggle() {
-  const { currentView } = useUIStore();
+  const currentView = useUIStore((state) => state.currentView);
   const [showEffects, setShowEffects] = useState(false);
 
   if (currentView !== "player") return null;

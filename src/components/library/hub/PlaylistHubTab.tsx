@@ -22,9 +22,11 @@ const STORAGE_KEY = "vibe_custom_playlists_v1";
 
 export const PlaylistHubTab: React.FC = () => {
   const librarySongs = usePlaylistStore(selectSongs);
-  const { playSong } = useAudioStore();
-  const { addBatchDownloads, isSongOffline, offlineRecords, loadOfflineRecords } =
-    useOfflineDownloadStore();
+  const playSong = useAudioStore((state) => state.playSong);
+  const addBatchDownloads = useOfflineDownloadStore((state) => state.addBatchDownloads);
+  const isSongOffline = useOfflineDownloadStore((state) => state.isSongOffline);
+  const offlineRecords = useOfflineDownloadStore((state) => state.offlineRecords);
+  const loadOfflineRecords = useOfflineDownloadStore((state) => state.loadOfflineRecords);
 
   useEffect(() => {
     loadOfflineRecords();

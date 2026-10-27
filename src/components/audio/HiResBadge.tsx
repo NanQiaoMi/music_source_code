@@ -29,7 +29,9 @@ export const HiResMiniBadge: React.FC<HiResMiniBadgeProps> = ({
   size = "sm",
   className = "",
 }) => {
-  const { detectQuality, getQualityBadge, getQualityColor } = useHiResStore();
+  const detectQuality = useHiResStore((state) => state.detectQuality);
+  const getQualityBadge = useHiResStore((state) => state.getQualityBadge);
+  const getQualityColor = useHiResStore((state) => state.getQualityColor);
 
   if (!song) return null;
 
@@ -66,7 +68,10 @@ export const HiResMiniBadge: React.FC<HiResMiniBadgeProps> = ({
 };
 
 export const HiResBadge: React.FC<HiResBadgeProps> = ({ className = "" }) => {
-  const { currentQuality, showQualityBadge, getQualityBadge, getQualityColor } = useHiResStore();
+  const currentQuality = useHiResStore((state) => state.currentQuality);
+  const showQualityBadge = useHiResStore((state) => state.showQualityBadge);
+  const getQualityBadge = useHiResStore((state) => state.getQualityBadge);
+  const getQualityColor = useHiResStore((state) => state.getQualityColor);
 
   if (!showQualityBadge || !currentQuality) {
     return null;
@@ -99,7 +104,8 @@ interface AudioQualityDisplayProps {
 }
 
 export const AudioQualityDisplay: React.FC<AudioQualityDisplayProps> = ({ className = "" }) => {
-  const { currentQuality, showDetailedInfo } = useHiResStore();
+  const currentQuality = useHiResStore((state) => state.currentQuality);
+  const showDetailedInfo = useHiResStore((state) => state.showDetailedInfo);
 
   if (!showDetailedInfo || !currentQuality) {
     return null;
@@ -185,7 +191,10 @@ export const QualityIndicator: React.FC<QualityIndicatorProps> = ({
   format = "FLAC",
   className = "",
 }) => {
-  const { setAudioQuality, detectQuality, getQualityBadge, getQualityColor } = useHiResStore();
+  const setAudioQuality = useHiResStore((state) => state.setAudioQuality);
+  const detectQuality = useHiResStore((state) => state.detectQuality);
+  const getQualityBadge = useHiResStore((state) => state.getQualityBadge);
+  const getQualityColor = useHiResStore((state) => state.getQualityColor);
 
   React.useEffect(() => {
     if (sampleRate && bitDepth) {

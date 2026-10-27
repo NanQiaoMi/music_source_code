@@ -7,7 +7,7 @@ import { useElectron } from "@/hooks/useElectron";
 import { MonitorPlay } from "lucide-react";
 
 export function DesktopLyricsToggle() {
-  const { currentView } = useUIStore();
+  const currentView = useUIStore((state) => state.currentView);
   const { isElectron, isDesktopLyricsOpen, toggleDesktopLyrics, checkDesktopLyricsOpen } =
     useElectron();
 

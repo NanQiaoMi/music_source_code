@@ -67,7 +67,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
 }) => {
   const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const { setCurrentView } = useUIStore();
+  const setCurrentView = useUIStore((state) => state.setCurrentView);
   const { isCached } = useNetworkAudioCache();
   const isSongCached = currentSong ? isCached(currentSong.id, currentSong.source) : false;
 

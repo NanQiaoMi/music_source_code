@@ -57,19 +57,15 @@ vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: any) => <>{children}</>,
 }));
 
-vi.mock("@/store/audioStore", () => ({
-  useAudioStore: () => ({
-    playSong: vi.fn(),
-    playQueue: vi.fn(),
-  }),
-}));
+vi.mock("@/store/audioStore", () => {
+  const state = { playSong: vi.fn(), playQueue: vi.fn() };
+  return { useAudioStore: (selector: (input: typeof state) => unknown) => selector(state) };
+});
 
-vi.mock("@/store/queueStore", () => ({
-  useQueueStore: () => ({
-    addToQueue: vi.fn(),
-    insertNext: vi.fn(),
-  }),
-}));
+vi.mock("@/store/queueStore", () => {
+  const state = { addToQueue: vi.fn(), insertNext: vi.fn() };
+  return { useQueueStore: (selector: (input: typeof state) => unknown) => selector(state) };
+});
 
 vi.mock("@/store/playlistStore", () => {
   const state = { addSong: vi.fn(), importSongs: vi.fn() };
@@ -78,14 +74,17 @@ vi.mock("@/store/playlistStore", () => {
   };
 });
 
-vi.mock("@/store/useOfflineDownloadStore", () => ({
-  useOfflineDownloadStore: () => ({
+vi.mock("@/store/useOfflineDownloadStore", () => {
+  const state = {
     addBatchDownloads: vi.fn(),
     isSongOffline: () => false,
     offlineRecords: [],
     offlineSongIds: new Set(),
-  }),
-}));
+  };
+  return {
+    useOfflineDownloadStore: (selector: (input: typeof state) => unknown) => selector(state),
+  };
+});
 
 vi.mock("@/services/MultiSourceResolver", () => ({
   multiSourceResolver: {
@@ -100,14 +99,15 @@ vi.mock("@/lib/sources/lxRunner", () => ({
 }));
 
 vi.mock("@/store/sourceConfigStore", () => {
-  const fn: any = () => ({
+  const state = {
     lxScripts: [],
     openManagementModal: vi.fn(),
-  });
-  fn.getState = () => ({
-    lxScripts: [],
-    openManagementModal: vi.fn(),
-  });
+    resolutionMode: "auto",
+    setResolutionMode: vi.fn(),
+  };
+  const fn: any = (selector?: (input: typeof state) => unknown) =>
+    selector ? selector(state) : state;
+  fn.getState = () => state;
   return {
     useSourceConfigStore: fn,
   };

@@ -48,16 +48,19 @@ vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: any) => children,
 }));
 
-vi.mock("@/store/visualSettingsStore", () => ({
-  useVisualSettingsStore: () => ({
+vi.mock("@/store/visualSettingsStore", () => {
+  const state = {
     customThemes: [],
     exportCurrentTheme: vi.fn(() => "{}"),
     importTheme: vi.fn(() => true),
     applyTheme: vi.fn(),
     deleteCustomTheme: vi.fn(),
     getBuiltInThemes: vi.fn(() => []),
-  }),
-}));
+  };
+  return {
+    useVisualSettingsStore: (selector: (input: typeof state) => unknown) => selector(state),
+  };
+});
 
 beforeEach(async () => {
   localStorage.clear();

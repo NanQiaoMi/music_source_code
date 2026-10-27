@@ -22,8 +22,10 @@ import { Song } from "@/types/song";
 export const HealthStorageTab: React.FC = () => {
   const songs = usePlaylistStore(selectSongs);
   const removeSong = usePlaylistStore(selectRemoveSong);
-  const { storageDetails, usagePercent, refreshAnalytics } = useStorageAnalyticsStore();
-  const { clearAllOffline } = useOfflineDownloadStore();
+  const storageDetails = useStorageAnalyticsStore((state) => state.storageDetails);
+  const usagePercent = useStorageAnalyticsStore((state) => state.usagePercent);
+  const refreshAnalytics = useStorageAnalyticsStore((state) => state.refreshAnalytics);
+  const clearAllOffline = useOfflineDownloadStore((state) => state.clearAllOffline);
 
   const [cacheLimitGB, setCacheLimitGB] = useState<number>(10);
   const [isCleaning, setIsCleaning] = useState(false);

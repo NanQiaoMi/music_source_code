@@ -75,9 +75,12 @@ const EmotionVisualizer: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [canvasMetrics, setCanvasMetrics] = useState({ width: 0, height: 0, clientWidth: 0 });
 
-  const { playSong: audioPlaySong, currentSong: audioCurrentSong } = useAudioStore();
+  const audioPlaySong = useAudioStore((state) => state.playSong);
+  const audioCurrentSong = useAudioStore((state) => state.currentSong);
   const songs = usePlaylistStore(selectSongs);
-  const { points, selectedIds, searchResults: _searchResults } = useEmotionStore();
+  const points = useEmotionStore((state) => state.points);
+  const selectedIds = useEmotionStore((state) => state.selectedIds);
+  const _searchResults = useEmotionStore((state) => state.searchResults);
 
   const getPixelPos = (p: { x: number; y: number }, w: number, h: number) => {
     const innerW = w - SAFE_PADDING * 2;

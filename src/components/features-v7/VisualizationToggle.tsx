@@ -5,7 +5,8 @@ import { useUIStore } from "@/store/uiStore";
 import { Activity } from "lucide-react";
 
 export function VisualizationToggle() {
-  const { currentView, setCurrentView } = useUIStore();
+  const currentView = useUIStore((state) => state.currentView);
+  const setCurrentView = useUIStore((state) => state.setCurrentView);
 
   if (currentView !== "player") return null;
 

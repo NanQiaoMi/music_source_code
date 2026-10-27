@@ -5,7 +5,8 @@ import { useUIStore } from "@/store/uiStore";
 import { Settings } from "lucide-react";
 
 export function ProfessionalToolsToggle() {
-  const { currentView, openPanel } = useUIStore();
+  const currentView = useUIStore((state) => state.currentView);
+  const openPanel = useUIStore((state) => state.openPanel);
 
   if (currentView !== "home" && currentView !== "player") return null;
 

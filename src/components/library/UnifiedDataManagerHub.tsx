@@ -44,15 +44,17 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
   isStandalonePage = false,
   onClose,
 }) => {
-  const { setCurrentView, closePanel } = useUIStore();
-  const { storageDetails, usagePercent, refreshAnalytics } = useStorageAnalyticsStore();
-  const {
-    activeCount,
-    totalSpeedFormatted,
-    offlineRecords: _offlineRecords,
-  } = useOfflineDownloadStore();
+  const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const closePanel = useUIStore((state) => state.closePanel);
+  const storageDetails = useStorageAnalyticsStore((state) => state.storageDetails);
+  const usagePercent = useStorageAnalyticsStore((state) => state.usagePercent);
+  const refreshAnalytics = useStorageAnalyticsStore((state) => state.refreshAnalytics);
+  const activeCount = useOfflineDownloadStore((state) => state.activeCount);
+  const totalSpeedFormatted = useOfflineDownloadStore((state) => state.totalSpeedFormatted);
+  const _offlineRecords = useOfflineDownloadStore((state) => state.offlineRecords);
   const songs = usePlaylistStore(selectSongs);
-  const { activeHubTab, setActiveHubTab } = useDataManagerStore();
+  const activeHubTab = useDataManagerStore((state) => state.activeHubTab);
+  const setActiveHubTab = useDataManagerStore((state) => state.setActiveHubTab);
 
   const isAnyLoggedIn = useUserAccountStore((state) =>
     Boolean(
