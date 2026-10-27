@@ -89,3 +89,42 @@ describe("resolveAudioSourceBlob", () => {
     ).rejects.toThrow("Audio source file is empty for Audio Demo");
   });
 });
+
+describe("resolveAudioSourceBlob abort support (S1-8b)", () => {
+  it("rejects before fetch when the signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      resolveAudioSourceBlob(
+        { id: "abort-1", title: "Abort Song", audioUrl: "https://example.com/a.mp3" },
+        { signal: controller.signal }
+      )
+    ).rejects.toMatchObject({ name: "AbortError" });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("passes the combined signal to fetch", async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: async () => new Blob(["audio"], { type: "audio/mpeg" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await resolveAudioSourceBlob(
+      { id: "abort-2", title: "Fetch Song", audioUrl: "https://example.com/b.mp3" },
+      { signal: controller.signal }
+    );
+
+    expect(result.blob.size).toBeGreaterThan(0);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.com/b.mp3",
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+  });
+});
