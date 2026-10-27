@@ -87,8 +87,17 @@ export async function getOrCreateBlobUrl(songId: string, source: string): Promis
  * - Non-blocking: always returns immediately; errors are swallowed.
  * - audioUrl must be the full URL (including the proxy prefix if needed).
  */
-export async function triggerBackgroundCache(song: Song, audioUrl: string): Promise<void> {
+export interface BackgroundCacheOptions {
+  signal?: AbortSignal;
+}
+
+export async function triggerBackgroundCache(
+  song: Song,
+  audioUrl: string,
+  options: BackgroundCacheOptions = {}
+): Promise<void> {
   if (!song?.id || !audioUrl) return;
+  if (options.signal?.aborted) return;
 
   const songSource = song.source || "netease";
   const key = makeCacheKey(song.id, songSource);
@@ -100,15 +109,18 @@ export async function triggerBackgroundCache(song: Song, audioUrl: string): Prom
   // Double-check IDB before downloading
   const alreadyCached = await checkIsCached(song.id, songSource);
   if (alreadyCached) return;
+  if (options.signal?.aborted) return;
 
   cachingTasks.set(key, true);
 
   try {
+    const { combineSignals } = await import("@/lib/playback/requestCoordinator");
     const response = await fetch(audioUrl, {
       headers: {
         // Fetch the full file, not a range
         "Cache-Control": "no-cache",
       },
+      signal: combineSignals(options.signal, 30000),
     });
 
     if (!response.ok) {
@@ -122,6 +134,7 @@ export async function triggerBackgroundCache(song: Song, audioUrl: string): Prom
 
     const contentType = response.headers.get("content-type") || "audio/mpeg";
     const fileData = await response.arrayBuffer();
+    if (options.signal?.aborted) return;
 
     if (!fileData || fileData.byteLength === 0) {
       console.warn("[NetworkAudioCache] Empty audio data, skipping cache for:", song.title);
@@ -164,6 +177,7 @@ export async function triggerBackgroundCache(song: Song, audioUrl: string): Prom
     const sizeMB = (fileData.byteLength / 1024 / 1024).toFixed(1);
     console.info(`[NetworkAudioCache] ✅ Cached "${song.title}" (${sizeMB} MB)`);
   } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") return;
     console.warn("[NetworkAudioCache] Background cache error for:", song.title, e);
   } finally {
     cachingTasks.delete(key);
