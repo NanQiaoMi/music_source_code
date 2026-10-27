@@ -9,7 +9,7 @@
 
 | 阶段 | 任务数 | done | 子 PR（执行计划） | 阶段出口（摘要） | 状态 |
 |---|---:|---:|---:|---|---|
-| S0 止血与基线 | 7 | 3 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-4/S0-6 done；S0-2 本地完成待 push；S0-3/S0-5 review；S0-7 待决策） |
+| S0 止血与基线 | 7 | 4 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-3/S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策） |
 | S1 数据与播放正确性 | 10 | 2 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-3 done） |
 | S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
 | S3 外壳与订阅治理 | 10 | 0 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | pending |
@@ -18,7 +18,7 @@
 | S6 状态架构收敛 | 12 | 0 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | pending |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **5** | **约 129** | — | in_progress |
+| **合计** | **74** | **6** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -30,12 +30,12 @@
 
 - [ ] **M0 出口门**：CI 在 master 全绿；基线 JSON 入库；文档事实校验通过；out 陈旧发布被阻断；55 项脏改已处理；D1-D8 已定稿。
   **2026-10-21 进展**：bundle/store-stats 基线已生成；docs-facts exit 0（ports 为 WARN）；CI 已改写但未 push 验证；脏改/out/ADR 仍待。
-  **2026-10-27 进展**：脏改已按 Q01-A 落到 checkpoint 分支（干净树）；基线 tsc/vitest/eslint/build 全部复测通过；S0-3/S0-5 进入 review；out/ADR/CI push 仍待。
+  **2026-10-27 进展**：脏改已按 Q01-A 落到 checkpoint 分支（干净树）；基线 tsc/vitest/eslint/build 全部复测通过；S0-3 done（生产 HTTP 冒烟 200）、S0-5 已完成 worktree GC（25→6）；out/CI push/ADR 决策与根目录清理仍待。
 - [x] S0-1 处理 55 项未提交手势改动 — **done（2026-10-27，Q01-A）**：checkpoint/gesture-air-control-overhaul-20261027 @ 2b99173（123 files / +27,294/−1,967，含手势 WIP + handwritten MV + S0/S1 基线 + handover 文档）；主工作区已干净；原始 feature 分支仍在 c73a872。基线：tsc exit 0、vitest 208 files/1284 tests passed、eslint src（分块）0 errors/0 warnings、隔离 worktree build exit 0（28 static pages）；详见 evidence/S0-evidence.md
 - [ ] S0-2 CI 复活（master 触发 + tsc/lint/test/build）— **本地完成**：.github/workflows/deploy.yml 已重写（master 触发、concurrency、Node20、.next/tsbuildinfo 缓存、tsc→lint→test→build→bundle-report→store-gate→docs-facts、desktop/vercel 改为手动/tag）；YAML 校验通过；待 push 后验证 required checks
-- [ ] S0-3 构建产物与端口明确化 — **review（2026-10-27，commit 84305f6）**：start 端口统一 3025（3024 引用=0）；build:electron* 前置 verify-desktop-release-ready guard（冻结期 fail-fast，默认 exit 1）；新增 build:static；verify-static-export 重构为纯函数 + 5 tests（缺失 exit 2 / 过期 exit 3，实测 exit 2）；ARCHITECTURE 构建模式已修正。待补：npm start:3025 HTTP 200（需 dev server 停止后执行）。
+- [x] S0-3 构建产物与端口明确化 — **done（2026-10-27，commit 84305f6）**：start 端口统一 3025（3024 引用=0）；build:electron* 前置 verify-desktop-release-ready guard（冻结期 fail-fast，默认 exit 1）；新增 build:static；verify-static-export 重构为纯函数 + 5 tests（缺失 exit 2 / 过期 exit 3）；ARCHITECTURE 构建模式已修正。HTTP 冒烟：在隔离 worktree @1be849f 完成 next build + next start -p 3026，`/` 与 `/data-manager` 均 200；3025 当时被用户 dev server 占用，故端口用 3026 验证，配置真值已统一为 3025。
 - [x] S0-4 文档事实修正 — **done（部分文件）**：AGENTS.md/ARCHITECTURE.md 已按实测修正（60 stores / 19 hooks / 18 services / 4 workers；真实音频链；coordinator 死层；构建模式；AI 桩）；node scripts/check-docs-facts.mjs exit 0；ROADMAP/CHANGELOG 因脏改暂未动
-- [ ] S0-5 死层标记与仓库卫生 — **review（2026-10-27，commit 195d996）**：coordinator 4 文件 @deprecated + ESLint no-restricted-imports 已在位；删除跟踪死文件 page.tsx.v7 / VisualizationView.tsx.fix（grep 0 代码引用）；新增 scripts/gc-worktrees.ps1（默认 dry-run，实测 25 worktrees、跳过 5 个 dirty）。待 Q22 授权后执行 -Apply，使 worktree ≤5 并清理根目录垃圾。
+- [ ] S0-5 死层标记与仓库卫生 — **review（2026-10-27，commit 195d996）**：coordinator 4 文件 @deprecated + ESLint no-restricted-imports 已在位；删除跟踪死文件 page.tsx.v7 / VisualizationView.tsx.fix（grep 0 代码引用）；新增 scripts/gc-worktrees.ps1；Q22 后执行 -Apply：worktrees **25→6**（removed 19，dirty skipped 5，分支/提交未动）。剩余：6 个 worktree 中 5 个为 dirty（用户/其它会话工作），根目录文件 31 项待保守清理；E0-5 的 ≤5/≤20 目标未完全达成。
 - [x] S0-6 测量基座 v1 — **done（v1）**：scripts/perf/bundle-budget.mjs、scripts/perf/report-store-stats.mjs、scripts/check-docs-facts.mjs、perf/budget.json、perf/bundle-baseline.json、perf/store-stats-baseline.json、perf/README.md；实测数字与审计 B/D 一致；measure.py/dev harness 按 Q11 交 S5-1b
 - [ ] S0-7 ADR D1-D8 评审与归档 — **部分完成**：docs/nbl/adr/ 已建（README + 0001 V8 / 0002 桌面运行时 / 0003 音频图 / 0004 持久化 / 0005 受保护视图，状态 Proposed）；待用户批准后转 Accepted
 
@@ -155,4 +155,4 @@
 |---|---|---|
 | 2026-10-21 | 创建看板 | 74 任务全部 pending；阶段出口门与阻塞项登记 |
 | 2026-10-27 | S0-1 done | Q01-A checkpoint 分支/提交 2b99173；工作树干净；tsc/vitest/eslint/build 基线复测通过 |
-| 2026-10-27 | S0-3/S0-5 review | 84305f6（端口/门禁/测试）+ 195d996（死文件/GC 脚本）；`npm start` HTTP 与 worktree GC -Apply 待补 |
+| 2026-10-27 | S0-3 done / S0-5 GC | 84305f6（端口/门禁/测试）；隔离 worktree `next start -p 3026` 的 `/` 与 `/data-manager` 均 200；195d996 + Q22 后 worktrees 25→6（19 removed，5 dirty skipped） |
