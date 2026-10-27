@@ -18,6 +18,11 @@ export interface PlaybackRequestToken {
   startedAt: number;
 }
 
+/** 统一用标准 AbortError 作为 abort reason：fetch 等下游据此识别"取消"而不是"失败"。 */
+function createAbortError(message: string): DOMException {
+  return new DOMException(message, "AbortError");
+}
+
 export class PlaybackRequestCoordinator {
   private nextId = 1;
   private current: PlaybackRequestToken | null = null;
@@ -25,7 +30,7 @@ export class PlaybackRequestCoordinator {
   begin(input: PlaybackRequestInput): PlaybackRequestToken {
     const previous = this.current;
     if (previous) {
-      previous.controller.abort("superseded");
+      previous.controller.abort(createAbortError("Playback request superseded"));
     }
 
     const token: PlaybackRequestToken = {
@@ -46,7 +51,7 @@ export class PlaybackRequestCoordinator {
   }
 
   abortAll(reason = "aborted"): void {
-    this.current?.controller.abort(reason);
+    this.current?.controller.abort(createAbortError(reason));
     this.current = null;
   }
 
@@ -70,8 +75,17 @@ export const playbackRequestCoordinator = new PlaybackRequestCoordinator();
 
 export function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) {
-    throw new DOMException("The operation was aborted", "AbortError");
+    throw createAbortError("The operation was aborted");
   }
+}
+
+/** abort 不是错误：调用方据此静默退出（不写 store、不弹 toast、不打 warn）。 */
+export function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { name?: unknown }).name === "AbortError"
+  );
 }
 
 /**

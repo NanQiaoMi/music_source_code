@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   PlaybackRequestCoordinator,
   combineSignals,
+  isAbortError,
   playbackRequestCoordinator,
   throwIfAborted,
 } from "./requestCoordinator";
@@ -18,6 +19,8 @@ describe("PlaybackRequestCoordinator (S1-8a)", () => {
     const second = coordinator.begin({ songId: "b", source: "qq" });
 
     expect(first.controller.signal.aborted).toBe(true);
+    // abort reason 必须是标准 AbortError，下游 fetch 才能按"取消"处理
+    expect((first.controller.signal.reason as DOMException).name).toBe("AbortError");
     expect(second.controller.signal.aborted).toBe(false);
     expect(coordinator.inFlight()).toBe(1);
     expect(coordinator.isCurrent(second)).toBe(true);
@@ -74,6 +77,13 @@ describe("PlaybackRequestCoordinator (S1-8a)", () => {
     expect(() => throwIfAborted(controller.signal)).toThrowError(
       expect.objectContaining({ name: "AbortError" })
     );
+  });
+
+  it("isAbortError recognises abort rejections only", () => {
+    expect(isAbortError(new DOMException("The operation was aborted", "AbortError"))).toBe(true);
+    expect(isAbortError(new Error("boom"))).toBe(false);
+    expect(isAbortError(null)).toBe(false);
+    expect(isAbortError("AbortError")).toBe(false);
   });
 
   it("combineSignals follows parent aborts and pre-aborted parents", () => {
