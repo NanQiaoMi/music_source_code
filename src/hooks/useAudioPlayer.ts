@@ -55,6 +55,7 @@ import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 import type { PlaybackMachineEvent } from "@/lib/audio/playbackStateMachine";
 import { playbackClock } from "@/lib/audio/PlaybackClock";
 import { shouldAcceptPlaybackMediaEvent } from "@/lib/audio/playbackMediaEventGuard";
+import { markPlayback } from "@/lib/perf/playbackMarks";
 
 // Module-level shared state to persist across hook unmounts/remounts
 let audioInstance: HTMLAudioElement | null = null;
@@ -693,6 +694,9 @@ const attachListeners = (
     syncPersistedPlaybackProgress(audio);
     // 仅在切歌或新曲目初次播放成功时弹出 Toast 提示（杜绝快进/倒退/拖动进度条 seek 时重复刷屏）
     const playingSong = usePlayerStore.getState().currentSong;
+    // S0-6b：原生 playing 已确认；first-sound 在模块内按 intent 去重。
+    markPlayback("playing", { songId: playingSong?.id, source: playingSong?.source });
+    markPlayback("first-sound", { songId: playingSong?.id, source: playingSong?.source });
     if (playingSong && playingSong.title) {
       const songKey = `${playingSong.id || playingSong.title}`;
       if (lastToastSongIdRef.current !== songKey) {
@@ -1362,6 +1366,8 @@ export const useAudioPlayer = () => {
       const previousSongId = currentSongIdRef.current;
       currentSongIdRef.current = songId;
       loadingInProgressRequestIdRef.current = requestId;
+      // S0-6b：一次真正需要加载的尝试 = 一次播放请求，从这里开始计首声。
+      markPlayback("intent", { songId, source: currentSong.source });
 
       // 一次真正需要加载的尝试 = 一次播放请求：begin 会 abort 上一次的 signal，
       // 旧链路上的每个 await 都会在 throwIfAborted 处静默退出（不写 store / 不弹 toast）。
@@ -1657,6 +1663,8 @@ export const useAudioPlayer = () => {
           stopForMissingAudioSource(audio);
           return;
         }
+        // S0-6b：首个可播流已确定；audio.src / play() 紧随其后。
+        markPlayback("source-ready", { songId, source: currentSong.source });
         if (targetPlaying) {
           try {
             await initializeAudioGraph(audio);
