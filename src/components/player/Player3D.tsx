@@ -25,6 +25,7 @@ import {
   isPlayer3DVisualsActive,
   PLAYER3D_PRESENCE_MODE,
   readPlayer3DAudioLevel,
+  shouldRunPlayer3DFrameLoop,
 } from "@/components/player/player3dMotion";
 import {
   Sparkles,
@@ -329,6 +330,15 @@ export const Player3D: React.FC = () => {
   // 这三个 store 必须逐字段订阅：无选择器的整店订阅
   // 会订阅整个 state，播放期间 timeupdate 每秒多次写 currentTime 就会
   // 把这个大组件整体重渲染一遍。动作是稳定引用，只有下面几个**值**会触发重渲染。
+  const currentView = useUIStore((state) => state.currentView);
+  // 视图门控：Player3D 常驻挂载（切视图只改 visibility），仅靠 phase 会让
+  // Home 页在后台继续跑音频采样循环。只有播放页 + confirmed playing 才排帧。
+  const isPlayerViewActive = currentView === "player";
+  const shouldRunFrameLoop = shouldRunPlayer3DFrameLoop({
+    phase: playbackPhase,
+    reducedMotion: shouldReduceMotion === true,
+    isPlayerViewActive,
+  });
   const setCurrentView = useUIStore((state) => state.setCurrentView);
   const setIsTransitioning = useUIStore((state) => state.setIsTransitioning);
   const panels = useUIStore((state) => state.panels);
@@ -355,7 +365,9 @@ export const Player3D: React.FC = () => {
   const coverScale = useMotionValue(1);
 
   useEffect(() => {
-    if (!isVisualPlaybackActive) {
+    // 离开播放页即停表：cleanup 会取消已排的帧，回到播放页时依赖翻转，
+    // effect 重启并立即 scheduleSample() 排第一帧（无需等下一轮渲染）。
+    if (!shouldRunFrameLoop) {
       audioLevelRef.current = 0;
       auraOpacity.set(0);
       coverScale.set(1);
@@ -422,7 +434,7 @@ export const Player3D: React.FC = () => {
       auraOpacity.set(0);
       coverScale.set(1);
     };
-  }, [auraOpacity, coverScale, isVisualPlaybackActive]);
+  }, [auraOpacity, coverScale, shouldRunFrameLoop]);
 
   const handleBack = useCallback(() => {
     setIsTransitioning(true);

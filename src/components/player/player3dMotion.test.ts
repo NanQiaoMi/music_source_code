@@ -9,6 +9,7 @@ import {
   getPlayer3DTrackMotion,
   isPlayer3DVisualsActive,
   readPlayer3DAudioLevel,
+  shouldRunPlayer3DFrameLoop,
 } from "./player3dMotion";
 
 describe("Player3D motion policy", () => {
@@ -25,6 +26,51 @@ describe("Player3D motion policy", () => {
 
     expect(phases.filter((phase) => isPlayer3DVisualsActive(phase, false))).toEqual(["playing"]);
     expect(isPlayer3DVisualsActive("playing", true)).toBe(false);
+  });
+
+  describe("shouldRunPlayer3DFrameLoop", () => {
+    it("stops sampling while another view is active even if playback is playing", () => {
+      expect(
+        shouldRunPlayer3DFrameLoop({
+          phase: "playing",
+          reducedMotion: false,
+          isPlayerViewActive: false,
+        })
+      ).toBe(false);
+    });
+
+    it("runs while the player view is active and playback is playing", () => {
+      expect(
+        shouldRunPlayer3DFrameLoop({
+          phase: "playing",
+          reducedMotion: false,
+          isPlayerViewActive: true,
+        })
+      ).toBe(true);
+    });
+
+    it("stays off when reduced motion is preferred", () => {
+      expect(
+        shouldRunPlayer3DFrameLoop({
+          phase: "playing",
+          reducedMotion: true,
+          isPlayerViewActive: true,
+        })
+      ).toBe(false);
+    });
+
+    it("stays off before playback is confirmed playing", () => {
+      const phase: PlaybackPhase[] = ["idle", "loading", "paused", "buffering", "ended", "error"];
+      expect(
+        phase.filter((value) =>
+          shouldRunPlayer3DFrameLoop({
+            phase: value,
+            reducedMotion: false,
+            isPlayerViewActive: true,
+          })
+        )
+      ).toEqual([]);
+    });
   });
 
   it("uses a small pop-layout spring so the latest track target stays in flow", () => {

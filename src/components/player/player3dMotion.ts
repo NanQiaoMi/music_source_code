@@ -44,6 +44,28 @@ export function isPlayer3DVisualsActive(phase: PlaybackPhase, reducedMotion: boo
   return phase === "playing" && !reducedMotion;
 }
 
+export interface Player3DFrameLoopPolicyInput {
+  /** 当前播放阶段（只有 confirmed playing 才需要采样）。 */
+  phase: PlaybackPhase;
+  reducedMotion: boolean;
+  /**
+   * Player3D 常驻挂载，切视图只改 visibility（PlayerView.tsx），组件并不会卸载。
+   * 因此必须显式传入当前是否处于播放页，否则 Home 页也会跑满 60fps 采样循环。
+   */
+  isPlayerViewActive: boolean;
+}
+
+/**
+ * Player3D 音频采样 rAF 循环是否应该运行。
+ *
+ * 在 isPlayer3DVisualsActive 的播放状态之上叠加视图门控：离开播放页立即停表，
+ * 回到播放页时组件 effect 依赖变化会重启并同步排第一帧（<100ms 恢复采样）。
+ * 纯函数，便于在 player3dMotion.test.ts 里覆盖四种组合。
+ */
+export function shouldRunPlayer3DFrameLoop(input: Player3DFrameLoopPolicyInput): boolean {
+  return isPlayer3DVisualsActive(input.phase, input.reducedMotion) && input.isPlayerViewActive;
+}
+
 export function readPlayer3DAudioLevel(
   analyser: AnalyserNode | null,
   frequencyData: Uint8Array

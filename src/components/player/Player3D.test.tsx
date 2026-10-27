@@ -136,6 +136,7 @@ vi.mock("@/components/shared/GlassProgressBar", () => ({
 import { Player3D } from "./Player3D";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
+import { useUIStore } from "@/store/uiStore";
 
 const song = {
   id: "track-a",
@@ -157,6 +158,8 @@ describe("Player3D", () => {
     player3DTestState.resumeAudioContext.mockClear();
     player3DTestState.motionExitTargets.length = 0;
     usePlaybackRuntimeStore.getState().reset();
+    // Player3D 只在播放页跑采样循环；其余用例都按播放页的真实挂载场景准备。
+    useUIStore.getState().setCurrentView("player");
     useAudioStore.setState({
       currentSong: song,
       isPlaying: false,
@@ -358,6 +361,76 @@ describe("Player3D", () => {
     });
     expect(requestFrame).toHaveBeenCalledTimes(2);
     expect([...scheduledFrames.keys()]).toEqual([2]);
+  });
+
+  it("keeps the analyser loop off outside the player view and resumes on return", async () => {
+    const runtime = usePlaybackRuntimeStore.getState();
+    const requestId = runtime.requestPlayback("track-a", song.audioUrl, true, true);
+    runtime.bindActiveDeck(requestId, "track-a", "deck-a", song.audioUrl ?? "");
+    runtime.dispatchMediaEvent({
+      type: "playing",
+      requestId,
+      deckId: "deck-a",
+      source: song.audioUrl ?? "",
+    });
+    useUIStore.getState().setCurrentView("home");
+
+    const scheduledFrames = new Map<number, FrameRequestCallback>();
+    let nextFrameId = 1;
+    vi.useFakeTimers();
+    const requestFrame = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => {
+        const frameId = nextFrameId++;
+        scheduledFrames.set(frameId, callback);
+        return frameId;
+      });
+    const cancelFrame = vi.spyOn(window, "cancelAnimationFrame").mockImplementation((frameId) => {
+      scheduledFrames.delete(frameId);
+    });
+
+    try {
+      await act(async () => root.render(<Player3D />));
+      expect(usePlaybackRuntimeStore.getState().phase).toBe("playing");
+
+      // Home 页停留 60s：循环从未排帧，analyser 一次都没被采样。
+      await act(async () => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(requestFrame).not.toHaveBeenCalled();
+      expect(scheduledFrames.size).toBe(0);
+      expect(player3DTestState.getAudioAnalyser).not.toHaveBeenCalled();
+
+      // 切回播放页：effect 依赖翻转，同步排第一帧。
+      await act(async () => {
+        useUIStore.getState().setCurrentView("player");
+      });
+      expect(requestFrame).toHaveBeenCalledOnce();
+      expect([...scheduledFrames.keys()]).toEqual([1]);
+
+      // 第一帧立即采样并续排下一帧（执行后从待执行表移除，模拟真实 rAF）。
+      await act(async () => {
+        const frame = scheduledFrames.get(1);
+        scheduledFrames.delete(1);
+        frame?.(16);
+      });
+      expect(player3DTestState.getAudioAnalyser).toHaveBeenCalledOnce();
+      expect(requestFrame).toHaveBeenCalledTimes(2);
+
+      // 离开播放页：取消已排帧，回 Home 后 60s 也不再起新帧。
+      await act(async () => {
+        useUIStore.getState().setCurrentView("home");
+      });
+      expect(cancelFrame).toHaveBeenCalledWith(2);
+      expect(scheduledFrames.size).toBe(0);
+
+      await act(async () => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(requestFrame).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps audio-reactive motion stopped when reduced motion is preferred", async () => {
