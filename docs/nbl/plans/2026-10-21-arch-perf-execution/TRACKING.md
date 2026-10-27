@@ -11,14 +11,14 @@
 |---|---:|---:|---:|---|---|
 | S0 止血与基线 | 7 | 4 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-3/S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策） |
 | S1 数据与播放正确性 | 10 | 5 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3/S1-6/S1-8 done；S1-7 独立分支；S1-4/S1-5/S1-9/S1-10 待） |
-| S2 音频图与持久化 | 6 | 4 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | in_progress（S2-1/S2-2/S2-4/S2-5 done；S2-3/S2-6 待） |
+| S2 音频图与持久化 | 6 | 5 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | in_progress（S2-1/S2-2/S2-3/S2-4/S2-5 done；S2-6 待） |
 | S3 外壳与订阅治理 | 10 | 0 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | pending |
 | S4 包体与加载 | 7 | 0 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | pending |
 | S5 渲染运行时 | 7 | 0 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | pending |
 | S6 状态架构收敛 | 12 | 0 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | pending |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **13** | **约 129** | — | in_progress |
+| **合计** | **74** | **14** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -58,7 +58,7 @@
 - [ ] **M2 出口门**：单入口混音（destination 入边=1）；写盘 ≤1/s；100 次切歌节点增量 0；听感 A/B 通过。
 - [x] S2-1 单入口混音 + 音量单点 — **done（2026-10-28，96d320f）**：移除 analyser→destination 无条件边；effects 增加唯一 unity chainOutput 汇聚 reverb/lofi，no-effect 走 direct fallback；元素 volume 固定 1，用户音量/mute 仅 `AudioEngine.setVolume` 单点；重复 connect/rebuild/detach 均保持 destination 入边=1。测试：AudioEngine +4、audioGraphRouting 5、audioVolume 2，聚焦 17 passed；全量 211 files/1315 tests passed；tsc/eslint 0；volume=0.5 目标增益 −6.02dB。缺口：`audioGraphStats` dev probe 未加（S2-2 前补）；无真机 A/B/RMS 采样；AudioGraphManager 死代码仍含旧 destination 边（未启用）。分支 `feature/arch-perf-s2-1`（未合并）。
 - [x] S2-2 效果参数增量更新 — **done（2026-10-28，e4f9a7b）**：`AudioEffectsManager` 新增 intensityAppliers（13 个效果用 setTargetAtTime 改已有节点），无连续参数的效果注册空 applier；结构型 WaveShaper.curve 仅在 pointerup/批量设定时 commit；面板 rAF 合并 + pointerup/touchend/blur flush；tremolo 深度增益常驻修复节点泄漏；新增 connect/rebuild 计数。验收：100 次拖动 connect=0/rebuild=0、17 效果×100 次无图变更、启用效果仍恰好 1 次 rebuild、destination 入边恒 1。测试 7 聚焦通过；全量 215 files/1339 tests passed；tsc/eslint 0。缺口：未做 dev 听感 A/B、无 window.__audioGraphStats（S2-6 探针）；部分无参数映射效果强度仅下次重建生效。分支 `feature/arch-perf-s2-2-effects`（未合并）。
-- [ ] S2-3 AnalyserHub — owner: — | PR: 1 | 依赖: S2-1 | 验收: fftSize 稳定；每帧 0 分配
+- [x] S2-3 AnalyserHub — **done（2026-10-28，f8aa0dd）**：新增共享 `AnalyserHub`（FFT 2048、按 AudioContext.currentTime 帧键、频率/波形缓冲与 frame 对象全复用、每帧 0 分配、fftSize 防改写、context closed 自动 detach）；AudioEngine 接入并保持兼容；VisualizationView/Spectrum/Waveform/Floating*/AppleMusicVisualizer/Shelf3D/Player3D 迁移共享缓冲（V7 1024→128 段下采样保持原契约）。验收：1000 帧同引用/Uint8Array 构造 0、同 quantum 仅 1 次读取、buffer 长度正确、destination 入边=1；7 用例 + 既有 AudioEngine/lifecycle/Player3D 全绿；全量 217 files/1353 tests passed；tsc/eslint 0。缺口：无 dev/CDP 视觉 A/B 与 HeapProfiler soak；AudioGraphManager 死代码仍持独立 analyser（未来接线风险）；Player3D 保留 getAudioAnalyser 兼容调用但已复用 hub 缓冲。分支 `feature/arch-perf-s2-3-analyser`（未合并）。
 - [x] S2-4 播放写盘降频 — **done（2026-10-28，47e68e8，分支名为 feature/arch-perf-s2-2 但内容对应 S2-4）**：新增 `throttledPersist.ts`（leading+trailing 合并、flushAll、pagehide/visibilitychange flush，外层 throttle→内层 safeStorage 保留 S1-3 配额降级）；playerStore/audioStore 接入，key/JSON 格式不变；pause/ended 由 mediaBridge flush；删除 playbackSlice 重复 5s 节流与生命期监听。速率：每 store 0.5 写/s、双 key ≈1/s（原 ≈8/s），UI 更新仍 250ms。测试：throttledPersist 9 + playbackPersistence 8（10 次快速 setCurrentTime≤1 写、末值/暂停/结束/pagehide flush、旧 envelope 可 hydrate）；全量 213 files/1332 tests passed；tsc/eslint 0。缺口：计划 §S2-4 的 sessionStorage checkpoint/partialize 删除 currentTime 未做（保格式）；E4 未做真机 60s 采样。**注意：文档版 S2-2（效果参数增量更新）仍未实现。**
 - [x] S2-5 图与集合生命周期 — **done（2026-10-28，ea62082，分支名为 feature/arch-perf-s2-3 但内容对应 S2-5）**：新增 `audioGraphStats.ts`（created/released/active 计数、pending timer、dev-only `window.__audioGraphStats`）；AudioEngine 记录图基线与 MediaElementSource 并新增 `releaseElement`；CrossfadeMixer 跟踪/取消 cleanup timers、每 deck 复用 gain、releaseElement、懒解析 context；效果链 init 记录一次基线。验收：100 次切歌 created/released/active 增量 0、createMediaElementSource 总 2 次、destination 入边恒 1、pending timers 0；100 次快速 crossfade gain 恒 2、timer ≤1→0；释放路径计数 -1/-1。测试新增 4 + 扩展若干，聚焦 15 passed；全量 216 files/1346 tests passed；tsc/eslint 0。缺口：计划文档 S2-3 的 **AnalyserHub 仍未实现**；`AudioGraphManager` 无调用方但若接线会引入第二 destination 边（建议删除/接管）；2h soak 未跑（S7-9）。
 - [ ] S2-6 性能验证与沉淀 — owner: — | PR: 1 | 依赖: S1/S2 | 验收: 指标报告可重复
