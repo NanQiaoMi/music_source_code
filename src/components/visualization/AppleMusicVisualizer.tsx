@@ -1,9 +1,10 @@
-﻿"use client";
+"use client";
 
 import React, { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
+import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 
 export interface VisualizerConfig {
   enabled: boolean;
@@ -149,14 +150,14 @@ export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ conf
         ctx.fill();
       }
 
-      animationFrameRef.current = requestAnimationFrame(draw);
+      animationFrameRef.current = requestRaf(draw);
     };
 
     draw();
 
     return () => {
       if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+        cancelRaf(animationFrameRef.current);
       }
     };
   }, [config]);

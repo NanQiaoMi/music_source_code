@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useWaveformStore } from "@/store/waveformStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
+import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 
 interface WaveformVisualizationProps {
   songId?: string;
@@ -56,7 +57,7 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
 
       // 尺寸为 0 时跳过绘制，避免生成退化的后备存储
       if (width <= 0 || height <= 0) {
-        animationRef.current = requestAnimationFrame(drawWaveform);
+        animationRef.current = requestRaf(drawWaveform);
         return;
       }
 
@@ -78,7 +79,7 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
       ctx.fillRect(0, 0, width, height);
 
       if (!analyser) {
-        animationRef.current = requestAnimationFrame(drawWaveform);
+        animationRef.current = requestRaf(drawWaveform);
         return;
       }
 
@@ -125,19 +126,19 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
         ctx.stroke();
       }
 
-      animationRef.current = requestAnimationFrame(drawWaveform);
+      animationRef.current = requestRaf(drawWaveform);
     },
     [audioElement, waveformColor, backgroundColor]
   );
 
   useEffect(() => {
     if (isReady) {
-      animationRef.current = requestAnimationFrame(drawWaveform);
+      animationRef.current = requestRaf(drawWaveform);
     }
 
     return () => {
       if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
+        cancelRaf(animationRef.current);
       }
     };
   }, [isReady, drawWaveform]);

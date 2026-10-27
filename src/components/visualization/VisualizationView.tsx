@@ -15,6 +15,7 @@ import {
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
+import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 import { X, Maximize2, Minimize2, Settings, Video } from "lucide-react";
 const RecordingPanel = dynamic(
   () => import("@/components/features-v7/RecordingPanel").then((m) => m.RecordingPanel),
@@ -289,7 +290,7 @@ export function VisualizationView() {
 
     return () => {
       if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+        cancelRaf(animationFrameRef.current);
       }
     };
   }, [currentView]);
@@ -584,7 +585,7 @@ export function VisualizationView() {
       }
 
       if (document.visibilityState === "visible") {
-        animationFrameRef.current = requestAnimationFrame(draw);
+        animationFrameRef.current = requestRaf(draw);
       } else {
         animationFrameRef.current = null;
       }
@@ -604,25 +605,25 @@ export function VisualizationView() {
           useAudioStore.getState().setDuration(activeAudio.duration);
         }
         if (!animationFrameRef.current) {
-          animationFrameRef.current = requestAnimationFrame(draw);
+          animationFrameRef.current = requestRaf(draw);
         }
       } else {
         if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
+          cancelRaf(animationFrameRef.current);
           animationFrameRef.current = null;
         }
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    animationFrameRef.current = requestAnimationFrame(draw);
+    animationFrameRef.current = requestRaf(draw);
 
     return () => {
       window.removeEventListener("resize", resize);
       resizeObserver?.disconnect();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+        cancelRaf(animationFrameRef.current);
         animationFrameRef.current = null;
       }
 

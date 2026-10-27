@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import type { FloatingPlayerState } from "./useFloatingDragPhysics";
+import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 import {
   Sliders,
   X,
@@ -74,12 +75,12 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
         frameCountRef.current = 0;
         lastTimeRef.current = now;
       }
-      animId = requestAnimationFrame(measureFps);
+      animId = requestRaf(measureFps);
     };
 
     lastTimeRef.current = performance.now();
-    animId = requestAnimationFrame(measureFps);
-    return () => cancelAnimationFrame(animId);
+    animId = requestRaf(measureFps);
+    return () => cancelRaf(animId);
   }, []);
 
   // Global keyboard shortcut: Shift + D toggles HUD

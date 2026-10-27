@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useAudioStore } from "@/store/audioStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
+import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 
 export interface FloatingWaveformGlowProps {
   /** Optional audio element override */
@@ -299,7 +300,7 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
       }
 
       ctx.restore();
-      animFrameRef.current = requestAnimationFrame(draw);
+      animFrameRef.current = requestRaf(draw);
     },
     [
       currentTime,
@@ -317,10 +318,10 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
   );
 
   useEffect(() => {
-    animFrameRef.current = requestAnimationFrame(draw);
+    animFrameRef.current = requestRaf(draw);
     return () => {
       if (animFrameRef.current) {
-        cancelAnimationFrame(animFrameRef.current);
+        cancelRaf(animFrameRef.current);
       }
     };
   }, [draw]);

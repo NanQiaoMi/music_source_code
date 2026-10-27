@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { formatStorageBytes } from "@/store/useStorageAnalyticsStore";
+import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 
 interface LiquidStorageGaugeProps {
   usedBytes: number;
@@ -34,7 +35,7 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
     const render = () => {
       if (!isMounted) return;
       if (!canvas.offsetParent) {
-        animRef.current = requestAnimationFrame(render);
+        animRef.current = requestRaf(render);
         return;
       }
       step += 0.035;
@@ -136,13 +137,13 @@ export const LiquidStorageGauge: React.FC<LiquidStorageGaugeProps> = ({
 
       ctx.restore();
 
-      animRef.current = requestAnimationFrame(render);
+      animRef.current = requestRaf(render);
     };
 
     render();
 
     return () => {
-      if (animRef.current) cancelAnimationFrame(animRef.current);
+      if (animRef.current) cancelRaf(animRef.current);
     };
   }, [usagePercent]);
 

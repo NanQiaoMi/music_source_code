@@ -8,6 +8,7 @@ import { usePlayerStore } from "@/store/playerStore";
 import { useAudioSourceStore, AudioSourceType, PreferredQuality } from "@/store/audioSourceStore";
 import { useUIStore } from "@/store/uiStore";
 import { multiSourceResolver, ResolvedAudioSource } from "@/services/MultiSourceResolver";
+import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 import {
   X,
   Disc3,
@@ -197,13 +198,13 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
       }
       ctx.stroke();
 
-      animId = requestAnimationFrame(render);
+      animId = requestRaf(render);
     };
 
     render();
 
     return () => {
-      cancelAnimationFrame(animId);
+      cancelRaf(animId);
     };
   }, [isOpen, activeTab, isPlaying, beatSensitivity]);
 

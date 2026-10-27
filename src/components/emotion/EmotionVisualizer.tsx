@@ -6,6 +6,7 @@ import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { Music2 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { EmotionPoint } from "@/types/emotion";
+import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 
 const SAFE_PADDING = 80;
 
@@ -369,13 +370,13 @@ const EmotionVisualizer: React.FC = () => {
         ctx.setLineDash([]);
       }
 
-      animationRef.current = requestAnimationFrame(draw);
+      animationRef.current = requestRaf(draw);
     };
 
-    animationRef.current = requestAnimationFrame(draw);
+    animationRef.current = requestRaf(draw);
     return () => {
       ro.disconnect();
-      cancelAnimationFrame(animationRef.current);
+      cancelRaf(animationRef.current);
     };
   }, [audioCurrentSong]);
 

@@ -12,6 +12,7 @@ import { useFavoritesStore } from "@/store/favoritesStore";
 import { useUserAccountStore } from "@/store/userAccountStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useIntegratedAudioPipeline } from "@/lib/audio/useIntegratedAudioPipeline";
+import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 import { useUIStore } from "@/store/uiStore";
 import { approachEnvelope, readBandEnergy, stepCriticalSpring } from "./shelf3dMotion";
 import Shelf3DStaticFallback from "./Shelf3DStaticFallback";
@@ -932,7 +933,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
     const stopAnimation = () => {
       if (frameRequestId !== null) {
-        cancelAnimationFrame(frameRequestId);
+        cancelRaf(frameRequestId);
         frameRequestId = null;
       }
       animFrameRef.current = null;
@@ -1449,7 +1450,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           revealRendererStatus = false;
           setWebglStatus("ready");
         }
-        frameRequestId = requestAnimationFrame(onAnimationFrame);
+        frameRequestId = requestRaf(onAnimationFrame);
         animFrameRef.current = frameRequestId;
       };
 
@@ -1463,7 +1464,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           return;
         animationRunning = true;
         lastFrameTime = null;
-        frameRequestId = requestAnimationFrame(onAnimationFrame);
+        frameRequestId = requestRaf(onAnimationFrame);
         animFrameRef.current = frameRequestId;
       };
 

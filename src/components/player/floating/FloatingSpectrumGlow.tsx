@@ -5,6 +5,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import { smoothAudioValue } from "@/lib/audio/audioMotionSmoothing";
+import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 
 export interface FloatingSpectrumGlowProps {
   /** Optional audio element */
@@ -226,7 +227,7 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
         return;
       }
 
-      animFrameRef.current = requestAnimationFrame(renderFrame);
+      animFrameRef.current = requestRaf(renderFrame);
     },
     [barCount, currentSong, glowIntensity, height, isPlaying]
   );
@@ -236,7 +237,7 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
     if (!isRunningRef.current && isVisibleRef.current) {
       isRunningRef.current = true;
       lastFrameAtRef.current = 0;
-      animFrameRef.current = requestAnimationFrame(renderFrame);
+      animFrameRef.current = requestRaf(renderFrame);
     }
   }, [renderFrame]);
 
@@ -244,7 +245,7 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
   const stopLoop = useCallback(() => {
     isRunningRef.current = false;
     if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
+      cancelRaf(animFrameRef.current);
       animFrameRef.current = null;
     }
   }, []);

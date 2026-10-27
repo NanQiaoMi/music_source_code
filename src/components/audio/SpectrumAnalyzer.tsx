@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useSpectrumStore } from "@/store/spectrumStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
+import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 
 interface SpectrumAnalyzerProps {
   audioElement?: HTMLAudioElement | null;
@@ -57,7 +58,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
 
       // 尺寸为 0 时跳过绘制，避免生成退化的后备存储
       if (width <= 0 || height <= 0) {
-        animationRef.current = requestAnimationFrame(drawSpectrum);
+        animationRef.current = requestRaf(drawSpectrum);
         return;
       }
 
@@ -79,7 +80,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
       ctx.fillRect(0, 0, width, height);
 
       if (!analyser) {
-        animationRef.current = requestAnimationFrame(drawSpectrum);
+        animationRef.current = requestRaf(drawSpectrum);
         return;
       }
 
@@ -119,14 +120,14 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
         ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
       }
 
-      animationRef.current = requestAnimationFrame(drawSpectrum);
+      animationRef.current = requestRaf(drawSpectrum);
     }
 
-    animationRef.current = requestAnimationFrame(drawSpectrum);
+    animationRef.current = requestRaf(drawSpectrum);
 
     return () => {
       if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
+        cancelRaf(animationRef.current);
         animationRef.current = null;
       }
     };
