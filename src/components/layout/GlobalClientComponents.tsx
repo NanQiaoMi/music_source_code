@@ -26,6 +26,7 @@ import { GestureController } from "@/components/interaction/GestureController";
 import { GestureFeedback } from "@/components/interaction/GestureFeedback";
 import { AILinerNotes } from "@/components/widgets/AILinerNotes";
 import { TopEdgeSearchTrigger } from "@/components/layout/TopEdgeSearchTrigger";
+import { PanelErrorBoundary } from "@/components/shared/PanelErrorBoundary";
 import { SourceManagementModal } from "@/components/sources/SourceManagementModal";
 import { GlassToastContainer } from "@/components/shared/GlassToast";
 
@@ -58,11 +59,20 @@ export function GlobalClientComponents() {
         </div>
       )}
       <AchievementToastContainer />
-      <GlassToastContainer />
+      {/* 全局唯一 toast 宿主（layout 级，覆盖 / 与 /data-manager 等全部路由）。
+          toast 是非必要 UI：崩溃时静默降级，绝不拖垮主界面与播放。 */}
+      <div data-global-host="toast">
+        <PanelErrorBoundary panelName="Toast Overlay" silent>
+          <GlassToastContainer />
+        </PanelErrorBoundary>
+      </div>
       <GestureController />
       <GestureFeedback />
       {!isImmersiveVisualization && <AILinerNotes />}
-      <SourceManagementModal />
+      {/* 全局唯一音源管理宿主：开合由 sourceConfigStore.isManagementModalOpen 守护。 */}
+      <div data-global-host="source-modal">
+        <SourceManagementModal />
+      </div>
     </>
   );
 }

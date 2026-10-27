@@ -5,7 +5,6 @@ import { useUIStore } from "@/store/uiStore";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/shallow";
 import { createLazyPanelComponent, LazyPanel, prefetchPanel } from "@/components/shared/LazyPanel";
-import { SourceManagementModal } from "@/components/sources/SourceManagementModal";
 
 // ─── Module Factories (Extracted for prefetching) ─────────────────
 const FACTORIES = {
@@ -470,7 +469,6 @@ export function PanelOrchestrator() {
         onClose={() => closePanel("dataManager")}
         component={PANEL_COMPONENTS.dataManager}
       />
-      <SourceManagementModal />
     </>
   );
 }

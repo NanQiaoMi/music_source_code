@@ -27,7 +27,6 @@ import { OfflineDownloadsTab } from "./hub/OfflineDownloadsTab";
 import { PlaylistHubTab } from "./hub/PlaylistHubTab";
 import { HealthStorageTab } from "./hub/HealthStorageTab";
 import { LocalMusicManager } from "./LocalMusicManager";
-import { SourceManagementModal } from "@/components/sources/SourceManagementModal";
 import { Sparkles } from "lucide-react";
 
 import { useDataManagerStore, HubTabKey } from "@/store/useDataManagerStore";
@@ -350,9 +349,6 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
           </div>
         )}
       </main>
-
-      {/* 音源矩阵与脚本配置全局模态框 */}
-      <SourceManagementModal />
     </div>
   );
 };

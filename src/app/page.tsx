@@ -43,10 +43,6 @@ const DesktopLyrics = dynamic(
   () => import("@/components/features-v7/DesktopLyrics").then((m) => m.DesktopLyrics),
   { ssr: false }
 );
-const GlassToastContainer = dynamic(
-  () => import("@/components/shared/GlassToast").then((m) => m.GlassToastContainer),
-  { ssr: false }
-);
 const GlassRadarWidget = dynamic(
   () => import("@/components/widgets/GlassRadarWidget").then((m) => m.GlassRadarWidget),
   { ssr: false }
@@ -140,10 +136,6 @@ export default function Home() {
           <MusicBackstory />
         </PanelErrorBoundary>
       )}
-      {/* toast 是非必要 UI：单独隔离，它崩溃时静默降级，绝不拖垮主界面与播放 */}
-      <PanelErrorBoundary panelName="Toast Overlay" silent>
-        <GlassToastContainer />
-      </PanelErrorBoundary>
       <MusicLibrarySyncProvider />
       <Apple3DQueueDrawer />
 
