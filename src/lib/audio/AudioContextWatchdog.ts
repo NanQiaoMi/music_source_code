@@ -9,12 +9,20 @@ import { compactExistingStorage } from "@/lib/storage/safeStorage";
  * 1. 监听 AudioContext statechange 事件：在休眠、唤醒或系统静音打断时，自动 0ms 平滑恢复音频链；
  * 2. 监听 devicechange 硬件热插拔：在耳机、蓝牙设备插拔切换时，平滑重连防卡顿；
  * 3. 周期性 30 分钟长效巡检心跳：自动触发存储垃圾清理与 Blob 内存回收，防止长时间挂机内存泄漏。
+ *
+ * 关键约束：AudioContext 是懒创建的。start() 早于首次播放时必须先订阅
+ * AudioEngine.onContextCreated，等上下文创建后再 attach；stop() 必须对称移除
+ * statechange / devicechange 监听，避免重复挂载。
  */
 export class AudioContextWatchdog {
   private static instance: AudioContextWatchdog | null = null;
   private isStarted = false;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private deviceChangeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private attachedContext: AudioContext | null = null;
+  private stateChangeHandler: (() => void) | null = null;
+  private deviceChangeHandler: (() => void) | null = null;
+  private detachContextCreated: (() => void) | null = null;
 
   public static getInstance(): AudioContextWatchdog {
     if (!AudioContextWatchdog.instance) {
@@ -38,13 +46,30 @@ export class AudioContextWatchdog {
   }
 
   /**
-   * 监听 AudioContext 状态，异常 suspended/interrupted 时自动恢复
+   * 监听 AudioContext 状态，异常 suspended/interrupted 时自动恢复。
+   * 上下文尚未创建时改为等待 onContextCreated，创建后自动 attach。
    */
   public attachAudioContextWatchdog(): void {
+    this.detachAudioContextWatchdog();
+
     const engine = AudioEngine.getInstance();
     const ctx = engine.getAudioContext();
-    if (!ctx) return;
+    if (ctx) {
+      this.attachToContext(ctx);
+      return;
+    }
 
+    this.detachContextCreated = engine.onContextCreated((createdContext) => {
+      if (!this.isStarted) return;
+      this.attachToContext(createdContext);
+    });
+  }
+
+  private attachToContext(ctx: AudioContext): void {
+    if (this.attachedContext === ctx && this.stateChangeHandler) return;
+    this.detachAudioContextWatchdog();
+
+    this.attachedContext = ctx;
     const handleStateChange = () => {
       const state = ctx.state;
       const isPlaying = useAudioStore.getState().isPlaying;
@@ -59,13 +84,34 @@ export class AudioContextWatchdog {
       }
     };
 
+    this.stateChangeHandler = handleStateChange;
     ctx.addEventListener("statechange", handleStateChange);
+  }
+
+  /**
+   * 移除当前上下文的 statechange 监听与懒创建订阅。幂等。
+   */
+  public detachAudioContextWatchdog(): void {
+    if (this.detachContextCreated) {
+      this.detachContextCreated();
+      this.detachContextCreated = null;
+    }
+    if (this.attachedContext && this.stateChangeHandler) {
+      try {
+        this.attachedContext.removeEventListener("statechange", this.stateChangeHandler);
+      } catch {
+        // context may already be closed
+      }
+    }
+    this.attachedContext = null;
+    this.stateChangeHandler = null;
   }
 
   /**
    * 监听耳机/声卡等音频输出设备热插拔
    */
   private attachDeviceChangeWatcher(): void {
+    if (this.deviceChangeHandler) return;
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.addEventListener) {
       return;
     }
@@ -91,7 +137,19 @@ export class AudioContextWatchdog {
       }, 250);
     };
 
+    this.deviceChangeHandler = handleDeviceChange;
     navigator.mediaDevices.addEventListener("devicechange", handleDeviceChange);
+  }
+
+  private detachDeviceChangeWatcher(): void {
+    if (
+      this.deviceChangeHandler &&
+      typeof navigator !== "undefined" &&
+      navigator.mediaDevices?.removeEventListener
+    ) {
+      navigator.mediaDevices.removeEventListener("devicechange", this.deviceChangeHandler);
+    }
+    this.deviceChangeHandler = null;
   }
 
   /**
@@ -138,7 +196,7 @@ export class AudioContextWatchdog {
   }
 
   /**
-   * 停止巡检 (在测试或应用卸载时)
+   * 停止巡检 (在测试或应用卸载时)。与 start 对称：清理心跳、设备监听与上下文监听。
    */
   public stop(): void {
     if (this.heartbeatTimer) {
@@ -149,6 +207,8 @@ export class AudioContextWatchdog {
       clearTimeout(this.deviceChangeDebounceTimer);
       this.deviceChangeDebounceTimer = null;
     }
+    this.detachDeviceChangeWatcher();
+    this.detachAudioContextWatchdog();
     this.isStarted = false;
   }
 }

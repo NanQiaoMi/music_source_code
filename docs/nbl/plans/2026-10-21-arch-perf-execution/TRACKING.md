@@ -3,14 +3,14 @@
 > 上级：[总计划](../2026-10-21-architecture-performance-optimization.md) · [执行计划包 README](./README.md)
 > 状态口径：pending（未开始）/ in_progress（实现中）/ review（待复核）/ done（已合并且验收通过）/ blocked（阻塞，需写原因）
 > 规则：每完成一个子 PR 勾选对应任务下的子项；任务 done 必须附证据（命令/退出码/指标/截图）；阶段出口全部满足才能把阶段标记 done。
-> 更新时间：2026-10-27（S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3 done）
+> 更新时间：2026-10-27（S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3/S1-7 done）
 
 ## 汇总
 
 | 阶段 | 任务数 | done | 子 PR（执行计划） | 阶段出口（摘要） | 状态 |
 |---|---:|---:|---:|---|---|
 | S0 止血与基线 | 7 | 4 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-3/S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策） |
-| S1 数据与播放正确性 | 10 | 3 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3 done；S1-4..S1-10 待） |
+| S1 数据与播放正确性 | 10 | 4 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3/S1-7 done；S1-4/S1-5/S1-6/S1-8..S1-10 待） |
 | S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
 | S3 外壳与订阅治理 | 10 | 0 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | pending |
 | S4 包体与加载 | 7 | 0 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | pending |
@@ -18,7 +18,7 @@
 | S6 状态架构收敛 | 12 | 0 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | pending |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **7** | **约 129** | — | in_progress |
+| **合计** | **74** | **8** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -48,7 +48,7 @@
 - [ ] S1-4 VibeMusicDB 统一 open/version v3 — owner: — | PR: 1 | 依赖: S0-6 | 验收: v1→v3 迁移测试；local:// 可播
 - [ ] S1-5 队列唯一权威 + QueueNavigator — owner: — | PR: 1-2 | 依赖: S1-3 | 验收: 删/排/清后 next/ended 一致
 - [ ] S1-6 PlaybackMediaBridge 单例 — owner: — | PR: 1 | 依赖: S0-6 | 验收: 多实例卸载后事件仍分发
-- [ ] S1-7 AudioContextWatchdog 懒 attach/detach — owner: — | PR: 1 | 依赖: S1-6 | 验收: start 先于 context 也能挂载
+- [x] S1-7 AudioContextWatchdog 懒 attach/detach — **done（2026-10-27，提前于 S1-6 独立落地）**：AudioEngine 新增 `onContextCreated` 订阅（已存在上下文同步回调，否则创建时一次性通知）；watchdog start 在无 ctx 时等待创建，attach/detach 对称；stop 移除 statechange + devicechange + 取消懒订阅；新增/更新 6 watchdog + 3 engine 用例，targeted vitest 15 passed、tsc 0、eslint 0。分支 `feature/arch-perf-s1-7`（隔离 worktree，未合并）。
 - [ ] S1-8 PlaybackRequestCoordinator + AbortSignal — owner: — | PR: 1-2 | 依赖: S1-6 | 验收: 连点 5 首仅 1 in-flight
 - [ ] S1-9 首声并行化 — owner: — | PR: 1 | 依赖: S1-8 | 验收: 命中 P50<300ms/P95<800ms
 - [ ] S1-10 正确性集成测试矩阵 — owner: — | PR: 1 | 依赖: S1-2..S1-9 | 验收: 场景全部自动化

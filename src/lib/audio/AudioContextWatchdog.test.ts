@@ -7,6 +7,14 @@ import { useAudioStore } from "@/store/audioStore";
 
 describe("AudioContextWatchdog", () => {
   let mockAudioContext: any;
+  let engineContextSpy: any;
+
+  function stateChangeHandler(): () => void {
+    const call = mockAudioContext.addEventListener.mock.calls.find(
+      (entry: any[]) => entry[0] === "statechange"
+    );
+    return call?.[1];
+  }
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -18,13 +26,16 @@ describe("AudioContextWatchdog", () => {
       removeEventListener: vi.fn(),
     };
 
-    vi.spyOn(AudioEngine.getInstance(), "getAudioContext").mockReturnValue(mockAudioContext);
+    engineContextSpy = vi
+      .spyOn(AudioEngine.getInstance(), "getAudioContext")
+      .mockReturnValue(mockAudioContext);
   });
 
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     AudioContextWatchdog.getInstance().stop();
+    delete (navigator as any).mediaDevices;
   });
 
   it("automatically resumes AudioContext when state becomes suspended while playing", () => {
@@ -38,14 +49,10 @@ describe("AudioContextWatchdog", () => {
       expect.any(Function)
     );
 
-    const stateChangeHandler = mockAudioContext.addEventListener.mock.calls.find(
-      (call: any[]) => call[0] === "statechange"
-    )[1];
-
     mockAudioContext.state = "suspended";
-    stateChangeHandler();
+    stateChangeHandler()();
 
-    expect(mockAudioContext.resume).toHaveBeenCalled();
+    expect(mockAudioContext.resume).toHaveBeenCalledTimes(1);
   });
 
   it("does not resume AudioContext if not playing", () => {
@@ -54,14 +61,76 @@ describe("AudioContextWatchdog", () => {
     const watchdog = AudioContextWatchdog.getInstance();
     watchdog.attachAudioContextWatchdog();
 
-    const stateChangeHandler = mockAudioContext.addEventListener.mock.calls.find(
-      (call: any[]) => call[0] === "statechange"
-    )[1];
-
     mockAudioContext.state = "suspended";
-    stateChangeHandler();
+    stateChangeHandler()();
 
     expect(mockAudioContext.resume).not.toHaveBeenCalled();
+  });
+
+  it("start before context creation attaches once context is created", () => {
+    useAudioStore.setState({ isPlaying: true });
+    const engine = AudioEngine.getInstance();
+    engineContextSpy.mockReturnValue(null);
+
+    let createdListener: ((ctx: any) => void) | null = null;
+    const detachSpy = vi.fn();
+    vi.spyOn(engine, "onContextCreated").mockImplementation((listener: any) => {
+      createdListener = listener;
+      return detachSpy;
+    });
+
+    const watchdog = AudioContextWatchdog.getInstance();
+    watchdog.start();
+
+    expect(createdListener).not.toBeNull();
+    expect(mockAudioContext.addEventListener).not.toHaveBeenCalled();
+
+    createdListener!(mockAudioContext);
+
+    expect(mockAudioContext.addEventListener).toHaveBeenCalledWith(
+      "statechange",
+      expect.any(Function)
+    );
+
+    mockAudioContext.state = "suspended";
+    stateChangeHandler()();
+    expect(mockAudioContext.resume).toHaveBeenCalledTimes(1);
+  });
+
+  it("start twice registers only one statechange listener", () => {
+    const watchdog = AudioContextWatchdog.getInstance();
+    watchdog.start();
+    watchdog.start();
+
+    const stateChangeCalls = mockAudioContext.addEventListener.mock.calls.filter(
+      (entry: any[]) => entry[0] === "statechange"
+    );
+    expect(stateChangeCalls).toHaveLength(1);
+  });
+
+  it("stop removes statechange and devicechange listeners", () => {
+    const addDeviceChange = vi.fn();
+    const removeDeviceChange = vi.fn();
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: {
+        addEventListener: addDeviceChange,
+        removeEventListener: removeDeviceChange,
+      },
+    });
+
+    const watchdog = AudioContextWatchdog.getInstance();
+    watchdog.start();
+
+    expect(addDeviceChange).toHaveBeenCalledWith("devicechange", expect.any(Function));
+
+    watchdog.stop();
+
+    expect(mockAudioContext.removeEventListener).toHaveBeenCalledWith(
+      "statechange",
+      expect.any(Function)
+    );
+    expect(removeDeviceChange).toHaveBeenCalledWith("devicechange", expect.any(Function));
   });
 
   it("runs periodic health inspection on heartbeat tick", () => {
