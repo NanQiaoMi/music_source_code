@@ -24,23 +24,28 @@ vi.mock("@/store/uiStore", () => {
     openPanel: mocks.openPanel,
     panels: {
       keyboardShortcuts: false,
+      search: false,
     },
+    toasts: [],
     isFullscreen: false,
     toggleFullscreen: mocks.toggleFullscreen,
     setCurrentView: mocks.setCurrentView,
     setIsNavMenuOpen: vi.fn(),
   };
-  return { useUIStore: Object.assign(() => state, { getState: () => state }) };
+  const useUIStore = (selector?: (input: typeof state) => unknown) =>
+    selector ? selector(state) : state;
+  return { useUIStore: Object.assign(useUIStore, { getState: () => state }) };
 });
 
-vi.mock("@/store/playlistStore", () => ({
-  usePlaylistStore: () => ({
-    songs: [{ id: "1", title: "Song 1" }],
-  }),
-}));
+vi.mock("@/store/playlistStore", () => {
+  const state = { songs: [{ id: "1", title: "Song 1" }] };
+  const usePlaylistStore = (selector?: (input: typeof state) => unknown) =>
+    selector ? selector(state) : state;
+  return { usePlaylistStore };
+});
 
-vi.mock("@/store/userAccountStore", () => ({
-  useUserAccountStore: () => ({
+vi.mock("@/store/userAccountStore", () => {
+  const state = {
     neteaseUser: {
       userId: 12345,
       nickname: "猫猫的小毛毛呀",
@@ -49,8 +54,11 @@ vi.mock("@/store/userAccountStore", () => ({
       vipType: 11,
       cloudSongCount: 128,
     },
-  }),
-}));
+  };
+  const useUserAccountStore = (selector?: (input: typeof state) => unknown) =>
+    selector ? selector(state) : state;
+  return { useUserAccountStore };
+});
 
 vi.mock("@/store/gestureSettingsStore", () => {
   const state = {

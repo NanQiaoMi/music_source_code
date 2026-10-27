@@ -93,12 +93,12 @@ export function AppleUnifiedNavIsland({
   const openPanel = useUIStore((state) => state.openPanel);
   const isFullscreen = useUIStore((state) => state.isFullscreen);
   const toggleFullscreen = useUIStore((state) => state.toggleFullscreen);
-  const panels = useUIStore((state) => state.panels);
-  const toasts = useUIStore((state) => state.toasts);
+  const storeSearchOpen = useUIStore((state) => Boolean(state.panels?.search));
+  const storeHasToast = useUIStore(
+    (state) => Array.isArray(state.toasts) && state.toasts.length > 0
+  );
 
-  const storeSearchOpen = panels?.search ?? false;
   const isSearchOpen = isSearchOpenProp ?? storeSearchOpen;
-  const storeHasToast = Array.isArray(toasts) && toasts.length > 0;
   const hasActiveToast = hasActiveToastProp ?? storeHasToast;
   const isGestureEnabled = useGestureSettingsStore((state) => state.enabled);
   const toggleGestureEnabled = useGestureSettingsStore((state) => state.toggleEnabled);

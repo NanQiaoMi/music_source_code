@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { useUIStore } from "@/store/uiStore";
-import { useVisualSettingsStore } from "@/store/visualSettingsStore";
 import { useDynamicTheme } from "@/hooks/useDynamicTheme";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
@@ -12,6 +11,7 @@ import dynamic from "next/dynamic";
 import { HomeView } from "@/components/layout/HomeView";
 import { Apple3DQueueDrawer } from "@/components/player/Apple3DQueueDrawer";
 import { PanelOrchestrator } from "@/components/layout/PanelOrchestrator";
+import { VisualTokens } from "@/components/layout/VisualTokens";
 import { PanelErrorBoundary } from "@/components/shared/PanelErrorBoundary";
 
 // Heavy Views & Dynamic Ambient (Lazy Loaded)
@@ -75,8 +75,8 @@ import { bootstrapApp } from "@/lib/bootstrap";
  * - HomeView / PlayerView: Decoupled UI modules for different application states.
  */
 export default function Home() {
-  const { currentView, isTransitioning } = useUIStore();
-  const { blurIntensity, animationSpeed } = useVisualSettingsStore();
+  const currentView = useUIStore((state) => state.currentView);
+  const isTransitioning = useUIStore((state) => state.isTransitioning);
 
   // Initialize Global Services & Hooks
   useDynamicTheme();
@@ -109,14 +109,13 @@ export default function Home() {
             var(--theme-secondary),
             var(--theme-accent)
           );
-          --blur-intensity: ${blurIntensity}px;
-          --animation-speed: ${animationSpeed}s;
           --theme-border: rgba(255, 255, 255, 0.1);
           --theme-text-primary: #ffffff;
           --theme-text-secondary: rgba(255, 255, 255, 0.5);
           --theme-accent-pink: #ec4899;
         }
       `}</style>
+      <VisualTokens />
 
       {/* ─── Global Dynamic Adaptive Ambient Background ───────────── */}
       <PanelErrorBoundary panelName="Ambient Background">

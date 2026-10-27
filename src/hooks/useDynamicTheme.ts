@@ -135,7 +135,10 @@ function boostVibrantColors(colors: ThemeColors): ThemeColors {
 }
 
 export function useDynamicTheme() {
-  const { themeColors, isDynamicTheme, setThemeColors, themeMode } = useUIStore();
+  const themeColors = useUIStore((state) => state.themeColors);
+  const isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
+  const setThemeColors = useUIStore((state) => state.setThemeColors);
+  const themeMode = useUIStore((state) => state.themeMode);
   const currentSong = useAudioStore((state) => state.currentSong);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -274,7 +277,7 @@ export function useDynamicTheme() {
 }
 
 export function useCSSVariables() {
-  const { themeColors } = useUIStore();
+  const themeColors = useUIStore((state) => state.themeColors);
 
   return {
     "--theme-primary": themeColors.primary,

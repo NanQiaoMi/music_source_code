@@ -20,10 +20,11 @@ import {
 
 export function HeaderToolbar() {
   const router = useRouter();
-  const { currentView, openPanel } = useUIStore();
-  const { songs } = usePlaylistStore();
-  const { neteaseUser } = useUserAccountStore();
-  const { openManagementModal } = useSourceConfigStore();
+  const currentView = useUIStore((state) => state.currentView);
+  const openPanel = useUIStore((state) => state.openPanel);
+  const songCount = usePlaylistStore((state) => state.songs.length);
+  const neteaseUser = useUserAccountStore((state) => state.neteaseUser);
+  const openManagementModal = useSourceConfigStore((state) => state.openManagementModal);
   // 两档断点的数字来历见 headerBreakpoints.ts（由「岛要居中」这条要求倒推）
   const isCompactHeader = useMediaQuery(HEADER_COMPACT_QUERY);
   const isVeryNarrow = useMediaQuery(HEADER_ICON_ONLY_QUERY);
@@ -56,7 +57,7 @@ export function HeaderToolbar() {
               </span>
               {!isCompactHeader && (
                 <span className="text-[11px] text-[#86868b] font-medium leading-none whitespace-nowrap">
-                  {songs.length > 0 ? `${songs.length} 首歌曲` : "多平台云音乐已就绪"}
+                  {songCount > 0 ? `${songCount} 首歌曲` : "多平台云音乐已就绪"}
                 </span>
               )}
             </div>

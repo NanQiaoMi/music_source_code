@@ -19,7 +19,7 @@ const APPLE_SPRING_CONFIG = {
  * Extracted from page.tsx to isolate player-specific layout and animation.
  */
 export function PlayerView() {
-  const { currentView } = useUIStore();
+  const currentView = useUIStore((state) => state.currentView);
 
   return (
     <motion.div

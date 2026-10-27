@@ -19,11 +19,12 @@ const APPLE_SPRING_CONFIG = {
 };
 
 export function HomeView() {
-  const { currentView, openPanel } = useUIStore();
-  const { groups } = usePlaylistGroupStore();
-  const { userPlaylists } = useUserAccountStore();
+  const currentView = useUIStore((state) => state.currentView);
+  const openPanel = useUIStore((state) => state.openPanel);
+  const playlistGroupCount = usePlaylistGroupStore((state) => state.groups?.length || 0);
+  const userPlaylistCount = useUserAccountStore((state) => state.userPlaylists?.length || 0);
 
-  const totalPlaylistsCount = (groups?.length || 0) + (userPlaylists?.length || 0) + 2;
+  const totalPlaylistsCount = playlistGroupCount + userPlaylistCount + 2;
 
   // ⌘L / Ctrl+L 唤出 3D 歌单架已交由中枢绑定表统一处理（keyboardShortcutsStore 的 toggle-queue），
   // 这里原先也监听同一按键去切换同一面板，两个处理器互相抵消，已移除。

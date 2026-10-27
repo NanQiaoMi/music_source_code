@@ -87,6 +87,10 @@ textarea {
   --theme-radius-lg: 12px;
   --theme-radius-xl: 16px;
   --theme-radius-full: 9999px;
+
+  /* S3-1: defaults for VisualTokens; avoids a first-frame blur/animation flash. */
+  --blur-intensity: 20px;
+  --animation-speed: 1s;
 }
 
 /* Light Mode Variables */
