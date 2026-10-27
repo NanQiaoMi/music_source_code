@@ -14,6 +14,7 @@ import { useABLoopStore } from "@/store/abLoopStore";
 import { GlassProgressBar } from "@/components/shared/GlassProgressBar";
 import { useAlbumTheme } from "@/hooks/useAlbumTheme";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
+import { analyserHub } from "@/lib/audio/AnalyserHub";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
 import { AppleAudioSourceIndicator } from "@/components/player/AppleAudioSourceIndicator";
 import { smoothAudioValue } from "@/lib/audio/audioMotionSmoothing";
@@ -350,7 +351,6 @@ export const Player3D: React.FC = () => {
   const [showFullscreenLyrics, setShowFullscreenLyrics] = useState(false);
   const audioLevelRef = useRef(0);
   const audioLastFrameAtRef = useRef(0);
-  const frequencyDataRef = useRef<Uint8Array | null>(null);
   const auraOpacity = useMotionValue(0);
   const coverScale = useMotionValue(1);
 
@@ -384,10 +384,8 @@ export const Player3D: React.FC = () => {
       try {
         const analyser = getAudioAnalyser();
         if (analyser) {
-          if (frequencyDataRef.current?.length !== analyser.frequencyBinCount) {
-            frequencyDataRef.current = new Uint8Array(analyser.frequencyBinCount);
-          }
-          targetLevel = readPlayer3DAudioLevel(analyser, frequencyDataRef.current);
+          // 共享缓冲已经由 hub 采样过，避免同一帧重复调用 getByteFrequencyData
+          targetLevel = readPlayer3DAudioLevel(analyser, analyserHub.getFrequencyData(), true);
         }
       } catch {
         targetLevel = 0;

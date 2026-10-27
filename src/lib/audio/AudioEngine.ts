@@ -3,6 +3,7 @@
  * Centrally manages the global AudioContext and the main audio graph.
  * This class exists outside the React lifecycle to prevent audio glitches during re-renders.
  */
+import { FFT_SIZE, analyserHub } from "./AnalyserHub";
 import { recordNodesCreated, recordNodesReleased } from "./audioGraphStats";
 
 type AudioContextConstructor = new () => AudioContext;
@@ -58,8 +59,9 @@ export class AudioEngine {
     this.masterGain = this.context.createGain();
     this.masterGain.gain.value = this.userVolume;
     this.analyser = this.context.createAnalyser();
-    this.analyser.fftSize = 2048;
+    this.analyser.fftSize = FFT_SIZE;
     this.analyser.smoothingTimeConstant = 0.8;
+    analyserHub.attach(this.analyser);
 
     // Build default graph (EQ -> Gain -> Analyser -> Destination)
     this.initEQNodes();
@@ -291,14 +293,25 @@ export class AudioEngine {
   }
 
   public getByteFrequencyData(array: Uint8Array): void {
-    this.analyser?.getByteFrequencyData(array as Uint8Array<ArrayBuffer>);
+    if (!this.analyser) return;
+
+    // 兼容旧调用：长度匹配时复用 AnalyserHub 的帧缓冲，避免出现第二份 FFT 读取。
+    if (
+      analyserHub.getAnalyser() === this.analyser &&
+      array.length === analyserHub.frequencyBinCount
+    ) {
+      array.set(analyserHub.getFrequencyData());
+      return;
+    }
+
+    this.analyser.getByteFrequencyData(array as Uint8Array<ArrayBuffer>);
   }
 
   public get fftSize(): number {
-    return this.analyser?.fftSize || 2048;
+    return analyserHub.fftSize;
   }
 
   public get frequencyBinCount(): number {
-    return this.analyser?.frequencyBinCount || 1024;
+    return analyserHub.frequencyBinCount;
   }
 }

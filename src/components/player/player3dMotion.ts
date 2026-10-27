@@ -46,7 +46,8 @@ export function isPlayer3DVisualsActive(phase: PlaybackPhase, reducedMotion: boo
 
 export function readPlayer3DAudioLevel(
   analyser: AnalyserNode | null,
-  frequencyData: Uint8Array
+  frequencyData: Uint8Array,
+  alreadySampled = false
 ): number {
   if (
     !analyser ||
@@ -58,7 +59,7 @@ export function readPlayer3DAudioLevel(
 
   try {
     if (analyser.context.state !== "running") return 0;
-    analyser.getByteFrequencyData(frequencyData as Uint8Array<ArrayBuffer>);
+    if (!alreadySampled) analyser.getByteFrequencyData(frequencyData as Uint8Array<ArrayBuffer>);
   } catch {
     return 0;
   }

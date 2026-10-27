@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useCallback } from "react";
 import { useAudioStore } from "@/store/audioStore";
-import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
+import { analyserHub } from "@/lib/audio/AnalyserHub";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import { smoothAudioValue } from "@/lib/audio/audioMotionSmoothing";
 
@@ -36,9 +36,6 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
   const isRunningRef = useRef<boolean>(false);
   const reducedMotionRef = useRef(false);
   const lastFrameAtRef = useRef(0);
-
-  // Audio frequency buffer
-  const freqDataRef = useRef<Uint8Array | null>(null);
 
   // Peak hold and gravity decay physics state
   const peaksRef = useRef<Float32Array>(new Float32Array(barCount));
@@ -100,19 +97,13 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, width, canvasHeight);
 
-      const analyser = getAudioAnalyser();
+      const analyser = analyserHub.getAnalyser();
       const hasLiveAudio =
         isPlaying && analyser && analyser.context.state === "running" && !!currentSong;
 
-      const bufferLength = analyser ? analyser.frequencyBinCount : 512;
-      if (!freqDataRef.current || freqDataRef.current.length !== bufferLength) {
-        freqDataRef.current = new Uint8Array(bufferLength);
-      }
-
-      const freqData = freqDataRef.current;
-      if (hasLiveAudio) {
-        analyser.getByteFrequencyData(freqData as Uint8Array<ArrayBuffer>);
-      }
+      // 共享帧缓冲只读；没有 analyser 时也是固定长度的零值缓冲
+      const freqData = analyserHub.getFrequencyData();
+      const bufferLength = freqData.length;
 
       const peaks = peaksRef.current;
       const peakHoldTimers = peakHoldTimersRef.current;

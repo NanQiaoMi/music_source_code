@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useAudioStore } from "@/store/audioStore";
-import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
+import { analyserHub } from "@/lib/audio/AnalyserHub";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 
 export interface FloatingWaveformGlowProps {
@@ -44,7 +44,6 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
   const idlePhaseRef = useRef<number>(0);
 
   const isPlaying = useAudioStore((state) => state.isPlaying);
@@ -93,18 +92,12 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, width, canvasHeight);
 
-      const analyser = getAudioAnalyser();
+      const analyser = analyserHub.getAnalyser();
       const hasLiveAudio = isPlaying && analyser;
 
-      const bufferLength = analyser ? analyser.frequencyBinCount : 256;
-      if (!dataArrayRef.current || dataArrayRef.current.length !== bufferLength) {
-        dataArrayRef.current = new Uint8Array(bufferLength);
-      }
-
-      const dataArray = dataArrayRef.current;
-      if (hasLiveAudio) {
-        analyser.getByteTimeDomainData(dataArray as Uint8Array<ArrayBuffer>);
-      }
+      // 共享波形缓冲由 AnalyserHub 复用，避免每帧分配新的 Uint8Array
+      const dataArray = analyserHub.getTimeDomainData();
+      const bufferLength = dataArray.length;
 
       const progressRatio = duration > 0 ? Math.min(Math.max(currentTime / duration, 0), 1) : 0;
       const playheadX = progressRatio * width;

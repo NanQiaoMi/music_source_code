@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import React, { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
-import { AudioEngine } from "@/lib/audio/AudioEngine";
+import { analyserHub } from "@/lib/audio/AnalyserHub";
 
 export interface VisualizerConfig {
   enabled: boolean;
@@ -46,36 +46,31 @@ export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ conf
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const prevDataRef = useRef<Uint8Array | null>(null);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
   const processedDataRef = useRef<Uint8Array | null>(null);
 
   useEffect(() => {
     if (!config.enabled) return;
 
-    const engine = AudioEngine.getInstance();
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const bufferLength = engine.frequencyBinCount;
+    const bufferLength = analyserHub.frequencyBinCount;
 
     // Persistent arrays to avoid allocations
-    if (!dataArrayRef.current || dataArrayRef.current.length !== bufferLength) {
-      dataArrayRef.current = new Uint8Array(bufferLength);
-    }
     if (!processedDataRef.current || processedDataRef.current.length !== bufferLength) {
       processedDataRef.current = new Uint8Array(bufferLength);
     }
 
-    const dataArray = dataArrayRef.current;
     const processedData = processedDataRef.current;
 
     const draw = () => {
       if (!canvas) return;
 
-      engine.getByteFrequencyData(dataArray);
+      // 共享帧缓冲只读：不再额外维护一份 dataArray
+      const dataArray = analyserHub.getFrequencyData();
 
       const width = canvas.width;
       const height = canvas.height;
@@ -106,7 +101,7 @@ export const AppleMusicVisualizer: React.FC<AppleMusicVisualizerProps> = ({ conf
 
       for (let i = 0; i < barCount; i++) {
         // Use a subset of frequencies for the bars (lower half for better visuals)
-        const dataIndex = Math.floor((i / barCount) * (bufferLength / 2));
+        const dataIndex = Math.floor((i / barCount) * (dataArray.length / 2));
         const value = processedData[dataIndex] || 0;
         const barHeight = (value / 255) * maxBarHeight;
 

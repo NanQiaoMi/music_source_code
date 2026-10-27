@@ -18,6 +18,7 @@ import { useEmotionStore } from "@/store/emotionStore";
 import { useABLoopStore } from "@/store/abLoopStore";
 import { getAudioEffectsManager } from "@/lib/audio/AudioEffectsManager";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
+import { analyserHub } from "@/lib/audio/AnalyserHub";
 import { playbackMediaBridge } from "@/lib/playback/mediaBridge";
 import {
   playbackRequestCoordinator,
@@ -1868,5 +1869,5 @@ export const useAudioPlayer = () => {
   };
 };
 
-export const getAudioAnalyser = (): AnalyserNode | null => AudioEngine.getInstance().getAnalyser();
+export const getAudioAnalyser = (): AnalyserNode | null => analyserHub.getAnalyser();
 export const getAudioContext = (): AudioContext | null => AudioEngine.getInstance().getContext();

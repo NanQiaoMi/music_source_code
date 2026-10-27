@@ -9,8 +9,8 @@ import { useAudioStore } from "@/store/audioStore";
 import { useVisualizationStore, VisualizationEffect } from "@/store/visualizationStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
-import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
+import { analyserHub } from "@/lib/audio/AnalyserHub";
 import { X, Maximize2, Minimize2, Settings, Video } from "lucide-react";
 const RecordingPanel = dynamic(
   () => import("@/components/features-v7/RecordingPanel").then((m) => m.RecordingPanel),
@@ -104,7 +104,6 @@ export function VisualizationView() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
-  const bufferLengthRef = useRef<number>(0);
   const particlesRef = useRef<unknown[]>([]);
   const nebulaStarsRef = useRef<unknown[]>([]);
   const spectrumStarsRef = useRef<unknown[]>([]);
@@ -206,15 +205,10 @@ export function VisualizationView() {
   useEffect(() => {
     if (currentView !== "visualization") return;
 
-    const analyser = getAudioAnalyser();
-    if (analyser) {
-      analyser.fftSize = 256;
-      bufferLengthRef.current = analyser.frequencyBinCount;
-      dataArrayRef.current = new Uint8Array(bufferLengthRef.current);
-    } else if (!dataArrayRef.current) {
-      // 还没有音频分析器时也准备一份零值频谱：效果照常渲染待机画面，
-      // 否则整块绘制被跳过、整屏纯黑，看起来像出错
-      bufferLengthRef.current = 128;
+    // 效果契约是 128 个频段（历史来自 fftSize=256）。AnalyserHub 固定 2048，
+    // 每帧把 1024 个 bin 按 8:1 平均成 128 段，频段映射与旧版保持一致。
+    // 还没有音频分析器时这份零值频谱也让效果照常渲染待机画面。
+    if (!dataArrayRef.current) {
       dataArrayRef.current = new Uint8Array(128);
     }
 
@@ -360,26 +354,31 @@ export function VisualizationView() {
         shockwavesRef.current = [];
       }
 
-      const analyser = getAudioAnalyser();
-      if (analyser && dataArrayRef.current) {
-        // 分析器可能"后到"：先停在可视化界面看待机画面、之后才开始播放。
-        // 此时待机缓冲的长度与分析器不符，必须先同步，否则 getByteFrequencyData 会抛错
-        if (dataArrayRef.current.length !== analyser.frequencyBinCount) {
-          bufferLengthRef.current = analyser.frequencyBinCount;
-          dataArrayRef.current = new Uint8Array(analyser.frequencyBinCount);
+      const data = dataArrayRef.current;
+      if (data) {
+        // 共享帧缓冲只读；8:1 平均后写进本组件的 128 段复用缓冲，不产生新数组。
+        const source = analyserHub.readFrame().frequency;
+        if (source.length > 0) {
+          const ratio = source.length / data.length;
+          for (let i = 0; i < data.length; i += 1) {
+            const start = Math.floor(i * ratio);
+            const end = Math.min(source.length, Math.max(start + 1, Math.floor((i + 1) * ratio)));
+            let sum = 0;
+            for (let j = start; j < end; j += 1) sum += source[j];
+            data[i] = Math.round(sum / (end - start));
+          }
         }
-        analyser.getByteFrequencyData(dataArrayRef.current as LegacyAny);
-        const albumScale = 1 + ((dataArrayRef.current[2] || 0) / 255) * 0.08;
+
+        const albumScale = 1 + ((data[2] || 0) / 255) * 0.08;
         if (albumArtRef.current) {
           albumArtRef.current.style.transform = `scale(${albumScale})`;
         }
 
         // Smooth data for visualization
-        const raw = dataArrayRef.current;
         const smooth = smoothDataRef.current;
-        const len = Math.min(raw.length, smooth.length);
+        const len = Math.min(data.length, smooth.length);
         for (let i = 0; i < len; i++) {
-          smooth[i] = smooth[i] * 0.7 + (raw[i] / 255) * 0.3;
+          smooth[i] = smooth[i] * 0.7 + (data[i] / 255) * 0.3;
         }
       }
 
