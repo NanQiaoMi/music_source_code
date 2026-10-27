@@ -1,6 +1,6 @@
 # MIMI Music Player 系统架构文档
 
-> **版本**: v1.0 | **创建日期**: 2026-05-10 | **架构类型**: SPA + Static Export + Electron
+> **版本**: v1.0 | **创建日期**: 2026-05-10 | **架构类型**: SPA + Next server（Web）/ Electron 本地 Next 运行时（冻结，D2/S7-4）
 
 ---
 

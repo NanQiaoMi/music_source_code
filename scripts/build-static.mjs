@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 // Build a fresh Next static export into out/ for desktop packaging (S0-3 interim).
 // Sets STATIC_EXPORT=1 because next.config.js only enables output:"export" behind that flag.
-// NOTE: package.json is currently occupied by WIP gesture changes; once S0-1 lands, add
-//   "build:static": "node scripts/build-static.mjs"
-// to package.json and let CI/desktop scripts call npm run build:static.
+// S0-1 landed 2026-10-27: package.json now exposes "build:static" for S7-4 spikes.
+// Desktop release remains frozen by scripts/verify-desktop-release-ready.mjs until D2/S7-4.
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 
