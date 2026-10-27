@@ -34,3 +34,9 @@ Environment: Windows 11, Node v24.16.0 (same as HANDOVER §2/§7).
 - D1/D2/D7 decisions remain pending (V8 dispose / desktop runtime / protected-view subscription rewrite).
 - S0-3 port unification and S0-5/S0-7 partially complete; see TRACKING.
 - Checkpoint --no-verify is documented; first split PR should run husky/lint-staged normally.
+
+## S0-3 / S0-5 follow-up (2026-10-27)
+
+- S0-3 commit 84305f6: start port 3025 (3024 refs = 0); build:electron* now runs verify-desktop-release-ready guard first (exit 1 while frozen); added build:static; verify-static-export refactored to an exported pure evaluateOutFreshness + 5 vitest cases; CLI exits 2 for missing out, 3 for stale; observed exit 2 in main worktree; guard observed exit 1. Deferred: npm start:3025 HTTP 200 (dev server still serving 3025).
+- S0-5 commit 195d996: removed tracked dead files src/app/page.tsx.v7 and src/components/visualization/VisualizationView.tsx.fix (0 code references); added scripts/gc-worktrees.ps1 (dry-run default; observed 25 worktrees, 5 dirty skipped, clean candidates listed). Worktree <=5 and root-file cleanup remain blocked on Q22 authorization.
+- Concurrency note: src/app/dev/lyric-stage/page.tsx was recreated at 13:47 by another active session (temporary handwritten-MV QA route); intentionally left untracked and not committed.
