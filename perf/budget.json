@@ -1,0 +1,47 @@
+{
+  "$schema": "internal://bundle-budget-v1",
+  "generatedAt": "2026-10-21",
+  "source": "docs/nbl/plans/2026-10-21-arch-perf-execution/S4-bundle-loading.md §1/§5 + D audit",
+  "thresholds": {
+    "rootMainRawKB": {
+      "baseline": 969.3,
+      "target": 650,
+      "hardMax": 800
+    },
+    "rootMainGzipKB": {
+      "baseline": 296.8,
+      "target": 190,
+      "hardMax": 230
+    },
+    "scriptCount": {
+      "baseline": 23,
+      "target": 12,
+      "hardMax": 16
+    },
+    "firstLoadRawKB": {
+      "baseline": 1996.7,
+      "target": 1700,
+      "hardMax": 2000
+    },
+    "firstLoadGzipKB": {
+      "baseline": 615.7,
+      "target": 500,
+      "hardMax": 650
+    },
+    "cssRawKB": {
+      "baseline": 227.4,
+      "target": 210,
+      "hardMax": 230
+    },
+    "maxAsyncChunkKB": {
+      "baseline": 333.5,
+      "target": 350,
+      "hardMax": 400
+    },
+    "publicMB": {
+      "baseline": 58.4,
+      "target": 40,
+      "hardMax": 45
+    }
+  }
+}

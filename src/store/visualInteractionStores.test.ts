@@ -4,6 +4,7 @@ import type { EffectPlugin, EffectPreset } from "@/lib/visualization/types";
 import type { Song } from "@/types/song";
 import { setEmotionCallbacks, useEmotionStore } from "./emotionStore";
 import { useAnimationStore } from "./animationStore";
+import { useGestureSettingsStore } from "./gestureSettingsStore";
 import { useGestureStore } from "./gestureStore";
 import { lyricPresets, useLyricSettingsStore } from "./lyricSettingsStore";
 import { usePresetStore } from "./presetStore";
@@ -38,6 +39,7 @@ function resetVisualStores() {
   useEmotionStore.setState(useEmotionStore.getInitialState(), true);
   useAnimationStore.setState(useAnimationStore.getInitialState(), true);
   useGestureStore.setState(useGestureStore.getInitialState(), true);
+  useGestureSettingsStore.setState(useGestureSettingsStore.getInitialState(), true);
   useLyricSettingsStore.setState(useLyricSettingsStore.getInitialState(), true);
   usePresetStore.setState(usePresetStore.getInitialState(), true);
   useVisualizationStore.setState(useVisualizationStore.getInitialState(), true);
@@ -231,33 +233,49 @@ describe("visual interaction stores", () => {
     expect(persisted).not.toBeNull();
   });
 
-  it("updates gesture feedback state and resets only transient gesture recognition fields", () => {
-    const store = useGestureStore.getState();
+  it("persists gesture settings and resets only transient gesture runtime fields", () => {
+    const settings = useGestureSettingsStore.getState();
+    settings.setEnabled(true);
+    settings.update({ sensitivity: 1.5, volumeStep: 0.1 });
+    settings.setBinding("swipe_left", "volume_up");
 
-    store.toggleGestureEnabled();
-    store.setCursorPosition(0.2, 0.8);
-    store.setLastGesture("heart");
-    store.setGestureTriggered(true);
-    store.setGestureIntensity(0.9);
-    store.setShowVolumePanel(true);
-    store.setVolumePanelValue(0.7);
-    store.setShowSeekPreview(true);
-    store.setSeekPreviewTime(42);
-    store.setSeekPreviewLyric("chorus");
-    store.resetGesture();
+    const store = useGestureStore.getState();
+    store.setCursor(0.2, 0.8);
+    store.setHandPresent(true);
+    store.setMode("pointer");
+    store.setDwell({ command: "fist_hold", progress: 0.5 });
+    const event = store.pushEvent({
+      action: "next_track",
+      command: "swipe_left",
+      label: "下一首",
+      detail: "Song A",
+      tone: "success",
+    });
+
+    expect(event.seq).toBe(1);
+    expect(useGestureStore.getState()).toMatchObject({
+      lastEvent: { seq: 1, action: "next_track", label: "下一首" },
+      eventSeq: 1,
+      cursor: { x: 0.2, y: 0.8 },
+    });
+
+    store.resetRuntime();
 
     expect(useGestureStore.getState()).toMatchObject({
-      isEnabled: true,
-      cursorPosition: { x: 0.2, y: 0.8 },
-      lastGesture: null,
-      gestureTriggered: false,
-      gestureIntensity: 0,
-      showVolumePanel: true,
-      volumePanelValue: 0.7,
-      showSeekPreview: true,
-      seekPreviewTime: 42,
-      seekPreviewLyric: "chorus",
+      cursor: { x: 0.5, y: 0.5 },
+      handPresent: false,
+      mode: "idle",
+      dwell: null,
+      lastEvent: null,
+      eventSeq: 1,
     });
+    expect(useGestureSettingsStore.getState()).toMatchObject({
+      enabled: true,
+      sensitivity: 1.5,
+      volumeStep: 0.1,
+      bindings: { swipe_left: "volume_up" },
+    });
+    expect(localStorage.getItem("mimi-gesture-settings-v1")).not.toBeNull();
   });
 
   it("sorts animation keyframes, applies presets, and resets timeline state", () => {

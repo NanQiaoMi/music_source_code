@@ -8,6 +8,9 @@ import {
   shuffleAfter,
 } from "@/lib/queue/queueActions";
 import { Song } from "@/types/song";
+import type { PersistCandidate } from "@/lib/storage/quotaPolicy";
+import { writeWithPolicy } from "@/lib/storage/quotaPolicy";
+import { reportStorageDegraded } from "@/lib/storage/degradedNotifier";
 
 export interface HistorySong {
   id: string;
@@ -49,7 +52,9 @@ function sanitizePersistedSong(song: Song): PersistedQueueSong {
   };
 }
 
-function toMinimalPersistedSong(song: PersistedQueueSong): MinimalPersistedQueueSong {
+type PersistedQueueSongLike = PersistedQueueSong | MinimalPersistedQueueSong;
+
+function toMinimalPersistedSong(song: PersistedQueueSongLike): MinimalPersistedQueueSong {
   return {
     id: song.id,
     title: song.title,
@@ -58,31 +63,74 @@ function toMinimalPersistedSong(song: PersistedQueueSong): MinimalPersistedQueue
   };
 }
 
-function clonePersistedValue(value: unknown) {
-  return JSON.parse(JSON.stringify(value));
+interface PersistedQueueEnvelope {
+  state?: {
+    queue?: PersistedQueueSongLike[];
+    history?: HistorySong[];
+    currentIndex?: number;
+    playThroughMode?: "normal" | "play-through";
+  };
+  version?: number;
 }
 
-function tryPersistQueueState(name: string, value: unknown) {
-  const serialized = JSON.stringify(value);
-  const currentValue = localStorage.getItem(name);
-  if (currentValue && currentValue.length > serialized.length) {
-    localStorage.removeItem(name);
+function cloneQueueEnvelope(value: unknown): PersistedQueueEnvelope {
+  return JSON.parse(JSON.stringify(value)) as PersistedQueueEnvelope;
+}
+
+function serializeQueueEnvelope(envelope: PersistedQueueEnvelope): string {
+  return JSON.stringify(envelope);
+}
+
+/**
+ * S1-3: degrade from the full snapshot to smaller payloads, but NEVER to an empty queue.
+ * The previous localStorage value is kept untouched until one candidate write succeeds.
+ */
+function buildQueuePersistCandidates(value: unknown): PersistCandidate[] {
+  const candidates: PersistCandidate[] = [
+    { value: serializeQueueEnvelope(cloneQueueEnvelope(value)) },
+  ];
+
+  const trimmedHistory = cloneQueueEnvelope(value);
+  if (trimmedHistory.state) {
+    trimmedHistory.state.history = Array.isArray(trimmedHistory.state.history)
+      ? trimmedHistory.state.history.slice(0, 5)
+      : [];
   }
-  localStorage.setItem(name, serialized);
-}
+  candidates.push({
+    value: serializeQueueEnvelope(trimmedHistory),
+    degradedTo: "history-trimmed",
+  });
 
-function retryPersistQueueState(name: string, value: unknown) {
-  localStorage.removeItem(name);
-  tryPersistQueueState(name, value);
-}
+  const minimalSongs = cloneQueueEnvelope(value);
+  if (minimalSongs.state) {
+    minimalSongs.state.history = [];
+    if (Array.isArray(minimalSongs.state.queue)) {
+      minimalSongs.state.queue = minimalSongs.state.queue.map(toMinimalPersistedSong);
+    }
+  }
+  candidates.push({
+    value: serializeQueueEnvelope(minimalSongs),
+    degradedTo: "minimal-songs",
+  });
 
-function isQuotaExceededError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "name" in error &&
-    error.name === "QuotaExceededError"
-  );
+  const indexOnly = cloneQueueEnvelope(value);
+  if (indexOnly.state) {
+    indexOnly.state.history = [];
+    if (Array.isArray(indexOnly.state.queue)) {
+      indexOnly.state.queue = indexOnly.state.queue.map(toMinimalPersistedSong);
+    }
+    const queueLength = Array.isArray(indexOnly.state.queue) ? indexOnly.state.queue.length : 0;
+    indexOnly.state.currentIndex = clampQueueIndex(
+      Number(indexOnly.state.currentIndex) || 0,
+      queueLength
+    );
+  }
+  candidates.push({
+    value: serializeQueueEnvelope(indexOnly),
+    degradedTo: "index-only",
+  });
+
+  return candidates;
 }
 
 function clampQueueIndex(index: number, length: number): number {
@@ -341,12 +389,15 @@ export const useQueueStore = create<QueueState>()(
     }),
     {
       name: "queue-store-v5",
-      partialize: (state) => ({
-        queue: state.queue.slice(0, 200).map(sanitizePersistedSong),
-        currentIndex: Math.min(state.currentIndex, 199),
-        history: state.history.slice(0, 30),
-        playThroughMode: state.playThroughMode,
-      }),
+      partialize: (state) => {
+        const persistedQueue = state.queue.slice(0, 200).map(sanitizePersistedSong);
+        return {
+          queue: persistedQueue,
+          currentIndex: clampQueueIndex(state.currentIndex, persistedQueue.length),
+          history: state.history.slice(0, 30),
+          playThroughMode: state.playThroughMode,
+        };
+      },
       storage: {
         getItem: (name) => {
           try {
@@ -357,50 +408,20 @@ export const useQueueStore = create<QueueState>()(
           }
         },
         setItem: (name, value) => {
-          try {
-            tryPersistQueueState(name, value);
-          } catch (_error) {
-            if (isQuotaExceededError(_error)) {
-              console.warn("Queue store quota exceeded, aggressively clearing history...");
-              try {
-                const state = clonePersistedValue(value);
-                if (state.state && state.state.history) {
-                  state.state.history = state.state.history.slice(0, 5);
-                }
-                retryPersistQueueState(name, state);
-              } catch {
-                console.warn(
-                  "Failed to save even with 5 history items, clearing history and shrinking queue."
-                );
-                try {
-                  const state = clonePersistedValue(value);
-                  if (state.state) {
-                    state.state.history = [];
-                    if (Array.isArray(state.state.queue)) {
-                      state.state.queue = state.state.queue.map(toMinimalPersistedSong);
-                    }
-                  }
-                  retryPersistQueueState(name, state);
-                } catch {
-                  console.warn(
-                    "Failed to save minimized queue store, persisting index only as final fallback."
-                  );
-                  try {
-                    const state = clonePersistedValue(value);
-                    if (state.state) {
-                      state.state.history = [];
-                      state.state.queue = [];
-                      state.state.currentIndex = 0;
-                    }
-                    retryPersistQueueState(name, state);
-                  } catch (finalError) {
-                    console.error("Critical storage failure in queue store:", finalError);
-                  }
-                }
-              }
-            } else {
-              console.warn("Failed to save queue store:", _error);
+          const outcome = writeWithPolicy(buildQueuePersistCandidates(value), (serialized) => {
+            localStorage.setItem(name, serialized);
+          });
+          if (!outcome.ok) {
+            reportStorageDegraded({ key: name, reason: outcome.reason });
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(
+                new CustomEvent("mimi:queue-persist-failed", { detail: { key: name } })
+              );
             }
+            return;
+          }
+          if (outcome.degradedTo) {
+            reportStorageDegraded({ key: name, reason: "quota", degradedTo: outcome.degradedTo });
           }
         },
         removeItem: (name) => localStorage.removeItem(name),

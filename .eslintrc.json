@@ -31,6 +31,17 @@
       {
         "ignore": ["directory", "webkitdirectory", "jsx", "global"]
       }
+    ],
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@/store/coordinator", "@/store/coordinator/*", "**/store/coordinator/*"],
+            "message": "src/store/coordinator is a deprecated 0-import shell; use S6 domain use-cases instead."
+          }
+        ]
+      }
     ]
   }
 }

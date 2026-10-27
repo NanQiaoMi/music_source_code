@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { usePlayerStore } from "@/store/playerStore";
+import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 import { useUIStore } from "@/store/uiStore";
 import type { Song } from "@/types/song";
 
@@ -88,6 +89,9 @@ const resetPlaybackStores = () => {
     isLoading: false,
   });
   useQueueStore.setState({ queue: [], currentIndex: 0 });
+  // 2026-10-12 起 togglePlaybackIntent 改为读取 playback runtime 的 shouldPlay；
+  // 该测试直接 setState 模拟 isPlaying 时也要同步意图，否则首击会变成“播放”而不是“暂停”。
+  usePlaybackRuntimeStore.setState({ shouldPlay: false });
   useUIStore.setState((state) => ({
     panels: { ...state.panels, queue: false },
   }));
@@ -222,10 +226,13 @@ describe("DataManagerPlayerDock", () => {
       currentIndex: 0,
     });
     useQueueStore.setState({ queue: [firstSong, secondSong], currentIndex: 0 });
+    usePlaybackRuntimeStore.setState({ shouldPlay: true });
     root = await renderDock(container);
 
     await clickButton(container.querySelector<HTMLButtonElement>('[aria-label="暂停"]'));
-    expect(useAudioStore.getState().isPlaying).toBe(false);
+    // 2026-10-12 起“是否播放”由 playback runtime 的 shouldPlay 表达；audioStore/playerStore
+    // 的 isPlaying 要等真实 media 事件才会翻转，因此断言播放意图而不是镜像字段。
+    expect(usePlaybackRuntimeStore.getState().shouldPlay).toBe(false);
 
     await clickButton(container.querySelector<HTMLButtonElement>('[aria-label="下一首"]'));
     expect(useAudioStore.getState().currentSong?.id).toBe(secondSong.id);

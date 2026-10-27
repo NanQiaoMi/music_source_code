@@ -9,6 +9,7 @@ import { useMediaSession } from "@/hooks/useMediaSession";
 import { useElectron } from "@/hooks/useElectron";
 import { bootstrapApp } from "@/lib/bootstrap";
 import { compactExistingStorage } from "@/lib/storage/safeStorage";
+import { useUIStore } from "@/store/uiStore";
 
 const FloatingPlayer = dynamic(
   () => import("@/components/player/FloatingPlayer").then((mod) => mod.FloatingPlayer),
@@ -33,10 +34,12 @@ export function GlobalClientComponents() {
   useMediaSession();
   useElectron();
   const pathname = usePathname();
+  const currentView = useUIStore((state) => state.currentView);
   const isDataManagerRoute =
     pathname === "/data-manager" ||
     pathname === "/data-manager/" ||
     pathname?.startsWith("/data-manager/");
+  const isImmersiveVisualization = !isDataManagerRoute && currentView === "visualization";
 
   // 应用初始化时自动自愈清理历史膨胀存储
   useEffect(() => {
@@ -47,12 +50,18 @@ export function GlobalClientComponents() {
   return (
     <>
       <TopEdgeSearchTrigger />
-      {isDataManagerRoute ? <DataManagerPlayerDock /> : <FloatingPlayer />}
+      {isDataManagerRoute ? (
+        <DataManagerPlayerDock />
+      ) : (
+        <div hidden={isImmersiveVisualization}>
+          <FloatingPlayer />
+        </div>
+      )}
       <AchievementToastContainer />
       <GlassToastContainer />
       <GestureController />
       <GestureFeedback />
-      <AILinerNotes />
+      {!isImmersiveVisualization && <AILinerNotes />}
       <SourceManagementModal />
     </>
   );

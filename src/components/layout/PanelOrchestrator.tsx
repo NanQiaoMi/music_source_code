@@ -59,6 +59,10 @@ const FACTORIES = {
     import("@/components/settings/KeyboardShortcutsHelp").then((m) => ({
       default: m.KeyboardShortcutsHelp,
     })),
+  gestureSettings: () =>
+    import("@/components/settings/GestureSettings").then((m) => ({
+      default: m.GestureSettings,
+    })),
   backupRestore: () =>
     import("@/components/library/BackupRestorePanel").then((m) => ({
       default: m.BackupRestorePanel,
@@ -307,6 +311,12 @@ export function PanelOrchestrator() {
         isOpen={panels.keyboardShortcuts}
         onClose={() => closePanel("keyboardShortcuts")}
         component={PANEL_COMPONENTS.keyboardShortcuts}
+      />
+      <LazyPanel
+        name="gestureSettings"
+        isOpen={panels.gestureSettings}
+        onClose={() => closePanel("gestureSettings")}
+        component={PANEL_COMPONENTS.gestureSettings}
       />
 
       {/* Data and stats */}

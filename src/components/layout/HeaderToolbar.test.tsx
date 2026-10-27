@@ -52,12 +52,19 @@ vi.mock("@/store/userAccountStore", () => ({
   }),
 }));
 
-vi.mock("@/store/gestureStore", () => ({
-  useGestureStore: () => ({
-    isEnabled: false,
-    toggleGestureEnabled: mocks.toggleGestureEnabled,
-  }),
-}));
+vi.mock("@/store/gestureSettingsStore", () => {
+  const state = {
+    enabled: false,
+    toggleEnabled: mocks.toggleGestureEnabled,
+  };
+  const useGestureSettingsStore = (selector?: (input: typeof state) => unknown) =>
+    selector ? selector(state) : state;
+  return {
+    useGestureSettingsStore: Object.assign(useGestureSettingsStore, {
+      getState: () => state,
+    }),
+  };
+});
 
 vi.mock("@/components/layout/Logo", () => ({
   Logo: () => <div data-testid="logo" />,

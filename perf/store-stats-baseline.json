@@ -1,0 +1,224 @@
+{
+  "generatedAt": "2026-10-21T15:16:10.770Z",
+  "stores": {
+    "count": 60,
+    "names": [
+      "abLoopStore",
+      "aiStore",
+      "animationStore",
+      "audioEffectsStore",
+      "audioProcessingStore",
+      "audioSourceStore",
+      "audioStore",
+      "backupRestoreStore",
+      "crossfadeStore",
+      "dsdProcessingStore",
+      "emotionStore",
+      "eqStore",
+      "favoritesStore",
+      "fingerprintStore",
+      "floatingDebugStore",
+      "formatConversionStore",
+      "gestureSettingsStore",
+      "gestureStore",
+      "healthCheckStore",
+      "hiresStore",
+      "keyboardShortcutsStore",
+      "knowledgeStore",
+      "libraryHealthStore",
+      "libraryManagerStore",
+      "linerNotesStore",
+      "listeningJournalStore",
+      "lyricSettingsStore",
+      "lyricsCoverStore",
+      "lyricsSearchStore",
+      "metadataEditorStore",
+      "performanceV8Store",
+      "playbackRuntimeStore",
+      "playerSkinStore",
+      "playerStore",
+      "playlistGroupStore",
+      "playlistStore",
+      "posterV2Store",
+      "presetStore",
+      "professionalModeStore",
+      "queueStore",
+      "recommendationStore",
+      "recordingStore",
+      "searchStore",
+      "sleepTimerStore",
+      "smartMixStore",
+      "smartPlaylistStore",
+      "sourceConfigStore",
+      "spectrumStore",
+      "statsAchievementsStore",
+      "trackCuttingStore",
+      "uiStore",
+      "useAIAgentStore",
+      "useDataManagerStore",
+      "useOfflineDownloadStore",
+      "useStorageAnalyticsStore",
+      "userAccountStore",
+      "visualSettingsStore",
+      "visualizationStore",
+      "visualizationV8Store",
+      "waveformStore"
+    ],
+    "persistCount": 44,
+    "persistKeys": [
+      "Hi-Res标识",
+      "audio-effects-store-v2",
+      "audio-processing-store-v5",
+      "audio-store-v4",
+      "backup-restore-store-v4",
+      "crossfade-store-v5",
+      "dsd-processing-store-v5",
+      "eq-store",
+      "favorites-store",
+      "fingerprint-store-v5",
+      "format-conversion-store-v5",
+      "hires-store-v5",
+      "journal-store-v1",
+      "keyboard-shortcuts-store-v1",
+      "library-health-store-v5",
+      "library-manager-store-v4",
+      "lyric-settings-storage",
+      "lyrics-cover-store-v4",
+      "lyrics-search-storage",
+      "metadata-editor-store-v5",
+      "mimi-ai-store",
+      "mimi-gesture-settings-v1",
+      "mimi-knowledge-storage-v3",
+      "mimi-liner-notes-store",
+      "mimi-user-account-storage",
+      "mimi_ai_agent_chat_store_v1",
+      "mimi_audio_source_settings",
+      "mimi_datamanager_hub_store_v1",
+      "performance-v8-store",
+      "player-skin-store-v1",
+      "player-store",
+      "playlist-group-store-v1",
+      "queue-store-v5",
+      "recommendation-storage",
+      "smart-playlist-store-v4",
+      "spectrum-store-v5",
+      "stats-achievements-store-v4",
+      "track-cutting-store-v5",
+      "ui-store-v2",
+      "vibe-emotion-store-v2",
+      "vibe_source_config_v1",
+      "visual-settings-v4",
+      "visualization-v8-store",
+      "waveform-store-v5"
+    ]
+  },
+  "subscriptions": {
+    "totalCalls": 645,
+    "wholeCalls": 161,
+    "selectorCalls": 484,
+    "wholeOnlyFiles": 59,
+    "wholeRatioPct": 25,
+    "topWholeFiles": [
+      [
+        "src/components/library/hub/LxMusicSearchTab.tsx",
+        6
+      ],
+      [
+        "src/components/library/hub/CloudAssetsTab.tsx",
+        5
+      ],
+      [
+        "src/components/library/UnifiedDataManagerHub.tsx",
+        5
+      ],
+      [
+        "src/components/audio/HiResBadge.tsx",
+        4
+      ],
+      [
+        "src/components/layout/HeaderToolbar.tsx",
+        4
+      ],
+      [
+        "src/components/emotion/EmotionVisualizer.tsx",
+        3
+      ],
+      [
+        "src/components/layout/AIToolbox.tsx",
+        3
+      ],
+      [
+        "src/components/layout/HomeView.tsx",
+        3
+      ],
+      [
+        "src/components/library/hub/DataDashboardTab.tsx",
+        3
+      ],
+      [
+        "src/components/library/hub/HealthStorageTab.tsx",
+        3
+      ],
+      [
+        "src/components/library/hub/PlaylistHubTab.tsx",
+        3
+      ],
+      [
+        "src/components/library/LibraryManagerPanel.tsx",
+        3
+      ],
+      [
+        "src/components/player/PlayerSkinsPanel.tsx",
+        3
+      ],
+      [
+        "src/components/player/QueuePanel.tsx",
+        3
+      ],
+      [
+        "src/components/player/SearchPanel.tsx",
+        3
+      ]
+    ]
+  },
+  "storeGraph": {
+    "edges": 25,
+    "edgesAllStatic": 25,
+    "edgeList": [
+      "audioStore -> eqStore",
+      "audioStore -> playbackRuntimeStore",
+      "audioStore -> playerStore",
+      "audioStore -> playlistStore",
+      "audioStore -> queueStore",
+      "audioStore -> recommendationStore",
+      "emotionStore -> aiStore",
+      "healthCheckStore -> libraryHealthStore",
+      "healthCheckStore -> playlistStore",
+      "knowledgeStore -> aiStore",
+      "linerNotesStore -> aiStore",
+      "playerStore -> playbackRuntimeStore",
+      "playlistStore -> audioStore",
+      "sleepTimerStore -> audioStore",
+      "smartMixStore -> playlistGroupStore",
+      "smartMixStore -> queueStore",
+      "smartPlaylistStore -> queueStore",
+      "smartPlaylistStore -> statsAchievementsStore",
+      "sourceConfigStore -> userAccountStore",
+      "useAIAgentStore -> aiStore",
+      "useAIAgentStore -> audioStore",
+      "useAIAgentStore -> emotionStore",
+      "useAIAgentStore -> favoritesStore",
+      "useAIAgentStore -> uiStore",
+      "useAIAgentStore -> useOfflineDownloadStore"
+    ],
+    "sccCount": 1
+  },
+  "getStateByLayer": {
+    "app": 1,
+    "components": 126,
+    "hooks": 83,
+    "lib": 25,
+    "services": 29,
+    "store": 94
+  }
+}

@@ -1,86 +1,112 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [master]
   pull_request:
-    branches:
-      - main
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  build-and-test:
+  verify:
+    name: Verify (type/lint/test/build/budget)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-
+          cache: npm
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
-
-      - name: Run Lint
-        run: npm run lint
-
-      - name: Run Tests (Vitest)
-        run: npm run test
+      - name: Cache Next build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .next/cache
+            tsconfig.tsbuildinfo
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json','next.config.js','tsconfig.json') }}-${{ github.sha }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ hashFiles('package-lock.json','next.config.js','tsconfig.json') }}-
+      - name: Typecheck
+        run: npx tsc --noEmit --incremental false --pretty false
+      - name: Lint (src, 0 warnings)
+        run: npx eslint src --max-warnings=0 --report-unused-disable-directives
+      - name: Unit tests
+        run: npm run test -- --run
+      - name: Production build
+        run: npm run build
+      - name: Bundle budget (report-only until S4 rebaseline; TODO turn into --check)
+        run: node scripts/perf/bundle-budget.mjs --json perf/bundle-report.json
+      - name: Store stats baseline gate (no regression vs committed baseline)
+        run: node scripts/perf/report-store-stats.mjs --check
+      - name: Docs facts
+        run: node scripts/check-docs-facts.mjs
 
   desktop-windows:
+    name: Desktop package (manual/tag only)
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    needs: verify
     runs-on: windows-latest
+    timeout-minutes: 60
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-
+          node-version: '20'
+          cache: npm
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
+          python-version: '3.11'
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
-
       - name: Install backend build dependencies
         run: |
           python -m pip install -r backend/requirements-minimal.txt
           python -m pip install pyinstaller
-
+      - name: Desktop release readiness guard (S0-3)
+        run: node scripts/verify-desktop-release-ready.mjs
       - name: Build Windows desktop artifacts
         shell: pwsh
         run: ./scripts/build-desktop-win.ps1 -SkipInstall
         env:
-          VIBE_SKIP_PYTHON_INSTALL: "1"
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          CSC_LINK: ""
-          CSC_KEY_PASSWORD: ""
-
+          VIBE_SKIP_PYTHON_INSTALL: '1'
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          CSC_LINK: ''
+          CSC_KEY_PASSWORD: ''
+      - name: Verify static export freshness
+        run: node scripts/verify-static-export.mjs
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mimimusic-windows-x64-v0.2.1
+          name: mimimusic-windows-x64
           path: |
             dist-electron/*.exe
             dist-electron/SHA256SUMS.txt
           if-no-files-found: error
 
   deploy-to-vercel:
-    needs: build-and-test
+    name: Deploy to Vercel (manual only)
+    needs: verify
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 20
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
       - name: Deploy to Vercel Action
         uses: amondnet/vercel-action@v25
         with:

@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { useQueueStore } from "./queueStore";
 
 function createMockSong(id: string) {
@@ -118,7 +118,18 @@ describe("queueStore", () => {
       expect(parsed.state.queue[0].bitRate).toBeUndefined();
     });
 
-    it("should drop persisted queue when quota is still exceeded after clearing history", () => {
+    it("keeps the previous snapshot and never persists an empty queue when quota is exhausted", () => {
+      const oldRaw = JSON.stringify({
+        state: {
+          queue: [createMockSong("old")],
+          currentIndex: 0,
+          history: [],
+          playThroughMode: "normal",
+        },
+        version: 0,
+      });
+      localStorage.setItem("queue-store-v5", oldRaw);
+
       const store = useQueueStore.getState();
       const originalSetItem = Storage.prototype.setItem;
 
@@ -142,11 +153,10 @@ describe("queueStore", () => {
       expect(() => store.setQueue(songs)).not.toThrow();
 
       const persisted = localStorage.getItem("queue-store-v5");
-      expect(persisted).not.toBeNull();
-
+      expect(persisted).toBe(oldRaw);
       const parsed = JSON.parse(persisted!);
-      expect(parsed.state.queue).toEqual([]);
-      expect(parsed.state.currentIndex).toBe(0);
+      expect(parsed.state.queue).toHaveLength(1);
+      expect(parsed.state.queue).not.toEqual([]);
     });
 
     it("should persist play-through mode with the queue state", () => {
@@ -334,6 +344,89 @@ describe("queueStore", () => {
       const queue = useQueueStore.getState().queue;
       const ids = queue.map((s) => s.id).sort();
       expect(ids).toEqual(["1", "2", "3", "4", "5"]);
+    });
+  });
+
+  describe("quota degradation (S1-3)", () => {
+    it("keeps the previous snapshot and never writes an empty queue when quota persists", () => {
+      const oldRaw = JSON.stringify({
+        state: {
+          queue: [createMockSong("old")],
+          currentIndex: 0,
+          history: [],
+          playThroughMode: "normal",
+        },
+        version: 0,
+      });
+      localStorage.setItem("queue-store-v5", oldRaw);
+
+      const degradedEvents: CustomEvent[] = [];
+      const handler = (event: Event) => degradedEvents.push(event as CustomEvent);
+      window.addEventListener("mimi:storage-degraded", handler);
+
+      const originalSetItem = Storage.prototype.setItem;
+      const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+        this: Storage,
+        key: string,
+        value: string
+      ) {
+        if (key === "queue-store-v5") throw new DOMException("quota", "QuotaExceededError");
+        return originalSetItem.call(this, key, value);
+      });
+
+      useQueueStore.getState().setQueue([createMockSong("1"), createMockSong("2")]);
+
+      expect(localStorage.getItem("queue-store-v5")).toBe(oldRaw);
+      expect(degradedEvents.length).toBeGreaterThan(0);
+
+      spy.mockRestore();
+      window.removeEventListener("mimi:storage-degraded", handler);
+    });
+
+    it("falls back to a smaller payload instead of clearing the queue", () => {
+      localStorage.setItem(
+        "queue-store-v5",
+        JSON.stringify({
+          state: {
+            queue: [createMockSong("old")],
+            currentIndex: 0,
+            history: [],
+            playThroughMode: "normal",
+          },
+          version: 0,
+        })
+      );
+
+      const originalSetItem = Storage.prototype.setItem;
+      let attempts = 0;
+      const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+        this: Storage,
+        key: string,
+        value: string
+      ) {
+        if (key === "queue-store-v5") {
+          attempts += 1;
+          if (attempts === 1) throw new DOMException("quota", "QuotaExceededError");
+        }
+        return originalSetItem.call(this, key, value);
+      });
+
+      const history = Array.from({ length: 30 }, (_, index) => ({
+        ...createMockSong("h" + index),
+        playedAt: index,
+      }));
+      useQueueStore.setState({
+        queue: [createMockSong("1"), createMockSong("2")],
+        currentIndex: 1,
+        history,
+      });
+      useQueueStore.getState().setPlayThroughMode("normal");
+
+      const parsed = JSON.parse(localStorage.getItem("queue-store-v5") || "{}");
+      expect(parsed.state.queue.length).toBeGreaterThan(0);
+      expect(attempts).toBeGreaterThan(1);
+
+      spy.mockRestore();
     });
   });
 });

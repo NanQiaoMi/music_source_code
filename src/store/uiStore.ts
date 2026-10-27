@@ -16,6 +16,7 @@ export type PanelName =
   | "eq"
   | "visualSettings"
   | "keyboardShortcuts"
+  | "gestureSettings"
   | "listeningHistory"
   | "listeningJournal"
   | "dailyRecommendation"
@@ -60,6 +61,7 @@ export const PANEL_NAMES: readonly PanelName[] = [
   "eq",
   "visualSettings",
   "keyboardShortcuts",
+  "gestureSettings",
   "listeningHistory",
   "listeningJournal",
   "dailyRecommendation",

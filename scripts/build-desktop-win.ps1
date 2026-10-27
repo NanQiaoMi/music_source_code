@@ -42,7 +42,8 @@ if (-not (Test-Path "backend\dist\backend.exe")) {
   throw "backend\dist\backend.exe was not generated"
 }
 
-Invoke-Step "Build static Next.js application" { npm run build }
+Invoke-Step "Check desktop release readiness (S0-3)" { node scripts/verify-desktop-release-ready.mjs }
+Invoke-Step "Build Next.js application" { npm run build }
 Invoke-Step "Build Windows x64 portable and NSIS packages" {
   npx electron-builder --win --x64 --publish never
 }

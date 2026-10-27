@@ -32,7 +32,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { useUIStore, PanelName } from "@/store/uiStore";
-import { useGestureStore } from "@/store/gestureStore";
+import { useGestureSettingsStore } from "@/store/gestureSettingsStore";
 import { useVisualizationV8Store } from "@/store/visualizationV8Store";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { HEADER_COMPACT_QUERY } from "@/components/layout/headerBreakpoints";
@@ -100,7 +100,8 @@ export function AppleUnifiedNavIsland({
   const isSearchOpen = isSearchOpenProp ?? storeSearchOpen;
   const storeHasToast = Array.isArray(toasts) && toasts.length > 0;
   const hasActiveToast = hasActiveToastProp ?? storeHasToast;
-  const { isEnabled: isGestureEnabled, toggleGestureEnabled } = useGestureStore();
+  const isGestureEnabled = useGestureSettingsStore((state) => state.enabled);
+  const toggleGestureEnabled = useGestureSettingsStore((state) => state.toggleEnabled);
   // 微按钮组收起（并让出左侧计数）的断点由 HeaderToolbar 共用，数字来历见 headerBreakpoints.ts：
   // 岛收起后宽 612，配上右集群全量标签 446，正好让「岛居中」在 1600 以上成立。
   const isCompactHeader = useMediaQuery(HEADER_COMPACT_QUERY);
@@ -536,7 +537,7 @@ export function AppleUnifiedNavIsland({
                     )}
                   </QuickActionMenuItem>
                   <QuickActionMenuItem
-                    title="隔空手势控制"
+                    title={isGestureEnabled ? "关闭隔空手势" : "开启隔空手势"}
                     active={isGestureEnabled}
                     onClick={() => {
                       toggleGestureEnabled();
@@ -544,6 +545,15 @@ export function AppleUnifiedNavIsland({
                     }}
                   >
                     <Hand className="w-4 h-4" />
+                  </QuickActionMenuItem>
+                  <QuickActionMenuItem
+                    title="手势设置"
+                    onClick={() => {
+                      openPanel("gestureSettings");
+                      setMoreOpen(false);
+                    }}
+                  >
+                    <Settings className="w-4 h-4" />
                   </QuickActionMenuItem>
                   <QuickActionMenuItem
                     title="键盘快捷键"

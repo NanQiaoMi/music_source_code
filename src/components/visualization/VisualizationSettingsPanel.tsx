@@ -5,6 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useVisualizationStore } from "@/store/visualizationStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { Settings, X, Save, Trash2, Sparkles } from "lucide-react";
+import {
+  HANDWRITTEN_FONT_LABELS,
+  HANDWRITTEN_PALETTES,
+} from "@/components/visualization/effects/handwrittenPalette";
 
 interface VisualizationSettingsPanelProps {
   isOpen: boolean;
@@ -741,9 +745,9 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   <div className="flex items-center justify-between">
                     <label className="text-sm text-white/80">字体风格</label>
                     <span className="text-xs text-amber-300/80 font-mono bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                      {["现代极简", "经典雅致", "清雅文楷", "极简几何"][
+                      {HANDWRITTEN_FONT_LABELS[
                         Math.round(effectSettings.cinematicLyricDrift.fontStyle || 0)
-                      ] || "现代极简"}
+                      ] || HANDWRITTEN_FONT_LABELS[0]}
                     </span>
                   </div>
                   <input
@@ -765,9 +769,9 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   <div className="flex items-center justify-between">
                     <label className="text-sm text-white/80">色彩风格</label>
                     <span className="text-xs text-white/40 font-mono bg-white/5 px-2 py-0.5 rounded-md">
-                      {["深海极光", "丝绒暮霭", "苍翠玉石", "极简黑曜", "银河星云"][
+                      {HANDWRITTEN_PALETTES[
                         Math.round(effectSettings.cinematicLyricDrift.colorScheme || 0)
-                      ] || "深海极光"}
+                      ]?.name || HANDWRITTEN_PALETTES[0]?.name}
                     </span>
                   </div>
                   <input
@@ -794,7 +798,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { heroFontSize: v })}
                 />
                 <SettingSlider
-                  label="舞台光束 / 字缘辉光"
+                  label="落笔墨光 / 字缘光晕"
                   value={effectSettings.cinematicLyricDrift.shimmerFeather ?? 50}
                   min={20}
                   max={100}
@@ -812,7 +816,7 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   onChange={(v) => updateEffectSettings("cinematicLyricDrift", { fluidSpeed: v })}
                 />
                 <SettingSlider
-                  label="舞台与字缘光强"
+                  label="阳光与纸面光强"
                   value={effectSettings.cinematicLyricDrift.ambientGlowIntensity ?? 0.9}
                   min={0.2}
                   max={1.5}

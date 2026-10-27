@@ -12,6 +12,8 @@
 | 开发流程规范       | `docs/nbl/PROCESS.md`          |
 | 编码/测试规范      | `docs/nbl/CODING_STANDARDS.md` |
 | 系统架构           | `docs/nbl/ARCHITECTURE.md`     |
+| 项目交接文档       | `docs/nbl/HANDOVER.md`         |
+| 架构/性能优化计划  | `docs/nbl/plans/2026-10-21-architecture-performance-optimization.md` |
 | 当前迭代实施计划   | `docs/nbl/plans/` 目录         |
 | 技术设计方案       | `docs/nbl/specs/` 目录         |
 | 设计系统           | `DESIGN.md`                    |
@@ -25,10 +27,10 @@
 
 次世代沉浸式音乐播放器，核心亮点：
 
-- **V8 可视化系统**: 28 个 Canvas 2D + WebGL 效果引擎
+- **V7 可视化系统（当前挂载）**: 14 个 Canvas 2D 效果；V8 组件树未接线（dead code，待 S4 处置）
 - **情感矩阵 AI**: 2D 坐标情感分析 + AI 歌词笔记
 - **玻璃拟态 UI**: Apple 风格 Glass 组件库
-- **44 个 Zustand Store**（需架构解耦优化）
+- **60 个 Zustand Store**（需架构解耦优化；实际数量以 scripts/perf/report-store-stats.mjs 输出为准）
 
 ### 技术栈
 
@@ -71,14 +73,16 @@ npm run clean            # 清理 .next 缓存
 ## 关键约束
 
 - **类型检查**: strict 模式，类型错误阻止构建（`next.config.js` 中 `ignoreBuildErrors: false`）
-- **ESLint**: 当前 19,790 行问题（18,954 prettier / 431 no-explicit-any / 325 no-unused-vars）
-- **Pre-commit**: husky + lint-staged，当前需 `--no-verify` 绕过
-- **测试**: Vitest + jsdom，覆盖率无门禁阈值
-- **CI**: GitHub Actions，测试步骤被注释
+- **ESLint**: 源码 0 errors / 0 warnings（2026-10-21 实测；历史约 1.98 万行 lint 问题已清零；`eslint src --max-warnings=99999` 通过）
+- **Pre-commit**: husky + lint-staged（仅格式化）；当前脏树（55 项手势 WIP）期间曾需 `--no-verify`，清理后应恢复正常检查
+- **测试**: Vitest + jsdom；覆盖率门禁当前仅覆盖 src/lib/audio + src/utils（阈值 30/20/30/30），S8 扩域到 store/services/hooks
+- **CI**: GitHub Actions；触发分支已修为 master（S0-2），含 tsc/lint/test/build；桌面/后端 nightly 见执行计划包
 
 ---
 
 ## 当前迭代
 
-参见 `docs/nbl/ROADMAP.md` → Phase 0
-当前实施计划: `docs/nbl/plans/2026-05-10-phase0-infrastructure.md`
+参见 `docs/nbl/ROADMAP.md`
+架构与性能总计划: `docs/nbl/plans/2026-10-21-architecture-performance-optimization.md`
+执行计划包: `docs/nbl/plans/2026-10-21-arch-perf-execution/README.md`（进度看板 TRACKING.md）
+当前阶段: S0 止血与基线（实施中：S0-4/S0-6 完成，S0-2 本地完成；S0-1 需 Q01 授权，S0-3 待脏改清理）

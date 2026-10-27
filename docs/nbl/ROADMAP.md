@@ -2,6 +2,20 @@
 
 This file tracks the current, evidence-based roadmap for MIMI Music Player. Older plans remain in `docs/nbl/plans/` and `docs/nbl/archive/`; this page should reflect the current state rather than historical assumptions.
 
+## 2026-10-19 Air Gesture System Repair
+
+Completed record: `docs/nbl/plans/2026-10-19-air-gesture-system-repair.md`; design: `docs/nbl/specs/2026-10-19-air-gesture-system-design.md`.
+
+- Replaced the V7 single-file `GestureController` with a layered, testable system: pure recognition engine (One Euro filter, scale-normalized landmarks, posture/state machine), device layer (camera error taxonomy, local-first MediaPipe tracker, pointer+mouse bridge, action layer), persisted settings store, runtime store, session hook, and rebuilt HUD/cursor/action-feedback/settings UI.
+- Fixed the P0/P1 defects: mirrored swipe direction, incomplete click/drag event sequence, skeleton toggle restarting the camera, unpinned CDN-only model/WASM loading, silent initialization failures, input-field shortcut hijacking, absolute pinch thresholds, per-frame layout churn, hand-lost drag hangs, mojibake/undiscoverable UI, dead gesture types/panels, no persistence, unsafe typing.
+- Added local MediaPipe assets (`public/mediapipe` + `npm run sync:mediapipe`; 6 wasm files + 7.8 MB model), local-first with pinned CDN fallback and GPU→CPU delegate fallback; documented the Electron/offline path.
+- Added six-way gesture vocabulary with posture disambiguation: index-point cursor, pinch click/drag/double-click, open-palm four-direction swipe (next/prev/volume), fist dwell play/pause; command bindings + sensitivity/smoothing/volume step/camera/display settings persisted under `mimi-gesture-settings-v1`.
+- Found and fixed a real-browser P0 during CDP smoke: extracting `getUserMedia` as a bare function threw "Illegal invocation", so the camera could never start; added a `this`-binding regression test.
+- Verification passed: `npx tsc --noEmit --incremental false --pretty false`, `npm run test -- --run` (198 files / 1205 tests), `npm run build` (28 static pages), dev HTTP 200 on `/` and `/data-manager`, and Chrome CDP smoke with fake camera: enable/persist, local model start, cursor, pinch click on injected DOM button, swipe-left→next_track, fist dwell→toggle_play, reload auto-restore, and full cleanup on disable; 0 JS exceptions.
+- Remaining risks: real-camera/lighting/left-hand/USB-camera/Electron-permission manual acceptance still pending; recognition thresholds were calibrated on synthetic hands and may need field tuning via the settings HUD; synthetic events cannot support text selection/scroll/pointer-capture-dependent third-party draggers; generated MediaPipe assets are not committed by default (run the sync script before packaging).
+
+---
+
 ## 2026-05-25 Search Voice Feedback Follow-up
 
 Completed record: `docs/nbl/plans/2026-05-25-search-voice-feedback-follow-up.md`.
@@ -117,3 +131,7 @@ Remaining architecture risks: `audioStore`/`uiStore` are still broad dependency 
 ## Historical Baseline Summary
 
 The original 2026-05-10 roadmap described five broad phases: infrastructure/process setup, store decoupling, P0 feature reality checks, P1 feature enhancement, and architecture/test/UX polish. Its raw lower section was damaged by encoding corruption, so the active guidance above replaces it while retaining the useful intent: stabilize runtime first, preserve user data formats, improve real user paths, and reduce code-health debt incrementally.
+
+## 2026-10-20 Handwritten MV editorial refinement
+
+Completed implementation: [plan and evidence](plans/2026-10-20-handwritten-mv-editorial-refinement.md). Composed lyric/sketch layouts, portrait text fitting, restrained paper/ink, clock-based camera/transitions, canonical snapshot identity and immersive overlay visibility are implemented. Full Vitest (193 files / 1120 tests), TypeScript/TSX lint, production build and standalone TypeScript pass. Browser evidence covers actual renderer frames and native media controls; real devices, Electron, audible output and native fullscreen remain unverified. Queue-end reconciliation is a separately observed audio boundary, outside this MV change.

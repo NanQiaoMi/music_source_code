@@ -1,3 +1,35 @@
+## 2026-10-19
+
+### Added
+
+- Added a layered air-gesture system: pure recognition engine (One Euro filtering, hand-scale-normalized landmarks, posture hysteresis, pointer/pinch/drag/palm/fist/cooldown state machine), device layer (camera error taxonomy, local-first MediaPipe tracker with GPU→CPU fallback, pointer+mouse event bridge, gesture action layer), runtime/settings stores, session hook, and rebuilt HUD, virtual cursor, action feedback, and gesture settings panel.
+- Added gestures: index-point cursor, pinch click/drag/double-click, open-palm left/right swipe (next/prev), open-palm up/down swipe (volume), fist dwell (play/pause), with persisted command bindings and sensitivity/smoothing/volume-step/camera/display settings under `mimi-gesture-settings-v1`.
+- Added local MediaPipe assets and `npm run sync:mediapipe` (6 wasm files + `hand_landmarker.task`), with pinned CDN fallback for offline/Electron packaging.
+- Added regression coverage: engine/filters/landmarks, camera/tracker/pointer bridge/actions, runtime/settings stores, HUD/feedback/settings static render, and an engine→pointer bridge→actions integration suite.
+
+### Fixed
+
+- Fixed mirrored swipe direction being inverted relative to the visible cursor.
+- Fixed click/drag sequences only dispatching pointer events (missing mouse events, buttons state, focus, LCA click target, double click, cancel).
+- Fixed toggling skeleton/camera preview restarting the whole camera and model.
+- Fixed camera never starting in real browsers due to unbound `getUserMedia` ("Illegal invocation"), found during Chrome CDP smoke; added a this-binding regression test.
+- Fixed gesture mode hijacking C/S/G keys inside inputs, silent init failures, 600ms+ hand-loss drag hangs, absolute pinch thresholds, per-frame layout churn, mojibake HUD copy, dead gesture types/feedback panels, missing persistence, and legacy `any`/duplicate hand hook.
+- Fixed the stale `DataManagerPlayerDock` test after the 2026-10-12 playback-intent migration (assert `playbackRuntimeStore.shouldPlay` instead of the audio mirror).
+
+### Changed
+
+- Gesture HUD is now a compact glass card with collapsible preview/skeleton, visible status/error/retry, privacy copy, and diagnostic FPS/posture/mode/backend stats; the cursor/dwell ring and action feedback follow the existing Apple glass language and respect reduced motion.
+- The nav island toggle now persists through the gesture settings store and adds a "gesture settings" entry; the settings panel includes an interaction & gestures section.
+- Removed the unused duplicate `useHandGesture` hook; gesture settings are separated from high-frequency runtime state to avoid persist churn.
+
+### Verified
+
+- `npm run test -- --run` passed 198 files / 1205 tests; `npx tsc --noEmit --incremental false --pretty false` passed; `npm run build` passed with 28 static pages; dev `/` and `/data-manager` returned HTTP 200.
+- Chrome CDP smoke with fake camera and injected 21-landmark hands: gesture enable/persist, local model start, cursor follow, pinch click on an injected DOM button, swipe-left→next_track, fist dwell→toggle_play, reload auto-restore, and cleanup on disable; 0 JS exceptions (only benign headless GL/MediaPipe NORM_RECT warnings).
+- Real-camera, permission-denied, USB-camera, lighting/distance, left-hand, and packaged Electron permission acceptance remain pending.
+
+---
+
 # Changelog
 
 ## 2026-10-12
@@ -235,3 +267,12 @@
 ### Added
 
 - Initial v0.2.0 feature baseline: AI emotional liner notes, Resonance Totem visualization, SpectrumRing refinement, immersive visualization system, modular project structure, and shared Glass component foundation.
+
+## 2026-10-20 — Handwritten MV editorial refinement
+
+- Refined `cinematicLyricDrift` with three composed layouts, portrait sketch/text separation, balanced lyric phrases, calmer paper and stable completed ink paths.
+- Added continuous music-time camera motion and visible exit/arrival phases. Preserved outgoing LRC reveal until the canonical snapshot is ready; included translation and DPR in snapshot identity.
+- Fixed scaled-glyph spacing, long-word/grapheme wrapping, caption overlap, long interlude echoes, early reduced-motion vertical lyrics, and bounded text-layout/cache costs.
+- Hid immersive floating controls while retaining their mounted keyboard listeners and root audio ownership; manager routing remains authoritative. No storage fields, dependencies or protected V7 view files changed.
+- Verified 193 Vitest files / 1120 tests, TypeScript/TSX ESLint, changed-file Prettier, production build, standalone strict TypeScript, and production HTTP/browser smoke. Temporary QA routes return 404 after removal.
+- Reviewed desktop/portrait/wide frames, five palettes, reduced motion and actual native-media pause/seek/rates/queue/view continuity. Device/fullscreen/audio-output limits and a separate queue-end observation are recorded in the [implementation record](plans/2026-10-20-handwritten-mv-editorial-refinement.md).

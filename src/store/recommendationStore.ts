@@ -10,6 +10,63 @@ import {
   generateRecommendations,
 } from "@/utils/recommendationLogic";
 import { RecommendationInputSnapshot } from "@/lib/recommendation/inputs";
+import type { PersistCandidate } from "@/lib/storage/quotaPolicy";
+import { writeWithPolicy } from "@/lib/storage/quotaPolicy";
+import { reportStorageDegraded } from "@/lib/storage/degradedNotifier";
+
+interface RecommendationEnvelope {
+  state?: {
+    playHistory?: unknown[];
+    recommendations?: unknown[];
+    negativeFeedback?: unknown[];
+    dismissedSongIds?: unknown[];
+    lastGeneratedAt?: number;
+  };
+  version?: number;
+}
+
+function cloneRecommendationEnvelope(value: unknown): RecommendationEnvelope {
+  return JSON.parse(JSON.stringify(value)) as RecommendationEnvelope;
+}
+
+function buildRecommendationCandidates(value: unknown): PersistCandidate[] {
+  const candidates: PersistCandidate[] = [
+    { value: JSON.stringify(cloneRecommendationEnvelope(value)) },
+  ];
+
+  const withoutRecommendations = cloneRecommendationEnvelope(value);
+  if (withoutRecommendations.state) withoutRecommendations.state.recommendations = [];
+  candidates.push({
+    value: JSON.stringify(withoutRecommendations),
+    degradedTo: "history-trimmed",
+  });
+
+  const trimmed = cloneRecommendationEnvelope(value);
+  if (trimmed.state) {
+    trimmed.state.recommendations = [];
+    trimmed.state.playHistory = Array.isArray(trimmed.state.playHistory)
+      ? trimmed.state.playHistory.slice(-100)
+      : [];
+    trimmed.state.negativeFeedback = Array.isArray(trimmed.state.negativeFeedback)
+      ? trimmed.state.negativeFeedback.slice(-50)
+      : [];
+    trimmed.state.dismissedSongIds = Array.isArray(trimmed.state.dismissedSongIds)
+      ? trimmed.state.dismissedSongIds.slice(-50)
+      : [];
+  }
+  candidates.push({ value: JSON.stringify(trimmed), degradedTo: "pruned" });
+
+  const minimal = cloneRecommendationEnvelope(value);
+  if (minimal.state) {
+    minimal.state.recommendations = [];
+    minimal.state.playHistory = [];
+    minimal.state.negativeFeedback = [];
+    minimal.state.dismissedSongIds = [];
+  }
+  candidates.push({ value: JSON.stringify(minimal), degradedTo: "index-only" });
+
+  return candidates;
+}
 
 interface PlayRecord {
   songId: string;
@@ -218,23 +275,15 @@ export const useRecommendationStore = create<RecommendationState>()(
           }
         },
         setItem: (name, value) => {
-          try {
-            localStorage.setItem(name, JSON.stringify(value));
-          } catch (error) {
-            if (error instanceof Error && error.name === "QuotaExceededError") {
-              console.warn("Recommendation store quota exceeded, clearing play history...");
-              try {
-                const state = JSON.parse(JSON.stringify(value));
-                if (state.state) {
-                  state.state.playHistory = [];
-                  state.state.recommendations = [];
-                  state.state.negativeFeedback = [];
-                }
-                localStorage.setItem(name, JSON.stringify(state));
-              } catch (fallbackError) {
-                console.error("Failed to save even empty recommendation store:", fallbackError);
-              }
-            }
+          const outcome = writeWithPolicy(buildRecommendationCandidates(value), (serialized) => {
+            localStorage.setItem(name, serialized);
+          });
+          if (!outcome.ok) {
+            reportStorageDegraded({ key: name, reason: outcome.reason });
+            return;
+          }
+          if (outcome.degradedTo) {
+            reportStorageDegraded({ key: name, reason: "quota", degradedTo: outcome.degradedTo });
           }
         },
         removeItem: (name) => localStorage.removeItem(name),

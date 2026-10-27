@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { StateStorage } from "zustand/middleware";
 import { Song } from "@/types/song";
+import { reportStorageDegraded } from "./degradedNotifier";
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
@@ -72,13 +73,11 @@ export function compactExistingStorage(): void {
     }
   }
 
-  // 2. 压缩现有活跃 Store 的臃肿字段
+  // 2. 压缩现有活跃 Store 的臃肿字段（只做字段瘦身，绝不裁剪有效集合长度）
   const targetStores = [
     "favorites-store",
     "queue-store-v5",
-    "queue-store",
-    "history-store",
-    "playlist-group-store",
+    "playlist-group-store-v1",
     "player-store",
     "audio-store-v4",
   ];
@@ -102,17 +101,21 @@ export function compactExistingStorage(): void {
       }
 
       if (parsed?.state?.queue && Array.isArray(parsed.state.queue)) {
-        parsed.state.queue = parsed.state.queue.slice(0, 50).map(sanitizeSongForStorage);
+        parsed.state.queue = parsed.state.queue.map(sanitizeSongForStorage);
         modified = true;
       }
 
       if (parsed?.state?.history && Array.isArray(parsed.state.history)) {
-        parsed.state.history = parsed.state.history.slice(0, 20).map(sanitizeSongForStorage);
+        parsed.state.history = parsed.state.history.map(sanitizeSongForStorage);
         modified = true;
       }
 
       if (modified) {
-        window.localStorage.setItem(key, JSON.stringify(parsed));
+        const nextRaw = JSON.stringify(parsed);
+        // 只有确实明显变小时才写回，避免启动时无意义写盘
+        if (nextRaw.length < raw.length * 0.98) {
+          window.localStorage.setItem(key, nextRaw);
+        }
       }
     } catch {
       // 瘦身过程中如果写失败则直接略过
@@ -153,10 +156,8 @@ export function createSafeStorage(storeName?: string): StateStorage {
           compactExistingStorage();
           window.localStorage.setItem(name, value);
         } catch {
-          // 若依然受限，静默保持内存状态，绝不触发 console.error 造成红屏报错
-          console.warn(
-            `[SafeStorage] LocalStorage quota reached for '${name || storeName}'. State safely retained in memory.`
-          );
+          // 若依然受限，保留 localStorage 中上一份有效数据，降级到内存并上报（可观测）
+          reportStorageDegraded({ key: name || storeName || "unknown", reason: "quota" });
         }
       }
     },

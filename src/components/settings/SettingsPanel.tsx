@@ -14,6 +14,8 @@ import {
   ChevronRight,
   Disc3,
   Search,
+  Hand,
+  Keyboard,
 } from "lucide-react";
 
 interface SettingsPanelProps {
@@ -158,6 +160,59 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 <div>
                   <div className="text-[13px] font-medium text-white">歌词显示样式</div>
                   <div className="text-[10px] text-[#86868b]">排版/动效/发光特效</div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-[#86868b] group-hover:text-white transition-colors" />
+            </button>
+          </div>
+        </div>
+
+        {/* 交互与手势 */}
+        <div
+          className={
+            "space-y-2 " +
+            (matchesSetting("gesture hand keyboard shortcut 手势 隔空 快捷键 交互") ? "" : "hidden")
+          }
+        >
+          <span className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wider px-1">
+            交互与手势
+          </span>
+          <div className="rounded-2xl bg-white/[0.04] border border-white/[0.06] divide-y divide-white/[0.04] overflow-hidden">
+            <button
+              onClick={() => {
+                onClose();
+                openPanel("gestureSettings");
+              }}
+              className="w-full flex items-center justify-between p-3 hover:bg-white/[0.03] transition-colors text-left group"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-[#0071e3]/20 text-[#2997ff] flex items-center justify-center shrink-0">
+                  <Hand className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <div className="text-[13px] font-medium text-white">隔空手势</div>
+                  <div className="text-[10px] text-[#86868b]">
+                    摄像头识别 · 光标 / 切歌 / 音量 / 播放
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-[#86868b] group-hover:text-white transition-colors" />
+            </button>
+
+            <button
+              onClick={() => {
+                onClose();
+                openPanel("keyboardShortcuts");
+              }}
+              className="w-full flex items-center justify-between p-3 hover:bg-white/[0.03] transition-colors text-left group"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-white/10 text-white/80 flex items-center justify-center shrink-0">
+                  <Keyboard className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <div className="text-[13px] font-medium text-white">键盘快捷键</div>
+                  <div className="text-[10px] text-[#86868b]">查看与自定义全局快捷键</div>
                 </div>
               </div>
               <ChevronRight className="w-3.5 h-3.5 text-[#86868b] group-hover:text-white transition-colors" />

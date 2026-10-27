@@ -1,0 +1,134 @@
+﻿# S0-1 dirty-tree inventory (before checkpoint)
+Generated: 2026-10-27 13:39:39 +08:00
+Branch: feature/gesture-air-control-overhaul
+HEAD: c73a872edd2a56d74f9980049275a26959b1d540
+master: 90c215218eafb41b76b69df2ea26a2af625a28a6
+Divergence (c73a872..master): 11
+Dirty paths (-uall): 122
+Tracked diff stat tail:
+ 37 files changed, 3595 insertions(+), 1967 deletions(-)
+Worktrees: 25
+
+## git status --porcelain -uall
+ M .eslintrc.json
+ M .github/workflows/deploy.yml
+ M .gitignore
+ M AGENTS.md
+ M docs/nbl/ARCHITECTURE.md
+ M docs/nbl/CHANGELOG.md
+ M docs/nbl/ROADMAP.md
+ M docs/nbl/plans/INDEX.md
+ M package.json
+ M scripts/build-desktop-win.ps1
+ M src/app/page.tsx
+ M src/components/interaction/GestureController.tsx
+ M src/components/interaction/GestureFeedback.tsx
+ M src/components/layout/AppleUnifiedNavIsland.tsx
+ M src/components/layout/GlobalClientComponents.test.tsx
+ M src/components/layout/GlobalClientComponents.tsx
+ M src/components/layout/HeaderToolbar.test.tsx
+ M src/components/layout/PanelOrchestrator.tsx
+ M src/components/player/DataManagerPlayerDock.test.tsx
+ M src/components/settings/SettingsPanel.tsx
+ M src/components/visualization/VisualizationSettingsPanel.tsx
+ M src/components/visualization/effects/cinematicLyricDrift.ts
+ M src/components/widgets/VirtualCursor.tsx
+ D src/hooks/useHandGesture.ts
+ M src/lib/storage/safeStorage.ts
+ M src/store/coordinator/audioCoordinator.ts
+ M src/store/coordinator/index.ts
+ M src/store/coordinator/queueCoordinator.ts
+ M src/store/coordinator/types.ts
+ M src/store/gestureStore.ts
+ M src/store/queueStore.test.ts
+ M src/store/queueStore.ts
+ M src/store/recommendationStore.ts
+ M src/store/statsAchievementsStore.ts
+ M src/store/uiStore.ts
+ M src/store/visualInteractionStores.test.ts
+ M tsconfig.json
+?? .env.example
+?? docs/nbl/HANDOVER.md
+?? docs/nbl/adr/0001-v8-visualization.md
+?? docs/nbl/adr/0002-desktop-runtime.md
+?? docs/nbl/adr/0003-audio-graph-ownership.md
+?? docs/nbl/adr/0004-persistence-registry.md
+?? docs/nbl/adr/0005-protected-views.md
+?? docs/nbl/adr/README.md
+?? docs/nbl/plans/2026-10-19-air-gesture-system-repair.md
+?? docs/nbl/plans/2026-10-20-handwritten-aesthetic-deepening.md
+?? docs/nbl/plans/2026-10-20-handwritten-mv-animation-polish.md
+?? docs/nbl/plans/2026-10-20-handwritten-mv-editorial-refinement.md
+?? docs/nbl/plans/2026-10-21-arch-perf-execution/00-decisions.md
+?? docs/nbl/plans/2026-10-21-arch-perf-execution/README.md
+?? docs/nbl/plans/2026-10-21-arch-perf-execution/S0-baseline.md
+?? docs/nbl/plans/2026-10-21-arch-perf-execution/S1-data-playback.md
+?? docs/nbl/plans/2026-10-21-arch-perf-execution/S2-audio-persistence.md
+?? docs/nbl/plans/2026-10-21-arch-perf-execution/S3-shell-subscriptions.md
+?? docs/nbl/plans/2026-10-21-arch-perf-execution/S4-bundle-loading.md
+?? docs/nbl/plans/2026-10-21-arch-perf-execution/S5-render-runtime.md
+?? docs/nbl/plans/2026-10-21-arch-perf-execution/S6-state-architecture.md
+?? docs/nbl/plans/2026-10-21-arch-perf-execution/S7-platform-runtime.md
+?? docs/nbl/plans/2026-10-21-arch-perf-execution/S8-quality-governance.md
+?? docs/nbl/plans/2026-10-21-arch-perf-execution/TRACKING.md
+?? docs/nbl/plans/2026-10-21-architecture-performance-optimization.md
+?? docs/nbl/specs/2026-10-19-air-gesture-system-design.md
+?? docs/nbl/specs/2026-10-19-handwritten-lyric-mv-design.md
+?? perf/README.md
+?? perf/budget.json
+?? perf/bundle-baseline.json
+?? perf/store-stats-baseline.json
+?? scripts/build-static.mjs
+?? scripts/check-docs-facts.mjs
+?? scripts/package-handover.mjs
+?? scripts/perf/bundle-budget.mjs
+?? scripts/perf/report-store-stats.mjs
+?? scripts/sync-mediapipe-assets.mjs
+?? scripts/verify-desktop-release-ready.mjs
+?? scripts/verify-static-export.mjs
+?? src/components/interaction/GestureFeedback.test.tsx
+?? src/components/interaction/GestureHUD.test.tsx
+?? src/components/interaction/GestureHUD.tsx
+?? src/components/settings/GestureSettings.test.tsx
+?? src/components/settings/GestureSettings.tsx
+?? src/components/visualization/effects/cinematicLyricDrift.test.ts
+?? src/components/visualization/effects/handwrittenDoodles.test.ts
+?? src/components/visualization/effects/handwrittenDoodles.ts
+?? src/components/visualization/effects/handwrittenInk.test.ts
+?? src/components/visualization/effects/handwrittenInk.ts
+?? src/components/visualization/effects/handwrittenLayout.test.ts
+?? src/components/visualization/effects/handwrittenLayout.ts
+?? src/components/visualization/effects/handwrittenMotion.test.ts
+?? src/components/visualization/effects/handwrittenMotion.ts
+?? src/components/visualization/effects/handwrittenPalette.test.ts
+?? src/components/visualization/effects/handwrittenPalette.ts
+?? src/components/visualization/effects/handwrittenPaper.test.ts
+?? src/components/visualization/effects/handwrittenPaper.ts
+?? src/components/visualization/effects/handwrittenScene.test.ts
+?? src/components/visualization/effects/handwrittenScene.ts
+?? src/components/visualization/effects/handwrittenSnapshotTiming.test.ts
+?? src/hooks/useGestureSession.ts
+?? src/lib/gesture/__tests__/actions.test.ts
+?? src/lib/gesture/__tests__/camera.test.ts
+?? src/lib/gesture/__tests__/engine.test.ts
+?? src/lib/gesture/__tests__/filters.test.ts
+?? src/lib/gesture/__tests__/integration.test.ts
+?? src/lib/gesture/__tests__/landmarks.test.ts
+?? src/lib/gesture/__tests__/pointerBridge.test.ts
+?? src/lib/gesture/__tests__/tracker.test.ts
+?? src/lib/gesture/actions.ts
+?? src/lib/gesture/camera.ts
+?? src/lib/gesture/engine.ts
+?? src/lib/gesture/filters.ts
+?? src/lib/gesture/landmarks.ts
+?? src/lib/gesture/pointerBridge.ts
+?? src/lib/gesture/tracker.ts
+?? src/lib/gesture/types.ts
+?? src/lib/storage/degradedNotifier.ts
+?? src/lib/storage/quotaPolicy.test.ts
+?? src/lib/storage/quotaPolicy.ts
+?? src/lib/storage/safeStorage.test.ts
+?? src/lib/storage/storageRegistry.test.ts
+?? src/lib/storage/storageRegistry.ts
+?? src/store/gestureSettingsStore.ts
+?? src/store/gestureStore.test.ts

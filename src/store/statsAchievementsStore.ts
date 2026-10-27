@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Song } from "@/types/song";
+import type { PersistCandidate } from "@/lib/storage/quotaPolicy";
+import { writeWithPolicy } from "@/lib/storage/quotaPolicy";
+import { reportStorageDegraded } from "@/lib/storage/degradedNotifier";
 
 export interface AchievementToast {
   id: string;
@@ -515,6 +518,64 @@ function getTodayString(): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+interface StatsEnvelope {
+  state?: {
+    listeningStats?: {
+      dailyPlayData?: unknown[];
+      topSongs?: unknown[];
+      topArtists?: unknown[];
+      topAlbums?: unknown[];
+      genreDistribution?: unknown[];
+      [key: string]: unknown;
+    };
+    achievements?: unknown[];
+    currentPeriod?: unknown;
+    lastCalculated?: number;
+  };
+  version?: number;
+}
+
+function cloneStatsEnvelope(value: unknown): StatsEnvelope {
+  return JSON.parse(JSON.stringify(value)) as StatsEnvelope;
+}
+
+function buildStatsCandidates(value: unknown): PersistCandidate[] {
+  const candidates: PersistCandidate[] = [{ value: JSON.stringify(cloneStatsEnvelope(value)) }];
+
+  const last30 = cloneStatsEnvelope(value);
+  if (last30.state?.listeningStats?.dailyPlayData) {
+    last30.state.listeningStats.dailyPlayData =
+      last30.state.listeningStats.dailyPlayData.slice(-30);
+  }
+  candidates.push({ value: JSON.stringify(last30), degradedTo: "history-trimmed" });
+
+  const pruned = cloneStatsEnvelope(value);
+  if (pruned.state?.listeningStats) {
+    const stats = pruned.state.listeningStats;
+    stats.dailyPlayData = Array.isArray(stats.dailyPlayData) ? stats.dailyPlayData.slice(-7) : [];
+    stats.topSongs = Array.isArray(stats.topSongs) ? stats.topSongs.slice(0, 10) : [];
+    stats.topArtists = Array.isArray(stats.topArtists) ? stats.topArtists.slice(0, 10) : [];
+    stats.topAlbums = Array.isArray(stats.topAlbums) ? stats.topAlbums.slice(0, 10) : [];
+    stats.genreDistribution = Array.isArray(stats.genreDistribution)
+      ? stats.genreDistribution.slice(0, 10)
+      : [];
+  }
+  candidates.push({ value: JSON.stringify(pruned), degradedTo: "pruned" });
+
+  const minimal = cloneStatsEnvelope(value);
+  if (minimal.state?.listeningStats) {
+    const stats = minimal.state.listeningStats;
+    stats.dailyPlayData = Array.isArray(stats.dailyPlayData) ? stats.dailyPlayData.slice(-1) : [];
+    stats.topSongs = Array.isArray(stats.topSongs) ? stats.topSongs.slice(0, 5) : [];
+    stats.topArtists = Array.isArray(stats.topArtists) ? stats.topArtists.slice(0, 5) : [];
+    stats.topAlbums = Array.isArray(stats.topAlbums) ? stats.topAlbums.slice(0, 5) : [];
+    stats.genreDistribution = [];
+  }
+  candidates.push({ value: JSON.stringify(minimal), degradedTo: "index-only" });
+
+  return candidates;
+}
+
 export const useStatsAchievementsStore = create<StatsAchievementsState>()(
   persist(
     (set, get) => ({
@@ -932,37 +993,15 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
           }
         },
         setItem: (name, value) => {
-          try {
-            localStorage.setItem(name, JSON.stringify(value));
-          } catch (error) {
-            if (error instanceof Error && error.name === "QuotaExceededError") {
-              console.warn("Stats achievements store quota exceeded, pruning daily data...");
-              try {
-                const state = JSON.parse(JSON.stringify(value));
-                if (state.state && state.state.listeningStats) {
-                  // Aggressively prune to last 30 days
-                  if (Array.isArray(state.state.listeningStats.dailyPlayData)) {
-                    state.state.listeningStats.dailyPlayData =
-                      state.state.listeningStats.dailyPlayData.slice(-30);
-                  }
-                  // Clear active toasts as they are temporary
-                  state.state.activeToasts = [];
-                }
-                localStorage.setItem(name, JSON.stringify(state));
-              } catch (e) {
-                console.error("Failed to save even pruned stats store:", e);
-                // Last resort: clear all daily data
-                try {
-                  const state = JSON.parse(JSON.stringify(value));
-                  if (state.state && state.state.listeningStats) {
-                    state.state.listeningStats.dailyPlayData = [];
-                  }
-                  localStorage.setItem(name, JSON.stringify(state));
-                } catch (finalError) {
-                  console.error("Critical storage failure in stats store:", finalError);
-                }
-              }
-            }
+          const outcome = writeWithPolicy(buildStatsCandidates(value), (serialized) => {
+            localStorage.setItem(name, serialized);
+          });
+          if (!outcome.ok) {
+            reportStorageDegraded({ key: name, reason: outcome.reason });
+            return;
+          }
+          if (outcome.degradedTo) {
+            reportStorageDegraded({ key: name, reason: "quota", degradedTo: outcome.degradedTo });
           }
         },
         removeItem: (name) => localStorage.removeItem(name),

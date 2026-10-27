@@ -27,6 +27,8 @@
     "clean:port": "node scripts/clean-port.js",
     "backend": "cd backend && python -m uvicorn main:app --reload --port 8000",
     "test:backend": "cd backend && python test_backend.py",
+    "sync:mediapipe": "node scripts/sync-mediapipe-assets.mjs",
+    "prebuild": "node scripts/sync-mediapipe-assets.mjs --optional",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "prepare": "husky"

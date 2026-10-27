@@ -1,119 +1,127 @@
 import { create } from "zustand";
+import type {
+  GestureDebugMetrics,
+  GestureDwellState,
+  GestureErrorState,
+  GestureFeedbackEvent,
+  GestureMode,
+  GesturePosture,
+  GestureStatus,
+} from "@/lib/gesture/types";
 
-export type GestureType =
-  | "pinch"
-  | "fist"
-  | "swipe_left"
-  | "swipe_right"
-  | "volume_up"
-  | "volume_down"
-  | "speed_up"
-  | "speed_down"
-  | "heart"
-  | "circle_cw"
-  | "circle_ccw"
-  | "wave_back"
-  | "seek_forward"
-  | "seek_backward"
-  | null;
+type GestureBackend = "local" | "cdn";
 
-interface GestureState {
-  isEnabled: boolean; // 手势功能总开关
-  isCameraActive: boolean;
-  cursorPosition: { x: number; y: number };
-  isHandDetected: boolean;
-  lastGesture: GestureType;
-  gestureTriggered: boolean;
-  gestureIntensity: number; // 0-1 for continuous gestures like volume
-  isPinching: boolean;
+interface GestureRuntimeState {
+  status: GestureStatus;
+  error: GestureErrorState | null;
+  cameraActive: boolean;
+  modelReady: boolean;
+  backend: GestureBackend | null;
 
-  // Gesture feedback
-  showVolumePanel: boolean;
-  volumePanelValue: number;
-  showSpeedPanel: boolean;
-  speedPanelValue: number;
-  showModeToast: boolean;
-  modeToastMessage: string;
-  showHeartAnimation: boolean;
-  showSeekPreview: boolean;
-  seekPreviewTime: number;
-  seekPreviewLyric: string;
+  handPresent: boolean;
+  posture: GesturePosture;
+  mode: GestureMode;
+  cursor: { x: number; y: number };
+  cursorVisible: boolean;
+  pinching: boolean;
+  dragging: boolean;
+  dwell: GestureDwellState | null;
 
-  // Toggle
-  toggleGestureEnabled: () => void;
-  setIsEnabled: (enabled: boolean) => void;
+  lastEvent: GestureFeedbackEvent | null;
+  eventSeq: number;
+  fps: number;
+  debug: GestureDebugMetrics;
 
-  setIsCameraActive: (active: boolean) => void;
-  setCursorPosition: (x: number, y: number) => void;
-  setIsHandDetected: (detected: boolean) => void;
-  setLastGesture: (gesture: GestureType) => void;
-  setGestureTriggered: (triggered: boolean) => void;
-  setGestureIntensity: (intensity: number) => void;
-  setIsPinching: (pinching: boolean) => void;
-
-  // Panel controls
-  setShowVolumePanel: (show: boolean) => void;
-  setVolumePanelValue: (value: number) => void;
-  setShowSpeedPanel: (show: boolean) => void;
-  setSpeedPanelValue: (value: number) => void;
-  setShowModeToast: (show: boolean) => void;
-  setModeToastMessage: (message: string) => void;
-  setShowHeartAnimation: (show: boolean) => void;
-  setShowSeekPreview: (show: boolean) => void;
-  setSeekPreviewTime: (time: number) => void;
-  setSeekPreviewLyric: (lyric: string) => void;
-
-  resetGesture: () => void;
+  setStatus: (status: GestureStatus) => void;
+  setError: (error: GestureErrorState | null) => void;
+  setCameraActive: (active: boolean) => void;
+  setModelReady: (ready: boolean) => void;
+  setBackend: (backend: GestureBackend | null) => void;
+  setHandPresent: (present: boolean) => void;
+  setPosture: (posture: GesturePosture) => void;
+  setMode: (mode: GestureMode) => void;
+  setCursor: (x: number, y: number) => void;
+  setCursorVisible: (visible: boolean) => void;
+  setPinching: (pinching: boolean) => void;
+  setDragging: (dragging: boolean) => void;
+  setDwell: (dwell: GestureDwellState | null) => void;
+  setFps: (fps: number) => void;
+  setDebug: (debug: GestureDebugMetrics) => void;
+  pushEvent: (
+    event: Omit<GestureFeedbackEvent, "seq" | "at"> & { at?: number }
+  ) => GestureFeedbackEvent;
+  resetRuntime: () => void;
 }
 
-export const useGestureStore = create<GestureState>((set) => ({
-  isEnabled: false, // 默认关闭手势功能
-  isCameraActive: false,
-  cursorPosition: { x: 0.5, y: 0.5 },
-  isHandDetected: false,
-  lastGesture: null,
-  gestureTriggered: false,
-  gestureIntensity: 0,
-  isPinching: false,
+const EMPTY_DEBUG: GestureDebugMetrics = {
+  pinchRatio: 0,
+  palmOpenness: 0,
+  pointerSpeed: 0,
+  posture: "none",
+};
 
-  showVolumePanel: false,
-  volumePanelValue: 0.5,
-  showSpeedPanel: false,
-  speedPanelValue: 1,
-  showModeToast: false,
-  modeToastMessage: "",
-  showHeartAnimation: false,
-  showSeekPreview: false,
-  seekPreviewTime: 0,
-  seekPreviewLyric: "",
+function createRuntimeDefaults() {
+  return {
+    status: "idle" as GestureStatus,
+    error: null as GestureErrorState | null,
+    cameraActive: false,
+    modelReady: false,
+    backend: null as GestureBackend | null,
+    handPresent: false,
+    posture: "none" as GesturePosture,
+    mode: "idle" as GestureMode,
+    cursor: { x: 0.5, y: 0.5 },
+    cursorVisible: false,
+    pinching: false,
+    dragging: false,
+    dwell: null as GestureDwellState | null,
+    lastEvent: null as GestureFeedbackEvent | null,
+    eventSeq: 0,
+    fps: 0,
+    debug: { ...EMPTY_DEBUG },
+  };
+}
 
-  // Toggle
-  toggleGestureEnabled: () => set((state) => ({ isEnabled: !state.isEnabled })),
-  setIsEnabled: (enabled) => set({ isEnabled: enabled }),
+/**
+ * 手势运行时状态（不持久化）。
+ *
+ * 高频字段（cursor / fps / debug）由识别循环直接 set，订阅者应只 selector 自己需要的字段；
+ * 动作反馈通过 pushEvent 递增 seq，避免时间戳相同导致 UI 不更新。
+ */
+export const useGestureStore = create<GestureRuntimeState>((set, get) => ({
+  ...createRuntimeDefaults(),
 
-  setIsCameraActive: (active) => set({ isCameraActive: active }),
-  setCursorPosition: (x, y) => set({ cursorPosition: { x, y } }),
-  setIsHandDetected: (detected) => set({ isHandDetected: detected }),
-  setLastGesture: (gesture) => set({ lastGesture: gesture }),
-  setGestureTriggered: (triggered) => set({ gestureTriggered: triggered }),
-  setGestureIntensity: (intensity) => set({ gestureIntensity: intensity }),
-  setIsPinching: (pinching) => set({ isPinching: pinching }),
+  setStatus: (status) => set({ status }),
+  setError: (error) => set({ error }),
+  setCameraActive: (cameraActive) => set({ cameraActive }),
+  setModelReady: (modelReady) => set({ modelReady }),
+  setBackend: (backend) => set({ backend }),
+  setHandPresent: (handPresent) => set({ handPresent }),
+  setPosture: (posture) => set({ posture }),
+  setMode: (mode) => set({ mode }),
+  setCursor: (x, y) => set({ cursor: { x, y } }),
+  setCursorVisible: (cursorVisible) => set({ cursorVisible }),
+  setPinching: (pinching) => set({ pinching }),
+  setDragging: (dragging) => set({ dragging }),
+  setDwell: (dwell) => set({ dwell }),
+  setFps: (fps) => set({ fps }),
+  setDebug: (debug) => set({ debug }),
 
-  setShowVolumePanel: (show) => set({ showVolumePanel: show }),
-  setVolumePanelValue: (value) => set({ volumePanelValue: value }),
-  setShowSpeedPanel: (show) => set({ showSpeedPanel: show }),
-  setSpeedPanelValue: (value) => set({ speedPanelValue: value }),
-  setShowModeToast: (show) => set({ showModeToast: show }),
-  setModeToastMessage: (message) => set({ modeToastMessage: message }),
-  setShowHeartAnimation: (show) => set({ showHeartAnimation: show }),
-  setShowSeekPreview: (show) => set({ showSeekPreview: show }),
-  setSeekPreviewTime: (time) => set({ seekPreviewTime: time }),
-  setSeekPreviewLyric: (lyric) => set({ seekPreviewLyric: lyric }),
+  pushEvent: (event) => {
+    const nextSeq = get().eventSeq + 1;
+    const fullEvent: GestureFeedbackEvent = {
+      ...event,
+      seq: nextSeq,
+      at: event.at ?? Date.now(),
+    };
+    set({ lastEvent: fullEvent, eventSeq: nextSeq });
+    return fullEvent;
+  },
 
-  resetGesture: () =>
+  resetRuntime: () =>
     set({
-      lastGesture: null,
-      gestureTriggered: false,
-      gestureIntensity: 0,
+      ...createRuntimeDefaults(),
+      eventSeq: get().eventSeq,
+      lastEvent: null,
     }),
 }));
