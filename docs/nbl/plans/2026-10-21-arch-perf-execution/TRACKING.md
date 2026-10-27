@@ -3,14 +3,14 @@
 > 上级：[总计划](../2026-10-21-architecture-performance-optimization.md) · [执行计划包 README](./README.md)
 > 状态口径：pending（未开始）/ in_progress（实现中）/ review（待复核）/ done（已合并且验收通过）/ blocked（阻塞，需写原因）
 > 规则：每完成一个子 PR 勾选对应任务下的子项；任务 done 必须附证据（命令/退出码/指标/截图）；阶段出口全部满足才能把阶段标记 done。
-> 更新时间：2026-10-27（S0-1 完成 checkpoint；S0-4/S0-6 done；S0-2 本地完成待 push；S0-3/S0-5 review；S0-7 待决策；S1-1/S1-3 done）
+> 更新时间：2026-10-27（S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3 done）
 
 ## 汇总
 
 | 阶段 | 任务数 | done | 子 PR（执行计划） | 阶段出口（摘要） | 状态 |
 |---|---:|---:|---:|---|---|
 | S0 止血与基线 | 7 | 4 | 10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-3/S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策） |
-| S1 数据与播放正确性 | 10 | 2 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-3 done；S1-2a done，2b 待） |
+| S1 数据与播放正确性 | 10 | 3 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3 done；S1-4..S1-10 待） |
 | S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
 | S3 外壳与订阅治理 | 10 | 0 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | pending |
 | S4 包体与加载 | 7 | 0 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | pending |
@@ -18,7 +18,7 @@
 | S6 状态架构收敛 | 12 | 0 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | pending |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **6** | **约 129** | — | in_progress |
+| **合计** | **74** | **7** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -43,7 +43,7 @@
 
 - [ ] **M1 出口门**：正确性场景（总计划 §9.2）全部自动化通过；旧备份/旧 key fixture 通过；无已知数据丢失路径。
 - [x] S1-1 storageRegistry v1 — **done（2026-10-21，提前落地）**：src/lib/storage/storageRegistry.ts（44 key/8 backup/owner+version+group+quotaPolicy）+ storageRegistry.test.ts 5 用例通过；依赖 S0-6 已满足；S1-2 可直接使用 registry
-- [ ] S1-2 备份/恢复修复（registry 槽位/rehydrate/泄漏/v5 schema）— **in_progress（2026-10-27，2a done）**：分支 feature/arch-perf-s1-2a @ 4f9325d（基于 checkpoint 6f7a3bc，隔离 worktree）；新增 backupSchema.ts（v5 payload / parse / v4 migration / 原子 restore / rollback snapshot）、rehydrateRegisteredStores.ts、重写 backupRestoreStore（8 个真实 registry key、v5 创建/恢复/预览/导入导出、v4 兼容、孤儿 body 清理、restoreReport）；3 个 fixtures + 14 tests；worktree 内全量 210 files/1291 tests、tsc/eslint/prettier 全绿。**2b 待做**：BackupRestorePanel 报告/unsupported/reload UI + panel tests；PR 拆分与合入 master 待办。
+- [x] S1-2 备份/恢复修复（registry 槽位/rehydrate/泄漏/v5 schema）— **done（2026-10-27，2a+2b）**：分支 feature/arch-perf-s1-2a（已 rebase 到最新 checkpoint 1c3f1a1）@ 825e109（2a）+ 5862795（2b），隔离 worktree。2a：backupSchema.ts（v5 payload/parse/v4 migration/原子 restore/rollback snapshot）、rehydrateRegisteredStores.ts、backupRestoreStore 重写（8 个真实 registry key、v4 兼容、孤儿 body 清理、restoreReport）；3 fixtures + 14 tests。2b：BackupRestorePanel 恢复报告（restored/skipped/failed）、旧槽位 unsupported 提示、立即刷新按钮、挂载时 pruneOrphanBackupBodies，新增 3 panel tests + unsupportedStores 预览字段。worktree 内全量 204 files/1272 tests、tsc/eslint/prettier 全绿。**PR 拆分与合入 master 待办**。
 - [x] S1-3 启动压缩与配额策略修复 — **done（2026-10-22）**：safeStorage 不再截断 200/30，只在缩减 ≥2% 时写回；新增 quotaPolicy（逐级降级、绝不先删旧值）+ degradedNotifier（事件+节流 toast）；queue/recommendation/stats 三处写盘统一策略；queue 永不写空队列。测试：quotaPolicy 5 + safeStorage 5 + queue/recommendation/stats 40，全部通过；tsc/eslint 0
 - [ ] S1-4 VibeMusicDB 统一 open/version v3 — owner: — | PR: 1 | 依赖: S0-6 | 验收: v1→v3 迁移测试；local:// 可播
 - [ ] S1-5 队列唯一权威 + QueueNavigator — owner: — | PR: 1-2 | 依赖: S1-3 | 验收: 删/排/清后 next/ended 一致
@@ -156,4 +156,4 @@
 | 2026-10-21 | 创建看板 | 74 任务全部 pending；阶段出口门与阻塞项登记 |
 | 2026-10-27 | S0-1 done | Q01-A checkpoint 分支/提交 2b99173；工作树干净；tsc/vitest/eslint/build 基线复测通过 |
 | 2026-10-27 | S0-3 done / S0-5 GC | 84305f6（端口/门禁/测试）；隔离 worktree `next start -p 3026` 的 `/` 与 `/data-manager` 均 200；195d996 + Q22 后 worktrees 25→6（19 removed，5 dirty skipped） |
-| 2026-10-27 | S1-2a done | feature/arch-perf-s1-2a @ 4f9325d：v5 schema/v4 migration/atomic restore/rehydrate/leak fixes；14 tests + 全量 210/1291 绿；2b UI 待 |
+| 2026-10-27 | S1-2 done | feature/arch-perf-s1-2a @ 825e109(2a)+5862795(2b)，已 rebase 到 1c3f1a1：v5 schema/v4 migration/atomic restore/rehydrate/leak fixes + 面板报告/unsupported/reload；204 files/1272 tests 绿；PR 待 |
