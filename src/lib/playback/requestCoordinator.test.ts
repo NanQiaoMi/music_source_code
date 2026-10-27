@@ -76,4 +76,13 @@ describe("PlaybackRequestCoordinator (S1-8a)", () => {
     already.abort("pre");
     expect(combineSignals(already.signal, 5000).aborted).toBe(true);
   });
+
+  it("combineSignals aborts on timeout", async () => {
+    const combined = combineSignals(undefined, 10);
+    expect(combined.aborted).toBe(false);
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(combined.aborted).toBe(true);
+  });
 });
