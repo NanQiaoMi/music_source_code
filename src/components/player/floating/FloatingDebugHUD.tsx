@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import type { FloatingPlayerState } from "./useFloatingDragPhysics";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
+import { useFloatingActive } from "@/hooks/useFloatingActive";
 import {
   Sliders,
   X,
@@ -30,6 +31,8 @@ export interface FloatingDebugHUDProps {
   currentState?: FloatingPlayerState;
   /** Custom class name */
   className?: string;
+  /** 外部门控（视图/沉浸式）：false 时不跑 FPS 遥测，默认 true。 */
+  active?: boolean;
 }
 
 export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
@@ -38,6 +41,7 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
   onStateChange,
   currentState = "pill",
   className = "",
+  active = true,
 }) => {
   const storeIsOpen = useFloatingDebugStore((state) => state.isHUDOpen);
   const toggleHUD = useFloatingDebugStore((state) => state.toggleHUD);
@@ -57,6 +61,7 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
   const setMagnifyPower = useFloatingDebugStore((state) => state.setMagnifyPower);
 
   const isVisible = controlledIsOpen !== undefined ? controlledIsOpen : storeIsOpen;
+  const floatingActive = useFloatingActive({ active });
 
   // Real-time FPS telemetry calculation
   const [fps, setFps] = useState<number>(60);
@@ -64,8 +69,13 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
   // 惰性 ref：useRef 的初始值每轮渲染都会求值，performance.now() 属渲染期副作用
   const lastTimeRef = useRef<number>(0);
 
+  // FPS 遥测只在 HUD 打开且浮动层活跃时运行：关闭 HUD 或标签页隐藏时 0 帧，不再常驻空转。
   useEffect(() => {
-    let animId: number;
+    if (!isVisible || !floatingActive) return;
+
+    let animId: number | null = null;
+    frameCountRef.current = 0;
+    lastTimeRef.current = performance.now();
 
     const measureFps = (now: number) => {
       frameCountRef.current++;
@@ -78,10 +88,11 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
       animId = requestRaf(measureFps);
     };
 
-    lastTimeRef.current = performance.now();
     animId = requestRaf(measureFps);
-    return () => cancelRaf(animId);
-  }, []);
+    return () => {
+      if (animId !== null) cancelRaf(animId);
+    };
+  }, [floatingActive, isVisible]);
 
   // Global keyboard shortcut: Shift + D toggles HUD
   useEffect(() => {

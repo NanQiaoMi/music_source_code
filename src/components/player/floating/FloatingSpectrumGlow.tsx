@@ -6,6 +6,7 @@ import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import { smoothAudioValue } from "@/lib/audio/audioMotionSmoothing";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
+import { useFloatingActive } from "@/hooks/useFloatingActive";
 
 export interface FloatingSpectrumGlowProps {
   /** Optional audio element */
@@ -20,6 +21,8 @@ export interface FloatingSpectrumGlowProps {
   colorTheme?: "plasma" | "cyan-magenta" | "aurora";
   /** Render as a transparent analyzer layer over an existing surface. */
   overlay?: boolean;
+  /** 外部门控（视图/沉浸式）：false 时停止排帧，默认 true 保持旧行为。 */
+  active?: boolean;
 }
 
 export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
@@ -29,14 +32,16 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
   barCount = 32,
   colorTheme: _colorTheme = "plasma",
   overlay = false,
+  active = true,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
-  const isVisibleRef = useRef<boolean>(true);
   const isRunningRef = useRef<boolean>(false);
   const reducedMotionRef = useRef(false);
   const lastFrameAtRef = useRef(0);
+  // 标签页可见性 + 视口可见性 + 外部门控合成的门控信号
+  const floatingActive = useFloatingActive({ active, targetRef: containerRef });
 
   // Audio frequency buffer
   const freqDataRef = useRef<Uint8Array | null>(null);
@@ -234,7 +239,7 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
 
   // Start loop helper
   const startLoop = useCallback(() => {
-    if (!isRunningRef.current && isVisibleRef.current) {
+    if (!isRunningRef.current) {
       isRunningRef.current = true;
       lastFrameAtRef.current = 0;
       animFrameRef.current = requestRaf(renderFrame);
@@ -251,71 +256,29 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
   }, []);
 
   // Restart with the newest song/playback closure so a long-lived RAF cannot retain old metadata.
+  // 门控：隐藏标签页/离开视口/外部 inactive 时立即停表；恢复可见时播放中重开循环，
+  // 暂停时只补一帧静帧（renderFrame 在无音频信号时自行停表，不留常驻循环）。
   useEffect(() => {
-    stopLoop();
-    if (currentSong && isVisibleRef.current) startLoop();
-  }, [currentSong, isPlaying, startLoop, stopLoop]);
+    if (!floatingActive || !currentSong) return;
+    startLoop();
+    return stopLoop;
+  }, [currentSong, isPlaying, floatingActive, startLoop, stopLoop]);
 
-  // Smart Visibility & IntersectionObserver for Energy Saving (智能休眠)
+  // Reduced motion: stop sampling when the user asks for less motion.
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
     const reducedMotionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     reducedMotionRef.current = reducedMotionQuery?.matches === true;
     const handleReducedMotionChange = (event: MediaQueryListEvent) => {
       reducedMotionRef.current = event.matches;
       stopLoop();
-      if (isVisibleRef.current && currentSong) startLoop();
+      if (floatingActive && currentSong) startLoop();
     };
     reducedMotionQuery?.addEventListener?.("change", handleReducedMotionChange);
-
-    let observer: IntersectionObserver | null = null;
-    if (typeof IntersectionObserver !== "undefined") {
-      observer = new IntersectionObserver(
-        ([entry]) => {
-          isVisibleRef.current = entry.isIntersecting;
-          if (entry.isIntersecting && isPlaying) {
-            startLoop();
-          } else if (!entry.isIntersecting) {
-            stopLoop();
-          }
-        },
-        { threshold: 0.05 }
-      );
-      observer.observe(container);
-    }
-
-    const handleVisibilityChange = () => {
-      if (typeof document !== "undefined" && document.hidden) {
-        isVisibleRef.current = false;
-        stopLoop();
-      } else {
-        isVisibleRef.current = true;
-        if (isPlaying) {
-          startLoop();
-        }
-      }
-    };
-
-    if (typeof document !== "undefined") {
-      document.addEventListener("visibilitychange", handleVisibilityChange);
-    }
-
-    // Initial check
-    startLoop();
-
     return () => {
-      if (observer) {
-        observer.disconnect();
-      }
-      if (typeof document !== "undefined") {
-        document.removeEventListener("visibilitychange", handleVisibilityChange);
-      }
       reducedMotionQuery?.removeEventListener?.("change", handleReducedMotionChange);
       stopLoop();
     };
-  }, [currentSong, isPlaying, startLoop, stopLoop]);
+  }, [currentSong, floatingActive, startLoop, stopLoop]);
 
   return (
     <div

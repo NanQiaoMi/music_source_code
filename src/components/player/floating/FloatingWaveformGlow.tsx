@@ -5,6 +5,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
+import { useFloatingActive } from "@/hooks/useFloatingActive";
 
 export interface FloatingWaveformGlowProps {
   /** Optional audio element override */
@@ -23,6 +24,8 @@ export interface FloatingWaveformGlowProps {
   magnifyingRadius?: number;
   /** Specular highlight color */
   highlightColor?: string;
+  /** 外部门控（视图/沉浸式）：false 时停止环境波形循环，默认 true 保持旧行为。 */
+  active?: boolean;
 }
 
 function formatTooltipTime(seconds: number): string {
@@ -41,12 +44,20 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
   onSeek,
   magnifyingRadius = 14,
   highlightColor = "#FFFFFF",
+  active = true,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const idlePhaseRef = useRef<number>(0);
+  // 标签页可见性 + 视口可见性 + 外部门控
+  const floatingActive = useFloatingActive({ active, targetRef: containerRef });
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true
+  );
 
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const currentTime = useAudioStore((state) => state.currentTime);
@@ -300,7 +311,10 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
       }
 
       ctx.restore();
-      animFrameRef.current = requestRaf(draw);
+      // 减动效只画一帧静帧；否则续排下一帧形成环境波形（空闲时唯一允许保留的循环）。
+      if (!prefersReducedMotion) {
+        animFrameRef.current = requestRaf(draw);
+      }
     },
     [
       currentTime,
@@ -314,17 +328,30 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
       isPlaying,
       magnifyPower,
       magnifyingRadius,
+      prefersReducedMotion,
     ]
   );
 
   useEffect(() => {
+    const query = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    if (!query?.addEventListener) return;
+    const handleChange = (event: MediaQueryListEvent) => setPrefersReducedMotion(event.matches);
+    query.addEventListener("change", handleChange);
+    return () => query.removeEventListener("change", handleChange);
+  }, []);
+
+  // 环境波形是空闲时唯一保留的循环：仅在活跃（标签页可见 + 视口内 + 视图门控）时运行，
+  // 隐藏/离开视口/切走视图立即取消；恢复可见重新排帧，减动效则只画静帧。
+  useEffect(() => {
+    if (!floatingActive) return;
     animFrameRef.current = requestRaf(draw);
     return () => {
       if (animFrameRef.current) {
         cancelRaf(animFrameRef.current);
+        animFrameRef.current = null;
       }
     };
-  }, [draw]);
+  }, [draw, floatingActive]);
 
   // Mouse & Touch Seek handlers
   const handleSeekFromClientX = useCallback(

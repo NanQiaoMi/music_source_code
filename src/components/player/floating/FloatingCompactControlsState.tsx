@@ -32,6 +32,8 @@ export interface FloatingCompactControlsStateProps {
   dragHandlers?: DragHandlers;
   className?: string;
   showGlow?: boolean;
+  /** 浮动层门控：false 时频谱循环停表，默认 true 保持旧行为。 */
+  active?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -188,6 +190,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
   dragHandlers,
   className = "",
   showGlow = false,
+  active = true,
 }) => {
   const playbackPhase = usePlaybackRuntimeStore((state) => state.phase);
   const shouldPlay = usePlaybackRuntimeStore((state) => state.shouldPlay);
@@ -281,6 +284,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
         {showGlow && (
           <FloatingSpectrumGlow
             overlay
+            active={active}
             className="pointer-events-none absolute inset-0 z-0 opacity-[0.2]"
             height={56}
             barCount={48}

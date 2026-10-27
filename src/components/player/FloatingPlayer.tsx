@@ -9,9 +9,14 @@ import { FloatingCompactControlsState } from "./floating/FloatingCompactControls
 
 export interface FloatingPlayerProps {
   className?: string;
+  /** 浮动层门控：false 时浮动画布循环停表（视图/沉浸式切换）。 */
+  active?: boolean;
 }
 
-export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({ className = "" }) => {
+export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
+  className = "",
+  active = true,
+}) => {
   const prefersReducedMotion = useReducedMotion() === true;
   const audioSong = useAudioStore((state) => state.currentSong);
   const playerSong = usePlayerStore((state) => state.currentSong);
@@ -149,6 +154,7 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({ className = "" }
         onCollapseToMini={() => {}}
         dragHandlers={dragHandlers}
         showGlow
+        active={active}
       />
     </motion.aside>
   );

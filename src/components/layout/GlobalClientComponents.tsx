@@ -41,6 +41,9 @@ export function GlobalClientComponents() {
     pathname === "/data-manager/" ||
     pathname?.startsWith("/data-manager/");
   const isImmersiveVisualization = !isDataManagerRoute && currentView === "visualization";
+  // 浮动层门控：全屏可视化/可视化视图下 DOM 只是 hidden（display:none），
+  // 浏览器不会因此停止 JS 循环，需要把 active=false 透传给画布循环显式停表。
+  const floatingActive = !isImmersiveVisualization && currentView !== "visualization";
 
   // 应用初始化时自动自愈清理历史膨胀存储
   useEffect(() => {
@@ -55,7 +58,7 @@ export function GlobalClientComponents() {
         <DataManagerPlayerDock />
       ) : (
         <div hidden={isImmersiveVisualization}>
-          <FloatingPlayer />
+          <FloatingPlayer active={floatingActive} />
         </div>
       )}
       <AchievementToastContainer />

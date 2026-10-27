@@ -25,6 +25,8 @@ export interface FloatingExpandedStateProps {
   dragHandlers?: DragHandlers;
   /** Custom class name */
   className?: string;
+  /** 浮动层门控：false 时波形/频谱循环停表，默认 true 保持旧行为。 */
+  active?: boolean;
 }
 
 const containerVariants: Variants = {
@@ -64,6 +66,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
   onCollapse,
   dragHandlers,
   className = "",
+  active = true,
 }) => {
   const currentSong = useAudioStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
@@ -250,9 +253,9 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
 
         <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-1 shadow-inner overflow-hidden">
           {activeVisTab === "waveform" ? (
-            <FloatingWaveformGlow height={40} interactive={true} />
+            <FloatingWaveformGlow height={40} interactive={true} active={active} />
           ) : (
-            <FloatingSpectrumGlow height={40} barCount={28} />
+            <FloatingSpectrumGlow height={40} barCount={28} active={active} />
           )}
         </div>
       </motion.div>
