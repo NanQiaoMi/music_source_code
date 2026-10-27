@@ -159,6 +159,17 @@ useAudioStore.subscribe((state, prev) => {
   if (Object.keys(updates).length > 0) {
     usePlayerStore.setState(updates);
   }
+
+  // 保证通过 useAudioStore.setState 注入的队列与索引与 queueStore 保持完全一致
+  if (state.queue !== prev.queue && state.queue !== useQueueStore.getState().queue) {
+    useQueueStore.getState().setQueue(state.queue);
+  }
+  if (
+    state.currentIndex !== prev.currentIndex &&
+    state.currentIndex !== useQueueStore.getState().currentIndex
+  ) {
+    useQueueStore.getState().setCurrentIndex(state.currentIndex);
+  }
 });
 
 // 单向事实源同步：queueStore 发生增删排时自动单向同步至 audioStore 镜像字段

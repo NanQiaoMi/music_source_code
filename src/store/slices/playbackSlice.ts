@@ -197,8 +197,18 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       flushProgressToStorage();
       const queueStore = useQueueStore.getState();
       const queue = queueStore.queue;
-      const currentIndex = queueStore.currentIndex;
-      const { loopMode } = get();
+      const { loopMode, currentSong } = get();
+
+      // 优先对齐当前队列与当前索引，防止跨组件直接调用 setState 时索引脱节
+      let currentIndex = queueStore.currentIndex;
+      if (get().currentIndex >= 0 && get().currentIndex < queue.length) {
+        currentIndex = get().currentIndex;
+      } else if (currentSong) {
+        const foundIndex = queue.findIndex((s) => s.id === currentSong.id);
+        if (foundIndex >= 0) {
+          currentIndex = foundIndex;
+        }
+      }
 
       if (queue.length === 0) {
         if (queueStore.playThroughMode === "play-through") {
@@ -269,10 +279,19 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       flushProgressToStorage();
       const queueStore = useQueueStore.getState();
       const queue = queueStore.queue;
-      const currentIndex = queueStore.currentIndex;
       if (queue.length === 0) return;
 
-      const { loopMode } = get();
+      const { loopMode, currentSong } = get();
+      let currentIndex = queueStore.currentIndex;
+      if (get().currentIndex >= 0 && get().currentIndex < queue.length) {
+        currentIndex = get().currentIndex;
+      } else if (currentSong) {
+        const foundIndex = queue.findIndex((s) => s.id === currentSong.id);
+        if (foundIndex >= 0) {
+          currentIndex = foundIndex;
+        }
+      }
+
       let prevIndex: number;
       if (loopMode === "shuffle") {
         prevIndex = Math.floor(Math.random() * queue.length);
