@@ -247,4 +247,35 @@ describe("audioStore playback sync", () => {
     expect(useAudioStore.getState().duration).toBe(195);
     expect(usePlayerStore.getState().duration).toBe(195);
   });
+
+  it("throttles high-frequency currentTime writes and flushes on seekTo", () => {
+    const store = useAudioStore.getState();
+    store.setCurrentTime(1.0);
+    expect(useAudioStore.getState().currentTime).toBe(1.0);
+
+    // 高频内存更新
+    store.setCurrentTime(1.25);
+    store.setCurrentTime(1.5);
+    store.setCurrentTime(1.75);
+    expect(useAudioStore.getState().currentTime).toBe(1.75);
+
+    // 拖动进度条触发立即同步
+    store.seekTo(30.0);
+    expect(useAudioStore.getState().currentTime).toBe(30.0);
+    expect(useAudioStore.getState().persistedCurrentTime).toBe(30.0);
+  });
+
+  it("delegates queue and currentIndex to queueStore as single authority", () => {
+    const song1 = createMockSong("q-1");
+    const song2 = createMockSong("q-2");
+
+    useQueueStore.getState().setQueue([song1, song2]);
+    useQueueStore.getState().setCurrentIndex(1);
+
+    expect(useAudioStore.getState().queue.map((s) => s.id)).toEqual(["q-1", "q-2"]);
+    expect(useAudioStore.getState().currentIndex).toBe(1);
+
+    useAudioStore.getState().setQueue([song1]);
+    expect(useQueueStore.getState().queue.map((s) => s.id)).toEqual(["q-1"]);
+  });
 });
