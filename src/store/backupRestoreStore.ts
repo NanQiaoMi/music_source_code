@@ -49,6 +49,8 @@ export interface BackupPreview {
   majorVersion: number;
   canRestore: boolean;
   includedStores: string[];
+  /** Legacy-only slots that will be reported as unsupported instead of being written. */
+  unsupportedStores?: string[];
   type: BackupType;
   createdAt: number;
   size: number;
@@ -159,6 +161,18 @@ function getLegacyIncludedStores(data: BackupData): string[] {
   return Array.from(new Set(stores));
 }
 
+function hasSlot(value: unknown, slot: string): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  return Boolean((value as Record<string, unknown>)[slot]);
+}
+
+function getLegacyUnsupportedStores(data: BackupData): string[] {
+  const unsupported: string[] = [];
+  if (hasSlot(data.settings, "sleep")) unsupported.push("sleep-timer-store");
+  if (hasSlot(data.playlists, "playlist")) unsupported.push("playlist-store");
+  return unsupported;
+}
+
 function createBackupPreview(data: AnyBackupData): BackupPreview {
   if (isV5Payload(data)) {
     return {
@@ -166,6 +180,7 @@ function createBackupPreview(data: AnyBackupData): BackupPreview {
       majorVersion: 5,
       canRestore: true,
       includedStores: data.entries.map((entry) => entry.key),
+      unsupportedStores: [],
       type: data.type,
       createdAt: data.createdAt,
       size: estimateBackupSize(data),
@@ -179,6 +194,7 @@ function createBackupPreview(data: AnyBackupData): BackupPreview {
     majorVersion,
     canRestore,
     includedStores: getLegacyIncludedStores(legacy),
+    unsupportedStores: getLegacyUnsupportedStores(legacy),
     type: legacy.type,
     createdAt: legacy.createdAt,
     size: estimateBackupSize(legacy),

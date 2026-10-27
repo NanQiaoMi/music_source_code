@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Clock, Database, Download, Trash2, Upload, X } from "lucide-react";
 import {
@@ -10,6 +10,7 @@ import {
   BackupType,
   useBackupRestoreStore,
 } from "@/store/backupRestoreStore";
+import type { RestoreReport, RestoreSkipReason } from "@/lib/storage/backupSchema";
 
 interface BackupRestorePanelProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ export const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ isOpen, 
     isRestoring,
     restoreProgress,
     restoreError,
+    restoreReport,
     schedules,
     createBackup,
     downloadBackup,
@@ -43,7 +45,13 @@ export const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ isOpen, 
     uploadBackup,
     addSchedule,
     getBackupPreview,
+    pruneOrphanBackupBodies,
   } = useBackupRestoreStore();
+
+  // S1-2b: one-time cleanup of orphan backup bodies on panel mount.
+  useEffect(() => {
+    pruneOrphanBackupBodies();
+  }, [pruneOrphanBackupBodies]);
 
   if (!isOpen) return null;
 
@@ -129,6 +137,7 @@ export const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ isOpen, 
               onUploadBackup={uploadBackup}
               getBackupPreview={getBackupPreview}
               restoreError={restoreError}
+              restoreReport={restoreReport}
             />
           )}
         </div>
@@ -325,6 +334,12 @@ function ScheduleTab({
   );
 }
 
+function formatSkipReason(reason: RestoreSkipReason): string {
+  if (reason === "missing") return "数据缺失";
+  if (reason === "corrupt") return "数据损坏";
+  return "旧版本/不支持";
+}
+
 function RestoreTab({
   isRestoring,
   restoreProgress,
@@ -333,6 +348,7 @@ function RestoreTab({
   onUploadBackup,
   getBackupPreview,
   restoreError,
+  restoreReport,
 }: {
   isRestoring: boolean;
   restoreProgress: number;
@@ -341,10 +357,15 @@ function RestoreTab({
   onUploadBackup: (file: File) => Promise<BackupItem>;
   getBackupPreview: (backupId: string) => BackupPreview | null;
   restoreError: string | null;
+  restoreReport: RestoreReport | null;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedBackupId, setSelectedBackupId] = useState<string | null>(null);
   const selectedPreview = selectedBackupId ? getBackupPreview(selectedBackupId) : null;
+  const unsupportedStores = selectedPreview?.unsupportedStores ?? [];
+  const restoredStoreChips = (selectedPreview?.includedStores ?? []).filter(
+    (storeName) => !unsupportedStores.includes(storeName)
+  );
 
   const handleFileDrop = useCallback(
     (e: React.DragEvent) => {
@@ -455,8 +476,13 @@ function RestoreTab({
               {selectedPreview.error}
             </div>
           )}
+          {unsupportedStores.length > 0 && (
+            <div className="rounded-xl border border-amber-400/30 bg-amber-500/15 p-3 text-sm text-amber-200">
+              以下旧版本槽位不会恢复：{unsupportedStores.join("、")}
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
-            {selectedPreview.includedStores.map((storeName) => (
+            {restoredStoreChips.map((storeName) => (
               <span
                 key={storeName}
                 className="rounded-lg bg-white/10 px-2 py-1 text-xs text-white/60"
@@ -471,6 +497,57 @@ function RestoreTab({
       {restoreError && (
         <div className="rounded-2xl border border-red-400/30 bg-red-500/15 p-4 text-sm text-red-200">
           {restoreError}
+        </div>
+      )}
+
+      {restoreReport && (
+        <div className="space-y-3 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="font-semibold text-emerald-200">
+                已恢复 {restoreReport.restored.length} 项
+                {restoreReport.skipped.length > 0
+                  ? `，${restoreReport.skipped.length} 项未恢复`
+                  : ""}
+                {restoreReport.failed.length > 0 ? `，${restoreReport.failed.length} 项失败` : ""}
+              </div>
+              <div className="text-sm text-white/60">
+                恢复已完成；部分界面或播放状态需要刷新后才能完全生效
+              </div>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="rounded-xl bg-emerald-500/20 px-4 py-2 text-emerald-200 hover:bg-emerald-500/30"
+            >
+              立即刷新
+            </button>
+          </div>
+
+          {restoreReport.skipped.length > 0 && (
+            <div className="text-sm text-amber-200">
+              <div>以下内容来自旧版本或不受支持，未写入当前数据：</div>
+              <ul className="mt-1 list-disc space-y-1 pl-5">
+                {restoreReport.skipped.map((item) => (
+                  <li key={item.key}>
+                    {item.key}（{formatSkipReason(item.reason)}）
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {restoreReport.failed.length > 0 && (
+            <div className="text-sm text-red-200">
+              <div>以下内容恢复失败：</div>
+              <ul className="mt-1 list-disc space-y-1 pl-5">
+                {restoreReport.failed.map((item) => (
+                  <li key={item.key}>
+                    {item.key}（{item.reason}）
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
