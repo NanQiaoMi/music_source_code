@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnimationPreset, AnimationTrack } from "@/lib/visualization/animationTypes";
-import type { EffectPlugin, EffectPreset } from "@/lib/visualization/types";
+import type { EffectPreset } from "@/lib/visualization/types";
 import type { Song } from "@/types/song";
 import { setEmotionCallbacks, useEmotionStore } from "./emotionStore";
 import { useAnimationStore } from "./animationStore";
@@ -9,7 +9,6 @@ import { useGestureStore } from "./gestureStore";
 import { lyricPresets, useLyricSettingsStore } from "./lyricSettingsStore";
 import { usePresetStore } from "./presetStore";
 import { useVisualizationStore } from "./visualizationStore";
-import { useVisualizationV8Store } from "./visualizationV8Store";
 
 const saveSongEmotions = vi.fn();
 const loadSongEmotions = vi.fn();
@@ -43,7 +42,6 @@ function resetVisualStores() {
   useLyricSettingsStore.setState(useLyricSettingsStore.getInitialState(), true);
   usePresetStore.setState(usePresetStore.getInitialState(), true);
   useVisualizationStore.setState(useVisualizationStore.getInitialState(), true);
-  useVisualizationV8Store.setState(useVisualizationV8Store.getInitialState(), true);
 }
 
 function createSong(id: string, title = `Song ${id}`): Song {
@@ -54,24 +52,6 @@ function createSong(id: string, title = `Song ${id}`): Song {
     duration: 180,
     source: "local",
     genre: "ambient",
-  };
-}
-
-function createEffectPlugin(id = "effect-a"): EffectPlugin {
-  return {
-    id,
-    name: "Effect A",
-    category: "spectrum",
-    description: "Test effect",
-    preferredEngine: "canvas",
-    parameters: [
-      { id: "speed", name: "Speed", type: "number", mode: "basic", default: 1 },
-      { id: "enabled", name: "Enabled", type: "boolean", mode: "professional", default: true },
-    ],
-    init: vi.fn(),
-    render: vi.fn(),
-    resize: vi.fn(),
-    destroy: vi.fn(),
   };
 }
 
@@ -171,34 +151,6 @@ describe("visual interaction stores", () => {
 
     store.deletePreset("preset-12345");
     expect(useVisualizationStore.getState().currentPresetId).toBeNull();
-  });
-
-  it("registers V8 effects once, resets default parameters, caps favorites, and persists runtime-safe fields", () => {
-    const store = useVisualizationV8Store.getState();
-    const effect = createEffectPlugin("effect-a");
-
-    store.registerEffect(effect);
-    store.registerEffect(effect);
-    store.updateEffectSettings("effect-a", { speed: 4, extra: "custom" });
-    store.resetEffectSettings("effect-a");
-    for (let i = 0; i < 14; i++) {
-      store.toggleFavoriteEffect(`effect-${i}`);
-    }
-    store.setCurrentEffect("effect-a");
-    store.setCurrentEngine("webgl");
-    store.setParameterMode("expert");
-
-    const state = useVisualizationV8Store.getState();
-    expect(state.effects).toHaveLength(1);
-    expect(state.effectSettings["effect-a"]).toEqual({ speed: 1, enabled: true });
-    expect(state.favoriteEffects).toHaveLength(12);
-    expect(state.favoriteEffects[0]).toBe("effect-13");
-
-    const persisted = localStorage.getItem("visualization-v8-store");
-    expect(persisted).not.toBeNull();
-    const parsed = JSON.parse(persisted!);
-    expect(parsed.state.currentEngine).toBe("webgl");
-    expect(parsed.state.effects).toBeUndefined();
   });
 
   it("clamps lyric settings, applies presets, resets defaults, and persists preferences", () => {

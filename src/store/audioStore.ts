@@ -1,702 +1,45 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { useQueueStore } from "./queueStore";
-import { useRecommendationStore } from "./recommendationStore";
-import { usePlayerStore, registerAudioStoreSync } from "./playerStore";
-import { usePlaylistStore } from "./playlistStore";
-import { useEQStore } from "./eqStore";
 import { createSafeStorage, sanitizeSongForStorage } from "@/lib/storage/safeStorage";
-
-import { Song } from "@/types/song";
+import { usePlayerStore, registerAudioStoreSync } from "./playerStore";
+import { useQueueStore } from "./queueStore";
 import {
-  createMissingAudioSourceError,
-  hasPlayableAudioSource,
-} from "@/lib/audio/playableAudioSource";
-import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
+  AudioStoreState,
+  LoopMode,
+  AudioError,
+  AudioDevice,
+  EQPreset,
+  HeadphonePreset,
+  Song,
+} from "./slices/types";
+import {
+  createPlaybackSlice,
+  registerAudioSeekHandler,
+  getAudioSeekHandler,
+} from "./slices/playbackSlice";
+import { createDeviceSlice } from "./slices/deviceSlice";
+import { createSourceSlice } from "./slices/sourceSlice";
 
-export type { Song };
+export type { LoopMode, AudioError, AudioDevice, EQPreset, HeadphonePreset, Song };
+export { registerAudioSeekHandler, getAudioSeekHandler };
 
-const getPlaybackSongId = (song: Song | null): string | null =>
-  song ? String(song.id || song.title || "") || null : null;
-
-const startPlaybackRequest = (song: Song): void => {
-  usePlaybackRuntimeStore
-    .getState()
-    .requestPlayback(getPlaybackSongId(song), song.audioUrl || null, true, true);
-};
-
-const clearPlaybackRequest = (): void => {
-  usePlaybackRuntimeStore.getState().requestPlayback(null, null, false, true);
-};
-
-export type LoopMode = "none" | "single" | "all" | "shuffle";
-
-export interface AudioError {
-  type: "load" | "play" | "network" | "decode" | "unknown";
-  message: string;
-  timestamp: number;
-}
-
-export interface AudioDevice {
-  deviceId: string;
-  label: string;
-  kind: "audiooutput" | "audioinput";
-}
-
-export type EQPreset =
-  | "flat"
-  | "pop"
-  | "rock"
-  | "classical"
-  | "jazz"
-  | "vocal"
-  | "light"
-  | "bass"
-  | "treble"
-  | "custom1"
-  | "custom2"
-  | "custom3";
-
-export type HeadphonePreset =
-  | "default"
-  | "headphone-open"
-  | "headphone-closed"
-  | "headphone-in-ear"
-  | "headphone-studio"
-  | "custom";
-
-interface AudioState {
-  isPlaying: boolean;
-  currentTime: number;
-  duration: number;
-  volume: number;
-  isMuted: boolean;
-  playbackRate: number;
-  loopMode: LoopMode;
-  currentSong: Song | null;
-  queue: Song[];
-  currentIndex: number;
-  isLoading: boolean;
-  error: AudioError | null;
-  bufferedRanges: { start: number; end: number }[];
-
-  eqBands: number[];
-  currentEQPreset: EQPreset;
-  isEQEnabled: boolean;
-  customEQPresets: { [key: string]: number[] };
-
-  stereoEnhance: number;
-  surroundSound: number;
-  bassBoost: number;
-  trebleBoost: number;
-  vocalEnhance: number;
-  loudnessNormalization: boolean;
-  targetLoudness: number;
-  isLosslessMode: boolean;
-
-  audioDevices: AudioDevice[];
-  currentAudioDevice: string | null;
-  isDeviceEnumerationSupported: boolean;
-
-  headphonePreset: HeadphonePreset;
-  customHeadphoneParams: {
-    bass: number;
-    mid: number;
-    treble: number;
-  };
-
-  fadeInDuration: number;
-  fadeOutDuration: number;
-  isFadeInEnabled: boolean;
-  isFadeOutEnabled: boolean;
-
-  gaplessPlayback: boolean;
-  preloadCount: number;
-
-  isEmotionCurveMode: boolean;
-  dynamicCrossfadeDuration: number;
-
-  setIsPlaying: (playing: boolean) => void;
-  togglePlaybackIntent: () => void;
-  setCurrentTime: (time: number) => void;
-  setDuration: (duration: number) => void;
-  setVolume: (volume: number) => void;
-  toggleMute: () => void;
-  setPlaybackRate: (rate: number) => void;
-  resetPlaybackRate: () => void;
-  setLoopMode: (mode: LoopMode) => void;
-  cycleLoopMode: () => void;
-  setCurrentSong: (song: Song | null) => void;
-  setQueue: (songs: Song[]) => void;
-  setCurrentIndex: (index: number) => void;
-  nextSong: () => void;
-  prevSong: () => void;
-  setIsLoading: (loading: boolean) => void;
-  setError: (error: AudioError | null) => void;
-  clearError: () => void;
-  setBufferedRanges: (ranges: { start: number; end: number }[]) => void;
-  updateCurrentSongLyrics: (lyrics: string, translationLyrics?: string) => void;
-  updateCurrentSongCover: (cover: string) => void;
-  playSong: (song: Song) => void;
-  playQueue: (songs: Song[], startIndex?: number) => void;
-
-  setEQBands: (bands: number[]) => void;
-  setCurrentEQPreset: (preset: EQPreset) => void;
-  setIsEQEnabled: (enabled: boolean) => void;
-  saveCustomEQPreset: (name: string, bands: number[]) => void;
-  loadEQPreset: (preset: EQPreset) => void;
-
-  setStereoEnhance: (value: number) => void;
-  setSurroundSound: (value: number) => void;
-  setBassBoost: (value: number) => void;
-  setTrebleBoost: (value: number) => void;
-  setVocalEnhance: (value: number) => void;
-  setLoudnessNormalization: (enabled: boolean) => void;
-  setTargetLoudness: (loudness: number) => void;
-  setIsLosslessMode: (enabled: boolean) => void;
-
-  setAudioDevices: (devices: AudioDevice[]) => void;
-  setCurrentAudioDevice: (deviceId: string | null) => void;
-  setIsDeviceEnumerationSupported: (supported: boolean) => void;
-
-  setHeadphonePreset: (preset: HeadphonePreset) => void;
-  setCustomHeadphoneParams: (params: { bass: number; mid: number; treble: number }) => void;
-
-  setFadeInDuration: (duration: number) => void;
-  setFadeOutDuration: (duration: number) => void;
-  setIsFadeInEnabled: (enabled: boolean) => void;
-  setIsFadeOutEnabled: (enabled: boolean) => void;
-
-  setGaplessPlayback: (enabled: boolean) => void;
-  setPreloadCount: (count: number) => void;
-  setIsEmotionCurveMode: (enabled: boolean) => void;
-  setDynamicCrossfadeDuration: (duration: number) => void;
-  appendSongsAndPlay: (songs: Song[]) => void;
-  seekTo: (time: number) => void;
-}
-
-const getDefaultEQPreset = (preset: EQPreset): number[] => {
-  const presets: { [key in EQPreset]: number[] } = {
-    flat: [
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ],
-    pop: [
-      2, 1, 0, -1, -1, 0, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ],
-    rock: [
-      4, 3, 1, 0, -1, -1, 0, 2, 3, 4, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ],
-    classical: [
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ],
-    jazz: [
-      1, 1, 1, 0, 0, 0, 0, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ],
-    vocal: [
-      -2, -1, 0, 1, 2, 3, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ],
-    light: [
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ],
-    bass: [
-      5, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ],
-    treble: [
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ],
-    custom1: [
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ],
-    custom2: [
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ],
-    custom3: [
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ],
-  };
-  return presets[preset] || presets.flat;
-};
-
-type AudioSeekHandler = (time: number) => void;
-let globalSeekHandler: AudioSeekHandler | null = null;
-
-export const registerAudioSeekHandler = (handler: AudioSeekHandler | null) => {
-  globalSeekHandler = handler;
-};
-
-export const getAudioSeekHandler = () => globalSeekHandler;
-
-export const useAudioStore = create<AudioState>()(
+export const useAudioStore = create<AudioStoreState>()(
   persist(
-    (set, get) => ({
-      isPlaying: usePlayerStore.getState().isPlaying,
-      currentTime: usePlayerStore.getState().currentTime,
-      duration: usePlayerStore.getState().duration,
-      volume: usePlayerStore.getState().volume,
-      isMuted: usePlayerStore.getState().isMuted,
-      playbackRate: usePlayerStore.getState().playbackRate,
-      loopMode: usePlayerStore.getState().loopMode,
-      currentSong: usePlayerStore.getState().currentSong,
-      queue: [],
-      currentIndex: 0,
-      isLoading: usePlayerStore.getState().isLoading,
-      error: null,
-      bufferedRanges: [],
+    (set, get, api) => ({
+      ...createPlaybackSlice(set, get, api),
+      ...createDeviceSlice(set, get, api),
+      ...createSourceSlice(set, get, api),
 
-      eqBands: useEQStore.getState().eqBands,
-      currentEQPreset: "flat",
-      isEQEnabled: useEQStore.getState().isEQEnabled,
-      customEQPresets: {},
-
-      stereoEnhance: 0,
-      surroundSound: 0,
-      bassBoost: 0,
-      trebleBoost: 0,
-      vocalEnhance: 0,
-      loudnessNormalization: false,
-      targetLoudness: -14,
-      isLosslessMode: true,
-
-      audioDevices: [],
-      currentAudioDevice: null,
-      isDeviceEnumerationSupported:
-        typeof navigator !== "undefined" &&
-        "mediaDevices" in navigator &&
-        "enumerateDevices" in navigator.mediaDevices,
-
-      headphonePreset: "default",
-      customHeadphoneParams: {
-        bass: 0,
-        mid: 0,
-        treble: 0,
+      // 队列单一事实源对接：代理至 queueStore，杜绝双权威不一致
+      queue: useQueueStore.getState().queue ?? [],
+      currentIndex: useQueueStore.getState().currentIndex ?? 0,
+      setQueue: (songs: Song[]) => {
+        useQueueStore.getState().setQueue(songs);
+        set({ queue: songs });
       },
-
-      fadeInDuration: 0.5,
-      fadeOutDuration: 0.5,
-      isFadeInEnabled: true,
-      isFadeOutEnabled: true,
-
-      gaplessPlayback: true,
-      preloadCount: 2,
-
-      isEmotionCurveMode: false,
-      dynamicCrossfadeDuration: 3,
-
-      setIsPlaying: (playing) => {
-        const currentSong = usePlayerStore.getState().currentSong ?? get().currentSong;
-        if (playing && currentSong && !hasPlayableAudioSource(currentSong)) {
-          usePlaybackRuntimeStore
-            .getState()
-            .requestPlayback(getPlaybackSongId(currentSong), currentSong.audioUrl || null, false);
-          usePlayerStore.getState().setIsLoading(false);
-          set({ isPlaying: false, isLoading: false, error: createMissingAudioSourceError() });
-          return;
-        }
-
-        usePlayerStore.getState().setIsPlaying(playing);
-        if (playing) {
-          set({ isLoading: true, error: null });
-        } else {
-          usePlayerStore.getState().setIsLoading(false);
-          set({ isLoading: false });
-        }
-      },
-      togglePlaybackIntent: () => {
-        get().setIsPlaying(!usePlaybackRuntimeStore.getState().shouldPlay);
-      },
-      setCurrentTime: (time) => {
-        usePlayerStore.getState().setCurrentTime(time);
-        set({ currentTime: Math.max(0, time) });
-      },
-      setDuration: (duration) => {
-        usePlayerStore.getState().setDuration(duration);
-        set({ duration });
-      },
-      setVolume: (volume) => {
-        usePlayerStore.getState().setVolume(volume);
-        set({ volume: Math.max(0, Math.min(1, volume)) });
-      },
-      toggleMute: () => {
-        const nextMuted = !get().isMuted;
-        usePlayerStore.getState().setIsMuted(nextMuted);
-        set({ isMuted: nextMuted });
-      },
-      setPlaybackRate: (rate) => {
-        usePlayerStore.getState().setPlaybackRate(rate);
-        const clampedRate = Math.max(0.5, Math.min(2.0, rate));
-        set({ playbackRate: Math.round(clampedRate * 100) / 100 });
-      },
-      resetPlaybackRate: () => {
-        usePlayerStore.getState().resetPlaybackRate();
-        set({ playbackRate: 1.0 });
-      },
-      setLoopMode: (mode) => {
-        usePlayerStore.getState().setLoopMode(mode);
-        set({ loopMode: mode });
-      },
-      cycleLoopMode: () => {
-        const modes: LoopMode[] = ["none", "all", "single", "shuffle"];
-        const { loopMode } = get();
-        const currentIndex = modes.indexOf(loopMode);
-        const nextIndex = (currentIndex + 1) % modes.length;
-        const nextMode = modes[nextIndex];
-        usePlayerStore.getState().setLoopMode(nextMode);
-        set({ loopMode: nextMode });
-      },
-      setCurrentSong: (song) => {
-        usePlayerStore.getState().setCurrentSong(song);
-        set({ currentSong: song });
-      },
-      updateCurrentSongLyrics: (lyrics, translationLyrics) => {
-        usePlayerStore.getState().updateCurrentSongLyrics(lyrics, translationLyrics);
-        const songId = get().currentSong?.id;
-        if (songId) {
-          useQueueStore.getState().updateSong(songId, { lyrics, translationLyrics });
-        }
-        set((state) => ({
-          currentSong: state.currentSong
-            ? {
-                ...state.currentSong,
-                lyrics,
-                translationLyrics: translationLyrics || state.currentSong.translationLyrics,
-              }
-            : null,
-          queue: state.queue.map((s) =>
-            s.id === songId
-              ? {
-                  ...s,
-                  lyrics,
-                  translationLyrics: translationLyrics || s.translationLyrics,
-                }
-              : s
-          ),
-        }));
-      },
-      updateCurrentSongCover: (cover) => {
-        usePlayerStore.getState().updateCurrentSongCover(cover);
-        const songId = get().currentSong?.id;
-        if (songId) {
-          useQueueStore.getState().updateSong(songId, { cover });
-        }
-        set((state) => ({
-          currentSong: state.currentSong
-            ? {
-                ...state.currentSong,
-                cover,
-              }
-            : null,
-          queue: state.queue.map((s) => (s.id === songId ? { ...s, cover } : s)),
-        }));
-      },
-      setQueue: (songs) => set({ queue: songs }),
-      setCurrentIndex: (index) => set({ currentIndex: index }),
-
-      nextSong: () => {
-        const { queue, currentIndex, loopMode } = get();
-
-        if (queue.length === 0) {
-          const queueStore = useQueueStore.getState();
-          if (queueStore.playThroughMode === "play-through") {
-            clearPlaybackRequest();
-            usePlayerStore.getState().setCurrentSong(null);
-            set({ currentSong: null, isPlaying: false });
-            return;
-          }
-          if (loopMode !== "single" && loopMode !== "all") {
-            const recs = useRecommendationStore.getState().getRecommendations();
-            if (recs.length > 0) {
-              queueStore.setQueue(recs);
-              queueStore.setCurrentIndex(0);
-              queueStore.addToHistory(recs[0]);
-              startPlaybackRequest(recs[0]);
-              usePlayerStore.getState().setCurrentSong(recs[0]);
-              set({
-                queue: recs,
-                currentIndex: 0,
-                currentSong: recs[0],
-                currentTime: 0,
-                isPlaying: false,
-                isLoading: true,
-                error: null,
-              });
-            } else {
-              clearPlaybackRequest();
-              usePlayerStore.getState().setCurrentSong(null);
-              set({ currentSong: null, isPlaying: false });
-            }
-          } else {
-            clearPlaybackRequest();
-            usePlayerStore.getState().setCurrentSong(null);
-            set({ currentSong: null, isPlaying: false });
-          }
-          return;
-        }
-
-        let nextIndex: number;
-
-        if (loopMode === "shuffle") {
-          nextIndex = Math.floor(Math.random() * queue.length);
-        } else if (loopMode === "none" && currentIndex >= queue.length - 1) {
-          // End of queue with no loop: stop playback
-          clearPlaybackRequest();
-          usePlayerStore.getState().setCurrentSong(null);
-          useQueueStore.getState().setCurrentIndex(0);
-          set({ currentSong: null, isPlaying: false, currentTime: 0 });
-          return;
-        } else {
-          nextIndex = (currentIndex + 1) % queue.length;
-        }
-        const nextSongItem = queue[nextIndex];
-        const _queueStore = useQueueStore.getState();
-        startPlaybackRequest(nextSongItem);
-        usePlayerStore.getState().setCurrentSong(nextSongItem);
-        _queueStore.setCurrentIndex(nextIndex);
-        _queueStore.addToHistory(nextSongItem);
-
-        set({
-          currentIndex: nextIndex,
-          currentSong: nextSongItem,
-          currentTime: 0,
-          isPlaying: false,
-          isLoading: true,
-          error: null,
-        });
-      },
-
-      prevSong: () => {
-        const { queue, currentIndex, loopMode } = get();
-        if (queue.length === 0) return;
-
-        let prevIndex: number;
-
-        if (loopMode === "shuffle") {
-          prevIndex = Math.floor(Math.random() * queue.length);
-        } else {
-          prevIndex = (currentIndex - 1 + queue.length) % queue.length;
-        }
-
-        const prevSongItem = queue[prevIndex];
-
-        const queueStore = useQueueStore.getState();
-        queueStore.setCurrentIndex(prevIndex);
-        queueStore.addToHistory(prevSongItem);
-        startPlaybackRequest(prevSongItem);
-        usePlayerStore.getState().setCurrentSong(prevSongItem);
-
-        set({
-          currentIndex: prevIndex,
-          currentSong: prevSongItem,
-          currentTime: 0,
-          isPlaying: false,
-          isLoading: true,
-          error: null,
-        });
-      },
-
-      setIsLoading: (loading) => {
-        usePlayerStore.getState().setIsLoading(loading);
-        set({ isLoading: loading });
-      },
-      setError: (error) => set({ error, isPlaying: false }),
-      clearError: () => set({ error: null }),
-      setBufferedRanges: (ranges) => set({ bufferedRanges: ranges }),
-
-      playSong: (song) => {
-        if (!hasPlayableAudioSource(song)) {
-          usePlayerStore.getState().setIsPlaying(false);
-          usePlayerStore.getState().setIsLoading(false);
-          set({
-            isPlaying: false,
-            isLoading: false,
-            error: createMissingAudioSourceError(),
-          });
-          return;
-        }
-
-        // 检查当前播放队列中是否已有该歌曲（如正在播放网络歌单或搜索结果列表）
-        const queueStore = useQueueStore.getState();
-        const currentQueue = queueStore.queue;
-        const queueIdx = currentQueue.findIndex((s) => s.id === song.id);
-
-        let fullQueue: Song[];
-        let startIdx: number;
-
-        if (queueIdx >= 0) {
-          // 当前播放队列中已有这首歌，保留完整队列，仅切换当前索引
-          fullQueue = currentQueue;
-          startIdx = queueIdx;
-        } else {
-          // 否则尝试从本地曲库匹配
-          const playlistSongs = usePlaylistStore.getState().songs;
-          const idx = playlistSongs.findIndex((s) => s.id === song.id);
-          if (idx >= 0) {
-            fullQueue = playlistSongs;
-            startIdx = idx;
-          } else {
-            // 如果既不在当前队列也不在本地曲库，将该歌曲追加到当前队列或创建单曲队列
-            fullQueue = currentQueue.length > 0 ? [...currentQueue, song] : [song];
-            startIdx = fullQueue.length - 1;
-          }
-        }
-
-        queueStore.setQueue(fullQueue);
-        queueStore.setCurrentIndex(startIdx);
-        queueStore.addToHistory(song);
-        startPlaybackRequest(song);
-        usePlayerStore.getState().setCurrentSong(song);
-
-        set({
-          currentSong: song,
-          currentTime: 0,
-          isPlaying: false,
-          isLoading: true,
-          error: null,
-          queue: fullQueue,
-          currentIndex: startIdx,
-          isEmotionCurveMode: false,
-        });
-      },
-
-      playQueue: (songs, startIndex = 0) => {
-        if (songs.length === 0) return;
-        const index = Math.max(0, Math.min(startIndex, songs.length - 1));
-        const song = songs[index];
-        if (!hasPlayableAudioSource(song)) {
-          usePlayerStore.getState().setIsPlaying(false);
-          usePlayerStore.getState().setIsLoading(false);
-          set({
-            isPlaying: false,
-            isLoading: false,
-            error: createMissingAudioSourceError(),
-          });
-          return;
-        }
-
-        const queueStore = useQueueStore.getState();
-        queueStore.setQueue(songs);
-        queueStore.setCurrentIndex(index);
-        queueStore.addToHistory(song);
-        startPlaybackRequest(song);
-        usePlayerStore.getState().setCurrentSong(song);
-
-        set({
-          queue: songs,
-          currentIndex: index,
-          currentSong: song,
-          currentTime: 0,
-          isPlaying: false,
-          isLoading: true,
-          error: null,
-          isEmotionCurveMode: false,
-        });
-      },
-
-      setEQBands: (bands) => {
-        useEQStore.getState().setEQBands(bands);
-        set({
-          eqBands: bands,
-          currentEQPreset:
-            bands === getDefaultEQPreset(get().currentEQPreset) ? get().currentEQPreset : "custom1",
-        });
-      },
-      setCurrentEQPreset: (preset) => {
-        const bands = getDefaultEQPreset(preset);
-        useEQStore.getState().setEQBands(bands);
-        set({
-          currentEQPreset: preset,
-          eqBands: bands,
-        });
-      },
-      setIsEQEnabled: (enabled) => {
-        useEQStore.getState().setEQEnabled(enabled);
-        set({ isEQEnabled: enabled });
-      },
-      saveCustomEQPreset: (name, bands) =>
-        set((state) => ({
-          customEQPresets: { ...state.customEQPresets, [name]: bands },
-        })),
-      loadEQPreset: (preset) => {
-        const bands = getDefaultEQPreset(preset);
-        useEQStore.getState().setEQBands(bands);
-        set({
-          eqBands: bands,
-          currentEQPreset: preset,
-        });
-      },
-
-      setStereoEnhance: (value) => set({ stereoEnhance: Math.max(0, Math.min(100, value)) }),
-      setSurroundSound: (value) => set({ surroundSound: Math.max(0, Math.min(100, value)) }),
-      setBassBoost: (value) => set({ bassBoost: Math.max(0, Math.min(100, value)) }),
-      setTrebleBoost: (value) => set({ trebleBoost: Math.max(0, Math.min(100, value)) }),
-      setVocalEnhance: (value) => set({ vocalEnhance: Math.max(0, Math.min(100, value)) }),
-      setLoudnessNormalization: (enabled) => set({ loudnessNormalization: enabled }),
-      setTargetLoudness: (loudness) =>
-        set({ targetLoudness: Math.max(-24, Math.min(-8, loudness)) }),
-      setIsLosslessMode: (enabled) => set({ isLosslessMode: enabled }),
-
-      setAudioDevices: (devices) => set({ audioDevices: devices }),
-      setCurrentAudioDevice: (deviceId) => set({ currentAudioDevice: deviceId }),
-      setIsDeviceEnumerationSupported: (supported) =>
-        set({ isDeviceEnumerationSupported: supported }),
-
-      setHeadphonePreset: (preset) => set({ headphonePreset: preset }),
-      setCustomHeadphoneParams: (params) => set({ customHeadphoneParams: params }),
-
-      setFadeInDuration: (duration) =>
-        set({ fadeInDuration: Math.max(0.1, Math.min(3, duration)) }),
-      setFadeOutDuration: (duration) =>
-        set({ fadeOutDuration: Math.max(0.1, Math.min(3, duration)) }),
-      setIsFadeInEnabled: (enabled) => set({ isFadeInEnabled: enabled }),
-      setIsFadeOutEnabled: (enabled) => set({ isFadeOutEnabled: enabled }),
-
-      setGaplessPlayback: (enabled) => set({ gaplessPlayback: enabled }),
-      setPreloadCount: (count) => set({ preloadCount: Math.max(0, Math.min(5, count)) }),
-      setIsEmotionCurveMode: (enabled) => set({ isEmotionCurveMode: enabled }),
-      setDynamicCrossfadeDuration: (duration) =>
-        set({ dynamicCrossfadeDuration: Math.max(0, Math.min(20, duration)) }),
-
-      appendSongsAndPlay: (songs: Song[]) => {
-        if (!songs || songs.length === 0) return;
-        const firstSong = songs[0];
-        if (!hasPlayableAudioSource(firstSong)) {
-          usePlayerStore.getState().setIsPlaying(false);
-          usePlayerStore.getState().setIsLoading(false);
-          set({
-            isPlaying: false,
-            isLoading: false,
-            error: createMissingAudioSourceError(),
-          });
-          return;
-        }
-
-        const { queue } = get();
-        const startIndex = queue.length;
-        const newQueue = [...queue, ...songs];
-
-        const queueStore = useQueueStore.getState();
-        queueStore.setQueue(newQueue);
-        queueStore.setCurrentIndex(startIndex);
-        queueStore.addToHistory(firstSong);
-        startPlaybackRequest(firstSong);
-        usePlayerStore.getState().setCurrentSong(firstSong);
-
-        set({
-          queue: newQueue,
-          currentIndex: startIndex,
-          currentSong: firstSong,
-          currentTime: 0,
-          isPlaying: false,
-          isLoading: true,
-          error: null,
-        });
-      },
-      seekTo: (time) => {
-        const clampedTime = Math.max(0, time);
-        usePlayerStore.getState().setCurrentTime(clampedTime);
-        set({ currentTime: clampedTime });
-        if (globalSeekHandler) {
-          globalSeekHandler(clampedTime);
-        }
+      setCurrentIndex: (index: number) => {
+        useQueueStore.getState().setCurrentIndex(index);
+        set({ currentIndex: index });
       },
     }),
     {
@@ -704,9 +47,10 @@ export const useAudioStore = create<AudioState>()(
       storage: createJSONStorage(() => createSafeStorage("audio-store-v4")),
       partialize: (state) => ({
         currentSong: state.currentSong ? sanitizeSongForStorage(state.currentSong) : null,
-        currentTime: typeof state.currentTime === "number" ? state.currentTime : 0,
+        // 使用节流同步的 persistedCurrentTime，阻断每秒多次的磁盘 I/O 序列化
+        currentTime:
+          typeof state.persistedCurrentTime === "number" ? state.persistedCurrentTime : 0,
         duration: typeof state.duration === "number" ? state.duration : 0,
-        currentIndex: typeof state.currentIndex === "number" ? state.currentIndex : 0,
         volume: state.volume,
         isMuted: state.isMuted,
         playbackRate: state.playbackRate,
@@ -736,10 +80,10 @@ export const useAudioStore = create<AudioState>()(
   )
 );
 
-// 注册与 playerStore 之间的实时双向同步
+// 注册与 playerStore 之间的实时同步（排除死循环）
 registerAudioStoreSync((playerState) => {
   const currentAudio = useAudioStore.getState();
-  const updates: Partial<AudioState> = {};
+  const updates: Partial<AudioStoreState> = {};
   if (playerState.isPlaying !== undefined && playerState.isPlaying !== currentAudio.isPlaying) {
     updates.isPlaying = playerState.isPlaying;
   }
@@ -815,4 +159,46 @@ useAudioStore.subscribe((state, prev) => {
   if (Object.keys(updates).length > 0) {
     usePlayerStore.setState(updates);
   }
+
+  // 保证通过 useAudioStore.setState 注入的队列与索引与 queueStore 保持完全一致
+  if (state.queue !== prev.queue && state.queue !== useQueueStore.getState().queue) {
+    useQueueStore.getState().setQueue(state.queue);
+  }
+  if (
+    state.currentIndex !== prev.currentIndex &&
+    state.currentIndex !== useQueueStore.getState().currentIndex
+  ) {
+    useQueueStore.getState().setCurrentIndex(state.currentIndex);
+  }
 });
+
+// 单向事实源同步：queueStore 发生增删排时自动单向同步至 audioStore 镜像字段
+useQueueStore.subscribe((state, prev) => {
+  const currentAudio = useAudioStore.getState();
+  const updates: Partial<AudioStoreState> = {};
+  if (state.queue !== prev.queue && state.queue !== currentAudio.queue) {
+    updates.queue = state.queue;
+  }
+  if (
+    state.currentIndex !== prev.currentIndex &&
+    state.currentIndex !== currentAudio.currentIndex
+  ) {
+    updates.currentIndex = state.currentIndex;
+  }
+  if (Object.keys(updates).length > 0) {
+    useAudioStore.setState(updates);
+  }
+});
+
+// ============================================================================
+// 细粒度原子 Hook 导出：阻断跳秒导致的全页面外壳无谓重绘
+// ============================================================================
+export const useAudioCurrentTime = () => useAudioStore((s) => s.currentTime);
+export const useAudioDuration = () => useAudioStore((s) => s.duration);
+export const useAudioIsPlaying = () => useAudioStore((s) => s.isPlaying);
+export const useAudioVolume = () => useAudioStore((s) => s.volume);
+export const useAudioIsMuted = () => useAudioStore((s) => s.isMuted);
+export const useAudioCurrentSong = () => useAudioStore((s) => s.currentSong);
+export const useAudioLoopMode = () => useAudioStore((s) => s.loopMode);
+export const useAudioError = () => useAudioStore((s) => s.error);
+export const useAudioLoading = () => useAudioStore((s) => s.isLoading);

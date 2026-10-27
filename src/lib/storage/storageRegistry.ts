@@ -355,14 +355,6 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
     quotaPolicy: "prune-then-memory",
   },
   {
-    key: "visualization-v8-store",
-    owner: "visualizationV8Store",
-    version: 1,
-    group: "ui",
-    backup: false,
-    quotaPolicy: "prune-then-memory",
-  },
-  {
     key: "visual-settings-v4",
     owner: "visualSettingsStore",
     version: 1,
@@ -399,6 +391,7 @@ export const STORAGE_KEY_BY_OWNER: ReadonlyMap<string, string> = new Map(
 export const EXTERNAL_KEYS: readonly string[] = [
   "mimimusic_active_view",
   "mimimusic_offline_downloads",
+  "visualization-v8-store",
 ] as const;
 
 const KEY_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;

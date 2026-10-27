@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { useUIStore, PanelName } from "@/store/uiStore";
 import { useGestureSettingsStore } from "@/store/gestureSettingsStore";
-import { useVisualizationV8Store } from "@/store/visualizationV8Store";
+import { useVisualizationStore } from "@/store/visualizationStore";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { HEADER_COMPACT_QUERY } from "@/components/layout/headerBreakpoints";
 
@@ -148,27 +148,27 @@ export function AppleUnifiedNavIsland({
           label: "暗场粒子歌词舞台",
           icon: <Sparkles className="w-4 h-4 text-purple-400" />,
           action: () => {
-            useVisualizationV8Store.getState().setCurrentEffect("kinetic-particle-stage");
+            useVisualizationStore.getState().setCurrentEffect("cyberpunkParticles");
             useUIStore.getState().setCurrentView("visualization");
           },
-          desc: "3D 粒子波浪与发光歌词",
+          desc: "赛博粒子流转与声波共振",
         },
         {
           id: "v8Visualizer",
-          label: "全屏 V8 渲染引擎",
+          label: "全屏声学可视化",
           icon: <Waves className="w-4 h-4 text-blue-400" />,
           action: () => useUIStore.getState().setCurrentView("visualization"),
-          desc: "28+ WebGL/Canvas 引擎",
+          desc: "沉浸式动态粒子与音波场",
         },
         {
           id: "auroraBackdrop",
-          label: "Apple Fluid 动态流体",
+          label: "极光声学流体",
           icon: <Palette className="w-4 h-4 text-emerald-400" />,
           action: () => {
-            useVisualizationV8Store.getState().setCurrentEffect("aurora-fluid");
+            useVisualizationStore.getState().setCurrentEffect("auroraWave");
             useUIStore.getState().setCurrentView("visualization");
           },
-          desc: "声学色彩弥散渐变",
+          desc: "极光波浪与声学色彩弥散",
         },
       ],
     },

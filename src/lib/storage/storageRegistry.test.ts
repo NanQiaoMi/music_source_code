@@ -72,10 +72,10 @@ function collectPersistKeys(): string[] {
 }
 
 describe("storageRegistry", () => {
-  it("registers every persisted key exactly once (44 keys)", () => {
+  it("registers every persisted key exactly once (43 keys)", () => {
     const actual = collectPersistKeys().sort();
-    expect(actual).toHaveLength(44);
-    expect(new Set(actual).size).toBe(44);
+    expect(actual).toHaveLength(43);
+    expect(new Set(actual).size).toBe(43);
     expect([...STORAGE_KEYS].sort()).toEqual(actual);
   });
 

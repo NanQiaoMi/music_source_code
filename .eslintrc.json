@@ -1,5 +1,6 @@
 {
   "root": true,
+  "ignorePatterns": ["archive/**", "scratch/**"],
   "parser": "@typescript-eslint/parser",
   "plugins": ["@typescript-eslint", "react", "prettier"],
   "extends": [
