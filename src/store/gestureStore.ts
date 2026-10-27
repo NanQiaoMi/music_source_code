@@ -58,6 +58,7 @@ const EMPTY_DEBUG: GestureDebugMetrics = {
   palmOpenness: 0,
   pointerSpeed: 0,
   posture: "none",
+  inferenceMs: 0,
 };
 
 function createRuntimeDefaults() {

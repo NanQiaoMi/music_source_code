@@ -81,8 +81,8 @@ describe("GestureHUD", () => {
     expect(html).toContain("摄像头预览");
     expect(html).toContain("<video");
     expect(html).toContain("<canvas");
-    expect(html).toContain('width="640"');
-    expect(html).toContain('height="480"');
+    expect(html).toContain('width="320"');
+    expect(html).toContain('height="240"');
     expect(html).toContain("scaleX(-1)");
     expect(html).toContain('data-gesture-ignore="true"');
   });

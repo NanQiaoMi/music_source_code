@@ -140,6 +140,8 @@ export async function requestGestureCamera(
   const video: MediaTrackConstraints = {
     width: { ideal: DEFAULT_VIDEO_WIDTH },
     height: { ideal: DEFAULT_VIDEO_HEIGHT },
+    // 30fps 足够手势识别；不设上限时部分摄像头会输出 60fps，白白增加解码/回调开销。
+    frameRate: { ideal: 30 },
     facingMode: "user",
   };
   if (deviceId) {

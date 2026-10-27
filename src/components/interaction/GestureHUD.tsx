@@ -115,6 +115,7 @@ export const GestureHUD: React.FC<GestureHUDProps> = ({
   const posture = useGestureStore((state) => state.posture);
   const mode = useGestureStore((state) => state.mode);
   const fps = useGestureStore((state) => state.fps);
+  const inferenceMs = useGestureStore((state) => Math.round(state.debug.inferenceMs ?? 0));
   const dwell = useGestureStore((state) => state.dwell);
 
   // 关闭总开关后整棵 UI（含媒体层）都不再需要
@@ -231,8 +232,8 @@ export const GestureHUD: React.FC<GestureHUDProps> = ({
           />
           <canvas
             ref={canvasRef}
-            width={640}
-            height={480}
+            width={320}
+            height={240}
             aria-hidden="true"
             className={
               showSkeleton && previewVisible
@@ -300,6 +301,8 @@ export const GestureHUD: React.FC<GestureHUDProps> = ({
             <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 rounded-xl bg-white/[0.03] p-2 font-mono text-[10px] text-[#86868b]">
               <span>帧率</span>
               <span className="text-right text-white/70">{fps} FPS</span>
+              <span>推理</span>
+              <span className="text-right text-white/70">{inferenceMs} ms</span>
               <span>姿态</span>
               <span className="text-right text-white/70">{POSTURE_LABELS[posture]}</span>
               <span>模式</span>

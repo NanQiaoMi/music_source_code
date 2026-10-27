@@ -270,6 +270,9 @@ export interface GestureTuning {
   oneEuroBeta: number;
 }
 
+/** 无手时的检测频率上限：降低常驻 CPU/GPU 占用，有手后立即恢复 maxFps。 */
+export const GESTURE_IDLE_MAX_FPS = 12;
+
 export const DEFAULT_GESTURE_TUNING: GestureTuning = {
   mirror: true,
   sensitivity: 1,
@@ -388,6 +391,8 @@ export interface GestureDebugMetrics {
   palmOpenness: number;
   pointerSpeed: number;
   posture: GesturePosture;
+  /** 最近一次 MediaPipe 推理耗时（毫秒，指数平滑）；性能诊断用。 */
+  inferenceMs?: number;
 }
 
 export type GestureFrameEvent =

@@ -116,6 +116,7 @@ describe("requestGestureCamera", () => {
       video: {
         width: { ideal: 640 },
         height: { ideal: 480 },
+        frameRate: { ideal: 30 },
         facingMode: "user",
       },
     });
@@ -146,6 +147,7 @@ describe("requestGestureCamera", () => {
       video: {
         width: { ideal: 640 },
         height: { ideal: 480 },
+        frameRate: { ideal: 30 },
         facingMode: "user",
         deviceId: { exact: "cam-1" },
       },

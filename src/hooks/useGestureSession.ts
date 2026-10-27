@@ -22,6 +22,7 @@ import {
 } from "@/lib/gesture/camera";
 import { GesturePointerBridge } from "@/lib/gesture/pointerBridge";
 import { executeGestureAction, resolveGestureActionForCommand } from "@/lib/gesture/actions";
+import { resolveDetectionIntervalMs } from "@/lib/gesture/timing";
 
 const HAND_CONNECTIONS: readonly (readonly [number, number])[] = [
   [0, 1],
@@ -208,6 +209,9 @@ export function useGestureSession({
     let lastCursor = { x: -1, y: -1 };
     let lastBridgeCursor = { x: -1, y: -1 };
     let lastDwellProgress = -1;
+    let lastDebugAt = -1;
+    let smoothedInferenceMs = 0;
+    let canvasContext: CanvasRenderingContext2D | null = null;
 
     const fail = (error: GestureErrorState) => {
       runtime.setError(error);
@@ -229,33 +233,65 @@ export function useGestureSession({
       runtime.setCameraActive(false);
     };
 
+    const getCanvasContext = (): CanvasRenderingContext2D | null => {
+      const canvas = canvasRef.current;
+      if (!canvas) return null;
+      if (!canvasContext || canvasContext.canvas !== canvas) {
+        canvasContext = canvas.getContext("2d");
+      }
+      return canvasContext;
+    };
+
+    const clearSkeleton = () => {
+      const canvas = canvasRef.current;
+      const context = getCanvasContext();
+      if (canvas && context) context.clearRect(0, 0, canvas.width, canvas.height);
+    };
+
+    /** 单帧骨架绘制：缓存 2d context，连线合成一次 stroke，圆点按颜色批量 fill。 */
     const drawSkeleton = (landmarks: GestureLandmarks) => {
       const canvas = canvasRef.current;
-      if (!canvas) return;
-      const context = canvas.getContext("2d");
-      if (!context) return;
+      const context = getCanvasContext();
+      if (!canvas || !context) return;
       const width = canvas.width;
       const height = canvas.height;
       context.clearRect(0, 0, width, height);
-      context.strokeStyle = "rgba(48, 209, 88, 0.78)";
-      context.lineWidth = 2;
+
       context.lineCap = "round";
+      context.lineWidth = 2;
+      context.strokeStyle = "rgba(48, 209, 88, 0.78)";
+      context.beginPath();
       for (const connection of HAND_CONNECTIONS) {
         const from = landmarks[connection[0]];
         const to = landmarks[connection[1]];
-        context.beginPath();
         context.moveTo(from.x * width, from.y * height);
         context.lineTo(to.x * width, to.y * height);
-        context.stroke();
       }
-      for (let index = 0; index < landmarks.length; index += 1) {
+      context.stroke();
+
+      context.fillStyle = "#ffffff";
+      context.beginPath();
+      for (let index = 1; index < landmarks.length; index += 1) {
+        if (KEY_LANDMARKS.has(index)) continue;
         const point = landmarks[index];
-        const key = KEY_LANDMARKS.has(index);
+        context.moveTo(point.x * width + 3, point.y * height);
+        context.arc(point.x * width, point.y * height, 3, 0, Math.PI * 2);
+      }
+      context.fill();
+
+      context.fillStyle = "#ffd60a";
+      for (const index of KEY_LANDMARKS) {
+        const point = landmarks[index];
         context.beginPath();
-        context.arc(point.x * width, point.y * height, key ? 5 : 3, 0, Math.PI * 2);
-        context.fillStyle = key ? "#ffd60a" : index === 0 ? "#ff6b6b" : "#ffffff";
+        context.arc(point.x * width, point.y * height, 5, 0, Math.PI * 2);
         context.fill();
       }
+
+      context.fillStyle = "#ff6b6b";
+      context.beginPath();
+      const wrist = landmarks[0];
+      context.arc(wrist.x * width, wrist.y * height, 3, 0, Math.PI * 2);
+      context.fill();
     };
 
     const applyCommand = (command: Parameters<typeof resolveGestureActionForCommand>[0]) => {
@@ -318,19 +354,24 @@ export function useGestureSession({
       const cursorVisible =
         result.cursor !== null &&
         (result.mode === "pointer" || result.mode === "pinch" || result.mode === "drag");
+      const wasCursorVisible = state.cursorVisible;
 
       if (result.cursor) {
         const deltaX = Math.abs(result.cursor.x - lastCursor.x);
         const deltaY = Math.abs(result.cursor.y - lastCursor.y);
-        if (deltaX > 0.0008 || deltaY > 0.0008) {
+        const cursorMoved = deltaX > 0.0008 || deltaY > 0.0008;
+        if (cursorMoved) {
           lastCursor = { x: result.cursor.x, y: result.cursor.y };
-          runtime.setCursor(result.cursor.x, result.cursor.y);
         }
-        // 指针桥必须拿到“当前帧光标”，否则手出现后不移动直接捏合会没有 hover 目标。
+        // 光标不可见（idle / palm / fist）时不写 store，减少无效渲染；
+        // 但指针桥必须拿到“当前帧光标”，否则手出现后不移动直接捏合会没有 hover 目标。
         if (cursorVisible) {
+          if (cursorMoved || !wasCursorVisible) {
+            runtime.setCursor(result.cursor.x, result.cursor.y);
+          }
           const bridgeDeltaX = Math.abs(result.cursor.x - lastBridgeCursor.x);
           const bridgeDeltaY = Math.abs(result.cursor.y - lastBridgeCursor.y);
-          if (bridgeDeltaX > 0.0008 || bridgeDeltaY > 0.0008) {
+          if (bridgeDeltaX > 0.0015 || bridgeDeltaY > 0.0015 || !wasCursorVisible) {
             lastBridgeCursor = { x: result.cursor.x, y: result.cursor.y };
             bridge?.moveTo(result.cursor.x, result.cursor.y);
           }
@@ -340,8 +381,6 @@ export function useGestureSession({
         state.cursorVisible = cursorVisible;
         runtime.setCursorVisible(cursorVisible);
       }
-
-      runtime.setDebug(result.debug);
 
       for (const event of result.events) {
         switch (event.type) {
@@ -388,11 +427,15 @@ export function useGestureSession({
       if (video.currentTime === lastVideoTime) return;
       lastVideoTime = video.currentTime;
 
-      if (timestamp - lastDetectAt < 1000 / tuning.maxFps - 2) return;
+      // 空闲时降频（默认 12fps），检测到手后恢复 tuning.maxFps（默认 30fps）。
+      if (timestamp - lastDetectAt < resolveDetectionIntervalMs(tuning.maxFps, state.handPresent)) {
+        return;
+      }
       lastDetectAt = timestamp;
 
       const settings = useGestureSettingsStore.getState();
       let landmarks: GestureLandmarks | null = null;
+      const detectStartedAt = performance.now();
       try {
         lastMediaTimestamp = Math.max(lastMediaTimestamp + 0.01, timestamp);
         landmarks = tracker.detect(video, lastMediaTimestamp);
@@ -404,16 +447,27 @@ export function useGestureSession({
         }
         return;
       }
+      const detectElapsed = performance.now() - detectStartedAt;
+      smoothedInferenceMs =
+        smoothedInferenceMs <= 0 ? detectElapsed : smoothedInferenceMs * 0.8 + detectElapsed * 0.2;
 
       if (cancelled || !running) return;
-      if (landmarks && settings.showSkeleton) drawSkeleton(landmarks);
-      else if (!landmarks && canvasRef.current) {
-        const context = canvasRef.current.getContext("2d");
-        context?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      }
+      // 预览不可见时跳过骨架绘制，避免隐藏 HUD / 折叠时仍每帧清空+重绘 640x480 画布。
+      const skeletonVisible =
+        settings.showSkeleton && settings.showHud && settings.showPreview && !settings.hudCollapsed;
+      if (landmarks && skeletonVisible) drawSkeleton(landmarks);
+      else if (!landmarks && skeletonVisible) clearSkeleton();
 
       const engineResult = engine.processFrame(landmarks, timestamp);
       applyFrame(engineResult);
+      // 诊断指标 4Hz 更新即可；原先每帧 setDebug 会让整个 store 每帧通知一次订阅者。
+      if (lastDebugAt < 0 || timestamp - lastDebugAt >= 250) {
+        lastDebugAt = timestamp;
+        runtime.setDebug({
+          ...engineResult.debug,
+          inferenceMs: Math.round(smoothedInferenceMs),
+        });
+      }
 
       fpsFrames += 1;
       if (fpsWindowStart === 0) fpsWindowStart = timestamp;

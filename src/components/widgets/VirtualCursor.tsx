@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useCallback, useLayoutEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 import { useGestureStore } from "@/store/gestureStore";
 import { useGestureSettingsStore } from "@/store/gestureSettingsStore";
 
@@ -8,24 +9,55 @@ const RING_RADIUS = 20;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 const CURSOR_SIZE = 48;
 
+type CursorStyle = CSSProperties & {
+  "--gesture-cursor-x": string;
+  "--gesture-cursor-y": string;
+};
+
+function clampCursor(value: number): number {
+  return Math.max(0.01, Math.min(0.99, value));
+}
+
 /**
  * 隔空手势虚拟光标。
  *
- * pointer-events-none 保证不会拦截真实鼠标事件；只有 cursorVisible && showCursor 时挂载，
- * 手势关闭后不残留任何 DOM。dwell 用 SVG strokeDasharray 表示蓄力进度，不做旋转动画。
+ * 性能要点：高频光标位置不再走 React 状态更新 —— 组件只订阅一次 store，
+ * 通过 CSS 变量（--gesture-cursor-x/y）直接改 transform，避免每帧 re-render / layout。
+ * 只在 cursorVisible / pinching / dragging / dwell 变化时重新渲染。
+ *
+ * pointer-events-none 保证不会拦截真实鼠标事件；dwell 用 SVG strokeDasharray
+ * 表示蓄力进度，不做旋转动画。
  */
 export const VirtualCursor: React.FC = () => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const showCursor = useGestureSettingsStore((state) => state.showCursor);
   const cursorVisible = useGestureStore((state) => state.cursorVisible);
-  const cursor = useGestureStore((state) => state.cursor);
   const pinching = useGestureStore((state) => state.pinching);
   const dragging = useGestureStore((state) => state.dragging);
   const dwell = useGestureStore((state) => state.dwell);
+  // 非响应式读取：位置由 effect 直接写 CSS 变量；渲染时只用它初始化一次样式。
+  const cursor = useGestureStore.getState().cursor;
+
+  const applyCursor = useCallback((next: { x: number; y: number }) => {
+    const element = containerRef.current;
+    if (!element) return;
+    const x = clampCursor(next.x);
+    const y = clampCursor(next.y);
+    element.style.setProperty("--gesture-cursor-x", `${(x * 100).toFixed(3)}vw`);
+    element.style.setProperty("--gesture-cursor-y", `${(y * 100).toFixed(3)}vh`);
+  }, []);
+
+  useLayoutEffect(() => {
+    applyCursor(useGestureStore.getState().cursor);
+    return useGestureStore.subscribe((state, previous) => {
+      if (state.cursor !== previous.cursor) applyCursor(state.cursor);
+    });
+  }, [applyCursor]);
 
   if (!showCursor || !cursorVisible) return null;
 
-  const x = Math.max(0.01, Math.min(0.99, cursor.x));
-  const y = Math.max(0.01, Math.min(0.99, cursor.y));
+  const x = clampCursor(cursor.x);
+  const y = clampCursor(cursor.y);
   const progress = Math.min(1, Math.max(0, dwell?.progress ?? 0));
   const showDwell = dwell !== null && progress > 0;
 
@@ -37,19 +69,24 @@ export const VirtualCursor: React.FC = () => {
     : pinching
       ? "border-[#ffd60a]/80 bg-[#ffd60a]/10"
       : "border-white/45 bg-white/[0.06]";
+  const positionStyle: CursorStyle = {
+    "--gesture-cursor-x": `${(x * 100).toFixed(3)}vw`,
+    "--gesture-cursor-y": `${(y * 100).toFixed(3)}vh`,
+  };
 
   return (
     <div
+      ref={containerRef}
       data-gesture-ignore="true"
       aria-hidden="true"
-      className="pointer-events-none fixed z-[10000]"
+      className="pointer-events-none fixed left-0 top-0 z-[10000]"
       style={{
-        left: x * 100 + "%",
-        top: y * 100 + "%",
+        ...positionStyle,
         width: CURSOR_SIZE,
         height: CURSOR_SIZE,
-        transform: "translate3d(-50%, -50%, 0)",
-        willChange: "left, top",
+        transform:
+          "translate3d(calc(var(--gesture-cursor-x, 50vw) - 50%), calc(var(--gesture-cursor-y, 50vh) - 50%), 0)",
+        willChange: "transform",
       }}
     >
       {showDwell && (
