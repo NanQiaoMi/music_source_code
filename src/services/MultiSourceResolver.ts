@@ -240,6 +240,11 @@ function getApiBase(): string {
  */
 const PREFERRED_BUDGET_MS = 2000;
 
+export interface ResolvePlayableOptions {
+  bypassCache?: boolean;
+  signal?: AbortSignal;
+}
+
 export class MultiSourceResolver {
   private static instance: MultiSourceResolver;
 
@@ -279,8 +284,17 @@ export class MultiSourceResolver {
    */
   public async resolvePlayableAudio(
     query: SongMetadataQuery,
-    bypassCache: boolean = false
+    bypassCacheOrOptions: boolean | ResolvePlayableOptions = false
   ): Promise<ResolvedAudioSource | null> {
+    // 兼容旧调用：第二个参数曾是 boolean；新调用可传 { bypassCache, signal }。
+    const options: ResolvePlayableOptions =
+      typeof bypassCacheOrOptions === "boolean"
+        ? { bypassCache: bypassCacheOrOptions }
+        : bypassCacheOrOptions;
+    const bypassCache = options.bypassCache ?? false;
+    const signal = options.signal;
+
+    if (signal?.aborted) return null;
     if (!query.title && !query.id) return null;
 
     // 本地母带源由播放器本地解码，不走网络解析
@@ -340,11 +354,13 @@ export class MultiSourceResolver {
       const remaining = deadline - Date.now();
       if (remaining <= 0) break;
       const hit = await takeWithin(branch, remaining);
+      if (signal?.aborted) return null;
       if (hit?.url) return remember(hit);
     }
 
     // 次级分支：平台竞速取首个可用者（不再等最慢的那个），兜底从 t=0 就已在跑
     const secondary = await firstUsable([platformPromise, fallbackPromise]);
+    if (signal?.aborted) return null;
     if (secondary?.url) return remember(secondary);
 
     return null;
