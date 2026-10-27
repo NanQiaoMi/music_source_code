@@ -32,6 +32,11 @@ async function runBootstrap(): Promise<boolean> {
     // S2-2：页面隐藏/关闭时补写节流中的播放进度（幂等）
     installFlushOnPageHide();
 
+    // S2-6：dev-only 音频性能探针（window.__audioMetrics）；生产构建不会加载该 chunk。
+    if (process.env.NODE_ENV !== "production") {
+      void import("@/lib/perf/audioMetrics").catch(() => {});
+    }
+
     // 1. 只在本次应用生命周期开始时恢复一次，路由返回主页不能重置播放中状态。
     if (!hasRestoredPlaybackState) {
       const restoredSong = usePlayerStore.getState().currentSong;
