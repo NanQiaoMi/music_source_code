@@ -258,6 +258,7 @@ export class MultiSourceResolver {
 
   public static clearCache() {
     this.resolvedUrlCache.clear();
+    this.searchCache.clear();
   }
 
   /** 只读缓存指标（容量 + 命中率），供调试与长会话采样使用。 */
@@ -896,7 +897,18 @@ export class MultiSourceResolver {
     return null;
   }
 
-  private static searchCache = new Map<string, { data: SegmentedSearchResults; expiry: number }>();
+  // 搜索缓存：20 分钟 TTL + 最多 100 条（原为无界 Map，长会话下随搜索词线性增长）。
+  // 时钟写成闭包而非 Date.now 引用，测试可用 spy 推进过期而无需真实等待 20 分钟。
+  private static searchCache = new TtlLruCache<string, SegmentedSearchResults>({
+    maxEntries: 100,
+    maxAgeMs: 20 * 60_000,
+    now: () => Date.now(),
+  });
+
+  /** 只读搜索缓存指标（容量 + 命中率），供调试与 dev 探针聚合。 */
+  public static getSearchCacheStats(): TtlLruCacheStats & { size: number } {
+    return { ...this.searchCache.stats(), size: this.searchCache.size() };
+  }
 
   /**
    * 全网分平台在线歌曲深度并发搜索 (仅向已登录平台与已启用洛雪脚本派发请求)
@@ -917,10 +929,9 @@ export class MultiSourceResolver {
 
     const trimmed = keywords.trim();
     const cacheKey = trimmed.toLowerCase();
-    const now = Date.now();
     const cached = MultiSourceResolver.searchCache.get(cacheKey);
-    if (cached && cached.expiry > now) {
-      return cached.data;
+    if (cached) {
+      return cached;
     }
 
     const kw = encodeURIComponent(trimmed);
@@ -1083,11 +1094,9 @@ export class MultiSourceResolver {
       }
     });
 
+    // 空结果不缓存：保留旧行为，避免把一次失败搜索固化 20 分钟。
     if (results.all.length > 0) {
-      MultiSourceResolver.searchCache.set(cacheKey, {
-        data: results,
-        expiry: Date.now() + 1200000, // 20 分钟缓存
-      });
+      MultiSourceResolver.searchCache.set(cacheKey, results);
     }
 
     return results;

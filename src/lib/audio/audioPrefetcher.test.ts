@@ -48,4 +48,17 @@ describe("audioPrefetcher 缓存", () => {
     expect(second).toBe(first);
     expect(h.resolve).toHaveBeenCalledTimes(1);
   });
+
+  it("统计接口返回预取缓存容量与命中情况", async () => {
+    h.resolve.mockResolvedValue({
+      url: "https://cdn.example/prefetch-stats.mp3",
+      source: "kuwo",
+      quality: "high",
+    });
+    await audioPrefetcher.prefetchSong({ ...song, id: "prefetch-stats-song" });
+
+    const stats = audioPrefetcher.getPrefetchCacheStats();
+    expect(stats.size).toBeGreaterThan(0);
+    expect(stats.hits + stats.misses).toBeGreaterThan(0);
+  });
 });

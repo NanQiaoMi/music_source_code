@@ -8,7 +8,7 @@
 import { MultiSourceResolver } from "@/services/MultiSourceResolver";
 import { Song } from "@/types/song";
 import { useQueueStore } from "@/store/queueStore";
-import { TtlLruCache } from "@/lib/cache/TtlLruCache";
+import { TtlLruCache, type TtlLruCacheStats } from "@/lib/cache/TtlLruCache";
 
 interface CachedAudioSource {
   url: string;
@@ -148,6 +148,11 @@ class AudioPrefetcher {
     } catch {
       // Ignore preheat errors on restrictive environments
     }
+  }
+
+  /** 只读预取缓存指标（容量 + 命中率），供调试与 dev 探针聚合。 */
+  public getPrefetchCacheStats(): TtlLruCacheStats & { size: number } {
+    return { ...this.prefetchCache.stats(), size: this.prefetchCache.size() };
   }
 
   /**

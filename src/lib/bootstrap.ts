@@ -28,6 +28,15 @@ export function bootstrapApp(): Promise<boolean> {
 async function runBootstrap(): Promise<boolean> {
   console.log("[Bootstrap] Starting mimimusic initialization...");
 
+  // S7-2b: 仅开发环境挂载缓存指标探针。生产构建下该分支被 DCE，且不会加载 chunk。
+  if (process.env.NODE_ENV === "development" && typeof window !== "undefined") {
+    void import("@/lib/cache/cacheStats")
+      .then(({ installCacheStatsProbe }) => installCacheStatsProbe())
+      .catch(() => {
+        // 探针失败不影响启动
+      });
+  }
+
   try {
     // 0. 所有 persist store 都设了 skipHydration；先按依赖顺序显式补齐，再做跨 store 投影。
     const { hydrated } = await hydrateStores();

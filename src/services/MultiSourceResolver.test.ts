@@ -288,4 +288,53 @@ describe("MultiSourceResolver.searchOnlineMusicSegmented provider failures", () 
       /all enabled music search providers failed/i
     );
   });
+
+  it("长会话下搜索缓存不超过 100 条", async () => {
+    h.config.sources.qq.enabled = false;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const keyword = decodeURIComponent(String(input).match(/keywords=([^&]+)/)?.[1] ?? "");
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ songs: [{ id: keyword, name: `song-${keyword}` }] }),
+      } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    for (let i = 0; i < 105; i += 1) {
+      await resolver.searchOnlineMusicSegmented(`bounded-search-${i}`);
+    }
+
+    const stats = MultiSourceResolver.getSearchCacheStats();
+    expect(stats.size).toBe(100);
+    expect(stats.evictions).toBeGreaterThanOrEqual(5);
+  }, 15000);
+
+  it("搜索缓存 20 分钟内命中，到期后重新请求", async () => {
+    h.config.sources.qq.enabled = false;
+    let now = 1_000_000;
+    const nowSpy = vi.spyOn(Date, "now").mockImplementation(() => now);
+    const fetchMock = vi.fn(async () => {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ songs: [{ id: "ttl", name: "ttl-song" }] }),
+      } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const keyword = "ttl-search-2026";
+    await resolver.searchOnlineMusicSegmented(keyword);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    now += 20 * 60_000 - 1; // 19:59.999，仍命中
+    await resolver.searchOnlineMusicSegmented(keyword);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    now += 1; // 恰好到期
+    await resolver.searchOnlineMusicSegmented(keyword);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    nowSpy.mockRestore();
+  }, 15000);
 });
