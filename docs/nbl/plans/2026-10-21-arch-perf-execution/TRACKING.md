@@ -13,12 +13,12 @@
 | S1 数据与播放正确性 | 10 | 3 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3 done；S1-4..S1-10 待） |
 | S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
 | S3 外壳与订阅治理 | 10 | 9 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | in_progress（S3-1/S3-3/S3-4/S3-5/S3-6/S3-7/S3-8/S3-9/S3-10 done；S3-2 待） |
-| S4 包体与加载 | 7 | 4 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | in_progress（S4-1/S4-2/S4-3/S4-4 done；S4-5..S4-7 待） |
+| S4 包体与加载 | 7 | 5 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | in_progress（S4-1..S4-5 done；S4-6/S4-7 待） |
 | S5 渲染运行时 | 7 | 0 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | pending |
 | S6 状态架构收敛 | 12 | 0 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | pending |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **20** | **约 129** | — | in_progress |
+| **合计** | **74** | **21** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -84,7 +84,7 @@
 - [x] S4-2 crypto-js 动态化/WebCrypto — **done（2026-10-28，c903c86）**：`lxRunner.ts` 删除静态 crypto-js import，新增 `ensureCrypto()` 单飞动态 import（default/namespace 兜底）+ `createSandbox(crypto)` 注入，3 个 async 入口 await，13 处调用改用注入实例；`lazyImports.test.ts` 守卫扩为 jsmediatags+crypto-js 表驱动；`lxRunner.test.ts` 增并发单飞 + MD5/SHA256/Base64/hex/AES-CBC 黄金值等价。包体：rootMain **752.1→689.2KB raw（238.7→211.0KB gzip）**、`/` First Load 1707.4→1645.0KB；E4-2 断言通过（初始集合 9 文件 WordArray=0，crypto-js 仅 async 3952 块）。实际 raw −62.9KB（计划估 −84.1，因旧块含 ~21.7KB 非 crypto 模块）。build 12.8s；全量 216 files/1356 tests passed；tsc/eslint 0。**WebCrypto 未替换**（LX utils.crypto 为同步契约，替换会改行为；保留 crypto-js 但按需加载）。缺口：未做 dev/Electron 手测；未更新 TRACKING（本条已补）。分支 `feature/arch-perf-s4-2`（未合并；worktree 目录名为 arch-perf-s4-1）。
 - [x] S4-3 splitChunks 语义块 + 字体 preconnect — **done（2026-10-28，b13d5bd + 1f47945）**；S4-3a：顶层 chunks:"initial"、删 maxSize；语义块 framework(all,40)/vendor-ui(framer+lucide,initial,30)/vendor-core(rest,initial,10)；three/fabric/ffmpeg async 保留；新增 chunk-mediapipe(async,36) + asyncShared(async,minChunks:2,9)；SPLIT_CHUNKS=off 回退旧配置实测复现 23/969.3/293。证据 perf/s4-after-s43a.json。**S4-3b 待做**：守卫脚本需用 ID3v2 / mediapipe.NormalizedRect 判定（裸 jsmediatags 在 console.warn 文案、@mediapipe/tasks-vision 在 CDN URL 会误报）。缺口：rootMain gzip 238.7>230、First Load 1707.4>1700（等 S4-2）；bundle-budget maxAsyncChunk 口径把初始 vendor-core 计入。**S4-3b done**：新增 `scripts/perf/check-bundle-markers.mjs`（初始集合 = rootMainFiles ∪ / ∪ /data-manager script，marker 用 ID3v2 / mediapipe.NormalizedRect 规避 console.warn 文本与 CDN URL 误报；exit 1 违规/2 缺失 build），`check-bundle-markers.test.mjs` 5 用例，`npm run perf:check-bundle`；实测 PASS（9 文件，E4-1/E4-6 hits=0）。字体 preconnect 已在 `src/app/layout.tsx:22-23`；**globals.css @import 改 link 的细节未做**（非验收项）。验收：script 8≤12、vendors 碎片 0≤6；rootMain gzip 211KB（<230 硬线，>190/200 目标，Q10 缺口）；全量 217 files/1361 tests passed；tsc/eslint 0。
 - [x] S4-4 CoverImage 统一组件（先 3 文件）— **done（2026-10-28，6a29535）**：新增 `src/components/shared/ui/CoverImage.tsx`（cachedSrc > src > default-cover；默认 lazy、priority eager、decoding async、size→sizes、data/blob unoptimized、错误一次性回退、referrerPolicy no-referrer、可选 blur；`NEXT_PUBLIC_COVER_IMAGE_V2=off` 退化 next/image 包装）；迁移 MusicCardStack 3 处、SearchPanel 1 处、VisualizationView 唯一裸 img；目标文件裸 img **1→0**、全仓非测试 34/18→33/17（其余白名单/S4-5）。验收：3 文件裸 img 归零。新增 CoverImage 6 用例 + 3 文件测试断言；全量 218 files/1370 tests passed；tsc/eslint（分片全量）0。缺口：flag-off 分支无单测、无 dev 截图 A/B、referrerPolicy 为有意请求头变化；QueuePanel 留 S4-5。分支 `feature/arch-perf-s4-4`（未合并）。
-- [ ] S4-5 VirtualList 接入 QueuePanel — owner: — | PR: 1 | 依赖: S3-6 | 验收: 500 项打开长任务=0
+- [x] S4-5 VirtualList 接入 QueuePanel — **done（2026-10-28，31f7b9f）**：Glass `VirtualList` 增强（handleRef scrollToIndex/scrollToTop、initialIndex、getItemKey、ResizeObserver 高度、onScrollEnd 单发、data-virtual-* 测试钩子，向后兼容）；QueuePanel 行抽为 memo QueueRow，`VirtualList` 渲染（QUEUE_ROW_HEIGHT=72，行 66+6 gap 精确），当前曲 reveal 改 scrollToIndex(center,smooth)，行封面用 CoverImage；保留点击播放/移除/下一首/清空/搜索/ESC/当前指示/3D shelf/离线；flag `virtualListQueue`（NEXT_PUBLIC_VL_QUEUE=off）回退非虚拟化。实测 jsdom 500 首：DOM 行 **500→12–22**、mount **865.2→150.1ms**；VirtualList 5 + QueuePanel 5 新测试。全量 219 files/1380 tests passed；tsc/eslint 0。缺口：无真实浏览器 long-task trace（结构证据）；行高固定 66px；flag-off 路径无提交测试；smooth 路径 jsdom 未验；scrollToIndex 忽略 12px padding；TRACKING 已补。分支 `feature/arch-perf-s4-5`（未合并）。
 - [ ] S4-6 VirtualList 接入 Search/批量工具 — owner: — | PR: 1 | 依赖: S4-5 | 验收: 500 条首帧 <50ms
 - [ ] S4-7 V8 处置执行（D1）— owner: — | PR: 2-4（删除不计行） | 依赖: S0-7、S5-4 契约 | 验收: rg=0；tsc/vitest 绿
 
