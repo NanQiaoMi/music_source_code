@@ -216,10 +216,14 @@ function buildTimedGroups(groups: readonly LyricLineGroup[], duration: number): 
   });
 }
 
+const WHITESPACE = /\s/u;
+
+/** S5-7：逐码点计数代替 Array.from(text.trim()).filter(...)，避免编曲时逐行分配数组。 */
 function estimateLineDuration(text: string): number {
-  const visibleCharacters = Array.from(text.trim()).filter(
-    (character) => !/\s/u.test(character)
-  ).length;
+  let visibleCharacters = 0;
+  for (const character of text) {
+    if (!WHITESPACE.test(character)) visibleCharacters += 1;
+  }
   return clamp(visibleCharacters * 0.24, 1.2, 5.8);
 }
 

@@ -119,6 +119,8 @@ interface HandwrittenRuntimeState extends LyricPlaybackClockState {
   layoutCache: Map<string, HandwrittenLineLayout>;
   sceneCache: Map<string, HandwrittenSceneConfig>;
   measureCache: Map<string, MeasuredText>;
+  /** S5-7：翻译小字幕版式只由文本 + 字号 + 宽度决定，按 key 缓存，避免每帧重排。 */
+  captionCache: Map<string, HandwrittenCaptionLayout>;
   smoothBass: number;
   smoothMid: number;
   smoothTreble: number;
@@ -239,6 +241,7 @@ interface DecorationFrame {
 const MAX_LAYOUT_CACHE = 240;
 const MAX_SCENE_CACHE = 160;
 const MAX_MEASURE_CACHE = 120;
+const MAX_CAPTION_CACHE = 48;
 const MIN_FONT_SIZE = 11;
 const QUALITY_EMA_DECAY = 0.85;
 
@@ -312,6 +315,7 @@ function createRuntimeState(): HandwrittenRuntimeState {
     layoutCache: new Map(),
     sceneCache: new Map(),
     measureCache: new Map(),
+    captionCache: new Map(),
     smoothBass: 0,
     smoothMid: 0,
     smoothTreble: 0,
@@ -421,6 +425,7 @@ function resetRuntimeForSong(
   state.layoutCache.clear();
   state.sceneCache.clear();
   state.measureCache.clear();
+  state.captionCache.clear();
   state.transitionSnapshot = null;
   state.smoothBass = 0;
   state.smoothMid = 0;
@@ -550,6 +555,62 @@ function layoutHandwrittenText(
   if (state.layoutCache.size > MAX_LAYOUT_CACHE) state.layoutCache.clear();
   state.layoutCache.set(cacheKey, layout);
   return layout;
+}
+
+/**
+ * S5-7：主句版式依赖（seed/profile/尺寸/单位文本/降低动态）只在换句或改字号时变化，
+ * 旧实现每帧重建一次 scene（含 arrays + emphasis 的 map/filter），是稳态最大的对象分配：
+ * 缓存到 sceneCache，命中后引用跨帧不变。key 覆盖所有输入，未命中只会更保守地重建。
+ */
+function getSceneWithUnits(
+  state: HandwrittenRuntimeState,
+  shot: LyricFilmShot,
+  width: number,
+  height: number,
+  reducedMotion: boolean,
+  units: readonly { text: string }[],
+  unitsKey: string
+): HandwrittenSceneConfig {
+  const key = `u|${shot.id}|${Math.round(width)}x${Math.round(height)}|${reducedMotion ? 1 : 0}|${unitsKey}`;
+  const cached = state.sceneCache.get(key);
+  if (cached) return cached;
+  const scene = resolveHandwrittenScene({
+    seed: shot.seed,
+    profile: shot.profile,
+    shotKind: shot.kind,
+    width,
+    height,
+    units: units.map((unit) => unit.text),
+    reducedMotion,
+  });
+  if (state.sceneCache.size > MAX_SCENE_CACHE) state.sceneCache.clear();
+  state.sceneCache.set(key, scene);
+  return scene;
+}
+
+/** S5-7：组号列表复用同一块暂存数组，稳态下不再每帧新建 Set / rows.map / sort 副本。 */
+const groupIndexScratch: number[] = [];
+
+function collectSortedGroupIndexes(
+  rows: readonly LyricFilmLyricRow[],
+  program: LyricFilmProgram
+): number[] {
+  groupIndexScratch.length = 0;
+  for (const row of rows) {
+    const { groupIndex } = row;
+    let seen = false;
+    for (const existing of groupIndexScratch) {
+      if (existing === groupIndex) {
+        seen = true;
+        break;
+      }
+    }
+    if (!seen) groupIndexScratch.push(groupIndex);
+  }
+  groupIndexScratch.sort(
+    (a, b) => (program.lineGroups[a]?.start ?? 0) - (program.lineGroups[b]?.start ?? 0) || a - b
+  );
+  return groupIndexScratch;
 }
 
 function getScene(
@@ -747,56 +808,69 @@ function drawLyricRows(frame: ContentFrame, ctx: CanvasRenderingContext2D): void
     : resolvedRows;
   if (rows.length === 0) return;
 
-  const shotGroups = [...new Set(shot.lineGroupIndices)].sort((a, b) => a - b);
-  const focusGroupIndex =
-    [...shotGroups]
-      .reverse()
-      .find((index) => (program.lineGroups[index]?.start ?? Infinity) <= musicTime) ??
-    shotGroups[0];
+  // S5-7：焦点组 = 起始时间已到的最大组号；无需 [...new Set(...)].sort().reverse() 的
+  // 三个临时数组（线组数量很小，单趟扫描结果与旧实现逐项一致）。
+  let firstShotGroup: number | undefined;
+  let focusGroupIndex: number | undefined;
+  for (const index of shot.lineGroupIndices) {
+    if (firstShotGroup === undefined || index < firstShotGroup) firstShotGroup = index;
+    if (
+      (program.lineGroups[index]?.start ?? Infinity) <= musicTime &&
+      (focusGroupIndex === undefined || index > focusGroupIndex)
+    ) {
+      focusGroupIndex = index;
+    }
+  }
+  focusGroupIndex ??= firstShotGroup;
   if (focusGroupIndex === undefined) return;
 
-  const focusRows = rows.filter((row) => row.groupIndex === focusGroupIndex);
-  const activeText = focusRows[0]?.text ?? rows[0]?.text ?? "";
+  // S5-7：焦点行只用于取第一行 + 判断是否唯一，用计数代替 rows.filter 的新数组。
+  let focusRowCount = 0;
+  let focusRow: LyricFilmLyricRow | undefined;
+  for (const row of rows) {
+    if (row.groupIndex !== focusGroupIndex) continue;
+    focusRowCount += 1;
+    if (focusRow === undefined) focusRow = row;
+  }
+  const activeText = focusRow?.text ?? rows[0]?.text ?? "";
   let heroFontSize = resolveHeroFontSize(frame.settings, width, height, scene);
   const maxWidth = Math.max(120, Math.min(width * scene.maxWidthRatio, width * 0.9));
   const centerX = clamp(scene.anchorX * width, maxWidth / 2 + 8, width - maxWidth / 2 - 8);
   let translationLayout = resolveTranslationLayout(frame, ctx, heroFontSize, maxWidth);
 
-  const focusRow = focusRows[0];
-  const focusUnits = focusRow
-    ? prepareHandwrittenUnits(
-        estimateLineUnits(
-          focusRow.text,
-          focusRow.startTime,
-          focusRow.revealEndTime,
-          focusRow.lineIndex
-        ),
-        maxWidth,
-        (text) => measureTextWidth(frame.state, ctx, text, fontFamily, heroFontSize)
-      )
-    : [];
-  const sceneWithUnits = focusRow
-    ? resolveHandwrittenScene({
-        seed: shot.seed,
-        profile: shot.profile,
-        shotKind: shot.kind,
-        width,
-        height,
-        units: focusUnits.map((item) => item.text),
-        reducedMotion,
-      })
-    : scene;
-  const emphasis = sceneWithUnits.emphasis;
-  const verticalUnitCount = focusRow
+  // S5-7：estimateLineUnits 结果一次算好复用（旧代码为同一行调用两遍）。
+  const focusTimedUnits = focusRow
     ? estimateLineUnits(
         focusRow.text,
         focusRow.startTime,
         focusRow.revealEndTime,
         focusRow.lineIndex
       )
-        .flatMap((unit) => segmentLyricFilmGraphemes(unit.text))
-        .filter((grapheme) => grapheme.trim()).length
-    : 0;
+    : [];
+  const focusUnits = focusRow
+    ? prepareHandwrittenUnits(focusTimedUnits, maxWidth, (text) =>
+        measureTextWidth(frame.state, ctx, text, fontFamily, heroFontSize)
+      )
+    : [];
+  const sceneWithUnits = focusRow
+    ? getSceneWithUnits(
+        frame.state,
+        shot,
+        width,
+        height,
+        reducedMotion,
+        focusUnits,
+        `${focusRow.id}|${focusRow.text}|${heroFontSize}|${maxWidth}|${fontFamily}`
+      )
+    : scene;
+  const emphasis = sceneWithUnits.emphasis;
+  // S5-7：字形数用计数循环，不再 flatMap + filter 建两个临时数组。
+  let verticalUnitCount = 0;
+  for (const unit of focusTimedUnits) {
+    for (const grapheme of segmentLyricFilmGraphemes(unit.text)) {
+      if (grapheme.trim()) verticalUnitCount += 1;
+    }
+  }
   const verticalFits = canFitHandwrittenVerticalColumn(
     height,
     verticalUnitCount,
@@ -804,14 +878,14 @@ function drawLyricRows(frame: ContentFrame, ctx: CanvasRenderingContext2D): void
   );
   if (
     width / Math.max(1, height) >= 1.25 &&
-    focusRows.length === 1 &&
+    focusRowCount === 1 &&
     shouldUseVerticalColumn(activeText) &&
     verticalFits
   ) {
     const columnBottom = drawVerticalColumn(
       frame,
       ctx,
-      focusRows[0]!,
+      focusRow!,
       sceneWithUnits,
       heroFontSize,
       translationLayout.reservedHeight
@@ -822,9 +896,7 @@ function drawLyricRows(frame: ContentFrame, ctx: CanvasRenderingContext2D): void
     return;
   }
 
-  const sortedGroupIndexes = [...new Set(rows.map((row) => row.groupIndex))].sort(
-    (a, b) => (program.lineGroups[a]?.start ?? 0) - (program.lineGroups[b]?.start ?? 0) || a - b
-  );
+  const sortedGroupIndexes = collectSortedGroupIndexes(rows, program);
 
   const buildGroups = (): GroupLayout[] =>
     sortedGroupIndexes.map((groupIndex) => {
@@ -1049,12 +1121,23 @@ function resolveTranslationLayout(
   );
   const fontSize = Math.max(MIN_FONT_SIZE, heroFontSize * 0.23);
   const safeWidth = Math.max(120, Math.min(maxWidth, frame.width * 0.9));
-  const blocks = (subtitles ?? []).slice(0, 2).map((text) => ({
-    text,
-    lines: layoutHandwrittenPlainText(text, safeWidth, (grapheme) =>
-      measureTextWidth(frame.state, ctx, grapheme, frame.fontFamily, fontSize)
-    ),
-  }));
+  const texts = subtitles === null ? "" : `${subtitles[0] ?? ""}\u0001${subtitles[1] ?? ""}`;
+  const cacheKey = `${texts}|${fontSize}|${safeWidth}|${frame.fontFamily}`;
+  const cached = frame.state.captionCache.get(cacheKey);
+  if (cached) return cached;
+
+  const blocks: HandwrittenCaptionBlock[] = [];
+  if (subtitles !== null) {
+    for (let index = 0; index < subtitles.length && index < 2; index += 1) {
+      const text = subtitles[index]!;
+      blocks.push({
+        text,
+        lines: layoutHandwrittenPlainText(text, safeWidth, (grapheme) =>
+          measureTextWidth(frame.state, ctx, grapheme, frame.fontFamily, fontSize)
+        ),
+      });
+    }
+  }
   const lineHeight = fontSize * 1.18;
   const blockGap = fontSize * 0.26;
   const contentHeight =
@@ -1062,7 +1145,7 @@ function resolveTranslationLayout(
     Math.max(0, blocks.length - 1) * blockGap;
   const gap = heroFontSize * 0.16;
 
-  return {
+  const layout: HandwrittenCaptionLayout = {
     blocks,
     fontSize,
     lineHeight,
@@ -1071,6 +1154,9 @@ function resolveTranslationLayout(
     contentHeight,
     reservedHeight: blocks.length > 0 ? gap + contentHeight : 0,
   };
+  if (frame.state.captionCache.size >= MAX_CAPTION_CACHE) frame.state.captionCache.clear();
+  frame.state.captionCache.set(cacheKey, layout);
+  return layout;
 }
 
 function drawTranslation(
@@ -1083,7 +1169,8 @@ function drawTranslation(
   if (layout.blocks.length === 0) return;
 
   let top = lyricBlockBottom + layout.gap;
-  layout.blocks.forEach((block, blockIndex) => {
+  for (let blockIndex = 0; blockIndex < layout.blocks.length; blockIndex += 1) {
+    const block = layout.blocks[blockIndex]!;
     const blockHeight = block.lines.length * layout.lineHeight;
     const centerY = top + blockHeight / 2;
     drawHandwrittenLayoutBlock(
@@ -1098,7 +1185,7 @@ function drawTranslation(
       `${frame.shot.seed}:translation:${blockIndex}`
     );
     top += blockHeight + layout.blockGap;
-  });
+  }
 }
 
 /** 片头把曲名作为主字组、艺人作为落款，避免回到一行轻淡的小字幕。 */

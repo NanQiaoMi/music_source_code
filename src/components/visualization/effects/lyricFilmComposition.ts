@@ -118,12 +118,25 @@ function stableUnit(seed: string | number, salt: string): number {
   return hashString(`${String(seed)}:${salt}`) / 0xffffffff;
 }
 
-/** Split a title into user-visible units so the ending card can reveal it steadily. */
+const MAX_GRAPHEME_CACHE = 512;
+const graphemeCache = new Map<string, readonly string[]>();
+
+/**
+ * Split a title into user-visible units so the ending card can reveal it steadily.
+ * S5-7：结果按文本记忆化——歌词绘制每帧会重复切分同样的词/行，切分本身要建
+ * 迭代器 + 新数组，是手书效果里最大的每帧数组分配源。调用方只读返回数组。
+ */
 export function segmentLyricFilmGraphemes(text: string): string[] {
-  if (graphemeSegmenter) {
-    return Array.from(graphemeSegmenter.segment(text), (part) => part.segment);
+  const cached = graphemeCache.get(text);
+  if (cached) {
+    return cached as string[];
   }
-  return Array.from(text);
+  const graphemes = graphemeSegmenter
+    ? Array.from(graphemeSegmenter.segment(text), (part) => part.segment)
+    : Array.from(text);
+  if (graphemeCache.size >= MAX_GRAPHEME_CACHE) graphemeCache.clear();
+  graphemeCache.set(text, graphemes);
+  return graphemes;
 }
 
 /** Expand grouped LRC timing units into individual glyphs for vertical composition. */

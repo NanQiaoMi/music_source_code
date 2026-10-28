@@ -233,7 +233,20 @@ function createUnicodePattern(source: string): RegExp | null {
   }
 }
 
+/** S5-7：逐帧重复切分同样的词/行，结果按文本记忆化（调用方只读返回数组）。 */
+const MAX_SEGMENT_CACHE = 256;
+const segmentCache = new Map<string, string[]>();
+
 function segmentGraphemes(text: string): string[] {
+  const cached = segmentCache.get(text);
+  if (cached) return cached;
+  const graphemes = segmentGraphemesUncached(text);
+  if (segmentCache.size >= MAX_SEGMENT_CACHE) segmentCache.clear();
+  segmentCache.set(text, graphemes);
+  return graphemes;
+}
+
+function segmentGraphemesUncached(text: string): string[] {
   if (typeof Intl !== "undefined") {
     const Segmenter = (
       Intl as unknown as {

@@ -14,6 +14,26 @@ export interface LyricFilmLyricRow {
   role: LyricFilmLyricRole;
 }
 
+/**
+ * S5-7：镜头自身的线组列表不随时间变化，去重/过滤/排序结果按镜头对象缓存；
+ * 每帧只做「相邻组并入」的定量扫描，不再新建 Set + 展开 + sort 的多个副本。
+ */
+const shotGroupIndexCache = new WeakMap<LyricFilmShot, number[]>();
+const visibleGroupScratch: number[] = [];
+
+function resolveShotGroupIndexes(shot: LyricFilmShot, lineGroupCount: number): number[] {
+  const cached = shotGroupIndexCache.get(shot);
+  if (cached) return cached;
+  const indexes: number[] = [];
+  for (const index of shot.lineGroupIndices) {
+    if (!Number.isInteger(index) || index < 0 || index >= lineGroupCount) continue;
+    if (!indexes.includes(index)) indexes.push(index);
+  }
+  indexes.sort((left, right) => left - right);
+  shotGroupIndexCache.set(shot, indexes);
+  return indexes;
+}
+
 /** Resolve independently timed source lines for the current lyric shot. */
 export function resolveLyricFilmLyricRows(
   program: LyricFilmProgram,
@@ -22,18 +42,24 @@ export function resolveLyricFilmLyricRows(
 ): LyricFilmLyricRow[] {
   if (shot.kind !== "lyrics" || !Number.isFinite(musicTime)) return [];
 
-  const groupIndices = [...new Set(shot.lineGroupIndices)]
-    .filter((index) => Number.isInteger(index) && index >= 0 && index < program.lineGroups.length)
-    .sort((left, right) => left - right);
+  const groupIndices = resolveShotGroupIndexes(shot, program.lineGroups.length);
   const focusIndex = findActiveGroupIndex(program.lineGroups, musicTime);
-  const visibleGroupIndices = new Set(groupIndices);
+  visibleGroupScratch.length = 0;
+  for (const index of groupIndices) visibleGroupScratch.push(index);
   if (focusIndex >= 0) {
-    if (focusIndex > 0) visibleGroupIndices.add(focusIndex - 1);
-    if (focusIndex + 1 < program.lineGroups.length) visibleGroupIndices.add(focusIndex + 1);
+    const previousIndex = focusIndex - 1;
+    const nextIndex = focusIndex + 1;
+    if (previousIndex >= 0 && !visibleGroupScratch.includes(previousIndex)) {
+      visibleGroupScratch.push(previousIndex);
+    }
+    if (nextIndex < program.lineGroups.length && !visibleGroupScratch.includes(nextIndex)) {
+      visibleGroupScratch.push(nextIndex);
+    }
   }
+  visibleGroupScratch.sort((left, right) => left - right);
   const rows: LyricFilmLyricRow[] = [];
 
-  for (const groupIndex of [...visibleGroupIndices].sort((left, right) => left - right)) {
+  for (const groupIndex of visibleGroupScratch) {
     const group = program.lineGroups[groupIndex];
     if (!group || !Number.isFinite(group.start)) continue;
 
@@ -86,24 +112,31 @@ export function resolveLyricFilmTranslation(
   const sourceGroup = sourceGroups[sourceIndex];
   if (!sourceGroup) return null;
 
+  // S5-7：候选比较与相邻间距改用标量运算，去掉每帧的临时数组 / filter / sort。
   const precedingTranslationIndex = findActiveGroupIndex(translationGroups, sourceGroup.start);
-  const candidates = [precedingTranslationIndex, precedingTranslationIndex + 1]
-    .filter((index) => index >= 0 && index < translationGroups.length)
-    .map((index) => translationGroups[index]!)
-    .sort(
-      (left, right) =>
-        Math.abs(left.start - sourceGroup.start) - Math.abs(right.start - sourceGroup.start)
-    );
-  const group = candidates[0];
+  const firstCandidate = translationGroups[precedingTranslationIndex];
+  const secondCandidate = translationGroups[precedingTranslationIndex + 1];
+  const group =
+    firstCandidate && secondCandidate
+      ? Math.abs(firstCandidate.start - sourceGroup.start) <=
+        Math.abs(secondCandidate.start - sourceGroup.start)
+        ? firstCandidate
+        : secondCandidate
+      : (firstCandidate ?? secondCandidate);
   if (!group) return null;
 
   const previousSourceStart = sourceGroups[sourceIndex - 1]?.start;
   const nextSourceStart = sourceGroups[sourceIndex + 1]?.start;
-  const neighborGaps = [
-    Number.isFinite(previousSourceStart) ? sourceGroup.start - previousSourceStart! : Infinity,
-    Number.isFinite(nextSourceStart) ? nextSourceStart! - sourceGroup.start : Infinity,
-  ].filter((gap) => gap > 0);
-  const nearestNeighborGap = Math.min(...neighborGaps);
+  const previousGap = Number.isFinite(previousSourceStart)
+    ? sourceGroup.start - previousSourceStart!
+    : Infinity;
+  const nextGap = Number.isFinite(nextSourceStart)
+    ? nextSourceStart! - sourceGroup.start
+    : Infinity;
+  const nearestNeighborGap = Math.min(
+    previousGap > 0 ? previousGap : Infinity,
+    nextGap > 0 ? nextGap : Infinity
+  );
   const alignmentTolerance = Number.isFinite(nearestNeighborGap)
     ? Math.min(1.25, nearestNeighborGap * 0.42)
     : 1.25;
@@ -118,7 +151,13 @@ export function resolveLyricFilmTranslation(
   return translations.length > 0 ? translations : null;
 }
 
+const WHITESPACE = /\s/u;
+
+/** S5-7：逐码点计数代替 Array.from(...).filter(...)，结果完全一致但不再每行分配数组。 */
 function estimateLineDuration(text: string): number {
-  const visibleCharacters = Array.from(text).filter((character) => !/\s/u.test(character)).length;
+  let visibleCharacters = 0;
+  for (const character of text) {
+    if (!WHITESPACE.test(character)) visibleCharacters += 1;
+  }
   return Math.min(5.8, Math.max(1.2, visibleCharacters * 0.24));
 }

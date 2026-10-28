@@ -88,6 +88,188 @@ for (let i = 0; i < 6; i++) {
   mountainPointsY.push(new Float32Array(MAX_MOUNTAIN_POINTS));
 }
 
+/** 6 重山体的调色/波形常量：旧实现每帧新建 6 个配置对象（S5-7 提到模块级）。 */
+const MOUNTAIN_PALETTE = [
+  {
+    fillTop: "#1c586a",
+    fillBottom: "#0b252e",
+    alpha: 0.6,
+    baseY: 0.29,
+    speed: 0.16,
+    freq: 1.9,
+    phase: 0.0,
+  },
+  {
+    fillTop: "#186576",
+    fillBottom: "#092e38",
+    alpha: 0.72,
+    baseY: 0.25,
+    speed: 0.24,
+    freq: 2.7,
+    phase: 1.8,
+  },
+  {
+    fillTop: "#13746c",
+    fillBottom: "#073934",
+    alpha: 0.82,
+    baseY: 0.21,
+    speed: 0.36,
+    freq: 3.5,
+    phase: 3.5,
+  },
+  {
+    fillTop: "#10806e",
+    fillBottom: "#064035",
+    alpha: 0.9,
+    baseY: 0.17,
+    speed: 0.48,
+    freq: 4.3,
+    phase: 5.2,
+  },
+  {
+    fillTop: "#0d6e57",
+    fillBottom: "#05362a",
+    alpha: 0.96,
+    baseY: 0.14,
+    speed: 0.62,
+    freq: 5.1,
+    phase: 6.9,
+  },
+  {
+    fillTop: "#0a5a44",
+    fillBottom: "#04291e",
+    alpha: 1.0,
+    baseY: 0.11,
+    speed: 0.78,
+    freq: 5.9,
+    phase: 8.6,
+  },
+] as const;
+
+/** 水渚三组布局（旧实现每帧 new 3 个对象）。 */
+const SHOAL_LAYOUT = [
+  { xRatio: 0.12, wRatio: 0.22, h: 7.5, color: "#0d3b36", alpha: 0.65 },
+  { xRatio: 0.46, wRatio: 0.18, h: 5.5, color: "#0a2f2b", alpha: 0.55 },
+  { xRatio: 0.78, wRatio: 0.26, h: 8.5, color: "#0e423a", alpha: 0.7 },
+] as const;
+
+/** S5-7：画幅/山体/暗角等静态渐变按画布 + 几何缓存，复用同一对象时绘制结果逐像素一致。 */
+interface OrientalStaticGradients {
+  key: string;
+  ambient: CanvasGradient;
+  sky: CanvasGradient;
+  bloom: CanvasGradient;
+  mountains: CanvasGradient[];
+  vignette: CanvasGradient | null;
+}
+
+const staticGradientCache = new WeakMap<CanvasRenderingContext2D, OrientalStaticGradients>();
+
+function getStaticGradients(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  scrollX: number,
+  scrollY: number,
+  scrollW: number,
+  scrollH: number,
+  waterY: number,
+  filmVignette: number
+): OrientalStaticGradients {
+  const key = `${width}|${height}|${scrollX}|${scrollY}|${scrollW}|${scrollH}|${filmVignette}`;
+  const cached = staticGradientCache.get(ctx);
+  if (cached && cached.key === key) return cached;
+
+  const ambient = ctx.createRadialGradient(
+    width * 0.5,
+    height * 0.46,
+    width * 0.05,
+    width * 0.5,
+    height * 0.46,
+    width * 0.75
+  );
+  ambient.addColorStop(0, "rgba(14, 60, 75, 0.28)");
+  ambient.addColorStop(0.5, "rgba(10, 42, 48, 0.14)");
+  ambient.addColorStop(1, "rgba(2, 5, 8, 0)");
+
+  const sky = ctx.createLinearGradient(scrollX, scrollY, scrollX, scrollY + scrollH);
+  sky.addColorStop(0, "#05131c");
+  sky.addColorStop(0.28, "#092330");
+  sky.addColorStop(0.52, "#0f3744");
+  sky.addColorStop(0.7, "#0c2e38");
+  sky.addColorStop(0.86, "#082027");
+  sky.addColorStop(1, "#030f13");
+
+  const bloom = ctx.createRadialGradient(
+    scrollX + scrollW * 0.48,
+    scrollY + scrollH * 0.18,
+    20,
+    scrollX + scrollW * 0.48,
+    scrollY + scrollH * 0.32,
+    scrollW * 0.6
+  );
+  bloom.addColorStop(0, "rgba(28, 105, 125, 0.18)");
+  bloom.addColorStop(0.45, "rgba(18, 72, 85, 0.08)");
+  bloom.addColorStop(1, "rgba(5, 19, 28, 0)");
+
+  const mountains: CanvasGradient[] = [];
+  for (const config of MOUNTAIN_PALETTE) {
+    const basePeakHeight = scrollH * (config.baseY * 0.95);
+    const gradient = ctx.createLinearGradient(
+      scrollX + scrollW * 0.22,
+      waterY - basePeakHeight * 1.35,
+      scrollX + scrollW * 0.35,
+      waterY + scrollH * 0.32
+    );
+    gradient.addColorStop(0, config.fillTop);
+    gradient.addColorStop(0.42, config.fillBottom);
+    gradient.addColorStop(0.85, "#061c22");
+    gradient.addColorStop(1, "#030f13");
+    mountains.push(gradient);
+  }
+
+  let vignette: CanvasGradient | null = null;
+  if (filmVignette > 0) {
+    vignette = ctx.createRadialGradient(
+      scrollX + scrollW / 2,
+      scrollY + scrollH / 2,
+      scrollW * 0.45,
+      scrollX + scrollW / 2,
+      scrollY + scrollH / 2,
+      scrollW * 0.78
+    );
+    vignette.addColorStop(0, "rgba(0,0,0,0)");
+    vignette.addColorStop(1, `rgba(0,0,0,${filmVignette * 0.38})`);
+  }
+
+  const gradients: OrientalStaticGradients = { key, ambient, sky, bloom, mountains, vignette };
+  staticGradientCache.set(ctx, gradients);
+  return gradients;
+}
+
+/** 落英渐变只由花瓣尺寸/透明度决定，按画布缓存（resize 重建花瓣时 epoch 递增）。 */
+let petalEpoch = 0;
+const petalGradientCache = new WeakMap<
+  CanvasRenderingContext2D,
+  { epoch: number; gradients: CanvasGradient[] }
+>();
+
+function getPetalGradients(ctx: CanvasRenderingContext2D): CanvasGradient[] {
+  const cached = petalGradientCache.get(ctx);
+  if (cached && cached.epoch === petalEpoch && cached.gradients.length === localPetals.length) {
+    return cached.gradients;
+  }
+  const gradients = localPetals.map((petal) => {
+    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, petal.size);
+    gradient.addColorStop(0, `rgba(254, 240, 215, ${petal.alpha * 1.5})`);
+    gradient.addColorStop(0.6, `rgba(251, 210, 175, ${petal.alpha * 0.9})`);
+    gradient.addColorStop(1, "rgba(245, 180, 140, 0)");
+    return gradient;
+  });
+  petalGradientCache.set(ctx, { epoch: petalEpoch, gradients });
+  return gradients;
+}
+
 function initLivingElements(width: number, height: number) {
   localParticles = [];
   for (let i = 0; i < 45; i++) {
@@ -103,6 +285,7 @@ function initLivingElements(width: number, height: number) {
   }
 
   localPetals = [];
+  petalEpoch += 1;
   for (let i = 0; i < 14; i++) {
     localPetals.push({
       x: Math.random() * width,
@@ -315,22 +498,24 @@ export function drawOrientalLandscape(context: EffectContext): void {
 
   ctx.save();
 
+  // S5-7：静态渐变按画幅缓存（旧实现每帧重建 ambient/sky/bloom/山体/月亮/暗角）。
+  const gradients = getStaticGradients(
+    ctx,
+    width,
+    height,
+    scrollX,
+    scrollY,
+    scrollW,
+    scrollH,
+    waterY,
+    filmVignette
+  );
+
   // ─── 1. 外部暗夜背景 ───
   ctx.fillStyle = "#020508";
   ctx.fillRect(0, 0, width, height);
 
-  const ambientGlow = ctx.createRadialGradient(
-    width * 0.5,
-    height * 0.46,
-    width * 0.05,
-    width * 0.5,
-    height * 0.46,
-    width * 0.75
-  );
-  ambientGlow.addColorStop(0, "rgba(14, 60, 75, 0.28)");
-  ambientGlow.addColorStop(0.5, "rgba(10, 42, 48, 0.14)");
-  ambientGlow.addColorStop(1, "rgba(2, 5, 8, 0)");
-  ctx.fillStyle = ambientGlow;
+  ctx.fillStyle = gradients.ambient;
   ctx.fillRect(0, 0, width, height);
 
   // ─── 2. 画卷内部裁剪 ───
@@ -340,29 +525,11 @@ export function drawOrientalLandscape(context: EffectContext): void {
   ctx.clip();
 
   // 宣纸天际古色渐变 (沉静典雅宋代绢帛天青 ➔ 澄碧江水)
-  const skyGrad = ctx.createLinearGradient(scrollX, scrollY, scrollX, scrollY + scrollH);
-  skyGrad.addColorStop(0, "#05131c");
-  skyGrad.addColorStop(0.28, "#092330");
-  skyGrad.addColorStop(0.52, "#0f3744");
-  skyGrad.addColorStop(0.7, "#0c2e38");
-  skyGrad.addColorStop(0.86, "#082027");
-  skyGrad.addColorStop(1, "#030f13");
-  ctx.fillStyle = skyGrad;
+  ctx.fillStyle = gradients.sky;
   ctx.fillRect(scrollX, scrollY, scrollW, scrollH);
 
   // 天际远景柔和宋画天青漫射氛晕 (Subtle Celestial Bloom)
-  const skyBloom = ctx.createRadialGradient(
-    scrollX + scrollW * 0.48,
-    scrollY + scrollH * 0.18,
-    20,
-    scrollX + scrollW * 0.48,
-    scrollY + scrollH * 0.32,
-    scrollW * 0.6
-  );
-  skyBloom.addColorStop(0, "rgba(28, 105, 125, 0.18)");
-  skyBloom.addColorStop(0.45, "rgba(18, 72, 85, 0.08)");
-  skyBloom.addColorStop(1, "rgba(5, 19, 28, 0)");
-  ctx.fillStyle = skyBloom;
+  ctx.fillStyle = gradients.bloom;
   ctx.fillRect(scrollX, scrollY, scrollW, scrollH);
 
   // ─── 2.1 宋代写意白玉素月与月华氛晕 (Ethereal Song Dynasty Moon) ───
@@ -379,66 +546,9 @@ export function drawOrientalLandscape(context: EffectContext): void {
   const breathFactor = mountainBreath * smoothBass;
   const midVibe = smoothMid * 5;
 
-  // 经典北宋全景长卷（左侧峰峦高耸如黛，中景叠翠连绵，右侧清波荡漾映素月）
-  const mountainPalette = [
-    {
-      fillTop: "#1c586a",
-      fillBottom: "#0b252e",
-      alpha: 0.6,
-      baseY: 0.29,
-      speed: 0.16,
-      freq: 1.9,
-      phase: 0.0,
-    },
-    {
-      fillTop: "#186576",
-      fillBottom: "#092e38",
-      alpha: 0.72,
-      baseY: 0.25,
-      speed: 0.24,
-      freq: 2.7,
-      phase: 1.8,
-    },
-    {
-      fillTop: "#13746c",
-      fillBottom: "#073934",
-      alpha: 0.82,
-      baseY: 0.21,
-      speed: 0.36,
-      freq: 3.5,
-      phase: 3.5,
-    },
-    {
-      fillTop: "#10806e",
-      fillBottom: "#064035",
-      alpha: 0.9,
-      baseY: 0.17,
-      speed: 0.48,
-      freq: 4.3,
-      phase: 5.2,
-    },
-    {
-      fillTop: "#0d6e57",
-      fillBottom: "#05362a",
-      alpha: 0.96,
-      baseY: 0.14,
-      speed: 0.62,
-      freq: 5.1,
-      phase: 6.9,
-    },
-    {
-      fillTop: "#0a5a44",
-      fillBottom: "#04291e",
-      alpha: 1.0,
-      baseY: 0.11,
-      speed: 0.78,
-      freq: 5.9,
-      phase: 8.6,
-    },
-  ];
-
+  // 经典北宋全景长卷（常量见 MOUNTAIN_PALETTE，S5-7 不再每帧新建）
   for (let layer = 0; layer < 6; layer++) {
-    const config = mountainPalette[layer];
+    const config = MOUNTAIN_PALETTE[layer];
     const layerDepth = (layer + 1) / 6;
     const basePeakHeight = scrollH * (config.baseY * 0.95);
     const layerTime = t * config.speed;
@@ -476,19 +586,8 @@ export function drawOrientalLandscape(context: EffectContext): void {
     ctx.lineTo(scrollX + scrollW, bottomY);
     ctx.closePath();
 
-    // 山体从山峰石青/石绿自然向下过渡入幽雅江水色
-    const mtnGrad = ctx.createLinearGradient(
-      scrollX + scrollW * 0.22,
-      waterY - basePeakHeight * 1.35,
-      scrollX + scrollW * 0.35,
-      waterY + scrollH * 0.32
-    );
-    mtnGrad.addColorStop(0, config.fillTop);
-    mtnGrad.addColorStop(0.42, config.fillBottom);
-    mtnGrad.addColorStop(0.85, "#061c22");
-    mtnGrad.addColorStop(1, "#030f13");
-
-    ctx.fillStyle = mtnGrad;
+    // 山体从山峰石青/石绿自然向下过渡入幽雅江水色（渐变已按画幅缓存）
+    ctx.fillStyle = gradients.mountains[layer]!;
     ctx.globalAlpha = config.alpha;
     ctx.fill();
 
@@ -575,8 +674,8 @@ export function drawOrientalLandscape(context: EffectContext): void {
     if (count <= 0) continue;
     const ptsX = mountainPointsX[l];
     const ptsY = mountainPointsY[l];
-    const mColor = mountainPalette[l].fillTop;
-    const mAlpha = mountainPalette[l].alpha;
+    const mColor = MOUNTAIN_PALETTE[l].fillTop;
+    const mAlpha = MOUNTAIN_PALETTE[l].alpha;
 
     ctx.beginPath();
     ctx.moveTo(scrollX, waterY);
@@ -628,8 +727,11 @@ export function drawOrientalLandscape(context: EffectContext): void {
     ctx.stroke();
   }
 
-  // 同心圆涟漪
-  localRipples.forEach((rip: WaterRipple, idx: number) => {
+  // 同心圆涟漪（S5-7：forEach 闭包改为定长 for 循环；删除语义与 forEach 相同）
+  const rippleCount = localRipples.length;
+  for (let idx = 0; idx < rippleCount; idx++) {
+    const rip = localRipples[idx];
+    if (!rip) continue;
     rip.radius += rip.speed;
     rip.alpha *= 0.965;
 
@@ -642,7 +744,7 @@ export function drawOrientalLandscape(context: EffectContext): void {
     } else {
       localRipples.splice(idx, 1);
     }
-  });
+  }
 
   // ─── 6. 孤舟蓑笠与水面动态流金长倒影 ───
   const boatX = scrollX + scrollW * 0.75;
@@ -655,7 +757,8 @@ export function drawOrientalLandscape(context: EffectContext): void {
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
 
-  localParticles.forEach((p: DustParticle) => {
+  for (let index = 0; index < localParticles.length; index += 1) {
+    const p = localParticles[index]!;
     p.x += p.vx + Math.sin(t + p.phase) * 0.25;
     p.y += p.vy;
     if (p.y < scrollY) {
@@ -670,9 +773,12 @@ export function drawOrientalLandscape(context: EffectContext): void {
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
     ctx.fill();
-  });
+  }
 
-  localPetals.forEach((petal: GoldenPetal) => {
+  // S5-7：落英渐变按画布 + 花瓣尺寸缓存（色标只由固定 alpha 决定），逐帧只剩变换。
+  const petalGradients = getPetalGradients(ctx);
+  for (let index = 0; index < localPetals.length; index += 1) {
+    const petal = localPetals[index]!;
     petal.x += petal.vx + Math.sin(t * 1.2 + petal.phase) * 0.35;
     petal.y += petal.vy;
     petal.rotation += petal.vRot;
@@ -686,18 +792,13 @@ export function drawOrientalLandscape(context: EffectContext): void {
     ctx.save();
     ctx.translate(petal.x, petal.y);
     ctx.rotate(petal.rotation);
-
-    const petalGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, petal.size);
-    petalGrad.addColorStop(0, `rgba(254, 240, 215, ${petal.alpha * 1.5})`);
-    petalGrad.addColorStop(0.6, `rgba(251, 210, 175, ${petal.alpha * 0.9})`);
-    petalGrad.addColorStop(1, "rgba(245, 180, 140, 0)");
-    ctx.fillStyle = petalGrad;
+    ctx.fillStyle = petalGradients[index]!;
 
     ctx.beginPath();
     ctx.ellipse(0, 0, petal.size, petal.size * petal.aspect, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-  });
+  }
 
   ctx.restore();
 
@@ -721,19 +822,9 @@ export function drawOrientalLandscape(context: EffectContext): void {
   drawCinnabarSeal(ctx, textX - 8, textY + 68, 16);
   ctx.restore();
 
-  // 电影级胶片暗角 (Film Vignette)
-  if (filmVignette > 0) {
-    const vigGrd = ctx.createRadialGradient(
-      scrollX + scrollW / 2,
-      scrollY + scrollH / 2,
-      scrollW * 0.45,
-      scrollX + scrollW / 2,
-      scrollY + scrollH / 2,
-      scrollW * 0.78
-    );
-    vigGrd.addColorStop(0, "rgba(0,0,0,0)");
-    vigGrd.addColorStop(1, `rgba(0,0,0,${filmVignette * 0.38})`);
-    ctx.fillStyle = vigGrd;
+  // 电影级胶片暗角 (Film Vignette，静态渐变已缓存)
+  if (gradients.vignette) {
+    ctx.fillStyle = gradients.vignette;
     ctx.fillRect(scrollX, scrollY, scrollW, scrollH);
   }
 
@@ -1255,34 +1346,35 @@ function drawWaterShoals(
   smoothBass: number
 ) {
   ctx.save();
-  // 3 组自然水渚 (左、中偏左、右)
-  const shoals = [
-    { x: scrollX + scrollW * 0.12, w: scrollW * 0.22, h: 7.5, color: "#0d3b36", alpha: 0.65 },
-    { x: scrollX + scrollW * 0.46, w: scrollW * 0.18, h: 5.5, color: "#0a2f2b", alpha: 0.55 },
-    { x: scrollX + scrollW * 0.78, w: scrollW * 0.26, h: 8.5, color: "#0e423a", alpha: 0.7 },
-  ];
-
-  for (let i = 0; i < shoals.length; i++) {
-    const s = shoals[i];
+  // 3 组自然水渚 (左、中偏左、右)；布局常量见 SHOAL_LAYOUT（S5-7 不再每帧新建）
+  for (let i = 0; i < SHOAL_LAYOUT.length; i++) {
+    const layout = SHOAL_LAYOUT[i]!;
+    const shoalX = scrollX + scrollW * layout.xRatio;
+    const shoalW = scrollW * layout.wRatio;
     const waveY = waterY + Math.sin(t * 1.2 + i * 1.8) * (0.8 + smoothBass * 1.0);
 
     ctx.save();
     ctx.beginPath();
-    ctx.ellipse(s.x, waveY, s.w * 0.5, s.h, 0, 0, Math.PI * 2);
+    ctx.ellipse(shoalX, waveY, shoalW * 0.5, layout.h, 0, 0, Math.PI * 2);
 
-    const shoalGrad = ctx.createLinearGradient(s.x, waveY - s.h, s.x, waveY + s.h * 1.5);
-    shoalGrad.addColorStop(0, s.color);
+    const shoalGrad = ctx.createLinearGradient(
+      shoalX,
+      waveY - layout.h,
+      shoalX,
+      waveY + layout.h * 1.5
+    );
+    shoalGrad.addColorStop(0, layout.color);
     shoalGrad.addColorStop(0.6, "#061a1a");
     shoalGrad.addColorStop(1, "rgba(4, 16, 18, 0)");
     ctx.fillStyle = shoalGrad;
-    ctx.globalAlpha = s.alpha;
+    ctx.globalAlpha = layout.alpha;
     ctx.fill();
 
     // 汀渚水岸微金碎浪边缘
     ctx.strokeStyle = "rgba(110, 231, 183, 0.35)";
     ctx.lineWidth = 0.6;
     ctx.beginPath();
-    ctx.ellipse(s.x, waveY + 0.5, s.w * 0.48, s.h * 0.7, 0, 0, Math.PI);
+    ctx.ellipse(shoalX, waveY + 0.5, shoalW * 0.48, layout.h * 0.7, 0, 0, Math.PI);
     ctx.stroke();
 
     ctx.restore();
@@ -1324,7 +1416,6 @@ function drawSongDynastyMoon(
   moonGrad.addColorStop(0.55, "rgba(242, 250, 248, 0.82)");
   moonGrad.addColorStop(0.85, "rgba(218, 238, 238, 0.55)");
   moonGrad.addColorStop(1, "rgba(180, 215, 218, 0.25)");
-
   ctx.fillStyle = moonGrad;
   ctx.beginPath();
   ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);

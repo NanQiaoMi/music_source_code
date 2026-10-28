@@ -44,6 +44,16 @@ export interface DoodleOptions {
 
 const TAU = Math.PI * 2;
 
+/** S5-7：荧光笔三道笔触的常量（offset/width 相对字号，colorRole 决定取色）。 */
+const HIGHLIGHT_STROKES = [
+  { offset: -0.12, width: 0.36, alpha: 0.15, colorRole: "highlight" },
+  { offset: 0.1, width: 0.3, alpha: 0.12, colorRole: "highlight" },
+  { offset: -0.01, width: 0.2, alpha: 0.07, colorRole: "line" },
+] as const;
+
+/** S5-7：涂鸦描边样式复用同一块暂存对象（drawStrokeSet 只在同步绘制中读取）。 */
+const doodleStrokeStyle: StrokeStyle = { color: "#000", width: 1, alpha: 1 };
+
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
 }
@@ -1065,14 +1075,12 @@ function drawFilledDoodle(
     // 齿孔：四边各打一排纸色圆点，让方框看起来像能撕下来的邮票
     ctx.fillStyle = withAlpha(palette.paperBase, 0.92);
     const holeRadius = size * 0.026;
+    // S5-7：四边齿孔改为四次显式 arc（旧实现每行 7 次循环各新建 4 个坐标数组）。
     for (let index = 0; index < 7; index += 1) {
       const t = -half + ((index + 0.5) * size) / 7;
-      for (const [holeX, holeY] of [
-        [t, -half],
-        [t, half],
-        [-half, t],
-        [half, t],
-      ] as const) {
+      for (let side = 0; side < 4; side += 1) {
+        const holeX = side < 2 ? t : side === 2 ? -half : half;
+        const holeY = side === 0 ? -half : side === 1 ? half : t;
         ctx.beginPath();
         ctx.arc(holeX, holeY, holeRadius, 0, TAU);
         ctx.fill();
@@ -1215,18 +1223,11 @@ export function drawHandwrittenDoodle(spec: HandwrittenDoodleSpec, options: Dood
   }
 
   ctx.globalAlpha = 1;
-  drawStrokeSet(
-    ctx,
-    geometry,
-    visible,
-    {
-      color: roleColor(palette, spec.color),
-      width: lineWidth,
-      alpha: roleAlpha(spec.color) * 0.9,
-    },
-    options,
-    quality >= 2 ? 0 : boilVariant
-  );
+  // S5-7：样式对象复用同一块暂存对象（drawStrokeSet 只读，同步绘制）。
+  doodleStrokeStyle.color = roleColor(palette, spec.color);
+  doodleStrokeStyle.width = lineWidth;
+  doodleStrokeStyle.alpha = roleAlpha(spec.color) * 0.9;
+  drawStrokeSet(ctx, geometry, visible, doodleStrokeStyle, options, quality >= 2 ? 0 : boilVariant);
   ctx.restore();
 }
 
@@ -1262,28 +1263,26 @@ export function drawHandwrittenHighlight(
 
   // 荧光笔 = 2–3 道半透明、圆头、略带起伏的粗笔画叠加，而不是一个矩形色块；
   // 笔迹只覆盖字的中下部（基线到 x-height），上下边缘自然变淡。
-  const strokes: Array<{ y: number; width: number; alpha: number; color: string }> = [
-    { y: bandY - unit * 0.12, width: unit * 0.36, alpha: 0.15, color: palette.highlight },
-    { y: bandY + unit * 0.1, width: unit * 0.3, alpha: 0.12, color: palette.highlight },
-    { y: bandY - unit * 0.01, width: unit * 0.2, alpha: 0.07, color: palette.highlightLine },
-  ];
-  for (const stroke of strokes) {
+  // S5-7：三道笔触的常量表提到模块级，逐帧只算坐标，不再新建数组 + 3 个对象。
+  for (let index = 0; index < HIGHLIGHT_STROKES.length; index += 1) {
+    const stroke = HIGHLIGHT_STROKES[index]!;
+    const strokeY = bandY + unit * stroke.offset;
     ctx.globalAlpha = stroke.alpha * visible;
-    ctx.strokeStyle = stroke.color;
-    ctx.lineWidth = stroke.width;
+    ctx.strokeStyle = stroke.colorRole === "line" ? palette.highlightLine : palette.highlight;
+    ctx.lineWidth = unit * stroke.width;
     ctx.beginPath();
-    ctx.moveTo(-halfWidth, stroke.y + unit * 0.02);
+    ctx.moveTo(-halfWidth, strokeY + unit * 0.02);
     ctx.quadraticCurveTo(
       -halfWidth * 0.3,
-      stroke.y - unit * 0.035,
+      strokeY - unit * 0.035,
       halfWidth * 0.88,
-      stroke.y + unit * 0.015
+      strokeY + unit * 0.015
     );
     ctx.quadraticCurveTo(
       halfWidth + unit * 0.03,
-      stroke.y + unit * 0.02,
+      strokeY + unit * 0.02,
       halfWidth,
-      stroke.y - unit * 0.015
+      strokeY - unit * 0.015
     );
     ctx.stroke();
   }
