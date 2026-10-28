@@ -10,6 +10,9 @@
 |---|---|
 | scripts/perf/bundle-budget.mjs | 包体预算：rootMainFiles / 首页 script / CSS / async chunk / public 体积；支持 --check 与 --json |
 | scripts/perf/bundle-diff.mjs | S8-3a 包体回归 diff：基线与当前报告逐指标对比，输出 markdown/JSON；rootMain gzip 与首页 gzip 的 delta 超阈值 exit 1；仅 --update 显式重设基线 |
+| scripts/perf/append-history.mjs | S8-3b 性能历史：把 bundle report（+ 可选 audio metrics）追加为 perf/perf-history.jsonl 一行；--init 建空文件、--check 校验 schema 与 ts 严格递增 |
+| scripts/perf/perf-dashboard.mjs | S8-3b 看板：最近 14 行表格 + 趋势箭头 + 回归高亮 + 最新 runtime metrics；stdout 或 --out |
+| scripts/perf/perf-history-lib.mjs | S8-3b 历史行 schema/解析共享模块（上面两个 CLI 共用） |
 | scripts/perf/report-store-stats.mjs | Store 架构统计：store 数、persist key、整店订阅、store 依赖边/SCC、getState 分层；支持 --check、--json 与 --store |
 | scripts/check-store-budgets.mjs | S6-12 Store 行数棘轮 + 环门禁：逐文件行数 ≤ baseline，未入基线的新文件 ≤400 行，运行时 store 图 SCC 必须为 0；支持 --update、--root、--baseline、--max-lines |
 | scripts/report-audio-consumers.mjs | S6-4 audioStore 播放字段消费清单：9 字段的 selector / getState 链（含跨行与解构）/ 别名 / setState / `useAudioCurrentSong` 读写点，按层与字段汇总；支持 --json、--fields、--group（progress / playback / all 批次）、--check（components/hooks/lib/services/store 读点归零门禁；audioStore 自身定义点豁免） |
@@ -142,7 +145,33 @@
       npm run perf:bundle:diff -- --update           # 显式重设基线（须评审后提交）
 
 - 阈值：相对基线 `rootMain.gzipKB` +5KB、`firstLoad.gzipKB` +10KB；`--max-root-gzip` / `--max-first-load-gzip` 覆盖。raw / CSS / script count 只展示不拦截；绝对 hardMax 仍由 `bundle-budget --check`（S4 后启用）负责。
-- nightly：`.github/workflows/nightly.yml`，`schedule` `0 18 * * *`（北京 02:00）+ `workflow_dispatch`；步骤 build → bundle report → 全量 `npm run test -- --run` → diff，失败即红；artifact `perf-bundle-<run_id>` 保留 `bundle-report.json` / `bundle-diff.json` / `bundle-diff.md`，diff 表写入 job summary。
+- nightly：`.github/workflows/nightly.yml`，`schedule` `0 18 * * *`（北京 02:00）+ `workflow_dispatch`；步骤 build → bundle report → 全量 `npm run test -- --run` → diff → 追加历史/看板（§9），失败即红；artifact `perf-bundle-<run_id>` 保留 `bundle-report.json` / `bundle-diff.json` / `bundle-diff.md` / `perf-history.jsonl` / `perf-dashboard.md`，diff 与看板写入 job summary。
 - 当前基线（2026-10-29 本机 build）：rootMain 3 files / 689.3KB raw / 211KB gzip；首页 8 scripts / 1,959.8KB raw / 607.2KB gzip；CSS 225.4KB raw / 29KB gzip；最大 async chunk 683.5KB；public 58.4MB。
-- 已知缺口：diff 只覆盖静态包体；runtime FPS / 内存（S8-3b）与 2h soak（S8-3c）未接线；bundle-budget 仍报 maxAsyncChunk 683.5 > 400 与 public 58.4MB > 45 两项绝对超限，待 S4 / 资源治理处理，本 diff 不拦截。
+- 已知缺口：diff 只覆盖静态包体；runtime FPS / 内存采集仍未接线（S8-3b 已接入历史/看板，见 §9；指标生产者待 S8-3c/d）；2h soak（S8-3c）未接线；bundle-budget 仍报 maxAsyncChunk 683.5 > 400 与 public 58.4MB > 45 两项绝对超限，待 S4 / 资源治理处理，本 diff 不拦截。
 - 测试：`scripts/perf/bundle-diff.test.mjs`（通过 / 超阈值 fail / 缺失文件 exit 2 / `--update` 棘轮）。
+
+## 9. 性能历史与看板（S8-3b，2026-10-29）
+
+- `scripts/perf/append-history.mjs` 把 `bundle-budget --json` 的 `result` 归一化为一行 JSONL，追加到 `perf/perf-history.jsonl`（生成物，随 nightly artifact 保存，不入库）。
+- 行 schema（固定；`--check` 逐行校验）：
+
+      { "ts": "2026-10-29T00:00:00.000Z", "commit": "a7da509",
+        "rootMainGzipKB": 211, "firstLoadGzipKB": 607.2, "cssGzipKB": 29,
+        "asyncMaxKB": 683.5, "publicMB": 58.4,
+        "metrics": { "fpsP50": 57.5 } }
+
+- 追加严格单调：新 `ts` 必须大于最后一行，重复或回退 `ts` exit 1，且写入前校验全文件 schema；`--check` 只读校验（空/缺失历史按 0 行通过）。`--init` 只创建空文件（无 header），已有文件不截断。
+- `--report` / `--metrics` / `--history` / `--commit` / `--ts` 可覆盖默认值；`--metrics` 接受 `{ metrics: {...} }`（audio-metrics 输出）或裸对象。命令：
+
+      node scripts/perf/bundle-budget.mjs --json perf/bundle-report.json
+      npm run perf:history:append -- --commit a7da509
+      npm run perf:history:append -- --metrics perf/audio-metrics.json
+      node scripts/perf/append-history.mjs --check
+      npm run perf:dashboard                          # stdout
+      npm run perf:dashboard -- --out perf/perf-dashboard.md
+      node scripts/perf/perf-dashboard.mjs --limit 30 # 表格默认最近 14 行
+
+- 看板：最近 14 行表格（时间 UTC / commit / rootMain gzip / 首页 gzip / CSS / 最大 async / public），每个指标带相对上一行的箭头与 delta（↑ 增长、↓ 下降、→ 持平）；`### Regression highlights` 列出超过阈值的相邻增量（rootMain +5KB、首页 +10KB、CSS +5KB、async +10KB、public +1MB）；最新行有 `metrics` 时输出“Latest runtime metrics”（最多 8 键）。空历史输出占位说明而非报错。
+- nightly：`.github/workflows/nightly.yml` 在 bundle report 与 diff 之后，`if: always()` 追加历史（存在 `perf/audio-metrics.json` 时带 `--metrics`）→ 生成 dashboard 并写入 job summary；artifact `perf-bundle-<run_id>` 增加 `perf-history.jsonl` / `perf-dashboard.md`（及可选的 `audio-metrics.json`）。
+- 测试：`scripts/perf/perf-history.test.mjs`（append schema + metrics / 重复与非单调 ts exit 1 / 3 行看板表格与回归高亮 / `--init` 与空历史看板）。
+- 已知缺口：nightly 使用干净 checkout，历史行不跨 run 累积（仅随 artifact 保存），E6 的“≥28 行”需 S8-3d 汇总或后续回填；`--metrics` 的生产者（audio-metrics 的 `--out`）尚未在当前分支落地，nightly 以文件存在为接入条件；看板阈值与 `bundle-diff` 的 gzip 阈值一致，绝对 hardMax 仍由 `bundle-budget --check` 负责（当前禁用）。

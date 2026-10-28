@@ -85,8 +85,9 @@ job、coverage 独立于 quality、perf:gates 归 build、预算与 required che
 ## 6. Nightly 包体回归（非 required）
 
 `.github/workflows/nightly.yml` 每日 18:00 UTC（北京 02:00）与手动 `workflow_dispatch` 触发，
-跑生产构建 → `bundle-budget` 报告 → 全量测试 → `perf:bundle:diff`；基线为
+跑生产构建 → `bundle-budget` 报告 → 全量测试 → `perf:bundle:diff` → 追加
+`perf/perf-history.jsonl` → 生成 `perf/perf-dashboard.md`；基线为
 `perf/bundle-baseline.json`，回归（rootMain gzip > +5KB / 首页 gzip > +10KB）时 job 失败。
-报告作为 `perf-bundle-<run_id>` artifact 上传并写入 job summary；阈值、`--update` 重设基线与
-已知缺口见 `perf/README.md` §8。该工作流不参与分支保护，PR 必过检查仍是
-`Quality gate (required)`。
+报告、历史与看板作为 `perf-bundle-<run_id>` artifact 上传并写入 job summary；阈值、`--update`
+重设基线、历史 schema 与看板字段见 `perf/README.md` §8–§9。该工作流不参与分支保护，
+PR 必过检查仍是 `Quality gate (required)`。

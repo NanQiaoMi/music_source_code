@@ -37,16 +37,40 @@ jobs:
         run: npm run test -- --run
       - name: Bundle diff vs committed baseline
         run: npm run perf:bundle:diff -- --json perf/bundle-diff.json --md perf/bundle-diff.md
+      - name: Audio metrics (optional)
+        if: hashFiles('scripts/perf/audio-metrics.mjs') != ''
+        continue-on-error: true
+        run: node scripts/perf/audio-metrics.mjs --out perf/audio-metrics.json
+      - name: Append perf history
+        if: always()
+        run: |
+          if [ ! -f perf/bundle-report.json ]; then
+            echo "[nightly] bundle report missing; skip history append"
+            exit 0
+          fi
+          if [ -f perf/audio-metrics.json ]; then
+            node scripts/perf/append-history.mjs --report perf/bundle-report.json --metrics perf/audio-metrics.json
+          else
+            node scripts/perf/append-history.mjs --report perf/bundle-report.json
+          fi
+      - name: Perf dashboard
+        if: always()
+        run: node scripts/perf/perf-dashboard.mjs --out perf/perf-dashboard.md
       - name: Job summary
         if: always()
-        run: cat perf/bundle-diff.md >> "$GITHUB_STEP_SUMMARY" || true
+        run: |
+          if [ -f perf/perf-dashboard.md ]; then cat perf/perf-dashboard.md >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f perf/bundle-diff.md ]; then cat perf/bundle-diff.md >> "$GITHUB_STEP_SUMMARY"; fi
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: perf-bundle-${{ github.run_id }}
           path: |
+            perf/audio-metrics.json
             perf/bundle-report.json
             perf/bundle-diff.json
             perf/bundle-diff.md
+            perf/perf-history.jsonl
+            perf/perf-dashboard.md
           if-no-files-found: ignore
