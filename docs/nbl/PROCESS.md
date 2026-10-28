@@ -123,7 +123,7 @@ wip
 ### 4.2 PR 操作流程
 
 1. **创建 PR**: 从 `feature/xxx` → `master`
-2. **自动检查**: CI 自动运行 Lint + Test
+2. **自动检查**: CI 运行必过门禁（tsc / lint / test / coverage domains / build / perf:gates / docs facts）；清单、各步耗时与已知禁用项见 [CI.md](./CI.md)
 3. **Code Review**: 至少 1 人 Review
 4. **合并**: 使用 **Squash and Merge**（保持 master 历史清洁）
 5. **清理**: 合并后自动删除源分支

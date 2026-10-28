@@ -18,6 +18,7 @@ jobs:
   verify:
     name: Verify (type/lint/test/build/budget)
     runs-on: ubuntu-latest
+    # Serial gates: ~12min warm, ~14-17min cold (see docs/nbl/CI.md). 25min only caps hangs.
     timeout-minutes: 25
     steps:
       - name: Checkout
@@ -44,6 +45,10 @@ jobs:
         run: npx eslint src --ext ts,tsx --rulesdir eslint-rules --max-warnings=0 --report-unused-disable-directives
       - name: Unit tests
         run: npm run test -- --run
+      # Per-domain coverage floors live in perf/coverage-domains.json (S8-2). This re-runs
+      # the suite with coverage, so it is run-only and costs ~3min. Budgets: docs/nbl/CI.md.
+      - name: Coverage domains
+        run: npm run test:coverage:domains
       - name: Production build
         run: npm run build
       # Gates run after the production build so .next exists; bundle markers self-skip otherwise.
@@ -57,6 +62,16 @@ jobs:
       # the baseline is regenerated and approved.
       - name: Docs facts
         run: node scripts/check-docs-facts.mjs
+      - name: Gate summary
+        if: always()
+        run: |
+          {
+            echo "## CI gates (verify job)"
+            echo ""
+            echo "tsc · lint (0 warnings) · test · coverage domains · build · perf:gates · docs facts"
+            echo ""
+            echo "Durations and the disabled store-stats --check: docs/nbl/CI.md"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   desktop-windows:
     name: Desktop package (manual/tag only)
