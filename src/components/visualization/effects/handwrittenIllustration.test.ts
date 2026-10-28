@@ -163,14 +163,35 @@ describe("handwrittenIllustration 大插画几何", () => {
     const windowWidth = windowFrame.maxX - windowFrame.minX;
     expect(windowHeight).toBeGreaterThan(windowWidth * 1.25);
 
+    // 叶：round13 缩到 0.88 后，bbox 应回到 1.6–1.8 x 0.7–0.85（比 Pass4 小 12%）。
+    const leafBounds = boundsOf(getLargeIllustrationStrokes("leaf")!);
+    expect(leafBounds.maxX - leafBounds.minX).toBeGreaterThan(1.55);
+    expect(leafBounds.maxX - leafBounds.minX).toBeLessThan(1.8);
+    expect(leafBounds.maxY - leafBounds.minY).toBeGreaterThan(0.65);
+    expect(leafBounds.maxY - leafBounds.minY).toBeLessThan(0.85);
+
     const sunStrokes = getLargeIllustrationStrokes("sun")!;
-    // 一个圆 + 至少 8 根射线，且射线长度/角度不是等分图标。
-    expect(sunStrokes.length).toBeGreaterThanOrEqual(6);
-    const rayLengths = sunStrokes
-      .slice(1)
-      .map((stroke) => Math.hypot(stroke[1]!.x - stroke[0]!.x, stroke[1]!.y - stroke[0]!.y));
-    expect(rayLengths.length).toBeGreaterThanOrEqual(6);
-    expect(Math.max(...rayLengths) - Math.min(...rayLengths)).toBeGreaterThan(0.02);
+    // 轮廓：点数 ≥12（渲染端逐笔锐角阈值 ≤8 会走直线，点太少太阳会被削成多边形），
+    // 且半径随角度明显起伏，不是几何圆。
+    const sunBody = sunStrokes[0]!;
+    expect(sunBody.length).toBeGreaterThanOrEqual(12);
+    const radii = sunBody.map((point) => Math.hypot(point.x, point.y));
+    expect(Math.max(...radii) - Math.min(...radii)).toBeGreaterThan(0.05);
+    expect(Math.max(...radii) / Math.min(...radii)).toBeGreaterThan(1.15);
+
+    // 射线：9–11 根（断笔会多占一根折线），角度/长短/收笔各不相同。
+    const rayStrokes = sunStrokes.slice(1);
+    expect(rayStrokes.length).toBeGreaterThanOrEqual(9);
+    expect(rayStrokes.length).toBeLessThanOrEqual(11);
+    const rayLengths = rayStrokes.map((stroke) =>
+      Math.hypot(
+        stroke[stroke.length - 1]!.x - stroke[0]!.x,
+        stroke[stroke.length - 1]!.y - stroke[0]!.y
+      )
+    );
+    expect(Math.max(...rayLengths) - Math.min(...rayLengths)).toBeGreaterThan(0.05);
+    // 至少有一截明显短于其它射线（断笔的半截），避免画成一圈等分光芒。
+    expect(Math.min(...rayLengths)).toBeLessThan(0.15);
 
     expect(isCrescentShape(getLargeIllustrationStrokes("moon")![0]!)).toBe(true);
 

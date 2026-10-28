@@ -20,10 +20,14 @@
  *   双线框 + 窗棂 + 外挑窗台 + 窗台上的小盆栽，比例按真实窗（高 ≈ 1.75 宽）。
  * - paperplane 用「侧视飞镖」：机头、上翼前缘、后缘的折角缺口、下翼后缘，
  *   再加一道与脊线平行的折边，避免画成菱形/飞鸟。
- * - sun 的圆与射线都不等分：半径按角度轻微起伏，射线角度/长短/收笔方向各不相同。
+ * - sun 是手绘的"不均整圆"：半径随角度起伏明显，轮廓 23 点（>8 点走平滑，
+ *   不会被逐笔锐角规则削成多边形）；10 根射线角度不等分、长短/收笔各异，其中一根断笔。
  * - cloud / mountain 走多层体积：云是数个鼓包 + 平缓底边，山是 2–3 层山脊 + 峰尖。
  * - leaf / ripple / rain / wheat / flower / moon 一并补齐，避免大插画回落到小涂鸦。
  * - 每 kind ≤12 根折线、每根 ≤24 点，控制几何缓存与渲染成本（1080p p50 ≤1.6ms）。
+ *
+ * round13 微调（2026-10-29）：leaf 整组几何 ×0.88（bbox -12%，回到 Pass3 的页边体量），
+ * sun 重绘（半径起伏更明显 + 断笔射线）；其余 kind 保持 pass4 的几何不动。
  */
 import type { HandwrittenDoodleKind } from "./handwrittenScene";
 
@@ -97,6 +101,19 @@ function leafOutline(
     x: base.x + dx * along + normalX * halfWidth * across,
     y: base.y + dy * along + normalY * halfWidth * across,
   }));
+}
+
+/** 大幅插画里叶的体量系数：1.0 是 Pass4 画的大小，0.88 回到 Pass3 附近的观感。 */
+const LEAF_SCALE = 0.88;
+
+/** 按比例缩放整组几何（绕局部原点，形状、叶脉与首笔闭合关系都不变）。 */
+function scaleStrokes(
+  strokes: ReadonlyArray<ReadonlyArray<IllustrationPoint>>,
+  factor: number
+): IllustrationPoint[][] {
+  return strokes.map((stroke) =>
+    stroke.map((point) => ({ x: point.x * factor, y: point.y * factor }))
+  );
 }
 
 /**
@@ -215,34 +232,67 @@ function paperplaneIllustration(): IllustrationPoint[][] {
   ];
 }
 
-/** 太阳：半径不均整的圆 + 一圈角度/长短/收笔都不同的射线，避免等分图标感。 */
+/**
+ * 太阳：手绘感的"圆"——半径随角度明显起伏（不是几何圆），边缘 22 段采样保证
+ * 不会被逐笔锐角规则（≤8 点走直线）削成多边形；一圈 10 根射线角度不等分、
+ * 长短各异、收笔方向各不相同，其中一根是断笔（笔毛刷过纸面的断墨感）。
+ */
 function sunIllustration(): IllustrationPoint[][] {
   const body: IllustrationPoint[] = [];
-  const steps = 20;
+  const steps = 22;
   for (let index = 0; index <= steps; index += 1) {
     const angle = (index / steps) * TAU;
-    const radius = 0.455 + Math.sin(angle * 3 + 0.6) * 0.012 + Math.sin(angle * 5 + 2.3) * 0.007;
+    const radius =
+      0.45 +
+      Math.sin(angle * 3 + 0.7) * 0.032 +
+      Math.sin(angle * 5 + 2.1) * 0.02 +
+      Math.sin(angle * 7 - 0.4) * 0.012;
     body.push({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
   }
+  // 采样到一圈时首尾理论上重合，这里显式抹平浮点误差，保证轮廓严格闭合。
+  body[body.length - 1] = body[0]!;
 
-  // 射线：角度不成等分，内端留出不均匀的空隙，外端长度与走向各不相同。
-  const rays: ReadonlyArray<readonly [number, number, number, number]> = [
-    [-2.88, 0.59, 0.3, -0.05],
-    [-2.34, 0.64, 0.24, 0.04],
-    [-1.76, 0.57, 0.28, -0.03],
-    [-1.12, 0.63, 0.26, 0.05],
-    [-0.44, 0.59, 0.31, -0.04],
-    [0.22, 0.65, 0.23, 0.03],
-    [0.94, 0.58, 0.28, -0.05],
-    [1.62, 0.64, 0.25, 0.04],
-    [2.36, 0.59, 0.3, -0.02],
+  const rays: ReadonlyArray<{
+    angle: number;
+    inner: number;
+    length: number;
+    tipDrift: number;
+    bow: number;
+    broken?: boolean;
+  }> = [
+    { angle: -2.95, inner: 0.6, length: 0.32, tipDrift: -0.05, bow: 0.012 },
+    { angle: -2.4, inner: 0.66, length: 0.2, tipDrift: 0.04, bow: -0.02 },
+    { angle: -1.82, inner: 0.58, length: 0.28, tipDrift: -0.03, bow: 0.018 },
+    { angle: -1.24, inner: 0.64, length: 0.26, tipDrift: 0.05, bow: -0.015 },
+    { angle: -0.55, inner: 0.59, length: 0.33, tipDrift: -0.04, bow: 0.02 },
+    // 断笔：一根射线断成起笔 / 收笔两截，中间留白。
+    { angle: 0.08, inner: 0.65, length: 0.22, tipDrift: 0.03, bow: -0.018, broken: true },
+    { angle: 0.72, inner: 0.58, length: 0.3, tipDrift: -0.06, bow: 0.016 },
+    { angle: 1.38, inner: 0.64, length: 0.24, tipDrift: 0.04, bow: -0.02 },
+    { angle: 2.02, inner: 0.6, length: 0.31, tipDrift: -0.03, bow: 0.014 },
+    { angle: 2.66, inner: 0.66, length: 0.19, tipDrift: 0.05, bow: -0.016 },
   ];
+
   const strokes: IllustrationPoint[][] = [body];
-  for (const [angle, inner, length, drift] of rays) {
-    const outerAngle = angle + drift;
+  for (const ray of rays) {
+    const { angle, inner, length, tipDrift, bow } = ray;
+    const polar = (radians: number, radius: number): IllustrationPoint => ({
+      x: Math.cos(radians) * radius,
+      y: Math.sin(radians) * radius,
+    });
+    if (ray.broken) {
+      // 断笔前半段（起笔到中段）与后半段（中后段到收笔）错开一点角度。
+      strokes.push([polar(angle, inner), polar(angle + bow * 0.6, inner + length * 0.42)]);
+      strokes.push([
+        polar(angle + tipDrift * 0.4, inner + length * 0.64),
+        polar(angle + tipDrift, inner + length),
+      ]);
+      continue;
+    }
     strokes.push([
-      { x: Math.cos(angle) * inner, y: Math.sin(angle) * inner },
-      { x: Math.cos(outerAngle) * (inner + length), y: Math.sin(outerAngle) * (inner + length) },
+      polar(angle, inner),
+      polar(angle + bow, inner + length * 0.55),
+      polar(angle + tipDrift, inner + length),
     ]);
   }
   return strokes;
@@ -343,55 +393,62 @@ function mountainIllustration(): IllustrationPoint[][] {
   ];
 }
 
-/** 叶：闭合的尖头叶形 + 主脉 / 侧脉 + 叶柄，叶形随光照一侧更鼓。 */
+/**
+ * 叶：闭合的尖头叶形 + 主脉 / 侧脉 + 叶柄，叶形随光照一侧更鼓。
+ * 整组几何再乘 0.88（round13 微调）：Pass4 后叶在页面上比 Pass3 大了 26%，
+ * 缩到当前几何的 0.88（bbox -12%）后回到"页边插图"的体量。
+ */
 function leafIllustration(): IllustrationPoint[][] {
-  return [
+  return scaleStrokes(
     [
-      { x: -0.9, y: 0.34 },
-      { x: -0.66, y: 0.06 },
-      { x: -0.34, y: -0.14 },
-      { x: 0.04, y: -0.29 },
-      { x: 0.42, y: -0.35 },
-      { x: 0.72, y: -0.28 },
-      { x: 0.92, y: -0.1 },
-      { x: 0.74, y: 0.1 },
-      { x: 0.38, y: 0.28 },
-      { x: 0.0, y: 0.43 },
-      { x: -0.38, y: 0.48 },
-      { x: -0.7, y: 0.43 },
-      { x: -0.9, y: 0.34 },
+      [
+        { x: -0.9, y: 0.34 },
+        { x: -0.66, y: 0.06 },
+        { x: -0.34, y: -0.14 },
+        { x: 0.04, y: -0.29 },
+        { x: 0.42, y: -0.35 },
+        { x: 0.72, y: -0.28 },
+        { x: 0.92, y: -0.1 },
+        { x: 0.74, y: 0.1 },
+        { x: 0.38, y: 0.28 },
+        { x: 0.0, y: 0.43 },
+        { x: -0.38, y: 0.48 },
+        { x: -0.7, y: 0.43 },
+        { x: -0.9, y: 0.34 },
+      ],
+      // 主脉：落笔粗、收笔细，略弯
+      [
+        { x: -0.84, y: 0.36 },
+        { x: -0.5, y: 0.18 },
+        { x: -0.12, y: 0.06 },
+        { x: 0.28, y: -0.04 },
+        { x: 0.66, y: -0.12 },
+      ],
+      // 侧脉：上两对下两对，长短不一
+      [
+        { x: -0.46, y: 0.14 },
+        { x: -0.66, y: -0.02 },
+      ],
+      [
+        { x: -0.28, y: 0.22 },
+        { x: -0.46, y: 0.38 },
+      ],
+      [
+        { x: 0.16, y: 0.0 },
+        { x: -0.02, y: 0.24 },
+      ],
+      [
+        { x: 0.36, y: -0.08 },
+        { x: 0.28, y: 0.18 },
+      ],
+      // 叶柄
+      [
+        { x: -0.88, y: 0.34 },
+        { x: -1.0, y: 0.5 },
+      ],
     ],
-    // 主脉：落笔粗、收笔细，略弯
-    [
-      { x: -0.84, y: 0.36 },
-      { x: -0.5, y: 0.18 },
-      { x: -0.12, y: 0.06 },
-      { x: 0.28, y: -0.04 },
-      { x: 0.66, y: -0.12 },
-    ],
-    // 侧脉：上两对下两对，长短不一
-    [
-      { x: -0.46, y: 0.14 },
-      { x: -0.66, y: -0.02 },
-    ],
-    [
-      { x: -0.28, y: 0.22 },
-      { x: -0.46, y: 0.38 },
-    ],
-    [
-      { x: 0.16, y: 0.0 },
-      { x: -0.02, y: 0.24 },
-    ],
-    [
-      { x: 0.36, y: -0.08 },
-      { x: 0.28, y: 0.18 },
-    ],
-    // 叶柄
-    [
-      { x: -0.88, y: 0.34 },
-      { x: -1.0, y: 0.5 },
-    ],
-  ];
+    LEAF_SCALE
+  );
 }
 
 /** 涟漪：四条压扁且不同心的水上弧线 + 两道反光短线，避免读成"碗"。 */

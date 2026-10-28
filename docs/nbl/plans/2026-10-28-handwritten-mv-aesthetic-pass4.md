@@ -99,15 +99,47 @@
 2. 纸牙覆盖层是屏幕空间静态层，镜头 zoom≤1.05 / rotate≤0.6° 时与纸纹有亚像素级错位（肉眼不可辨）；若要严格对齐需传相机做反向偏移；
 3. 4K CSS / 高 dpr 下纤维与颗粒密度线性上升，未设上限；
 4. 生产构建性能基线仍未测（Pass 3 §12 / S5 遗留）；
-5. 内置中文手写字体 A/B 仍未拍板（Pass 3 §13，默认 A 不内置交付）；
+5. ~~内置中文手写字体 A/B 仍未拍板~~ → round13 已拍板 **A（不内置）**，见 §6.4；B 方案路径保留；
 6. 超长器乐尾段的"便笺回看前文意象"（Pass 3 §14-3）未做；
 7. paperplane 仍是最难辨识的一类，若视觉验收仍偏"燕子"可再压一版；
-8. **性能已知回退**：最重的窗插画页（t=62.5）p50 1.3→1.9ms、p95 1.9→3.3ms（新增排线/水彩/纸牙覆盖层的成本），aggregate p50 1.2ms 仍达标；若后续要严格回到 1.6ms 预算，优先减少大插画路径的大面积 path 填充（ghost 重描/spray 颗粒）。
+8. **性能**：round13 已把最重的窗插画页从 1.9ms 收到 1.6–1.7ms（纸牙覆盖层半分辨率 + 排线合并 + 重描收敛），aggregate p50 ~1.1–1.2ms；进一步压到 1.3ms 地板需要整页 content 缓存（未做，风险大于收益）。
 
 ## 5. 交付清单（2026-10-29）
 
 - **代码**：新增 `src/components/visualization/effects/handwrittenIllustration.ts`（+ 单测）；修改 `handwrittenDoodles.ts`（+ 单测）、`handwrittenPaper.ts`（+ 单测）、`cinematicLyricDrift.ts`（+ 测试 mock）。效果 ID `cinematicLyricDrift`、显示名「温光浮字」、全部设置字段与持久化未变；未改 Home / Player / 全屏歌词等核心视图，未改歌曲/歌词/存储格式。
 - **文档**：本计划、`docs/nbl/plans/INDEX.md`。
-- **证据（`scratch/`，未入库）**：`perf/round12/`（before/after 各 18 帧、竖屏 2 帧、compare/diff/pairs、perf-before/after/compare、REPORT.md）；`perf/round12/geometry/`（11 kind 骨架预览与前后对比）；`perf/round12/paper/`（纸面/纸牙局部对比与 metrics）。
-- **范围说明**：临时 QA harness 已删除；并行工作线的 `src/app/layout.tsx`、`docs/MIMI_MUSIC_PLAYER_FULL_MANUAL.md` 未纳入本次改动。
-- **已知回退 / 待办**：窗插画页（t=62.5）p50 1.9ms 超 1.6ms 预算；纸纹近看有灰绿颗粒感、叶 t=14.5 斜排线偏均匀且尺寸 +26%、太阳几何未重绘、云/山未做真机截图——均记入 §4，等产品/视觉验收再决定是否回调。
+- **证据（`scratch/`，未入库）**：`perf/round12/`（Pass4 主体：before/after 各 18 帧、竖屏 2 帧、compare/diff/pairs、perf-before/after/compare、REPORT.md）；`perf/round12/geometry/`、`perf/round12/paper/`；`perf/round13/`（收尾轮：云 4 帧 + 山 2 帧真机、纸面/太阳/叶局部、before/after 对比、三方性能、REPORT.md）。
+- **范围说明**：临时 QA harness（`/dev/lyric-stage` 与临时 mountain 页）已删除；并行工作线的 `src/app/layout.tsx`、`docs/MIMI_MUSIC_PLAYER_FULL_MANUAL.md` 未纳入本次改动。
+
+## 6. Pass 4.1 收尾轮（round13，2026-10-29）
+
+### 6.1 性能回归收口（t=62.5 窗插画页）
+
+- **纸牙覆盖层改造**：`drawHandwrittenPaperTooth` 新增 `resolutionScale`（默认 **0.5**）——烘焙 canvas 按半分辨率预烘再拉伸全屏，overlay 融合面积降到 1/4；headed A/B 单帧成本 ~0.5ms → **~0.15ms**（headless 单独计时 1.0→0.31ms）。grain 略软，顺带缓解"近看灰绿颗粒感"；缓存 key 带烘焙尺寸，LRU 2。
+- **大插画开销**：排线已合并成主/轻/交叉 3 条合并 Path2D（替代逐线 stroke）；"第二遍找形"只重描前 6 笔（主轮廓/窗框/山脊这类长线），内部碎笔不再全量重描；窗排线间距 0.105→0.125。
+- **结果**（QA 3-run 复测，结论口径 round13/perf-after-run2.json）：t=62.5 p50 **1.9 → 1.6ms**（三跑 1.5/1.6/1.7，回到 ≤1.6 预算、贴线无余量），p95 3.3→2.5；t=30 p50 0.9（p95 1.6）、t=110.5 p50 1.1（p95 2.3）；aggregate p50 **1.1ms** / p95 2.3ms。run1 曾有一轮 t=110.5 测到 2.3ms，同机复测 1.1–1.2ms，判为环境噪声；两个原始 json 均保留（perf-after.json / perf-after-run2.json）。
+- 剩余成本主要是纸面 5 层全屏合成（paper texture / 光层 / 暗角 / film grain / 纸牙）与文字绘制，属于效果本身的地板；再往下压需要整页 content 缓存（风险大，未做）。
+
+### 6.2 视觉微调
+
+- **排线去"刮痕"感**：每根排线独立抖动间距（±30%）、弓形幅度加倍、按确定性权重分成主/轻两组（约 70/30）分别用不同透明度描两次，深浅不齐；不再像均匀梳齿。
+- **纸面调暖**（去掉灰绿倾向）：云状值噪声两层 alpha 0.40/0.27 → 0.30/0.20（−25%），噪声瓦片加暖偏置（R+7 / B−7 × warmth）；留白色相偏移 0.07°→0.05°、a\* 偏移 0.006→0.000、斑块色相 std 0.73→0.66；文字区高频纹理保留（hp 10.98→10.93），不发糊。
+- **leaf 尺寸回调**：整组几何 ×0.88，bbox 1.92×0.85 → 1.69×0.748（宽高 −12%），回到接近 Pass3 的页边体量。
+- **sun 重绘**：23 点不均整圆（半径 0.402–0.498，max/min 1.24）+ 10 根长短/角度/收笔各异的射线（含 1 根断笔），不再是"圆 + 8 根等长射线"的图标。
+
+### 6.3 云 / 山真机证据
+
+- **cloud**：QA 全曲扫描 106 帧定位 t≈70 / 138 / 166 / 178 的真实页面，已抓 1920×1080（`scratch/perf/round13/after-cloud/`）。
+- **mountain**：本 QA 歌词 fixture 无"山"语义、botanical 池也未抽到 mountain；改用临时 QA 页（LRC 插入「远山在晨雾里慢慢醒来」）走真实渲染管线抓 t=15.2 / 15.8，验证「歌词语义 → mountain 插画」全链路（`scratch/perf/round13/after-mountain/`）。临时页未入库，最终已删除。
+
+### 6.4 内置字体决策（默认 A 落地）
+
+- 按 Pass 3 §13 结论执行 **A（不内置）**：继续使用系统字体栈 + 回退名（行楷/楷体/仿宋/宋体/Noto Serif CJK）。桌面端（Windows/macOS）与 iOS 手写观感成立；Android/Linux 退化为衬线但可读。避免为单个效果增加 2.6–3.6MB 字体资源与异步加载/重绘复杂度。
+- B 方案（自托管 Long Cang：woff2 92 分片 + unicode-range 按需加载 + `document.fonts.load` 后重绘 + 字体键加入缓存 key）路径保留在 Pass 3 §13；若产品后续要求 Android/Linux 也保持手写观感，可另开一轮实现。
+
+### 6.5 收尾轮验证
+
+- 测试：effects **17 files / 189 tests** 通过（新增 paper 1 例 + illustration 6 例中的 round13 断言）；`tsc --noEmit` 0 error；改动文件 ESLint 0 error/0 warning；Prettier 通过。
+- 视觉回归：round13 前后对比（vs 已提交 b70b936）无黑帧/文字消失/错位/裁切；文字区对比度不变。
+- 性能：见 §6.1 与 `scratch/perf/round13/perf-compare.json`（Pass4 前 / Pass4 / round13 三方对比）。
+- 证据与详细命令：`scratch/perf/round13/REPORT.md`。

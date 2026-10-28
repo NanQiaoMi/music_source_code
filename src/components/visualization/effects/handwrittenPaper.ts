@@ -128,6 +128,7 @@ function getPaperNoiseTile(
   cells: number,
   fineJitter: number,
   meanBias: number,
+  warmth: number,
   seed: string
 ): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null;
@@ -135,7 +136,10 @@ function getPaperNoiseTile(
   const cellCount = Math.max(2, Math.round(cells));
   const jitter = clamp(fineJitter, 0, 1);
   const bias = clamp(meanBias, -0.5, 0.5);
-  const key = `${seed}:${size}:${cellCount}:${jitter.toFixed(2)}:${bias.toFixed(2)}`;
+  // 暖色偏置：R 提、G 微提、B 压，让 soft-light 的明暗两端都往暖侧走，
+  // 避免中性灰噪声把暖纸"洗"出冷灰绿斑块（三通道偏移和≈0，亮度基本不变）。
+  const warmShift = clamp(warmth, 0, 1) * 7;
+  const key = `${seed}:${size}:${cellCount}:${jitter.toFixed(2)}:${bias.toFixed(2)}:${warmShift.toFixed(1)}`;
   const cached = paperNoiseTileCache.get(key);
   if (cached) {
     // 命中后挪到队尾，保持最近使用优先。
@@ -172,11 +176,11 @@ function getPaperNoiseTile(
       const bottom = grid[rowBottom + left]! * (1 - blendX) + grid[rowBottom + right]! * blendX;
       const smooth = top * (1 - blendY) + bottom * blendY;
       const value = clamp(0.5 + bias + (smooth - 0.5) * 0.62 + (random() - 0.5) * jitter, 0, 1);
-      const channel = Math.round(value * 255);
+      const base = value * 255;
       const offset = (y * size + x) * 4;
-      data[offset] = channel;
-      data[offset + 1] = channel;
-      data[offset + 2] = channel;
+      data[offset] = clamp(Math.round(base + warmShift), 0, 255);
+      data[offset + 1] = clamp(Math.round(base + warmShift * 0.1), 0, 255);
+      data[offset + 2] = clamp(Math.round(base - warmShift), 0, 255);
       data[offset + 3] = 255;
     }
   }
@@ -458,13 +462,14 @@ function buildPaperTexture(
 
   // 5d. 云状斑驳：把平滑值噪声拉伸成两层不同尺度的"吸水云团"，用 soft-light 只改明度、
   //     不改色相（不会把中性纸重新染回米黄），叠在底色上像纸浆的厚薄。
-  const cloudTile = getPaperNoiseTile(160, 9, 0.16, 0.03, "paper-cloud");
+  const cloudTile = getPaperNoiseTile(160, 9, 0.16, 0.03, 0.85, "paper-cloud");
   if (cloudTile) {
     ctx.save();
     ctx.globalCompositeOperation = "soft-light";
-    ctx.globalAlpha = 0.4;
+    // 大尺度明暗最容易读成"脏斑"，强度比 pass4 收 25%，只保留纸浆厚薄的呼吸感。
+    ctx.globalAlpha = 0.3;
     ctx.drawImage(cloudTile, pageX, pageY, pageWidth, pageHeight);
-    ctx.globalAlpha = 0.27;
+    ctx.globalAlpha = 0.2;
     ctx.drawImage(
       cloudTile,
       pageX - pageWidth * 0.07,
@@ -478,8 +483,8 @@ function buildPaperTexture(
   // 5e. 纸牙：1 设备像素级的极细颗粒（网格噪声 + 高频抖动），放大 2–3 倍才好看清；
   //     远看只是"这张纸有颗粒"，不会变成噪点。两张不同 seed 的贴图棋盘交替，避免平铺周期。
   const toothPixels = Math.max(64, Math.round(PAPER_TOOTH_TILE_CSS * pixelRatio));
-  const toothTileA = getPaperNoiseTile(toothPixels, 96, 0.36, 0.05, "paper-tooth-a");
-  const toothTileB = getPaperNoiseTile(toothPixels, 96, 0.36, 0.05, "paper-tooth-b");
+  const toothTileA = getPaperNoiseTile(toothPixels, 96, 0.36, 0.045, 0.9, "paper-tooth-a");
+  const toothTileB = getPaperNoiseTile(toothPixels, 96, 0.36, 0.045, 0.9, "paper-tooth-b");
   if (toothTileA && toothTileB) {
     tileNoiseOverPage(
       ctx,
@@ -930,6 +935,12 @@ export interface PaperToothOptions {
   quality?: number;
   /** 默认 "baked"（预烘覆盖层 + 每帧 1 次 drawImage）；"pattern" 为每帧 1 次 pattern fillRect 的旧方案。 */
   mode?: PaperToothMode;
+  /**
+   * baked 模式的烘焙分辨率比例（相对 CSS 像素），默认 0.5。烘焙画布按
+   * ceil(width*scale) × ceil(height*scale) 生成，每帧 drawImage 拉伸到全屏；
+   * 比例越低每帧贴图越便宜（0.5 约为全分辨率的 1/4），颗粒也会略微变软。
+   */
+  resolutionScale?: number;
 }
 
 /** 绘制纸面 + 光场。纸面跟随镜头；光与暗角在屏幕空间合成。 */
@@ -1001,6 +1012,11 @@ const paperToothLayerCache = new Map<string, PaperToothLayerEntry>();
 const MAX_PAPER_TOOTH_LAYERS = 2;
 /** 覆盖层像素预算：1080p@dpr1 约 8.3MB，dpr2 / 4K 由预算自动降到合适分辨率。 */
 const MAX_PAPER_TOOTH_LAYER_PIXELS = 6_000_000;
+/**
+ * baked 覆盖层的默认烘焙分辨率比例。0.5 时 1080p 只烘 ~0.52M 像素（每帧贴图开销
+ * 约为全分辨率的 1/4，headless 实测 0.48ms → 0.31ms），颗粒略软，正好压住"近看灰绿颗粒感"。
+ */
+const DEFAULT_PAPER_TOOTH_RESOLUTION = 0.5;
 let paperToothLayerPixels = 0;
 
 /** 图案方案缓存：按画布上下文 + 设备像素比缓存，每帧只复用不新建。 */
@@ -1023,7 +1039,7 @@ function getPaperToothPattern(
   if (cached && cached.pixelRatio === pixelRatio) return cached.pattern;
 
   const tilePixels = Math.max(64, Math.round(PAPER_TOOTH_TILE_CSS * pixelRatio));
-  const tile = getPaperNoiseTile(tilePixels, 96, 0.42, 0, "paper-tooth-overlay");
+  const tile = getPaperNoiseTile(tilePixels, 96, 0.42, 0, 0.6, "paper-tooth-overlay");
   if (!tile) return null;
   const pattern = ctx.createPattern(tile, "repeat");
   if (!pattern) return null;
@@ -1052,9 +1068,10 @@ function buildPaperToothLayer(
   canvas.height = Math.max(2, Math.ceil(height * layerRatio));
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
-  const tilePixels = Math.max(64, Math.round(PAPER_TOOTH_TILE_CSS * layerRatio));
-  const tileA = getPaperNoiseTile(tilePixels, 96, 0.42, 0, "paper-tooth-overlay-a");
-  const tileB = getPaperNoiseTile(tilePixels, 96, 0.42, 0, "paper-tooth-overlay-b");
+  // 瓦片随烘焙分辨率一起缩小：1 层像素 = 1 噪声像素，dropped 到全屏时整体等比变软。
+  const tilePixels = Math.max(48, Math.round(PAPER_TOOTH_TILE_CSS * layerRatio));
+  const tileA = getPaperNoiseTile(tilePixels, 96, 0.42, 0, 0.6, "paper-tooth-overlay-a");
+  const tileB = getPaperNoiseTile(tilePixels, 96, 0.42, 0, 0.6, "paper-tooth-overlay-b");
   if (!tileA || !tileB) return null;
   // 覆盖层画布不做 ctx.scale：这里的 1 用户单位就是 1 层像素，所以 pixelRatio 传 1。
   tileNoiseOverPage(ctx, [tileA, tileB], 1, 0, 0, canvas.width, canvas.height, 1, "source-over");
@@ -1064,11 +1081,19 @@ function buildPaperToothLayer(
 function getPaperToothLayer(
   width: number,
   height: number,
-  pixelRatio: number
+  resolutionScale: number
 ): PaperToothLayerEntry | null {
-  const layerRatio = pixelRatioForBudget(width, height, pixelRatio, MAX_PAPER_TOOTH_LAYER_PIXELS);
+  const layerRatio = pixelRatioForBudget(
+    width,
+    height,
+    resolutionScale,
+    MAX_PAPER_TOOTH_LAYER_PIXELS
+  );
   if (!(layerRatio > 0)) return null;
-  const key = `${Math.round(width)}x${Math.round(height)}:${Math.round(layerRatio * 100)}`;
+  const layerWidth = Math.max(2, Math.ceil(width * layerRatio));
+  const layerHeight = Math.max(2, Math.ceil(height * layerRatio));
+  // 缓存 key 带烘焙分辨率，换 resolutionScale / 视口尺寸都会重新烘焙。
+  const key = `${layerWidth}x${layerHeight}:${Math.round(layerRatio * 1000)}`;
   const cached = paperToothLayerCache.get(key);
   if (cached) {
     // 命中即刷新 LRU 顺序，避免常用分辨率被另一个视口挤掉。
@@ -1102,9 +1127,10 @@ function getPaperToothLayer(
 
 /**
  * 纸牙覆盖层：在屏幕空间用 overlay 合成铺一层极淡的静态纸纹，让文字 / 插画 / 纸面
- * 共用同一套颗粒（矢量字放大后不再"干净得像贴纸"）。默认走 baked：覆盖层预烘成一张
- * 画布，每帧只有 1 次 drawImage（headless 软件栅格实测 ≈0.55ms，pattern fillRect ≈4.6ms）；
- * 传 mode="pattern" 可退回每帧 1 次 pattern fillRect。quality ≥ 2 跳过、quality = 1 强度减半。
+ * 共用同一套颗粒（矢量字放大后不再"干净得像贴纸"）。默认走 baked：覆盖层按
+ * resolutionScale（默认 0.5）预烘成一张画布，每帧只有 1 次 drawImage（headless 实测
+ * 0.31ms，全分辨率 0.48ms，pattern fillRect ≈4.6ms）；传 mode="pattern" 可退回每帧 1 次 pattern fillRect。
+ * quality ≥ 2 跳过、quality = 1 强度减半。
  */
 export function drawHandwrittenPaperTooth(options: PaperToothOptions): void {
   if (typeof document === "undefined") return;
@@ -1137,7 +1163,13 @@ export function drawHandwrittenPaperTooth(options: PaperToothOptions): void {
     ctx.fillStyle = pattern;
     ctx.fillRect(0, 0, safeWidth, safeHeight);
   } else {
-    const layer = getPaperToothLayer(safeWidth, safeHeight, pixelRatio);
+    const resolutionScale = finiteClamp(
+      options.resolutionScale ?? DEFAULT_PAPER_TOOTH_RESOLUTION,
+      0.2,
+      1,
+      DEFAULT_PAPER_TOOTH_RESOLUTION
+    );
+    const layer = getPaperToothLayer(safeWidth, safeHeight, resolutionScale);
     if (!layer) {
       ctx.restore();
       return;

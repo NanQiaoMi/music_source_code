@@ -180,6 +180,38 @@ describe("handwritten paper tooth overlay", () => {
     expect(state.get("globalAlpha")).toBeCloseTo(0.072, 3);
   });
 
+  it("bakes the overlay at resolutionScale and separates the cache key", async () => {
+    vi.resetModules();
+    installCanvasDocument([]);
+    const { drawHandwrittenPaperTooth } = await import("./handwrittenPaper");
+    const { ctx, draws } = createToothContext();
+    const base = {
+      ctx,
+      width: 320,
+      height: 180,
+      palette: resolveHandwrittenPalette(0),
+      paletteIndex: 0,
+      strength: 0.6,
+      quality: 0,
+    };
+
+    drawHandwrittenPaperTooth({ ...base, resolutionScale: 0.5 });
+    const halfLayer = draws[0]![0] as HTMLCanvasElement;
+    expect(halfLayer.width).toBe(160);
+    expect(halfLayer.height).toBe(90);
+
+    // 同一分辨率命中缓存：复用同一张烘焙画布
+    drawHandwrittenPaperTooth({ ...base, resolutionScale: 0.5 });
+    expect(draws[1]![0]).toBe(halfLayer);
+
+    // 改 resolutionScale 必须重新烘焙
+    drawHandwrittenPaperTooth({ ...base, resolutionScale: 0.75 });
+    const threeQuarterLayer = draws[2]![0] as HTMLCanvasElement;
+    expect(threeQuarterLayer).not.toBe(halfLayer);
+    expect(threeQuarterLayer.width).toBe(240);
+    expect(threeQuarterLayer.height).toBe(135);
+  });
+
   it("still supports the pattern mode with a single pattern fillRect", async () => {
     vi.resetModules();
     installCanvasDocument([]);

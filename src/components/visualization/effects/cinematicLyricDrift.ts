@@ -2998,6 +2998,9 @@ function renderFrame(effectCtx: EffectContext): void {
       paletteIndex: Math.round(settings.colorScheme),
       strength: 0.6,
       quality,
+      // 纸牙层在 0.5 分辨率上烘焙再拉伸：grain 略软（正好缓解近看颗粒感），
+      // 全屏 overlay 融合面积减到 1/4，1080p 每帧成本约 0.15ms。
+      resolutionScale: 0.5,
     });
   } finally {
     ctx.restore();

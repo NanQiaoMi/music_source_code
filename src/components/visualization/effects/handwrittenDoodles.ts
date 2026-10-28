@@ -556,11 +556,12 @@ const ILLUSTRATION_HATCH: Partial<Record<HandwrittenDoodleKind, IllustrationHatc
     lightAngle: 2.6,
     role: "pencil",
   },
+
   window: {
     clipStroke: 0,
     angle: Math.PI / 2,
-    spacing: 0.105,
-    alpha: 0.075,
+    spacing: 0.125,
+    alpha: 0.07,
     lightAngle: 2.5,
     role: "pencil",
   },
@@ -650,7 +651,7 @@ function getHatchPaths(
   spec: HandwrittenDoodleSpec,
   unit: number,
   config: IllustrationHatch
-): { main: Path2D; cross?: Path2D } | null {
+): { main: Path2D; soft?: Path2D; cross?: Path2D } | null {
   if (geometry.hatchPaths) return geometry.hatchPaths;
   const stroke = geometry.strokes[config.clipStroke];
   if (!stroke || stroke.variant0.length < 3) return null;
@@ -664,14 +665,20 @@ function getHatchPaths(
   if (diagonal < 0.18) return null;
   if (typeof Path2D === "undefined") return null;
 
+  /**
+   * 一组排线，分成两条路径：主路径（~70% 的线）与轻路径（~30% 的线）。
+   * 轻路径用更低透明度二次描一遍，让排线深浅不齐，不再像"梳齿/刮痕"。
+   * 每条线的间距、端点、弓形都带独立抖动。
+   */
   const buildLines = (
     angle: number,
     step: number,
     count: number,
     wobbleScale: number,
     salt: string
-  ): Path2D => {
-    const path = new Path2D();
+  ): { strong: Path2D; soft: Path2D } => {
+    const strong = new Path2D();
+    const soft = new Path2D();
     const dirX = Math.cos(angle);
     const dirY = Math.sin(angle);
     const perpX = -dirY;
@@ -679,13 +686,16 @@ function getHatchPaths(
     const halfSpan = diagonal + step;
     const wobbleAmount = step * 0.22 * wobbleScale;
     for (let index = 0; index <= count; index += 1) {
-      const offset = -halfSpan + (index / count) * halfSpan * 2;
+      const path = stableRandom(`${spec.kind}:${salt}`, `w${index}`) < 0.3 ? soft : strong;
+      // 线距也抖：±30% 间距，避免均匀梳齿感。
+      const offsetJitter = (stableRandom(`${spec.kind}:${salt}`, `j${index}`) - 0.5) * step * 0.6;
+      const offset = -halfSpan + (index / count) * halfSpan * 2 + offsetJitter;
       const ox = centerX + perpX * offset;
       const oy = centerY + perpY * offset;
       const wobbleA = (stableRandom(`${spec.kind}:${salt}`, `a${index}`) - 0.5) * wobbleAmount * 2;
       const wobbleB = (stableRandom(`${spec.kind}:${salt}`, `b${index}`) - 0.5) * wobbleAmount * 2;
       // 每根排线中间带一点弓形/弯曲，避免"尺子画的平行线"。
-      const bow = (stableRandom(`${spec.kind}:${salt}`, `m${index}`) - 0.5) * step * 0.9;
+      const bow = (stableRandom(`${spec.kind}:${salt}`, `m${index}`) - 0.5) * step * 1.2;
       path.moveTo(
         (ox - dirX * halfSpan + perpX * wobbleA) * unit,
         (oy - dirY * halfSpan + perpY * wobbleA) * unit
@@ -697,20 +707,25 @@ function getHatchPaths(
         (oy + dirY * halfSpan + perpY * wobbleB) * unit
       );
     }
-    return path;
+    return { strong, soft };
   };
 
   const step = Math.max(0.032, config.spacing);
   const halfSpan = diagonal + step;
   const lineCount = Math.min(26, Math.max(6, Math.round((halfSpan * 2) / step)));
-  const main = buildLines(config.angle, step, lineCount, 1, "hatch");
+  const mainLines = buildLines(config.angle, step, lineCount, 1, "hatch");
   let cross: Path2D | undefined;
   if (config.cross) {
     const crossStep = Math.max(0.05, step * config.cross.spacingFactor);
     const crossCount = Math.min(22, Math.max(5, Math.round((halfSpan * 2) / crossStep)));
-    cross = buildLines(config.cross.angle, crossStep, crossCount, 0.7, "cross");
+    const crossLines = buildLines(config.cross.angle, crossStep, crossCount, 0.7, "cross");
+    cross = crossLines.strong;
   }
-  const result: { main: Path2D; cross?: Path2D } = cross ? { main, cross } : { main };
+  const result: { main: Path2D; soft?: Path2D; cross?: Path2D } = {
+    main: mainLines.strong,
+    soft: mainLines.soft,
+    ...(cross ? { cross } : {}),
+  };
   geometry.hatchPaths = result;
   return result;
 }
@@ -718,7 +733,7 @@ function getHatchPaths(
 /**
  * 在闭合轮廓内按光向排线，给插画加"铅笔压出来的暗部"。
  * 只在形状基本画完（visible >= 0.72）后出现，避免出笔阶段出现漂浮排线；
- * 排线路径按几何缓存，每帧成本 = 1 次 clip + 1–2 次 stroke。
+ * 排线路径按几何缓存，每帧成本 = 1 次 clip + 2–3 次 stroke（主/轻/交叉）。
  */
 function drawIllustrationHatching(
   ctx: CanvasRenderingContext2D,
@@ -767,6 +782,11 @@ function drawIllustrationHatching(
   ctx.strokeStyle = buildGradient(alpha, 0.28);
   ctx.lineWidth = Math.max(0.35, lineWidth * 0.52);
   ctx.stroke(paths.main);
+  if (paths.soft) {
+    ctx.strokeStyle = buildGradient(alpha * 0.55, 0.34);
+    ctx.lineWidth = Math.max(0.32, lineWidth * 0.44);
+    ctx.stroke(paths.soft);
+  }
   if (paths.cross && config.cross) {
     ctx.strokeStyle = buildGradient(alpha * config.cross.alphaFactor, 0.62);
     ctx.lineWidth = Math.max(0.32, lineWidth * 0.44);
@@ -1812,15 +1832,19 @@ export function drawHandwrittenDoodle(spec: HandwrittenDoodleSpec, options: Dood
 
   // 铅笔速写的"第二遍找形"：主轮廓下方偏移 1–2px 再画一遍，
   // 形成真实手绘的双线/重描感；低画质档跳过。
+  // 只重描前 8 笔（主轮廓/窗框/山脊这类长线）——内部碎笔远看本来只有一笔，
+  // 全量重描只是白付一遍大面积 path 填充。
   if (isLargeIllustration && quality < 2 && visible > 0.3) {
     const underDx = (stableRandom(`${spec.kind}:under`, "dx") - 0.5) * 3.2;
     const underDy = (stableRandom(`${spec.kind}:under`, "dy") - 0.5) * 2.6;
+    const underCount = Math.min(6, geometry.strokes.length);
     ctx.save();
     ctx.translate(underDx / specScale, underDy / specScale);
     ctx.globalAlpha = visible * 0.26;
     ctx.fillStyle = roleColor(palette, spec.color);
-    for (const stroke of geometry.strokes) {
-      const path = stroke.inkPath1 ?? stroke.inkPath0;
+    for (let index = 0; index < underCount; index += 1) {
+      const stroke = geometry.strokes[index];
+      const path = stroke?.inkPath1 ?? stroke?.inkPath0;
       if (path) ctx.fill(path);
     }
     ctx.restore();
