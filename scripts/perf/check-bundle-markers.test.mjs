@@ -68,6 +68,14 @@ describe("check-bundle-markers guard", () => {
     expect(mediapipeOnly.status, mediapipeOnly.stdout).toBe(0);
   });
 
+  it("--skip-if-missing skips a missing build instead of failing", () => {
+    const empty = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-markers-"));
+    temps.push(empty);
+    const result = run(empty, "--skip-if-missing");
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    expect(result.stdout).toContain("skip");
+  });
+
   it("rejects unknown --forbid and missing build output", () => {
     expect(run(fixture(), "--forbid", "three").status).toBe(2);
     const empty = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-markers-"));

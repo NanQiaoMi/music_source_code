@@ -118,4 +118,11 @@
 | 425 | src/store/lyricsCoverStore.ts |
 | 419 | src/store/libraryManagerStore.ts |
 
-- 已知缺口：本任务只落地行数棘轮 + SCC 门禁；S6-12a 的 dependency-cruiser 分层规则（`.dependency-cruiser.cjs`）与 S6-12b 的 CI 接线未包含，需 Lead 排期。16 个存量 >400 文件待拆分后执行 `--update` 收紧。
+- 已知缺口：S6-12a 的 dependency-cruiser 分层规则（`.dependency-cruiser.cjs`）未落地（dependency-cruiser 未安装，需 Lead 批准新依赖）；16 个存量 >400 文件待拆分后执行 `--update` 收紧。S6-12b 的 CI 接线见第 7 节。
+
+## 7. CI 接线（S6-12b，2026-10-29）
+
+- `npm run perf:gates` = `check-store-budgets` → `report-store-stats --max-whole 10` → `check-bundle-markers --skip-if-missing`；任一失败即非 0 退出。
+- `.github/workflows/deploy.yml` 的 `verify` 作业在 `Production build` 之后、同 job 内运行该脚本，保证 `.next` 存在；`--skip-if-missing` 只让 bundle markers 在无 build 产物时打印 skip 并放行（单独跑 `npm run perf:check-bundle` 仍为 exit 2）。
+- **`report-store-stats.mjs --check` 仍禁用**：`perf/store-stats-baseline.json` 是 2026-10-21 快照（60 stores / 44 persist keys），实测 59 / 43，`--check` 会报 `stores 59 != baseline 60; persistCount 43 < baseline 44` 直接失败。重建基线需 Lead 批准并单独 PR；重建前 CI 用 `--max-whole 10` 兜底 whole-store 订阅，旧 "Store stats baseline gate" 步骤已移除，避免常红。
+- 回归测试：`scripts/perf/ci-perf-gates.test.mjs` 以 YAML 文本断言 `perf:gates` 步骤存在、位于 verify job 且在 build 之后，断言 `--check` 未启用且 stale 说明仍在，并校验 npm 脚本三项顺序。

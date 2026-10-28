@@ -5,6 +5,7 @@
 // ("jsmediatags") and CDN/wasm URLs ("@mediapipe/tasks-vision") cannot false-positive:
 // jsmediatags -> "ID3v2"; mediapipe -> "mediapipe.NormalizedRect".
 // Usage: node scripts/perf/check-bundle-markers.mjs [--next .next] [--forbid <name>] [--json out.json]
+//        [--skip-if-missing]  (perf:gates: pass without a build instead of exiting 2)
 /* eslint-env node */
 import fs from "node:fs";
 import path from "node:path";
@@ -76,6 +77,11 @@ const nextDir = readArg("--next") || ".next";
 const jsonOut = readArg("--json");
 const forbid = readArg("--forbid");
 const markers = forbid ? MARKERS.filter((m) => m.name === forbid) : MARKERS;
+const skipIfMissing = args.includes("--skip-if-missing");
+if (skipIfMissing && !fs.existsSync(path.join(nextDir, "build-manifest.json"))) {
+  console.log(`[bundle-markers] skip: no build output under ${nextDir} (run npm run build to enable)`);
+  process.exit(0);
+}
 if (!markers.length) {
   const names = MARKERS.map((m) => m.name).join(", ");
   console.error(`[bundle-markers] unknown --forbid "${forbid}" (expected: ${names})`);
