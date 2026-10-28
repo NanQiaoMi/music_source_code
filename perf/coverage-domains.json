@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "note": "S8-2 per-domain burn-in floors: threshold = round(measured - burnInMarginPp, 2), ratchet-only up (--update raises floors when coverage improves and never lowers them). Source: npm run test:coverage:domains.",
+  "burnInMarginPp": 5,
+  "measuredAt": "2026-10-28T19:06:45.608Z",
+  "commit": "86dc844",
+  "domains": [
+    {
+      "name": "src/lib/audio",
+      "files": 26,
+      "measured": {
+        "statements": 46.85,
+        "branches": 45.27,
+        "functions": 63.87,
+        "lines": 47.34
+      },
+      "thresholds": {
+        "statements": 41.85,
+        "branches": 40.27,
+        "functions": 58.87,
+        "lines": 42.34
+      }
+    },
+    {
+      "name": "src/utils",
+      "files": 10,
+      "measured": {
+        "statements": 66.08,
+        "branches": 57.77,
+        "functions": 73.42,
+        "lines": 67.13
+      },
+      "thresholds": {
+        "statements": 61.08,
+        "branches": 52.77,
+        "functions": 68.42,
+        "lines": 62.13
+      }
+    },
+    {
+      "name": "src/store",
+      "files": 66,
+      "measured": {
+        "statements": 57.46,
+        "branches": 49.02,
+        "functions": 56.76,
+        "lines": 59.09
+      },
+      "thresholds": {
+        "statements": 52.46,
+        "branches": 44.02,
+        "functions": 51.76,
+        "lines": 54.09
+      }
+    },
+    {
+      "name": "src/services",
+      "files": 18,
+      "measured": {
+        "statements": 45.8,
+        "branches": 37.58,
+        "functions": 40.73,
+        "lines": 47.47
+      },
+      "thresholds": {
+        "statements": 40.8,
+        "branches": 32.58,
+        "functions": 35.73,
+        "lines": 42.47
+      }
+    },
+    {
+      "name": "src/hooks",
+      "files": 20,
+      "measured": {
+        "statements": 19.3,
+        "branches": 13.79,
+        "functions": 23.71,
+        "lines": 19.63
+      },
+      "thresholds": {
+        "statements": 14.3,
+        "branches": 8.79,
+        "functions": 18.71,
+        "lines": 14.63
+      }
+    }
+  ]
+}
