@@ -17,8 +17,8 @@
 | S5 渲染运行时 | 7 | 7 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | in_progress（S5-1..S5-7 done；M5 出口门待 rAF 收敛与真机 90fps 证据） |
 | S6 状态架构收敛 | 12 | 5 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | in_progress（S6-1/S6-2/S6-3/S6-4/S6-11 done；S6-5..S6-10/S6-12 待） |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
-| S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **34** | **约 129** | — | in_progress |
+| S8 门禁与长期治理 | 6 | 1 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | in_progress（S8-4 done；S8-1..S8-3/S8-5/S8-6 待） |
+| **合计** | **74** | **35** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -136,7 +136,7 @@
 - [ ] S8-1 CI 完整门禁（verify 全链路 + required checks）— owner: — | PR: 1-2 | 依赖: S0-2 | 验收: ≤12min；超阈值 fail
 - [ ] S8-2 覆盖率阶梯（分域阈值 + burn-in）— owner: — | PR: 1 | 依赖: S8-1 | 验收: 域级达标；不降 >0.5pp
 - [ ] S8-3 性能回归套件（bundle diff/nightly/soak/看板）— owner: — | PR: 2 | 依赖: S0-6 | 验收: 连续 4 周无回归
-- [ ] S8-4 文档事实流水线（check-docs-facts + 季度对账）— owner: — | PR: 1 | 依赖: S0-4 | 验收: exit 0
+- [x] S8-4 文档事实流水线（check-docs-facts + 季度对账）— **done（2026-10-29，6300fe8）**：CI `verify` job 已有 `Docs facts` step（`node scripts/check-docs-facts.mjs`）；修复 stale 文档数字（AGENTS.md/ARCHITECTURE.md 60/44 → 59/43，与 report-store-stats 一致）；`node scripts/check-docs-facts.mjs` → **fail=0 warn=0**；新增本地脚本 `npm run verify:docs` 与 CI 对齐。季度对账为流程约定（每次发版/季度执行），无代码门禁。分支 `feature/arch-perf-s6-12b`（未合并）。
 - [ ] S8-5 发布检查清单与演练 — owner: — | PR: 1 | 依赖: S7 | 验收: 每次发版执行
 - [ ] S8-6 长期 backlog（features 领域化/14 效果插件化/4K/低端/E2E/OPFS）— owner: — | 类型: 长期 | 依赖: 全部 | 验收: 已排期+触发条件
 
