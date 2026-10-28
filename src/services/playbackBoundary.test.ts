@@ -3,9 +3,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * S6-9b 契约：service 层不得直接调用 audioStore 的播放传输方法。
- * 传输统一走 @/domain/playback/playbackCommands（内部经 PlaybackPorts 适配器），
- * 测试/上层可注入 fake ports。songPurgeService 的停止播放写点留待 S6-10 迁移。
+ * S6-9b/S6-10 契约：service 层不得直接调用 audioStore 的播放传输方法。
+ * 传输统一走 @/domain/playback/playbackCommands 或 PlaybackPorts（可注入 fake ports）；
+ * S6-10 移除了 songPurgeService 的遗留白名单。
  */
 const SRC = path.resolve(process.cwd(), "src");
 const SERVICES = path.join(SRC, "services");
@@ -22,7 +22,6 @@ const TRANSPORT_METHODS = new Set([
   "toggleMute",
   "setCurrentSong",
 ]);
-const LEGACY_EXEMPT = new Map([["services/songPurgeService.ts", "S6-10 服务层收敛"]]);
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -87,16 +86,23 @@ describe("S6-9b service playback boundary", () => {
     ]);
   });
 
-  it("keeps services free of direct audioStore transport calls (legacy purge exempt)", () => {
+  it("keeps services free of direct audioStore transport calls", () => {
     const offenders = sourceFiles(SERVICES)
       .map((file) => ({
         file: path.relative(SRC, file).replace(/\\/g, "/"),
         calls: directTransportCalls(fs.readFileSync(file, "utf8")),
       }))
-      .filter((entry) => entry.calls.length > 0 && !LEGACY_EXEMPT.has(entry.file))
+      .filter((entry) => entry.calls.length > 0)
       .map((entry) => entry.file + ": " + entry.calls.join(", "));
 
     expect(offenders).toEqual([]);
+  });
+
+  it("stops purged playback through PlaybackPorts", () => {
+    const source = fs.readFileSync(path.join(SERVICES, "songPurgeService.ts"), "utf8");
+    expect(source).not.toContain("useAudioStore");
+    expect(source).toContain("PlaybackPorts");
+    expect(source).toContain("clearCurrentSong()");
   });
 
   it("routes aiAgentTools playback tools through commands/ports", () => {

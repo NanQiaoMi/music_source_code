@@ -27,13 +27,17 @@ export interface SongMetadataQuery {
   source?: string;
 }
 
-import { useSourceConfigStore } from "@/store/sourceConfigStore";
-import { useUserAccountStore, isPlatformLoggedIn, PlatformType } from "@/store/userAccountStore";
+import { getPlatformCookie, getSourceConfigSnapshot } from "@/store/actions/sourceActions";
+import {
+  handlePlatformSessionExpired,
+  isPlatformLoggedIn,
+  PlatformType,
+} from "@/store/userAccountStore";
 import { LXRunner } from "@/lib/sources/lxRunner";
 
 function getPlatformHeaders(platform: string): Record<string, string> {
   if (typeof window === "undefined") return {};
-  const cookie = useUserAccountStore.getState().getPlatformCookie(platform);
+  const cookie = getPlatformCookie(platform);
   const headers: Record<string, string> = {};
   if (cookie) {
     if (platform === "netease" || platform === "wy") headers["x-netease-cookie"] = cookie;
@@ -58,7 +62,7 @@ function handle401Response(platform: string, status: number) {
               ? "kuwo"
               : platform
     ) as PlatformType;
-    useUserAccountStore.getState().handlePlatformSessionExpired(p);
+    handlePlatformSessionExpired(p);
   }
 }
 
@@ -308,9 +312,7 @@ export class MultiSourceResolver {
 
     // 解析模式必须在**发起分支之前**读取：lx_only 下不允许碰平台竞速与兜底
     const resolutionMode =
-      typeof window !== "undefined"
-        ? useSourceConfigStore.getState().resolutionMode
-        : "hybrid_racing";
+      typeof window !== "undefined" ? getSourceConfigSnapshot().resolutionMode : "hybrid_racing";
 
     // ---- 以下分支全部在 t=0 同时发起，只是**按优先级依次接受** ----
     // 旧实现是严格串行 await：洛雪（每脚本 8s 超时）→ 平台竞速 race 落空后还要
@@ -434,8 +436,7 @@ export class MultiSourceResolver {
    */
   public async resolveLxScript(query: SongMetadataQuery): Promise<ResolvedAudioSource | null> {
     try {
-      const lxScripts =
-        typeof window !== "undefined" ? useSourceConfigStore.getState().lxScripts : [];
+      const lxScripts = typeof window !== "undefined" ? getSourceConfigSnapshot().lxScripts : [];
       const enabledScripts = lxScripts.filter((s) => s.enabled);
       if (enabledScripts.length === 0) return null;
 
@@ -935,8 +936,7 @@ export class MultiSourceResolver {
     }
 
     const kw = encodeURIComponent(trimmed);
-    const sourceConfigs =
-      typeof window !== "undefined" ? useSourceConfigStore.getState().sources : null;
+    const sourceConfigs = typeof window !== "undefined" ? getSourceConfigSnapshot().sources : null;
 
     const endpoints: { key: string; url: string; headers: Record<string, string> }[] = [];
     if (isPlatformLoggedIn("netease") && sourceConfigs?.netease?.enabled !== false) {
@@ -1010,20 +1010,18 @@ export class MultiSourceResolver {
       }
     });
 
-    const isLxEnabled =
-      typeof window !== "undefined"
-        ? Boolean(
-            useSourceConfigStore.getState().sources.lx_custom?.enabled &&
-            useSourceConfigStore.getState().lxScripts.some((s) => s.enabled)
-          )
-        : true;
+    const sourceConfig = typeof window !== "undefined" ? getSourceConfigSnapshot() : null;
+    const isLxEnabled = sourceConfig
+      ? Boolean(
+          sourceConfig.sources.lx_custom?.enabled && sourceConfig.lxScripts.some((s) => s.enabled)
+        )
+      : true;
 
     const lxTask = async () => {
       if (!isLxEnabled) return { key: "lx_custom", songs: [] };
       attemptedProviderCount += 1;
       try {
-        const lxScripts =
-          typeof window !== "undefined" ? useSourceConfigStore.getState().lxScripts : [];
+        const lxScripts = typeof window !== "undefined" ? getSourceConfigSnapshot().lxScripts : [];
         const activeScript = lxScripts.find((s) => s.enabled) || {
           id: "lx-default",
           name: "LX Default",

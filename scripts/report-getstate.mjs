@@ -1,0 +1,95 @@
+#!/usr/bin/env node
+/**
+ * S6-10 getState 分层报告 + services 棘轮。
+ * 口径：src 下非测试 .ts/.tsx 中 `useXxxStore.getState(` 的出现次数（与 report-store-stats 的 getStateByLayer 一致）。
+ * 用法：node scripts/report-getstate.mjs [--json <path>] [--check]
+ *  --json   写完整报告（byLayer / 逐文件计数）。
+ *  --check  读 perf/getstate-baseline.json：services 总数 <= targets.services，且逐文件 <= allowed.services[file]。
+ *           组件/hooks/lib 收敛属 S6-10b，本脚本只报告不阻塞。
+ */
+import fs from "node:fs";
+import path from "node:path";
+
+const ROOT = process.cwd();
+const SRC = path.join(ROOT, "src");
+const BASELINE_FILE = path.join(ROOT, "perf", "getstate-baseline.json");
+const LAYERS = ["app", "components", "hooks", "lib", "services", "store", "domain"];
+const GETSTATE_RE = /use[A-Z][A-Za-z0-9_]*Store\.getState\(/g;
+const args = process.argv.slice(2);
+const jsonIdx = args.indexOf("--json");
+const jsonOut = jsonIdx >= 0 ? args[jsonIdx + 1] : null;
+
+const walk = (dir, out = []) => {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walk(full, out);
+    else if (/\.(ts|tsx)$/.test(entry.name) && !/\.test\.|\.spec\./.test(entry.name))
+      out.push(full);
+  }
+  return out;
+};
+
+const files = walk(SRC);
+const byLayer = Object.fromEntries(LAYERS.map((layer) => [layer, 0]));
+const byFile = {};
+let total = 0;
+for (const file of files) {
+  const count = (fs.readFileSync(file, "utf8").match(GETSTATE_RE) || []).length;
+  if (count === 0) continue;
+  const rel = path.relative(ROOT, file).split(path.sep).join("/");
+  const layer = rel.split("/")[1] || "other";
+  byFile[rel] = count;
+  byLayer[layer] = (byLayer[layer] || 0) + count;
+  total += count;
+}
+const serviceFiles = Object.fromEntries(
+  Object.entries(byFile)
+    .filter(([file]) => file.startsWith("src/services/"))
+    .sort()
+);
+const report = {
+  metric: "useXStore.getState() calls in non-test src files",
+  generatedAt: new Date().toISOString(),
+  totals: { getState: total, files: Object.keys(byFile).length },
+  byLayer,
+  services: {
+    total: byLayer.services || 0,
+    files: serviceFiles,
+    scanned: files.filter((f) => f.includes("services")).length,
+  },
+  files: byFile,
+};
+
+console.log(JSON.stringify({ totals: report.totals, byLayer, services: report.services }, null, 2));
+if (jsonOut) {
+  fs.mkdirSync(path.dirname(path.resolve(ROOT, jsonOut)), { recursive: true });
+  fs.writeFileSync(path.resolve(ROOT, jsonOut), JSON.stringify(report, null, 2) + "\n");
+  console.log("[getstate] wrote " + jsonOut);
+}
+
+if (args.includes("--check")) {
+  const baseline = JSON.parse(fs.readFileSync(BASELINE_FILE, "utf8"));
+  const target = baseline.targets?.services ?? 0;
+  const allowed = baseline.allowed?.services ?? {};
+  const violations = [];
+  if ((byLayer.services || 0) > target) {
+    violations.push("services total " + (byLayer.services || 0) + " > target " + target);
+  }
+  for (const [file, count] of Object.entries(serviceFiles)) {
+    const cap = allowed[file] ?? 0;
+    if (count > cap) violations.push(file + ": " + count + " > allowed " + cap);
+  }
+  if (violations.length > 0) {
+    console.error("FAIL: service getState ratchet exceeded:\n  " + violations.join("\n  "));
+    process.exit(1);
+  }
+  console.log(
+    "OK: services getState " +
+      (byLayer.services || 0) +
+      "/" +
+      target +
+      " (allowed files: " +
+      Object.keys(allowed).length +
+      ")"
+  );
+}

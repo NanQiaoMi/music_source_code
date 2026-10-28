@@ -47,6 +47,8 @@ export interface PlaybackPorts {
   prev(): void;
   setVolume(volume: number): void;
   toggleMute(): void;
+  /** 停止播放并清空当前曲目（曲目被删除/清理时），等价旧 setIsPlaying(false)+setCurrentSong(null)。 */
+  clearCurrentSong(): void;
   getSnapshot(): PlaybackSnapshot;
 }
 
@@ -91,6 +93,12 @@ export const defaultPlaybackPorts: PlaybackPorts = {
 
   toggleMute() {
     usePlayerStore.getState().toggleMute();
+  },
+
+  clearCurrentSong() {
+    const audio = useAudioStore.getState();
+    audio.setIsPlaying(false);
+    audio.setCurrentSong(null);
   },
 
   getSnapshot() {

@@ -3,12 +3,23 @@ import { ToolDefinition, ToolExecutionResult } from "@/types/aiAgent";
 import { multiSourceResolver } from "@/services/MultiSourceResolver";
 import { createPlaybackCommands } from "@/domain/playback/playbackCommands";
 import { defaultPlaybackPorts, type PlaybackPorts } from "@/domain/playback/ports";
-import { usePlayerStore, type LoopMode } from "@/store/playerStore";
-import { useFavoritesStore } from "@/store/favoritesStore";
-import { useQueueStore } from "@/store/queueStore";
-import { useVisualizationStore, VisualizationEffect } from "@/store/visualizationStore";
-import { useSleepTimerStore } from "@/store/sleepTimerStore";
-import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
+import type { LoopMode } from "@/store/playerStore";
+import type { VisualizationEffect } from "@/store/visualizationStore";
+import {
+  addFavoriteSong,
+  appendSongToQueue,
+  cancelSleepTimer,
+  clearPlaybackQueue,
+  enqueueSongDownload,
+  getPlayerLoopMode,
+  insertSongNext,
+  isFavoriteSong,
+  removeFavoriteSong,
+  setPlayerLoopMode,
+  setVisualizationEffect,
+  startSleepTimer,
+  toggleFavoriteSong,
+} from "@/store/actions/serviceActions";
 
 /**
  * 歌曲运行时快速缓存，用于根据 ID 在工具调用间共享检索到的完整 Song 结构
@@ -560,7 +571,7 @@ export async function executeTool(
             };
         }
 
-        usePlayerStore.getState().setLoopMode(loopMode);
+        setPlayerLoopMode(loopMode);
         return {
           success: true,
           message: `播放模式已切换为「${modeLabel}」`,
@@ -583,7 +594,7 @@ export async function executeTool(
           };
         }
 
-        const isFav = useFavoritesStore.getState().isFavorite(currentSong.id);
+        const isFav = isFavoriteSong(currentSong.id);
         const loopModeMap: Record<LoopMode, string> = {
           none: "顺序播放",
           all: "列表循环",
@@ -608,7 +619,7 @@ export async function executeTool(
             volume: Math.round(snapshot.volume * 100),
             isMuted: snapshot.isMuted,
             isFavorite: isFav,
-            playMode: loopModeMap[usePlayerStore.getState().loopMode] || "顺序播放",
+            playMode: loopModeMap[getPlayerLoopMode()] || "顺序播放",
           },
         };
       }
@@ -622,7 +633,7 @@ export async function executeTool(
           targetSong = getCachedSong(songId) || null;
         }
         if (!targetSong) {
-          targetSong = usePlayerStore.getState().currentSong;
+          targetSong = playbackPorts.getSnapshot().currentSong;
         }
 
         if (!targetSong) {
@@ -633,25 +644,24 @@ export async function executeTool(
           };
         }
 
-        const favStore = useFavoritesStore.getState();
-        const isCurrentlyFav = favStore.isFavorite(targetSong.id);
+        const isCurrentlyFav = isFavoriteSong(targetSong.id);
 
         if (action === "like") {
-          favStore.addToFavorites(targetSong);
+          addFavoriteSong(targetSong);
           return {
             success: true,
             message: `已将《${targetSong.title}》加入红心收藏 ❤️`,
             data: { isFavorite: true, song: targetSong },
           };
         } else if (action === "unlike") {
-          favStore.removeFromFavorites(targetSong.id);
+          removeFavoriteSong(targetSong.id);
           return {
             success: true,
             message: `已将《${targetSong.title}》从收藏列表中移除 🤍`,
             data: { isFavorite: false, song: targetSong },
           };
         } else {
-          favStore.toggleFavorite(targetSong);
+          toggleFavoriteSong(targetSong);
           const newFavState = !isCurrentlyFav;
           return {
             success: true,
@@ -665,10 +675,9 @@ export async function executeTool(
 
       case "add_to_queue": {
         const action = typeof args.action === "string" ? args.action.toLowerCase() : "append";
-        const queueStore = useQueueStore.getState();
 
         if (action === "clear") {
-          queueStore.clearQueue();
+          clearPlaybackQueue();
           return {
             success: true,
             message: "已清空播放队列",
@@ -703,7 +712,7 @@ export async function executeTool(
         if (action === "insert_next") {
           // 倒序插入以保证首首依次紧随当前播放
           for (let i = resolvedSongs.length - 1; i >= 0; i--) {
-            queueStore.addToNext(resolvedSongs[i]);
+            insertSongNext(resolvedSongs[i]);
           }
           return {
             success: true,
@@ -712,7 +721,7 @@ export async function executeTool(
           };
         } else {
           for (const s of resolvedSongs) {
-            queueStore.addToQueue(s);
+            appendSongToQueue(s);
           }
           return {
             success: true,
@@ -733,7 +742,7 @@ export async function executeTool(
         }
 
         const normalized = normalizeVisualizerEffect(rawEffect);
-        useVisualizationStore.getState().setCurrentEffect(normalized as VisualizationEffect);
+        setVisualizationEffect(normalized as VisualizationEffect);
 
         return {
           success: true,
@@ -743,10 +752,8 @@ export async function executeTool(
       }
 
       case "set_sleep_timer": {
-        const sleepStore = useSleepTimerStore.getState();
-
         if (args.cancel === true) {
-          sleepStore.cancelTimer();
+          cancelSleepTimer();
           return {
             success: true,
             message: "已取消睡眠定时器 ⏰",
@@ -764,8 +771,7 @@ export async function executeTool(
           };
         }
 
-        sleepStore.setTimer(minutes);
-        sleepStore.startTimer();
+        startSleepTimer(minutes);
 
         return {
           success: true,
@@ -801,7 +807,7 @@ export async function executeTool(
           cacheSong(song);
         }
 
-        await useOfflineDownloadStore.getState().addDownload(song, quality);
+        await enqueueSongDownload(song, quality);
 
         return {
           success: true,

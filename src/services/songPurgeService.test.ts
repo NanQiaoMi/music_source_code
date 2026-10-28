@@ -5,6 +5,7 @@ import { useQueueStore } from "@/store/queueStore";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useLibraryHealthStore } from "@/store/libraryHealthStore";
+import type { PlaybackPorts } from "@/domain/playback/ports";
 import type { Song } from "@/types/song";
 
 vi.mock("./localMusicStorage", () => ({
@@ -114,5 +115,34 @@ describe("songPurgeService", () => {
     const audio = useAudioStore.getState();
     expect(audio.isPlaying).toBe(false);
     expect(audio.currentSong).toBeNull();
+  });
+
+  it("stops playback through injected PlaybackPorts without touching the default adapter", async () => {
+    const ports = {
+      playSong: vi.fn(),
+      toggleIntent: vi.fn(),
+      seek: vi.fn(),
+      next: vi.fn(),
+      prev: vi.fn(),
+      setVolume: vi.fn(),
+      toggleMute: vi.fn(),
+      clearCurrentSong: vi.fn(),
+      getSnapshot: vi.fn(() => ({
+        currentSong: brokenSong,
+        shouldPlay: true,
+        isPlaying: true,
+        volume: 0.7,
+        isMuted: false,
+        currentTime: 0,
+        duration: 0,
+      })),
+    } satisfies PlaybackPorts;
+
+    const report = await purgeInvalidSongs(["broken-1"], ports);
+
+    expect(ports.clearCurrentSong).toHaveBeenCalledTimes(1);
+    expect(report.stoppedPlayback).toBe(true);
+    // 注入 fake ports 时不再走 audioStore 适配器
+    expect(useAudioStore.getState().currentSong).toBe(brokenSong);
   });
 });

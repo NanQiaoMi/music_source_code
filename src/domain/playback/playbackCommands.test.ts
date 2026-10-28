@@ -45,6 +45,9 @@ const makeFakePorts = (initial: Partial<PlaybackSnapshot> = {}) => {
   const toggleMute = vi.fn(() => {
     snapshot = { ...snapshot, isMuted: !snapshot.isMuted };
   });
+  const clearCurrentSong = vi.fn(() => {
+    snapshot = { ...snapshot, currentSong: null, isPlaying: false };
+  });
   const ports: PlaybackPorts = {
     playSong,
     toggleIntent,
@@ -53,9 +56,20 @@ const makeFakePorts = (initial: Partial<PlaybackSnapshot> = {}) => {
     prev,
     setVolume,
     toggleMute,
+    clearCurrentSong,
     getSnapshot: vi.fn(() => snapshot),
   };
-  return { ports, playSong, toggleIntent, seek, next, prev, setVolume, toggleMute };
+  return {
+    ports,
+    playSong,
+    toggleIntent,
+    seek,
+    next,
+    prev,
+    setVolume,
+    toggleMute,
+    clearCurrentSong,
+  };
 };
 
 const resetStores = () => {

@@ -57,6 +57,7 @@ function createFakePorts(initial: Partial<PlaybackSnapshot> = {}) {
     toggleMute: vi.fn(() => {
       snapshot = { ...snapshot, isMuted: !snapshot.isMuted };
     }),
+    clearCurrentSong: vi.fn(),
     getSnapshot: vi.fn(() => snapshot),
   } satisfies PlaybackPorts;
   return ports;

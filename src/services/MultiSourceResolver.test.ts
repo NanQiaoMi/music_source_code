@@ -24,12 +24,8 @@ vi.mock("@/store/sourceConfigStore", () => ({
 vi.mock("@/store/userAccountStore", () => ({
   isPlatformLoggedIn: () => h.loggedIn,
   PlatformType: {},
-  useUserAccountStore: {
-    getState: () => ({
-      getPlatformCookie: () => null,
-      handlePlatformSessionExpired: () => {},
-    }),
-  },
+  handlePlatformSessionExpired: () => {},
+  useUserAccountStore: { getState: () => ({ getPlatformCookie: () => null }) },
 }));
 
 vi.mock("@/store/audioSourceStore", () => ({ AudioSourceType: {} }));

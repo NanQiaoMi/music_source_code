@@ -1,11 +1,13 @@
 import { Song } from "@/types/song";
 import { deleteStoredMusic } from "./localMusicStorage";
 import { deleteCoverFromCache } from "./coverCache";
-import { usePlaylistStore } from "@/store/playlistStore";
-import { useQueueStore } from "@/store/queueStore";
-import { useAudioStore } from "@/store/audioStore";
-import { usePlayerStore } from "@/store/playerStore";
-import { useLibraryHealthStore, generateHealthReport } from "@/store/libraryHealthStore";
+import { defaultPlaybackPorts, type PlaybackPorts } from "@/domain/playback/ports";
+import {
+  getPlaylistSongsSnapshot,
+  refreshHealthReport,
+  removeSongsFromPlaylist,
+  removeSongsFromQueue,
+} from "@/store/actions/serviceActions";
 
 export interface InvalidSongEvaluation {
   isInvalid: boolean;
@@ -93,10 +95,14 @@ export function scanInvalidSongs(
 
 /**
  * Completely purges a list of songs across all stores, caches, and persistent IndexedDB storage.
+ * 播放停止走 PlaybackPorts（S6-10），其余跨 store 写入走 store 导出的命令式 action。
  */
-export async function purgeInvalidSongs(songIds: string[]): Promise<PurgeReport> {
+export async function purgeInvalidSongs(
+  songIds: string[],
+  playbackPorts: PlaybackPorts = defaultPlaybackPorts
+): Promise<PurgeReport> {
   if (!songIds || songIds.length === 0) {
-    const currentSongs = usePlaylistStore.getState().songs;
+    const currentSongs = getPlaylistSongsSnapshot();
     return {
       purgedSongIds: [],
       purgedCount: 0,
@@ -112,30 +118,20 @@ export async function purgeInvalidSongs(songIds: string[]): Promise<PurgeReport>
   // 1. Check & safely stop current playback if currently playing one of the target songs
   let stoppedPlayback = false;
   try {
-    // 身份读 playerStore（audioStore 的 owner 镜像）；停止播放仍走 audioStore 编排写点。
-    const playerState = usePlayerStore.getState();
-    if (playerState.currentSong && targetIdSet.has(playerState.currentSong.id)) {
-      const audioState = useAudioStore.getState();
-      audioState.setIsPlaying(false);
-      audioState.setCurrentSong(null);
+    // 播放快照/停止统一走 PlaybackPorts；默认适配器读 playerStore、写 audioStore。
+    const currentSong = playbackPorts.getSnapshot().currentSong;
+    if (currentSong && targetIdSet.has(currentSong.id)) {
+      playbackPorts.clearCurrentSong();
       stoppedPlayback = true;
     }
   } catch (error) {
-    console.warn("Error while updating audioStore during purge:", error);
+    console.warn("Error while stopping playback during purge:", error);
   }
 
   // 2. Remove from QueueStore (queue, insertNext, history)
   let clearedFromQueueCount = 0;
   try {
-    const queueState = useQueueStore.getState();
-    const prevQueueLen = queueState.queue.length;
-    const newQueue = queueState.queue.filter((s) => !targetIdSet.has(s.id));
-    clearedFromQueueCount = prevQueueLen - newQueue.length;
-
-    useQueueStore.setState({
-      queue: newQueue,
-      history: (queueState.history || []).filter((s) => !targetIdSet.has(s.id)),
-    });
+    clearedFromQueueCount = removeSongsFromQueue(targetIdSet);
   } catch (error) {
     console.warn("Error while updating queueStore during purge:", error);
   }
@@ -143,26 +139,7 @@ export async function purgeInvalidSongs(songIds: string[]): Promise<PurgeReport>
   // 3. Remove from PlaylistStore (songs, filteredSongs, recentPlayed, selectedSong)
   let remainingSongsCount = 0;
   try {
-    const playlistState = usePlaylistStore.getState();
-    const newSongs = playlistState.songs.filter((s) => !targetIdSet.has(s.id));
-    const newFiltered = playlistState.filteredSongs.filter((s) => !targetIdSet.has(s.id));
-    const newRecent = playlistState.recentPlayed.filter((s) => !targetIdSet.has(s.id));
-    const newSelectedIds = new Set(
-      Array.from(playlistState.selectedSongIds).filter((id) => !targetIdSet.has(id))
-    );
-    const newSelectedSong =
-      playlistState.selectedSong && targetIdSet.has(playlistState.selectedSong.id)
-        ? null
-        : playlistState.selectedSong;
-
-    usePlaylistStore.setState({
-      songs: newSongs,
-      filteredSongs: newFiltered,
-      recentPlayed: newRecent,
-      selectedSongIds: newSelectedIds,
-      selectedSong: newSelectedSong,
-    });
-    remainingSongsCount = newSongs.length;
+    remainingSongsCount = removeSongsFromPlaylist(targetIdSet);
   } catch (error) {
     console.warn("Error while updating playlistStore during purge:", error);
   }
@@ -185,9 +162,7 @@ export async function purgeInvalidSongs(songIds: string[]): Promise<PurgeReport>
 
   // 5. Update LibraryHealthStore report
   try {
-    const remainingSongs = usePlaylistStore.getState().songs;
-    const newReport = generateHealthReport(remainingSongs);
-    useLibraryHealthStore.getState().setHealthReport(newReport);
+    refreshHealthReport(getPlaylistSongsSnapshot());
   } catch (error) {
     console.warn("Error while refreshing library health report after purge:", error);
   }
