@@ -7,7 +7,7 @@ import { useLyricsSearchStore, LyricSourceState } from "@/store/lyricsSearchStor
 import { getMatchedLyrics } from "@/store/actions/lyricsActions";
 import { usePlayerStore } from "@/store/playerStore";
 import { LyricSearchResult } from "@/services/lyricsSearchService";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 import { useGlassToast } from "@/components/shared/GlassToast";
 
 interface LyricsSearchPanelProps {
@@ -47,7 +47,7 @@ export default function LyricsSearchPanel({ isOpen, onClose }: LyricsSearchPanel
   const autoMatchLyrics = useLyricsSearchStore((state) => state.autoMatchLyrics);
 
   const currentSong = usePlayerStore((state) => state.currentSong);
-  const openPanel = useUIStore((state) => state.openPanel);
+  const openPanel = usePanelStore((state) => state.openPanel);
   const { showToast } = useGlassToast();
   const sourceState = sourceStateCopy[lyricSourceState];
 

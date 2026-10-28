@@ -41,8 +41,8 @@ vi.mock("@/store/queueStore", () => ({
   useQueueStore: (selector: (state: typeof mocks.queueState) => unknown) =>
     selector(mocks.queueState),
 }));
-vi.mock("@/store/uiStore", () => ({
-  useUIStore: (selector: (state: { openPanel: typeof mocks.openPanel }) => unknown) =>
+vi.mock("@/store/panelStore", () => ({
+  usePanelStore: (selector: (state: { openPanel: typeof mocks.openPanel }) => unknown) =>
     selector({ openPanel: mocks.openPanel }),
 }));
 vi.mock("next/image", () => ({

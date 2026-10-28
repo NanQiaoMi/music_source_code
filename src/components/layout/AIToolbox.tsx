@@ -13,7 +13,7 @@ import {
   Play,
   Sparkles,
 } from "lucide-react";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 import { useLinerNotesStore } from "@/store/linerNotesStore";
 import { useGlassToast } from "@/components/shared/GlassToast";
 import { useAIStore } from "@/store/aiStore";
@@ -58,9 +58,9 @@ const ITEM_VARIANTS = {
 
 export const AIToolbox: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const openPanel = useUIStore((state) => state.openPanel);
-  const togglePanel = useUIStore((state) => state.togglePanel);
-  const panels = useUIStore((state) => state.panels);
+  const openPanel = usePanelStore((state) => state.openPanel);
+  const togglePanel = usePanelStore((state) => state.togglePanel);
+  const panels = usePanelStore((state) => state.panels);
   const clearCache = useLinerNotesStore((state) => state.clearCache);
   const isEnabled = useAIStore((state) => state.isEnabled);
   const toggleEnabled = useAIStore((state) => state.toggleEnabled);

@@ -5,7 +5,7 @@ import { useAIAgentStore } from "./useAIAgentStore";
 import { useAIStore } from "./aiStore";
 import { useAudioStore } from "./audioStore";
 import { useOfflineDownloadStore } from "./useOfflineDownloadStore";
-import { useUIStore } from "./uiStore";
+import { usePanelStore } from "./panelStore";
 import { runAgentConversation } from "@/services/aiAgentService";
 import { Song } from "@/types/song";
 import { AgentMessage } from "@/types/aiAgent";
@@ -30,8 +30,8 @@ vi.mock("./useOfflineDownloadStore", () => ({
   },
 }));
 
-vi.mock("./uiStore", () => ({
-  useUIStore: {
+vi.mock("./panelStore", () => ({
+  usePanelStore: {
     getState: vi.fn(() => ({
       openPanel: vi.fn(),
       closePanel: vi.fn(),
@@ -144,10 +144,10 @@ describe("useAIAgentStore", () => {
     expect(downloadMock).toHaveBeenCalledWith(song, "lossless");
   });
 
-  it("should toggle and sync panel state with uiStore", () => {
+  it("should toggle and sync panel state with panelStore", () => {
     const openPanelMock = vi.fn();
     const closePanelMock = vi.fn();
-    (useUIStore.getState as any).mockReturnValue({
+    (usePanelStore.getState as any).mockReturnValue({
       openPanel: openPanelMock,
       closePanel: closePanelMock,
     });

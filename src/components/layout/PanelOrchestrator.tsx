@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { PANEL_NAMES, useUIStore } from "@/store/uiStore";
-import type { PanelName } from "@/store/uiStore";
+import { PANEL_NAMES, usePanelStore } from "@/store/panelStore";
+import type { PanelName } from "@/store/panelStore";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/shallow";
 import { createLazyPanelComponent, LazyPanel, prefetchPanel } from "@/components/shared/LazyPanel";
@@ -222,12 +222,12 @@ function runWhenIdle(callback: () => void): () => void {
  * - Error isolation (crash in one panel won't affect others)
  * - Consistent loading state
  *
- * All panel visibility is driven by uiStore.panels.
+ * All panel visibility is driven by panelStore.panels (S6-6b).
  */
 export function PanelOrchestrator() {
-  const panels = useStoreWithEqualityFn(useUIStore, (s) => s.panels, shallow);
-  const closePanel = useUIStore((s) => s.closePanel);
-  const openPanel = useUIStore((s) => s.openPanel);
+  const panels = useStoreWithEqualityFn(usePanelStore, (s) => s.panels, shallow);
+  const closePanel = usePanelStore((s) => s.closePanel);
+  const openPanel = usePanelStore((s) => s.openPanel);
 
   // LRU order only tracks lru-tier panels; always/never panels never consume a slot
   const openLruPanels = React.useMemo(

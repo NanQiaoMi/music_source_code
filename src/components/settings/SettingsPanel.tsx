@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
+import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
 import { GlassPanel } from "@/components/shared/Glass";
 import {
@@ -50,7 +51,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const stereoEnhance = useAudioStore((state) => state.stereoEnhance);
   const setStereoEnhance = useAudioStore((state) => state.setStereoEnhance);
 
-  const openPanel = useUIStore((state) => state.openPanel);
+  const openPanel = usePanelStore((state) => state.openPanel);
   const setCurrentView = useUIStore((state) => state.setCurrentView);
 
   const [fadeInOut, setFadeInOut] = useState(true);

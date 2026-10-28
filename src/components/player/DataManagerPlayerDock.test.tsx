@@ -6,7 +6,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 import type { Song } from "@/types/song";
 
 vi.mock("framer-motion", () => ({
@@ -92,9 +92,7 @@ const resetPlaybackStores = () => {
   // 2026-10-12 起 togglePlaybackIntent 改为读取 playback runtime 的 shouldPlay；
   // 该测试直接 setState 模拟 isPlaying 时也要同步意图，否则首击会变成“播放”而不是“暂停”。
   usePlaybackRuntimeStore.setState({ shouldPlay: false });
-  useUIStore.setState((state) => ({
-    panels: { ...state.panels, queue: false },
-  }));
+  usePanelStore.getState().closePanel("queue");
 };
 
 const loadDock = async () => {
@@ -254,7 +252,7 @@ describe("DataManagerPlayerDock", () => {
     expect(useAudioStore.getState().currentTime).toBe(52);
 
     await clickButton(container.querySelector<HTMLButtonElement>('[aria-label^="播放队列"]'));
-    expect(useUIStore.getState().panels.queue).toBe(true);
+    expect(usePanelStore.getState().panels.queue).toBe(true);
   });
 
   it("advances through QueueStore's visible queue when AudioStore has an older queue", async () => {

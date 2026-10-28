@@ -1,15 +1,15 @@
-﻿"use client";
+"use client";
 
 import React, { useMemo } from "react";
 import { BookOpen, CalendarDays } from "lucide-react";
 import { useListeningJournalStore } from "@/store/listeningJournalStore";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 
 export function ListeningJournalCard() {
   const days = useListeningJournalStore((state) => state.days);
   const getWeek = useListeningJournalStore((state) => state.getWeek);
   const setSelectedDate = useListeningJournalStore((state) => state.setSelectedDate);
-  const openPanel = useUIStore((state) => state.openPanel);
+  const openPanel = usePanelStore((state) => state.openPanel);
   // days 不直接参与计算，但 getWeek 读的是 store，必须靠它触发重算
   const week = useMemo(() => {
     void days;

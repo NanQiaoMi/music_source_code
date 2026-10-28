@@ -16,17 +16,25 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push }),
 }));
 
-// 用 Object.assign 挂上 getState：导航岛在 effect 里会调 useUIStore.getState()，
-// 而 SSR（renderToStaticMarkup）不跑 effect，只 mock 成普通函数时只有客户端渲染才会炸。
-vi.mock("@/store/uiStore", () => {
+// 面板事实在 panelStore（S6-6b），壳字段仍在 uiStore。
+// 用 Object.assign 挂上 getState：SSR（renderToStaticMarkup）不跑 effect，只 mock 成
+// 普通函数时只有客户端渲染才会炸。
+vi.mock("@/store/panelStore", () => {
   const state = {
-    currentView: "home",
     openPanel: mocks.openPanel,
     panels: {
       keyboardShortcuts: false,
       search: false,
     },
-    toasts: [],
+  };
+  const usePanelStore = (selector?: (input: typeof state) => unknown) =>
+    selector ? selector(state) : state;
+  return { usePanelStore: Object.assign(usePanelStore, { getState: () => state }) };
+});
+
+vi.mock("@/store/uiStore", () => {
+  const state = {
+    currentView: "home",
     isFullscreen: false,
     toggleFullscreen: mocks.toggleFullscreen,
     setCurrentView: mocks.setCurrentView,

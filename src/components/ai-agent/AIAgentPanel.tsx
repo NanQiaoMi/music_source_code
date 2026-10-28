@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Trash2, X, Key, ArrowRight, Zap, History, Plus, Loader2 } from "lucide-react";
 import { useAIAgentStore } from "@/store/useAIAgentStore";
 import { useAIStore } from "@/store/aiStore";
+import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
@@ -47,7 +48,7 @@ export const AIAgentPanel: React.FC<AIAgentPanelProps> = ({ isOpen, onClose }) =
   const configs = useAIStore((state) => state.configs);
   const activeConfigId = useAIStore((state) => state.activeConfigId);
   const isEnabled = useAIStore((state) => state.isEnabled);
-  const openPanel = useUIStore((state) => state.openPanel);
+  const openPanel = usePanelStore((state) => state.openPanel);
   const showToast = useUIStore((state) => state.showToast);
   const playQueue = useAudioStore((state) => state.playQueue);
   const addToQueue = useQueueStore((state) => state.addToQueue);

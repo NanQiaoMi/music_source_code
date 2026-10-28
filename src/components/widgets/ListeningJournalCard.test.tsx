@@ -6,8 +6,8 @@ const mocks = vi.hoisted(() => ({
   openPanel: vi.fn(),
 }));
 
-vi.mock("@/store/uiStore", () => ({
-  useUIStore: (selector: (state: { openPanel: typeof mocks.openPanel }) => unknown) =>
+vi.mock("@/store/panelStore", () => ({
+  usePanelStore: (selector: (state: { openPanel: typeof mocks.openPanel }) => unknown) =>
     selector({ openPanel: mocks.openPanel }),
 }));
 

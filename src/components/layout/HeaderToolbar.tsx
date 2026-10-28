@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Crown, Plus, Radio, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useUserAccountStore } from "@/store/userAccountStore";
@@ -21,7 +22,7 @@ import {
 export function HeaderToolbar() {
   const router = useRouter();
   const currentView = useUIStore((state) => state.currentView);
-  const openPanel = useUIStore((state) => state.openPanel);
+  const openPanel = usePanelStore((state) => state.openPanel);
   const songCount = usePlaylistStore((state) => state.songs.length);
   const neteaseUser = useUserAccountStore((state) => state.neteaseUser);
   const openManagementModal = useSourceConfigStore((state) => state.openManagementModal);

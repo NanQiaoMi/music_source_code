@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
 import { useProfessionalModeStore, PROFESSIONAL_FEATURE_INFO } from "@/store/professionalModeStore";
 import {
@@ -51,7 +52,7 @@ export function ProfessionalToolsPanel({
   onOpenLibraryHealth,
 }: ProfessionalToolsPanelProps) {
   const _currentView = useUIStore((state) => state.currentView);
-  const openUIPanel = useUIStore((state) => state.openPanel);
+  const openUIPanel = usePanelStore((state) => state.openPanel);
   const isProfessionalMode = useProfessionalModeStore((state) => state.isProfessionalMode);
   const enabledFeatures = useProfessionalModeStore((state) => state.enabledFeatures);
   const isFeatureEnabled = useProfessionalModeStore((state) => state.isFeatureEnabled);

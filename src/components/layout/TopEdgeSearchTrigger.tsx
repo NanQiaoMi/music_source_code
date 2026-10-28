@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 
 export function TopEdgeSearchTrigger() {
-  const isSearchOpen = useUIStore((state) => state.panels.search);
-  const openPanel = useUIStore((state) => state.openPanel);
+  const isSearchOpen = usePanelStore((state) => state.panels.search);
+  const openPanel = usePanelStore((state) => state.openPanel);
   const touchStartYRef = useRef<number | null>(null);
 
   useEffect(() => {

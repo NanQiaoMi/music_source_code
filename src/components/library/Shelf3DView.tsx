@@ -17,7 +17,7 @@ import { useIntegratedAudioPipeline } from "@/lib/audio/useIntegratedAudioPipeli
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 import { featureFlags } from "@/lib/perf/featureFlags";
 import { visualRuntime, type VisualFrameHandle } from "@/runtime/visualRuntime";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 import { approachEnvelope, readBandEnergy, stepCriticalSpring } from "./shelf3dMotion";
 import Shelf3DStaticFallback from "./Shelf3DStaticFallback";
 import {
@@ -456,7 +456,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   const favorites = useFavoritesStore((state) => state.favorites);
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
   const isFavorite = useFavoritesStore((state) => state.isFavorite);
-  const closePanel = useUIStore((state) => state.closePanel);
+  const closePanel = usePanelStore((state) => state.closePanel);
   const { playTrackWithPipeline } = useIntegratedAudioPipeline();
 
   // 离线曲库数据

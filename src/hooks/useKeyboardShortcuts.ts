@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { usePlayerStore } from "@/store/playerStore";
+import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
 import { useVisualizationStore } from "@/store/visualizationStore";
 import { useKeyboardShortcutsStore } from "@/store/keyboardShortcutsStore";
@@ -229,7 +230,7 @@ export const useKeyboardShortcuts = () => {
       // 「⌘L 唤出 3D 歌单架」重复，会让同一个键触发两个动作。
       if (matchKeys(e, bind("toggle-queue"))) {
         e.preventDefault();
-        uiStore.togglePanel("shelf3D");
+        usePanelStore.getState().togglePanel("shelf3D");
         return;
       }
 
@@ -269,13 +270,13 @@ export const useKeyboardShortcuts = () => {
 
       if (matchKeys(e, bind("open-ai-settings"))) {
         e.preventDefault();
-        uiStore.openPanel("aiSettings");
+        usePanelStore.getState().openPanel("aiSettings");
         return;
       }
 
       if (matchKeys(e, bind("toggle-ai-panel"))) {
         e.preventDefault();
-        uiStore.togglePanel("aiSettings");
+        usePanelStore.getState().togglePanel("aiSettings");
         return;
       }
     },

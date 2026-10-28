@@ -22,6 +22,7 @@ import { useEmotionStore } from "@/store/emotionStore";
 import { useHiResStore } from "@/store/hiresStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
+import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
@@ -222,7 +223,7 @@ const subscriptionCases: SubscriptionCase[] = [
     make: () => <AIToolbox />,
     unrelated: () => useAIStore.setState({ configs: [...useAIStore.getState().configs] }),
     related: () =>
-      useUIStore.setState({ panels: { ...useUIStore.getState().panels, aiSettings: true } }),
+      usePanelStore.setState({ panels: { ...usePanelStore.getState().panels, aiSettings: true } }),
   },
 ];
 

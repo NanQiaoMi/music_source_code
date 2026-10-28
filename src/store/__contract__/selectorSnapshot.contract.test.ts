@@ -6,6 +6,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { selectSelectedSongIds, selectSongs } from "@/store/selectors/playlistSelectors";
+import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
 import { useVisualSettingsStore, type ThemeColors } from "@/store/visualSettingsStore";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
@@ -53,11 +54,11 @@ const PROBES: readonly Probe[] = [
     bump: () => usePlaylistStore.getState().selectSong("b"),
   },
   {
-    name: "ui panels slice",
-    prepare: () => useUIStore.getState().openPanel("queue"),
-    read: () => useUIStore.getState().panels,
+    name: "panel slice",
+    prepare: () => usePanelStore.getState().openPanel("queue"),
+    read: () => usePanelStore.getState().panels,
     touch: () => useUIStore.getState().setCurrentView("player"),
-    bump: () => useUIStore.getState().openPanel("history"),
+    bump: () => usePanelStore.getState().openPanel("history"),
   },
   {
     name: "visual customTheme slice",
@@ -93,7 +94,7 @@ beforeEach(() => {
     searchQuery: "",
     selectedSongIds: new Set<string>(),
   });
-  useUIStore.getState().closeAllPanels();
+  usePanelStore.getState().closeAllPanels();
   useUIStore.getState().setCurrentView("home");
   useVisualSettingsStore.getState().resetSettings();
   usePlayerStore.setState({ currentSong: null, currentTime: 0, isMuted: false, volume: 0.7 });

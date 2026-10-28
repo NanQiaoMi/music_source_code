@@ -10,6 +10,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore, type LoopMode } from "@/store/playerStore";
 import { MISSING_AUDIO_SOURCE_HELP_TEXT } from "@/lib/audio/playableAudioSource";
+import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useABLoopStore } from "@/store/abLoopStore";
@@ -343,8 +344,8 @@ export const Player3D: React.FC = () => {
   });
   const setCurrentView = useUIStore((state) => state.setCurrentView);
   const setIsTransitioning = useUIStore((state) => state.setIsTransitioning);
-  const panels = useUIStore((state) => state.panels);
-  const togglePanel = useUIStore((state) => state.togglePanel);
+  const panels = usePanelStore((state) => state.panels);
+  const togglePanel = usePanelStore((state) => state.togglePanel);
   const isQueueOpen = Boolean(panels?.shelf3D || panels?.queue);
   const isFavorite = useFavoritesStore((state) => state.isFavorite);
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);

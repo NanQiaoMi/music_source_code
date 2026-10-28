@@ -1,7 +1,7 @@
 import { act } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PANEL_NAMES, useUIStore } from "@/store/uiStore";
+import { PANEL_NAMES, usePanelStore } from "@/store/panelStore";
 
 vi.mock("@/components/shared/LazyPanel", () => ({
   createLazyPanelComponent: (name: string) => name,
@@ -10,14 +10,14 @@ vi.mock("@/components/shared/LazyPanel", () => ({
     isOpen ? <section data-panel-name={name}>{name}</section> : null,
 }));
 
-const initialState = useUIStore.getInitialState();
+const initialState = usePanelStore.getInitialState();
 
 describe("PanelOrchestrator", () => {
   let container: HTMLDivElement;
   let root: Root;
 
   beforeEach(() => {
-    useUIStore.setState(initialState, true);
+    usePanelStore.setState(initialState, true);
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -34,7 +34,7 @@ describe("PanelOrchestrator", () => {
   it("renders the Listening DNA panel registered by the Discover menu", async () => {
     const { PanelOrchestrator } = await import("./PanelOrchestrator");
 
-    useUIStore.getState().openPanel("dnaJournal");
+    usePanelStore.getState().openPanel("dnaJournal");
 
     await act(async () => {
       root.render(<PanelOrchestrator />);
@@ -45,7 +45,7 @@ describe("PanelOrchestrator", () => {
   it("renders the professional tools panel registered by floating feature buttons", async () => {
     const { PanelOrchestrator } = await import("./PanelOrchestrator");
 
-    useUIStore.getState().openPanel("professionalTools");
+    usePanelStore.getState().openPanel("professionalTools");
 
     await act(async () => {
       root.render(<PanelOrchestrator />);
@@ -54,12 +54,12 @@ describe("PanelOrchestrator", () => {
     expect(container.querySelector('[data-panel-name="professionalTools"]')).not.toBeNull();
   });
 
-  it("renders every panel registered in uiStore", async () => {
+  it("renders every panel registered in panelStore", async () => {
     const { PanelOrchestrator } = await import("./PanelOrchestrator");
 
     for (const panelName of PANEL_NAMES) {
-      useUIStore.setState(initialState, true);
-      useUIStore.getState().openPanel(panelName);
+      usePanelStore.setState(initialState, true);
+      usePanelStore.getState().openPanel(panelName);
 
       await act(async () => {
         root.render(<PanelOrchestrator />);

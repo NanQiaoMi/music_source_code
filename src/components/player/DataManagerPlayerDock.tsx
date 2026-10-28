@@ -7,7 +7,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
 import { useQueueStore } from "@/store/queueStore";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 import { formatTime } from "@/utils/formatTime";
 
 const DEFAULT_COVER_SRC = "/default-cover.svg";
@@ -34,7 +34,7 @@ export function DataManagerPlayerDock() {
   const queue = useQueueStore((state) => state.queue);
   const queueIndex = useQueueStore((state) => state.currentIndex);
   const loopMode = usePlayerStore((state) => state.loopMode);
-  const openPanel = useUIStore((state) => state.openPanel);
+  const openPanel = usePanelStore((state) => state.openPanel);
 
   const handleQueueSkip = (direction: "previous" | "next") => {
     const visibleQueue = queue;

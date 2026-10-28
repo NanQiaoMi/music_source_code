@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { PANEL_NAMES } from "@/store/uiStore";
+import { PANEL_NAMES } from "@/store/panelStore";
 import { FACTORIES, KEEPALIVE_CONFIG } from "./PanelOrchestrator";
 
 const configEntries = Object.entries(KEEPALIVE_CONFIG);
 
 describe("PanelOrchestrator keepAlive config", () => {
-  it("covers every panel registered in uiStore and every factory exactly once", () => {
+  it("covers every panel registered in panelStore and every factory exactly once", () => {
     expect(Object.keys(KEEPALIVE_CONFIG).sort()).toEqual([...PANEL_NAMES].sort());
     expect(Object.keys(KEEPALIVE_CONFIG).sort()).toEqual(Object.keys(FACTORIES).sort());
     expect(Object.keys(FACTORIES)).toHaveLength(43);

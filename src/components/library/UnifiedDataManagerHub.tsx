@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
 import { useStorageAnalyticsStore, formatStorageBytes } from "@/store/useStorageAnalyticsStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
@@ -45,7 +46,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
   onClose,
 }) => {
   const setCurrentView = useUIStore((state) => state.setCurrentView);
-  const closePanel = useUIStore((state) => state.closePanel);
+  const closePanel = usePanelStore((state) => state.closePanel);
   const storageDetails = useStorageAnalyticsStore((state) => state.storageDetails);
   const usagePercent = useStorageAnalyticsStore((state) => state.usagePercent);
   const refreshAnalytics = useStorageAnalyticsStore((state) => state.refreshAnalytics);

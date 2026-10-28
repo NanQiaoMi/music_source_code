@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { useGestureSettingsStore } from "@/store/gestureSettingsStore";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 import { useGestureSession } from "@/hooks/useGestureSession";
 import { GestureHUD } from "@/components/interaction/GestureHUD";
 import { VirtualCursor } from "@/components/widgets/VirtualCursor";
@@ -35,7 +35,7 @@ export const GestureController: React.FC = () => {
   const updateSettings = useGestureSettingsStore((state) => state.update);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const openPanel = useUIStore((state) => state.openPanel);
+  const openPanel = usePanelStore((state) => state.openPanel);
   const { retry } = useGestureSession({ videoRef, canvasRef });
 
   useEffect(() => {

@@ -20,7 +20,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { useQueueStore } from "@/store/queueStore";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { Song } from "@/types/song";
 import { formatTime } from "@/utils/formatTime";
@@ -201,7 +201,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
   const setQueue = useQueueStore((state) => state.setQueue);
   const setCurrentIndex = useQueueStore((state) => state.setCurrentIndex);
   const isPlaying = usePlaybackClock((state) => state.isPlaying);
-  const openPanel = useUIStore((state) => state.openPanel);
+  const openPanel = usePanelStore((state) => state.openPanel);
   const offlineRecords = useOfflineDownloadStore((state) => state.offlineRecords);
   const loadOfflineRecords = useOfflineDownloadStore((state) => state.loadOfflineRecords);
 

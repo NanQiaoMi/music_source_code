@@ -7,8 +7,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const STORE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-/** 2026-10-29 snapshot: 22 runtime edges (S6-6a adds uiStore -> toastStore facade). */
-const EDGE_BUDGET = 22;
+/** 2026-10-29 snapshot: 23 runtime edges (S6-6a toast facade, S6-6b panel facade/owner). */
+const EDGE_BUDGET = 23;
 
 /** Documented reason for every runtime edge; a new edge must add an entry (and lower the budget). */
 const RUNTIME_EDGE_REASONS: Readonly<Record<string, string>> = {
@@ -31,8 +31,9 @@ const RUNTIME_EDGE_REASONS: Readonly<Record<string, string>> = {
   "useAIAgentStore -> emotionStore": "Agent 读取情感矩阵",
   "useAIAgentStore -> favoritesStore": "Agent 管理收藏",
   "useAIAgentStore -> playerStore": "Agent 读取当前曲目",
-  "useAIAgentStore -> uiStore": "Agent 打开面板",
+  "useAIAgentStore -> panelStore": "Agent 打开面板（S6-6b 后唯一 owner 是 panelStore）",
   "uiStore -> toastStore": "S6-6a toast 兼容 facade 转发到唯一 owner",
+  "uiStore -> panelStore": "S6-6b panel 兼容 facade 转发到唯一 owner（镜像在 uiStore 侧）",
   "useAIAgentStore -> useOfflineDownloadStore": "Agent 触发离线下载",
 };
 

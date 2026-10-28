@@ -3,7 +3,7 @@
 import React from "react";
 import { UnifiedDataManagerHub } from "@/components/library/UnifiedDataManagerHub";
 import { useRouter } from "next/navigation";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 import { createLazyPanelComponent, LazyPanel } from "@/components/shared/LazyPanel";
 
 const DataManagerQueuePanel = createLazyPanelComponent("dataManagerQueue", () =>
@@ -12,8 +12,8 @@ const DataManagerQueuePanel = createLazyPanelComponent("dataManagerQueue", () =>
 
 export default function DataManagerPage() {
   const router = useRouter();
-  const isQueueOpen = useUIStore((state) => state.panels.queue);
-  const closePanel = useUIStore((state) => state.closePanel);
+  const isQueueOpen = usePanelStore((state) => state.panels.queue);
+  const closePanel = usePanelStore((state) => state.closePanel);
 
   return (
     <div className="w-screen h-screen overflow-hidden bg-[#050508]">

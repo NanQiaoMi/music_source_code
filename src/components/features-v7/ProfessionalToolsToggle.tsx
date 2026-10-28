@@ -1,12 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
 import { Settings } from "lucide-react";
 
 export function ProfessionalToolsToggle() {
   const currentView = useUIStore((state) => state.currentView);
-  const openPanel = useUIStore((state) => state.openPanel);
+  const openPanel = usePanelStore((state) => state.openPanel);
 
   if (currentView !== "home" && currentView !== "player") return null;
 

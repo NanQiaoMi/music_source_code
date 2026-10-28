@@ -8,7 +8,7 @@ import { usePlayerStore } from "@/store/playerStore";
 import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { useBilingualLyricParser } from "@/hooks/useBilingualLyricParser";
 import { useLyricSettingsStore } from "@/store/lyricSettingsStore";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 
 interface LyricVisualizerProps {
   lyrics?: string;
@@ -24,7 +24,7 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
   const currentTime = usePlaybackClock((state) => state.currentTime);
   const currentSong = usePlayerStore((state) => state.currentSong);
   const seekTo = useAudioStore((state) => state.seekTo);
-  const openPanel = useUIStore((state) => state.openPanel);
+  const openPanel = usePanelStore((state) => state.openPanel);
   const shouldReduceMotion = useReducedMotion();
   const showTranslation = useLyricSettingsStore((state) => state.showTranslation);
   const showTransliteration = useLyricSettingsStore((state) => state.showTransliteration);

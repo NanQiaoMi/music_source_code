@@ -8,7 +8,7 @@ import { useAudioStore } from "./audioStore";
 import { usePlayerStore } from "./playerStore";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { useOfflineDownloadStore } from "./useOfflineDownloadStore";
-import { useUIStore } from "./uiStore";
+import { usePanelStore } from "./panelStore";
 import { toast } from "@/store/actions/uiActions";
 import { useEmotionStore } from "./emotionStore";
 import { useFavoritesStore } from "./favoritesStore";
@@ -577,21 +577,21 @@ export const useAIAgentStore = create<AIAgentState>()(
 
       openPanel: () => {
         set({ isPanelOpen: true });
-        useUIStore.getState().openPanel("aiAgent");
+        usePanelStore.getState().openPanel("aiAgent");
       },
 
       closePanel: () => {
         set({ isPanelOpen: false, isSessionDrawerOpen: false });
-        useUIStore.getState().closePanel("aiAgent");
+        usePanelStore.getState().closePanel("aiAgent");
       },
 
       togglePanel: () => {
         const nextState = !get().isPanelOpen;
         set({ isPanelOpen: nextState, isSessionDrawerOpen: false });
         if (nextState) {
-          useUIStore.getState().openPanel("aiAgent");
+          usePanelStore.getState().openPanel("aiAgent");
         } else {
-          useUIStore.getState().closePanel("aiAgent");
+          usePanelStore.getState().closePanel("aiAgent");
         }
       },
 

@@ -1,7 +1,7 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 import DataManagerPage from "./page";
 
 vi.mock("next/navigation", () => ({
@@ -28,7 +28,7 @@ describe("/data-manager queue panel host", () => {
   let root: Root;
 
   beforeEach(() => {
-    useUIStore.setState(useUIStore.getInitialState(), true);
+    usePanelStore.setState(usePanelStore.getInitialState(), true);
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -42,7 +42,7 @@ describe("/data-manager queue panel host", () => {
   it("lazy loads the QueuePanel on the manager route and resets queue state when closed", async () => {
     await act(async () => root.render(<DataManagerPage />));
 
-    await act(async () => useUIStore.getState().openPanel("queue"));
+    await act(async () => usePanelStore.getState().openPanel("queue"));
     await act(async () => {
       await vi.waitFor(() =>
         expect(container.querySelector('[data-testid="loaded-queue-panel"]')).not.toBeNull()
@@ -55,7 +55,7 @@ describe("/data-manager queue panel host", () => {
       container.querySelector<HTMLButtonElement>('[aria-label="关闭队列"]')?.click();
     });
 
-    expect(useUIStore.getState().panels.queue).toBe(false);
+    expect(usePanelStore.getState().panels.queue).toBe(false);
     expect(container.querySelector('[data-testid="loaded-queue-panel"]')).toBeNull();
   });
 });

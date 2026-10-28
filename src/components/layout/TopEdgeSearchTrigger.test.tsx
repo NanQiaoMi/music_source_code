@@ -2,16 +2,16 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { TopEdgeSearchTrigger } from "./TopEdgeSearchTrigger";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 
 describe("TopEdgeSearchTrigger", () => {
   let container: HTMLDivElement;
   let root: Root;
 
   beforeEach(() => {
-    useUIStore.setState({
+    usePanelStore.setState({
       panels: {
-        ...useUIStore.getState().panels,
+        ...usePanelStore.getState().panels,
         search: false,
       },
     });
@@ -33,7 +33,7 @@ describe("TopEdgeSearchTrigger", () => {
       root.render(<TopEdgeSearchTrigger />);
     });
 
-    expect(useUIStore.getState().panels.search).toBe(false);
+    expect(usePanelStore.getState().panels.search).toBe(false);
 
     // Trigger mousemove at clientY = 10 (within top 15px)
     await act(async () => {
@@ -45,7 +45,7 @@ describe("TopEdgeSearchTrigger", () => {
       );
     });
 
-    expect(useUIStore.getState().panels.search).toBe(true);
+    expect(usePanelStore.getState().panels.search).toBe(true);
   });
 
   it("does not open search panel when mouse moves below top 15px", async () => {
@@ -53,7 +53,7 @@ describe("TopEdgeSearchTrigger", () => {
       root.render(<TopEdgeSearchTrigger />);
     });
 
-    expect(useUIStore.getState().panels.search).toBe(false);
+    expect(usePanelStore.getState().panels.search).toBe(false);
 
     await act(async () => {
       window.dispatchEvent(
@@ -64,7 +64,7 @@ describe("TopEdgeSearchTrigger", () => {
       );
     });
 
-    expect(useUIStore.getState().panels.search).toBe(false);
+    expect(usePanelStore.getState().panels.search).toBe(false);
   });
 
   it("opens search panel when mouse enters the invisible top sensor bar", async () => {
@@ -79,7 +79,7 @@ describe("TopEdgeSearchTrigger", () => {
       sensor?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
     });
 
-    expect(useUIStore.getState().panels.search).toBe(true);
+    expect(usePanelStore.getState().panels.search).toBe(true);
   });
 
   it("opens search panel on touch pull-down from top edge", async () => {
@@ -87,7 +87,7 @@ describe("TopEdgeSearchTrigger", () => {
       root.render(<TopEdgeSearchTrigger />);
     });
 
-    expect(useUIStore.getState().panels.search).toBe(false);
+    expect(usePanelStore.getState().panels.search).toBe(false);
 
     // Touch start near top (clientY = 20)
     const touchStart = new TouchEvent("touchstart", {
@@ -107,6 +107,6 @@ describe("TopEdgeSearchTrigger", () => {
       window.dispatchEvent(touchMove);
     });
 
-    expect(useUIStore.getState().panels.search).toBe(true);
+    expect(usePanelStore.getState().panels.search).toBe(true);
   });
 });

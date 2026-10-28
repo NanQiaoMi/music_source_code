@@ -3,13 +3,13 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { Box } from "lucide-react";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 
 export function Apple3DQueueDrawer() {
-  const isOpen = useUIStore((state) => Boolean(state.panels.shelf3D));
-  const openPanel = useUIStore((state) => state.openPanel);
-  const closePanel = useUIStore((state) => state.closePanel);
-  const togglePanel = useUIStore((state) => state.togglePanel);
+  const isOpen = usePanelStore((state) => Boolean(state.panels.shelf3D));
+  const openPanel = usePanelStore((state) => state.openPanel);
+  const closePanel = usePanelStore((state) => state.closePanel);
+  const togglePanel = usePanelStore((state) => state.togglePanel);
 
   const [isHandleHovered, setIsHandleHovered] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);

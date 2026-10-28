@@ -7,7 +7,7 @@ import { QueuePanel } from "./QueuePanel";
 import { useQueueStore } from "@/store/queueStore";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 import type { Song } from "@/types/song";
 
 vi.mock("framer-motion", () => ({
@@ -63,7 +63,7 @@ describe("QueuePanel", () => {
     document.body.appendChild(container);
     root = createRoot(container);
 
-    useUIStore.setState({
+    usePanelStore.setState({
       panels: {
         queue: false,
         shelf3D: false,
@@ -270,7 +270,7 @@ describe("QueuePanel", () => {
     });
 
     expect(onClose).toHaveBeenCalled();
-    expect(useUIStore.getState().panels.shelf3D).toBe(true);
+    expect(usePanelStore.getState().panels.shelf3D).toBe(true);
   });
 
   it("filters songs when searching in the queue", async () => {

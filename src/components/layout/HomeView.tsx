@@ -3,6 +3,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Disc3 } from "lucide-react";
+import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
 import { usePlaylistGroupStore } from "@/store/playlistGroupStore";
 import { useUserAccountStore } from "@/store/userAccountStore";
@@ -20,7 +21,7 @@ const APPLE_SPRING_CONFIG = {
 
 export function HomeView() {
   const currentView = useUIStore((state) => state.currentView);
-  const openPanel = useUIStore((state) => state.openPanel);
+  const openPanel = usePanelStore((state) => state.openPanel);
   const playlistGroupCount = usePlaylistGroupStore((state) => state.groups?.length || 0);
   const userPlaylistCount = useUserAccountStore((state) => state.userPlaylists?.length || 0);
 

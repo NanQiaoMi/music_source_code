@@ -1,127 +1,26 @@
 /**
- * S6-6a：UI 域拆分第一步。toast 状态（toasts/showToast/removeToast）已迁到
- * ./toastStore，本文件只保留 deprecated 兼容转发器（78 处调用点暂不改）。
- * 读取 toasts 请直接用 useToastStore：uiStore 不再持有该状态，
- * 否则 persist 会在每次 toast 变更时写一次 localStorage。
+ * S6-6a/S6-6b：uiStore 只保留壳域 + 主题字段，其余事实按域迁到唯一 owner：
+ * - toast → ./toastStore（S6-6a）
+ * - panel → ./panelStore（S6-6b）
+ * 旧的 showToast/removeToast / openPanel/closePanel/... 保留为 deprecated 转发器，
+ * 既有调用点不需要改 import；但状态读取必须走 useToastStore / usePanelStore，
+ * 否则每次 UI 交互仍会经由 persist 写一次 localStorage。
+ * ui-store-v2 的 key/version/partialize 全部未变（toast/panel 从未持久化）。
  */
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { createSafeStorage } from "@/lib/storage/safeStorage";
 import { ThemeColors, defaultColors } from "@/utils/colorExtractor";
 import { useToastStore, type ToastMessage } from "@/store/toastStore";
+import { FULLSCREEN_PANELS, usePanelStore, type PanelName } from "@/store/panelStore";
 
 export type { ToastMessage };
+export type { PanelName };
+/** @deprecated since S6-6b. 用 @/store/panelStore 的 PANEL_NAMES。 */
+export { PANEL_NAMES } from "@/store/panelStore";
 
 type ViewType = "home" | "player" | "visualization" | "emotion";
 type ThemeMode = "light" | "dark" | "auto";
-
-export type PanelName =
-  | "queue"
-  | "history"
-  | "settings"
-  | "sleepTimer"
-  | "search"
-  | "lyricSettings"
-  | "eq"
-  | "visualSettings"
-  | "keyboardShortcuts"
-  | "gestureSettings"
-  | "listeningHistory"
-  | "listeningJournal"
-  | "dailyRecommendation"
-  | "lyricsImport"
-  | "offlineCache"
-  | "share"
-  | "playerSkins"
-  | "lyricsSearch"
-  | "libraryManager"
-  | "lyricsCoverEditor"
-  | "smartPlaylist"
-  | "backupRestore"
-  | "statsAchievements"
-  | "professionalMode"
-  | "formatConverter"
-  | "dsdConverter"
-  | "trackCutter"
-  | "crossfadeMixer"
-  | "fingerprintScanner"
-  | "libraryHealth"
-  | "professionalTools"
-  | "instantMix"
-  | "smartMixSession"
-  | "smartRandom"
-  | "emotionMatrix"
-  | "aiSettings"
-  | "aiAgent"
-  | "dnaJournal"
-  | "shelf3D"
-  | "audioSourceManager"
-  | "cloudMusic"
-  | "accountCenter"
-  | "dataManager";
-
-export const PANEL_NAMES: readonly PanelName[] = [
-  "queue",
-  "history",
-  "settings",
-  "sleepTimer",
-  "search",
-  "lyricSettings",
-  "eq",
-  "visualSettings",
-  "keyboardShortcuts",
-  "gestureSettings",
-  "listeningHistory",
-  "listeningJournal",
-  "dailyRecommendation",
-  "lyricsImport",
-  "offlineCache",
-  "share",
-  "playerSkins",
-  "lyricsSearch",
-  "libraryManager",
-  "lyricsCoverEditor",
-  "smartPlaylist",
-  "backupRestore",
-  "statsAchievements",
-  "professionalMode",
-  "formatConverter",
-  "dsdConverter",
-  "trackCutter",
-  "crossfadeMixer",
-  "fingerprintScanner",
-  "libraryHealth",
-  "professionalTools",
-  "instantMix",
-  "smartMixSession",
-  "smartRandom",
-  "emotionMatrix",
-  "aiSettings",
-  "aiAgent",
-  "dnaJournal",
-  "shelf3D",
-  "audioSourceManager",
-  "cloudMusic",
-  "accountCenter",
-  "dataManager",
-];
-
-const FULLSCREEN_PANELS: readonly PanelName[] = [
-  "emotionMatrix",
-  "shelf3D",
-  "formatConverter",
-  "dsdConverter",
-  "trackCutter",
-  "crossfadeMixer",
-  "professionalMode",
-  "share",
-  "statsAchievements",
-  "dnaJournal",
-];
-
-function createDefaultPanels(): Record<PanelName, boolean> {
-  return Object.fromEntries(PANEL_NAMES.map((name) => [name, false])) as Record<PanelName, boolean>;
-}
 
 interface UIState {
   currentView: ViewType;
@@ -134,12 +33,24 @@ interface UIState {
   isNavMenuOpen: boolean;
   setIsNavMenuOpen: (open: boolean) => void;
 
-  panels: Record<PanelName, boolean>;
+  // S6-6b：panel 域已迁出（./panelStore），以下是 @deprecated 转发器。
+  /** @deprecated since S6-6b. panels.shelf3D 的兼容镜像，读取请用 usePanelStore。 */
+  isShelf3DOpen: boolean;
+  /** @deprecated since S6-6b. 用 usePanelStore.getState().openPanel(name)。 */
   openPanel: (name: PanelName) => void;
+  /** @deprecated since S6-6b. 用 usePanelStore.getState().closePanel(name)。 */
   closePanel: (name: PanelName) => void;
+  /** @deprecated since S6-6b. 用 usePanelStore.getState().togglePanel(name)。 */
   togglePanel: (name: PanelName) => void;
+  /** @deprecated since S6-6b. 用 usePanelStore.getState().closeAllPanels()。 */
   closeAllPanels: () => void;
+  /** @deprecated since S6-6b. 用 usePanelStore.getState().isPanelOpen(name)。 */
   isPanelOpen: (name: PanelName) => boolean;
+  /** @deprecated since S6-6b. 用 usePanelStore.getState().openShelf3D() 等别名。 */
+  openShelf3D: () => void;
+  closeShelf3D: () => void;
+  toggleShelf3D: () => void;
+  setIsShelf3DOpen: (isOpen: boolean) => void;
 
   isFullscreenLyrics: boolean;
   setIsFullscreenLyrics: (isFullscreen: boolean) => void;
@@ -162,12 +73,6 @@ interface UIState {
   isEQOpen: boolean;
   setIsEQOpen: (isOpen: boolean) => void;
 
-  isShelf3DOpen: boolean;
-  setIsShelf3DOpen: (isOpen: boolean) => void;
-  openShelf3D: () => void;
-  closeShelf3D: () => void;
-  toggleShelf3D: () => void;
-
   isFullscreen: boolean;
   setIsFullscreen: (isFullscreen: boolean) => void;
   toggleFullscreen: () => void;
@@ -189,7 +94,7 @@ interface UIState {
 
 export const useUIStore = create<UIState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       currentView: "home",
       themeMode: "dark",
       themeColors: defaultColors,
@@ -221,54 +126,18 @@ export const useUIStore = create<UIState>()(
         }
       },
 
-      panels: createDefaultPanels(),
+      // S6-6b：panel 动作只做转发（唯一实现与状态在 ./panelStore）；isShelf3DOpen 是
+      // panels.shelf3D 的兼容镜像，由文件末尾的 subscribe 同步。
       isShelf3DOpen: false,
-      openShelf3D: () => get().openPanel("shelf3D"),
-      closeShelf3D: () => get().closePanel("shelf3D"),
-      toggleShelf3D: () => get().togglePanel("shelf3D"),
-      setIsShelf3DOpen: (isOpen) => {
-        if (isOpen) {
-          get().openPanel("shelf3D");
-        } else {
-          get().closePanel("shelf3D");
-        }
-      },
-      openPanel: (name) =>
-        set((state) => {
-          const next = { ...state.panels };
-          const isFullscreenPanel = FULLSCREEN_PANELS.includes(name);
-
-          if (isFullscreenPanel) {
-            FULLSCREEN_PANELS.forEach((panelName) => {
-              next[panelName] = false;
-            });
-          }
-
-          next[name] = true;
-          return {
-            panels: next,
-            isFullscreenLyrics: isFullscreenPanel ? false : state.isFullscreenLyrics,
-            isShelf3DOpen: next.shelf3D,
-          };
-        }),
-      closePanel: (name) =>
-        set((state) => {
-          const next = { ...state.panels, [name]: false };
-          return {
-            panels: next,
-            isShelf3DOpen: next.shelf3D,
-          };
-        }),
-      togglePanel: (name) => {
-        const isOpen = get().panels[name];
-        if (isOpen) {
-          get().closePanel(name);
-        } else {
-          get().openPanel(name);
-        }
-      },
-      closeAllPanels: () => set({ panels: createDefaultPanels(), isShelf3DOpen: false }),
-      isPanelOpen: (name) => get().panels[name],
+      openPanel: (name) => usePanelStore.getState().openPanel(name),
+      closePanel: (name) => usePanelStore.getState().closePanel(name),
+      togglePanel: (name) => usePanelStore.getState().togglePanel(name),
+      closeAllPanels: () => usePanelStore.getState().closeAllPanels(),
+      isPanelOpen: (name) => usePanelStore.getState().isPanelOpen(name),
+      openShelf3D: () => usePanelStore.getState().openShelf3D(),
+      closeShelf3D: () => usePanelStore.getState().closeShelf3D(),
+      toggleShelf3D: () => usePanelStore.getState().toggleShelf3D(),
+      setIsShelf3DOpen: (isOpen) => usePanelStore.getState().setIsShelf3DOpen(isOpen),
 
       isFullscreenLyrics: false,
       setIsFullscreenLyrics: (isFullscreen) => set({ isFullscreenLyrics: isFullscreen }),
@@ -366,3 +235,21 @@ export const useUIStore = create<UIState>()(
     }
   )
 );
+
+// 兼容镜像 + 壳域副作用：旧 openPanel 打开全屏面板时会同时关闭全屏歌词。panels 已不在
+// uiStore，用 subscribe 保持"打开全屏面板 ⇒ isFullscreenLyrics=false"与 isShelf3DOpen
+// 镜像（只有真正变化时才 setState，避免面板点击白写 ui-store-v2）。方向固定为
+// uiStore → panelStore，反向 import 会让 store 图出现环（S6-11c SCC=0）。
+usePanelStore.subscribe((state, prev) => {
+  if (state.panels === prev.panels) return;
+  const ui = useUIStore.getState();
+  const isShelf3DOpen = state.panels.shelf3D;
+  const fullscreenOpened = FULLSCREEN_PANELS.some(
+    (name) => state.panels[name] && !prev.panels[name]
+  );
+  if (!fullscreenOpened && ui.isShelf3DOpen === isShelf3DOpen) return;
+  useUIStore.setState({
+    isShelf3DOpen,
+    ...(fullscreenOpened ? { isFullscreenLyrics: false } : {}),
+  });
+});

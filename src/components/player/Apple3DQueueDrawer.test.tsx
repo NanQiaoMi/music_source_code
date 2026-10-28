@@ -3,7 +3,7 @@ import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { Apple3DQueueDrawer } from "./Apple3DQueueDrawer";
-import { useUIStore } from "@/store/uiStore";
+import { usePanelStore } from "@/store/panelStore";
 import { useQueueStore } from "@/store/queueStore";
 
 vi.mock("framer-motion", () => ({
@@ -27,7 +27,7 @@ describe("Apple3DQueueDrawer", () => {
     document.body.appendChild(container);
     root = createRoot(container);
 
-    useUIStore.setState({
+    usePanelStore.setState({
       panels: {
         queue: false,
         shelf3D: false,
@@ -72,13 +72,13 @@ describe("Apple3DQueueDrawer", () => {
       handle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(useUIStore.getState().panels.shelf3D).toBe(true);
+    expect(usePanelStore.getState().panels.shelf3D).toBe(true);
   });
 
   it("does not handle the Q shortcut itself (ownership lives in the central registry)", async () => {
     // Q / ⌘L 的归属已移交 keyboardShortcutsStore 的 toggle-queue。
     // 本组件若也监听同一按键去切换同一个面板，两次 toggle 会互相抵消，Q 就表现为"按了没反应"。
-    useUIStore.setState({ panels: { queue: false, shelf3D: false } as any });
+    usePanelStore.setState({ panels: { queue: false, shelf3D: false } as any });
 
     await act(async () => {
       root.render(<Apple3DQueueDrawer />);
@@ -88,11 +88,11 @@ describe("Apple3DQueueDrawer", () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "q", bubbles: true }));
     });
 
-    expect(useUIStore.getState().panels.shelf3D).toBe(false);
+    expect(usePanelStore.getState().panels.shelf3D).toBe(false);
   });
 
   it("closes the 3D shelf when pressing Escape", async () => {
-    useUIStore.setState({
+    usePanelStore.setState({
       panels: { queue: false, shelf3D: true } as any,
     });
 
@@ -104,6 +104,6 @@ describe("Apple3DQueueDrawer", () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
 
-    expect(useUIStore.getState().panels.shelf3D).toBe(false);
+    expect(usePanelStore.getState().panels.shelf3D).toBe(false);
   });
 });
