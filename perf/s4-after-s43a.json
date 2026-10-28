@@ -1,0 +1,55 @@
+{
+  "result": {
+    "generatedAt": "2026-10-28T00:01:01.793Z",
+    "rootMain": {
+      "files": 3,
+      "rawKB": 752.1,
+      "gzipKB": 238.7,
+      "missing": []
+    },
+    "firstLoad": {
+      "scripts": 8,
+      "rawKB": 1707.4,
+      "gzipKB": 538.7,
+      "missing": 0
+    },
+    "css": {
+      "files": 1,
+      "rawKB": 225.4,
+      "gzipKB": 29
+    },
+    "dataManagerFirstLoad": {
+      "scripts": 7,
+      "rawKB": 1581.8
+    },
+    "asyncChunks": {
+      "files": 123,
+      "maxFile": "static\\chunks\\vendor-core-490cad7d9c63303b.js",
+      "maxKB": 746.4
+    },
+    "publicMB": 58.4
+  },
+  "violations": [
+    {
+      "metric": "rootMainGzipKB",
+      "value": 238.7,
+      "hardMax": 230,
+      "target": 190,
+      "baseline": 296.8
+    },
+    {
+      "metric": "maxAsyncChunkKB",
+      "value": 746.4,
+      "hardMax": 400,
+      "target": 350,
+      "baseline": 333.5
+    },
+    {
+      "metric": "publicMB",
+      "value": 58.4,
+      "hardMax": 45,
+      "target": 40,
+      "baseline": 58.4
+    }
+  ]
+}
