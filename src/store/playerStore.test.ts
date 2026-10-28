@@ -99,7 +99,7 @@ describe("playerStore", () => {
     expect(usePlayerStore.getState().currentTime).toBe(42);
   });
 
-  it("persists only the persist-relevant player settings", () => {
+  it("persists player settings without owning playback progress", () => {
     const store = usePlayerStore.getState();
 
     store.setCurrentSong(mockSong);
@@ -118,13 +118,16 @@ describe("playerStore", () => {
     const parsed = JSON.parse(saved!);
     expect(parsed.state).toEqual({
       currentSong: sanitizeSongForStorage(mockSong),
-      currentTime: 99,
-      duration: 240,
       volume: 0.2,
       isMuted: true,
       playbackRate: 1.4,
       loopMode: "single",
     });
+    // 进度运行时镜像仍在，但不进入 player-store envelope（audioStore 单一权威）
+    expect(usePlayerStore.getState().currentTime).toBe(99);
+    expect(usePlayerStore.getState().duration).toBe(240);
+    expect(parsed.state.currentTime).toBeUndefined();
+    expect(parsed.state.duration).toBeUndefined();
     expect(parsed.state.isPlaying).toBeUndefined();
     expect(parsed.state.isLoading).toBeUndefined();
   });

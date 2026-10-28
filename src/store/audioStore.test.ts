@@ -228,7 +228,7 @@ describe("audioStore playback sync", () => {
     registerAudioSeekHandler(null);
   });
 
-  it("should bidirectionally sync currentTime between audioStore and playerStore", () => {
+  it("projects currentTime from audioStore to playerStore and delegates player writes", () => {
     usePlayerStore.getState().setCurrentTime(88.2);
     expect(useAudioStore.getState().currentTime).toBe(88.2);
     expect(usePlayerStore.getState().currentTime).toBe(88.2);
@@ -238,7 +238,7 @@ describe("audioStore playback sync", () => {
     expect(usePlayerStore.getState().currentTime).toBe(12.5);
   });
 
-  it("should bidirectionally sync duration between audioStore and playerStore", () => {
+  it("projects duration from audioStore to playerStore and delegates player writes", () => {
     usePlayerStore.getState().setDuration(320);
     expect(useAudioStore.getState().duration).toBe(320);
     expect(usePlayerStore.getState().duration).toBe(320);

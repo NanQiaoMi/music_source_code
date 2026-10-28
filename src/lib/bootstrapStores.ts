@@ -14,7 +14,7 @@ import { useAIStore } from "@/store/aiStore";
 import { useAudioEffectsStore } from "@/store/audioEffectsStore";
 import { useAudioProcessingStore } from "@/store/audioProcessingStore";
 import { useAudioSourceStore } from "@/store/audioSourceStore";
-import { useAudioStore } from "@/store/audioStore";
+import { setAudioPersistenceSuspended, useAudioStore } from "@/store/audioStore";
 import { useBackupRestoreStore } from "@/store/backupRestoreStore";
 import { useCrossfadeStore } from "@/store/crossfadeStore";
 import { useDSDProcessingStore } from "@/store/dsdProcessingStore";
@@ -174,13 +174,19 @@ async function runHydration(plan: readonly HydrationStep[]): Promise<HydrateStor
   // Never touch localStorage during SSR / prerender.
   if (typeof window === "undefined") return { phases, hydrated };
 
-  for (const step of plan) {
-    if (hydratedOwners.has(step.owner)) continue;
-    const startedAt = performance.now();
-    await STORES[step.owner].persist.rehydrate();
-    phases[step.phase] += performance.now() - startedAt;
-    hydratedOwners.add(step.owner);
-    hydrated.push(step.owner);
+  // 水合顺序不变；仅暂停 audioStore 的中间写盘，避免默认进度覆盖其待读取快照。
+  setAudioPersistenceSuspended(true);
+  try {
+    for (const step of plan) {
+      if (hydratedOwners.has(step.owner)) continue;
+      const startedAt = performance.now();
+      await STORES[step.owner].persist.rehydrate();
+      phases[step.phase] += performance.now() - startedAt;
+      hydratedOwners.add(step.owner);
+      hydrated.push(step.owner);
+    }
+  } finally {
+    setAudioPersistenceSuspended(false);
   }
 
   return { phases, hydrated };

@@ -39,7 +39,7 @@ describe("Global State Retention & Persistence Engine", () => {
     expect(parsed.state.themeMode).toBe("light");
   });
 
-  it("2. PlayerStore, QueueStore & AudioStore accurately persist breakpoint currentTime and sanitized queue", () => {
+  it("2. PlayerStore keeps settings, AudioStore alone persists breakpoint progress, and queue stays sanitized", () => {
     usePlayerStore.getState().setCurrentSong(sampleSong);
     usePlayerStore.getState().setCurrentTime(115.5);
     usePlayerStore.getState().setDuration(226);
@@ -47,8 +47,8 @@ describe("Global State Retention & Persistence Engine", () => {
     const playerRaw = localStorage.getItem("player-store");
     expect(playerRaw).toBeTruthy();
     const playerParsed = JSON.parse(playerRaw!);
-    expect(playerParsed.state.currentTime).toBe(115.5);
-    expect(playerParsed.state.duration).toBe(226);
+    expect(playerParsed.state.currentTime).toBeUndefined();
+    expect(playerParsed.state.duration).toBeUndefined();
     expect(playerParsed.state.currentSong.title).toBe("夜曲");
 
     useQueueStore.getState().setQueue([sampleSong]);

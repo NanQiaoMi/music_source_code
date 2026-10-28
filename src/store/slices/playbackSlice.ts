@@ -111,8 +111,7 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
 
     setCurrentTime: (time) => {
       const clamped = Math.max(0, time);
-      usePlayerStore.getState().setCurrentTime(clamped);
-
+      // audioStore 即进度权威；playerStore 镜像由 audioStore 订阅单向投影
       const now = Date.now();
       if (now - lastProgressSyncTime >= PROGRESS_THROTTLE_MS) {
         lastProgressSyncTime = now;
@@ -136,7 +135,6 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
     },
 
     setDuration: (duration) => {
-      usePlayerStore.getState().setDuration(duration);
       set({ duration });
     },
 
@@ -448,7 +446,6 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
 
     seekTo: (time) => {
       const clampedTime = Math.max(0, time);
-      usePlayerStore.getState().setCurrentTime(clampedTime);
       set({ currentTime: clampedTime, persistedCurrentTime: clampedTime });
       flushProgressToStorage();
       if (globalSeekHandler) {

@@ -144,11 +144,12 @@ describe("DataManagerPlayerDock", () => {
   it("matches the floating player fallback when only PlayerStore has the current song", async () => {
     usePlayerStore.setState({
       currentSong: firstSong,
-      currentTime: 42,
-      duration: firstSong.duration,
       isPlaying: true,
       isLoading: false,
     });
+    // 进度写入走公开 API：playerStore setter 会委托 audioStore（唯一进度权威）
+    usePlayerStore.getState().setCurrentTime(42);
+    usePlayerStore.getState().setDuration(firstSong.duration);
     useQueueStore.setState({ queue: [firstSong], currentIndex: 0 });
     root = await renderDock(container);
 

@@ -23,6 +23,24 @@ import { createSourceSlice } from "./slices/sourceSlice";
 export type { LoopMode, AudioError, AudioDevice, EQPreset, HeadphonePreset, Song };
 export { registerAudioSeekHandler, getAudioSeekHandler };
 
+let audioPersistenceSuspended = false;
+
+// 有序水合期间禁止写入：player/queue 的投影会触发本 store 的 persist，
+// 若此时序列化默认进度，会覆盖尚未读取的 audio-store-v4 持久化快照。
+export const setAudioPersistenceSuspended = (suspended: boolean) => {
+  audioPersistenceSuspended = suspended;
+};
+
+const createGuardedAudioStorage = () => {
+  const storage = createSafeStorage("audio-store-v4");
+  return {
+    ...storage,
+    setItem: (name: string, value: string) => {
+      if (!audioPersistenceSuspended) storage.setItem(name, value);
+    },
+  };
+};
+
 export const useAudioStore = create<AudioStoreState>()(
   persist(
     (set, get, api) => ({
@@ -45,10 +63,10 @@ export const useAudioStore = create<AudioStoreState>()(
     {
       skipHydration: true,
       name: "audio-store-v4",
-      storage: createJSONStorage(() => createSafeStorage("audio-store-v4")),
+      storage: createJSONStorage(createGuardedAudioStorage),
       partialize: (state) => ({
         currentSong: state.currentSong ? sanitizeSongForStorage(state.currentSong) : null,
-        // 使用节流同步的 persistedCurrentTime，阻断每秒多次的磁盘 I/O 序列化
+        // 播放进度的唯一持久化权威：使用 5s 节流快照，避免每次 setState 都推进持久化进度
         currentTime:
           typeof state.persistedCurrentTime === "number" ? state.persistedCurrentTime : 0,
         duration: typeof state.duration === "number" ? state.duration : 0,
@@ -81,7 +99,7 @@ export const useAudioStore = create<AudioStoreState>()(
   )
 );
 
-// 注册与 playerStore 之间的实时同步（排除死循环）
+// 接收 playerStore 的写入委托（进度以 audioStore 为准）并同步非进度字段，排除死循环
 registerAudioStoreSync((playerState) => {
   const currentAudio = useAudioStore.getState();
   const updates: Partial<AudioStoreState> = {};
@@ -126,7 +144,7 @@ registerAudioStoreSync((playerState) => {
   }
 });
 
-// 监听 audioStore 状态变化并同步至 playerStore
+// 单向投影：audioStore 的进度权威值同步至 playerStore 运行时镜像
 useAudioStore.subscribe((state, prev) => {
   const playerState = usePlayerStore.getState();
   const updates: Partial<typeof playerState> = {};

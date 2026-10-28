@@ -35,7 +35,7 @@ interface PlayerState {
   prevSong: () => void;
 }
 
-// 注册与 audioStore 的实时双向强同步
+// 非进度字段订阅同步；进度写入由 setter 委托 audioStore（唯一持久化权威）
 type StoreSyncListener = (state: Partial<PlayerState>) => void;
 let audioStoreSyncListener: StoreSyncListener | null = null;
 
@@ -150,25 +150,29 @@ export const usePlayerStore = create<PlayerState>()(
       name: "player-store",
       storage: createJSONStorage(() => createSafeStorage("player-store")),
       partialize: (state) => ({
+        // 播放进度只由 audioStore 持久化；currentTime/duration 在此仅为运行时镜像
         currentSong: state.currentSong ? sanitizeSongForStorage(state.currentSong) : null,
-        currentTime: typeof state.currentTime === "number" ? state.currentTime : 0,
-        duration: typeof state.duration === "number" ? state.duration : 0,
         volume: state.volume,
         isMuted: state.isMuted,
         playbackRate: state.playbackRate,
         loopMode: state.loopMode,
       }),
+      // 兼容旧 envelope：即使旧数据仍带进度字段，也不允许其覆盖 audioStore 的权威值
+      merge: (persisted, current) => {
+        const restored = { ...((persisted ?? {}) as Partial<PlayerState>) };
+        delete restored.currentTime;
+        delete restored.duration;
+        return { ...current, ...restored };
+      },
     }
   )
 );
 
-// 监听直接 setState 的变化，并实时双向同步至 audioStore
+// 监听直接 setState 的变化并同步非进度字段；进度订阅不再从 playerStore 写入 audioStore
 usePlayerStore.subscribe((state, prev) => {
   const updates: Partial<PlayerState> = {};
   if (state.isPlaying !== prev.isPlaying) updates.isPlaying = state.isPlaying;
   if (state.currentSong !== prev.currentSong) updates.currentSong = state.currentSong;
-  if (state.currentTime !== prev.currentTime) updates.currentTime = state.currentTime;
-  if (state.duration !== prev.duration) updates.duration = state.duration;
   if (state.isLoading !== prev.isLoading) updates.isLoading = state.isLoading;
   if (state.volume !== prev.volume) updates.volume = state.volume;
   if (state.isMuted !== prev.isMuted) updates.isMuted = state.isMuted;
