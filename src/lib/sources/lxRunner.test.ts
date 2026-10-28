@@ -1,7 +1,41 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { LXRunner } from "./lxRunner";
 
+const cryptoLoads = vi.hoisted(() => ({ count: 0 }));
+
+vi.mock("crypto-js", async (importOriginal) => {
+  cryptoLoads.count += 1;
+  return await importOriginal<typeof import("crypto-js")>();
+});
+
+const customScriptBase = {
+  name: "Concurrent Source",
+  author: "Tester",
+  version: "1.0.0",
+  description: "",
+  enabled: true,
+  lastUpdated: 0,
+  supportedActions: ["search" as const],
+};
+
 describe("LXRunner", () => {
+  it("loads crypto-js once for concurrent LX entries and reuses it afterwards", async () => {
+    const script = `module.exports = { search: async () => [] };`;
+
+    await Promise.all([
+      LXRunner.testScript(script),
+      LXRunner.testScript(script),
+      LXRunner.search(
+        { ...customScriptBase, scriptContent: script, id: "concurrent-search" },
+        "keyword"
+      ),
+    ]);
+    expect(cryptoLoads.count).toBe(1);
+
+    await LXRunner.testScript(script);
+    expect(cryptoLoads.count).toBe(1);
+  });
+
   it("validates valid JavaScript source scripts", async () => {
     const script = `
       module.exports = {
@@ -14,6 +48,31 @@ describe("LXRunner", () => {
     const result = await LXRunner.testScript(script);
     expect(result.success).toBe(true);
     expect(result.details?.hasSearch).toBe(true);
+  });
+
+  it("keeps LX crypto helpers byte-compatible with the previous crypto-js output", async () => {
+    const script = `
+      lx.send(lx.EVENT_NAMES.inited, {
+        md5: lx.utils.crypto.md5("hello"),
+        sha256: lx.utils.crypto.sha256("hello"),
+        base64: lx.utils.crypto.base64.encode("hello"),
+        base64Decoded: lx.utils.crypto.base64.decode("aGVsbG8="),
+        hexToUtf8: lx.utils.buffer.bufToString(lx.utils.buffer.from("68656c6c6f", "hex"), "utf8"),
+        aes: lx.utils.crypto.aesEncrypt("hello", "cbc", "1234567890123456", "6543210987654321")
+      });
+    `;
+
+    const result = await LXRunner.testScript(script);
+
+    expect(result.success).toBe(true);
+    expect(result.details?.initedInfo).toEqual({
+      md5: "5d41402abc4b2a76b9719d911017c592",
+      sha256: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+      base64: "aGVsbG8=",
+      base64Decoded: "hello",
+      hexToUtf8: "hello",
+      aes: "WcQYnUww0VTFgh1HE4gepg==",
+    });
   });
 
   it("reports syntax errors on broken scripts", async () => {

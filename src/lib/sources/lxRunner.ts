@@ -1,16 +1,30 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import CryptoJS from "crypto-js";
 import { Song } from "@/types/song";
 import { LXCustomScript } from "@/types/sourceConfig";
+
+type CryptoJSApi = (typeof import("crypto-js"))["default"];
 
 /**
  * 洛雪 (LX Music) 与自定义 JavaScript 音源脚本解析执行引擎
  */
 export class LXRunner {
+  private static cryptoPromise: Promise<CryptoJSApi> | null = null;
+
+  /**
+   * 按需加载 crypto-js，避免其进入初始 bundle；并发入口共享同一 Promise。
+   */
+  private static ensureCrypto(): Promise<CryptoJSApi> {
+    this.cryptoPromise ??= import("crypto-js").then(
+      (mod) => mod.default ?? (mod as unknown as CryptoJSApi)
+    );
+    return this.cryptoPromise;
+  }
+
   /**
    * 构造标准 LX 运行环境与沙箱
    */
   private static createSandbox(
+    crypto: CryptoJSApi,
     script: { name?: string; version?: string },
     onEvent?: (event: string, data: any) => void
   ) {
@@ -85,34 +99,34 @@ export class LXRunner {
         buffer: {
           from: (data: any, encoding?: string) => {
             if (typeof data === "string") {
-              if (encoding === "hex") return CryptoJS.enc.Hex.parse(data);
-              if (encoding === "base64") return CryptoJS.enc.Base64.parse(data);
-              return CryptoJS.enc.Utf8.parse(data);
+              if (encoding === "hex") return crypto.enc.Hex.parse(data);
+              if (encoding === "base64") return crypto.enc.Base64.parse(data);
+              return crypto.enc.Utf8.parse(data);
             }
             return data;
           },
           bufToString: (buf: any, encoding?: string) => {
             if (typeof buf === "string") return buf;
-            if (encoding === "hex") return CryptoJS.enc.Hex.stringify(buf);
-            if (encoding === "base64") return CryptoJS.enc.Base64.stringify(buf);
-            return CryptoJS.enc.Utf8.stringify(buf);
+            if (encoding === "hex") return crypto.enc.Hex.stringify(buf);
+            if (encoding === "base64") return crypto.enc.Base64.stringify(buf);
+            return crypto.enc.Utf8.stringify(buf);
           },
         },
         crypto: {
-          md5: (str: string) => CryptoJS.MD5(str).toString(),
-          sha256: (str: string) => CryptoJS.SHA256(str).toString(),
+          md5: (str: string) => crypto.MD5(str).toString(),
+          sha256: (str: string) => crypto.SHA256(str).toString(),
           aesEncrypt: (data: any, mode: any, key: any, iv: any) => {
-            const enc = CryptoJS.AES.encrypt(data, CryptoJS.enc.Utf8.parse(key), {
-              iv: CryptoJS.enc.Utf8.parse(iv || ""),
-              mode: CryptoJS.mode.CBC,
-              padding: CryptoJS.pad.Pkcs7,
+            const enc = crypto.AES.encrypt(data, crypto.enc.Utf8.parse(key), {
+              iv: crypto.enc.Utf8.parse(iv || ""),
+              mode: crypto.mode.CBC,
+              padding: crypto.pad.Pkcs7,
             });
             return enc.toString();
           },
           rsaEncrypt: (data: any) => data,
           base64: {
-            encode: (str: string) => CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(str)),
-            decode: (str: string) => CryptoJS.enc.Base64.parse(str).toString(CryptoJS.enc.Utf8),
+            encode: (str: string) => crypto.enc.Base64.stringify(crypto.enc.Utf8.parse(str)),
+            decode: (str: string) => crypto.enc.Base64.parse(str).toString(crypto.enc.Utf8),
           },
         },
       },
@@ -135,7 +149,9 @@ export class LXRunner {
       const sandboxModule: any = { exports: {} };
       let initedInfo: any = null;
 
+      const crypto = await this.ensureCrypto();
       const { lxEnvironment, handlers } = this.createSandbox(
+        crypto,
         { name: "Test Script", version: "1.0" },
         (event, data) => {
           if (event.includes("inited")) initedInfo = data;
@@ -266,7 +282,8 @@ export class LXRunner {
     if (!rawCode) return null;
 
     try {
-      const { lxEnvironment, handlers } = this.createSandbox(script);
+      const crypto = await this.ensureCrypto();
+      const { lxEnvironment, handlers } = this.createSandbox(crypto, script);
       const sandboxModule: any = { exports: {} };
 
       (globalThis as any).lx = lxEnvironment;
@@ -371,8 +388,9 @@ export class LXRunner {
     try {
       const rawCode = await this.ensureScriptContent(script);
       if (rawCode) {
+        const crypto = await this.ensureCrypto();
         const sandboxModule: any = { exports: {} };
-        const { lxEnvironment } = this.createSandbox(script);
+        const { lxEnvironment } = this.createSandbox(crypto, script);
 
         (globalThis as any).lx = lxEnvironment;
         if (typeof window !== "undefined") (window as any).lx = lxEnvironment;
