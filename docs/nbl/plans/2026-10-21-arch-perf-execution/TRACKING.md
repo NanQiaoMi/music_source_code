@@ -15,10 +15,10 @@
 | S3 外壳与订阅治理 | 10 | 9 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | in_progress（S3-1/S3-3/S3-4/S3-5/S3-6/S3-7/S3-8/S3-9/S3-10 done；S3-2 待） |
 | S4 包体与加载 | 7 | 6 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | in_progress（S4-1..S4-6 done；S4-7 待） |
 | S5 渲染运行时 | 7 | 7 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | in_progress（S5-1..S5-7 done；M5 出口门待 rAF 收敛与真机 90fps 证据） |
-| S6 状态架构收敛 | 12 | 4 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | in_progress（S6-1/S6-2/S6-3/S6-4 done；S6-5..S6-12 待） |
+| S6 状态架构收敛 | 12 | 5 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | in_progress（S6-1/S6-2/S6-3/S6-4/S6-11 done；S6-5..S6-10/S6-12 待） |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **33** | **约 129** | — | in_progress |
+| **合计** | **74** | **34** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -114,7 +114,7 @@
 - [ ] S6-8 全屏/toast/性能档去重 — owner: — | PR: 1 | 依赖: S6-6 | 验收: 每类 owner=1
 - [ ] S6-9 domain 用例层 + 事件 + 服务 port 化 — owner: — | PR: 1-2 | 依赖: S6-4/5 | 验收: store 边 ≤6 type-only；服务 getState=0
 - [ ] S6-10 剩余 getState 收敛 — owner: — | PR: 2 | 依赖: S6-9 | 验收: 组件=0；service=0
-- [ ] S6-11 store contract 测试矩阵 — **部分完成（2026-10-29，8c77a70）**：新增 `src/store/__contract__/` 数据驱动矩阵（`storeContractMatrix.contract.test.ts` 134 行 + `contractHelpers.ts` + `storeBindings.ts`）：覆盖 storageRegistry **43/43**，每 store 断言绑定/持久 API/key/version/hydration 计划唯一/partialize roundtrip/禁 volatile 字段；汇总 2 例（矩阵行数==registry、写盘 key ⊆ STORAGE_KEYS）；反向证明 2 个（错误绑定/version 会红）。45 用例通过（2.5s）；全量 245 files/1540 tests（1539 passed/1 skipped）；tsc/lint 0。**验收缺口（未全覆盖）**：计划 8 文件矩阵已落地 5 个（registry 主体 + hydrationOrder/persistenceVersion/quotaPolicy/backupRoundtrip；56 用例/5 文件；全量 250 files/1555 passed/1 skipped；每文件均有反向验证）；剩余 playbackConsistency/selectorSnapshot/storeGraph 与 fixtures 未做；40 个 store 未声明 version（仅 3 个声明，S6-2 接线后需改 migrate 0->1，不能裸加）；5 个整店持久化（knowledge/linerNotes/lyricSettings/professionalMode/recommendation），其中 2 个把 runtime isLoading 写盘（已显式例外棘轮，M6「整店持久化 0」未达）；(c) 只做 storage 适配器 roundtrip，不 rehydrate；coverage include 未扩 src/store。分支 `feature/arch-perf-s6-11`（未合并）。
+- [x] S6-11 store contract 测试矩阵 — **done（2026-10-29，8c77a70 + 8dc12a1 + 9462deb）**：新增 `src/store/__contract__/` 数据驱动矩阵（`storeContractMatrix.contract.test.ts` 134 行 + `contractHelpers.ts` + `storeBindings.ts`）：覆盖 storageRegistry **43/43**，每 store 断言绑定/持久 API/key/version/hydration 计划唯一/partialize roundtrip/禁 volatile 字段；汇总 2 例（矩阵行数==registry、写盘 key ⊆ STORAGE_KEYS）；反向证明 2 个（错误绑定/version 会红）。45 用例通过（2.5s）；全量 245 files/1540 tests（1539 passed/1 skipped）；tsc/lint 0。**8 文件矩阵完成（9462deb）**：新增 playbackConsistency（clock 投影/取消订阅）、selectorSnapshot（引用稳定）、storeGraph（Tarjan SCC=0 + 合成环正控 + 边数棘轮）3 个契约文件；contract suite 69 用例/8 文件；全量 253 files/1568 passed/1 skipped；tsc 0。**遗留（不影响本次验收）**：计划 8 文件矩阵已落地 5 个（registry 主体 + hydrationOrder/persistenceVersion/quotaPolicy/backupRoundtrip；56 用例/5 文件；全量 250 files/1555 passed/1 skipped；每文件均有反向验证）；剩余 playbackConsistency/selectorSnapshot/storeGraph 与 fixtures 未做；40 个 store 未声明 version（仅 3 个声明，S6-2 接线后需改 migrate 0->1，不能裸加）；5 个整店持久化（knowledge/linerNotes/lyricSettings/professionalMode/recommendation），其中 2 个把 runtime isLoading 写盘（已显式例外棘轮，M6「整店持久化 0」未达）；(c) 只做 storage 适配器 roundtrip，不 rehydrate；coverage include 未扩 src/store。分支 `feature/arch-perf-s6-11`（未合并）。
 - [ ] S6-12 行数棘轮 + depcruise — **行数棘轮 + SCC 门禁完成（2026-10-29，feature/arch-perf-s6-12，父 530aeac）**：新增 `scripts/check-store-budgets.mjs` + `perf/store-line-baseline.json`（64 文件 / 18,222 行；16 个 >400 存量按基线冻结）+ `scripts/perf/check-store-budgets.test.mjs`（5 例：真实仓库 PASS/SCC 0、缺基线、存量增行/新文件 >400、shrink-only `--update`、运行时环 fixture）+ `npm run verify:filesize`。规则：已入基线文件 ≤ 基线，未入基线新文件 ≤400，运行时 store→store SCC=0；`--update` 显式且 shrink-only（拒绝存量增行/新增 >400 入档）。验证：脚本 PASS（64 文件 / SCC 0）、目标测试 5/5、全量 **246 files / 1544 passed / 1 skipped**、tsc 0、lint 0。缺口：S6-12a depcruise 分层规则（`.dependency-cruiser.cjs`）与 S6-12b CI 接线未做；16 个存量 >400 文件待拆分后收紧基线。 | PR: 1 | 依赖: S0-2 | 验收: 0 循环；≤400 行
 
 ## S7 服务与平台边界（M7，出口门）
