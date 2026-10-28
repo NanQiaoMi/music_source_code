@@ -5,10 +5,27 @@ import {
   LONG_TASK_COOLDOWN_MS,
   LONG_TASK_THRESHOLD_MS,
   createVisualRuntime,
+  type LongTaskObserverFactory,
   type VisualRuntime,
 } from "./visualRuntime";
 
-function createHarness(initialHidden = false, options: { now?: () => number } = {}) {
+/** 假 longtask observer：记录 observe/disconnect，并允许测试手动推送条目。 */
+function createFakeLongTaskObserver() {
+  let emit: (entries: readonly { duration: number }[]) => void = () => undefined;
+  const observe = vi.fn();
+  const disconnect = vi.fn();
+  const factory = vi.fn((onEntries: (entries: readonly { duration: number }[]) => void) => {
+    emit = onEntries;
+    return { observe, disconnect };
+  });
+  const emitDurations = (durations: number[]) => emit(durations.map((duration) => ({ duration })));
+  return { factory, observe, disconnect, emit: emitDurations };
+}
+
+function createHarness(
+  initialHidden = false,
+  options: { now?: () => number; createLongTaskObserver?: LongTaskObserverFactory } = {}
+) {
   const frames = new Map<number, FrameRequestCallback>();
   const listeners = new Set<() => void>();
   let nextHandle = 1;
@@ -42,6 +59,7 @@ function createHarness(initialHidden = false, options: { now?: () => number } = 
     isHidden: () => hidden,
     onVisibilityChange,
     now: options.now,
+    createLongTaskObserver: options.createLongTaskObserver,
   });
 
   const setHidden = (value: boolean) => {
@@ -177,6 +195,75 @@ describe("VisualRuntime", () => {
       ["high", "medium"],
       ["medium", "low"],
     ]);
+  });
+
+  it("attaches one longtask observer while subscribed, then detaches on stop/dispose", () => {
+    const fake = createFakeLongTaskObserver();
+    const h = createHarness(false, { createLongTaskObserver: fake.factory });
+    const changes = vi.fn();
+    h.runtime.onQualityChange(changes);
+    expect(fake.factory).not.toHaveBeenCalled();
+
+    const first = h.runtime.subscribe("a", () => {});
+    const second = h.runtime.subscribe("b", () => {});
+    expect(fake.factory).toHaveBeenCalledTimes(1);
+    expect(fake.observe).toHaveBeenCalledWith({ entryTypes: ["longtask"] });
+
+    first.stop();
+    expect(fake.disconnect).not.toHaveBeenCalled();
+    second.stop();
+    expect(fake.disconnect).toHaveBeenCalledTimes(1);
+
+    h.runtime.subscribe("c", () => {});
+    expect(fake.factory).toHaveBeenCalledTimes(2);
+    h.runtime.dispose();
+    expect(fake.disconnect).toHaveBeenCalledTimes(2);
+
+    // dispose 后 listener 与 observer 均已摘除，迟到条目不再通知画质变化
+    fake.emit([LONG_TASK_THRESHOLD_MS + 100]);
+    expect(changes).not.toHaveBeenCalled();
+  });
+
+  it("routes longtask entries into quality downgrade", () => {
+    let clock = 0;
+    const fake = createFakeLongTaskObserver();
+    const h = createHarness(false, { now: () => clock, createLongTaskObserver: fake.factory });
+    const changes = vi.fn();
+    h.runtime.onQualityChange(changes);
+    h.runtime.subscribe("a", () => {});
+
+    fake.emit([LONG_TASK_THRESHOLD_MS]);
+    expect(h.runtime.qualityTier).toBe("high");
+
+    fake.emit([LONG_TASK_THRESHOLD_MS + 30]);
+    expect(h.runtime.qualityTier).toBe("medium");
+
+    clock += LONG_TASK_COOLDOWN_MS;
+    fake.emit([LONG_TASK_THRESHOLD_MS + 20, LONG_TASK_THRESHOLD_MS + 70]);
+    expect(h.runtime.qualityTier).toBe("low");
+    expect(changes.mock.calls.map((call) => call[0].tier)).toEqual(["medium", "low"]);
+  });
+
+  it("survives a missing or throwing observer factory", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const none = createHarness(false, { createLongTaskObserver: () => null });
+      none.runtime.subscribe("a", () => {});
+      expect(warn).not.toHaveBeenCalled();
+
+      const throwing = createHarness(false, {
+        createLongTaskObserver: () => {
+          throw new Error("unsupported");
+        },
+      });
+      const a = throwing.runtime.subscribe("a", () => {});
+      const b = throwing.runtime.subscribe("b", () => {});
+      expect(warn).toHaveBeenCalledTimes(1);
+      a.stop();
+      b.stop();
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("simulates 4x throttle (33ms frames) and reaches low within two windows", () => {

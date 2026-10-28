@@ -17,7 +17,11 @@ import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { featureFlags } from "@/lib/perf/featureFlags";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
-import { visualRuntime, type VisualFrameHandle } from "@/runtime/visualRuntime";
+import {
+  visualRuntime,
+  type VisualFrameHandle,
+  type VisualQualityProfile,
+} from "@/runtime/visualRuntime";
 import { CoverImage } from "@/components/shared/ui/CoverImage";
 import { X, Maximize2, Minimize2, Settings, Video } from "lucide-react";
 const RecordingPanel = dynamic(
@@ -339,9 +343,11 @@ export function VisualizationView() {
     const ctx = canvas.getContext("2d", { alpha: false }); // optimize for opaque background
     if (!ctx) return;
 
-    const resize = () => {
-      // 画质档位由 VisualRuntime 统一裁决；flag 关闭时保持 S5-1 之前的固定 DPR 上限
-      const quality = featureFlags.visualRuntime ? visualRuntime.getQuality() : null;
+    // 画质档位由 runtime 统一裁决；tier 变化经 onQualityChange 推送，普通 resize 读取当前值。
+    const resize = (nextQuality?: VisualQualityProfile) => {
+      const quality = featureFlags.visualRuntime
+        ? (nextQuality ?? visualRuntime.getQuality())
+        : null;
       const dprCap = quality?.dprCap ?? MAX_RENDER_DPR;
       const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, dprCap));
 
@@ -383,8 +389,9 @@ export function VisualizationView() {
       }
     };
 
+    const handleWindowResize = () => resize();
     resize();
-    window.addEventListener("resize", resize);
+    window.addEventListener("resize", handleWindowResize);
 
     // 容器尺寸可能在窗口尺寸不变的情况下改变（布局调整、面板开合、系统缩放等），
     // 只监听 window 的 resize 会漏掉这些情况，让后备存储停在旧尺寸而导致画面变形
@@ -401,13 +408,6 @@ export function VisualizationView() {
 
     const draw = (timestamp: number) => {
       timeRef.current = timestamp;
-
-      // 自适应画质降档后同步 canvas DPR 与粒子密度。resize 内部只在档位变化时重建，
-      // 不会每帧重置后备存储。
-      if (featureFlags.visualRuntime) {
-        const quality = visualRuntime.getQuality();
-        if (renderedQualityRef.current !== quality.tier) resize();
-      }
 
       const state = useVisualizationStore.getState();
       const currentEff = state.currentEffect;
@@ -613,6 +613,10 @@ export function VisualizationView() {
     // flag off 保留一版旧路径，便于一键回滚。
     let subscription: VisualFrameHandle | null = null;
     let legacyVisibilityHandler: (() => void) | null = null;
+    // 档位变化不再逐帧轮询：runtime 推送新 profile 时只重建一次后备存储与粒子池。
+    const unsubscribeQuality = featureFlags.visualRuntime
+      ? visualRuntime.onQualityChange((next) => resize(next))
+      : null;
 
     if (featureFlags.visualRuntime) {
       subscription = visualRuntime.subscribe("visualization", draw);
@@ -651,7 +655,8 @@ export function VisualizationView() {
     }
 
     return () => {
-      window.removeEventListener("resize", resize);
+      window.removeEventListener("resize", handleWindowResize);
+      unsubscribeQuality?.();
       resizeObserver?.disconnect();
       if (legacyVisibilityHandler) {
         document.removeEventListener("visibilitychange", legacyVisibilityHandler);

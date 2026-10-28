@@ -51,6 +51,23 @@ export type VisualSubscriber = (time: number, delta: number) => void;
 /** 档位变化通知：previous 为变化前的 tier。 */
 export type VisualQualityListener = (next: VisualQualityProfile, previous: VisualQuality) => void;
 
+export type LongTaskEntry = { duration: number };
+
+export interface LongTaskObserver {
+  observe(options: { entryTypes: string[] }): void;
+  disconnect(): void;
+}
+
+export type LongTaskObserverFactory = (
+  onEntries: (entries: readonly LongTaskEntry[]) => void
+) => LongTaskObserver | null;
+
+/** 默认工厂：SSR/不支持 longtask 的环境返回 null，构造与 observe 异常由 attach 兜底。 */
+const createBrowserLongTaskObserver: LongTaskObserverFactory = (onEntries) => {
+  if (typeof PerformanceObserver === "undefined") return null;
+  return new PerformanceObserver((list) => onEntries(list.getEntries()));
+};
+
 export interface VisualFrameHandle {
   readonly id: string;
   readonly active: boolean;
@@ -80,6 +97,8 @@ export interface VisualRuntimeEnv {
   now?: () => number;
   /** 初始档位变化监听（等价于构造后调用 onQualityChange）。 */
   onQualityChange?: VisualQualityListener;
+  /** longtask 观察者工厂；测试注入假 observer，缺省使用浏览器 PerformanceObserver。 */
+  createLongTaskObserver?: LongTaskObserverFactory;
 }
 
 interface SubscriberRecord {
@@ -102,6 +121,7 @@ export class VisualRuntime {
   private readonly isHidden: () => boolean;
   private readonly onVisibilityChange: (listener: () => void) => () => void;
   private readonly now: () => number;
+  private readonly createLongTaskObserver: LongTaskObserverFactory;
   private readonly subs = new Map<string, SubscriberRecord>();
   private readonly qualityListeners = new Set<VisualQualityListener>();
   /** 定长环形缓冲：避免每帧为统计分配数组。 */
@@ -109,6 +129,8 @@ export class VisualRuntime {
   private drawCursor = 0;
   private drawCount = 0;
   private lastLongTaskAt: number | null = null;
+  private longTaskObserver: LongTaskObserver | null = null;
+  private longTaskObserverUnavailable = false;
   private qualityIndex = 0;
   private stableWindows = 0;
   private frameHandle: number | null = null;
@@ -127,6 +149,7 @@ export class VisualRuntime {
     this.isHidden = env.isHidden ?? defaultIsHidden;
     this.onVisibilityChange = env.onVisibilityChange ?? defaultOnVisibilityChange;
     this.now = env.now ?? (() => performance.now());
+    this.createLongTaskObserver = env.createLongTaskObserver ?? createBrowserLongTaskObserver;
     if (env.onQualityChange) this.qualityListeners.add(env.onQualityChange);
   }
 
@@ -139,6 +162,7 @@ export class VisualRuntime {
     const record: SubscriberRecord = { id, callback, active: true };
     this.subs.set(id, record);
     this.schedule();
+    this.attachLongTaskObserver();
 
     return {
       id,
@@ -193,6 +217,33 @@ export class VisualRuntime {
     this.setQualityIndex(this.qualityIndex + 1);
   }
 
+  /** 首个订阅者启动时挂接 longtask，全生命周期只保留一个 observer。 */
+  private attachLongTaskObserver(): void {
+    if (this.longTaskObserver || this.longTaskObserverUnavailable) return;
+    try {
+      const observer = this.createLongTaskObserver((entries) => {
+        for (const entry of entries) this.recordLongTask(entry.duration);
+      });
+      if (!observer) return;
+      this.longTaskObserver = observer;
+      observer.observe({ entryTypes: ["longtask"] });
+    } catch (error) {
+      this.detachLongTaskObserver();
+      this.longTaskObserverUnavailable = true;
+      console.warn("[visualRuntime] longtask observer unavailable", error);
+    }
+  }
+
+  private detachLongTaskObserver(): void {
+    if (!this.longTaskObserver) return;
+    try {
+      this.longTaskObserver.disconnect();
+    } catch {
+      // 卸载路径上的 disconnect 失败不应冒泡
+    }
+    this.longTaskObserver = null;
+  }
+
   getStats(): VisualRuntimeStats {
     const quality = this.getQuality();
     return {
@@ -213,6 +264,8 @@ export class VisualRuntime {
     for (const record of this.subs.values()) record.active = false;
     this.subs.clear();
     this.stopFrame();
+    this.detachLongTaskObserver();
+    this.longTaskObserverUnavailable = false;
     this.detachVisibility?.();
     this.detachVisibility = null;
     this.visibilityAttached = false;
@@ -346,7 +399,10 @@ export class VisualRuntime {
     if (!record.active) return;
     record.active = false;
     if (this.subs.get(record.id) === record) this.subs.delete(record.id);
-    if (this.subs.size === 0) this.stopFrame();
+    if (this.subs.size === 0) {
+      this.stopFrame();
+      this.detachLongTaskObserver();
+    }
   }
 
   private resetTiming(): void {

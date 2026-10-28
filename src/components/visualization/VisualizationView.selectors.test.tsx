@@ -79,7 +79,7 @@ import { useVisualizationStore } from "@/store/visualizationStore";
 import type { EffectSettings, VisualizationEffect } from "@/store/visualizationStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
 import { featureFlags } from "@/lib/perf/featureFlags";
-import { visualRuntime } from "@/runtime/visualRuntime";
+import { visualRuntime, type VisualQualityProfile } from "@/runtime/visualRuntime";
 
 const initialAudioState = useAudioStore.getState();
 const initialUIState = useUIStore.getState();
@@ -306,11 +306,58 @@ describe("VisualizationView selector 隔离", () => {
     }
   });
 
+  it("flag on: tier change resizes once with the new dpr cap and particle scale", async () => {
+    let quality: VisualQualityProfile = { tier: "high", dprCap: 2, effectScale: 1 };
+    let notify: Parameters<typeof visualRuntime.onQualityChange>[0] | null = null;
+    const getQuality = vi.spyOn(visualRuntime, "getQuality").mockImplementation(() => quality);
+    const onQualityChange = vi
+      .spyOn(visualRuntime, "onQualityChange")
+      .mockImplementation((listener) => {
+        notify = listener;
+        return () => undefined;
+      });
+    const subscribe = vi
+      .spyOn(visualRuntime, "subscribe")
+      .mockReturnValue({ id: "visualization", active: true, stop: vi.fn() });
+    const originalDpr = window.devicePixelRatio;
+    Object.defineProperty(window, "devicePixelRatio", { configurable: true, value: 2 });
+
+    try {
+      useUIStore.setState({ currentView: "visualization" });
+      await mountView();
+
+      const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+      const widthSet = vi.spyOn(HTMLCanvasElement.prototype, "width", "set");
+      expect(canvas.width).toBe(2048);
+
+      quality = { tier: "medium", dprCap: 1.5, effectScale: 0.75 };
+      act(() => notify?.(quality, "high"));
+      expect(widthSet).toHaveBeenCalledTimes(1);
+      expect(canvas.width).toBe(1536);
+
+      // 同一档位重复通知不应再次重建后备存储（renderedQualityRef 去重）
+      act(() => notify?.(quality, "high"));
+      expect(widthSet).toHaveBeenCalledTimes(1);
+
+      quality = { tier: "low", dprCap: 1, effectScale: 0.5 };
+      act(() => notify?.(quality, "high"));
+      expect(widthSet).toHaveBeenCalledTimes(2);
+      expect(canvas.width).toBe(1024);
+      widthSet.mockRestore();
+    } finally {
+      getQuality.mockRestore();
+      onQualityChange.mockRestore();
+      subscribe.mockRestore();
+      Object.defineProperty(window, "devicePixelRatio", { configurable: true, value: originalDpr });
+    }
+  });
+
   it("flag off: 保留旧的 requestRaf 调度路径", async () => {
     const mutableFlags = featureFlags as { visualRuntime: boolean };
     const previousFlag = mutableFlags.visualRuntime;
     mutableFlags.visualRuntime = false;
     const subscribe = vi.spyOn(visualRuntime, "subscribe");
+    const onQualityChange = vi.spyOn(visualRuntime, "onQualityChange");
     const requestFrame = vi.spyOn(window, "requestAnimationFrame");
 
     try {
@@ -318,10 +365,12 @@ describe("VisualizationView selector 隔离", () => {
       await mountView();
 
       expect(subscribe).not.toHaveBeenCalled();
+      expect(onQualityChange).not.toHaveBeenCalled();
       expect(requestFrame).toHaveBeenCalled();
     } finally {
       mutableFlags.visualRuntime = previousFlag;
       subscribe.mockRestore();
+      onQualityChange.mockRestore();
       requestFrame.mockRestore();
     }
   });
