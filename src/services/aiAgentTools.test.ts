@@ -11,6 +11,7 @@ import {
 } from "./aiAgentTools";
 import { multiSourceResolver } from "./MultiSourceResolver";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useVisualizationStore } from "@/store/visualizationStore";
@@ -26,6 +27,8 @@ vi.mock("./MultiSourceResolver", () => ({
   },
 }));
 
+// 只保留写点与进度源：身份/音量等读点必须走 playerStore（见下方用例），
+// 若服务回退到 audioStore 读这些字段会直接拿到 undefined 而失败。
 vi.mock("@/store/audioStore", () => {
   const state = {
     playSong: vi.fn(),
@@ -35,13 +38,10 @@ vi.mock("@/store/audioStore", () => {
     setVolume: vi.fn(),
     toggleMute: vi.fn(),
     setLoopMode: vi.fn(),
-    currentSong: null as Song | null,
-    isPlaying: false,
-    volume: 0.8,
-    isMuted: false,
-    loopMode: "none",
     currentTime: 45,
     duration: 240,
+    isPlaying: false,
+    isLoading: false,
   };
   return {
     useAudioStore: {
@@ -116,6 +116,13 @@ describe("aiAgentTools - Complete Player Tools Suite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearSongCache();
+    usePlayerStore.setState({
+      currentSong: null,
+      isPlaying: false,
+      volume: 0.8,
+      isMuted: false,
+      loopMode: "none",
+    });
   });
 
   describe("Tool Definitions", () => {
@@ -302,16 +309,18 @@ describe("aiAgentTools - Complete Player Tools Suite", () => {
       expect(res.success).toBe(true);
       expect(audioState.setVolume).toHaveBeenCalledWith(0.65);
       expect(res.message).toContain("65%");
+      expect((res.data as any).volume).toBe(65);
     });
 
     it("should toggle mute when isMuted differs", async () => {
       const audioState = useAudioStore.getState();
-      audioState.isMuted = false;
+      usePlayerStore.setState({ isMuted: false });
 
       const res = await executeTool("set_volume", { isMuted: true });
       expect(res.success).toBe(true);
       expect(audioState.toggleMute).toHaveBeenCalled();
       expect(res.message).toContain("静音");
+      expect((res.data as any).isMuted).toBe(true);
     });
 
     it("should return error if no params provided", async () => {
@@ -346,27 +355,35 @@ describe("aiAgentTools - Complete Player Tools Suite", () => {
 
   describe("executeTool - get_current_playing", () => {
     it("should return current song info and status", async () => {
-      const audioState = useAudioStore.getState();
-      audioState.currentSong = {
-        id: "song_current",
-        title: "晴天",
-        artist: "周杰伦",
-        album: "叶惠美",
-        duration: 269,
-        source: "netease",
-      };
-      audioState.isPlaying = true;
+      usePlayerStore.setState({
+        currentSong: {
+          id: "song_current",
+          title: "晴天",
+          artist: "周杰伦",
+          album: "叶惠美",
+          duration: 269,
+          source: "netease",
+        },
+        isPlaying: true,
+        volume: 0.55,
+        isMuted: true,
+        loopMode: "single",
+      });
 
       const res = await executeTool("get_current_playing", {});
       expect(res.success).toBe(true);
       expect(res.message).toContain("晴天");
       expect((res.data as any).isPlaying).toBe(true);
       expect((res.data as any).song.title).toBe("晴天");
+      // 进度来自 PlaybackClock（audioStore mock 的 currentTime=45），音量/模式来自 playerStore
+      expect((res.data as any).progressSeconds).toBe(45);
+      expect((res.data as any).volume).toBe(55);
+      expect((res.data as any).isMuted).toBe(true);
+      expect((res.data as any).playMode).toBe("单曲循环");
     });
 
     it("should return message if nothing is playing", async () => {
-      const audioState = useAudioStore.getState();
-      audioState.currentSong = null;
+      usePlayerStore.setState({ currentSong: null });
 
       const res = await executeTool("get_current_playing", {});
       expect(res.success).toBe(true);
@@ -376,31 +393,33 @@ describe("aiAgentTools - Complete Player Tools Suite", () => {
 
   describe("executeTool - like_current_song", () => {
     it("should toggle favorite on current song if no songId provided", async () => {
-      const audioState = useAudioStore.getState();
-      audioState.currentSong = {
-        id: "song_fav",
-        title: "晴天",
-        artist: "周杰伦",
-        duration: 269,
-        source: "netease",
-      };
+      usePlayerStore.setState({
+        currentSong: {
+          id: "song_fav",
+          title: "晴天",
+          artist: "周杰伦",
+          duration: 269,
+          source: "netease",
+        },
+      });
 
       const favState = useFavoritesStore.getState();
 
       const res = await executeTool("like_current_song", { action: "like" });
       expect(res.success).toBe(true);
-      expect(favState.addToFavorites).toHaveBeenCalledWith(audioState.currentSong);
+      expect(favState.addToFavorites).toHaveBeenCalledWith(usePlayerStore.getState().currentSong);
     });
 
     it("should remove from favorites with unlike action", async () => {
-      const audioState = useAudioStore.getState();
-      audioState.currentSong = {
-        id: "song_fav",
-        title: "晴天",
-        artist: "周杰伦",
-        duration: 269,
-        source: "netease",
-      };
+      usePlayerStore.setState({
+        currentSong: {
+          id: "song_fav",
+          title: "晴天",
+          artist: "周杰伦",
+          duration: 269,
+          source: "netease",
+        },
+      });
 
       const favState = useFavoritesStore.getState();
 

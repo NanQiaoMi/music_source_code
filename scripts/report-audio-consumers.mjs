@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /** S6-4 audioStore 播放字段消费清单：9 个播放字段在 selector / getState / 别名 / setState 中的读写点。
- *  用法：node scripts/report-audio-consumers.mjs [--json <path>] [--fields a,b] [--group progress|playback] [--check]
+ *  用法：node scripts/report-audio-consumers.mjs [--json <path>] [--fields a,b] [--group progress|playback|all] [--check]
  *  --group：按迁移批次选择目标字段（progress = currentTime/duration/isLoading；
- *           playback = isPlaying；两组都只校验读点）。
- *  --check：components/hooks/lib 仍有目标字段引用时 exit 1；src/store 自身实现单独计入 store 层。 */
+ *           playback = isPlaying；all = 9 字段收尾校验；三组都只校验读点）。
+ *  --check：components/hooks/lib/services/store 仍有目标字段读点时 exit 1；
+ *           src/store/audioStore.ts 是字段定义/镜像/原子 hook 的定义点，属定义性豁免。 */
 import fs from "node:fs";
 import path from "node:path";
 
@@ -26,7 +27,17 @@ const TARGET_GROUPS = {
     // isPlaying 的 UI 读点统一走 PlaybackClock；写点（setIsPlaying/togglePlaybackIntent）仍走 audioStore。
     ignoreFiles: ["src/lib/playback/playbackClock.ts"],
   },
+  all: {
+    // PR5 收尾：身份/音量/循环模式的读点与进度、isPlaying 一并归零（--check 已覆盖 services/store）。
+    fields: FIELDS,
+    checkKinds: ["read"],
+    ignoreFiles: [],
+  },
 };
+/** --check 覆盖面：S6-4 前四批 components/hooks/lib；PR5 起把 services/store 纳入（plan 4d）。 */
+const CHECK_LAYERS = ["components", "hooks", "lib", "services", "store"];
+/** audioStore 自身：字段声明、双向镜像订阅、useAudio* 原子 hook 都在这里，属定义点而非消费点。 */
+const AUDIO_STORE_SELF = "src/store/audioStore.ts";
 const ACTION_FIELDS = Object.fromEntries(
   `setCurrentSong:currentSong updateCurrentSongCover:currentSong updateCurrentSongLyrics:currentSong
    setIsPlaying:isPlaying togglePlaybackIntent:isPlaying togglePlay:isPlaying setCurrentTime:currentTime
@@ -180,10 +191,10 @@ if (jsonPath) {
 }
 if (args.includes("--check")) {
   const checkKinds = group?.checkKinds;
-  const ignored = new Set(group?.ignoreFiles || []);
+  const ignored = new Set([AUDIO_STORE_SELF, ...(group?.ignoreFiles || [])]);
   const offenders = records.filter(
     (record) =>
-      ["components", "hooks", "lib"].includes(record.layer) &&
+      CHECK_LAYERS.includes(record.layer) &&
       targetFields.includes(record.field) &&
       !ignored.has(record.file) &&
       (!checkKinds || checkKinds.includes(record.kind))
@@ -194,5 +205,5 @@ if (args.includes("--check")) {
       console.error("  " + record.file + " " + record.field);
     process.exit(1);
   }
-  console.log("OK: target fields have 0 component/hook/lib references");
+  console.log("OK: target fields have 0 component/hook/lib/service/store references");
 }

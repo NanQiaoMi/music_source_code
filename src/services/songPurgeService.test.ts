@@ -3,6 +3,7 @@ import { evaluateSongIntegrity, scanInvalidSongs, purgeInvalidSongs } from "./so
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useLibraryHealthStore } from "@/store/libraryHealthStore";
 import type { Song } from "@/types/song";
 
@@ -63,6 +64,8 @@ describe("songPurgeService", () => {
       setIsPlaying: (playing: boolean) => useAudioStore.setState({ isPlaying: playing }),
       setCurrentSong: (song: Song | null) => useAudioStore.setState({ currentSong: song }),
     });
+    // 身份读点走 playerStore（audioStore 同名字段是 S6-3 镜像）
+    usePlayerStore.setState({ currentSong: brokenSong, isPlaying: true });
 
     useLibraryHealthStore.setState({
       healthReport: null,

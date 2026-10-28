@@ -24,22 +24,20 @@
     "isLoading"
   ],
   "totals": {
-    "references": 107,
-    "files": 29
+    "references": 91,
+    "files": 28
   },
   "byField": {
     "currentSong": {
-      "read": 8,
+      "read": 3,
       "write": 1,
       "files": [
-        "src/services/aiAgentTools.ts",
         "src/services/songPurgeService.ts",
-        "src/store/audioStore.ts",
-        "src/store/useAIAgentStore.ts"
+        "src/store/audioStore.ts"
       ]
     },
     "isPlaying": {
-      "read": 4,
+      "read": 2,
       "write": 32,
       "files": [
         "src/components/library/Shelf3DView.tsx",
@@ -64,12 +62,11 @@
         "src/services/aiAgentTools.ts",
         "src/services/songPurgeService.ts",
         "src/store/audioStore.ts",
-        "src/store/sleepTimerStore.ts",
-        "src/store/useAIAgentStore.ts"
+        "src/store/sleepTimerStore.ts"
       ]
     },
     "currentTime": {
-      "read": 4,
+      "read": 2,
       "write": 26,
       "files": [
         "src/components/features-v7/ABLoopToggle.tsx",
@@ -85,24 +82,21 @@
         "src/hooks/useKeyboardShortcuts.ts",
         "src/hooks/useMediaSession.ts",
         "src/lib/bootstrap.ts",
-        "src/services/aiAgentTools.ts",
-        "src/store/audioStore.ts",
-        "src/store/useAIAgentStore.ts"
+        "src/store/audioStore.ts"
       ]
     },
     "duration": {
-      "read": 3,
+      "read": 2,
       "write": 6,
       "files": [
         "src/components/visualization/VisualizationView.tsx",
         "src/hooks/useAudioPlayer.ts",
         "src/lib/bootstrap.ts",
-        "src/store/audioStore.ts",
-        "src/store/useAIAgentStore.ts"
+        "src/store/audioStore.ts"
       ]
     },
     "volume": {
-      "read": 4,
+      "read": 2,
       "write": 1,
       "files": [
         "src/services/aiAgentTools.ts",
@@ -110,7 +104,7 @@
       ]
     },
     "isMuted": {
-      "read": 5,
+      "read": 2,
       "write": 1,
       "files": [
         "src/services/aiAgentTools.ts",
@@ -125,7 +119,7 @@
       ]
     },
     "loopMode": {
-      "read": 3,
+      "read": 2,
       "write": 1,
       "files": [
         "src/services/aiAgentTools.ts",
@@ -156,12 +150,12 @@
       "files": 2
     },
     "services": {
-      "references": 21,
+      "references": 9,
       "files": 2
     },
     "store": {
-      "references": 23,
-      "files": 3
+      "references": 19,
+      "files": 2
     },
     "app": {
       "references": 0,
@@ -232,25 +226,13 @@
     "src/lib/bootstrap.ts:currentTime:write:setState",
     "src/lib/bootstrap.ts:duration:write:setState",
     "src/lib/bootstrap.ts:isPlaying:write:setState",
-    "src/services/aiAgentTools.ts:currentSong:read:currentSong",
-    "src/services/aiAgentTools.ts:currentSong:read:currentSong",
-    "src/services/aiAgentTools.ts:currentTime:read:currentTime",
-    "src/services/aiAgentTools.ts:isMuted:read:isMuted",
-    "src/services/aiAgentTools.ts:isMuted:read:isMuted",
-    "src/services/aiAgentTools.ts:isMuted:read:isMuted",
     "src/services/aiAgentTools.ts:isMuted:write:toggleMute",
-    "src/services/aiAgentTools.ts:isPlaying:read:isPlaying",
     "src/services/aiAgentTools.ts:isPlaying:write:setIsPlaying",
     "src/services/aiAgentTools.ts:isPlaying:write:setIsPlaying",
     "src/services/aiAgentTools.ts:isPlaying:write:setIsPlaying",
     "src/services/aiAgentTools.ts:isPlaying:write:setIsPlaying",
-    "src/services/aiAgentTools.ts:loopMode:read:loopMode",
     "src/services/aiAgentTools.ts:loopMode:write:setLoopMode",
-    "src/services/aiAgentTools.ts:volume:read:volume",
-    "src/services/aiAgentTools.ts:volume:read:volume",
     "src/services/aiAgentTools.ts:volume:write:setVolume",
-    "src/services/songPurgeService.ts:currentSong:read:currentSong",
-    "src/services/songPurgeService.ts:currentSong:read:currentSong",
     "src/services/songPurgeService.ts:currentSong:write:setCurrentSong",
     "src/services/songPurgeService.ts:isPlaying:write:setIsPlaying",
     "src/store/audioStore.ts:currentSong:read:currentSong",
@@ -271,10 +253,6 @@
     "src/store/audioStore.ts:playbackRate:read:playbackRate",
     "src/store/audioStore.ts:volume:read:volume",
     "src/store/audioStore.ts:volume:read:volume",
-    "src/store/sleepTimerStore.ts:isPlaying:write:setIsPlaying",
-    "src/store/useAIAgentStore.ts:currentSong:read:currentSong",
-    "src/store/useAIAgentStore.ts:currentTime:read:currentTime",
-    "src/store/useAIAgentStore.ts:duration:read:duration",
-    "src/store/useAIAgentStore.ts:isPlaying:read:isPlaying"
+    "src/store/sleepTimerStore.ts:isPlaying:write:setIsPlaying"
   ]
 }

@@ -5,6 +5,8 @@ import { Song } from "@/types/song";
 import { AgentMessage, AgentSessionMeta } from "@/types/aiAgent";
 import { useAIStore } from "./aiStore";
 import { useAudioStore } from "./audioStore";
+import { usePlayerStore } from "./playerStore";
+import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { useOfflineDownloadStore } from "./useOfflineDownloadStore";
 import { useUIStore } from "./uiStore";
 import { useEmotionStore } from "./emotionStore";
@@ -84,10 +86,9 @@ export function extractLyricsSnippet(lyrics: string, currentTime: number): strin
 }
 
 export function getDynamicPlaybackContext(): MusicPlaybackContext {
-  const audioState = useAudioStore.getState();
-  const currentSong = audioState.currentSong;
-  const currentTime = audioState.currentTime || 0;
-  const isPlaying = audioState.isPlaying;
+  // 身份读 playerStore（音频字段 owner 镜像）；进度读 PlaybackClock，避免直接依赖 audioStore。
+  const currentSong = usePlayerStore.getState().currentSong;
+  const { currentTime, duration, isPlaying } = getPlaybackClockSnapshot();
 
   // 1. 时段计算
   const now = new Date();
@@ -140,7 +141,7 @@ export function getDynamicPlaybackContext(): MusicPlaybackContext {
           title: currentSong.title,
           artist: currentSong.artist,
           album: currentSong.album,
-          duration: audioState.duration,
+          duration,
           currentTime,
           isPlaying,
           lyricsSnippet,

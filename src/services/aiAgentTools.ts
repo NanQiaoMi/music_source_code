@@ -2,6 +2,8 @@ import { Song } from "@/types/song";
 import { ToolDefinition, ToolExecutionResult } from "@/types/aiAgent";
 import { multiSourceResolver } from "@/services/MultiSourceResolver";
 import { useAudioStore, LoopMode } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
+import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useVisualizationStore, VisualizationEffect } from "@/store/visualizationStore";
@@ -486,18 +488,23 @@ export async function executeTool(
 
       case "set_volume": {
         const audioStore = useAudioStore.getState();
+        const playerState = usePlayerStore.getState();
         const results: string[] = [];
+        let nextVolume = playerState.volume;
+        let nextMuted = playerState.isMuted;
 
         if (typeof args.volume === "number" && !Number.isNaN(args.volume)) {
           const clamped = Math.max(0, Math.min(100, args.volume));
           audioStore.setVolume(clamped / 100);
+          nextVolume = clamped / 100;
           results.push(`音量已调整为 ${clamped}%`);
         }
 
         if (typeof args.isMuted === "boolean") {
-          if (args.isMuted !== audioStore.isMuted) {
+          if (args.isMuted !== playerState.isMuted) {
             audioStore.toggleMute();
           }
+          nextMuted = args.isMuted;
           results.push(args.isMuted ? "已开启静音" : "已取消静音");
         }
 
@@ -513,8 +520,8 @@ export async function executeTool(
           success: true,
           message: results.join("，"),
           data: {
-            volume: Math.round(useAudioStore.getState().volume * 100),
-            isMuted: useAudioStore.getState().isMuted,
+            volume: Math.round(nextVolume * 100),
+            isMuted: nextMuted,
           },
         };
       }
@@ -558,8 +565,9 @@ export async function executeTool(
       }
 
       case "get_current_playing": {
-        const audioStore = useAudioStore.getState();
-        const currentSong = audioStore.currentSong;
+        const playerState = usePlayerStore.getState();
+        const { currentTime } = getPlaybackClockSnapshot();
+        const currentSong = playerState.currentSong;
 
         if (!currentSong) {
           return {
@@ -584,7 +592,7 @@ export async function executeTool(
           success: true,
           message: `当前正在播放: 《${currentSong.title}》 - ${currentSong.artist}`,
           data: {
-            isPlaying: audioStore.isPlaying,
+            isPlaying: playerState.isPlaying,
             song: {
               id: currentSong.id,
               title: currentSong.title,
@@ -593,11 +601,11 @@ export async function executeTool(
               duration: currentSong.duration,
               source: currentSong.source,
             },
-            progressSeconds: Math.round(audioStore.currentTime),
-            volume: Math.round(audioStore.volume * 100),
-            isMuted: audioStore.isMuted,
+            progressSeconds: Math.round(currentTime),
+            volume: Math.round(playerState.volume * 100),
+            isMuted: playerState.isMuted,
             isFavorite: isFav,
-            playMode: loopModeMap[audioStore.loopMode] || "顺序播放",
+            playMode: loopModeMap[playerState.loopMode] || "顺序播放",
           },
         };
       }
@@ -611,7 +619,7 @@ export async function executeTool(
           targetSong = getCachedSong(songId) || null;
         }
         if (!targetSong) {
-          targetSong = useAudioStore.getState().currentSong;
+          targetSong = usePlayerStore.getState().currentSong;
         }
 
         if (!targetSong) {

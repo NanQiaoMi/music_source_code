@@ -4,6 +4,7 @@ import { deleteCoverFromCache } from "./coverCache";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useLibraryHealthStore, generateHealthReport } from "@/store/libraryHealthStore";
 
 export interface InvalidSongEvaluation {
@@ -111,8 +112,10 @@ export async function purgeInvalidSongs(songIds: string[]): Promise<PurgeReport>
   // 1. Check & safely stop current playback if currently playing one of the target songs
   let stoppedPlayback = false;
   try {
-    const audioState = useAudioStore.getState();
-    if (audioState.currentSong && targetIdSet.has(audioState.currentSong.id)) {
+    // 身份读 playerStore（audioStore 的 owner 镜像）；停止播放仍走 audioStore 编排写点。
+    const playerState = usePlayerStore.getState();
+    if (playerState.currentSong && targetIdSet.has(playerState.currentSong.id)) {
+      const audioState = useAudioStore.getState();
       audioState.setIsPlaying(false);
       audioState.setCurrentSong(null);
       stoppedPlayback = true;
