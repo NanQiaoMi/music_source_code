@@ -41,7 +41,7 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit --incremental false --pretty false
       - name: Lint (src, 0 warnings)
-        run: npx eslint src --max-warnings=0 --report-unused-disable-directives
+        run: npx eslint src --ext ts,tsx --rulesdir eslint-rules --max-warnings=0 --report-unused-disable-directives
       - name: Unit tests
         run: npm run test -- --run
       - name: Production build

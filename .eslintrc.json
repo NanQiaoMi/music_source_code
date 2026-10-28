@@ -16,6 +16,7 @@
     }
   },
   "rules": {
+    "no-whole-store": "error",
     "react/react-in-jsx-scope": "off",
     "prettier/prettier": "error",
     "@typescript-eslint/no-unused-vars": [

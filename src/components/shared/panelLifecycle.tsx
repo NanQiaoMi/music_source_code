@@ -87,7 +87,6 @@ export function PanelRetentionProvider({
     const newlyOpened = lruPanels.filter((name) => !previousOpen?.has(name));
     if (newlyOpened.length === 0) return;
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOrder((current) => {
       const moved = newlyOpened.slice().reverse();
       return [...moved, ...current.filter((name) => !moved.includes(name))].slice(0, capacity);
