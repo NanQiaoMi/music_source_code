@@ -78,6 +78,8 @@ import { useUIStore } from "@/store/uiStore";
 import { useVisualizationStore } from "@/store/visualizationStore";
 import type { EffectSettings, VisualizationEffect } from "@/store/visualizationStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
+import { featureFlags } from "@/lib/perf/featureFlags";
+import { visualRuntime } from "@/runtime/visualRuntime";
 
 const initialAudioState = useAudioStore.getState();
 const initialUIState = useUIStore.getState();
@@ -249,6 +251,44 @@ describe("VisualizationView selector 隔离", () => {
     expect(cover?.getAttribute("loading")).toBe("eager");
     expect(cover?.getAttribute("fetchpriority")).toBe("high");
     expect(cover?.getAttribute("sizes")).toBe("100vw");
+  });
+
+  it("flag on: VisualizationView 订阅共享 VisualRuntime", async () => {
+    const stop = vi.fn();
+    const subscribe = vi.spyOn(visualRuntime, "subscribe").mockReturnValue({
+      id: "visualization",
+      active: true,
+      stop,
+    });
+
+    try {
+      useUIStore.setState({ currentView: "visualization" });
+      await mountView();
+
+      expect(subscribe).toHaveBeenCalledWith("visualization", expect.any(Function));
+    } finally {
+      subscribe.mockRestore();
+    }
+  });
+
+  it("flag off: 保留旧的 requestRaf 调度路径", async () => {
+    const mutableFlags = featureFlags as { visualRuntime: boolean };
+    const previousFlag = mutableFlags.visualRuntime;
+    mutableFlags.visualRuntime = false;
+    const subscribe = vi.spyOn(visualRuntime, "subscribe");
+    const requestFrame = vi.spyOn(window, "requestAnimationFrame");
+
+    try {
+      useUIStore.setState({ currentView: "visualization" });
+      await mountView();
+
+      expect(subscribe).not.toHaveBeenCalled();
+      expect(requestFrame).toHaveBeenCalled();
+    } finally {
+      mutableFlags.visualRuntime = previousFlag;
+      subscribe.mockRestore();
+      requestFrame.mockRestore();
+    }
   });
 
   it("makeCanvasStyle 对 spatialMesh 的 blurIntensity 做 80px 上限", () => {

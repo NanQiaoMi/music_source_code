@@ -15,7 +15,9 @@ import {
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
+import { featureFlags } from "@/lib/perf/featureFlags";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
+import { visualRuntime } from "@/runtime/visualRuntime";
 import { CoverImage } from "@/components/shared/ui/CoverImage";
 import { X, Maximize2, Minimize2, Settings, Video } from "lucide-react";
 const RecordingPanel = dynamic(
@@ -194,6 +196,8 @@ export function VisualizationView() {
   const effectFadeStartRef = useRef<number | null>(null);
   // 视口尺寸以 CSS 像素为准，画布后备存储按 dpr 放大；效果绘制坐标始终是 CSS 像素
   const viewportRef = useRef({ w: 0, h: 0, dpr: 1 });
+  // 当前画布已应用的画质档位；档位变化时按新的 effectScale 重建粒子池
+  const renderedQualityRef = useRef<string | null>(null);
 
   // Mouse idle detection for Zen Mode
   // 它切换的是本视图的页眉/页脚，因此只在可视化视图内监听即可：
@@ -336,7 +340,10 @@ export function VisualizationView() {
     if (!ctx) return;
 
     const resize = () => {
-      const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, MAX_RENDER_DPR));
+      // 画质档位由 VisualRuntime 统一裁决；flag 关闭时保持 S5-1 之前的固定 DPR 上限
+      const quality = featureFlags.visualRuntime ? visualRuntime.getQuality() : null;
+      const dprCap = quality?.dprCap ?? MAX_RENDER_DPR;
+      const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, dprCap));
 
       // 以画布元素自身的渲染尺寸为准。window.innerWidth/Height 与元素实际占位并不总是一致
       // （滚动条、缩放、容器尺寸变化等），用错会导致后备存储与显示比例不符而画面变形。
@@ -344,20 +351,27 @@ export function VisualizationView() {
       const h = Math.max(1, canvas.clientHeight || window.innerHeight);
       const backingWidth = Math.max(1, Math.round(w * dpr));
       const backingHeight = Math.max(1, Math.round(h * dpr));
+      const qualityTier = quality?.tier ?? "legacy";
+      const qualityChanged = renderedQualityRef.current !== qualityTier;
 
-      // 尺寸没变就不要重设后备存储：重设会清空画布并造成一次可见的闪烁
-      if (canvas.width === backingWidth && canvas.height === backingHeight) return;
+      // 尺寸没变就不要重设后备存储（会清空画布造成闪烁）；画质档位变化时
+      // 仍按新的 effectScale 重建粒子池。
+      if (canvas.width === backingWidth && canvas.height === backingHeight && !qualityChanged) {
+        return;
+      }
 
       viewportRef.current = { w, h, dpr };
-      canvas.width = backingWidth;
-      canvas.height = backingHeight;
-
-      initParticles(w, h);
+      if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+        canvas.width = backingWidth;
+        canvas.height = backingHeight;
+      }
+      renderedQualityRef.current = qualityTier;
+      initParticles(w, h, quality?.effectScale ?? 1);
     };
 
-    const initParticles = (_w: number, _h: number) => {
+    const initParticles = (_w: number, _h: number, effectScale = 1) => {
       particlesRef.current = [];
-      const count = 1000;
+      const count = Math.max(120, Math.round(1000 * effectScale));
       for (let i = 0; i < count; i++) {
         particlesRef.current.push({
           x: (Math.random() - 0.5) * 2000,
@@ -387,6 +401,13 @@ export function VisualizationView() {
 
     const draw = (timestamp: number) => {
       timeRef.current = timestamp;
+
+      // 自适应画质降档后同步 canvas DPR 与粒子密度。resize 内部只在档位变化时重建，
+      // 不会每帧重置后备存储。
+      if (featureFlags.visualRuntime) {
+        const quality = visualRuntime.getQuality();
+        if (renderedQualityRef.current !== quality.tier) resize();
+      }
 
       const state = useVisualizationStore.getState();
       const currentEff = state.currentEffect;
@@ -584,9 +605,13 @@ export function VisualizationView() {
           }
         }
       }
+    };
 
+    // flag 关闭时保留旧的自调度循环，恢复 S5-1 之前的调度行为
+    const legacyLoop = (timestamp: number) => {
+      draw(timestamp);
       if (document.visibilityState === "visible") {
-        animationFrameRef.current = requestRaf(draw);
+        animationFrameRef.current = requestRaf(legacyLoop);
       } else {
         animationFrameRef.current = null;
       }
@@ -605,28 +630,33 @@ export function VisualizationView() {
         if (activeAudio && Number.isFinite(activeAudio.duration) && activeAudio.duration > 0) {
           useAudioStore.getState().setDuration(activeAudio.duration);
         }
-        if (!animationFrameRef.current) {
-          animationFrameRef.current = requestRaf(draw);
+        if (!featureFlags.visualRuntime && !animationFrameRef.current) {
+          animationFrameRef.current = requestRaf(legacyLoop);
         }
-      } else {
-        if (animationFrameRef.current) {
-          cancelRaf(animationFrameRef.current);
-          animationFrameRef.current = null;
-        }
+      } else if (!featureFlags.visualRuntime && animationFrameRef.current) {
+        cancelRaf(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    animationFrameRef.current = requestRaf(draw);
+    const subscription = featureFlags.visualRuntime
+      ? visualRuntime.subscribe("visualization", draw)
+      : null;
+    if (!subscription) {
+      animationFrameRef.current = requestRaf(legacyLoop);
+    }
 
     return () => {
       window.removeEventListener("resize", resize);
       resizeObserver?.disconnect();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      subscription?.stop();
       if (animationFrameRef.current) {
         cancelRaf(animationFrameRef.current);
         animationFrameRef.current = null;
       }
+      renderedQualityRef.current = null;
 
       // Explicitly clear large data structures to help GC
       particlesRef.current = [];
