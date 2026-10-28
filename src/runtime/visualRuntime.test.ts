@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { createRafScheduler, type RafSchedulerEnv } from "@/lib/perf/rafScheduler";
-import { FPS_DOWNGRADE_THRESHOLD, createVisualRuntime, type VisualRuntime } from "./visualRuntime";
+import {
+  FPS_DOWNGRADE_THRESHOLD,
+  LONG_TASK_COOLDOWN_MS,
+  LONG_TASK_THRESHOLD_MS,
+  createVisualRuntime,
+  type VisualRuntime,
+} from "./visualRuntime";
 
 function createHarness(initialHidden = false, options: { now?: () => number } = {}) {
   const frames = new Map<number, FrameRequestCallback>();
@@ -140,6 +146,106 @@ describe("VisualRuntime", () => {
     h.setHidden(false);
     h.pump(frameSeries(0, 181, 16.67));
     expect(h.runtime.getStats().quality).toBe("high");
+  });
+
+  it("recordLongTask drops one tier immediately and respects the cooldown", () => {
+    let clock = 0;
+    const h = createHarness(false, { now: () => clock });
+    const changes: Array<[string, string]> = [];
+    h.runtime.onQualityChange((next, previous) => changes.push([previous, next.tier]));
+
+    // 阈值本身（50ms）不算长任务
+    h.runtime.recordLongTask(LONG_TASK_THRESHOLD_MS);
+    expect(h.runtime.qualityTier).toBe("high");
+
+    h.runtime.recordLongTask(80);
+    expect(h.runtime.qualityTier).toBe("medium");
+
+    clock += LONG_TASK_COOLDOWN_MS / 2;
+    h.runtime.recordLongTask(80);
+    expect(h.runtime.qualityTier).toBe("medium");
+
+    clock += LONG_TASK_COOLDOWN_MS;
+    h.runtime.recordLongTask(80);
+    expect(h.runtime.qualityTier).toBe("low");
+
+    // 冷却结束后的重复长任务保持 low，不越界也不重复通知
+    clock += LONG_TASK_COOLDOWN_MS;
+    h.runtime.recordLongTask(500);
+    expect(h.runtime.qualityTier).toBe("low");
+    expect(changes).toEqual([
+      ["high", "medium"],
+      ["medium", "low"],
+    ]);
+  });
+
+  it("simulates 4x throttle (33ms frames) and reaches low within two windows", () => {
+    const h = createHarness();
+    h.runtime.subscribe("a", () => {});
+    const throttled = frameSeries(0, 93, 33.4);
+
+    h.pump(throttled.slice(0, 31));
+    expect(h.runtime.getStats().fps).toBeLessThan(FPS_DOWNGRADE_THRESHOLD);
+    expect(h.runtime.qualityTier).toBe("medium");
+
+    h.pump(throttled.slice(31, 62));
+    expect(h.runtime.qualityTier).toBe("low");
+
+    // 继续低于 50fps 只保持 low，不重复通知
+    const changes = vi.fn();
+    h.runtime.onQualityChange(changes);
+    h.pump(throttled.slice(62));
+    expect(h.runtime.qualityTier).toBe("low");
+    expect(changes).not.toHaveBeenCalled();
+  });
+
+  it("upgrades one tier after three stable >=58fps windows", () => {
+    let clock = 0;
+    const h = createHarness(false, { now: () => clock });
+    h.runtime.recordLongTask(80);
+    clock += LONG_TASK_COOLDOWN_MS;
+    h.runtime.recordLongTask(80);
+    expect(h.runtime.qualityTier).toBe("low");
+
+    const changes = vi.fn();
+    h.runtime.onQualityChange(changes);
+    h.runtime.subscribe("a", () => {});
+    const stable = frameSeries(0, 183, 16.67);
+
+    // 两个窗口（122 帧）仍不足 3 个稳定窗口，不升档
+    h.pump(stable.slice(0, 122));
+    expect(h.runtime.qualityTier).toBe("low");
+    expect(changes).not.toHaveBeenCalled();
+
+    h.pump(stable.slice(122));
+    expect(h.runtime.qualityTier).toBe("medium");
+    expect(changes).toHaveBeenCalledTimes(1);
+    expect(changes.mock.calls[0][0]).toMatchObject({ tier: "medium" });
+    expect(changes.mock.calls[0][1]).toBe("low");
+  });
+
+  it("exposes tier via getQuality(), qualityTier, and getStats()", () => {
+    const h = createHarness();
+    expect(h.runtime.getQuality()).toEqual({ tier: "high", dprCap: 2, effectScale: 1 });
+    expect(h.runtime.qualityTier).toBe("high");
+
+    h.runtime.recordLongTask(60);
+    expect(h.runtime.getQuality()).toEqual({ tier: "medium", dprCap: 1.5, effectScale: 0.75 });
+    expect(h.runtime.qualityTier).toBe(h.runtime.getQuality().tier);
+    expect(h.runtime.getStats()).toMatchObject({
+      quality: "medium",
+      dprCap: 1.5,
+      effectScale: 0.75,
+    });
+
+    // 构造函数上的 onQualityChange 也被通知
+    const envChanges = vi.fn();
+    const runtime = createVisualRuntime({ onQualityChange: envChanges, now: () => 0 });
+    runtime.recordLongTask(60);
+    expect(envChanges).toHaveBeenCalledWith(
+      { tier: "medium", dprCap: 1.5, effectScale: 0.75 },
+      "high"
+    );
   });
 
   it("pauses on hidden, keeps no pending frame, and resets delta on visibility", () => {

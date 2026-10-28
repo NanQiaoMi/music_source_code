@@ -9,6 +9,9 @@ import { rafScheduler, type RafScheduler } from "@/lib/perf/rafScheduler";
  *
  * S5-2 起同时记录每次订阅者回调的绘制耗时（最近 120 次），getStats() 给出
  * drawP50Ms/drawP95Ms，作为"迁移前后 draw p95 劣化 ≤10%"的测量口径。
+ *
+ * S5-6 起 qualityTier 是唯一画质权威：FPS 窗口之外的 >50ms 长任务立即降一档
+ * （冷却期内不重复降档），任何档位变化都通过 onQualityChange 通知消费者。
  */
 
 export type VisualQuality = "high" | "medium" | "low";
@@ -32,6 +35,10 @@ export const FPS_DOWNGRADE_THRESHOLD = 50;
 export const FPS_UPGRADE_THRESHOLD = 58;
 export const FPS_SAMPLE_WINDOW_MS = 1000;
 export const QUALITY_UPGRADE_STABLE_WINDOWS = 3;
+/** 长任务阈值：主线程阻塞超过该值时降档。 */
+export const LONG_TASK_THRESHOLD_MS = 50;
+/** 长任务降档冷却：避免同一次卡顿里连降多档。 */
+export const LONG_TASK_COOLDOWN_MS = 1000;
 
 const FALLBACK_DELTA_MS = 1000 / 60;
 const MAX_DELTA_MS = 50;
@@ -40,6 +47,9 @@ const MIN_SAMPLE_FRAMES = 10;
 const DRAW_SAMPLE_CAPACITY = 120;
 
 export type VisualSubscriber = (time: number, delta: number) => void;
+
+/** 档位变化通知：previous 为变化前的 tier。 */
+export type VisualQualityListener = (next: VisualQualityProfile, previous: VisualQuality) => void;
 
 export interface VisualFrameHandle {
   readonly id: string;
@@ -68,6 +78,8 @@ export interface VisualRuntimeEnv {
   onVisibilityChange?: (listener: () => void) => () => void;
   /** 绘制耗时采样时钟；测试注入虚拟时钟用。 */
   now?: () => number;
+  /** 初始档位变化监听（等价于构造后调用 onQualityChange）。 */
+  onQualityChange?: VisualQualityListener;
 }
 
 interface SubscriberRecord {
@@ -91,10 +103,12 @@ export class VisualRuntime {
   private readonly onVisibilityChange: (listener: () => void) => () => void;
   private readonly now: () => number;
   private readonly subs = new Map<string, SubscriberRecord>();
+  private readonly qualityListeners = new Set<VisualQualityListener>();
   /** 定长环形缓冲：避免每帧为统计分配数组。 */
   private readonly drawDurations = new Float64Array(DRAW_SAMPLE_CAPACITY);
   private drawCursor = 0;
   private drawCount = 0;
+  private lastLongTaskAt: number | null = null;
   private qualityIndex = 0;
   private stableWindows = 0;
   private frameHandle: number | null = null;
@@ -113,6 +127,7 @@ export class VisualRuntime {
     this.isHidden = env.isHidden ?? defaultIsHidden;
     this.onVisibilityChange = env.onVisibilityChange ?? defaultOnVisibilityChange;
     this.now = env.now ?? (() => performance.now());
+    if (env.onQualityChange) this.qualityListeners.add(env.onQualityChange);
   }
 
   subscribe(id: string, callback: VisualSubscriber): VisualFrameHandle {
@@ -151,6 +166,33 @@ export class VisualRuntime {
     return VISUAL_QUALITY_PROFILES[this.qualityIndex];
   }
 
+  /** 当前档位快捷读取（等价 getQuality().tier）。 */
+  get qualityTier(): VisualQuality {
+    return VISUAL_QUALITY_PROFILES[this.qualityIndex].tier;
+  }
+
+  /** 订阅档位变化；返回解除订阅函数。 */
+  onQualityChange(listener: VisualQualityListener): () => void {
+    this.qualityListeners.add(listener);
+    return () => {
+      this.qualityListeners.delete(listener);
+    };
+  }
+
+  /**
+   * 汇报一次长任务（主线程阻塞时长）。
+   * >50ms 立即降一档；冷却期内的后续长任务不叠加；已到 low 时保持 low。
+   * 浏览器侧由 PerformanceObserver("longtask") 调用（S5-6b 布线）。
+   */
+  recordLongTask(durationMs: number): void {
+    if (durationMs <= LONG_TASK_THRESHOLD_MS) return;
+    const now = this.now();
+    if (this.lastLongTaskAt !== null && now - this.lastLongTaskAt < LONG_TASK_COOLDOWN_MS) return;
+    this.lastLongTaskAt = now;
+    this.stableWindows = 0;
+    this.setQualityIndex(this.qualityIndex + 1);
+  }
+
   getStats(): VisualRuntimeStats {
     const quality = this.getQuality();
     return {
@@ -177,6 +219,8 @@ export class VisualRuntime {
     this.paused = false;
     this.drawCursor = 0;
     this.drawCount = 0;
+    this.lastLongTaskAt = null;
+    this.qualityListeners.clear();
   }
 
   private readonly tick = (time: number): void => {
@@ -236,10 +280,9 @@ export class VisualRuntime {
   }
 
   private adaptQuality(fps: number): void {
-    const lastIndex = VISUAL_QUALITY_PROFILES.length - 1;
     if (fps < FPS_DOWNGRADE_THRESHOLD) {
       this.stableWindows = 0;
-      this.qualityIndex = Math.min(lastIndex, this.qualityIndex + 1);
+      this.setQualityIndex(this.qualityIndex + 1);
       return;
     }
     if (fps < FPS_UPGRADE_THRESHOLD) {
@@ -250,7 +293,24 @@ export class VisualRuntime {
     this.stableWindows += 1;
     if (this.stableWindows < QUALITY_UPGRADE_STABLE_WINDOWS) return;
     this.stableWindows = 0;
-    this.qualityIndex = Math.max(0, this.qualityIndex - 1);
+    this.setQualityIndex(this.qualityIndex - 1);
+  }
+
+  /** 档位唯一写入口：夹取范围，变化时通知监听者（单个监听者异常不影响其它监听者）。 */
+  private setQualityIndex(nextIndex: number): void {
+    const clamped = Math.max(0, Math.min(VISUAL_QUALITY_PROFILES.length - 1, nextIndex));
+    if (clamped === this.qualityIndex) return;
+    const previous = VISUAL_QUALITY_PROFILES[this.qualityIndex].tier;
+    const next = VISUAL_QUALITY_PROFILES[clamped];
+    this.qualityIndex = clamped;
+    for (const listener of Array.from(this.qualityListeners)) {
+      try {
+        listener(next, previous);
+      } catch (error) {
+        console.error("[visualRuntime] quality listener failed", error);
+        this.qualityListeners.delete(listener);
+      }
+    }
   }
 
   private attachVisibility(): void {
