@@ -7,6 +7,7 @@ import { QueuePanel } from "./QueuePanel";
 import { useQueueStore } from "@/store/queueStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
+import type { Song } from "@/types/song";
 
 vi.mock("framer-motion", () => ({
   motion: new Proxy(
@@ -21,16 +22,42 @@ vi.mock("framer-motion", () => ({
 }));
 
 vi.mock("next/image", () => ({
-  default: ({ fill: _fill, sizes: _sizes, unoptimized: _unoptimized, ...props }: any) => (
-    <img {...props} alt={props.alt || ""} />
-  ),
+  default: ({
+    fill: _fill,
+    sizes: _sizes,
+    unoptimized: _unoptimized,
+    blurDataURL: _blurDataURL,
+    placeholder: _placeholder,
+    ...props
+  }: any) => <img {...props} alt={props.alt || ""} />,
 }));
+
+const VIEWPORT_HEIGHT = 480;
+// Must match QUEUE_ROW_HEIGHT in QueuePanel.tsx (66px row + 6px gap).
+const QUEUE_ROW_HEIGHT = 72;
+
+const makeQueue = (count: number): Song[] =>
+  Array.from({ length: count }, (_, index) => ({
+    id: "song-" + index,
+    title: "Track " + index,
+    artist: "Artist " + index,
+    duration: 200,
+    source: "local",
+  }));
 
 describe("QueuePanel", () => {
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
+  let originalClientHeight: PropertyDescriptor | undefined;
 
   beforeEach(() => {
+    // jsdom has no layout: pin the measured list height so windowing math is deterministic.
+    originalClientHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientHeight");
+    Object.defineProperty(HTMLElement.prototype, "clientHeight", {
+      configurable: true,
+      get: () => VIEWPORT_HEIGHT,
+    });
+
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -67,8 +94,32 @@ describe("QueuePanel", () => {
       root.unmount();
     });
     container.remove();
+    if (originalClientHeight) {
+      Object.defineProperty(HTMLElement.prototype, "clientHeight", originalClientHeight);
+    } else {
+      Reflect.deleteProperty(HTMLElement.prototype, "clientHeight");
+    }
     vi.clearAllMocks();
   });
+
+  const getVirtualList = (): HTMLElement => {
+    const list = container.querySelector<HTMLElement>("[data-virtual-list]");
+    expect(list).not.toBeNull();
+    return list as HTMLElement;
+  };
+
+  const renderPanel = async (): Promise<void> => {
+    await act(async () => {
+      root.render(<QueuePanel isOpen={true} onClose={vi.fn()} />);
+    });
+  };
+
+  const seedLongQueue = (count: number, currentIndex: number): Song[] => {
+    const queue = makeQueue(count);
+    useQueueStore.setState({ queue, currentIndex });
+    useAudioStore.setState({ currentSong: queue[currentIndex], isPlaying: true });
+    return queue;
+  };
 
   it("does not render when isOpen is false", async () => {
     await act(async () => {
@@ -125,6 +176,82 @@ describe("QueuePanel", () => {
       "repeated-song",
     ]);
     expect(useQueueStore.getState().currentIndex).toBe(1);
+  });
+
+  it("renders a bounded DOM window for a 500-song queue", async () => {
+    seedLongQueue(500, 0);
+
+    await renderPanel();
+
+    const rows = container.querySelectorAll("[data-queue-index]");
+    // 480px / 72px = 7 viewport rows + 5 overscan; the other ~488 rows stay unmounted.
+    expect(rows).toHaveLength(12);
+    expect(rows.length).toBeLessThan(100);
+    expect(container.textContent).toContain("Track 0");
+    expect(container.textContent).not.toContain("Track 400");
+  });
+
+  it("renders the correct rows after scrolling a 500-song queue to the end", async () => {
+    seedLongQueue(500, 0);
+    await renderPanel();
+
+    const list = getVirtualList();
+    list.scrollTop = 499 * QUEUE_ROW_HEIGHT;
+    await act(async () => {
+      list.dispatchEvent(new Event("scroll", { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain("Track 499");
+    expect(container.textContent).not.toContain("Track 0");
+
+    const indices = Array.from(container.querySelectorAll("[data-queue-index]")).map((el) =>
+      Number(el.getAttribute("data-queue-index"))
+    );
+    expect(indices).toContain(499);
+    expect(Math.min(...indices)).toBeGreaterThan(480);
+    expect(indices.length).toBeLessThan(100);
+  });
+
+  it("reveals and marks the current song deep inside a long queue", async () => {
+    seedLongQueue(500, 320);
+
+    await renderPanel();
+
+    const currentRows = container.querySelectorAll('[aria-current="true"]');
+    expect(currentRows).toHaveLength(1);
+    expect(currentRows[0].getAttribute("data-queue-index")).toBe("320");
+    expect(container.textContent).toContain("Track 320");
+    expect(container.textContent).not.toContain("Track 0");
+  });
+
+  it("plays the clicked row of a virtualized list by its original index", async () => {
+    seedLongQueue(500, 0);
+    await renderPanel();
+
+    const row = container.querySelector('[data-queue-index="5"]');
+    expect(row).not.toBeNull();
+    await act(async () => {
+      row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(useQueueStore.getState().currentIndex).toBe(5);
+    expect(useQueueStore.getState().queue).toHaveLength(500);
+  });
+
+  it("removes a virtualized row by its original queue index", async () => {
+    seedLongQueue(500, 0);
+    await renderPanel();
+
+    const row = container.querySelector('[data-queue-index="6"]');
+    expect(row).not.toBeNull();
+    await act(async () => {
+      row
+        ?.querySelector<HTMLButtonElement>('[title="移出队列"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(useQueueStore.getState().queue).toHaveLength(499);
+    expect(useQueueStore.getState().queue[6].id).toBe("song-7");
   });
 
   it("opens full-screen shelf3D panel when clicking 3D button", async () => {

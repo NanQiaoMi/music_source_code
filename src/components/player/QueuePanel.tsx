@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ListMusic,
@@ -22,9 +22,13 @@ import { useUIStore } from "@/store/uiStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { Song } from "@/types/song";
 import { formatTime } from "@/utils/formatTime";
-import Image from "next/image";
+import { CoverImage, DEFAULT_COVER_SRC } from "@/components/shared/ui/CoverImage";
+import { VirtualList, type VirtualListHandle } from "@/components/shared/Glass/VirtualList";
+import { featureFlags } from "@/lib/perf/featureFlags";
 
-const DEFAULT_COVER_SRC = "/default-cover.svg";
+// Row = 44px cover + py-2.5 (20px) + 1px borders == 66px; + 6px gap == itemHeight (S4-5).
+const QUEUE_ROW_CONTENT_HEIGHT = 66;
+const QUEUE_ROW_HEIGHT = 72;
 
 // Apple Vision Pro spring physics
 const DRAWER_SPRING = {
@@ -34,10 +38,155 @@ const DRAWER_SPRING = {
   mass: 0.85,
 };
 
+const ROW_CLASS =
+  "group relative flex items-center gap-3 px-3 rounded-2xl cursor-pointer transition-all duration-200 border";
+const ROW_CURRENT_CLASS =
+  "bg-gradient-to-r from-[#0071e3]/20 via-white/[0.08] to-purple-900/15 border-[#2997ff]/40 shadow-[0_4px_24px_rgba(0,0,0,0.5)] ring-1 ring-[#2997ff]/30 text-white";
+const ROW_IDLE_CLASS =
+  "bg-white/[0.02] hover:bg-white/[0.07] border-white/[0.03] hover:border-white/[0.1] text-white/75 hover:text-white";
+
 interface QueuePanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+interface QueueEntry {
+  song: Song;
+  originalIndex: number;
+}
+
+interface QueueRowProps {
+  song: Song;
+  index: number;
+  isCurrent: boolean;
+  isPlaying: boolean;
+  onPlay: (index: number) => void;
+  onRemove: (index: number) => void;
+  onMoveNext: (index: number) => void;
+}
+
+/** One queue row: memoized so scrolling only renders rows entering the window. */
+const QueueRow = memo(function QueueRow({
+  song,
+  index,
+  isCurrent,
+  isPlaying,
+  onPlay,
+  onRemove,
+  onMoveNext,
+}: QueueRowProps) {
+  return (
+    <div
+      data-queue-index={index}
+      aria-current={isCurrent ? "true" : undefined}
+      onClick={() => onPlay(index)}
+      style={{ height: QUEUE_ROW_CONTENT_HEIGHT }}
+      className={[ROW_CLASS, isCurrent ? ROW_CURRENT_CLASS : ROW_IDLE_CLASS].join(" ")}
+    >
+      {/* Active Left Pill Accent Indicator */}
+      {isCurrent && (
+        <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#2997ff] shadow-[0_0_12px_rgba(41,151,255,0.8)]" />
+      )}
+
+      {/* Playing State / Equalizer Bars / Index */}
+      <div className="w-6 shrink-0 flex items-center justify-center">
+        {isCurrent ? (
+          isPlaying ? (
+            <div className="flex items-end gap-0.5 h-3.5">
+              <span className="w-0.5 bg-[#2997ff] rounded-full animate-[bounce_0.8s_infinite_100ms] h-full shadow-[0_0_6px_rgba(41,151,255,0.8)]" />
+              <span className="w-0.5 bg-[#2997ff] rounded-full animate-[bounce_0.8s_infinite_300ms] h-2/3 shadow-[0_0_6px_rgba(41,151,255,0.8)]" />
+              <span className="w-0.5 bg-[#2997ff] rounded-full animate-[bounce_0.8s_infinite_200ms] h-4/5 shadow-[0_0_6px_rgba(41,151,255,0.8)]" />
+              <span className="w-0.5 bg-[#2997ff] rounded-full animate-[bounce_0.8s_infinite_400ms] h-1/2 shadow-[0_0_6px_rgba(41,151,255,0.8)]" />
+            </div>
+          ) : (
+            <Volume2 className="w-4 h-4 text-[#2997ff]" />
+          )
+        ) : (
+          <span className="text-xs font-mono text-white/35 group-hover:hidden">{index + 1}</span>
+        )}
+        {!isCurrent && <Play className="w-3.5 h-3.5 text-white/80 hidden group-hover:block" />}
+      </div>
+
+      {/* Album Art Cover with Glass Relief Shadow */}
+      <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-black/40 shrink-0 border border-white/10 shadow-md shadow-black/60 group-hover:scale-105 transition-transform duration-200">
+        <CoverImage
+          src={song.cover?.trim()}
+          alt={song.title}
+          size="sm"
+          sizes="44px"
+          className="object-cover"
+        />
+        {/* Luminous gloss sheen overlay */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-white/20 pointer-events-none" />
+      </div>
+
+      {/* Track Title & Artist Metadata */}
+      <div className="flex-1 min-w-0 pr-1">
+        <div className="flex items-center gap-1.5">
+          <span
+            className={
+              isCurrent
+                ? "text-sm font-medium tracking-tight truncate text-white font-semibold drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]"
+                : "text-sm font-medium tracking-tight truncate text-white/90"
+            }
+          >
+            {song.title}
+          </span>
+          {isCurrent && (
+            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-[#2997ff]/20 border border-[#2997ff]/40 text-[#2997ff] shrink-0">
+              PLAYING
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-white/45 truncate mt-0.5">
+          <span className="truncate">{song.artist}</span>
+          {song.album && (
+            <>
+              <span className="text-white/20">·</span>
+              <span className="truncate text-white/30">{song.album}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Duration & Hover Quick Actions */}
+      <div className="shrink-0 flex items-center gap-1.5">
+        <span className="text-[11px] font-mono text-white/40 group-hover:text-white/60 transition-colors">
+          {formatTime(song.duration || 0)}
+        </span>
+
+        {/* Play Next (Insert Next) Button */}
+        {!isCurrent && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoveNext(index);
+            }}
+            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-lg bg-white/5 hover:bg-white/15 text-white/50 hover:text-white flex items-center justify-center transition-all"
+            title="下一首播放"
+          >
+            <CornerDownRight className="w-3 h-3" />
+          </button>
+        )}
+
+        {/* Remove Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(index);
+          }}
+          className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-300 flex items-center justify-center transition-all"
+          title="移出队列"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  );
+});
+QueueRow.displayName = "QueueRow";
 
 export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
   const queue = useQueueStore((state) => state.queue);
@@ -53,7 +202,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const activeItemRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<VirtualListHandle>(null);
 
   // Sync offline records
   useEffect(() => {
@@ -95,19 +244,8 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
     }
   }, [isOpen, onClose]);
 
-  // Auto-scroll current song into view when opening
-  useEffect(() => {
-    if (
-      isOpen &&
-      activeItemRef.current &&
-      typeof activeItemRef.current.scrollIntoView === "function"
-    ) {
-      activeItemRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [isOpen, currentIndex]);
-
   // Filtered queue items
-  const filteredQueue = useMemo(() => {
+  const filteredQueue = useMemo<QueueEntry[]>(() => {
     if (!searchQuery.trim()) {
       return queue.map((song, index) => ({ song, originalIndex: index }));
     }
@@ -129,24 +267,56 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
     return matchingIndex >= 0 ? matchingIndex : currentIndex;
   }, [currentSong, currentIndex, queue]);
 
+  // Position of the playing song inside the (possibly filtered) list; -1 when hidden.
+  const playbackFilteredIndex = useMemo(
+    () => filteredQueue.findIndex((item) => item.originalIndex === playbackQueueIndex),
+    [filteredQueue, playbackQueueIndex]
+  );
+
   // Total duration calculation
   const totalDurationText = useMemo(() => {
     const totalSecs = queue.reduce((acc, song) => acc + (song.duration || 0), 0);
     return formatTime(totalSecs);
   }, [queue]);
 
-  const handleTrackClick = (originalIndex: number) => {
-    const song = queue[originalIndex];
-    if (song) {
+  const handleTrackClick = useCallback(
+    (originalIndex: number) => {
+      const song = queue[originalIndex];
+      if (!song) return;
       useAudioStore.getState().playSong(song);
       useQueueStore.getState().setCurrentIndex(originalIndex);
-    }
-  };
+    },
+    [queue]
+  );
+
+  const handleRemove = useCallback((index: number) => removeFromQueue(index), [removeFromQueue]);
+  const handleMoveNext = useCallback((index: number) => moveToNext(index), [moveToNext]);
+
+  // Reveal the playing song when the drawer opens or the current index changes.
+  useEffect(() => {
+    if (!isOpen || playbackFilteredIndex < 0) return;
+    listRef.current?.scrollToIndex(playbackFilteredIndex, { align: "center", smooth: true });
+  }, [isOpen, playbackFilteredIndex]);
 
   const handleOpen3DShelf = () => {
     onClose();
     openPanel("shelf3D");
   };
+
+  const renderQueueRow = useCallback(
+    (item: QueueEntry) => (
+      <QueueRow
+        song={item.song}
+        index={item.originalIndex}
+        isCurrent={playbackQueueIndex === item.originalIndex}
+        isPlaying={isPlaying}
+        onPlay={handleTrackClick}
+        onRemove={handleRemove}
+        onMoveNext={handleMoveNext}
+      />
+    ),
+    [playbackQueueIndex, isPlaying, handleTrackClick, handleRemove, handleMoveNext]
+  );
 
   if (!isOpen) return null;
 
@@ -236,11 +406,11 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                 <button
                   type="button"
                   onClick={() => setIsSearchOpen((prev) => !prev)}
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+                  className={
                     isSearchOpen
-                      ? "bg-[#0071e3] text-white"
-                      : "bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/[0.06]"
-                  }`}
+                      ? "w-8 h-8 rounded-xl flex items-center justify-center transition-all bg-[#0071e3] text-white"
+                      : "w-8 h-8 rounded-xl flex items-center justify-center transition-all bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/[0.06]"
+                  }
                   title="过滤队列曲目"
                 >
                   <Search className="w-3.5 h-3.5" />
@@ -304,10 +474,10 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
             </AnimatePresence>
           </div>
 
-          {/* Master Track List Content */}
-          <div className="relative z-10 flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3 space-y-1.5">
+          {/* Master Track List Content (virtualized) */}
+          <div className="relative z-10 flex-1 min-h-0 flex flex-col">
             {filteredQueue.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center p-8 text-center text-white/40">
+              <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-8 text-center text-white/40">
                 <div className="w-16 h-16 rounded-3xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4 text-white/20 shadow-inner">
                   <ListMusic className="w-8 h-8" />
                 </div>
@@ -328,132 +498,24 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                   </button>
                 )}
               </div>
+            ) : featureFlags.virtualListQueue ? (
+              <VirtualList
+                items={filteredQueue}
+                itemHeight={QUEUE_ROW_HEIGHT}
+                initialIndex={Math.max(0, playbackFilteredIndex)}
+                handleRef={listRef}
+                getItemKey={(item) => String(item.song.id) + "-" + item.originalIndex}
+                className="flex-1 min-h-0 custom-scrollbar px-3 py-3"
+                renderItem={renderQueueRow}
+              />
             ) : (
-              filteredQueue.map(({ song, originalIndex }) => {
-                const isCurrent = playbackQueueIndex === originalIndex;
-                const coverSrc = song.cover && song.cover.trim() ? song.cover : DEFAULT_COVER_SRC;
-
-                return (
-                  <div
-                    key={`${song.id}-${originalIndex}`}
-                    data-queue-index={originalIndex}
-                    aria-current={isCurrent ? "true" : undefined}
-                    ref={isCurrent ? activeItemRef : null}
-                    onClick={() => handleTrackClick(originalIndex)}
-                    className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-2xl cursor-pointer transition-all duration-200 border ${
-                      isCurrent
-                        ? "bg-gradient-to-r from-[#0071e3]/20 via-white/[0.08] to-purple-900/15 border-[#2997ff]/40 shadow-[0_4px_24px_rgba(0,0,0,0.5)] ring-1 ring-[#2997ff]/30 text-white"
-                        : "bg-white/[0.02] hover:bg-white/[0.07] border-white/[0.03] hover:border-white/[0.1] text-white/75 hover:text-white"
-                    }`}
-                  >
-                    {/* Active Left Pill Accent Indicator */}
-                    {isCurrent && (
-                      <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#2997ff] shadow-[0_0_12px_rgba(41,151,255,0.8)]" />
-                    )}
-
-                    {/* Playing State / Equalizer Bars / Index */}
-                    <div className="w-6 shrink-0 flex items-center justify-center">
-                      {isCurrent ? (
-                        isPlaying ? (
-                          <div className="flex items-end gap-0.5 h-3.5">
-                            <span className="w-0.5 bg-[#2997ff] rounded-full animate-[bounce_0.8s_infinite_100ms] h-full shadow-[0_0_6px_rgba(41,151,255,0.8)]" />
-                            <span className="w-0.5 bg-[#2997ff] rounded-full animate-[bounce_0.8s_infinite_300ms] h-2/3 shadow-[0_0_6px_rgba(41,151,255,0.8)]" />
-                            <span className="w-0.5 bg-[#2997ff] rounded-full animate-[bounce_0.8s_infinite_200ms] h-4/5 shadow-[0_0_6px_rgba(41,151,255,0.8)]" />
-                            <span className="w-0.5 bg-[#2997ff] rounded-full animate-[bounce_0.8s_infinite_400ms] h-1/2 shadow-[0_0_6px_rgba(41,151,255,0.8)]" />
-                          </div>
-                        ) : (
-                          <Volume2 className="w-4 h-4 text-[#2997ff]" />
-                        )
-                      ) : (
-                        <span className="text-xs font-mono text-white/35 group-hover:hidden">
-                          {originalIndex + 1}
-                        </span>
-                      )}
-                      {!isCurrent && (
-                        <Play className="w-3.5 h-3.5 text-white/80 hidden group-hover:block" />
-                      )}
-                    </div>
-
-                    {/* Album Art Cover with Glass Relief Shadow */}
-                    <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-black/40 shrink-0 border border-white/10 shadow-md shadow-black/60 group-hover:scale-105 transition-transform duration-200">
-                      <Image
-                        src={coverSrc}
-                        alt={song.title}
-                        fill
-                        sizes="44px"
-                        className="object-cover"
-                        unoptimized={coverSrc.startsWith("data:") || coverSrc.startsWith("blob:")}
-                      />
-                      {/* Luminous gloss sheen overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-white/20 pointer-events-none" />
-                    </div>
-
-                    {/* Track Title & Artist Metadata */}
-                    <div className="flex-1 min-w-0 pr-1">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`text-sm font-medium tracking-tight truncate ${
-                            isCurrent
-                              ? "text-white font-semibold drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]"
-                              : "text-white/90"
-                          }`}
-                        >
-                          {song.title}
-                        </span>
-                        {isCurrent && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-[#2997ff]/20 border border-[#2997ff]/40 text-[#2997ff] shrink-0">
-                            PLAYING
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-white/45 truncate mt-0.5">
-                        <span className="truncate">{song.artist}</span>
-                        {song.album && (
-                          <>
-                            <span className="text-white/20">·</span>
-                            <span className="truncate text-white/30">{song.album}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Duration & Hover Quick Actions */}
-                    <div className="shrink-0 flex items-center gap-1.5">
-                      <span className="text-[11px] font-mono text-white/40 group-hover:text-white/60 transition-colors">
-                        {formatTime(song.duration || 0)}
-                      </span>
-
-                      {/* Play Next (Insert Next) Button */}
-                      {!isCurrent && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            moveToNext(originalIndex);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-lg bg-white/5 hover:bg-white/15 text-white/50 hover:text-white flex items-center justify-center transition-all"
-                          title="下一首播放"
-                        >
-                          <CornerDownRight className="w-3 h-3" />
-                        </button>
-                      )}
-
-                      {/* Remove Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeFromQueue(originalIndex);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-300 flex items-center justify-center transition-all"
-                        title="移出队列"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
+              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3 space-y-1.5">
+                {filteredQueue.map((item) => (
+                  <React.Fragment key={String(item.song.id) + "-" + item.originalIndex}>
+                    {renderQueueRow(item)}
+                  </React.Fragment>
+                ))}
+              </div>
             )}
           </div>
 
