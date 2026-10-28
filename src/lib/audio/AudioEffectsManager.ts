@@ -1,5 +1,5 @@
 import type { AudioEffectType } from "@/store/audioEffectsStore";
-import { getAudioContext } from "@/hooks/useAudioPlayer";
+import { getAudioContext } from "@/lib/audio/audioEngineAccess";
 import { usePlayerStore } from "@/store/playerStore";
 
 export class AudioEffectsManager {

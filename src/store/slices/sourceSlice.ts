@@ -3,7 +3,7 @@ import {
   hasPlayableAudioSource,
   createMissingAudioSourceError,
 } from "@/lib/audio/playableAudioSource";
-import { toast } from "@/components/shared/GlassToast";
+import { toast } from "@/store/actions/uiActions";
 import { usePlayerStore } from "../playerStore";
 
 export const createSourceSlice: AudioSliceCreator<SourceSliceState> = (set, get) => ({

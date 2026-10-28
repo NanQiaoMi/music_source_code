@@ -130,7 +130,7 @@ src/
 | `CrossfadeMixer`         | 情感感知交叉淡入淡出                      | AudioEngine             |
 | `AudioGraphManager`      | 编程式节点图（**未接线，dead code ~300 行**） | — |
 | `useAudioPlayer`         | React hook 封装，事件监听                 | audioStore, AudioEngine |
-| `AudioVisualizerManager` | Analyser→可视化转发（lib 反向依赖 hooks，待 S2/S6 收敛） | AudioEngine |
+| `AudioVisualizerManager` | Analyser→可视化转发（S6-12a 已改为依赖 `lib/audio/audioEngineAccess`，不再反向依赖 hooks） | AudioEngine |
 
 ---
 

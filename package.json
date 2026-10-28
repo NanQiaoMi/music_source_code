@@ -42,6 +42,7 @@
     "release:dry-run": "node scripts/release-dry-run.mjs",
     "verify:filesize": "node scripts/check-store-budgets.mjs",
     "verify:docs": "node scripts/check-docs-facts.mjs",
+    "verify:layers": "depcruise src --config .dependency-cruiser.cjs --output-type err",
     "prepare": "husky"
   },
   "dependencies": {
@@ -77,6 +78,7 @@
     "autoprefixer": "^10.4.18",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
+    "dependency-cruiser": "^18.7.0",
     "electron": "^41.1.0",
     "electron-builder": "^26.8.1",
     "eslint": "^8.57.0",

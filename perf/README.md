@@ -17,6 +17,8 @@
 | scripts/check-store-budgets.mjs | S6-12 Store 行数棘轮 + 环门禁：逐文件行数 ≤ baseline，未入基线的新文件 ≤400 行，运行时 store 图 SCC 必须为 0；支持 --update、--root、--baseline、--max-lines |
 | scripts/report-audio-consumers.mjs | S6-4 audioStore 播放字段消费清单：9 字段的 selector / getState 链（含跨行与解构）/ 别名 / setState / `useAudioCurrentSong` 读写点，按层与字段汇总；支持 --json、--fields、--group（progress / playback / all 批次）、--check（components/hooks/lib/services/store 读点归零门禁；audioStore 自身定义点豁免） |
 | scripts/check-docs-facts.mjs | 文档事实校验：store 数、过期字样、CI 触发分支、端口一致性（warn）、INDEX 链接、执行计划包完整性 |
+| .dependency-cruiser.cjs | S6-12a 分层规则：no-circular(error)、no-orphans(warn)、store/services/lib/domain 反向依赖、src 禁 devDependency；由 `npm run verify:layers` 执行 |
+| scripts/verify-layers.test.mjs | S6-12a 门禁测试：以同一 CLI 命令断言 exit 0，并校验 no-circular 与方向规则仍在配置中 |
 | perf/budget.json | 包体阈值（baseline / target / hardMax） |
 | perf/bundle-baseline.json | 包体回归基线（2026-10-29 重建；由 `bundle-diff --update` 从最新 report 维护） |
 | perf/store-stats-baseline.json | 2026-10-21 Store 架构基线快照 |
@@ -57,6 +59,9 @@
     node scripts/report-audio-consumers.mjs --group progress --check        # 进度读点归零（写点仍走 audioStore）
     node scripts/report-audio-consumers.mjs --group playback --check        # isPlaying 读点归零（写点仍走 audioStore）
     node scripts/report-audio-consumers.mjs --group all --check             # 9 字段读点在 services/store 也归零（audioStore 自身豁免）
+
+    # 分层依赖（S6-12a；CI 的 quality job 同命令）
+    npm run verify:layers
 
     # 文档事实
     node scripts/check-docs-facts.mjs
@@ -123,7 +128,7 @@
 | 425 | src/store/lyricsCoverStore.ts |
 | 419 | src/store/libraryManagerStore.ts |
 
-- 已知缺口：S6-12a 的 dependency-cruiser 分层规则（`.dependency-cruiser.cjs`）未落地（dependency-cruiser 未安装，需 Lead 批准新依赖）；16 个存量 >400 文件待拆分后执行 `--update` 收紧。S6-12b 的 CI 接线见第 7 节。
+- 已知缺口：S6-12a 分层规则已落地（末尾 §10；首跑 8 errors 已清零）；16 个存量 >400 文件待拆分后执行 `--update` 收紧。S6-12b 的 CI 接线见第 7 节。
 
 ## 7. CI 接线（S6-12b，2026-10-29）
 
@@ -175,3 +180,14 @@
 - nightly：`.github/workflows/nightly.yml` 在 bundle report 与 diff 之后，`if: always()` 追加历史（存在 `perf/audio-metrics.json` 时带 `--metrics`）→ 生成 dashboard 并写入 job summary；artifact `perf-bundle-<run_id>` 增加 `perf-history.jsonl` / `perf-dashboard.md`（及可选的 `audio-metrics.json`）。
 - 测试：`scripts/perf/perf-history.test.mjs`（append schema + metrics / 重复与非单调 ts exit 1 / 3 行看板表格与回归高亮 / `--init` 与空历史看板）。
 - 已知缺口：nightly 使用干净 checkout，历史行不跨 run 累积（仅随 artifact 保存），E6 的“≥28 行”需 S8-3d 汇总或后续回填；`--metrics` 的生产者（audio-metrics 的 `--out`）尚未在当前分支落地，nightly 以文件存在为接入条件；看板阈值与 `bundle-diff` 的 gzip 阈值一致，绝对 hardMax 仍由 `bundle-budget --check` 负责（当前禁用）。
+
+## 10. 分层依赖门禁（S6-12a，2026-10-29）
+
+- 配置：`.dependency-cruiser.cjs`；命令：`npm run verify:layers`（`depcruise src --config .dependency-cruiser.cjs --output-type err`）。CI 在 `quality` job 的 lint 之后运行；单测 `scripts/verify-layers.test.mjs` 用同一命令断言 exit 0，并校验 no-circular 与方向规则仍在配置中。
+- error 规则：`no-circular`；`src/store` 禁 import `src/components|src/hooks`；`src/services` 禁 import `src/components`；`src/lib` 禁 import `src/components|src/hooks`；`src/domain` 禁 import react/next、`src/components|src/hooks`、`src/store`；`src` 生产代码禁 import devDependency。
+- warn 规则：`no-orphans`（排除 Next 路由/worker 入口、测试与 `.d.ts`），只暴露孤立模块，不阻塞 CI。
+- 豁免（棘轮，只准收紧）：
+  - `src/domain/playback/ports.ts` 是唯一允许直连 store 的 domain 适配器（该文件头注释即契约）；其余 domain 模块不得新增 store import。
+  - 测试文件（`*.test.*` / `*.spec.*` / `src/test/**`）不参与分层与 devDependency 规则；`import type` 默认不构成运行时边（与 S6-11c store 图口径一致）。
+- 首跑（2026-10-29）8 errors / 26 warnings → **0 errors**。修复：store→GlassToast 3 处（toast 单例下沉 `src/store/actions/uiActions.ts`，GlassToast 仅 re-export）；lib→hooks 2 处（`src/lib/audio/audioEngineAccess.ts` 承接 getAudioContext/getAudioAnalyser）；`audioStore→playbackSlice→playlistStore→audioStore` 环（删除无消费者的 `playlistStore.playSelectedSongs`，`storeGraph.contract.test.ts` 边预算 22→21）；`degradedNotifier→uiStore→safeStorage→degradedNotifier` 环（toast 订阅上移 `src/hooks/useStorageDegradedToast.ts`）。
+- 26 条 no-orphans warning 是存量孤立模块（多为仅 type import 的 types 文件与动态加载的 lx_sources），保持 warn；新增 error 必须修复，或用 `pathNot` 精确豁免并在 PR 说明原因（不得整目录排除）。

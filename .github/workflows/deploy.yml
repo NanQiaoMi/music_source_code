@@ -38,6 +38,9 @@ jobs:
         run: npx tsc --noEmit --incremental false --pretty false
       - name: Lint (src, 0 warnings)
         run: npx eslint src --ext ts,tsx --rulesdir eslint-rules --max-warnings=0 --report-unused-disable-directives
+      # S6-12a: dependency-cruiser layering gate (errors only; no-orphans are warnings).
+      - name: Layering (dependency-cruiser, 0 errors)
+        run: npm run verify:layers
       - name: Unit tests
         run: npm run test -- --run
 

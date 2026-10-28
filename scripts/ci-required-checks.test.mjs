@@ -15,6 +15,7 @@ const GATE_JOBS = ["quality", "coverage", "build"];
 const REQUIRED_RUNS = [
   "npx tsc --noEmit --incremental false --pretty false",
   "npx eslint src --ext ts,tsx --rulesdir eslint-rules --max-warnings=0 --report-unused-disable-directives",
+  "npm run verify:layers",
   "npm run test -- --run",
   "npm run test:coverage:domains",
   "npm run build",
@@ -130,6 +131,7 @@ describe("CI required checks (parallel verify)", () => {
     for (const token of [
       "tsc --noEmit",
       "eslint src",
+      "verify:layers",
       "npm run test",
       "test:coverage:domains",
       "npm run build",

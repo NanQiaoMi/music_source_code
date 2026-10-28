@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { toast } from "@/components/shared/GlassToast";
+import { toast } from "@/store/actions/uiActions";
 
 export interface AIConfig {
   baseUrl: string;

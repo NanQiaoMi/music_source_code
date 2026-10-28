@@ -13,7 +13,7 @@ job。三个 job 各自 checkout / setup-node / `npm ci`，**不跨 job 传产�
 
 | Job            | 必过步骤                                            | timeout | 预期耗时（暖 / 冷） |
 | -------------- | --------------------------------------------------- | ------: | ------------------: |
-| `quality`      | 类型检查 → Lint（0 警告）→ 单元测试                  |      15 |      6-8 / 9-11min |
+| `quality`      | 类型检查 → Lint（0 警告）→ 分层依赖 → 单元测试       |      15 |      6-8 / 9-11min |
 | `coverage`     | 覆盖率分域（`test:coverage:domains`，见 §4）         |      15 |       4-5 / 5-7min |
 | `build`        | 生产构建 → `perf:gates` → bundle 报告 → 文档事实     |      15 |       3-5 / 5-7min |
 | `quality-gate` | 聚合断言：上面三个 job 全部 success                  |       5 |            ~15-30s |
@@ -40,6 +40,7 @@ required，不能用"跳过某个 job"的方式过 CI。三个子 job 的 check 
 | ---------------------- | --------- | -------: |
 | 类型检查（tsc）        | `quality` |  60-90s |
 | Lint（0 警告）         | `quality` |   2-4min |
+| 分层依赖（verify:layers） | `quality` |     ~5s |
 | 单元测试（test）       | `quality` |   2-3min |
 | 覆盖率分域             | `coverage` |    ~3min |
 | 生产构建（build）      | `build`   |   2-3min |
@@ -52,6 +53,7 @@ required，不能用"跳过某个 job"的方式过 CI。三个子 job 的 check 
 ```bash
 npx tsc --noEmit --incremental false --pretty false
 npx eslint src --ext ts,tsx --rulesdir eslint-rules --max-warnings=0 --report-unused-disable-directives
+npm run verify:layers
 npm run test -- --run
 npm run test:coverage:domains
 npm run build
@@ -91,3 +93,10 @@ job、coverage 独立于 quality、perf:gates 归 build、预算与 required che
 报告、历史与看板作为 `perf-bundle-<run_id>` artifact 上传并写入 job summary；阈值、`--update`
 重设基线、历史 schema 与看板字段见 `perf/README.md` §8–§9。该工作流不参与分支保护，
 PR 必过检查仍是 `Quality gate (required)`。
+
+## 7. 分层依赖门禁（S6-12a）
+
+- `quality` job 在 Lint 之后运行 `npm run verify:layers`（`depcruise src --config .dependency-cruiser.cjs --output-type err`）；error 即 job 失败，预算 ~5s。单测 `scripts/verify-layers.test.mjs` 用同一命令断言 exit 0，CI 双保险。
+- error 规则：`no-circular`；`src/store` 禁 import `components|hooks`；`src/services` 禁 import `components`；`src/lib` 禁 import `components|hooks`；`src/domain` 禁 import react/next、`components|hooks`、`store`；`src` 生产代码禁 import devDependency。
+- warn 规则：`no-orphans`（排除 Next 路由/worker 入口、测试与 `.d.ts`），只暴露孤立模块，不阻塞 CI。
+- 唯一方向豁免：`src/domain/playback/ports.ts` 作为播放端口适配器可 import store；测试文件与 `import type` 不计入。规则、首跑 8 errors 清零过程与收缩棘轮见 `perf/README.md` §10。

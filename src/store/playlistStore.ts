@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { songsData, searchSongs, filterSongsByArtist, filterSongsByAlbum } from "@/data/songsData";
 import { getAllStoredMusic } from "@/services/localMusicStorage";
 import { getCoverFromCache, saveCoverToCache, deleteCoverFromCache } from "@/services/coverCache";
-import { useAudioStore } from "./audioStore";
 import { Song } from "@/types/song";
 
 export type { Song };
@@ -33,7 +32,6 @@ export interface PlaylistState {
   areAllSongsSelected: () => boolean;
   getSelectedSongs: () => Song[];
   removeSelectedSongs: () => void;
-  playSelectedSongs: () => void;
 }
 
 export const usePlaylistStore = create<PlaylistState>((set, get) => ({
@@ -264,14 +262,6 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
         selectedSongIds: new Set<string>(),
       };
     }),
-
-  playSelectedSongs: () => {
-    const state = get();
-    const selected = state.songs.filter((s) => state.selectedSongIds.has(s.id));
-    if (selected.length === 0) return;
-    const audioStore = useAudioStore.getState();
-    audioStore.playQueue(selected, 0);
-  },
 }));
 
 function isDemoSong(song: Song) {

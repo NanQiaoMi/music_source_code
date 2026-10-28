@@ -7,8 +7,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const STORE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-/** 2026-10-29 snapshot: 22 runtime edges. Shrink-only ratchet (plan target: <= 6). */
-const EDGE_BUDGET = 22;
+/** 2026-10-29 snapshot: 21 runtime edges (S6-12a removed playlistStore -> audioStore). */
+const EDGE_BUDGET = 21;
 
 /** Documented reason for every runtime edge; a new edge must add an entry (and lower the budget). */
 const RUNTIME_EDGE_REASONS: Readonly<Record<string, string>> = {
@@ -20,7 +20,6 @@ const RUNTIME_EDGE_REASONS: Readonly<Record<string, string>> = {
   "knowledgeStore -> aiStore": "知识卡片读取 AI 配置",
   "linerNotesStore -> aiStore": "AI 生成内页笔记",
   "playerStore -> playbackRuntimeStore": "播放请求写入 runtime",
-  "playlistStore -> audioStore": "playSelectedSongs 委托 audioStore 播放",
   "sleepTimerStore -> audioStore": "定时停止调用 audio 播放控制",
   "smartMixStore -> playlistGroupStore": "混音会话读取分组",
   "smartMixStore -> queueStore": "混音会话装载队列",

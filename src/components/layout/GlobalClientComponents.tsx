@@ -7,6 +7,7 @@ import { AchievementToastContainer } from "@/components/shared/AchievementToast"
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { useMediaSession } from "@/hooks/useMediaSession";
 import { useElectron } from "@/hooks/useElectron";
+import { useStorageDegradedToast } from "@/hooks/useStorageDegradedToast";
 import { bootstrapApp } from "@/lib/bootstrap";
 import { compactExistingStorage } from "@/lib/storage/safeStorage";
 import { useUIStore } from "@/store/uiStore";
@@ -34,6 +35,7 @@ export function GlobalClientComponents() {
   useAudioPlayer();
   useMediaSession();
   useElectron();
+  useStorageDegradedToast();
   const pathname = usePathname();
   const currentView = useUIStore((state) => state.currentView);
   const isDataManagerRoute =

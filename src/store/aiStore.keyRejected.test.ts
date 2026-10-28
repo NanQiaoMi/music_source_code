@@ -8,7 +8,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  */
 const { toastWarning } = vi.hoisted(() => ({ toastWarning: vi.fn() }));
 
-vi.mock("@/components/shared/GlassToast", () => ({
+// S6-12a: aiStore now imports the imperative toast from the action layer (stores must not
+// import components), so the mock moved with it.
+vi.mock("@/store/actions/uiActions", () => ({
+  showToast: vi.fn(),
   toast: {
     success: vi.fn(),
     error: vi.fn(),

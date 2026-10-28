@@ -4,7 +4,6 @@ import React, { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore, ToastMessage } from "@/store/uiStore";
 import { usePlayerStore } from "@/store/playerStore";
-import { showToast } from "@/store/actions/uiActions";
 import { CheckCircle2, XCircle, AlertTriangle, X, Sparkles, Music } from "lucide-react";
 
 interface ParsedMessage {
@@ -234,13 +233,8 @@ export const GlassToastContainer: React.FC = () => {
   );
 };
 
-// 单独调用的 Toast 函数（S6-10b：getState 收口到 store 动作层）
-export const toast = {
-  success: (message: string, duration?: number) => showToast(message, "success", duration),
-  error: (message: string, duration?: number) => showToast(message, "error", duration),
-  info: (message: string, duration?: number) => showToast(message, "info", duration),
-  warning: (message: string, duration?: number) => showToast(message, "warning", duration),
-};
+// 单独调用的 Toast 函数（S6-12a：实现下沉到 store 动作层，避免 store -> components 反向依赖）
+export { toast } from "@/store/actions/uiActions";
 
 // Hook 版本的 Toast
 export const useGlassToast = () => {

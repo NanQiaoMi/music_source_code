@@ -1818,5 +1818,4 @@ export const useAudioPlayer = () => {
   };
 };
 
-export const getAudioAnalyser = (): AnalyserNode | null => AudioEngine.getInstance().getAnalyser();
-export const getAudioContext = (): AudioContext | null => AudioEngine.getInstance().getContext();
+export { getAudioAnalyser, getAudioContext } from "@/lib/audio/audioEngineAccess";

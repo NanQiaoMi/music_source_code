@@ -1,8 +1,6 @@
 "use client";
 
-export * from "@/hooks/useAudioPlayer";
-
-import { getAudioAnalyser, getAudioContext } from "@/hooks/useAudioPlayer";
+import { getAudioAnalyser, getAudioContext } from "@/lib/audio/audioEngineAccess";
 
 export const getSharedAnalyser = getAudioAnalyser;
 export const getSharedAudioContext = getAudioContext;

@@ -13,3 +13,15 @@ export function showToast(
 ): void {
   useUIStore.getState().showToast(message, type, duration);
 }
+
+/**
+ * 命令式 toast 单例（S6-12a：从 components/shared/GlassToast 下沉到动作层）。
+ * store 不得 import components，因此 aiStore/emotionStore/sourceSlice 改从这里取；
+ * GlassToast 仍 re-export 同一对象，组件侧旧 import 路径继续可用。
+ */
+export const toast = {
+  success: (message: string, duration?: number) => showToast(message, "success", duration),
+  error: (message: string, duration?: number) => showToast(message, "error", duration),
+  info: (message: string, duration?: number) => showToast(message, "info", duration),
+  warning: (message: string, duration?: number) => showToast(message, "warning", duration),
+};

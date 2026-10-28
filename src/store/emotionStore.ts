@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { saveSongEmotions, loadSongEmotions } from "@/services/metadataStorage";
 import { EmotionPoint, EmotionCoordinate } from "@/types/emotion";
-import { toast } from "@/components/shared/GlassToast";
+import { toast } from "@/store/actions/uiActions";
 import { noteChatKeyOutcome } from "@/store/aiStore";
 import type { Song } from "@/types/song";
 
