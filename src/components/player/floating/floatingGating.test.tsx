@@ -200,8 +200,9 @@ describe("S3-5 浮动层 gating", () => {
       </>
     );
 
-    // 挂载瞬间：波形 1（环境循环）+ 频谱 1（补一帧静帧）；关闭的 HUD 不再常驻 1 条 FPS 循环
-    expect(rafScheduler.stats().pending).toBe(2);
+    // flag on：波形与频谱共享 visualRuntime 的同一条帧（挂载即 1 个待执行回调，而不是每条链 1 个）；
+    // 关闭的 HUD 不再常驻 FPS 循环。flag off 时才是 2 条独立链。
+    expect(rafScheduler.stats().pending).toBe(1);
 
     raf.flush(16);
     raf.flush(32);

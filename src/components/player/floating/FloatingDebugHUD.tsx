@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import type { FloatingPlayerState } from "./useFloatingDragPhysics";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
+import { featureFlags } from "@/lib/perf/featureFlags";
+import { visualRuntime } from "@/runtime/visualRuntime";
 import { useFloatingActive } from "@/hooks/useFloatingActive";
 import {
   Sliders,
@@ -85,8 +87,14 @@ export const FloatingDebugHUD: React.FC<FloatingDebugHUDProps> = ({
         frameCountRef.current = 0;
         lastTimeRef.current = now;
       }
-      animId = requestRaf(measureFps);
+      if (!featureFlags.visualRuntime) animId = requestRaf(measureFps);
     };
+
+    if (featureFlags.visualRuntime) {
+      // S5-3：FPS 遥测共用全仓视觉帧，不再自建循环。
+      const subscription = visualRuntime.subscribe("floating-hud", measureFps);
+      return () => subscription.stop();
+    }
 
     animId = requestRaf(measureFps);
     return () => {

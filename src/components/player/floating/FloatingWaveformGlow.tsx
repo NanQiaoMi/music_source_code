@@ -5,6 +5,8 @@ import { useAudioStore } from "@/store/audioStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
+import { featureFlags } from "@/lib/perf/featureFlags";
+import { visualRuntime, type VisualFrameHandle } from "@/runtime/visualRuntime";
 import { useFloatingActive } from "@/hooks/useFloatingActive";
 
 export interface FloatingWaveformGlowProps {
@@ -49,6 +51,8 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  // S5-3：flag on 时环境波形挂在 visualRuntime 上，随全仓共享帧派发。
+  const subscriptionRef = useRef<VisualFrameHandle | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const idlePhaseRef = useRef<number>(0);
   // 标签页可见性 + 视口可见性 + 外部门控
@@ -79,7 +83,7 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
 
   // Audio rendering animation loop
   const draw = useCallback(
-    function draw() {
+    function draw(_time?: number, _runtimeDeltaMs?: number) {
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (!canvas || !container) return;
@@ -311,8 +315,11 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
       }
 
       ctx.restore();
-      // 减动效只画一帧静帧；否则续排下一帧形成环境波形（空闲时唯一允许保留的循环）。
-      if (!prefersReducedMotion) {
+      // 减动效只画一帧静帧；flag on 时续排交给 runtime，否则旧路径自行 requestRaf。
+      if (prefersReducedMotion) {
+        subscriptionRef.current?.stop();
+        subscriptionRef.current = null;
+      } else if (!featureFlags.visualRuntime) {
         animFrameRef.current = requestRaf(draw);
       }
     },
@@ -344,8 +351,14 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
   // 隐藏/离开视口/切走视图立即取消；恢复可见重新排帧，减动效则只画静帧。
   useEffect(() => {
     if (!floatingActive) return;
-    animFrameRef.current = requestRaf(draw);
+    if (featureFlags.visualRuntime) {
+      subscriptionRef.current = visualRuntime.subscribe("floating-waveform", draw);
+    } else {
+      animFrameRef.current = requestRaf(draw);
+    }
     return () => {
+      subscriptionRef.current?.stop();
+      subscriptionRef.current = null;
       if (animFrameRef.current) {
         cancelRaf(animFrameRef.current);
         animFrameRef.current = null;

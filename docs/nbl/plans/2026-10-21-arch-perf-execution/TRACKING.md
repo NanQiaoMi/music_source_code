@@ -14,11 +14,11 @@
 | S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
 | S3 外壳与订阅治理 | 10 | 9 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | in_progress（S3-1/S3-3/S3-4/S3-5/S3-6/S3-7/S3-8/S3-9/S3-10 done；S3-2 待） |
 | S4 包体与加载 | 7 | 6 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | in_progress（S4-1..S4-6 done；S4-7 待） |
-| S5 渲染运行时 | 7 | 2 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | in_progress（S5-1/S5-2 done；S5-3..S5-7 待） |
+| S5 渲染运行时 | 7 | 3 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | in_progress（S5-1/S5-2/S5-3 done；S5-4..S5-7 待） |
 | S6 状态架构收敛 | 12 | 0 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | pending |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **24** | **约 129** | — | in_progress |
+| **合计** | **74** | **25** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -93,7 +93,7 @@
 - [ ] **M5 出口门**：rAF 调用点 ≤8；1080p dpr2 ≥90fps 无 dropped；隐藏视图零绘制；4x throttle 自动降档。
 - [x] S5-1 VisualRuntime v1 — **done（2026-10-28，f83d2a0）**：新增 `src/runtime/visualRuntime.ts`（单 rafScheduler 请求、订阅者 (time,delta)、1s FPS 窗口、质量阶梯 high DPR2/1 → medium 1.5/0.75 → low 1/0.5、<50fps 降档 / ≥58fps×3 升档、hidden 暂停重置、pause/resume、异常订阅者隔离、getStats）；`VisualizationView` 在 `featureFlags.visualRuntime` 下接入（resize 用 dprCap、粒子池 1000→750→500 min120），flag off 保留原循环。验收：3 订阅者仅 **1 个 rAF 请求**、30fps→low、3 窗口→升级、hidden 0 回调；9 用例 + 2 集成用例；全量 221 files/1400 passed/1 skipped；tsc/eslint 0。缺口：无真机 FPS/DPR trace；priority buckets/frame gates/per-bucket cap/reducedMotion 未做（简化版）；effectScale 仅作用 VisualizationView 基础粒子池；Player3D 未迁移（S5-3）。分支 `feature/arch-perf-s5-1`（未合并）。
 - [x] S5-2 VisualizationView 调度迁移 — **done（2026-10-28，490249a）**：flag on 时 `VisualizationView` 只剩 `visualRuntime.subscribe("visualization", draw)` 一条排帧路径——旧 `legacyLoop`、`visibilitychange` 监听与前台补写全部移入 flag off 分支（flag on 下不构造、不挂载，组件自身 `requestAnimationFrame` 0 次），回前台音频时钟同步交给既有 `useAudioPlayer.handleVisiblePlaybackResync`；`VisualRuntime` 新增绘制耗时采样（最近 120 次订阅者回调环形缓冲，`getStats()` 暴露 drawSamples/drawP50Ms/drawP95Ms，热路径零分配、仅取统计时排序）。验收：jsdom 同帧模拟 baseline（p95 1.7037–1.7042ms）下 runtime draw p95 1.7075–1.7095ms（**+0.21~0.31%**，≤10%）；2 个视觉消费者仍 **1 次 scheduler 请求/帧**（迁移前每消费者 1 条 requestRaf 链 = 2 次/帧）；切 Home/Player 只停 + 重建 1 次订阅。新增 4 用例；全量 **221 files/1404 passed/1 skipped**；tsc/eslint 0。缺口：p95 为合成负载口径，无真机 Chrome trace、measure.py `perf/s5-before.json`、14 效果截图与 Profiler commit 证据（S5-2b）；runtime 仍是简化调度（无 gate/priority/updateGate，视图切换靠 effect 重建订阅）；仓库 rAF 调用点未收敛（S5-3）。分支 `feature/arch-perf-s5-2`（未合并）。
-- [ ] S5-3 Shelf3D + 浮动层迁移 — owner: — | PR: 1 | 依赖: S5-1 | 验收: 同开 FPS ≥50
+- [x] S5-3 Shelf3D + 浮动层迁移 — **done（2026-10-28，feature/arch-perf-s5-3）**：`featureFlags.visualRuntime` on 时 `Shelf3DView` 的 3D 画布循环、`FloatingSpectrumGlow`、`FloatingWaveformGlow`、`FloatingDebugHUD`（FPS 遥测）统一改为 `visualRuntime.subscribe`（id：shelf3d/floating-spectrum/floating-waveform/floating-hud），四条旧 `requestRaf` 链、Shelf 自挂的 `visibilitychange` 全部移入 flag off 分支（flag on 下不再构造/挂载）；帧时基改用 runtime 下发的 (time, delta)（首帧 16.67ms、上限 50ms，Shelf 保留 32ms 上限），隐藏/恢复由 runtime 单点停表与续帧，频谱无信号、波形减动效、HUD 关闭、组件卸载各自 `handle.stop()`，避免重复循环；Shelf 保留原有 5s 窗口自适应画质（pixelRatio 1.75/1.35/1.0、粒子 42/22/8）。验收（jsdom 驱动）：2 个浮动消费者 5 帧仅 **5 次 scheduler 请求（1/帧）**，flag off 旧路径 3 帧 **6 次（2/帧）**；Shelf+浮动层 2 订阅者只 **1 个待执行帧**；hidden 时 0 帧、恢复后 1 帧；60fps 驱动 2s → runtime fps ≥50，两消费者各 120 帧、每帧 1 次排帧（无重复循环）。新增 7 用例（浮动层 4 + Shelf3D 3，含 flag off 回退）+ 更新既有 gating 断言 1 处；全量 **223 files/1411 passed/1 skipped**；tsc/eslint 0。缺口：无真机 3D/Chrome trace 与 1080p FPS 证据；`Player3D` 原生 rAF 音频采样循环未迁移（S5-3b）；Shelf 画质仍是自身 FPS 窗口，未接 runtime qualityTier（S5-6）；flag off 旧链保留使全仓 rAF 调用点文本计数仍 36（M5 ≤8 需后续删旧路径）。分支 `feature/arch-perf-s5-3`（未合并）。
 - [ ] S5-4 EffectPlugin + registry + 2 试点 — owner: — | PR: 2 | 依赖: S5-2 | 验收: contract 一致；截图/帧时间通过
 - [ ] S5-5 粒子复用 + EffectContext 稳定 — owner: — | PR: 1 | 依赖: S5-4 | 验收: resize 100 次无 GC 抖动
 - [ ] S5-6 qualityTier + longtask 降档 — owner: — | PR: 1 | 依赖: S5-1 | 验收: 4x throttle 自动降档

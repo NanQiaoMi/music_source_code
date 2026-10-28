@@ -13,6 +13,8 @@ import { useUserAccountStore } from "@/store/userAccountStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useIntegratedAudioPipeline } from "@/lib/audio/useIntegratedAudioPipeline";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
+import { featureFlags } from "@/lib/perf/featureFlags";
+import { visualRuntime, type VisualFrameHandle } from "@/runtime/visualRuntime";
 import { useUIStore } from "@/store/uiStore";
 import { approachEnvelope, readBandEnergy, stepCriticalSpring } from "./shelf3dMotion";
 import Shelf3DStaticFallback from "./Shelf3DStaticFallback";
@@ -930,8 +932,12 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     let disposed = false;
     let rendererLifecycleDisposed = false;
     let teardownRendererLifecycle: (() => void) | null = null;
+    let frameSubscription: VisualFrameHandle | null = null;
 
     const stopAnimation = () => {
+      // S5-3：flag on 时排帧权在 visualRuntime，停止循环就是退订。
+      frameSubscription?.stop();
+      frameSubscription = null;
       if (frameRequestId !== null) {
         cancelRaf(frameRequestId);
         frameRequestId = null;
@@ -1183,18 +1189,26 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       lastDetentStepRef.current = Math.round(currentScrollRef.current);
       let afterglowPhase = 0;
       let revealRendererStatus = true;
-      const onAnimationFrame = (time: number) => {
+      const onAnimationFrame = (time: number, runtimeDeltaMs?: number) => {
         frameRequestId = null;
         animFrameRef.current = null;
-        if (!effectActive || contextLost || document.visibilityState === "hidden") {
+        // 隐藏门控由 visualRuntime 统一负责；旧路径仍自查 visibilityState。
+        if (
+          !effectActive ||
+          contextLost ||
+          (!featureFlags.visualRuntime && document.visibilityState === "hidden")
+        ) {
           stopAnimation();
           return;
         }
 
+        // flag on 用 runtime 下发的 delta（首帧 16.67ms、上限 50ms），保持旧 32ms 上限。
         const dt =
-          lastFrameTime === null
-            ? 1 / 60
-            : Math.max(0, Math.min(0.032, (time - lastFrameTime) / 1000));
+          runtimeDeltaMs !== undefined
+            ? Math.max(0, Math.min(0.032, runtimeDeltaMs / 1000))
+            : lastFrameTime === null
+              ? 1 / 60
+              : Math.max(0, Math.min(0.032, (time - lastFrameTime) / 1000));
         lastFrameTime = time;
         const dtMs = dt * 1000;
 
@@ -1450,8 +1464,11 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           revealRendererStatus = false;
           setWebglStatus("ready");
         }
-        frameRequestId = requestRaf(onAnimationFrame);
-        animFrameRef.current = frameRequestId;
+        // flag on 时 runtime 自己续排下一帧，这里只留旧路径。
+        if (!featureFlags.visualRuntime) {
+          frameRequestId = requestRaf(onAnimationFrame);
+          animFrameRef.current = frameRequestId;
+        }
       };
 
       const startAnimation = () => {
@@ -1459,13 +1476,18 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           !effectActive ||
           animationRunning ||
           contextLost ||
-          document.visibilityState === "hidden"
+          (!featureFlags.visualRuntime && document.visibilityState === "hidden")
         )
           return;
         animationRunning = true;
         lastFrameTime = null;
-        frameRequestId = requestRaf(onAnimationFrame);
-        animFrameRef.current = frameRequestId;
+        if (featureFlags.visualRuntime) {
+          // 单一订阅：hidden 由 runtime 停表，恢复可见后自动续帧。
+          frameSubscription = visualRuntime.subscribe("shelf3d", onAnimationFrame);
+        } else {
+          frameRequestId = requestRaf(onAnimationFrame);
+          animFrameRef.current = frameRequestId;
+        }
       };
 
       const onVisibilityChange = () => {
@@ -1528,7 +1550,9 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         stopAnimation();
         canvas.removeEventListener("webglcontextlost", onContextLost, false);
         canvas.removeEventListener("webglcontextrestored", onContextRestored, false);
-        document.removeEventListener("visibilitychange", onVisibilityChange);
+        if (!featureFlags.visualRuntime) {
+          document.removeEventListener("visibilitychange", onVisibilityChange);
+        }
         if (typeof reducedMotionQuery.removeEventListener === "function") {
           reducedMotionQuery.removeEventListener("change", onReducedMotionChange);
         } else {
@@ -1543,7 +1567,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
       canvas.addEventListener("webglcontextlost", onContextLost, false);
       canvas.addEventListener("webglcontextrestored", onContextRestored, false);
-      document.addEventListener("visibilitychange", onVisibilityChange);
+      // flag on 时元素/视口隐藏由 runtime 单点处理，组件不再自挂监听。
+      if (!featureFlags.visualRuntime) {
+        document.addEventListener("visibilitychange", onVisibilityChange);
+      }
       if (typeof reducedMotionQuery.addEventListener === "function") {
         reducedMotionQuery.addEventListener("change", onReducedMotionChange);
       } else {

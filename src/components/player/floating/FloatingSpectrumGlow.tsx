@@ -6,6 +6,8 @@ import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import { smoothAudioValue } from "@/lib/audio/audioMotionSmoothing";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
+import { featureFlags } from "@/lib/perf/featureFlags";
+import { visualRuntime, type VisualFrameHandle } from "@/runtime/visualRuntime";
 import { useFloatingActive } from "@/hooks/useFloatingActive";
 
 export interface FloatingSpectrumGlowProps {
@@ -37,6 +39,8 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  // S5-3：flag on 时只保留这条 runtime 订阅，不再自建 rafScheduler 链。
+  const subscriptionRef = useRef<VisualFrameHandle | null>(null);
   const isRunningRef = useRef<boolean>(false);
   const reducedMotionRef = useRef(false);
   const lastFrameAtRef = useRef(0);
@@ -66,7 +70,7 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
 
   // Main Render Loop with Peak Hold & Gravity Decay
   const renderFrame = useCallback(
-    function renderFrame() {
+    function renderFrame(_time?: number, runtimeDeltaMs?: number) {
       if (!isRunningRef.current) return;
 
       const canvas = canvasRef.current;
@@ -88,9 +92,11 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
       const width = canvas.clientWidth || container.clientWidth || 320;
       const canvasHeight = canvas.clientHeight || height || container.clientHeight || 56;
       const frameTime = typeof performance !== "undefined" ? performance.now() : Date.now();
-      const deltaMs = lastFrameAtRef.current
-        ? Math.max(1, Math.min(64, frameTime - lastFrameAtRef.current))
-        : 16;
+      const deltaMs =
+        runtimeDeltaMs ??
+        (lastFrameAtRef.current
+          ? Math.max(1, Math.min(64, frameTime - lastFrameAtRef.current))
+          : 16);
       lastFrameAtRef.current = frameTime;
       const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
       const backingWidth = Math.round(width * dpr);
@@ -229,10 +235,15 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
       if (reducedMotionRef.current || ((!isPlaying || !hasLiveAudio) && !hasActiveSignal)) {
         isRunningRef.current = false;
         animFrameRef.current = null;
+        subscriptionRef.current?.stop();
+        subscriptionRef.current = null;
         return;
       }
 
-      animFrameRef.current = requestRaf(renderFrame);
+      // flag on 时续排由 runtime 负责；旧路径每条链自己 requestRaf。
+      if (!featureFlags.visualRuntime) {
+        animFrameRef.current = requestRaf(renderFrame);
+      }
     },
     [barCount, currentSong, glowIntensity, height, isPlaying]
   );
@@ -242,13 +253,19 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
     if (!isRunningRef.current) {
       isRunningRef.current = true;
       lastFrameAtRef.current = 0;
-      animFrameRef.current = requestRaf(renderFrame);
+      if (featureFlags.visualRuntime) {
+        subscriptionRef.current = visualRuntime.subscribe("floating-spectrum", renderFrame);
+      } else {
+        animFrameRef.current = requestRaf(renderFrame);
+      }
     }
   }, [renderFrame]);
 
   // Stop loop helper
   const stopLoop = useCallback(() => {
     isRunningRef.current = false;
+    subscriptionRef.current?.stop();
+    subscriptionRef.current = null;
     if (animFrameRef.current) {
       cancelRaf(animFrameRef.current);
       animFrameRef.current = null;
