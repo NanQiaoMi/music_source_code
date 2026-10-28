@@ -17,8 +17,8 @@
 | S5 渲染运行时 | 7 | 7 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | in_progress（S5-1..S5-7 done；M5 出口门待 rAF 收敛与真机 90fps 证据） |
 | S6 状态架构收敛 | 12 | 5 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | in_progress（S6-1/S6-2/S6-3/S6-4/S6-11 done；S6-5..S6-10/S6-12 待） |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
-| S8 门禁与长期治理 | 6 | 3 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | in_progress（S8-1/S8-2/S8-4 done；S8-3/S8-5/S8-6 待） |
-| **合计** | **74** | **37** | **约 129** | — | in_progress |
+| S8 门禁与长期治理 | 6 | 4 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | in_progress（S8-1/S8-2/S8-4/S8-5 done；S8-3/S8-6 待） |
+| **合计** | **74** | **38** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -137,7 +137,7 @@
 - [x] S8-2 覆盖率阶梯（分域阈值 + burn-in）— **done（2026-10-29，c4ce42b）**：新增 `scripts/check-coverage-domains.mjs`（读 coverage-summary，按域聚合并对照 `perf/coverage-domains.json` 地板；默认 enforce，`--report-only`/`--update`（实测-5pp、只升不降）/`--root/--summary`；缺失 summary exit 2）；`npm run test:coverage:domains`（vitest coverage 五域 + checker）；vitest config 仅加 json-summary reporter，全局阈值 30/20/30/30 不变。基线（stmts/branch/func/lines）：audio 46.85/45.27/63.87/47.34、utils 66.08/57.77/73.42/67.13、store 57.46/49.02/56.76/59.09、services 45.80/37.58/40.73/47.47、hooks 19.30/13.79/23.71/19.63（140 文件），地板=实测-5pp。验证：`test:coverage:domains` PASS（255 files/1579 tests，~3min）；6 个 fixture 测试（fail/missing/--report-only/--update 只升不降）；tsc/lint 0。**未做**：CI 接线（S8-1）、`lib-others/workers/global` 域、PR delta >0.5pp 历史对比、TRACKING/README 更新（本条已补）。分支 `feature/arch-perf-s8-2`（未合并）。
 - [ ] S8-3 性能回归套件（bundle diff/nightly/soak/看板）— **S8-3a 完成（2026-10-29，dba8e6e）**：新增 `scripts/perf/bundle-diff.mjs`（baseline vs report markdown 表 + gzip 阈值：rootMain +5KB / first-load +10KB，可覆盖；`--json/--md/--update/--baseline/--report`；exit 0/1/2；只显式 rebaseline），fixture 4 用例（pass/regression/missing/--update 棘轮）；`perf:bundle:diff` npm 脚本；新增 `.github/workflows/nightly.yml`（cron 18:00 UTC + dispatch：build→bundle report→全量 vitest→diff→summary→上传 artifact）；重建 `perf/bundle-baseline.json`（rootMain 3 files/689.3KB raw/211KB gzip；first load 8 scripts/1959.8KB raw/607.2KB gzip；CSS 29KB gzip）并从新 baseline 跑 diff PASS（全 0）；README §8 + CI.md §6。验证：4/4 diff 测试、26/26 scripts/perf tests、tsc/lint/docs-facts/build 全绿。**未验收（连续 4 周）**：无真实 nightly 历史/看板（S8-3b/c/d：runtime FPS/heap、2h soak、perf-history.jsonl）；阈值仅 gzip，绝对 hardMax `--check` 仍禁用（maxAsyncChunk 683.5/public 58.4 既有违规）；nightly 全量测试继承 visualRuntime p95 flake 风险。分支 `feature/arch-perf-s8-3`（未合并）。
 - [x] S8-4 文档事实流水线（check-docs-facts + 季度对账）— **done（2026-10-29，6300fe8）**：CI `verify` job 已有 `Docs facts` step（`node scripts/check-docs-facts.mjs`）；修复 stale 文档数字（AGENTS.md/ARCHITECTURE.md 60/44 → 59/43，与 report-store-stats 一致）；`node scripts/check-docs-facts.mjs` → **fail=0 warn=0**；新增本地脚本 `npm run verify:docs` 与 CI 对齐。季度对账为流程约定（每次发版/季度执行），无代码门禁。分支 `feature/arch-perf-s6-12b`（未合并）。
-- [ ] S8-5 发布检查清单与演练 — owner: — | PR: 1 | 依赖: S7 | 验收: 每次发版执行
+- [x] S8-5 发布检查清单与演练 — **done（2026-10-29，b33c8ce）**：新增 `docs/nbl/RELEASE-CHECKLIST.md`（163 行，10 章：快速演练/版本 CHANGELOG/自动化验证表/桌面就绪门禁/烟雾测试/tag 发布/回滚/24-72h 监控/R1-R14 覆盖缺口）；`scripts/release-dry-run.mjs`（安全子集 tsc+docs-facts+perf:gates；build 默认 SKIP，`--build/--skip-build/--json/--check-only`；PASS/FAIL/SKIP 表；失败 exit 1、非法参数 exit 2）+ `release:dry-run` npm 脚本 + 9 fixture 测试；PROCESS §7.3 链接。验证：全量 258 files/1601 tests；tsc/lint/docs-facts 0；`release:dry-run --skip-build` 3 PASS/1 SKIP exit 0；失败路径 exit 1。缺口（清单 §8 已记）：无 release.yml（S8-5b）、桌面打包仍被 S7-4 决策冻结、bundle diff 需 build 后手动、README 不存在未更新索引。分支 `feature/arch-perf-s8-5`（未合并）。
 - [ ] S8-6 长期 backlog（features 领域化/14 效果插件化/4K/低端/E2E/OPFS）— owner: — | 类型: 长期 | 依赖: 全部 | 验收: 已排期+触发条件
 
 ---
