@@ -104,7 +104,7 @@
 
 - [ ] **M6 出口门**：组件整店订阅 0；store 运行时 import ≤6 且无环；44/44 key 有 version/migrate；整店持久化 0；audioStore <400 行；11 组重复事实→0。
 - [ ] S6-1 selector 门禁 + codemod — owner: — | PR: 1 | 依赖: S3 | 验收: 新增整店=CI error
-- [ ] S6-2 storageRegistry 44/44 + hydrateStores（2 PR）— owner: — | PR: 2 | 依赖: S1-1、S2-4 | 验收: hydration 顺序测试
+- [ ] S6-2 storageRegistry 44/44 + hydrateStores（2 PR）— **Step1+3 完成（2026-10-28，e92161e；分支名误用 s6-1，实际对应 S6-2）**：`storageRegistry` 覆盖全部 **43/43** 实际 persist key（计划写 44 为基线扫描假象：Hi-Res 标识 + 过时外部 key）；43 个 persist 配置统一加 `skipHydration: true`（其余选项不动，格式不变）；新增 `bootstrapStores.ts` 的 `buildHydrationPlan/HYDRATION_PHASES/hydrateStores`（player→queue→audio projection→UI→business 顺序、模块级 promise 幂等、部分失败只重试未完成、SSR 直接返回、未知 key/owner 拒绝）；bootstrap/page 接入。测试 storageRegistry 6（全 src 扫描 43/43、skipHydration、owner/backup/未知）+ bootstrapStores 4（顺序/覆盖/幂等/未知），report 脚本改 AST 提取并输出 registry 43/43。全量 231 files/1450 passed/1 skipped；tsc/eslint 0。**剩余（未验收）**：`useStoresHydrated()` 首屏门未做；registeredStorage envelope/sizeBudget/version-migrate fixtures/backup quota 未做；baseline 未重建（--check 仍 59/60、43/44）；无浏览器 smoke。另：计划文档 S6-1 是 selector 门禁（本分支未做）。
 - [ ] S6-3 audio/player 去重（停双 persist/删双向）— owner: — | PR: 1 | 依赖: S2-4 | 验收: 写盘 ≤1/s；写路径唯一
 - [ ] S6-4 audioStore 播放字段消费迁移（3 PR）— owner: — | PR: 3 | 依赖: S6-3 | 验收: 引用=0；行为回归
 - [ ] S6-5 队列/EQ 副本删除 + SCC 消除 — owner: — | PR: 1 | 依赖: S1-5、S6-3 | 验收: 单一 owner；0 环
