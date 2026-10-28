@@ -41,6 +41,7 @@ const VisualizationProgressContainer = dynamic(
 
 import * as Effects from "./effects";
 import { resolveEffectPlugin } from "./effectPlugins";
+import { resizeParticlePool, type EffectParticle } from "./particlePool";
 import type { EffectFrame, EffectPlugin } from "@/runtime/effectPlugin";
 
 const PlayIcon = memo(() => (
@@ -184,7 +185,11 @@ export function VisualizationView() {
   const animationFrameRef = useRef<number | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const bufferLengthRef = useRef<number>(0);
-  const particlesRef = useRef<unknown[]>([]);
+  // S5-5：粒子对象池与"当前生效数组"分离：resize 复用池，效果切换只把
+  // 生效数组指向空的常驻数组，不再新建 1000 个粒子对象/新数组。
+  const particlePoolRef = useRef<EffectParticle[]>([]);
+  const idleParticlesRef = useRef<EffectParticle[]>([]);
+  const particlesRef = useRef<EffectParticle[]>([]);
   const nebulaStarsRef = useRef<unknown[]>([]);
   const spectrumStarsRef = useRef<unknown[]>([]);
   const matrixDropsRef = useRef<number[]>([]);
@@ -206,6 +211,11 @@ export function VisualizationView() {
   const renderedQualityRef = useRef<string | null>(null);
   // S5-4：已迁移效果由插件绘制；null 表示当前效果未迁移或插件 flag off（走旧 switch）
   const activePluginRef = useRef<EffectPlugin | null>(null);
+
+  // S5-5：refs 外壳、主题、utils 与 EffectFrame 整个生命周期只创建一次。
+  // 效果实现只允许同步解构读取，不得缓存 frame 做跨帧比较。
+  const effectRefsRef = useRef<EffectFrame["refs"] | null>(null);
+  const effectFrameRef = useRef<EffectFrame | null>(null);
 
   // Mouse idle detection for Zen Mode
   // 它切换的是本视图的页眉/页脚，因此只在可视化视图内监听即可：
@@ -347,6 +357,29 @@ export function VisualizationView() {
     const ctx = canvas.getContext("2d", { alpha: false }); // optimize for opaque background
     if (!ctx) return;
 
+    // S5-5：refs 外壳只建一次；所有 ref 对象在组件生命周期内保持不变。
+    if (!effectRefsRef.current) {
+      effectRefsRef.current = {
+        particles: particlesRef,
+        nebulaStars: nebulaStarsRef,
+        spectrumStars: spectrumStarsRef,
+        matrixDrops: matrixDropsRef,
+        smoothBass: smoothBassRef,
+        smoothMid: smoothMidRef,
+        smoothTreble: smoothTrebleRef,
+        bokeh: bokehRef,
+        shockwaves: shockwavesRef,
+      };
+    }
+    const effectRefs = effectRefsRef.current;
+    // 卸载清理用局部引用，避免 cleanup 里再读 ref.current（react-hooks 告警）。
+    const idleParticles = idleParticlesRef.current;
+    const nebulaStars = nebulaStarsRef.current;
+    const spectrumStars = spectrumStarsRef.current;
+    const matrixDrops = matrixDropsRef.current;
+    const bokeh = bokehRef.current;
+    const shockwaves = shockwavesRef.current;
+
     // 画质档位由 runtime 统一裁决；tier 变化经 onQualityChange 推送，普通 resize 读取当前值。
     const resize = (nextQuality?: VisualQualityProfile) => {
       const quality = featureFlags.visualRuntime
@@ -382,17 +415,8 @@ export function VisualizationView() {
     };
 
     const initParticles = (_w: number, _h: number, effectScale = 1) => {
-      particlesRef.current = [];
       const count = Math.max(120, Math.round(1000 * effectScale));
-      for (let i = 0; i < count; i++) {
-        particlesRef.current.push({
-          x: (Math.random() - 0.5) * 2000,
-          y: (Math.random() - 0.5) * 2000,
-          z: Math.random() * 2000,
-          ox: 0,
-          oy: 0,
-        });
-      }
+      particlesRef.current = resizeParticlePool(particlePoolRef.current, count);
     };
 
     const handleWindowResize = () => resize();
@@ -404,6 +428,29 @@ export function VisualizationView() {
     const resizeObserver =
       typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => resize()) : null;
     resizeObserver?.observe(canvas);
+
+    // S5-5：EffectFrame/EffectContext 整个组件生命周期只创建一次；每帧只写字段。
+    // theme/utils/refs 同为稳定对象，插件侧也直接复用（不再每帧 new）。
+    if (!effectFrameRef.current) {
+      const initial = viewportRef.current;
+      effectFrameRef.current = {
+        ctx,
+        width: initial.w,
+        height: initial.h,
+        data: dataArrayRef.current ?? new Uint8Array(0),
+        params: {},
+        time: 0,
+        musicTime: 0,
+        refs: effectRefs,
+        theme: { primary: 0, secondary: 0, accent: 0 },
+        utils: { getThemeBaseHue: () => vizActiveHues.current.primary },
+        canvas,
+        dpr: initial.dpr,
+        quality: visualRuntime.getQuality(),
+        dt: 1000 / 60,
+      };
+    }
+    const effectFrame = effectFrameRef.current;
 
     const _lerpHue = (current: number, target: number, factor: number) => {
       let diff = target - current;
@@ -446,12 +493,14 @@ export function VisualizationView() {
         }
 
         lastEffectRef.current = currentEff;
-        particlesRef.current = [];
-        nebulaStarsRef.current = [];
-        spectrumStarsRef.current = [];
-        matrixDropsRef.current = [];
-        bokehRef.current = [];
-        shockwavesRef.current = [];
+        // S5-5：数组原地清空（保留 ref 外壳与数组本身），下一帧由各效果按需填充。
+        particlesRef.current = idleParticlesRef.current;
+        particlesRef.current.length = 0;
+        nebulaStarsRef.current.length = 0;
+        spectrumStarsRef.current.length = 0;
+        matrixDropsRef.current.length = 0;
+        bokehRef.current.length = 0;
+        shockwavesRef.current.length = 0;
       }
 
       const analyser = getAudioAnalyser();
@@ -507,43 +556,24 @@ export function VisualizationView() {
           plugin?.init({ width: cssWidth, height: cssHeight, dpr });
         }
 
-        // Shared context for all effects
-        const effectCtx: EffectFrame = {
-          ctx,
-          width: cssWidth,
-          height: cssHeight,
-          data: frameData,
-          time: timestamp,
-          // 每帧直接读 store：4Hz 的 currentTime 更新不再经过 React 渲染，
-          // 也避免了"订阅 → 渲染 → effect 写 ref"这条链
-          musicTime: useAudioStore.getState().currentTime,
-          params: settings[currentEff] || settings.spatialMesh,
-
-          refs: {
-            particles: particlesRef,
-            nebulaStars: nebulaStarsRef,
-            spectrumStars: spectrumStarsRef,
-            matrixDrops: matrixDropsRef,
-            smoothBass: smoothBassRef,
-            smoothMid: smoothMidRef,
-            smoothTreble: smoothTrebleRef,
-            bokeh: bokehRef,
-            shockwaves: shockwavesRef,
-          },
-
-          theme: {
-            primary: active.primary,
-            secondary: active.secondary,
-            accent: active.accent,
-          },
-          utils: {
-            getThemeBaseHue: () => active.primary,
-          },
-          canvas,
-          dpr,
-          quality: visualRuntime.getQuality(),
-          dt,
-        };
+        // S5-5：复用同一个 EffectFrame，只刷新字段；refs/theme/utils 引用保持不变。
+        effectFrame.ctx = ctx;
+        effectFrame.width = cssWidth;
+        effectFrame.height = cssHeight;
+        effectFrame.data = frameData;
+        effectFrame.time = timestamp;
+        // 每帧直接读 store：4Hz 的 currentTime 更新不再经过 React 渲染，
+        // 也避免了"订阅 → 渲染 → effect 写 ref"这条链
+        effectFrame.musicTime = useAudioStore.getState().currentTime;
+        effectFrame.params = settings[currentEff] || settings.spatialMesh;
+        effectFrame.theme.primary = active.primary;
+        effectFrame.theme.secondary = active.secondary;
+        effectFrame.theme.accent = active.accent;
+        effectFrame.canvas = canvas;
+        effectFrame.dpr = dpr;
+        effectFrame.quality = visualRuntime.getQuality();
+        effectFrame.dt = dt;
+        const effectCtx = effectFrame;
 
         // --- SAFETY RESET: Ensure each effect starts with a clean slate ---
         // 保留 dpr 缩放，使效果使用的 CSS 像素坐标落到高分辨率后备存储上
@@ -699,13 +729,14 @@ export function VisualizationView() {
       activePluginRef.current?.dispose();
       activePluginRef.current = null;
 
-      // Explicitly clear large data structures to help GC
-      particlesRef.current = [];
-      nebulaStarsRef.current = [];
-      spectrumStarsRef.current = [];
-      matrixDropsRef.current = [];
-      bokehRef.current = [];
-      shockwavesRef.current = [];
+      // 原地清空活跃数组（保留 ref 外壳与对象池，回到可视化时 resize 可零分配复用）
+      particlesRef.current = idleParticles;
+      idleParticles.length = 0;
+      nebulaStars.length = 0;
+      spectrumStars.length = 0;
+      matrixDrops.length = 0;
+      bokeh.length = 0;
+      shockwaves.length = 0;
 
       // Clear canvas context if possible (though usually GC'd)
       ctx.setTransform(1, 0, 0, 1, 0, 0);

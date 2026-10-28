@@ -325,7 +325,9 @@ export const drawNebulaField = ({
   const activeStarCount = Math.min(stars.length, effectParams.starCount || 800);
   const warpForce = (15 + treble * 600) * speedMult;
   ctx.globalCompositeOperation = "screen";
-  stars.slice(0, activeStarCount).forEach((s) => {
+  // S5-5：逐帧遍历不再 slice 新数组（旧实现每帧一次数组分配）
+  for (let i = 0; i < activeStarCount; i += 1) {
+    const s = stars[i];
     s.z -= warpForce;
     if (s.z < 1) {
       s.z = 2500;
@@ -342,7 +344,7 @@ export const drawNebulaField = ({
       ctx.arc(px, py, size, 0, Math.PI * 2);
       ctx.fill();
     }
-  });
+  }
 
   ctx.restore();
 };

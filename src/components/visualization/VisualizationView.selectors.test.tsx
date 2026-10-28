@@ -532,6 +532,118 @@ describe("VisualizationView effect plugins (S5-4)", () => {
     }
   });
 
+  it("S5-5: 100 次 resize 复用 frame/refs/粒子池，构造器零增长", async () => {
+    const flags = featureFlags as { effectPlugins: boolean; visualRuntime: boolean };
+    const previousPlugins = flags.effectPlugins;
+    const previousRuntime = flags.visualRuntime;
+    flags.effectPlugins = true;
+    flags.visualRuntime = true;
+    const restoreCanvas = installRecordingCanvas();
+    const spatialDraw = vi.spyOn(SpatialMeshPlugin.prototype, "draw");
+    const { subscribe, frame } = captureFrame();
+    const counts = { arrayFrom: 0, float32: 0, uint8: 0 };
+    const originalFloat32 = globalThis.Float32Array;
+    const originalUint8 = globalThis.Uint8Array;
+
+    class CountingFloat32Array extends originalFloat32 {
+      constructor(length: number) {
+        super(length);
+        counts.float32 += 1;
+      }
+    }
+    class CountingUint8Array extends originalUint8 {
+      constructor(length: number) {
+        super(length);
+        counts.uint8 += 1;
+      }
+    }
+    const originalFrom = Array.from as unknown as (...args: unknown[]) => unknown[];
+    const fromSpy = vi.spyOn(Array, "from").mockImplementation(((...args: unknown[]) => {
+      counts.arrayFrom += 1;
+      return originalFrom(...args);
+    }) as typeof Array.from);
+
+    try {
+      await mountEffect("spatialMesh");
+      // 首帧的切换清理会把生效数组清空（与旧行为一致）；先 resize 建立粒子池再取基准。
+      await act(async () => frame()?.(16, 16));
+      const firstFrame = spatialDraw.mock.calls.at(-1)?.[0];
+      expect(firstFrame).toBeTruthy();
+
+      const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+      let cssWidth = 800;
+      Object.defineProperty(canvas, "clientWidth", { configurable: true, get: () => cssWidth });
+      Object.defineProperty(canvas, "clientHeight", { configurable: true, get: () => 600 });
+
+      await act(async () => {
+        window.dispatchEvent(new Event("resize"));
+      });
+      await act(async () => frame()?.(32, 16));
+      const firstPool = firstFrame!.refs.particles.current;
+      const firstParticle = firstPool[0];
+
+      Object.defineProperty(globalThis, "Float32Array", {
+        configurable: true,
+        writable: true,
+        value: CountingFloat32Array,
+      });
+      Object.defineProperty(globalThis, "Uint8Array", {
+        configurable: true,
+        writable: true,
+        value: CountingUint8Array,
+      });
+
+      let hotArrayFrom = 0;
+      let hotFloat32 = 0;
+      let hotUint8 = 0;
+      for (let i = 0; i < 100; i += 1) {
+        await act(async () => {
+          // 只在同步的 resize+draw 热路径内取样，排除测试间异步任务产生的噪声。
+          const before = { ...counts };
+          cssWidth += 8;
+          window.dispatchEvent(new Event("resize"));
+          frame()?.(32 + i * 16, 16);
+          hotArrayFrom += counts.arrayFrom - before.arrayFrom;
+          hotFloat32 += counts.float32 - before.float32;
+          hotUint8 += counts.uint8 - before.uint8;
+        });
+      }
+
+      const lastFrame = spatialDraw.mock.calls.at(-1)?.[0];
+      expect(lastFrame).toBe(firstFrame);
+      expect(lastFrame?.refs).toBe(firstFrame?.refs);
+      expect(lastFrame?.theme).toBe(firstFrame?.theme);
+      expect(lastFrame?.utils).toBe(firstFrame?.utils);
+      expect(lastFrame?.refs.smoothBass).toBe(firstFrame?.refs.smoothBass);
+      expect(lastFrame?.refs.nebulaStars.current).toBe(firstFrame?.refs.nebulaStars.current);
+      expect(lastFrame?.refs.particles.current).toBe(firstPool);
+      expect(firstPool).toHaveLength(1000);
+      expect(firstPool[0]).toBe(firstParticle);
+      expect({ hotArrayFrom, hotFloat32, hotUint8 }).toEqual({
+        hotArrayFrom: 0,
+        hotFloat32: 0,
+        hotUint8: 0,
+      });
+    } finally {
+      fromSpy.mockRestore();
+      Object.defineProperty(globalThis, "Float32Array", {
+        configurable: true,
+        writable: true,
+        value: originalFloat32,
+      });
+      Object.defineProperty(globalThis, "Uint8Array", {
+        configurable: true,
+        writable: true,
+        value: originalUint8,
+      });
+      spatialDraw.mockRestore();
+      restoreCanvas();
+      subscribe.mockRestore();
+      flags.effectPlugins = previousPlugins;
+      flags.visualRuntime = previousRuntime;
+    }
+  });
+
   it("flag off: 已迁移效果也回退旧 switch", async () => {
     const flags = featureFlags as { effectPlugins: boolean };
     const previousFlag = flags.effectPlugins;
