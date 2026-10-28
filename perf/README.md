@@ -9,12 +9,13 @@
 | 文件 | 说明 |
 |---|---|
 | scripts/perf/bundle-budget.mjs | 包体预算：rootMainFiles / 首页 script / CSS / async chunk / public 体积；支持 --check 与 --json |
+| scripts/perf/bundle-diff.mjs | S8-3a 包体回归 diff：基线与当前报告逐指标对比，输出 markdown/JSON；rootMain gzip 与首页 gzip 的 delta 超阈值 exit 1；仅 --update 显式重设基线 |
 | scripts/perf/report-store-stats.mjs | Store 架构统计：store 数、persist key、整店订阅、store 依赖边/SCC、getState 分层；支持 --check、--json 与 --store |
 | scripts/check-store-budgets.mjs | S6-12 Store 行数棘轮 + 环门禁：逐文件行数 ≤ baseline，未入基线的新文件 ≤400 行，运行时 store 图 SCC 必须为 0；支持 --update、--root、--baseline、--max-lines |
 | scripts/report-audio-consumers.mjs | S6-4 audioStore 播放字段消费清单：9 字段的 selector / getState 链（含跨行与解构）/ 别名 / setState / `useAudioCurrentSong` 读写点，按层与字段汇总；支持 --json、--fields、--group（progress / playback / all 批次）、--check（components/hooks/lib/services/store 读点归零门禁；audioStore 自身定义点豁免） |
 | scripts/check-docs-facts.mjs | 文档事实校验：store 数、过期字样、CI 触发分支、端口一致性（warn）、INDEX 链接、执行计划包完整性 |
 | perf/budget.json | 包体阈值（baseline / target / hardMax） |
-| perf/bundle-baseline.json | 2026-10-21 包体基线快照 |
+| perf/bundle-baseline.json | 包体回归基线（2026-10-29 重建；由 `bundle-diff --update` 从最新 report 维护） |
 | perf/store-stats-baseline.json | 2026-10-21 Store 架构基线快照 |
 | perf/store-line-baseline.json | 2026-10-29 Store 行数基线（64 文件 / 18,222 行；16 个 >400 行存量冻结） |
 | perf/reports/s6-audio-consumers.before.json | S6-4 迁移前播放字段消费快照（297 处 / 64 文件；混音字段 73）——PR2 修正脚本口径后重跑，原口径 300 |
@@ -32,7 +33,8 @@
 
     # 包体（须先 npm run build；读取 .next 产物）
     node scripts/perf/bundle-budget.mjs
-    node scripts/perf/bundle-budget.mjs --json perf/bundle-baseline.json
+    node scripts/perf/bundle-budget.mjs --json perf/bundle-report.json
+    npm run perf:bundle:diff                            # 与 perf/bundle-baseline.json 比较（见 §8）
     node scripts/perf/bundle-budget.mjs --check        # 超 hardMax 时 exit 1（S4 后启用）
 
     # Store 架构
@@ -126,3 +128,21 @@
 - `.github/workflows/deploy.yml` 的 `verify` 作业在 `Production build` 之后、同 job 内运行该脚本，保证 `.next` 存在；`--skip-if-missing` 只让 bundle markers 在无 build 产物时打印 skip 并放行（单独跑 `npm run perf:check-bundle` 仍为 exit 2）。
 - **`report-store-stats.mjs --check` 仍禁用**：`perf/store-stats-baseline.json` 是 2026-10-21 快照（60 stores / 44 persist keys），实测 59 / 43，`--check` 会报 `stores 59 != baseline 60; persistCount 43 < baseline 44` 直接失败。重建基线需 Lead 批准并单独 PR；重建前 CI 用 `--max-whole 10` 兜底 whole-store 订阅，旧 "Store stats baseline gate" 步骤已移除，避免常红。
 - 回归测试：`scripts/perf/ci-perf-gates.test.mjs` 以 YAML 文本断言 `perf:gates` 步骤存在、位于 verify job 且在 build 之后，断言 `--check` 未启用且 stale 说明仍在，并校验 npm 脚本三项顺序。
+
+## 8. Bundle 回归 diff 与 nightly（S8-3a，2026-10-29）
+
+- 基线 `perf/bundle-baseline.json` 记录 rootMain / first-load / CSS / async / public 全量快照（`updatedAt` + `source` + `result`），提交入库；`perf/bundle-report.json` 是 build 产物（CI/本机生成，不提交）。
+- 命令：
+
+      npm run build
+      node scripts/perf/bundle-budget.mjs --json perf/bundle-report.json
+      npm run perf:bundle:diff                       # markdown 表；回归 exit 1，缺文件 exit 2
+      npm run perf:bundle:diff -- --json perf/bundle-diff.json --md perf/bundle-diff.md
+      npm run perf:bundle:diff -- --max-root-gzip 8 --max-first-load-gzip 12
+      npm run perf:bundle:diff -- --update           # 显式重设基线（须评审后提交）
+
+- 阈值：相对基线 `rootMain.gzipKB` +5KB、`firstLoad.gzipKB` +10KB；`--max-root-gzip` / `--max-first-load-gzip` 覆盖。raw / CSS / script count 只展示不拦截；绝对 hardMax 仍由 `bundle-budget --check`（S4 后启用）负责。
+- nightly：`.github/workflows/nightly.yml`，`schedule` `0 18 * * *`（北京 02:00）+ `workflow_dispatch`；步骤 build → bundle report → 全量 `npm run test -- --run` → diff，失败即红；artifact `perf-bundle-<run_id>` 保留 `bundle-report.json` / `bundle-diff.json` / `bundle-diff.md`，diff 表写入 job summary。
+- 当前基线（2026-10-29 本机 build）：rootMain 3 files / 689.3KB raw / 211KB gzip；首页 8 scripts / 1,959.8KB raw / 607.2KB gzip；CSS 225.4KB raw / 29KB gzip；最大 async chunk 683.5KB；public 58.4MB。
+- 已知缺口：diff 只覆盖静态包体；runtime FPS / 内存（S8-3b）与 2h soak（S8-3c）未接线；bundle-budget 仍报 maxAsyncChunk 683.5 > 400 与 public 58.4MB > 45 两项绝对超限，待 S4 / 资源治理处理，本 diff 不拦截。
+- 测试：`scripts/perf/bundle-diff.test.mjs`（通过 / 超阈值 fail / 缺失文件 exit 2 / `--update` 棘轮）。

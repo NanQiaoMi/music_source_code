@@ -1,0 +1,52 @@
+name: Nightly perf
+
+on:
+  schedule:
+    - cron: '0 18 * * *' # 02:00 Asia/Shanghai
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-perf-${{ github.ref }}
+  cancel-in-progress: true
+
+# Bundle-only nightly (static, no browser). Runtime/soak jobs stay out until the S5
+# harness lands (S8-3b/c). Thresholds and rebaseline flow: perf/README.md #8.
+jobs:
+  bundle-nightly:
+    name: Bundle regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+      - name: Production build
+        run: npm run build
+      - name: Bundle report
+        run: node scripts/perf/bundle-budget.mjs --json perf/bundle-report.json
+      - name: Test suite
+        run: npm run test -- --run
+      - name: Bundle diff vs committed baseline
+        run: npm run perf:bundle:diff -- --json perf/bundle-diff.json --md perf/bundle-diff.md
+      - name: Job summary
+        if: always()
+        run: cat perf/bundle-diff.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-bundle-${{ github.run_id }}
+          path: |
+            perf/bundle-report.json
+            perf/bundle-diff.json
+            perf/bundle-diff.md
+          if-no-files-found: ignore

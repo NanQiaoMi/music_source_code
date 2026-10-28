@@ -36,6 +36,7 @@
     "test:coverage:domains": "vitest run --coverage --coverage.include \"src/lib/audio/**\" --coverage.include \"src/utils/**\" --coverage.include \"src/store/**\" --coverage.include \"src/services/**\" --coverage.include \"src/hooks/**\" && node scripts/check-coverage-domains.mjs",
     "perf:check-bundle": "node scripts/perf/check-bundle-markers.mjs",
     "perf:gates": "node scripts/check-store-budgets.mjs && node scripts/perf/report-store-stats.mjs --max-whole 10 && node scripts/perf/check-bundle-markers.mjs --skip-if-missing",
+    "perf:bundle:diff": "node scripts/perf/bundle-diff.mjs",
     "verify:filesize": "node scripts/check-store-budgets.mjs",
     "verify:docs": "node scripts/check-docs-facts.mjs",
     "prepare": "husky"

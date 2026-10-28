@@ -1,62 +1,35 @@
 {
+  "version": 1,
+  "updatedAt": "2026-10-28T19:33:05.754Z",
+  "source": "perf/bundle-report.json",
   "result": {
-    "generatedAt": "2026-10-21T15:12:37.689Z",
+    "generatedAt": "2026-10-28T19:32:58.142Z",
     "rootMain": {
-      "files": 23,
-      "rawKB": 969.3,
-      "gzipKB": 296.8,
+      "files": 3,
+      "rawKB": 689.3,
+      "gzipKB": 211,
       "missing": []
     },
     "firstLoad": {
-      "scripts": 37,
-      "rawKB": 1996.7,
-      "gzipKB": 615.7,
+      "scripts": 8,
+      "rawKB": 1959.8,
+      "gzipKB": 607.2,
       "missing": 0
     },
     "css": {
       "files": 1,
-      "rawKB": 227.4,
-      "gzipKB": 29.2
+      "rawKB": 225.4,
+      "gzipKB": 29
     },
     "dataManagerFirstLoad": {
-      "scripts": 37,
-      "rawKB": 1857.7
+      "scripts": 7,
+      "rawKB": 1628
     },
     "asyncChunks": {
-      "files": 159,
-      "maxFile": "static\\chunks\\chunk-three-0e42d12b.3183db0d79c34e28.js",
-      "maxKB": 333.5
+      "files": 122,
+      "maxFile": "static\\chunks\\vendor-core-b3eae9fcd88eb040.js",
+      "maxKB": 683.5
     },
     "publicMB": 58.4
-  },
-  "violations": [
-    {
-      "metric": "rootMainRawKB",
-      "value": 969.3,
-      "hardMax": 800,
-      "target": 650,
-      "baseline": 969.3
-    },
-    {
-      "metric": "rootMainGzipKB",
-      "value": 296.8,
-      "hardMax": 230,
-      "target": 190,
-      "baseline": 296.8
-    },
-    {
-      "metric": "scriptCount",
-      "value": 23,
-      "hardMax": 16,
-      "target": 12,
-      "baseline": 23
-    },
-    {
-      "metric": "publicMB",
-      "value": 58.4,
-      "hardMax": 45,
-      "target": 40,
-      "baseline": 58.4
-    }
-  ]
+  }
 }

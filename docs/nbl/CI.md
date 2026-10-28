@@ -2,7 +2,7 @@
 
 > 面向 PR 作者与 reviewer。工作流：`.github/workflows/deploy.yml`。
 > 触发：`push` / `pull_request` → `master`，以及手动 `workflow_dispatch`。
-> 最后核对：2026-10-29（S8-1b 并行拆分）。
+> 最后核对：2026-10-29（S8-1b 并行拆分；S8-3a 追加 nightly）。
 
 ## 1. Job 布局（并行，12min 预算）
 
@@ -81,3 +81,12 @@ node scripts/check-docs-facts.mjs   # 本地别名：npm run verify:docs
 增删门禁步骤时，同步更新 `.github/workflows/deploy.yml` 的 job 布局、本文件与
 `scripts/ci-required-checks.test.mjs`（断言 ≥3 个并行 job、每个必过步骤只出现在一个
 job、coverage 独立于 quality、perf:gates 归 build、预算与 required checks 有记录）。
+
+## 6. Nightly 包体回归（非 required）
+
+`.github/workflows/nightly.yml` 每日 18:00 UTC（北京 02:00）与手动 `workflow_dispatch` 触发，
+跑生产构建 → `bundle-budget` 报告 → 全量测试 → `perf:bundle:diff`；基线为
+`perf/bundle-baseline.json`，回归（rootMain gzip > +5KB / 首页 gzip > +10KB）时 job 失败。
+报告作为 `perf-bundle-<run_id>` artifact 上传并写入 job summary；阈值、`--update` 重设基线与
+已知缺口见 `perf/README.md` §8。该工作流不参与分支保护，PR 必过检查仍是
+`Quality gate (required)`。
