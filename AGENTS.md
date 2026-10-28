@@ -30,7 +30,7 @@
 - **V7 可视化系统（当前挂载）**: 14 个 Canvas 2D 效果；V8 组件树未接线（dead code，待 S4 处置）
 - **情感矩阵 AI**: 2D 坐标情感分析 + AI 歌词笔记
 - **玻璃拟态 UI**: Apple 风格 Glass 组件库
-- **60 个 Zustand Store**（需架构解耦优化；实际数量以 scripts/perf/report-store-stats.mjs 输出为准）
+- **59 个 Zustand Store**（需架构解耦优化；实际数量以 scripts/perf/report-store-stats.mjs 输出为准）
 
 ### 技术栈
 
