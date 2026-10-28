@@ -16,6 +16,7 @@ import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
+import { CoverImage } from "@/components/shared/ui/CoverImage";
 import { X, Maximize2, Minimize2, Settings, Video } from "lucide-react";
 const RecordingPanel = dynamic(
   () => import("@/components/features-v7/RecordingPanel").then((m) => m.RecordingPanel),
@@ -705,7 +706,14 @@ export function VisualizationView() {
                 }}
               >
                 {/* Dynamic glow behind the cover */}
-                <img src={currentSong.cover} alt="cover" className="w-full h-full object-cover" />
+                <CoverImage
+                  src={currentSong.cover}
+                  alt="cover"
+                  fill
+                  size="hero"
+                  priority
+                  className="w-full h-full object-cover"
+                />
                 <div className="absolute inset-0 border border-white/20 rounded-[inherit] pointer-events-none mix-blend-overlay" />
 
                 {/* Overlay reflection */}

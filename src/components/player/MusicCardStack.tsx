@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import Image from "next/image";
 import { motion, useMotionValue, useSpring, AnimatePresence } from "framer-motion";
+import { CoverImage } from "@/components/shared/ui/CoverImage";
 import { Play, Pause, Disc, Plus } from "lucide-react";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useQueueStore } from "@/store/queueStore";
@@ -485,13 +485,13 @@ export const MusicCardStack: React.FC = () => {
 
                       {/* 黑胶中心圆形专辑贴图 + 烫银盘芯微圆环 */}
                       <div className="relative w-28 h-28 rounded-full overflow-hidden border-[3px] border-[#222226] shadow-[0_0_12px_rgba(0,0,0,0.8),inset_0_0_0_1.5px_rgba(255,255,255,0.22)]">
-                        <Image
-                          src={card.cover || DEFAULT_COVER_SRC}
+                        <CoverImage
+                          src={card.cover}
                           alt="label"
                           fill
+                          size="lg"
                           sizes="112px"
                           className="object-cover"
-                          unoptimized
                         />
                         <div className="absolute inset-0 m-auto w-4 h-4 rounded-full bg-[#111] border border-white/30 shadow-md" />
                       </div>
@@ -515,14 +515,14 @@ export const MusicCardStack: React.FC = () => {
                     <div className="absolute right-0 top-0 bottom-0 w-[4px] bg-gradient-to-l from-black/85 to-transparent z-20 pointer-events-none" />
 
                     {/* 专辑封面 */}
-                    <Image
-                      src={card.cover || DEFAULT_COVER_SRC}
+                    <CoverImage
+                      src={card.cover}
                       alt={card.title}
                       fill
+                      size="lg"
                       sizes="360px"
                       priority={isCenter}
                       className="object-cover"
-                      unoptimized
                     />
 
                     {/* 焦点封套：底部无感双层渐变 + 高奢方正小标宋排版 */}
@@ -593,13 +593,13 @@ export const MusicCardStack: React.FC = () => {
                         willChange: "transform, opacity",
                       }}
                     >
-                      <Image
-                        src={card.cover || DEFAULT_COVER_SRC}
+                      <CoverImage
+                        src={card.cover}
                         alt="reflection"
                         fill
+                        size="lg"
                         sizes="360px"
                         className="object-cover"
-                        unoptimized
                       />
                     </div>
                   )}

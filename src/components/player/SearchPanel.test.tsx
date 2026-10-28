@@ -248,4 +248,34 @@ describe("SearchPanel", () => {
 
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it("renders result covers through CoverImage with lazy async loading", async () => {
+    useSearchStore.setState({
+      query: "Jay",
+      results: [
+        {
+          id: "song-1",
+          title: "晴天",
+          artist: "周杰伦",
+          duration: 269,
+          cover: "https://example.com/qingtian.jpg",
+          source: "netease",
+        },
+      ],
+      totalResults: 1,
+    });
+
+    const { SearchPanel } = await import("./SearchPanel");
+
+    await act(async () => {
+      root.render(<SearchPanel isOpen={true} onClose={() => undefined} />);
+    });
+
+    const cover = container.querySelector('img[alt="晴天"]');
+    expect(cover).not.toBeNull();
+    expect(cover?.getAttribute("src")).toBe("https://example.com/qingtian.jpg");
+    expect(cover?.getAttribute("loading")).toBe("lazy");
+    expect(cover?.getAttribute("decoding")).toBe("async");
+    expect(cover?.getAttribute("sizes")).toBe("36px");
+  });
 });

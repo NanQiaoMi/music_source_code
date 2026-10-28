@@ -1,7 +1,22 @@
 import { act, Profiler } from "react";
-import type { CSSProperties, ProfilerOnRenderCallback } from "react";
+import type { CSSProperties, ImgHTMLAttributes, ProfilerOnRenderCallback } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+type MockImageProps = ImgHTMLAttributes<HTMLImageElement> & {
+  fill?: boolean;
+  priority?: boolean;
+  unoptimized?: boolean;
+};
+
+vi.mock("next/image", () => ({
+  default: ({
+    fill: _fill,
+    priority: _priority,
+    unoptimized: _unoptimized,
+    ...props
+  }: MockImageProps) => <img {...props} />,
+}));
 
 // 重组件/异步加载在提交次数测试里没有价值：dynamic 只保留占位 null，
 // framer-motion 换成普通 DOM 元素，避免无限动画的帧回调污染 commit 计数。
@@ -209,6 +224,31 @@ describe("VisualizationView selector 隔离", () => {
       root.render(<StyleProbe effect="auroraWave" settings={settings} />);
     });
     expect(renderedStyles[renderedStyles.length - 1]).toBe(aurora);
+  });
+
+  it("renders the hero cover through CoverImage with priority", async () => {
+    useVisualizationStore.getState().setCurrentEffect("spatialMesh");
+    useAudioStore.setState({
+      currentSong: {
+        id: "song-1",
+        title: "Song",
+        artist: "Artist",
+        duration: 200,
+        cover: "https://example.com/hero.jpg",
+        source: "netease",
+      },
+    });
+
+    await act(async () => {
+      root.render(<VisualizationView />);
+    });
+
+    const cover = container.querySelector('img[alt="cover"]');
+    expect(cover).not.toBeNull();
+    expect(cover?.getAttribute("src")).toBe("https://example.com/hero.jpg");
+    expect(cover?.getAttribute("loading")).toBe("eager");
+    expect(cover?.getAttribute("fetchpriority")).toBe("high");
+    expect(cover?.getAttribute("sizes")).toBe("100vw");
   });
 
   it("makeCanvasStyle 对 spatialMesh 的 blurIntensity 做 80px 上限", () => {

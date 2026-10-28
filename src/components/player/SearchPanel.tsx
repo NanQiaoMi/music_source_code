@@ -24,12 +24,10 @@ import { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useSleepTimerStore } from "@/store/sleepTimerStore";
-import Image from "next/image";
+import { CoverImage } from "@/components/shared/ui/CoverImage";
 import { parseSearchCommand } from "@/lib/search/commandRouter";
 import { executeSearchCommand } from "@/lib/search/commandExecutor";
 import { Settings2, Sliders, Check } from "lucide-react";
-
-const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 interface SpeechRecognitionLike {
   lang: string;
@@ -796,12 +794,13 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                             className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors group"
                           >
                             <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-white/5">
-                              <Image
-                                src={song.cover || DEFAULT_COVER_SRC}
+                              <CoverImage
+                                src={song.cover}
                                 alt={song.title}
                                 fill
-                                className="object-cover"
+                                size="sm"
                                 sizes="36px"
+                                className="object-cover"
                               />
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                 <Play className="w-4 h-4 text-white fill-white" />

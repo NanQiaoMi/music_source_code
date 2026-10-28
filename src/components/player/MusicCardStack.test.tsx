@@ -153,6 +153,20 @@ describe("MusicCardStack", () => {
     });
   });
 
+  it("renders all three covers through CoverImage with lazy/eager loading", async () => {
+    const { MusicCardStack } = await import("./MusicCardStack");
+
+    await act(async () => {
+      root.render(<MusicCardStack />);
+    });
+
+    const covers = Array.from(container.querySelectorAll("img"));
+    expect(covers).toHaveLength(3);
+    covers.forEach((img) => expect(img.getAttribute("decoding")).toBe("async"));
+    expect(covers.filter((img) => img.getAttribute("loading") === "eager")).toHaveLength(1);
+    expect(covers.filter((img) => img.getAttribute("loading") === "lazy")).toHaveLength(2);
+  });
+
   it("plays playable track on card click", async () => {
     const playableSong: Song = {
       id: "song-real-1",
