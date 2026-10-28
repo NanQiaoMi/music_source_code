@@ -1,5 +1,9 @@
-﻿/// <reference lib="webworker" />
+/// <reference lib="webworker" />
 
+/**
+ * @deprecated S7-3: zero production references. Kept for the S8-6 delete decision.
+ * If wired later, transfer `Float32Array` channel buffers instead of cloning the AudioBuffer.
+ */
 interface FingerprintMessage {
   type: "generate";
   audioBuffer: AudioBuffer;

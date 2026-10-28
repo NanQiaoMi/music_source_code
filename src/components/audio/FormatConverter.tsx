@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef, useEffect } from "react";
 import { canExportConvertedAudio, detect } from "@/lib/audio/processingCapabilities";
 import { resolveAudioSourceBlob } from "@/lib/audio/audioSource";
 import { runFormatConversionWorkerTask } from "@/lib/audio/formatConversionWorker";
+import { createAudioWorker, WORKER_UNAVAILABLE_MESSAGE } from "@/lib/audio/workerCapabilities";
 import { useFormatConversionStore, ConversionTask } from "@/store/formatConversionStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { selectSongs } from "@/store/selectors/playlistSelectors";
@@ -50,14 +51,14 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
   const exportAvailable = canExportConvertedAudio(capabilities);
 
   useEffect(() => {
-    const conversionWorker = new Worker(
+    const conversionWorker = createAudioWorker(
       new URL("../../workers/conversion.worker.ts", import.meta.url)
     );
     workerRef.current = conversionWorker;
 
     return () => {
       workerRef.current = null;
-      conversionWorker.terminate();
+      conversionWorker?.terminate();
     };
   }, []);
 
@@ -101,10 +102,17 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
   }, [songs, selectedSongs, addConversionTasks, clearSelection, settings.targetFormat]);
 
   const startConversion = useCallback(async () => {
-    if (!workerRef.current) return;
-
     const pendingTasks = tasks.filter((t) => t.status === "pending");
     if (pendingTasks.length === 0) return;
+
+    const worker = workerRef.current;
+    if (!worker) {
+      for (const task of pendingTasks) {
+        updateTaskStatus(task.id, "error", WORKER_UNAVAILABLE_MESSAGE);
+        incrementFailed();
+      }
+      return;
+    }
 
     setIsConverting(true);
 
@@ -133,14 +141,11 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
           format: task.sourceFormat || sourceSong?.format,
         });
 
-        const activeWorker = workerRef.current;
-        if (!activeWorker) {
-          throw new Error("Conversion worker is not available");
-        }
+        const fileBuffer = await source.blob.arrayBuffer();
 
         const outputBlob = await runFormatConversionWorkerTask({
-          worker: activeWorker,
-          fileBlob: source.blob,
+          worker,
+          fileBuffer,
           sourceFormat: source.inferredFormat,
           targetFormat: task.targetFormat,
           bitrate: settings.bitrate,

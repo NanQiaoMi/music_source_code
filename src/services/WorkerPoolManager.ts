@@ -54,6 +54,11 @@ export class WorkerPoolManager {
     return new Worker(this.workerScriptUrl, { type: "module" });
   }
 
+  /**
+   * Runs `data` on a pooled worker.
+   * Pass large `ArrayBuffer`s through `transferables`: they are moved (not cloned)
+   * to the worker and become detached on the caller side after posting.
+   */
   public execute<TInput = unknown, TOutput = unknown>(
     data: TInput,
     transferables?: Transferable[],

@@ -5,7 +5,8 @@ import { DSDRate, DSDQuality } from "@/store/dsdProcessingStore";
 interface DSDConversionMessage {
   type: "convertDSD";
   data: {
-    fileBlob: Blob;
+    /** Input DSD bytes, transferred from the main thread (sender copy is detached). */
+    fileBuffer: ArrayBuffer;
     sourceRate: DSDRate;
     targetSampleRate: number;
     outputMode: "pcm" | "dop" | "native";
@@ -65,15 +66,14 @@ const getFilterCoefficients = (type: "sharp" | "slow" | "medium", length: number
 };
 
 const convertDSDToPCM = async (
-  fileBlob: Blob,
+  fileBuffer: ArrayBuffer,
   sourceRate: DSDRate,
   targetSampleRate: number,
   dsdQuality: DSDQuality,
   filterType: "sharp" | "slow" | "medium",
   dithering: boolean
-): Promise<Blob> => {
-  const arrayBuffer = await fileBlob.arrayBuffer();
-  const inputData = new Uint8Array(arrayBuffer);
+): Promise<{ outputBuffer: ArrayBuffer; outputType: string }> => {
+  const inputData = new Uint8Array(fileBuffer);
 
   const _sourceHz = dsdRateToHz[sourceRate];
   const decimationFactor = decimationFactors[dsdQuality];
@@ -160,16 +160,15 @@ const convertDSDToPCM = async (
 
   self.postMessage({ type: "progress", data: { progress: 100 } });
 
-  return new Blob([wavBuffer], { type: "audio/wav" });
+  return { outputBuffer: wavBuffer, outputType: "audio/wav" };
 };
 
 const convertDSDToDOP = async (
-  fileBlob: Blob,
+  fileBuffer: ArrayBuffer,
   sourceRate: DSDRate,
   _targetSampleRate: number
-): Promise<Blob> => {
-  const arrayBuffer = await fileBlob.arrayBuffer();
-  const inputData = new Uint8Array(arrayBuffer);
+): Promise<{ outputBuffer: ArrayBuffer; outputType: string }> => {
+  const inputData = new Uint8Array(fileBuffer);
 
   const _sourceHz = dsdRateToHz[sourceRate];
   const decimationFactor = 64;
@@ -204,7 +203,7 @@ const convertDSDToDOP = async (
 
   self.postMessage({ type: "progress", data: { progress: 100 } });
 
-  return new Blob([dopData], { type: "audio/dop" });
+  return { outputBuffer: dopData.buffer as ArrayBuffer, outputType: "audio/dop" };
 };
 
 self.onmessage = async (event: MessageEvent<DSDConversionMessage>) => {
@@ -213,7 +212,7 @@ self.onmessage = async (event: MessageEvent<DSDConversionMessage>) => {
   if (type === "convertDSD") {
     try {
       const {
-        fileBlob,
+        fileBuffer,
         sourceRate,
         targetSampleRate,
         outputMode,
@@ -224,11 +223,11 @@ self.onmessage = async (event: MessageEvent<DSDConversionMessage>) => {
 
       self.postMessage({ type: "progress", data: { progress: 5 } });
 
-      let outputBlob: Blob;
+      let result: { outputBuffer: ArrayBuffer; outputType: string };
 
       if (outputMode === "pcm") {
-        outputBlob = await convertDSDToPCM(
-          fileBlob,
+        result = await convertDSDToPCM(
+          fileBuffer,
           sourceRate,
           targetSampleRate,
           dsdQuality,
@@ -236,15 +235,19 @@ self.onmessage = async (event: MessageEvent<DSDConversionMessage>) => {
           dithering
         );
       } else if (outputMode === "dop") {
-        outputBlob = await convertDSDToDOP(fileBlob, sourceRate, targetSampleRate);
+        result = await convertDSDToDOP(fileBuffer, sourceRate, targetSampleRate);
       } else {
         throw new Error("Native DSD output not supported in browser");
       }
 
-      self.postMessage({
-        type: "complete",
-        data: { outputBlob },
-      });
+      // Transfer the output back instead of structured-cloning a large buffer.
+      self.postMessage(
+        {
+          type: "complete",
+          data: result,
+        },
+        [result.outputBuffer]
+      );
     } catch (error) {
       console.error("[DSD Worker Error]:", error);
       self.postMessage({

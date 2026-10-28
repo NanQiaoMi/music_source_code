@@ -10,6 +10,7 @@ class MockWorker {
   public onerror: ((e: ErrorEvent) => void) | null = null;
   private listeners: Map<string, Set<Function>> = new Map();
   public terminated = false;
+  public lastTransfer?: Transferable[];
 
   constructor(
     public scriptUrl: string | URL,
@@ -27,7 +28,8 @@ class MockWorker {
     this.listeners.get(type)?.delete(listener);
   }
 
-  postMessage(data: any) {
+  postMessage(data: any, transfer?: Transferable[]) {
+    this.lastTransfer = transfer;
     const payload = data;
     setTimeout(() => {
       if (this.terminated) return;
@@ -85,6 +87,18 @@ describe("WorkerPoolManager", () => {
     const res3 = await task3Promise;
     expect(res3).toEqual({ result: { id: 3 }, processed: true });
 
+    pool.terminateAll();
+  });
+
+  it("forwards transferable buffers to worker.postMessage", async () => {
+    const pool = new TestableWorkerPool("test-worker.js", 1, 5000);
+    const fileBuffer = new ArrayBuffer(8);
+
+    const taskPromise = pool.execute({ fileBuffer }, [fileBuffer]);
+    await vi.advanceTimersByTimeAsync(15);
+    await taskPromise;
+
+    expect(pool.mockWorkers[0].lastTransfer).toEqual([fileBuffer]);
     pool.terminateAll();
   });
 

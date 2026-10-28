@@ -12,6 +12,7 @@ import { usePlaylistStore } from "@/store/playlistStore";
 import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { resolveDSDSourceBlob } from "@/lib/audio/dsdSource";
+import { createAudioWorker, WORKER_UNAVAILABLE_MESSAGE } from "@/lib/audio/workerCapabilities";
 import type { Song } from "@/types/song";
 import { motion, AnimatePresence } from "framer-motion";
 import { Cpu, Trash2, CheckCircle, XCircle, Loader2, Download, FileAudio, Zap } from "lucide-react";
@@ -30,6 +31,10 @@ type DSDWorkerPayload = {
   type?: "progress" | "complete" | "error";
   data?: {
     progress?: number;
+    /** Output bytes, transferred back from the worker. */
+    outputBuffer?: ArrayBuffer;
+    outputType?: string;
+    /** Legacy reply from older worker bundles. */
     outputBlob?: Blob;
     error?: string;
   };
@@ -140,9 +145,19 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
 
     let activeWorker = workerRef.current;
     if (!activeWorker) {
-      activeWorker = new Worker(new URL("../../workers/dsd.worker.ts", import.meta.url));
+      activeWorker = createAudioWorker(new URL("../../workers/dsd.worker.ts", import.meta.url));
       workerRef.current = activeWorker;
     }
+
+    if (!activeWorker) {
+      for (const task of pendingTasks) {
+        updateTaskStatus(task.id, "error", undefined, WORKER_UNAVAILABLE_MESSAGE);
+        incrementFailed();
+      }
+      return;
+    }
+
+    const worker = activeWorker;
 
     for (const task of pendingTasks) {
       if (processingRef.current.get(task.id)) continue;
@@ -163,11 +178,12 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
       try {
         updateTaskStatus(task.id, "converting");
         const { blob } = await resolveDSDSourceBlob(sourceSong);
+        const fileBuffer = await blob.arrayBuffer();
 
         await new Promise<void>((resolve, reject) => {
           const cleanup = () => {
             processingRef.current.delete(task.id);
-            activeWorker.removeEventListener("message", workerHandler);
+            worker.removeEventListener("message", workerHandler);
           };
 
           const workerHandler = (event: MessageEvent<DSDWorkerPayload>) => {
@@ -180,8 +196,12 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
 
             cleanup();
 
-            if (type === "complete" && data.outputBlob) {
-              updateTaskStatus(task.id, "completed", data.outputBlob);
+            const outputBlob = data.outputBuffer
+              ? new Blob([data.outputBuffer], { type: data.outputType ?? "audio/wav" })
+              : data.outputBlob;
+
+            if (type === "complete" && outputBlob) {
+              updateTaskStatus(task.id, "completed", outputBlob);
               incrementProcessed();
               reportUsage("dsd_conv");
               resolve();
@@ -197,21 +217,24 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
             resolve();
           };
 
-          activeWorker.addEventListener("message", workerHandler);
+          worker.addEventListener("message", workerHandler);
 
           try {
-            activeWorker.postMessage({
-              type: "convertDSD",
-              data: {
-                fileBlob: blob,
-                sourceRate: task.sourceRate,
-                targetSampleRate: settings.targetSampleRate,
-                outputMode: settings.outputMode,
-                dsdQuality: settings.dsdQuality,
-                filterType: settings.filterType,
-                dithering: settings.dithering,
+            worker.postMessage(
+              {
+                type: "convertDSD",
+                data: {
+                  fileBuffer,
+                  sourceRate: task.sourceRate,
+                  targetSampleRate: settings.targetSampleRate,
+                  outputMode: settings.outputMode,
+                  dsdQuality: settings.dsdQuality,
+                  filterType: settings.filterType,
+                  dithering: settings.dithering,
+                },
               },
-            });
+              [fileBuffer]
+            );
           } catch (error) {
             cleanup();
             reject(error);

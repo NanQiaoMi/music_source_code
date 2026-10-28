@@ -5,11 +5,13 @@ import {
   FormatConversionWorkerPayload,
   runFormatConversionWorkerTask,
 } from "./formatConversionWorker";
+import { WORKER_UNAVAILABLE_MESSAGE } from "./workerCapabilities";
 
 type WorkerListener = (event: MessageEvent<FormatConversionWorkerPayload>) => void;
 
 class FakeConversionWorker implements FormatConversionWorkerLike {
   lastMessage: FormatConversionWorkerMessage | null = null;
+  lastTransfer: Transferable[] | undefined;
   private listeners = new Set<WorkerListener>();
 
   addEventListener(type: "message", listener: WorkerListener) {
@@ -24,8 +26,9 @@ class FakeConversionWorker implements FormatConversionWorkerLike {
     }
   }
 
-  postMessage(message: FormatConversionWorkerMessage) {
+  postMessage(message: FormatConversionWorkerMessage, transfer?: Transferable[]) {
     this.lastMessage = message;
+    this.lastTransfer = transfer;
   }
 
   emit(payload: FormatConversionWorkerPayload) {
@@ -39,11 +42,11 @@ class FakeConversionWorker implements FormatConversionWorkerLike {
   }
 }
 
-function runTask(worker: FakeConversionWorker, onProgress = vi.fn()) {
-  const fileBlob = new Blob([new Uint8Array([1, 2, 3])], { type: "audio/mpeg" });
+function runTask(worker: FakeConversionWorker | null, onProgress = vi.fn()) {
+  const fileBuffer = new Uint8Array([1, 2, 3]).buffer;
   const promise = runFormatConversionWorkerTask({
     worker,
-    fileBlob,
+    fileBuffer,
     sourceFormat: "mp3",
     targetFormat: "flac",
     bitrate: 320,
@@ -53,19 +56,19 @@ function runTask(worker: FakeConversionWorker, onProgress = vi.fn()) {
     onProgress,
   });
 
-  return { fileBlob, onProgress, promise };
+  return { fileBuffer, onProgress, promise };
 }
 
 describe("runFormatConversionWorkerTask", () => {
-  it("posts conversion settings and resolves with the output blob", async () => {
+  it("transfers the input buffer and resolves with the transferred output blob", async () => {
     const worker = new FakeConversionWorker();
-    const { fileBlob, onProgress, promise } = runTask(worker);
-    const outputBlob = new Blob([new Uint8Array([9, 8])], { type: "audio/flac" });
+    const { fileBuffer, onProgress, promise } = runTask(worker);
+    const outputBuffer = new Uint8Array([9, 8]).buffer;
 
     expect(worker.lastMessage).toEqual({
       type: "convert",
       data: {
-        fileBlob,
+        fileBuffer,
         sourceFormat: "mp3",
         targetFormat: "flac",
         bitrate: 320,
@@ -74,24 +77,41 @@ describe("runFormatConversionWorkerTask", () => {
         preserveMetadata: true,
       },
     });
+    expect(worker.lastTransfer).toEqual([fileBuffer]);
 
     worker.emit({ type: "progress", data: { progress: 42 } });
     expect(onProgress).toHaveBeenCalledWith(42);
 
-    worker.emit({ type: "complete", data: { outputBlob } });
+    worker.emit({ type: "complete", data: { outputBuffer, outputType: "audio/flac" } });
 
-    await expect(promise).resolves.toBe(outputBlob);
+    const outputBlob = await promise;
+    expect(outputBlob).toBeInstanceOf(Blob);
+    expect(outputBlob.type).toBe("audio/flac");
+    expect(new Uint8Array(await outputBlob.arrayBuffer())).toEqual(new Uint8Array([9, 8]));
     expect(worker.listenerCount).toBe(0);
+  });
+
+  it("rejects explicitly when workers are unavailable", async () => {
+    const { promise } = runTask(null);
+    await expect(promise).rejects.toThrow(WORKER_UNAVAILABLE_MESSAGE);
+  });
+
+  it("documents transfer semantics: a transferred buffer is detached in the sender", () => {
+    const message = { data: { fileBuffer: new ArrayBuffer(8) } };
+    const received = structuredClone(message, { transfer: [message.data.fileBuffer] });
+
+    expect(message.data.fileBuffer.byteLength).toBe(0);
+    expect(received.data.fileBuffer.byteLength).toBe(8);
   });
 
   it("clamps progress updates before forwarding them", async () => {
     const worker = new FakeConversionWorker();
     const { onProgress, promise } = runTask(worker);
-    const outputBlob = new Blob([new Uint8Array([1])], { type: "audio/wav" });
+    const outputBuffer = new ArrayBuffer(1);
 
     worker.emit({ type: "progress", data: { progress: -25 } });
     worker.emit({ type: "progress", data: { progress: 125 } });
-    worker.emit({ type: "complete", data: { outputBlob } });
+    worker.emit({ type: "complete", data: { outputBuffer } });
 
     await promise;
     expect(onProgress).toHaveBeenNthCalledWith(1, 0);

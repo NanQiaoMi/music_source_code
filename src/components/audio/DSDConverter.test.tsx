@@ -144,9 +144,12 @@ describe("DSDConverter", () => {
           targetSampleRate: 352800,
           outputMode: "pcm",
         }),
-      })
+      }),
+      [expect.any(ArrayBuffer)]
     );
-    expect(worker.postMessage.mock.calls[0][0].data.fileBlob.size).toBe(4);
+    const posted = worker.postMessage.mock.calls[0][0];
+    expect(posted.data.fileBuffer.byteLength).toBe(4);
+    expect(worker.postMessage.mock.calls[0][1]).toEqual([posted.data.fileBuffer]);
     expect(mocks.resolveDSDSourceBlob).toHaveBeenCalledWith(
       expect.objectContaining({ id: "dsd-song", audioUrl: "stored://dsd-song" })
     );
@@ -157,14 +160,18 @@ describe("DSDConverter", () => {
 
     expect(useDSDProcessingStore.getState().tasks[0].progress).toBe(42);
 
-    const outputBlob = new Blob([new Uint8Array([9])], { type: "audio/wav" });
     await act(async () => {
-      worker.emit({ type: "complete", data: { outputBlob } });
+      worker.emit({
+        type: "complete",
+        data: { outputBuffer: new Uint8Array([9]).buffer, outputType: "audio/wav" },
+      });
     });
 
     const task = useDSDProcessingStore.getState().tasks[0];
     expect(task.status).toBe("completed");
-    expect(task.outputBlob).toBe(outputBlob);
+    expect(task.outputBlob).toBeInstanceOf(Blob);
+    expect(task.outputBlob?.size).toBe(1);
+    expect(task.outputBlob?.type).toBe("audio/wav");
     expect(useDSDProcessingStore.getState().totalProcessed).toBe(1);
     expect(mocks.reportUsage).toHaveBeenCalledWith("dsd_conv");
 

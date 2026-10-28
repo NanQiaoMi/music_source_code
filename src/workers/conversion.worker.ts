@@ -1,14 +1,14 @@
 ﻿/// <reference lib="webworker" />
 
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { fetchFile } from "@ffmpeg/util";
 
 let ffmpeg: FFmpeg | null = null;
 
 interface ConversionMessage {
   type: "convert";
   data: {
-    fileBlob: Blob;
+    /** Input audio bytes, transferred from the main thread (sender copy is detached). */
+    fileBuffer: ArrayBuffer;
     sourceFormat: string;
     targetFormat: string;
     bitrate: number;
@@ -42,8 +42,14 @@ const toBlobURL = async (url: string, _mimeType: string) => {
   return URL.createObjectURL(body);
 };
 
+/** Returns an ArrayBuffer that owns exactly `bytes` so it can be transferred. */
+const toTransferableBuffer = (bytes: Uint8Array): ArrayBuffer => {
+  // slice() copies views that share a larger backing store; transfer would otherwise move the whole store.
+  return bytes.slice().buffer as ArrayBuffer;
+};
+
 const convertAudio = async (
-  fileBlob: Blob,
+  fileBuffer: ArrayBuffer,
   sourceFormat: string,
   targetFormat: string,
   bitrate: number,
@@ -56,7 +62,7 @@ const convertAudio = async (
   const inputFileName = `input.${sourceFormat}`;
   const outputFileName = `output.${targetFormat}`;
 
-  await ffmpegInstance.writeFile(inputFileName, await fetchFile(fileBlob));
+  await ffmpegInstance.writeFile(inputFileName, new Uint8Array(fileBuffer));
 
   const ffmpegArgs = ["-i", inputFileName];
 
@@ -77,13 +83,14 @@ const convertAudio = async (
   await ffmpegInstance.exec(ffmpegArgs);
 
   const outputFile = await ffmpegInstance.readFile(outputFileName);
-
-  const outputBlob = new Blob([outputFile as BlobPart], { type: `audio/${targetFormat}` });
+  const outputBuffer = toTransferableBuffer(
+    typeof outputFile === "string" ? new TextEncoder().encode(outputFile) : outputFile
+  );
 
   await ffmpegInstance.deleteFile(inputFileName);
   await ffmpegInstance.deleteFile(outputFileName);
 
-  return outputBlob;
+  return { outputBuffer, outputType: `audio/${targetFormat}` };
 };
 
 self.onmessage = async (event: MessageEvent<ConversionMessage>) => {
@@ -92,7 +99,7 @@ self.onmessage = async (event: MessageEvent<ConversionMessage>) => {
   if (type === "convert") {
     try {
       const {
-        fileBlob,
+        fileBuffer,
         sourceFormat,
         targetFormat,
         bitrate,
@@ -103,8 +110,8 @@ self.onmessage = async (event: MessageEvent<ConversionMessage>) => {
 
       self.postMessage({ type: "progress", data: { progress: 10 } });
 
-      const outputBlob = await convertAudio(
-        fileBlob,
+      const { outputBuffer, outputType } = await convertAudio(
+        fileBuffer,
         sourceFormat,
         targetFormat,
         bitrate,
@@ -115,10 +122,14 @@ self.onmessage = async (event: MessageEvent<ConversionMessage>) => {
 
       self.postMessage({ type: "progress", data: { progress: 100 } });
 
-      self.postMessage({
-        type: "complete",
-        data: { outputBlob },
-      });
+      // Transfer the output back instead of structured-cloning a large buffer.
+      self.postMessage(
+        {
+          type: "complete",
+          data: { outputBuffer, outputType },
+        },
+        [outputBuffer]
+      );
     } catch (error) {
       console.error("[Conversion Worker Error]:", error);
       self.postMessage({

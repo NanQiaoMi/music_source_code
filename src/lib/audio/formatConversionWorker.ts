@@ -1,7 +1,13 @@
+import { WORKER_UNAVAILABLE_MESSAGE } from "./workerCapabilities";
+
 export interface FormatConversionWorkerPayload {
   type?: "progress" | "complete" | "error";
   data?: {
     progress?: number;
+    /** Output bytes, transferred back from the worker (preferred reply). */
+    outputBuffer?: ArrayBuffer;
+    outputType?: string;
+    /** Legacy reply from older worker bundles; structured-cloned, not transferred. */
     outputBlob?: Blob;
     error?: string;
   };
@@ -10,7 +16,11 @@ export interface FormatConversionWorkerPayload {
 export interface FormatConversionWorkerMessage {
   type: "convert";
   data: {
-    fileBlob: Blob;
+    /**
+     * Input audio bytes. Posted with `postMessage(message, [fileBuffer])`, which
+     * detaches this buffer on the sender side (`byteLength === 0`) after posting.
+     */
+    fileBuffer: ArrayBuffer;
     sourceFormat: string;
     targetFormat: string;
     bitrate: number;
@@ -29,12 +39,17 @@ export interface FormatConversionWorkerLike {
     type: "message",
     listener: (event: MessageEvent<FormatConversionWorkerPayload>) => void
   ) => void;
-  postMessage: (message: FormatConversionWorkerMessage) => void;
+  postMessage: {
+    (message: FormatConversionWorkerMessage): void;
+    (message: FormatConversionWorkerMessage, transfer: Transferable[]): void;
+  };
 }
 
 export interface RunFormatConversionWorkerTaskInput {
-  worker: FormatConversionWorkerLike;
-  fileBlob: Blob;
+  /** `null` when `createAudioWorker` reported that workers are unavailable. */
+  worker: FormatConversionWorkerLike | null;
+  /** Raw audio bytes; ownership moves to the worker (detached after posting). */
+  fileBuffer: ArrayBuffer;
   sourceFormat: string;
   targetFormat: string;
   bitrate: number;
@@ -54,7 +69,7 @@ function normalizeProgress(progress: unknown): number | null {
 
 export function runFormatConversionWorkerTask({
   worker,
-  fileBlob,
+  fileBuffer,
   sourceFormat,
   targetFormat,
   bitrate,
@@ -63,6 +78,10 @@ export function runFormatConversionWorkerTask({
   preserveMetadata,
   onProgress,
 }: RunFormatConversionWorkerTaskInput): Promise<Blob> {
+  if (!worker) {
+    return Promise.reject(new Error(WORKER_UNAVAILABLE_MESSAGE));
+  }
+
   return new Promise((resolve, reject) => {
     let settled = false;
 
@@ -90,8 +109,12 @@ export function runFormatConversionWorkerTask({
 
       if (type === "complete") {
         settle(() => {
-          if (data.outputBlob) {
-            resolve(data.outputBlob);
+          const outputBlob = data.outputBuffer
+            ? new Blob([data.outputBuffer], { type: data.outputType || "" })
+            : data.outputBlob;
+
+          if (outputBlob) {
+            resolve(outputBlob);
           } else {
             reject(new Error("Conversion worker completed without output"));
           }
@@ -109,19 +132,22 @@ export function runFormatConversionWorkerTask({
 
     worker.addEventListener("message", workerHandler);
 
+    const message: FormatConversionWorkerMessage = {
+      type: "convert",
+      data: {
+        fileBuffer,
+        sourceFormat,
+        targetFormat,
+        bitrate,
+        sampleRate,
+        channels,
+        preserveMetadata,
+      },
+    };
+
     try {
-      worker.postMessage({
-        type: "convert",
-        data: {
-          fileBlob,
-          sourceFormat,
-          targetFormat,
-          bitrate,
-          sampleRate,
-          channels,
-          preserveMetadata,
-        },
-      });
+      // Transfer (not clone) the potentially large input buffer; it is detached after this call.
+      worker.postMessage(message, [fileBuffer]);
     } catch (error) {
       settle(() => reject(error instanceof Error ? error : new Error("Conversion failed")));
     }
