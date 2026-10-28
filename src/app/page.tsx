@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useUIStore } from "@/store/uiStore";
 import { useDynamicTheme } from "@/hooks/useDynamicTheme";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useRestoreAfterHydration } from "@/hooks/useRestoreAfterHydration";
 
 import dynamic from "next/dynamic";
 
@@ -59,6 +60,7 @@ const MusicBackstory = dynamic(
 
 import { bootstrapApp } from "@/lib/bootstrap";
 import { hydrateStores } from "@/lib/bootstrapStores";
+import { getHydrationStatus } from "@/lib/hydrationStatus";
 
 /**
  * Main Application Entry Point - mimimusic
@@ -79,14 +81,21 @@ export default function Home() {
   useDynamicTheme();
   useKeyboardShortcuts();
 
+  // S6-2c: 只启动一次显式 hydrate。恢复/初始化由 useRestoreAfterHydration 在
+  // status 变为 ready 后触发；idle/hydrating 保持默认 UI，error 时跳过恢复但页面
+  // 仍可用（绝不在 hydrate 完成前读取持久化视图而覆盖 store 默认值）。
   useEffect(() => {
-    // persist store 显式 hydrate 完成后才能读取持久化的视图/主题，避免被 store 默认值覆盖。
-    void hydrateStores().then(() => {
-      useUIStore.getState().restorePersistedView();
-      // 重视图由上方 next/dynamic 声明按需加载；此处不再重复预取（S3-9）。
-      void bootstrapApp();
+    if (getHydrationStatus() !== "idle") return;
+    void hydrateStores().catch((error: unknown) => {
+      console.error("[Bootstrap] Persisted store hydration failed; keeping default UI.", error);
     });
   }, []);
+
+  useRestoreAfterHydration(() => {
+    useUIStore.getState().restorePersistedView();
+    // 重视图由上方 next/dynamic 声明按需加载；此处不再重复预取（S3-9）。
+    void bootstrapApp();
+  });
 
   return (
     <main className="relative w-full h-full overflow-hidden bg-black fixed inset-0">
