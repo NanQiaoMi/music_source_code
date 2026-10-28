@@ -13,12 +13,12 @@
 | S1 数据与播放正确性 | 10 | 3 | 15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿 | in_progress（S1-1/S1-2/S1-3 done；S1-4..S1-10 待） |
 | S2 音频图与持久化 | 6 | 0 | 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏 | pending |
 | S3 外壳与订阅治理 | 10 | 9 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | in_progress（S3-1/S3-3/S3-4/S3-5/S3-6/S3-7/S3-8/S3-9/S3-10 done；S3-2 待） |
-| S4 包体与加载 | 7 | 0 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | pending |
+| S4 包体与加载 | 7 | 1 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | in_progress（S4-1 done；S4-2..S4-7 待） |
 | S5 渲染运行时 | 7 | 0 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | pending |
 | S6 状态架构收敛 | 12 | 0 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | pending |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **16** | **约 129** | — | in_progress |
+| **合计** | **74** | **17** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -80,9 +80,9 @@
 ## S4 包体与加载（M4，出口门）
 
 - [ ] **M4 出口门**：rootMain gzip ≤190KB；script ≤12；First Load / ≤1,700KB；V8 按 D1 处置；至少 2 个高频列表虚拟化。
-- [ ] S4-1 jsmediatags 动态化 — **代码完成（2026-10-28，f4eed94）；E4-1 待 S4-3a 后复测** — owner: — | PR: 1（本分支 1a+1b 合并） | 依赖: S0-6。3 处静态 import 清零：audioMetadata.ts / localMusicImport.ts / LocalMusicManager.tsx 全部改函数内 `await import("jsmediatags")`（类型改 `import type`），调用方 async 化；加载失败降级文件名解析 + console.warn（3 个降级用例覆盖）；新增 `src/lib/perf/featureFlags.ts`（5 开关，构建期内联；off/false 关闭、"0" 仍取默认）+4 用例、`lazyImports.test.ts` 静态导入守卫。全量 216 files/1353 tests passed；tsc/eslint 0；build 32.3s。**E4-1 未达成**：jsmediatags 仍在 initial chunk `vendors-3aa69677`（48,863 B raw / 12,651 B gzip，rootMainFiles + / 与 /data-manager html），rootMain 969.3 KB raw/293 KB gzip 与 before 相同（`perf/s4-before.json`→`perf/s4-after-s41.json`）；根因是 next.config.js splitChunks vendor 组 `chunks:"all"`（S4-3 独占写作用域）。**未提交实验**：vendor 组改 `chunks:"initial"` 重建 → jsmediatags 移入 async chunk 3460.b97b22813fb3d57a.js（71,616 B），两个 html 引用=0，rootMain 23→19 files、969.3→749.5 KB raw、293→228.8 KB gzip；S4-3a 后需复测 E4-1 并回填。分支 `feature/arch-perf-s4-1`（未合并）。
+- [x] S4-1 jsmediatags 动态化 — **done（2026-10-28，f4eed94 + b13d5bd）** — owner: — | PR: 1（本分支 1a+1b 合并） | 依赖: S0-6。3 处静态 import 清零：audioMetadata.ts / localMusicImport.ts / LocalMusicManager.tsx 全部改函数内 `await import("jsmediatags")`（类型改 `import type`），调用方 async 化；加载失败降级文件名解析 + console.warn（3 个降级用例覆盖）；新增 `src/lib/perf/featureFlags.ts`（5 开关，构建期内联；off/false 关闭、"0" 仍取默认）+4 用例、`lazyImports.test.ts` 静态导入守卫。全量 216 files/1353 tests passed；tsc/eslint 0；build 32.3s。**E4-1 未达成**：jsmediatags 仍在 initial chunk `vendors-3aa69677`（48,863 B raw / 12,651 B gzip，rootMainFiles + / 与 /data-manager html），rootMain 969.3 KB raw/293 KB gzip 与 before 相同（`perf/s4-before.json`→`perf/s4-after-s41.json`）；根因是 next.config.js splitChunks vendor 组 `chunks:"all"`（S4-3 独占写作用域）。**未提交实验**：vendor 组改 `chunks:"initial"` 重建 → jsmediatags 移入 async chunk 3460.b97b22813fb3d57a.js（71,616 B），两个 html 引用=0，rootMain 23→19 files、969.3→749.5 KB raw、293→228.8 KB gzip；**S4-3a（b13d5bd）后复测 E4-1=0**：rootMain 23→3 files（969.3→752.1KB raw、293→238.7KB gzip），/ 首屏 39→8 scripts（1951.8→1707.4KB），/data-manager 38→7，vendors-* 21→0，静态 chunk 5,020→4,653KB/161→123；jsmediatags（ID3v2）仅存在于 async `3460.b97b22813fb3d57a.js`，不在 rootMainFiles 与两页 HTML。证据 `perf/s4-after-s43a.json`。缺口：rootMain gzip 238.7 仍 >230（待 S4-2 crypto-js），First Load 1707.4 略超 1700，bundle-budget maxAsyncChunk 口径伪影。分支 `feature/arch-perf-s4-1`（未合并）。
 - [ ] S4-2 crypto-js 动态化/WebCrypto — owner: — | PR: 1 | 依赖: S4-1 | 验收: -84KB raw；LX 回归
-- [ ] S4-3 splitChunks 语义块 + 字体 preconnect — owner: — | PR: 1 | 依赖: S0-6 | 验收: script ≤12；碎片 ≤6
+- [ ] S4-3 splitChunks 语义块 + 字体 preconnect — **S4-3a done（2026-10-28，b13d5bd）**：顶层 chunks:"initial"、删 maxSize；语义块 framework(all,40)/vendor-ui(framer+lucide,initial,30)/vendor-core(rest,initial,10)；three/fabric/ffmpeg async 保留；新增 chunk-mediapipe(async,36) + asyncShared(async,minChunks:2,9)；SPLIT_CHUNKS=off 回退旧配置实测复现 23/969.3/293。证据 perf/s4-after-s43a.json。**S4-3b 待做**：守卫脚本需用 ID3v2 / mediapipe.NormalizedRect 判定（裸 jsmediatags 在 console.warn 文案、@mediapipe/tasks-vision 在 CDN URL 会误报）。缺口：rootMain gzip 238.7>230、First Load 1707.4>1700（等 S4-2）；bundle-budget maxAsyncChunk 口径把初始 vendor-core 计入。
 - [ ] S4-4 CoverImage 统一组件（先 3 文件）— owner: — | PR: 1 | 依赖: 无 | 验收: 裸 img 归零（白名单）
 - [ ] S4-5 VirtualList 接入 QueuePanel — owner: — | PR: 1 | 依赖: S3-6 | 验收: 500 项打开长任务=0
 - [ ] S4-6 VirtualList 接入 Search/批量工具 — owner: — | PR: 1 | 依赖: S4-5 | 验收: 500 条首帧 <50ms
