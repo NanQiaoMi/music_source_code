@@ -10,11 +10,13 @@
 |---|---|
 | scripts/perf/bundle-budget.mjs | 包体预算：rootMainFiles / 首页 script / CSS / async chunk / public 体积；支持 --check 与 --json |
 | scripts/perf/report-store-stats.mjs | Store 架构统计：store 数、persist key、整店订阅、store 依赖边/SCC、getState 分层；支持 --check、--json 与 --store |
+| scripts/check-store-budgets.mjs | S6-12 Store 行数棘轮 + 环门禁：逐文件行数 ≤ baseline，未入基线的新文件 ≤400 行，运行时 store 图 SCC 必须为 0；支持 --update、--root、--baseline、--max-lines |
 | scripts/report-audio-consumers.mjs | S6-4 audioStore 播放字段消费清单：9 字段的 selector / getState 链（含跨行与解构）/ 别名 / setState / `useAudioCurrentSong` 读写点，按层与字段汇总；支持 --json、--fields、--group（progress / playback / all 批次）、--check（components/hooks/lib/services/store 读点归零门禁；audioStore 自身定义点豁免） |
 | scripts/check-docs-facts.mjs | 文档事实校验：store 数、过期字样、CI 触发分支、端口一致性（warn）、INDEX 链接、执行计划包完整性 |
 | perf/budget.json | 包体阈值（baseline / target / hardMax） |
 | perf/bundle-baseline.json | 2026-10-21 包体基线快照 |
 | perf/store-stats-baseline.json | 2026-10-21 Store 架构基线快照 |
+| perf/store-line-baseline.json | 2026-10-29 Store 行数基线（64 文件 / 18,222 行；16 个 >400 行存量冻结） |
 | perf/reports/s6-audio-consumers.before.json | S6-4 迁移前播放字段消费快照（297 处 / 64 文件；混音字段 73）——PR2 修正脚本口径后重跑，原口径 300 |
 | perf/reports/s6-audio-consumers.json | S6-4 当前播放字段消费快照（PR5 后 91 处 / 28 文件；读点仅剩 audioStore 自身 18，服务/非 audioStore store 读点 0） |
 | perf/reports/s6-audio-consumers.currentSong.before.json | PR2 迁移前 currentSong 快照（68 处 / 52 文件：components 44、hooks 12、lib 3、services 5、store 4） |
@@ -38,6 +40,10 @@
     node scripts/perf/report-store-stats.mjs --json perf/store-stats-baseline.json
     node scripts/perf/report-store-stats.mjs --check   # 不得比基线更差
     node scripts/perf/report-store-stats.mjs --store usePlaylistStore  # 单 store 整店订阅数
+
+    # Store 行数棘轮 + 环（S6-12）
+    npm run verify:filesize
+    node scripts/check-store-budgets.mjs --update   # 仅显式更新；存量只减不增，新增 >400 拒绝入基线
 
     # audioStore 播放字段消费（S6-4）
     node scripts/report-audio-consumers.mjs
@@ -82,3 +88,34 @@
 6. report-audio-consumers.mjs 口径修正（S6-4 PR2）：改为沿 `getState()` 逐段跟随链式成员（不再把参数里的 `activeAudio.duration` 误计为 store 字段）、支持跨行链与解构、剔除 `(state) => state.x` 箭头参数误报、纳入 `useAudioCurrentSong` 便捷钩子、`--check` 覆盖 lib 层；因此全字段基线由 300/242 重算为 297/240，历史对比请以本口径为准。
 7. isPlaying 批次（S6-4 PR4）：UI 读点统一走 PlaybackClock，`--group playback` 只校验读点，`setIsPlaying/togglePlaybackIntent/setState` 写点仍留在 audioStore（S6-5/S6-9 再收口）；迁移前后 isPlaying 68→36（读点 36→4，components/hooks/lib 读点 0）。
 8. services/store 收尾（S6-4 PR5）：`--check` 默认层扩为 components/hooks/lib/services/store，`src/store/audioStore.ts`（字段声明、双向镜像、useAudio* 原子 hook）按定义点豁免；新增 `--group all` 覆盖全部 9 字段读点。aiAgentTools/useAIAgentStore/songPurgeService 的身份与进度读点改 playerStore/PlaybackClock，写点保留以等待 S6-9 编排下沉；services 读点 12→0、store 非豁免读点 4→0，全字段 107→91（29→28 文件）。
+
+## 6. Store 行数棘轮 + 环门禁（S6-12，2026-10-29）
+
+- 基线：`perf/store-line-baseline.json`，64 个非测试 store 文件 / 18,222 行；`maxLines=400`。
+- 口径：统计 `src/store/**/*.{ts,tsx}` 物理行数（末尾换行不计），排除 `__tests__/`、`__contract__/`、`fixtures/`、`*.test.*`、`*.spec.*`。
+- 棘轮：已入基线文件只允许 ≤ 基线（减行通过、增行 FAIL）；未入基线的新文件 >400 行 FAIL；`--update` 显式执行且 shrink-only（首次建基线除外；拒绝存量增行与新增 >400 入档），并清理已删除文件。
+- 环：运行时 store→store import 的 SCC 必须为 0（type-only import 不构成运行时边；作用域与 `report-store-stats` 的顶层 store 模块一致）；FAIL 时逐条打印违规文件/环。
+- 命令：`npm run verify:filesize`；测试 `scripts/perf/check-store-budgets.test.mjs` 覆盖真实仓库、增行、新文件超限、`--update` 与环 fixture。
+
+当前最大文件（baseline 2026-10-29，>400 行均按基线冻结）：
+
+| 行数 | 文件 |
+|---:|---|
+| 1012 | src/store/statsAchievementsStore.ts |
+| 717 | src/store/useOfflineDownloadStore.ts |
+| 701 | src/store/userAccountStore.ts |
+| 644 | src/store/useAIAgentStore.ts |
+| 638 | src/store/visualSettingsStore.ts |
+| 612 | src/store/sourceConfigStore.ts |
+| 604 | src/store/smartPlaylistStore.ts |
+| 572 | src/store/aiStore.ts |
+| 551 | src/store/audioEffectsStore.ts |
+| 534 | src/store/emotionStore.ts |
+| 529 | src/store/backupRestoreStore.ts |
+| 500 | src/store/searchStore.ts |
+| 467 | src/store/slices/playbackSlice.ts |
+| 432 | src/store/queueStore.ts |
+| 425 | src/store/lyricsCoverStore.ts |
+| 419 | src/store/libraryManagerStore.ts |
+
+- 已知缺口：本任务只落地行数棘轮 + SCC 门禁；S6-12a 的 dependency-cruiser 分层规则（`.dependency-cruiser.cjs`）与 S6-12b 的 CI 接线未包含，需 Lead 排期。16 个存量 >400 文件待拆分后执行 `--update` 收紧。

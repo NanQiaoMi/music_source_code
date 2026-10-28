@@ -34,6 +34,7 @@
     "test:lint-rules": "vitest run eslint-rules/no-whole-store.test.mjs",
     "test:coverage": "vitest run --coverage",
     "perf:check-bundle": "node scripts/perf/check-bundle-markers.mjs",
+    "verify:filesize": "node scripts/check-store-budgets.mjs",
     "prepare": "husky"
   },
   "dependencies": {
