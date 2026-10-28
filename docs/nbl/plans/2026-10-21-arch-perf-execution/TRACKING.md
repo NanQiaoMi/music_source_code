@@ -15,10 +15,10 @@
 | S3 外壳与订阅治理 | 10 | 9 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | in_progress（S3-1/S3-3/S3-4/S3-5/S3-6/S3-7/S3-8/S3-9/S3-10 done；S3-2 待） |
 | S4 包体与加载 | 7 | 6 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | in_progress（S4-1..S4-6 done；S4-7 待） |
 | S5 渲染运行时 | 7 | 7 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | in_progress（S5-1..S5-7 done；M5 出口门待 rAF 收敛与真机 90fps 证据） |
-| S6 状态架构收敛 | 12 | 3 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | in_progress（S6-1/S6-2/S6-3 done；S6-4 PR1-PR5 done；S6-5..S6-12 待） |
+| S6 状态架构收敛 | 12 | 4 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | in_progress（S6-1/S6-2/S6-3/S6-4 done；S6-5..S6-12 待） |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **32** | **约 129** | — | in_progress |
+| **合计** | **74** | **33** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
