@@ -4,6 +4,7 @@
  * SSR; the client calls `hydrateStores()` once (later calls share the same promise).
  * Order comes from the storage registry: player -> queue -> audio -> UI -> business.
  */
+import { setHydrationStatus } from "@/lib/hydrationStatus";
 import {
   STORAGE_REGISTRY,
   getStorageEntryByKeyOrOwner,
@@ -185,16 +186,27 @@ async function runHydration(plan: readonly HydrationStep[]): Promise<HydrateStor
   return { phases, hydrated };
 }
 
+async function hydrateAllWithStatus(plan: readonly HydrationStep[]): Promise<HydrateStoresResult> {
+  setHydrationStatus("hydrating");
+  try {
+    const result = await runHydration(plan);
+    setHydrationStatus("ready");
+    return result;
+  } catch (error) {
+    // Allow a retry after failure; hydratedOwners still prevents double hydration.
+    hydrationPromise = null;
+    setHydrationStatus("error");
+    throw error;
+  }
+}
+
 export function hydrateStores(options: HydrateStoresOptions = {}): Promise<HydrateStoresResult> {
+  // Owner-scoped calls are partial hydrations (tests/targeted); they leave global status alone.
   if (options.owners) {
     return Promise.resolve().then(() => runHydration(buildHydrationPlan(options.owners)));
   }
 
-  hydrationPromise ??= runHydration(buildHydrationPlan()).catch((error) => {
-    // Allow a retry after failure; hydratedOwners still prevents double hydration.
-    hydrationPromise = null;
-    throw error;
-  });
+  hydrationPromise ??= hydrateAllWithStatus(buildHydrationPlan());
   return hydrationPromise;
 }
 
