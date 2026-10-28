@@ -40,6 +40,8 @@ const VisualizationProgressContainer = dynamic(
 );
 
 import * as Effects from "./effects";
+import { resolveEffectPlugin } from "./effectPlugins";
+import type { EffectFrame, EffectPlugin } from "@/runtime/effectPlugin";
 
 const PlayIcon = memo(() => (
   <svg className="w-7 h-7 ml-1" fill="currentColor" viewBox="0 0 24 24">
@@ -202,6 +204,8 @@ export function VisualizationView() {
   const viewportRef = useRef({ w: 0, h: 0, dpr: 1 });
   // 当前画布已应用的画质档位；档位变化时按新的 effectScale 重建粒子池
   const renderedQualityRef = useRef<string | null>(null);
+  // S5-4：已迁移效果由插件绘制；null 表示当前效果未迁移或插件 flag off（走旧 switch）
+  const activePluginRef = useRef<EffectPlugin | null>(null);
 
   // Mouse idle detection for Zen Mode
   // 它切换的是本视图的页眉/页脚，因此只在可视化视图内监听即可：
@@ -373,6 +377,8 @@ export function VisualizationView() {
       }
       renderedQualityRef.current = qualityTier;
       initParticles(w, h, quality?.effectScale ?? 1);
+      // S5-4：插件按新尺寸/DPR 重建自持资源；未迁移效果没有活动插件，调用为空操作
+      activePluginRef.current?.resize(w, h, dpr);
     };
 
     const initParticles = (_w: number, _h: number, effectScale = 1) => {
@@ -407,7 +413,10 @@ export function VisualizationView() {
     };
 
     const draw = (timestamp: number) => {
+      const previousTime = timeRef.current;
       timeRef.current = timestamp;
+      // 帧间隔：首帧按 60fps 兜底，钳到 50ms 与 runtime 的 MAX_DELTA_MS 对齐
+      const dt = previousTime > 0 ? Math.min(50, timestamp - previousTime) : 1000 / 60;
 
       const state = useVisualizationStore.getState();
       const currentEff = state.currentEffect;
@@ -489,8 +498,17 @@ export function VisualizationView() {
       if (ctx && frameData) {
         const { w: cssWidth, h: cssHeight, dpr } = viewportRef.current;
 
+        // S5-4：已迁移效果取插件绘制；未迁移 / flag off 时 resolve 返回 null，继续走旧 switch。
+        // 只在实例变化时 init/dispose，逐帧成本只有一次 Map 查询。
+        const plugin = resolveEffectPlugin(currentEff);
+        if (plugin !== activePluginRef.current) {
+          activePluginRef.current?.dispose();
+          activePluginRef.current = plugin;
+          plugin?.init({ width: cssWidth, height: cssHeight, dpr });
+        }
+
         // Shared context for all effects
-        const effectCtx: Effects.EffectContext = {
+        const effectCtx: EffectFrame = {
           ctx,
           width: cssWidth,
           height: cssHeight,
@@ -521,6 +539,10 @@ export function VisualizationView() {
           utils: {
             getThemeBaseHue: () => active.primary,
           },
+          canvas,
+          dpr,
+          quality: visualRuntime.getQuality(),
+          dt,
         };
 
         // --- SAFETY RESET: Ensure each effect starts with a clean slate ---
@@ -540,52 +562,57 @@ export function VisualizationView() {
 
         // Call the appropriate effect
 
-        switch (currentEff) {
-          case "cinematicOrientalInk":
-            Effects.drawCinematicOrientalInk(effectCtx);
-            break;
-          case "spatialMesh":
-            Effects.drawSpatialMesh(effectCtx);
-            break;
-          case "cyberpunkParticles":
-            Effects.drawCyberpunkParticles(effectCtx);
-            break;
-          case "organicFluid":
-            Effects.drawOrganicFluid(effectCtx);
-            break;
-          case "auroraWave":
-            Effects.drawAuroraWave(effectCtx);
-            break;
-          case "spectrumRing":
-            Effects.drawSpectrumRing(effectCtx);
-            break;
-          case "nebulaField":
-            Effects.drawNebulaField(effectCtx);
-            break;
-          case "vinylGroove":
-            Effects.drawVinylGroove(effectCtx);
-            break;
-          case "cyberMatrix":
-            Effects.drawCyberMatrix(effectCtx);
-            break;
-          case "gravitationalField":
-            Effects.drawGravitationalField(effectCtx);
-            break;
-          case "prismPulse":
-            Effects.drawPrismPulse(effectCtx);
-            break;
-          case "cinematicSilkAurora":
-            Effects.drawCinematicSilkAurora(effectCtx);
-            break;
-          case "orientalLandscape":
-            Effects.drawOrientalLandscape(effectCtx);
-            break;
-          case "cinematicLyricDrift":
-            Effects.drawCinematicLyricDrift(effectCtx);
-            break;
+        // S5-4：插件优先；未迁移效果继续走旧 switch（每迁移一个效果少一个 case）
+        if (activePluginRef.current) {
+          activePluginRef.current.draw(effectCtx);
+        } else {
+          switch (currentEff) {
+            case "cinematicOrientalInk":
+              Effects.drawCinematicOrientalInk(effectCtx);
+              break;
+            case "spatialMesh":
+              Effects.drawSpatialMesh(effectCtx);
+              break;
+            case "cyberpunkParticles":
+              Effects.drawCyberpunkParticles(effectCtx);
+              break;
+            case "organicFluid":
+              Effects.drawOrganicFluid(effectCtx);
+              break;
+            case "auroraWave":
+              Effects.drawAuroraWave(effectCtx);
+              break;
+            case "spectrumRing":
+              Effects.drawSpectrumRing(effectCtx);
+              break;
+            case "nebulaField":
+              Effects.drawNebulaField(effectCtx);
+              break;
+            case "vinylGroove":
+              Effects.drawVinylGroove(effectCtx);
+              break;
+            case "cyberMatrix":
+              Effects.drawCyberMatrix(effectCtx);
+              break;
+            case "gravitationalField":
+              Effects.drawGravitationalField(effectCtx);
+              break;
+            case "prismPulse":
+              Effects.drawPrismPulse(effectCtx);
+              break;
+            case "cinematicSilkAurora":
+              Effects.drawCinematicSilkAurora(effectCtx);
+              break;
+            case "orientalLandscape":
+              Effects.drawOrientalLandscape(effectCtx);
+              break;
+            case "cinematicLyricDrift":
+              Effects.drawCinematicLyricDrift(effectCtx);
+              break;
 
-          default:
-            Effects.drawSpatialMesh(effectCtx);
+            default:
+              Effects.drawSpatialMesh(effectCtx);
+          }
         }
 
         // 效果切换的交叉淡化：把上一效果的最后一帧按进度淡出、叠在新效果之上。
@@ -667,6 +694,10 @@ export function VisualizationView() {
         animationFrameRef.current = null;
       }
       renderedQualityRef.current = null;
+
+      // S5-4：卸载时 dispose 活动插件；registry 缓存中的实例下次 init 时会重新初始化
+      activePluginRef.current?.dispose();
+      activePluginRef.current = null;
 
       // Explicitly clear large data structures to help GC
       particlesRef.current = [];

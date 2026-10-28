@@ -73,6 +73,8 @@ import {
   useVisualizationCanvasStyle,
 } from "./VisualizationView";
 import { VisualizationProgressContainer } from "./VisualizationProgressContainer";
+import { NebulaFieldPlugin } from "./effects/nebulaFieldPlugin";
+import { SpatialMeshPlugin } from "./effects/spatialMeshPlugin";
 import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { useVisualizationStore } from "@/store/visualizationStore";
@@ -420,5 +422,133 @@ describe("VisualizationProgressContainer", () => {
 
     expect(counter.updates()).toBe(10);
     expect(container.textContent).toContain("0:10");
+  });
+});
+// S5-4：插件 dispatch 的真实接线。绘制调用需要完整的 Canvas2D 方法集，
+// jsdom 的全局 stub 只有少量方法，这里按用例替换成记录型 Proxy。
+function createRecordingCanvasContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+  const state = new Map<PropertyKey, unknown>();
+  const gradient = { addColorStop: vi.fn() };
+  return new Proxy({ canvas } as unknown as CanvasRenderingContext2D, {
+    get(target, property) {
+      if (Reflect.has(target, property)) return Reflect.get(target, property);
+      if (property === "createLinearGradient" || property === "createRadialGradient") {
+        return () => gradient;
+      }
+      if (!state.has(property)) state.set(property, vi.fn());
+      return state.get(property);
+    },
+    set(_target, property, value) {
+      state.set(property, value);
+      return true;
+    },
+  });
+}
+
+function installRecordingCanvas() {
+  const descriptor = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, "getContext");
+  Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+    configurable: true,
+    value: vi.fn(function (this: HTMLCanvasElement, contextId: string) {
+      return contextId === "2d" ? createRecordingCanvasContext(this) : null;
+    }),
+  });
+  return () => {
+    if (descriptor) Object.defineProperty(HTMLCanvasElement.prototype, "getContext", descriptor);
+  };
+}
+
+describe("VisualizationView effect plugins (S5-4)", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    resetStores();
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  function captureFrame() {
+    let callback: ((time: number, delta: number) => void) | null = null;
+    const subscribe = vi
+      .spyOn(visualRuntime, "subscribe")
+      .mockImplementation((_id: string, cb: (time: number, delta: number) => void) => {
+        callback = cb;
+        return { id: "visualization", active: true, stop: vi.fn() };
+      });
+    return { subscribe, frame: () => callback };
+  }
+
+  async function mountEffect(effect: VisualizationEffect) {
+    useUIStore.setState({ currentView: "visualization" });
+    useVisualizationStore.getState().setCurrentEffect(effect);
+    await act(async () => {
+      root.render(<VisualizationView />);
+    });
+    await act(async () => {});
+  }
+
+  it("flag on: 已迁移效果由插件绘制，未迁移效果仍走旧 switch", async () => {
+    const flags = featureFlags as { effectPlugins: boolean };
+    const previousFlag = flags.effectPlugins;
+    flags.effectPlugins = true;
+    const restoreCanvas = installRecordingCanvas();
+    const spatialDraw = vi.spyOn(SpatialMeshPlugin.prototype, "draw");
+    const nebulaDraw = vi.spyOn(NebulaFieldPlugin.prototype, "draw");
+    const { subscribe, frame } = captureFrame();
+
+    try {
+      await mountEffect("spatialMesh");
+      await act(async () => frame()?.(16, 16));
+      expect(spatialDraw).toHaveBeenCalledTimes(1);
+      expect(nebulaDraw).not.toHaveBeenCalled();
+
+      const effectFrame = spatialDraw.mock.calls.at(-1)?.[0];
+      expect(effectFrame?.canvas).toBeInstanceOf(HTMLCanvasElement);
+      expect(effectFrame?.dpr).toBeGreaterThan(0);
+      expect(effectFrame?.quality.tier).toBe("high");
+
+      await act(async () => useVisualizationStore.getState().setCurrentEffect("nebulaField"));
+      await act(async () => frame()?.(32, 16));
+      expect(nebulaDraw).toHaveBeenCalledTimes(1);
+      expect(spatialDraw).toHaveBeenCalledTimes(1);
+
+      await act(async () => useVisualizationStore.getState().setCurrentEffect("auroraWave"));
+      await act(async () => frame()?.(48, 16));
+      expect(spatialDraw).toHaveBeenCalledTimes(1);
+      expect(nebulaDraw).toHaveBeenCalledTimes(1);
+    } finally {
+      spatialDraw.mockRestore();
+      nebulaDraw.mockRestore();
+      restoreCanvas();
+      subscribe.mockRestore();
+      flags.effectPlugins = previousFlag;
+    }
+  });
+
+  it("flag off: 已迁移效果也回退旧 switch", async () => {
+    const flags = featureFlags as { effectPlugins: boolean };
+    const previousFlag = flags.effectPlugins;
+    flags.effectPlugins = false;
+    const restoreCanvas = installRecordingCanvas();
+    const spatialDraw = vi.spyOn(SpatialMeshPlugin.prototype, "draw");
+    const { subscribe, frame } = captureFrame();
+
+    try {
+      await mountEffect("spatialMesh");
+      await act(async () => frame()?.(16, 16));
+      expect(spatialDraw).not.toHaveBeenCalled();
+    } finally {
+      spatialDraw.mockRestore();
+      restoreCanvas();
+      subscribe.mockRestore();
+      flags.effectPlugins = previousFlag;
+    }
   });
 });

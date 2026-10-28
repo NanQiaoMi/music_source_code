@@ -39,7 +39,12 @@ export const drawNebulaField = ({
   const bass = refs.smoothBass.current;
   const mid = refs.smoothMid.current;
   const treble = refs.smoothTreble.current;
-  const volume = data ? Array.from(data).reduce((a, b) => a + b, 0) / (data.length * 255) : 0;
+  // S5-4c：每帧求和无须 Array.from + reduce（S5-7 同址热分配），数值与旧实现完全一致
+  let energy = 0;
+  if (data) {
+    for (let i = 0; i < data.length; i++) energy += data[i];
+  }
+  const volume = data ? energy / (data.length * 255) : 0;
 
   // Theme Integration
   const mainHue = theme.primary;
