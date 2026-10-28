@@ -16,9 +16,9 @@
 | S4 包体与加载 | 7 | 6 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | in_progress（S4-1..S4-6 done；S4-7 待） |
 | S5 渲染运行时 | 7 | 7 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | in_progress（S5-1..S5-7 done；M5 出口门待 rAF 收敛与真机 90fps 证据） |
 | S6 状态架构收敛 | 12 | 5 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | in_progress（S6-1/S6-2/S6-3/S6-4/S6-11 done；S6-5..S6-10/S6-12 待） |
-| S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
+| S7 服务与平台边界 | 9 | 1 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | in_progress（S7-2 done；S7-1/S7-3..S7-9 待） |
 | S8 门禁与长期治理 | 6 | 5 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | in_progress（S8-1/S8-2/S8-4/S8-5/S8-6 done；S8-3 待） |
-| **合计** | **74** | **39** | **约 129** | — | in_progress |
+| **合计** | **74** | **40** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -121,7 +121,7 @@
 
 - [ ] **M7 出口门**：桌面本地运行时闭环（窗口 <3s、/ 与 /data-manager 200、旧 origin 数据可见、在线能力/降级）；插件隔离；2h soak 达标；OPFS 有结论。
 - [ ] S7-1 Resolver 插件化 + request 包装/熔断（2 PR）— owner: — | PR: 2 | 依赖: S1-8 | 验收: 每模块 ≤300 行；坏 host 请求下降
-- [ ] S7-2 缓存统一 LRU/TTL — **S7-2a 完成（2026-10-29，00f52fd）**：新增 `src/lib/cache/TtlLruCache.ts`（maxEntries/maxAgeMs、get/set/has/delete/clear/size/prune、hits/misses/evictions/hitRate、onEvict(lru|ttl)、可注入时钟、无定时器懒清理）；`MultiSourceResolver.resolvedUrlCache` 迁至 TTL LRU（300 项/30min，键与读写/失效行为不变，新增 getResolvedUrlCacheStats）与 `audioPrefetcher.prefetchCache`（20 项/25min，键 song.id）；测试 5 用例（LRU 顺序/TTL 懒过期/统计/onEvict/1000 插入有界 300）+ prefetch 1 + resolver 305 唯一解析 size 300 evictions≥5；全量 262 files/1620 tests；tsc/lint 0。**验收缺口**：`searchCache`（MultiSourceResolver.ts:899，20min TTL，无界）未迁移，仍线性增长风险；`window.__MIMI_CACHE_STATS__` 聚合探针未接；S7-1c resolver 拆分未做（本 PR 为原地换缓存）。分支 `feature/arch-perf-s7-2`（未合并）。
+- [x] S7-2 缓存统一 LRU/TTL — **done（2026-10-29，00f52fd + bc590b2）**；S7-2a：新增 `src/lib/cache/TtlLruCache.ts`（maxEntries/maxAgeMs、get/set/has/delete/clear/size/prune、hits/misses/evictions/hitRate、onEvict(lru|ttl)、可注入时钟、无定时器懒清理）；`MultiSourceResolver.resolvedUrlCache` 迁至 TTL LRU（300 项/30min，键与读写/失效行为不变，新增 getResolvedUrlCacheStats）与 `audioPrefetcher.prefetchCache`（20 项/25min，键 song.id）；测试 5 用例（LRU 顺序/TTL 懒过期/统计/onEvict/1000 插入有界 300）+ prefetch 1 + resolver 305 唯一解析 size 300 evictions≥5；全量 262 files/1620 tests；tsc/lint 0。**S7-2b（bc590b2）**：`searchCache` 迁 `TtlLruCache`（100 项/20min，键 trim+lower、仅缓存非空结果；`clearCache` 同时清 search）；新增 `src/lib/cache/cacheStats.ts`（聚合 resolvedUrl/prefetch/search stats，dev-only lazy `window.__MIMI_CACHE_STATS__`，SSR/生产 no-op，bootstrap dev 动态 import 被 DCE）+ `getSearchCacheStats`/`getPrefetchCacheStats`；测试 resolver 105 搜索→size100/evictions≥5、TTL 19:59.999 hit/20:00 refetch，cacheStats 4 例（形状/每次重算/SSR/生产 no-op），prefetch stats；全量 263 files/1627 tests；tsc/lint 0。**遗留**：probe 仅单测未浏览器手读；计数器按页面累计、clearCache 不重置；S7-1c resolver 拆分未做（原地换缓存）。分支 `feature/arch-perf-s7-2`（未合并）。
 - [ ] S7-3 Worker transferable + 降级 — owner: — | PR: 1 | 依赖: S0-6 | 验收: 50MB 转换长任务 <50ms
 - [ ] S7-4 Electron 本地 Next 运行时（D2）— owner: — | PR: 2 | 依赖: S0-3 | 验收: --dir 冷启动 <3s；200
 - [ ] S7-5 BackendGateway + preload baseUrl + 能力协商 — owner: — | PR: 1 | 依赖: S7-4 | 验收: 浏览器/Electron 分支单测
