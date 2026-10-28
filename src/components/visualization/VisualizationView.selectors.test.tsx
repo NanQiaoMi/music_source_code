@@ -271,6 +271,41 @@ describe("VisualizationView selector 隔离", () => {
     }
   });
 
+  it("flag on: 视图切换只重建订阅，组件不再自行 requestAnimationFrame", async () => {
+    const stop = vi.fn();
+    const subscribe = vi.spyOn(visualRuntime, "subscribe").mockReturnValue({
+      id: "visualization",
+      active: true,
+      stop,
+    });
+    const requestFrame = vi.spyOn(window, "requestAnimationFrame");
+
+    try {
+      useUIStore.setState({ currentView: "visualization" });
+      await mountView();
+
+      expect(subscribe).toHaveBeenCalledTimes(1);
+      expect(requestFrame).not.toHaveBeenCalled();
+
+      // 前台/后台事件不再由组件重启旧循环（隐藏与恢复归 runtime）
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(requestFrame).not.toHaveBeenCalled();
+      expect(subscribe).toHaveBeenCalledTimes(1);
+
+      // 切走：runtime 订阅被停掉，不残留第二套循环
+      await act(async () => useUIStore.setState({ currentView: "player" }));
+      expect(stop).toHaveBeenCalledTimes(1);
+
+      // 切回：重新订阅一次，整个过程中组件没有发起任何 rAF
+      await act(async () => useUIStore.setState({ currentView: "visualization" }));
+      expect(subscribe).toHaveBeenCalledTimes(2);
+      expect(requestFrame).not.toHaveBeenCalled();
+    } finally {
+      subscribe.mockRestore();
+      requestFrame.mockRestore();
+    }
+  });
+
   it("flag off: 保留旧的 requestRaf 调度路径", async () => {
     const mutableFlags = featureFlags as { visualRuntime: boolean };
     const previousFlag = mutableFlags.visualRuntime;

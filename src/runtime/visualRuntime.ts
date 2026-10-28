@@ -6,6 +6,9 @@ import { rafScheduler, type RafScheduler } from "@/lib/perf/rafScheduler";
  * 视觉帧与画质的唯一权威（S5-1）：所有订阅者共享一条 rafScheduler 循环。
  * 每帧下发 time/delta，按 1 秒窗口采样 FPS 自适应 DPR 与效果密度；隐藏时停表，
  * 恢复后重置计时。显式 pause/resume 不重建订阅。
+ *
+ * S5-2 起同时记录每次订阅者回调的绘制耗时（最近 120 次），getStats() 给出
+ * drawP50Ms/drawP95Ms，作为"迁移前后 draw p95 劣化 ≤10%"的测量口径。
  */
 
 export type VisualQuality = "high" | "medium" | "low";
@@ -33,6 +36,8 @@ export const QUALITY_UPGRADE_STABLE_WINDOWS = 3;
 const FALLBACK_DELTA_MS = 1000 / 60;
 const MAX_DELTA_MS = 50;
 const MIN_SAMPLE_FRAMES = 10;
+/** 绘制耗时采样窗口：最近 120 次订阅者回调，约 2s@60fps。 */
+const DRAW_SAMPLE_CAPACITY = 120;
 
 export type VisualSubscriber = (time: number, delta: number) => void;
 
@@ -50,12 +55,19 @@ export interface VisualRuntimeStats {
   dprCap: number;
   effectScale: number;
   paused: boolean;
+  /** 采样窗口内的绘制回调次数（≤120）。 */
+  drawSamples: number;
+  /** 绘制耗时分位（毫秒），仅统计订阅者回调本体，不含排帧开销。 */
+  drawP50Ms: number;
+  drawP95Ms: number;
 }
 
 export interface VisualRuntimeEnv {
   scheduler?: RafScheduler;
   isHidden?: () => boolean;
   onVisibilityChange?: (listener: () => void) => () => void;
+  /** 绘制耗时采样时钟；测试注入虚拟时钟用。 */
+  now?: () => number;
 }
 
 interface SubscriberRecord {
@@ -77,7 +89,12 @@ export class VisualRuntime {
   private readonly scheduler: RafScheduler;
   private readonly isHidden: () => boolean;
   private readonly onVisibilityChange: (listener: () => void) => () => void;
+  private readonly now: () => number;
   private readonly subs = new Map<string, SubscriberRecord>();
+  /** 定长环形缓冲：避免每帧为统计分配数组。 */
+  private readonly drawDurations = new Float64Array(DRAW_SAMPLE_CAPACITY);
+  private drawCursor = 0;
+  private drawCount = 0;
   private qualityIndex = 0;
   private stableWindows = 0;
   private frameHandle: number | null = null;
@@ -95,6 +112,7 @@ export class VisualRuntime {
     this.scheduler = env.scheduler ?? rafScheduler;
     this.isHidden = env.isHidden ?? defaultIsHidden;
     this.onVisibilityChange = env.onVisibilityChange ?? defaultOnVisibilityChange;
+    this.now = env.now ?? (() => performance.now());
   }
 
   subscribe(id: string, callback: VisualSubscriber): VisualFrameHandle {
@@ -143,10 +161,12 @@ export class VisualRuntime {
       dprCap: quality.dprCap,
       effectScale: quality.effectScale,
       paused: this.paused,
+      drawSamples: this.drawCount,
+      drawP50Ms: this.drawPercentile(50),
+      drawP95Ms: this.drawPercentile(95),
     };
   }
   /** 仅测试/卸载用；单例 visualRuntime 不应在应用生命周期内 dispose。 */
-
   dispose(): void {
     for (const record of this.subs.values()) record.active = false;
     this.subs.clear();
@@ -155,6 +175,8 @@ export class VisualRuntime {
     this.detachVisibility = null;
     this.visibilityAttached = false;
     this.paused = false;
+    this.drawCursor = 0;
+    this.drawCount = 0;
   }
 
   private readonly tick = (time: number): void => {
@@ -170,6 +192,7 @@ export class VisualRuntime {
     // 先快照：订阅者在回调里 subscribe/stop 不应该影响本帧的迭代。
     for (const record of Array.from(this.subs.values())) {
       if (!record.active) continue;
+      const startedAt = this.now();
       try {
         record.callback(time, delta);
       } catch (error) {
@@ -177,9 +200,25 @@ export class VisualRuntime {
         console.error("[visualRuntime] subscriber failed", error);
         this.remove(record);
       }
+      // 绘制耗时只统计回调本体：排帧/统计开销不进 p50/p95，与旧循环口径可比。
+      this.sampleDraw(this.now() - startedAt);
     }
     this.schedule();
   };
+
+  private sampleDraw(durationMs: number): void {
+    this.drawDurations[this.drawCursor] = Math.max(0, durationMs);
+    this.drawCursor = (this.drawCursor + 1) % DRAW_SAMPLE_CAPACITY;
+    this.drawCount = Math.min(this.drawCount + 1, DRAW_SAMPLE_CAPACITY);
+  }
+
+  /** 最近秩分位（nearest-rank）：只在取统计时排序，热路径零分配。 */
+  private drawPercentile(percentile: number): number {
+    if (this.drawCount === 0) return 0;
+    const sorted = Array.from(this.drawDurations.subarray(0, this.drawCount)).sort((a, b) => a - b);
+    const rank = Math.ceil((percentile / 100) * sorted.length) - 1;
+    return sorted[Math.min(sorted.length - 1, Math.max(0, rank))];
+  }
 
   private sampleFrame(time: number): void {
     if (this.windowStart === null) {

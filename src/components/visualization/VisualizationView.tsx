@@ -17,7 +17,7 @@ import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { featureFlags } from "@/lib/perf/featureFlags";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
-import { visualRuntime } from "@/runtime/visualRuntime";
+import { visualRuntime, type VisualFrameHandle } from "@/runtime/visualRuntime";
 import { CoverImage } from "@/components/shared/ui/CoverImage";
 import { X, Maximize2, Minimize2, Settings, Video } from "lucide-react";
 const RecordingPanel = dynamic(
@@ -607,50 +607,55 @@ export function VisualizationView() {
       }
     };
 
-    // flag 关闭时保留旧的自调度循环，恢复 S5-1 之前的调度行为
-    const legacyLoop = (timestamp: number) => {
-      draw(timestamp);
-      if (document.visibilityState === "visible") {
-        animationFrameRef.current = requestRaf(legacyLoop);
-      } else {
-        animationFrameRef.current = null;
-      }
-    };
+    // S5-2：flag on 时排帧权只属于 visualRuntime（全仓共享单循环），组件不再自建
+    // rAF 循环，也不再监听 visibilitychange（隐藏/恢复由 runtime 统一处理）；
+    // 回到前台时同步音频时钟由 useAudioPlayer 的 handleVisiblePlaybackResync 负责。
+    // flag off 保留一版旧路径，便于一键回滚。
+    let subscription: VisualFrameHandle | null = null;
+    let legacyVisibilityHandler: (() => void) | null = null;
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        const activeAudio = audioRef.current;
-        if (
-          activeAudio &&
-          Number.isFinite(activeAudio.currentTime) &&
-          activeAudio.currentTime >= 0
-        ) {
-          useAudioStore.getState().setCurrentTime(activeAudio.currentTime);
-        }
-        if (activeAudio && Number.isFinite(activeAudio.duration) && activeAudio.duration > 0) {
-          useAudioStore.getState().setDuration(activeAudio.duration);
-        }
-        if (!featureFlags.visualRuntime && !animationFrameRef.current) {
-          animationFrameRef.current = requestRaf(legacyLoop);
-        }
-      } else if (!featureFlags.visualRuntime && animationFrameRef.current) {
-        cancelRaf(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-    };
+    if (featureFlags.visualRuntime) {
+      subscription = visualRuntime.subscribe("visualization", draw);
+    } else {
+      const legacyLoop = (timestamp: number) => {
+        draw(timestamp);
+        animationFrameRef.current =
+          document.visibilityState === "visible" ? requestRaf(legacyLoop) : null;
+      };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    const subscription = featureFlags.visualRuntime
-      ? visualRuntime.subscribe("visualization", draw)
-      : null;
-    if (!subscription) {
+      legacyVisibilityHandler = () => {
+        if (document.visibilityState === "visible") {
+          // 旧路径保留原来的可见性补写；flag on 时这一步由 useAudioPlayer 统一完成
+          const activeAudio = audioRef.current;
+          if (
+            activeAudio &&
+            Number.isFinite(activeAudio.currentTime) &&
+            activeAudio.currentTime >= 0
+          ) {
+            useAudioStore.getState().setCurrentTime(activeAudio.currentTime);
+          }
+          if (activeAudio && Number.isFinite(activeAudio.duration) && activeAudio.duration > 0) {
+            useAudioStore.getState().setDuration(activeAudio.duration);
+          }
+          if (!animationFrameRef.current) {
+            animationFrameRef.current = requestRaf(legacyLoop);
+          }
+        } else if (animationFrameRef.current) {
+          cancelRaf(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+      };
+
+      document.addEventListener("visibilitychange", legacyVisibilityHandler);
       animationFrameRef.current = requestRaf(legacyLoop);
     }
 
     return () => {
       window.removeEventListener("resize", resize);
       resizeObserver?.disconnect();
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (legacyVisibilityHandler) {
+        document.removeEventListener("visibilitychange", legacyVisibilityHandler);
+      }
       subscription?.stop();
       if (animationFrameRef.current) {
         cancelRaf(animationFrameRef.current);
