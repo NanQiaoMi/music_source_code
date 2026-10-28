@@ -85,6 +85,7 @@ import {
   drawHandwrittenDust,
   drawHandwrittenLightLeak,
   drawHandwrittenPaperSurface,
+  drawHandwrittenPaperTooth,
 } from "./handwrittenPaper";
 import { drawHandwrittenDoodle, drawHandwrittenSeal } from "./handwrittenDoodles";
 import { drawHandwrittenInkLine, type InkGlyphInput, type InkLineOptions } from "./handwrittenInk";
@@ -2986,6 +2987,18 @@ function renderFrame(effectCtx: EffectContext): void {
     if (remaining <= CLOSING_BOOK_DURATION && program.duration >= CLOSING_BOOK_DURATION) {
       drawClosingBook(outgoingFrame, ctx, remaining);
     }
+
+    // 最后一道纸牙覆盖层：把同一张纸的微纹理叠到文字/插画上，
+    // 让墨迹与铅笔线也"长在纸上"，而不是贴在纸面的矢量图层（baked 覆盖层，每帧 1 次 drawImage）。
+    drawHandwrittenPaperTooth({
+      ctx,
+      width,
+      height,
+      palette,
+      paletteIndex: Math.round(settings.colorScheme),
+      strength: 0.6,
+      quality,
+    });
   } finally {
     ctx.restore();
   }

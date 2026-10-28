@@ -12,6 +12,7 @@ import type {
   HandwrittenDoodleKind,
   HandwrittenDoodleSpec,
 } from "./handwrittenScene";
+import { getLargeIllustrationStrokes } from "./handwrittenIllustration";
 import { stableRandom } from "./handwrittenScene";
 import type { HandwrittenPalette } from "./handwrittenPalette";
 import { withAlpha } from "./handwrittenPalette";
@@ -87,6 +88,10 @@ interface GeometrySet {
   unit: number;
   strokes: CachedStroke[];
   totalLength: number;
+  /** 水彩/排线用的闭合轮廓路径缓存（同一几何只构建一次） */
+  contourPaths?: Map<number, Path2D>;
+  /** 铅笔排线路径缓存（把所有排线合成一个 Path2D，每帧 1–2 次 stroke） */
+  hatchPaths?: { main: Path2D; cross?: Path2D };
 }
 
 /**
@@ -148,8 +153,31 @@ function buildInkRibbonPath(
   return path;
 }
 
+/**
+ * 笔触骨架的两种形态：
+ * - smooth：Catmull-Rom 平滑 + 法线抖动，适合叶/云/花这类有机形状；
+ * - sharp：线性细分 + 法线抖动，角点保持准确，适合窗框/纸飞机/山脊这类
+ *   几何形状——旧版对矩形也做平滑，结果窗被"磨"成了圆角八边形。
+ */
+type RoughMode = "smooth" | "sharp";
+
+/** 用锐角笔触绘制的几何涂鸦：窗框、纸飞机、山脊、收音机等"直线器物"。 */
+const SHARP_CORNER_KINDS: ReadonlySet<HandwrittenDoodleKind> = new Set([
+  "window",
+  "paperplane",
+  "mountain",
+  "radio",
+  "cassette",
+]);
+
 /** 把折线细分并沿法线抖动，得到手绘感的点列。 */
-function roughen(points: readonly Point[], seed: string, amount: number, subdivide = 3): Point[] {
+function roughen(
+  points: readonly Point[],
+  seed: string,
+  amount: number,
+  subdivide = 3,
+  mode: RoughMode = "smooth"
+): Point[] {
   if (points.length < 2) return [...points];
   const result: Point[] = [];
   const isClosed =
@@ -171,6 +199,20 @@ function roughen(points: readonly Point[], seed: string, amount: number, subdivi
 
     for (let step = 0; step < subdivide; step += 1) {
       const t = step / subdivide;
+      if (mode === "sharp") {
+        // 角点原样保留（step===0），段内的点只沿法线轻微抖动，
+        // 因此矩形仍是矩形、山脊仍是尖角，只多一点手绘的"不直"。
+        if (step === 0) {
+          result.push({ x: from.x, y: from.y });
+          continue;
+        }
+        const wobble = (stableRandom(seed, `wobble-${index}-${step}`) - 0.5) * amount * 2;
+        result.push({
+          x: from.x + dx * t + normalX * wobble,
+          y: from.y + dy * t + normalY * wobble,
+        });
+        continue;
+      }
       const t2 = t * t;
       const t3 = t2 * t;
       const smooth = (a: number, b: number, c: number, d: number) =>
@@ -205,14 +247,18 @@ function getGeometry(
   unit: number,
   seed: string,
   roughness: number,
-  strokeWidth: number
+  strokeWidth: number,
+  sharpStrokes?: readonly boolean[]
 ): GeometrySet {
   let set = geometryCache.get(owner);
   if (!set) {
     set = new Map();
     geometryCache.set(owner, set);
   }
-  const key = `${unit}:${strokeWidth}:${seed}:${roughness}:${rawStrokes.length}`;
+  // 锐角模式是逐笔的：窗框/窗棂/花盆这类少点的"器物线"走直线，
+  // 同一个大插画里的叶片、茎、山弧仍走平滑曲线，避免叶子被削成多边形。
+  const modeKey = sharpStrokes ? sharpStrokes.map((sharp) => (sharp ? "1" : "0")).join("") : "-";
+  const key = `${unit}:${strokeWidth}:${seed}:${roughness}:${rawStrokes.length}:${modeKey}`;
   const cached = set.get(key);
   if (cached) {
     set.delete(key);
@@ -221,8 +267,9 @@ function getGeometry(
   }
 
   const strokes: CachedStroke[] = rawStrokes.map((raw, index) => {
-    const variant0 = roughen(raw, `${seed}:0:${index}`, roughness);
-    const variant1 = roughen(raw, `${seed}:1:${index}`, roughness);
+    const mode: RoughMode = sharpStrokes?.[index] ? "sharp" : "smooth";
+    const variant0 = roughen(raw, `${seed}:0:${index}`, roughness, 3, mode);
+    const variant1 = roughen(raw, `${seed}:1:${index}`, roughness, 3, mode);
     const pressure = 0.82 + stableRandom(`${seed}:${index}`, "stroke-pressure") * 0.36;
     const strokePressureWidth = strokeWidth * pressure;
     const variant0Path = buildInkRibbonPath(
@@ -368,7 +415,7 @@ function drawStrokeSet(
     ctx.save();
     ctx.fillStyle = withAlpha(style.color, style.alpha * 0.5);
     const grainScale = Math.max(1, style.grainScale ?? 1);
-    const grainBudget = Math.min(18, strokes.length * 3);
+    const grainBudget = Math.min(12, strokes.length * 2);
     for (let index = 0; index < grainBudget; index += 1) {
       const strokeIndex = Math.floor(
         stableRandom(`${style.color}:g`, `s${index}`) * strokes.length
@@ -411,13 +458,31 @@ function roleColor(palette: HandwrittenPalette, role: HandwrittenColorRole): str
  * 让铅笔稿不再只是空线框（叶子、云、窗、花、月亮等）。
  */
 const ILLUSTRATION_WASH: Partial<
-  Record<HandwrittenDoodleKind, { role: HandwrittenColorRole; alpha: number; stroke: number }>
+  Record<
+    HandwrittenDoodleKind,
+    {
+      role: HandwrittenColorRole;
+      alpha: number;
+      stroke: number;
+      /** 可选：在内层轮廓里再铺一层更淡的"透光"色（窗玻璃、月晕） */
+      innerStroke?: number;
+      innerAlpha?: number;
+      innerRole?: HandwrittenColorRole;
+    }
+  >
 > = {
-  leaf: { role: "highlight", alpha: 0.16, stroke: 0 },
+  leaf: { role: "highlight", alpha: 0.12, stroke: 0 },
   cloud: { role: "highlight", alpha: 0.1, stroke: 0 },
   flower: { role: "accent", alpha: 0.1, stroke: 0 },
-  moon: { role: "highlight", alpha: 0.14, stroke: 0 },
-  window: { role: "highlight", alpha: 0.05, stroke: 0 },
+  moon: { role: "highlight", alpha: 0.12, stroke: 0 },
+  window: {
+    role: "highlight",
+    alpha: 0.05,
+    stroke: 0,
+    innerStroke: 1,
+    innerAlpha: 0.06,
+    innerRole: "highlight",
+  },
   mountain: { role: "highlight", alpha: 0.08, stroke: 0 },
   sun: { role: "highlight", alpha: 0.1, stroke: 0 },
   heart: { role: "accent", alpha: 0.1, stroke: 0 },
@@ -431,6 +496,370 @@ function roleAlpha(role: HandwrittenColorRole): number {
       return 0.85;
     default:
       return 0.82;
+  }
+}
+
+/**
+ * 铅笔排线（明暗）：大幅插画如果只有轮廓线，会像"图标/线框"；
+ * 真实速写会用一组平行短线在背光侧压出体积。这里按 kind 给一个
+ * 「闭合裁剪轮廓 + 排线角度 + 光向」，在轮廓内、背光侧排 8–26 根短线，
+ * 透明度沿光向从 0 渐变到目标值——不需要逐像素渐变，成本固定。
+ */
+interface IllustrationHatch {
+  /** 用于裁剪的闭合轮廓（geometry.strokes 下标；0 通常是主轮廓） */
+  clipStroke: number;
+  /** 排线方向（弧度，0 = 水平线） */
+  angle: number;
+  /** 相邻排线间距（局部单位坐标） */
+  spacing: number;
+  /** 背光侧最深处的墨色透明度 */
+  alpha: number;
+  /** 光的来向（弧度）：排线沿该方向渐隐到 0 */
+  lightAngle: number;
+  /** 排线颜色（pencil = 铅笔灰） */
+  role: HandwrittenColorRole;
+  /** 暗部再叠一层反向交叉排线（铅笔速写里压重的方法） */
+  cross?: { angle: number; alphaFactor: number; spacingFactor: number };
+}
+
+const ILLUSTRATION_HATCH: Partial<Record<HandwrittenDoodleKind, IllustrationHatch>> = {
+  leaf: {
+    clipStroke: 0,
+    angle: -0.62,
+    spacing: 0.062,
+    alpha: 0.2,
+    lightAngle: 2.28,
+    role: "pencil",
+    cross: { angle: 1.05, alphaFactor: 0.55, spacingFactor: 1.5 },
+  },
+  cloud: {
+    clipStroke: 0,
+    angle: -0.1,
+    spacing: 0.078,
+    alpha: 0.13,
+    lightAngle: 2.72,
+    role: "pencil",
+  },
+  flower: {
+    clipStroke: 0,
+    angle: -0.8,
+    spacing: 0.07,
+    alpha: 0.16,
+    lightAngle: 2.36,
+    role: "pencil",
+  },
+  moon: {
+    clipStroke: 0,
+    angle: 0.18,
+    spacing: 0.068,
+    alpha: 0.15,
+    lightAngle: 2.6,
+    role: "pencil",
+  },
+  window: {
+    clipStroke: 0,
+    angle: Math.PI / 2,
+    spacing: 0.105,
+    alpha: 0.075,
+    lightAngle: 2.5,
+    role: "pencil",
+  },
+  mountain: {
+    clipStroke: 0,
+    angle: -0.92,
+    spacing: 0.06,
+    alpha: 0.21,
+    lightAngle: 2.05,
+    role: "pencil",
+    cross: { angle: 0.42, alphaFactor: 0.5, spacingFactor: 1.6 },
+  },
+  paperplane: {
+    clipStroke: 0,
+    angle: -0.32,
+    spacing: 0.062,
+    alpha: 0.17,
+    lightAngle: 2.22,
+    role: "pencil",
+    cross: { angle: 0.86, alphaFactor: 0.45, spacingFactor: 1.7 },
+  },
+  heart: {
+    clipStroke: 0,
+    angle: -0.72,
+    spacing: 0.066,
+    alpha: 0.13,
+    lightAngle: 2.4,
+    role: "accent",
+  },
+};
+
+/** 把点列转成闭合 Path2D（水彩/排线的裁剪轮廓）。 */
+function buildContourPath(points: readonly Point[], unit: number): Path2D | null {
+  if (typeof Path2D === "undefined" || points.length < 3) return null;
+  const path = new Path2D();
+  path.moveTo(points[0]!.x * unit, points[0]!.y * unit);
+  for (let index = 1; index < points.length; index += 1) {
+    path.lineTo(points[index]!.x * unit, points[index]!.y * unit);
+  }
+  path.closePath();
+  return path;
+}
+
+/** 取（并缓存）某根笔画转成的闭合轮廓路径。 */
+function getContourPath(geometry: GeometrySet, strokeIndex: number, unit: number): Path2D | null {
+  const points = geometry.strokes[strokeIndex]?.variant0;
+  if (!points || points.length < 3) return null;
+  let cache = geometry.contourPaths;
+  if (!cache) {
+    cache = new Map();
+    geometry.contourPaths = cache;
+  }
+  const cached = cache.get(strokeIndex);
+  if (cached) return cached;
+  const path = buildContourPath(points, unit);
+  if (path) cache.set(strokeIndex, path);
+  return path;
+}
+
+/** 闭合轮廓的包围盒（局部单位坐标）。 */
+function contourBounds(points: readonly Point[]): {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+} {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const point of points) {
+    if (point.x < minX) minX = point.x;
+    if (point.x > maxX) maxX = point.x;
+    if (point.y < minY) minY = point.y;
+    if (point.y > maxY) maxY = point.y;
+  }
+  return { minX, maxX, minY, maxY };
+}
+
+/**
+ * 在闭合轮廓内按光向排线，给插画加"铅笔压出来的暗部"。
+ * 只在形状基本画完（visible >= 0.72）后出现，避免出笔阶段出现漂浮排线。
+ */
+/** 构建（并缓存）排线路径：所有排线合成一个 Path2D，每帧只 stroke 1–2 次。 */
+function getHatchPaths(
+  geometry: GeometrySet,
+  spec: HandwrittenDoodleSpec,
+  unit: number,
+  config: IllustrationHatch
+): { main: Path2D; cross?: Path2D } | null {
+  if (geometry.hatchPaths) return geometry.hatchPaths;
+  const stroke = geometry.strokes[config.clipStroke];
+  if (!stroke || stroke.variant0.length < 3) return null;
+  const points = stroke.variant0;
+  const bounds = contourBounds(points);
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const centerY = (bounds.minY + bounds.maxY) / 2;
+  const spanX = bounds.maxX - bounds.minX;
+  const spanY = bounds.maxY - bounds.minY;
+  const diagonal = Math.hypot(spanX, spanY) / 2;
+  if (diagonal < 0.18) return null;
+  if (typeof Path2D === "undefined") return null;
+
+  const buildLines = (
+    angle: number,
+    step: number,
+    count: number,
+    wobbleScale: number,
+    salt: string
+  ): Path2D => {
+    const path = new Path2D();
+    const dirX = Math.cos(angle);
+    const dirY = Math.sin(angle);
+    const perpX = -dirY;
+    const perpY = dirX;
+    const halfSpan = diagonal + step;
+    const wobbleAmount = step * 0.22 * wobbleScale;
+    for (let index = 0; index <= count; index += 1) {
+      const offset = -halfSpan + (index / count) * halfSpan * 2;
+      const ox = centerX + perpX * offset;
+      const oy = centerY + perpY * offset;
+      const wobbleA = (stableRandom(`${spec.kind}:${salt}`, `a${index}`) - 0.5) * wobbleAmount * 2;
+      const wobbleB = (stableRandom(`${spec.kind}:${salt}`, `b${index}`) - 0.5) * wobbleAmount * 2;
+      // 每根排线中间带一点弓形/弯曲，避免"尺子画的平行线"。
+      const bow = (stableRandom(`${spec.kind}:${salt}`, `m${index}`) - 0.5) * step * 0.9;
+      path.moveTo(
+        (ox - dirX * halfSpan + perpX * wobbleA) * unit,
+        (oy - dirY * halfSpan + perpY * wobbleA) * unit
+      );
+      path.quadraticCurveTo(
+        (ox + perpX * bow) * unit,
+        (oy + perpY * bow) * unit,
+        (ox + dirX * halfSpan + perpX * wobbleB) * unit,
+        (oy + dirY * halfSpan + perpY * wobbleB) * unit
+      );
+    }
+    return path;
+  };
+
+  const step = Math.max(0.032, config.spacing);
+  const halfSpan = diagonal + step;
+  const lineCount = Math.min(26, Math.max(6, Math.round((halfSpan * 2) / step)));
+  const main = buildLines(config.angle, step, lineCount, 1, "hatch");
+  let cross: Path2D | undefined;
+  if (config.cross) {
+    const crossStep = Math.max(0.05, step * config.cross.spacingFactor);
+    const crossCount = Math.min(22, Math.max(5, Math.round((halfSpan * 2) / crossStep)));
+    cross = buildLines(config.cross.angle, crossStep, crossCount, 0.7, "cross");
+  }
+  const result: { main: Path2D; cross?: Path2D } = cross ? { main, cross } : { main };
+  geometry.hatchPaths = result;
+  return result;
+}
+
+/**
+ * 在闭合轮廓内按光向排线，给插画加"铅笔压出来的暗部"。
+ * 只在形状基本画完（visible >= 0.72）后出现，避免出笔阶段出现漂浮排线；
+ * 排线路径按几何缓存，每帧成本 = 1 次 clip + 1–2 次 stroke。
+ */
+function drawIllustrationHatching(
+  ctx: CanvasRenderingContext2D,
+  palette: HandwrittenPalette,
+  geometry: GeometrySet,
+  unit: number,
+  spec: HandwrittenDoodleSpec,
+  visible: number,
+  lineWidth: number
+): void {
+  const config = ILLUSTRATION_HATCH[spec.kind];
+  if (!config) return;
+  const clipPath = getContourPath(geometry, config.clipStroke, unit);
+  const stroke = geometry.strokes[config.clipStroke];
+  if (!clipPath || !stroke) return;
+  const bounds = contourBounds(stroke.variant0);
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const centerY = (bounds.minY + bounds.maxY) / 2;
+  const diagonal = Math.hypot(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY) / 2;
+  const ramp = clamp((visible - 0.72) / 0.28, 0, 1);
+  const alpha = config.alpha * ramp * (palette.dark ? 0.76 : 1);
+  if (alpha <= 0.004) return;
+  const paths = getHatchPaths(geometry, spec, unit, config);
+  if (!paths) return;
+
+  const color = roleColor(palette, config.role);
+  const lightX = Math.cos(config.lightAngle);
+  const lightY = Math.sin(config.lightAngle);
+  const buildGradient = (finalAlpha: number, floor: number): CanvasGradient => {
+    const gradient = ctx.createLinearGradient(
+      (centerX - lightX * diagonal) * unit,
+      (centerY - lightY * diagonal) * unit,
+      (centerX + lightX * diagonal) * unit,
+      (centerY + lightY * diagonal) * unit
+    );
+    gradient.addColorStop(0, withAlpha(color, 0));
+    gradient.addColorStop(floor, withAlpha(color, floor < 0.5 ? 0 : finalAlpha * 0.1));
+    gradient.addColorStop(Math.min(0.98, floor + 0.32), withAlpha(color, finalAlpha * 0.52));
+    gradient.addColorStop(1, withAlpha(color, finalAlpha));
+    return gradient;
+  };
+
+  ctx.save();
+  ctx.clip(clipPath);
+  ctx.lineCap = "round";
+  ctx.strokeStyle = buildGradient(alpha, 0.28);
+  ctx.lineWidth = Math.max(0.35, lineWidth * 0.52);
+  ctx.stroke(paths.main);
+  if (paths.cross && config.cross) {
+    ctx.strokeStyle = buildGradient(alpha * config.cross.alphaFactor, 0.62);
+    ctx.lineWidth = Math.max(0.32, lineWidth * 0.44);
+    ctx.stroke(paths.cross);
+  }
+  ctx.restore();
+}
+
+/**
+ * 水彩铺底升级：不再是"一层均匀色块"，而是
+ * 底色 + 1–2 团更浓的沉积 + 轮廓内侧一圈"水痕"（水彩干后的深边），
+ * 仍是固定几笔填充，成本与旧版同量级。
+ */
+function drawIllustrationWash(
+  ctx: CanvasRenderingContext2D,
+  palette: HandwrittenPalette,
+  geometry: GeometrySet,
+  unit: number,
+  spec: HandwrittenDoodleSpec,
+  visible: number,
+  wash: {
+    role: HandwrittenColorRole;
+    alpha: number;
+    stroke: number;
+    innerStroke?: number;
+    innerAlpha?: number;
+    innerRole?: HandwrittenColorRole;
+  },
+  lineWidth: number
+): void {
+  const strokeIndex = Math.min(wash.stroke, geometry.strokes.length - 1);
+  const stroke = geometry.strokes[strokeIndex];
+  const points = stroke?.variant0;
+  if (!points || points.length < 3) return;
+  // 轮廓路径按几何缓存，避免每帧新建 Path2D。
+  const contour = getContourPath(geometry, strokeIndex, unit);
+  if (!contour) return;
+  const bounds = contourBounds(points);
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const centerY = (bounds.minY + bounds.maxY) / 2;
+  const spanX = Math.max(0.001, bounds.maxX - bounds.minX);
+  const spanY = Math.max(0.001, bounds.maxY - bounds.minY);
+  const color = roleColor(palette, wash.role);
+
+  ctx.save();
+  // 1) 底色
+  ctx.globalAlpha = visible * wash.alpha;
+  ctx.fillStyle = color;
+  ctx.fill(contour);
+
+  // 2) 沉积：2 团更浓的色，位置/大小由 kind + 固定 seed 决定，打破均匀块面。
+  ctx.clip(contour);
+  for (let index = 0; index < 2; index += 1) {
+    const cx = centerX + (stableRandom(`${spec.kind}:wash`, `x${index}`) - 0.5) * spanX * 0.42;
+    const cy = centerY + (stableRandom(`${spec.kind}:wash`, `y${index}`) - 0.5) * spanY * 0.42;
+    const radius =
+      Math.max(spanX, spanY) * (0.22 + stableRandom(`${spec.kind}:wash`, `r${index}`) * 0.2);
+    ctx.globalAlpha = visible * wash.alpha * (0.4 + index * 0.12);
+    ctx.beginPath();
+    const steps = 12;
+    for (let stepIndex = 0; stepIndex <= steps; stepIndex += 1) {
+      const angle = (stepIndex / steps) * TAU;
+      const wobble = 0.78 + stableRandom(`${spec.kind}:wash`, `w${index}-${stepIndex}`) * 0.36;
+      const px = cx + Math.cos(angle) * radius * wobble * 1.1;
+      const py = cy + Math.sin(angle) * radius * wobble * 0.9;
+      if (stepIndex === 0) ctx.moveTo(px * unit, py * unit);
+      else ctx.lineTo(px * unit, py * unit);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 3) 水痕：轮廓内侧一圈更深的边，模拟水彩干燥后颜料在边缘堆积。
+  ctx.save();
+  ctx.globalAlpha = visible * Math.min(0.34, wash.alpha * 1.7);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(0.5, lineWidth * 0.5);
+  ctx.stroke(contour);
+  ctx.restore();
+
+  // 4) 内层透光（可选）：窗玻璃 / 月晕这类"形状内部还有一层光"的插画，
+  //    在第二个轮廓里再铺一层更淡的暖色，让窗看起来有光进来，而不是空框。
+  if (wash.innerStroke !== undefined && wash.innerAlpha !== undefined) {
+    const innerIndex = Math.min(wash.innerStroke, geometry.strokes.length - 1);
+    const innerContour = getContourPath(geometry, innerIndex, unit);
+    if (innerContour) {
+      ctx.save();
+      ctx.globalAlpha = visible * wash.innerAlpha * (wash.innerRole ? 1 : 0.8);
+      ctx.fillStyle = roleColor(palette, wash.innerRole ?? wash.role);
+      ctx.fill(innerContour);
+      ctx.restore();
+    }
   }
 }
 
@@ -1097,51 +1526,100 @@ function drawFilledDoodle(
   if (kind === "tape") {
     const tapeWidth = unit * 2.4;
     const tapeHeight = unit * 0.72;
-    const zig = unit * 0.12;
     ctx.scale(0.92 + pop * 0.08, 0.92 + pop * 0.08);
 
-    // 和纸胶带：主体是不透明米色/彩色半透纸，不再是"看不见的黄色淡块"。
-    ctx.globalAlpha = alpha * 0.72;
-    ctx.fillStyle = role === "highlight" ? withAlpha(palette.highlight, 0.9) : palette.highlight;
-    ctx.beginPath();
-    ctx.moveTo(-tapeWidth / 2, -tapeHeight / 2);
-    ctx.lineTo(tapeWidth / 2 - zig, -tapeHeight / 2 + unit * 0.02);
-    ctx.lineTo(tapeWidth / 2, -unit * 0.04);
-    ctx.lineTo(tapeWidth / 2 - zig * 0.6, tapeHeight / 2);
-    ctx.lineTo(-tapeWidth / 2, tapeHeight / 2 - unit * 0.02);
-    ctx.lineTo(-tapeWidth / 2 + zig * 0.5, 0);
-    ctx.closePath();
-    ctx.fill();
+    // 撕口：两端各一段不规则锯齿，上下边也有轻微起伏——不是一块圆角矩形。
+    const buildTapePath = (): Path2D => {
+      const path = new Path2D();
+      const segments = 6;
+      const edgeJitter = (seed: string) => (stableRandom("tape-edge", seed) - 0.5) * unit * 0.028;
+      for (let index = 0; index <= segments; index += 1) {
+        const x = -tapeWidth / 2 + (tapeWidth * index) / segments;
+        const y = -tapeHeight / 2 + edgeJitter(`top${index}`);
+        if (index === 0) path.moveTo(x, y);
+        else path.lineTo(x, y);
+      }
+      const endSteps = 4;
+      for (let index = 1; index <= endSteps; index += 1) {
+        const y = -tapeHeight / 2 + (tapeHeight * index) / endSteps;
+        const bite = stableRandom("tape-edge", `r${index}`) * unit * 0.09;
+        path.lineTo(tapeWidth / 2 - bite, y);
+      }
+      for (let index = 0; index <= segments; index += 1) {
+        const x = tapeWidth / 2 - (tapeWidth * index) / segments;
+        const y = tapeHeight / 2 + edgeJitter(`bottom${index}`);
+        path.lineTo(x, y);
+      }
+      for (let index = 1; index <= endSteps; index += 1) {
+        const y = tapeHeight / 2 - (tapeHeight * index) / endSteps;
+        const bite = stableRandom("tape-edge", `l${index}`) * unit * 0.09;
+        path.lineTo(-tapeWidth / 2 + bite, y);
+      }
+      path.closePath();
+      return path;
+    };
+    const tape = buildTapePath();
 
-    // 胶带上的纤维条纹与边缘反光，让它看起来像实物而不是色块。
+    // 投影：胶带是贴在纸上的，会挡住一点纸的光。
     ctx.save();
-    ctx.clip();
-    ctx.globalAlpha = alpha * 0.22;
-    ctx.strokeStyle = withAlpha(palette.paperLight, 0.9);
-    ctx.lineWidth = Math.max(0.8, unit * 0.012);
-    for (let index = -3; index <= 3; index += 1) {
-      const offset = (index / 3) * tapeHeight * 0.44;
+    ctx.globalAlpha = alpha * 0.16;
+    ctx.translate(unit * 0.035, unit * 0.09);
+    ctx.fillStyle = palette.shadow;
+    ctx.fill(tape);
+    ctx.restore();
+
+    // 主体：略透的和纸，上亮下暗（受光方向与纸面一致）；
+    // 强调色的胶带略偏朱红，普通胶带是暖金的半透明和纸。
+    const tapeTone = role === "accent" ? palette.highlightLine : palette.highlight;
+    const tapeFill = ctx.createLinearGradient(0, -tapeHeight / 2, 0, tapeHeight / 2);
+    tapeFill.addColorStop(0, withAlpha(tapeTone, 0.95));
+    tapeFill.addColorStop(0.55, withAlpha(tapeTone, 0.8));
+    tapeFill.addColorStop(1, withAlpha(tapeTone, 0.68));
+    ctx.globalAlpha = alpha * 0.82;
+    ctx.fillStyle = tapeFill;
+    ctx.fill(tape);
+
+    // 和纸纹理：斜向细纹 + 一道纵向褶痕（亮/暗成对），让它有"纸"的厚度。
+    ctx.save();
+    ctx.clip(tape);
+    ctx.strokeStyle = withAlpha(palette.paperLight, 0.75);
+    ctx.lineWidth = Math.max(0.7, unit * 0.011);
+    ctx.globalAlpha = alpha * 0.28;
+    for (let index = -5; index <= 5; index += 1) {
+      const offset = index * unit * 0.1;
       ctx.beginPath();
-      ctx.moveTo(-tapeWidth * 0.52, offset + unit * 0.008);
-      ctx.lineTo(tapeWidth * 0.52, offset - unit * 0.008);
+      ctx.moveTo(-tapeWidth * 0.6 + offset, -tapeHeight);
+      ctx.lineTo(tapeWidth * 0.2 + offset, tapeHeight);
       ctx.stroke();
     }
-    ctx.globalAlpha = alpha * 0.35;
-    ctx.strokeStyle = withAlpha(palette.shadow, 0.55);
-    ctx.lineWidth = 1;
+    ctx.globalAlpha = alpha * 0.3;
+    ctx.strokeStyle = withAlpha(palette.paperLight, 0.85);
+    ctx.lineWidth = Math.max(0.8, unit * 0.016);
     ctx.beginPath();
-    ctx.moveTo(-tapeWidth / 2, -tapeHeight / 2 + unit * 0.005);
-    ctx.lineTo(tapeWidth / 2 - zig, -tapeHeight / 2 + unit * 0.02);
+    ctx.moveTo(tapeWidth * 0.18, -tapeHeight * 0.55);
+    ctx.lineTo(tapeWidth * 0.26, tapeHeight * 0.55);
+    ctx.stroke();
+    ctx.globalAlpha = alpha * 0.2;
+    ctx.strokeStyle = palette.shadow;
+    ctx.lineWidth = Math.max(0.6, unit * 0.012);
+    ctx.beginPath();
+    ctx.moveTo(tapeWidth * 0.28, -tapeHeight * 0.55);
+    ctx.lineTo(tapeWidth * 0.36, tapeHeight * 0.55);
     ctx.stroke();
     ctx.restore();
 
-    ctx.globalAlpha = alpha * 0.5;
-    ctx.strokeStyle = withAlpha(palette.paperDeep, 0.45);
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    ctx.moveTo(-tapeWidth / 2, tapeHeight / 2 - unit * 0.01);
-    ctx.lineTo(tapeWidth / 2 - zig * 0.6, tapeHeight / 2);
-    ctx.stroke();
+    // 边缘：外圈压暗 + 内侧受光亮边，贴纸感。
+    ctx.globalAlpha = alpha * 0.42;
+    ctx.strokeStyle = withAlpha(palette.paperDeep, 0.55);
+    ctx.lineWidth = Math.max(0.8, unit * 0.012);
+    ctx.stroke(tape);
+    ctx.globalAlpha = alpha * 0.2;
+    ctx.strokeStyle = withAlpha(palette.paperLight, 0.6);
+    ctx.lineWidth = Math.max(0.5, unit * 0.008);
+    ctx.save();
+    ctx.translate(-unit * 0.012, -unit * 0.012);
+    ctx.stroke(tape);
+    ctx.restore();
   } else {
     // 邮票：纸片 + 齿孔 + 内框 + 手绘风景（太阳/山/地平线）+ 面值短线
     const size = unit * 1.15;
@@ -1272,19 +1750,28 @@ export function drawHandwrittenDoodle(spec: HandwrittenDoodleSpec, options: Dood
       : spec.kind === "wheat" || spec.kind === "ripple"
         ? 0.012 + stableRandom(spec.kind, "roughness") * 0.009
         : 0.026 + stableRandom(spec.kind, "roughness") * 0.018;
-  const rawStrokes = doodleStrokes(spec.kind);
+  // 大幅插画优先使用独立维护的几何（handwrittenIllustration），其余仍走涂鸦几何。
+  const rawStrokes =
+    (isLargeIllustration ? getLargeIllustrationStrokes(spec.kind) : null) ??
+    doodleStrokes(spec.kind);
   if (rawStrokes.length === 0) {
     ctx.restore();
     return;
   }
 
+  // 几何器物类：点数少（≤8）的骨架线按"直尺画的折线"处理，保留角点；
+  // 点多的有机形状（叶片、云朵、山弧）仍平滑，避免被削成多边形。
+  const sharpStrokes = SHARP_CORNER_KINDS.has(spec.kind)
+    ? rawStrokes.map((points) => points.length <= 8)
+    : undefined;
   const geometry = getGeometry(
     spec,
     rawStrokes,
     unit,
     `${spec.kind}:${spec.x.toFixed(3)}:${spec.y.toFixed(3)}`,
     roughness,
-    lineWidth
+    lineWidth,
+    sharpStrokes
   );
   const boilVariant: 0 | 1 =
     visible < 1 &&
@@ -1314,22 +1801,13 @@ export function drawHandwrittenDoodle(spec: HandwrittenDoodleSpec, options: Dood
 
   const wash = isLargeIllustration ? ILLUSTRATION_WASH[spec.kind] : undefined;
   if (wash) {
-    const washStroke = geometry.strokes[Math.min(wash.stroke, geometry.strokes.length - 1)];
-    const washPoints = washStroke?.variant0;
-    if (washPoints && washPoints.length >= 3) {
-      ctx.save();
-      ctx.globalAlpha = visible * wash.alpha;
-      ctx.fillStyle = roleColor(palette, wash.role);
-      ctx.beginPath();
-      washPoints.forEach((point, index) => {
-        if (index === 0) ctx.moveTo(point.x * unit, point.y * unit);
-        else ctx.lineTo(point.x * unit, point.y * unit);
-      });
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-      ctx.globalAlpha = 1;
-    }
+    drawIllustrationWash(ctx, palette, geometry, unit, spec, visible, wash, lineWidth);
+    ctx.globalAlpha = 1;
+  }
+
+  // 铅笔排线：水彩之后、正式勾线之前铺背光侧暗部，让线稿有体积（弱机档跳过）。
+  if (isLargeIllustration && quality < 2) {
+    drawIllustrationHatching(ctx, palette, geometry, unit, spec, visible, lineWidth);
   }
 
   // 铅笔速写的"第二遍找形"：主轮廓下方偏移 1–2px 再画一遍，
@@ -1377,7 +1855,8 @@ export function drawHandwrittenDoodle(spec: HandwrittenDoodleSpec, options: Dood
       if (!stroke || stroke.variant0.length < 2 || stroke.length < 0.9) continue;
       const completion = clamp(visible * 1.45 - (strokeIndex / strokeCount) * 0.45, 0, 1);
       if (completion < 0.999) continue;
-      const notchCount = Math.min(18, Math.max(3, Math.round(stroke.length * 3)));
+      // 飞白预算按笔画长度分配，单笔最多 12 个（旧版 18），保留断墨但不堆填充。
+      const notchCount = Math.min(8, Math.max(2, Math.round(stroke.length * 1.7)));
       for (let slot = 0; slot < notchCount; slot += 1) {
         const salt = `${strokeIndex}:${slot}`;
         const pointIndex = Math.floor(
@@ -1397,9 +1876,12 @@ export function drawHandwrittenDoodle(spec: HandwrittenDoodleSpec, options: Dood
         const across = edge
           ? sign * lineWidth * (0.45 + stableRandom(`${spec.kind}:dry`, `a${salt}`) * 0.35)
           : (stableRandom(`${spec.kind}:dry`, `a${salt}`) - 0.5) * lineWidth * 0.5;
-        const length = lineWidth * (1.1 + stableRandom(`${spec.kind}:dry`, `l${salt}`) * 2.1);
-        const thickness = lineWidth * (0.26 + stableRandom(`${spec.kind}:dry`, `w${salt}`) * 0.34);
-        ctx.globalAlpha = edge ? 0.9 : 0.84;
+        const length = lineWidth * (0.7 + stableRandom(`${spec.kind}:dry`, `l${salt}`) * 1.4);
+        const thickness = lineWidth * (0.18 + stableRandom(`${spec.kind}:dry`, `w${salt}`) * 0.22);
+        // 飞白是"笔毛在纸纹上断墨"，不是白色橡皮点：透明度压到 ~0.4，
+        // 用纸底（paperBase）而不是受光纸色，远看只让笔道边缘发毛。
+        ctx.fillStyle = edge ? palette.paperBase : palette.paperLight;
+        ctx.globalAlpha = edge ? 0.42 : 0.34;
         ctx.save();
         ctx.translate(x + normalX * across, y + normalY * across);
         ctx.rotate(angle);

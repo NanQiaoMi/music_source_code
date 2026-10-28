@@ -127,6 +127,109 @@ afterEach(() => {
   vi.resetModules();
 });
 
+function createToothContext() {
+  const state = new Map<PropertyKey, unknown>();
+  const fills: [number, number, number, number][] = [];
+  const draws: [CanvasImageSource, number, number, number, number][] = [];
+  const canvas = { width: 320, height: 180 };
+  const ctx = new Proxy(
+    {
+      canvas,
+      createPattern: () => ({}),
+      fillRect: (x: number, y: number, width: number, height: number) =>
+        fills.push([x, y, width, height]),
+      drawImage: (image: CanvasImageSource, x: number, y: number, width: number, height: number) =>
+        draws.push([image, x, y, width, height]),
+    },
+    {
+      get(target, property, receiver) {
+        if (Reflect.has(target, property)) return Reflect.get(target, property, receiver);
+        if (!state.has(property)) state.set(property, vi.fn());
+        return state.get(property);
+      },
+      set(_target, property, value) {
+        state.set(property, value);
+        return true;
+      },
+    }
+  ) as unknown as CanvasRenderingContext2D;
+  return { ctx, fills, draws, state };
+}
+
+describe("handwritten paper tooth overlay", () => {
+  it("draws exactly one cached full-screen overlay in baked mode", async () => {
+    vi.resetModules();
+    installCanvasDocument([]);
+    const { drawHandwrittenPaperTooth } = await import("./handwrittenPaper");
+    const { ctx, fills, draws, state } = createToothContext();
+
+    drawHandwrittenPaperTooth({
+      ctx,
+      width: 320,
+      height: 180,
+      palette: resolveHandwrittenPalette(0),
+      paletteIndex: 0,
+      strength: 0.6,
+      quality: 0,
+    });
+
+    expect(fills).toHaveLength(0);
+    expect(draws).toHaveLength(1);
+    expect(draws[0]!.slice(1)).toEqual([0, 0, 320, 180]);
+    expect(state.get("globalCompositeOperation")).toBe("overlay");
+    expect(state.get("globalAlpha")).toBeCloseTo(0.072, 3);
+  });
+
+  it("still supports the pattern mode with a single pattern fillRect", async () => {
+    vi.resetModules();
+    installCanvasDocument([]);
+    const { drawHandwrittenPaperTooth } = await import("./handwrittenPaper");
+    const { ctx, fills, draws, state } = createToothContext();
+
+    drawHandwrittenPaperTooth({
+      ctx,
+      width: 320,
+      height: 180,
+      palette: resolveHandwrittenPalette(0),
+      paletteIndex: 0,
+      strength: 0.6,
+      quality: 0,
+      mode: "pattern",
+    });
+
+    expect(draws).toHaveLength(0);
+    expect(fills).toEqual([[0, 0, 320, 180]]);
+    expect(state.get("globalCompositeOperation")).toBe("overlay");
+  });
+
+  it("skips the overlay at quality 2, zero strength, or without a DOM", async () => {
+    vi.resetModules();
+    installCanvasDocument([]);
+    const { drawHandwrittenPaperTooth } = await import("./handwrittenPaper");
+    const base = {
+      width: 320,
+      height: 180,
+      palette: resolveHandwrittenPalette(0),
+      paletteIndex: 0,
+    };
+    const skipped = createToothContext();
+    drawHandwrittenPaperTooth({ ...base, ctx: skipped.ctx, strength: 0.6, quality: 2 });
+    expect(skipped.fills).toHaveLength(0);
+
+    const empty = createToothContext();
+    drawHandwrittenPaperTooth({ ...base, ctx: empty.ctx, strength: 0 });
+    expect(empty.fills).toHaveLength(0);
+
+    vi.stubGlobal("document", undefined);
+    vi.resetModules();
+    const noDom = await import("./handwrittenPaper");
+    expect(() =>
+      noDom.drawHandwrittenPaperTooth({ ...base, ctx: skipped.ctx, strength: 0.6 })
+    ).not.toThrow();
+    expect(skipped.fills).toHaveLength(0);
+  });
+});
+
 describe("handwritten paper grain", () => {
   it("produces identical texture frames across module loads and random histories", async () => {
     const first = await captureGrainFrames(0.1);

@@ -1,7 +1,10 @@
 /**
  * 「温光浮字」手书 MV 的纸面与光：一张摊在暗色桌面上的暖色信纸，
- * 有纸纤维、陈放晕染、折痕、撕纸毛边和投影；阳光从一角斜照进来，
- * 空气里有浮尘，最后叠上胶片颗粒与暗角。
+ * 有纸牙 / 纤维 / 纸屑、多尺度吸水晕染、极淡压痕与橡皮痕、折痕、撕纸毛边和投影；
+ * 阳光从一角斜照进来，空气里有浮尘，最后叠上胶片颗粒与暗角。
+ *
+ * 纸面材质分四步烘焙进同一张缓存画布：底色渐变 → 大 / 中 / 小三个尺度的吸水斑驳
+ * → 纸牙 + 纤维 + 纸屑微颗粒 → 极淡压痕与橡皮痕；每帧仍然只有一次 drawImage。
  *
  * 性能约束（动画精修阶段的重点）：
  * - 纸面纹理只按「调色板 + 视口」生成一次并缓存；
@@ -68,6 +71,14 @@ const grainPatternCache = new WeakMap<CanvasRenderingContext2D, CanvasPattern[]>
 const bokehSpriteCache = new Map<string, { warm: HTMLCanvasElement; dark: HTMLCanvasElement }>();
 const MAX_BOKEH_SPRITE_PALETTES = 5;
 
+/** 纸面纤维密度：每 1920 CSS 宽的根数（远看仍是干净暖纸，近看能看清纤维走向）。 */
+const PAPER_FIBER_BASE_COUNT = 620;
+/** 纸牙噪声贴图的基准边长（CSS px）；按 dpr 生成贴图，保证一颗噪声恰好 1 设备像素。 */
+const PAPER_TOOTH_TILE_CSS = 256;
+/** 纸牙/云状斑驳共用的小噪声贴图缓存，灰度贴图与调色板无关。 */
+const paperNoiseTileCache = new Map<string, HTMLCanvasElement>();
+const MAX_PAPER_NOISE_TILES = 10;
+
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
 }
@@ -100,6 +111,130 @@ function createRandom(seed: number): () => number {
     value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
     return ((value ^ (value >>> 14)) >>> 0) / 0x100000000;
   };
+}
+
+function smoothNoiseStep(value: number): number {
+  const t = clamp(value, 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * 纸牙噪声贴图：粗网格随机值做双线性平滑，再叠一层逐像素高频抖动，
+ * 得到「纸浆团 + 砂粒」的有机颗粒。网格按模运算取样，四边可无缝平铺；
+ * 同一 seed / 尺寸 / 颗粒度结果完全一致（只用 mulberry32，不用 Math.random）。
+ */
+function getPaperNoiseTile(
+  pixelSize: number,
+  cells: number,
+  fineJitter: number,
+  meanBias: number,
+  seed: string
+): HTMLCanvasElement | null {
+  if (typeof document === "undefined") return null;
+  const size = Math.max(16, Math.round(pixelSize));
+  const cellCount = Math.max(2, Math.round(cells));
+  const jitter = clamp(fineJitter, 0, 1);
+  const bias = clamp(meanBias, -0.5, 0.5);
+  const key = `${seed}:${size}:${cellCount}:${jitter.toFixed(2)}:${bias.toFixed(2)}`;
+  const cached = paperNoiseTileCache.get(key);
+  if (cached) {
+    // 命中后挪到队尾，保持最近使用优先。
+    paperNoiseTileCache.delete(key);
+    paperNoiseTileCache.set(key, cached);
+    return cached;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  const random = createRandom(hashHandwrittenSeed(seed));
+  const grid = new Float32Array(cellCount * cellCount);
+  for (let index = 0; index < grid.length; index += 1) grid[index] = random();
+  const image = ctx.createImageData(size, size);
+  const data = image.data;
+  const step = cellCount / size;
+  for (let y = 0; y < size; y += 1) {
+    const gridY = y * step;
+    const cellY = Math.floor(gridY);
+    const rowTop = (cellY % cellCount) * cellCount;
+    const rowBottom = ((cellY + 1) % cellCount) * cellCount;
+    const blendY = smoothNoiseStep(gridY - cellY);
+    for (let x = 0; x < size; x += 1) {
+      const gridX = x * step;
+      const cellX = Math.floor(gridX);
+      const left = cellX % cellCount;
+      const right = (cellX + 1) % cellCount;
+      const blendX = smoothNoiseStep(gridX - cellX);
+      const top = grid[rowTop + left]! * (1 - blendX) + grid[rowTop + right]! * blendX;
+      const bottom = grid[rowBottom + left]! * (1 - blendX) + grid[rowBottom + right]! * blendX;
+      const smooth = top * (1 - blendY) + bottom * blendY;
+      const value = clamp(0.5 + bias + (smooth - 0.5) * 0.62 + (random() - 0.5) * jitter, 0, 1);
+      const channel = Math.round(value * 255);
+      const offset = (y * size + x) * 4;
+      data[offset] = channel;
+      data[offset + 1] = channel;
+      data[offset + 2] = channel;
+      data[offset + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+
+  if (paperNoiseTileCache.size >= MAX_PAPER_NOISE_TILES) {
+    const oldestKey = paperNoiseTileCache.keys().next().value;
+    if (oldestKey !== undefined) paperNoiseTileCache.delete(oldestKey);
+  }
+  paperNoiseTileCache.set(key, canvas);
+  return canvas;
+}
+
+/**
+ * 把噪声贴图平铺到纸面范围：贴图按 dpr 生成，绘制尺寸取 tilePixels / pixelRatio，
+ * 使一颗噪声恰好落在 1 设备像素上。起点对齐设备像素栅格，相邻贴图之间不会出现
+ * 亚像素缝；两张不同 seed 的贴图按棋盘交替，避免 256px 平铺周期被看出来。
+ */
+function tileNoiseOverPage(
+  ctx: CanvasRenderingContext2D,
+  tiles: readonly [HTMLCanvasElement, HTMLCanvasElement],
+  pixelRatio: number,
+  pageX: number,
+  pageY: number,
+  pageWidth: number,
+  pageHeight: number,
+  alpha: number,
+  composite: GlobalCompositeOperation
+): void {
+  if (typeof document === "undefined" || alpha <= 0) return;
+  if (pageWidth <= 0 || pageHeight <= 0) return;
+  const tilePixels = tiles[0].width;
+  if (!Number.isFinite(tilePixels) || tilePixels <= 0) return;
+  const tileCss = tilePixels / Math.max(Number.EPSILON, pixelRatio);
+  if (!Number.isFinite(tileCss) || tileCss <= 0) return;
+
+  const startX = Math.floor(pageX * pixelRatio) / pixelRatio;
+  const startY = Math.floor(pageY * pixelRatio) / pixelRatio;
+  const firstColumn = Math.floor((pageX - startX) / tileCss) - 1;
+  const firstRow = Math.floor((pageY - startY) / tileCss) - 1;
+  const columnCount = Math.ceil(pageWidth / tileCss) + 2;
+  const rowCount = Math.ceil(pageHeight / tileCss) + 2;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.globalCompositeOperation = composite;
+  for (let row = firstRow; row < firstRow + rowCount; row += 1) {
+    const y = startY + row * tileCss;
+    if (y > pageY + pageHeight) break;
+    if (y + tileCss < pageY) continue;
+    for (let column = firstColumn; column < firstColumn + columnCount; column += 1) {
+      const x = startX + column * tileCss;
+      if (x > pageX + pageWidth) break;
+      if (x + tileCss < pageX) continue;
+      ctx.drawImage((row + column) % 2 === 0 ? tiles[0] : tiles[1], x, y, tileCss, tileCss);
+    }
+  }
+  ctx.restore();
 }
 
 interface Point {
@@ -296,53 +431,152 @@ function buildPaperTexture(
     ctx.restore();
   }
 
+  // 5c. 中尺度絮团：在大晕染（10–36% 画面）和纤维之间补一层 2–7% 的软斑，
+  //     让"吸水不均"不是几个大圆斑 + 平滑底，而是多尺度叠出来的纸浆感。
+  for (let index = 0; index < 24; index += 1) {
+    const cx = pageX + random() * pageWidth;
+    const cy = pageY + random() * pageHeight;
+    const radius = maxDim * (0.018 + random() * 0.052);
+    const light = index % 2 === 0;
+    const tone = light ? palette.paperLight : palette.fiber;
+    const blob = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    blob.addColorStop(0, withAlpha(tone, (light ? 0.0088 : 0.0064) + random() * 0.0072));
+    blob.addColorStop(1, withAlpha(tone, 0));
+    ctx.fillStyle = blob;
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      cy,
+      radius * (1 + random() * 0.3),
+      radius * (0.68 + random() * 0.32),
+      random() * Math.PI,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  // 5d. 云状斑驳：把平滑值噪声拉伸成两层不同尺度的"吸水云团"，用 soft-light 只改明度、
+  //     不改色相（不会把中性纸重新染回米黄），叠在底色上像纸浆的厚薄。
+  const cloudTile = getPaperNoiseTile(160, 9, 0.16, 0.03, "paper-cloud");
+  if (cloudTile) {
+    ctx.save();
+    ctx.globalCompositeOperation = "soft-light";
+    ctx.globalAlpha = 0.4;
+    ctx.drawImage(cloudTile, pageX, pageY, pageWidth, pageHeight);
+    ctx.globalAlpha = 0.27;
+    ctx.drawImage(
+      cloudTile,
+      pageX - pageWidth * 0.07,
+      pageY - pageHeight * 0.05,
+      pageWidth * 0.62,
+      pageHeight * 0.68
+    );
+    ctx.restore();
+  }
+
+  // 5e. 纸牙：1 设备像素级的极细颗粒（网格噪声 + 高频抖动），放大 2–3 倍才好看清；
+  //     远看只是"这张纸有颗粒"，不会变成噪点。两张不同 seed 的贴图棋盘交替，避免平铺周期。
+  const toothPixels = Math.max(64, Math.round(PAPER_TOOTH_TILE_CSS * pixelRatio));
+  const toothTileA = getPaperNoiseTile(toothPixels, 96, 0.36, 0.05, "paper-tooth-a");
+  const toothTileB = getPaperNoiseTile(toothPixels, 96, 0.36, 0.05, "paper-tooth-b");
+  if (toothTileA && toothTileB) {
+    tileNoiseOverPage(
+      ctx,
+      [toothTileA, toothTileB],
+      pixelRatio,
+      pageX,
+      pageY,
+      pageWidth,
+      pageHeight,
+      0.44,
+      "soft-light"
+    );
+  }
+
   // 6. 纸纤维：短线段，方向偏水平，细而淡，远看是纸的质地而不是划痕。
-  //    保留少量低对比细纤维，避免毛屑感抢过歌词。
+  //    密度拉到 R8 要求的 ≥600 根/1920，但单根对比度压得很低；长纤维只占约 9%。
   ctx.lineCap = "round";
-  const fiberCount = Math.round(130 * (w / 1920));
+  const fiberCount = Math.round(PAPER_FIBER_BASE_COUNT * (w / 1920));
   for (let index = 0; index < fiberCount; index += 1) {
     const x = pageX + random() * pageWidth;
     const y = pageY + random() * pageHeight;
-    const length = 2 + random() * 8;
-    const angle = (random() - 0.5) * 0.5 + (random() < 0.08 ? Math.PI / 2 : 0);
-    ctx.strokeStyle = withAlpha(
-      index % 5 === 0 ? palette.paperLight : palette.fiber,
-      0.1 + random() * 0.18
-    );
-    ctx.globalAlpha = 0.38 + random() * 0.38;
-    ctx.lineWidth = 0.32 + random() * 0.42;
+    const longFiber = index % 11 === 0;
+    const length = longFiber ? 9 + random() * 15 : 2 + random() * 7.5;
+    const angle = (random() - 0.5) * 0.46 + (index % 17 === 0 ? Math.PI / 2 : 0);
+    const light = index % 5 === 0;
+    const alpha = 0.1 + random() * 0.2;
+    ctx.strokeStyle = withAlpha(light ? palette.paperLight : palette.fiber, alpha);
+    ctx.globalAlpha = 0.48 + random() * 0.38;
+    ctx.lineWidth = longFiber ? 0.5 + random() * 0.36 : 0.3 + random() * 0.34;
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
+    if (index % 7 === 0) {
+      // 少数纤维带一点自然弯曲，避免整面纸都是直短线像划痕。
+      const bend = (random() - 0.5) * length * 0.55;
+      ctx.quadraticCurveTo(
+        x + Math.cos(angle) * length * 0.5 - Math.sin(angle) * bend,
+        y + Math.sin(angle) * length * 0.5 + Math.cos(angle) * bend,
+        x + Math.cos(angle) * length,
+        y + Math.sin(angle) * length
+      );
+    } else {
+      ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
+    }
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
 
-  // 7. 细小杂点与纸屑。
-  const speckCount = Math.round(300 * (w / 1920));
+  // 7. 微颗粒：纸面本身的细砂（暗点为主、少量亮点），密度提高但单点 alpha 仍然很低。
+  const speckCount = Math.round(520 * (w / 1920));
   for (let index = 0; index < speckCount; index += 1) {
     const x = pageX + random() * pageWidth;
     const y = pageY + random() * pageHeight;
-    const radius = 0.24 + random() * 0.42;
-    ctx.fillStyle = palette.fiber;
-    ctx.globalAlpha = 0.15 + random() * 0.25;
+    const radius = 0.16 + random() * 0.5;
+    const light = index % 4 === 0;
+    ctx.fillStyle = withAlpha(light ? palette.paperLight : palette.fiber, 0.1 + random() * 0.24);
+    ctx.globalAlpha = 0.5 + random() * 0.42;
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.globalAlpha = 1;
 
-  // 8. 深色纸屑：少量暗点，避免整张纸过于均匀。
-  for (let index = 0; index < 18; index += 1) {
+  // 7b. 纸屑：几十片 1–2px 的不规则小碎片，只有放大看才知道是"纸有毛边"。
+  const flakeCount = Math.round(30 * (w / 1920));
+  for (let index = 0; index < flakeCount; index += 1) {
     const x = pageX + random() * pageWidth;
     const y = pageY + random() * pageHeight;
-    ctx.fillStyle = withAlpha(palette.shadow, 0.018 + random() * 0.025);
+    const radius = 0.7 + random() * 1.5;
+    const vertices = 3 + Math.floor(random() * 3);
+    ctx.fillStyle = withAlpha(
+      index % 3 === 0 ? palette.paperLight : palette.fiber,
+      0.05 + random() * 0.1
+    );
+    ctx.beginPath();
+    for (let vertex = 0; vertex < vertices; vertex += 1) {
+      const angle = (vertex / vertices) * Math.PI * 2 + random() * 0.6;
+      const reach = radius * (0.55 + random() * 0.7);
+      const px = x + Math.cos(angle) * reach;
+      const py = y + Math.sin(angle) * reach;
+      if (vertex === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // 8. 深色纸屑：少量暗点，避免整张纸过于均匀。
+  for (let index = 0; index < 30; index += 1) {
+    const x = pageX + random() * pageWidth;
+    const y = pageY + random() * pageHeight;
+    ctx.fillStyle = withAlpha(palette.shadow, 0.018 + random() * 0.03);
     ctx.beginPath();
     ctx.ellipse(
       x,
       y,
-      0.45 + random() * 0.9,
-      0.35 + random() * 0.7,
+      0.45 + random() * 1.05,
+      0.35 + random() * 0.8,
       random() * Math.PI,
       0,
       Math.PI * 2
@@ -392,6 +626,78 @@ function buildPaperTexture(
   if (random() > 0.35) {
     drawCrease(pageX, pageY + pageHeight * 0.43, pageX + pageWidth, pageY + pageHeight * 0.465);
   }
+
+  // 10b. 压痕：像回形针/指甲从纸背压出来的极淡凹线，中段最深、两端淡出；
+  //      暗线下方错开 1px 补一条更淡的亮边，模拟纸面被压凹后的受光。
+  const dentStartX = pageX + pageWidth * 0.11;
+  const dentStartY = pageY + pageHeight * 0.79;
+  const dentEndX = pageX + pageWidth * 0.26;
+  const dentEndY = pageY + pageHeight * 0.775;
+  const dentControlX = (dentStartX + dentEndX) / 2;
+  const dentControlY = (dentStartY + dentEndY) / 2 - pageHeight * 0.013;
+  const dentShade = ctx.createLinearGradient(dentStartX, dentStartY, dentEndX, dentEndY);
+  dentShade.addColorStop(0, withAlpha(palette.shadow, 0));
+  dentShade.addColorStop(0.28, withAlpha(palette.shadow, 0.016));
+  dentShade.addColorStop(0.62, withAlpha(palette.shadow, 0.024));
+  dentShade.addColorStop(1, withAlpha(palette.shadow, 0));
+  const dentLight = ctx.createLinearGradient(dentStartX, dentStartY, dentEndX, dentEndY);
+  dentLight.addColorStop(0, withAlpha(palette.paperLight, 0));
+  dentLight.addColorStop(0.3, withAlpha(palette.paperLight, 0.06));
+  dentLight.addColorStop(0.68, withAlpha(palette.paperLight, 0.045));
+  dentLight.addColorStop(1, withAlpha(palette.paperLight, 0));
+  ctx.lineCap = "round";
+  ctx.strokeStyle = dentShade;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(dentStartX, dentStartY);
+  ctx.quadraticCurveTo(dentControlX, dentControlY, dentEndX, dentEndY);
+  ctx.stroke();
+  ctx.strokeStyle = dentLight;
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(dentStartX + 0.6, dentStartY + 1.1);
+  ctx.quadraticCurveTo(dentControlX + 0.6, dentControlY + 1.1, dentEndX + 0.6, dentEndY + 1.1);
+  ctx.stroke();
+
+  // 10c. 橡皮浅痕：擦过又没擦干净的一块极淡亮斑，边缘带一点点蹭脏；
+  //      右下角的留白里放一处，近看有"被人用铅笔写过又擦掉"的痕迹。
+  const eraserX = pageX + pageWidth * 0.845;
+  const eraserY = pageY + pageHeight * 0.86;
+  const eraserRadius = maxDim * (0.04 + random() * 0.014);
+  ctx.save();
+  ctx.translate(eraserX, eraserY);
+  ctx.rotate(-0.42 + random() * 0.5);
+  ctx.scale(1.36, 0.8);
+  const eraserSmudge = ctx.createRadialGradient(0, 0, 0, 0, 0, eraserRadius);
+  eraserSmudge.addColorStop(0, withAlpha(palette.paperLight, 0.05));
+  eraserSmudge.addColorStop(0.62, withAlpha(palette.paperLight, 0.024));
+  eraserSmudge.addColorStop(0.9, withAlpha(palette.shadow, 0.012));
+  eraserSmudge.addColorStop(1, withAlpha(palette.shadow, 0));
+  ctx.fillStyle = eraserSmudge;
+  ctx.beginPath();
+  const eraserSteps = 16;
+  for (let step = 0; step <= eraserSteps; step += 1) {
+    const angle = (step / eraserSteps) * Math.PI * 2;
+    const wobble = 0.78 + random() * 0.34;
+    const px = Math.cos(angle) * eraserRadius * wobble;
+    const py = Math.sin(angle) * eraserRadius * (0.8 + random() * 0.3);
+    if (step === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+  // 橡皮蹭出来的几道平行浅痕，方向与亮斑长轴一致。
+  ctx.strokeStyle = withAlpha(palette.paperLight, 0.045);
+  ctx.lineWidth = 1.4;
+  for (let index = 0; index < 3; index += 1) {
+    const offsetY = (index - 1) * eraserRadius * 0.34;
+    const reach = eraserRadius * (0.62 + random() * 0.24);
+    ctx.beginPath();
+    ctx.moveTo(-reach, offsetY);
+    ctx.quadraticCurveTo(0, offsetY + eraserRadius * 0.06, reach, offsetY);
+    ctx.stroke();
+  }
+  ctx.restore();
 
   // 11. 纸边内侧压暗 + 毛边纤维。
   const innerShade = ctx.createRadialGradient(
@@ -608,6 +914,24 @@ export interface HandwrittenPaperOptions {
   quality?: number;
 }
 
+/**
+ * 纸牙覆盖层参数：在屏幕空间把极淡的静态纸纹叠到已经画好的纸面 + 文字 + 插画上，
+ * 让矢量字与铅笔线也带上同一张纸的颗粒（墨被纸吃进去的感觉）。
+ */
+export interface PaperToothOptions {
+  ctx: CanvasRenderingContext2D;
+  width: number;
+  height: number;
+  palette: HandwrittenPalette;
+  paletteIndex: number;
+  /** 0–1 叠加强度；0 关闭，建议 0.6（内部映射到 overlay alpha≈0.072）。 */
+  strength: number;
+  /** 0 最高画质，1 弱机档（强度减半），2 极弱档（跳过） */
+  quality?: number;
+  /** 默认 "baked"（预烘覆盖层 + 每帧 1 次 drawImage）；"pattern" 为每帧 1 次 pattern fillRect 的旧方案。 */
+  mode?: PaperToothMode;
+}
+
 /** 绘制纸面 + 光场。纸面跟随镜头；光与暗角在屏幕空间合成。 */
 export function drawHandwrittenPaperSurface(options: HandwrittenPaperOptions): void {
   const safeWidth = finiteClamp(options.width, 1, 4096, 1);
@@ -657,6 +981,170 @@ export function drawHandwrittenPaperSurface(options: HandwrittenPaperOptions): v
     safeOptions.reducedMotion,
     quality
   );
+}
+
+/** 纸牙覆盖层方案：baked = 预烘整屏覆盖层每帧 1 次 drawImage；pattern = 每帧 1 次 pattern fillRect。 */
+export type PaperToothMode = "baked" | "pattern";
+
+/**
+ * 预烘覆盖层缓存：整屏噪声画布，每帧只做一次 drawImage。
+ * 缓存 key 只含视口 + 被预算压过的分辨率 —— strength / quality / 调色板都映射到每帧的
+ * globalAlpha，换强度不需要重新烘焙，缓存预算也不会被设置面板的滑动条打爆。
+ */
+interface PaperToothLayerEntry {
+  canvas: HTMLCanvasElement;
+  key: string;
+  pixelCount: number;
+}
+
+const paperToothLayerCache = new Map<string, PaperToothLayerEntry>();
+const MAX_PAPER_TOOTH_LAYERS = 2;
+/** 覆盖层像素预算：1080p@dpr1 约 8.3MB，dpr2 / 4K 由预算自动降到合适分辨率。 */
+const MAX_PAPER_TOOTH_LAYER_PIXELS = 6_000_000;
+let paperToothLayerPixels = 0;
+
+/** 图案方案缓存：按画布上下文 + 设备像素比缓存，每帧只复用不新建。 */
+interface PaperToothPatternEntry {
+  pattern: CanvasPattern;
+  pixelRatio: number;
+}
+
+const paperToothPatternCache = new WeakMap<CanvasRenderingContext2D, PaperToothPatternEntry>();
+
+/**
+ * 取（或烘焙）覆盖层图案：噪声瓦片按 dpr 生成，再用 CanvasPattern.setTransform 缩回
+ * 1 设备像素 = 1 噪声像素；旧浏览器不支持图案变换时退回 CSS 像素级颗粒。
+ */
+function getPaperToothPattern(
+  ctx: CanvasRenderingContext2D,
+  pixelRatio: number
+): CanvasPattern | null {
+  const cached = paperToothPatternCache.get(ctx);
+  if (cached && cached.pixelRatio === pixelRatio) return cached.pattern;
+
+  const tilePixels = Math.max(64, Math.round(PAPER_TOOTH_TILE_CSS * pixelRatio));
+  const tile = getPaperNoiseTile(tilePixels, 96, 0.42, 0, "paper-tooth-overlay");
+  if (!tile) return null;
+  const pattern = ctx.createPattern(tile, "repeat");
+  if (!pattern) return null;
+
+  if (typeof pattern.setTransform === "function" && typeof DOMMatrix !== "undefined") {
+    try {
+      pattern.setTransform(new DOMMatrix([1 / pixelRatio, 0, 0, 1 / pixelRatio, 0, 0]));
+    } catch {
+      // 图案变换不可用时保持默认比例（颗粒略粗），不影响绘制。
+    }
+  }
+
+  paperToothPatternCache.set(ctx, { pattern, pixelRatio });
+  return pattern;
+}
+
+/** 烘焙整屏纸牙覆盖层：噪声瓦片按 1 层像素 = 1 噪声像素铺满，颜色保持中性灰。 */
+function buildPaperToothLayer(
+  width: number,
+  height: number,
+  layerRatio: number
+): HTMLCanvasElement | null {
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(2, Math.ceil(width * layerRatio));
+  canvas.height = Math.max(2, Math.ceil(height * layerRatio));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  const tilePixels = Math.max(64, Math.round(PAPER_TOOTH_TILE_CSS * layerRatio));
+  const tileA = getPaperNoiseTile(tilePixels, 96, 0.42, 0, "paper-tooth-overlay-a");
+  const tileB = getPaperNoiseTile(tilePixels, 96, 0.42, 0, "paper-tooth-overlay-b");
+  if (!tileA || !tileB) return null;
+  // 覆盖层画布不做 ctx.scale：这里的 1 用户单位就是 1 层像素，所以 pixelRatio 传 1。
+  tileNoiseOverPage(ctx, [tileA, tileB], 1, 0, 0, canvas.width, canvas.height, 1, "source-over");
+  return canvas;
+}
+
+function getPaperToothLayer(
+  width: number,
+  height: number,
+  pixelRatio: number
+): PaperToothLayerEntry | null {
+  const layerRatio = pixelRatioForBudget(width, height, pixelRatio, MAX_PAPER_TOOTH_LAYER_PIXELS);
+  if (!(layerRatio > 0)) return null;
+  const key = `${Math.round(width)}x${Math.round(height)}:${Math.round(layerRatio * 100)}`;
+  const cached = paperToothLayerCache.get(key);
+  if (cached) {
+    // 命中即刷新 LRU 顺序，避免常用分辨率被另一个视口挤掉。
+    paperToothLayerCache.delete(key);
+    paperToothLayerCache.set(key, cached);
+    return cached;
+  }
+
+  const canvas = buildPaperToothLayer(width, height, layerRatio);
+  if (!canvas) return null;
+  const entry: PaperToothLayerEntry = {
+    canvas,
+    key,
+    pixelCount: canvas.width * canvas.height,
+  };
+  while (
+    paperToothLayerCache.size > 0 &&
+    (paperToothLayerCache.size >= MAX_PAPER_TOOTH_LAYERS ||
+      paperToothLayerPixels + entry.pixelCount > MAX_PAPER_TOOTH_LAYER_PIXELS)
+  ) {
+    const oldestKey = paperToothLayerCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    const oldest = paperToothLayerCache.get(oldestKey);
+    if (oldest) paperToothLayerPixels -= oldest.pixelCount;
+    paperToothLayerCache.delete(oldestKey);
+  }
+  paperToothLayerCache.set(key, entry);
+  paperToothLayerPixels += entry.pixelCount;
+  return entry;
+}
+
+/**
+ * 纸牙覆盖层：在屏幕空间用 overlay 合成铺一层极淡的静态纸纹，让文字 / 插画 / 纸面
+ * 共用同一套颗粒（矢量字放大后不再"干净得像贴纸"）。默认走 baked：覆盖层预烘成一张
+ * 画布，每帧只有 1 次 drawImage（headless 软件栅格实测 ≈0.55ms，pattern fillRect ≈4.6ms）；
+ * 传 mode="pattern" 可退回每帧 1 次 pattern fillRect。quality ≥ 2 跳过、quality = 1 强度减半。
+ */
+export function drawHandwrittenPaperTooth(options: PaperToothOptions): void {
+  if (typeof document === "undefined") return;
+  if (!Number.isFinite(options.width) || !Number.isFinite(options.height)) return;
+  if (options.width < 1 || options.height < 1) return;
+  const quality = options.quality ?? 0;
+  if (quality >= 2) return;
+  const strength = finiteClamp(options.strength, 0, 1, 0);
+  if (strength <= 0.01) return;
+
+  const { ctx, palette } = options;
+  const safeWidth = Math.min(options.width, 8192);
+  const safeHeight = Math.min(options.height, 8192);
+  const pixelRatio = finiteClamp(ctx.canvas.width / safeWidth, 1, 3, 1);
+
+  // 深色纸上的颗粒需要略强一点才读得出来，但仍锁在"只由纸面调色板决定"的范围内。
+  const qualityScale = quality === 1 ? 0.55 : 1;
+  const paletteScale = palette.dark ? 1.18 : 1;
+  const alpha = clamp(strength * 0.12 * qualityScale * paletteScale, 0, 0.16);
+
+  ctx.save();
+  ctx.globalCompositeOperation = "overlay";
+  ctx.globalAlpha = alpha;
+  if ((options.mode ?? "baked") === "pattern") {
+    const pattern = getPaperToothPattern(ctx, pixelRatio);
+    if (!pattern) {
+      ctx.restore();
+      return;
+    }
+    ctx.fillStyle = pattern;
+    ctx.fillRect(0, 0, safeWidth, safeHeight);
+  } else {
+    const layer = getPaperToothLayer(safeWidth, safeHeight, pixelRatio);
+    if (!layer) {
+      ctx.restore();
+      return;
+    }
+    ctx.drawImage(layer.canvas, 0, 0, safeWidth, safeHeight);
+  }
+  ctx.restore();
 }
 
 /**

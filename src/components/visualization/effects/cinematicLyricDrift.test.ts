@@ -28,6 +28,7 @@ vi.mock("./handwrittenPaper", () => ({
   drawHandwrittenDust: vi.fn(),
   drawHandwrittenLightLeak: vi.fn(),
   drawHandwrittenPaperSurface: vi.fn(),
+  drawHandwrittenPaperTooth: vi.fn(),
 }));
 
 function createFrame(width = 1600, height = 900): EffectContext {
