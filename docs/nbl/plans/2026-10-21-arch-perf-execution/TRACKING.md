@@ -15,10 +15,10 @@
 | S3 外壳与订阅治理 | 10 | 9 | 12 | 组件整店订阅 0；idle rAF ≤1；面板可回收 | in_progress（S3-1/S3-3/S3-4/S3-5/S3-6/S3-7/S3-8/S3-9/S3-10 done；S3-2 待） |
 | S4 包体与加载 | 7 | 6 | 10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置 | in_progress（S4-1..S4-6 done；S4-7 待） |
 | S5 渲染运行时 | 7 | 7 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | in_progress（S5-1..S5-7 done；M5 出口门待 rAF 收敛与真机 90fps 证据） |
-| S6 状态架构收敛 | 12 | 1 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | in_progress（S6-1 done；S6-2 部分；S6-3..S6-12 待） |
+| S6 状态架构收敛 | 12 | 2 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | in_progress（S6-1/S6-3 done；S6-2 部分；S6-4..S6-12 待） |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
 | S8 门禁与长期治理 | 6 | 0 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | pending |
-| **合计** | **74** | **30** | **约 129** | — | in_progress |
+| **合计** | **74** | **31** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -105,7 +105,7 @@
 - [ ] **M6 出口门**：组件整店订阅 0；store 运行时 import ≤6 且无环；44/44 key 有 version/migrate；整店持久化 0；audioStore <400 行；11 组重复事实→0。
 - [x] S6-1 selector 门禁 + codemod — **done（2026-10-28，b7f2eae）**：新增 repo-local ESLint 规则 `eslint-rules/no-whole-store.js`（对 `@/store/*` 具名 import 的无参 `useXStore()` 报 error；允许任意 selector/`useShallow`/`getState`/非 store hook/本地同名 hook；支持 alias）；`.eslintrc.json` 接线 + `npm run lint`/lint-staged 加载 `--rulesdir`；CI lint 改为 `eslint src --ext ts,tsx --rulesdir eslint-rules --max-warnings=0 --report-unused-disable-directives`（避免误扫 lx_sources 遗留 JS）；新增 RuleTester 5 valid + 4 invalid（9/9）；`test:lint-rules` 脚本。验证：`npm run lint` exit 0、真实违规探针 exit 1、report wholeCalls 0（--max-whole 0 OK）、全量 233 files/1464 passed/1 skipped、tsc 0。codemod 无需（whole 已 0）。缺口：`--rulesdir` 为 ESLint 8 legacy，未打包本地 plugin/flat config；规则仅跟踪静态具名 import；无 selector allowlist；baseline 未重建；`eslint-rules/` 未列入打包脚本。附：删除 `panelLifecycle.tsx` 一处已失效的 eslint-disable（1 行）。分支 `feature/arch-perf-s6-1b`（未合并）。
 - [ ] S6-2 storageRegistry 44/44 + hydrateStores（2 PR）— **Step1+3 完成（2026-10-28，e92161e；分支名误用 s6-1，实际对应 S6-2）**：`storageRegistry` 覆盖全部 **43/43** 实际 persist key（计划写 44 为基线扫描假象：Hi-Res 标识 + 过时外部 key）；43 个 persist 配置统一加 `skipHydration: true`（其余选项不动，格式不变）；新增 `bootstrapStores.ts` 的 `buildHydrationPlan/HYDRATION_PHASES/hydrateStores`（player→queue→audio projection→UI→business 顺序、模块级 promise 幂等、部分失败只重试未完成、SSR 直接返回、未知 key/owner 拒绝）；bootstrap/page 接入。测试 storageRegistry 6（全 src 扫描 43/43、skipHydration、owner/backup/未知）+ bootstrapStores 4（顺序/覆盖/幂等/未知），report 脚本改 AST 提取并输出 registry 43/43。全量 231 files/1450 passed/1 skipped；tsc/eslint 0。**S6-2b（96bde72）**：新增 `src/lib/hydrationStatus.ts`（idle/hydrating/ready/error 外部 store + `getHydrationStatus`/`subscribeHydrationStatus`/`useHydrationStatus`（useSyncExternalStore，server snapshot idle）+ 内部 set），`hydrateStores` 在开始设 hydrating、成功 ready、失败 error 并清 promise 可重试；5 用例（初始 idle、hydrating→ready 同步事件、重复调用同 promise 不重复 rehydrate、SSR 渲染输出 idle、mock 失败→error）；全量 232 files/1455 passed/1 skipped；tsc/eslint 0。**剩余（未验收）**：UI 消费方未接（page/restore 仍未 gate，S6-3/S6-4）；registeredStorage envelope/sizeBudget/version-migrate fixtures/backup quota 未做；baseline 未重建（--check 仍 59/60、43/44）；无浏览器 smoke。另：计划文档 S6-1 是 selector 门禁（本分支未做）。
-- [ ] S6-3 audio/player 去重（停双 persist/删双向）— owner: — | PR: 1 | 依赖: S2-4 | 验收: 写盘 ≤1/s；写路径唯一
+- [x] S6-3 audio/player 去重（停双 persist/删双向）— **done（2026-10-28，a219559）**：audioStore 成为进度唯一持久权威（audio-store-v4 键/格式不变，currentTime 仍 persistedCurrentTime 5s 节流）；playerStore 的 currentTime/duration 保留运行时镜像+setter，但从 partialize 移除、持久化 merge 时剥离旧 envelope 进度；删除 player→audio 进度订阅；playbackSlice 去掉冗余 playerStore setCurrentTime/setDuration；bootstrapStores 在有序 hydration 期间暂停 audioStore 持久化，避免 player/queue 投影覆盖未读的进度快照。测试新增 `progressPersistenceAuthority.test.ts` 4 例（仅 audio-store 携带进度、player envelope 无进度且运行时读正常、hydrate 后一致且忽略旧 player 值、4Hz 快速更新仍 ≤1 次/秒值推进）；更新 playerStore/audioStore/globalStatePersistence/DataManagerPlayerDock 测试；全量 234 files/1468 passed/1 skipped；tsc/lint 0。缺口：直接 `usePlayerStore.setState` 绕过委托（仓库内均同时写 audioStore）；节流限制值推进而非原始 setItem；旧 player 进度字段留盘直到下次写；audio-store 缺失时进度从 0 开始（单权威设计）。分支 `feature/arch-perf-s6-3`（未合并）。
 - [ ] S6-4 audioStore 播放字段消费迁移（3 PR）— owner: — | PR: 3 | 依赖: S6-3 | 验收: 引用=0；行为回归
 - [ ] S6-5 队列/EQ 副本删除 + SCC 消除 — owner: — | PR: 1 | 依赖: S1-5、S6-3 | 验收: 单一 owner；0 环
 - [ ] S6-6 UI 域拆分（uiShell/panel/toast [+theme]）— owner: — | PR: 2 | 依赖: S3 | 验收: 每类事实 owner=1
