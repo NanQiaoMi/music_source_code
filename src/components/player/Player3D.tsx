@@ -7,6 +7,7 @@ import Image from "next/image";
 import { motion, AnimatePresence, useMotionValue, useReducedMotion } from "framer-motion";
 import type { MotionValue } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore, type LoopMode } from "@/store/playerStore";
 import { MISSING_AUDIO_SOURCE_HELP_TEXT } from "@/lib/audio/playableAudioSource";
 import { useUIStore } from "@/store/uiStore";
@@ -317,7 +318,7 @@ export const Player3D: React.FC = () => {
     shouldReduceMotion === true
   );
   const isPlaybackPending = playbackPhase === "loading" || playbackPhase === "buffering";
-  const audioDuration = useAudioStore((state) => state.duration);
+  const audioDuration = usePlaybackClock((state) => state.duration);
   const currentSong = usePlayerStore((state) => state.currentSong);
   const duration = audioDuration || currentSong?.duration || 0;
 

@@ -35,13 +35,9 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
   onSeekStart,
   onSeekEnd,
 }) => {
-  const playbackSnapshot = usePlaybackClock();
+  const currentTime = usePlaybackClock((state) => state.currentTime);
+  const duration = usePlaybackClock((state) => state.duration);
   const playbackPhase = usePlaybackRuntimeStore((state) => state.phase);
-  const storeTime = useAudioStore((state) => state.currentTime);
-  const storeDuration = useAudioStore((state) => state.duration);
-  const hasPlaybackTarget = playbackSnapshot.targetSongId !== null;
-  const currentTime = hasPlaybackTarget ? playbackSnapshot.currentTime : storeTime;
-  const duration = hasPlaybackTarget ? playbackSnapshot.duration : storeDuration;
   const isPlaying = playbackPhase === "playing";
   // S6-4: 混音字段读 playerStore
   const volume = usePlayerStore((state) => state.volume);

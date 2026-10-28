@@ -3,6 +3,7 @@
 import { useEffect, useCallback } from "react";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
+import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 
 export const useMediaSession = () => {
   // Use getState() for all store access - this hook only needs state in callbacks
@@ -55,15 +56,17 @@ export const useMediaSession = () => {
 
     navigator.mediaSession.setActionHandler("seekbackward", (details) => {
       const state = useAudioStore.getState();
+      const progress = getPlaybackClockSnapshot();
       const skipTime = details.seekOffset || 10;
-      const newTime = Math.max(0, state.currentTime - skipTime);
+      const newTime = Math.max(0, progress.currentTime - skipTime);
       state.setCurrentTime(newTime);
     });
 
     navigator.mediaSession.setActionHandler("seekforward", (details) => {
       const state = useAudioStore.getState();
+      const progress = getPlaybackClockSnapshot();
       const skipTime = details.seekOffset || 10;
-      const newTime = Math.min(state.duration, state.currentTime + skipTime);
+      const newTime = Math.min(progress.duration, progress.currentTime + skipTime);
       state.setCurrentTime(newTime);
     });
 

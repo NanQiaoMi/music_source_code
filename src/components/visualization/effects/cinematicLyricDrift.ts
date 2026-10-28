@@ -18,7 +18,7 @@
  */
 
 import type { EffectContext } from "./types";
-import { useAudioStore } from "@/store/audioStore";
+import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { usePlayerStore } from "@/store/playerStore";
 import {
   estimateLineUnits,
@@ -2419,24 +2419,24 @@ function renderFrame(effectCtx: EffectContext): void {
   const settings = resolveSettings(params);
   const palette = resolveHandwrittenPalette(settings.colorScheme);
   const fontFamily = resolveHandwrittenFont(settings.fontStyle);
-  const audioState = useAudioStore.getState();
+  const progress = getPlaybackClockSnapshot();
   const playerState = usePlayerStore.getState();
   // S6-4: 身份字段 currentSong 读 playerStore
   const currentSong = playerState.currentSong;
   const songId = currentSong?.id ?? null;
   const lyricsText = currentSong?.lyrics ?? "";
   const translationLyricsText = currentSong?.translationLyrics ?? "";
-  const mediaLoading = audioState.isLoading || playerState.isLoading;
+  const mediaLoading = progress.isLoading || playerState.isLoading;
   const songDuration = resolveSongDuration(
     currentSong,
-    audioState.duration,
+    progress.duration,
     playerState.duration,
     mediaLoading
   );
   const reportedCandidate =
-    audioState.currentTime ?? playerState.currentTime ?? effectCtx.musicTime ?? 0;
+    progress.currentTime ?? playerState.currentTime ?? effectCtx.musicTime ?? 0;
   const reportedMusicTime = Number.isFinite(reportedCandidate) ? Math.max(0, reportedCandidate) : 0;
-  const isPlaying = audioState.isPlaying ?? playerState.isPlaying ?? false;
+  const isPlaying = progress.isPlaying ?? playerState.isPlaying ?? false;
   const playbackRate = playerState.playbackRate ?? 1;
 
   if (state.songId !== songId) {

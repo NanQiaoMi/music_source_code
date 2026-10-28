@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useAudioStore } from "@/store/audioStore";
+import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import {
   useVisualizationStore,
   VisualizationEffect,
@@ -565,7 +566,7 @@ export function VisualizationView() {
         effectFrame.time = timestamp;
         // 每帧直接读 store：4Hz 的 currentTime 更新不再经过 React 渲染，
         // 也避免了"订阅 → 渲染 → effect 写 ref"这条链
-        effectFrame.musicTime = useAudioStore.getState().currentTime;
+        effectFrame.musicTime = getPlaybackClockSnapshot().currentTime;
         effectFrame.params = settings[currentEff] || settings.spatialMesh;
         effectFrame.theme.primary = active.primary;
         effectFrame.theme.secondary = active.secondary;

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** S6-4 audioStore 播放字段消费清单：9 个播放字段在 selector / getState / 别名 / setState 中的读写点。
- *  用法：node scripts/report-audio-consumers.mjs [--json <path>] [--fields a,b] [--check]
+ *  用法：node scripts/report-audio-consumers.mjs [--json <path>] [--fields a,b] [--group progress] [--check]
+ *  --group：按迁移批次选择目标字段（progress = currentTime/duration/isLoading；只校验读点）。
  *  --check：components/hooks/lib 仍有目标字段引用时 exit 1；src/store 自身实现单独计入 store 层。 */
 import fs from "node:fs";
 import path from "node:path";
@@ -10,6 +11,15 @@ const FIELDS =
     " "
   );
 const LAYERS = "components hooks lib services store app".split(" ");
+/** 批次目标组：checkKinds 限定只迁移读点时，写操作（seekTo/setCurrentTime）仍留在 audioStore。 */
+const TARGET_GROUPS = {
+  progress: {
+    fields: ["currentTime", "duration", "isLoading"],
+    checkKinds: ["read"],
+    // 唯一获准读 audioStore 进度字段的适配器：PlaybackClock 把它转成外部快照。
+    ignoreFiles: ["src/lib/playback/playbackClock.ts"],
+  },
+};
 const ACTION_FIELDS = Object.fromEntries(
   `setCurrentSong:currentSong updateCurrentSongCover:currentSong updateCurrentSongLyrics:currentSong
    setIsPlaying:isPlaying togglePlaybackIntent:isPlaying togglePlay:isPlaying setCurrentTime:currentTime
@@ -21,7 +31,15 @@ const ACTION_FIELDS = Object.fromEntries(
 );
 const args = process.argv.slice(2);
 const argValue = (flag) => (args.indexOf(flag) >= 0 ? args[args.indexOf(flag) + 1] : null);
-const targetFields = (argValue("--fields") || FIELDS.join(",")).split(",");
+const groupName = argValue("--group");
+const group = groupName ? TARGET_GROUPS[groupName] : null;
+if (groupName && !group) {
+  console.error(
+    "unknown --group: " + groupName + " (expected: " + Object.keys(TARGET_GROUPS) + ")"
+  );
+  process.exit(2);
+}
+const targetFields = group ? group.fields : (argValue("--fields") || FIELDS.join(",")).split(",");
 const ROOT = path.resolve(process.cwd(), "src");
 
 const walk = (dir, out = []) => {
@@ -135,6 +153,7 @@ for (const layer of LAYERS) {
 }
 const report = {
   metric: "playback field member accesses through useAudioStore (selector/getState/alias/setState)",
+  group: groupName || null,
   fields: FIELDS,
   targetFields,
   totals: { references: records.length, files: uniqueFiles(records).length },
@@ -153,9 +172,14 @@ if (jsonPath) {
   console.log("wrote " + jsonPath);
 }
 if (args.includes("--check")) {
+  const checkKinds = group?.checkKinds;
+  const ignored = new Set(group?.ignoreFiles || []);
   const offenders = records.filter(
     (record) =>
-      ["components", "hooks", "lib"].includes(record.layer) && targetFields.includes(record.field)
+      ["components", "hooks", "lib"].includes(record.layer) &&
+      targetFields.includes(record.field) &&
+      !ignored.has(record.file) &&
+      (!checkKinds || checkKinds.includes(record.kind))
   );
   if (offenders.length) {
     console.error("FAIL: " + offenders.length + " playback field reference(s) remain:");

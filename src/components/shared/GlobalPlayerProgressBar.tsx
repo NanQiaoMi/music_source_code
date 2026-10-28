@@ -3,6 +3,7 @@
 import React, { useState, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { ABLoopProgressMarkers } from "@/components/shared/ABLoopProgressMarkers";
 
 const formatTime = (seconds: number): string => {
@@ -25,7 +26,7 @@ interface GlobalPlayerProgressBarProps {
  */
 export const GlobalPlayerProgressBar: React.FC<GlobalPlayerProgressBarProps> = memo(
   ({ duration, abLoopEnabled, pointA, pointB }) => {
-    const currentTime = useAudioStore((state) => state.currentTime);
+    const currentTime = usePlaybackClock((state) => state.currentTime);
     const [isHoveringProgress, setIsHoveringProgress] = useState(false);
     const [hoverTime, setHoverTime] = useState<number | null>(null);
     const [hoverX, setHoverX] = useState<number>(0);

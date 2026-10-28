@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 
 export interface GlassProgressBarProps {
   currentTime?: number;
@@ -42,7 +42,7 @@ export const GlassProgressBar: React.FC<GlassProgressBarProps> = memo(
     showTimeLabels = true,
     disabled = false,
   }) => {
-    const storeCurrentTime = useAudioStore((state) => state.currentTime);
+    const storeCurrentTime = usePlaybackClock((state) => state.currentTime);
     const currentTime = propCurrentTime !== undefined ? propCurrentTime : storeCurrentTime;
     const trackRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);

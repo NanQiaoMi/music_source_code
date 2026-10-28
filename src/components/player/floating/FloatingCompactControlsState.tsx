@@ -40,7 +40,7 @@ export interface FloatingCompactControlsStateProps {
 // 1. 细粒度独立动态歌词微组件 (零全局重绘风暴)
 // ---------------------------------------------------------------------------
 const SyncedMiniLyric = memo(function SyncedMiniLyric({ song }: { song: Song | null }) {
-  const { currentTime } = usePlaybackClock();
+  const currentTime = usePlaybackClock((state) => state.currentTime);
   const { lyrics, getCurrentLyricIndex } = useBilingualLyricParser(
     song?.lyrics,
     song?.translationLyrics,

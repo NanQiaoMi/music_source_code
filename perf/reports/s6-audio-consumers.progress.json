@@ -1,0 +1,142 @@
+{
+  "metric": "playback field member accesses through useAudioStore (selector/getState/alias/setState)",
+  "group": "progress",
+  "fields": [
+    "currentSong",
+    "isPlaying",
+    "currentTime",
+    "duration",
+    "volume",
+    "isMuted",
+    "playbackRate",
+    "loopMode",
+    "isLoading"
+  ],
+  "targetFields": [
+    "currentTime",
+    "duration",
+    "isLoading"
+  ],
+  "totals": {
+    "references": 46,
+    "files": 17
+  },
+  "byField": {
+    "currentTime": {
+      "read": 4,
+      "write": 26,
+      "files": [
+        "src/components/features-v7/ABLoopToggle.tsx",
+        "src/components/lyrics/LyricVisualizer.tsx",
+        "src/components/player/DataManagerPlayerDock.tsx",
+        "src/components/player/FloatingPlayer.tsx",
+        "src/components/player/Player3D.tsx",
+        "src/components/player/floating/FloatingProgressScrubber.tsx",
+        "src/components/player/floating/FloatingWaveformGlow.tsx",
+        "src/components/shared/GlobalPlayerProgressBar.tsx",
+        "src/components/visualization/VisualizationView.tsx",
+        "src/hooks/useAudioPlayer.ts",
+        "src/hooks/useKeyboardShortcuts.ts",
+        "src/hooks/useMediaSession.ts",
+        "src/lib/bootstrap.ts",
+        "src/services/aiAgentTools.ts",
+        "src/store/audioStore.ts",
+        "src/store/useAIAgentStore.ts"
+      ]
+    },
+    "duration": {
+      "read": 3,
+      "write": 6,
+      "files": [
+        "src/components/visualization/VisualizationView.tsx",
+        "src/hooks/useAudioPlayer.ts",
+        "src/lib/bootstrap.ts",
+        "src/store/audioStore.ts",
+        "src/store/useAIAgentStore.ts"
+      ]
+    },
+    "isLoading": {
+      "read": 2,
+      "write": 5,
+      "files": [
+        "src/hooks/useAudioPlayer.ts",
+        "src/lib/audio/useIntegratedAudioPipeline.ts",
+        "src/store/audioStore.ts"
+      ]
+    }
+  },
+  "byLayer": {
+    "components": {
+      "references": 11,
+      "files": 9
+    },
+    "hooks": {
+      "references": 23,
+      "files": 3
+    },
+    "lib": {
+      "references": 3,
+      "files": 2
+    },
+    "services": {
+      "references": 1,
+      "files": 1
+    },
+    "store": {
+      "references": 8,
+      "files": 2
+    },
+    "app": {
+      "references": 0,
+      "files": 0
+    }
+  },
+  "consumers": [
+    "src/components/features-v7/ABLoopToggle.tsx:currentTime:write:seekTo",
+    "src/components/lyrics/LyricVisualizer.tsx:currentTime:write:seekTo",
+    "src/components/player/DataManagerPlayerDock.tsx:currentTime:write:seekTo",
+    "src/components/player/FloatingPlayer.tsx:currentTime:write:seekTo",
+    "src/components/player/FloatingPlayer.tsx:currentTime:write:seekTo",
+    "src/components/player/Player3D.tsx:currentTime:write:seekTo",
+    "src/components/player/floating/FloatingProgressScrubber.tsx:currentTime:write:seekTo",
+    "src/components/player/floating/FloatingWaveformGlow.tsx:currentTime:write:seekTo",
+    "src/components/shared/GlobalPlayerProgressBar.tsx:currentTime:write:seekTo",
+    "src/components/visualization/VisualizationView.tsx:currentTime:write:setCurrentTime",
+    "src/components/visualization/VisualizationView.tsx:duration:write:setDuration",
+    "src/hooks/useAudioPlayer.ts:currentTime:write:setCurrentTime",
+    "src/hooks/useAudioPlayer.ts:currentTime:write:setCurrentTime",
+    "src/hooks/useAudioPlayer.ts:currentTime:write:setState",
+    "src/hooks/useAudioPlayer.ts:currentTime:write:setState",
+    "src/hooks/useAudioPlayer.ts:currentTime:write:setState",
+    "src/hooks/useAudioPlayer.ts:currentTime:write:setState",
+    "src/hooks/useAudioPlayer.ts:duration:write:setDuration",
+    "src/hooks/useAudioPlayer.ts:duration:write:setState",
+    "src/hooks/useAudioPlayer.ts:duration:write:setState",
+    "src/hooks/useAudioPlayer.ts:duration:write:setState",
+    "src/hooks/useAudioPlayer.ts:isLoading:write:setIsLoading",
+    "src/hooks/useAudioPlayer.ts:isLoading:write:setState",
+    "src/hooks/useAudioPlayer.ts:isLoading:write:setState",
+    "src/hooks/useAudioPlayer.ts:isLoading:write:setState",
+    "src/hooks/useKeyboardShortcuts.ts:currentTime:write:setCurrentTime",
+    "src/hooks/useKeyboardShortcuts.ts:currentTime:write:setCurrentTime",
+    "src/hooks/useKeyboardShortcuts.ts:currentTime:write:setCurrentTime",
+    "src/hooks/useKeyboardShortcuts.ts:currentTime:write:setCurrentTime",
+    "src/hooks/useKeyboardShortcuts.ts:currentTime:write:setCurrentTime",
+    "src/hooks/useMediaSession.ts:currentTime:write:setCurrentTime",
+    "src/hooks/useMediaSession.ts:currentTime:write:setCurrentTime",
+    "src/hooks/useMediaSession.ts:currentTime:write:setCurrentTime",
+    "src/hooks/useMediaSession.ts:currentTime:write:setCurrentTime",
+    "src/lib/audio/useIntegratedAudioPipeline.ts:isLoading:write:setState",
+    "src/lib/bootstrap.ts:currentTime:write:setState",
+    "src/lib/bootstrap.ts:duration:write:setState",
+    "src/services/aiAgentTools.ts:currentTime:read:currentTime",
+    "src/store/audioStore.ts:currentTime:read:currentTime",
+    "src/store/audioStore.ts:currentTime:read:currentTime",
+    "src/store/audioStore.ts:duration:read:duration",
+    "src/store/audioStore.ts:duration:read:duration",
+    "src/store/audioStore.ts:isLoading:read:isLoading",
+    "src/store/audioStore.ts:isLoading:read:isLoading",
+    "src/store/useAIAgentStore.ts:currentTime:read:currentTime",
+    "src/store/useAIAgentStore.ts:duration:read:duration"
+  ]
+}

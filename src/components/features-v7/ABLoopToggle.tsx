@@ -4,13 +4,14 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { Repeat } from "lucide-react";
 import { ABLoopPanel } from "./ABLoopPanel";
 
 export function ABLoopToggle() {
   const currentView = useUIStore((state) => state.currentView);
-  const currentTime = useAudioStore((state) => state.currentTime);
-  const duration = useAudioStore((state) => state.duration);
+  const currentTime = usePlaybackClock((state) => state.currentTime);
+  const duration = usePlaybackClock((state) => state.duration);
   const seekTo = useAudioStore((state) => state.seekTo);
   const [showPanel, setShowPanel] = useState(false);
 

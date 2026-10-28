@@ -10,15 +10,17 @@
 |---|---|
 | scripts/perf/bundle-budget.mjs | 包体预算：rootMainFiles / 首页 script / CSS / async chunk / public 体积；支持 --check 与 --json |
 | scripts/perf/report-store-stats.mjs | Store 架构统计：store 数、persist key、整店订阅、store 依赖边/SCC、getState 分层；支持 --check、--json 与 --store |
-| scripts/report-audio-consumers.mjs | S6-4 audioStore 播放字段消费清单：9 字段的 selector / getState 链（含跨行与解构）/ 别名 / setState / `useAudioCurrentSong` 读写点，按层与字段汇总；支持 --json、--fields、--check（components/hooks/lib 归零门禁） |
+| scripts/report-audio-consumers.mjs | S6-4 audioStore 播放字段消费清单：9 字段的 selector / getState 链（含跨行与解构）/ 别名 / setState / `useAudioCurrentSong` 读写点，按层与字段汇总；支持 --json、--fields、--group（progress 批次）、--check（components/hooks/lib 归零门禁） |
 | scripts/check-docs-facts.mjs | 文档事实校验：store 数、过期字样、CI 触发分支、端口一致性（warn）、INDEX 链接、执行计划包完整性 |
 | perf/budget.json | 包体阈值（baseline / target / hardMax） |
 | perf/bundle-baseline.json | 2026-10-21 包体基线快照 |
 | perf/store-stats-baseline.json | 2026-10-21 Store 架构基线快照 |
 | perf/reports/s6-audio-consumers.before.json | S6-4 迁移前播放字段消费快照（297 处 / 64 文件；混音字段 73）——PR2 修正脚本口径后重跑，原口径 300 |
-| perf/reports/s6-audio-consumers.json | S6-4 当前播放字段消费快照（PR2 后 181 处 / 49 文件；混音字段 16、身份字段 currentSong 9，均只剩 services/store） |
+| perf/reports/s6-audio-consumers.json | S6-4 当前播放字段消费快照（PR3 后 139 处 / 44 文件；混音字段 16、身份字段 9、进度读点 9，均只剩 services/store） |
 | perf/reports/s6-audio-consumers.currentSong.before.json | PR2 迁移前 currentSong 快照（68 处 / 52 文件：components 44、hooks 12、lib 3、services 5、store 4） |
 | perf/reports/s6-audio-consumers.currentSong.json | PR2 迁移后 currentSong 快照（9 处 / 4 文件，全部落在 services/store 层） |
+| perf/reports/s6-audio-consumers.progress.before.json | PR3 迁移前进度字段快照（87 处 / 26 文件，读点 50：components 30、hooks 11、services 1、store 8） |
+| perf/reports/s6-audio-consumers.progress.json | PR3 迁移后进度字段快照（46 处 / 17 文件；components/hooks/lib 读点 0，余 services 1 + store 8） |
 
 ## 2. 用法
 
@@ -37,6 +39,7 @@
     node scripts/report-audio-consumers.mjs
     node scripts/report-audio-consumers.mjs --json perf/reports/s6-audio-consumers.json
     node scripts/report-audio-consumers.mjs --fields volume,isMuted --check  # components/hooks/lib 仍有引用时 exit 1
+    node scripts/report-audio-consumers.mjs --group progress --check        # 进度读点归零（写点仍走 audioStore）
 
     # 文档事实
     node scripts/check-docs-facts.mjs

@@ -6,6 +6,7 @@ import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 import { useVisualizationStore } from "@/store/visualizationStore";
 import { useKeyboardShortcutsStore } from "@/store/keyboardShortcutsStore";
+import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 
 export interface ShortcutValidationResult {
   valid: boolean;
@@ -96,6 +97,7 @@ export const useKeyboardShortcuts = () => {
       }
 
       const audioStore = useAudioStore.getState();
+      const progress = getPlaybackClockSnapshot();
       // S6-4: 混音/循环/倍速读写 playerStore（audioStore 同名字段仅为兼容投影）
       const playerStore = usePlayerStore.getState();
       const uiStore = useUIStore.getState();
@@ -114,25 +116,25 @@ export const useKeyboardShortcuts = () => {
 
       if (matchKeys(e, bind("seek-back-5"))) {
         e.preventDefault();
-        audioStore.setCurrentTime(Math.max(0, audioStore.currentTime - 5));
+        audioStore.setCurrentTime(Math.max(0, progress.currentTime - 5));
         return;
       }
 
       if (matchKeys(e, bind("seek-forward-5"))) {
         e.preventDefault();
-        audioStore.setCurrentTime(Math.min(audioStore.duration, audioStore.currentTime + 5));
+        audioStore.setCurrentTime(Math.min(progress.duration, progress.currentTime + 5));
         return;
       }
 
       if (matchKeys(e, bind("seek-back-10"))) {
         e.preventDefault();
-        audioStore.setCurrentTime(Math.max(0, audioStore.currentTime - 10));
+        audioStore.setCurrentTime(Math.max(0, progress.currentTime - 10));
         return;
       }
 
       if (matchKeys(e, bind("seek-forward-10"))) {
         e.preventDefault();
-        audioStore.setCurrentTime(Math.min(audioStore.duration, audioStore.currentTime + 10));
+        audioStore.setCurrentTime(Math.min(progress.duration, progress.currentTime + 10));
         return;
       }
 
@@ -265,7 +267,7 @@ export const useKeyboardShortcuts = () => {
         if (matchKeys(e, bind(`seek-${n * 10}`))) {
           e.preventDefault();
           const percent = n * 10;
-          const newTime = (percent / 100) * audioStore.duration;
+          const newTime = (percent / 100) * progress.duration;
           audioStore.setCurrentTime(newTime);
           return;
         }

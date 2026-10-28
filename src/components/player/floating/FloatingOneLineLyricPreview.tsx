@@ -18,7 +18,7 @@ interface FloatingOneLineLyricPreviewProps {
  */
 export const FloatingOneLineLyricPreview: React.FC<FloatingOneLineLyricPreviewProps> = memo(
   ({ currentSong, onExpand, variants }) => {
-    const { currentTime } = usePlaybackClock();
+    const currentTime = usePlaybackClock((state) => state.currentTime);
 
     const { lyrics, getCurrentLyricIndex } = useBilingualLyricParser(
       currentSong?.lyrics,

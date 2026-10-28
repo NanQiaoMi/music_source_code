@@ -46,6 +46,7 @@ import { useUserAccountStore, isPlatformLoggedIn, PlatformType } from "@/store/u
 import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 import type { PlaybackMachineEvent } from "@/lib/audio/playbackStateMachine";
 import { playbackClock } from "@/lib/audio/PlaybackClock";
+import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { shouldAcceptPlaybackMediaEvent } from "@/lib/audio/playbackMediaEventGuard";
 
 // Module-level shared state to persist across hook unmounts/remounts
@@ -469,7 +470,8 @@ const attachListeners = (
     }
 
     // 断点续播恢复：如果本地持久化记录了上次播放秒数，且尚未开始播放，则安全恢复到该断点
-    const savedTime = usePlayerStore.getState().currentTime || useAudioStore.getState().currentTime;
+    const savedTime =
+      usePlayerStore.getState().currentTime || getPlaybackClockSnapshot().currentTime;
     if (
       savedTime > 0 &&
       Math.abs(audio.currentTime - savedTime) > 1 &&

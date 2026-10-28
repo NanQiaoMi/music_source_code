@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { ListMusic, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
@@ -12,18 +13,18 @@ import { formatTime } from "@/utils/formatTime";
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 export function DataManagerPlayerDock() {
-  // S6-4: 身份字段 currentSong 读 playerStore；进度仍以 audioStore 为权威，缺失时回退 playerStore 镜像
+  // S6-4: 身份字段读 playerStore，进度读 PlaybackClock；缺失时回退 playerStore 镜像
   const currentSong = usePlayerStore((state) => state.currentSong);
-  const audioCurrentTime = useAudioStore((state) => state.currentTime);
+  const clockCurrentTime = usePlaybackClock((state) => state.currentTime);
   const playerCurrentTime = usePlayerStore((state) => state.currentTime);
-  const currentTime = audioCurrentTime || playerCurrentTime;
-  const audioDuration = useAudioStore((state) => state.duration);
+  const currentTime = clockCurrentTime || playerCurrentTime;
+  const audioDuration = usePlaybackClock((state) => state.duration);
   const playerDuration = usePlayerStore((state) => state.duration);
   const duration = audioDuration || currentSong?.duration || playerDuration || 0;
   const audioIsPlaying = useAudioStore((state) => state.isPlaying);
   const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
   const isPlaying = audioIsPlaying || playerIsPlaying;
-  const audioIsLoading = useAudioStore((state) => state.isLoading);
+  const audioIsLoading = usePlaybackClock((state) => state.isLoading);
   const playerIsLoading = usePlayerStore((state) => state.isLoading);
   const isLoading = audioIsLoading || playerIsLoading;
   const error = useAudioStore((state) => state.error);

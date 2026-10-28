@@ -3,6 +3,7 @@
 import React, { useCallback } from "react";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
 import { Play, Pause, Disc } from "lucide-react";
 import { AppleAudioSourceIndicator } from "./AppleAudioSourceIndicator";
@@ -13,7 +14,7 @@ interface DarkCinemaFloatingCardProps {
 }
 
 const DarkCinemaProgressBar: React.FC<{ duration: number }> = React.memo(({ duration }) => {
-  const currentTime = useAudioStore((state) => state.currentTime);
+  const currentTime = usePlaybackClock((state) => state.currentTime);
   const progressPercent =
     duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
 
@@ -33,7 +34,7 @@ export const DarkCinemaFloatingCard: React.FC<DarkCinemaFloatingCardProps> = ({
   onExpand,
 }) => {
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const audioDuration = useAudioStore((state) => state.duration);
+  const audioDuration = usePlaybackClock((state) => state.duration);
   const currentSong = usePlayerStore((state) => state.currentSong);
   const duration = audioDuration || currentSong?.duration || 0;
 

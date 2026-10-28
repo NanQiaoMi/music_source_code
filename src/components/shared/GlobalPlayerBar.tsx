@@ -11,6 +11,7 @@ import { NowPlayingHalo } from "@/components/player/NowPlayingHalo";
 import { GlassRadarWidget } from "@/components/widgets/GlassRadarWidget";
 import { useABLoopStore } from "@/store/abLoopStore";
 import { useNetworkAudioCache } from "@/hooks/useNetworkAudioCache";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { GlobalPlayerProgressBar } from "@/components/shared/GlobalPlayerProgressBar";
 
 export const APPLE_SPRING_CONFIG = {
@@ -31,14 +32,14 @@ const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 export const GlobalPlayerBar: React.FC = () => {
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const audioDuration = useAudioStore((state) => state.duration);
+  const audioDuration = usePlaybackClock((state) => state.duration);
   const currentSong = usePlayerStore((state) => state.currentSong);
   const duration = audioDuration || currentSong?.duration || 0;
 
-  // S6-4: 混音字段读 playerStore（isLoading 属后续批次）
+  // S6-4: 混音字段读 playerStore；进度/加载态读 PlaybackClock
   const volume = usePlayerStore((state) => state.volume);
   const isMuted = usePlayerStore((state) => state.isMuted);
-  const isLoading = useAudioStore((state) => state.isLoading);
+  const isLoading = usePlaybackClock((state) => state.isLoading);
 
   const handleTogglePlay = () => {
     useAudioStore.getState().togglePlaybackIntent();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { VisualizationProgressBar } from "./VisualizationProgressBar";
 
 interface VisualizationProgressContainerProps {
@@ -15,8 +16,8 @@ interface VisualizationProgressContainerProps {
  * 页眉/页脚）就不会因为一次 timeupdate 而整体重渲染。
  */
 export function VisualizationProgressContainer({ onSeek }: VisualizationProgressContainerProps) {
-  const currentTime = useAudioStore((state) => state.currentTime);
-  const duration = useAudioStore((state) => state.duration);
+  const currentTime = usePlaybackClock((state) => state.currentTime);
+  const duration = usePlaybackClock((state) => state.duration);
   const bufferedRanges = useAudioStore((state) => state.bufferedRanges);
 
   return (

@@ -28,7 +28,6 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
 }) => {
   const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const _currentTime = useAudioStore((state) => state.currentTime);
 
   const [activeTab, setActiveTab] = useState<"sources" | "stream" | "dsp" | "decrypt">("sources");
   const [liveBpm, _setLiveBpm] = useState(128);

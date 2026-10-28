@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
@@ -64,8 +65,8 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
   );
 
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentTime = useAudioStore((state) => state.currentTime);
-  const duration = useAudioStore((state) => state.duration);
+  const currentTime = usePlaybackClock((state) => state.currentTime);
+  const duration = usePlaybackClock((state) => state.duration);
   const seekTo = useAudioStore((state) => state.seekTo);
 
   const magnifyPower = useFloatingDebugStore((state) => state.magnifyPower);

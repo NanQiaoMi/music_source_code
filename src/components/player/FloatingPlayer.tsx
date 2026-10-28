@@ -3,6 +3,7 @@
 import React, { useEffect, useCallback, useState, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 import { FloatingCompactControlsState } from "./floating/FloatingCompactControlsState";
@@ -101,7 +102,7 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
       }
 
       if (e.shiftKey) {
-        const { currentTime: curTime, duration: totalDur } = useAudioStore.getState();
+        const { currentTime: curTime, duration: totalDur } = getPlaybackClockSnapshot();
         if (e.code === "ArrowLeft") {
           e.preventDefault();
           useAudioStore.getState().seekTo(Math.max(0, curTime - 5));

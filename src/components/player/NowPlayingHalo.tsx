@@ -9,8 +9,7 @@ import {
 } from "@/lib/skins/halo/haloSkins";
 import { usePerformanceV8Store } from "@/store/performanceV8Store";
 import { usePlayerSkinStore } from "@/store/playerSkinStore";
-
-import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 
 interface NowPlayingHaloProps {
   currentTime?: number;
@@ -47,8 +46,8 @@ export const NowPlayingHalo: React.FC<NowPlayingHaloProps> = React.memo(
     size = 72,
     className = "",
   }) {
-    const storeTime = useAudioStore((state) => state.currentTime);
-    const currentTime = propCurrentTime !== undefined ? propCurrentTime : storeTime;
+    const clockTime = usePlaybackClock((state) => state.currentTime);
+    const currentTime = propCurrentTime !== undefined ? propCurrentTime : clockTime;
 
     const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
     const activeHalo = usePlayerSkinStore((state) => state.getActiveHalo());
