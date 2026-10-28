@@ -2,13 +2,16 @@
 
 import { useEffect, useCallback } from "react";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 
 export const useMediaSession = () => {
   // Use getState() for all store access - this hook only needs state in callbacks
   // and intervals, not during render. Prevents 60fps re-renders from currentTime.
 
   const updateMediaSession = useCallback(() => {
-    const { currentSong, isPlaying } = useAudioStore.getState();
+    // S6-4: 身份字段读 playerStore；isPlaying 仍读 audioStore（下一批迁移）
+    const currentSong = usePlayerStore.getState().currentSong;
+    const isPlaying = useAudioStore.getState().isPlaying;
 
     if (!("mediaSession" in navigator)) {
       return;
@@ -83,7 +86,7 @@ export const useMediaSession = () => {
   }, [setupMediaSessionHandlers, updateMediaSession]);
 
   // Subscribe to only the fields needed for periodic updates
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
 
   useEffect(() => {

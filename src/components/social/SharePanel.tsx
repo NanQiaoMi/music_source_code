@@ -3,7 +3,6 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { Clipboard, Check } from "lucide-react";
 import { motion } from "framer-motion";
-import { useAudioStore } from "@/store/audioStore";
 import {
   X,
   Share2,
@@ -26,6 +25,7 @@ import {
 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { toast } from "@/components/shared/GlassToast";
+import { usePlayerStore } from "@/store/playerStore";
 import {
   DEFAULT_POSTER_CONFIG,
   POSTER_ASPECT_RATIO_PRESETS,
@@ -57,7 +57,7 @@ const RENDER_WIDTH = 800;
 
 export const SharePanel: React.FC<SharePanelProps> = ({ isOpen, onClose }) => {
   const [isV2, setIsV2] = useState(false);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [selectedLyric, _setSelectedLyric] = useState<string>("");

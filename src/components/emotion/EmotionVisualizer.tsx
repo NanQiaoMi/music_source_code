@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useEmotionStore } from "@/store/emotionStore";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { Music2 } from "lucide-react";
@@ -77,7 +78,7 @@ const EmotionVisualizer: React.FC = () => {
   const [canvasMetrics, setCanvasMetrics] = useState({ width: 0, height: 0, clientWidth: 0 });
 
   const audioPlaySong = useAudioStore((state) => state.playSong);
-  const audioCurrentSong = useAudioStore((state) => state.currentSong);
+  const audioCurrentSong = usePlayerStore((state) => state.currentSong);
   const songs = usePlaylistStore(selectSongs);
   const points = useEmotionStore((state) => state.points);
   const selectedIds = useEmotionStore((state) => state.selectedIds);

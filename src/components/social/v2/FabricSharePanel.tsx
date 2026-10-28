@@ -3,8 +3,8 @@
 import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Check, Clipboard, Download, Loader2, Settings2 } from "lucide-react";
-import { useAudioStore } from "@/store/audioStore";
 import { toast } from "@/components/shared/GlassToast";
+import { usePlayerStore } from "@/store/playerStore";
 import FabricCanvas from "./FabricCanvas";
 import FabricControls from "./FabricControls";
 
@@ -19,7 +19,7 @@ export const FabricSharePanel: React.FC<FabricSharePanelProps> = ({
   onClose,
   onSwitchBack,
 }) => {
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
 

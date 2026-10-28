@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useEmotionStore } from "@/store/emotionStore";
 
 export interface FloatingAmbientGlowProps {
@@ -43,7 +44,7 @@ export const FloatingAmbientGlow: React.FC<FloatingAmbientGlowProps> = ({
   children,
 }) => {
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
 
   // Emotion store coordinates
   const realtimeCoordinates = useEmotionStore((state) => state.realtimeCoordinates);

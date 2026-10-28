@@ -1423,7 +1423,7 @@ export const useAudioPlayer = () => {
               if (offlineRecord.lyrics && !currentSong.lyrics) {
                 currentSong.lyrics = offlineRecord.lyrics;
                 currentSong.translationLyrics = offlineRecord.translationLyrics;
-                useAudioStore
+                usePlayerStore
                   .getState()
                   .updateCurrentSongLyrics(offlineRecord.lyrics, offlineRecord.translationLyrics);
               }
@@ -1432,7 +1432,7 @@ export const useAudioPlayer = () => {
                 (!currentSong.cover || currentSong.cover === "/default-cover.svg")
               ) {
                 currentSong.cover = offlineRecord.cover;
-                useAudioStore.getState().updateCurrentSongCover(offlineRecord.cover);
+                usePlayerStore.getState().updateCurrentSongCover(offlineRecord.cover);
               }
 
               console.info(
@@ -1563,7 +1563,7 @@ export const useAudioPlayer = () => {
               if (lrcData.lyrics && isCurrentPlaybackRequest(requestId, songId || undefined)) {
                 currentSong.lyrics = lrcData.lyrics;
                 currentSong.translationLyrics = lrcData.translationLyrics;
-                useAudioStore
+                usePlayerStore
                   .getState()
                   .updateCurrentSongLyrics(lrcData.lyrics, lrcData.translationLyrics);
 
@@ -1596,7 +1596,7 @@ export const useAudioPlayer = () => {
             .then(async (coverUrl) => {
               if (coverUrl && isCurrentPlaybackRequest(requestId, songId || undefined)) {
                 currentSong.cover = coverUrl;
-                useAudioStore.getState().updateCurrentSongCover(coverUrl);
+                usePlayerStore.getState().updateCurrentSongCover(coverUrl);
 
                 try {
                   const offlineRec = await getOfflineAudio(String(songId));

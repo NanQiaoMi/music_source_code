@@ -104,8 +104,8 @@ export const useKeyboardShortcuts = () => {
 
       if (matchKeys(e, bind("play-pause"))) {
         e.preventDefault();
-        if (!audioStore.currentSong && audioStore.queue.length > 0) {
-          audioStore.setCurrentSong(audioStore.queue[0]);
+        if (!playerStore.currentSong && audioStore.queue.length > 0) {
+          playerStore.setCurrentSong(audioStore.queue[0]);
           audioStore.setCurrentIndex(0);
         }
         audioStore.togglePlaybackIntent();
@@ -162,7 +162,7 @@ export const useKeyboardShortcuts = () => {
 
       if (matchKeys(e, bind("favorite"))) {
         e.preventDefault();
-        if (audioStore.currentSong) {
+        if (playerStore.currentSong) {
           uiStore.showToast?.("收藏快捷键已触发", "success");
         }
         return;

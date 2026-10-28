@@ -6,6 +6,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { QueuePanel } from "./QueuePanel";
 import { useQueueStore } from "@/store/queueStore";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 import type { Song } from "@/types/song";
 
@@ -77,16 +78,15 @@ describe("QueuePanel", () => {
       currentIndex: 0,
     });
 
-    useAudioStore.setState({
-      currentSong: {
-        id: "song-1",
-        title: "Midnight City",
-        artist: "M83",
-        duration: 240,
-        source: "local",
-      },
-      isPlaying: true,
+    // S6-4: 身份字段由 playerStore 提供，audioStore 侧只是兼容投影
+    usePlayerStore.getState().setCurrentSong({
+      id: "song-1",
+      title: "Midnight City",
+      artist: "M83",
+      duration: 240,
+      source: "local",
     });
+    useAudioStore.setState({ isPlaying: true });
   });
 
   afterEach(async () => {
@@ -117,7 +117,8 @@ describe("QueuePanel", () => {
   const seedLongQueue = (count: number, currentIndex: number): Song[] => {
     const queue = makeQueue(count);
     useQueueStore.setState({ queue, currentIndex });
-    useAudioStore.setState({ currentSong: queue[currentIndex], isPlaying: true });
+    usePlayerStore.getState().setCurrentSong(queue[currentIndex]);
+    useAudioStore.setState({ isPlaying: true });
     return queue;
   };
 
@@ -156,7 +157,8 @@ describe("QueuePanel", () => {
       ],
       currentIndex: 2,
     });
-    useAudioStore.setState({ currentSong: activeSong, isPlaying: true });
+    usePlayerStore.getState().setCurrentSong(activeSong);
+    useAudioStore.setState({ isPlaying: true });
 
     await act(async () => root.render(<QueuePanel isOpen={true} onClose={vi.fn()} />));
 

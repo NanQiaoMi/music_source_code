@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 
 interface TimedLyricLine {
   time: number;
@@ -19,7 +20,7 @@ function isTimedLyricLine(value: unknown): value is TimedLyricLine {
 }
 
 function DesktopLyricsContent() {
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const currentTime = useAudioStore((state) => state.currentTime);
 
   const currentLyric = useMemo(() => {

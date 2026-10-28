@@ -233,7 +233,7 @@ export const HeartFavoriteButton: React.FC<HeartFavoriteButtonProps> = ({
   className = "",
   size = 18,
 }) => {
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const isFavorite = useFavoritesStore((state) =>
     currentSong ? state.isFavorite(currentSong.id) : false
   );

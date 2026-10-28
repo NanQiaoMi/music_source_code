@@ -4,11 +4,11 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Scroll, Sparkles, X, Loader2, Quote, Brain, RotateCcw } from "lucide-react";
 import { useKnowledgeStore } from "@/store/knowledgeStore";
-import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useLyricsCoverStore } from "@/store/lyricsCoverStore";
 
 export const MusicBackstory: React.FC = () => {
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const backstories = useKnowledgeStore((state) => state.backstories);
   const metaphors = useKnowledgeStore((state) => state.metaphors);
   const isLoading = useKnowledgeStore((state) => state.isLoading);

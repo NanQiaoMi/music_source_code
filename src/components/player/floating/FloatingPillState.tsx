@@ -35,9 +35,8 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
   const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
   const isPlaying = audioIsPlaying || playerIsPlaying;
 
-  const audioSong = useAudioStore((state) => state.currentSong);
-  const playerSong = usePlayerStore((state) => state.currentSong);
-  const currentSong = audioSong || playerSong;
+  // S6-4: 身份字段 currentSong 只从 playerStore 订阅一次
+  const currentSong = usePlayerStore((state) => state.currentSong);
 
   const [_isHovered, setIsHovered] = useState(false);
   const textContainerRef = useRef<HTMLDivElement | null>(null);

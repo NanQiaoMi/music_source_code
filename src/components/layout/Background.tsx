@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
-import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { extractColorsFromImage, ThemeColors, defaultColors } from "@/utils/colorExtractor";
 
 interface FluidBlob {
@@ -141,7 +141,7 @@ const FluidBlobComponent: React.FC<{
 export const Background: React.FC = () => {
   const themeColors = useUIStore((state) => state.themeColors);
   const isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const [extractedColors, setExtractedColors] = useState<ThemeColors | null>(null);
 
   useEffect(() => {

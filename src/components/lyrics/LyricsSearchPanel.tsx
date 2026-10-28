@@ -4,8 +4,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Edit, FileText, Heart, History, Music, RefreshCw, Search, Star, X } from "lucide-react";
 import { useLyricsSearchStore, LyricSourceState } from "@/store/lyricsSearchStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { LyricSearchResult } from "@/services/lyricsSearchService";
-import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
 import { useGlassToast } from "@/components/shared/GlassToast";
 
@@ -45,7 +45,7 @@ export default function LyricsSearchPanel({ isOpen, onClose }: LyricsSearchPanel
   const editLyrics = useLyricsSearchStore((state) => state.editLyrics);
   const autoMatchLyrics = useLyricsSearchStore((state) => state.autoMatchLyrics);
 
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const openPanel = useUIStore((state) => state.openPanel);
   const { showToast } = useGlassToast();
   const sourceState = sourceStateCopy[lyricSourceState];

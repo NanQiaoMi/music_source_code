@@ -44,9 +44,8 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
   isOpen,
   onClose,
 }) => {
-  const audioSong = useAudioStore((state) => state.currentSong);
-  const playerSong = usePlayerStore((state) => state.currentSong);
-  const currentSong = audioSong || playerSong;
+  // S6-4: 身份字段 currentSong 读 playerStore（audioStore 仅剩兼容投影）
+  const currentSong = usePlayerStore((state) => state.currentSong);
 
   const audioIsPlaying = useAudioStore((state) => state.isPlaying);
   const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
@@ -311,7 +310,7 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
       quality: cand.quality,
     };
 
-    useAudioStore.getState().setCurrentSong(updated);
+    // S6-4: 身份字段写 playerStore（audioStore 同名 action 仅为转发）
     usePlayerStore.getState().setCurrentSong(updated);
     useAudioStore.getState().setIsPlaying(true);
     usePlayerStore.getState().setIsPlaying(true);
@@ -348,7 +347,7 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
           source: best.source,
           quality: best.quality,
         };
-        useAudioStore.getState().setCurrentSong(updated);
+        usePlayerStore.getState().setCurrentSong(updated);
         usePlayerStore.getState().setCurrentSong(updated);
         useAudioStore.getState().setIsPlaying(true);
         usePlayerStore.getState().setIsPlaying(true);

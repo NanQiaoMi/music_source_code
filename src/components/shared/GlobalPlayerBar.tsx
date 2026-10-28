@@ -32,7 +32,7 @@ const DEFAULT_COVER_SRC = "/default-cover.svg";
 export const GlobalPlayerBar: React.FC = () => {
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const audioDuration = useAudioStore((state) => state.duration);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const duration = audioDuration || currentSong?.duration || 0;
 
   // S6-4: 混音字段读 playerStore（isLoading 属后续批次）

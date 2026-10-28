@@ -117,7 +117,7 @@ export const GestureFeedback: React.FC = () => {
   // S6-4: 音量读 playerStore（手势动作仍写 audioStore，经投影回填）
   const volume = usePlayerStore((state) => state.volume);
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const prefersReducedMotion = usePrefersReducedMotion();
 
   const action = lastEvent?.action ?? null;

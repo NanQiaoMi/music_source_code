@@ -161,7 +161,7 @@ const FastPlayPauseButton = memo(function FastPlayPauseButton({
 const FastHeartButton = memo(function FastHeartButton({ songId }: { songId?: string }) {
   const isFavorite = useFavoritesStore((state) => (songId ? state.isFavorite(songId) : false));
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const prefersReducedMotion = useReducedMotion() === true;
 
   return (
@@ -199,9 +199,8 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
   const prefersReducedMotion = useReducedMotion() === true;
   const tapScaleClass = prefersReducedMotion ? "" : "active:scale-90";
 
-  const audioSong = useAudioStore((state) => state.currentSong);
-  const playerSong = usePlayerStore((state) => state.currentSong);
-  const currentSong = audioSong || playerSong;
+  // S6-4: 身份字段 currentSong 读 playerStore（audioStore 仅剩兼容投影）
+  const currentSong = usePlayerStore((state) => state.currentSong);
 
   const [showMiniLyricTooltip, setShowMiniLyricTooltip] = useState(false);
   const pointerDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });

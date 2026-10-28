@@ -2421,7 +2421,8 @@ function renderFrame(effectCtx: EffectContext): void {
   const fontFamily = resolveHandwrittenFont(settings.fontStyle);
   const audioState = useAudioStore.getState();
   const playerState = usePlayerStore.getState();
-  const currentSong = audioState.currentSong ?? playerState.currentSong;
+  // S6-4: 身份字段 currentSong 读 playerStore
+  const currentSong = playerState.currentSong;
   const songId = currentSong?.id ?? null;
   const lyricsText = currentSong?.lyrics ?? "";
   const translationLyricsText = currentSong?.translationLyrics ?? "";

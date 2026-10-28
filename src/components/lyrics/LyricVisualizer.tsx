@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { FileText, Search, Music2 } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useBilingualLyricParser } from "@/hooks/useBilingualLyricParser";
 import { useLyricSettingsStore } from "@/store/lyricSettingsStore";
 import { useUIStore } from "@/store/uiStore";
@@ -20,7 +21,7 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
   transliterationLyrics,
 }) => {
   const currentTime = useAudioStore((state) => state.currentTime);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const openPanel = useUIStore((state) => state.openPanel);
   const shouldReduceMotion = useReducedMotion();
   const showTranslation = useLyricSettingsStore((state) => state.showTranslation);

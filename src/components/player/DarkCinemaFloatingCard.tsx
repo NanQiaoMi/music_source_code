@@ -3,6 +3,7 @@
 import React, { useCallback } from "react";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { Play, Pause, Disc } from "lucide-react";
 import { AppleAudioSourceIndicator } from "./AppleAudioSourceIndicator";
 
@@ -33,7 +34,7 @@ export const DarkCinemaFloatingCard: React.FC<DarkCinemaFloatingCardProps> = ({
 }) => {
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const audioDuration = useAudioStore((state) => state.duration);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const duration = audioDuration || currentSong?.duration || 0;
 
   const title = currentSong?.title || "后来你好吗";

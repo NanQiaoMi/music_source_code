@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { Song } from "@/types/song";
 
 const sanitizeSongForStorage = (song: Song) => {
@@ -41,7 +42,7 @@ const MAX_HISTORY_ITEMS = 150; // Reduced from 500 to prevent QuotaExceededError
 const MAX_ARTIST_STATS = 50; // Reduced from 100
 
 export const useListeningHistory = () => {
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
 
   const getHistoryFromStorage = useCallback((): Record<string, ListeningRecord> => {

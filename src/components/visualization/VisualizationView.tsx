@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { useUIStore } from "@/store/uiStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useAudioStore } from "@/store/audioStore";
 import {
   useVisualizationStore,
@@ -168,7 +169,7 @@ export function VisualizationView() {
   const themeColors = useUIStore((state) => state.themeColors);
   const isFullscreen = useUIStore((state) => state.isFullscreen);
   const toggleFullscreen = useUIStore((state) => state.toggleFullscreen);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);

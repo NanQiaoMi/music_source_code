@@ -42,8 +42,9 @@ async function runBootstrap(): Promise<boolean> {
       const restoredIndex = useQueueStore.getState().currentIndex;
 
       if (restoredSong) {
+        // S6-4: 身份字段 currentSong 归 playerStore（hydrate 已恢复）；audioStore 镜像由
+        // playerStore 投影维护，这里只回填进度/就绪字段，不再重复写身份字段。
         useAudioStore.setState({
-          currentSong: restoredSong,
           isPlaying: false, // 启动时保持就绪状态，等待用户点击播放
           currentTime: usePlayerStore.getState().currentTime || 0,
           duration: usePlayerStore.getState().duration || restoredSong.duration || 0,

@@ -4,6 +4,7 @@ import React, { useRef, useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { FloatingAmbientGlow } from "./FloatingAmbientGlow";
 import { LiquidGlassFilter } from "./LiquidGlassFilter";
 import type { DragHandlers } from "./useFloatingDragPhysics";
@@ -28,7 +29,7 @@ export const FloatingMiniState: React.FC<FloatingMiniStateProps> = ({
   showGlow = true,
 }) => {
   const isPlaying = useAudioStore((state) => state.isPlaying);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
 
   const [_isHovered, setIsHovered] = useState(false);
   const pointerDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });

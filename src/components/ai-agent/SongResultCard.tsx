@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Song } from "@/types/song";
 import { SongResult } from "@/types/aiAgent";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useUIStore } from "@/store/uiStore";
@@ -57,7 +58,7 @@ export const SongResultCard: React.FC<SongResultCardProps> = React.memo(
     const [imageError, setImageError] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
 
-    const currentSong = useAudioStore((state) => state.currentSong);
+    const currentSong = usePlayerStore((state) => state.currentSong);
     const isPlaying = useAudioStore((state) => state.isPlaying);
     const playSong = useAudioStore((state) => state.playSong);
     const addToQueue = useQueueStore((state) => state.addToQueue);

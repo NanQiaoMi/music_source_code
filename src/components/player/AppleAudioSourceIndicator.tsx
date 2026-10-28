@@ -3,8 +3,8 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAudioStore } from "@/store/audioStore";
 import { ChevronRight, Disc3 } from "lucide-react";
+import { usePlayerStore } from "@/store/playerStore";
 import { AudioSourceManagerModal } from "./AudioSourceManagerModal";
 
 interface AppleAudioSourceIndicatorProps {
@@ -14,7 +14,7 @@ interface AppleAudioSourceIndicatorProps {
 export const AppleAudioSourceIndicator: React.FC<AppleAudioSourceIndicatorProps> = ({
   className = "",
 }) => {
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const [isManagerOpen, setIsManagerOpen] = useState(false);
 
   const format = (currentSong as any)?.format?.toUpperCase() || "FLAC";

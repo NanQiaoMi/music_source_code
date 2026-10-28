@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { motion, type Variants } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import { FloatingOneLineLyricPreview } from "./FloatingOneLineLyricPreview";
@@ -68,7 +69,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
   className = "",
   active = true,
 }) => {
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const setCurrentView = useUIStore((state) => state.setCurrentView);
   const { isCached } = useNetworkAudioCache();

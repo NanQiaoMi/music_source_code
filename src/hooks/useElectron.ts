@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useAudioPlayer } from "./useAudioPlayer";
 
 export function useElectron() {
   const [isDesktopLyricsOpen, setIsDesktopLyricsOpen] = useState(false);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);
   const { togglePlay } = useAudioPlayer();

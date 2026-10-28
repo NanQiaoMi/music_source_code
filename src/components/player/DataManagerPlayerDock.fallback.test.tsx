@@ -67,7 +67,7 @@ const fallbackSong: Song = {
   audioUrl: "file:///player-store-track.mp3",
 };
 
-describe("DataManagerPlayerDock player store fallback", () => {
+describe("DataManagerPlayerDock player store identity", () => {
   let container: HTMLDivElement;
   let root: Root | undefined;
 
@@ -98,7 +98,8 @@ describe("DataManagerPlayerDock player store fallback", () => {
     container.remove();
   });
 
-  it("uses independent PlayerStore values when AudioStore has no current song", async () => {
+  // S6-4: currentSong 只有 playerStore 一个权威，audioStore 侧没有歌也必须照常渲染
+  it("uses PlayerStore as the single identity source when AudioStore has no current song", async () => {
     root = createRoot(container);
     await act(async () => root?.render(<DataManagerPlayerDock />));
 

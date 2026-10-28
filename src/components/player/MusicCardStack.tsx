@@ -5,6 +5,7 @@ import { motion, useMotionValue, useSpring, AnimatePresence } from "framer-motio
 import { CoverImage } from "@/components/shared/ui/CoverImage";
 import { Play, Pause, Disc, Plus } from "lucide-react";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
@@ -35,7 +36,7 @@ export const MusicCardStack: React.FC = () => {
   const setSelectedSong = usePlaylistStore((state) => state.setSelectedSong);
   const queue = useQueueStore((state) => state.queue);
   const offlineRecords = useOfflineDownloadStore((state) => state.offlineRecords);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const setCurrentView = useUIStore((state) => state.setCurrentView);

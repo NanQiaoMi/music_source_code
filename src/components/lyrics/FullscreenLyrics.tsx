@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useBilingualLyricParser } from "@/hooks/useBilingualLyricParser";
 import { useLyricSettingsStore } from "@/store/lyricSettingsStore";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
@@ -136,7 +137,7 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
   transliterationLyrics,
 }) => {
   const currentTime = useAudioStore((state) => state.currentTime);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const _isPlaying = useAudioStore((state) => state.isPlaying);
   const duration = useAudioStore((state) => state.duration);
 

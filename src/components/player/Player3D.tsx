@@ -318,7 +318,7 @@ export const Player3D: React.FC = () => {
   );
   const isPlaybackPending = playbackPhase === "loading" || playbackPhase === "buffering";
   const audioDuration = useAudioStore((state) => state.duration);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const duration = audioDuration || currentSong?.duration || 0;
 
   const bufferedRanges = useAudioStore((state) => state.bufferedRanges);

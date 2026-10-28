@@ -5,6 +5,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMe
 import * as THREE from "three";
 import { getAudioAnalyser, getAudioContext } from "@/hooks/useAudioPlayer";
 import { usePlaylistStore, Song } from "@/store/playlistStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { usePlaylistGroupStore, PlaylistGroup } from "@/store/playlistGroupStore";
@@ -443,7 +444,7 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
   // Store states
   const rawSongs = usePlaylistStore((state) => state.songs);
   const recentPlayedSongs = usePlaylistStore((state) => state.recentPlayed);
-  const currentPlayingSong = useAudioStore((state) => state.currentSong);
+  const currentPlayingSong = usePlayerStore((state) => state.currentSong);
   const isAudioPlaying = useAudioStore((state) => state.isPlaying);
   const playSong = useAudioStore((state) => state.playSong);
   const togglePlay = useAudioStore((state) => (state as any).togglePlay || (state as any).toggle);

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useCallback } from "react";
@@ -9,9 +8,8 @@ import { beatMapAnalyzer, BeatMapData } from "@/services/BeatMapAnalyzer";
 import { Song } from "@/types/song";
 
 export function useIntegratedAudioPipeline() {
-  const setCurrentSong = useAudioStore(
-    (state) => (state as any).setCurrentSong || (state as any).playSong
-  );
+  // S6-4: 身份字段 setter 归 playerStore（audioStore 同名 action 仅为转发）
+  const setCurrentSong = usePlayerStore((state) => state.setCurrentSong);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
 
   /**
@@ -26,17 +24,14 @@ export function useIntegratedAudioPipeline() {
       if (typeof audioState.playSong === "function") {
         audioState.playSong(song);
       } else {
-        usePlayerStore.getState().setCurrentSong(song);
+        setCurrentSong(song);
         usePlayerStore.getState().setIsPlaying(true);
+        // S6-4: audioStore.currentSong 由 playerStore 投影维护，不再重复写入
         useAudioStore.setState({
-          currentSong: song,
           isPlaying: true,
           error: null,
           isLoading: true,
         });
-        if (setCurrentSong) {
-          setCurrentSong(song);
-        }
         setIsPlaying(true);
       }
 

@@ -1,0 +1,70 @@
+{
+  "metric": "playback field member accesses through useAudioStore (selector/getState/alias/setState)",
+  "fields": [
+    "currentSong",
+    "isPlaying",
+    "currentTime",
+    "duration",
+    "volume",
+    "isMuted",
+    "playbackRate",
+    "loopMode",
+    "isLoading"
+  ],
+  "targetFields": [
+    "currentSong"
+  ],
+  "totals": {
+    "references": 9,
+    "files": 4
+  },
+  "byField": {
+    "currentSong": {
+      "read": 8,
+      "write": 1,
+      "files": [
+        "src/services/aiAgentTools.ts",
+        "src/services/songPurgeService.ts",
+        "src/store/audioStore.ts",
+        "src/store/useAIAgentStore.ts"
+      ]
+    }
+  },
+  "byLayer": {
+    "components": {
+      "references": 0,
+      "files": 0
+    },
+    "hooks": {
+      "references": 0,
+      "files": 0
+    },
+    "lib": {
+      "references": 0,
+      "files": 0
+    },
+    "services": {
+      "references": 5,
+      "files": 2
+    },
+    "store": {
+      "references": 4,
+      "files": 2
+    },
+    "app": {
+      "references": 0,
+      "files": 0
+    }
+  },
+  "consumers": [
+    "src/services/aiAgentTools.ts:currentSong:read:currentSong",
+    "src/services/aiAgentTools.ts:currentSong:read:currentSong",
+    "src/services/songPurgeService.ts:currentSong:read:currentSong",
+    "src/services/songPurgeService.ts:currentSong:read:currentSong",
+    "src/services/songPurgeService.ts:currentSong:write:setCurrentSong",
+    "src/store/audioStore.ts:currentSong:read:currentSong",
+    "src/store/audioStore.ts:currentSong:read:currentSong",
+    "src/store/audioStore.ts:currentSong:read:useAudioCurrentSong",
+    "src/store/useAIAgentStore.ts:currentSong:read:currentSong"
+  ]
+}

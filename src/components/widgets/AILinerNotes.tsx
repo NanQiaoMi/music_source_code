@@ -3,13 +3,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Loader2 } from "lucide-react";
-import { useAudioStore } from "@/store/audioStore";
 import { useLinerNotesStore } from "@/store/linerNotesStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useEmotionStore } from "@/store/emotionStore";
 import { useAIAgentStore } from "@/store/useAIAgentStore";
 
 export const AILinerNotes: React.FC = () => {
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const getNotes = useLinerNotesStore((state) => state.getNotes);
   const isGenerating = useLinerNotesStore((state) => state.isGenerating);
   const points = useEmotionStore((state) => state.points);

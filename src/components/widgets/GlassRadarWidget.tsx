@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
 import { Radar } from "lucide-react";
 import { useEmotionStore } from "@/store/emotionStore";
-import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { toast } from "@/components/shared/GlassToast";
 
 const DEBOUNCE_TIME = 500;
@@ -30,7 +30,7 @@ export const GlassRadarWidget: React.FC = () => {
   const setGlobalEmotion = useEmotionStore((state) => state.setGlobalEmotion);
   const emotionMap = useEmotionStore((state) => state.emotionMap);
   const saveSongEmotion = useEmotionStore((state) => state.saveSongEmotion);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
 
   const currentEmotion = useMemo(
     () =>

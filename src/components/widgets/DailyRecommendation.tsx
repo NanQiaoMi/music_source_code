@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { buildRecommendationReasonDisplay } from "@/lib/recommendation/reasonDisplay";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useRecommendationStore } from "@/store/recommendationStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
@@ -81,7 +82,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   const insertNext = useQueueStore((state) => state.insertNext);
   const history = useQueueStore((state) => state.history);
   const playQueue = useAudioStore((state) => state.playQueue);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
   // memo：handlePlaySong 与快捷键 effect 都依赖它，每轮新建会让监听反复重绑
   const togglePlay = useCallback(() => useAudioStore.getState().togglePlaybackIntent(), []);

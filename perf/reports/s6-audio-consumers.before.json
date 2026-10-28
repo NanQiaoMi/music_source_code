@@ -23,13 +23,13 @@
     "isLoading"
   ],
   "totals": {
-    "references": 300,
+    "references": 297,
     "files": 64
   },
   "byField": {
     "currentSong": {
-      "read": 58,
-      "write": 9,
+      "read": 57,
+      "write": 11,
       "files": [
         "src/components/ai-agent/CuratorWelcomeHeroCard.tsx",
         "src/components/ai-agent/SongResultCard.tsx",
@@ -86,7 +86,7 @@
       ]
     },
     "isPlaying": {
-      "read": 38,
+      "read": 37,
       "write": 32,
       "files": [
         "src/components/ai-agent/CuratorWelcomeHeroCard.tsx",
@@ -133,7 +133,7 @@
       ]
     },
     "currentTime": {
-      "read": 28,
+      "read": 27,
       "write": 26,
       "files": [
         "src/components/features-v7/ABLoopToggle.tsx",
@@ -163,7 +163,7 @@
       ]
     },
     "duration": {
-      "read": 19,
+      "read": 18,
       "write": 6,
       "files": [
         "src/components/features-v7/ABLoopToggle.tsx",
@@ -229,7 +229,7 @@
       ]
     },
     "loopMode": {
-      "read": 9,
+      "read": 8,
       "write": 7,
       "files": [
         "src/components/player/DataManagerPlayerDock.tsx",
@@ -257,11 +257,11 @@
   },
   "byLayer": {
     "components": {
-      "references": 165,
+      "references": 162,
       "files": 50
     },
     "hooks": {
-      "references": 79,
+      "references": 78,
       "files": 6
     },
     "lib": {
@@ -273,7 +273,7 @@
       "files": 2
     },
     "store": {
-      "references": 22,
+      "references": 23,
       "files": 3
     },
     "app": {
@@ -327,7 +327,6 @@
     "src/components/player/DarkCinemaFloatingCard.tsx:duration:read:duration",
     "src/components/player/DarkCinemaFloatingCard.tsx:isPlaying:read:isPlaying",
     "src/components/player/DarkCinemaFloatingCard.tsx:isPlaying:write:togglePlaybackIntent",
-    "src/components/player/DataManagerPlayerDock.tsx:currentSong:read:currentSong",
     "src/components/player/DataManagerPlayerDock.tsx:currentSong:read:currentSong",
     "src/components/player/DataManagerPlayerDock.tsx:currentSong:read:currentSong",
     "src/components/player/DataManagerPlayerDock.tsx:currentTime:read:currentTime",
@@ -429,9 +428,7 @@
     "src/components/visualization/VisualizationProgressContainer.tsx:duration:read:duration",
     "src/components/visualization/VisualizationView.tsx:currentSong:read:currentSong",
     "src/components/visualization/VisualizationView.tsx:currentTime:read:currentTime",
-    "src/components/visualization/VisualizationView.tsx:currentTime:read:currentTime",
     "src/components/visualization/VisualizationView.tsx:currentTime:write:setCurrentTime",
-    "src/components/visualization/VisualizationView.tsx:duration:read:duration",
     "src/components/visualization/VisualizationView.tsx:duration:write:setDuration",
     "src/components/visualization/VisualizationView.tsx:isPlaying:read:isPlaying",
     "src/components/visualization/VisualizationView.tsx:isPlaying:write:togglePlaybackIntent",
@@ -449,6 +446,8 @@
     "src/components/widgets/MusicBackstory.tsx:currentSong:read:currentSong",
     "src/hooks/useAudioPlayer.ts:currentSong:write:updateCurrentSongCover",
     "src/hooks/useAudioPlayer.ts:currentSong:write:updateCurrentSongCover",
+    "src/hooks/useAudioPlayer.ts:currentSong:write:updateCurrentSongLyrics",
+    "src/hooks/useAudioPlayer.ts:currentSong:write:updateCurrentSongLyrics",
     "src/hooks/useAudioPlayer.ts:currentTime:read:currentTime",
     "src/hooks/useAudioPlayer.ts:currentTime:write:setCurrentTime",
     "src/hooks/useAudioPlayer.ts:currentTime:write:setCurrentTime",
@@ -468,7 +467,6 @@
     "src/hooks/useAudioPlayer.ts:isPlaying:write:setState",
     "src/hooks/useAudioPlayer.ts:isPlaying:write:setState",
     "src/hooks/useAudioPlayer.ts:isPlaying:write:togglePlaybackIntent",
-    "src/hooks/useAudioPlayer.ts:loopMode:read:loopMode",
     "src/hooks/useAudioPlayer.ts:loopMode:read:loopMode",
     "src/hooks/useAudioPlayer.ts:playbackRate:read:playbackRate",
     "src/hooks/useAudioPlayer.ts:playbackRate:read:playbackRate",
@@ -512,7 +510,6 @@
     "src/hooks/useListeningHistory.ts:isPlaying:read:isPlaying",
     "src/hooks/useMediaSession.ts:currentSong:read:currentSong",
     "src/hooks/useMediaSession.ts:currentSong:read:currentSong",
-    "src/hooks/useMediaSession.ts:currentSong:read:currentSong",
     "src/hooks/useMediaSession.ts:currentTime:read:currentTime",
     "src/hooks/useMediaSession.ts:currentTime:read:currentTime",
     "src/hooks/useMediaSession.ts:currentTime:write:setCurrentTime",
@@ -520,7 +517,6 @@
     "src/hooks/useMediaSession.ts:currentTime:write:setCurrentTime",
     "src/hooks/useMediaSession.ts:currentTime:write:setCurrentTime",
     "src/hooks/useMediaSession.ts:duration:read:duration",
-    "src/hooks/useMediaSession.ts:isPlaying:read:isPlaying",
     "src/hooks/useMediaSession.ts:isPlaying:read:isPlaying",
     "src/hooks/useMediaSession.ts:isPlaying:read:isPlaying",
     "src/hooks/useMediaSession.ts:isPlaying:write:setIsPlaying",
@@ -562,6 +558,7 @@
     "src/services/songPurgeService.ts:isPlaying:write:setIsPlaying",
     "src/store/audioStore.ts:currentSong:read:currentSong",
     "src/store/audioStore.ts:currentSong:read:currentSong",
+    "src/store/audioStore.ts:currentSong:read:useAudioCurrentSong",
     "src/store/audioStore.ts:currentTime:read:currentTime",
     "src/store/audioStore.ts:currentTime:read:currentTime",
     "src/store/audioStore.ts:duration:read:duration",

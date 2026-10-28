@@ -18,9 +18,8 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
   active = true,
 }) => {
   const prefersReducedMotion = useReducedMotion() === true;
-  const audioSong = useAudioStore((state) => state.currentSong);
-  const playerSong = usePlayerStore((state) => state.currentSong);
-  const currentSong = audioSong || playerSong;
+  // S6-4: 身份字段 currentSong 读 playerStore（audioStore 仅剩兼容投影）
+  const currentSong = usePlayerStore((state) => state.currentSong);
 
   const audioIsPlaying = useAudioStore((state) => state.isPlaying);
   const playerIsPlaying = usePlayerStore((state) => state.isPlaying);

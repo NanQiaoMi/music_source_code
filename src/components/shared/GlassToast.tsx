@@ -3,7 +3,6 @@
 import React, { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore, ToastMessage } from "@/store/uiStore";
-import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { CheckCircle2, XCircle, AlertTriangle, X, Sparkles, Music } from "lucide-react";
 
@@ -139,11 +138,8 @@ const ToastLeadingElement: React.FC<{
 
 const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
   const removeToast = useUIStore((state) => state.removeToast);
-  // 两个 store 必须各自无条件订阅再合并：写成 `a || b` 会让右侧 hook 在左侧
-  // 为真时整轮不执行，hook 数量随渲染跳变 → React 抛 "Rendered more hooks..."
-  const audioCurrentSong = useAudioStore((state) => state.currentSong);
-  const playerCurrentSong = usePlayerStore((state) => state.currentSong);
-  const currentSong = audioCurrentSong || playerCurrentSong;
+  // S6-4: 身份字段 currentSong 只订阅 playerStore 一处（hook 数量恒定）
+  const currentSong = usePlayerStore((state) => state.currentSong);
 
   const parsed = useMemo(() => parseToastMessage(toast.message), [toast.message]);
   const durationSec = (toast.duration || 3000) / 1000;

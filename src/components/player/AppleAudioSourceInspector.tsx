@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { endpointCircuitBreaker, CoolingHostInfo } from "@/services/EndpointCircuitBreaker";
 import { networkPriorityManager } from "@/services/networkPriorityManager";
 import {
@@ -25,7 +26,7 @@ interface AppleAudioSourceInspectorProps {
 export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps> = ({
   onClose,
 }) => {
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = useAudioStore((state) => state.isPlaying);
   const _currentTime = useAudioStore((state) => state.currentTime);
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** S6-4 audioStore 播放字段消费清单：9 个播放字段在 selector / getState / 别名 / setState 中的读写点。
  *  用法：node scripts/report-audio-consumers.mjs [--json <path>] [--fields a,b] [--check]
- *  --check：components/hooks 仍有目标字段引用时 exit 1；src/store 自身实现单独计入 store 层。 */
+ *  --check：components/hooks/lib 仍有目标字段引用时 exit 1；src/store 自身实现单独计入 store 层。 */
 import fs from "node:fs";
 import path from "node:path";
 
@@ -62,7 +62,7 @@ const membersOf = (segment, extra = "") => {
 
 const scanFile = (file) => {
   const text = fs.readFileSync(file, "utf8");
-  if (!text.includes("useAudioStore")) return [];
+  if (!text.includes("useAudioStore") && !text.includes("useAudioCurrentSong")) return [];
   const rel = path.relative(process.cwd(), file).replace(/\\/g, "/");
   const [first] = path.relative(ROOT, file).split(/[\\/]/);
   const layer = LAYERS.includes(first) ? first : "other";
@@ -76,7 +76,16 @@ const scanFile = (file) => {
   );
   for (const alias of aliases) {
     const pattern = new RegExp("\\b" + alias + "\\.([A-Za-z_$][\\w$]*)", "g");
-    for (const member of text.matchAll(pattern)) membersOf("." + member[1]).forEach(push);
+    for (const member of text.matchAll(pattern)) {
+      // 跳过箭头函数参数（(state) => state.currentSong），那不是 audioStore 别名读取
+      if (/=>\s*$/.test(text.slice(Math.max(0, member.index - 8), member.index))) continue;
+      membersOf("." + member[1]).forEach(push);
+    }
+  }
+
+  // audioStore 的细粒度身份钩子等价于读 currentSong
+  for (const _ of text.matchAll(/\buseAudioCurrentSong\b/g)) {
+    push({ field: "currentSong", kind: "read", action: "useAudioCurrentSong" });
   }
 
   let index = -1;
@@ -86,9 +95,16 @@ const scanFile = (file) => {
     if (text[cursor] === "(") {
       membersOf(balanced(text, cursor)).forEach(push);
     } else if (text.startsWith(".getState()", cursor)) {
-      const segment = text.slice(cursor + 11, cursor + 171).split(/\n/)[0];
       const destructure = /\{[^}]*\}\s*=\s*$/.exec(text.slice(Math.max(0, index - 200), index));
-      membersOf(segment, destructure ? destructure[0] : "").forEach(push);
+      if (destructure) membersOf("", destructure[0]).forEach(push);
+      // 逐段吃掉 getState() 之后的链式成员（允许跨行），如 .currentSong / .setCurrentSong(...)
+      let offset = cursor + 11;
+      for (let step = 0; step < 3; step++) {
+        const member = /^\s*\.\s*([A-Za-z_$][\w$]*)/.exec(text.slice(offset));
+        if (!member) break;
+        membersOf("." + member[1]).forEach(push);
+        offset += member[0].length;
+      }
     } else if (text.startsWith(".setState(", cursor)) {
       for (const key of balanced(text, cursor + 9).matchAll(/([A-Za-z_$][\w$]*)\s*:/g)) {
         if (FIELDS.includes(key[1])) push({ field: key[1], kind: "write", action: "setState" });
@@ -139,7 +155,7 @@ if (jsonPath) {
 if (args.includes("--check")) {
   const offenders = records.filter(
     (record) =>
-      ["components", "hooks"].includes(record.layer) && targetFields.includes(record.field)
+      ["components", "hooks", "lib"].includes(record.layer) && targetFields.includes(record.field)
   );
   if (offenders.length) {
     console.error("FAIL: " + offenders.length + " playback field reference(s) remain:");
@@ -147,5 +163,5 @@ if (args.includes("--check")) {
       console.error("  " + record.file + " " + record.field);
     process.exit(1);
   }
-  console.log("OK: target fields have 0 component/hook references");
+  console.log("OK: target fields have 0 component/hook/lib references");
 }

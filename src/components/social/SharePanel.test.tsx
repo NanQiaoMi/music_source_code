@@ -1,8 +1,9 @@
-﻿import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-vi.mock("@/store/audioStore", () => ({
-  useAudioStore: (selector: (state: LegacyAny) => unknown) =>
+// S6-4: 身份字段 currentSong 的唯一权威是 playerStore（audioStore 只剩兼容投影）
+vi.mock("@/store/playerStore", () => ({
+  usePlayerStore: (selector: (state: LegacyAny) => unknown) =>
     selector({
       currentSong: {
         id: "song-1",

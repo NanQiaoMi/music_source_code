@@ -4,8 +4,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Check, Edit3, FileText, Loader2, Music, Search, Upload, X } from "lucide-react";
 import { usePlaylistStore } from "@/store/playlistStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { selectSongs, selectUpdateSong } from "@/store/selectors/playlistSelectors";
-import { useAudioStore } from "@/store/audioStore";
 import { useLyricsSearchStore } from "@/store/lyricsSearchStore";
 import { formatLyricsForDisplay, isValidLRCFormat } from "@/services/lyricsService";
 
@@ -17,7 +17,7 @@ interface LyricsImportPanelProps {
 export const LyricsImportPanel: React.FC<LyricsImportPanelProps> = ({ isOpen, onClose }) => {
   const songs = usePlaylistStore(selectSongs);
   const updateSong = usePlaylistStore(selectUpdateSong);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const importManualLyrics = useLyricsSearchStore((state) => state.importManualLyrics);
   const lyricSourceState = useLyricsSearchStore((state) => state.lyricSourceState);
   const setCurrentSongId = useLyricsSearchStore((state) => state.setCurrentSongId);

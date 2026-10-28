@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from "react";
 import { useUIStore } from "@/store/uiStore";
-import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import {
   extractColorsFromImage,
   ThemeColors,
@@ -139,7 +139,7 @@ export function useDynamicTheme() {
   const isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
   const setThemeColors = useUIStore((state) => state.setThemeColors);
   const themeMode = useUIStore((state) => state.themeMode);
-  const currentSong = useAudioStore((state) => state.currentSong);
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const applyColorsToDOM = useCallback(

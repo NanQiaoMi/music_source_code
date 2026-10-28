@@ -101,9 +101,8 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
   }, [isOpen]);
 
   // Unconditionally call store hooks
-  const audioCurrentSong = useAudioStore((state) => state.currentSong);
-  const playerCurrentSong = usePlayerStore((state) => state.currentSong);
-  const currentPlayingSong = audioCurrentSong || playerCurrentSong;
+  // S6-4: 身份字段 currentSong 读 playerStore（audioStore 仅剩兼容投影）
+  const currentPlayingSong = usePlayerStore((state) => state.currentSong);
 
   const audioIsPlaying = useAudioStore((state) => state.isPlaying);
   const playerIsPlaying = usePlayerStore((state) => state.isPlaying);

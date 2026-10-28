@@ -12,17 +12,14 @@ import { formatTime } from "@/utils/formatTime";
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 export function DataManagerPlayerDock() {
-  const audioSong = useAudioStore((state) => state.currentSong);
-  const playerSong = usePlayerStore((state) => state.currentSong);
-  const currentSong = audioSong || playerSong;
+  // S6-4: 身份字段 currentSong 读 playerStore；进度仍以 audioStore 为权威，缺失时回退 playerStore 镜像
+  const currentSong = usePlayerStore((state) => state.currentSong);
   const audioCurrentTime = useAudioStore((state) => state.currentTime);
   const playerCurrentTime = usePlayerStore((state) => state.currentTime);
-  const currentTime = audioSong ? audioCurrentTime : playerCurrentTime;
+  const currentTime = audioCurrentTime || playerCurrentTime;
   const audioDuration = useAudioStore((state) => state.duration);
   const playerDuration = usePlayerStore((state) => state.duration);
-  const duration = audioSong
-    ? audioDuration || audioSong.duration || 0
-    : playerDuration || playerSong?.duration || 0;
+  const duration = audioDuration || currentSong?.duration || playerDuration || 0;
   const audioIsPlaying = useAudioStore((state) => state.isPlaying);
   const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
   const isPlaying = audioIsPlaying || playerIsPlaying;
@@ -39,8 +36,8 @@ export function DataManagerPlayerDock() {
     if (visibleQueue.length === 0) return;
     const safeVisibleIndex = Math.max(0, Math.min(visibleIndex, visibleQueue.length - 1));
 
-    const activeSong =
-      useAudioStore.getState().currentSong || usePlayerStore.getState().currentSong;
+    // S6-4: 身份字段读 playerStore
+    const activeSong = usePlayerStore.getState().currentSong;
     const activeIndex = activeSong
       ? visibleQueue[visibleIndex]?.id === activeSong.id
         ? visibleIndex

@@ -32,9 +32,8 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
   const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
   const isPlaying = audioIsPlaying || playerIsPlaying;
 
-  const audioSong = useAudioStore((state) => state.currentSong);
-  const playerSong = usePlayerStore((state) => state.currentSong);
-  const currentSong = audioSong || playerSong;
+  // S6-4: 身份字段 currentSong 只从 playerStore 订阅一次
+  const currentSong = usePlayerStore((state) => state.currentSong);
 
   // 两个 store 各自订阅后再合并（不能写成 `a || b`：那会让右侧 hook 条件执行）
   const [isHovered, setIsHovered] = useState(false);

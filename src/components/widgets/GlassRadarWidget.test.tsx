@@ -74,8 +74,9 @@ vi.mock("@/store/emotionStore", () => ({
   }),
 }));
 
-vi.mock("@/store/audioStore", () => ({
-  useAudioStore: (selector: (state: { currentSong: null }) => unknown) =>
+// S6-4: 身份字段 currentSong 读 playerStore（audioStore 只剩兼容投影）
+vi.mock("@/store/playerStore", () => ({
+  usePlayerStore: (selector: (state: { currentSong: null }) => unknown) =>
     selector({ currentSong: mocks.currentSong }),
 }));
 

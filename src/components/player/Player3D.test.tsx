@@ -136,6 +136,7 @@ vi.mock("@/components/shared/GlassProgressBar", () => ({
 import { Player3D } from "./Player3D";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 
 const song = {
@@ -160,8 +161,9 @@ describe("Player3D", () => {
     usePlaybackRuntimeStore.getState().reset();
     // Player3D 只在播放页跑采样循环；其余用例都按播放页的真实挂载场景准备。
     useUIStore.getState().setCurrentView("player");
+    // S6-4: 身份字段由 playerStore 提供，audioStore 侧只是兼容投影
+    usePlayerStore.getState().setCurrentSong(song);
     useAudioStore.setState({
-      currentSong: song,
       isPlaying: false,
       isLoading: false,
       error: null,
@@ -217,7 +219,8 @@ describe("Player3D", () => {
     const nextSong = { ...song, id: "track-b", title: "Track B", album: "Album B" };
 
     await act(async () => {
-      useAudioStore.setState({ currentSong: nextSong });
+      // S6-4: 只写 playerStore 的身份权威，Player3D 必须跟着更新
+      usePlayerStore.getState().setCurrentSong(nextSong);
     });
 
     expect(host.textContent).toContain("Track B");
