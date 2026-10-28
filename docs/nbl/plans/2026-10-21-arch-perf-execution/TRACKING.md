@@ -121,7 +121,7 @@
 
 - [ ] **M7 出口门**：桌面本地运行时闭环（窗口 <3s、/ 与 /data-manager 200、旧 origin 数据可见、在线能力/降级）；插件隔离；2h soak 达标；OPFS 有结论。
 - [ ] S7-1 Resolver 插件化 + request 包装/熔断（2 PR）— owner: — | PR: 2 | 依赖: S1-8 | 验收: 每模块 ≤300 行；坏 host 请求下降
-- [ ] S7-2 缓存统一 LRU/TTL — owner: — | PR: 1 | 依赖: S7-1 | 验收: 内存不随会话线性增长
+- [ ] S7-2 缓存统一 LRU/TTL — **S7-2a 完成（2026-10-29，00f52fd）**：新增 `src/lib/cache/TtlLruCache.ts`（maxEntries/maxAgeMs、get/set/has/delete/clear/size/prune、hits/misses/evictions/hitRate、onEvict(lru|ttl)、可注入时钟、无定时器懒清理）；`MultiSourceResolver.resolvedUrlCache` 迁至 TTL LRU（300 项/30min，键与读写/失效行为不变，新增 getResolvedUrlCacheStats）与 `audioPrefetcher.prefetchCache`（20 项/25min，键 song.id）；测试 5 用例（LRU 顺序/TTL 懒过期/统计/onEvict/1000 插入有界 300）+ prefetch 1 + resolver 305 唯一解析 size 300 evictions≥5；全量 262 files/1620 tests；tsc/lint 0。**验收缺口**：`searchCache`（MultiSourceResolver.ts:899，20min TTL，无界）未迁移，仍线性增长风险；`window.__MIMI_CACHE_STATS__` 聚合探针未接；S7-1c resolver 拆分未做（本 PR 为原地换缓存）。分支 `feature/arch-perf-s7-2`（未合并）。
 - [ ] S7-3 Worker transferable + 降级 — owner: — | PR: 1 | 依赖: S0-6 | 验收: 50MB 转换长任务 <50ms
 - [ ] S7-4 Electron 本地 Next 运行时（D2）— owner: — | PR: 2 | 依赖: S0-3 | 验收: --dir 冷启动 <3s；200
 - [ ] S7-5 BackendGateway + preload baseUrl + 能力协商 — owner: — | PR: 1 | 依赖: S7-4 | 验收: 浏览器/Electron 分支单测
