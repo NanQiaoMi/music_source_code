@@ -10,10 +10,13 @@
 |---|---|
 | scripts/perf/bundle-budget.mjs | 包体预算：rootMainFiles / 首页 script / CSS / async chunk / public 体积；支持 --check 与 --json |
 | scripts/perf/report-store-stats.mjs | Store 架构统计：store 数、persist key、整店订阅、store 依赖边/SCC、getState 分层；支持 --check、--json 与 --store |
+| scripts/report-audio-consumers.mjs | S6-4 audioStore 播放字段消费清单：9 字段的 selector/getState/别名/setState 读写点，按层与字段汇总；支持 --json、--fields、--check |
 | scripts/check-docs-facts.mjs | 文档事实校验：store 数、过期字样、CI 触发分支、端口一致性（warn）、INDEX 链接、执行计划包完整性 |
 | perf/budget.json | 包体阈值（baseline / target / hardMax） |
 | perf/bundle-baseline.json | 2026-10-21 包体基线快照 |
 | perf/store-stats-baseline.json | 2026-10-21 Store 架构基线快照 |
+| perf/reports/s6-audio-consumers.before.json | S6-4 迁移前播放字段消费快照（300 处 / 64 文件；混音字段 74） |
+| perf/reports/s6-audio-consumers.json | S6-4 当前播放字段消费快照（PR1 后 242 处 / 62 文件；混音字段 16，均为 services/store 自身） |
 
 ## 2. 用法
 
@@ -27,6 +30,11 @@
     node scripts/perf/report-store-stats.mjs --json perf/store-stats-baseline.json
     node scripts/perf/report-store-stats.mjs --check   # 不得比基线更差
     node scripts/perf/report-store-stats.mjs --store usePlaylistStore  # 单 store 整店订阅数
+
+    # audioStore 播放字段消费（S6-4）
+    node scripts/report-audio-consumers.mjs
+    node scripts/report-audio-consumers.mjs --json perf/reports/s6-audio-consumers.json
+    node scripts/report-audio-consumers.mjs --fields volume,isMuted --check  # components/hooks 仍有引用时 exit 1
 
     # 文档事实
     node scripts/check-docs-facts.mjs

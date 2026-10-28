@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 import { GlassPanel } from "@/components/shared/Glass";
 import {
@@ -31,12 +32,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onOpenEQ,
   onOpenVisualSettings: _onOpenVisualSettings,
 }) => {
-  const volume = useAudioStore((state) => state.volume);
-  const setVolume = useAudioStore((state) => state.setVolume);
-  const playbackRate = useAudioStore((state) => state.playbackRate);
-  const setPlaybackRate = useAudioStore((state) => state.setPlaybackRate);
-  const isMuted = useAudioStore((state) => state.isMuted);
-  const toggleMute = useAudioStore((state) => state.toggleMute);
+  // S6-4: 音量/静音/倍速读 playerStore（audioStore 同名字段仅为兼容投影）
+  const volume = usePlayerStore((state) => state.volume);
+  const setVolume = usePlayerStore((state) => state.setVolume);
+  const playbackRate = usePlayerStore((state) => state.playbackRate);
+  const setPlaybackRate = usePlayerStore((state) => state.setPlaybackRate);
+  const isMuted = usePlayerStore((state) => state.isMuted);
+  const toggleMute = usePlayerStore((state) => state.toggleMute);
   const bassBoost = useAudioStore((state) => state.bassBoost);
   const setBassBoost = useAudioStore((state) => state.setBassBoost);
   const trebleBoost = useAudioStore((state) => state.trebleBoost);

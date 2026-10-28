@@ -462,8 +462,7 @@ const attachListeners = (
       usePlayerStore.setState({ duration: d });
     }
     // 播放速度恢复：确保流媒体元数据解析后精准恢复用户设置的目标倍速
-    const currentRate =
-      usePlayerStore.getState().playbackRate || useAudioStore.getState().playbackRate || 1.0;
+    const currentRate = usePlayerStore.getState().playbackRate || 1.0;
     audio.defaultPlaybackRate = currentRate;
     if (audio.playbackRate !== currentRate) {
       audio.playbackRate = currentRate;
@@ -594,8 +593,7 @@ const attachListeners = (
     if (!usePlaybackRuntimeStore.getState().shouldPlay) {
       setConfirmedPlaybackState(false, false);
     }
-    const currentRate =
-      usePlayerStore.getState().playbackRate || useAudioStore.getState().playbackRate || 1.0;
+    const currentRate = usePlayerStore.getState().playbackRate || 1.0;
     if (audio.playbackRate !== currentRate) {
       audio.playbackRate = currentRate;
     }
@@ -780,7 +778,7 @@ const attachListeners = (
       triggerBackgroundCache(endedSong, currentSrc).catch(() => {});
     }
 
-    const currentLoopMode = useAudioStore.getState().loopMode || usePlayerStore.getState().loopMode;
+    const currentLoopMode = usePlayerStore.getState().loopMode;
 
     if (currentLoopMode === "single") {
       console.info("[useAudioPlayer] 🔁 触发单曲循环重播:", endedSong?.title);
@@ -933,7 +931,6 @@ const attachListeners = (
       const storeRate = usePlayerStore.getState().playbackRate || 1.0;
       if (Math.abs(storeRate - rounded) > 0.01) {
         usePlayerStore.setState({ playbackRate: rounded });
-        useAudioStore.setState({ playbackRate: rounded });
       }
     }
   };

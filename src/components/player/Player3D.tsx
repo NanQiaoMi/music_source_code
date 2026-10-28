@@ -6,7 +6,8 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { motion, AnimatePresence, useMotionValue, useReducedMotion } from "framer-motion";
 import type { MotionValue } from "framer-motion";
-import { useAudioStore, LoopMode } from "@/store/audioStore";
+import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore, type LoopMode } from "@/store/playerStore";
 import { MISSING_AUDIO_SOURCE_HELP_TEXT } from "@/lib/audio/playableAudioSource";
 import { useUIStore } from "@/store/uiStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
@@ -350,11 +351,12 @@ export const Player3D: React.FC = () => {
   const nextSong = useAudioStore((state) => state.nextSong);
   const prevSong = useAudioStore((state) => state.prevSong);
   const seekTo = useAudioStore((state) => state.seekTo);
-  const volume = useAudioStore((state) => state.volume);
-  const isMuted = useAudioStore((state) => state.isMuted);
-  const toggleMute = useAudioStore((state) => state.toggleMute);
-  const setVolume = useAudioStore((state) => state.setVolume);
-  const loopMode = useAudioStore((state) => state.loopMode);
+  // S6-4: 混音/循环字段读 playerStore
+  const volume = usePlayerStore((state) => state.volume);
+  const isMuted = usePlayerStore((state) => state.isMuted);
+  const toggleMute = usePlayerStore((state) => state.toggleMute);
+  const setVolume = usePlayerStore((state) => state.setVolume);
+  const loopMode = usePlayerStore((state) => state.loopMode);
 
   const [breathingEffectEnabled] = useState(true);
   const [showFullscreenLyrics, setShowFullscreenLyrics] = useState(false);
@@ -647,9 +649,9 @@ export const Player3D: React.FC = () => {
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       if (loopMode === "shuffle") {
-                        useAudioStore.getState().setLoopMode("all");
+                        usePlayerStore.getState().setLoopMode("all");
                       } else {
-                        useAudioStore.getState().setLoopMode("shuffle");
+                        usePlayerStore.getState().setLoopMode("shuffle");
                       }
                     }}
                     className={`p-2 rounded-full transition-all ${
@@ -669,7 +671,7 @@ export const Player3D: React.FC = () => {
                       const modes: LoopMode[] = ["none", "all", "single"];
                       const currentIndex = modes.indexOf(loopMode);
                       const nextIndex = (currentIndex + 1) % modes.length;
-                      useAudioStore.getState().setLoopMode(modes[nextIndex]);
+                      usePlayerStore.getState().setLoopMode(modes[nextIndex]);
                     }}
                     className={`p-2 rounded-full transition-all ${
                       loopMode === "all" || loopMode === "single"

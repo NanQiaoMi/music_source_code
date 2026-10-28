@@ -48,7 +48,7 @@ export function DataManagerPlayerDock() {
       : -1;
     const audioState = useAudioStore.getState();
 
-    if (activeIndex >= 0 || audioState.loopMode === "shuffle") {
+    if (activeIndex >= 0 || usePlayerStore.getState().loopMode === "shuffle") {
       useAudioStore.setState({
         queue: visibleQueue,
         currentIndex: activeIndex >= 0 ? activeIndex : safeVisibleIndex,

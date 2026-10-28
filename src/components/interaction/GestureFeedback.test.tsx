@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { GestureFeedback } from "./GestureFeedback";
 import { useGestureStore } from "@/store/gestureStore";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 
 vi.mock("framer-motion", () => ({
   motion: new Proxy(
@@ -66,8 +67,8 @@ describe("GestureFeedback", () => {
     expect(html).toContain('role="status"');
   });
 
-  it("音量动作展示音量条，数值来自 audioStore", () => {
-    useAudioStore.setState({ volume: 0.42 });
+  it("音量动作展示音量条，数值来自 playerStore（audioStore 兼容投影）", () => {
+    usePlayerStore.getState().setVolume(0.42);
     useGestureStore.getState().pushEvent({
       action: "volume_up",
       command: "swipe_up",

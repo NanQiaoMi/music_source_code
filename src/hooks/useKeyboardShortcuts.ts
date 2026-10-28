@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 import { useVisualizationStore } from "@/store/visualizationStore";
 import { useKeyboardShortcutsStore } from "@/store/keyboardShortcutsStore";
@@ -95,6 +96,8 @@ export const useKeyboardShortcuts = () => {
       }
 
       const audioStore = useAudioStore.getState();
+      // S6-4: 混音/循环/倍速读写 playerStore（audioStore 同名字段仅为兼容投影）
+      const playerStore = usePlayerStore.getState();
       const uiStore = useUIStore.getState();
 
       const bind = (id: string) => getBinding(id);
@@ -135,25 +138,25 @@ export const useKeyboardShortcuts = () => {
 
       if (matchKeys(e, bind("vol-up"))) {
         e.preventDefault();
-        audioStore.setVolume(Math.min(1, audioStore.volume + 0.05));
+        playerStore.setVolume(Math.min(1, playerStore.volume + 0.05));
         return;
       }
 
       if (matchKeys(e, bind("vol-down"))) {
         e.preventDefault();
-        audioStore.setVolume(Math.max(0, audioStore.volume - 0.05));
+        playerStore.setVolume(Math.max(0, playerStore.volume - 0.05));
         return;
       }
 
       if (matchKeys(e, bind("vol-up-more"))) {
         e.preventDefault();
-        audioStore.setVolume(Math.min(1, audioStore.volume + 0.1));
+        playerStore.setVolume(Math.min(1, playerStore.volume + 0.1));
         return;
       }
 
       if (matchKeys(e, bind("vol-down-more"))) {
         e.preventDefault();
-        audioStore.setVolume(Math.max(0, audioStore.volume - 0.1));
+        playerStore.setVolume(Math.max(0, playerStore.volume - 0.1));
         return;
       }
 
@@ -167,21 +170,23 @@ export const useKeyboardShortcuts = () => {
 
       if (matchKeys(e, bind("cycle-loop"))) {
         e.preventDefault();
-        audioStore.cycleLoopMode();
+        const modes = ["none", "all", "single", "shuffle"] as const;
+        const nextLoop = modes[(modes.indexOf(playerStore.loopMode) + 1) % modes.length];
+        playerStore.setLoopMode(nextLoop);
         const modeNames: Record<string, string> = {
           none: "顺序播放",
           all: "列表循环",
           single: "单曲循环",
           shuffle: "随机播放",
         };
-        uiStore.showToast?.(`播放模式: ${modeNames[audioStore.loopMode]}`, "info");
+        uiStore.showToast?.(`播放模式: ${modeNames[nextLoop]}`, "info");
         return;
       }
 
       if (matchKeys(e, bind("toggle-mute"))) {
         e.preventDefault();
-        audioStore.toggleMute();
-        uiStore.showToast?.(audioStore.isMuted ? "已静音" : "已取消静音", "info");
+        playerStore.toggleMute();
+        uiStore.showToast?.(playerStore.isMuted ? "已静音" : "已取消静音", "info");
         return;
       }
 
@@ -232,16 +237,16 @@ export const useKeyboardShortcuts = () => {
 
       if (matchKeys(e, bind("speed-up"))) {
         e.preventDefault();
-        const nextRate = Math.min(2.0, Math.round((audioStore.playbackRate + 0.25) * 100) / 100);
-        audioStore.setPlaybackRate(nextRate);
+        const nextRate = Math.min(2.0, Math.round((playerStore.playbackRate + 0.25) * 100) / 100);
+        playerStore.setPlaybackRate(nextRate);
         uiStore.showToast?.(`播放速度: ${nextRate.toFixed(2)}x`, "info");
         return;
       }
 
       if (matchKeys(e, bind("speed-down"))) {
         e.preventDefault();
-        const nextRate = Math.max(0.5, Math.round((audioStore.playbackRate - 0.25) * 100) / 100);
-        audioStore.setPlaybackRate(nextRate);
+        const nextRate = Math.max(0.5, Math.round((playerStore.playbackRate - 0.25) * 100) / 100);
+        playerStore.setPlaybackRate(nextRate);
         uiStore.showToast?.(`播放速度: ${nextRate.toFixed(2)}x`, "info");
         return;
       }
@@ -251,7 +256,7 @@ export const useKeyboardShortcuts = () => {
         ((e.ctrlKey || e.metaKey) && (e.key === "0" || e.code === "Digit0"))
       ) {
         e.preventDefault();
-        audioStore.resetPlaybackRate();
+        playerStore.resetPlaybackRate();
         uiStore.showToast?.("播放速度已恢复: 1.00x (原速)", "info");
         return;
       }

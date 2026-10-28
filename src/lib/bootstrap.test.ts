@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   initializePlaylist: vi.fn(),
   initializeEmotions: vi.fn(),
   startWatchdog: vi.fn(),
+  setLoopMode: vi.fn(),
 }));
 
 vi.mock("@/store/audioStore", () => ({
@@ -17,7 +18,9 @@ vi.mock("@/store/audioStore", () => ({
 }));
 
 vi.mock("@/store/playerStore", () => ({
-  usePlayerStore: { getState: () => mocks.playerState },
+  usePlayerStore: {
+    getState: () => ({ ...mocks.playerState, setLoopMode: mocks.setLoopMode }),
+  },
 }));
 
 vi.mock("@/store/queueStore", () => ({
@@ -64,6 +67,7 @@ describe("bootstrapApp playback restoration", () => {
       .mockResolvedValueOnce(undefined);
     mocks.initializeEmotions.mockReset();
     mocks.startWatchdog.mockReset();
+    mocks.setLoopMode.mockReset();
   });
 
   it("does not restore a stale playback snapshot on retry or later calls", async () => {
@@ -71,6 +75,8 @@ describe("bootstrapApp playback restoration", () => {
 
     expect(firstResult).toBe(false);
     expect(mocks.audioState).toMatchObject({ isPlaying: false, currentTime: 25 });
+    // S6-4: 循环模式恢复改走 playerStore 同名 setter（经投影回填 audioStore 镜像）
+    expect(mocks.setLoopMode).toHaveBeenCalledWith("all");
 
     Object.assign(mocks.audioState, { isPlaying: true, currentTime: 42 });
     const secondResult = await bootstrapApp();

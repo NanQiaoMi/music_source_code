@@ -4,6 +4,7 @@ import React, { useCallback } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 import { Volume2, VolumeX, Music2, Maximize2 } from "lucide-react";
 import { NowPlayingHalo } from "@/components/player/NowPlayingHalo";
@@ -34,8 +35,9 @@ export const GlobalPlayerBar: React.FC = () => {
   const currentSong = useAudioStore((state) => state.currentSong);
   const duration = audioDuration || currentSong?.duration || 0;
 
-  const volume = useAudioStore((state) => state.volume);
-  const isMuted = useAudioStore((state) => state.isMuted);
+  // S6-4: 混音字段读 playerStore（isLoading 属后续批次）
+  const volume = usePlayerStore((state) => state.volume);
+  const isMuted = usePlayerStore((state) => state.isMuted);
   const isLoading = useAudioStore((state) => state.isLoading);
 
   const handleTogglePlay = () => {
@@ -43,8 +45,8 @@ export const GlobalPlayerBar: React.FC = () => {
   };
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);
-  const setVolume = useAudioStore((state) => state.setVolume);
-  const toggleMute = useAudioStore((state) => state.toggleMute);
+  const setVolume = usePlayerStore((state) => state.setVolume);
+  const toggleMute = usePlayerStore((state) => state.toggleMute);
 
   const setCurrentView = useUIStore((state) => state.setCurrentView);
   const { isCached } = useNetworkAudioCache();

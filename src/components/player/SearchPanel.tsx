@@ -22,6 +22,7 @@ import { usePlaylistStore } from "@/store/playlistStore";
 import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useSleepTimerStore } from "@/store/sleepTimerStore";
 import { CoverImage } from "@/components/shared/ui/CoverImage";
@@ -248,7 +249,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const nextSong = useAudioStore((state) => state.nextSong);
   const prevSong = useAudioStore((state) => state.prevSong);
-  const setVolume = useAudioStore((state) => state.setVolume);
+  const setVolume = usePlayerStore((state) => state.setVolume);
   const setSleepTimer = useSleepTimerStore((state) => state.setTimer);
 
   const containerRef = useRef<HTMLDivElement>(null);

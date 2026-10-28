@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 import { Volume2, Volume1, VolumeX } from "lucide-react";
@@ -42,11 +43,12 @@ export const FloatingProgressScrubber: React.FC<FloatingProgressScrubberProps> =
   const currentTime = hasPlaybackTarget ? playbackSnapshot.currentTime : storeTime;
   const duration = hasPlaybackTarget ? playbackSnapshot.duration : storeDuration;
   const isPlaying = playbackPhase === "playing";
-  const volume = useAudioStore((state) => state.volume);
-  const isMuted = useAudioStore((state) => state.isMuted);
+  // S6-4: 混音字段读 playerStore
+  const volume = usePlayerStore((state) => state.volume);
+  const isMuted = usePlayerStore((state) => state.isMuted);
   const seekTo = useAudioStore((state) => state.seekTo);
-  const setVolume = useAudioStore((state) => state.setVolume);
-  const toggleMute = useAudioStore((state) => state.toggleMute);
+  const setVolume = usePlayerStore((state) => state.setVolume);
+  const toggleMute = usePlayerStore((state) => state.toggleMute);
 
   // Progress scrubbing states
   const progressBarRef = useRef<HTMLDivElement | null>(null);

@@ -3,8 +3,8 @@
 import React, { useState, useRef, useCallback } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence, useAnimationFrame } from "framer-motion";
-import { useAudioStore, type LoopMode } from "@/store/audioStore";
-import { usePlayerStore } from "@/store/playerStore";
+import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore, type LoopMode } from "@/store/playerStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { Heart, SkipBack, SkipForward, Repeat, Repeat1, Shuffle } from "lucide-react";
 import { FloatingSpeedControl } from "./FloatingSpeedControl";
@@ -429,8 +429,9 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
   };
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);
-  const loopMode = useAudioStore((state) => state.loopMode);
-  const setLoopMode = useAudioStore((state) => state.setLoopMode);
+  // S6-4: 循环模式读 playerStore
+  const loopMode = usePlayerStore((state) => state.loopMode);
+  const setLoopMode = usePlayerStore((state) => state.setLoopMode);
 
   const [isLoopFlipping, setIsLoopFlipping] = useState(false);
   const [isShuffleWobble, setIsShuffleWobble] = useState(false);

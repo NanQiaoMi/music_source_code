@@ -2436,7 +2436,7 @@ function renderFrame(effectCtx: EffectContext): void {
     audioState.currentTime ?? playerState.currentTime ?? effectCtx.musicTime ?? 0;
   const reportedMusicTime = Number.isFinite(reportedCandidate) ? Math.max(0, reportedCandidate) : 0;
   const isPlaying = audioState.isPlaying ?? playerState.isPlaying ?? false;
-  const playbackRate = audioState.playbackRate ?? playerState.playbackRate ?? 1;
+  const playbackRate = playerState.playbackRate ?? 1;
 
   if (state.songId !== songId) {
     resetRuntimeForSong(state, songId, lyricsText, translationLyricsText, songDuration);

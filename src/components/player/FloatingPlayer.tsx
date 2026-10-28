@@ -27,9 +27,10 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
   const _isPlaying = audioIsPlaying || playerIsPlaying;
 
   const _setIsPlaying = useAudioStore((state) => state.setIsPlaying);
-  const volume = useAudioStore((state) => state.volume);
-  const setVolume = useAudioStore((state) => state.setVolume);
-  const toggleMute = useAudioStore((state) => state.toggleMute);
+  // S6-4: 混音字段读 playerStore
+  const volume = usePlayerStore((state) => state.volume);
+  const setVolume = usePlayerStore((state) => state.setVolume);
+  const toggleMute = usePlayerStore((state) => state.toggleMute);
   const setCurrentView = useUIStore((state) => state.setCurrentView);
 
   // 物理拖拽坐标管理 (默认停留在左侧中段舒适区 left: 28, top: 280)

@@ -8,6 +8,7 @@ import { FloatingProgressScrubber } from "./FloatingProgressScrubber";
 import { FloatingExpandedState } from "./FloatingExpandedState";
 import { FloatingDebugHUD } from "./FloatingDebugHUD";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import { useUIStore } from "@/store/uiStore";
 
@@ -219,6 +220,8 @@ describe("Floating Player Audio & Touch Modules", () => {
         muteBtn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       });
 
+      // S6-4: 消费方写 playerStore；audioStore 兼容投影同步，旧读点行为不变
+      expect(usePlayerStore.getState().isMuted).toBe(true);
       expect(useAudioStore.getState().isMuted).toBe(true);
     });
   });

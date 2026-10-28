@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Gauge, RotateCcw, Minus, Plus } from "lucide-react";
-import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 
@@ -23,12 +22,11 @@ export const FloatingSpeedControl: React.FC<FloatingSpeedControlProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const audioPlaybackRate = useAudioStore((state) => state.playbackRate);
-  const playerPlaybackRate = usePlayerStore((state) => state.playbackRate);
-  const playbackRate = audioPlaybackRate || playerPlaybackRate || 1.0;
+  // S6-4: 倍速读 playerStore（audioStore 同名字段仅为兼容投影）
+  const playbackRate = usePlayerStore((state) => state.playbackRate) || 1.0;
 
-  const setAudioPlaybackRate = useAudioStore((state) => state.setPlaybackRate);
-  const resetPlaybackRate = useAudioStore((state) => state.resetPlaybackRate);
+  const setPlaybackRate = usePlayerStore((state) => state.setPlaybackRate);
+  const resetPlaybackRate = usePlayerStore((state) => state.resetPlaybackRate);
   const showToast = useUIStore((state) => state.showToast);
 
   const isCustomSpeed = Math.abs(playbackRate - 1.0) > 0.01;
@@ -59,20 +57,20 @@ export const FloatingSpeedControl: React.FC<FloatingSpeedControlProps> = ({
 
   const handleSelectSpeed = useCallback(
     (speed: number) => {
-      setAudioPlaybackRate(speed);
+      setPlaybackRate(speed);
       showToast?.(`播放速度: ${speed.toFixed(2)}x`, "info", 1800);
     },
-    [setAudioPlaybackRate, showToast]
+    [setPlaybackRate, showToast]
   );
 
   const handleStepSpeed = useCallback(
     (delta: number) => {
-      const current = useAudioStore.getState().playbackRate || 1.0;
+      const current = usePlayerStore.getState().playbackRate || 1.0;
       const next = Math.max(0.5, Math.min(2.0, Math.round((current + delta) * 100) / 100));
-      setAudioPlaybackRate(next);
+      setPlaybackRate(next);
       showToast?.(`播放速度: ${next.toFixed(2)}x`, "info", 1500);
     },
-    [setAudioPlaybackRate, showToast]
+    [setPlaybackRate, showToast]
   );
 
   const handleReset = useCallback(
@@ -267,7 +265,7 @@ export const FloatingSpeedControl: React.FC<FloatingSpeedControlProps> = ({
                     data-testid="speed-slider"
                     onChange={(e) => {
                       const val = parseFloat(e.target.value);
-                      setAudioPlaybackRate(val);
+                      setPlaybackRate(val);
                     }}
                     className="w-full h-5 appearance-none bg-transparent cursor-pointer z-10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_2px_6px_rgba(0,0,0,0.4),0_0_0_2px_rgba(41,151,255,0.7)] [&::-webkit-slider-thumb]:hover:scale-115 [&::-webkit-slider-thumb]:active:scale-95 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-[0_2px_6px_rgba(0,0,0,0.4),0_0_0_2px_rgba(41,151,255,0.7)]"
                   />
@@ -293,7 +291,7 @@ export const FloatingSpeedControl: React.FC<FloatingSpeedControlProps> = ({
                       ? "text-[#2997ff] font-medium"
                       : "hover:text-white/70"
                   }`}
-                  onClick={() => setAudioPlaybackRate(1.0)}
+                  onClick={() => setPlaybackRate(1.0)}
                   title="点击设为 1.00x 原速"
                 >
                   1.00x 原速

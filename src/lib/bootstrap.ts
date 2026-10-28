@@ -61,9 +61,10 @@ async function runBootstrap(): Promise<boolean> {
         console.log(`[Bootstrap] 📋 已恢复上次播放队列: ${restoredQueue.length} 首歌曲`);
       }
 
+      // S6-4: loopMode 归 playerStore；同名 setter 触发兼容投影，保持 audioStore 镜像一致
       const restoredLoopMode = usePlayerStore.getState().loopMode;
       if (restoredLoopMode) {
-        useAudioStore.setState({ loopMode: restoredLoopMode });
+        usePlayerStore.getState().setLoopMode(restoredLoopMode);
         console.log(`[Bootstrap] 🔁 已恢复播放循环模式: ${restoredLoopMode}`);
       }
 
