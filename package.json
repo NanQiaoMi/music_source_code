@@ -37,6 +37,7 @@
     "perf:check-bundle": "node scripts/perf/check-bundle-markers.mjs",
     "perf:gates": "node scripts/check-store-budgets.mjs && node scripts/perf/report-store-stats.mjs --max-whole 10 && node scripts/perf/check-bundle-markers.mjs --skip-if-missing",
     "perf:bundle:diff": "node scripts/perf/bundle-diff.mjs",
+    "release:dry-run": "node scripts/release-dry-run.mjs",
     "verify:filesize": "node scripts/check-store-budgets.mjs",
     "verify:docs": "node scripts/check-docs-facts.mjs",
     "prepare": "husky"

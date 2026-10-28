@@ -270,6 +270,8 @@ git push origin v0.3.0
 - [ ] 新增功能文档已更新
 - [ ] 数据格式兼容性检查
 
+> 完整清单（版本/CHANGELOG、完整验证命令、桌面就绪门禁、`/` 与 `/data-manager` 冒烟、回滚与发布后监控）见 [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md)。
+
 ---
 
 ## 附录: 快速参考命令
