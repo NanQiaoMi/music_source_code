@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "nextDir": ".next",
+  "initialFiles": [
+    {
+      "rel": "static\\chunks\\webpack-5bbaf3f22ca230d1.js",
+      "sources": [
+        "rootMain",
+        "/",
+        "/data-manager"
+      ]
+    },
+    {
+      "rel": "static\\chunks\\vendor-core-b3eae9fcd88eb040.js",
+      "sources": [
+        "rootMain",
+        "/",
+        "/data-manager"
+      ]
+    },
+    {
+      "rel": "static\\chunks\\main-app-ed48a51d575a54a6.js",
+      "sources": [
+        "rootMain",
+        "/",
+        "/data-manager"
+      ]
+    },
+    {
+      "rel": "static\\chunks\\vendor-ui-d5dc0ef2530deddb.js",
+      "sources": [
+        "/",
+        "/data-manager"
+      ]
+    },
+    {
+      "rel": "static\\chunks\\app\\layout-08c823bbe56905ae.js",
+      "sources": [
+        "/",
+        "/data-manager"
+      ]
+    },
+    {
+      "rel": "static\\chunks\\framework-ad7688f54799048b.js",
+      "sources": [
+        "/"
+      ]
+    },
+    {
+      "rel": "static\\chunks\\app\\page-c8a9d7c786d5d96b.js",
+      "sources": [
+        "/"
+      ]
+    },
+    {
+      "rel": "static\\chunks\\polyfills-42372ed130431b0a.js",
+      "sources": [
+        "/",
+        "/data-manager"
+      ]
+    },
+    {
+      "rel": "static\\chunks\\app\\data-manager\\page-0229e0b85d885b48.js",
+      "sources": [
+        "/data-manager"
+      ]
+    }
+  ],
+  "violations": [],
+  "missing": []
+}

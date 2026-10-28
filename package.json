@@ -32,6 +32,7 @@
     "prebuild": "node scripts/sync-mediapipe-assets.mjs --optional",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
+    "perf:check-bundle": "node scripts/perf/check-bundle-markers.mjs",
     "prepare": "husky"
   },
   "dependencies": {
