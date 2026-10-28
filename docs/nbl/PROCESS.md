@@ -294,3 +294,5 @@ npm run build
 ```
 
 Existing feature iterations should run `docs/nbl/checklists/existing-feature-release-checklist.md` before handoff.
+
+长期（跨季度）事项不在当前迭代排期内，统一记录在 [BACKLOG.md](./BACKLOG.md)：每行含可测量的触发条件、优先级与 owner；每季度第一周评审一次，未触发须写原因并顺延。

@@ -14,6 +14,7 @@
 | 系统架构           | `docs/nbl/ARCHITECTURE.md`     |
 | 项目交接文档       | `docs/nbl/HANDOVER.md`         |
 | 架构/性能优化计划  | `docs/nbl/plans/2026-10-21-architecture-performance-optimization.md` |
+| 长期 backlog（跨季度） | `docs/nbl/BACKLOG.md`      |
 | 当前迭代实施计划   | `docs/nbl/plans/` 目录         |
 | 技术设计方案       | `docs/nbl/specs/` 目录         |
 | 设计系统           | `DESIGN.md`                    |

@@ -128,6 +128,10 @@ Remaining architecture risks: `audioStore`/`uiStore` are still broad dependency 
 - Reduce noisy Vitest output only when the warning is not useful for real failure diagnosis.
 - Keep active docs readable and evidence-based; archived docs can retain historical context, but active roadmap/changelog/plan index should not contain corrupted text.
 
+## Long-Term Backlog
+
+Items that are not scheduled in the current iteration but must stay tracked live in [docs/nbl/BACKLOG.md](BACKLOG.md). Each row carries a measurable trigger condition, a priority, an owner placeholder and links back to the plan section that introduced it. Review it in the first week of each quarter.
+
 ## Historical Baseline Summary
 
 The original 2026-05-10 roadmap described five broad phases: infrastructure/process setup, store decoupling, P0 feature reality checks, P1 feature enhancement, and architecture/test/UX polish. Its raw lower section was damaged by encoding corruption, so the active guidance above replaces it while retaining the useful intent: stabilize runtime first, preserve user data formats, improve real user paths, and reduce code-health debt incrementally.

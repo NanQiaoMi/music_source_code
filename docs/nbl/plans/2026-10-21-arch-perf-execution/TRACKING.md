@@ -17,8 +17,8 @@
 | S5 渲染运行时 | 7 | 7 | 17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped | in_progress（S5-1..S5-7 done；M5 出口门待 rAF 收敛与真机 90fps 证据） |
 | S6 状态架构收敛 | 12 | 5 | 28 | 44/44 key 注册；store 无环；audioStore <400 行 | in_progress（S6-1/S6-2/S6-3/S6-4/S6-11 done；S6-5..S6-10/S6-12 待） |
 | S7 服务与平台边界 | 9 | 0 | 19 | 桌面本地运行时闭环；插件隔离；2h soak 达标 | pending |
-| S8 门禁与长期治理 | 6 | 4 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | in_progress（S8-1/S8-2/S8-4/S8-5 done；S8-3/S8-6 待） |
-| **合计** | **74** | **38** | **约 129** | — | in_progress |
+| S8 门禁与长期治理 | 6 | 5 | ~12 | CI 完整门禁；覆盖率/包体/性能回归生效 | in_progress（S8-1/S8-2/S8-4/S8-5/S8-6 done；S8-3 待） |
+| **合计** | **74** | **39** | **约 129** | — | in_progress |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -138,7 +138,7 @@
 - [ ] S8-3 性能回归套件（bundle diff/nightly/soak/看板）— **S8-3a 完成（2026-10-29，dba8e6e）**：新增 `scripts/perf/bundle-diff.mjs`（baseline vs report markdown 表 + gzip 阈值：rootMain +5KB / first-load +10KB，可覆盖；`--json/--md/--update/--baseline/--report`；exit 0/1/2；只显式 rebaseline），fixture 4 用例（pass/regression/missing/--update 棘轮）；`perf:bundle:diff` npm 脚本；新增 `.github/workflows/nightly.yml`（cron 18:00 UTC + dispatch：build→bundle report→全量 vitest→diff→summary→上传 artifact）；重建 `perf/bundle-baseline.json`（rootMain 3 files/689.3KB raw/211KB gzip；first load 8 scripts/1959.8KB raw/607.2KB gzip；CSS 29KB gzip）并从新 baseline 跑 diff PASS（全 0）；README §8 + CI.md §6。验证：4/4 diff 测试、26/26 scripts/perf tests、tsc/lint/docs-facts/build 全绿。**S8-3b（3b7c9b8）**：新增 `scripts/perf/append-history.mjs`（bundle report + 可选 metrics → perf-history.jsonl；ts/commit/rootMainGzip/firstLoadGzip/css/asyncMax/publicMB；--init/--check 校验 schema 与严格递增 ts，重复/回退 exit 1）、`perf-dashboard.mjs`（最近 14 行 markdown + 箭头/回归高亮，空历史占位）、共享 `perf-history-lib.mjs`、nightly 接线（条件 audio-metrics→append→dashboard→summary/artifact）、npm `perf:history:append`/`perf:dashboard`、README §9/CI.md §6；fixture 4 用例 + scripts/perf 30/30；全量 259 files/1605 tests；tsc/lint/docs-facts 0。**未验收（连续 4 周）**：history 为 artifact 级（nightly clean checkout 只追加 1 行，不跨 run 累积；≥28 行需 S8-3d commit-back/contents:write 授权）；无真实 audio-metrics 生产者（仅浏览器 recipe）/runtime FPS/heap；2h soak 未做；阈值仅 gzip，绝对 hardMax `--check` 仍禁用（maxAsyncChunk 683.5/public 58.4 既有违规）；nightly 全量测试继承 visualRuntime p95 flake 风险。分支 `feature/arch-perf-s8-3`（未合并）。
 - [x] S8-4 文档事实流水线（check-docs-facts + 季度对账）— **done（2026-10-29，6300fe8）**：CI `verify` job 已有 `Docs facts` step（`node scripts/check-docs-facts.mjs`）；修复 stale 文档数字（AGENTS.md/ARCHITECTURE.md 60/44 → 59/43，与 report-store-stats 一致）；`node scripts/check-docs-facts.mjs` → **fail=0 warn=0**；新增本地脚本 `npm run verify:docs` 与 CI 对齐。季度对账为流程约定（每次发版/季度执行），无代码门禁。分支 `feature/arch-perf-s6-12b`（未合并）。
 - [x] S8-5 发布检查清单与演练 — **done（2026-10-29，b33c8ce）**：新增 `docs/nbl/RELEASE-CHECKLIST.md`（163 行，10 章：快速演练/版本 CHANGELOG/自动化验证表/桌面就绪门禁/烟雾测试/tag 发布/回滚/24-72h 监控/R1-R14 覆盖缺口）；`scripts/release-dry-run.mjs`（安全子集 tsc+docs-facts+perf:gates；build 默认 SKIP，`--build/--skip-build/--json/--check-only`；PASS/FAIL/SKIP 表；失败 exit 1、非法参数 exit 2）+ `release:dry-run` npm 脚本 + 9 fixture 测试；PROCESS §7.3 链接。验证：全量 258 files/1601 tests；tsc/lint/docs-facts 0；`release:dry-run --skip-build` 3 PASS/1 SKIP exit 0；失败路径 exit 1。缺口（清单 §8 已记）：无 release.yml（S8-5b）、桌面打包仍被 S7-4 决策冻结、bundle diff 需 build 后手动、README 不存在未更新索引。分支 `feature/arch-perf-s8-5`（未合并）。
-- [ ] S8-6 长期 backlog（features 领域化/14 效果插件化/4K/低端/E2E/OPFS）— owner: — | 类型: 长期 | 依赖: 全部 | 验收: 已排期+触发条件
+- [x] S8-6 长期 backlog（features 领域化/14 效果插件化/4K/低端/E2E/OPFS）— **done（2026-10-29，feature/arch-perf-s8-6，父 f2104b0）**：新增 `docs/nbl/BACKLOG.md`（12 项：计划 L1-L10 + S4 计划显式登记的字体 self-host（S4-1 Q4-2）/两路由 entry 拆分（S4-2 §5.3）；每行 = id / 事项 / 理由 / 可测量触发条件 / 优先级 P1-P3 / owner 占位 TBD / 计划链接；含 6 步季度评审流程与连续 2 季度未触发归档规则）。落地路径与计划写的 `docs/nbl/quality/backlog.md` 不同（放 `docs/nbl/` 便于 ROADMAP/PROCESS/AGENTS 索引），内容与验收口径不变。新增 `scripts/docs-backlog.test.mjs` 8 用例（表头 7 列 + ≥10 行、L1-L10 覆盖与 id 唯一、触发条件非占位且含数字/比较符、理由/优先级/owner、12 个必需要素 token 落在表行内、计划链接文件存在、季度流程含归档、ROADMAP/PROCESS 反链）。新增 ROADMAP「Long-Term Backlog」段、PROCESS 末尾季度指针、AGENTS 快速定位行。验收：全量 vitest / tsc / lint 绿。**缺口**：不新增 CI 步骤（随全量 vitest 跑）；季度报告 `docs/nbl/quality/quarterly-YYYY-QN.md` 仅约定路径未建目录；L 项本身均未启动。 | 类型: 长期 | 依赖: 全部 | 验收: 已排期+触发条件
 
 ---
 
@@ -158,4 +158,5 @@
 | 2026-10-21 | 创建看板 | 74 任务全部 pending；阶段出口门与阻塞项登记 |
 | 2026-10-27 | S0-1 done | Q01-A checkpoint 分支/提交 2b99173；工作树干净；tsc/vitest/eslint/build 基线复测通过 |
 | 2026-10-27 | S0-3 done / S0-5 GC | 84305f6（端口/门禁/测试）；隔离 worktree `next start -p 3026` 的 `/` 与 `/data-manager` 均 200；195d996 + Q22 后 worktrees 25→6（19 removed，5 dirty skipped） |
+| 2026-10-29 | S8-6 done | 新增 docs/nbl/BACKLOG.md（L1-L12，触发条件可测量）+ scripts/docs-backlog.test.mjs 8 用例；ROADMAP/PROCESS/AGENTS 加入口链接 |
 | 2026-10-27 | S1-2 done | feature/arch-perf-s1-2a @ 825e109(2a)+5862795(2b)，已 rebase 到 1c3f1a1：v5 schema/v4 migration/atomic restore/rehydrate/leak fixes + 面板报告/unsupported/reload；204 files/1272 tests 绿；PR 待 |
