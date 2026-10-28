@@ -1,7 +1,16 @@
+/**
+ * S6-6a：UI 域拆分第一步。toast 状态（toasts/showToast/removeToast）已迁到
+ * ./toastStore，本文件只保留 deprecated 兼容转发器（78 处调用点暂不改）。
+ * 读取 toasts 请直接用 useToastStore：uiStore 不再持有该状态，
+ * 否则 persist 会在每次 toast 变更时写一次 localStorage。
+ */
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { createSafeStorage } from "@/lib/storage/safeStorage";
 import { ThemeColors, defaultColors } from "@/utils/colorExtractor";
+import { useToastStore, type ToastMessage } from "@/store/toastStore";
+
+export type { ToastMessage };
 
 type ViewType = "home" | "player" | "visualization" | "emotion";
 type ThemeMode = "light" | "dark" | "auto";
@@ -114,13 +123,6 @@ function createDefaultPanels(): Record<PanelName, boolean> {
   return Object.fromEntries(PANEL_NAMES.map((name) => [name, false])) as Record<PanelName, boolean>;
 }
 
-export interface ToastMessage {
-  id: string;
-  message: string;
-  type: "success" | "error" | "info" | "warning";
-  duration?: number;
-}
-
 interface UIState {
   currentView: ViewType;
   themeMode: ThemeMode;
@@ -149,8 +151,12 @@ interface UIState {
   isLyricSettingsOpen: boolean;
   setIsLyricSettingsOpen: (isOpen: boolean) => void;
 
-  toasts: ToastMessage[];
+  /**
+   * @deprecated since S6-6a. Toast 状态已迁到 @/store/toastStore（useToastStore）。
+   * 这里只做转发，uiStore 不再持有 toasts；Removal: 下一 minor 版本。
+   */
   showToast: (message: string, type?: ToastMessage["type"], duration?: number) => void;
+  /** @deprecated since S6-6a. 用 useToastStore.getState().dismissToast(id)。 */
   removeToast: (id: string) => void;
 
   isEQOpen: boolean;
@@ -275,24 +281,10 @@ export const useUIStore = create<UIState>()(
       isLyricSettingsOpen: false,
       setIsLyricSettingsOpen: (isOpen) => set({ isLyricSettingsOpen: isOpen }),
 
-      toasts: [],
-      showToast: (message, type = "info", duration = 3000) => {
-        const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        set((state) => ({
-          toasts: [...state.toasts, { id, message, type, duration }],
-        }));
-
-        if (duration > 0) {
-          setTimeout(() => {
-            get().removeToast(id);
-          }, duration);
-        }
-      },
-      removeToast: (id) => {
-        set((state) => ({
-          toasts: state.toasts.filter((toast) => toast.id !== id),
-        }));
-      },
+      // S6-6a：toast 域已迁出（./toastStore），这两个动作只做转发，不再写 uiStore 状态。
+      showToast: (message, type = "info", duration) =>
+        useToastStore.getState().showToast(message, type, duration),
+      removeToast: (id) => useToastStore.getState().dismissToast(id),
 
       isEQOpen: false,
       setIsEQOpen: (isOpen) => set({ isEQOpen: isOpen }),

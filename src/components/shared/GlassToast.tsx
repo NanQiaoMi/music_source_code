@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUIStore, ToastMessage } from "@/store/uiStore";
+import { useToastStore, type ToastMessage } from "@/store/toastStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { CheckCircle2, XCircle, AlertTriangle, X, Sparkles, Music } from "lucide-react";
 
@@ -137,7 +137,7 @@ const ToastLeadingElement: React.FC<{
 };
 
 const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
-  const removeToast = useUIStore((state) => state.removeToast);
+  const dismissToast = useToastStore((state) => state.dismissToast);
   // S6-4: 身份字段 currentSong 只订阅 playerStore 一处（hook 数量恒定）
   const currentSong = usePlayerStore((state) => state.currentSong);
 
@@ -196,7 +196,7 @@ const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
       {/* 极简关闭按钮 */}
       <button
         type="button"
-        onClick={() => removeToast(toast.id)}
+        onClick={() => dismissToast(toast.id)}
         className="w-4 h-4 rounded-full hover:bg-white/10 flex items-center justify-center text-white/30 hover:text-white/80 transition-colors cursor-pointer shrink-0"
         title="关闭通知"
       >
@@ -220,7 +220,7 @@ const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
 };
 
 export const GlassToastContainer: React.FC = () => {
-  const toasts = useUIStore((state) => state.toasts);
+  const toasts = useToastStore((state) => state.toasts);
 
   return (
     <div className="fixed top-3.5 left-1/2 -translate-x-1/2 z-[999999] space-y-2 pointer-events-none flex flex-col items-center">
@@ -238,7 +238,7 @@ export { toast } from "@/store/actions/uiActions";
 
 // Hook 版本的 Toast
 export const useGlassToast = () => {
-  const showToast = useUIStore((state) => state.showToast);
+  const showToast = useToastStore((state) => state.showToast);
   return {
     showToast: (
       message: string,

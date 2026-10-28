@@ -5,6 +5,7 @@ import { useAIStore } from "@/store/aiStore";
 import { useEmotionStore } from "@/store/emotionStore";
 import { useKnowledgeStore } from "@/store/knowledgeStore";
 import { useUIStore } from "@/store/uiStore";
+import { useToastStore } from "@/store/toastStore";
 
 vi.mock("framer-motion", async () => {
   const React = await import("react");
@@ -57,6 +58,7 @@ const initialAIState = useAIStore.getInitialState();
 const initialEmotionState = useEmotionStore.getInitialState();
 const initialKnowledgeState = useKnowledgeStore.getInitialState();
 const initialUIState = useUIStore.getInitialState();
+const initialToastState = useToastStore.getState();
 
 describe("DNAJournal", () => {
   let container: HTMLDivElement;
@@ -67,6 +69,7 @@ describe("DNAJournal", () => {
     useEmotionStore.setState(initialEmotionState, true);
     useKnowledgeStore.setState(initialKnowledgeState, true);
     useUIStore.setState(initialUIState, true);
+    useToastStore.setState(initialToastState, true);
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -101,7 +104,7 @@ describe("DNAJournal", () => {
       generateButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const toasts = useUIStore.getState().toasts;
+    const toasts = useToastStore.getState().toasts;
     expect(toasts[toasts.length - 1]).toMatchObject({
       message: "AI 功能已暂停",
       type: "warning",

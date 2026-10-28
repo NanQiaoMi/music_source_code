@@ -9,6 +9,7 @@ import { usePlayerStore } from "@/store/playerStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
+import { useToastStore } from "@/store/toastStore";
 import type { Song } from "@/types/song";
 type MockImageProps = ImgHTMLAttributes<HTMLImageElement> & {
   fill?: boolean;
@@ -88,6 +89,7 @@ const audioInitialState = useAudioStore.getInitialState();
 const playerInitialState = usePlayerStore.getInitialState();
 const queueInitialState = useQueueStore.getInitialState();
 const uiInitialState = useUIStore.getInitialState();
+const toastInitialState = useToastStore.getState();
 
 function demoSong(): Song {
   return {
@@ -113,6 +115,7 @@ describe("MusicCardStack", () => {
     usePlayerStore.setState(playerInitialState, true);
     useQueueStore.setState(queueInitialState, true);
     useUIStore.setState(uiInitialState, true);
+    useToastStore.setState(toastInitialState, true);
     usePlaylistStore.setState({ songs: [demoSong()], filteredSongs: [demoSong()] });
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -147,7 +150,7 @@ describe("MusicCardStack", () => {
     expect(usePlayerStore.getState().currentSong).toBeNull();
     expect(useAudioStore.getState().isPlaying).toBe(false);
     expect(useQueueStore.getState().queue).toEqual([]);
-    expect(useUIStore.getState().toasts.at(-1)).toMatchObject({
+    expect(useToastStore.getState().toasts.at(-1)).toMatchObject({
       type: "warning",
       message: "这首示例歌曲没有音频文件，请先到数据管理页导入本地音乐。",
     });

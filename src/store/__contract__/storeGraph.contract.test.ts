@@ -7,8 +7,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const STORE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-/** 2026-10-29 snapshot: 21 runtime edges (S6-12a removed playlistStore -> audioStore). */
-const EDGE_BUDGET = 21;
+/** 2026-10-29 snapshot: 22 runtime edges (S6-6a adds uiStore -> toastStore facade). */
+const EDGE_BUDGET = 22;
 
 /** Documented reason for every runtime edge; a new edge must add an entry (and lower the budget). */
 const RUNTIME_EDGE_REASONS: Readonly<Record<string, string>> = {
@@ -32,6 +32,7 @@ const RUNTIME_EDGE_REASONS: Readonly<Record<string, string>> = {
   "useAIAgentStore -> favoritesStore": "Agent 管理收藏",
   "useAIAgentStore -> playerStore": "Agent 读取当前曲目",
   "useAIAgentStore -> uiStore": "Agent 打开面板",
+  "uiStore -> toastStore": "S6-6a toast 兼容 facade 转发到唯一 owner",
   "useAIAgentStore -> useOfflineDownloadStore": "Agent 触发离线下载",
 };
 

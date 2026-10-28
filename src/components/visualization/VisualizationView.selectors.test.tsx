@@ -77,6 +77,7 @@ import { NebulaFieldPlugin } from "./effects/nebulaFieldPlugin";
 import { SpatialMeshPlugin } from "./effects/spatialMeshPlugin";
 import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
+import { useToastStore } from "@/store/toastStore";
 import { useVisualizationStore } from "@/store/visualizationStore";
 import type { EffectSettings, VisualizationEffect } from "@/store/visualizationStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
@@ -85,12 +86,14 @@ import { visualRuntime, type VisualQualityProfile } from "@/runtime/visualRuntim
 
 const initialAudioState = useAudioStore.getState();
 const initialUIState = useUIStore.getState();
+const initialToastState = useToastStore.getState();
 const initialVisualizationState = useVisualizationStore.getState();
 const initialVisualSettingsState = useVisualSettingsStore.getState();
 
 function resetStores() {
   useAudioStore.setState(initialAudioState, true);
   useUIStore.setState(initialUIState, true);
+  useToastStore.setState(initialToastState, true);
   useVisualizationStore.setState(initialVisualizationState, true);
   useVisualSettingsStore.setState(initialVisualSettingsState, true);
 }
@@ -173,7 +176,7 @@ describe("VisualizationView selector 隔离", () => {
       useAudioStore.setState({ duration: 240, bufferedRanges: [{ start: 0, end: 120 }] });
     });
     await act(async () => {
-      useUIStore.setState({ toasts: [{ id: "t1", message: "hi", type: "info" }] });
+      useToastStore.setState({ toasts: [{ id: "t1", message: "hi", type: "info" }] });
     });
     await act(async () => {
       useVisualSettingsStore.setState({ currentTheme: "light" });

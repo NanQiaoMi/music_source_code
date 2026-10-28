@@ -105,42 +105,7 @@ describe("uiStore", () => {
     expect(useUIStore.getState().isKeyboardShortcutsOpen).toBe(true);
   });
 
-  it("adds and removes toast messages deterministically", () => {
-    vi.useFakeTimers();
-    vi.spyOn(Date, "now").mockReturnValue(12345);
-    vi.spyOn(Math, "random").mockReturnValue(0.123456789);
-
-    const store = useUIStore.getState();
-    store.showToast("Saved", "success", 5000);
-
-    expect(useUIStore.getState().toasts).toHaveLength(1);
-    expect(useUIStore.getState().toasts[0]).toMatchObject({
-      message: "Saved",
-      type: "success",
-      duration: 5000,
-    });
-
-    const [{ id }] = useUIStore.getState().toasts;
-    useUIStore.getState().removeToast(id);
-
-    expect(useUIStore.getState().toasts).toEqual([]);
-  });
-
-  it("auto-removes toast messages after their duration", () => {
-    vi.useFakeTimers();
-    vi.spyOn(Date, "now").mockReturnValue(67890);
-    vi.spyOn(Math, "random").mockReturnValue(0.987654321);
-
-    useUIStore.getState().showToast("Auto hide", "info", 3000);
-
-    expect(useUIStore.getState().toasts).toHaveLength(1);
-
-    vi.advanceTimersByTime(2999);
-    expect(useUIStore.getState().toasts).toHaveLength(1);
-
-    vi.advanceTimersByTime(1);
-    expect(useUIStore.getState().toasts).toEqual([]);
-  });
+  // S6-6a：toast 用例已迁到 toastStore.test.ts / uiStore.facade.test.ts。
 
   it("toggles theme between dark and light", () => {
     const store = useUIStore.getState();

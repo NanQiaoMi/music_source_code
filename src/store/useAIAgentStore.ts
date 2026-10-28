@@ -9,6 +9,7 @@ import { usePlayerStore } from "./playerStore";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { useOfflineDownloadStore } from "./useOfflineDownloadStore";
 import { useUIStore } from "./uiStore";
+import { toast } from "@/store/actions/uiActions";
 import { useEmotionStore } from "./emotionStore";
 import { useFavoritesStore } from "./favoritesStore";
 import { runAgentConversation, MusicPlaybackContext } from "@/services/aiAgentService";
@@ -469,12 +470,10 @@ export const useAIAgentStore = create<AIAgentState>()(
               }
             },
             onFallback: (fromConfig, toConfig) => {
-              useUIStore
-                .getState()
-                .showToast?.(
-                  `⚠️ [${fromConfig.name}] 受限，已自动无感切换至 [${toConfig.name}] 继续检索`,
-                  "info"
-                );
+              // S6-6a：toast 事实由 toastStore 持有，store 侧统一走动作层（与 aiStore 一致）。
+              toast.info(
+                `⚠️ [${fromConfig.name}] 受限，已自动无感切换至 [${toConfig.name}] 继续检索`
+              );
             },
             abortSignal: currentAbortController.signal,
           });
