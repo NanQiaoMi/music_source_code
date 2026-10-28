@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { memo, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -25,6 +25,8 @@ import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useSleepTimerStore } from "@/store/sleepTimerStore";
 import { CoverImage } from "@/components/shared/ui/CoverImage";
+import { VirtualList, type VirtualListHandle } from "@/components/shared/Glass/VirtualList";
+import { featureFlags } from "@/lib/perf/featureFlags";
 import { parseSearchCommand } from "@/lib/search/commandRouter";
 import { executeSearchCommand } from "@/lib/search/commandExecutor";
 import { Settings2, Sliders, Check } from "lucide-react";
@@ -114,6 +116,93 @@ const getSourceBadge = (source?: string) => {
   }
 };
 
+// Row = p-1.5 (12px) + 36px cover = 48px; + 4px gap = 52px item slot (S4-6a).
+const SEARCH_ROW_CONTENT_HEIGHT = 48;
+const SEARCH_RESULT_ROW_HEIGHT = 52;
+const SEARCH_LIST_MAX_HEIGHT = 420;
+
+const formatDuration = (seconds: number): string => {
+  if (isNaN(seconds) || seconds < 0) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
+
+const getResultKey = (song: Song, index: number) =>
+  `${song.source || "src"}-${song.id || "id"}-${index}`;
+
+interface SearchResultRowProps {
+  song: Song;
+  index: number;
+  onPlay: (song: Song) => void;
+  onAddNext: (e: React.MouseEvent, song: Song) => void;
+  onAddToQueue: (e: React.MouseEvent, song: Song) => void;
+}
+
+/** One search result row; memoized so scrolling only renders the visible window (S4-6a). */
+const SearchResultRow = memo(function SearchResultRow({
+  song,
+  index,
+  onPlay,
+  onAddNext,
+  onAddToQueue,
+}: SearchResultRowProps) {
+  return (
+    <div
+      data-search-index={index}
+      onClick={() => onPlay(song)}
+      style={{ height: SEARCH_ROW_CONTENT_HEIGHT }}
+      className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors group"
+    >
+      <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-white/5">
+        <CoverImage
+          src={song.cover}
+          alt={song.title}
+          fill
+          size="sm"
+          sizes="36px"
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+          <Play className="w-4 h-4 text-white fill-white" />
+        </div>
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium text-white truncate">{song.title}</span>
+          {getSourceBadge(song.source)}
+        </div>
+        <div className="text-[11px] text-white/50 truncate mt-0.5">
+          {song.artist} {song.album ? `• ${song.album}` : ""}
+        </div>
+      </div>
+
+      <div className="text-[11px] text-white/40 font-mono tabular-nums shrink-0 mr-1">
+        {formatDuration(song.duration)}
+      </div>
+
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <button
+          onClick={(e) => onAddNext(e, song)}
+          className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+          title="下一首播放"
+        >
+          <ListPlus className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={(e) => onAddToQueue(e, song)}
+          className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+          title="添加到队列"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+});
+SearchResultRow.displayName = "SearchResultRow";
+
 export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const query = useSearchStore((state) => state.query);
   const searchType = useSearchStore((state) => state.searchType);
@@ -164,6 +253,7 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const resultListRef = useRef<VirtualListHandle>(null);
   const [isListening, setIsListening] = useState(false);
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null);
   const [_isInputFocused, setIsInputFocused] = useState(false);
@@ -356,6 +446,26 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     [search, setQuery, songs]
   );
 
+  // A new result set starts at the top; the handle is null when the flag is off.
+  // "results" is included so shrinking result sets cannot leave a blank oversized window.
+  useEffect(() => {
+    resultListRef.current?.scrollToTop();
+  }, [query, page, activeSourceTab, results]);
+
+  const renderResultRow = useCallback(
+    (song: Song, index: number) => (
+      <SearchResultRow
+        key={getResultKey(song, index)}
+        song={song}
+        index={index}
+        onPlay={handlePlaySong}
+        onAddNext={handleAddNext}
+        onAddToQueue={handleAddToQueue}
+      />
+    ),
+    [handlePlaySong, handleAddNext, handleAddToQueue]
+  );
+
   const _handleHistoryClick = useCallback(
     (historyQuery: string) => {
       setQuery(historyQuery);
@@ -363,13 +473,6 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     },
     [search, setQuery, songs]
   );
-
-  const formatDuration = (seconds: number): string => {
-    if (isNaN(seconds) || seconds < 0) return "0:00";
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
 
   const runCommand = useCallback(
     (commandText: string) => {
@@ -786,62 +889,28 @@ export function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                           播放全部
                         </button>
                       </div>
-                      <div className="space-y-1">
-                        {results.map((song, idx) => (
-                          <div
-                            key={`${song.source || "src"}-${song.id || "id"}-${idx}`}
-                            onClick={() => handlePlaySong(song)}
-                            className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors group"
-                          >
-                            <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-white/5">
-                              <CoverImage
-                                src={song.cover}
-                                alt={song.title}
-                                fill
-                                size="sm"
-                                sizes="36px"
-                                className="object-cover"
-                              />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                <Play className="w-4 h-4 text-white fill-white" />
-                              </div>
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-medium text-white truncate">
-                                  {song.title}
-                                </span>
-                                {getSourceBadge(song.source)}
-                              </div>
-                              <div className="text-[11px] text-white/50 truncate mt-0.5">
-                                {song.artist} {song.album ? `• ${song.album}` : ""}
-                              </div>
-                            </div>
-
-                            <div className="text-[11px] text-white/40 font-mono tabular-nums shrink-0 mr-1">
-                              {formatDuration(song.duration)}
-                            </div>
-
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                              <button
-                                onClick={(e) => handleAddNext(e, song)}
-                                className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
-                                title="下一首播放"
-                              >
-                                <ListPlus className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={(e) => handleAddToQueue(e, song)}
-                                className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-colors"
-                                title="添加到队列"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      {featureFlags.virtualListSearch ? (
+                        <div
+                          className="shrink-0 max-h-[44vh]"
+                          style={{
+                            height: Math.min(
+                              SEARCH_LIST_MAX_HEIGHT,
+                              results.length * SEARCH_RESULT_ROW_HEIGHT
+                            ),
+                          }}
+                        >
+                          <VirtualList
+                            items={results}
+                            itemHeight={SEARCH_RESULT_ROW_HEIGHT}
+                            handleRef={resultListRef}
+                            getItemKey={getResultKey}
+                            className="h-full custom-scrollbar pr-1"
+                            renderItem={renderResultRow}
+                          />
+                        </div>
+                      ) : (
+                        <div className="space-y-1">{results.map(renderResultRow)}</div>
+                      )}
 
                       {/* Pagination if multiple pages */}
                       {totalPages > 1 && (

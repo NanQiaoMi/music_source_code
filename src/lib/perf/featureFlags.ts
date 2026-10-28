@@ -17,6 +17,8 @@ export const featureFlags = {
   virtualListQueue: readFlag(process.env.NEXT_PUBLIC_VL_QUEUE, true),
   /** S4-6: SearchPanel renders results through VirtualList. */
   virtualListSearch: readFlag(process.env.NEXT_PUBLIC_VL_SEARCH, true),
+  /** S4-6: batch tool song lists render through VirtualList. */
+  virtualListBatch: readFlag(process.env.NEXT_PUBLIC_VL_BATCH, true),
   /** S4-4: unified CoverImage component. */
   coverImageV2: readFlag(process.env.NEXT_PUBLIC_COVER_IMAGE_V2, true),
   /** S5-2/S5-3: shared visual runtime. */

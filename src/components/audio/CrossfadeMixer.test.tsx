@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Song } from "@/types/song";
 
-const songs: Song[] = [
+const baseSongs: Song[] = [
   {
     id: "from-song",
     title: "Intro Track",
@@ -25,6 +25,22 @@ const songs: Song[] = [
     format: "mp3",
   },
 ];
+
+// Mutable so windowing tests can swap in a 500-song library without remocking.
+let songs: Song[] = baseSongs;
+
+const makeSongs = (count: number): Song[] =>
+  Array.from({ length: count }, (_, index) => ({
+    id: "song-" + index,
+    title: "Track " + index,
+    artist: "Artist " + index,
+    duration: 200,
+    source: "local",
+  }));
+
+const VIEWPORT_HEIGHT = 256;
+// Must match CROSSFADE_SONG_ROW_HEIGHT in CrossfadeMixer.tsx (64px row + 8px gap).
+const CROSSFADE_SONG_ROW_HEIGHT = 72;
 
 const mocks = vi.hoisted(() => ({
   renderCrossfadePreview: vi.fn(),
@@ -76,17 +92,30 @@ async function seedPendingCrossfadeTask() {
 }
 
 describe("CrossfadeMixer", () => {
+  let originalClientHeight: PropertyDescriptor | undefined;
+
   beforeEach(async () => {
     localStorage.clear();
     vi.unstubAllGlobals();
     vi.resetModules();
+    songs = baseSongs;
     mocks.renderCrossfadePreview.mockReset();
     mocks.resolveAudioSourceBlob.mockReset();
+    originalClientHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientHeight");
+    Object.defineProperty(HTMLElement.prototype, "clientHeight", {
+      configurable: true,
+      get: () => VIEWPORT_HEIGHT,
+    });
   });
 
   afterEach(() => {
     document.body.innerHTML = "";
     vi.unstubAllGlobals();
+    if (originalClientHeight) {
+      Object.defineProperty(HTMLElement.prototype, "clientHeight", originalClientHeight);
+    } else {
+      Reflect.deleteProperty(HTMLElement.prototype, "clientHeight");
+    }
   });
 
   it("marks queued tasks preview-only when local crossfade rendering is unavailable", async () => {
@@ -145,6 +174,69 @@ describe("CrossfadeMixer", () => {
     expect(task.progress).toBe(100);
     expect(task.outputBlob).toBe(outputBlob);
     expect(useCrossfadeStore.getState().totalProcessed).toBe(1);
+
+    await act(async () => root.unmount());
+  });
+
+  it("renders a bounded DOM window for a 500-song BPM list", async () => {
+    songs = makeSongs(500);
+    const { container, root } = await renderMixer();
+
+    const rows = container.querySelectorAll("[data-crossfade-index]");
+    // 256px / 72px = 4 viewport rows + 5 overscan; the other ~491 rows stay unmounted.
+    expect(rows).toHaveLength(9);
+    expect(rows.length).toBeLessThan(100);
+    expect(container.textContent).toContain("Track 0");
+    expect(container.textContent).not.toContain("Track 400");
+
+    await act(async () => root.unmount());
+  });
+
+  it("renders the correct rows after scrolling the BPM list to the end", async () => {
+    songs = makeSongs(500);
+    const { container, root } = await renderMixer();
+
+    const list = container.querySelector<HTMLElement>("[data-virtual-list]");
+    expect(list).not.toBeNull();
+    list!.scrollTop = 499 * CROSSFADE_SONG_ROW_HEIGHT;
+    await act(async () => {
+      list!.dispatchEvent(new Event("scroll", { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain("Track 499");
+    expect(container.textContent).not.toContain("Track 0");
+    const indices = Array.from(container.querySelectorAll("[data-crossfade-index]")).map((el) =>
+      Number(el.getAttribute("data-crossfade-index"))
+    );
+    expect(indices).toContain(499);
+    expect(Math.min(...indices)).toBeGreaterThan(480);
+
+    await act(async () => root.unmount());
+  });
+
+  it("selects the clicked row at its original index and keeps select-all working", async () => {
+    songs = makeSongs(500);
+    const { container, root } = await renderMixer();
+
+    const row = container.querySelector('[data-crossfade-index="7"]');
+    expect(row).not.toBeNull();
+    await act(async () => {
+      row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.textContent).toMatch(/已选择\s*1\s*首歌曲/);
+    expect(
+      container.querySelector('[data-crossfade-index="7"]')?.getAttribute("data-selected")
+    ).toBe("true");
+
+    const selectAll = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "全选"
+    );
+    expect(selectAll).toBeDefined();
+    await act(async () => {
+      selectAll?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.textContent).toMatch(/已选择\s*500\s*首歌曲/);
 
     await act(async () => root.unmount());
   });

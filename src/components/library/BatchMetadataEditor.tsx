@@ -1,17 +1,69 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { memo, useCallback, useState } from "react";
 import { motion } from "framer-motion";
 import { Edit2, Eye, Plus, Save, Trash2 } from "lucide-react";
 import { BatchEditOperation, useMetadataEditorStore } from "@/store/metadataEditorStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { selectSongs } from "@/store/selectors/playlistSelectors";
+import { CoverImage } from "@/components/shared/ui/CoverImage";
+import { VirtualList } from "@/components/shared/Glass/VirtualList";
+import type { Song } from "@/types/song";
+import { featureFlags } from "@/lib/perf/featureFlags";
 
 type EditType = BatchEditOperation["type"];
 
 interface BatchMetadataEditorProps {
   className?: string;
 }
+
+// Row = p-3 (24px) + 48px cover = 72px; + 8px gap = 80px slot (S4-6b).
+const SONG_ROW_CONTENT_HEIGHT = 72;
+const SONG_ROW_HEIGHT = 80;
+const SONG_LIST_MAX_HEIGHT = 384;
+
+interface SongSelectRowProps {
+  song: Song;
+  index: number;
+  selected: boolean;
+  onToggle: (songId: string) => void;
+}
+
+const SongSelectRow = memo(function SongSelectRow({
+  song,
+  index,
+  selected,
+  onToggle,
+}: SongSelectRowProps) {
+  return (
+    <button
+      type="button"
+      data-song-index={index}
+      data-selected={selected ? "true" : "false"}
+      onClick={() => onToggle(song.id)}
+      style={{ height: SONG_ROW_CONTENT_HEIGHT }}
+      className={`flex w-full items-center gap-3 rounded-xl p-3 transition-all ${
+        selected ? "border border-blue-500/50 bg-blue-500/20" : "bg-white/5 hover:bg-white/10"
+      }`}
+    >
+      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-white/10">
+        <CoverImage
+          src={song.cover}
+          alt={song.title}
+          fill
+          size="md"
+          sizes="48px"
+          className="object-cover"
+        />
+      </div>
+      <div className="flex-1 text-left">
+        <div className="font-medium text-white">{song.title}</div>
+        <div className="text-sm text-white/60">{song.artist}</div>
+      </div>
+    </button>
+  );
+});
+SongSelectRow.displayName = "SongSelectRow";
 
 const EDIT_FIELDS = [
   { value: "artist", label: "Artist" },
@@ -49,19 +101,34 @@ export const BatchMetadataEditor: React.FC<BatchMetadataEditorProps> = ({ classN
   const [searchValue, setSearchValue] = useState("");
   const [regexPattern] = useState("");
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     setSelectedIds(songs.map((song) => song.id));
     setSelectedSongs(songs);
-  };
+  }, [songs, setSelectedSongs]);
 
-  const handleToggleSong = (songId: string) => {
-    const nextSelected = selectedIds.includes(songId)
-      ? selectedIds.filter((id) => id !== songId)
-      : [...selectedIds, songId];
+  const handleToggleSong = useCallback(
+    (songId: string) => {
+      const nextSelected = selectedIds.includes(songId)
+        ? selectedIds.filter((id) => id !== songId)
+        : [...selectedIds, songId];
 
-    setSelectedIds(nextSelected);
-    setSelectedSongs(songs.filter((song) => nextSelected.includes(song.id)));
-  };
+      setSelectedIds(nextSelected);
+      setSelectedSongs(songs.filter((song) => nextSelected.includes(song.id)));
+    },
+    [selectedIds, songs, setSelectedSongs]
+  );
+
+  const renderSongRow = useCallback(
+    (song: Song, index: number) => (
+      <SongSelectRow
+        song={song}
+        index={index}
+        selected={selectedIds.includes(song.id)}
+        onToggle={handleToggleSong}
+      />
+    ),
+    [selectedIds, handleToggleSong]
+  );
 
   const handleAddOperation = () => {
     if (selectedIds.length === 0) return;
@@ -150,37 +217,32 @@ export const BatchMetadataEditor: React.FC<BatchMetadataEditorProps> = ({ classN
               </button>
             </div>
 
-            <div className="max-h-96 min-h-0 space-y-2 overflow-y-auto custom-scrollbar">
-              {songs.map((song) => (
-                <button
-                  key={song.id}
-                  onClick={() => handleToggleSong(song.id)}
-                  className={`flex w-full items-center gap-3 rounded-xl p-3 transition-all ${
-                    selectedIds.includes(song.id)
-                      ? "border border-blue-500/50 bg-blue-500/20"
-                      : "bg-white/5 hover:bg-white/10"
-                  }`}
-                >
-                  <div className="h-12 w-12 overflow-hidden rounded-lg bg-white/10">
-                    {song.cover ? (
-                      <img
-                        src={song.cover}
-                        alt={song.title}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-white/40">
-                        *
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 text-left">
-                    <div className="font-medium text-white">{song.title}</div>
-                    <div className="text-sm text-white/60">{song.artist}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
+            {featureFlags.virtualListBatch ? (
+              <div
+                className="shrink-0"
+                style={{ height: Math.min(SONG_LIST_MAX_HEIGHT, songs.length * SONG_ROW_HEIGHT) }}
+              >
+                <VirtualList
+                  items={songs}
+                  itemHeight={SONG_ROW_HEIGHT}
+                  getItemKey={(song) => song.id}
+                  className="h-full custom-scrollbar pr-1"
+                  renderItem={renderSongRow}
+                />
+              </div>
+            ) : (
+              <div className="max-h-96 min-h-0 space-y-2 overflow-y-auto custom-scrollbar">
+                {songs.map((song, index) => (
+                  <SongSelectRow
+                    key={song.id}
+                    song={song}
+                    index={index}
+                    selected={selectedIds.includes(song.id)}
+                    onToggle={handleToggleSong}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 

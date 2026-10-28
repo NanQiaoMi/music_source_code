@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { memo, useState, useCallback, useEffect } from "react";
 import { resolveAudioSourceBlob } from "@/lib/audio/audioSource";
 import { renderCrossfadePreview } from "@/lib/audio/crossfadeRenderer";
 import { canRenderCrossfadePreview, detect } from "@/lib/audio/processingCapabilities";
@@ -8,6 +8,8 @@ import { useCrossfadeStore } from "@/store/crossfadeStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { motion, AnimatePresence } from "framer-motion";
+import { VirtualList } from "@/components/shared/Glass/VirtualList";
+import { featureFlags } from "@/lib/perf/featureFlags";
 import {
   Waves,
   Play,
@@ -25,6 +27,77 @@ interface CrossfadeMixerProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// Row = p-3 (24px) + 40px inner content ≈ 64px; + 8px gap = 72px slot (S4-6b).
+const SONG_ROW_CONTENT_HEIGHT = 64;
+const CROSSFADE_SONG_ROW_HEIGHT = 72;
+const SONG_LIST_MAX_HEIGHT = 256;
+
+interface CrossfadeSongRowProps {
+  song: { id: string; title: string; artist: string };
+  index: number;
+  selected: boolean;
+  bpm?: number;
+  analyzing: boolean;
+  onToggle: (songId: string) => void;
+  onAnalyze: (songId: string) => void;
+}
+
+/** One BPM-analysis song row; scrolling only mounts the visible window (S4-6b). */
+const CrossfadeSongRow = memo(function CrossfadeSongRow({
+  song,
+  index,
+  selected,
+  bpm,
+  analyzing,
+  onToggle,
+  onAnalyze,
+}: CrossfadeSongRowProps) {
+  return (
+    <div
+      data-crossfade-index={index}
+      data-selected={selected ? "true" : "false"}
+      onClick={() => onToggle(song.id)}
+      style={{ height: SONG_ROW_CONTENT_HEIGHT }}
+      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+        selected
+          ? "bg-emerald-500/20 border border-emerald-500/50"
+          : "bg-white/5 hover:bg-white/10 border border-transparent"
+      }`}
+    >
+      <div
+        className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+          selected ? "bg-emerald-500 border-emerald-500" : "border-gray-500"
+        }`}
+      >
+        {selected && <CheckCircle className="w-3 h-3 text-white" />}
+      </div>
+      <Music className="w-4 h-4 text-gray-400" />
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-white truncate">{song.title}</div>
+        <div className="text-xs text-gray-400 truncate">{song.artist}</div>
+      </div>
+      {bpm ? (
+        <div className="flex items-center gap-2">
+          <span className="text-emerald-400 font-mono text-sm font-bold">{bpm.toFixed(1)}</span>
+          <span className="text-gray-500 text-xs">BPM</span>
+        </div>
+      ) : (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onAnalyze(song.id);
+          }}
+          disabled={analyzing}
+          className="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors text-gray-300"
+        >
+          分析
+        </button>
+      )}
+    </div>
+  );
+});
+CrossfadeSongRow.displayName = "CrossfadeSongRow";
 
 const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
   const settings = useCrossfadeStore((state) => state.settings);
@@ -135,6 +208,21 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
   const clearSelection = useCallback(() => {
     setSelectedSongs([]);
   }, []);
+
+  const renderSongRow = useCallback(
+    (song: { id: string; title: string; artist: string }, index: number) => (
+      <CrossfadeSongRow
+        song={song}
+        index={index}
+        selected={selectedSongs.includes(song.id)}
+        bpm={previewBPM[song.id]}
+        analyzing={analyzing}
+        onToggle={toggleSongSelection}
+        onAnalyze={handleAnalyzeSong}
+      />
+    ),
+    [selectedSongs, previewBPM, analyzing, toggleSongSelection, handleAnalyzeSong]
+  );
 
   const handleStartMixing = useCallback(async () => {
     const state = useCrossfadeStore.getState();
@@ -353,60 +441,40 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
                       </div>
                     </div>
 
-                    <div className="max-h-64 overflow-y-auto space-y-2 pr-2 custom-scrollbar min-h-0">
-                      {songs.map((song) => {
-                        const bpm = previewBPM[song.id];
-                        const isSelected = selectedSongs.includes(song.id);
-
-                        return (
-                          <motion.div
+                    {featureFlags.virtualListBatch ? (
+                      <div
+                        className="shrink-0"
+                        style={{
+                          height: Math.min(
+                            SONG_LIST_MAX_HEIGHT,
+                            songs.length * CROSSFADE_SONG_ROW_HEIGHT
+                          ),
+                        }}
+                      >
+                        <VirtualList
+                          items={songs}
+                          itemHeight={CROSSFADE_SONG_ROW_HEIGHT}
+                          getItemKey={(song) => song.id}
+                          className="h-full pr-2 custom-scrollbar"
+                          renderItem={renderSongRow}
+                        />
+                      </div>
+                    ) : (
+                      <div className="max-h-64 overflow-y-auto space-y-2 pr-2 custom-scrollbar min-h-0">
+                        {songs.map((song, index) => (
+                          <CrossfadeSongRow
                             key={song.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
-                              isSelected
-                                ? "bg-emerald-500/20 border border-emerald-500/50"
-                                : "bg-white/5 hover:bg-white/10 border border-transparent"
-                            }`}
-                            onClick={() => toggleSongSelection(song.id)}
-                          >
-                            <div
-                              className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                                isSelected ? "bg-emerald-500 border-emerald-500" : "border-gray-500"
-                              }`}
-                            >
-                              {isSelected && <CheckCircle className="w-3 h-3 text-white" />}
-                            </div>
-                            <Music className="w-4 h-4 text-gray-400" />
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-white truncate">
-                                {song.title}
-                              </div>
-                              <div className="text-xs text-gray-400 truncate">{song.artist}</div>
-                            </div>
-                            {bpm ? (
-                              <div className="flex items-center gap-2">
-                                <span className="text-emerald-400 font-mono text-sm font-bold">
-                                  {bpm.toFixed(1)}
-                                </span>
-                                <span className="text-gray-500 text-xs">BPM</span>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAnalyzeSong(song.id);
-                                }}
-                                disabled={analyzing}
-                                className="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors text-gray-300"
-                              >
-                                分析
-                              </button>
-                            )}
-                          </motion.div>
-                        );
-                      })}
-                    </div>
+                            song={song}
+                            index={index}
+                            selected={selectedSongs.includes(song.id)}
+                            bpm={previewBPM[song.id]}
+                            analyzing={analyzing}
+                            onToggle={toggleSongSelection}
+                            onAnalyze={handleAnalyzeSong}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

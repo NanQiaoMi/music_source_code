@@ -16,6 +16,7 @@ describe("featureFlags", () => {
     for (const key of [
       "NEXT_PUBLIC_VL_QUEUE",
       "NEXT_PUBLIC_VL_SEARCH",
+      "NEXT_PUBLIC_VL_BATCH",
       "NEXT_PUBLIC_COVER_IMAGE_V2",
       "NEXT_PUBLIC_VISUAL_RUNTIME",
       "NEXT_PUBLIC_EFFECT_PLUGINS",
@@ -25,6 +26,7 @@ describe("featureFlags", () => {
     expect(await loadFlags()).toEqual({
       virtualListQueue: true,
       virtualListSearch: true,
+      virtualListBatch: true,
       coverImageV2: true,
       visualRuntime: true,
       effectPlugins: false,

@@ -6,6 +6,7 @@ import { useSearchStore } from "@/store/searchStore";
 
 const mocks = vi.hoisted(() => ({
   playSong: vi.fn(),
+  playQueue: vi.fn(),
   addToQueue: vi.fn(),
   insertNext: vi.fn(),
   clearQueue: vi.fn(),
@@ -153,11 +154,31 @@ function _getVoiceButton(container: HTMLElement) {
   return button as HTMLButtonElement;
 }
 
+const SEARCH_VIEWPORT_HEIGHT = 480;
+// Must match SEARCH_RESULT_ROW_HEIGHT in SearchPanel.tsx (48px row + 4px gap).
+const SEARCH_ROW_HEIGHT = 52;
+
+const makeResults = (count: number) =>
+  Array.from({ length: count }, (_, index) => ({
+    id: "song-" + index,
+    title: "Track " + index,
+    artist: "Artist " + index,
+    duration: 200,
+    source: "local" as const,
+  }));
+
 describe("SearchPanel", () => {
   let container: HTMLDivElement;
   let root: Root;
+  let originalClientHeight: PropertyDescriptor | undefined;
 
   beforeEach(() => {
+    // jsdom has no layout: pin the measured list height so windowing math is deterministic.
+    originalClientHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientHeight");
+    Object.defineProperty(HTMLElement.prototype, "clientHeight", {
+      configurable: true,
+      get: () => SEARCH_VIEWPORT_HEIGHT,
+    });
     removeSpeechRecognition();
     vi.spyOn(window, "alert").mockImplementation(() => undefined);
     useSearchStore.setState(useSearchStore.getInitialState(), true);
@@ -171,6 +192,11 @@ describe("SearchPanel", () => {
       root.unmount();
     });
     container.remove();
+    if (originalClientHeight) {
+      Object.defineProperty(HTMLElement.prototype, "clientHeight", originalClientHeight);
+    } else {
+      Reflect.deleteProperty(HTMLElement.prototype, "clientHeight");
+    }
     vi.restoreAllMocks();
   });
 
@@ -277,5 +303,71 @@ describe("SearchPanel", () => {
     expect(cover?.getAttribute("loading")).toBe("lazy");
     expect(cover?.getAttribute("decoding")).toBe("async");
     expect(cover?.getAttribute("sizes")).toBe("36px");
+  });
+
+  it("renders a bounded DOM window for 500 search results", async () => {
+    useSearchStore.setState({ query: "Track", results: makeResults(500), totalResults: 500 });
+    const { SearchPanel } = await import("./SearchPanel");
+
+    await act(async () => {
+      root.render(<SearchPanel isOpen={true} onClose={() => undefined} />);
+    });
+
+    const rows = container.querySelectorAll("[data-search-index]");
+    // 480px / 52px = 10 viewport rows + 5 overscan; the other ~485 rows stay unmounted.
+    expect(rows).toHaveLength(15);
+    expect(rows.length).toBeLessThan(100);
+    expect(container.textContent).toContain("Track 0");
+    expect(container.textContent).not.toContain("Track 400");
+  });
+
+  it("renders the correct rows after scrolling 500 results to the end", async () => {
+    useSearchStore.setState({ query: "Track", results: makeResults(500), totalResults: 500 });
+    const { SearchPanel } = await import("./SearchPanel");
+
+    await act(async () => {
+      root.render(<SearchPanel isOpen={true} onClose={() => undefined} />);
+    });
+
+    const list = container.querySelector<HTMLElement>("[data-virtual-list]");
+    expect(list).not.toBeNull();
+    list!.scrollTop = 499 * SEARCH_ROW_HEIGHT;
+    await act(async () => {
+      list!.dispatchEvent(new Event("scroll", { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain("Track 499");
+    expect(container.textContent).not.toContain("Track 0");
+
+    const indices = Array.from(container.querySelectorAll("[data-search-index]")).map((el) =>
+      Number(el.getAttribute("data-search-index"))
+    );
+    expect(indices).toContain(499);
+    expect(Math.min(...indices)).toBeGreaterThan(480);
+    expect(indices.length).toBeLessThan(100);
+  });
+
+  it("plays the clicked row of a virtualized result list by its original index", async () => {
+    const results = makeResults(500);
+    const onClose = vi.fn();
+    useSearchStore.setState({ query: "Track", results, totalResults: 500 });
+    const { SearchPanel } = await import("./SearchPanel");
+
+    await act(async () => {
+      root.render(<SearchPanel isOpen={true} onClose={onClose} />);
+    });
+
+    const row = container.querySelector('[data-search-index="5"]');
+    expect(row).not.toBeNull();
+    await act(async () => {
+      row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(mocks.playQueue).toHaveBeenCalledTimes(1);
+    const [playedList, playedIndex] = mocks.playQueue.mock.calls[0];
+    expect(playedList).toHaveLength(500);
+    expect(playedIndex).toBe(5);
+    expect(playedList[5].id).toBe("song-5");
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
