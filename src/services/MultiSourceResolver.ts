@@ -5,6 +5,7 @@ import { AudioSourceType } from "@/store/audioSourceStore";
 import { Song } from "@/types/song";
 import { SongResult } from "@/types/aiAgent";
 import { firstUsable, takeWithin } from "@/lib/resolve/urlRace";
+import { TtlLruCache, type TtlLruCacheStats } from "@/lib/cache/TtlLruCache";
 
 export interface ResolvedAudioSource {
   url: string;
@@ -250,13 +251,18 @@ export class MultiSourceResolver {
     return MultiSourceResolver.instance;
   }
 
-  private static resolvedUrlCache = new Map<
-    string,
-    { result: ResolvedAudioSource; expiry: number }
-  >();
+  private static resolvedUrlCache = new TtlLruCache<string, ResolvedAudioSource>({
+    maxEntries: 300,
+    maxAgeMs: 30 * 60_000, // 30 分钟
+  });
 
   public static clearCache() {
     this.resolvedUrlCache.clear();
+  }
+
+  /** 只读缓存指标（容量 + 命中率），供调试与长会话采样使用。 */
+  public static getResolvedUrlCacheStats(): TtlLruCacheStats & { size: number } {
+    return { ...this.resolvedUrlCache.stats(), size: this.resolvedUrlCache.size() };
   }
 
   public static invalidateSong(query: SongMetadataQuery): void {
@@ -288,12 +294,9 @@ export class MultiSourceResolver {
 
     const cacheKey =
       `${query.source || ""}-${query.id || ""}-${query.title || ""}-${query.artist || ""}`.toLowerCase();
-    const now = Date.now();
     if (!bypassCache) {
       const cached = MultiSourceResolver.resolvedUrlCache.get(cacheKey);
-      if (cached && cached.expiry > now && cached.result?.url) {
-        return cached.result;
-      }
+      if (cached?.url) return cached;
     } else {
       MultiSourceResolver.resolvedUrlCache.delete(cacheKey);
     }
@@ -322,10 +325,7 @@ export class MultiSourceResolver {
         : this.resolveSongUrlFallback(query, base);
 
     const remember = (result: ResolvedAudioSource): ResolvedAudioSource => {
-      MultiSourceResolver.resolvedUrlCache.set(cacheKey, {
-        result,
-        expiry: Date.now() + 1800000,
-      });
+      MultiSourceResolver.resolvedUrlCache.set(cacheKey, result);
       return result;
     };
 

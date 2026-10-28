@@ -181,6 +181,24 @@ describe("MultiSourceResolver.resolvePlayableAudio 并发改造", () => {
     expect(second?.url).toBe(first?.url);
     expect(mock.mock.calls.length).toBe(callsAfterFirst);
   }, 15000);
+
+  it("长会话下解析缓存不超过 300 条", async () => {
+    (LXRunner.getMusicUrl as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    installFetchMock([
+      { match: "/api/song/url", delayMs: 0, body: { url: "http://fallback.example/bounded.mp3" } },
+    ]);
+
+    for (let i = 0; i < 305; i += 1) {
+      await resolver.resolvePlayableAudio(
+        { title: `bounded-${i}`, artist: "测试", source: "netease" },
+        false
+      );
+    }
+
+    const stats = MultiSourceResolver.getResolvedUrlCacheStats();
+    expect(stats.size).toBe(300);
+    expect(stats.evictions).toBeGreaterThanOrEqual(5);
+  }, 15000);
 });
 
 describe("MultiSourceResolver.searchOnlineMusicSegmented provider failures", () => {

@@ -8,20 +8,22 @@
 import { MultiSourceResolver } from "@/services/MultiSourceResolver";
 import { Song } from "@/types/song";
 import { useQueueStore } from "@/store/queueStore";
+import { TtlLruCache } from "@/lib/cache/TtlLruCache";
 
 interface CachedAudioSource {
   url: string;
   source: string;
   quality: string;
-  expiresAt: number;
 }
 
 class AudioPrefetcher {
   private static instance: AudioPrefetcher;
-  private prefetchCache = new Map<string, CachedAudioSource>();
+  private prefetchCache = new TtlLruCache<string, CachedAudioSource>({
+    maxEntries: 20,
+    maxAgeMs: 25 * 60_000, // temporary stream URLs stay valid for 25 minutes
+  });
   private preheatedAudioElements = new Map<string, HTMLAudioElement>();
   private activePrefetchId: string | null = null;
-  private readonly CACHE_TTL = 1000 * 60 * 25; // 25 minutes TTL for temporary stream URLs
 
   public static getInstance(): AudioPrefetcher {
     if (!AudioPrefetcher.instance) {
@@ -48,7 +50,7 @@ class AudioPrefetcher {
 
     // 2. Check if recently cached in memory
     const cached = this.prefetchCache.get(song.id);
-    if (cached && cached.expiresAt > Date.now()) {
+    if (cached) {
       this.preheatAudio(song.id, cached.url);
       return cached.url;
     }
@@ -76,7 +78,6 @@ class AudioPrefetcher {
           url: resolved.url,
           source: resolved.source,
           quality: resolved.quality,
-          expiresAt: Date.now() + this.CACHE_TTL,
         });
 
         // Update queueStore with resolved audioUrl for instant switch
@@ -153,12 +154,7 @@ class AudioPrefetcher {
    * Cleans up expired caches and memory
    */
   public pruneCache(): void {
-    const now = Date.now();
-    for (const [id, item] of this.prefetchCache.entries()) {
-      if (item.expiresAt < now) {
-        this.prefetchCache.delete(id);
-      }
-    }
+    this.prefetchCache.prune();
   }
 }
 
