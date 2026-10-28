@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /** S6-4 audioStore 播放字段消费清单：9 个播放字段在 selector / getState / 别名 / setState 中的读写点。
- *  用法：node scripts/report-audio-consumers.mjs [--json <path>] [--fields a,b] [--group progress] [--check]
- *  --group：按迁移批次选择目标字段（progress = currentTime/duration/isLoading；只校验读点）。
+ *  用法：node scripts/report-audio-consumers.mjs [--json <path>] [--fields a,b] [--group progress|playback] [--check]
+ *  --group：按迁移批次选择目标字段（progress = currentTime/duration/isLoading；
+ *           playback = isPlaying；两组都只校验读点）。
  *  --check：components/hooks/lib 仍有目标字段引用时 exit 1；src/store 自身实现单独计入 store 层。 */
 import fs from "node:fs";
 import path from "node:path";
@@ -17,6 +18,12 @@ const TARGET_GROUPS = {
     fields: ["currentTime", "duration", "isLoading"],
     checkKinds: ["read"],
     // 唯一获准读 audioStore 进度字段的适配器：PlaybackClock 把它转成外部快照。
+    ignoreFiles: ["src/lib/playback/playbackClock.ts"],
+  },
+  playback: {
+    fields: ["isPlaying"],
+    checkKinds: ["read"],
+    // isPlaying 的 UI 读点统一走 PlaybackClock；写点（setIsPlaying/togglePlaybackIntent）仍走 audioStore。
     ignoreFiles: ["src/lib/playback/playbackClock.ts"],
   },
 };

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
@@ -196,7 +197,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
   const clearQueue = useQueueStore((state) => state.clearQueue);
   const moveToNext = useQueueStore((state) => state.moveToNext);
   const currentSong = usePlayerStore((state) => state.currentSong);
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const openPanel = useUIStore((state) => state.openPanel);
   const offlineRecords = useOfflineDownloadStore((state) => state.offlineRecords);
   const loadOfflineRecords = useOfflineDownloadStore((state) => state.loadOfflineRecords);

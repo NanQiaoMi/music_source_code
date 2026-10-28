@@ -3,8 +3,8 @@
 import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { FloatingAmbientGlow } from "./FloatingAmbientGlow";
 import { LiquidGlassFilter } from "./LiquidGlassFilter";
 import type { DragHandlers } from "./useFloatingDragPhysics";
@@ -31,9 +31,7 @@ export const FloatingPillState: React.FC<FloatingPillStateProps> = ({
   showGlow = true,
   showBorderBeam: _showBorderBeam = true,
 }) => {
-  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
-  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
-  const isPlaying = audioIsPlaying || playerIsPlaying;
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
 
   // S6-4: 身份字段 currentSong 只从 playerStore 订阅一次
   const currentSong = usePlayerStore((state) => state.currentSong);

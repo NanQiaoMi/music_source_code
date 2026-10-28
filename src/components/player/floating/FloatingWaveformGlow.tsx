@@ -64,7 +64,7 @@ export const FloatingWaveformGlow: React.FC<FloatingWaveformGlowProps> = ({
       window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true
   );
 
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const currentTime = usePlaybackClock((state) => state.currentTime);
   const duration = usePlaybackClock((state) => state.duration);
   const seekTo = useAudioStore((state) => state.seekTo);

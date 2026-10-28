@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence, useAnimationFrame } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore, type LoopMode } from "@/store/playerStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { Heart, SkipBack, SkipForward, Repeat, Repeat1, Shuffle } from "lucide-react";
 import { FloatingSpeedControl } from "./FloatingSpeedControl";
@@ -420,9 +421,7 @@ export const FloatingControls: React.FC<FloatingControlsProps> = ({
   showFavorite = true,
   showSpeedControl = true,
 }) => {
-  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
-  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
-  const isPlaying = audioIsPlaying || playerIsPlaying;
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
 
   const togglePlay = () => {
     useAudioStore.getState().togglePlaybackIntent();

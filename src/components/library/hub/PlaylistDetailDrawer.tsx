@@ -27,6 +27,7 @@ import {
 import type { Song } from "@/types/song";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
@@ -104,9 +105,7 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
   // S6-4: 身份字段 currentSong 读 playerStore（audioStore 仅剩兼容投影）
   const currentPlayingSong = usePlayerStore((state) => state.currentSong);
 
-  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
-  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
-  const isAudioPlaying = audioIsPlaying || playerIsPlaying;
+  const isAudioPlaying = usePlaybackClock((state) => state.isPlaying);
 
   const playQueue = useAudioStore((state) => state.playQueue);
   const _playSong = useAudioStore((state) => state.playSong);

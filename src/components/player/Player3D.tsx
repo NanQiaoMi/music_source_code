@@ -311,7 +311,7 @@ CoverWith3DEffect.displayName = "CoverWith3DEffect";
 
 export const Player3D: React.FC = () => {
   const shouldReduceMotion = useReducedMotion();
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const playbackPhase = usePlaybackRuntimeStore((state) => state.phase);
   const isVisualPlaybackActive = isPlayer3DVisualsActive(
     playbackPhase,

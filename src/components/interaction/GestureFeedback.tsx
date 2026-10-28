@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useGestureStore } from "@/store/gestureStore";
-import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
 import {
   findGestureActionDefinition,
@@ -116,7 +116,7 @@ export const GestureFeedback: React.FC = () => {
   const dwell = useGestureStore((state) => state.dwell);
   // S6-4: 音量读 playerStore（手势动作仍写 audioStore，经投影回填）
   const volume = usePlayerStore((state) => state.volume);
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const currentSong = usePlayerStore((state) => state.currentSong);
   const prefersReducedMotion = usePrefersReducedMotion();
 

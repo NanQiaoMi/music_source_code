@@ -31,7 +31,7 @@ export const APPLE_SPRING_GENTLE = {
 const DEFAULT_COVER_SRC = "/default-cover.svg";
 
 export const GlobalPlayerBar: React.FC = () => {
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const audioDuration = usePlaybackClock((state) => state.duration);
   const currentSong = usePlayerStore((state) => state.currentSong);
   const duration = audioDuration || currentSong?.duration || 0;

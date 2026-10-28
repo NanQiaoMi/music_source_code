@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useCallback } from "react";
-import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
 import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
@@ -57,7 +57,7 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
   const peakFallSpeedsRef = useRef<Float32Array>(new Float32Array(barCount));
   const smoothedBarsRef = useRef<Float32Array>(new Float32Array(barCount));
 
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const currentSong = usePlayerStore((state) => state.currentSong);
   const glowIntensity = useFloatingDebugStore((state) => state.glowIntensity);
 

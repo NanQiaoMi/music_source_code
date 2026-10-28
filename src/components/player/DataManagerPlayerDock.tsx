@@ -21,9 +21,7 @@ export function DataManagerPlayerDock() {
   const audioDuration = usePlaybackClock((state) => state.duration);
   const playerDuration = usePlayerStore((state) => state.duration);
   const duration = audioDuration || currentSong?.duration || playerDuration || 0;
-  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
-  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
-  const isPlaying = audioIsPlaying || playerIsPlaying;
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const audioIsLoading = usePlaybackClock((state) => state.isLoading);
   const playerIsLoading = usePlayerStore((state) => state.isLoading);
   const isLoading = audioIsLoading || playerIsLoading;

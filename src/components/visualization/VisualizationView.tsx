@@ -9,6 +9,7 @@ import { useUIStore } from "@/store/uiStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useAudioStore } from "@/store/audioStore";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import {
   useVisualizationStore,
   VisualizationEffect,
@@ -171,7 +172,7 @@ export function VisualizationView() {
   const isFullscreen = useUIStore((state) => state.isFullscreen);
   const toggleFullscreen = useUIStore((state) => state.toggleFullscreen);
   const currentSong = usePlayerStore((state) => state.currentSong);
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);
   const currentEffect = useVisualizationStore((state) => state.currentEffect);

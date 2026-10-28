@@ -4,6 +4,7 @@ import React, { useEffect, useCallback, useState, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 import { FloatingCompactControlsState } from "./floating/FloatingCompactControlsState";
@@ -22,9 +23,7 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
   // S6-4: 身份字段 currentSong 读 playerStore（audioStore 仅剩兼容投影）
   const currentSong = usePlayerStore((state) => state.currentSong);
 
-  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
-  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
-  const _isPlaying = audioIsPlaying || playerIsPlaying;
+  const _isPlaying = usePlaybackClock((state) => state.isPlaying);
 
   const _setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   // S6-4: 混音字段读 playerStore

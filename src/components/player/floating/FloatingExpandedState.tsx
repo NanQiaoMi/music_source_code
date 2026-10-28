@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { motion, type Variants } from "framer-motion";
-import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
@@ -70,7 +70,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
   active = true,
 }) => {
   const currentSong = usePlayerStore((state) => state.currentSong);
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const setCurrentView = useUIStore((state) => state.setCurrentView);
   const { isCached } = useNetworkAudioCache();
   const isSongCached = currentSong ? isCached(currentSong.id, currentSong.source) : false;

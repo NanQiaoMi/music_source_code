@@ -57,6 +57,12 @@ vi.mock("next/image", () => ({
     unoptimized?: boolean;
   }) => <img {...props} />,
 }));
+// S6-4: isPlaying/isLoading 读 PlaybackClock；本用例只 mock audioStore，桥无法安装，
+// 因此直接给 hook 注入播放态快照，身份回退仍由 playerStore 验证。
+vi.mock("@/hooks/usePlaybackClock", () => ({
+  usePlaybackClock: (selector: (snapshot: Record<string, unknown>) => unknown) =>
+    selector({ currentTime: 0, duration: 0, isPlaying: true, isLoading: true }),
+}));
 
 const fallbackSong: Song = {
   id: "player-store-song",

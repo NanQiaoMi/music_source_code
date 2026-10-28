@@ -17,7 +17,7 @@ import {
   Search,
   Sliders,
 } from "lucide-react";
-import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
 import { Song } from "@/types/song";
 
@@ -165,7 +165,7 @@ function getAdaptiveInspiration(hour: number, currentSong: Song | null): Inspira
 export const CuratorWelcomeHeroCard: React.FC<CuratorWelcomeHeroCardProps> = React.memo(
   ({ onSendPrompt }) => {
     const currentSong = usePlayerStore((state) => state.currentSong);
-    const isPlaying = useAudioStore((state) => state.isPlaying);
+    const isPlaying = usePlaybackClock((state) => state.isPlaying);
 
     const timeGreeting = useMemo(() => getTimeGreeting(), []);
     const BadgeIcon = timeGreeting.badgeIcon;

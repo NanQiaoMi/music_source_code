@@ -8,6 +8,7 @@ import { Song } from "@/types/song";
 import { SongResult } from "@/types/aiAgent";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { useQueueStore } from "@/store/queueStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useUIStore } from "@/store/uiStore";
@@ -59,7 +60,7 @@ export const SongResultCard: React.FC<SongResultCardProps> = React.memo(
     const [isHovered, setIsHovered] = useState(false);
 
     const currentSong = usePlayerStore((state) => state.currentSong);
-    const isPlaying = useAudioStore((state) => state.isPlaying);
+    const isPlaying = usePlaybackClock((state) => state.isPlaying);
     const playSong = useAudioStore((state) => state.playSong);
     const addToQueue = useQueueStore((state) => state.addToQueue);
     const showToast = useUIStore((state) => state.showToast);

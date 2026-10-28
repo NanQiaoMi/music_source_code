@@ -20,6 +20,17 @@ vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: any) => <>{children}</>,
 }));
 
+// S6-4: isPlaying 读 PlaybackClock；静态渲染下 useSyncExternalStore 固定取 server 快照，
+// 这里让 hook 直接读当前 client 快照，断言组件对 clock 状态的反应。
+vi.mock("@/hooks/usePlaybackClock", async () => {
+  const { getPlaybackClockSnapshot } = await import("@/lib/playback/playbackClock");
+  return {
+    usePlaybackClock: (
+      selector: (snapshot: ReturnType<typeof getPlaybackClockSnapshot>) => unknown
+    ) => selector(getPlaybackClockSnapshot()),
+  };
+});
+
 // renderToStaticMarkup 下 useSyncExternalStore 取的是 server 快照（getInitialState），
 // 测试里临时回落到 client 快照，才能用 setState 构造被测状态。
 const reactiveReact = React as unknown as {

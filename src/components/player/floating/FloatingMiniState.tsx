@@ -3,7 +3,7 @@
 import React, { useRef, useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
 import { FloatingAmbientGlow } from "./FloatingAmbientGlow";
 import { LiquidGlassFilter } from "./LiquidGlassFilter";
@@ -28,7 +28,7 @@ export const FloatingMiniState: React.FC<FloatingMiniStateProps> = ({
   className = "",
   showGlow = true,
 }) => {
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const currentSong = usePlayerStore((state) => state.currentSong);
 
   const [_isHovered, setIsHovered] = useState(false);

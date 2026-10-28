@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { useBilingualLyricParser } from "@/hooks/useBilingualLyricParser";
@@ -139,7 +138,7 @@ export const FullscreenLyrics: React.FC<FullscreenLyricsProps> = ({
 }) => {
   const currentTime = usePlaybackClock((state) => state.currentTime);
   const currentSong = usePlayerStore((state) => state.currentSong);
-  const _isPlaying = useAudioStore((state) => state.isPlaying);
+  const _isPlaying = usePlaybackClock((state) => state.isPlaying);
   const duration = usePlaybackClock((state) => state.duration);
 
   const { themeColors } = useAlbumTheme(currentSong?.cover);

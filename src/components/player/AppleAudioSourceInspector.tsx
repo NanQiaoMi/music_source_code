@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
 import { endpointCircuitBreaker, CoolingHostInfo } from "@/services/EndpointCircuitBreaker";
 import { networkPriorityManager } from "@/services/networkPriorityManager";
@@ -27,7 +27,7 @@ export const AppleAudioSourceInspector: React.FC<AppleAudioSourceInspectorProps>
   onClose,
 }) => {
   const currentSong = usePlayerStore((state) => state.currentSong);
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
 
   const [activeTab, setActiveTab] = useState<"sources" | "stream" | "dsp" | "decrypt">("sources");
   const [liveBpm, _setLiveBpm] = useState(128);

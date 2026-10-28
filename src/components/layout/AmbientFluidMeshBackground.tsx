@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import Image from "next/image";
-import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { extractColorsFromImage, defaultColors, ThemeColors } from "@/utils/colorExtractor";
@@ -22,7 +22,7 @@ const ORB_MASK = "radial-gradient(circle, #000 0%, transparent 70%)";
 
 export const AmbientFluidMeshBackground: React.FC = () => {
   const currentSong = usePlayerStore((state) => state.currentSong);
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const selectedSong = usePlaylistStore((state) => state.selectedSong);
   const songs = usePlaylistStore((state) => state.songs);
   const recentPlayed = usePlaylistStore((state) => state.recentPlayed);

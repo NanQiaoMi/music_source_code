@@ -5,6 +5,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { useAudioSourceStore, AudioSourceType, PreferredQuality } from "@/store/audioSourceStore";
 import { useUIStore } from "@/store/uiStore";
 import { multiSourceResolver, ResolvedAudioSource } from "@/services/MultiSourceResolver";
@@ -47,9 +48,7 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
   // S6-4: 身份字段 currentSong 读 playerStore（audioStore 仅剩兼容投影）
   const currentSong = usePlayerStore((state) => state.currentSong);
 
-  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
-  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
-  const isPlaying = audioIsPlaying || playerIsPlaying;
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
 
   const showToast = useUIStore((state) => state.showToast);
 

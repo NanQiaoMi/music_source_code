@@ -30,6 +30,7 @@ import {
 import { buildRecommendationReasonDisplay } from "@/lib/recommendation/reasonDisplay";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { useQueueStore } from "@/store/queueStore";
 import { useRecommendationStore } from "@/store/recommendationStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
@@ -83,7 +84,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   const history = useQueueStore((state) => state.history);
   const playQueue = useAudioStore((state) => state.playQueue);
   const currentSong = usePlayerStore((state) => state.currentSong);
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
   // memo：handlePlaySong 与快捷键 effect 都依赖它，每轮新建会让监听反复重绑
   const togglePlay = useCallback(() => useAudioStore.getState().togglePlaybackIntent(), []);
   const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);

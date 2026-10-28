@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { Play, Pause, ChevronRight, ChevronLeft } from "lucide-react";
 import { LiquidGlassFilter } from "./LiquidGlassFilter";
 import type { DragHandlers, FloatingPlayerState } from "./useFloatingDragPhysics";
@@ -28,9 +29,7 @@ export const FloatingDockState: React.FC<FloatingDockStateProps> = ({
   dragHandlers,
   className = "",
 }) => {
-  const audioIsPlaying = useAudioStore((state) => state.isPlaying);
-  const playerIsPlaying = usePlayerStore((state) => state.isPlaying);
-  const isPlaying = audioIsPlaying || playerIsPlaying;
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
 
   // S6-4: 身份字段 currentSong 只从 playerStore 订阅一次
   const currentSong = usePlayerStore((state) => state.currentSong);

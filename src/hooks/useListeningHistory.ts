@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { Song } from "@/types/song";
 
 const sanitizeSongForStorage = (song: Song) => {
@@ -43,7 +43,7 @@ const MAX_ARTIST_STATS = 50; // Reduced from 100
 
 export const useListeningHistory = () => {
   const currentSong = usePlayerStore((state) => state.currentSong);
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
 
   const getHistoryFromStorage = useCallback((): Record<string, ListeningRecord> => {
     if (typeof window === "undefined") return {};

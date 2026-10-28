@@ -1,5 +1,5 @@
 import { AudioEngine } from "./AudioEngine";
-import { useAudioStore } from "@/store/audioStore";
+import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { BlobUrlRegistry } from "@/services/BlobUrlRegistry";
 import { compactExistingStorage } from "@/lib/storage/safeStorage";
 
@@ -47,7 +47,7 @@ export class AudioContextWatchdog {
 
     const handleStateChange = () => {
       const state = ctx.state;
-      const isPlaying = useAudioStore.getState().isPlaying;
+      const isPlaying = getPlaybackClockSnapshot().isPlaying;
 
       if ((state === "suspended" || (state as string) === "interrupted") && isPlaying) {
         console.warn(
@@ -80,7 +80,7 @@ export class AudioContextWatchdog {
         const engine = AudioEngine.getInstance();
         const ctx = engine.getAudioContext();
 
-        if (ctx && ctx.state === "suspended" && useAudioStore.getState().isPlaying) {
+        if (ctx && ctx.state === "suspended" && getPlaybackClockSnapshot().isPlaying) {
           try {
             await ctx.resume();
             console.info("[AudioContextWatchdog] ✅ 设备切换后 AudioContext 已无缝平滑恢复");
@@ -127,7 +127,7 @@ export class AudioContextWatchdog {
       // 3. 音频上下文存活探测
       const engine = AudioEngine.getInstance();
       const ctx = engine.getAudioContext();
-      if (ctx && ctx.state === "suspended" && useAudioStore.getState().isPlaying) {
+      if (ctx && ctx.state === "suspended" && getPlaybackClockSnapshot().isPlaying) {
         ctx.resume().catch(() => {});
       }
 

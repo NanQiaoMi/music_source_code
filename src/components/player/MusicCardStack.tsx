@@ -9,6 +9,7 @@ import { usePlayerStore } from "@/store/playerStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { getCoverFromCache, saveCoverToCache } from "@/services/coverCache";
 import { multiSourceResolver } from "@/services/MultiSourceResolver";
@@ -37,7 +38,7 @@ export const MusicCardStack: React.FC = () => {
   const queue = useQueueStore((state) => state.queue);
   const offlineRecords = useOfflineDownloadStore((state) => state.offlineRecords);
   const currentSong = usePlayerStore((state) => state.currentSong);
-  const isPlaying = useAudioStore((state) => state.isPlaying);
+  const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const setCurrentView = useUIStore((state) => state.setCurrentView);
 
