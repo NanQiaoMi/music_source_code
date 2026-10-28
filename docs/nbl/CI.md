@@ -1,23 +1,51 @@
 # CI 门禁（Required Checks）
 
-> 面向 PR 作者与 reviewer。工作流：`.github/workflows/deploy.yml`（job `verify`）。
+> 面向 PR 作者与 reviewer。工作流：`.github/workflows/deploy.yml`。
 > 触发：`push` / `pull_request` → `master`，以及手动 `workflow_dispatch`。
-> 最后核对：2026-10-29（S8-1a）。
+> 最后核对：2026-10-29（S8-1b 并行拆分）。
 
-## 1. 必过门禁（verify job，串行执行）
+## 1. Job 布局（并行，12min 预算）
 
-下表就是 required checks 的完整清单；任何一步非 0 退出，整条 PR 立刻变红。
+S8-1a 的单串行 `verify` job（冷缓存 14-17min）在 S8-1b 拆成 3 个并行 job + 1 个聚合
+job。三个 job 各自 checkout / setup-node / `npm ci`，**不跨 job 传产物**；只有 `build`
+需要 `.next`（`perf:gates` 的 bundle markers 依赖构建产物），所以生产构建与依赖它的门禁
+放在同一个 job 内，无需 artifact 依赖。
 
-| #   | 门禁                   | CI 预期耗时 | 说明                                                |
-| --- | ---------------------- | ----------: | --------------------------------------------------- |
-| 1   | 类型检查（tsc）        |      60-90s | strict 模式，类型错误直接失败                       |
-| 2   | Lint（eslint，0 警告） |      2-4min | `--max-warnings=0`；prettier 规则在内               |
-| 3   | 单元测试（test）       |      2-3min | Vitest + jsdom 全量                                 |
-| 4   | 覆盖率分域（coverage） |       ~3min | 见 §3；跑在 Unit tests 之后                         |
-| 5   | 生产构建（build）      |      2-3min | 产出 `.next`，第 6/7 步依赖它                       |
-| 6   | 性能门禁（perf:gates） |        ~15s | store 行数/环依赖、whole-store 预算、bundle markers |
-| 7   | Bundle 报告            |         ~5s | 仅报告；S4 重定基线后才改 `--check`                 |
-| 8   | 文档事实（docs facts） |         ~5s | store 数、旧结论、触发分支、索引链接、执行包完整性  |
+| Job            | 必过步骤                                            | timeout | 预期耗时（暖 / 冷） |
+| -------------- | --------------------------------------------------- | ------: | ------------------: |
+| `quality`      | 类型检查 → Lint（0 警告）→ 单元测试                  |      15 |      6-8 / 9-11min |
+| `coverage`     | 覆盖率分域（`test:coverage:domains`，见 §4）         |      15 |       4-5 / 5-7min |
+| `build`        | 生产构建 → `perf:gates` → bundle 报告 → 文档事实     |      15 |       3-5 / 5-7min |
+| `quality-gate` | 聚合断言：上面三个 job 全部 success                  |       5 |            ~15-30s |
+
+wall time = 三个并行 job 的最大值 + 排队/调度开销：暖缓存 ≈ 7-9min，冷缓存 ≈ 10-12min，
+目标是 **≤12min**。各 job 的 `timeout-minutes: 15`（聚合 job 为 5）只用于兜住挂死，
+不是目标时长。拆分代价是 runner 分钟数上升（3 次 `npm ci`），换来串行链路被削掉约 5min。
+
+耗时依据：本机实测 tsc ≈ 23s、lint ≈ 142s、单测 ≈ 106s、coverage ≈ 80s、build ≈ 115s，
+CI 4 vCPU runner 按 1.8-2.5 慢系数估算（S8 计划 Step 2 表）。
+
+## 2. Required checks（分支保护）
+
+branch protection 只勾一个 check：**`Quality gate (required)`**（job id `quality-gate`）。
+它 `needs: [quality, coverage, build]` 且 `if: always()`，逐个断言上游 `result == success`：
+任一子 job 失败/取消/跳过，`quality-gate` 即失败，PR 立刻变红。因此三个子 job 事实上全部
+required，不能用"跳过某个 job"的方式过 CI。三个子 job 的 check 名分别是
+`Quality (types/lint/unit)`、`Coverage (domains)`、`Build (production/perf/docs)`，
+也会出现在 PR checks 列表里；分支保护只需勾聚合 check。
+
+每个门禁步骤只在一个 job 里运行，对应关系如下：
+
+| 门禁                   | 所属 job  | 预期耗时 |
+| ---------------------- | --------- | -------: |
+| 类型检查（tsc）        | `quality` |  60-90s |
+| Lint（0 警告）         | `quality` |   2-4min |
+| 单元测试（test）       | `quality` |   2-3min |
+| 覆盖率分域             | `coverage` |    ~3min |
+| 生产构建（build）      | `build`   |   2-3min |
+| 性能门禁（perf:gates） | `build`   |     ~15s |
+| Bundle 报告            | `build`   |      ~5s |
+| 文档事实（docs facts） | `build`   |      ~5s |
 
 逐条命令（与工作流一致）：
 
@@ -32,18 +60,14 @@ node scripts/perf/bundle-budget.mjs --json perf/bundle-report.json
 node scripts/check-docs-facts.mjs   # 本地别名：npm run verify:docs
 ```
 
-耗时合计：热缓存 ≈ 12min，冷缓存（无 npm/.next 缓存）≈ 14-17min；job 的
-`timeout-minutes: 25` 只用于兜住挂死，不是目标时长。要真正压到 12min 以内，需要把
-lint/build 拆成并行 job（S8-1b/S8-1c 的范围），当前单 job 串行做不到。
-
-## 2. 已知禁用：`report-store-stats.mjs --check`
+## 3. 已知禁用：`report-store-stats.mjs --check`
 
 `perf/store-stats-baseline.json` 已过期（记录 60 stores / 44 persist keys，实测 59 / 43），
 `--check` 的"不得比基线更差"会稳定误报，因此**当前不接**。替代兜底是 `perf:gates` 里的
 `report-store-stats.mjs --max-whole 10`。重新生成基线并经评审后再打开 `--check`；
 `scripts/perf/ci-perf-gates.test.mjs` 断言它保持禁用，工作流里也有对应注释。
 
-## 3. 覆盖率分域门禁（coverage domains）
+## 4. 覆盖率分域门禁（coverage domains）
 
 - 配置：`perf/coverage-domains.json`，五个域：`src/lib/audio`、`src/utils`、`src/store`、
   `src/services`、`src/hooks`；地板 = 实测值 - 5pp burn-in，且只升不降。
@@ -52,7 +76,8 @@ lint/build 拆成并行 job（S8-1b/S8-1c 的范围），当前单 job 串行做
   （会写回 `perf/coverage-domains.json`，必须在 PR 说明里给出依据）。
 - 只看数不拦截：`node scripts/check-coverage-domains.mjs --report-only`。
 
-## 4. 修改门禁
+## 5. 修改门禁
 
-增删 `verify` 步骤时，同步更新本文件与 `scripts/ci-required-checks.test.mjs`
-（断言覆盖率步骤在 Unit tests 之后、必过清单与本文件存在）。
+增删门禁步骤时，同步更新 `.github/workflows/deploy.yml` 的 job 布局、本文件与
+`scripts/ci-required-checks.test.mjs`（断言 ≥3 个并行 job、每个必过步骤只出现在一个
+job、coverage 独立于 quality、perf:gates 归 build、预算与 required checks 有记录）。

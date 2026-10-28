@@ -14,12 +14,57 @@ concurrency:
 permissions:
   contents: read
 
+# S8-1b: the former serial `verify` job is split into three parallel jobs so the wall
+# time stays inside the 12min budget. Each job repeats checkout/setup/install on purpose:
+# no artefact hand-off is needed, and only `build` owns .next (perf:gates bundle markers).
+# Layout, per-job durations and required checks: docs/nbl/CI.md.
 jobs:
-  verify:
-    name: Verify (type/lint/test/build/budget)
+  quality:
+    name: Quality (types/lint/unit)
     runs-on: ubuntu-latest
-    # Serial gates: ~12min warm, ~14-17min cold (see docs/nbl/CI.md). 25min only caps hangs.
-    timeout-minutes: 25
+    # Warm ~6-8min, cold ~10-12min; 15min only caps hangs. Budget: docs/nbl/CI.md.
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+      - name: Typecheck
+        run: npx tsc --noEmit --incremental false --pretty false
+      - name: Lint (src, 0 warnings)
+        run: npx eslint src --ext ts,tsx --rulesdir eslint-rules --max-warnings=0 --report-unused-disable-directives
+      - name: Unit tests
+        run: npm run test -- --run
+
+  coverage:
+    name: Coverage (domains)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+      # Per-domain coverage floors live in perf/coverage-domains.json (S8-2). This re-runs
+      # the suite with coverage, so it is run-only and costs ~3min. Budgets: docs/nbl/CI.md.
+      - name: Coverage domains
+        run: npm run test:coverage:domains
+
+  build:
+    name: Build (production/perf/docs)
+    runs-on: ubuntu-latest
+    # Owns .next for the perf gates, so build + bundle report + docs facts stay together.
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,16 +84,6 @@ jobs:
           key: next-${{ runner.os }}-${{ hashFiles('package-lock.json','next.config.js','tsconfig.json') }}-${{ github.sha }}
           restore-keys: |
             next-${{ runner.os }}-${{ hashFiles('package-lock.json','next.config.js','tsconfig.json') }}-
-      - name: Typecheck
-        run: npx tsc --noEmit --incremental false --pretty false
-      - name: Lint (src, 0 warnings)
-        run: npx eslint src --ext ts,tsx --rulesdir eslint-rules --max-warnings=0 --report-unused-disable-directives
-      - name: Unit tests
-        run: npm run test -- --run
-      # Per-domain coverage floors live in perf/coverage-domains.json (S8-2). This re-runs
-      # the suite with coverage, so it is run-only and costs ~3min. Budgets: docs/nbl/CI.md.
-      - name: Coverage domains
-        run: npm run test:coverage:domains
       - name: Production build
         run: npm run build
       # Gates run after the production build so .next exists; bundle markers self-skip otherwise.
@@ -62,21 +97,35 @@ jobs:
       # the baseline is regenerated and approved.
       - name: Docs facts
         run: node scripts/check-docs-facts.mjs
+
+  # Single branch-protection check: all three parallel verify jobs must succeed.
+  quality-gate:
+    name: Quality gate (required)
+    if: always()
+    needs: [quality, coverage, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
       - name: Gate summary
         if: always()
         run: |
           {
-            echo "## CI gates (verify job)"
+            echo "## CI quality gate"
             echo ""
-            echo "tsc · lint (0 warnings) · test · coverage domains · build · perf:gates · docs facts"
+            echo "quality=${{ needs.quality.result }} coverage=${{ needs.coverage.result }} build=${{ needs.build.result }}"
             echo ""
-            echo "Durations and the disabled store-stats --check: docs/nbl/CI.md"
+            echo "Layout, durations and required checks: docs/nbl/CI.md"
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Require every verify job to pass
+        run: |
+          test "${{ needs.quality.result }}" = success
+          test "${{ needs.coverage.result }}" = success
+          test "${{ needs.build.result }}" = success
 
   desktop-windows:
     name: Desktop package (manual/tag only)
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
-    needs: verify
+    needs: quality-gate
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -120,7 +169,7 @@ jobs:
 
   deploy-to-vercel:
     name: Deploy to Vercel (manual only)
-    needs: verify
+    needs: quality-gate
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     timeout-minutes: 20

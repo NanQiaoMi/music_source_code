@@ -15,9 +15,9 @@ const indexOf = (text, needle, from = 0) => {
 };
 
 describe("CI perf gates wiring", () => {
-  it("runs npm run perf:gates after the production build in the verify job", () => {
-    const jobStart = indexOf(workflow, "\n  verify:");
-    const nextJob = indexOf(workflow, "\n  desktop-windows:");
+  it("runs npm run perf:gates after the production build in the build job", () => {
+    const jobStart = indexOf(workflow, "\n  build:");
+    const nextJob = indexOf(workflow, "\n  quality-gate:");
     const build = indexOf(workflow, "run: npm run build", jobStart);
     const gates = indexOf(workflow, "run: npm run perf:gates", jobStart);
     expect(gates).toBeGreaterThan(build);
