@@ -19,7 +19,7 @@
 
 import type { EffectContext } from "./types";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
-import { usePlayerStore } from "@/store/playerStore";
+import { getPlayerSnapshot } from "@/store/actions/playbackActions";
 import {
   estimateLineUnits,
   groupLyricsByStart,
@@ -2420,7 +2420,7 @@ function renderFrame(effectCtx: EffectContext): void {
   const palette = resolveHandwrittenPalette(settings.colorScheme);
   const fontFamily = resolveHandwrittenFont(settings.fontStyle);
   const progress = getPlaybackClockSnapshot();
-  const playerState = usePlayerStore.getState();
+  const playerState = getPlayerSnapshot();
   // S6-4: 身份字段 currentSong 读 playerStore
   const currentSong = playerState.currentSong;
   const songId = currentSong?.id ?? null;

@@ -90,7 +90,7 @@ export const HealthStorageTab: React.FC = () => {
 
     duplicateIdsToRemove.forEach((id) => removeSong(id));
     setDedupGroups([]);
-    refreshAnalytics(usePlaylistStore.getState().songs);
+    refreshAnalytics(songs.filter((song) => !duplicateIdsToRemove.has(String(song.id))));
 
     setFeedback(`🎉 成功智能去重，移除了 ${duplicateIdsToRemove.size} 首冗余曲目！`);
     setTimeout(() => setFeedback(null), 3500);

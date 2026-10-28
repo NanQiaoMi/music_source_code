@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Edit, FileText, Heart, History, Music, RefreshCw, Search, Star, X } from "lucide-react";
 import { useLyricsSearchStore, LyricSourceState } from "@/store/lyricsSearchStore";
+import { getMatchedLyrics } from "@/store/actions/lyricsActions";
 import { usePlayerStore } from "@/store/playerStore";
 import { LyricSearchResult } from "@/services/lyricsSearchService";
 import { useUIStore } from "@/store/uiStore";
@@ -84,7 +85,7 @@ export default function LyricsSearchPanel({ isOpen, onClose }: LyricsSearchPanel
     }
 
     await autoMatchLyrics(currentSong.title, currentSong.artist);
-    const matched = useLyricsSearchStore.getState().currentLyrics;
+    const matched = getMatchedLyrics();
     showToast(matched ? "歌词匹配成功" : "未找到匹配歌词", matched ? "success" : "info");
   };
 

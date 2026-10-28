@@ -58,6 +58,8 @@ export function SourceMatrixTab({
   const setSourcePriority = useSourceConfigStore((state) => state.setSourcePriority);
   const setSourceConfig = useSourceConfigStore((state) => state.setSourceConfig);
   const resetToDefaults = useSourceConfigStore((state) => state.resetToDefaults);
+  const setActivePlatform = useUserAccountStore((state) => state.setActivePlatform);
+  const setIsAccountModalOpen = useUserAccountStore((state) => state.setIsAccountModalOpen);
 
   /** 同一时刻只展开一行：描述、登录入口与配置表单都收在这里面 */
   const [expandedId, setExpandedId] = useState<MusicSourceId | null>(null);
@@ -128,8 +130,8 @@ export function SourceMatrixTab({
 
     const openLogin = () => {
       // 未登录时点击开关 / 登录入口自动定向打开登录弹窗
-      useUserAccountStore.getState().setActivePlatform(id as PlatformType);
-      useUserAccountStore.getState().setIsAccountModalOpen(true);
+      setActivePlatform(id as PlatformType);
+      setIsAccountModalOpen(true);
     };
 
     const handleToggle = () => {

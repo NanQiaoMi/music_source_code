@@ -194,6 +194,10 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
 }) => {
   const playbackPhase = usePlaybackRuntimeStore((state) => state.phase);
   const shouldPlay = usePlaybackRuntimeStore((state) => state.shouldPlay);
+  const nextSong = useAudioStore((state) => state.nextSong);
+  const prevSong = useAudioStore((state) => state.prevSong);
+  const setAudioIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const setPlayerIsPlaying = usePlayerStore((state) => state.setIsPlaying);
   const isPlaying = playbackPhase === "playing";
   const isLoading = playbackPhase === "loading" || playbackPhase === "buffering";
   const prefersReducedMotion = useReducedMotion() === true;
@@ -237,18 +241,18 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
   };
 
   const handleNextTrack = React.useCallback(() => {
-    useAudioStore.getState().nextSong();
-  }, []);
+    nextSong();
+  }, [nextSong]);
 
   const handlePrevTrack = React.useCallback(() => {
-    useAudioStore.getState().prevSong();
-  }, []);
+    prevSong();
+  }, [prevSong]);
 
   const handleTogglePlay = React.useCallback(() => {
-    const nextPlaying = !usePlaybackRuntimeStore.getState().shouldPlay;
-    useAudioStore.getState().setIsPlaying(nextPlaying);
-    usePlayerStore.getState().setIsPlaying(nextPlaying);
-  }, []);
+    const nextPlaying = !shouldPlay;
+    setAudioIsPlaying(nextPlaying);
+    setPlayerIsPlaying(nextPlaying);
+  }, [shouldPlay, setAudioIsPlaying, setPlayerIsPlaying]);
 
   if (!currentSong) return null;
 

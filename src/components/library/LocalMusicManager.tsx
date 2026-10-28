@@ -7,6 +7,7 @@ import {
   selectAddSong,
   selectImportSongs,
   selectRemoveSong,
+  selectSongs,
 } from "@/store/selectors/playlistSelectors";
 import { Song } from "@/types/song";
 import { generateSongId } from "@/utils/songValidation";
@@ -37,6 +38,7 @@ export const LocalMusicManager: React.FC = () => {
   const addSong = usePlaylistStore(selectAddSong);
   const removeSong = usePlaylistStore(selectRemoveSong);
   const importSongs = usePlaylistStore(selectImportSongs);
+  const playlistSongs = usePlaylistStore(selectSongs);
   const [localSongs, setLocalSongs] = useState<Song[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingFiles, setProcessingFiles] = useState<ProcessingFile[]>([]);
@@ -69,7 +71,7 @@ export const LocalMusicManager: React.FC = () => {
       setLocalSongs(songList);
 
       // Also add to playlist store if not already there
-      const existingIds = new Set(usePlaylistStore.getState().songs.map((s) => s.id));
+      const existingIds = new Set(playlistSongs.map((s) => s.id));
       const newSongs = songList.filter((s) => !existingIds.has(s.id));
       if (newSongs.length > 0) {
         importSongs(newSongs);
@@ -79,7 +81,7 @@ export const LocalMusicManager: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [importSongs]);
+  }, [importSongs, playlistSongs]);
 
   // Load stored music on mount
   useEffect(() => {

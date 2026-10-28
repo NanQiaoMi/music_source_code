@@ -35,6 +35,7 @@ export const CloudMusicPanel: React.FC<CloudMusicPanelProps> = ({ onOpenAccountM
   const addToQueue = useQueueStore((state) => state.addToQueue);
   const insertNext = useQueueStore((state) => state.insertNext);
   const _setQueue = useQueueStore((state) => state.setQueue);
+  const playQueue = useAudioStore((state) => state.playQueue);
 
   // 挂载时若已登录但无歌单，则拉取一次
   useEffect(() => {
@@ -53,7 +54,7 @@ export const CloudMusicPanel: React.FC<CloudMusicPanelProps> = ({ onOpenAccountM
   // 播放整张歌单 (同步加入歌单库与播放队列)
   const handlePlayAll = () => {
     if (activePlaylistSongs.length > 0) {
-      useAudioStore.getState().playQueue(activePlaylistSongs, 0);
+      playQueue(activePlaylistSongs, 0);
     }
   };
 

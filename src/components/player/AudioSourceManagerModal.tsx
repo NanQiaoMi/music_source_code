@@ -47,6 +47,9 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
 }) => {
   // S6-4: 身份字段 currentSong 读 playerStore（audioStore 仅剩兼容投影）
   const currentSong = usePlayerStore((state) => state.currentSong);
+  const setCurrentSong = usePlayerStore((state) => state.setCurrentSong);
+  const setPlayerIsPlaying = usePlayerStore((state) => state.setIsPlaying);
+  const setAudioIsPlaying = useAudioStore((state) => state.setIsPlaying);
 
   const isPlaying = usePlaybackClock((state) => state.isPlaying);
 
@@ -310,9 +313,9 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
     };
 
     // S6-4: 身份字段写 playerStore（audioStore 同名 action 仅为转发）
-    usePlayerStore.getState().setCurrentSong(updated);
-    useAudioStore.getState().setIsPlaying(true);
-    usePlayerStore.getState().setIsPlaying(true);
+    setCurrentSong(updated);
+    setAudioIsPlaying(true);
+    setPlayerIsPlaying(true);
 
     if (showToast) {
       showToast(
@@ -346,10 +349,10 @@ export const AudioSourceManagerModal: React.FC<AudioSourceManagerModalProps> = (
           source: best.source,
           quality: best.quality,
         };
-        usePlayerStore.getState().setCurrentSong(updated);
-        usePlayerStore.getState().setCurrentSong(updated);
-        useAudioStore.getState().setIsPlaying(true);
-        usePlayerStore.getState().setIsPlaying(true);
+        setCurrentSong(updated);
+        setCurrentSong(updated);
+        setAudioIsPlaying(true);
+        setPlayerIsPlaying(true);
         if (showToast) {
           showToast(`🎉 成功为您匹配并升级到最高品质母带！`, "success");
         }

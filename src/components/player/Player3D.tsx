@@ -358,6 +358,8 @@ export const Player3D: React.FC = () => {
   const toggleMute = usePlayerStore((state) => state.toggleMute);
   const setVolume = usePlayerStore((state) => state.setVolume);
   const loopMode = usePlayerStore((state) => state.loopMode);
+  const setLoopMode = usePlayerStore((state) => state.setLoopMode);
+  const togglePlaybackIntent = useAudioStore((state) => state.togglePlaybackIntent);
 
   const [breathingEffectEnabled] = useState(true);
   const [showFullscreenLyrics, setShowFullscreenLyrics] = useState(false);
@@ -650,9 +652,9 @@ export const Player3D: React.FC = () => {
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       if (loopMode === "shuffle") {
-                        usePlayerStore.getState().setLoopMode("all");
+                        setLoopMode("all");
                       } else {
-                        usePlayerStore.getState().setLoopMode("shuffle");
+                        setLoopMode("shuffle");
                       }
                     }}
                     className={`p-2 rounded-full transition-all ${
@@ -672,7 +674,7 @@ export const Player3D: React.FC = () => {
                       const modes: LoopMode[] = ["none", "all", "single"];
                       const currentIndex = modes.indexOf(loopMode);
                       const nextIndex = (currentIndex + 1) % modes.length;
-                      usePlayerStore.getState().setLoopMode(modes[nextIndex]);
+                      setLoopMode(modes[nextIndex]);
                     }}
                     className={`p-2 rounded-full transition-all ${
                       loopMode === "all" || loopMode === "single"
@@ -718,7 +720,7 @@ export const Player3D: React.FC = () => {
                       } catch {
                         // Playback confirmation remains owned by the media event pipeline.
                       }
-                      useAudioStore.getState().togglePlaybackIntent();
+                      togglePlaybackIntent();
                     }}
                     disabled={!currentSong}
                     aria-busy={isPlaybackPending}

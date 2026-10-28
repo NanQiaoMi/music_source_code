@@ -27,31 +27,36 @@ export function DataManagerPlayerDock() {
   const isLoading = audioIsLoading || playerIsLoading;
   const error = useAudioStore((state) => state.error);
   const seekTo = useAudioStore((state) => state.seekTo);
+  const togglePlaybackIntent = useAudioStore((state) => state.togglePlaybackIntent);
+  const playQueue = useAudioStore((state) => state.playQueue);
+  const nextSong = useAudioStore((state) => state.nextSong);
+  const prevSong = useAudioStore((state) => state.prevSong);
   const queue = useQueueStore((state) => state.queue);
+  const queueIndex = useQueueStore((state) => state.currentIndex);
+  const loopMode = usePlayerStore((state) => state.loopMode);
   const openPanel = useUIStore((state) => state.openPanel);
 
   const handleQueueSkip = (direction: "previous" | "next") => {
-    const { queue: visibleQueue, currentIndex: visibleIndex } = useQueueStore.getState();
+    const visibleQueue = queue;
+    const visibleIndex = queueIndex;
     if (visibleQueue.length === 0) return;
     const safeVisibleIndex = Math.max(0, Math.min(visibleIndex, visibleQueue.length - 1));
 
     // S6-4: 身份字段读 playerStore
-    const activeSong = usePlayerStore.getState().currentSong;
+    const activeSong = currentSong;
     const activeIndex = activeSong
       ? visibleQueue[visibleIndex]?.id === activeSong.id
         ? visibleIndex
         : visibleQueue.findIndex((song) => song.id === activeSong.id)
       : -1;
-    const audioState = useAudioStore.getState();
 
-    if (activeIndex >= 0 || usePlayerStore.getState().loopMode === "shuffle") {
+    if (activeIndex >= 0 || loopMode === "shuffle") {
       useAudioStore.setState({
         queue: visibleQueue,
         currentIndex: activeIndex >= 0 ? activeIndex : safeVisibleIndex,
       });
-      const alignedAudioState = useAudioStore.getState();
-      if (direction === "next") alignedAudioState.nextSong();
-      else alignedAudioState.prevSong();
+      if (direction === "next") nextSong();
+      else prevSong();
       return;
     }
 
@@ -61,7 +66,7 @@ export function DataManagerPlayerDock() {
       direction === "next"
         ? safeVisibleIndex
         : (safeVisibleIndex - 1 + visibleQueue.length) % visibleQueue.length;
-    audioState.playQueue(visibleQueue, targetIndex);
+    playQueue(visibleQueue, targetIndex);
   };
 
   const currentSongIsQueued = Boolean(
@@ -165,7 +170,7 @@ export function DataManagerPlayerDock() {
               type="button"
               aria-label={isPlaying ? "暂停" : "播放"}
               title={isPlaying ? "暂停" : "播放"}
-              onClick={() => useAudioStore.getState().togglePlaybackIntent()}
+              onClick={togglePlaybackIntent}
               className="flex h-8 w-8 items-center justify-center rounded-full border border-cyan-100/40 bg-gradient-to-br from-cyan-200 to-blue-400 text-slate-950 shadow-[0_4px_18px_rgba(34,211,238,0.25)] transition hover:brightness-110 active:scale-95 sm:h-10 sm:w-10"
             >
               {isPlaying ? (

@@ -1,0 +1,68 @@
+{
+  "metric": "useXStore.getState() calls in non-test src files",
+  "generatedAt": "2026-10-28T22:35:36.765Z",
+  "totals": {
+    "getState": 243,
+    "files": 39
+  },
+  "byLayer": {
+    "app": 1,
+    "components": 0,
+    "hooks": 79,
+    "lib": 23,
+    "services": 0,
+    "store": 125,
+    "domain": 15
+  },
+  "services": {
+    "total": 0,
+    "files": {},
+    "scanned": 18
+  },
+  "components": {
+    "total": 0,
+    "files": {},
+    "scanned": 234
+  },
+  "files": {
+    "src/app/page.tsx": 1,
+    "src/domain/playback/ports.ts": 15,
+    "src/hooks/useAudioPlayer.ts": 55,
+    "src/hooks/useDailyRecommendation.ts": 4,
+    "src/hooks/useGestureSession.ts": 9,
+    "src/hooks/useKeyboardShortcuts.ts": 2,
+    "src/hooks/useMediaSession.ts": 9,
+    "src/lib/audio/AudioEffectsManager.ts": 2,
+    "src/lib/audio/audioPrefetcher.ts": 1,
+    "src/lib/audio/CrossfadeMixer.ts": 1,
+    "src/lib/audio/PlaybackClock.ts": 2,
+    "src/lib/audio/useIntegratedAudioPipeline.ts": 3,
+    "src/lib/bootstrap.ts": 9,
+    "src/lib/gesture/actions.ts": 4,
+    "src/lib/storage/degradedNotifier.ts": 1,
+    "src/store/actions/emotionActions.ts": 1,
+    "src/store/actions/lyricsActions.ts": 1,
+    "src/store/actions/playbackActions.ts": 9,
+    "src/store/actions/serviceActions.ts": 17,
+    "src/store/actions/sourceActions.ts": 2,
+    "src/store/actions/uiActions.ts": 1,
+    "src/store/actions/visualizationActions.ts": 1,
+    "src/store/aiStore.ts": 1,
+    "src/store/audioStore.ts": 11,
+    "src/store/healthCheckStore.ts": 1,
+    "src/store/hiresStore.ts": 1,
+    "src/store/knowledgeStore.ts": 1,
+    "src/store/linerNotesStore.ts": 1,
+    "src/store/playerStore.ts": 1,
+    "src/store/playlistStore.ts": 1,
+    "src/store/sleepTimerStore.ts": 1,
+    "src/store/slices/deviceSlice.ts": 13,
+    "src/store/slices/playbackSlice.ts": 44,
+    "src/store/slices/sourceSlice.ts": 2,
+    "src/store/smartMixStore.ts": 1,
+    "src/store/smartPlaylistStore.ts": 1,
+    "src/store/sourceConfigStore.ts": 1,
+    "src/store/useAIAgentStore.ts": 10,
+    "src/store/userAccountStore.ts": 2
+  }
+}

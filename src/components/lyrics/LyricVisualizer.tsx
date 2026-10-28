@@ -23,6 +23,7 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
 }) => {
   const currentTime = usePlaybackClock((state) => state.currentTime);
   const currentSong = usePlayerStore((state) => state.currentSong);
+  const seekTo = useAudioStore((state) => state.seekTo);
   const openPanel = useUIStore((state) => state.openPanel);
   const shouldReduceMotion = useReducedMotion();
   const showTranslation = useLyricSettingsStore((state) => state.showTranslation);
@@ -279,7 +280,7 @@ export const LyricVisualizer: React.FC<LyricVisualizerProps> = ({
                 transition={
                   shouldReduceMotion ? { duration: 0 } : { duration: 0.45, ease: "easeOut" }
                 }
-                onClick={() => useAudioStore.getState().seekTo(lyric.time)}
+                onClick={() => seekTo(lyric.time)}
                 title="点击跳转至此句播放"
                 className={`flex flex-col ${alignmentClass} transition-colors duration-300 cursor-pointer hover:opacity-95 active:scale-98`}
               >

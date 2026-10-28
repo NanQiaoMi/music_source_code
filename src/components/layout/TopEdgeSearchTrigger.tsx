@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useUIStore } from "@/store/uiStore";
 
 export function TopEdgeSearchTrigger() {
-  const _isSearchOpen = useUIStore((state) => state.panels.search);
+  const isSearchOpen = useUIStore((state) => state.panels.search);
   const openPanel = useUIStore((state) => state.openPanel);
   const touchStartYRef = useRef<number | null>(null);
 
@@ -12,7 +12,7 @@ export function TopEdgeSearchTrigger() {
     // 1. Mouse top-edge proximity detection
     const handleMouseMove = (e: MouseEvent) => {
       // If mouse is within top 15px and search panel is not already open
-      if (e.clientY <= 15 && !useUIStore.getState().panels.search) {
+      if (e.clientY <= 15 && !isSearchOpen) {
         openPanel("search");
       }
     };
@@ -29,7 +29,7 @@ export function TopEdgeSearchTrigger() {
     const handleTouchMove = (e: TouchEvent) => {
       if (touchStartYRef.current !== null && e.touches.length > 0) {
         const deltaY = e.touches[0].clientY - touchStartYRef.current;
-        if (deltaY > 30 && !useUIStore.getState().panels.search) {
+        if (deltaY > 30 && !isSearchOpen) {
           openPanel("search");
           touchStartYRef.current = null;
         }
@@ -51,19 +51,19 @@ export function TopEdgeSearchTrigger() {
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [openPanel]);
+  }, [openPanel, isSearchOpen]);
 
   return (
     // Invisible top edge sensor bar
     <div
       data-testid="top-edge-search-sensor"
       onMouseEnter={() => {
-        if (!useUIStore.getState().panels.search) {
+        if (!isSearchOpen) {
           openPanel("search");
         }
       }}
       onPointerEnter={() => {
-        if (!useUIStore.getState().panels.search) {
+        if (!isSearchOpen) {
           openPanel("search");
         }
       }}

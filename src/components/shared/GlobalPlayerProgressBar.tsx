@@ -27,6 +27,7 @@ interface GlobalPlayerProgressBarProps {
 export const GlobalPlayerProgressBar: React.FC<GlobalPlayerProgressBarProps> = memo(
   ({ duration, abLoopEnabled, pointA, pointB }) => {
     const currentTime = usePlaybackClock((state) => state.currentTime);
+    const seekTo = useAudioStore((state) => state.seekTo);
     const [isHoveringProgress, setIsHoveringProgress] = useState(false);
     const [hoverTime, setHoverTime] = useState<number | null>(null);
     const [hoverX, setHoverX] = useState<number>(0);
@@ -41,9 +42,9 @@ export const GlobalPlayerProgressBar: React.FC<GlobalPlayerProgressBarProps> = m
         const x = e.clientX - rect.left;
         const percentage = x / rect.width;
         const newTime = percentage * duration;
-        useAudioStore.getState().seekTo(newTime);
+        seekTo(newTime);
       },
-      [duration]
+      [duration, seekTo]
     );
 
     const handleProgressHover = useCallback(

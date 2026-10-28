@@ -197,6 +197,9 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
   const clearQueue = useQueueStore((state) => state.clearQueue);
   const moveToNext = useQueueStore((state) => state.moveToNext);
   const currentSong = usePlayerStore((state) => state.currentSong);
+  const playSong = useAudioStore((state) => state.playSong);
+  const setQueue = useQueueStore((state) => state.setQueue);
+  const setCurrentIndex = useQueueStore((state) => state.setCurrentIndex);
   const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const openPanel = useUIStore((state) => state.openPanel);
   const offlineRecords = useOfflineDownloadStore((state) => state.offlineRecords);
@@ -228,8 +231,8 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
       audioUrl: `offline://${r.songId}`,
       format: (r as any).format || "mp3",
     }));
-    useQueueStore.getState().setQueue(offlineSongs);
-    useAudioStore.getState().playSong(offlineSongs[0]);
+    setQueue(offlineSongs);
+    playSong(offlineSongs[0]);
   };
 
   // Global ESC key listener
@@ -285,10 +288,10 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
     (originalIndex: number) => {
       const song = queue[originalIndex];
       if (!song) return;
-      useAudioStore.getState().playSong(song);
-      useQueueStore.getState().setCurrentIndex(originalIndex);
+      playSong(song);
+      setCurrentIndex(originalIndex);
     },
-    [queue]
+    [queue, playSong, setCurrentIndex]
   );
 
   const handleRemove = useCallback((index: number) => removeFromQueue(index), [removeFromQueue]);

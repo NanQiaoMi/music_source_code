@@ -11,14 +11,14 @@ vi.mock("@/lib/audio/useIntegratedAudioPipeline", () => ({
   }),
 }));
 
-vi.mock("@/store/audioStore", () => ({
-  useAudioStore: {
-    getState: vi.fn(() => ({
-      playQueue: vi.fn(),
-    })),
-    setState: vi.fn(),
-  },
-}));
+vi.mock("@/store/audioStore", () => {
+  const state = { playQueue: vi.fn() };
+  const useAudioStore = (selector?: (input: typeof state) => unknown) =>
+    selector ? selector(state) : state;
+  return {
+    useAudioStore: Object.assign(useAudioStore, { getState: () => state, setState: vi.fn() }),
+  };
+});
 
 vi.mock("@/store/queueStore", () => ({
   useQueueStore: Object.assign((selector: any) => selector({ setQueue: vi.fn(), queue: [] }), {

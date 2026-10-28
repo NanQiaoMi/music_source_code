@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { Download, RotateCcw } from "lucide-react";
 import { useSourceConfigStore, PRESET_SCHEMES } from "@/store/sourceConfigStore";
+import { useLiveStoreValue } from "@/hooks/useLiveStoreValue";
 import { ErrorBanner } from "@/components/ui/settings";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/Glass";
 
@@ -22,10 +23,9 @@ export function BackupTab({ loading, error, onRetry }: BackupTabProps = {}) {
   const importConfigJson = useSourceConfigStore((state) => state.importConfigJson);
   const resetToDefaults = useSourceConfigStore((state) => state.resetToDefaults);
   const applyPreset = useSourceConfigStore((state) => state.applyPreset);
-  // 音源表用选择器读「此刻」的 store：renderToStaticMarkup 下 hook 快照是初始值
-  // （getInitialState），而空态判据必须反映「此刻」的 store，故选择器内直接读 getState()；
-  // 选择器仍会在每次 store 更新时重算，变化时才重渲染。
-  const sources = useSourceConfigStore(() => useSourceConfigStore.getState().sources);
+  // 音源表用 SSR-live 选择器读「此刻」的 store：renderToStaticMarkup 下 zustand
+  // 原生 hook 的服务端快照取自 getInitialState，空态判据会失真（S6-10b）。
+  const sources = useLiveStoreValue(useSourceConfigStore, (state) => state.sources);
 
   const [importJsonText, setImportJsonText] = useState("");
   const [importFeedback, setImportFeedback] = useState<string | null>(null);

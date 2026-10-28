@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useEmotionStore } from "@/store/emotionStore";
+import { getEmotionSnapshot } from "@/store/actions/emotionActions";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { usePlaylistStore } from "@/store/playlistStore";
@@ -82,6 +83,7 @@ const EmotionVisualizer: React.FC = () => {
   const songs = usePlaylistStore(selectSongs);
   const points = useEmotionStore((state) => state.points);
   const selectedIds = useEmotionStore((state) => state.selectedIds);
+  const setHoveredPointId = useEmotionStore((state) => state.setHoveredPointId);
   const _searchResults = useEmotionStore((state) => state.searchResults);
 
   const getPixelPos = (p: { x: number; y: number }, w: number, h: number) => {
@@ -129,7 +131,7 @@ const EmotionVisualizer: React.FC = () => {
     handleResize();
 
     const draw = (time: number) => {
-      const state = useEmotionStore.getState();
+      const state = getEmotionSnapshot();
       const {
         points,
         viewMode,
@@ -382,8 +384,7 @@ const EmotionVisualizer: React.FC = () => {
   }, [audioCurrentSong]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    const { selectionMode, setLassoPath, setMarqueeRect, clearSelection } =
-      useEmotionStore.getState();
+    const { selectionMode, setLassoPath, setMarqueeRect, clearSelection } = getEmotionSnapshot();
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
     const x = e.clientX - rect.left;
@@ -413,7 +414,7 @@ const EmotionVisualizer: React.FC = () => {
       setHoveredPointId,
       brushRadius,
       setSelectedIds,
-    } = useEmotionStore.getState();
+    } = getEmotionSnapshot();
 
     if (isDraggingRef.current) {
       if (selectionMode === "lasso") {
@@ -466,7 +467,7 @@ const EmotionVisualizer: React.FC = () => {
       setSelectedIds,
       setMarqueeRect,
       setLassoPath,
-    } = useEmotionStore.getState();
+    } = getEmotionSnapshot();
     const canvas = canvasRef.current;
     if (!canvas) return;
     const width = canvas.width / window.devicePixelRatio;
@@ -523,7 +524,7 @@ const EmotionVisualizer: React.FC = () => {
         onMouseLeave={() => {
           setDraggingState(false);
           setHoveredPoint(null);
-          useEmotionStore.getState().setHoveredPointId(null);
+          setHoveredPointId(null);
         }}
         className="w-full h-full cursor-crosshair"
       />

@@ -13,6 +13,8 @@ export const AILinerNotes: React.FC = () => {
   const getNotes = useLinerNotesStore((state) => state.getNotes);
   const isGenerating = useLinerNotesStore((state) => state.isGenerating);
   const points = useEmotionStore((state) => state.points);
+  const openAIChat = useAIAgentStore((state) => state.openPanel);
+  const sendAIMessage = useAIAgentStore((state) => state.sendMessage);
 
   const [displayNote, setDisplayNote] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -63,9 +65,8 @@ export const AILinerNotes: React.FC = () => {
     const prompt = displayNote
       ? `请深度解析《${currentSong.title}》（${currentSong.artist}）这首歌曲的情感内涵与这句通感评语：“${displayNote}”`
       : `请帮我深度解析《${currentSong.title}》（${currentSong.artist}）这首歌的创作背景与情感表达。`;
-    const agentStore = useAIAgentStore.getState();
-    agentStore.openPanel();
-    agentStore.sendMessage(prompt);
+    openAIChat();
+    sendAIMessage(prompt);
   };
 
   if (!mounted || !currentSong) {

@@ -77,7 +77,7 @@ export const AISettingsPanel: React.FC<AISettingsPanelProps> = ({ isOpen, onClos
     showToast("正在测试接口连通性与网络延迟...", "info");
     const success = await testConfig(id);
     if (success) {
-      const cfg = useAIStore.getState().configs.find((c) => c.id === id);
+      const cfg = configs.find((c) => c.id === id);
       showToast(`连接成功！响应耗时: ${cfg?.latency ?? 0}ms`, "success");
     } else {
       showToast("连接测试未通过，请检查端点 URL 与 API 密钥", "error");

@@ -36,16 +36,20 @@ export const DarkCinemaFloatingCard: React.FC<DarkCinemaFloatingCardProps> = ({
   const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const audioDuration = usePlaybackClock((state) => state.duration);
   const currentSong = usePlayerStore((state) => state.currentSong);
+  const togglePlaybackIntent = useAudioStore((state) => state.togglePlaybackIntent);
   const duration = audioDuration || currentSong?.duration || 0;
 
   const title = currentSong?.title || "后来你好吗";
   const artist = currentSong?.artist || "A-Lin [music]";
   const sourceLabel = currentSong?.album || "本地文件";
 
-  const handleToggle = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    useAudioStore.getState().togglePlaybackIntent();
-  }, []);
+  const handleToggle = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      togglePlaybackIntent();
+    },
+    [togglePlaybackIntent]
+  );
 
   return (
     <motion.div

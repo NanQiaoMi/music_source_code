@@ -40,7 +40,11 @@ export const MusicCardStack: React.FC = () => {
   const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
+  const playQueue = useAudioStore((state) => state.playQueue);
   const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const showToast = useUIStore((state) => state.showToast);
+  const updatePlaylistSong = usePlaylistStore((state) => state.updateSong);
+  const updateQueueSong = useQueueStore((state) => state.updateSong);
 
   const displaySongs: Song[] = useMemo(() => {
     const rawList =
@@ -156,8 +160,8 @@ export const MusicCardStack: React.FC = () => {
         // 1. 尝试从本地缓存 / IndexedDB 读取
         const cached = await getCoverFromCache(card.id);
         if (cached) {
-          usePlaylistStore.getState().updateSong(card.id, { cover: cached });
-          useQueueStore.getState().updateSong(card.id, { cover: cached });
+          updatePlaylistSong(card.id, { cover: cached });
+          updateQueueSong(card.id, { cover: cached });
           return;
         }
 
@@ -166,8 +170,8 @@ export const MusicCardStack: React.FC = () => {
           try {
             const stored = await getStoredMusic(card.id);
             if (stored?.coverData) {
-              usePlaylistStore.getState().updateSong(card.id, { cover: stored.coverData });
-              useQueueStore.getState().updateSong(card.id, { cover: stored.coverData });
+              updatePlaylistSong(card.id, { cover: stored.coverData });
+              updateQueueSong(card.id, { cover: stored.coverData });
               saveCoverToCache(card.id, stored.coverData, stored.coverData).catch(() => {});
               return;
             }
@@ -186,8 +190,8 @@ export const MusicCardStack: React.FC = () => {
               source: card.source,
             });
             if (onlineCover) {
-              usePlaylistStore.getState().updateSong(card.id, { cover: onlineCover });
-              useQueueStore.getState().updateSong(card.id, { cover: onlineCover });
+              updatePlaylistSong(card.id, { cover: onlineCover });
+              updateQueueSong(card.id, { cover: onlineCover });
               saveCoverToCache(card.id, onlineCover, onlineCover).catch(() => {});
             }
           } catch {
@@ -198,7 +202,7 @@ export const MusicCardStack: React.FC = () => {
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [visibleCards]);
+  }, [visibleCards, updatePlaylistSong, updateQueueSong]);
 
   const handlePrev = useCallback(() => {
     if (displaySongs.length <= 1) return;
@@ -213,9 +217,7 @@ export const MusicCardStack: React.FC = () => {
   const handlePlayCard = useCallback(
     (song: Song, _index: number) => {
       if (!song.audioUrl && song.id.startsWith("demo")) {
-        useUIStore
-          .getState()
-          .showToast("这首示例歌曲没有音频文件，请先到数据管理页导入本地音乐。", "warning");
+        showToast("这首示例歌曲没有音频文件，请先到数据管理页导入本地音乐。", "warning");
         return;
       }
       setSelectedSong(song);
@@ -224,10 +226,10 @@ export const MusicCardStack: React.FC = () => {
       } else {
         const targetQueue = displaySongs.length > 0 ? displaySongs : [song];
         const targetIdx = targetQueue.findIndex((s) => s.id === song.id);
-        useAudioStore.getState().playQueue(targetQueue, targetIdx >= 0 ? targetIdx : _index);
+        playQueue(targetQueue, targetIdx >= 0 ? targetIdx : _index);
       }
     },
-    [currentSong?.id, isPlaying, setIsPlaying, setSelectedSong, displaySongs]
+    [currentSong?.id, isPlaying, setIsPlaying, setSelectedSong, displaySongs, playQueue, showToast]
   );
 
   const handleMouseMove = useCallback(

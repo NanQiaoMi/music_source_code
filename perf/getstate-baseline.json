@@ -1,6 +1,6 @@
 {
   "metric": "useXStore.getState() calls in non-test src files",
-  "generatedAt": "2026-10-29T05:55:00.000Z",
-  "targets": { "services": 0 },
-  "allowed": { "services": {} }
+  "generatedAt": "2026-10-29T06:40:00.000Z",
+  "targets": { "services": 0, "components": 0 },
+  "allowed": { "services": {}, "components": {} }
 }

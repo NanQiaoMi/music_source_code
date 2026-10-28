@@ -85,8 +85,10 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   const playQueue = useAudioStore((state) => state.playQueue);
   const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = usePlaybackClock((state) => state.isPlaying);
+  const togglePlaybackIntent = useAudioStore((state) => state.togglePlaybackIntent);
+  const showToast = useUIStore((state) => state.showToast);
   // memo：handlePlaySong 与快捷键 effect 都依赖它，每轮新建会让监听反复重绑
-  const togglePlay = useCallback(() => useAudioStore.getState().togglePlaybackIntent(), []);
+  const togglePlay = useCallback(() => togglePlaybackIntent(), [togglePlaybackIntent]);
   const listeningStats = useStatsAchievementsStore((state) => state.listeningStats);
   const addNegativeFeedback = useRecommendationStore((state) => state.addNegativeFeedback);
   const clearNegativeFeedback = useRecommendationStore((state) => state.clearNegativeFeedback);
@@ -189,23 +191,21 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
     setDismissedSongIds(new Set());
     setPinnedExplanationId(null);
     refreshRecommendation();
-    useUIStore.getState().showToast("✨ 已为您发掘新一批推荐曲目", "success", 2000);
+    showToast("✨ 已为您发掘新一批推荐曲目", "success", 2000);
     setTimeout(() => setIsRefreshing(false), 800);
-  }, [refreshRecommendation]);
+  }, [refreshRecommendation, showToast]);
 
   const handleModeChange = (mode: DailyRecommendationMode) => {
     if (switchMode) {
       switchMode(mode);
     }
-    useUIStore.getState().showToast(`🎯 已切入「${mode.name}」模式`, "success", 2000);
+    showToast(`🎯 已切入「${mode.name}」模式`, "success", 2000);
   };
 
   const handlePlayAll = () => {
     if (displayedSongs.length > 0) {
       playQueue(displayedSongs, 0);
-      useUIStore
-        .getState()
-        .showToast(`▶ 开始播放每日推荐（共 ${displayedSongs.length} 首）`, "success", 2500);
+      showToast(`▶ 开始播放每日推荐（共 ${displayedSongs.length} 首）`, "success", 2500);
     }
   };
 
@@ -224,14 +224,14 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
   const handleDismiss = (songId: string) => {
     setDismissedSongIds((current) => new Set([...current, songId]));
     setPinnedExplanationId((current) => (current === songId ? null : current));
-    useUIStore.getState().showToast("已从当前推荐中忽略", "info", 1800);
+    showToast("已从当前推荐中忽略", "info", 1800);
   };
 
   // 未接线的负反馈入口，_ 前缀标记保留
   const _handleNegativeFeedback = (song: Song) => {
     addNegativeFeedback(song);
     handleDismiss(song.id);
-    useUIStore.getState().showToast("已记录，将减少类似风格推荐", "info", 2000);
+    showToast("已记录，将减少类似风格推荐", "info", 2000);
   };
 
   const toggleExplanation = (songId: string) => {
@@ -258,9 +258,9 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
       };
       list.unshift(newPlaylist);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-      useUIStore.getState().showToast(`✨ 已成功转存为歌单《${playlistTitle}》`, "success", 2500);
+      showToast(`✨ 已成功转存为歌单《${playlistTitle}》`, "success", 2500);
     } catch {
-      useUIStore.getState().showToast("转存歌单失败，请重试", "error", 2000);
+      showToast("转存歌单失败，请重试", "error", 2000);
     }
   };
 
@@ -389,7 +389,7 @@ export const DailyRecommendation: React.FC<DailyRecommendationProps> = ({ isOpen
               type="button"
               onClick={() => {
                 clearNegativeFeedback();
-                useUIStore.getState().showToast("已重置不感兴趣偏好记录", "success", 2000);
+                showToast("已重置不感兴趣偏好记录", "success", 2000);
               }}
               aria-label="清除偏好"
               title="重置不感兴趣偏好"

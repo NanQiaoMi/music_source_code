@@ -116,12 +116,18 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
   const isFavorite = useFavoritesStore((state) => state.isFavorite);
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
   const importSongs = usePlaylistStore((state) => state.importSongs);
+  const showToast = useUIStore((state) => state.showToast);
+  const fetchAllPlaylistTracks = useUserAccountStore((state) => state.fetchAllPlaylistTracks);
+  const fetchPlaylistTracks = useUserAccountStore((state) => state.fetchPlaylistTracks);
 
-  const showNotice = useCallback((msg: string) => {
-    setActionNotice(msg);
-    useUIStore.getState().showToast(msg, "info", 2500);
-    setTimeout(() => setActionNotice(null), 3000);
-  }, []);
+  const showNotice = useCallback(
+    (msg: string) => {
+      setActionNotice(msg);
+      showToast(msg, "info", 2500);
+      setTimeout(() => setActionNotice(null), 3000);
+    },
+    [showToast]
+  );
 
   const playlistId = playlist?.id;
   const playlistSource = playlist?.source;
@@ -148,16 +154,12 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
 
       // 方式 B: 调用用户账号 Store 的全量解析通道
       setLoadingProgress("正在通过已授权账号解析全量曲目...");
-      const accountStore = useUserAccountStore.getState();
-      const songs = await accountStore.fetchAllPlaylistTracks(
-        playlistId,
-        (playlistSource as any) || "netease"
-      );
+      const songs = await fetchAllPlaylistTracks(playlistId, (playlistSource as any) || "netease");
       if (Array.isArray(songs) && songs.length > 0) {
         setTracks(songs);
       } else {
         // 方式 C: 单页 500 首保底
-        const singleBatch = await accountStore.fetchPlaylistTracks(
+        const singleBatch = await fetchPlaylistTracks(
           playlistId,
           (playlistSource as any) || "netease",
           0,
@@ -174,7 +176,7 @@ export const PlaylistDetailDrawer: React.FC<PlaylistDetailDrawerProps> = ({
       setIsLoading(false);
       setLoadingProgress("");
     }
-  }, [playlistId, playlistSource, showNotice]);
+  }, [playlistId, playlistSource, showNotice, fetchAllPlaylistTracks, fetchPlaylistTracks]);
 
   useEffect(() => {
     if (isOpen && playlist) {

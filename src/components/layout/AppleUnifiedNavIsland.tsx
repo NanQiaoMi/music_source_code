@@ -96,6 +96,9 @@ export function AppleUnifiedNavIsland({
   const openPanel = useUIStore((state) => state.openPanel);
   const isFullscreen = useUIStore((state) => state.isFullscreen);
   const toggleFullscreen = useUIStore((state) => state.toggleFullscreen);
+  const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const setIsNavMenuOpen = useUIStore((state) => state.setIsNavMenuOpen);
+  const setVisualizationEffect = useVisualizationStore((state) => state.setCurrentEffect);
   const storeSearchOpen = useUIStore((state) => Boolean(state.panels?.search));
   const storeHasToast = useUIStore(
     (state) => Array.isArray(state.toasts) && state.toasts.length > 0
@@ -151,8 +154,8 @@ export function AppleUnifiedNavIsland({
           label: "暗场粒子歌词舞台",
           icon: <Sparkles className="w-4 h-4 text-purple-400" />,
           action: () => {
-            useVisualizationStore.getState().setCurrentEffect("cyberpunkParticles");
-            useUIStore.getState().setCurrentView("visualization");
+            setVisualizationEffect("cyberpunkParticles");
+            setCurrentView("visualization");
           },
           desc: "赛博粒子流转与声波共振",
         },
@@ -160,7 +163,7 @@ export function AppleUnifiedNavIsland({
           id: "v8Visualizer",
           label: "全屏声学可视化",
           icon: <Waves className="w-4 h-4 text-blue-400" />,
-          action: () => useUIStore.getState().setCurrentView("visualization"),
+          action: () => setCurrentView("visualization"),
           desc: "沉浸式动态粒子与音波场",
         },
         {
@@ -168,8 +171,8 @@ export function AppleUnifiedNavIsland({
           label: "极光声学流体",
           icon: <Palette className="w-4 h-4 text-emerald-400" />,
           action: () => {
-            useVisualizationStore.getState().setCurrentEffect("auroraWave");
-            useUIStore.getState().setCurrentView("visualization");
+            setVisualizationEffect("auroraWave");
+            setCurrentView("visualization");
           },
           desc: "极光波浪与声学色彩弥散",
         },
@@ -303,7 +306,7 @@ export function AppleUnifiedNavIsland({
 
   // 全局 Click-Outside, Esc 与 Wheel 滚动自动收回监听
   useEffect(() => {
-    useUIStore.getState().setIsNavMenuOpen(activeHubId !== null);
+    setIsNavMenuOpen(activeHubId !== null);
 
     const handleClickOutside = (e: MouseEvent) => {
       if (islandRef.current && !islandRef.current.contains(e.target as Node)) {
@@ -334,7 +337,7 @@ export function AppleUnifiedNavIsland({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("wheel", handleWheel);
     };
-  }, [activeHubId, moreOpen]);
+  }, [activeHubId, moreOpen, setIsNavMenuOpen]);
 
   const handleMouseEnterHub = (hubId: string) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);

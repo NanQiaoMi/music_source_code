@@ -40,6 +40,7 @@ export default function FabricCanvas({
   const coverTransform = usePosterV2Store((state) => state.coverTransform);
   const titleTransform = usePosterV2Store((state) => state.titleTransform);
   const artistTransform = usePosterV2Store((state) => state.artistTransform);
+  const updateTransform = usePosterV2Store((state) => state.updateTransform);
 
   // We use this flag to prevent infinite loops when Canvas -> Store -> Canvas
   const isUpdatingFromCanvas = useRef(false);
@@ -161,11 +162,11 @@ export default function FabricCanvas({
       };
 
       if (target === objectsRef.current.cover) {
-        usePosterV2Store.getState().updateTransform("cover", newTransform);
+        updateTransform("cover", newTransform);
       } else if (target === objectsRef.current.title) {
-        usePosterV2Store.getState().updateTransform("title", newTransform);
+        updateTransform("title", newTransform);
       } else if (target === objectsRef.current.artist) {
-        usePosterV2Store.getState().updateTransform("artist", newTransform);
+        updateTransform("artist", newTransform);
       }
 
       // Reset flag after a small delay to allow react cycle to finish

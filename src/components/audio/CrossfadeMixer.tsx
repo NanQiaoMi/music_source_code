@@ -108,6 +108,9 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
   const setSettings = useCrossfadeStore((state) => state.setSettings);
   const getBPMInfo = useCrossfadeStore((state) => state.getBPMInfo);
   const addToQueue = useCrossfadeStore((state) => state.addToQueue);
+  const addBPMInfo = useCrossfadeStore((state) => state.addBPMInfo);
+  const updateQueueItemStatus = useCrossfadeStore((state) => state.updateQueueItemStatus);
+  const incrementProcessed = useCrossfadeStore((state) => state.incrementProcessed);
   const removeFromQueue = useCrossfadeStore((state) => state.removeFromQueue);
   const clearQueue = useCrossfadeStore((state) => state.clearQueue);
   const applyPreset = useCrossfadeStore((state) => state.applyPreset);
@@ -132,29 +135,31 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
     queueMicrotask(() => setPreviewBPM(bpmMap));
   }, [songs, bpmDatabase, getBPMInfo]);
 
-  const handleAnalyzeSong = useCallback(async (songId: string) => {
-    setAnalyzing(true);
-    try {
-      const bpm = 100 + Math.random() * 80;
-      const bpmInfo = {
-        songId,
-        bpm: Math.round(bpm),
-        confidence: 0.7 + Math.random() * 0.3,
-        timestamp: Date.now(),
-      };
+  const handleAnalyzeSong = useCallback(
+    async (songId: string) => {
+      setAnalyzing(true);
+      try {
+        const bpm = 100 + Math.random() * 80;
+        const bpmInfo = {
+          songId,
+          bpm: Math.round(bpm),
+          confidence: 0.7 + Math.random() * 0.3,
+          timestamp: Date.now(),
+        };
 
-      const state = useCrossfadeStore.getState();
-      state.addBPMInfo(bpmInfo);
+        addBPMInfo(bpmInfo);
 
-      setPreviewBPM((prev) => ({
-        ...prev,
-        [songId]: Math.round(bpm),
-      }));
-    } catch (error) {
-      console.error("BPM analysis failed:", error);
-    }
-    setAnalyzing(false);
-  }, []);
+        setPreviewBPM((prev) => ({
+          ...prev,
+          [songId]: Math.round(bpm),
+        }));
+      } catch (error) {
+        console.error("BPM analysis failed:", error);
+      }
+      setAnalyzing(false);
+    },
+    [addBPMInfo]
+  );
 
   const handleAnalyzeSelected = useCallback(async () => {
     setAnalyzing(true);
@@ -167,8 +172,7 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
         timestamp: Date.now(),
       };
 
-      const state = useCrossfadeStore.getState();
-      state.addBPMInfo(bpmInfo);
+      addBPMInfo(bpmInfo);
 
       setPreviewBPM((prev) => ({
         ...prev,
@@ -176,7 +180,7 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
       }));
     }
     setAnalyzing(false);
-  }, [selectedSongs]);
+  }, [addBPMInfo, selectedSongs]);
 
   const handleFindPairs = useCallback(() => {
     const songsWithBPM = songs
@@ -225,21 +229,20 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
   );
 
   const handleStartMixing = useCallback(async () => {
-    const state = useCrossfadeStore.getState();
-    const pendingTasks = state.queue.filter((task) => task.status === "pending");
+    const pendingTasks = queue.filter((task) => task.status === "pending");
 
     for (const task of pendingTasks) {
-      state.updateQueueItemStatus(task.id, "processing", 0);
+      updateQueueItemStatus(task.id, "processing", 0);
 
       if (!crossfadePreviewAvailable) {
-        state.updateQueueItemStatus(
+        updateQueueItemStatus(
           task.id,
           "preview-only",
           0,
           undefined,
           "Local crossfade rendering is not available in this browser - export disabled"
         );
-        state.incrementProcessed();
+        incrementProcessed();
         continue;
       }
 
@@ -247,7 +250,7 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
       const toSong = songs.find((song) => song.id === task.toSongId);
 
       if (!fromSong || !toSong) {
-        state.updateQueueItemStatus(
+        updateQueueItemStatus(
           task.id,
           "error",
           0,
@@ -267,13 +270,13 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
           toBlob: toSource.blob,
           durationSeconds: settings.duration,
           curveType: settings.curveType,
-          onProgress: (progress) => state.updateQueueItemStatus(task.id, "processing", progress),
+          onProgress: (progress) => updateQueueItemStatus(task.id, "processing", progress),
         });
 
-        state.updateQueueItemStatus(task.id, "completed", 100, outputBlob);
-        state.incrementProcessed();
+        updateQueueItemStatus(task.id, "completed", 100, outputBlob);
+        incrementProcessed();
       } catch (error) {
-        state.updateQueueItemStatus(
+        updateQueueItemStatus(
           task.id,
           "error",
           0,
@@ -282,7 +285,15 @@ const CrossfadeMixer: React.FC<CrossfadeMixerProps> = ({ isOpen, onClose }) => {
         );
       }
     }
-  }, [crossfadePreviewAvailable, settings.curveType, settings.duration, songs]);
+  }, [
+    crossfadePreviewAvailable,
+    settings.curveType,
+    settings.duration,
+    songs,
+    queue,
+    updateQueueItemStatus,
+    incrementProcessed,
+  ]);
 
   const getStatusIcon = (
     status: "pending" | "processing" | "completed" | "error" | "preview-only"

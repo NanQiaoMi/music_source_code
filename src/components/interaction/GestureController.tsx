@@ -29,6 +29,10 @@ function isEditableTarget(target: EventTarget | null): boolean {
 export const GestureController: React.FC = () => {
   const enabled = useGestureSettingsStore((state) => state.enabled);
   const showCursor = useGestureSettingsStore((state) => state.showCursor);
+  const showPreview = useGestureSettingsStore((state) => state.showPreview);
+  const showSkeleton = useGestureSettingsStore((state) => state.showSkeleton);
+  const setEnabled = useGestureSettingsStore((state) => state.setEnabled);
+  const updateSettings = useGestureSettingsStore((state) => state.update);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const openPanel = useUIStore((state) => state.openPanel);
@@ -45,25 +49,23 @@ export const GestureController: React.FC = () => {
       const key = event.key.toLowerCase();
       if (key === "escape" || key === "g") {
         event.preventDefault();
-        useGestureSettingsStore.getState().setEnabled(false);
+        setEnabled(false);
         return;
       }
       if (key === "c") {
         event.preventDefault();
-        const settings = useGestureSettingsStore.getState();
-        settings.update({ showPreview: !settings.showPreview });
+        updateSettings({ showPreview: !showPreview });
         return;
       }
       if (key === "s") {
         event.preventDefault();
-        const settings = useGestureSettingsStore.getState();
-        settings.update({ showSkeleton: !settings.showSkeleton });
+        updateSettings({ showSkeleton: !showSkeleton });
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [enabled]);
+  }, [enabled, setEnabled, updateSettings, showPreview, showSkeleton]);
 
   if (!enabled) return null;
 

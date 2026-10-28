@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { X, Code2, Sparkles, Plus, Trash2, CheckCircle2, AlertTriangle, Play } from "lucide-react";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
+import { useLiveStoreValue } from "@/hooks/useLiveStoreValue";
 import { LXRunner } from "@/lib/sources/lxRunner";
 import { ErrorBanner } from "@/components/ui/settings";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/Glass";
@@ -23,10 +24,8 @@ export function LxScriptsTab({ loading, error, onRetry }: LxScriptsTabProps = {}
   const addLXScript = useSourceConfigStore((state) => state.addLXScript);
   const removeLXScript = useSourceConfigStore((state) => state.removeLXScript);
   const toggleLXScript = useSourceConfigStore((state) => state.toggleLXScript);
-  // 脚本列表用选择器读「此刻」的 store：renderToStaticMarkup 下 hook 快照是初始值
-  // （getInitialState），而空态判据必须反映「此刻」的 store，故选择器内直接读 getState()；
-  // 选择器仍会在每次 store 更新时重算，变化时才重渲染。
-  const lxScripts = useSourceConfigStore(() => useSourceConfigStore.getState().lxScripts);
+  // 脚本列表用 SSR-live 选择器读「此刻」的 store（S6-10b，理由同 BackupTab）。
+  const lxScripts = useLiveStoreValue(useSourceConfigStore, (state) => state.lxScripts);
 
   // New script modal form state
   const [showAddScript, setShowAddScript] = useState(false);

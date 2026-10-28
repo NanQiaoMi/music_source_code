@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Gauge, RotateCcw, Minus, Plus } from "lucide-react";
 import { usePlayerStore } from "@/store/playerStore";
+import { getPlayerPlaybackRate } from "@/store/actions/playbackActions";
 import { useUIStore } from "@/store/uiStore";
 
 export interface FloatingSpeedControlProps {
@@ -65,7 +66,7 @@ export const FloatingSpeedControl: React.FC<FloatingSpeedControlProps> = ({
 
   const handleStepSpeed = useCallback(
     (delta: number) => {
-      const current = usePlayerStore.getState().playbackRate || 1.0;
+      const current = getPlayerPlaybackRate();
       const next = Math.max(0.5, Math.min(2.0, Math.round((current + delta) * 100) / 100));
       setPlaybackRate(next);
       showToast?.(`播放速度: ${next.toFixed(2)}x`, "info", 1500);

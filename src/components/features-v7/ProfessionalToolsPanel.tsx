@@ -51,6 +51,7 @@ export function ProfessionalToolsPanel({
   onOpenLibraryHealth,
 }: ProfessionalToolsPanelProps) {
   const _currentView = useUIStore((state) => state.currentView);
+  const openUIPanel = useUIStore((state) => state.openPanel);
   const isProfessionalMode = useProfessionalModeStore((state) => state.isProfessionalMode);
   const enabledFeatures = useProfessionalModeStore((state) => state.enabledFeatures);
   const isFeatureEnabled = useProfessionalModeStore((state) => state.isFeatureEnabled);
@@ -143,7 +144,7 @@ export function ProfessionalToolsPanel({
       enabled: true,
       action: () => {
         onClose();
-        useUIStore.getState().openPanel("aiSettings");
+        openUIPanel("aiSettings");
       },
       colSpan: 1,
       gradient: "from-cyan-500/10 to-teal-500/5",

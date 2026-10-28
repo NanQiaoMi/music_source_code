@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/shared/Glass";
  */
 export function OfflineCacheTab() {
   const { stats, clearAllCache, deleteSongCache, refreshStats } = useNetworkAudioCache();
+  const playSong = useAudioStore((state) => state.playSong);
   const [cachedSongs, setCachedSongs] = useState<CachedNetworkAudioMeta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -65,7 +66,7 @@ export function OfflineCacheTab() {
 
   const handlePlaySong = (item: CachedNetworkAudioMeta) => {
     const src = item.source || "netease";
-    useAudioStore.getState().playSong({
+    playSong({
       id: item.songId,
       title: item.title || "未知歌曲",
       artist: item.artist || "未知艺术家",

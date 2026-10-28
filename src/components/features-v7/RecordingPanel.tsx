@@ -29,6 +29,7 @@ export function RecordingPanel({ isOpen, onClose, canvasRef }: RecordingPanelPro
   const setVideoBlob = useRecordingStore((state) => state.setVideoBlob);
   const clearRecording = useRecordingStore((state) => state.clearRecording);
   const downloadRecording = useRecordingStore((state) => state.downloadRecording);
+  const reportProToolsUsage = useStatsAchievementsStore((state) => state.reportProToolsUsage);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -105,7 +106,7 @@ export function RecordingPanel({ isOpen, onClose, canvasRef }: RecordingPanelPro
       mediaRecorderRef.current.stop();
     }
     stopRecording();
-    useStatsAchievementsStore.getState().reportProToolsUsage("recording");
+    reportProToolsUsage("recording");
   };
 
   if (!isOpen) return null;

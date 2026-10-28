@@ -25,6 +25,7 @@ import { useAudioStore } from "@/store/audioStore";
 import { useQueueStore } from "@/store/queueStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useIntegratedAudioPipeline } from "@/lib/audio/useIntegratedAudioPipeline";
+import { appendSongsToQueue } from "@/store/actions/playbackActions";
 
 interface MultiPlatformAccountModalProps {
   isOpen: boolean;
@@ -65,6 +66,8 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
 
   const { playTrackWithPipeline } = useIntegratedAudioPipeline();
   const setQueue = useQueueStore((state) => state.setQueue);
+  const playQueue = useAudioStore((state) => state.playQueue);
+  const importSongs = usePlaylistStore((state) => state.importSongs);
 
   // 轮询定时器 ref
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -148,8 +151,8 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
     const initialSongs = await fetchPlaylistTracks(playlist.id, playlist.source, 0, 100);
     if (initialSongs.length > 0) {
       setQueue(initialSongs);
-      useAudioStore.getState().playQueue(initialSongs, 0);
-      usePlaylistStore.getState().importSongs(initialSongs);
+      playQueue(initialSongs, 0);
+      importSongs(initialSongs);
       playTrackWithPipeline(initialSongs[0]);
       onClose();
 
@@ -168,10 +171,9 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
             );
             if (!nextBatch || nextBatch.length === 0) break;
 
-            const updatedQueue = [...useQueueStore.getState().queue, ...nextBatch];
-            useQueueStore.getState().setQueue(updatedQueue);
+            const updatedQueue = appendSongsToQueue(nextBatch);
             useAudioStore.setState({ queue: updatedQueue });
-            usePlaylistStore.getState().importSongs(nextBatch);
+            importSongs(nextBatch);
             currentOffset += nextBatch.length;
           }
         })().catch(() => {});

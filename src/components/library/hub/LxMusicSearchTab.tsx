@@ -213,6 +213,8 @@ export const LxMusicSearchTab: React.FC = () => {
   const kuwoCookie = useUserAccountStore((state) => state.kuwoCookie);
   const qishuiCookie = useUserAccountStore((state) => state.qishuiCookie);
   const getPlatformCookie = useUserAccountStore((state) => state.getPlatformCookie);
+  const setActivePlatform = useUserAccountStore((state) => state.setActivePlatform);
+  const setIsAccountModalOpen = useUserAccountStore((state) => state.setIsAccountModalOpen);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -311,7 +313,7 @@ export const LxMusicSearchTab: React.FC = () => {
             setSongResults(seg.all);
             searchMemoryCache.set(cacheKey, seg.all);
           } else if (targetTab === "lx_custom") {
-            const activeScripts = useSourceConfigStore.getState().lxScripts;
+            const activeScripts = lxScripts;
             const activeScript = activeScripts.find(
               (s) => s.id === selectedScriptId && s.enabled
             ) ||
@@ -387,6 +389,7 @@ export const LxMusicSearchTab: React.FC = () => {
       setPlaylistResults,
       setSongResults,
       showToast,
+      lxScripts,
     ]
   );
 
@@ -397,13 +400,21 @@ export const LxMusicSearchTab: React.FC = () => {
       const tabLabel = SOURCE_TABS.find((t) => t.id === activeTab)?.label || "该平台";
       showToast(`🔒 【${tabLabel}】尚未登录，请先登录开启链路`);
       if (activeTab !== "all" && activeTab !== "lx_custom") {
-        useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
+        setActivePlatform(activeTab as PlatformType);
       }
-      useUserAccountStore.getState().setIsAccountModalOpen(true);
+      setIsAccountModalOpen(true);
       return;
     }
     handleSearch();
-  }, [isCurrentTabLocked, activeTab, showToast, handleSearch, invalidatePendingSearch]);
+  }, [
+    isCurrentTabLocked,
+    activeTab,
+    showToast,
+    handleSearch,
+    invalidatePendingSearch,
+    setActivePlatform,
+    setIsAccountModalOpen,
+  ]);
 
   // 初始加载：仅在有已登录平台或可用脚本时才触发默认搜索
   useEffect(() => {
@@ -700,9 +711,9 @@ export const LxMusicSearchTab: React.FC = () => {
               return;
             }
             if (!isAllSources) {
-              useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
+              setActivePlatform(activeTab as PlatformType);
             }
-            useUserAccountStore.getState().setIsAccountModalOpen(true);
+            setIsAccountModalOpen(true);
           }}
           className="px-6 py-2.5 rounded-full bg-white text-black hover:bg-white/90 text-xs font-semibold tracking-tight shadow-[0_2px_12px_rgba(255,255,255,0.25)] flex items-center gap-2 cursor-pointer transition-all active:scale-95"
         >
@@ -1053,9 +1064,9 @@ export const LxMusicSearchTab: React.FC = () => {
                       openManagementModal("lx_scripts");
                     } else {
                       if (activeTab !== "all") {
-                        useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
+                        setActivePlatform(activeTab as PlatformType);
                       }
-                      useUserAccountStore.getState().setIsAccountModalOpen(true);
+                      setIsAccountModalOpen(true);
                     }
                   }}
                   className="px-6 py-2.5 rounded-full bg-white text-black hover:bg-white/90 text-xs font-semibold tracking-tight shadow-[0_2px_12px_rgba(255,255,255,0.25)] flex items-center gap-2 cursor-pointer transition-all active:scale-95"
@@ -1307,9 +1318,9 @@ export const LxMusicSearchTab: React.FC = () => {
                 type="button"
                 onClick={() => {
                   if (activeTab !== "all" && activeTab !== "lx_custom") {
-                    useUserAccountStore.getState().setActivePlatform(activeTab as PlatformType);
+                    setActivePlatform(activeTab as PlatformType);
                   }
-                  useUserAccountStore.getState().setIsAccountModalOpen(true);
+                  setIsAccountModalOpen(true);
                 }}
                 className="px-6 py-2.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold tracking-tight shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95"
               >

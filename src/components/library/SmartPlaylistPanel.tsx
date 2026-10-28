@@ -14,11 +14,10 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useAudioStore } from "@/store/audioStore";
 import { useEmotionStore } from "@/store/emotionStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { selectSongs } from "@/store/selectors/playlistSelectors";
-import { useQueueStore } from "@/store/queueStore";
+import { playQueue, setPlaybackQueue } from "@/store/actions/playbackActions";
 import {
   useSmartPlaylistStore,
   type PlaylistExportFormat,
@@ -76,8 +75,8 @@ function playSongs(songs: Song[]) {
     toast.info("No matching songs");
     return;
   }
-  useQueueStore.getState().setQueue(songs);
-  useAudioStore.getState().playQueue(songs, 0);
+  setPlaybackQueue(songs);
+  playQueue(songs, 0);
   toast.success(`Queued ${songs.length} songs`);
 }
 
@@ -573,7 +572,7 @@ function ImportExportTab({
     const matched = importPlaylist(importText, importFormat, songs);
     setImportedCount(matched.length);
     if (matched.length > 0) {
-      useQueueStore.getState().setQueue(matched);
+      setPlaybackQueue(matched);
       toast.success(`Imported ${matched.length} songs into the queue`);
     } else {
       toast.info("No library songs matched the imported playlist");

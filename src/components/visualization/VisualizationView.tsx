@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore } from "@/store/uiStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useAudioStore } from "@/store/audioStore";
+import { getVisualizationSnapshot } from "@/store/actions/visualizationActions";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import {
@@ -178,6 +179,10 @@ export function VisualizationView() {
   const currentEffect = useVisualizationStore((state) => state.currentEffect);
   const setCurrentEffect = useVisualizationStore((state) => state.setCurrentEffect);
   const effectSettings = useVisualizationStore((state) => state.effectSettings);
+  const setAudioCurrentTime = useAudioStore((state) => state.setCurrentTime);
+  const setAudioDuration = useAudioStore((state) => state.setDuration);
+  const togglePlaybackIntent = useAudioStore((state) => state.togglePlaybackIntent);
+  const reportProToolsUsage = useStatsAchievementsStore((state) => state.reportProToolsUsage);
   const { seek, audioRef } = useAudioPlayer();
   const [showSettings, setShowSettings] = useState(false);
   const [showRecording, setShowRecording] = useState(false);
@@ -468,7 +473,7 @@ export function VisualizationView() {
       // 帧间隔：首帧按 60fps 兜底，钳到 50ms 与 runtime 的 MAX_DELTA_MS 对齐
       const dt = previousTime > 0 ? Math.min(50, timestamp - previousTime) : 1000 / 60;
 
-      const state = useVisualizationStore.getState();
+      const state = getVisualizationSnapshot();
       const currentEff = state.currentEffect;
       const settings = state.effectSettings;
 
@@ -696,10 +701,10 @@ export function VisualizationView() {
             Number.isFinite(activeAudio.currentTime) &&
             activeAudio.currentTime >= 0
           ) {
-            useAudioStore.getState().setCurrentTime(activeAudio.currentTime);
+            setAudioCurrentTime(activeAudio.currentTime);
           }
           if (activeAudio && Number.isFinite(activeAudio.duration) && activeAudio.duration > 0) {
-            useAudioStore.getState().setDuration(activeAudio.duration);
+            setAudioDuration(activeAudio.duration);
           }
           if (!animationFrameRef.current) {
             animationFrameRef.current = requestRaf(legacyLoop);
@@ -745,7 +750,7 @@ export function VisualizationView() {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
-  }, [currentView, audioRef]);
+  }, [currentView, audioRef, setAudioCurrentTime, setAudioDuration]);
 
   // 常驻挂载，靠透明度 / 可见性切换。
   // 原来这里是 `if (currentView !== "visualization") return null`，于是每次切进可视化界面
@@ -756,7 +761,7 @@ export function VisualizationView() {
 
   const handleTogglePlay = () => {
     if (currentSong) {
-      useAudioStore.getState().togglePlaybackIntent();
+      togglePlaybackIntent();
     }
   };
 
@@ -851,7 +856,7 @@ export function VisualizationView() {
                     key={effect.id}
                     onClick={() => {
                       setCurrentEffect(effect.id);
-                      useStatsAchievementsStore.getState().reportProToolsUsage("visualizer_config");
+                      reportProToolsUsage("visualizer_config");
                     }}
                     className={`px-4 py-1.5 rounded-full text-[11px] font-bold tracking-widest transition-all duration-300 whitespace-nowrap shrink-0 uppercase ${
                       currentEffect === effect.id

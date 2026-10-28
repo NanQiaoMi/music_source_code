@@ -41,8 +41,9 @@ export const GlobalPlayerBar: React.FC = () => {
   const isMuted = usePlayerStore((state) => state.isMuted);
   const isLoading = usePlaybackClock((state) => state.isLoading);
 
+  const togglePlaybackIntent = useAudioStore((state) => state.togglePlaybackIntent);
   const handleTogglePlay = () => {
-    useAudioStore.getState().togglePlaybackIntent();
+    togglePlaybackIntent();
   };
   const prevSong = useAudioStore((state) => state.prevSong);
   const nextSong = useAudioStore((state) => state.nextSong);
