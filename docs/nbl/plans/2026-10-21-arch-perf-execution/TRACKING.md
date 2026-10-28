@@ -114,7 +114,7 @@
 - [ ] S6-8 全屏/toast/性能档去重 — owner: — | PR: 1 | 依赖: S6-6 | 验收: 每类 owner=1
 - [ ] S6-9 domain 用例层 + 事件 + 服务 port 化 — owner: — | PR: 1-2 | 依赖: S6-4/5 | 验收: store 边 ≤6 type-only；服务 getState=0
 - [ ] S6-10 剩余 getState 收敛 — owner: — | PR: 2 | 依赖: S6-9 | 验收: 组件=0；service=0
-- [ ] S6-11 store contract 测试矩阵 — owner: — | PR: 1 | 依赖: S6-2/3 | 验收: 全覆盖
+- [ ] S6-11 store contract 测试矩阵 — **部分完成（2026-10-29，8c77a70）**：新增 `src/store/__contract__/` 数据驱动矩阵（`storeContractMatrix.contract.test.ts` 134 行 + `contractHelpers.ts` + `storeBindings.ts`）：覆盖 storageRegistry **43/43**，每 store 断言绑定/持久 API/key/version/hydration 计划唯一/partialize roundtrip/禁 volatile 字段；汇总 2 例（矩阵行数==registry、写盘 key ⊆ STORAGE_KEYS）；反向证明 2 个（错误绑定/version 会红）。45 用例通过（2.5s）；全量 245 files/1540 tests（1539 passed/1 skipped）；tsc/lint 0。**验收缺口（未全覆盖）**：计划 8 文件矩阵只落地 registry 主体 1 个；persistenceVersion/quotaPolicy/hydrationOrder/backupRoundtrip/playbackConsistency/selectorSnapshot/storeGraph 与 fixtures 未做；40 个 store 未声明 version（仅 3 个声明，S6-2 接线后需改 migrate 0->1，不能裸加）；5 个整店持久化（knowledge/linerNotes/lyricSettings/professionalMode/recommendation），其中 2 个把 runtime isLoading 写盘（已显式例外棘轮，M6「整店持久化 0」未达）；(c) 只做 storage 适配器 roundtrip，不 rehydrate；coverage include 未扩 src/store。分支 `feature/arch-perf-s6-11`（未合并）。
 - [ ] S6-12 行数棘轮 + depcruise — owner: — | PR: 1 | 依赖: S0-2 | 验收: 0 循环；≤400 行
 
 ## S7 服务与平台边界（M7，出口门）
