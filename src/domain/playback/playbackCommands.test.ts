@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { playbackCommands } from "./playbackCommands";
+import { createPlaybackCommands, playbackCommands } from "./playbackCommands";
+import type { PlaybackPorts, PlaybackSnapshot } from "./ports";
 import { clearDomainEvents, on } from "@/domain/events";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
@@ -15,6 +16,47 @@ const makeSong = (id: string): Song => ({
   source: "local",
   audioUrl: `file:///${id}.mp3`,
 });
+
+const makeFakePorts = (initial: Partial<PlaybackSnapshot> = {}) => {
+  let snapshot: PlaybackSnapshot = {
+    currentSong: null,
+    shouldPlay: false,
+    isPlaying: false,
+    volume: 0.7,
+    isMuted: false,
+    currentTime: 0,
+    duration: 100,
+    ...initial,
+  };
+  const playSong = vi.fn();
+  const toggleIntent = vi.fn(() => {
+    snapshot = {
+      ...snapshot,
+      shouldPlay: !snapshot.shouldPlay,
+      isPlaying: !snapshot.shouldPlay,
+    };
+  });
+  const seek = vi.fn();
+  const next = vi.fn();
+  const prev = vi.fn();
+  const setVolume = vi.fn((volume: number) => {
+    snapshot = { ...snapshot, volume };
+  });
+  const toggleMute = vi.fn(() => {
+    snapshot = { ...snapshot, isMuted: !snapshot.isMuted };
+  });
+  const ports: PlaybackPorts = {
+    playSong,
+    toggleIntent,
+    seek,
+    next,
+    prev,
+    setVolume,
+    toggleMute,
+    getSnapshot: vi.fn(() => snapshot),
+  };
+  return { ports, playSong, toggleIntent, seek, next, prev, setVolume, toggleMute };
+};
 
 const resetStores = () => {
   usePlaybackRuntimeStore.getState().reset();
@@ -240,5 +282,51 @@ describe("playbackCommands", () => {
     expect(playbackCommands.toggleMute()).toEqual({ isMuted: true });
     expect(muteSpy).toHaveBeenCalledTimes(1);
     expect(changed).toHaveBeenCalledWith({ isMuted: true });
+  });
+});
+
+describe("playbackCommands 注入 fake ports", () => {
+  it("命令只走注入的 ports，不触碰 store", () => {
+    const fake = makeFakePorts();
+    const commands = createPlaybackCommands(fake.ports);
+    const song = makeSong("song-x");
+    const started = vi.fn();
+    const resumed = vi.fn();
+    on("playback:started", started);
+    on("playback:resumed", resumed);
+
+    expect(commands.playSong(song, { queue: [song], startIndex: 0 })).toEqual({
+      ok: true,
+      songId: "song-x",
+    });
+    expect(fake.playSong).toHaveBeenCalledWith(song, { queue: [song], startIndex: 0 });
+    expect(started).toHaveBeenCalledWith({
+      songId: "song-x",
+      previousSongId: null,
+      queued: true,
+    });
+
+    expect(commands.togglePlayback()).toEqual({ changed: true, isPlaying: true });
+    expect(fake.toggleIntent).toHaveBeenCalledTimes(1);
+    expect(resumed).toHaveBeenCalledWith({ songId: null });
+    expect(commands.togglePlayback()).toEqual({ changed: true, isPlaying: false });
+
+    expect(commands.seekTo(150)).toEqual({ seconds: 100 });
+    expect(fake.seek).toHaveBeenCalledWith(100);
+
+    expect(commands.nextTrack()).toEqual({ from: null, to: null, direction: "next" });
+    expect(commands.prevTrack()).toEqual({ from: null, to: null, direction: "prev" });
+    expect(fake.next).toHaveBeenCalledTimes(1);
+    expect(fake.prev).toHaveBeenCalledTimes(1);
+
+    expect(commands.setVolume(0.42)).toEqual({ volume: 0.42, changed: true });
+    expect(fake.setVolume).toHaveBeenCalledWith(0.42);
+    expect(commands.toggleMute()).toEqual({ isMuted: true });
+    expect(fake.toggleMute).toHaveBeenCalledTimes(1);
+
+    // fake ports 承担全部 I/O：默认适配器背后的 store 保持 beforeEach 的重置值。
+    expect(useAudioStore.getState().currentSong).toBeNull();
+    expect(usePlayerStore.getState().volume).toBe(0.7);
+    expect(usePlayerStore.getState().isMuted).toBe(false);
   });
 });

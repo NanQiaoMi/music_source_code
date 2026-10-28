@@ -1,15 +1,14 @@
 import { Song } from "@/types/song";
 import { ToolDefinition, ToolExecutionResult } from "@/types/aiAgent";
 import { multiSourceResolver } from "@/services/MultiSourceResolver";
-import { useAudioStore, LoopMode } from "@/store/audioStore";
-import { usePlayerStore } from "@/store/playerStore";
-import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
+import { createPlaybackCommands } from "@/domain/playback/playbackCommands";
+import { defaultPlaybackPorts, type PlaybackPorts } from "@/domain/playback/ports";
+import { usePlayerStore, type LoopMode } from "@/store/playerStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useVisualizationStore, VisualizationEffect } from "@/store/visualizationStore";
 import { useSleepTimerStore } from "@/store/sleepTimerStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
-import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 
 /**
  * 歌曲运行时快速缓存，用于根据 ID 在工具调用间共享检索到的完整 Song 结构
@@ -344,11 +343,19 @@ function normalizeVisualizerEffect(input: string): string {
 /**
  * 执行具体的 AI 工具调用
  */
+export interface ToolExecutionContext {
+  abortSignal?: AbortSignal;
+  /** S6-9b：测试/上层可注入 fake ports；默认走 store 适配器。 */
+  playback?: PlaybackPorts;
+}
+
 export async function executeTool(
   name: string,
   args: Record<string, unknown>,
-  _context?: { abortSignal?: AbortSignal }
+  context: ToolExecutionContext = {}
 ): Promise<ToolExecutionResult> {
+  const playbackPorts = context.playback ?? defaultPlaybackPorts;
+  const commands = createPlaybackCommands(playbackPorts);
   try {
     switch (name) {
       case "search_songs": {
@@ -429,7 +436,7 @@ export async function executeTool(
           cacheSong(song);
         }
 
-        useAudioStore.getState().playSong(song);
+        commands.playSong(song);
 
         return {
           success: true,
@@ -448,33 +455,31 @@ export async function executeTool(
 
       case "control_playback": {
         const action = typeof args.action === "string" ? args.action.toLowerCase() : "";
-        const audioStore = useAudioStore.getState();
 
         switch (action) {
           case "play":
-            audioStore.setIsPlaying(true);
+            commands.togglePlayback({ target: true });
             return { success: true, message: "已继续播放音乐" };
 
           case "pause":
-            audioStore.setIsPlaying(false);
+            commands.togglePlayback({ target: false });
             return { success: true, message: "已暂停音乐播放" };
 
           case "toggle": {
-            const nextPlaying = !usePlaybackRuntimeStore.getState().shouldPlay;
-            audioStore.setIsPlaying(nextPlaying);
-            return { success: true, message: nextPlaying ? "已开始播放" : "已暂停播放" };
+            const { isPlaying } = commands.togglePlayback();
+            return { success: true, message: isPlaying ? "已开始播放" : "已暂停播放" };
           }
 
           case "next":
-            audioStore.nextSong();
+            commands.nextTrack();
             return { success: true, message: "已为您切到下一首歌曲" };
 
           case "prev":
-            audioStore.prevSong();
+            commands.prevTrack();
             return { success: true, message: "已为您切回上一首歌曲" };
 
           case "stop":
-            audioStore.setIsPlaying(false);
+            commands.togglePlayback({ target: false });
             return { success: true, message: "已停止音乐播放" };
 
           default:
@@ -487,22 +492,21 @@ export async function executeTool(
       }
 
       case "set_volume": {
-        const audioStore = useAudioStore.getState();
-        const playerState = usePlayerStore.getState();
+        const snapshot = playbackPorts.getSnapshot();
         const results: string[] = [];
-        let nextVolume = playerState.volume;
-        let nextMuted = playerState.isMuted;
+        let nextVolume = snapshot.volume;
+        let nextMuted = snapshot.isMuted;
 
         if (typeof args.volume === "number" && !Number.isNaN(args.volume)) {
           const clamped = Math.max(0, Math.min(100, args.volume));
-          audioStore.setVolume(clamped / 100);
+          commands.setVolume(clamped / 100);
           nextVolume = clamped / 100;
           results.push(`音量已调整为 ${clamped}%`);
         }
 
         if (typeof args.isMuted === "boolean") {
-          if (args.isMuted !== playerState.isMuted) {
-            audioStore.toggleMute();
+          if (args.isMuted !== snapshot.isMuted) {
+            commands.toggleMute();
           }
           nextMuted = args.isMuted;
           results.push(args.isMuted ? "已开启静音" : "已取消静音");
@@ -556,7 +560,7 @@ export async function executeTool(
             };
         }
 
-        useAudioStore.getState().setLoopMode(loopMode);
+        usePlayerStore.getState().setLoopMode(loopMode);
         return {
           success: true,
           message: `播放模式已切换为「${modeLabel}」`,
@@ -565,9 +569,8 @@ export async function executeTool(
       }
 
       case "get_current_playing": {
-        const playerState = usePlayerStore.getState();
-        const { currentTime } = getPlaybackClockSnapshot();
-        const currentSong = playerState.currentSong;
+        const snapshot = playbackPorts.getSnapshot();
+        const currentSong = snapshot.currentSong;
 
         if (!currentSong) {
           return {
@@ -592,7 +595,7 @@ export async function executeTool(
           success: true,
           message: `当前正在播放: 《${currentSong.title}》 - ${currentSong.artist}`,
           data: {
-            isPlaying: playerState.isPlaying,
+            isPlaying: snapshot.isPlaying,
             song: {
               id: currentSong.id,
               title: currentSong.title,
@@ -601,11 +604,11 @@ export async function executeTool(
               duration: currentSong.duration,
               source: currentSong.source,
             },
-            progressSeconds: Math.round(currentTime),
-            volume: Math.round(playerState.volume * 100),
-            isMuted: playerState.isMuted,
+            progressSeconds: Math.round(snapshot.currentTime),
+            volume: Math.round(snapshot.volume * 100),
+            isMuted: snapshot.isMuted,
             isFavorite: isFav,
-            playMode: loopModeMap[playerState.loopMode] || "顺序播放",
+            playMode: loopModeMap[usePlayerStore.getState().loopMode] || "顺序播放",
           },
         };
       }

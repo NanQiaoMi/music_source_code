@@ -10,7 +10,7 @@ import {
   clearSongCache,
 } from "./aiAgentTools";
 import { multiSourceResolver } from "./MultiSourceResolver";
-import { useAudioStore } from "@/store/audioStore";
+import type { PlaybackPorts, PlaybackSnapshot } from "@/domain/playback/ports";
 import { usePlayerStore } from "@/store/playerStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useQueueStore } from "@/store/queueStore";
@@ -27,28 +27,40 @@ vi.mock("./MultiSourceResolver", () => ({
   },
 }));
 
-// 只保留写点与进度源：身份/音量等读点必须走 playerStore（见下方用例），
-// 若服务回退到 audioStore 读这些字段会直接拿到 undefined 而失败。
-vi.mock("@/store/audioStore", () => {
-  const state = {
-    playSong: vi.fn(),
-    setIsPlaying: vi.fn(),
-    nextSong: vi.fn(),
-    prevSong: vi.fn(),
-    setVolume: vi.fn(),
-    toggleMute: vi.fn(),
-    setLoopMode: vi.fn(),
-    currentTime: 45,
-    duration: 240,
+// S6-9b：播放传输不再 mock 整棵 audioStore，改为注入 fake PlaybackPorts。
+function createFakePorts(initial: Partial<PlaybackSnapshot> = {}) {
+  let snapshot: PlaybackSnapshot = {
+    currentSong: null,
     isPlaying: false,
-    isLoading: false,
+    shouldPlay: false,
+    volume: 0.8,
+    isMuted: false,
+    currentTime: 0,
+    duration: 240,
+    ...initial,
   };
-  return {
-    useAudioStore: {
-      getState: vi.fn(() => state),
-    },
-  };
-});
+  const ports = {
+    playSong: vi.fn(),
+    toggleIntent: vi.fn(() => {
+      snapshot = {
+        ...snapshot,
+        shouldPlay: !snapshot.shouldPlay,
+        isPlaying: !snapshot.shouldPlay,
+      };
+    }),
+    seek: vi.fn(),
+    next: vi.fn(),
+    prev: vi.fn(),
+    setVolume: vi.fn((volume: number) => {
+      snapshot = { ...snapshot, volume };
+    }),
+    toggleMute: vi.fn(() => {
+      snapshot = { ...snapshot, isMuted: !snapshot.isMuted };
+    }),
+    getSnapshot: vi.fn(() => snapshot),
+  } satisfies PlaybackPorts;
+  return ports;
+}
 
 vi.mock("@/store/favoritesStore", () => {
   const state = {
@@ -66,13 +78,19 @@ vi.mock("@/store/favoritesStore", () => {
 
 vi.mock("@/store/queueStore", () => {
   const state = {
+    queue: [],
+    currentIndex: 0,
     clearQueue: vi.fn(),
     addToQueue: vi.fn(),
     addToNext: vi.fn(),
+    setQueue: vi.fn(),
+    setCurrentIndex: vi.fn(),
   };
   return {
     useQueueStore: {
       getState: vi.fn(() => state),
+      // audioStore 模块级订阅 queueStore；mock 必须提供 subscribe 才能让 ports 适配器加载。
+      subscribe: vi.fn(() => () => {}),
     },
   };
 });
@@ -220,41 +238,48 @@ describe("aiAgentTools - Complete Player Tools Suite", () => {
 
   describe("executeTool - play_song", () => {
     it("should play a cached song when songId exists", async () => {
-      const audioState = useAudioStore.getState();
+      const ports = createFakePorts();
 
       const mockSong: Song = {
         id: "song_abc",
         title: "七里香",
         artist: "周杰伦",
         duration: 300,
+        audioUrl: "file:///song_abc.mp3",
         source: "netease",
       };
       cacheSong(mockSong);
 
-      const res = await executeTool("play_song", { songId: "song_abc" });
+      const res = await executeTool("play_song", { songId: "song_abc" }, { playback: ports });
 
       expect(res.success).toBe(true);
-      expect(audioState.playSong).toHaveBeenCalledWith(mockSong);
+      expect(ports.playSong).toHaveBeenCalledWith(mockSong, {});
     });
 
     it("should fallback to constructing Song if not in cache", async () => {
-      const audioState = useAudioStore.getState();
+      const ports = createFakePorts();
 
-      const res = await executeTool("play_song", {
-        songId: "new_id",
-        title: "夜曲",
-        artist: "周杰伦",
-        source: "qq",
-      });
+      const res = await executeTool(
+        "play_song",
+        {
+          songId: "new_id",
+          title: "夜曲",
+          artist: "周杰伦",
+          source: "qq",
+        },
+        { playback: ports }
+      );
 
       expect(res.success).toBe(true);
-      expect(audioState.playSong).toHaveBeenCalledWith(
+      // 在线平台音源可在播放时动态解析，命令层直接交给 ports.playSong。
+      expect(ports.playSong).toHaveBeenCalledWith(
         expect.objectContaining({
           id: "new_id",
           title: "夜曲",
           artist: "周杰伦",
           source: "qq",
-        })
+        }),
+        {}
       );
     });
 
@@ -267,31 +292,65 @@ describe("aiAgentTools - Complete Player Tools Suite", () => {
 
   describe("executeTool - control_playback", () => {
     it("should handle play, pause, toggle, next, prev, stop actions", async () => {
-      const audioState = useAudioStore.getState();
+      const ports = createFakePorts();
 
-      // play
-      const resPlay = await executeTool("control_playback", { action: "play" });
+      // play（暂停态 -> 恢复）
+      const resPlay = await executeTool(
+        "control_playback",
+        { action: "play" },
+        { playback: ports }
+      );
       expect(resPlay.success).toBe(true);
-      expect(audioState.setIsPlaying).toHaveBeenCalledWith(true);
+      expect(ports.toggleIntent).toHaveBeenCalledTimes(1);
+      expect(ports.getSnapshot().shouldPlay).toBe(true);
 
-      // pause
-      const resPause = await executeTool("control_playback", { action: "pause" });
+      // pause（播放态 -> 暂停）
+      const resPause = await executeTool(
+        "control_playback",
+        { action: "pause" },
+        { playback: ports }
+      );
       expect(resPause.success).toBe(true);
-      expect(audioState.setIsPlaying).toHaveBeenCalledWith(false);
+      expect(ports.toggleIntent).toHaveBeenCalledTimes(2);
+      expect(ports.getSnapshot().shouldPlay).toBe(false);
 
       // next
-      const resNext = await executeTool("control_playback", { action: "next" });
+      const resNext = await executeTool(
+        "control_playback",
+        { action: "next" },
+        { playback: ports }
+      );
       expect(resNext.success).toBe(true);
-      expect(audioState.nextSong).toHaveBeenCalled();
+      expect(ports.next).toHaveBeenCalledTimes(1);
 
       // prev
-      const resPrev = await executeTool("control_playback", { action: "prev" });
+      const resPrev = await executeTool(
+        "control_playback",
+        { action: "prev" },
+        { playback: ports }
+      );
       expect(resPrev.success).toBe(true);
-      expect(audioState.prevSong).toHaveBeenCalled();
+      expect(ports.prev).toHaveBeenCalledTimes(1);
 
-      // toggle
-      const resToggle = await executeTool("control_playback", { action: "toggle" });
+      // toggle（暂停态 -> 播放）
+      const resToggle = await executeTool(
+        "control_playback",
+        { action: "toggle" },
+        { playback: ports }
+      );
       expect(resToggle.success).toBe(true);
+      expect(ports.toggleIntent).toHaveBeenCalledTimes(3);
+      expect(resToggle.message).toBe("已开始播放");
+
+      // stop
+      const resStop = await executeTool(
+        "control_playback",
+        { action: "stop" },
+        { playback: ports }
+      );
+      expect(resStop.success).toBe(true);
+      expect(ports.toggleIntent).toHaveBeenCalledTimes(4);
+      expect(ports.getSnapshot().shouldPlay).toBe(false);
     });
 
     it("should return error for invalid action", async () => {
@@ -303,22 +362,22 @@ describe("aiAgentTools - Complete Player Tools Suite", () => {
 
   describe("executeTool - set_volume", () => {
     it("should clamp and set volume correctly", async () => {
-      const audioState = useAudioStore.getState();
+      const ports = createFakePorts();
 
-      const res = await executeTool("set_volume", { volume: 65 });
+      const res = await executeTool("set_volume", { volume: 65 }, { playback: ports });
       expect(res.success).toBe(true);
-      expect(audioState.setVolume).toHaveBeenCalledWith(0.65);
+      expect(ports.setVolume).toHaveBeenCalledWith(0.65);
       expect(res.message).toContain("65%");
       expect((res.data as any).volume).toBe(65);
     });
 
     it("should toggle mute when isMuted differs", async () => {
-      const audioState = useAudioStore.getState();
-      usePlayerStore.setState({ isMuted: false });
+      const ports = createFakePorts();
+      expect(ports.getSnapshot().isMuted).toBe(false);
 
-      const res = await executeTool("set_volume", { isMuted: true });
+      const res = await executeTool("set_volume", { isMuted: true }, { playback: ports });
       expect(res.success).toBe(true);
-      expect(audioState.toggleMute).toHaveBeenCalled();
+      expect(ports.toggleMute).toHaveBeenCalledTimes(1);
       expect(res.message).toContain("静音");
       expect((res.data as any).isMuted).toBe(true);
     });
@@ -332,19 +391,17 @@ describe("aiAgentTools - Complete Player Tools Suite", () => {
 
   describe("executeTool - set_play_mode", () => {
     it("should set loop, single, shuffle, sequence modes", async () => {
-      const audioState = useAudioStore.getState();
-
       await executeTool("set_play_mode", { mode: "single" });
-      expect(audioState.setLoopMode).toHaveBeenCalledWith("single");
+      expect(usePlayerStore.getState().loopMode).toBe("single");
 
       await executeTool("set_play_mode", { mode: "loop" });
-      expect(audioState.setLoopMode).toHaveBeenCalledWith("all");
+      expect(usePlayerStore.getState().loopMode).toBe("all");
 
       await executeTool("set_play_mode", { mode: "shuffle" });
-      expect(audioState.setLoopMode).toHaveBeenCalledWith("shuffle");
+      expect(usePlayerStore.getState().loopMode).toBe("shuffle");
 
       await executeTool("set_play_mode", { mode: "sequence" });
-      expect(audioState.setLoopMode).toHaveBeenCalledWith("none");
+      expect(usePlayerStore.getState().loopMode).toBe("none");
     });
 
     it("should return error for unsupported mode", async () => {
@@ -355,27 +412,30 @@ describe("aiAgentTools - Complete Player Tools Suite", () => {
 
   describe("executeTool - get_current_playing", () => {
     it("should return current song info and status", async () => {
-      usePlayerStore.setState({
-        currentSong: {
-          id: "song_current",
-          title: "晴天",
-          artist: "周杰伦",
-          album: "叶惠美",
-          duration: 269,
-          source: "netease",
-        },
+      const currentSong: Song = {
+        id: "song_current",
+        title: "晴天",
+        artist: "周杰伦",
+        album: "叶惠美",
+        duration: 269,
+        source: "netease",
+      };
+      const ports = createFakePorts({
+        currentSong,
         isPlaying: true,
+        shouldPlay: true,
         volume: 0.55,
         isMuted: true,
-        loopMode: "single",
+        currentTime: 45,
       });
+      usePlayerStore.setState({ loopMode: "single" });
 
-      const res = await executeTool("get_current_playing", {});
+      const res = await executeTool("get_current_playing", {}, { playback: ports });
       expect(res.success).toBe(true);
       expect(res.message).toContain("晴天");
       expect((res.data as any).isPlaying).toBe(true);
       expect((res.data as any).song.title).toBe("晴天");
-      // 进度来自 PlaybackClock（audioStore mock 的 currentTime=45），音量/模式来自 playerStore
+      // 传输状态全部来自 snapshot（进度 45s、音量 55%），播放模式仍读 playerStore。
       expect((res.data as any).progressSeconds).toBe(45);
       expect((res.data as any).volume).toBe(55);
       expect((res.data as any).isMuted).toBe(true);
@@ -383,9 +443,9 @@ describe("aiAgentTools - Complete Player Tools Suite", () => {
     });
 
     it("should return message if nothing is playing", async () => {
-      usePlayerStore.setState({ currentSong: null });
+      const ports = createFakePorts();
 
-      const res = await executeTool("get_current_playing", {});
+      const res = await executeTool("get_current_playing", {}, { playback: ports });
       expect(res.success).toBe(true);
       expect(res.message).toContain("暂无正在播放");
     });
