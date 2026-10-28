@@ -282,6 +282,7 @@ export const useKnowledgeStore = create<KnowledgeState>()(
       clearCache: () => set({ backstories: {}, metaphors: {}, dnaJournal: null }),
     }),
     {
+      skipHydration: true,
       name: "mimi-knowledge-storage-v3",
     }
   )

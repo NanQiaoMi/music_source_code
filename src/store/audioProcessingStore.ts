@@ -349,6 +349,7 @@ export const useAudioProcessingStore = create<AudioProcessingState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "audio-processing-store-v5",
       partialize: (state) => ({
         dspEnabled: state.dspEnabled,

@@ -67,6 +67,7 @@ export const useEQStore = create<EQState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "eq-store",
       partialize: (state) => ({
         isEQEnabled: state.isEQEnabled,

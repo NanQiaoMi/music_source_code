@@ -241,6 +241,7 @@ export const useLinerNotesStore = create<LinerNotesState>()(
       clearCache: () => set({ notes: {} }),
     }),
     {
+      skipHydration: true,
       name: "mimi-liner-notes-store",
     }
   )

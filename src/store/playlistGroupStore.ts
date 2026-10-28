@@ -157,6 +157,7 @@ export const usePlaylistGroupStore = create<PlaylistGroupState>()(
       getDefaultGroups: () => get().groups.filter((group) => group.type !== "custom"),
     }),
     {
+      skipHydration: true,
       name: "playlist-group-store-v1",
       partialize: (state) => ({ groups: state.groups, currentGroupId: state.currentGroupId }),
     }

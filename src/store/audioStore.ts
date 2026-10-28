@@ -43,6 +43,7 @@ export const useAudioStore = create<AudioStoreState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "audio-store-v4",
       storage: createJSONStorage(() => createSafeStorage("audio-store-v4")),
       partialize: (state) => ({

@@ -89,6 +89,7 @@ export const useGestureSettingsStore = create<GestureSettingsState>()(
       resetSettings: () => set(createDefaultGestureSettings()),
     }),
     {
+      skipHydration: true,
       name: GESTURE_SETTINGS_STORAGE_KEY,
       version: 1,
       partialize: (state) => ({

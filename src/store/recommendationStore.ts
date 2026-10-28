@@ -264,6 +264,7 @@ export const useRecommendationStore = create<RecommendationState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "recommendation-storage",
       storage: {
         getItem: (name) => {

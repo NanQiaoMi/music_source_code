@@ -229,6 +229,7 @@ export const useMetadataEditorStore = create<MetadataEditorState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "metadata-editor-store-v5",
       partialize: (state) => ({
         regexPresets: state.regexPresets,

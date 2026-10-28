@@ -488,6 +488,7 @@ export const useAIStore = create<AIState>()(
       },
     }),
     {
+      skipHydration: true,
       name: AI_STORE_KEY,
       version: AI_STORE_VERSION,
       partialize: (state): PersistedAIState => ({

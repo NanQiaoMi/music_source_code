@@ -146,6 +146,7 @@ export const usePlayerStore = create<PlayerState>()(
       prevSong: () => {},
     }),
     {
+      skipHydration: true,
       name: "player-store",
       storage: createJSONStorage(() => createSafeStorage("player-store")),
       partialize: (state) => ({

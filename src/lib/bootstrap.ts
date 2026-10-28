@@ -4,6 +4,7 @@ import { usePlayerStore } from "@/store/playerStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useQueueStore } from "@/store/queueStore";
 import { AudioContextWatchdog } from "@/lib/audio/AudioContextWatchdog";
+import { hydrateStores } from "@/lib/bootstrapStores";
 
 let bootstrapPromise: Promise<boolean> | null = null;
 let hasRestoredPlaybackState = false;
@@ -28,6 +29,12 @@ async function runBootstrap(): Promise<boolean> {
   console.log("[Bootstrap] Starting mimimusic initialization...");
 
   try {
+    // 0. 所有 persist store 都设了 skipHydration；先按依赖顺序显式补齐，再做跨 store 投影。
+    const { hydrated } = await hydrateStores();
+    if (hydrated.length > 0) {
+      console.log(`[Bootstrap] Hydrated ${hydrated.length} persisted stores.`);
+    }
+
     // 1. 只在本次应用生命周期开始时恢复一次，路由返回主页不能重置播放中状态。
     if (!hasRestoredPlaybackState) {
       const restoredSong = usePlayerStore.getState().currentSong;

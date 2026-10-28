@@ -521,6 +521,7 @@ Return format: {"v": number, "e": number, "d": string}`;
       clearSelection: () => set({ selectedIds: [], lassoPath: [], marqueeRect: null }),
     }),
     {
+      skipHydration: true,
       name: "vibe-emotion-store-v2",
       partialize: (state) => ({
         emotionMap: state.emotionMap,

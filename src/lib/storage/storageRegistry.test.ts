@@ -8,6 +8,7 @@ import {
   STORAGE_REGISTRY,
   assertStorageRegistryIntegrity,
   getStorageEntry,
+  getStorageEntryByKeyOrOwner,
   getStorageKeyForOwner,
 } from "./storageRegistry";
 
@@ -39,12 +40,14 @@ function collectConstants(): Map<string, string> {
 
 function collectPersistKeys(): string[] {
   const constants = collectConstants();
-  const files = fs
-    .readdirSync(STORE_DIR)
-    .filter((f) => f.endsWith(".ts") && !f.includes(".test.") && f !== "index.ts");
+  // Scan the whole source tree (not just src/store) so a persist() moved to a hook or
+  // feature module cannot silently escape the registry.
+  const files = walk(SRC_DIR, []).filter(
+    (p) => /\.(ts|tsx)$/.test(p) && !p.includes(".test.") && !p.includes(".spec.")
+  );
   const keys: string[] = [];
   for (const file of files) {
-    const text = fs.readFileSync(path.join(STORE_DIR, file), "utf8");
+    const text = fs.readFileSync(file, "utf8");
     const idxs: number[] = [];
     const callRe = /persist\(/g;
     let cm: RegExpExecArray | null;
@@ -64,7 +67,7 @@ function collectPersistKeys(): string[] {
         const ref = slice.match(/name:\s*([A-Za-z_$][A-Za-z0-9_$]*)/);
         if (ref && constants.has(ref[1])) key = constants.get(ref[1]) ?? null;
       }
-      if (!key) throw new Error("cannot resolve persist key for " + file);
+      if (!key) throw new Error("cannot resolve persist key for " + path.relative(ROOT, file));
       keys.push(key);
     }
   }
@@ -77,6 +80,19 @@ describe("storageRegistry", () => {
     expect(actual).toHaveLength(43);
     expect(new Set(actual).size).toBe(43);
     expect([...STORAGE_KEYS].sort()).toEqual(actual);
+  });
+
+  it("defers hydration for every persisted store (skipHydration)", () => {
+    const files = walk(SRC_DIR, []).filter(
+      (p) => /\.(ts|tsx)$/.test(p) && !p.includes(".test.") && !p.includes(".spec.")
+    );
+    const persistFiles = files.filter((p) => fs.readFileSync(p, "utf8").includes("persist("));
+    expect(persistFiles).toHaveLength(43);
+    for (const file of persistFiles) {
+      expect(fs.readFileSync(file, "utf8"), path.relative(ROOT, file)).toContain(
+        "skipHydration: true"
+      );
+    }
   });
 
   it("keeps one registry entry per store owner and the store file exists", () => {
@@ -103,12 +119,15 @@ describe("storageRegistry", () => {
     }
   });
 
-  it("passes integrity checks and exposes owner lookup", () => {
+  it("passes integrity checks and exposes key/owner lookup", () => {
     expect(() => assertStorageRegistryIntegrity()).not.toThrow();
     expect(getStorageKeyForOwner("queueStore")).toBe("queue-store-v5");
     expect(getStorageKeyForOwner("missingStore")).toBeUndefined();
     expect(getStorageEntry("queue-store-v5")?.group).toBe("playback");
     expect(getStorageEntry("ui-store-v2")?.version).toBe(2);
+    expect(getStorageEntryByKeyOrOwner("queueStore")?.key).toBe("queue-store-v5");
+    expect(getStorageEntryByKeyOrOwner("queue-store-v5")?.owner).toBe("queueStore");
+    expect(getStorageEntryByKeyOrOwner("not-registered")).toBeUndefined();
   });
 
   it("keeps external bare keys out of the managed registry", () => {

@@ -191,6 +191,7 @@ export const useWaveformStore = create<WaveformState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "waveform-store-v5",
       partialize: (state) => ({
         markers: state.markers,

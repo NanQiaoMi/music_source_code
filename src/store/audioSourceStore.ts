@@ -82,6 +82,7 @@ export const useAudioSourceStore = create<AudioSourceSettingsState>()(
         }),
     }),
     {
+      skipHydration: true,
       name: "mimi_audio_source_settings",
       storage: createJSONStorage(() => createSafeStorage("mimi_audio_source_settings")),
       partialize: (state) => ({

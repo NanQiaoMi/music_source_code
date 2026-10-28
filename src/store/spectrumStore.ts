@@ -185,6 +185,7 @@ export const useSpectrumStore = create<SpectrumState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "spectrum-store-v5",
       partialize: (state) => ({
         spectrumMode: state.spectrumMode,

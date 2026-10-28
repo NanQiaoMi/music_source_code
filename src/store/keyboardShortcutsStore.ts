@@ -320,6 +320,7 @@ export const useKeyboardShortcutsStore = create<KeyboardShortcutsState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "keyboard-shortcuts-store-v1",
       partialize: (state) => ({
         overrides: state.overrides,

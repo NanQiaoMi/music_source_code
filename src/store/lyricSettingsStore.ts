@@ -197,6 +197,7 @@ export const useLyricSettingsStore = create<LyricSettings>()(
       resetSettings: () => set(defaultSettings),
     }),
     {
+      skipHydration: true,
       name: "lyric-settings-storage",
     }
   )

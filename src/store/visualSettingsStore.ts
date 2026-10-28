@@ -616,6 +616,7 @@ export const useVisualSettingsStore = create<VisualSettingsState>()(
       getBuiltInThemes: () => BUILT_IN_THEME_PRESETS,
     }),
     {
+      skipHydration: true,
       name: "visual-settings-v4",
       partialize: (state) => ({
         blurIntensity: state.blurIntensity,

@@ -152,6 +152,7 @@ export const useLyricsSearchStore = create<LyricsSearchState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "lyrics-search-storage",
       partialize: (state) => ({
         searchHistory: state.searchHistory,

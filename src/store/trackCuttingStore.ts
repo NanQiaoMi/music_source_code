@@ -281,6 +281,7 @@ export const useTrackCuttingStore = create<TrackCuttingState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "track-cutting-store-v5",
       partialize: (state) => ({
         settings: state.settings,

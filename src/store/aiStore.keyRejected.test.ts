@@ -165,6 +165,8 @@ describe("失效标记的持久化", () => {
 
     vi.resetModules();
     const reloaded = await import("./aiStore");
+    // S6-1: persisted stores no longer hydrate at import time; the bootstrap does it explicitly.
+    await reloaded.useAIStore.persist.rehydrate();
     const cfg = reloaded.useAIStore.getState().configs.find((c) => c.id === CFG);
 
     expect(cfg?.keyRejectedAt).toBe(stored);

@@ -48,6 +48,7 @@ export const useFavoritesStore = create<FavoritesState>()(
       getFavorites: () => get().favorites,
     }),
     {
+      skipHydration: true,
       name: "favorites-store",
       storage: createJSONStorage(() => createSafeStorage("favorites-store")),
       partialize: (state) => ({

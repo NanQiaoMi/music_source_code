@@ -211,6 +211,7 @@ export const useFormatConversionStore = create<FormatConversionState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "format-conversion-store-v5",
       partialize: (state) => ({
         settings: state.settings,

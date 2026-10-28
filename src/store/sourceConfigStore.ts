@@ -562,6 +562,7 @@ export const useSourceConfigStore = create<SourceConfigState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "vibe_source_config_v1",
       storage: createJSONStorage(() => ({
         getItem: (name) => {

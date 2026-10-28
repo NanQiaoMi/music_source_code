@@ -627,6 +627,7 @@ export const useUserAccountStore = create<UserAccountState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "mimi-user-account-storage",
       storage: createJSONStorage(() => createSafeStorage("mimi-user-account-storage")),
       partialize: (state) => ({

@@ -388,6 +388,7 @@ export const useQueueStore = create<QueueState>()(
       setPlayThroughMode: (mode) => set({ playThroughMode: mode }),
     }),
     {
+      skipHydration: true,
       name: "queue-store-v5",
       partialize: (state) => {
         const persistedQueue = state.queue.slice(0, 200).map(sanitizePersistedSong);

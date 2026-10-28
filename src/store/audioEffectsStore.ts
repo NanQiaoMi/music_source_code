@@ -524,6 +524,7 @@ export const useAudioEffectsStore = create<AudioEffectsState>()(
       setLFODepth: (depth) => set({ lfoDepth: clamp01(depth) }),
     }),
     {
+      skipHydration: true,
       name: "audio-effects-store-v2",
       partialize: (state) => ({
         savedPresets: state.savedPresets,

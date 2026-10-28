@@ -204,6 +204,7 @@ export const useLibraryHealthStore = create<LibraryHealthState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "library-health-store-v5",
       partialize: (state) => ({
         lastScan: state.lastScan,

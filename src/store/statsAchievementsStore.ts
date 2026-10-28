@@ -976,6 +976,7 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "stats-achievements-store-v4",
       partialize: (state) => ({
         listeningStats: state.listeningStats,

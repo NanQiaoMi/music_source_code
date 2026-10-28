@@ -406,6 +406,7 @@ export const useLibraryManagerStore = create<LibraryManagerState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "library-manager-store-v4",
       partialize: (state) => ({
         renameRules: state.renameRules,

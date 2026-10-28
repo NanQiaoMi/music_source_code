@@ -58,6 +58,7 @@ const MusicBackstory = dynamic(
 );
 
 import { bootstrapApp } from "@/lib/bootstrap";
+import { hydrateStores } from "@/lib/bootstrapStores";
 
 /**
  * Main Application Entry Point - mimimusic
@@ -79,9 +80,12 @@ export default function Home() {
   useKeyboardShortcuts();
 
   useEffect(() => {
-    useUIStore.getState().restorePersistedView();
-    // 重视图由上方 next/dynamic 声明按需加载；此处不再重复预取（S3-9）。
-    void bootstrapApp();
+    // persist store 显式 hydrate 完成后才能读取持久化的视图/主题，避免被 store 默认值覆盖。
+    void hydrateStores().then(() => {
+      useUIStore.getState().restorePersistedView();
+      // 重视图由上方 next/dynamic 声明按需加载；此处不再重复预取（S3-9）。
+      void bootstrapApp();
+    });
   }, []);
 
   return (

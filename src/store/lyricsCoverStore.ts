@@ -414,6 +414,7 @@ export const useLyricsCoverStore = create<LyricEditorState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "lyrics-cover-store-v4",
       partialize: (state) => ({
         lyrics: state.lyrics,

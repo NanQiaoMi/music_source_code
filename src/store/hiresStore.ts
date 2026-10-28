@@ -97,6 +97,7 @@ export const useHiResStore = create<HiResState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "hires-store-v5",
       partialize: (state) => ({
         showQualityBadge: state.showQualityBadge,

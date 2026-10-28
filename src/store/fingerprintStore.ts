@@ -91,6 +91,7 @@ export const useFingerprintStore = create<FingerprintState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "fingerprint-store-v5",
       partialize: (state) => ({
         fingerprints: Object.fromEntries(state.fingerprints),

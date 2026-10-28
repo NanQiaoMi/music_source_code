@@ -154,6 +154,7 @@ export const useListeningJournalStore = create<ListeningJournalState>()(
       clear: () => set({ days: {}, eventsByDate: {}, selectedDate: getIsoDate() }),
     }),
     {
+      skipHydration: true,
       name: "journal-store-v1",
       storage: createJSONStorage(() => safeStateStorage),
       partialize: (state) => ({

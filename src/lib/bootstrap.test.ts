@@ -36,6 +36,13 @@ vi.mock("@/lib/audio/AudioContextWatchdog", () => ({
   AudioContextWatchdog: { getInstance: () => ({ start: mocks.startWatchdog }) },
 }));
 
+vi.mock("@/lib/bootstrapStores", () => ({
+  hydrateStores: vi.fn(async () => ({
+    phases: { playback: 0, queue: 0, audioProjection: 0, ui: 0, business: 0 },
+    hydrated: [],
+  })),
+}));
+
 describe("bootstrapApp playback restoration", () => {
   beforeEach(() => {
     mocks.audioState = { currentSong: null, isPlaying: false, currentTime: 0, duration: 0 };

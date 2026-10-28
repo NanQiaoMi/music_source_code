@@ -358,6 +358,7 @@ export const useCrossfadeStore = create<CrossfadeState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "crossfade-store-v5",
       partialize: (state) => ({
         settings: state.settings,

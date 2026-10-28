@@ -593,6 +593,7 @@ export const useSmartPlaylistStore = create<SmartPlaylistState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "smart-playlist-store-v4",
       partialize: (state) => ({
         smartPlaylists: state.smartPlaylists,

@@ -91,6 +91,7 @@ export const useDataManagerStore = create<DataManagerState>()(
         }),
     }),
     {
+      skipHydration: true,
       name: "mimi_datamanager_hub_store_v1",
       storage: createJSONStorage(() => createSafeStorage("mimi_datamanager_hub_store_v1")),
       partialize: (state) => ({

@@ -3,6 +3,7 @@
 // Usage: node scripts/perf/report-store-stats.mjs [--check] [--max-whole <n>] [--json <path>] [--store <useXStore>]
 import fs from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 
 const ROOT = process.cwd();
 const SRC = path.join(ROOT, "src");
@@ -47,6 +48,28 @@ const storeModules = fs
   .filter((e) => e.isFile() && e.name.endsWith(".ts") && !e.name.includes(".test.") && e.name !== "index.ts")
   .map((e) => e.name.replace(/\.ts$/, ""));
 
+function collectPersistNames(fileName, text) {
+  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true);
+  const names = [];
+  const visit = (node) => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "persist") {
+      const options = node.arguments[1];
+      const nameNode = options && ts.isObjectLiteralExpression(options)
+        ? options.properties.find((property) => property.name?.getText(source) === "name")
+        : undefined;
+      const initializer = nameNode?.initializer;
+      if (initializer && (ts.isStringLiteral(initializer) || ts.isNoSubstitutionTemplateLiteral(initializer))) {
+        names.push(initializer.text);
+      } else if (initializer && ts.isIdentifier(initializer) && constantMap.has(initializer.text)) {
+        names.push(constantMap.get(initializer.text));
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return names;
+}
+
 const storeModuleSet = new Set(storeModules);
 const persistKeys = [];
 const edgesAll = new Set();
@@ -54,22 +77,7 @@ const edgesRuntime = new Set();
 for (const name of storeModules) {
   const p = path.join(STORE_DIR, name + ".ts");
   const text = fs.readFileSync(p, "utf8");
-  const idxs = [];
-  const callRe = /persist\(/g;
-  let cm;
-  while ((cm = callRe.exec(text))) idxs.push(cm.index);
-  for (let i = 0; i < idxs.length; i += 1) {
-    const slice = text.slice(idxs[i], i + 1 < idxs.length ? idxs[i + 1] : text.length);
-    const nameRe = /name:\s*["']([^"']+)["']/g;
-    let nm;
-    let last = null;
-    while ((nm = nameRe.exec(slice))) last = nm[1];
-    if (!last) {
-      const refMatch = slice.match(/name:\s*([A-Za-z_$][A-Za-z0-9_$]*)/);
-      if (refMatch && constantMap.has(refMatch[1])) last = constantMap.get(refMatch[1]);
-    }
-    if (last) persistKeys.push(last);
-  }
+  persistKeys.push(...collectPersistNames(name + ".ts", text));
   const importRe = /import\s+(type\s+)?([\s\S]*?)from\s+["'](?:@\/store\/|\.\/)([A-Za-z0-9_]+)["']/g;
   let im;
   while ((im = importRe.exec(text))) {
@@ -160,8 +168,21 @@ for (const p of files) {
   getStateByLayer[layer] = (getStateByLayer[layer] || 0) + count;
 }
 
+const registryKeys = [...fs.readFileSync(path.join(SRC, "lib", "storage", "storageRegistry.ts"), "utf8").matchAll(/^\s*key:\s*"([^"]+)"/gm)].map((m) => m[1]);
+const uniquePersistKeys = [...new Set(persistKeys)];
+const missingFromRegistry = uniquePersistKeys.filter((key) => !registryKeys.includes(key));
+const unregisteredKeys = registryKeys.filter((key) => !uniquePersistKeys.includes(key));
+
 const result = {
   generatedAt: new Date().toISOString(),
+  storageRegistry: {
+    keys: registryKeys.length,
+    persisted: uniquePersistKeys.length,
+    registered: uniquePersistKeys.length - missingFromRegistry.length,
+    coverage: uniquePersistKeys.length - missingFromRegistry.length + "/" + uniquePersistKeys.length,
+    missing: missingFromRegistry.sort(),
+    unregistered: unregisteredKeys.sort(),
+  },
   stores: {
     count: storeModules.length,
     names: storeModules.slice().sort(),
@@ -190,6 +211,7 @@ const result = {
 
 console.log("== Store architecture stats ==");
 console.log("stores        " + result.stores.count + "  persist keys " + result.stores.persistCount);
+console.log("registry      " + result.storageRegistry.coverage + " persisted keys registered");
 console.log("subscriptions " + result.subscriptions.totalCalls + " calls: whole " + whole + " (" + result.subscriptions.wholeRatioPct + "%), selector " + selector + ", whole-only files " + wholeOnlyFiles);
 console.log("store graph   " + result.storeGraph.edges + " edges, SCC " + result.storeGraph.sccCount);
 console.log("getState      " + JSON.stringify(getStateByLayer));
@@ -226,6 +248,8 @@ if (check) {
   if (result.subscriptions.wholeCalls > base.subscriptions.wholeCalls) fails.push("wholeCalls " + result.subscriptions.wholeCalls + " > baseline " + base.subscriptions.wholeCalls);
   if (result.storeGraph.edges > base.storeGraph.edges) fails.push("storeEdges " + result.storeGraph.edges + " > baseline " + base.storeGraph.edges);
   if (result.stores.persistCount < base.stores.persistCount) fails.push("persistCount " + result.stores.persistCount + " < baseline " + base.stores.persistCount);
+  if (missingFromRegistry.length > 0) fails.push("persist keys missing from registry: " + missingFromRegistry.join(","));
+  if (unregisteredKeys.length > 0) fails.push("registry keys without persist config: " + unregisteredKeys.join(","));
   if (fails.length > 0) {
     console.error("[store-stats] FAIL: " + fails.join("; "));
     process.exit(1);

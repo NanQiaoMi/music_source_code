@@ -44,6 +44,7 @@ export const usePlayerSkinStore = create<PlayerSkinState>()(
       getActiveHalo: () => getHaloSkin(get().activeHaloId),
     }),
     {
+      skipHydration: true,
       name: PLAYER_SKIN_STORE_KEY,
       partialize: (state) => ({
         activeBaseSkinId: state.activeBaseSkinId,

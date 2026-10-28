@@ -408,6 +408,11 @@ export function getStorageEntry(key: string): StorageEntry | undefined {
   return STORAGE_REGISTRY.find((entry) => entry.key === key);
 }
 
+/** Resolve an owner name (store file) or a persisted key to its registry entry. */
+export function getStorageEntryByKeyOrOwner(name: string): StorageEntry | undefined {
+  return STORAGE_REGISTRY.find((entry) => entry.key === name || entry.owner === name);
+}
+
 export function getStorageKeyForOwner(owner: string): string | undefined {
   return STORAGE_KEY_BY_OWNER.get(owner);
 }

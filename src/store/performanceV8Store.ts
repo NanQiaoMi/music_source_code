@@ -154,6 +154,7 @@ export const usePerformanceV8Store = create<PerformanceState>()(
       resetRecoveryState: () => set({ lowFpsStartedAt: null, needsRecovery: false }),
     }),
     {
+      skipHydration: true,
       name: "performance-v8-store",
       partialize: (state) => ({
         config: state.config,

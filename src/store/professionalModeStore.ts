@@ -142,6 +142,7 @@ export const useProfessionalModeStore = create<ProfessionalModeState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "professional-mode-store-v5",
       storage: {
         getItem: (name) => {

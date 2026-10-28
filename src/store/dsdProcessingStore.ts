@@ -216,6 +216,7 @@ export const useDSDProcessingStore = create<DSDProcessingState>()(
       },
     }),
     {
+      skipHydration: true,
       name: "dsd-processing-store-v5",
       partialize: (state) => ({
         isEnabled: state.isEnabled,

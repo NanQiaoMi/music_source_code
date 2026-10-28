@@ -518,6 +518,7 @@ export const useBackupRestoreStore = create<BackupRestoreState>()(
       setCurrentBackup: (backup) => set({ currentBackup: backup }),
     }),
     {
+      skipHydration: true,
       name: "backup-restore-store-v4",
       partialize: (state) => ({
         backups: state.backups,

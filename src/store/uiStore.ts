@@ -351,6 +351,7 @@ export const useUIStore = create<UIState>()(
       setIsTransitioning: (transitioning) => set({ isTransitioning: transitioning }),
     }),
     {
+      skipHydration: true,
       name: "ui-store-v2",
       version: 2,
       storage: createJSONStorage(() => createSafeStorage("ui-store-v2")),
