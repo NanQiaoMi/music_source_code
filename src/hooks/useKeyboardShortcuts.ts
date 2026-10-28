@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useUIStore } from "@/store/uiStore";
 import { useVisualizationStore } from "@/store/visualizationStore";
 import { useKeyboardShortcutsStore } from "@/store/keyboardShortcutsStore";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
+import { playbackCommands } from "@/domain/playback/playbackCommands";
 
 export interface ShortcutValidationResult {
   valid: boolean;
@@ -96,9 +96,9 @@ export const useKeyboardShortcuts = () => {
         return;
       }
 
-      const audioStore = useAudioStore.getState();
       const progress = getPlaybackClockSnapshot();
       // S6-4: 混音/循环/倍速读写 playerStore（audioStore 同名字段仅为兼容投影）
+      // S6-9a: 播放/暂停、跳播、上下曲、音量、静音改走 playbackCommands，UI 不再直写 audioStore。
       const playerStore = usePlayerStore.getState();
       const uiStore = useUIStore.getState();
 
@@ -106,59 +106,55 @@ export const useKeyboardShortcuts = () => {
 
       if (matchKeys(e, bind("play-pause"))) {
         e.preventDefault();
-        if (!playerStore.currentSong && audioStore.queue.length > 0) {
-          playerStore.setCurrentSong(audioStore.queue[0]);
-          audioStore.setCurrentIndex(0);
-        }
-        audioStore.togglePlaybackIntent();
+        playbackCommands.togglePlayback();
         return;
       }
 
       if (matchKeys(e, bind("seek-back-5"))) {
         e.preventDefault();
-        audioStore.setCurrentTime(Math.max(0, progress.currentTime - 5));
+        playbackCommands.seekTo(progress.currentTime - 5);
         return;
       }
 
       if (matchKeys(e, bind("seek-forward-5"))) {
         e.preventDefault();
-        audioStore.setCurrentTime(Math.min(progress.duration, progress.currentTime + 5));
+        playbackCommands.seekTo(progress.currentTime + 5);
         return;
       }
 
       if (matchKeys(e, bind("seek-back-10"))) {
         e.preventDefault();
-        audioStore.setCurrentTime(Math.max(0, progress.currentTime - 10));
+        playbackCommands.seekTo(progress.currentTime - 10);
         return;
       }
 
       if (matchKeys(e, bind("seek-forward-10"))) {
         e.preventDefault();
-        audioStore.setCurrentTime(Math.min(progress.duration, progress.currentTime + 10));
+        playbackCommands.seekTo(progress.currentTime + 10);
         return;
       }
 
       if (matchKeys(e, bind("vol-up"))) {
         e.preventDefault();
-        playerStore.setVolume(Math.min(1, playerStore.volume + 0.05));
+        playbackCommands.setVolume(playerStore.volume + 0.05);
         return;
       }
 
       if (matchKeys(e, bind("vol-down"))) {
         e.preventDefault();
-        playerStore.setVolume(Math.max(0, playerStore.volume - 0.05));
+        playbackCommands.setVolume(playerStore.volume - 0.05);
         return;
       }
 
       if (matchKeys(e, bind("vol-up-more"))) {
         e.preventDefault();
-        playerStore.setVolume(Math.min(1, playerStore.volume + 0.1));
+        playbackCommands.setVolume(playerStore.volume + 0.1);
         return;
       }
 
       if (matchKeys(e, bind("vol-down-more"))) {
         e.preventDefault();
-        playerStore.setVolume(Math.max(0, playerStore.volume - 0.1));
+        playbackCommands.setVolume(playerStore.volume - 0.1);
         return;
       }
 
@@ -187,21 +183,21 @@ export const useKeyboardShortcuts = () => {
 
       if (matchKeys(e, bind("toggle-mute"))) {
         e.preventDefault();
-        playerStore.toggleMute();
-        uiStore.showToast?.(playerStore.isMuted ? "已静音" : "已取消静音", "info");
+        const { isMuted } = playbackCommands.toggleMute();
+        uiStore.showToast?.(isMuted ? "已静音" : "已取消静音", "info");
         return;
       }
 
       if (matchKeys(e, bind("next-song"))) {
         e.preventDefault();
-        audioStore.nextSong();
+        playbackCommands.nextTrack();
         uiStore.showToast?.("下一首", "info");
         return;
       }
 
       if (matchKeys(e, bind("prev-song"))) {
         e.preventDefault();
-        audioStore.prevSong();
+        playbackCommands.prevTrack();
         uiStore.showToast?.("上一首", "info");
         return;
       }
@@ -266,9 +262,7 @@ export const useKeyboardShortcuts = () => {
       for (let n = 0; n <= 9; n++) {
         if (matchKeys(e, bind(`seek-${n * 10}`))) {
           e.preventDefault();
-          const percent = n * 10;
-          const newTime = (percent / 100) * progress.duration;
-          audioStore.setCurrentTime(newTime);
+          playbackCommands.seekTo((n * 10 * progress.duration) / 100);
           return;
         }
       }
