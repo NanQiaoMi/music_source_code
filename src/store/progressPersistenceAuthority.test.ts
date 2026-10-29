@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { hydrateStores } from "@/lib/bootstrapStores";
 import { useAudioStore } from "./audioStore";
 import { usePlayerStore } from "./playerStore";
+import { flushAllThrottledStorages } from "@/lib/storage/throttledPersist";
 
 function readEnvelope(key: string): Record<string, unknown> | null {
   const raw = localStorage.getItem(key);
@@ -33,6 +34,8 @@ describe("playback progress persistence authority", () => {
       usePlayerStore.getState().setCurrentTime(12.5);
       usePlayerStore.getState().setDuration(210);
       useAudioStore.getState().setCurrentTime(12.5);
+      // S2-2：写盘被存储层节流，断言前同步落盘
+      flushAllThrottledStorages();
 
       const writes = progressBearingWrites(setItemSpy);
       expect(writes.length).toBeGreaterThan(0);
@@ -45,6 +48,7 @@ describe("playback progress persistence authority", () => {
   it("keeps progress out of the playerStore envelope while runtime reads still work", () => {
     usePlayerStore.getState().setCurrentTime(33);
     usePlayerStore.getState().setDuration(190);
+    flushAllThrottledStorages();
 
     const playerState = readEnvelope("player-store");
     expect(playerState).not.toBeNull();
@@ -84,6 +88,8 @@ describe("playback progress persistence authority", () => {
   it("throttles persisted progress to at most one advance per second under rapid updates", () => {
     const store = useAudioStore.getState();
     store.seekTo(0);
+    // 先排空上一窗口的挂起写（含真实定时器），再切假时钟，避免 trailing 定时器落在真实时钟上
+    flushAllThrottledStorages();
     vi.useFakeTimers();
     const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
     try {

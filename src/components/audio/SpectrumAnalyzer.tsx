@@ -2,8 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useSpectrumStore } from "@/store/spectrumStore";
-import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
-import { AudioEngine } from "@/lib/audio/AudioEngine";
+import { analyserHub } from "@/lib/audio/AnalyserHub";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 
 interface SpectrumAnalyzerProps {
@@ -18,7 +17,6 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number | null>(null);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   const isSpectrumEnabled = useSpectrumStore((state) => state.isSpectrumEnabled);
@@ -28,7 +26,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
 
   useEffect(() => {
     const checkReady = () => {
-      const analyser = getAudioAnalyser();
+      const analyser = analyserHub.getAnalyser();
       if (analyser) {
         setIsReady(true);
       } else {
@@ -44,7 +42,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
     function drawSpectrum() {
       const canvas = canvasRef.current;
       const container = containerRef.current;
-      const analyser = getAudioAnalyser();
+      const analyser = analyserHub.getAnalyser();
 
       if (!canvas || !container) return;
 
@@ -84,16 +82,9 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
         return;
       }
 
-      const engine = AudioEngine.getInstance();
-      const frequencyBinCount = engine.frequencyBinCount;
-
-      // Use a persistent array to avoid allocations
-      if (!dataArrayRef.current || dataArrayRef.current.length !== frequencyBinCount) {
-        dataArrayRef.current = new Uint8Array(frequencyBinCount);
-      }
-
-      const dataArray = dataArrayRef.current;
-      engine.getByteFrequencyData(dataArray);
+      // The hub owns both the analyser and its reusable buffer: no per-frame copy.
+      const dataArray = analyserHub.getFrequencyData();
+      const frequencyBinCount = dataArray.length;
 
       ctx.strokeStyle = gridColor;
       ctx.lineWidth = 1;

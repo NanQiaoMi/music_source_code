@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useWaveformStore } from "@/store/waveformStore";
-import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
+import { analyserHub } from "@/lib/audio/AnalyserHub";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
 
 interface WaveformVisualizationProps {
@@ -19,7 +19,6 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number | null>(null);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   const isGenerating = useWaveformStore((state) => state.isGenerating);
@@ -29,7 +28,7 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
 
   useEffect(() => {
     const checkReady = () => {
-      const analyser = getAudioAnalyser();
+      const analyser = analyserHub.getAnalyser();
       if (analyser) {
         setIsReady(true);
       } else {
@@ -43,7 +42,7 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
     function drawWaveform() {
       const canvas = canvasRef.current;
       const container = containerRef.current;
-      const analyser = getAudioAnalyser();
+      const analyser = analyserHub.getAnalyser();
 
       if (!canvas || !container) return;
 
@@ -83,13 +82,9 @@ export const WaveformVisualization: React.FC<WaveformVisualizationProps> = ({
         return;
       }
 
-      const bufferLength = analyser.frequencyBinCount;
-      // 复用同一个缓冲，避免每帧分配一个新的 Uint8Array
-      if (!dataArrayRef.current || dataArrayRef.current.length !== bufferLength) {
-        dataArrayRef.current = new Uint8Array(bufferLength);
-      }
-      const dataArray = dataArrayRef.current;
-      analyser.getByteTimeDomainData(dataArray as Uint8Array<ArrayBuffer>);
+      // 共享波形缓冲由 AnalyserHub 复用，避免每帧分配新的 Uint8Array
+      const dataArray = analyserHub.getTimeDomainData();
+      const bufferLength = dataArray.length;
 
       ctx.strokeStyle = waveformColor;
       ctx.lineWidth = 1.5;

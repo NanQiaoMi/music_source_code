@@ -268,12 +268,15 @@ function ensureAudioElements(): HTMLAudioElement | null {
     const initialRate = getPlayerPlaybackRate();
     audioInstance.defaultPlaybackRate = initialRate;
     audioInstance.playbackRate = initialRate;
+    // S2-1: 用户音量唯一可控点 = AudioEngine.masterGain；媒体元素恒为满幅。
+    audioInstance.volume = 1;
     audioElementRef.current = audioInstance;
 
     secondaryAudioInstance = new Audio();
     secondaryAudioInstance.crossOrigin = "anonymous";
     secondaryAudioInstance.defaultPlaybackRate = initialRate;
     secondaryAudioInstance.playbackRate = initialRate;
+    secondaryAudioInstance.volume = 1;
     secondaryElementRef.current = secondaryAudioInstance;
   }
 
@@ -1002,10 +1005,16 @@ async function initializeAudioGraph(audio: HTMLAudioElement): Promise<void> {
   }
 
   const effectsManager = getAudioEffectsManager();
-  await effectsManager.init();
-  effectsManager.connect(analyser, context.destination, audio);
-  isAudioGraphInitialized = true;
-  lastConnectedAudioElement = audio;
+  try {
+    await effectsManager.init();
+    effectsManager.connect(analyser, context.destination, audio);
+    isAudioGraphInitialized = true;
+    lastConnectedAudioElement = audio;
+  } catch (error) {
+    // S2-1: 效果链接管失败时回到 analyser -> destination 单路兜底，避免无声。
+    console.warn("AudioEngine: effects graph attach failed, using fallback output", error);
+    effectsManager.detach();
+  }
 }
 
 export const useAudioPlayer = () => {
@@ -1789,13 +1798,9 @@ export const useAudioPlayer = () => {
     return () => window.clearTimeout(timer);
   }, [hookId, currentSong, isPlaying, recordStatsPlay, recordJournalPlay]);
 
-  // Side effects sync
+  // Side effects sync — S2-1: 音量/静音只在 masterGain 写一次，不写媒体元素。
   useEffect(() => {
-    const audio = audioElementRef.current;
-    if (audio) {
-      audio.volume = isMuted ? 0 : volume;
-      AudioEngine.getInstance().setVolume(isMuted ? 0 : volume);
-    }
+    AudioEngine.getInstance().setVolume(isMuted ? 0 : volume);
   }, [volume, isMuted]);
 
   useEffect(() => {
@@ -1854,4 +1859,6 @@ export const useAudioPlayer = () => {
   };
 };
 
+// S6-12a：访问器下沉到 lib/audio/audioEngineAccess，此处仅 re-export 保持旧调用点兼容。
+// S2-3：AnalyserHub 与该 analyser 是同一节点，无需在此重复定义入口。
 export { getAudioAnalyser, getAudioContext } from "@/lib/audio/audioEngineAccess";

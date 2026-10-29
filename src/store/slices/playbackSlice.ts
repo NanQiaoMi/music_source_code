@@ -30,36 +30,13 @@ const clearPlaybackRequest = (): void => {
   usePlaybackRuntimeStore.getState().requestPlayback(null, null, false, true);
 };
 
-// 节流与生命周期状态
-let lastProgressSyncTime = 0;
-let progressThrottleTimeout: NodeJS.Timeout | null = null;
-const PROGRESS_THROTTLE_MS = 5000;
-
+// S2-2：写盘节流统一下沉到 storage 层（throttledPersist），这里只维护内存快照，
+// 让 partialize 每次落盘都读到同一个最新值；pause/ended/pagehide 的补写见 mediaBridge
+// 与 bootstrap 的 installFlushOnPageHide。seek handler 由 ./playback/helpers 持有（S6-12f）。
 export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, get) => {
   const flushProgressToStorage = () => {
-    if (progressThrottleTimeout) {
-      clearTimeout(progressThrottleTimeout);
-      progressThrottleTimeout = null;
-    }
-    const current = get().currentTime;
-    lastProgressSyncTime = Date.now();
-    set({ persistedCurrentTime: current });
+    set({ persistedCurrentTime: get().currentTime });
   };
-
-  // 绑定浏览器生命周期事件（仅在客户端环境执行一次）
-  if (typeof window !== "undefined") {
-    const handleUnloadOrHide = () => {
-      flushProgressToStorage();
-    };
-
-    window.addEventListener("beforeunload", handleUnloadOrHide);
-    window.addEventListener("pagehide", handleUnloadOrHide);
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        flushProgressToStorage();
-      }
-    });
-  }
 
   return {
     isPlaying: usePlayerStore.getState().isPlaying ?? false,
@@ -110,27 +87,9 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
 
     setCurrentTime: (time) => {
       const clamped = Math.max(0, time);
-      // audioStore 即进度权威；playerStore 镜像由 audioStore 订阅单向投影
-      const now = Date.now();
-      if (now - lastProgressSyncTime >= PROGRESS_THROTTLE_MS) {
-        lastProgressSyncTime = now;
-        if (progressThrottleTimeout) {
-          clearTimeout(progressThrottleTimeout);
-          progressThrottleTimeout = null;
-        }
-        set({ currentTime: clamped, persistedCurrentTime: clamped });
-      } else {
-        // 仅在内存更新高频数值，不触发 persistedCurrentTime 变更
-        set({ currentTime: clamped });
-
-        if (!progressThrottleTimeout) {
-          progressThrottleTimeout = setTimeout(() => {
-            progressThrottleTimeout = null;
-            lastProgressSyncTime = Date.now();
-            set({ persistedCurrentTime: get().currentTime });
-          }, PROGRESS_THROTTLE_MS);
-        }
-      }
+      // S6-3：audioStore 即进度权威；playerStore 镜像由 audioStore 订阅单向投影。
+      // S2-2：内存快照同步更新，真正写盘由 throttledPersist 节流（<=1 次/秒）。
+      set({ currentTime: clamped, persistedCurrentTime: clamped });
     },
 
     setDuration: (duration) => {

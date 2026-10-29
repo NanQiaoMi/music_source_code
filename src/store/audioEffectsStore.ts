@@ -20,23 +20,20 @@ export type {
   LegacyEffectPreset,
   MorphState,
 } from "./audioEffects/helpers";
-
 function applyEffectConfig(
   base: Record<AudioEffectType, AudioEffect>,
   config: Partial<Record<AudioEffectType, { enabled: boolean; intensity: number }>>
 ): Record<AudioEffectType, AudioEffect> {
   const next = cloneDefaultEffects();
   const manager = getAudioEffectsManager();
-
   for (const id of Object.keys(next) as AudioEffectType[]) {
-    const effectConfig = config[id];
-    const enabled = effectConfig?.enabled ?? false;
-    const intensity = clamp01(effectConfig?.intensity ?? base[id].intensity);
+    const enabled = config[id]?.enabled ?? false;
+    const intensity = clamp01(config[id]?.intensity ?? base[id].intensity);
     next[id] = { ...next[id], enabled, intensity };
     manager.setEffectEnabled(id, enabled);
     manager.setEffectIntensity(id, intensity);
+    manager.commitEffectIntensity(id);
   }
-
   return next;
 }
 
@@ -81,6 +78,8 @@ export const useAudioEffectsStore = create<AudioEffectsState>()(
           activePresetId: null,
         }));
       },
+
+      commitEffectIntensity: (effectId) => getAudioEffectsManager().commitEffectIntensity(effectId),
 
       setIsEnabled: (enabled) => {
         if (!enabled) getAudioEffectsManager().reset();
@@ -139,6 +138,7 @@ export const useAudioEffectsStore = create<AudioEffectsState>()(
             const intensity = 0.2 + Math.random() * 0.7;
             next[id] = { ...next[id], intensity };
             manager.setEffectIntensity(id, intensity);
+            manager.commitEffectIntensity(id);
           }
           return { effects: next, activePresetId: null };
         });

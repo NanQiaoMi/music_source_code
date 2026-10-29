@@ -4,6 +4,7 @@ import { AudioContextWatchdog } from "@/lib/audio/AudioContextWatchdog";
 import { hydrateStores } from "@/lib/bootstrapStores";
 import { getEmotionSnapshot } from "@/store/actions/emotionActions";
 import { getPlayerSnapshot } from "@/store/actions/playbackActions";
+import { installFlushOnPageHide } from "@/lib/storage/throttledPersist";
 
 let bootstrapPromise: Promise<boolean> | null = null;
 let hasRestoredPlaybackState = false;
@@ -37,6 +38,14 @@ async function runBootstrap(): Promise<boolean> {
   }
 
   try {
+    // S2-2：页面隐藏/关闭时补写节流中的播放进度（幂等）
+    installFlushOnPageHide();
+
+    // S2-6：dev-only 音频性能探针（window.__audioMetrics）；生产构建不会加载该 chunk。
+    if (process.env.NODE_ENV !== "production") {
+      void import("@/lib/perf/audioMetrics").catch(() => {});
+    }
+
     // 0. 所有 persist store 都设了 skipHydration；先按依赖顺序显式补齐，再做跨 store 投影。
     const { hydrated } = await hydrateStores();
     if (hydrated.length > 0) {

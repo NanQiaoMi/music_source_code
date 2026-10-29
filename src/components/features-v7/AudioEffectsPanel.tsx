@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
@@ -33,6 +33,7 @@ const effectIcons: Partial<Record<AudioEffectType, React.ComponentType<{ classNa
 type PanelTab = "presets" | "scenes" | "effects";
 
 export function AudioEffectsPanel({ isOpen, onClose }: AudioEffectsPanelProps) {
+  const commitEffectIntensity = useAudioEffectsStore((state) => state.commitEffectIntensity);
   const effects = useAudioEffectsStore((state) => state.effects);
   const isEnabled = useAudioEffectsStore((state) => state.isEnabled);
   const setIsEnabled = useAudioEffectsStore((state) => state.setIsEnabled);
@@ -57,6 +58,56 @@ export function AudioEffectsPanel({ isOpen, onClose }: AudioEffectsPanelProps) {
   const [activeTab, setActiveTab] = useState<PanelTab>("presets");
   const [presetName, setPresetName] = useState("");
   const [previousPresetId, setPreviousPresetId] = useState<string | null>(null);
+  // S2-2: 拖动中的显示值走本地 draft，音频写入按 rAF 合并，一帧最多一次。
+  const [draftIntensities, setDraftIntensities] = useState<
+    Partial<Record<AudioEffectType, number>>
+  >({});
+  const pendingIntensityRef = useRef<Partial<Record<AudioEffectType, number>>>({});
+  const frameRef = useRef<number | null>(null);
+
+  const flushPendingIntensity = useCallback(() => {
+    const pending = pendingIntensityRef.current;
+    pendingIntensityRef.current = {};
+    for (const [effectId, value] of Object.entries(pending) as [AudioEffectType, number][]) {
+      setEffectIntensity(effectId, value);
+    }
+  }, [setEffectIntensity]);
+
+  const scheduleIntensityFlush = useCallback(() => {
+    if (frameRef.current !== null) return;
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null;
+      flushPendingIntensity();
+    });
+  }, [flushPendingIntensity]);
+
+  useEffect(
+    () => () => {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    },
+    []
+  );
+
+  const handleIntensityChange = (effectId: AudioEffectType, value: number) => {
+    setDraftIntensities((draft) => ({ ...draft, [effectId]: value }));
+    pendingIntensityRef.current[effectId] = value;
+    scheduleIntensityFlush();
+  };
+
+  const handleIntensityCommit = (effectId: AudioEffectType) => {
+    if (frameRef.current !== null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+    flushPendingIntensity();
+    // 结构型参数（如 WaveShaper.curve）只在拖动结束后提交一次。
+    commitEffectIntensity(effectId);
+    setDraftIntensities((draft) => {
+      const next = { ...draft };
+      delete next[effectId];
+      return next;
+    });
+  };
 
   const activeEffectCount = useMemo(
     () => Object.values(effects).filter((effect) => effect.enabled).length,
@@ -371,10 +422,13 @@ export function AudioEffectsPanel({ isOpen, onClose }: AudioEffectsPanelProps) {
                             min={0}
                             max={1}
                             step={0.01}
-                            value={effect.intensity}
+                            value={draftIntensities[effect.id] ?? effect.intensity}
                             onChange={(event) =>
-                              setEffectIntensity(effect.id, Number(event.target.value))
+                              handleIntensityChange(effect.id, Number(event.target.value))
                             }
+                            onPointerUp={() => handleIntensityCommit(effect.id)}
+                            onTouchEnd={() => handleIntensityCommit(effect.id)}
+                            onBlur={() => handleIntensityCommit(effect.id)}
                             disabled={!isEnabled || !effect.enabled}
                             className="mt-3 h-1.5 w-full appearance-none rounded-full bg-white/10 accent-purple-400 disabled:opacity-35"
                             aria-label={`${effect.name} intensity`}

@@ -1,11 +1,18 @@
 import type { AudioEffectType } from "@/store/audioEffectsStore";
 import { getAudioContext } from "@/lib/audio/audioEngineAccess";
 import { getPlayerPlaybackRate } from "@/store/actions/playbackActions";
+import { AudioEngine } from "./AudioEngine";
+import { recordNodesCreated } from "./audioGraphStats";
+
+// S2-2: AudioParam 平滑时间常数（秒），拖动时避免爆音/拉链噪声。
+const PARAM_SMOOTHING_SECONDS = 0.02;
 
 export class AudioEffectsManager {
   private context: AudioContext | null = null;
   private sourceNode: AudioNode | null = null;
   private destinationNode: AudioNode | null = null;
+  // S2-1: 效果链唯一汇点。所有子路径先汇入这里，再由这里单边连到 destination。
+  private chainOutput: GainNode | null = null;
 
   // 基础增益节点
   private originalGain: GainNode | null = null;
@@ -31,6 +38,8 @@ export class AudioEffectsManager {
   private cassetteGain: GainNode | null = null;
   private tremoloLFO: OscillatorNode | null = null;
   private tremoloGain: GainNode | null = null;
+  // S2-2: 深度增益在 init 时创建一次，强度拖动只改参数，避免每次重建新建节点。
+  private tremoloDepthGain: GainNode | null = null;
 
   // 音质质感类
   private underwaterFilter: BiquadFilterNode | null = null;
@@ -68,6 +77,13 @@ export class AudioEffectsManager {
   private isInitialized = false;
   private effectsEnabled = new Map<AudioEffectType, boolean>();
   private effectIntensities = new Map<AudioEffectType, number>();
+  // S2-2: 已接线效果的参数 applier。命中时只改 AudioParam（setTargetAtTime），不重建链路。
+  private intensityAppliers = new Map<AudioEffectType, (value: number) => void>();
+  // S2-2 调试计数（E3 验收/测试断言）：拖动期间 connect 与 rebuild 增量都必须为 0。
+  private graphConnectCount = 0;
+  private graphRebuildCount = 0;
+  // cyberpunkDistortion 的 WaveShaper.curve 是结构型参数，只在提交时按强度重算一次。
+  private cyberpunkCurveIntensity: number | null = null;
 
   private mediaElement: HTMLAudioElement | null = null;
   private originalPlaybackRate: number = 1;
@@ -127,6 +143,10 @@ export class AudioEffectsManager {
     this.wetGain = this.context.createGain();
     this.dryGain = this.context.createGain();
 
+    // S2-1: 效果链唯一输出汇点，保证 destination 只有一条入边（混响的干/湿两路在此合流）。
+    this.chainOutput = this.context.createGain();
+    this.chainOutput.gain.value = 1;
+
     // 8D 环绕音
     this.autoPanNode = this.context.createStereoPanner();
     this.autoPanOscillator = this.context.createOscillator();
@@ -173,6 +193,9 @@ export class AudioEffectsManager {
     this.tremoloLFO.type = "sine";
     this.tremoloLFO.frequency.value = 8;
     this.tremoloGain.gain.value = 0;
+    // S2-2: 深度增益跟随 LFO 的调制深度，常驻节点由 applier 更新。
+    this.tremoloDepthGain = this.context.createGain();
+    this.tremoloDepthGain.gain.value = 0.75;
     this.tremoloLFO.connect(this.tremoloGain);
     this.tremoloLFO.start();
 
@@ -283,6 +306,8 @@ export class AudioEffectsManager {
     await this.createReverbImpulse();
 
     this.isInitialized = true;
+    // S2-3: 效果链节点只在 init 时创建一次，之后重建只改接线。
+    recordNodesCreated("graph", this.getNodeCount());
   }
 
   private createDistortionCurve(node: WaveShaperNode, amount: number): void {
@@ -317,6 +342,9 @@ export class AudioEffectsManager {
     if (!this.isInitialized) return;
     if (!this.context) return;
 
+    // S2-1: 重连前先摘掉自己拥有的旧输出，避免 destination 出现重复入边。
+    this.disconnectOwnedOutput();
+
     this.sourceNode = source;
     this.destinationNode = destination;
 
@@ -325,13 +353,49 @@ export class AudioEffectsManager {
       this.originalPlaybackRate = mediaElement.playbackRate;
     }
 
+    AudioEngine.getInstance().setOutputOwnedByEffects(true);
     this.rebuildAudioChain();
   }
 
+  /**
+   * S2-1: 效果链退场，恢复 AudioEngine 的 analyser -> destination 兜底直连。
+   */
+  detach(): void {
+    this.disconnectOwnedOutput();
+    this.sourceNode = null;
+    this.destinationNode = null;
+    this.mediaElement = null;
+
+    const engine = AudioEngine.getInstance();
+    engine.setOutputOwnedByEffects(false);
+    engine.connectFallbackOutput();
+  }
+
+  private disconnectOwnedOutput(): void {
+    try {
+      this.sourceNode?.disconnect();
+    } catch {
+      // 节点可能已断开。
+    }
+    try {
+      this.chainOutput?.disconnect();
+    } catch {
+      // 节点可能已断开。
+    }
+  }
+
   private rebuildAudioChain(): void {
-    if (!this.context || !this.sourceNode || !this.destinationNode) return;
+    if (!this.context || !this.sourceNode || !this.destinationNode || !this.chainOutput) return;
+
+    // S2-2: 重建/connect 次数是 E3（拖动不重建）的验收指标。
+    this.graphRebuildCount += 1;
+    this.intensityAppliers.clear();
 
     try {
+      // S2-1: 输入边和汇点输出边也必须先摘掉，否则每次重建都会叠加平行边。
+      this.sourceNode.disconnect();
+      this.chainOutput.disconnect();
+
       // 断开所有节点
       this.autoPanNode?.disconnect();
       this.reverbNode?.disconnect();
@@ -364,6 +428,7 @@ export class AudioEffectsManager {
       this.stereoWidenerDelayLeft?.disconnect();
       this.stereoWidenerDelayRight?.disconnect();
       this.tremoloGain?.disconnect();
+      this.tremoloDepthGain?.disconnect();
 
       this.cyberpunkDistortion?.disconnect();
       this.cyberpunkFilter?.disconnect();
@@ -377,13 +442,15 @@ export class AudioEffectsManager {
     }
 
     const hasAnyEffect = Array.from(this.effectsEnabled.values()).some((v) => v);
+    // S2-2: 先注册 applier 再接线，reverb 分支提前 return 也不会漏注册。
+    this.registerIntensityAppliers(hasAnyEffect);
 
     if (!hasAnyEffect) {
       if (this.mediaElement) {
         const targetRate = getPlayerPlaybackRate();
         this.mediaElement.playbackRate = targetRate;
       }
-      this.sourceNode.connect(this.destinationNode);
+      this.link(this.sourceNode, this.destinationNode);
       return;
     }
 
@@ -395,7 +462,7 @@ export class AudioEffectsManager {
         this.mediaElement.playbackRate = 0.8;
       }
       if (this.vaporwaveFilter) {
-        currentNode.connect(this.vaporwaveFilter);
+        this.link(currentNode, this.vaporwaveFilter);
         currentNode = this.vaporwaveFilter;
       }
     } else if (this.effectsEnabled.get("nightcore")) {
@@ -403,7 +470,7 @@ export class AudioEffectsManager {
         this.mediaElement.playbackRate = 1.25;
       }
       if (this.nightcoreFilter) {
-        currentNode.connect(this.nightcoreFilter);
+        this.link(currentNode, this.nightcoreFilter);
         currentNode = this.nightcoreFilter;
       }
     } else if (this.effectsEnabled.get("cassette")) {
@@ -426,27 +493,16 @@ export class AudioEffectsManager {
       this.vocalRemoveLP &&
       this.vocalRemoveGain
     ) {
-      const intensity = this.effectIntensities.get("vocalRemove") || 0.8;
-
-      // 使用中置频率滤波来削弱人声（人声通常在 200Hz-4000Hz）
-      this.vocalRemoveHP.frequency.value = 100 + intensity * 200;
-      this.vocalRemoveLP.frequency.value = 5000 - intensity * 2000;
-      this.vocalRemoveGain.gain.value = 0.5 + intensity * 0.5;
-
-      currentNode.connect(this.vocalRemoveHP);
-      this.vocalRemoveHP.connect(this.vocalRemoveLP);
-      this.vocalRemoveLP.connect(this.vocalRemoveGain);
+      this.link(currentNode, this.vocalRemoveHP);
+      this.link(this.vocalRemoveHP, this.vocalRemoveLP);
+      this.link(this.vocalRemoveLP, this.vocalRemoveGain);
       currentNode = this.vocalRemoveGain;
     }
 
     // 水下潜听
     if (this.effectsEnabled.get("underwater") && this.underwaterFilter && this.underwaterDelay) {
-      const intensity = this.effectIntensities.get("underwater") || 0.7;
-      this.underwaterFilter.frequency.value = 400 + intensity * 400;
-      this.underwaterDelay.delayTime.value = intensity * 0.05;
-
-      currentNode.connect(this.underwaterFilter);
-      this.underwaterFilter.connect(this.underwaterDelay);
+      this.link(currentNode, this.underwaterFilter);
+      this.link(this.underwaterFilter, this.underwaterDelay);
       currentNode = this.underwaterDelay;
     }
 
@@ -457,13 +513,9 @@ export class AudioEffectsManager {
       this.vinylDistortion &&
       this.vinylLPF
     ) {
-      const intensity = this.effectIntensities.get("vinyl") || 0.6;
-      this.vinylBPF.frequency.value = 800 + intensity * 2000;
-      this.vinylBPF.Q.value = 0.5 + intensity * 1.5;
-
-      currentNode.connect(this.vinylBPF);
-      this.vinylBPF.connect(this.vinylDistortion);
-      this.vinylDistortion.connect(this.vinylLPF);
+      this.link(currentNode, this.vinylBPF);
+      this.link(this.vinylBPF, this.vinylDistortion);
+      this.link(this.vinylDistortion, this.vinylLPF);
       currentNode = this.vinylLPF;
     }
 
@@ -474,13 +526,9 @@ export class AudioEffectsManager {
       this.talkieLPF &&
       this.talkieDistortion
     ) {
-      const intensity = this.effectIntensities.get("talkie") || 0.6;
-      this.talkieHPF.frequency.value = 800 + intensity * 800;
-      this.talkieLPF.frequency.value = 3000 + intensity * 1000;
-
-      currentNode.connect(this.talkieHPF);
-      this.talkieHPF.connect(this.talkieDistortion);
-      this.talkieDistortion.connect(this.talkieLPF);
+      this.link(currentNode, this.talkieHPF);
+      this.link(this.talkieHPF, this.talkieDistortion);
+      this.link(this.talkieDistortion, this.talkieLPF);
       currentNode = this.talkieLPF;
     }
 
@@ -491,11 +539,11 @@ export class AudioEffectsManager {
       this.cyberpunkFilter
     ) {
       const intensity = this.effectIntensities.get("cyberpunkDistortion") || 0.7;
+      this.cyberpunkCurveIntensity = intensity;
       this.createDistortionCurve(this.cyberpunkDistortion, 50 + intensity * 200);
-      this.cyberpunkFilter.gain.value = intensity * 15;
 
-      currentNode.connect(this.cyberpunkDistortion);
-      this.cyberpunkDistortion.connect(this.cyberpunkFilter);
+      this.link(currentNode, this.cyberpunkDistortion);
+      this.link(this.cyberpunkDistortion, this.cyberpunkFilter);
       currentNode = this.cyberpunkFilter;
     }
 
@@ -507,56 +555,38 @@ export class AudioEffectsManager {
       this.loFiPhoneDistortion &&
       this.loFiPhoneNoiseGain
     ) {
-      const intensity = this.effectIntensities.get("loFiPhone") || 0.8;
-      this.loFiPhoneHPF.frequency.value = 300 + intensity * 200; // 300-500
-      this.loFiPhoneLPF.frequency.value = 3000 - intensity * 1000; // 3000-2000
+      this.link(this.loFiPhoneNoiseGain, this.chainOutput); // Route static into the single sink
 
-      this.loFiPhoneNoiseGain.gain.value = intensity * 0.05; // Add background static
-      this.loFiPhoneNoiseGain.connect(this.destinationNode); // Route static directly
-
-      currentNode.connect(this.loFiPhoneHPF);
-      this.loFiPhoneHPF.connect(this.loFiPhoneDistortion);
-      this.loFiPhoneDistortion.connect(this.loFiPhoneLPF);
+      this.link(currentNode, this.loFiPhoneHPF);
+      this.link(this.loFiPhoneHPF, this.loFiPhoneDistortion);
+      this.link(this.loFiPhoneDistortion, this.loFiPhoneLPF);
       currentNode = this.loFiPhoneLPF;
     }
 
     // 深海巨响
     if (this.effectsEnabled.get("megaBass") && this.megaBassFilter) {
-      const intensity = this.effectIntensities.get("megaBass") || 0.5;
-      this.megaBassFilter.gain.value = intensity * 12;
-
-      currentNode.connect(this.megaBassFilter);
+      this.link(currentNode, this.megaBassFilter);
       currentNode = this.megaBassFilter;
     }
 
     // 颅内高潮
     if (this.effectsEnabled.get("asmr") && this.asmrFilter && this.asmrCompressor) {
-      const intensity = this.effectIntensities.get("asmr") || 0.6;
-      this.asmrFilter.gain.value = intensity * 8;
-
-      currentNode.connect(this.asmrFilter);
-      this.asmrFilter.connect(this.asmrCompressor);
+      this.link(currentNode, this.asmrFilter);
+      this.link(this.asmrFilter, this.asmrCompressor);
       currentNode = this.asmrCompressor;
     }
 
     // 极化迷幻
     if (this.effectsEnabled.get("phaser") && this.phaserAllPassNodes.length > 0) {
-      const intensity = this.effectIntensities.get("phaser") || 0.5;
-      this.phaserGain!.gain.value = intensity * 500;
-
       for (const node of this.phaserAllPassNodes) {
-        currentNode.connect(node);
+        this.link(currentNode, node);
         currentNode = node;
       }
     }
 
     // 8D 环绕音
     if (this.effectsEnabled.get("autoPan") && this.autoPanNode && this.autoPanGain) {
-      const intensity = this.effectIntensities.get("autoPan") || 0.5;
-      this.autoPanGain.gain.value = intensity;
-      this.autoPanOscillator!.frequency.value = 0.1 + intensity * 0.1;
-
-      currentNode.connect(this.autoPanNode);
+      this.link(currentNode, this.autoPanNode);
       currentNode = this.autoPanNode;
     }
 
@@ -568,53 +598,196 @@ export class AudioEffectsManager {
       this.stereoWidenerDelayLeft &&
       this.stereoWidenerDelayRight
     ) {
-      const intensity = this.effectIntensities.get("stereoWidener") || 0.5;
-      const delayTime = intensity * 0.015;
+      this.link(currentNode, this.stereoWidenerSplitter);
 
-      currentNode.connect(this.stereoWidenerSplitter);
+      this.link(this.stereoWidenerSplitter, this.stereoWidenerDelayLeft, 0);
+      this.link(this.stereoWidenerSplitter, this.stereoWidenerDelayRight, 1);
 
-      this.stereoWidenerDelayLeft.delayTime.value = 0;
-      this.stereoWidenerDelayRight.delayTime.value = delayTime;
-
-      this.stereoWidenerSplitter.connect(this.stereoWidenerDelayLeft, 0);
-      this.stereoWidenerSplitter.connect(this.stereoWidenerDelayRight, 1);
-
-      this.stereoWidenerDelayLeft.connect(this.stereoWidenerMerger, 0, 0);
-      this.stereoWidenerDelayRight.connect(this.stereoWidenerMerger, 0, 1);
+      this.link(this.stereoWidenerDelayLeft, this.stereoWidenerMerger, 0, 0);
+      this.link(this.stereoWidenerDelayRight, this.stereoWidenerMerger, 0, 1);
 
       currentNode = this.stereoWidenerMerger;
     }
 
     // 演唱会现场 (混响)
     if (this.effectsEnabled.get("reverb") && this.reverbNode && this.wetGain && this.dryGain) {
-      const intensity = this.effectIntensities.get("reverb") || 0.4;
-      this.wetGain.gain.value = intensity;
-      this.dryGain.gain.value = 1 - intensity * 0.3;
-
       const dryChain = currentNode;
-      dryChain.connect(this.dryGain);
-      this.dryGain.connect(this.destinationNode);
+      this.link(dryChain, this.dryGain);
+      this.link(this.dryGain, this.chainOutput);
 
-      currentNode.connect(this.reverbNode);
-      this.reverbNode.connect(this.wetGain);
-      this.wetGain.connect(this.destinationNode);
+      this.link(currentNode, this.reverbNode);
+      this.link(this.reverbNode, this.wetGain);
+      this.link(this.wetGain, this.chainOutput);
+      this.link(this.chainOutput, this.destinationNode);
       return;
     }
 
     // 颤音冲浪
-    if (this.effectsEnabled.get("tremolo") && this.tremoloGain) {
-      const intensity = this.effectIntensities.get("tremolo") || 0.5;
-      this.tremoloLFO!.frequency.value = 5 + intensity * 10;
-
-      const gainNode = this.context!.createGain();
-      gainNode.gain.value = 1 - intensity * 0.5;
-      this.tremoloGain.connect(gainNode.gain);
-
-      currentNode.connect(gainNode);
-      currentNode = gainNode;
+    if (this.effectsEnabled.get("tremolo") && this.tremoloGain && this.tremoloDepthGain) {
+      this.tremoloGain.connect(this.tremoloDepthGain.gain);
+      this.graphConnectCount += 1;
+      this.link(currentNode, this.tremoloDepthGain);
+      currentNode = this.tremoloDepthGain;
     }
 
-    currentNode.connect(this.destinationNode);
+    this.link(currentNode, this.chainOutput);
+    this.link(this.chainOutput, this.destinationNode);
+  }
+
+  /**
+   * S2-2: 为已启用的效果注册参数 applier。命中 applier 时 setEffectIntensity 只改 AudioParam。
+   * 速度/结构型效果（bitcrusher/nightcore/vaporwave/cassette）没有连续 AudioParam，
+   * 注册空 applier 以保证拖动期间同样不重建链路，强度在下次重建（开关/切歌）时读取。
+   */
+  private registerIntensityAppliers(hasAnyEffect: boolean): void {
+    if (!hasAnyEffect) return;
+
+    const register = (effect: AudioEffectType, applier: (value: number) => void): void => {
+      if (!this.effectsEnabled.get(effect)) return;
+      this.intensityAppliers.set(effect, applier);
+      applier(this.effectIntensities.get(effect) ?? 0.5);
+    };
+
+    register("reverb", (value) => {
+      this.setParam(this.wetGain?.gain, value);
+      this.setParam(this.dryGain?.gain, 1 - value * 0.3);
+    });
+
+    register("stereoWidener", (value) => {
+      this.setParam(this.stereoWidenerDelayLeft?.delayTime, 0);
+      this.setParam(this.stereoWidenerDelayRight?.delayTime, value * 0.015);
+    });
+
+    register("tremolo", (value) => {
+      this.setParam(this.tremoloLFO?.frequency, 5 + value * 10);
+      this.setParam(this.tremoloDepthGain?.gain, 1 - value * 0.5);
+    });
+
+    register("underwater", (value) => {
+      this.setParam(this.underwaterFilter?.frequency, 400 + value * 400);
+      this.setParam(this.underwaterDelay?.delayTime, value * 0.05);
+    });
+
+    register("vinyl", (value) => {
+      this.setParam(this.vinylBPF?.frequency, 800 + value * 2000);
+      this.setParam(this.vinylBPF?.Q, 0.5 + value * 1.5);
+    });
+
+    register("talkie", (value) => {
+      this.setParam(this.talkieHPF?.frequency, 800 + value * 800);
+      this.setParam(this.talkieLPF?.frequency, 3000 + value * 1000);
+    });
+
+    register("cyberpunkDistortion", (value) => {
+      // 拖动只改补偿增益；WaveShaper.curve 由 commitEffectIntensity() 在提交时重算。
+      this.setParam(this.cyberpunkFilter?.gain, value * 15);
+    });
+
+    register("loFiPhone", (value) => {
+      this.setParam(this.loFiPhoneHPF?.frequency, 300 + value * 200);
+      this.setParam(this.loFiPhoneLPF?.frequency, 3000 - value * 1000);
+      this.setParam(this.loFiPhoneNoiseGain?.gain, value * 0.05);
+    });
+
+    register("megaBass", (value) => {
+      this.setParam(this.megaBassFilter?.gain, value * 12);
+    });
+
+    register("asmr", (value) => {
+      this.setParam(this.asmrFilter?.gain, value * 8);
+    });
+
+    register("phaser", (value) => {
+      this.setParam(this.phaserGain?.gain, value * 500);
+    });
+
+    register("autoPan", (value) => {
+      this.setParam(this.autoPanGain?.gain, value);
+      this.setParam(this.autoPanOscillator?.frequency, 0.1 + value * 0.1);
+    });
+
+    register("vocalRemove", (value) => {
+      this.setParam(this.vocalRemoveHP?.frequency, 100 + value * 200);
+      this.setParam(this.vocalRemoveLP?.frequency, 5000 - value * 2000);
+      this.setParam(this.vocalRemoveGain?.gain, 0.5 + value * 0.5);
+    });
+
+    register("bitcrusher", () => {});
+    register("nightcore", () => {});
+    register("vaporwave", () => {});
+    register("cassette", () => {});
+  }
+
+  private setParam(param: AudioParam | null | undefined, value: number): void {
+    if (!param || !this.context) return;
+    param.setTargetAtTime(value, this.context.currentTime, PARAM_SMOOTHING_SECONDS);
+  }
+
+  /** S2-2: 唯一的声音连接出口，同时累计 connect 次数（E3 探针）。 */
+  private link(
+    from: AudioNode | null,
+    to: AudioNode | null,
+    output?: number,
+    input?: number
+  ): void {
+    if (!from || !to) return;
+    if (input !== undefined) {
+      from.connect(to, output ?? 0, input);
+    } else if (output !== undefined) {
+      from.connect(to, output);
+    } else {
+      from.connect(to);
+    }
+    this.graphConnectCount += 1;
+  }
+
+  getGraphRebuildCount(): number {
+    return this.graphRebuildCount;
+  }
+
+  getGraphConnectCount(): number {
+    return this.graphConnectCount;
+  }
+
+  /**
+   * S2-3: 效果链持有的固定节点数（init() 之后必须恒定）。
+   * sourceNode/destinationNode 是外部借用的节点，不计入本管理器。
+   */
+  getNodeCount(): number {
+    let count = 0;
+    for (const [key, value] of Object.entries(this)) {
+      if (key === "sourceNode" || key === "destinationNode") continue;
+      if (Array.isArray(value)) {
+        count += value.length;
+      } else if (value && typeof (value as AudioNode).connect === "function") {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  /** 测试/性能探针：清空累计的图变更计数。 */
+  resetGraphStats(): void {
+    this.graphRebuildCount = 0;
+    this.graphConnectCount = 0;
+  }
+
+  /**
+   * S2-2: 结构型参数（WaveShaper.curve）在拖动结束/程序化设定后提交一次，
+   * 只重算已有节点的曲线，不重建链路。
+   */
+  commitEffectIntensity(effect: AudioEffectType): void {
+    if (effect !== "cyberpunkDistortion" || !this.effectsEnabled.get(effect)) return;
+    const intensity = this.effectIntensities.get(effect) ?? 0.7;
+    if (
+      this.cyberpunkCurveIntensity !== null &&
+      Math.abs(intensity - this.cyberpunkCurveIntensity) <= 0.02
+    ) {
+      return;
+    }
+    if (!this.cyberpunkDistortion) return;
+    this.cyberpunkCurveIntensity = intensity;
+    this.createDistortionCurve(this.cyberpunkDistortion, 50 + intensity * 200);
   }
 
   setEffectEnabled(effect: AudioEffectType, enabled: boolean): void {
@@ -624,6 +797,17 @@ export class AudioEffectsManager {
 
   setEffectIntensity(effect: AudioEffectType, intensity: number): void {
     this.effectIntensities.set(effect, intensity);
+
+    // S2-2: 已接线效果只更新已有节点的 AudioParam（setTargetAtTime），不重建链路。
+    const applier = this.intensityAppliers.get(effect);
+    if (applier) {
+      applier(intensity);
+      return;
+    }
+
+    // 未启用效果不参与当前链路，强度只需存起来，启用时由重建读取。
+    if (!this.effectsEnabled.get(effect)) return;
+
     this.rebuildAudioChain();
   }
 

@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { playbackMediaBridge } from "@/lib/playback/mediaBridge";
 import { nextPlayback } from "@/store/actions/playbackEngineActions";
+import { flushAllThrottledStorages } from "@/lib/storage/throttledPersist";
 import { setAudioPersistenceSuspended, useAudioStore } from "@/store/audioStore";
 import { DEFAULT_EQ_PRESETS, useEQStore } from "@/store/eqStore";
 import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
@@ -33,6 +34,8 @@ function resetStores(): void {
   useQueueStore.setState(useQueueStore.getInitialState(), true);
   useAudioStore.setState(useAudioStore.getInitialState(), true);
   useEQStore.setState(useEQStore.getInitialState(), true);
+  // S2-2：reset 产生的写盘是节流的，测试读 envelope 前先排空
+  flushAllThrottledStorages();
 }
 
 /** audioStore stays a read-only projection: no queue/currentIndex owner or setters. */
@@ -150,6 +153,7 @@ describe("S1-10 persistence formats", () => {
     useAudioStore.getState().seekTo(42.5);
     useAudioStore.getState().setDuration(210);
     useEQStore.getState().loadEQPreset("jazz");
+    flushAllThrottledStorages();
     const playerRaw = readRaw(PLAYER_KEY);
     const audioRaw = readRaw(AUDIO_KEY);
     const eqRaw = readRaw(EQ_KEY);

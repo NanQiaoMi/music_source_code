@@ -3,7 +3,8 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as THREE from "three";
-import { getAudioAnalyser, getAudioContext } from "@/hooks/useAudioPlayer";
+import { getAudioContext } from "@/hooks/useAudioPlayer";
+import { analyserHub } from "@/lib/audio/AnalyserHub";
 import { usePlaylistStore, Song } from "@/store/playlistStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useAudioStore } from "@/store/audioStore";
@@ -918,8 +919,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     let effectActive = true;
     let contextLost = false;
     let lastFrameTime: number | null = null;
-    let analyser: AnalyserNode | null = null;
-    let frequencyData = new Uint8Array(0);
     let lowEnvelope = 0;
     let highEnvelope = 0;
     let audioWasValid = false;
@@ -1323,24 +1322,20 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         ) {
           try {
             const audioContext = getAudioContext();
-            const sharedAnalyser = getAudioAnalyser();
+            const sharedAnalyser = analyserHub.getAnalyser();
             if (audioContext?.state === "running" && sharedAnalyser) {
-              analyser = sharedAnalyser;
-              if (frequencyData.length !== analyser.frequencyBinCount) {
-                frequencyData = new Uint8Array(analyser.frequencyBinCount);
-              }
-              analyser.getByteFrequencyData(frequencyData);
+              const frequencyData = analyserHub.getFrequencyData();
               lowTarget = readBandEnergy(
                 frequencyData,
                 audioContext.sampleRate,
-                analyser.fftSize,
+                analyserHub.fftSize,
                 35,
                 180
               );
               highTarget = readBandEnergy(
                 frequencyData,
                 audioContext.sampleRate,
-                analyser.fftSize,
+                analyserHub.fftSize,
                 3200,
                 12000
               );
@@ -1351,13 +1346,11 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           }
         }
         if (!audioIsValid) {
-          frequencyData.fill(0);
           lowTarget = 0;
           highTarget = 0;
           lowEnvelope = approachEnvelope(lowEnvelope, 0, dtMs, 80, 300);
           highEnvelope = approachEnvelope(highEnvelope, 0, dtMs, 80, 300);
           audioWasValid = false;
-          analyser = null;
         } else {
           const attackMs = audioWasValid ? 80 : 400;
           lowEnvelope = approachEnvelope(lowEnvelope, lowTarget, dtMs, attackMs, 300);
@@ -1502,7 +1495,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
           lowEnvelope = 0;
           highEnvelope = 0;
           audioWasValid = false;
-          frequencyData.fill(0);
         }
         if (particleGeo) particles.visible = !event.matches;
       };

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { useAudioStore } from "./audioStore";
 import { useQueueStore } from "./queueStore";
 import type { Song } from "@/types/song";
+import { flushAllThrottledStorages } from "@/lib/storage/throttledPersist";
 
 function song(id: string): Song {
   return {
@@ -89,6 +90,7 @@ describe("queue ownership (S6-5)", () => {
 
   it("audio-store-v4 persists playback/settings but no queue mirror or EQ duplicates", () => {
     useAudioStore.getState().setCurrentTime(12.5);
+    flushAllThrottledStorages();
 
     const state = persistedState("audio-store-v4");
     expect(state).not.toBeNull();

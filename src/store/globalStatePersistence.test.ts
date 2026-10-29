@@ -8,6 +8,7 @@ import { useAIAgentStore } from "./useAIAgentStore";
 import { useSourceConfigStore } from "./sourceConfigStore";
 import { defaultThemeState, useThemeStore } from "./themeStore";
 import { Song } from "@/types/song";
+import { flushAllThrottledStorages } from "@/lib/storage/throttledPersist";
 
 const sampleSong: Song = {
   id: "song-persist-test-1",
@@ -47,6 +48,9 @@ describe("Global State Retention & Persistence Engine", () => {
     usePlayerStore.getState().setCurrentTime(115.5);
     usePlayerStore.getState().setDuration(226);
 
+    // S2-2：player-store / audio-store-v4 写盘被节流，断言前先同步落盘
+    flushAllThrottledStorages();
+
     const playerRaw = localStorage.getItem("player-store");
     expect(playerRaw).toBeTruthy();
     const playerParsed = JSON.parse(playerRaw!);
@@ -62,6 +66,8 @@ describe("Global State Retention & Persistence Engine", () => {
     expect(queueParsed.state.queue[0].id).toBe("song-persist-test-1");
 
     useAudioStore.getState().setCurrentTime(115.5);
+    flushAllThrottledStorages();
+
     const audioRaw = localStorage.getItem("audio-store-v4");
     expect(audioRaw).toBeTruthy();
     const audioParsed = JSON.parse(audioRaw!);

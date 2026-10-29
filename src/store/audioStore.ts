@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import { createSafeStorage, sanitizeSongForStorage } from "@/lib/storage/safeStorage";
+import { createThrottledStorage } from "@/lib/storage/throttledPersist";
 import { usePlayerStore, registerAudioStoreSync } from "./playerStore";
 import {
   AudioStoreState,
@@ -29,7 +30,7 @@ export const setAudioPersistenceSuspended = (suspended: boolean) => {
   audioPersistenceSuspended = suspended;
 };
 
-const createGuardedAudioStorage = () => {
+const createGuardedAudioStorage = (): StateStorage => {
   const storage = createSafeStorage("audio-store-v4");
   return {
     ...storage,
@@ -49,10 +50,15 @@ export const useAudioStore = create<AudioStoreState>()(
     {
       skipHydration: true,
       name: "audio-store-v4",
-      storage: createJSONStorage(createGuardedAudioStorage),
+      // S2-2：与 player-store 相同，写盘节流下沉到存储层，key/格式保持不变；
+      // S6-2：水合期间禁止写入的守卫仍作为节流层的底层存储（外层节流、内层守卫）。
+      storage: createJSONStorage(() =>
+        createThrottledStorage("audio-store-v4", { base: createGuardedAudioStorage() })
+      ),
       partialize: (state) => ({
         currentSong: state.currentSong ? sanitizeSongForStorage(state.currentSong) : null,
-        // 播放进度的唯一持久化权威：使用 5s 节流快照，避免每次 setState 都推进持久化进度
+        // 播放进度的唯一持久化权威（S6-3）：persistedCurrentTime 与内存 currentTime 同步，
+        // 真正写盘频率由 throttledPersist 控制（<=1 次/秒）。
         currentTime:
           typeof state.persistedCurrentTime === "number" ? state.persistedCurrentTime : 0,
         duration: typeof state.duration === "number" ? state.duration : 0,

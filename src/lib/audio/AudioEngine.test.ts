@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AudioEngine } from "./AudioEngine";
+import { getAudioGraphStats, resetAudioGraphStats } from "./audioGraphStats";
 
 type ConnectableNode = {
   connect: ReturnType<typeof vi.fn>;
@@ -70,9 +71,21 @@ function resetAudioEngine() {
   FakeAudioContext.created = 0;
 }
 
+function destinationEdges(engine: AudioEngine): number {
+  const analyser = engine.getAnalyser() as unknown as {
+    connect: ReturnType<typeof vi.fn>;
+    disconnect: ReturnType<typeof vi.fn>;
+  };
+  const destination = engine.getContext()!.destination;
+  const connects = analyser.connect.mock.calls.filter(([to]) => to === destination).length;
+  const disconnects = analyser.disconnect.mock.calls.filter(([to]) => to === destination).length;
+  return connects - disconnects;
+}
+
 describe("AudioEngine", () => {
   beforeEach(() => {
     resetAudioEngine();
+    resetAudioGraphStats();
     vi.stubGlobal("AudioContext", FakeAudioContext);
     Object.defineProperty(window, "AudioContext", {
       configurable: true,
@@ -154,6 +167,84 @@ describe("AudioEngine", () => {
     engine.setEQEnabled(false);
     expect(sourceNode.disconnect).toHaveBeenCalledTimes(2);
     expect(sourceNode.connect).toHaveBeenLastCalledWith(masterGain);
+  });
+
+  it("writes user volume only to masterGain and keeps the media element at full scale", () => {
+    const engine = AudioEngine.getInstance();
+    const audio = document.createElement("audio");
+    audio.volume = 1;
+    engine.init(audio);
+
+    const masterGain = engine.getMasterGain()!;
+    engine.setVolume(0.5);
+
+    expect(masterGain.gain.setTargetAtTime).toHaveBeenCalledTimes(1);
+    expect(masterGain.gain.setTargetAtTime).toHaveBeenCalledWith(0.5, 0, 0.01);
+    expect(audio.volume).toBe(1);
+    expect(20 * Math.log10(0.5)).toBeCloseTo(-6.02, 1);
+  });
+
+  it("applies the last requested volume when the context is created later", () => {
+    const engine = AudioEngine.getInstance();
+    engine.setVolume(0.5);
+    engine.init(document.createElement("audio"));
+
+    const masterGain = engine.getMasterGain()!;
+    expect(masterGain.gain.value).toBe(0.5);
+    expect(masterGain.gain.setTargetAtTime).not.toHaveBeenCalled();
+  });
+
+  it("mutes through the same masterGain point without touching element volume", () => {
+    const engine = AudioEngine.getInstance();
+    const audio = document.createElement("audio");
+    audio.volume = 1;
+    engine.init(audio);
+
+    const masterGain = engine.getMasterGain()!;
+    engine.setVolume(0);
+
+    expect(masterGain.gain.setTargetAtTime).toHaveBeenCalledTimes(1);
+    expect(masterGain.gain.setTargetAtTime).toHaveBeenCalledWith(0, 0, 0.01);
+    expect(audio.volume).toBe(1);
+  });
+
+  it("keeps one fallback destination edge and hands it to the effects owner idempotently", () => {
+    const engine = AudioEngine.getInstance();
+    const audio = document.createElement("audio");
+    engine.init(audio);
+
+    expect(destinationEdges(engine)).toBe(1);
+    engine.connectFallbackOutput();
+    expect(destinationEdges(engine)).toBe(1);
+
+    engine.setOutputOwnedByEffects(true);
+    expect(destinationEdges(engine)).toBe(0);
+    engine.connectFallbackOutput();
+    expect(destinationEdges(engine)).toBe(0);
+
+    engine.setOutputOwnedByEffects(false);
+    engine.connectFallbackOutput();
+    expect(destinationEdges(engine)).toBe(1);
+  });
+
+  it("releases a media source when its element is discarded, and not before", () => {
+    const engine = AudioEngine.getInstance();
+    const audio = document.createElement("audio");
+    engine.init(audio);
+    const sourceNode = engine.createMediaSource(audio)!;
+    const nodesBefore = engine.getNodeCount();
+
+    expect(engine.sourceElementCount).toBe(1);
+    expect(engine.releaseElement(audio)).toBe(true);
+
+    expect(sourceNode.disconnect).toHaveBeenCalled();
+    expect(engine.sourceElementCount).toBe(0);
+    expect(engine.getNodeCount()).toBe(nodesBefore - 1);
+    expect(getAudioGraphStats().mediaSourceNodes).toBe(0);
+
+    // 幂等：重复释放不再计入，避免计数器变负。
+    expect(engine.releaseElement(audio)).toBe(false);
+    expect(getAudioGraphStats().releasedNodes).toBe(1);
   });
 
   it("does not disconnect or reconnect if setEQEnabled is called with the same value", () => {

@@ -1,6 +1,7 @@
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { getPlaybackRuntimeSnapshot } from "@/store/actions/playbackRuntimeActions";
+import { flushAllThrottledStorages } from "@/lib/storage/throttledPersist";
 
 /**
  * PlaybackMediaBridge
@@ -156,6 +157,8 @@ function createListeners(audio: HTMLAudioElement): MediaEntry["listeners"] {
   const onEnded = () => {
     updateSnapshot({ ...runtimeOwnerPatch(), isPlaying: false, isLoading: false });
     topHandlers(audio)?.onEnded?.(snapshot);
+    // S2-2：播完立即补写挂起进度，避免 trailing 窗口内丢最后一次播放位置
+    flushAllThrottledStorages();
   };
 
   const onError = () => {
@@ -214,6 +217,8 @@ function createListeners(audio: HTMLAudioElement): MediaEntry["listeners"] {
   const onPause = () => {
     updateSnapshot({ ...runtimeOwnerPatch(), isPlaying: false, isLoading: false });
     topHandlers(audio)?.onPause?.();
+    // S2-2：暂停（含系统媒体键）后立即落盘，恢复精度不依赖 trailing 窗口
+    flushAllThrottledStorages();
   };
 
   const onRateChange = () => {

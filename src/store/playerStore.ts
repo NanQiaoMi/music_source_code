@@ -1,11 +1,11 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { Song } from "@/types/song";
-import { createSafeStorage, sanitizeSongForStorage } from "@/lib/storage/safeStorage";
+import { sanitizeSongForStorage } from "@/lib/storage/safeStorage";
+import { createThrottledStorage } from "@/lib/storage/throttledPersist";
 import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 
 export type LoopMode = "none" | "single" | "all" | "shuffle";
-
 interface PlayerState {
   currentSong: Song | null;
   isPlaying: boolean;
@@ -148,7 +148,7 @@ export const usePlayerStore = create<PlayerState>()(
     {
       skipHydration: true,
       name: "player-store",
-      storage: createJSONStorage(() => createSafeStorage("player-store")),
+      storage: createJSONStorage(() => createThrottledStorage("player-store")),
       partialize: (state) => ({
         // 播放进度只由 audioStore 持久化；currentTime/duration 在此仅为运行时镜像
         currentSong: state.currentSong ? sanitizeSongForStorage(state.currentSong) : null,

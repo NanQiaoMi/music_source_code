@@ -238,7 +238,6 @@ export const DEFAULT_EFFECTS: Record<AudioEffectType, AudioEffect> = {
     intensity: 0.8,
   },
 };
-
 export interface AudioEffectsState {
   effects: Record<AudioEffectType, AudioEffect>;
   isEnabled: boolean;
@@ -257,6 +256,7 @@ export interface AudioEffectsState {
 
   toggleEffect: (effectId: AudioEffectType) => void;
   setEffectIntensity: (effectId: AudioEffectType, intensity: number) => void;
+  commitEffectIntensity: (effectId: AudioEffectType) => void;
   setIsEnabled: (enabled: boolean) => void;
   resetAllEffects: () => void;
   applyScene: (sceneId: string) => void;

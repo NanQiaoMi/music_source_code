@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useCallback } from "react";
 import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
-import { getAudioAnalyser } from "@/hooks/useAudioPlayer";
+import { analyserHub } from "@/lib/audio/AnalyserHub";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import { smoothAudioValue } from "@/lib/audio/audioMotionSmoothing";
 import { cancelRaf, requestRaf } from "@/lib/perf/rafScheduler";
@@ -47,9 +47,6 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
   const lastFrameAtRef = useRef(0);
   // 标签页可见性 + 视口可见性 + 外部门控合成的门控信号
   const floatingActive = useFloatingActive({ active, targetRef: containerRef });
-
-  // Audio frequency buffer
-  const freqDataRef = useRef<Uint8Array | null>(null);
 
   // Peak hold and gravity decay physics state
   const peaksRef = useRef<Float32Array>(new Float32Array(barCount));
@@ -113,19 +110,13 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, width, canvasHeight);
 
-      const analyser = getAudioAnalyser();
+      const analyser = analyserHub.getAnalyser();
       const hasLiveAudio =
         isPlaying && analyser && analyser.context.state === "running" && !!currentSong;
 
-      const bufferLength = analyser ? analyser.frequencyBinCount : 512;
-      if (!freqDataRef.current || freqDataRef.current.length !== bufferLength) {
-        freqDataRef.current = new Uint8Array(bufferLength);
-      }
-
-      const freqData = freqDataRef.current;
-      if (hasLiveAudio) {
-        analyser.getByteFrequencyData(freqData as Uint8Array<ArrayBuffer>);
-      }
+      // 共享帧缓冲只读；没有 analyser 时也是固定长度的零值缓冲
+      const freqData = analyserHub.getFrequencyData();
+      const bufferLength = freqData.length;
 
       const peaks = peaksRef.current;
       const peakHoldTimers = peakHoldTimersRef.current;
@@ -232,8 +223,10 @@ export const FloatingSpectrumGlow: React.FC<FloatingSpectrumGlowProps> = ({
 
       ctx.restore();
 
-      // Stop sampling when playback/analyser is inactive or reduced motion is requested.
-      if (reducedMotionRef.current || ((!isPlaying || !hasLiveAudio) && !hasActiveSignal)) {
+      // S5-3/S2-3：analyser 尚未挂载时保持 runtime 帧（零值缓冲）；仅暂停或
+      // AudioContext 已挂起且无可衰减信号时停表，避免空转。
+      const analyserSuspended = analyser !== null && analyser.context.state !== "running";
+      if (reducedMotionRef.current || ((!isPlaying || analyserSuspended) && !hasActiveSignal)) {
         isRunningRef.current = false;
         animFrameRef.current = null;
         subscriptionRef.current?.stop();
