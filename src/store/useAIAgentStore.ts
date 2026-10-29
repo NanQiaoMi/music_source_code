@@ -1,218 +1,45 @@
+// S6-12o: store 本体只保留 persist 配置、初始状态与消息/面板动作；
+// 公共类型与纯函数在 ./aiAgent/helpers.ts，播放快照在 ./aiAgent/playbackContext.ts，
+// 会话动作在 ./aiAgent/sessionActions.ts，中止句柄在 ./aiAgent/abortController.ts。
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { createSafeStorage } from "@/lib/storage/safeStorage";
 import { Song } from "@/types/song";
-import { AgentMessage, AgentSessionMeta } from "@/types/aiAgent";
+import { AgentMessage } from "@/types/aiAgent";
 import { useAIStore } from "./aiStore";
 import { useAudioStore } from "./audioStore";
-import { usePlayerStore } from "./playerStore";
-import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { useOfflineDownloadStore } from "./useOfflineDownloadStore";
 import { usePanelStore } from "./panelStore";
 import { toast } from "@/store/actions/uiActions";
-import { useEmotionStore } from "./emotionStore";
-import { useFavoritesStore } from "./favoritesStore";
-import { runAgentConversation, MusicPlaybackContext } from "@/services/aiAgentService";
+import { runAgentConversation } from "@/services/aiAgentService";
 import { aiAgentDb } from "@/lib/storage/aiAgentDb";
+import {
+  DEFAULT_INITIAL_SESSION,
+  DEFAULT_SESSION_ID,
+  DEFAULT_SUGGESTED_PROMPTS,
+  INITIAL_GREETING_MESSAGE,
+  extractSessionTitle,
+  type AIAgentState,
+} from "./aiAgent/helpers";
+import { getDynamicPlaybackContext } from "./aiAgent/playbackContext";
+import { createSessionActions } from "./aiAgent/sessionActions";
+import {
+  abortPendingRequest,
+  getAbortController,
+  setAbortController,
+} from "./aiAgent/abortController";
 
-export const DEFAULT_SUGGESTED_PROMPTS = [
-  "搜周杰伦的晴天",
-  "有首歌词是'如果天黑之前来得及'",
-  "来首适合深夜听的慢歌",
-  "帮我下载陈奕迅的十年",
-];
-
-export const INITIAL_GREETING_MESSAGE: AgentMessage = {
-  id: "greeting",
-  role: "assistant",
-  content:
-    "你好！我是 MIMI 音乐策展人 🎵\n在音符流转间与你相遇。无论是某句朦胧歌词、此时此刻的心境流转，还是探索小众宝藏与黑胶意境，我都能为你全网淘取并即刻开播！",
-  timestamp: Date.now(),
-  status: "done",
-};
-
-const DEFAULT_SESSION_ID = "session_default";
-
-const DEFAULT_INITIAL_SESSION: AgentSessionMeta = {
-  id: DEFAULT_SESSION_ID,
-  title: "探索新音乐",
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
-  messageCount: 1,
-  lastSnippet: "你好！我是 MIMI 音乐策展人 🎵",
-};
-
-export function extractLyricsSnippet(lyrics: string, currentTime: number): string {
-  if (!lyrics) return "";
-  const lines = lyrics.split("\n");
-  const parsedLines: { time: number; text: string }[] = [];
-
-  for (const line of lines) {
-    const match = line.match(/\[(\d{2}):(\d{2})(?:\.(\d+))?\](.*)/);
-    if (match) {
-      const min = parseInt(match[1], 10);
-      const sec = parseInt(match[2], 10);
-      const ms = match[3] ? parseInt(match[3].slice(0, 2), 10) / 100 : 0;
-      const text = match[4].trim();
-      if (text) {
-        parsedLines.push({ time: min * 60 + sec + ms, text });
-      }
-    }
-  }
-
-  if (parsedLines.length === 0) {
-    return lines
-      .map((l) => l.trim())
-      .filter(Boolean)
-      .slice(0, 4)
-      .map((l) => `> ${l}`)
-      .join("\n");
-  }
-
-  let activeIndex = 0;
-  for (let i = 0; i < parsedLines.length; i++) {
-    if (parsedLines[i].time <= currentTime) {
-      activeIndex = i;
-    } else {
-      break;
-    }
-  }
-
-  const startIndex = Math.max(0, activeIndex - 1);
-  const endIndex = Math.min(parsedLines.length, startIndex + 4);
-  return parsedLines
-    .slice(startIndex, endIndex)
-    .map((l) => `> ${l.text}`)
-    .join("\n");
-}
-
-export function getDynamicPlaybackContext(): MusicPlaybackContext {
-  // 身份读 playerStore（音频字段 owner 镜像）；进度读 PlaybackClock，避免直接依赖 audioStore。
-  const currentSong = usePlayerStore.getState().currentSong;
-  const { currentTime, duration, isPlaying } = getPlaybackClockSnapshot();
-
-  // 1. 时段计算
-  const now = new Date();
-  const hour = now.getHours();
-  let periodLabel = "深夜时分";
-  let ambientMood = "万籁俱寂，适宜聆听沉静、温润或内省的声响";
-  if (hour >= 5 && hour < 9) {
-    periodLabel = "清晨曙光";
-    ambientMood = "晨光初醒，适合明亮、清新、轻快的唤醒节奏";
-  } else if (hour >= 9 && hour < 12) {
-    periodLabel = "上午专注";
-    ambientMood = "精力饱满，适合平稳、低保真 Lo-Fi 或专注器乐";
-  } else if (hour >= 12 && hour < 14) {
-    periodLabel = "午后小憩";
-    ambientMood = "惬意慵懒，适宜舒缓、轻柔、微风般的旋律";
-  } else if (hour >= 14 && hour < 18) {
-    periodLabel = "午后时光";
-    ambientMood = "阳光正好，适宜律动、爵士放克或流光流行";
-  } else if (hour >= 18 && hour < 22) {
-    periodLabel = "黄昏与入夜";
-    ambientMood = "落日与霓虹交织，适宜都市流行、R&B 或微醺氛围";
-  } else if (hour >= 22 || hour < 2) {
-    periodLabel = "深夜独处";
-    ambientMood = "夜色渐浓，适宜木吉他民谣、氛围环境音或深情低语";
-  }
-
-  // 2. 歌词切片
-  let lyricsSnippet: string | undefined = undefined;
-  if (currentSong?.lyrics) {
-    lyricsSnippet = extractLyricsSnippet(currentSong.lyrics, currentTime);
-  }
-
-  // 3. 情感坐标
-  const emotionState = useEmotionStore.getState();
-  const point = currentSong ? emotionState.points.find((p) => p.id === currentSong.id) : null;
-  const emotion = point ? { x: point.x, y: point.y } : null;
-
-  // 4. 用户偏好
-  const favState = useFavoritesStore.getState();
-  const favorites = favState.favorites || [];
-  const recentArtists = Array.from(new Set(favorites.map((s) => s.artist).filter(Boolean))).slice(
-    0,
-    5
-  );
-
-  return {
-    currentSong: currentSong
-      ? {
-          id: currentSong.id,
-          title: currentSong.title,
-          artist: currentSong.artist,
-          album: currentSong.album,
-          duration,
-          currentTime,
-          isPlaying,
-          lyricsSnippet,
-          source: currentSong.source,
-        }
-      : null,
-    emotion,
-    timeOfDay: {
-      hour,
-      periodLabel,
-      ambientMood,
-    },
-    userPreferences: {
-      favoriteCount: favorites.length,
-      topArtists: recentArtists,
-    },
-  };
-}
-
-let currentAbortController: AbortController | null = null;
-
-export interface AIAgentState {
-  // 会话列表元数据与当前会话
-  sessions: AgentSessionMeta[];
-  currentSessionId: string;
-  isSessionDrawerOpen: boolean;
-  isSessionLoading: boolean;
-
-  // 当前激活会话的消息体
-  messages: AgentMessage[];
-  isProcessing: boolean;
-  currentToolName: string | null;
-  isPanelOpen: boolean;
-  suggestedPrompts: string[];
-
-  // 会话管理 Actions
-  createNewSession: (initialTitle?: string) => string;
-  switchSession: (sessionId: string) => Promise<void>;
-  deleteSession: (sessionId: string) => Promise<void>;
-  clearAllSessions: () => Promise<void>;
-  renameSession: (sessionId: string, newTitle: string) => void;
-  openSessionDrawer: () => void;
-  closeSessionDrawer: () => void;
-  toggleSessionDrawer: () => void;
-
-  // 消息与交互 Actions
-  sendMessage: (text: string) => Promise<void>;
-  clearMessages: () => void;
-  openPanel: () => void;
-  closePanel: () => void;
-  togglePanel: () => void;
-  abortCurrentRequest: () => void;
-  playSongFromAgent: (song: Song) => void;
-  downloadSongFromAgent: (song: Song) => Promise<void>;
-}
-
-// 辅助萃取会话标题
-function extractSessionTitle(prompt: string): string {
-  const clean = prompt.replace(/[？?！!，,。.\n\r]/g, " ").trim();
-  if (!clean) return "音乐对话";
-  const words = clean.split(/\s+/);
-  if (words.length > 0 && words[0].length >= 2) {
-    return clean.slice(0, 16);
-  }
-  return clean.slice(0, 14);
-}
+export {
+  DEFAULT_SUGGESTED_PROMPTS,
+  INITIAL_GREETING_MESSAGE,
+  extractLyricsSnippet,
+} from "./aiAgent/helpers";
+export type { AIAgentState } from "./aiAgent/helpers";
+export { getDynamicPlaybackContext } from "./aiAgent/playbackContext";
 
 export const useAIAgentStore = create<AIAgentState>()(
   persist(
-    (set, get) => ({
+    (set, get, api) => ({
       sessions: [DEFAULT_INITIAL_SESSION],
       currentSessionId: DEFAULT_SESSION_ID,
       isSessionDrawerOpen: false,
@@ -224,139 +51,7 @@ export const useAIAgentStore = create<AIAgentState>()(
       isPanelOpen: false,
       suggestedPrompts: DEFAULT_SUGGESTED_PROMPTS,
 
-      createNewSession: (initialTitle?: string) => {
-        if (currentAbortController) {
-          currentAbortController.abort();
-          currentAbortController = null;
-        }
-
-        const newId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-        const newSessionMeta: AgentSessionMeta = {
-          id: newId,
-          title: initialTitle || "新音乐对话",
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          messageCount: 1,
-          lastSnippet: "你好！我是 MIMI 音乐找歌助手 🎵",
-        };
-
-        const initialMsgs = [{ ...INITIAL_GREETING_MESSAGE, timestamp: Date.now() }];
-
-        set((state) => ({
-          sessions: [newSessionMeta, ...state.sessions.filter((s) => s.id !== newId)],
-          currentSessionId: newId,
-          messages: initialMsgs,
-          isProcessing: false,
-          currentToolName: null,
-          isSessionDrawerOpen: false,
-        }));
-
-        aiAgentDb.saveSessionMessages(newId, initialMsgs);
-        return newId;
-      },
-
-      switchSession: async (sessionId: string) => {
-        if (sessionId === get().currentSessionId && get().messages.length > 0) {
-          set({ isSessionDrawerOpen: false });
-          return;
-        }
-
-        if (currentAbortController) {
-          currentAbortController.abort();
-          currentAbortController = null;
-        }
-
-        set({ isSessionLoading: true, currentSessionId: sessionId, isSessionDrawerOpen: false });
-
-        try {
-          const storedMessages = await aiAgentDb.getSessionMessages(sessionId);
-          const activeMessages =
-            storedMessages && storedMessages.length > 0
-              ? storedMessages
-              : [{ ...INITIAL_GREETING_MESSAGE, timestamp: Date.now() }];
-
-          set({
-            messages: activeMessages,
-            isProcessing: false,
-            currentToolName: null,
-            isSessionLoading: false,
-          });
-        } catch {
-          set({
-            messages: [{ ...INITIAL_GREETING_MESSAGE, timestamp: Date.now() }],
-            isProcessing: false,
-            currentToolName: null,
-            isSessionLoading: false,
-          });
-        }
-      },
-
-      deleteSession: async (sessionId: string) => {
-        const { sessions, currentSessionId } = get();
-        const remaining = sessions.filter((s) => s.id !== sessionId);
-
-        await aiAgentDb.deleteSessionMessages(sessionId);
-
-        if (remaining.length === 0) {
-          // 全部删光时重建默认空白会话
-          get().createNewSession("探索新音乐");
-          return;
-        }
-
-        if (currentSessionId === sessionId) {
-          const nextSession = remaining[0];
-          set({ sessions: remaining });
-          await get().switchSession(nextSession.id);
-        } else {
-          set({ sessions: remaining });
-        }
-      },
-
-      clearAllSessions: async () => {
-        if (currentAbortController) {
-          currentAbortController.abort();
-          currentAbortController = null;
-        }
-
-        await aiAgentDb.clearAllSessionMessages();
-
-        const defaultId = `session_${Date.now()}`;
-        const newSession: AgentSessionMeta = {
-          id: defaultId,
-          title: "探索新音乐",
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          messageCount: 1,
-          lastSnippet: "你好！我是 MIMI 音乐找歌助手 🎵",
-        };
-        const initialMsgs = [{ ...INITIAL_GREETING_MESSAGE, timestamp: Date.now() }];
-
-        set({
-          sessions: [newSession],
-          currentSessionId: defaultId,
-          messages: initialMsgs,
-          isProcessing: false,
-          currentToolName: null,
-          isSessionDrawerOpen: false,
-        });
-
-        await aiAgentDb.saveSessionMessages(defaultId, initialMsgs);
-      },
-
-      renameSession: (sessionId: string, newTitle: string) => {
-        const trimmed = newTitle.trim();
-        if (!trimmed) return;
-        set((state) => ({
-          sessions: state.sessions.map((s) =>
-            s.id === sessionId ? { ...s, title: trimmed, updatedAt: Date.now() } : s
-          ),
-        }));
-      },
-
-      openSessionDrawer: () => set({ isSessionDrawerOpen: true }),
-      closeSessionDrawer: () => set({ isSessionDrawerOpen: false }),
-      toggleSessionDrawer: () =>
-        set((state) => ({ isSessionDrawerOpen: !state.isSessionDrawerOpen })),
+      ...createSessionActions(set, get, api),
 
       sendMessage: async (text: string) => {
         const trimmed = text.trim();
@@ -431,7 +126,8 @@ export const useAIAgentStore = create<AIAgentState>()(
           currentToolName: null,
         });
 
-        currentAbortController = new AbortController();
+        const abortController = new AbortController();
+        setAbortController(abortController);
         let pendingRafId: number | null = null;
         let pendingUpdate: { msgs: AgentMessage[]; tool: string | null } | null = null;
 
@@ -475,7 +171,7 @@ export const useAIAgentStore = create<AIAgentState>()(
                 `⚠️ [${fromConfig.name}] 受限，已自动无感切换至 [${toConfig.name}] 继续检索`
               );
             },
-            abortSignal: currentAbortController.signal,
+            abortSignal: abortController.signal,
           });
 
           flushPendingUpdate(resultMessages);
@@ -500,7 +196,7 @@ export const useAIAgentStore = create<AIAgentState>()(
         } catch (err: unknown) {
           flushPendingUpdate();
           const isAborted =
-            currentAbortController?.signal.aborted ||
+            getAbortController()?.signal.aborted ||
             (err instanceof DOMException && err.name === "AbortError");
 
           let finalErrorMsgs: AgentMessage[];
@@ -544,15 +240,12 @@ export const useAIAgentStore = create<AIAgentState>()(
           aiAgentDb.saveSessionMessages(currentSessionId, finalErrorMsgs);
         } finally {
           flushPendingUpdate();
-          currentAbortController = null;
+          setAbortController(null);
         }
       },
 
       clearMessages: () => {
-        if (currentAbortController) {
-          currentAbortController.abort();
-          currentAbortController = null;
-        }
+        abortPendingRequest();
         const initialMsgs = [{ ...INITIAL_GREETING_MESSAGE, timestamp: Date.now() }];
         const currentSessionId = get().currentSessionId;
 
@@ -596,10 +289,7 @@ export const useAIAgentStore = create<AIAgentState>()(
       },
 
       abortCurrentRequest: () => {
-        if (currentAbortController) {
-          currentAbortController.abort();
-          currentAbortController = null;
-        }
+        abortPendingRequest();
         set({ isProcessing: false, currentToolName: null });
       },
 

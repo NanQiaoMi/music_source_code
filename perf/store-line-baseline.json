@@ -1,6 +1,6 @@
 {
   "maxLines": 400,
-  "generatedAt": "2026-10-29T02:37:27.173Z",
+  "generatedAt": "2026-10-29T02:52:14.581Z",
   "files": {
     "src/store/abLoopStore.ts": 109,
     "src/store/actions/emotionActions.ts": 9,
@@ -12,6 +12,10 @@
     "src/store/actions/sourceActions.ts": 17,
     "src/store/actions/uiActions.ts": 27,
     "src/store/actions/visualizationActions.ts": 6,
+    "src/store/aiAgent/abortController.ts": 18,
+    "src/store/aiAgent/helpers.ts": 131,
+    "src/store/aiAgent/playbackContext.ts": 83,
+    "src/store/aiAgent/sessionActions.ts": 144,
     "src/store/aiStore.ts": 342,
     "src/store/ai/helpers.ts": 246,
     "src/store/animationStore.ts": 122,
@@ -82,7 +86,7 @@
     "src/store/trackCuttingStore.ts": 293,
     "src/store/uiShellStore.ts": 135,
     "src/store/uiStore.ts": 247,
-    "src/store/useAIAgentStore.ts": 643,
+    "src/store/useAIAgentStore.ts": 333,
     "src/store/useDataManagerStore.ts": 115,
     "src/store/useOfflineDownloadStore.ts": 717,
     "src/store/useStorageAnalyticsStore.ts": 292,
