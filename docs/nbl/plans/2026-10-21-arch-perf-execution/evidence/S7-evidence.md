@@ -3,22 +3,22 @@
 > 计划依据：[S7-platform-runtime.md](../S7-platform-runtime.md) §2.2 出口 E1–E10、§3 前置、§4 任务表、§5 逐任务、§6 验证
 > 看板：[TRACKING.md](../TRACKING.md) §S7（行 123–134）、汇总行 19（S7 行）、M7 出口门行 125
 > 决策：[00-decisions.md](../00-decisions.md) D2（行 23）/ D8（行 29）；[ADR 0002](../../../adr/0002-desktop-runtime.md)
-> 生成时间：2026-10-29 19:05（Asia/Shanghai）；平台边界加固补记：2026-10-29（Asia/Shanghai）
+> 生成时间：2026-10-29 19:05（Asia/Shanghai）；平台边界加固补记：2026-10-29（Asia/Shanghai）；S7-1a 交付补记：2026-10-29 21:40（Asia/Shanghai）
 > worktree：`D:/26project/music_source_code_V1.1_full/_worktrees/arch-integration-s1-5`
-> 分支：`docs/s7-evidence`（自 `98f0da5` 创建）；加固补记在 `integration/s2-audio`，提交 `fix(s7): harden audio proxy URL validation`
+> 分支：`docs/s7-evidence`（自 `98f0da5` 创建）；加固补记在 `integration/s2-audio`，提交 `fix(s7): harden audio proxy URL validation`；S7-1a 补记在 `feature/arch-perf-s7-1`（自 `b4f9b8e` 创建，未合并、未 push）
 > 约束：S7 证据轮仅新增本文档；加固补记只改平台边界段落与复现命令；未 push；未改动主工作区 `D:/26project/music_source_code_V1.1_full/music_source_code`。
 > 标注约定：**实测** = 本轮在本 worktree 执行并捕获 exit code；**历史** = TRACKING/提交时记录；**结构/构建** = 静态扫描或已有构建产物；**未验证** = 无直接证据。
 
 ## 0. 结论（先看这里）
 
-- **任务完成度**：S7 共 9 个任务，**1 done（S7-2）、2 partial（S7-3、S7-9）、1 未开始（S7-1）、5 blocked（S7-4/S7-5/S7-6/S7-7/S7-8，均卡在 D2）**。`git log --all --oneline --grep='s7-'` 实测 **9 条**提交，全部为 2026-10-29：S7-2 占 4 条（2 代码 + 2 文档）、S7-3 占 2 条（1 代码 + 1 文档）、S7-9 占 3 条（1 工具 + 2 文档/报告）。
+- **任务完成度**：S7 共 9 个任务，**1 done（S7-2）、3 partial（S7-1、S7-3、S7-9）、5 blocked（S7-4/S7-5/S7-6/S7-7/S7-8，均卡在 D2）**（S7-1 于 2026-10-29 21:40 由「未开始」改判 **partial**：S7-1a + 插件注册表已交付，见 §8）。`git log --all --oneline --grep='s7-'` 实测 **9 条**提交，全部为 2026-10-29：S7-2 占 4 条（2 代码 + 2 文档）、S7-3 占 2 条（1 代码 + 1 文档）、S7-9 占 3 条（1 工具 + 2 文档/报告）。
 - **本轮实测（2026-10-29，本 worktree）**：3 组定向测试 **9 文件 / 45 passed，3/3 exit 0**；`npm run verify:docs` **fail=0 warn=0，exit 0**；`npx tsc --noEmit` **exit 0**；`node scripts/verify-desktop-release-ready.mjs` **exit 1**（桌面发布冻结，S7-4 未做，符合预期）。
 - **平台边界加固补记（2026-10-29，本 worktree）**：`/api/audio/proxy` 新增 `src/lib/audio/proxyGuard.ts` + `route.test.ts`；定向 **29 passed / exit 0**；全量 **312 files / 1962 passed / exit 0（95s）**；`npx tsc --noEmit`、`npm run lint`、`npm run verify:layers` 均 **exit 0**（layers 0 errors / 27 warnings）；`npm run build` **exit 0**（28 static pages，`/api/audio/proxy` 仍为动态路由）。这是安全加固，**不是 S7-1/S7-4c 验收**。
 - **2h soak**：历史报告 `perf/reports/soak-2h-20261029.json`（120 min / 120 ticks @60s）**PASS，heap delta −2.58 MB**（阈值 30 MB）；但负载是 **node-only 合成负载（TtlLruCache + hydrationStatus）**，不含浏览器/音频图/IDB/persist 写频，因此 **S7-9 只能判 partial，不能作为 M7 的 2h soak 达标证据**。50MB 起播延迟 **完全未测量**。
 - **平台边界（本轮核实 + 2026-10-29 加固补记）**：仓库里 **不存在 `/api/media` 路由**（全仓 grep = 0）；实际代理是 `/api/audio/proxy`，**原实现只校验 URL 以 "http" 开头，没有 host allowlist / 私网拦截**；**2026-10-29 已补 SSRF 防护**（协议/凭据/本地主机名/回环私网/元数据 IPv4+IPv6/DNS 解析/重定向逐跳/15s 超时/100MB 上限 + 29 例 route 单测，见 §3.3），但这是**安全加固，不是 S7-1/S7-4c 验收**；FFmpeg **分块已 async 化（配置 + 构建产物双证）**，但 **core 仍从 unpkg 拉取**，离线不可用；Electron preload **20 个方法与 `electron.d.ts` 20 个签名手工一致，但无自动化 parity 测试**，S7-5 规划的 `getRuntimeInfo`/`onBackendStatus` 全部缺失。
 - **M7 不能判绿**：TRACKING 行 125 的 4 项出口 **0 项完整达成**（soak 仅 node 合成 partial，OPFS 无结论，插件隔离未做，桌面运行时闭环为 0）；计划 §2.2 的 E1–E10 中 **E9 部分、E10 partial，其余 8 项未达成/未验证**。
 - **本轮新发现（诚实登记）**：
-  1. **S7-1 从未开工**：`src/services/http/`、`src/services/resolver/` 目录不存在；`MultiSourceResolver.ts` 仍 **1,421 行**、**16 处直接 `fetch(`**（行 435/554/582/612/703/749/778/821/850/893/922/1047/1167/1188/1209/1400）；`EndpointCircuitBreaker` 仍只被调试组件引用。TRACKING 把它标为待办，但没有任何提交。
+  1. ~~**S7-1 从未开工**~~ → **2026-10-29 21:40 已改判（partial）**：快照时点（19:05）确实目录不存在、`MultiSourceResolver.ts` 1,421 行 / 16 处裸 `fetch(`、熔断器只被调试组件引用；本轮已在 `feature/arch-perf-s7-1` 交付 S7-1a（`src/services/http/{client,circuitBreaker}.ts`）与插件注册表（`src/services/resolver/{types,plugin,platforms}.ts`），门面裸 fetch 清零、行数 1421→1133，详见 **§8**。仍未达成的部分（`platforms.ts` 371 行未拆、门面 1133 行、lxRunner 3 处裸 fetch、坏 host 实网冒烟）同样列在 §8.3。
   2. `/api/media` 是**误记的路由名**：全仓 0 命中；代理播放的真实入口是 `src/app/api/audio/proxy/route.ts`（加固前 112 行；加固后 185 行 + `src/lib/audio/proxyGuard.ts`），原 route **没有任何 route 级单测**；2026-10-29 已补 `src/app/api/audio/proxy/route.test.ts`（29 例，见 §3.3）。
   3. `/api/audio/proxy` 的 `url` 参数**原无 allowlist**：条件只有 `!targetUrl || !targetUrl.startsWith("http")`（加固前 `route.ts:29-31`），任意以 `http` 开头的 URL（含 `http://127.0.0.1`、`http://169.254.169.254` 等回环/内网地址）都会被服务端 fetch，且该前缀判断连 `httpfoo:` 这类非 http(s) 协议也会放行。**该缺口已于 2026-10-29 加固**（§3.3）：协议/凭据/本地主机名/私网与元数据 IP/DNS/重定向/超时/大小上限均有代码与单测；仍**没有显式 host allowlist**，也**不是 S7-1 的验收**。
   4. 2h soak 报告违反 `perf/README.md` §11「reports 生成物不提交」的约定（`perf/reports/soak-2h-20261029.json` 已入库 759 行）——作为证据可接受，但需知悉口径例外。
@@ -57,17 +57,17 @@ bc590b2 perf(s7-2b): bound search cache and expose cache stats
 
 ### 2.1 任务表
 
-| ID   | 状态                   | 代码提交              | 文档提交             | 文件 / 行                                           | 定向测试（本轮实测）                                                                                                     | exit | 证据 / 缺口                                                                                                                                                                                                                                                                                                           |
-| ---- | ---------------------- | --------------------- | -------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| S7-1 | **未开始**             | 无                    | 无                   | 0                                                   | 无                                                                                                                       | —    | `src/services/http/requestClient.ts`、`src/services/resolver/` **不存在**；resolver 1,421 行 / 16 处裸 `fetch`；熔断器未接入请求路径。计划「每模块 ≤300 行、坏 host 请求下降」无证据。**2026-10-29 补记**：`/api/audio/proxy` 已独立加固（§3.3，29 例 route 单测），但 requestClient/resolver 拆分未做，S7-1 仍未验收 |
-| S7-2 | **done**               | `00f52fd` + `bc590b2` | `2df6a08`、`56576ab` | 9 文件 / +486 −32（docs 2 文件 +4 −4）              | `src/lib/cache` + `audioPrefetcher.test.ts` + `MultiSourceResolver.test.ts` → 4 文件 / **26 passed**                     | 0    | 3 处缓存全部迁 `TtlLruCache`（300/30min、100/20min、20/25min）；dev-only `window.__MIMI_CACHE_STATS__`；缺：probe 无浏览器手读、计数器不清零、S7-1c 拆分未做                                                                                                                                                          |
-| S7-3 | **partial**            | `898935d`             | `fb906a3`            | 13 文件 / +316 −99（docs 1 文件 +1 −1）             | `workerCapabilities` + `formatConversionWorker` + `WorkerPoolManager` + `DSDConverter.test.tsx` → 4 文件 / **15 passed** | 0    | 3a 完成（transferable + 显式降级）；缺 3b：FFmpeg core 未自托管（仍 unpkg）、池未接入转换组件、50MB 主线程 <50ms **未测**                                                                                                                                                                                             |
-| S7-4 | **blocked（D2）**      | 无                    | 无                   | 0                                                   | 无                                                                                                                       | —    | `app://` 仍从 `out/` 读静态（`electron/main/index.js:36,38-47`）；`verify-next-runtime.mjs`/runtime.js/protocol.js 均不存在；发布 guard **实测 exit 1**                                                                                                                                                               |
-| S7-5 | **blocked（D2）**      | 无                    | 无                   | 0                                                   | 无                                                                                                                       | —    | 无 `backendGateway.ts`/`capabilityStore.ts`；preload 仍 20 个 invoke 方法、无 `getRuntimeInfo`/`onBackendStatus`；12 处调用点未迁移                                                                                                                                                                                   |
-| S7-6 | **blocked（D2）**      | 无                    | 无                   | 0                                                   | 无                                                                                                                       | —    | `whenReady` 仍 `await startBackend()` 后才建窗（`index.js:370-374`）；无 `backend-status` 广播、无 `backend:restart`；`stopBackend` 只 `kill()`（`:149-157`）                                                                                                                                                         |
-| S7-7 | **blocked（D2）**      | 无                    | 无                   | 0                                                   | 无                                                                                                                       | —    | 插件仍在主进程 `vm.Script` 执行（`pluginManager.js:4,37,90`）；无 pluginSandbox/pluginHost/fixtures；`utilityProcess` grep = 0                                                                                                                                                                                        |
-| S7-8 | **blocked（D2、D8）**  | 无                    | 无                   | 0                                                   | 无                                                                                                                       | —    | 5 个 cookie 仍进 partialize（`userAccountStore.ts:340-352`）；无 credentials.js/credentialVault.ts；`safeStorage` 在 `electron/` grep = 0                                                                                                                                                                             |
-| S7-9 | **partial（9a done）** | `69bff7d`             | `1e499f5`、`26c2f38` | 6 文件 / +1,053 −0（含报告 759 行；TRACKING +1 −1） | `scripts/perf/soak.test.mjs` → 1 文件 / **4 passed**                                                                     | 0    | soak harness + 2h node 合成 PASS（−2.58 MB）；**OPFS spike 未做**（`src` opfs grep = 0）、50MB 起播未测、无 CDP/音频节点/FPS/persist 采样                                                                                                                                                                             |
+| ID   | 状态                     | 代码提交               | 文档提交             | 文件 / 行                                           | 定向测试（本轮实测）                                                                                                     | exit | 证据 / 缺口                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ---- | ------------------------ | ---------------------- | -------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S7-1 | **partial（1a+注册表）** | `feat(s7-1)`（本分支） | 本文件 §8            | 8 文件 / +1,227 −418（代码；测试 +590 −1 另计）     | `src/services/http` + `src/services/resolver` + resolver 相关回归 → 7 文件 / **61 passed**                               | 0    | `http/{client,circuitBreaker}.ts`（超时/取消/GET 重试退避/指标/可选去重 + closed-open-half-open 熔断）；`resolver/{types,plugin,platforms}.ts`（ResolverPlugin + Registry，五平台插件）；门面走注册表，`fetch(` 16→0、1,421→1,133 行；`getResolverMetrics()`。缺口：`platforms.ts` 371 行（>300）、门面 1,133 行（>450）、`lxRunner.ts:58/245/440` 三处裸 fetch、搜索/封面/歌词端点未插件化、坏 host 仅单测无实网冒烟 — 详见 §8 |
+| S7-2 | **done**                 | `00f52fd` + `bc590b2`  | `2df6a08`、`56576ab` | 9 文件 / +486 −32（docs 2 文件 +4 −4）              | `src/lib/cache` + `audioPrefetcher.test.ts` + `MultiSourceResolver.test.ts` → 4 文件 / **26 passed**                     | 0    | 3 处缓存全部迁 `TtlLruCache`（300/30min、100/20min、20/25min）；dev-only `window.__MIMI_CACHE_STATS__`；缺：probe 无浏览器手读、计数器不清零、S7-1c 拆分未做                                                                                                                                                                                                                                                                    |
+| S7-3 | **partial**              | `898935d`              | `fb906a3`            | 13 文件 / +316 −99（docs 1 文件 +1 −1）             | `workerCapabilities` + `formatConversionWorker` + `WorkerPoolManager` + `DSDConverter.test.tsx` → 4 文件 / **15 passed** | 0    | 3a 完成（transferable + 显式降级）；缺 3b：FFmpeg core 未自托管（仍 unpkg）、池未接入转换组件、50MB 主线程 <50ms **未测**                                                                                                                                                                                                                                                                                                       |
+| S7-4 | **blocked（D2）**        | 无                     | 无                   | 0                                                   | 无                                                                                                                       | —    | `app://` 仍从 `out/` 读静态（`electron/main/index.js:36,38-47`）；`verify-next-runtime.mjs`/runtime.js/protocol.js 均不存在；发布 guard **实测 exit 1**                                                                                                                                                                                                                                                                         |
+| S7-5 | **blocked（D2）**        | 无                     | 无                   | 0                                                   | 无                                                                                                                       | —    | 无 `backendGateway.ts`/`capabilityStore.ts`；preload 仍 20 个 invoke 方法、无 `getRuntimeInfo`/`onBackendStatus`；12 处调用点未迁移                                                                                                                                                                                                                                                                                             |
+| S7-6 | **blocked（D2）**        | 无                     | 无                   | 0                                                   | 无                                                                                                                       | —    | `whenReady` 仍 `await startBackend()` 后才建窗（`index.js:370-374`）；无 `backend-status` 广播、无 `backend:restart`；`stopBackend` 只 `kill()`（`:149-157`）                                                                                                                                                                                                                                                                   |
+| S7-7 | **blocked（D2）**        | 无                     | 无                   | 0                                                   | 无                                                                                                                       | —    | 插件仍在主进程 `vm.Script` 执行（`pluginManager.js:4,37,90`）；无 pluginSandbox/pluginHost/fixtures；`utilityProcess` grep = 0                                                                                                                                                                                                                                                                                                  |
+| S7-8 | **blocked（D2、D8）**    | 无                     | 无                   | 0                                                   | 无                                                                                                                       | —    | 5 个 cookie 仍进 partialize（`userAccountStore.ts:340-352`）；无 credentials.js/credentialVault.ts；`safeStorage` 在 `electron/` grep = 0                                                                                                                                                                                                                                                                                       |
+| S7-9 | **partial（9a done）**   | `69bff7d`              | `1e499f5`、`26c2f38` | 6 文件 / +1,053 −0（含报告 759 行；TRACKING +1 −1） | `scripts/perf/soak.test.mjs` → 1 文件 / **4 passed**                                                                     | 0    | soak harness + 2h node 合成 PASS（−2.58 MB）；**OPFS spike 未做**（`src` opfs grep = 0）、50MB 起播未测、无 CDP/音频节点/FPS/persist 采样                                                                                                                                                                                                                                                                                       |
 
 - 行数为 `git show --numstat` 汇总（代码/测试合并；文档行数在括号或备注中单列）。
 - 「N passed」为当次 vitest 输出，包含点名文件内既有用例，不全部归本任务新增。
@@ -87,7 +87,7 @@ bc590b2 perf(s7-2b): bound search cache and expose cache stats
 
 ### 2.3 逐任务判定说明
 
-**S7-1（未开始）** — 计划要求新增 `requestClient.ts`（超时/AbortSignal/熔断/分类）并把 6 个平台解析器拆到 `src/services/resolver/platform/`。现状：`src/services/http/` 与 `src/services/resolver/` 目录均不存在（`Test-Path` = False）；resolver 仍单文件 1,421 行；16 个 `fetch(` 站点未收口；`EndpointCircuitBreaker` 只被 `AppleAudioSourceInspector.tsx` 与自身测试引用，**未进入任何请求路径**。TRACKING 行 126 的验收（每模块 ≤300 行、坏 host 请求下降）无一项有证据。**2026-10-29 的代理 route 加固（§3.3）不改变上述事实**：requestClient/resolver 拆分仍未做，S7-1 仍未开始。
+**S7-1（partial：S7-1a + 插件注册表，2026-10-29 21:40 补记）** — 19:05 快照时 `src/services/http/`、`src/services/resolver/` 均不存在，resolver 单文件 1,421 行 / 16 处裸 `fetch`，熔断器只在调试组件里。本轮（分支 `feature/arch-perf-s7-1`）已交付统一 http client + 主机级三态熔断 + `ResolverPlugin` 注册表，门面 16 个 fetch 站点全部改走 `fetchJson`，平台分派（单源/竞速/候选）改走注册表，`MultiSourceResolver.ts` 降到 1,133 行；定向 7 文件 / 61 passed。**未达成**：计划要求的 `src/services/resolver/platform/{netease,qq,...}.ts` 逐平台文件拆分（现为单文件 `platforms.ts` 371 行）、门面 ≤450 行、`lxRunner` 3 处裸 fetch、坏 host 实网请求数下降的冒烟。按 TRACKING 三条硬口径（无裸 fetch / 注册表 / 熔断在路径）判 **partial-done**，不勾选任务。详见 §8。
 
 **S7-2（done，TRACKING 已勾选）** — 3 处无界缓存换成有界 TTL LRU：
 
@@ -246,18 +246,18 @@ rg -n "assertProxyTarget|MIMI_PROXY_ALLOW_PRIVATE|MAX_PROXY_BYTES" src/lib/audio
 
 ### 5.2 计划 §2.2 E1–E10
 
-| ID  | 出口                                                    | 状态                           | 证据 / 缺口                                                                                                     |
-| --- | ------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| E1  | standalone 可构建/启动/退出/校验                        | **未达成**                     | 无 `build:desktop-runtime` 脚本、无 `verify-next-runtime.mjs`、无 runtime owner；发布 guard exit 1              |
-| E2  | `/` 与 `/data-manager` 经 `app://app` 200 且可交互      | **未验证**                     | 构建产物有 `index.html`/`data-manager.html`，但无 loopback 桥接、无 packaged smoke                              |
-| E3  | 旧 origin 44 key / 5 IDB 升级后可读                     | **未验证**                     | 无升级前快照、无 canary、无 diagnostics；origin 理论上未变但无实测                                              |
-| E4  | 搜索/解析/歌词/封面/代理播放 5 链路有结果               | **未验证（代理结构部分在位）** | `/api/audio/proxy` 存在且已有 **29 例 route 单测**（§3.3）；桌面端未跑；FFmpeg core 依赖 CDN                    |
-| E5  | 后端异步启动/状态可观察/可重启/无残留                   | **未达成**                     | `await startBackend()` 阻塞建窗（`index.js:370-374`）；无广播/重启 IPC；`stopBackend` 仅 `kill()`（`:149-157`） |
-| E6  | 插件沙箱：恶意 fixture 无法读文件/执行命令              | **未达成**                     | 无 `pluginSandbox.js`/fixtures；主进程 vm 现状                                                                  |
-| E7  | 凭据不明文进 localStorage / 可迁移回读                  | **未达成**                     | 5 个 cookie 仍在 partialize（`userAccountStore.ts:340-352`）；无 `safeStorage`/`credentials.js`                 |
-| E8  | resolver 每模块 ≤300 行、请求有超时+取消+熔断、缓存有界 | **未达成（缓存项达成）**       | resolver 1,421 行、16 处裸 fetch、熔断未接入；缓存有界已由 S7-2 达成                                            |
-| E9  | 4 worker 归属 + transferable + 显式降级；50MB <50ms     | **partial**                    | transferable/降级/标注完成；池未接入、core 未自托管、50MB 未测                                                  |
-| E10 | 2h soak 指标达标或记录未达标原因                        | **partial**                    | node 合成 PASS；播放/IDB/persist/FPS 未测（§4.2）                                                               |
+| ID  | 出口                                                    | 状态                                             | 证据 / 缺口                                                                                                                                                 |
+| --- | ------------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1  | standalone 可构建/启动/退出/校验                        | **未达成**                                       | 无 `build:desktop-runtime` 脚本、无 `verify-next-runtime.mjs`、无 runtime owner；发布 guard exit 1                                                          |
+| E2  | `/` 与 `/data-manager` 经 `app://app` 200 且可交互      | **未验证**                                       | 构建产物有 `index.html`/`data-manager.html`，但无 loopback 桥接、无 packaged smoke                                                                          |
+| E3  | 旧 origin 44 key / 5 IDB 升级后可读                     | **未验证**                                       | 无升级前快照、无 canary、无 diagnostics；origin 理论上未变但无实测                                                                                          |
+| E4  | 搜索/解析/歌词/封面/代理播放 5 链路有结果               | **未验证（代理结构部分在位）**                   | `/api/audio/proxy` 存在且已有 **29 例 route 单测**（§3.3）；桌面端未跑；FFmpeg core 依赖 CDN                                                                |
+| E5  | 后端异步启动/状态可观察/可重启/无残留                   | **未达成**                                       | `await startBackend()` 阻塞建窗（`index.js:370-374`）；无广播/重启 IPC；`stopBackend` 仅 `kill()`（`:149-157`）                                             |
+| E6  | 插件沙箱：恶意 fixture 无法读文件/执行命令              | **未达成**                                       | 无 `pluginSandbox.js`/fixtures；主进程 vm 现状                                                                                                              |
+| E7  | 凭据不明文进 localStorage / 可迁移回读                  | **未达成**                                       | 5 个 cookie 仍在 partialize（`userAccountStore.ts:340-352`）；无 `safeStorage`/`credentials.js`                                                             |
+| E8  | resolver 每模块 ≤300 行、请求有超时+取消+熔断、缓存有界 | **partial（超时/取消/熔断/缓存达成；行数未达）** | S7-2：缓存有界；S7-1a：resolver 路径裸 fetch 0（1,421→1,133 行）、`fetchWithPolicy` 超时+取消+三态熔断、`platforms.ts` 371 行仍 >300、门面 1,133 >450（§8） |
+| E9  | 4 worker 归属 + transferable + 显式降级；50MB <50ms     | **partial**                                      | transferable/降级/标注完成；池未接入、core 未自托管、50MB 未测                                                                                              |
+| E10 | 2h soak 指标达标或记录未达标原因                        | **partial**                                      | node 合成 PASS；播放/IDB/persist/FPS 未测（§4.2）                                                                                                           |
 
 ### 5.3 D2 决策表（S7-4..S7-8 的共同阻塞根因）
 
@@ -278,28 +278,28 @@ rg -n "assertProxyTarget|MIMI_PROXY_ALLOW_PRIVATE|MAX_PROXY_BYTES" src/lib/audio
 
 ## 6. 缺失产物清单（计划 vs 现状）
 
-| 计划产物                                                                         | 现状                                                                                     |
-| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `src/services/http/requestClient.ts`（S7-1a）                                    | **不存在**；`src/services/http/` 目录不存在                                              |
-| `src/services/resolver/platform/{netease,qq,kugou,kuwo,qishui,lx}.ts`（S7-1b/c） | **不存在**；`src/services/resolver/` 目录不存在                                          |
-| `electron/main/runtime.js`（S7-4b）                                              | **不存在**                                                                               |
-| `electron/main/protocol.js`（S7-4c）                                             | **不存在**                                                                               |
-| `electron/error.html` / `electron/splash.html`（S7-4b/c）                        | **不存在**（`staticPath.js` 存在且有 3 个用例）                                          |
-| `scripts/verify-next-runtime.mjs`（S7-4a）                                       | **不存在**；`package.json` 无 `build:desktop-runtime` 脚本                               |
-| `scripts/prepare-desktop-runtime.mjs`（S7-4a）                                   | **不存在**                                                                               |
-| `scripts/perf/desktop-smoke.mjs`（§6.1/6.2）                                     | **不存在**                                                                               |
-| `src/app/api/runtime/health/route.ts`（S7-4b）                                   | **不存在**                                                                               |
-| `src/lib/api/backendGateway.ts`/`capabilityStore.ts`（S7-5）                     | **不存在**                                                                               |
-| `src/components/shared/BackendStatusBanner.tsx`（S7-5b/6b）                      | **不存在**                                                                               |
-| `electron/main/pluginSandbox.js`/`pluginPermissions.js`/`pluginHost.js`（S7-7）  | **不存在**                                                                               |
-| `electron/main/__fixtures__/`（恶意 fixture，S7-7）                              | **不存在**                                                                               |
-| `electron/main/credentials.js`/`src/lib/security/credentialVault.ts`（S7-8）     | **不存在**                                                                               |
-| `src/lib/storage/opfsAudioStore.ts` + `opfsAudioStore.test.ts`（S7-9a）          | **不存在**（`src` opfs grep = 0）                                                        |
-| `scripts/perf/bench-opfs.mjs`（S7-9a）                                           | **不存在**                                                                               |
-| `scripts/perf/soak-playback.mjs`（S7-9b，CDP 播放 soak）                         | **不存在**；现有 `soak.mjs` 是 node 合成负载                                             |
-| `docs/nbl/plans/evidence/` 目录 + `S7-desktop-smoke.md` / `S7-soak.md`（§6.5）   | **目录不存在**；实际证据落在执行包 `evidence/S7-9-soak-2h-20261029.md`（命名与计划不同） |
-| `runtime-manifest.json` 产物 / `userData/logs/runtime.log` 样例（§6.5）          | **不存在**（无 desktop runtime）                                                         |
-| 回退演练 F1–F5 记录（§6.4）                                                      | **全部不存在**                                                                           |
+| 计划产物                                                                         | 现状                                                                                                                 |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `src/services/http/requestClient.ts`（S7-1a）                                    | **已交付**（命名 `http/client.ts` + `http/circuitBreaker.ts`，见 §8）；计划文件名不同                                |
+| `src/services/resolver/platform/{netease,qq,kugou,kuwo,qishui,lx}.ts`（S7-1b/c） | **部分**：`resolver/plugin.ts` + `resolver/platforms.ts`（五平台单文件 371 行）；未拆 per-platform 目录，lx 仍在门面 |
+| `electron/main/runtime.js`（S7-4b）                                              | **不存在**                                                                                                           |
+| `electron/main/protocol.js`（S7-4c）                                             | **不存在**                                                                                                           |
+| `electron/error.html` / `electron/splash.html`（S7-4b/c）                        | **不存在**（`staticPath.js` 存在且有 3 个用例）                                                                      |
+| `scripts/verify-next-runtime.mjs`（S7-4a）                                       | **不存在**；`package.json` 无 `build:desktop-runtime` 脚本                                                           |
+| `scripts/prepare-desktop-runtime.mjs`（S7-4a）                                   | **不存在**                                                                                                           |
+| `scripts/perf/desktop-smoke.mjs`（§6.1/6.2）                                     | **不存在**                                                                                                           |
+| `src/app/api/runtime/health/route.ts`（S7-4b）                                   | **不存在**                                                                                                           |
+| `src/lib/api/backendGateway.ts`/`capabilityStore.ts`（S7-5）                     | **不存在**                                                                                                           |
+| `src/components/shared/BackendStatusBanner.tsx`（S7-5b/6b）                      | **不存在**                                                                                                           |
+| `electron/main/pluginSandbox.js`/`pluginPermissions.js`/`pluginHost.js`（S7-7）  | **不存在**                                                                                                           |
+| `electron/main/__fixtures__/`（恶意 fixture，S7-7）                              | **不存在**                                                                                                           |
+| `electron/main/credentials.js`/`src/lib/security/credentialVault.ts`（S7-8）     | **不存在**                                                                                                           |
+| `src/lib/storage/opfsAudioStore.ts` + `opfsAudioStore.test.ts`（S7-9a）          | **不存在**（`src` opfs grep = 0）                                                                                    |
+| `scripts/perf/bench-opfs.mjs`（S7-9a）                                           | **不存在**                                                                                                           |
+| `scripts/perf/soak-playback.mjs`（S7-9b，CDP 播放 soak）                         | **不存在**；现有 `soak.mjs` 是 node 合成负载                                                                         |
+| `docs/nbl/plans/evidence/` 目录 + `S7-desktop-smoke.md` / `S7-soak.md`（§6.5）   | **目录不存在**；实际证据落在执行包 `evidence/S7-9-soak-2h-20261029.md`（命名与计划不同）                             |
+| `runtime-manifest.json` 产物 / `userData/logs/runtime.log` 样例（§6.5）          | **不存在**（无 desktop runtime）                                                                                     |
+| 回退演练 F1–F5 记录（§6.4）                                                      | **全部不存在**                                                                                                       |
 
 ## 7. 复现命令
 
@@ -337,6 +337,13 @@ node -e "const r=require('./perf/reports/soak-2h-20261029.json'); console.log(JS
 # 9) 代理加固定向测试（29 passed，exit 0）
 npx vitest run src/app/api/audio/proxy/route.test.ts --reporter=dot
 
+# 9b) S7-1a / 插件注册表定向测试（7 文件 / 61 passed，exit 0；分支 feature/arch-perf-s7-1）
+npx vitest run src/services/http src/services/resolver src/services/MultiSourceResolver.test.ts \
+  src/services/EndpointCircuitBreaker.test.ts src/services/platformLoginGatekeeper.test.ts \
+  src/lib/playback/resolvePlayableAbort.test.ts src/test/integration/playback-cancellation.integration.test.ts
+# 裸 fetch 断言（应为 0）
+rg -n "[^a-zA-Z_.]fetch\(" src/services/MultiSourceResolver.ts src/services/resolver || echo "0 bare fetch"
+
 # 10) 平台边界静态核对
 rg -n "api/media" .                                   # 0 命中
 rg -n "assertProxyTarget|MIMI_PROXY_ALLOW_PRIVATE|MAX_PROXY_BYTES" src/lib/audio/proxyGuard.ts src/app/api/audio/proxy/route.ts
@@ -357,10 +364,85 @@ node scripts/perf/bench-opfs.mjs         # 文件不存在
 > 本轮未执行：`npm run build`、`npm run dev`、Electron/`electron-builder --dir`、浏览器 smoke、CDP、2h 重跑；未 push，未触碰主工作区。
 > 加固补记另执行：`route.test.ts` 29 passed、`tsc --noEmit`、`npm run lint`、`npm run verify:layers`、全量 vitest（结果见 §0）；仍未跑 build/dev/Electron/浏览器 smoke。
 
-## 8. 结论、风险与建议顺序
+## 8. S7-1a 交付补记（2026-10-29 21:40，分支 `feature/arch-perf-s7-1`）
 
-- **可以确认**：S7-2 的 3 处缓存有界化与 dev 探针真实存在且测试通过；S7-3a 的 transferable 发送/返回与 Worker 不可用显式降级有代码 + 4 文件单测（合计 9 文件次 / 45 passed）；S7-9a 的 node soak harness 可复跑，2h 报告入库且 heap delta 为负；平台侧 `/api/audio/proxy` 与 `app://` 静态协议的现状可逐行核实；**2026-10-29 代理 SSRF 加固有代码 + 29 例 route 单测**（协议/凭据/本地/私网/元数据/DNS/重定向/超时/大小上限，§3.3）；`tsc`/docs 门禁绿。
+> 口径：本节为**本轮实测**（命令 + exit code + 数字）。§0–§7 是 19:05 时点的快照，其中 S7-1 相关结论已就地改判（§0、§2.1、§2.3、§5.2 E8、§6）；§0–§7 的其它段落未改动。
+
+### 8.1 交付物（代码）
+
+| 文件                                  | 行数 | 作用                                                                                                                                                                                                                                                                                              |
+| ------------------------------------- | ---: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/services/http/circuitBreaker.ts` |  136 | 主机级熔断 `closed → open → half-open`；键 = 协议 + host + 路径前两段（同 host 多平台互不误伤）；默认阈值 2 / 冷却 30s；`now` 可注入；half-open 只放行 1 个探测                                                                                                                                   |
+| `src/services/http/client.ts`         |  403 | `fetchWithPolicy` / `fetchJson` / `fetchText`；`composeSignals`（超时 + 外部 AbortSignal，结算 `dispose` 移除监听并清定时器）；自建 deadline race（fetch 不理会 signal 也能按超时结算）；仅 GET 的 5xx/网络/超时重试 + 指数退避（默认 `retries=0`，保持既有行为）；可选 in-flight 去重；11 项指标 |
+| `src/services/resolver/types.ts`      |   28 | `ResolvedAudioSource` / `SongMetadataQuery` 迁出，门面 re-export（公开类型与 import 路径不变，避免插件↔门面模块环）                                                                                                                                                                               |
+| `src/services/resolver/plugin.ts`     |  159 | `ResolverPlugin{id,label,aliases,canHandle,resolve}` + `ResolverPluginContext`（apiBase/isLoggedIn/headers/onUnauthorized/score）+ `ResolverRegistry`（未知 source→null、插件异常不冒泡、分派计数）+ 指标数据源                                                                                   |
+| `src/services/resolver/platforms.ts`  |  371 | 五个内置插件：netease / qq / kugou / kuwo / qishui；从门面原样搬运，匹配阈值、超时预算、返回结构不变                                                                                                                                                                                              |
+
+- `src/services/MultiSourceResolver.ts`：**1,421 → 1,133 行（−288）**；`resolveSinglePlatform`、`resolvePlatformRace`、`getAvailableSourceCandidates` 三个分派点改走注册表；五个公开平台方法保留为门面 shim（签名不变）；新增 `getResolverMetrics()`（cache + plugins + http + circuits 四段）。
+- **裸 `fetch(`：16 → 0**（`MultiSourceResolver` 的 16 个站点全部改 `fetchJson`；`src/services/resolver/**` 不含任何 fetch）。
+- 代码净变化：**+1,227 −418 = +809 行**（不含测试；测试文件另 +590 −1）。超出「净代码 <600」目标，原因是五个平台实现属于**搬运**（371 行）且新增了熔断器与指标出口。
+
+### 8.2 验收对照（TRACKING 行 126 的三条硬口径）
+
+| 口径                         | 判定       | 证据                                                                                                                                                                                            |
+| ---------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| resolver 路径无裸 fetch      | **达成**   | `MultiSourceResolver.ts` 与 `src/services/resolver/**` 中 `fetch(` = **0**；唯一 fetch 调用点在 `http/client.ts`                                                                                |
+| 插件注册表存在、门面走注册表 | **达成**   | `plugin.ts` 的 `ResolverRegistry`（id/别名查表 + `canHandle` 守卫 + 分派计数）；三个分派点均改为 `resolverRegistry.resolve(...)`；未知 source（如 migu）返回 null 并计 `unknownSourceRequests`  |
+| 熔断在请求路径               | **达成**   | `fetchWithPolicy` 入口 `httpCircuitBreaker.admit(key)`：open → 0ms 返回 `circuit-open`；5xx/408/429/网络/超时 `recordFailure`；2xx 与其它的 4xx `recordSuccess`；half-open 单探测；取消不计失败 |
+| 每模块 ≤300 行               | **未达成** | `platforms.ts` 371 行（待按 `resolver/platform/*.ts` 拆分）；`MultiSourceResolver.ts` 1,133 行（计划 ≤450，属 S7-1c）                                                                           |
+| 坏 host 请求下降             | **仅单测** | `client.test.ts` 断言「同键连续 2 次失败后第 3 次 0ms 且 fetch 调用数不再增长」；**未做实网/浏览器/Electron 冒烟**                                                                              |
+
+### 8.3 剩余调用点与缺口（精确清单）
+
+| #   | 位置                                        | 现状                                                                 | 归属                                                                                               |
+| --- | ------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 1   | `src/lib/sources/lxRunner.ts:58`            | 洛雪沙箱 `request()` 内裸 fetch（8s 超时，需读 status/headers/text） | S7-1c（lib→services 会分层反转：建议把 client 下沉到 `src/lib/http`，或把 lxRunner 移入 resolver） |
+| 2   | `src/lib/sources/lxRunner.ts:245`           | 脚本下载裸 fetch（8s 超时）                                          | 同上                                                                                               |
+| 3   | `src/lib/sources/lxRunner.ts:440`           | 聚合搜索回退裸 fetch（4s，`/api/search` + `/api/qq/search`）         | 同上                                                                                               |
+| 4   | `MultiSourceResolver.ts` 搜索/封面/歌词端点 | 已走 `fetchJson`，但端点表仍写在门面（未插件化）                     | S7-1c                                                                                              |
+| 5   | `platforms.ts`                              | 单文件 371 行，未按平台拆分                                          | S7-1b/c                                                                                            |
+| 6   | 坏 host 冒烟                                | 只有 jsdom 单测，无 live/浏览器/Electron 记录                        | S7-1c 或 S7-9                                                                                      |
+
+> 明确不存在：仓库内没有 wx / migu 平台解析器（`migu` 只出现在 `src/lib/sources/lxRunner.ts:317` 的 LX 源映射与 `useDataManagerStore` 的标签里），因此本轮没有为这两个平台新增插件。
+
+### 8.4 验证（本轮实测）
+
+| 命令                                                                                                                                                                                                                                                                                                    | 结果                                                                                                            | exit |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---- |
+| `npx vitest run src/services/http src/services/resolver src/services/MultiSourceResolver.test.ts src/services/EndpointCircuitBreaker.test.ts src/services/platformLoginGatekeeper.test.ts src/lib/playback/resolvePlayableAbort.test.ts src/test/integration/playback-cancellation.integration.test.ts` | **7 文件 / 61 passed**（新增：http 18 + plugin 10；resolver 13 既有 + 2 新增）                                  | 0    |
+| `npx vitest run`（全量，无并发负载）                                                                                                                                                                                                                                                                    | **316 文件 / 2,006 passed**（99.1s）                                                                            | 0    |
+| `npx tsc --noEmit --pretty false`                                                                                                                                                                                                                                                                       | 0 error                                                                                                         | 0    |
+| `npm run lint`                                                                                                                                                                                                                                                                                          | 0 error / 0 warning                                                                                             | 0    |
+| `npm run verify:layers`                                                                                                                                                                                                                                                                                 | **0 errors / 28 warnings**（新增 1 条 `no-orphans: src/services/resolver/types.ts`，与既有 type-only 噪声同类） | 0    |
+| `npm run verify:docs`                                                                                                                                                                                                                                                                                   | fail=0 warn=0                                                                                                   | 0    |
+
+> 全量第一次跑（与本轮 lint 并行）出现 1 例失败：`src/runtime/visualRuntime.test.ts > keeps draw p95 within 10% of the simulated legacy baseline`（10.81ms vs 10.43ms 阈值）。该用例是耗时阈值型、与本改动无关，单独复跑 19 passed；去掉并发负载后全量 2,006 passed。
+
+### 8.5 熔断/重试语义（单测锁定的行为）
+
+| 场景                               | 行为                                                                       | 对应用例                                                                                                               |
+| ---------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 同键连续 2 次失败（网络/5xx/超时） | 第 3 次 0ms `circuit-open`，不再发包                                       | `opens after the failure threshold and skips the next request in 0ms`                                                  |
+| 冷却结束                           | half-open，只放行 1 个探测；成功→closed                                    | `half-open admits a single probe and closes on success` / `blocks the second concurrent probe while one is in flight`  |
+| 外部取消                           | `aborted`，不计熔断失败、不重试                                            | `is aborted by the external signal without counting a circuit failure` / `does not retry when the request was aborted` |
+| 4xx（401）                         | 不熔断，`ok:false` + status 交给调用方（会话失效仍走 `handle401Response`） | `keeps data null on non-2xx without reading the body` + plugin `netease marks the session expired on 401`              |
+| GET 5xx 重试                       | 退避后重试并成功，`retries=1`                                              | `retries an idempotent GET on 5xx with backoff, then succeeds`                                                         |
+| POST                               | 不重试                                                                     | `does not retry POST`                                                                                                  |
+| 去重                               | 同 key 并发 GET 合并为 1 次网络调用                                        | `merges concurrent identical GETs into one network call`                                                               |
+| 超时                               | 20ms 超时的悬挂请求返回 `timeout`（mock fetch 不理会 signal 也生效）       | `times out after timeoutMs even when fetch ignores the signal`                                                         |
+
+### 8.6 回滚
+
+- 单提交回滚即可：无 feature flag，门面 shim 与插件都是行为等价替换；回滚后 `MultiSourceResolver.ts` 恢复内联平台实现与裸 fetch。
+- 只回滚熔断：去掉 `http/client.ts` 里 `admit/recordFailure/recordSuccess` 三处调用，超时/取消/指标不受影响。
+- 熔断状态是进程级单例，不写 localStorage/IDB，回滚不涉及数据迁移。
+
+---
+
+## 9. 结论、风险与建议顺序
+
+- **可以确认**：**S7-1a 已交付**（http client + 三态熔断 + ResolverPlugin 注册表；门面裸 fetch 16→0、1,421→1,133 行；定向 7 文件 / 61 passed、全量 316 文件 / 2,006 passed、tsc/lint/layers/docs 均 exit 0，见 §8）；S7-2 的 3 处缓存有界化与 dev 探针真实存在且测试通过；S7-3a 的 transferable 发送/返回与 Worker 不可用显式降级有代码 + 4 文件单测（合计 9 文件次 / 45 passed）；S7-9a 的 node soak harness 可复跑，2h 报告入库且 heap delta 为负；平台侧 `/api/audio/proxy` 与 `app://` 静态协议的现状可逐行核实；**2026-10-29 代理 SSRF 加固有代码 + 29 例 route 单测**（协议/凭据/本地/私网/元数据/DNS/重定向/超时/大小上限，§3.3）；`tsc`/docs 门禁绿。
 - **不能确认**：任何桌面运行时闭环、插件隔离、凭据加密、OPFS、50MB 起播、播放 2h 泄漏、`app://` 桥接 200/Range/SSE/Cookie、**代理显式 host allowlist/DNS pinning/live smoke**。**S7 不能关闭，M7 不能判绿。**
 - **风险（按严重度）**：① 代理 SSRF 基础防护已加固（私网/本地/DNS/超时/100MB），但**仍无显式 host allowlist、DNS rebinding TOCTOU、端口未限制，且无 live/桌面 smoke**；② FFmpeg core 走 CDN，桌面离线转换必失败且当前错误路径不是 `FFMPEG_UNAVAILABLE`；③ D2 长期 Pending 使桌面发布持续冻结（guard exit 1），S7-5a 缺失导致 6/7/8 无法并行；④ 2h soak 的「达标」容易被误读为播放达标（实际仅 node 合成）。
-- **建议的解锁顺序**：① 用户拍板 **D2=B**（并确认 D8=A），把 ADR 0002 转 Accepted；② 并行推进 **S7-1a/b/c**（不依赖 D2，可立即开工；代理 route 已先行加固，仍需 requestClient + resolver 拆分 + 显式 host allowlist）；③ D2 落地后按 S7-4a→4b→4c→5a→5b→6→7→8 串行；④ S7-9b 做 OPFS spike + 50MB 起播采样 + CDP 播放 soak，再评审 M7；⑤ 在 M7 评审前补 §6 缺失的 8 类证据（桌面 smoke、旧 origin 快照、插件 fixture、凭据迁移、OPFS、50MB、F1–F5）。
+- **建议的解锁顺序**：① 用户拍板 **D2=B**（并确认 D8=A），把 ADR 0002 转 Accepted；② 继续 **S7-1b/c**（S7-1a 已完成，见 §8：http client + 三态熔断 + 插件注册表；剩余 per-platform 拆分、`lxRunner` 3 处裸 fetch、搜索/封面/歌词端点插件化、坏 host 实网冒烟）与代理显式 host allowlist；③ D2 落地后按 S7-4a→4b→4c→5a→5b→6→7→8 串行；④ S7-9b 做 OPFS spike + 50MB 起播采样 + CDP 播放 soak，再评审 M7；⑤ 在 M7 评审前补 §6 缺失的 8 类证据（桌面 smoke、旧 origin 快照、插件 fixture、凭据迁移、OPFS、50MB、F1–F5）。
 - **回退**：S7 已合入的部分无 feature flag（缓存与 transferable 是行为等价替换），按提交粒度 revert 即可；S7-2 回退需同时还原 3 处调用点（各 2–3 行），S7-3 回退需还原 worker 消息契约（`outputBlob` 兼容分支仍在，旧 worker 可读）。**代理加固回退 = revert 单个提交**（同时删除 `proxyGuard.ts` 与 `route.test.ts`）；回退后恢复「无 allowlist/超时」的旧行为，有安全风险。桌面/插件/凭据均未落地，无回退面。

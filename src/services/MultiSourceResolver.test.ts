@@ -34,8 +34,9 @@ vi.mock("@/lib/sources/lxRunner", () => ({
   LXRunner: { getMusicUrl: vi.fn(), search: vi.fn() },
 }));
 
-import { MultiSourceResolver } from "./MultiSourceResolver";
+import { MultiSourceResolver, getResolverMetrics } from "./MultiSourceResolver";
 import { LXRunner } from "@/lib/sources/lxRunner";
+import { resetHttpState } from "@/services/http/client";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -70,6 +71,8 @@ const resolver = MultiSourceResolver.getInstance();
 
 beforeEach(() => {
   MultiSourceResolver.clearCache();
+  // S7-1：熔断状态是进程级单例，用例之间必须复位（上面的失败用例会把 host 打到 open）。
+  resetHttpState();
   h.config.resolutionMode = "hybrid_racing";
   h.config.lxScripts = [LX_SCRIPT];
   h.loggedIn = false;
@@ -194,6 +197,34 @@ describe("MultiSourceResolver.resolvePlayableAudio 并发改造", () => {
     const stats = MultiSourceResolver.getResolvedUrlCacheStats();
     expect(stats.size).toBe(300);
     expect(stats.evictions).toBeGreaterThanOrEqual(5);
+  }, 15000);
+});
+
+describe("MultiSourceResolver 插件注册表与指标 (S7-1)", () => {
+  it("暴露插件/缓存/HTTP/熔断四类指标，且读取本身不发请求", () => {
+    const metrics = getResolverMetrics();
+
+    expect(metrics.plugins.map((p) => p.id)).toEqual(["netease", "qq", "kugou", "kuwo", "qishui"]);
+    expect(metrics.cache.resolvedUrl.size).toBe(0);
+    expect(metrics.cache.search.size).toBe(0);
+    expect(metrics.http.requests).toBe(0);
+    expect(metrics.circuits).toEqual([]);
+  });
+
+  it("未知来源（仓库内无 migu 解析器）不进平台注册表，只计 unknownSourceRequests", async () => {
+    h.loggedIn = true;
+    (LXRunner.getMusicUrl as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const { calls } = installFetchMock([{ match: "/api/", delayMs: 1, body: {} }]);
+
+    const result = await resolver.resolvePlayableAudio(
+      { title: "未知来源", artist: "测试", source: "migu" },
+      true
+    );
+
+    expect(result).toBeNull();
+    expect(getResolverMetrics().unknownSourceRequests).toBeGreaterThanOrEqual(1);
+    // 平台竞速/兜底仍在跑（不因未知来源整体短路），但没有任何插件被当成 migu
+    expect(calls.length).toBeGreaterThan(0);
   }, 15000);
 });
 

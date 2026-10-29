@@ -1,32 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { AudioSourceType } from "@/store/audioSourceStore";
 import { Song } from "@/types/song";
 import { SongResult } from "@/types/aiAgent";
 import { firstUsable, takeWithin } from "@/lib/resolve/urlRace";
 import { TtlLruCache, type TtlLruCacheStats } from "@/lib/cache/TtlLruCache";
-import { combineSignals, isAbortError } from "@/lib/playback/requestCoordinator";
-
-export interface ResolvedAudioSource {
-  url: string;
-  source: AudioSourceType;
-  quality: "standard" | "high" | "lossless" | "hires";
-  format: "mp3" | "flac" | "aac" | "m4a";
-  bitrate?: number;
-  duration?: number;
-  isTrial: boolean;
-  name?: string;
-}
-
-export interface SongMetadataQuery {
-  id?: string;
-  title: string;
-  artist: string;
-  album?: string;
-  duration?: number;
-  source?: string;
-}
+import { isAbortError } from "@/lib/playback/requestCoordinator";
+import { fetchJson } from "@/services/http/client";
+import {
+  resolverRegistry,
+  type ResolverPluginContext,
+  type ResolverPluginMetrics,
+} from "@/services/resolver/plugin";
+import { platformPlugins } from "@/services/resolver/platforms";
+import type { ResolvedAudioSource, SongMetadataQuery } from "@/services/resolver/types";
 
 import { getPlatformCookie, getSourceConfigSnapshot } from "@/store/actions/sourceActions";
 import {
@@ -35,6 +22,15 @@ import {
   PlatformType,
 } from "@/store/userAccountStore";
 import { LXRunner } from "@/lib/sources/lxRunner";
+
+// 公开类型已迁到 services/resolver/types.ts（插件与门面共用）。re-export 保持既有
+// import 路径与类型身份不变（S7-1b 的「公开 API 0 变化」）。
+export type { ResolvedAudioSource, SongMetadataQuery } from "@/services/resolver/types";
+
+// 平台插件注册：注册顺序即平台竞速顺序（netease -> qq -> kugou -> kuwo -> qishui）。
+for (const plugin of platformPlugins) {
+  resolverRegistry.register(plugin);
+}
 
 function getPlatformHeaders(platform: string): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -375,28 +371,33 @@ export class MultiSourceResolver {
     return null;
   }
 
+  /**
+   * 平台插件的依赖注入：store 读取、401 处理、匹配打分都在门面这一侧收敛，
+   * 插件本身不直连 store（services 层可单测、不触发 zustand 初始化）。
+   */
+  private createPluginContext(signal?: AbortSignal): ResolverPluginContext {
+    return {
+      signal,
+      apiBase: getApiBase(),
+      isLoggedIn: (platform) => isPlatformLoggedIn(platform),
+      headers: (platform) => getPlatformHeaders(platform),
+      onUnauthorized: (platform) => handle401Response(platform, 401),
+      score: calculateMatchScore,
+    };
+  }
+
   /** 已登录对应平台的单源专属解析（VIP Cookie 专属高清通道）。 */
   private resolveSinglePlatform(
     src: string,
     query: SongMetadataQuery,
     signal?: AbortSignal
   ): Promise<ResolvedAudioSource | null> {
-    if (src === "netease" || src === "wy") {
-      return this.resolveNetease(query.id || "", query, signal);
-    }
-    if (src === "qq" || src === "tx") {
-      return this.resolveQQMusic(query, signal);
-    }
-    if (src === "kugou" || src === "kg") {
-      return this.resolveKugou(query, signal);
-    }
-    if (src === "kuwo" || src === "kw") {
-      return this.resolveKuwo(query, signal);
-    }
-    if (src === "qishui") {
-      return this.resolveQishui(query, signal);
-    }
-    return Promise.resolve(null);
+    // 别名（wy/tx/kg/kw）由注册表归一；未知来源返回 null，与旧 if 链落空一致。
+    return resolverRegistry.resolve(
+      src,
+      { query, id: query.id || "", source: src },
+      this.createPluginContext(signal)
+    );
   }
 
   /**
@@ -408,13 +409,11 @@ export class MultiSourceResolver {
     query: SongMetadataQuery,
     signal?: AbortSignal
   ): Promise<ResolvedAudioSource | null> | null {
-    const tasks: Promise<ResolvedAudioSource | null>[] = [];
-    if (isPlatformLoggedIn("netease"))
-      tasks.push(this.resolveNetease(query.id || "", query, signal));
-    if (isPlatformLoggedIn("qq")) tasks.push(this.resolveQQMusic(query, signal));
-    if (isPlatformLoggedIn("kugou")) tasks.push(this.resolveKugou(query, signal));
-    if (isPlatformLoggedIn("kuwo")) tasks.push(this.resolveKuwo(query, signal));
-    if (isPlatformLoggedIn("qishui")) tasks.push(this.resolveQishui(query, signal));
+    const ctx = this.createPluginContext(signal);
+    const tasks = resolverRegistry
+      .list()
+      .filter((plugin) => isPlatformLoggedIn(plugin.id))
+      .map((plugin) => resolverRegistry.resolve(plugin.id, { query, id: query.id || "" }, ctx));
     if (tasks.length === 0) return null;
     return firstUsable(tasks);
   }
@@ -432,15 +431,17 @@ export class MultiSourceResolver {
       if (query.artist) params.set("artist", query.artist);
       if (query.source) params.set("source", query.source);
 
-      const res = await fetch(`${base}/api/song/url?${params.toString()}`, {
-        // 父 signal（换歌/新播放请求）与 4s 超时任一触发即中断，避免旧请求继续占带宽
-        signal: combineSignals(signal, 4000),
+      const res = await fetchJson<any>(`${base}/api/song/url?${params.toString()}`, {
+        // 父 signal（换歌/新播放请求）与 4s 超时任一触发即中断（http client 内部组合），
+        // 同时接入按 host 的熔断与指标；旧请求不再占带宽。
+        timeoutMs: 4000,
+        signal,
         headers: query.source ? getPlatformHeaders(query.source) : {},
       });
       if (signal?.aborted) return null;
-      if (!res.ok) return null;
+      if (!res.ok || !res.data) return null;
 
-      const data = await res.json();
+      const data = res.data;
       if (data?.url && typeof data.url === "string" && data.url.startsWith("http")) {
         return {
           url: data.url,
@@ -537,104 +538,18 @@ export class MultiSourceResolver {
   }
 
   /**
-   * 酷我音乐音源解析 (严格鉴权通道)
+   * 酷我音乐音源解析 (严格鉴权通道)。实现见 resolver/platforms.ts 的 kuwoPlugin，
+   * 这里保留同名公开方法是为了公开 API 不变（S7-1b）。
    */
-  public async resolveKuwo(
+  public resolveKuwo(
     query: SongMetadataQuery,
     signal?: AbortSignal
   ): Promise<ResolvedAudioSource | null> {
-    if (!isPlatformLoggedIn("kuwo")) return null;
-    if (signal?.aborted) return null;
-
-    // 1. 如果已有明确的酷我 RID，优先直连转换母带 URL
-    if (query.id && (query.source === "kuwo" || !query.source)) {
-      try {
-        const rid = String(query.id).replace("MUSIC_", "").trim();
-        if (/^\d+$/.test(rid)) {
-          const directRes = await fetch(
-            `http://antiserver.kuwo.cn/anti.s?type=convert_url&rid=${rid}&format=mp3&response=url`,
-            { signal: combineSignals(signal, 3000), headers: getPlatformHeaders("kuwo") }
-          );
-          if (directRes.ok) {
-            const streamUrl = (await directRes.text()).trim();
-            if (streamUrl && streamUrl.startsWith("http")) {
-              return {
-                url: streamUrl,
-                source: "kuwo",
-                quality: "lossless",
-                format: "mp3",
-                bitrate: 320000,
-                isTrial: false,
-                name: "酷我音乐 (高解析母带直通流)",
-              };
-            }
-          }
-        }
-      } catch {
-        // fallback to keyword search
-      }
-    }
-
-    // 2. 关键词智能匹配
-    if (query.title) {
-      try {
-        const kw = encodeURIComponent(`${query.title} ${query.artist || ""}`.trim());
-        const searchRes = await fetch(`${getApiBase()}/api/kuwo/search?keywords=${kw}&limit=15`, {
-          signal: combineSignals(signal, 3500),
-          headers: getPlatformHeaders("kuwo"),
-        });
-        if (searchRes.status === 401) {
-          handle401Response("kuwo", 401);
-          return null;
-        }
-        if (searchRes.ok) {
-          const searchJson = await searchRes.json();
-          const songs = searchJson?.songs || [];
-
-          let bestSong: any = null;
-          let highestScore = 0;
-
-          for (const s of songs) {
-            const score = calculateMatchScore(
-              query.title,
-              query.artist || "",
-              s.title || "",
-              s.artist || ""
-            );
-            if (score > highestScore && score >= 70) {
-              highestScore = score;
-              bestSong = s;
-            }
-          }
-
-          if (bestSong?.id) {
-            const rid = bestSong.id.replace("MUSIC_", "");
-            const urlRes = await fetch(
-              `http://antiserver.kuwo.cn/anti.s?type=convert_url&rid=${rid}&format=mp3&response=url`,
-              { signal: combineSignals(signal, 3000), headers: getPlatformHeaders("kuwo") }
-            );
-            if (urlRes.ok) {
-              const streamUrl = (await urlRes.text()).trim();
-              if (streamUrl && streamUrl.startsWith("http")) {
-                return {
-                  url: streamUrl,
-                  source: "kuwo",
-                  quality: "lossless",
-                  format: "mp3",
-                  bitrate: 320000,
-                  isTrial: false,
-                  name: "酷我音乐 (全网高解析母带)",
-                };
-              }
-            }
-          }
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    return null;
+    return resolverRegistry.resolve(
+      "kuwo",
+      { query, id: query.id, source: "kuwo" },
+      this.createPluginContext(signal)
+    );
   }
 
   /**
@@ -643,12 +558,11 @@ export class MultiSourceResolver {
   public async getAvailableSourceCandidates(
     query: SongMetadataQuery
   ): Promise<ResolvedAudioSource[]> {
-    const promises: Promise<ResolvedAudioSource | null>[] = [];
-    if (isPlatformLoggedIn("netease")) promises.push(this.resolveNetease(query.id || "", query));
-    if (isPlatformLoggedIn("qq")) promises.push(this.resolveQQMusic(query));
-    if (isPlatformLoggedIn("kugou")) promises.push(this.resolveKugou(query));
-    if (isPlatformLoggedIn("kuwo")) promises.push(this.resolveKuwo(query));
-    if (isPlatformLoggedIn("qishui")) promises.push(this.resolveQishui(query));
+    const ctx = this.createPluginContext();
+    const promises = resolverRegistry
+      .list()
+      .filter((plugin) => isPlatformLoggedIn(plugin.id))
+      .map((plugin) => resolverRegistry.resolve(plugin.id, { query, id: query.id || "" }, ctx));
 
     const results = await Promise.allSettled(promises);
     const candidates: ResolvedAudioSource[] = [];
@@ -675,275 +589,54 @@ export class MultiSourceResolver {
   }
 
   /**
-   * 网易云原生音源嗅探与多级降级解析 (仅在登录后开放)
+   * 网易云原生音源嗅探与多级降级解析。实现见 resolver/platforms.ts 的 neteasePlugin。
    */
-  public async resolveNetease(
+  public resolveNetease(
     songId: string,
     query?: SongMetadataQuery,
     signal?: AbortSignal
   ): Promise<ResolvedAudioSource | null> {
-    if (!isPlatformLoggedIn("netease")) return null;
-    if (signal?.aborted) return null;
-
-    const numericId = songId ? songId.replace(/^[a-zA-Z_-]+/, "") : "";
-    const effectiveId = numericId || songId;
-
-    try {
-      const name = query?.title || "";
-      const artist = query?.artist || "";
-      const album = query?.album || "";
-      const params = new URLSearchParams({
-        id: effectiveId || "",
-        name,
-        artist,
-        album,
-        quality: "lossless",
-      });
-
-      const response = await fetch(`${getApiBase()}/api/song/url?${params.toString()}`, {
-        signal: combineSignals(signal, 3500),
-        headers: getPlatformHeaders("netease"),
-      });
-      if (response.status === 401) {
-        handle401Response("netease", 401);
-        return null;
-      }
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.url) {
-          const isTrial =
-            !!data.trial ||
-            !!(data.freeTrialInfo && (data.freeTrialInfo.start > 0 || data.freeTrialInfo.end > 0));
-
-          return {
-            url: data.url,
-            source: "netease",
-            quality:
-              data.level === "hires" ? "hires" : data.level === "lossless" ? "lossless" : "high",
-            format: data.url.includes(".flac") ? "flac" : "mp3",
-            bitrate: data.br || 320000,
-            isTrial,
-            name: isTrial ? "网易云音乐 (VIP 试听片段)" : "网易云音乐 (无损完整母带)",
-          };
-        }
-      }
-    } catch {
-      // ignore
-    }
-
-    return null;
+    return resolverRegistry.resolve(
+      "netease",
+      { query, id: songId, source: "netease" },
+      this.createPluginContext(signal)
+    );
   }
 
-  /**
-   * QQ 音乐音源解析 (仅在登录后开放)
-   */
-  public async resolveQQMusic(
+  /** QQ 音乐音源解析。实现见 resolver/platforms.ts 的 qqPlugin。 */
+  public resolveQQMusic(
     query: SongMetadataQuery,
     signal?: AbortSignal
   ): Promise<ResolvedAudioSource | null> {
-    if (!isPlatformLoggedIn("qq")) return null;
-    if (signal?.aborted) return null;
-
-    try {
-      const kw = encodeURIComponent(`${query.title} ${query.artist || ""}`.trim());
-      const searchRes = await fetch(`${getApiBase()}/api/qq/search?keywords=${kw}&limit=10`, {
-        signal: combineSignals(signal, 3500),
-        headers: getPlatformHeaders("qq"),
-      });
-      if (searchRes.status === 401) {
-        handle401Response("qq", 401);
-        return null;
-      }
-      if (searchRes.ok) {
-        const searchJson = await searchRes.json();
-        const songs = searchJson?.songs || [];
-
-        let bestSong: any = null;
-        let highestScore = 0;
-
-        for (const s of songs) {
-          const score = calculateMatchScore(
-            query.title,
-            query.artist,
-            s.title || "",
-            s.artist || ""
-          );
-          if (score > highestScore && score >= 60) {
-            highestScore = score;
-            bestSong = s;
-          }
-        }
-
-        if (bestSong?.id) {
-          const urlRes = await fetch(
-            `${getApiBase()}/api/qq/song/url?mid=${bestSong.id}&quality=lossless`,
-            { signal: combineSignals(signal, 3500), headers: getPlatformHeaders("qq") }
-          );
-          if (urlRes.status === 401) {
-            handle401Response("qq", 401);
-            return null;
-          }
-          if (urlRes.ok) {
-            const urlJson = await urlRes.json();
-            if (urlJson?.url) {
-              return {
-                url: urlJson.url,
-                source: "qq",
-                quality: "hires",
-                format: urlJson.url.includes(".flac") ? "flac" : "mp3",
-                bitrate: 1411000,
-                isTrial: false,
-                name: "QQ 音乐 (Hi-Res 无损音源)",
-              };
-            }
-          }
-        }
-      }
-    } catch {
-      // ignore
-    }
-
-    return null;
+    return resolverRegistry.resolve(
+      "qq",
+      { query, id: query.id || "", source: "qq" },
+      this.createPluginContext(signal)
+    );
   }
 
-  /**
-   * 酷狗音乐音源解析 (仅在登录后开放)
-   */
-  public async resolveKugou(
+  /** 酷狗音乐音源解析。实现见 resolver/platforms.ts 的 kugouPlugin。 */
+  public resolveKugou(
     query: SongMetadataQuery,
     signal?: AbortSignal
   ): Promise<ResolvedAudioSource | null> {
-    if (!isPlatformLoggedIn("kugou")) return null;
-    if (signal?.aborted) return null;
-
-    try {
-      const kw = encodeURIComponent(`${query.title} ${query.artist || ""}`.trim());
-      const searchRes = await fetch(`${getApiBase()}/api/kugou/search?keywords=${kw}&limit=10`, {
-        signal: combineSignals(signal, 3500),
-        headers: getPlatformHeaders("kugou"),
-      });
-      if (searchRes.status === 401) {
-        handle401Response("kugou", 401);
-        return null;
-      }
-      if (searchRes.ok) {
-        const searchJson = await searchRes.json();
-        const songs = searchJson?.songs || [];
-
-        let bestSong: any = null;
-        let highestScore = 0;
-
-        for (const s of songs) {
-          const score = calculateMatchScore(
-            query.title,
-            query.artist,
-            s.title || "",
-            s.artist || ""
-          );
-          if (score > highestScore && score >= 60) {
-            highestScore = score;
-            bestSong = s;
-          }
-        }
-
-        if (bestSong?.id) {
-          const urlRes = await fetch(
-            `${getApiBase()}/api/kugou/song/url?hash=${bestSong.id}&title=${encodeURIComponent(query.title)}&artist=${encodeURIComponent(query.artist || "")}&quality=lossless`,
-            { signal: combineSignals(signal, 3500), headers: getPlatformHeaders("kugou") }
-          );
-          if (urlRes.status === 401) {
-            handle401Response("kugou", 401);
-            return null;
-          }
-          if (urlRes.ok) {
-            const urlJson = await urlRes.json();
-            if (urlJson?.url) {
-              return {
-                url: urlJson.url,
-                source: "kugou",
-                quality: "lossless",
-                format: "mp3",
-                bitrate: 320000,
-                isTrial: false,
-                name: "酷狗音乐 (高解析母带)",
-              };
-            }
-          }
-        }
-      }
-    } catch {
-      // ignore
-    }
-
-    return null;
+    return resolverRegistry.resolve(
+      "kugou",
+      { query, id: query.id || "", source: "kugou" },
+      this.createPluginContext(signal)
+    );
   }
 
-  /**
-   * 汽水音乐音源解析 (仅在登录/配置后开放)
-   */
-  public async resolveQishui(
+  /** 汽水音乐音源解析。实现见 resolver/platforms.ts 的 qishuiPlugin。 */
+  public resolveQishui(
     query: SongMetadataQuery,
     signal?: AbortSignal
   ): Promise<ResolvedAudioSource | null> {
-    if (!isPlatformLoggedIn("qishui")) return null;
-    if (signal?.aborted) return null;
-
-    try {
-      const kw = encodeURIComponent(`${query.title} ${query.artist || ""}`.trim());
-      const searchRes = await fetch(`${getApiBase()}/api/qishui/search?keywords=${kw}&limit=10`, {
-        signal: combineSignals(signal, 3500),
-        headers: getPlatformHeaders("qishui"),
-      });
-      if (searchRes.status === 401) {
-        handle401Response("qishui", 401);
-        return null;
-      }
-      if (searchRes.ok) {
-        const searchJson = await searchRes.json();
-        const songs = searchJson?.songs || [];
-
-        let bestSong: any = null;
-        let highestScore = 0;
-
-        for (const s of songs) {
-          const score = calculateMatchScore(
-            query.title,
-            query.artist,
-            s.title || "",
-            s.artist || ""
-          );
-          if (score > highestScore && score >= 60) {
-            highestScore = score;
-            bestSong = s;
-          }
-        }
-
-        if (bestSong?.id) {
-          const urlRes = await fetch(`${getApiBase()}/api/qishui/song/url?id=${bestSong.id}`, {
-            signal: combineSignals(signal, 3500),
-            headers: getPlatformHeaders("qishui"),
-          });
-          if (urlRes.ok) {
-            const urlJson = await urlRes.json();
-            if (urlJson?.url) {
-              return {
-                url: urlJson.url,
-                source: "qishui",
-                quality: "lossless",
-                format: "m4a",
-                bitrate: 256000,
-                isTrial: false,
-                name: "汽水音乐 (SpadeKey 实时解密源)",
-              };
-            }
-          }
-        }
-      }
-    } catch {
-      // ignore
-    }
-
-    return null;
+    return resolverRegistry.resolve(
+      "qishui",
+      { query, id: query.id || "", source: "qishui" },
+      this.createPluginContext(signal)
+    );
   }
 
   // 搜索缓存：20 分钟 TTL + 最多 100 条（原为无界 Map，长会话下随搜索词线性增长）。
@@ -1044,15 +737,15 @@ export class MultiSourceResolver {
     const fetchTasks = endpoints.map(async (ep) => {
       attemptedProviderCount += 1;
       try {
-        const r = await fetch(ep.url, { signal: AbortSignal.timeout(2800), headers: ep.headers });
+        const r = await fetchJson<any>(ep.url, { timeoutMs: 2800, headers: ep.headers });
         if (r.status === 401) {
           handle401Response(ep.key, 401);
           return { key: ep.key, songs: [] };
         }
         if (!r.ok) return { key: ep.key, songs: [] };
-        const data = await r.json();
+        const data = r.data;
         successfulProviderCount += 1;
-        return { key: ep.key, songs: Array.isArray(data.songs) ? data.songs : [] };
+        return { key: ep.key, songs: Array.isArray(data?.songs) ? data.songs : [] };
       } catch {
         return { key: ep.key, songs: [] };
       }
@@ -1164,12 +857,12 @@ export class MultiSourceResolver {
     // 优先 1: 网易云 CloudSearch 高清大图 (需登录)
     if (isPlatformLoggedIn("netease")) {
       try {
-        const res = await fetch(`${base}/api/search?keywords=${kw}&limit=3`, {
-          signal: AbortSignal.timeout(3000),
+        const res = await fetchJson<any>(`${base}/api/search?keywords=${kw}&limit=3`, {
+          timeoutMs: 3000,
           headers: getPlatformHeaders("netease"),
         });
-        if (res.ok) {
-          const data = await res.json();
+        if (res.ok && res.data) {
+          const data = res.data;
           const songs = data.songs || [];
           for (const s of songs) {
             if (s.cover && s.cover.startsWith("http") && !s.cover.includes("default-cover")) {
@@ -1185,12 +878,12 @@ export class MultiSourceResolver {
     // 优先 2: QQ 音乐 300x300 高清图 (需登录)
     if (isPlatformLoggedIn("qq")) {
       try {
-        const res = await fetch(`${base}/api/qq/search?keywords=${kw}&limit=3`, {
-          signal: AbortSignal.timeout(3000),
+        const res = await fetchJson<any>(`${base}/api/qq/search?keywords=${kw}&limit=3`, {
+          timeoutMs: 3000,
           headers: getPlatformHeaders("qq"),
         });
-        if (res.ok) {
-          const data = await res.json();
+        if (res.ok && res.data) {
+          const data = res.data;
           const songs = data.songs || [];
           for (const s of songs) {
             if (s.cover && s.cover.startsWith("http") && !s.cover.includes("default-cover")) {
@@ -1206,12 +899,12 @@ export class MultiSourceResolver {
     // 优先 3: 酷狗 400x400 高清大图 (需登录)
     if (isPlatformLoggedIn("kugou")) {
       try {
-        const res = await fetch(`${base}/api/kugou/search?keywords=${kw}&limit=3`, {
-          signal: AbortSignal.timeout(3000),
+        const res = await fetchJson<any>(`${base}/api/kugou/search?keywords=${kw}&limit=3`, {
+          timeoutMs: 3000,
           headers: getPlatformHeaders("kugou"),
         });
-        if (res.ok) {
-          const data = await res.json();
+        if (res.ok && res.data) {
+          const data = res.data;
           const songs = data.songs || [];
           for (const s of songs) {
             if (s.cover && s.cover.startsWith("http") && !s.cover.includes("default-cover")) {
@@ -1397,12 +1090,12 @@ export class MultiSourceResolver {
       else if (effectiveSource === "qishui")
         url = `${getApiBase()}/api/qishui/lyric?id=${encodeURIComponent(effectiveId)}`;
 
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout(3000),
+      const res = await fetchJson<any>(url, {
+        timeoutMs: 3000,
         headers: getPlatformHeaders(effectiveSource),
       });
-      if (res.ok) {
-        const data = await res.json();
+      if (res.ok && res.data) {
+        const data = res.data;
         if (data.lrc?.lyric || data.lyric) {
           return {
             lyrics: data.lrc?.lyric || data.lyric || "",
@@ -1419,3 +1112,22 @@ export class MultiSourceResolver {
 }
 
 export const multiSourceResolver = MultiSourceResolver.getInstance();
+
+/**
+ * Resolver 统一指标出口（S7-1）：缓存命中/容量 + 插件分派计数 + HTTP 计数 + 熔断主机快照。
+ * 纯读取，不发网络请求；供 dev 探针与 S7-9 长会话采样使用。
+ */
+export function getResolverMetrics(): ResolverPluginMetrics & {
+  cache: {
+    resolvedUrl: TtlLruCacheStats & { size: number };
+    search: TtlLruCacheStats & { size: number };
+  };
+} {
+  return {
+    cache: {
+      resolvedUrl: MultiSourceResolver.getResolvedUrlCacheStats(),
+      search: MultiSourceResolver.getSearchCacheStats(),
+    },
+    ...resolverRegistry.metrics(),
+  };
+}
