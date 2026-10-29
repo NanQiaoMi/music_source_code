@@ -3,14 +3,14 @@
 > 上级：[总计划](../2026-10-21-architecture-performance-optimization.md) · [执行计划包 README](./README.md)
 > 状态口径：pending（未开始）/ in_progress（实现中）/ review（待复核）/ done（已合并且验收通过）/ blocked（阻塞，需写原因）
 > 规则：每完成一个子 PR 勾选对应任务下的子项；任务 done 必须附证据（命令/退出码/指标/截图）；阶段出口全部满足才能把阶段标记 done。
-> 更新时间：2026-10-29（S1-5 并入 S6 栈；S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3/S1-5 done）
+> 更新时间：2026-10-29（S1-5/S1-6 并入 S6 栈；S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3/S1-5/S1-6 done）
 
 ## 汇总
 
 | 阶段                | 任务数 |   done | 子 PR（执行计划） | 阶段出口（摘要）                                           | 状态                                                                                    |
 | ------------------- | -----: | -----: | ----------------: | ---------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | S0 止血与基线       |      7 |      4 |                10 | CI 在 master 绿；基线 JSON；文档纠偏；ADR 定稿；脏改已处理 | in_progress（S0-1/S0-3/S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策） |
-| S1 数据与播放正确性 |     10 |      4 |                15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿             | in_progress（S1-1/S1-2/S1-3/S1-5 done；S1-4/S1-6..S1-10 待）                            |
+| S1 数据与播放正确性 |     10 |      5 |                15 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿             | in_progress（S1-1/S1-2/S1-3/S1-5/S1-6 done；S1-4/S1-7..S1-10 待）                       |
 | S2 音频图与持久化   |      6 |      0 |                 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏                  | pending                                                                                 |
 | S3 外壳与订阅治理   |     10 |      9 |                12 | 组件整店订阅 0；idle rAF ≤1；面板可回收                    | in_progress（S3-1/S3-3/S3-4/S3-5/S3-6/S3-7/S3-8/S3-9/S3-10 done；S3-2 待）              |
 | S4 包体与加载       |      7 |      6 |                10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置  | in_progress（S4-1..S4-6 done；S4-7 待）                                                 |
@@ -18,7 +18,7 @@
 | S6 状态架构收敛     |     12 |     11 |                28 | 44/44 key 注册；store 无环；audioStore <400 行             | in_progress（S6-1/S6-2/S6-3/S6-4/S6-5/S6-6/S6-7/S6-8/S6-10/S6-11/S6-12 done；S6-9 待）  |
 | S7 服务与平台边界   |      9 |      1 |                19 | 桌面本地运行时闭环；插件隔离；2h soak 达标                 | in_progress（S7-2 done；S7-1/S7-3..S7-9 待）                                            |
 | S8 门禁与长期治理   |      6 |      5 |               ~12 | CI 完整门禁；覆盖率/包体/性能回归生效                      | in_progress（S8-1/S8-2/S8-4/S8-5/S8-6 done；S8-3 待）                                   |
-| **合计**            | **74** | **47** |        **约 129** | —                                                          | in_progress                                                                             |
+| **合计**            | **74** | **48** |        **约 129** | —                                                          | in_progress                                                                             |
 
 进度公式：已完成任务数 / 74（S8-6 长期项按"已排期"计 0.5）。
 
@@ -47,7 +47,7 @@
 - [x] S1-3 启动压缩与配额策略修复 — **done（2026-10-22）**：safeStorage 不再截断 200/30，只在缩减 ≥2% 时写回；新增 quotaPolicy（逐级降级、绝不先删旧值）+ degradedNotifier（事件+节流 toast）；queue/recommendation/stats 三处写盘统一策略；queue 永不写空队列。测试：quotaPolicy 5 + safeStorage 5 + queue/recommendation/stats 40，全部通过；tsc/eslint 0
 - [ ] S1-4 VibeMusicDB 统一 open/version v3 — owner: — | PR: 1 | 依赖: S0-6 | 验收: v1→v3 迁移测试；local:// 可播
 - [x] S1-5 队列唯一权威 + QueueNavigator — **done（2026-10-28）**：queueStore 成为队列/顺序/currentIndex 唯一权威，audioStore 派生镜像；新增 `queueNavigator.ts`（next/ended 统一导航）与 `queueSelectors.ts`；`queuePlaybackSync.test.ts` 10 用例（删/排/清后 next/ended 一致、双 store 不漂移），`queueNavigator.test.ts` 15 用例；targeted 45 passed；全量 204 files / 1292 tests passed；tsc/eslint 0。分支 `feature/arch-perf-s1-5`（未合并）。
-- [ ] S1-6 PlaybackMediaBridge 单例 — owner: — | PR: 1 | 依赖: S0-6 | 验收: 多实例卸载后事件仍分发
+- [x] S1-6 PlaybackMediaBridge 单例 — **done（2026-10-29，6a+6b 并入 S6 栈）**：`src/lib/playback/mediaBridge.ts` 12 事件单订阅 + 引用计数 handler 栈（同元素只注册一次原生监听；释放非活动实例不剥离；全部释放才移除；timeupdate 250ms 节流且单点写 audio/player store；snapshot/subscribe/attachCount）。hook 接入：`useAudioPlayer` 的 `attachListeners` 改走 bridge 并返回 release，effect cleanup 按实例 release；重挂载前仍先释放旧 bundle 并清 `_vibeCleanup`；onTimeUpdate 只保留 AB 循环/预取，store 写入交给 bridge。测试：bridge 7 通过；并入 S6 栈后全量 287 files / 1804 tests passed（1 skipped）、tsc --noEmit 0、eslint 0、store-budgets/docs-facts/verify:layers 全绿。分支 `feature/arch-perf-s1-6a`+`feature/arch-perf-s1-6b`。
 - [ ] S1-7 AudioContextWatchdog 懒 attach/detach — owner: — | PR: 1 | 依赖: S1-6 | 验收: start 先于 context 也能挂载
 - [ ] S1-8 PlaybackRequestCoordinator + AbortSignal — owner: — | PR: 1-2 | 依赖: S1-6 | 验收: 连点 5 首仅 1 in-flight
 - [ ] S1-9 首声并行化 — owner: — | PR: 1 | 依赖: S1-8 | 验收: 命中 P50<300ms/P95<800ms
