@@ -1,6 +1,6 @@
 {
   "maxLines": 400,
-  "generatedAt": "2026-10-29T03:02:28.493Z",
+  "generatedAt": "2026-10-29T03:08:56.359Z",
   "files": {
     "src/store/abLoopStore.ts": 109,
     "src/store/actions/emotionActions.ts": 9,
@@ -51,6 +51,9 @@
     "src/store/lyricsCover/helpers.ts": 82,
     "src/store/lyricsSearchStore.ts": 163,
     "src/store/metadataEditorStore.ts": 273,
+    "src/store/offlineDownload/downloadPipeline.ts": 347,
+    "src/store/offlineDownload/helpers.ts": 50,
+    "src/store/offlineDownload/types.ts": 63,
     "src/store/panelStore.ts": 179,
     "src/store/performanceV8Store.ts": 111,
     "src/store/playbackRuntimeStore.ts": 63,
@@ -88,7 +91,7 @@
     "src/store/uiStore.ts": 247,
     "src/store/useAIAgentStore.ts": 333,
     "src/store/useDataManagerStore.ts": 115,
-    "src/store/useOfflineDownloadStore.ts": 717,
+    "src/store/useOfflineDownloadStore.ts": 318,
     "src/store/useStorageAnalyticsStore.ts": 292,
     "src/store/userAccountStore.ts": 377,
     "src/store/userAccount/helpers.ts": 297,
