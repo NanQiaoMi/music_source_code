@@ -1,0 +1,64 @@
+{
+  "task": "S3-2 D7 protected-view screenshots",
+  "capturedAt": "2026-10-29T09:41:47.621Z",
+  "baseUrl": "http://127.0.0.1:3037",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "deviceScaleFactor": 1,
+  "browser": {
+    "channel": "chrome",
+    "executablePath": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "version": "156.0.8078.49"
+  },
+  "runtime": {
+    "node": "v24.16.0",
+    "playwright": "1.64.1"
+  },
+  "git": {
+    "branch": "integration/s2-audio",
+    "commit": "6ac0eba3ae124d4b4571939956df2160cee1aa71"
+  },
+  "views": [
+    {
+      "name": "home",
+      "label": "Home View (default)",
+      "route": "/",
+      "state": "fresh browser profile; no localStorage seed; currentView defaults to home",
+      "file": "docs/nbl/plans/2026-10-21-arch-perf-execution/evidence/screenshots/s3-2/home-1440x900.png",
+      "bytes": 667110,
+      "sha256": "8c35835476e484618025401f0389f9882f8caa585e252c2a65819b7d67c4f371",
+      "capturedAt": "2026-10-29T09:41:35.826Z",
+      "consoleErrorCount": 0
+    },
+    {
+      "name": "player",
+      "label": "Player View",
+      "route": "/",
+      "state": "localStorage ui-store-v2 currentView=player (persist envelope v2) + player-store currentSong fixture (稻香 / LRC demo fixture)",
+      "file": "docs/nbl/plans/2026-10-21-arch-perf-execution/evidence/screenshots/s3-2/player-1440x900.png",
+      "bytes": 624217,
+      "sha256": "8d45c3d978903f08105f22c4e8600f499da02eb370796a85fd6df9c82524f669",
+      "capturedAt": "2026-10-29T09:41:45.607Z",
+      "consoleErrorCount": 2
+    },
+    {
+      "name": "lyrics-fullscreen",
+      "label": "Fullscreen Lyrics View",
+      "route": "/",
+      "state": "same state as Player, then click [title=点击进入全屏歌词] → .fullscreen-lyrics-root",
+      "file": "docs/nbl/plans/2026-10-21-arch-perf-execution/evidence/screenshots/s3-2/lyrics-fullscreen-1440x900.png",
+      "bytes": 299053,
+      "sha256": "946c0718a169ebfe84abd7344e28df95801bc6480f439d21fc74b51c5508ab15",
+      "capturedAt": "2026-10-29T09:41:47.612Z",
+      "consoleErrorCount": 2
+    }
+  ],
+  "notes": [
+    "Fixed viewport 1440x900 at deviceScaleFactor 1.",
+    "The Next.js dev indicator is hidden with CSS; application UI is not modified.",
+    "Player/lyrics use a deterministic demo-song fixture (稻香, LRC from src/services/lyricsSearchService.ts) so protected surfaces show content on a fresh profile.",
+    "Console errors are recorded, not fatal; the dev-mode app may log external demo-asset/API network failures."
+  ]
+}

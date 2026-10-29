@@ -40,6 +40,7 @@
     "perf:history:append": "node scripts/perf/append-history.mjs",
     "perf:dashboard": "node scripts/perf/perf-dashboard.mjs",
     "perf:soak": "node scripts/perf/soak.mjs",
+    "perf:screenshots:s3-2": "node scripts/perf/capture-s3-2-screenshots.mjs",
     "release:dry-run": "node scripts/release-dry-run.mjs",
     "verify:filesize": "node scripts/check-store-budgets.mjs",
     "verify:docs": "node scripts/check-docs-facts.mjs",
