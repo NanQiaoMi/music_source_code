@@ -9,6 +9,11 @@ import { MultiSourceResolver } from "@/services/MultiSourceResolver";
 import { Song } from "@/types/song";
 import { patchQueueSongAudio } from "@/store/actions/queueActions";
 import { TtlLruCache, type TtlLruCacheStats } from "@/lib/cache/TtlLruCache";
+import { throwIfAborted, isAbortError } from "@/lib/playback/requestCoordinator";
+
+export interface PrefetchOptions {
+  signal?: AbortSignal;
+}
 
 interface CachedAudioSource {
   url: string;
@@ -35,7 +40,7 @@ class AudioPrefetcher {
   /**
    * Pre-fetches the given song's audio URL and preheats the initial buffer.
    */
-  public async prefetchSong(song: Song): Promise<string | null> {
+  public async prefetchSong(song: Song, options: PrefetchOptions = {}): Promise<string | null> {
     if (!song || !song.id) return null;
 
     // 1. If song already has a valid non-blob URL, preheat directly
@@ -63,16 +68,21 @@ class AudioPrefetcher {
     this.activePrefetchId = song.id;
 
     try {
+      throwIfAborted(options.signal);
       const resolver = MultiSourceResolver.getInstance();
-      const resolved = await resolver.resolvePlayableAudio({
-        id: song.id,
-        title: song.title,
-        artist: song.artist,
-        album: song.album,
-        duration: song.duration,
-        source: song.source,
-      });
+      const resolved = await resolver.resolvePlayableAudio(
+        {
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          album: song.album,
+          duration: song.duration,
+          source: song.source,
+        },
+        { signal: options.signal }
+      );
 
+      throwIfAborted(options.signal);
       if (resolved && resolved.url) {
         this.prefetchCache.set(song.id, {
           url: resolved.url,
@@ -88,6 +98,8 @@ class AudioPrefetcher {
         return resolved.url;
       }
     } catch (error) {
+      // abort 是预期路径（换歌/新请求取代），静默退出且不打 warn
+      if (isAbortError(error)) return null;
       // Background prefetch failed silently without disturbing foreground playback
       console.warn(`[AudioPrefetcher] Silent prefetch failed for "${song.title}":`, error);
     } finally {

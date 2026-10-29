@@ -16,6 +16,11 @@ import { useListeningJournalStore } from "@/store/listeningJournalStore";
 import { getAudioEffectsManager } from "@/lib/audio/AudioEffectsManager";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
 import { playbackMediaBridge } from "@/lib/playback/mediaBridge";
+import {
+  playbackRequestCoordinator,
+  throwIfAborted,
+  isAbortError,
+} from "@/lib/playback/requestCoordinator";
 import { CrossfadeMixer } from "@/lib/audio/CrossfadeMixer";
 import { deriveJournalMood } from "@/lib/journal/listeningJournal";
 import {
@@ -88,6 +93,9 @@ const loadedSongIdRef: { current: string | null } = { current: null };
 const loadedSongSourceKeyRef: { current: string | null } = { current: null };
 const lastRecordedSongIdRef: { current: string | null } = { current: null };
 const lastToastSongIdRef: { current: string | null } = { current: null };
+// 最近一次播放尝试的 signal：监听器里的抢救/兜底/后台缓存/预取复用它，
+// 新播放请求（begin 新 token）会把它 abort 掉，旧链路随之中断。
+const activePlaybackSignalRef: { current: AbortSignal | null } = { current: null };
 export const rescueInProgressRef: { current: boolean } = { current: false };
 export const rescuedUrlsRef: { current: Set<string> } = { current: new Set() };
 export const songRescueAttemptsRef: { current: Map<string, number> } = { current: new Map() };
@@ -209,7 +217,9 @@ const backgroundCacheScheduler = createBackgroundCacheScheduler({
     return audio.buffered.end(audio.buffered.length - 1);
   },
   startCache: (song, src) => {
-    triggerBackgroundCache(song, src).catch(() => {});
+    triggerBackgroundCache(song, src, {
+      signal: activePlaybackSignalRef.current ?? undefined,
+    }).catch(() => {});
   },
 });
 
@@ -445,7 +455,11 @@ const attachListeners = (
         const nextIdx = (qState.currentIndex + 1) % qState.queue.length;
         const nextSong = qState.queue[nextIdx];
         if (nextSong && nextSong.id) {
-          audioPrefetcher.prefetchSong(nextSong).catch(() => {});
+          audioPrefetcher
+            .prefetchSong(nextSong, {
+              signal: activePlaybackSignalRef.current ?? undefined,
+            })
+            .catch(() => {});
         }
       }
     }
@@ -502,6 +516,7 @@ const attachListeners = (
         "Detected trial snippet (" + Math.round(audio.duration) + "s), auto-rescuing full song for",
         currentSong.title
       );
+      const rescueSignal = activePlaybackSignalRef.current ?? undefined;
       multiSourceResolver
         .resolvePlayableAudio(
           {
@@ -511,9 +526,11 @@ const attachListeners = (
             album: currentSong.album,
             source: currentSong.source,
           },
-          true
+          { bypassCache: true, signal: rescueSignal }
         )
         .then((rescued) => {
+          // 新播放请求已取代本次抢救：丢弃结果，不写 store
+          if (rescueSignal?.aborted) return;
           if (
             !isCurrentPlaybackRequest(requestId, getPlaybackSongIdentity(currentSong) ?? undefined)
           ) {
@@ -769,7 +786,9 @@ const attachListeners = (
       currentSrc &&
       !currentSrc.startsWith("blob:")
     ) {
-      triggerBackgroundCache(endedSong, currentSrc).catch(() => {});
+      triggerBackgroundCache(endedSong, currentSrc, {
+        signal: activePlaybackSignalRef.current ?? undefined,
+      }).catch(() => {});
     }
 
     // S1-5：结束策略与手动切歌共用 QueueNavigator，但单曲循环重播由这里决策
@@ -851,6 +870,7 @@ const attachListeners = (
           source: currentSong.source,
         });
 
+        const rescueSignal = activePlaybackSignalRef.current ?? undefined;
         const rescued = await multiSourceResolver.resolvePlayableAudio(
           {
             id: currentSong.id,
@@ -858,8 +878,9 @@ const attachListeners = (
             artist: currentSong.artist,
             album: currentSong.album,
           },
-          true
+          { bypassCache: true, signal: rescueSignal }
         );
+        throwIfAborted(rescueSignal);
 
         if (
           !isCurrentPlaybackRequest(requestId, getPlaybackSongIdentity(currentSong) ?? undefined)
@@ -888,6 +909,8 @@ const attachListeners = (
           }
         }
       } catch (e) {
+        // abort 是预期路径（已被新播放请求取代），静默退出且不写错误 store / 不弹 toast
+        if (isAbortError(e)) return;
         console.warn("[useAudioPlayer] Auto-rescue error:", e);
       } finally {
         rescueInProgressRef.current = false;
@@ -1337,6 +1360,15 @@ export const useAudioPlayer = () => {
       currentSongIdRef.current = songId;
       loadingInProgressRequestIdRef.current = requestId;
 
+      // 一次真正需要加载的尝试 = 一次播放请求：begin 会 abort 上一次的 signal，
+      // 旧链路上的每个 await 都会在 throwIfAborted 处静默退出（不写 store / 不弹 toast）。
+      const playbackToken = playbackRequestCoordinator.begin({
+        songId,
+        source: String(currentSong.source || ""),
+      });
+      const playbackSignal = playbackToken.controller.signal;
+      activePlaybackSignalRef.current = playbackSignal;
+
       setIsLoading(true);
       setError(null);
 
@@ -1373,6 +1405,7 @@ export const useAudioPlayer = () => {
         if (currentSong.id) {
           try {
             const offlineRecord = await getOfflineAudio(String(currentSong.id));
+            throwIfAborted(playbackSignal);
             if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
             if (
               offlineRecord &&
@@ -1430,6 +1463,7 @@ export const useAudioPlayer = () => {
               ? audioUrl.replace(/^(stored|local):\/\//, "")
               : String(currentSong.id);
           const storedMusic = await getStoredMusic(id);
+          throwIfAborted(playbackSignal);
           if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
           if (storedMusic && storedMusic.fileData) {
             audioUrl = createBlobUrlFromStoredMusic(storedMusic);
@@ -1451,6 +1485,7 @@ export const useAudioPlayer = () => {
         ) {
           try {
             const cached = await getCachedAudio(currentSong.id, currentSong.source);
+            throwIfAborted(playbackSignal);
             if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
             if (cached) {
               const cachedBlobUrl = createBlobUrlFromCache(cached);
@@ -1492,13 +1527,17 @@ export const useAudioPlayer = () => {
           if ((isInvalidUrl || isRiskyOuterUrl) && currentSong) {
             showToast(`⚡ 正在通过音源引擎嗅探直链: 《${currentSong.title}》...`, "info", 2000);
             try {
-              const resolved = await multiSourceResolver.resolvePlayableAudio({
-                id: currentSong.id,
-                title: currentSong.title,
-                artist: currentSong.artist,
-                album: currentSong.album,
-                source: currentSong.source,
-              });
+              const resolved = await multiSourceResolver.resolvePlayableAudio(
+                {
+                  id: currentSong.id,
+                  title: currentSong.title,
+                  artist: currentSong.artist,
+                  album: currentSong.album,
+                  source: currentSong.source,
+                },
+                { signal: playbackSignal }
+              );
+              throwIfAborted(playbackSignal);
               if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
               if (resolved?.url && !failedUrlsRef.current.has(resolved.url)) {
                 const streamUrl = getPlayableStreamUrl(resolved.url);
@@ -1510,6 +1549,8 @@ export const useAudioPlayer = () => {
                 }
               }
             } catch (e) {
+              // 被新播放请求取代：冒泡给外层统一静默处理
+              if (isAbortError(e)) throw e;
               console.warn("[useAudioPlayer] Failed to auto-resolve playable stream:", e);
             }
           }
@@ -1599,6 +1640,7 @@ export const useAudioPlayer = () => {
           }
         }
 
+        throwIfAborted(playbackSignal);
         if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
 
         if (targetPlaying && isEmotionCurveMode && previousSongId && secondaryElementRef.current) {
@@ -1670,10 +1712,16 @@ export const useAudioPlayer = () => {
         if (loadingInProgressRequestIdRef.current === requestId) {
           loadingInProgressRequestIdRef.current = null;
         }
+        playbackRequestCoordinator.complete(playbackToken);
       }
     };
 
-    managePlayback();
+    // abort 不是错误：被新的播放请求取代时静默退出（不写 store / 不弹 toast）；
+    // catch 放在这里而不是 managePlayback 内部，避免给已有 try/finally 增加内层 catch。
+    managePlayback().catch((error) => {
+      if (isAbortError(error)) return;
+      throw error;
+    });
   }, [
     hookId,
     currentSong,

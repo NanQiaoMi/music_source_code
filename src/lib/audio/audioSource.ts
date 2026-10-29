@@ -1,6 +1,7 @@
 import type { Song } from "@/types/song";
 import { getStoredMusic, getOfflineAudio } from "@/services/localMusicStorage";
 import { getFileFromStorage } from "@/services/localMusicService";
+import { combineSignals, throwIfAborted } from "@/lib/playback/requestCoordinator";
 
 export interface AudioSourceBlob {
   blob: Blob;
@@ -48,9 +49,16 @@ function assertReadableBlob(blob: Blob, songTitle: string): Blob {
   return blob;
 }
 
+export interface ResolveAudioSourceOptions {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
 export async function resolveAudioSourceBlob(
-  song: Pick<Song, "id" | "title" | "audioUrl" | "format">
+  song: Pick<Song, "id" | "title" | "audioUrl" | "format">,
+  options: ResolveAudioSourceOptions = {}
 ): Promise<AudioSourceBlob> {
+  throwIfAborted(options.signal);
   // 0. 优先检查离线下载缓存 (Instant offline blob playback)
   try {
     const offline = await getOfflineAudio(String(song.id));
@@ -102,12 +110,19 @@ export async function resolveAudioSourceBlob(
     };
   }
 
-  const response = await fetch(audioUrl);
+  throwIfAborted(options.signal);
+  const response =
+    options.signal || options.timeoutMs !== undefined
+      ? await fetch(audioUrl, {
+          signal: combineSignals(options.signal, options.timeoutMs ?? 15000),
+        })
+      : await fetch(audioUrl);
   if (!response.ok) {
     throw new Error(`Unable to load audio source for ${song.title} (${response.status})`);
   }
 
   const blob = await response.blob();
+  throwIfAborted(options.signal);
   return {
     blob: assertReadableBlob(blob, song.title),
     sourceLabel: audioUrl,

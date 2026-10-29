@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Song } from "@/types/song";
 
 const h = vi.hoisted(() => ({ resolve: vi.fn(), setQueue: vi.fn(), queue: [] as unknown[] }));
@@ -35,6 +35,11 @@ beforeEach(() => {
   vi.stubGlobal("Audio", FakeAudio);
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
 describe("audioPrefetcher 缓存", () => {
   it("TTL 内重复预取同一首歌只解析一次", async () => {
     h.resolve.mockResolvedValue({
@@ -60,5 +65,39 @@ describe("audioPrefetcher 缓存", () => {
     const stats = audioPrefetcher.getPrefetchCacheStats();
     expect(stats.size).toBeGreaterThan(0);
     expect(stats.hits + stats.misses).toBeGreaterThan(0);
+  });
+});
+
+describe("AudioPrefetcher abort support (S1-8b)", () => {
+  it("passes the signal to resolver and returns null on abort", async () => {
+    const controller = new AbortController();
+    h.resolve.mockImplementation(async () => {
+      controller.abort();
+      throw new DOMException("aborted", "AbortError");
+    });
+
+    const result = await audioPrefetcher.prefetchSong(
+      { id: "p1", title: "Prefetch", artist: "A", duration: 200, source: "netease" },
+      { signal: controller.signal }
+    );
+
+    expect(result).toBeNull();
+    expect(h.resolve).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ signal: controller.signal })
+    );
+  });
+
+  it("returns null without resolving when the signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    const result = await audioPrefetcher.prefetchSong(
+      { id: "p2", title: "Prefetch 2", artist: "A", duration: 200, source: "qq" },
+      { signal: controller.signal }
+    );
+
+    expect(result).toBeNull();
+    expect(h.resolve).not.toHaveBeenCalled();
   });
 });
