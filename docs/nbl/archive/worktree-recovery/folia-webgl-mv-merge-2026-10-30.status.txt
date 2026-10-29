@@ -1,0 +1,26 @@
+﻿ M docs/nbl/plans/2026-10-13-folia-webgl-mv-implementation.md
+ M src/components/features-v7/RecordingPanel.tsx
+ M src/components/visualization/VisualizationSettingsPanel.tsx
+ M src/components/visualization/VisualizationView.tsx
+ M src/components/visualization/folia-mv/lightField.ts
+ M src/components/visualization/folia-mv/lyricLayout.test.ts
+ M src/components/visualization/folia-mv/lyricLayout.ts
+ M src/components/visualization/folia-mv/lyrics.ts
+ M src/components/visualization/folia-mv/program.test.ts
+ M src/components/visualization/folia-mv/program.ts
+ M src/components/visualization/folia-mv/scene.test.ts
+ M src/components/visualization/folia-mv/scene.ts
+ M src/components/visualization/folia-mv/sceneModel.test.ts
+ M src/components/visualization/folia-mv/sceneModel.ts
+ M src/components/visualization/folia-mv/types.ts
+ M src/hooks/useAudioPlayer.test.ts
+ M src/hooks/useAudioPlayer.ts
+?? src/components/features-v7/RecordingPanel.test.tsx
+?? src/components/visualization/VisualizationView.host.test.ts
+?? src/components/visualization/VisualizationView.recording.integration.test.tsx
+?? src/components/visualization/folia-mv/FoliaLyricMv.host.test.tsx
+?? src/components/visualization/folia-mv/FoliaLyricMv.tsx
+?? src/components/visualization/folia-mv/lightField.test.ts
+?? src/components/visualization/folia-mv/lyrics.test.ts
+?? src/components/visualization/folia-mv/runtime.test.ts
+?? src/components/visualization/folia-mv/runtime.ts

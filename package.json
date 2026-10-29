@@ -50,7 +50,7 @@
     "verify:filesize": "node scripts/check-store-budgets.mjs",
     "verify:raf": "node scripts/check-raf-whitelist.mjs",
     "verify:docs": "node scripts/check-docs-facts.mjs",
-    "verify:layers": "depcruise src --config .dependency-cruiser.cjs --output-type err",
+    "verify:layers": "depcruise src --config config/dependency-cruiser.cjs --output-type err",
     "prepare": "husky"
   },
   "dependencies": {

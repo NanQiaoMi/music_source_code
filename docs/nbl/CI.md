@@ -96,7 +96,7 @@ PR 必过检查仍是 `Quality gate (required)`。
 
 ## 7. 分层依赖门禁（S6-12a）
 
-- `quality` job 在 Lint 之后运行 `npm run verify:layers`（`depcruise src --config .dependency-cruiser.cjs --output-type err`）；error 即 job 失败，预算 ~5s。单测 `scripts/verify-layers.test.mjs` 用同一命令断言 exit 0，CI 双保险。
+- `quality` job 在 Lint 之后运行 `npm run verify:layers`（`depcruise src --config config/dependency-cruiser.cjs --output-type err`）；error 即 job 失败，预算 ~5s。单测 `scripts/verify-layers.test.mjs` 用同一命令断言 exit 0，CI 双保险。
 - error 规则：`no-circular`；`src/store` 禁 import `components|hooks`；`src/services` 禁 import `components`；`src/lib` 禁 import `components|hooks`；`src/domain` 禁 import react/next、`components|hooks`、`store`；`src` 生产代码禁 import devDependency。
 - warn 规则：`no-orphans`（排除 Next 路由/worker 入口、测试与 `.d.ts`），只暴露孤立模块，不阻塞 CI。
 - 唯一方向豁免：`src/domain/playback/ports.ts` 作为播放端口适配器可 import store；测试文件与 `import type` 不计入。规则、首跑 8 errors 清零过程与收缩棘轮见 `perf/README.md` §10。

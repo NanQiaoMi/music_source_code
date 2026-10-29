@@ -1,0 +1,47 @@
+﻿ M docs/nbl/CHANGELOG.md
+ M docs/nbl/plans/2026-10-11-player-playback-motion-sync.md
+ M docs/nbl/plans/INDEX.md
+ M src/components/player/DarkCinemaFloatingCard.tsx
+ M src/components/player/DataManagerPlayerDock.tsx
+ M src/components/player/FloatingPlayer.tsx
+ M src/components/player/floating/FloatingCompactControlsState.tsx
+ M src/components/player/floating/FloatingControls.tsx
+ M src/components/player/floating/FloatingDockState.tsx
+ M src/components/player/floating/FloatingOneLineLyricPreview.tsx
+ M src/components/player/floating/FloatingProgressScrubber.tsx
+ M src/components/player/floating/FloatingSpectrumGlow.tsx
+ M src/components/player/floating/FloatingVisualAndAudioModules.test.tsx
+ M src/components/player/floating/FloatingVisualAndMicroInteractions.test.tsx
+ M src/components/shared/GlobalPlayerBar.tsx
+ M src/components/visualization/VisualizationSettingsPanel.tsx
+ M src/components/visualization/VisualizationView.tsx
+ M src/components/visualization/effects/cinematicLyricDrift.ts
+ M src/components/widgets/DailyRecommendation.tsx
+ M src/hooks/useAudioPlayer.ts
+ M src/hooks/useKeyboardShortcuts.ts
+ M src/lib/audio/CrossfadeMixer.ts
+ M src/services/aiAgentTools.ts
+ M src/store/audioStore.test.ts
+ M src/store/audioStore.ts
+ M src/store/playerStore.test.ts
+ M src/store/playerStore.ts
+?? docs/nbl/plans/2026-10-11-folia-inspired-lyric-visualizer.md
+?? docs/nbl/specs/2026-10-11-folia-inspired-warm-lyrics-design.md
+?? src/components/visualization/effects/lyricLayout.test.ts
+?? src/components/visualization/effects/lyricLayout.ts
+?? src/components/visualization/effects/lyricPlaybackClock.test.ts
+?? src/components/visualization/effects/lyricPlaybackClock.ts
+?? src/components/visualization/effects/lyricTimeline.test.ts
+?? src/components/visualization/effects/lyricTimeline.ts
+?? src/hooks/usePlaybackClock.ts
+?? src/lib/audio/CrossfadeMixer.test.ts
+?? src/lib/audio/PlaybackClock.test.ts
+?? src/lib/audio/PlaybackClock.ts
+?? src/lib/audio/audioMotionSmoothing.test.ts
+?? src/lib/audio/audioMotionSmoothing.ts
+?? src/lib/audio/playbackMediaEventGuard.test.ts
+?? src/lib/audio/playbackMediaEventGuard.ts
+?? src/lib/audio/playbackStateMachine.test.ts
+?? src/lib/audio/playbackStateMachine.ts
+?? src/store/playbackRuntimeStore.test.ts
+?? src/store/playbackRuntimeStore.ts

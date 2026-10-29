@@ -1,0 +1,178 @@
+diff --git a/src/components/shared/ToolSurface.test.tsx b/src/components/shared/ToolSurface.test.tsx
+new file mode 100644
+index 0000000..674f898
+--- /dev/null
++++ b/src/components/shared/ToolSurface.test.tsx
+@@ -0,0 +1,27 @@
++import { describe, expect, it } from "vitest";
++import { renderToStaticMarkup } from "react-dom/server";
++import { ToolStatusBanner, ToolSurface } from "./ToolSurface";
++
++describe("ToolSurface", () => {
++  it("renders a labelled professional tool region", () => {
++    const html = renderToStaticMarkup(
++      <ToolSurface title="Format converter" description="Prepare an export">
++        <p>Settings</p>
++      </ToolSurface>
++    );
++
++    expect(html).toContain('aria-label="Format converter"');
++    expect(html).toContain("Prepare an export");
++    expect(html).toContain("Settings");
++  });
++
++  it("announces errors and exposes an optional retry action", () => {
++    const html = renderToStaticMarkup(
++      <ToolStatusBanner status={{ kind: "error", label: "Export failed", retry: () => undefined }} />
++    );
++
++    expect(html).toContain('role="alert"');
++    expect(html).toContain("Export failed");
++    expect(html).toContain('aria-label="Retry"');
++  });
++});
+diff --git a/src/components/shared/ToolSurface.tsx b/src/components/shared/ToolSurface.tsx
+new file mode 100644
+index 0000000..c3cb9ad
+--- /dev/null
++++ b/src/components/shared/ToolSurface.tsx
+@@ -0,0 +1,139 @@
++"use client";
++
++import React from "react";
++import { AlertTriangle, CheckCircle2, CircleSlash2, Loader2, RotateCw } from "lucide-react";
++
++export type ToolStatus =
++  | { kind: "idle" }
++  | { kind: "loading"; label: string }
++  | { kind: "success"; label: string }
++  | { kind: "error"; label: string; retry?: () => void }
++  | { kind: "disabled"; label: string };
++
++interface ToolStatusBannerProps {
++  status: ToolStatus;
++  className?: string;
++}
++
++interface ToolSurfaceProps {
++  title: string;
++  description?: string;
++  icon?: React.ReactNode;
++  actions?: React.ReactNode;
++  status?: ToolStatus;
++  children: React.ReactNode;
++  className?: string;
++}
++
++interface ToolSectionProps {
++  title?: string;
++  description?: string;
++  children: React.ReactNode;
++  className?: string;
++}
++
++export function ToolStatusBanner({ status, className = "" }: ToolStatusBannerProps) {
++  if (status.kind === "idle") return null;
++
++  const role = status.kind === "error" ? "alert" : "status";
++  const icon = {
++    loading: <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />,
++    success: <CheckCircle2 className="h-4 w-4" aria-hidden="true" />,
++    error: <AlertTriangle className="h-4 w-4" aria-hidden="true" />,
++    disabled: <CircleSlash2 className="h-4 w-4" aria-hidden="true" />,
++  }[status.kind];
++
++  const colorClass = {
++    loading: "border-[color:var(--mimi-focus)]/35 text-[color:var(--mimi-focus)]",
++    success: "border-[color:var(--mimi-success)]/35 text-[color:var(--mimi-success)]",
++    error: "border-[color:var(--mimi-error)]/35 text-[color:var(--mimi-error)]",
++    disabled: "border-[color:var(--mimi-paper-2)]/25 text-[color:var(--mimi-paper-2)]",
++  }[status.kind];
++
++  return (
++    <div
++      role={role}
++      aria-live={status.kind === "error" ? "assertive" : "polite"}
++      className={`flex items-center gap-2 rounded-[8px] border bg-[color:var(--mimi-ink-2)]/50 px-3 py-2 text-sm ${colorClass} ${className}`}
++    >
++      {icon}
++      <span className="min-w-0 flex-1 text-[color:var(--mimi-paper-1)]">{status.label}</span>
++      {status.kind === "error" && status.retry ? (
++        <button
++          type="button"
++          onClick={status.retry}
++          aria-label="Retry"
++          title="Retry"
++          className="mimi-focus-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] text-[color:var(--mimi-paper-1)] transition-colors hover:bg-[color:var(--mimi-ink-2)] hover:text-[color:var(--mimi-paper-0)]"
++        >
++          <RotateCw className="h-4 w-4" aria-hidden="true" />
++        </button>
++      ) : null}
++    </div>
++  );
++}
++
++export function ToolSurface({
++  title,
++  description,
++  icon,
++  actions,
++  status = { kind: "idle" },
++  children,
++  className = "",
++}: ToolSurfaceProps) {
++  return (
++    <section
++      aria-label={title}
++      className={`mimi-pane overflow-hidden rounded-[8px] ${className}`}
++    >
++      <header className="flex min-h-16 items-center justify-between gap-4 border-b border-[color:var(--mimi-paper-2)]/20 px-5 py-4">
++        <div className="flex min-w-0 items-center gap-3">
++          {icon ? (
++            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-[color:var(--mimi-paper-2)]/20 text-[color:var(--mimi-accent)]">
++              {icon}
++            </span>
++          ) : null}
++          <div className="min-w-0">
++            <h2 className="truncate text-base font-semibold text-[color:var(--mimi-paper-0)]">
++              {title}
++            </h2>
++            {description ? (
++              <p className="mt-1 truncate text-xs text-[color:var(--mimi-paper-2)]">
++                {description}
++              </p>
++            ) : null}
++          </div>
++        </div>
++        {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
++      </header>
++      <ToolStatusBanner status={status} className="mx-5 mt-4" />
++      <div className="min-h-0">{children}</div>
++    </section>
++  );
++}
++
++export function ToolSection({
++  title,
++  description,
++  children,
++  className = "",
++}: ToolSectionProps) {
++  return (
++    <section
++      className={`border-b border-[color:var(--mimi-paper-2)]/20 px-5 py-5 last:border-0 ${className}`}
++    >
++      {title ? (
++        <div className="mb-4">
++          <h3 className="text-sm font-semibold text-[color:var(--mimi-paper-0)]">{title}</h3>
++          {description ? (
++            <p className="mt-1 text-xs leading-5 text-[color:var(--mimi-paper-2)]">
++              {description}
++            </p>
++          ) : null}
++        </div>
++      ) : null}
++      {children}
++    </section>
++  );
++}

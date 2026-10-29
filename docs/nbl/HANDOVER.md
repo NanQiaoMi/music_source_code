@@ -9,18 +9,18 @@
 
 ## 0. 交接卡片（先看这一页）
 
-| 项 | 内容 |
-|---|---|
-| 项目名称 | MIMI Music Player（Vibe Player） |
-| 版本 | 0.2.1（package.json） |
-| 产品形态 | Next.js 16 Web 应用 + Electron 桌面壳 + 可选 Python FastAPI 后端 |
-| 代码快照 | 分支 `feature/gesture-air-control-overhaul`，HEAD `c73a872` + 未提交工作树（87 项变更/新增；含本交接文档） |
-| 主要语言 | TypeScript 5.4（strict）/ React 19 / Python 3.10+ |
-| 运行环境（已验证） | Windows 11，Node v24.16.0，npm 11.13.0；Node 20.9+ 应可用 |
-| 当前可运行性 | Web 开发模式可运行；`npm run build` 通过；桌面发布已**主动冻结**（见第 8.2 节） |
-| 未完成计划 | 架构与性能优化总计划：74 任务，已完成 4 项（S0-4/S0-6/S1-1/S1-3），详见第 11 节 |
-| 敏感信息 | 包内**不含** `.env.local`、平台 cookie、API Key、构建产物；见第 14 节 |
-| 交付物 | 项目源码目录（944 文件 / 26.2MB）+ ZIP（约 7.6MB）+ 本交接文档 + 包内 `PACKAGE-MANIFEST.md` + 同级 `*.zip.sha256` |
+| 项                 | 内容                                                                                                              |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| 项目名称           | MIMI Music Player（Vibe Player）                                                                                  |
+| 版本               | 0.2.1（package.json）                                                                                             |
+| 产品形态           | Next.js 16 Web 应用 + Electron 桌面壳 + 可选 Python FastAPI 后端                                                  |
+| 代码快照           | 分支 `feature/gesture-air-control-overhaul`，HEAD `c73a872` + 未提交工作树（87 项变更/新增；含本交接文档）        |
+| 主要语言           | TypeScript 5.4（strict）/ React 19 / Python 3.10+                                                                 |
+| 运行环境（已验证） | Windows 11，Node v24.16.0，npm 11.13.0；Node 20.9+ 应可用                                                         |
+| 当前可运行性       | Web 开发模式可运行；`npm run build` 通过；桌面发布已**主动冻结**（见第 8.2 节）                                   |
+| 未完成计划         | 架构与性能优化总计划：74 任务，已完成 4 项（S0-4/S0-6/S1-1/S1-3），详见第 11 节                                   |
+| 敏感信息           | 包内**不含** `.env.local`、平台 cookie、API Key、构建产物；见第 14 节                                             |
+| 交付物             | 项目源码目录（944 文件 / 26.2MB）+ ZIP（约 7.6MB）+ 本交接文档 + 包内 `PACKAGE-MANIFEST.md` + 同级 `*.zip.sha256` |
 
 **接手第一天建议顺序**：第 2 节跑起来 → 第 9 节理解 WIP → 第 10 节看已知问题 → 第 11 节看计划与决策 → 第 12 节逐项签收。
 
@@ -40,14 +40,14 @@ MIMI Music Player 是一个"音乐播放 + 视觉舞台 + 情感分析"的沉浸
 
 **代码规模（2026-10-21 审计口径，之后新增约 10 个 S0/S1 文件）**：
 
-| 指标 | 数值 |
-|---|---:|
-| src 下 ts/tsx | 约 700 文件（生产约 500） |
-| 生产代码 | 约 14 万行 |
-| Zustand store | 60 个（44 处 persist） |
-| Next API route | 30 个（src/app/api/**/route.ts） |
-| 测试 | 见第 7 节（约 208 文件 / 1,290+ 用例） |
-| 首屏基线 | rootMain 969.3KB raw / 296.8KB gzip；首页 1,996.7KB raw / 615.7KB gzip；CSS 227.4KB |
+| 指标           |                                                                                数值 |
+| -------------- | ----------------------------------------------------------------------------------: |
+| src 下 ts/tsx  |                                                           约 700 文件（生产约 500） |
+| 生产代码       |                                                                          约 14 万行 |
+| Zustand store  |                                                              60 个（44 处 persist） |
+| Next API route |                                                  30 个（src/app/api/\*\*/route.ts） |
+| 测试           |                                              见第 7 节（约 208 文件 / 1,290+ 用例） |
+| 首屏基线       | rootMain 969.3KB raw / 296.8KB gzip；首页 1,996.7KB raw / 615.7KB gzip；CSS 227.4KB |
 
 ---
 
@@ -105,33 +105,34 @@ npm run sync:mediapipe          # 从 node_modules 复制 wasm，必要时下载
 
 ### 2.4 端口与地址
 
-| 服务 | 地址 | 说明 |
-|---|---|---|
-| Next dev | http://localhost:3025 | `npm run dev` |
-| Next start | **3024**（历史遗留，与 dev 不一致） | `npm run start` 需先 build；建议统一改 3025（见第 10 节） |
-| Python 后端 | http://localhost:8000 | uvicorn |
-| Docker | 3025:3025（但 next start 实际 3024，容器不可用） | 已知问题，见第 10 节 |
-| Electron 生产 | `app://app/`（协议层，映射 out/） | 当前发布冻结，见第 8.2 节 |
+| 服务          | 地址                                             | 说明                                                      |
+| ------------- | ------------------------------------------------ | --------------------------------------------------------- |
+| Next dev      | http://localhost:3025                            | `npm run dev`                                             |
+| Next start    | **3024**（历史遗留，与 dev 不一致）              | `npm run start` 需先 build；建议统一改 3025（见第 10 节） |
+| Python 后端   | http://localhost:8000                            | uvicorn                                                   |
+| Docker        | 3025:3025（但 next start 实际 3024，容器不可用） | 已知问题，见第 10 节                                      |
+| Electron 生产 | `app://app/`（协议层，映射 out/）                | 当前发布冻结，见第 8.2 节                                 |
 
 ---
 
 ## 3. 技术栈与关键依赖
 
-| 领域 | 方案/版本 |
-|---|---|
-| 框架 | Next.js 16.2.4（App Router，`--webpack` 构建；默认 server build） |
-| UI | React 19.2.5、TypeScript 5.4 strict、Tailwind 3.4 + OKLCH、Framer Motion 12 |
-| 状态 | Zustand 5（60 store / 44 persist；含手写 storage wrapper） |
-| 渲染 | Canvas 2D（V7 可视化/手书）、Three.js 0.183（Shelf3D）、WebGL |
-| 音频 | Web Audio API（AudioEngine 单例、30-band EQ、17 effects、Analyser） |
-| 手势 | @mediapipe/tasks-vision、@mediapipe/hands |
-| 文件/格式 | jsmediatags、@ffmpeg/ffmpeg（浏览器转码）、fabric（海报）、html-to-image |
-| 桌面 | Electron 41、electron-builder 26 |
-| 后端 | Python FastAPI、uvicorn、ModelScope（占位） |
-| 测试 | Vitest 4 + jsdom；205+ 文件 |
-| Lint/格式 | ESLint 8（legacy config）+ prettier 3；husky/lint-staged |
+| 领域      | 方案/版本                                                                   |
+| --------- | --------------------------------------------------------------------------- |
+| 框架      | Next.js 16.2.4（App Router，`--webpack` 构建；默认 server build）           |
+| UI        | React 19.2.5、TypeScript 5.4 strict、Tailwind 3.4 + OKLCH、Framer Motion 12 |
+| 状态      | Zustand 5（60 store / 44 persist；含手写 storage wrapper）                  |
+| 渲染      | Canvas 2D（V7 可视化/手书）、Three.js 0.183（Shelf3D）、WebGL               |
+| 音频      | Web Audio API（AudioEngine 单例、30-band EQ、17 effects、Analyser）         |
+| 手势      | @mediapipe/tasks-vision、@mediapipe/hands                                   |
+| 文件/格式 | jsmediatags、@ffmpeg/ffmpeg（浏览器转码）、fabric（海报）、html-to-image    |
+| 桌面      | Electron 41、electron-builder 26                                            |
+| 后端      | Python FastAPI、uvicorn、ModelScope（占位）                                 |
+| 测试      | Vitest 4 + jsdom；205+ 文件                                                 |
+| Lint/格式 | ESLint 8（legacy config）+ prettier 3；husky/lint-staged                    |
 
 注意：
+
 - `@xenova/transformers` 已安装但 src 0 引用（待移除）。
 - `node_modules` 中曾有 `pixi.js` extraneous junction（打包环境独有），本包无 node_modules，不受影响。
 - `.eslintrc.json` 的 4 个 parser/plugin 未在 package.json 显式声明（靠传递依赖），升级依赖时留意。
@@ -160,9 +161,9 @@ npm run sync:mediapipe          # 从 node_modules 复制 wasm，必要时下载
 ├── .github/workflows/      # CI（master 触发；本轮修复）
 ├── .husky/                 # pre-commit
 ├── .env.example            # 环境变量模板（新增；真实 .env.local 不在包内）
-├── AGENTS.md / README.md / STARTUP_GUIDE.md / DESIGN.md / PRODUCT.md / LICENSE
+├── AGENTS.md / README.md / STARTUP_GUIDE.md / LICENSE
 ├── package.json / package-lock.json / next.config.js / tsconfig.json / vitest.config.ts
-├── Dockerfile / docker-compose.yml
+├── deploy/                 # Dockerfile + docker-compose.yml（S0-5 从根目录迁入；build context=..）
 └── PACKAGE-MANIFEST.md / SNAPSHOT.txt / HANDOVER-README.md   # 打包生成
 ```
 
@@ -202,6 +203,7 @@ UI 播放按钮 → useAudioPlayer.playSong()
 关键文件：`src/hooks/useAudioPlayer.ts`（1,823 行，god hook）、`src/lib/audio/*`、`src/store/{playerStore,audioStore,queueStore,playbackRuntimeStore}.ts`。
 
 已知 P0（交接后优先处理，详见第 10 节）：
+
 - 队列双权威：audioStore.queue 与 queueStore.queue 手工同步，队列面板操作后可能播错歌。
 - useAudioPlayer 多实例共享 audio 元素并互相剥离监听（关面板后 ended/timeupdate 可能失效）。
 - 播放请求无 AbortController。
@@ -290,14 +292,14 @@ npm run build:backend:win  # PyInstaller（需 Python + 依赖）
 
 ## 7. 测试与质量现状
 
-| 项 | 现状 |
-|---|---|
-| 测试框架 | Vitest 4 + jsdom（`vitest.config.ts`） |
-| 测试规模 | **208 个测试文件 / 1,284 个用例**（2026-10-22 实测，Node 24.16，耗时 70.2s） |
-| 通过状态 | `npx vitest run`：208 文件 / 1,284 用例全部通过；`npx tsc --noEmit` exit 0；`npx eslint src` 0 problems |
-| 覆盖率 | 仅 `src/lib/audio/**` + `src/utils/**`（15 文件），阈值 30/20/30/30；store/services/hooks/visualization 未纳入（S8 扩域） |
-| CI | `.github/workflows/deploy.yml`：master push/PR 触发；verify job 含 tsc/lint/test/build/bundle report/store stats/docs facts；desktop/Vercel 改手动触发。**尚未 push，因此未在 GitHub 上实际运行过** |
-| 已知短板 | 组件/API route/visualization 测试覆盖低；Electron IPC 仅 3 个用例；无 E2E（Playwright 为长期项） |
+| 项       | 现状                                                                                                                                                                                                |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 测试框架 | Vitest 4 + jsdom（`vitest.config.ts`）                                                                                                                                                              |
+| 测试规模 | **208 个测试文件 / 1,284 个用例**（2026-10-22 实测，Node 24.16，耗时 70.2s）                                                                                                                        |
+| 通过状态 | `npx vitest run`：208 文件 / 1,284 用例全部通过；`npx tsc --noEmit` exit 0；`npx eslint src` 0 problems                                                                                             |
+| 覆盖率   | 仅 `src/lib/audio/**` + `src/utils/**`（15 文件），阈值 30/20/30/30；store/services/hooks/visualization 未纳入（S8 扩域）                                                                           |
+| CI       | `.github/workflows/deploy.yml`：master push/PR 触发；verify job 含 tsc/lint/test/build/bundle report/store stats/docs facts；desktop/Vercel 改手动触发。**尚未 push，因此未在 GitHub 上实际运行过** |
+| 已知短板 | 组件/API route/visualization 测试覆盖低；Electron IPC 仅 3 个用例；无 E2E（Playwright 为长期项）                                                                                                    |
 
 交接后第一件事建议：在干净环境跑一次 `npm ci --legacy-peer-deps && npx tsc --noEmit && npm run test -- --run && npm run build`，确认与本文一致。
 
@@ -339,7 +341,7 @@ npm run build:backend:win  # PyInstaller（需 Python + 依赖）
 
 未提交内容分两类（共 87 项 git status，含本交接文档与打包/环境模板脚本）：
 
-1. **手势 Air Control  overhaul（原有 WIP，约 55 项）**
+1. **手势 Air Control overhaul（原有 WIP，约 55 项）**
    - 新增：`src/hooks/useGestureSession.ts`（649 行）、`src/store/gestureSettingsStore.ts`、`src/components/interaction/GestureHUD.tsx`、`src/components/settings/GestureSettings.tsx`、`src/lib/gesture/**` 等。
    - 修改：`page.tsx`、`PanelOrchestrator.tsx`、`GlobalClientComponents.tsx`、`uiStore.ts`、`package.json`、`tsconfig.json`、`gestureStore.ts` 等；删除 `src/hooks/useHandGesture.ts`。
    - 这批改动**已合入当前源码**，接收方无需再"应用补丁"；但没有对应 commit，无法回溯历史。
@@ -354,22 +356,22 @@ npm run build:backend:win  # PyInstaller（需 Python + 依赖）
 
 ## 10. 已知问题与优先级（交接后必读）
 
-| 级别 | 问题 | 位置/证据 | 计划 |
-|---|---|---|---|
-| P0 | 队列双权威：audioStore.queue vs queueStore.queue 手工同步 | audioStore.ts:77-78,394-464；queueStore.ts:343-348 | S1-5 |
-| P0 | VibeMusicDB 同时以 v1/v2 打开 → 本地音源读取失败 | localMusicService.ts:7-13；localMusicStorage.ts:6-7 | S1-4（需 fake-indexeddb，Q04） |
-| P0 | 备份 10 槽位中 5 个 key 错配，恢复不 rehydrate | backupRestoreStore.ts:148,231-232,327-329 | S1-2（下一步） |
-| P0 | useAudioPlayer 多实例互删监听 | useAudioPlayer.ts:200-250,954-981 等 | S1-6 |
-| P0 | 播放请求无 AbortController | useAudioPlayer.ts:1400-1706 | S1-8 |
-| P0 | AudioContextWatchdog 懒创建失效 | AudioContextWatchdog.ts:29-46；bootstrap.ts:73 | S1-7 |
-| P0 | 音频图双路 + 音量双写 | AudioEngine.ts:68；useAudioPlayer.ts:986-1005,1758-1764 | S2-1 |
-| P0 | 桌面发布链路断（静态导出与 API 不兼容） | 第 8.2 节 | S7-4（D2） |
-| P1 | 页级/常驻视图整店订阅 | page.tsx:78-79；HomeView/PlayerView | S3 |
-| P1 | LazyPanel 粘性挂载、重复宿主 | LazyPanel.tsx:50-60；SourceManagementModal 双挂载 | S3-6/7 |
-| P1 | V8 组件树未接线（11,355 行死代码） | visualization-v8/** | S4-7（D1） |
-| P1 | 首屏混入 jsmediatags/crypto-js | rootMain 296.8KB gzip；audit D/B | S4 |
-| P1 | 60 store 无所有权、audioStore god store | store 审计 | S6 |
-| P2 | 文档历史数字失真（44 stores/28 effects 等） | 已在 AGENTS/ARCHITECTURE 修正；ROADMAP/CHANGELOG 仍含旧叙述 | S0-4 收尾 |
+| 级别 | 问题                                                      | 位置/证据                                                   | 计划                           |
+| ---- | --------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------ |
+| P0   | 队列双权威：audioStore.queue vs queueStore.queue 手工同步 | audioStore.ts:77-78,394-464；queueStore.ts:343-348          | S1-5                           |
+| P0   | VibeMusicDB 同时以 v1/v2 打开 → 本地音源读取失败          | localMusicService.ts:7-13；localMusicStorage.ts:6-7         | S1-4（需 fake-indexeddb，Q04） |
+| P0   | 备份 10 槽位中 5 个 key 错配，恢复不 rehydrate            | backupRestoreStore.ts:148,231-232,327-329                   | S1-2（下一步）                 |
+| P0   | useAudioPlayer 多实例互删监听                             | useAudioPlayer.ts:200-250,954-981 等                        | S1-6                           |
+| P0   | 播放请求无 AbortController                                | useAudioPlayer.ts:1400-1706                                 | S1-8                           |
+| P0   | AudioContextWatchdog 懒创建失效                           | AudioContextWatchdog.ts:29-46；bootstrap.ts:73              | S1-7                           |
+| P0   | 音频图双路 + 音量双写                                     | AudioEngine.ts:68；useAudioPlayer.ts:986-1005,1758-1764     | S2-1                           |
+| P0   | 桌面发布链路断（静态导出与 API 不兼容）                   | 第 8.2 节                                                   | S7-4（D2）                     |
+| P1   | 页级/常驻视图整店订阅                                     | page.tsx:78-79；HomeView/PlayerView                         | S3                             |
+| P1   | LazyPanel 粘性挂载、重复宿主                              | LazyPanel.tsx:50-60；SourceManagementModal 双挂载           | S3-6/7                         |
+| P1   | V8 组件树未接线（11,355 行死代码）                        | visualization-v8/\*\*                                       | S4-7（D1）                     |
+| P1   | 首屏混入 jsmediatags/crypto-js                            | rootMain 296.8KB gzip；audit D/B                            | S4                             |
+| P1   | 60 store 无所有权、audioStore god store                   | store 审计                                                  | S6                             |
+| P2   | 文档历史数字失真（44 stores/28 effects 等）               | 已在 AGENTS/ARCHITECTURE 修正；ROADMAP/CHANGELOG 仍含旧叙述 | S0-4 收尾                      |
 
 完整分级见：`docs/nbl/plans/2026-10-21-architecture-performance-optimization.md` 第 3 节；执行级步骤见 `docs/nbl/plans/2026-10-21-arch-perf-execution/S*-*.md`。
 
@@ -397,15 +399,15 @@ S0-2（CI）本地完成未 push；S0-3 结论确定（桌面冻结）；S0-5/S0
 
 ### 11.3 未决事项（接收方需与产品/原负责人确认）
 
-| ID | 事项 | 默认假设 |
-|---|---|---|
-| Q01 | 55 项手势 WIP 如何处理（提交/拆 PR/冻结） | 建议先提交 checkpoint 再继续 |
-| Q02 | GitHub branch protection / required checks 权限 | 有权限则开，否则 CI report-only |
-| Q04 | 是否允许 devDep fake-indexeddb（S1-4 测试） | 建议允许 |
-| Q05 | 新增 persist key（theme-store/quality-store） | 允许，旧 key 保留一版 |
-| Q07 | 旧 key 删除窗口 / coordinator 删除 | 迁移后下一个 minor |
-| Q10 | S4 包体目标 190KB vs 实测缺口 ~29KB | 缺口≤10KB 可重定 ≤200KB |
-| D1/D2/D7 | V8 处置 / 桌面运行时 / 受保护视图改写授权 | 推荐 C/B/A（见 ADR） |
+| ID       | 事项                                            | 默认假设                        |
+| -------- | ----------------------------------------------- | ------------------------------- |
+| Q01      | 55 项手势 WIP 如何处理（提交/拆 PR/冻结）       | 建议先提交 checkpoint 再继续    |
+| Q02      | GitHub branch protection / required checks 权限 | 有权限则开，否则 CI report-only |
+| Q04      | 是否允许 devDep fake-indexeddb（S1-4 测试）     | 建议允许                        |
+| Q05      | 新增 persist key（theme-store/quality-store）   | 允许，旧 key 保留一版           |
+| Q07      | 旧 key 删除窗口 / coordinator 删除              | 迁移后下一个 minor              |
+| Q10      | S4 包体目标 190KB vs 实测缺口 ~29KB             | 缺口≤10KB 可重定 ≤200KB         |
+| D1/D2/D7 | V8 处置 / 桌面运行时 / 受保护视图改写授权       | 推荐 C/B/A（见 ADR）            |
 
 ---
 
@@ -455,48 +457,48 @@ S0-2（CI）本地完成未 push；S0-3 结论确定（桌面冻结）；S0-5/S0
 
 ## 15. 外部服务、权限与联系人（占位，需原负责人补充）
 
-| 项 | 说明 | 交接动作 |
-|---|---|---|
-| GitHub | remote：NanQiaoMi/music_source_code（默认 master） | 转移/添加协作者权限；确认 Actions 可用 |
-| Vercel | deploy workflow 需 VERCEL_TOKEN/ORG/PROJECT secrets | 手动触发前配置 |
-| AI Key | SenseNova/ModelScope（.env.local，5 key 轮换） | 通过安全渠道交接，勿写入文档/仓库 |
-| 平台账号 | 网易云/QQ/酷狗/酷我/汽水 登录 cookie 由用户在应用内扫码 | 不随包交接 |
-| 后端服务 | Python FastAPI（8000），Electron 打包时 PyInstaller 内嵌 | 交接 requirements 与生产启动方式 |
-| 项目负责人 | 原"大咪小咪组" | 补充联系人/值班方式 |
+| 项         | 说明                                                     | 交接动作                               |
+| ---------- | -------------------------------------------------------- | -------------------------------------- |
+| GitHub     | remote：NanQiaoMi/music_source_code（默认 master）       | 转移/添加协作者权限；确认 Actions 可用 |
+| Vercel     | deploy workflow 需 VERCEL_TOKEN/ORG/PROJECT secrets      | 手动触发前配置                         |
+| AI Key     | SenseNova/ModelScope（.env.local，5 key 轮换）           | 通过安全渠道交接，勿写入文档/仓库      |
+| 平台账号   | 网易云/QQ/酷狗/酷我/汽水 登录 cookie 由用户在应用内扫码  | 不随包交接                             |
+| 后端服务   | Python FastAPI（8000），Electron 打包时 PyInstaller 内嵌 | 交接 requirements 与生产启动方式       |
+| 项目负责人 | 原"大咪小咪组"                                           | 补充联系人/值班方式                    |
 
 ---
 
 ## 16. 参考文档索引
 
-| 文档 | 用途 |
-|---|---|
-| `README.md` | 产品介绍（部分营销数字已过时，以 ARCHITECTURE 为准） |
-| `STARTUP_GUIDE.md` | 启动指南（端口/打包部分以本交接文档为准） |
-| `AGENTS.md` | AI Worker 入口 + 项目约束（已按实测修正） |
-| `docs/nbl/ARCHITECTURE.md` | 系统分层/模块/链路（已按实测修正） |
-| `docs/nbl/ROADMAP.md` | 路线图（部分内容早于本轮计划） |
-| `docs/nbl/PROCESS.md` | 开发流程（PR ≤400 行、验证顺序） |
-| `docs/nbl/CODING_STANDARDS.md` | 编码/测试规范 |
-| `docs/nbl/plans/2026-10-21-architecture-performance-optimization.md` | 架构与性能总计划（当前主计划） |
-| `docs/nbl/plans/2026-10-21-arch-perf-execution/` | 执行计划包 + TRACKING + 决策 |
-| `docs/nbl/adr/` | 架构决策记录 |
-| `docs/nbl/specs/` | 视觉/交互设计规格（Folia/手书/3D 架/手势） |
-| `perf/README.md` | 性能基线工具与口径 |
-| `PACKAGE-MANIFEST.md`（包内） | 本包文件数/大小/排除清单/生成元信息 |
+| 文档                                                                 | 用途                                                 |
+| -------------------------------------------------------------------- | ---------------------------------------------------- |
+| `README.md`                                                          | 产品介绍（部分营销数字已过时，以 ARCHITECTURE 为准） |
+| `STARTUP_GUIDE.md`                                                   | 启动指南（端口/打包部分以本交接文档为准）            |
+| `AGENTS.md`                                                          | AI Worker 入口 + 项目约束（已按实测修正）            |
+| `docs/nbl/ARCHITECTURE.md`                                           | 系统分层/模块/链路（已按实测修正）                   |
+| `docs/nbl/ROADMAP.md`                                                | 路线图（部分内容早于本轮计划）                       |
+| `docs/nbl/PROCESS.md`                                                | 开发流程（PR ≤400 行、验证顺序）                     |
+| `docs/nbl/CODING_STANDARDS.md`                                       | 编码/测试规范                                        |
+| `docs/nbl/plans/2026-10-21-architecture-performance-optimization.md` | 架构与性能总计划（当前主计划）                       |
+| `docs/nbl/plans/2026-10-21-arch-perf-execution/`                     | 执行计划包 + TRACKING + 决策                         |
+| `docs/nbl/adr/`                                                      | 架构决策记录                                         |
+| `docs/nbl/specs/`                                                    | 视觉/交互设计规格（Folia/手书/3D 架/手势）           |
+| `perf/README.md`                                                     | 性能基线工具与口径                                   |
+| `PACKAGE-MANIFEST.md`（包内）                                        | 本包文件数/大小/排除清单/生成元信息                  |
 
 ---
 
 ## 17. 术语表
 
-| 术语 | 含义 |
-|---|---|
-| V7 / V8 可视化 | 两代可视化实现；V7 当前挂载（14 效果），V8 未接线（11,355 行） |
-| 整店订阅 | `useXStore()` 不带 selector，订阅整个 store（性能问题） |
-| persist key | Zustand 持久化到 localStorage 的 key（44 个） |
-| WIP | 未提交工作（本包中的手势 overhaul 与本轮修复） |
-| D1-D8 / Q01-Q23 | 决策与执行期待确认项（00-decisions.md） |
-| S0-S8 | 总计划的 9 个阶段 |
-| guard | 发布门禁脚本（桌面/静态产物） |
+| 术语            | 含义                                                           |
+| --------------- | -------------------------------------------------------------- |
+| V7 / V8 可视化  | 两代可视化实现；V7 当前挂载（14 效果），V8 未接线（11,355 行） |
+| 整店订阅        | `useXStore()` 不带 selector，订阅整个 store（性能问题）        |
+| persist key     | Zustand 持久化到 localStorage 的 key（44 个）                  |
+| WIP             | 未提交工作（本包中的手势 overhaul 与本轮修复）                 |
+| D1-D8 / Q01-Q23 | 决策与执行期待确认项（00-decisions.md）                        |
+| S0-S8           | 总计划的 9 个阶段                                              |
+| guard           | 发布门禁脚本（桌面/静态产物）                                  |
 
 ---
 
@@ -535,4 +537,4 @@ node scripts/perf/bundle-budget.mjs
 
 ---
 
-*本文档由 2026-10-22 交接打包流程生成；如与代码不一致，以代码与 `PACKAGE-MANIFEST.md` 为准，并回写本文档。*
+_本文档由 2026-10-22 交接打包流程生成；如与代码不一致，以代码与 `PACKAGE-MANIFEST.md` 为准，并回写本文档。_

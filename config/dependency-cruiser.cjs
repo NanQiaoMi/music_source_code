@@ -2,7 +2,7 @@
  * dependency-cruiser 分层门禁（S6-12a）
  *
  * 目标：把"谁能依赖谁"固化成 CI 可执行的规则，而不是只写在架构文档里。
- * 运行：npm run verify:layers（= depcruise src --config .dependency-cruiser.cjs --output-type err）
+ * 运行：npm run verify:layers（= depcruise src --config config/dependency-cruiser.cjs --output-type err）
  *
  * 分层意图：components / hooks 位于上层，可以依赖 store / services / domain / lib / types；
  * 状态与服务层（store / services / lib / domain）不得反向依赖 components / hooks。

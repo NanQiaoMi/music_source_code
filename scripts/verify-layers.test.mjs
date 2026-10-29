@@ -8,11 +8,11 @@ import path from "node:path";
 
 const root = process.cwd();
 const require = createRequire(import.meta.url);
-const config = require("../.dependency-cruiser.cjs");
+const config = require("../config/dependency-cruiser.cjs");
 const CLI = path.join(root, "node_modules", "dependency-cruiser", "bin", "dependency-cruiser.mjs");
 
 function cruise(...args) {
-  return spawnSync(process.execPath, [CLI, "src", "--config", ".dependency-cruiser.cjs", ...args], {
+  return spawnSync(process.execPath, [CLI, "src", "--config", "config/dependency-cruiser.cjs", ...args], {
     cwd: root,
     encoding: "utf8",
   });

@@ -3,8 +3,8 @@ version: '3.8'
 services:
   mimi-music:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: deploy/Dockerfile
     container_name: mimi-music-player
     restart: always
     ports:

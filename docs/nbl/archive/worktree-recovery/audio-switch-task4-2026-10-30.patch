@@ -1,0 +1,1926 @@
+diff --git a/src/lib/audio/CrossfadeMixer.test.ts b/src/lib/audio/CrossfadeMixer.test.ts
+index b8123e3..8a4d3f2 100644
+--- a/src/lib/audio/CrossfadeMixer.test.ts
++++ b/src/lib/audio/CrossfadeMixer.test.ts
+@@ -7,6 +7,7 @@ const audioEngineMock = vi.hoisted(() => {
+       cancelScheduledValues: ReturnType<typeof vi.fn>;
+       setValueAtTime: ReturnType<typeof vi.fn>;
+       linearRampToValueAtTime: ReturnType<typeof vi.fn>;
++      setValueCurveAtTime: ReturnType<typeof vi.fn>;
+     };
+     connect: ReturnType<typeof vi.fn>;
+   }> = [];
+@@ -20,6 +21,7 @@ const audioEngineMock = vi.hoisted(() => {
+           cancelScheduledValues: vi.fn(),
+           setValueAtTime: vi.fn(),
+           linearRampToValueAtTime: vi.fn(),
++          setValueCurveAtTime: vi.fn(),
+         },
+         connect: vi.fn(),
+       };
+@@ -30,9 +32,11 @@ const audioEngineMock = vi.hoisted(() => {
+ 
+   return {
+     gainNodes,
++    sourceNode,
+     context,
+     engine: {
+-      getContext: () => context,
++      getContext: vi.fn((): typeof context | null => context),
++      ensureContext: vi.fn((): typeof context | null => context),
+       createMediaSource: vi.fn(() => sourceNode),
+       getEQChainEntry: vi.fn(() => ({})),
+     },
+@@ -50,6 +54,7 @@ function createAudioElement(): HTMLAudioElement {
+     paused: false,
+     currentTime: 24,
+     volume: 1,
++    muted: false,
+     play: vi.fn().mockResolvedValue(undefined),
+     pause: vi.fn(),
+   } as unknown as HTMLAudioElement;
+@@ -60,6 +65,8 @@ describe("CrossfadeMixer request ownership", () => {
+     (CrossfadeMixer as unknown as { instance?: CrossfadeMixer }).instance = undefined;
+     audioEngineMock.gainNodes.length = 0;
+     audioEngineMock.context.currentTime = 10;
++    audioEngineMock.engine.getContext.mockReturnValue(audioEngineMock.context);
++    audioEngineMock.engine.ensureContext.mockReturnValue(audioEngineMock.context);
+     vi.useFakeTimers();
+   });
+ 
+@@ -204,4 +211,135 @@ describe("CrossfadeMixer request ownership", () => {
+     expect(audio.currentTime).toBe(0);
+     expect(gain?.gain.setValueAtTime).toHaveBeenLastCalledWith(1, 10);
+   });
++
++  it("silences a prepared deck without changing user volume or starting it", () => {
++    const mixer = CrossfadeMixer.getInstance();
++    const audio = createAudioElement();
++    audio.volume = 0.37;
++    const prepared = mixer.prepareSilentDeck(audio);
++
++    expect(audio.muted).toBe(true);
++    expect(audio.volume).toBe(0.37);
++    expect(audio.play).not.toHaveBeenCalled();
++    expect(audioEngineMock.gainNodes[0]?.gain.setValueAtTime).toHaveBeenLastCalledWith(0, 10);
++    prepared.restoreOutput();
++    expect(audio.muted).toBe(false);
++    expect(audio.volume).toBe(0.37);
++  });
++
++  it("ramps an already confirmed target without play and cleans outgoing after a bounded fade", () => {
++    const mixer = CrossfadeMixer.getInstance();
++    const old = createAudioElement();
++    const target = createAudioElement();
++    target.volume = 0.25;
++    const prepared = mixer.prepareSilentDeck(target);
++
++    mixer.transitionConfirmed(old, prepared, { duration: 0.2 });
++    expect(target.play).not.toHaveBeenCalled();
++    expect(target.volume).toBe(0.25);
++    expect(target.muted).toBe(false);
++    expect(old.pause).not.toHaveBeenCalled();
++    expect(audioEngineMock.gainNodes[0]?.gain.setValueCurveAtTime).toHaveBeenCalled();
++    vi.advanceTimersByTime(301);
++    expect(old.pause).toHaveBeenCalledOnce();
++  });
++
++  it("acquires the context lazily even if mixer was created before first playback", () => {
++    audioEngineMock.engine.getContext.mockReturnValue(null);
++    const mixer = CrossfadeMixer.getInstance();
++    audioEngineMock.engine.getContext.mockReturnValue(audioEngineMock.context);
++    expect(mixer.prepareElement(createAudioElement())).not.toBeNull();
++  });
++
++  it("restores silent output when ordinary playback reuses the element", () => {
++    const mixer = CrossfadeMixer.getInstance();
++    const audio = createAudioElement();
++    const prepared = mixer.prepareSilentDeck(audio);
++    mixer.prepareForDirectPlayback(audio);
++    prepared.cancel();
++    expect(prepared.isCurrent()).toBe(false);
++    expect(audio.muted).toBe(false);
++    expect(audio.pause).not.toHaveBeenCalled();
++  });
++
++  it("does not let a confirmed fade cleanup pause a newly reused outgoing deck", () => {
++    const mixer = CrossfadeMixer.getInstance();
++    const old = createAudioElement();
++    const target = createAudioElement();
++    mixer.transitionConfirmed(old, mixer.prepareSilentDeck(target), { duration: 0.2 });
++    mixer.prepareForDirectPlayback(old);
++    vi.advanceTimersByTime(500);
++    expect(old.pause).not.toHaveBeenCalled();
++  });
++
++  it("survives graph failure at commit and keeps confirmed target at user volume/mute", () => {
++    const mixer = CrossfadeMixer.getInstance();
++    const old = createAudioElement();
++    old.muted = true;
++    const target = createAudioElement();
++    target.volume = 0.19;
++    const prepared = mixer.prepareSilentDeck(target);
++    audioEngineMock.gainNodes[0]?.gain.setValueCurveAtTime.mockImplementationOnce(() => {
++      throw new Error("graph failed");
++    });
++
++    expect(() => mixer.transitionConfirmed(old, prepared, { muted: true })).not.toThrow();
++    expect(old.pause).toHaveBeenCalledOnce();
++    expect(target.play).not.toHaveBeenCalled();
++    expect(target.volume).toBe(0.19);
++    expect(target.muted).toBe(true);
++    expect(audioEngineMock.gainNodes[0]?.gain.setValueAtTime).toHaveBeenLastCalledWith(1, 10);
++  });
++
++  it("falls back to an immediate handoff when Web Audio is unavailable", () => {
++    audioEngineMock.engine.getContext.mockReturnValue(null);
++    audioEngineMock.engine.ensureContext.mockReturnValue(null);
++    const mixer = CrossfadeMixer.getInstance();
++    const old = createAudioElement();
++    const target = createAudioElement();
++    const prepared = mixer.prepareSilentDeck(target);
++    expect(target.muted).toBe(true);
++    mixer.transitionConfirmed(old, prepared);
++    expect(old.pause).toHaveBeenCalledOnce();
++    expect(target.muted).toBe(false);
++  });
++
++  it("repairs source connection when graph setup throws after disconnect", () => {
++    const mixer = CrossfadeMixer.getInstance();
++    const audio = createAudioElement();
++    const connectionCount = audioEngineMock.sourceNode.connect.mock.calls.length;
++    audioEngineMock.sourceNode.connect.mockImplementationOnce(() => {
++      throw new Error("connect failed");
++    });
++    expect(() => mixer.prepareSilentDeck(audio)).not.toThrow();
++    expect(audioEngineMock.sourceNode.connect.mock.calls.length).toBe(connectionCount + 2);
++    expect(audioEngineMock.sourceNode.connect).toHaveBeenLastCalledWith({});
++  });
++
++  it("does not override a later mute change when a committed ramp completes", () => {
++    const mixer = CrossfadeMixer.getInstance();
++    const old = createAudioElement();
++    const target = createAudioElement();
++    mixer.transitionConfirmed(old, mixer.prepareSilentDeck(target));
++    target.muted = true;
++    vi.advanceTimersByTime(500);
++    expect(target.muted).toBe(true);
++  });
++
++  it("bypasses a failed gain parameter so confirmed target output is not stranded silent", () => {
++    const mixer = CrossfadeMixer.getInstance();
++    const old = createAudioElement();
++    const target = createAudioElement();
++    target.volume = 0.3;
++    const prepared = mixer.prepareSilentDeck(target);
++    audioEngineMock.gainNodes[0]?.gain.setValueAtTime.mockImplementation(() => {
++      throw new Error("gain parameter unavailable");
++    });
++
++    expect(() => mixer.transitionConfirmed(old, prepared)).not.toThrow();
++    expect(audioEngineMock.sourceNode.connect).toHaveBeenLastCalledWith({});
++    expect(target.volume).toBe(0.3);
++    expect(target.muted).toBe(false);
++    expect(old.pause).toHaveBeenCalledOnce();
++  });
+ });
+diff --git a/src/lib/audio/CrossfadeMixer.ts b/src/lib/audio/CrossfadeMixer.ts
+index 9664027..6ee1d12 100644
+--- a/src/lib/audio/CrossfadeMixer.ts
++++ b/src/lib/audio/CrossfadeMixer.ts
+@@ -1,6 +1,20 @@
+ import { AudioEngine } from "./AudioEngine";
+ import { useEmotionStore } from "@/store/emotionStore";
+ 
++export interface PreparedSilentDeck {
++  readonly audio: HTMLAudioElement;
++  readonly generation: number;
++  isCurrent: () => boolean;
++  restoreOutput: (muted?: boolean) => void;
++  cancel: () => void;
++}
++
++export interface ConfirmedTransitionOptions {
++  duration?: number;
++  muted?: boolean;
++  canCleanupFromAudio?: () => boolean;
++}
++
+ /**
+  * CrossfadeMixer handles smooth transitions between songs.
+  * It dynamically calculates duration based on emotional distance.
+@@ -11,6 +25,7 @@ export class CrossfadeMixer {
+   private gainNodes: Map<HTMLAudioElement, GainNode> = new Map();
+   private elementGenerations = new WeakMap<HTMLAudioElement, number>();
+   private nextElementGeneration = 1;
++  private silentDecks = new WeakMap<HTMLAudioElement, { muted: boolean }>();
+   private currentAnimationId: number | null = null;
+ 
+   private constructor() {
+@@ -28,6 +43,8 @@ export class CrossfadeMixer {
+    * Prepares a gain node for an audio element and connects it to the main graph.
+    */
+   public prepareElement(audio: HTMLAudioElement): GainNode | null {
++    const engine = AudioEngine.getInstance();
++    this.context = engine.getContext() ?? engine.ensureContext();
+     if (!this.context) return null;
+ 
+     let gainNode = this.gainNodes.get(audio);
+@@ -35,17 +52,27 @@ export class CrossfadeMixer {
+       gainNode = this.context.createGain();
+       gainNode.gain.value = 1;
+ 
+-      const source = AudioEngine.getInstance().createMediaSource(audio);
++      const source = engine.createMediaSource(audio);
++      const entry = engine.getEQChainEntry();
++      if (!source || !entry) return null;
+       if (source) {
+         try {
+           source.disconnect();
+         } catch {
+           /* ignore */
+         }
+-        source.connect(gainNode);
+-        const entry = AudioEngine.getInstance().getEQChainEntry();
+-        if (entry) {
++        try {
++          source.connect(gainNode);
+           gainNode.connect(entry);
++        } catch (error) {
++          // A failed intermediate graph must not strand a confirmed element at a disconnected gain.
++          try {
++            source.disconnect();
++            source.connect(entry);
++          } catch {
++            /* unavailable graph */
++          }
++          throw error;
+         }
+       }
+       this.gainNodes.set(audio, gainNode);
+@@ -54,11 +81,19 @@ export class CrossfadeMixer {
+   }
+ 
+   private claimElement(audio: HTMLAudioElement): number {
++    this.restoreSilentMute(audio);
+     const generation = this.nextElementGeneration++;
+     this.elementGenerations.set(audio, generation);
+     return generation;
+   }
+ 
++  private restoreSilentMute(audio: HTMLAudioElement, muted?: boolean): void {
++    const silence = this.silentDecks.get(audio);
++    if (!silence) return;
++    audio.muted = muted ?? silence.muted;
++    this.silentDecks.delete(audio);
++  }
++
+   private ownsElement(audio: HTMLAudioElement, generation: number): boolean {
+     return this.elementGenerations.get(audio) === generation;
+   }
+@@ -96,6 +131,111 @@ export class CrossfadeMixer {
+     this.resetElementGain(audio);
+   }
+ 
++  /** Holds silence independently of media volume until the runtime transfers ownership. */
++  public prepareSilentDeck(audio: HTMLAudioElement): PreparedSilentDeck {
++    const generation = this.claimElement(audio);
++    this.silentDecks.set(audio, { muted: audio.muted });
++    audio.muted = true;
++    try {
++      const node = this.prepareElement(audio);
++      if (node && this.context) {
++        node.gain.cancelScheduledValues(this.context.currentTime);
++        node.gain.setValueAtTime(0, this.context.currentTime);
++      }
++    } catch {
++      // Element mute also covers unavailable or failed Web Audio graphs.
++    }
++    const isCurrent = () => this.ownsElement(audio, generation);
++    const restoreOutput = (muted?: boolean) => {
++      if (!isCurrent()) return;
++      try {
++        this.resetElementGain(audio);
++      } catch {
++        // Bypass a broken gain parameter; merely unmuting an element with gain zero is silent.
++        this.gainNodes.delete(audio);
++        try {
++          const engine = AudioEngine.getInstance();
++          const source = engine.createMediaSource(audio);
++          const entry = engine.getEQChainEntry();
++          if (source && entry) {
++            source.disconnect();
++            source.connect(entry);
++          }
++        } catch {
++          /* unavailable graph */
++        }
++      }
++      this.restoreSilentMute(audio, muted);
++    };
++    return {
++      audio,
++      generation,
++      isCurrent,
++      restoreOutput,
++      cancel: () => {
++        if (!isCurrent()) return;
++        audio.pause();
++        restoreOutput();
++      },
++    };
++  }
++
++  /** Call only after a confirmed target has become the runtime's active deck. Never calls play(). */
++  public transitionConfirmed(
++    fromAudio: HTMLAudioElement,
++    prepared: PreparedSilentDeck,
++    options: ConfirmedTransitionOptions = {}
++  ): void {
++    if (!prepared.isCurrent() || prepared.audio === fromAudio) return;
++    const fromGeneration = this.claimElement(fromAudio);
++    const canCleanup = options.canCleanupFromAudio ?? (() => true);
++    const cleanup = () => {
++      if (!this.ownsElement(fromAudio, fromGeneration) || !canCleanup()) return;
++      try {
++        fromAudio.pause();
++        this.resetElementGain(fromAudio);
++      } catch {
++        // Cleanup must not change the already committed transaction outcome.
++      }
++    };
++    const muted = options.muted ?? fromAudio.muted;
++    const duration = Math.min(0.35, Math.max(0.05, options.duration ?? 0.18));
++    try {
++      const fromGain = this.prepareElement(fromAudio);
++      const toGain = this.prepareElement(prepared.audio);
++      if (!fromGain || !toGain || !this.context || prepared.audio.paused) {
++        prepared.restoreOutput(muted);
++        cleanup();
++        return;
++      }
++      prepared.restoreOutput(muted);
++      const now = this.context.currentTime;
++      const outgoing = new Float32Array(32);
++      const incoming = new Float32Array(32);
++      for (let index = 0; index < incoming.length; index++) {
++        const angle = (index / (incoming.length - 1)) * (Math.PI / 2);
++        outgoing[index] = Math.cos(angle);
++        incoming[index] = Math.sin(angle);
++      }
++      fromGain.gain.cancelScheduledValues(now);
++      toGain.gain.cancelScheduledValues(now);
++      fromGain.gain.setValueAtTime(1, now);
++      toGain.gain.setValueAtTime(0, now);
++      fromGain.gain.setValueCurveAtTime(outgoing, now, duration);
++      toGain.gain.setValueCurveAtTime(incoming, now, duration);
++      setTimeout(
++        () => {
++          if (prepared.isCurrent()) prepared.restoreOutput(muted);
++          cleanup();
++        },
++        duration * 1000 + 50
++      );
++    } catch {
++      prepared.restoreOutput(muted);
++      cleanup();
++    }
++  }
++
+   /**
+    * Calculates the dynamic crossfade duration.
+    */
+diff --git a/src/services/SourceSwitchCoordinator.test.ts b/src/services/SourceSwitchCoordinator.test.ts
+new file mode 100644
+index 0000000..db26cf8
+--- /dev/null
++++ b/src/services/SourceSwitchCoordinator.test.ts
+@@ -0,0 +1,822 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
++import type { ResolvedAudioSource } from "./MultiSourceResolver";
++import { SourceSwitchCoordinator, type SourceSwitchPlayerPorts } from "./SourceSwitchCoordinator";
++
++const mixerMock = vi.hoisted(() => {
++  const generations = new WeakMap<object, number>();
++  let sequence = 0;
++  return {
++    prepareSilentDeck: vi.fn((audio: HTMLAudioElement) => {
++      const generation = ++sequence;
++      generations.set(audio, generation);
++      const muted = audio.muted;
++      audio.muted = true;
++      return {
++        audio,
++        generation,
++        isCurrent: () => generations.get(audio) === generation,
++        restoreOutput: (nextMuted = muted) => {
++          if (generations.get(audio) === generation) audio.muted = nextMuted;
++        },
++        cancel: () => {
++          if (generations.get(audio) === generation) {
++            audio.pause();
++            audio.muted = muted;
++          }
++        },
++      };
++    }),
++    transitionConfirmed: vi.fn(
++      (from: HTMLAudioElement, prepared: { restoreOutput: (muted?: boolean) => void }) => {
++        prepared.restoreOutput(from.muted);
++        from.pause();
++      }
++    ),
++  };
++});
++
++vi.mock("@/lib/audio/CrossfadeMixer", () => ({
++  CrossfadeMixer: { getInstance: () => mixerMock },
++}));
++
++class TestAudio extends EventTarget {
++  src = "";
++  currentSrc = "";
++  readyState = 0;
++  duration = Number.NaN;
++  paused = true;
++  seeking = false;
++  ended = false;
++  error: MediaError | null = null;
++  volume = 0.45;
++  muted = false;
++  playbackRate = 1;
++  defaultPlaybackRate = 1;
++  ranges: Array<[number, number]> = [];
++  private time = 0;
++  seekWrites: number[] = [];
++  autoSeek = false;
++  load = vi.fn(() => undefined);
++  play = vi.fn((): Promise<void> => {
++    this.paused = false;
++    return Promise.resolve();
++  });
++  pause = vi.fn(() => {
++    this.paused = true;
++    this.emit("pause");
++  });
++
++  get currentTime(): number {
++    return this.time;
++  }
++  set currentTime(value: number) {
++    this.time = value;
++    this.seekWrites.push(value);
++    this.seeking = true;
++    this.emit("seeking");
++    if (this.autoSeek) this.seeked();
++  }
++  get seekable(): TimeRanges {
++    return {
++      length: this.ranges.length,
++      start: (index) => this.ranges[index][0],
++      end: (index) => this.ranges[index][1],
++    };
++  }
++  advanceTo(value: number): void {
++    this.time = value;
++  }
++  emit(type: string): void {
++    this.dispatchEvent(new Event(type));
++  }
++  ready(duration = 180): void {
++    this.currentSrc = this.src;
++    this.readyState = 3;
++    this.duration = duration;
++    this.ranges = [[0, duration]];
++    this.emit("loadedmetadata");
++    this.emit("canplay");
++  }
++  seeked(): void {
++    this.seeking = false;
++    this.emit("seeked");
++  }
++  playing(): void {
++    this.paused = false;
++    this.emit("playing");
++  }
++  asElement(): HTMLAudioElement {
++    return this as unknown as HTMLAudioElement;
++  }
++}
++
++const candidate: ResolvedAudioSource = {
++  source: "qq",
++  url: "https://audio.example/b.flac?token=secret",
++  quality: "lossless",
++  format: "flac",
++  isTrial: false,
++};
++const options = { songId: "song-1", policyVersion: "captured-policy" };
++
++async function flush(): Promise<void> {
++  for (let index = 0; index < 12; index++) await Promise.resolve();
++}
++
++function setup(shouldPlay = true) {
++  const old = new TestAudio();
++  old.src = old.currentSrc = "https://audio.example/a.mp3";
++  old.readyState = 3;
++  old.duration = 180;
++  old.ranges = [[0, 180]];
++  old.advanceTo(42);
++  old.paused = !shouldPlay;
++  const target = new TestAudio();
++  let active = { id: "old-deck", audio: old.asElement() };
++  let standby = { id: "target-deck", audio: target.asElement() };
++  const runtime = usePlaybackRuntimeStore.getState();
++  const requestId = runtime.requestPlayback("song-1", old.src, shouldPlay);
++  runtime.bindActiveDeck(requestId, "song-1", active.id, old.src);
++  if (shouldPlay)
++    runtime.dispatchMediaEvent({ type: "playing", requestId, deckId: active.id, source: old.src });
++  const ports: SourceSwitchPlayerPorts = {
++    read: () => {
++      const state = usePlaybackRuntimeStore.getState();
++      return {
++        songId: state.targetSongId,
++        requestId: state.requestId,
++        shouldPlay: state.shouldPlay,
++        active,
++        standby,
++      };
++    },
++    toMediaSource: (url) => `/api/audio/proxy?url=${encodeURIComponent(url)}`,
++    prepareStandby: vi.fn(({ deck, source }) => {
++      deck.audio.src = source;
++      target.currentSrc = "";
++      target.readyState = 0;
++      target.duration = Number.NaN;
++      target.ranges = [];
++      deck.audio.load();
++    }),
++    handoff: vi.fn(({ to, from, requestId: committedRequestId }) => {
++      expect(usePlaybackRuntimeStore.getState().requestId).toBe(committedRequestId);
++      expect(usePlaybackRuntimeStore.getState().activeDeckId).toBe(to.id);
++      active = to;
++      standby = from;
++    }),
++    cleanupStandby: vi.fn(({ deck }) => {
++      deck.audio.src = "";
++    }),
++  };
++  const coordinator = new SourceSwitchCoordinator({ stageTimeoutMs: 1000, totalTimeoutMs: 5000 });
++  const unregister = coordinator.registerPlayer(ports);
++  const start = (next = candidate) => coordinator.switchTo(next, options);
++  const intent = (playing: boolean) => runtime.requestPlayback("song-1", old.src, playing);
++  const prepare = async (duration = 180) => {
++    target.ready(duration);
++    await flush();
++    target.seeked();
++    await flush();
++  };
++  return { coordinator, ports, old, target, requestId, start, intent, prepare, unregister };
++}
++
++describe("SourceSwitchCoordinator", () => {
++  beforeEach(() => {
++    vi.useFakeTimers();
++    vi.clearAllMocks();
++    usePlaybackRuntimeStore.getState().reset();
++  });
++  afterEach(() => {
++    vi.useRealTimers();
++    usePlaybackRuntimeStore.getState().reset();
++  });
++
++  it("keeps old owner and audio until actual playing, then commits captured candidate", async () => {
++    const f = setup();
++    const phases: string[] = [];
++    const unsubscribe = usePlaybackRuntimeStore.subscribe((state) => {
++      if (state.sourceSwitchAttempt) phases.push(state.sourceSwitchAttempt.phase);
++    });
++    const result = f.start();
++    expect(usePlaybackRuntimeStore.getState().requestId).toBe(f.requestId);
++    expect(usePlaybackRuntimeStore.getState().activeDeckId).toBe("old-deck");
++    await f.prepare();
++    expect(f.target.muted).toBe(true);
++    expect(f.target.currentTime).toBe(42);
++    expect(f.old.pause).not.toHaveBeenCalled();
++    expect(f.ports.handoff).not.toHaveBeenCalled();
++    f.target.playing();
++    expect(await result).toMatchObject({
++      status: "committed",
++      requestId: f.requestId + 1,
++      adjustment: null,
++    });
++    expect(phases).toEqual(["preparing", "seeking", "confirming", "committing", "committed"]);
++    expect(usePlaybackRuntimeStore.getState().sessionSourceOverride?.audioUrl).toBe(candidate.url);
++    expect(usePlaybackRuntimeStore.getState().targetSource).toBe(f.old.currentSrc);
++    expect(f.target.volume).toBe(0.45);
++    expect(f.target.muted).toBe(false);
++    f.coordinator.cancelUncommitted();
++    expect(usePlaybackRuntimeStore.getState().sourceSwitchAttempt?.phase).toBe("committed");
++    unsubscribe();
++  });
++
++  it("does not accept a fulfilled play Promise without a valid playing event", async () => {
++    const f = setup();
++    const result = f.start();
++    await f.prepare();
++    await vi.advanceTimersByTimeAsync(1001);
++    expect(await result).toMatchObject({
++      status: "failed",
++      error: { phase: "confirming", code: "confirmation_timeout" },
++    });
++    expect(f.old.pause).not.toHaveBeenCalled();
++  });
++
++  it("commits a loaded and seeked paused target without ever calling play", async () => {
++    const f = setup(false);
++    const result = f.start();
++    await f.prepare();
++    expect(await result).toMatchObject({ status: "committed" });
++    expect(f.target.play).not.toHaveBeenCalled();
++    expect(f.target.paused).toBe(true);
++    expect(usePlaybackRuntimeStore.getState().phase).toBe("paused");
++  });
++
++  it("handles already available metadata and synchronous readiness/seeked/playing events", async () => {
++    const f = setup();
++    f.target.autoSeek = true;
++    f.ports.prepareStandby = ({ deck, source }) => {
++      deck.audio.src = source;
++      f.target.ready();
++    };
++    f.target.play = vi.fn(async () => f.target.playing());
++    expect(await f.start()).toMatchObject({ status: "committed" });
++  });
++
++  it("loads only the exact explicitly selected platform with frozen policy identity", async () => {
++    const f = setup(false);
++    const selected = { ...candidate };
++    const result = f.start(selected);
++    selected.url = "https://audio.example/changed";
++    selected.source = "netease";
++    await f.prepare();
++    expect(await result).toMatchObject({ status: "committed" });
++    expect(usePlaybackRuntimeStore.getState().sourceSwitchAttempt).toMatchObject({
++      policyVersion: "captured-policy",
++      target: { source: "qq", audioUrl: candidate.url },
++    });
++  });
++
++  it.each([
++    [Number.NaN, "invalid_duration"],
++    [Infinity, "invalid_duration"],
++    [0, "invalid_duration"],
++  ])("fails safely for invalid metadata duration %s", async (duration, code) => {
++    const f = setup();
++    const result = f.start();
++    f.target.ready(duration);
++    await flush();
++    expect(await result).toMatchObject({ status: "failed", error: { phase: "preparing", code } });
++    expect(f.old.currentTime).toBe(42);
++    expect(f.old.pause).not.toHaveBeenCalled();
++  });
++
++  it("times out absent metadata instead of restarting at zero", async () => {
++    const f = setup();
++    const result = f.start();
++    await vi.advanceTimersByTimeAsync(1001);
++    expect(await result).toMatchObject({
++      status: "failed",
++      error: { phase: "preparing", code: "metadata_timeout" },
++    });
++    expect(f.target.seekWrites).toEqual([]);
++    expect(f.old.currentTime).toBe(42);
++  });
++
++  it.each([{ ranges: [] }, { ranges: [[80, 180]] }])(
++    "rejects uncovered seek ranges $ranges",
++    async ({ ranges }) => {
++      const f = setup();
++      const result = f.start();
++      f.target.ready();
++      f.target.ranges = ranges as Array<[number, number]>;
++      await flush();
++      expect(await result).toMatchObject({
++        status: "failed",
++        error: { phase: "seeking", code: "unseekable" },
++      });
++      expect(f.old.pause).not.toHaveBeenCalled();
++    }
++  );
++
++  it("requires seeked evidence and ignores queued events while actually seeking", async () => {
++    const f = setup();
++    const result = f.start();
++    f.target.ready();
++    await flush();
++    f.target.emit("seeked");
++    await vi.advanceTimersByTimeAsync(1001);
++    expect(await result).toMatchObject({
++      status: "failed",
++      error: { phase: "seeking", code: "seek_timeout" },
++    });
++    expect(f.target.play).not.toHaveBeenCalled();
++  });
++
++  it("ignores stale metadata/playing when currentSrc or paused state is wrong", async () => {
++    const f = setup();
++    f.target.src = f.target.currentSrc = "https://audio.example/previous";
++    const result = f.start();
++    f.target.ready();
++    f.target.currentSrc = "https://audio.example/previous";
++    await flush();
++    expect(f.target.seekWrites).toEqual([]);
++    f.target.currentSrc = f.target.src;
++    f.target.emit("canplay");
++    await flush();
++    f.target.seeked();
++    await flush();
++    f.target.paused = true;
++    f.target.emit("playing");
++    await vi.advanceTimersByTimeAsync(1001);
++    expect(await result).toMatchObject({
++      status: "failed",
++      error: { code: "confirmation_timeout" },
++    });
++  });
++
++  it("returns a visible below-duration adjustment for a shorter version", async () => {
++    const f = setup(false);
++    const result = f.start();
++    await f.prepare(30);
++    const outcome = await result;
++    expect(outcome).toMatchObject({
++      status: "committed",
++      adjustment: { reason: "shorter_duration", fromTime: 42 },
++    });
++    expect(f.target.currentTime).toBeGreaterThan(29);
++    expect(f.target.currentTime).toBeLessThan(30);
++  });
++
++  it("sanitizes play rejection instead of disclosing a URL/token", async () => {
++    const f = setup();
++    f.target.play = vi.fn().mockRejectedValue(new Error(candidate.url));
++    const result = f.start();
++    await f.prepare();
++    const outcome = await result;
++    expect(outcome).toMatchObject({
++      status: "failed",
++      error: { phase: "confirming", code: "play_rejected" },
++    });
++    expect(JSON.stringify(outcome)).not.toContain("secret");
++    expect(f.old.pause).not.toHaveBeenCalled();
++  });
++
++  it.each(["preparing", "seeking", "confirming"])(
++    "rolls back a media decode error in %s",
++    async (phase) => {
++      const f = setup();
++      const result = f.start();
++      if (phase !== "preparing") {
++        f.target.ready();
++        await flush();
++      }
++      if (phase === "confirming") {
++        f.target.seeked();
++        await flush();
++      }
++      f.target.error = { code: 3 } as MediaError;
++      f.target.emit("error");
++      expect(await result).toMatchObject({
++        status: "failed",
++        error: { phase, code: "media_decode_error" },
++      });
++      expect(usePlaybackRuntimeStore.getState().activeDeckId).toBe("old-deck");
++      expect(f.old.pause).not.toHaveBeenCalled();
++    }
++  );
++
++  it("latest B then C wins even if B's play resolves and its events arrive later", async () => {
++    const f = setup();
++    let finishB: (() => void) | undefined;
++    f.target.play = vi.fn(
++      () =>
++        new Promise<void>((resolve) => {
++          finishB = resolve;
++        })
++    );
++    const b = f.start();
++    await f.prepare();
++    const c = f.start({ ...candidate, source: "netease", url: "https://audio.example/c.mp3" });
++    expect(await b).toMatchObject({ status: "cancelled" });
++    await flush();
++    f.target.emit("loadedmetadata");
++    f.target.emit("seeked");
++    f.target.emit("playing");
++    finishB?.();
++    await flush();
++    expect(f.target.paused).toBe(true);
++    expect(f.ports.handoff).not.toHaveBeenCalled();
++    f.target.play = vi.fn(async () => {
++      f.target.paused = false;
++    });
++    await f.prepare();
++    f.target.playing();
++    expect(await c).toMatchObject({ status: "committed" });
++    expect(usePlaybackRuntimeStore.getState().sessionSourceOverride?.source).toBe("netease");
++    const pauseCount = f.target.pause.mock.calls.length;
++    await vi.advanceTimersByTimeAsync(10000);
++    expect(f.target.pause.mock.calls.length).toBe(pauseCount);
++  });
++
++  it("cancels only uncommitted work when the modal closes", async () => {
++    const f = setup();
++    const result = f.start();
++    f.coordinator.cancelUncommitted();
++    expect(await result).toMatchObject({ status: "cancelled" });
++    expect(usePlaybackRuntimeStore.getState().sourceSwitchAttempt?.phase).toBe("cancelled");
++    expect(f.old.pause).not.toHaveBeenCalled();
++  });
++
++  it.each(["song", "request"])("invalidates preparations on a new ordinary %s", async (change) => {
++    const f = setup();
++    const result = f.start();
++    usePlaybackRuntimeStore
++      .getState()
++      .requestPlayback(change === "song" ? "song-2" : "song-1", f.old.src, true, true);
++    expect(await result).toMatchObject({ status: "cancelled" });
++    expect(f.ports.handoff).not.toHaveBeenCalled();
++    expect(f.old.pause).not.toHaveBeenCalled();
++  });
++
++  it("reads latest seek, rate and paused intent after preparing", async () => {
++    const f = setup();
++    const result = f.start();
++    f.old.advanceTo(73);
++    f.old.playbackRate = 1.5;
++    f.intent(false);
++    await f.prepare();
++    expect(await result).toMatchObject({ status: "committed" });
++    expect(f.target.currentTime).toBe(73);
++    expect(f.target.playbackRate).toBe(1.5);
++    expect(f.target.play).not.toHaveBeenCalled();
++  });
++
++  it("interrupts a pending play wait when latest intent changes to pause", async () => {
++    const f = setup();
++    let resolvePlay: (() => void) | undefined;
++    f.target.play = vi.fn(
++      () =>
++        new Promise<void>((resolve) => {
++          resolvePlay = resolve;
++        })
++    );
++    const result = f.start();
++    await f.prepare();
++    f.intent(false);
++    await flush();
++    expect(await result).toMatchObject({ status: "committed" });
++    f.target.paused = false;
++    resolvePlay?.();
++    await flush();
++    expect(f.target.paused).toBe(true);
++    expect(usePlaybackRuntimeStore.getState().shouldPlay).toBe(false);
++  });
++
++  it("uses resumed intent during seek instead of committing a paused target", async () => {
++    const f = setup(false);
++    const result = f.start();
++    f.target.ready();
++    await flush();
++    f.intent(true);
++    f.target.seeked();
++    await flush();
++    expect(f.ports.handoff).not.toHaveBeenCalled();
++    f.target.playing();
++    expect(await result).toMatchObject({ status: "committed" });
++    expect(f.target.play).toHaveBeenCalledOnce();
++  });
++
++  it("re-aligns latest user seek and rate after slow play confirmation", async () => {
++    const f = setup();
++    const result = f.start();
++    await f.prepare();
++    f.old.advanceTo(95);
++    f.old.playbackRate = 0.75;
++    f.target.playing();
++    await flush();
++    expect(f.target.seekWrites).toEqual([42, 95]);
++    expect(f.ports.handoff).not.toHaveBeenCalled();
++    f.target.seeked();
++    f.target.playing();
++    expect(await result).toMatchObject({ status: "committed" });
++    expect(f.target.playbackRate).toBe(0.75);
++  });
++
++  it("uses token-safe unregister and cancels when the current registration leaves", async () => {
++    const f = setup(false);
++    const unregisterNew = f.coordinator.registerPlayer(f.ports);
++    f.unregister();
++    const result = f.start();
++    await f.prepare();
++    expect(await result).toMatchObject({ status: "committed" });
++    unregisterNew();
++    expect(await f.start()).toMatchObject({
++      status: "failed",
++      error: { code: "player_unavailable" },
++    });
++  });
++
++  it("seeks a small positive position exactly rather than treating it as zero", async () => {
++    const f = setup(false);
++    f.old.advanceTo(0.08);
++    const result = f.start();
++    await f.prepare();
++    expect(await result).toMatchObject({ status: "committed" });
++    expect(f.target.currentTime).toBe(0.08);
++    expect(f.target.seekWrites).toEqual([0.08]);
++  });
++
++  it("does not hand off a commit superseded synchronously by an ordinary request", async () => {
++    const f = setup(false);
++    const stop = usePlaybackRuntimeStore.subscribe((state) => {
++      if (state.sourceSwitchAttempt?.phase === "committed") {
++        state.requestPlayback("song-2", "https://audio.example/new.mp3", true, true);
++      }
++    });
++    const result = f.start();
++    await f.prepare();
++    const outcome = await result;
++    stop();
++    expect(outcome).toMatchObject({ status: "cancelled" });
++    expect(f.ports.handoff).not.toHaveBeenCalled();
++    expect(mixerMock.transitionConfirmed).not.toHaveBeenCalled();
++  });
++
++  it("requires data readiness as well as metadata", async () => {
++    const f = setup();
++    const result = f.start();
++    f.target.ready();
++    f.target.readyState = 1;
++    await flush();
++    expect(f.target.seekWrites).toEqual([]);
++    await vi.advanceTimersByTimeAsync(1001);
++    expect(await result).toMatchObject({ status: "failed", error: { code: "metadata_timeout" } });
++  });
++
++  it("sanitizes synchronous load failures and preparation Promise rejections", async () => {
++    const f = setup();
++    f.ports.prepareStandby = vi.fn().mockRejectedValue(new Error(candidate.url));
++    const outcome = await f.start();
++    expect(outcome).toMatchObject({
++      status: "failed",
++      error: { phase: "preparing", code: "prepare_failed" },
++    });
++    expect(JSON.stringify(outcome)).not.toContain("secret");
++    expect(f.old.pause).not.toHaveBeenCalled();
++  });
++
++  it("reports synchronous native seek rejection at the seeking phase", async () => {
++    const f = setup();
++    Object.defineProperty(f.target, "currentTime", {
++      get: () => 0,
++      set: () => {
++        throw new Error(candidate.url);
++      },
++    });
++    const result = f.start();
++    f.target.ready();
++    await flush();
++    const outcome = await result;
++    expect(outcome).toMatchObject({
++      status: "failed",
++      error: { phase: "seeking", code: "seek_failed" },
++    });
++    expect(JSON.stringify(outcome)).not.toContain("secret");
++  });
++
++  it("late rejected play cannot fail a completed pause-intent switch", async () => {
++    const f = setup();
++    let rejectPlay: ((error: Error) => void) | undefined;
++    f.target.play = vi.fn(
++      () =>
++        new Promise<void>((_resolve, reject) => {
++          rejectPlay = reject;
++        })
++    );
++    const result = f.start();
++    await f.prepare();
++    f.intent(false);
++    await flush();
++    expect(await result).toMatchObject({ status: "committed" });
++    rejectPlay?.(new Error(candidate.url));
++    await flush();
++    expect(usePlaybackRuntimeStore.getState().sourceSwitchAttempt?.phase).toBe("committed");
++    expect(usePlaybackRuntimeStore.getState().shouldPlay).toBe(false);
++  });
++
++  it("late B play/cleanup cannot pause C after C is confirmed and committed", async () => {
++    const f = setup();
++    let resolveB: (() => void) | undefined;
++    f.target.play = vi.fn(
++      () =>
++        new Promise<void>((resolve) => {
++          resolveB = resolve;
++        })
++    );
++    const b = f.start();
++    await f.prepare();
++    const c = f.start({ ...candidate, url: "https://audio.example/c.flac" });
++    expect(await b).toMatchObject({ status: "cancelled" });
++    f.target.play = vi.fn(async () => {
++      f.target.paused = false;
++    });
++    await f.prepare();
++    f.target.playing();
++    expect(await c).toMatchObject({ status: "committed" });
++    const pauseCount = f.target.pause.mock.calls.length;
++    resolveB?.();
++    f.target.emit("loadedmetadata");
++    f.target.emit("seeked");
++    f.target.emit("playing");
++    f.target.emit("error");
++    await flush();
++    await vi.advanceTimersByTimeAsync(10000);
++    expect(f.target.pause.mock.calls.length).toBe(pauseCount);
++    expect(f.target.paused).toBe(false);
++    expect(f.ports.handoff).toHaveBeenCalledOnce();
++  });
++
++  it("late preparation settlement cannot clear a reused target", async () => {
++    const f = setup(false);
++    const prepare = f.ports.prepareStandby;
++    let resolveB: (() => void) | undefined;
++    f.ports.prepareStandby = (input) => {
++      prepare(input);
++      return new Promise<void>((resolve) => {
++        resolveB = resolve;
++      });
++    };
++    const b = f.start();
++    f.ports.prepareStandby = prepare;
++    const c = f.start({ ...candidate, url: "https://audio.example/c.flac" });
++    expect(await b).toMatchObject({ status: "cancelled" });
++    await f.prepare();
++    expect(await c).toMatchObject({ status: "committed" });
++    const source = f.target.src;
++    const cleanupCount = vi.mocked(f.ports.cleanupStandby).mock.calls.length;
++    resolveB?.();
++    await flush();
++    expect(f.target.src).toBe(source);
++    expect(f.ports.cleanupStandby).toHaveBeenCalledTimes(cleanupCount);
++  });
++
++  it("limits repeated timeline drift rather than looping indefinitely", async () => {
++    const f = setup();
++    f.target.autoSeek = true;
++    f.target.play = vi.fn(async () => {
++      f.target.playing();
++      f.old.advanceTo(f.old.currentTime + 2);
++    });
++    const result = f.start();
++    f.target.ready();
++    await flush();
++    expect(await result).toMatchObject({
++      status: "failed",
++      error: { phase: "confirming", code: "alignment_timeout" },
++    });
++    expect(f.old.pause).not.toHaveBeenCalled();
++  });
++
++  it("current unregister cancels its in-flight preparation promptly", async () => {
++    const f = setup();
++    const result = f.start();
++    f.unregister();
++    expect(await result).toMatchObject({ status: "cancelled" });
++    expect(f.old.pause).not.toHaveBeenCalled();
++    expect(f.target.paused).toBe(true);
++  });
++
++  it("accepts fresh playable metadata with a redirected currentSrc", async () => {
++    const f = setup(false);
++    const result = f.start();
++    f.target.currentSrc = "https://cdn.example/final-b.flac";
++    f.target.readyState = 3;
++    f.target.duration = 180;
++    f.target.ranges = [[0, 180]];
++    f.target.emit("loadedmetadata");
++    await flush();
++    expect(f.target.seekWrites).toEqual([42]);
++    f.target.seeked();
++    await flush();
++    expect(await result).toMatchObject({ status: "committed" });
++    expect(usePlaybackRuntimeStore.getState().activeSource).toContain("/api/audio/proxy?");
++  });
++
++  it("does not mistake known B media for fresh redirected C metadata", async () => {
++    const f = setup(false);
++    const b = f.start();
++    f.target.ready();
++    await flush();
++    const previousSource = f.target.currentSrc;
++    const c = f.start({ ...candidate, url: "https://audio.example/c.flac" });
++    expect(await b).toMatchObject({ status: "cancelled" });
++    f.target.currentSrc = previousSource;
++    f.target.readyState = 3;
++    f.target.duration = 180;
++    f.target.ranges = [[0, 180]];
++    f.target.emit("loadedmetadata");
++    await flush();
++    expect(f.target.seekWrites).toEqual([42]);
++    expect(f.ports.handoff).not.toHaveBeenCalled();
++    f.coordinator.cancelUncommitted();
++    expect(await c).toMatchObject({ status: "cancelled" });
++  });
++
++  it("samples current user volume and mute at ownership transfer", async () => {
++    const f = setup();
++    const result = f.start();
++    await f.prepare();
++    f.old.volume = 0.22;
++    f.old.muted = true;
++    f.target.playing();
++    expect(await result).toMatchObject({ status: "committed" });
++    expect(f.target.volume).toBe(0.22);
++    expect(f.target.muted).toBe(true);
++  });
++
++  it("rechecks native error state at commit even without a fresh error event", async () => {
++    const f = setup();
++    const stop = usePlaybackRuntimeStore.subscribe((state) => {
++      if (state.sourceSwitchAttempt?.phase === "committing")
++        f.target.error = { code: 3 } as MediaError;
++    });
++    const result = f.start();
++    await f.prepare();
++    f.target.playing();
++    const outcome = await result;
++    stop();
++    expect(outcome).toMatchObject({
++      status: "failed",
++      error: { phase: "committing", code: "media_decode_error" },
++    });
++    expect(f.ports.handoff).not.toHaveBeenCalled();
++    expect(f.old.pause).not.toHaveBeenCalled();
++  });
++
++  it("does not commit a playing confirmation that becomes buffering at commit", async () => {
++    const f = setup();
++    let buffered = false;
++    const stop = usePlaybackRuntimeStore.subscribe((state) => {
++      if (!buffered && state.sourceSwitchAttempt?.phase === "committing") {
++        buffered = true;
++        f.target.emit("waiting");
++      }
++    });
++    const result = f.start();
++    await f.prepare();
++    f.target.playing();
++    await flush();
++    const committedTooSoon = vi.mocked(f.ports.handoff).mock.calls.length;
++    f.target.playing();
++    await flush();
++    const outcome = await result;
++    stop();
++    expect(committedTooSoon).toBe(0);
++    expect(outcome).toMatchObject({ status: "committed" });
++  });
++
++  it("rejects apparent seeked evidence that actually leaves a positive position at zero", async () => {
++    const f = setup(false);
++    f.old.advanceTo(0.08);
++    const result = f.start();
++    f.target.ready();
++    await flush();
++    f.target.advanceTo(0);
++    f.target.seeked();
++    await vi.advanceTimersByTimeAsync(1001);
++    expect(await result).toMatchObject({
++      status: "failed",
++      error: { phase: "seeking", code: "seek_timeout" },
++    });
++    expect(f.old.currentTime).toBe(0.08);
++  });
++
++  it("does not treat a target that already ended as confirmed playing", async () => {
++    const f = setup();
++    const result = f.start();
++    await f.prepare();
++    f.target.ended = true;
++    f.target.playing();
++    await vi.advanceTimersByTimeAsync(1001);
++    expect(await result).toMatchObject({
++      status: "failed",
++      error: { code: "confirmation_timeout" },
++    });
++    expect(f.old.pause).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/services/SourceSwitchCoordinator.ts b/src/services/SourceSwitchCoordinator.ts
+new file mode 100644
+index 0000000..76f8353
+--- /dev/null
++++ b/src/services/SourceSwitchCoordinator.ts
+@@ -0,0 +1,700 @@
++import { CrossfadeMixer } from "@/lib/audio/CrossfadeMixer";
++import type {
++  SourceSwitchIdentity,
++  SourceSwitchPendingPhase,
++  SourceSwitchStageError,
++} from "@/lib/audio/playbackStateMachine";
++import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
++import type { ResolvedAudioSource } from "./MultiSourceResolver";
++
++export interface SourceSwitchDeck {
++  id: string;
++  audio: HTMLAudioElement;
++}
++
++export interface SourceSwitchPlayerSnapshot {
++  songId: string | null;
++  requestId: number;
++  shouldPlay: boolean;
++  active: SourceSwitchDeck | null;
++  standby: SourceSwitchDeck | null;
++}
++
++export interface SourceSwitchPreparation {
++  deck: SourceSwitchDeck;
++  source: string;
++  candidate: Readonly<ResolvedAudioSource>;
++  signal: AbortSignal;
++  isCurrent: () => boolean;
++}
++
++export interface SourceSwitchHandoff {
++  from: SourceSwitchDeck;
++  to: SourceSwitchDeck;
++  source: string;
++  candidate: Readonly<ResolvedAudioSource>;
++  songId: string;
++  requestId: number;
++  shouldPlay: boolean;
++  currentTime: number;
++}
++
++export interface SourceSwitchPlayerPorts {
++  read: () => SourceSwitchPlayerSnapshot;
++  toMediaSource: (url: string) => string;
++  /** Set/load only this standby. Check isCurrent after every asynchronous operation. */
++  prepareStandby: (input: SourceSwitchPreparation) => void | Promise<void>;
++  /** Synchronous ref/media-owner/clock transfer after the runtime has atomically committed. */
++  handoff: (input: SourceSwitchHandoff) => void;
++  cleanupStandby: (input: {
++    deck: SourceSwitchDeck;
++    source: string;
++    isCurrent: () => boolean;
++  }) => void;
++}
++
++export interface SourceSwitchTimeAdjustment {
++  reason: "shorter_duration";
++  fromTime: number;
++  toTime: number;
++  message: string;
++}
++
++export type SourceSwitchResult =
++  | {
++      status: "committed";
++      attemptId: number;
++      requestId: number;
++      adjustment: SourceSwitchTimeAdjustment | null;
++    }
++  | { status: "cancelled"; attemptId: number | null }
++  | { status: "failed"; attemptId: number | null; error: SourceSwitchStageError };
++
++export interface SourceSwitchOptions {
++  songId: string;
++  policyVersion: string;
++}
++
++export interface SourceSwitchCoordinatorOptions {
++  stageTimeoutMs?: number;
++  totalTimeoutMs?: number;
++}
++
++const SEEK_TOLERANCE_SECONDS = 0.15;
++const MAX_ALIGNMENTS = 5;
++const ERROR_MESSAGES: Record<string, string> = {
++  player_unavailable: "播放器尚未就绪，请稍后重试。",
++  invalid_candidate: "所选音源无效，请重新选择。",
++  prepare_failed: "目标音源加载失败，请重试或选择其他音源。",
++  metadata_timeout: "目标音源加载超时，已保留原音源。",
++  invalid_duration: "目标音源时长无效，无法安全切换。",
++  invalid_timeline: "当前播放位置不可用，无法安全切换。",
++  unseekable: "目标音源无法定位到当前进度，已保留原音源。",
++  seek_failed: "目标音源定位失败，已保留原音源。",
++  seek_timeout: "目标音源定位超时，已保留原音源。",
++  play_rejected: "目标音源未能开始播放，已保留原音源。",
++  confirmation_timeout: "目标音源播放确认超时，已保留原音源。",
++  media_load_error: "目标音源加载失败，已保留原音源。",
++  media_decode_error: "目标音源无法解码，已保留原音源。",
++  media_unsupported: "目标音源格式无法播放，已保留原音源。",
++  alignment_timeout: "目标音源无法同步最新进度，已保留原音源。",
++};
++
++class SwitchFailure extends Error {
++  constructor(readonly code: string) {
++    super(code);
++  }
++}
++class SwitchCancelled extends Error {}
++
++function sourceIdentity(source: string): string {
++  try {
++    return new URL(source, typeof window === "undefined" ? undefined : window.location.href).href;
++  } catch {
++    return source;
++  }
++}
++
++function stageError(phase: SourceSwitchPendingPhase, code: string): SourceSwitchStageError {
++  return { phase, code, message: ERROR_MESSAGES[code] ?? ERROR_MESSAGES.prepare_failed };
++}
++
++function isAligned(audio: HTMLAudioElement, time: number): boolean {
++  return (
++    Number.isFinite(audio.currentTime) &&
++    audio.currentTime >= 0 &&
++    (time === 0 || audio.currentTime > 0) &&
++    Math.abs(audio.currentTime - time) <= SEEK_TOLERANCE_SECONDS
++  );
++}
++
++export class SourceSwitchCoordinator {
++  private registration: { token: symbol; ports: SourceSwitchPlayerPorts } | null = null;
++  private pending: { identity: SourceSwitchIdentity; cancel: () => void } | null = null;
++  private elementGenerations = new WeakMap<HTMLAudioElement, number>();
++  private nextElementGeneration = 1;
++  private readonly stageTimeoutMs: number;
++  private readonly totalTimeoutMs: number;
++
++  constructor(options: SourceSwitchCoordinatorOptions = {}) {
++    this.stageTimeoutMs = options.stageTimeoutMs ?? 7000;
++    this.totalTimeoutMs = options.totalTimeoutMs ?? 20000;
++  }
++
++  registerPlayer(ports: SourceSwitchPlayerPorts): () => void {
++    this.cancelUncommitted();
++    const registration = { token: Symbol("source-switch-player"), ports };
++    this.registration = registration;
++    return () => {
++      if (this.registration !== registration) return;
++      this.cancelUncommitted();
++      this.registration = null;
++    };
++  }
++
++  cancelUncommitted(): void {
++    this.pending?.cancel();
++  }
++
++  async switchTo(
++    candidate: ResolvedAudioSource,
++    options: SourceSwitchOptions
++  ): Promise<SourceSwitchResult> {
++    this.cancelUncommitted();
++    const registration = this.registration;
++    const snapshot = registration?.ports.read();
++    const initial = usePlaybackRuntimeStore.getState();
++    if (
++      !registration ||
++      !snapshot?.active ||
++      !snapshot.standby ||
++      snapshot.active.audio === snapshot.standby.audio ||
++      snapshot.active.id === snapshot.standby.id ||
++      snapshot.songId !== options.songId ||
++      snapshot.requestId !== initial.requestId ||
++      initial.targetSongId !== options.songId ||
++      initial.activeDeckId !== snapshot.active.id
++    ) {
++      return {
++        status: "failed",
++        attemptId: null,
++        error: stageError("preparing", "player_unavailable"),
++      };
++    }
++    const selected = Object.freeze({ ...candidate });
++    let source: string;
++    try {
++      source = registration.ports.toMediaSource(selected.url);
++      if (!selected.url.trim() || !source.trim()) throw new SwitchFailure("invalid_candidate");
++    } catch {
++      return {
++        status: "failed",
++        attemptId: null,
++        error: stageError("preparing", "invalid_candidate"),
++      };
++    }
++    const { ports } = registration;
++    const from = snapshot.active;
++    const to = snapshot.standby;
++    const target = to.audio;
++    const previousSelectedSource = sourceIdentity(target.currentSrc);
++    const previousRequestedSource = sourceIdentity(target.src);
++    let freshLoad = previousRequestedSource === sourceIdentity(source) && target.readyState >= 2;
++    const attemptId = initial.beginSourceSwitch({
++      songId: options.songId,
++      expectedRequestId: initial.requestId,
++      policyVersion: options.policyVersion,
++      target: {
++        source: selected.source,
++        audioUrl: selected.url,
++        format: selected.format,
++        quality: selected.quality,
++        isTrial: selected.isTrial,
++        name: selected.name,
++      },
++      fromSource: initial.activeSource,
++    });
++    if (attemptId === null) return { status: "cancelled", attemptId: null };
++    const identity: SourceSwitchIdentity = {
++      attemptId,
++      songId: options.songId,
++      expectedRequestId: initial.requestId,
++      targetAudioUrl: selected.url,
++    };
++    const generation = this.nextElementGeneration++;
++    this.elementGenerations.set(target, generation);
++    const mixer = CrossfadeMixer.getInstance();
++    target.volume = from.audio.volume;
++    target.muted = from.audio.muted;
++    const prepared = mixer.prepareSilentDeck(target);
++    target.pause();
++    const abort = new AbortController();
++    const deadline = Date.now() + this.totalTimeoutMs;
++    let adjustment: SourceSwitchTimeAdjustment | null = null;
++    let committedRequestId: number | null = null;
++    let cleanupDone = false;
++
++    const phase = (): SourceSwitchPendingPhase => {
++      const current = usePlaybackRuntimeStore.getState().sourceSwitchAttempt;
++      return current?.attemptId === attemptId &&
++        ["preparing", "seeking", "confirming", "committing"].includes(current.phase)
++        ? (current.phase as SourceSwitchPendingPhase)
++        : "preparing";
++    };
++    const ownsTarget = () =>
++      this.elementGenerations.get(target) === generation && prepared.isCurrent();
++    const isCurrent = () => {
++      if (abort.signal.aborted || this.registration !== registration || !ownsTarget()) return false;
++      const state = usePlaybackRuntimeStore.getState();
++      const current = ports.read();
++      const attempt = state.sourceSwitchAttempt;
++      return (
++        attempt?.attemptId === attemptId &&
++        attempt.target.audioUrl === selected.url &&
++        ["preparing", "seeking", "confirming", "committing"].includes(attempt.phase) &&
++        state.requestId === identity.expectedRequestId &&
++        state.targetSongId === identity.songId &&
++        state.activeDeckId === from.id &&
++        state.activeSource === initial.activeSource &&
++        current.songId === identity.songId &&
++        current.requestId === identity.expectedRequestId &&
++        current.active?.audio === from.audio &&
++        current.standby?.audio === target
++      );
++    };
++    const assertCurrent = () => {
++      if (!isCurrent()) throw new SwitchCancelled();
++    };
++    const observeLoad = () => {
++      if (!isCurrent() || sourceIdentity(target.src) !== sourceIdentity(source)) return;
++      if (
++        target.readyState === 0 ||
++        !target.currentSrc ||
++        (target.readyState >= 1 && sourceIdentity(target.currentSrc) !== previousSelectedSource)
++      )
++        freshLoad = true;
++    };
++    const matchesSource = () => {
++      if (sourceIdentity(target.src) !== sourceIdentity(source) || !target.currentSrc) return false;
++      const currentSource = sourceIdentity(target.currentSrc);
++      if (currentSource === sourceIdentity(source)) return true;
++      // Redirect URLs are valid after this load starts. A changed request still selecting the known
++      // previous resource is stale, even when its native queued event arrives on this same element.
++      return (
++        freshLoad &&
++        !(
++          currentSource === previousSelectedSource &&
++          previousRequestedSource !== sourceIdentity(source)
++        )
++      );
++    };
++    const canCleanup = () =>
++      ownsTarget() &&
++      ports.read().active?.audio !== target &&
++      (!target.src || sourceIdentity(target.src) === sourceIdentity(source));
++    const cleanup = () => {
++      if (!canCleanup()) return;
++      prepared.cancel();
++      if (!cleanupDone) {
++        cleanupDone = true;
++        try {
++          ports.cleanupStandby({ deck: to, source, isCurrent: canCleanup });
++        } catch {
++          /* media cleanup is best effort */
++        }
++      }
++    };
++    const cancel = () => {
++      if (committedRequestId !== null || abort.signal.aborted) return;
++      abort.abort();
++      usePlaybackRuntimeStore.getState().cancelSourceSwitch(identity);
++      cleanup();
++    };
++    this.pending = { identity, cancel };
++    const unsubscribe = usePlaybackRuntimeStore.subscribe((state) => {
++      // The atomic commit notifies subscribers before commitSourceSwitch returns its new ID.
++      if (
++        state.sourceSwitchAttempt?.attemptId === attemptId &&
++        state.sourceSwitchAttempt.phase === "committed"
++      )
++        return;
++      if (!isCurrent()) cancel();
++    });
++    const setPhase = (next: "seeking" | "confirming" | "committing", targetSeekTime?: number) => {
++      assertCurrent();
++      const current = phase();
++      const effective =
++        current === "committing" || (current === "confirming" && next === "seeking")
++          ? current
++          : next;
++      usePlaybackRuntimeStore
++        .getState()
++        .updateSourceSwitchPhase({ ...identity, phase: effective, targetSeekTime });
++      // Repeated valid updates return false; validity comes from the identity, not that result.
++      assertCurrent();
++    };
++    const checkMediaError = () => {
++      if (
++        sourceIdentity(target.src) !== sourceIdentity(source) ||
++        (target.currentSrc && !matchesSource()) ||
++        !target.error
++      )
++        return;
++      const code =
++        target.error.code === 3
++          ? "media_decode_error"
++          : target.error.code === 4
++            ? "media_unsupported"
++            : "media_load_error";
++      throw new SwitchFailure(code);
++    };
++
++    const wait = (
++      check: (event?: Event) => boolean,
++      events: string[],
++      timeoutCode: string,
++      operate?: (notify: () => void) => void
++    ): Promise<void> =>
++      new Promise((resolve, reject) => {
++        let settled = false;
++        const finish = (error?: unknown) => {
++          if (settled) return;
++          settled = true;
++          clearTimeout(timer);
++          for (const event of [...events, "error"]) target.removeEventListener(event, onEvent);
++          abort.signal.removeEventListener("abort", onAbort);
++          stopRuntime?.();
++          if (error) reject(error);
++          else resolve();
++        };
++        const evaluate = (event?: Event) => {
++          if (settled) return;
++          try {
++            assertCurrent();
++            checkMediaError();
++            if (check(event)) finish();
++          } catch (error) {
++            finish(error);
++          }
++        };
++        const onEvent = (event: Event) => evaluate(event);
++        const onAbort = () => finish(new SwitchCancelled());
++        for (const event of [...events, "error"]) target.addEventListener(event, onEvent);
++        abort.signal.addEventListener("abort", onAbort, { once: true });
++        const stopRuntime = usePlaybackRuntimeStore.subscribe(() => evaluate());
++        const timer = setTimeout(
++          () => {
++            if (!isCurrent()) finish(new SwitchCancelled());
++            else finish(new SwitchFailure(timeoutCode));
++          },
++          Math.max(0, Math.min(this.stageTimeoutMs, deadline - Date.now()))
++        );
++        try {
++          operate?.(() => evaluate());
++        } catch (error) {
++          finish(error);
++        }
++        evaluate();
++      });
++
++    const loaded = () => {
++      checkMediaError();
++      if (!matchesSource() || target.readyState < 1) return false;
++      if (!Number.isFinite(target.duration) || target.duration <= 0)
++        throw new SwitchFailure("invalid_duration");
++      return target.readyState >= 2;
++    };
++    const desiredTime = (): number => {
++      const time = from.audio.currentTime;
++      if (
++        !Number.isFinite(time) ||
++        time < 0 ||
++        !Number.isFinite(from.audio.playbackRate) ||
++        from.audio.playbackRate <= 0
++      ) {
++        throw new SwitchFailure("invalid_timeline");
++      }
++      if (!loaded()) throw new SwitchFailure("seek_failed");
++      const desired = Math.min(time, target.duration - Math.min(0.05, target.duration / 2));
++      adjustment =
++        time >= target.duration
++          ? {
++              reason: "shorter_duration",
++              fromTime: time,
++              toTime: desired,
++              message: "所选版本较短，播放位置已调整到该版本末尾附近。",
++            }
++          : null;
++      return desired;
++    };
++    const assertSeekable = (desired: number) => {
++      for (let index = 0; index < target.seekable.length; index++) {
++        if (
++          Number.isFinite(target.seekable.start(index)) &&
++          Number.isFinite(target.seekable.end(index)) &&
++          target.seekable.start(index) <= desired &&
++          target.seekable.end(index) >= desired
++        )
++          return;
++      }
++      throw new SwitchFailure("unseekable");
++    };
++    const align = async () => {
++      assertCurrent();
++      const desired = desiredTime();
++      setPhase("seeking", desired);
++      assertSeekable(desired);
++      target.playbackRate = from.audio.playbackRate;
++      target.defaultPlaybackRate = from.audio.playbackRate;
++      if (!target.seeking && target.currentTime === desired) return;
++      let seeked = false;
++      await wait(
++        (event) => {
++          if (
++            event?.type === "seeked" &&
++            matchesSource() &&
++            !target.seeking &&
++            isAligned(target, desired)
++          )
++            seeked = true;
++          return seeked && loaded() && !target.seeking;
++        },
++        ["seeked", "canplay"],
++        "seek_timeout",
++        () => {
++          try {
++            target.currentTime = desired;
++          } catch {
++            throw new SwitchFailure("seek_failed");
++          }
++        }
++      );
++    };
++    let playingConfirmed = false;
++    let playSequence = 0;
++    const isPlaying = () => loaded() && !target.seeking && !target.paused && !target.ended;
++    const observePlaying = (event: Event) => {
++      if (!isCurrent()) return;
++      if (event.type !== "playing") playingConfirmed = false;
++      else if (
++        playSequence > 0 &&
++        matchesSource() &&
++        target.readyState >= 2 &&
++        !target.seeking &&
++        !target.paused &&
++        !target.ended &&
++        !target.error
++      )
++        playingConfirmed = true;
++    };
++    for (const event of ["playing", "pause", "waiting"])
++      target.addEventListener(event, observePlaying);
++    for (const event of ["loadstart", "emptied", "loadedmetadata"])
++      target.addEventListener(event, observeLoad);
++    const confirm = async () => {
++      for (let round = 0; round < MAX_ALIGNMENTS; round++) {
++        assertCurrent();
++        const shouldPlay = usePlaybackRuntimeStore.getState().shouldPlay;
++        if (!shouldPlay) {
++          playingConfirmed = false;
++          if (!target.paused) target.pause();
++          if (usePlaybackRuntimeStore.getState().shouldPlay) continue;
++          if (loaded() && !target.seeking && target.paused) return;
++        } else if (playingConfirmed && isPlaying()) return;
++        else {
++          let fulfilled = false;
++          let rejected = false;
++          const thisPlay = ++playSequence;
++          await wait(
++            (event) => {
++              if (!usePlaybackRuntimeStore.getState().shouldPlay) return true;
++              if (rejected) throw new SwitchFailure("play_rejected");
++              if (event?.type === "playing" && isPlaying()) playingConfirmed = true;
++              return fulfilled && playingConfirmed && isPlaying();
++            },
++            ["playing", "canplay", "pause"],
++            "confirmation_timeout",
++            (notify) => {
++              playingConfirmed = false;
++              let play: Promise<void>;
++              try {
++                play = target.play();
++              } catch {
++                throw new SwitchFailure("play_rejected");
++              }
++              play.then(
++                () => {
++                  if (!ownsTarget()) return;
++                  if (thisPlay === playSequence) fulfilled = true;
++                  const state = usePlaybackRuntimeStore.getState();
++                  if (!isCurrent() && committedRequestId === null) cleanup();
++                  else if (
++                    !state.shouldPlay &&
++                    sourceIdentity(target.src) === sourceIdentity(source)
++                  )
++                    target.pause();
++                  notify();
++                },
++                () => {
++                  if (!ownsTarget() || thisPlay !== playSequence) return;
++                  rejected = true;
++                  notify();
++                }
++              );
++            }
++          );
++        }
++      }
++      throw new SwitchFailure("confirmation_timeout");
++    };
++
++    try {
++      let preparationDone = false;
++      let preparationFailed = false;
++      await wait(
++        () => {
++          if (preparationFailed) throw new SwitchFailure("prepare_failed");
++          return preparationDone && loaded();
++        },
++        ["loadedmetadata", "loadeddata", "canplay", "durationchange", "progress"],
++        "metadata_timeout",
++        (notify) => {
++          let preparation: void | Promise<void>;
++          try {
++            preparation = ports.prepareStandby({
++              deck: to,
++              source,
++              candidate: selected,
++              signal: abort.signal,
++              isCurrent,
++            });
++          } catch {
++            throw new SwitchFailure("prepare_failed");
++          }
++          observeLoad();
++          Promise.resolve(preparation).then(
++            () => {
++              if (!isCurrent()) {
++                cleanup();
++                return;
++              }
++              preparationDone = true;
++              notify();
++            },
++            () => {
++              if (!isCurrent()) {
++                cleanup();
++                return;
++              }
++              preparationFailed = true;
++              notify();
++            }
++          );
++        }
++      );
++      for (let round = 0; round < MAX_ALIGNMENTS; round++) {
++        if (Date.now() >= deadline) throw new SwitchFailure("alignment_timeout");
++        await align();
++        setPhase("confirming");
++        await confirm();
++        assertCurrent();
++        const desired = desiredTime();
++        assertSeekable(desired);
++        if (
++          from.audio.seeking ||
++          target.playbackRate !== from.audio.playbackRate ||
++          !isAligned(target, desired)
++        ) {
++          playingConfirmed = false;
++          continue;
++        }
++        setPhase("committing", desired);
++        const latest = usePlaybackRuntimeStore.getState();
++        if (
++          latest.shouldPlay !== !target.paused ||
++          from.audio.seeking ||
++          (latest.shouldPlay && !playingConfirmed) ||
++          (latest.shouldPlay && !isPlaying()) ||
++          target.playbackRate !== from.audio.playbackRate ||
++          !isAligned(target, desiredTime())
++        )
++          continue;
++        target.volume = from.audio.volume;
++        const muted = from.audio.muted;
++        const confirmation = latest.shouldPlay
++          ? { kind: "playing" as const, deckId: to.id, source: sourceIdentity(source) }
++          : {
++              kind: "paused" as const,
++              deckId: to.id,
++              source: sourceIdentity(source),
++              loaded: true as const,
++              seeked: true as const,
++              paused: true as const,
++            };
++        committedRequestId = latest.commitSourceSwitch({ ...identity, confirmation });
++        if (committedRequestId === null) throw new SwitchCancelled();
++        const committed = usePlaybackRuntimeStore.getState();
++        if (
++          abort.signal.aborted ||
++          this.registration !== registration ||
++          !ownsTarget() ||
++          committed.requestId !== committedRequestId ||
++          committed.targetSongId !== identity.songId ||
++          committed.activeDeckId !== to.id ||
++          committed.activeSource !== sourceIdentity(source) ||
++          committed.sourceSwitchAttempt?.attemptId !== attemptId ||
++          committed.sourceSwitchAttempt.phase !== "committed"
++        ) {
++          committedRequestId = null;
++          throw new SwitchCancelled();
++        }
++        try {
++          ports.handoff({
++            from,
++            to,
++            source,
++            candidate: selected,
++            songId: identity.songId,
++            requestId: committedRequestId,
++            shouldPlay: latest.shouldPlay,
++            currentTime: target.currentTime,
++          });
++        } finally {
++          mixer.transitionConfirmed(from.audio, prepared, {
++            muted,
++            canCleanupFromAudio: () => ports.read().active?.audio !== from.audio,
++          });
++        }
++        return { status: "committed", attemptId, requestId: committedRequestId, adjustment };
++      }
++      throw new SwitchFailure("alignment_timeout");
++    } catch (error) {
++      if (committedRequestId !== null) {
++        // Output/cleanup failure cannot undo the runtime's successful ownership transfer.
++        prepared.restoreOutput(from.audio.muted);
++        return { status: "committed", attemptId, requestId: committedRequestId, adjustment };
++      }
++      if (error instanceof SwitchCancelled || !isCurrent()) {
++        cancel();
++        return { status: "cancelled", attemptId };
++      }
++      const failure = stageError(
++        phase(),
++        error instanceof SwitchFailure ? error.code : "prepare_failed"
++      );
++      usePlaybackRuntimeStore.getState().failSourceSwitch({ ...identity, error: failure });
++      abort.abort();
++      cleanup();
++      return { status: "failed", attemptId, error: failure };
++    } finally {
++      for (const event of ["playing", "pause", "waiting"])
++        target.removeEventListener(event, observePlaying);
++      for (const event of ["loadstart", "emptied", "loadedmetadata"])
++        target.removeEventListener(event, observeLoad);
++      unsubscribe();
++      if (this.pending?.identity.attemptId === attemptId) this.pending = null;
++    }
++  }
++}
++
++export const sourceSwitchCoordinator = new SourceSwitchCoordinator();

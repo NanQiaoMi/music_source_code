@@ -17,8 +17,8 @@
 | 长期 backlog（跨季度） | `docs/nbl/BACKLOG.md`                                                |
 | 当前迭代实施计划       | `docs/nbl/plans/` 目录                                               |
 | 技术设计方案           | `docs/nbl/specs/` 目录                                               |
-| 设计系统               | `DESIGN.md`                                                          |
-| 产品策略               | `PRODUCT.md`                                                         |
+| 设计系统               | `docs/nbl/DESIGN.md`                                                 |
+| 产品策略               | `docs/nbl/PRODUCT.md`                                                |
 | 启动指南               | `STARTUP_GUIDE.md`                                                   |
 | 历史文档（已归档）     | `docs/nbl/archive/` 目录                                             |
 
@@ -86,4 +86,4 @@ npm run clean            # 清理 .next 缓存
 参见 `docs/nbl/ROADMAP.md`
 架构与性能总计划: `docs/nbl/plans/2026-10-21-architecture-performance-optimization.md`
 执行计划包: `docs/nbl/plans/2026-10-21-arch-perf-execution/README.md`（进度看板 TRACKING.md）
-当前阶段: S0 止血与基线（S0-1 于 2026-10-27 完成 checkpoint；S0-4/S0-6 完成；S0-7 于 2026-10-29 完成（8/8 ADR，D1/D7 Accepted、D2/D8 Deferred）；S0-2 本地完成待 push；S0-3 待 D2/端口统一；S0-5 partial（worktree 9、根文件 26））
+当前阶段: S0 止血与基线（S0-1 于 2026-10-27 完成 checkpoint；S0-4/S0-6 完成；S0-7 于 2026-10-29 完成（8/8 ADR，D1/D7 Accepted、D2/D8 Deferred）；S0-2 本地完成待 push；S0-3 待 D2/端口统一；S0-5 done（2026-10-30：worktree 4、根文件 20，E0-5 达成））

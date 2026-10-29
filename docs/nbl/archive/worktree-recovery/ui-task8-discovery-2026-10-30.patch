@@ -1,0 +1,137 @@
+diff --git a/src/components/player/QueuePanel.test.tsx b/src/components/player/QueuePanel.test.tsx
+new file mode 100644
+index 0000000..201434a
+--- /dev/null
++++ b/src/components/player/QueuePanel.test.tsx
+@@ -0,0 +1,107 @@
++import { act } from "react";
++import type { ImgHTMLAttributes } from "react";
++import { createRoot, type Root } from "react-dom/client";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++import { useQueueStore } from "@/store/queueStore";
++
++type MockImageProps = ImgHTMLAttributes<HTMLImageElement> & {
++  fill?: boolean;
++};
++
++vi.mock("next/image", () => ({
++  default: ({ fill: _fill, ...props }: MockImageProps) => <img {...props} />,
++}));
++
++vi.mock("framer-motion", async () => {
++  const React = await import("react");
++  type MotionProps = {
++    children?: React.ReactNode;
++  } & Record<string, unknown>;
++
++  const MotionElement = ({
++    animate: _animate,
++    exit: _exit,
++    initial: _initial,
++    transition: _transition,
++    whileTap: _whileTap,
++    ...props
++  }: MotionProps) => React.createElement("div", props);
++
++  const MotionButton = ({
++    animate: _animate,
++    exit: _exit,
++    initial: _initial,
++    transition: _transition,
++    whileTap: _whileTap,
++    ...props
++  }: MotionProps) => React.createElement("button", props);
++
++  return {
++    AnimatePresence: ({ children }: { children: React.ReactNode }) =>
++      React.createElement(React.Fragment, null, children),
++    motion: {
++      button: MotionButton,
++      div: MotionElement,
++    },
++  };
++});
++
++const playQueue = vi.fn();
++
++vi.mock("@/store/audioStore", () => ({
++  useAudioStore: {
++    getState: () => ({ playQueue }),
++  },
++}));
++
++describe("QueuePanel", () => {
++  let container: HTMLDivElement;
++  let root: Root;
++
++  beforeEach(() => {
++    localStorage.clear();
++    playQueue.mockClear();
++    useQueueStore.setState({
++      queue: [
++        {
++          id: "current",
++          title: "Current song",
++          artist: "MIMI",
++          duration: 180,
++          source: "local",
++        },
++        {
++          id: "next",
++          title: "Next song",
++          artist: "MIMI",
++          duration: 210,
++          source: "local",
++        },
++      ],
++      currentIndex: 0,
++      history: [],
++      playThroughMode: "normal",
++    });
++    container = document.createElement("div");
++    document.body.appendChild(container);
++    root = createRoot(container);
++  });
++
++  afterEach(async () => {
++    await act(async () => {
++      root.unmount();
++    });
++    container.remove();
++  });
++
++  it("separates the current song from the up-next queue", async () => {
++    const { QueuePanel } = await import("./QueuePanel");
++
++    await act(async () => {
++      root.render(<QueuePanel isOpen={true} onClose={() => undefined} />);
++    });
++
++    expect(container.textContent).toContain("当前播放");
++    expect(container.textContent).toContain("接下来");
++  });
++});
+diff --git a/src/components/player/SearchPanel.test.tsx b/src/components/player/SearchPanel.test.tsx
+index f1c39e5..9f596e1 100644
+--- a/src/components/player/SearchPanel.test.tsx
++++ b/src/components/player/SearchPanel.test.tsx
+@@ -136,4 +136,19 @@ describe("SearchPanel", () => {
+     expect(container.textContent).toContain("当前浏览器不支持语音搜索。");
+     expect(useSearchStore.getState().isVoiceSearch).toBe(false);
+   });
++
++  it("focuses the Search music searchbox when the command palette opens", async () => {
++    const { SearchPanel } = await import("./SearchPanel");
++
++    await act(async () => {
++      root.render(<SearchPanel isOpen={true} onClose={() => undefined} />);
++    });
++
++    const searchbox = container.querySelector(
++      'input[type="search"][aria-label="Search music"]'
++    );
++
++    expect(searchbox).not.toBeNull();
++    expect(document.activeElement).toBe(searchbox);
++  });
+ });

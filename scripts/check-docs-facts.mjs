@@ -81,17 +81,20 @@ try {
 } catch (e) {
   ports.push({ file: "package.json", port: null });
 }
-if (exists("Dockerfile")) {
-  const docker = read("Dockerfile");
+// S0-5：部署描述符已迁到 deploy/，根目录与 deploy/ 两处都认（兼容旧检出）
+const dockerfilePath = ["Dockerfile", "deploy/Dockerfile"].find((p) => exists(p));
+if (dockerfilePath) {
+  const docker = read(dockerfilePath);
   const expose = docker.match(/EXPOSE\s+(\d+)/);
   const env = docker.match(/ENV\s+PORT\s*=\s*(\d+)/);
-  ports.push({ file: "Dockerfile EXPOSE", port: expose ? Number(expose[1]) : null });
-  ports.push({ file: "Dockerfile ENV PORT", port: env ? Number(env[1]) : null });
+  ports.push({ file: dockerfilePath + " EXPOSE", port: expose ? Number(expose[1]) : null });
+  ports.push({ file: dockerfilePath + " ENV PORT", port: env ? Number(env[1]) : null });
 }
-if (exists("docker-compose.yml")) {
-  const compose = read("docker-compose.yml");
+const composePath = ["docker-compose.yml", "deploy/docker-compose.yml"].find((p) => exists(p));
+if (composePath) {
+  const compose = read(composePath);
   const pm = compose.match(/["']?(\d{4}):(\d{4})["']?/);
-  ports.push({ file: "docker-compose mapping", port: pm ? Number(pm[1]) : null });
+  ports.push({ file: composePath + " mapping", port: pm ? Number(pm[1]) : null });
 }
 const portValues = ports.map((p) => p.port).filter((p) => p !== null);
 const portConsistent = portValues.length > 0 && portValues.every((p) => p === portValues[0]);

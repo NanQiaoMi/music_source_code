@@ -1,0 +1,2 @@
+﻿ M src/components/player/SearchPanel.test.tsx
+?? src/components/player/QueuePanel.test.tsx

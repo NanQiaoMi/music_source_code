@@ -1,7 +1,7 @@
 # S0 阶段出口证据（M0 出口门）
 
 > 阶段计划：[S0-baseline.md](../S0-baseline.md) · 决策：[00-decisions.md](../00-decisions.md) · 看板：[TRACKING.md](../TRACKING.md)
-> 采集：2026-10-29 19:21–19:35 +08:00（首轮）/ **2026-10-29 22:20–22:55（决策收口复核，见 §8）** / **2026-10-30 00:26（真实 CI 收口，见 §9）**（DSH 子 agent，docs-only；不 push、不动主仓库、不改产品代码；§9 的 push 由用户授权后执行，本文只记录事实）
+> 采集：2026-10-29 19:21–19:35 +08:00（首轮）/ **2026-10-29 22:20–22:55（决策收口复核，见 §8）** / **2026-10-30 00:26（真实 CI 收口，见 §9）** / **2026-10-30 02:10（S0-5 收口，见 §10）**（DSH 子 agent，docs-only；不 push、不动主仓库、不改产品代码；§9 的 push 由用户授权后执行，本文只记录事实）
 > 工作树：`D:/26project/music_source_code_V1.1_full/_worktrees/arch-integration-s1-5`
 > 分支 / HEAD：`integration/s2-audio` @ `00ff8b2`（首轮）；决策收口复核基线 `a890604` — `docs: add goal status and handover`；**真实 CI 基线 `098ad9c`（= origin/master，master 首绿 run 40910653833）**
 > 基线 commit（不可变）：`2b991731a1e48d5b3ba8084cc2b18276fb5b1e7d`（2026-10-27 13:39:42），已核实是当前 HEAD 的祖先。
@@ -9,21 +9,21 @@
 
 **状态口径**：`done` 达成 · `partial` 部分达成（缺口逐条列出） · `blocked` 决策/授权阻塞 · `local-done` 本地完成但未 push · `stale` 基线过期 · `missing` 产物缺失。
 
-**结论（2026-10-30 00:26 更新）：M0 出口门仍未通过，唯一剩余未关项是 S0-5。** S0-1 done；**S0-2 done（真实 CI 绿：run 40910653833 @ `098ad9c`，Build/Quality/Coverage/Quality gate 4/4 success，wall 5m16s）**；S0-3 partial；S0-4 工具口径 done；S0-5 **partial**（worktree 9 > 5、根文件 26 > 20）；S0-6 v1 done + **基线已重建**（62/43，`--check` exit 0）；S0-7 **done**（8/8 ADR；D1/D7 Accepted、D2/D8 Deferred）。M0 剩余：S0-5 ≤5/≤20（S0-3 的 `npm start` 直证为历史缺口）。
+**结论（2026-10-30 02:10 更新）：M0 出口门已通过（S0 7/7）。** S0-1 done；**S0-2 done（真实 CI 绿：run 40910653833 @ `098ad9c`，Build/Quality/Coverage/Quality gate 4/4 success，wall 5m16s）**；S0-3 partial；S0-4 工具口径 done；S0-5 **done**（worktree 9→**4**、根文件 29→**20**；5 个 dirty worktree 以 patch+stash 归档后删除，见 §10）；S0-6 v1 done + **基线已重建**（62/43，`--check` exit 0）；S0-7 **done**（8/8 ADR；D1/D7 Accepted、D2/D8 Deferred）。**M0 剩余：无**（S0-3 的 3025 直证为历史缺口，已按验收偏差记录）。
 
 ---
 
 ## 1. 任务表（S0-1..S0-7）
 
-| ID   | 任务                            | 状态                               | 提交 / 关键文件                                                                                                                                                                             | 行数                                       | 测试 / 退出码                                                                                                      |
-| ---- | ------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| S0-1 | 处理脏改，锁定干净基线          | **done**                           | `2b99173`（checkpoint 快照）；`evidence/S0-dirty-inventory.txt`                                                                                                                             | 123 files，+27,294 / −1,967；脏改 122 路径 | tsc 0 · vitest 208 files/1284 tests · eslint 0/0 · build 0（均记录于 2026-10-27，未在本 pass 重跑）                |
-| S0-2 | CI 复活（master 触发 + 四门禁） | **done（2026-10-30，真实 CI 绿）** | `.github/workflows/deploy.yml`（188 行）；无 `ci.yml`；S0 期间随 `2b99173` 入库，CI-only 修复见 §9                                                                                          | YAML 重写（未单独计行）                    | **run 40910653833**：Build/Quality/Coverage/Quality gate **4/4 success**，wall 5m16s；`verify:docs` ci-branch PASS |
-| S0-3 | 构建产物与端口明确化            | **partial**                        | `84305f6`；`scripts/verify-static-export.mjs`、`scripts/verify-desktop-release-ready.mjs`、`package.json`、`scripts/build-static.mjs`、ARCHITECTURE                                         | 5 files，+163 / −46                        | 5 tests exit 0 · `verify-static-export` exit 2（out 缺失）· guard exit 1（冻结）· 3024 引用 0                      |
-| S0-4 | 文档事实修正                    | **done（工具）/ partial（清单）**  | `AGENTS.md`、`docs/nbl/ARCHITECTURE.md`、`docs/nbl/plans/INDEX.md`、`.github/pull_request_template.md`（随 `2b99173`）                                                                      | 文档不计行                                 | `npm run verify:docs` exit 0，fail=0 warn=0                                                                        |
-| S0-5 | 死层标记与仓库卫生              | **partial（2026-10-29 收口）**     | `195d996`（删 2 死文件 + gc 脚本）；coordinator 层后由 `1e7ffbc` 整体删除                                                                                                                   | 3 files，+82 / −113（含删 113 行）         | 死文件 0 引用 · **worktree 19→9**（目标 ≤5）· **根文件 33→26**（目标 ≤20）· ESLint coordinator 禁入已删            |
-| S0-6 | 测量基座 v1                     | **done（v1）/ 基线已重建**         | `scripts/perf/bundle-budget.mjs`、`scripts/perf/report-store-stats.mjs`(+test)、`scripts/check-docs-facts.mjs`、`perf/{budget,bundle-baseline,store-stats-baseline}.json`、`perf/README.md` | 脚本 + 3 份基线 JSON                       | `report-store-stats.test.mjs` 2 tests exit 0 · store-stats `--check` **exit 0（62/43，2026-10-29 重建）**          |
-| S0-7 | ADR D1-D8 评审与归档            | **done（2026-10-29）**             | `docs/nbl/adr/`：README + 0001..0008（8/8）                                                                                                                                                 | 计划 8 个 ADR，实际 8                      | 0001/0005 **Accepted**；0002/0008 Proposed（**Deferred**）；0003/0004/0006/0007 Proposed                           |
+| ID   | 任务                            | 状态                               | 提交 / 关键文件                                                                                                                                                                             | 行数                                       | 测试 / 退出码                                                                                                                                                 |
+| ---- | ------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S0-1 | 处理脏改，锁定干净基线          | **done**                           | `2b99173`（checkpoint 快照）；`evidence/S0-dirty-inventory.txt`                                                                                                                             | 123 files，+27,294 / −1,967；脏改 122 路径 | tsc 0 · vitest 208 files/1284 tests · eslint 0/0 · build 0（均记录于 2026-10-27，未在本 pass 重跑）                                                           |
+| S0-2 | CI 复活（master 触发 + 四门禁） | **done（2026-10-30，真实 CI 绿）** | `.github/workflows/deploy.yml`（188 行）；无 `ci.yml`；S0 期间随 `2b99173` 入库，CI-only 修复见 §9                                                                                          | YAML 重写（未单独计行）                    | **run 40910653833**：Build/Quality/Coverage/Quality gate **4/4 success**，wall 5m16s；`verify:docs` ci-branch PASS                                            |
+| S0-3 | 构建产物与端口明确化            | **partial**                        | `84305f6`；`scripts/verify-static-export.mjs`、`scripts/verify-desktop-release-ready.mjs`、`package.json`、`scripts/build-static.mjs`、ARCHITECTURE                                         | 5 files，+163 / −46                        | 5 tests exit 0 · `verify-static-export` exit 2（out 缺失）· guard exit 1（冻结）· 3024 引用 0                                                                 |
+| S0-4 | 文档事实修正                    | **done（工具）/ partial（清单）**  | `AGENTS.md`、`docs/nbl/ARCHITECTURE.md`、`docs/nbl/plans/INDEX.md`、`.github/pull_request_template.md`（随 `2b99173`）                                                                      | 文档不计行                                 | `npm run verify:docs` exit 0，fail=0 warn=0                                                                                                                   |
+| S0-5 | 死层标记与仓库卫生              | **done（2026-10-30）**             | `195d996`（删 2 死文件 + gc 脚本）；coordinator 层后由 `1e7ffbc` 整体删除                                                                                                                   | 3 files，+82 / −113（含删 113 行）         | 死文件 0 引用 · **worktree 19→9→4**（≤5 达成）· **根文件 33→26→20**（≤20 达成）· ESLint coordinator 禁入已删 · 5 个 dirty worktree 的 patch+stash 归档（§10） |
+| S0-6 | 测量基座 v1                     | **done（v1）/ 基线已重建**         | `scripts/perf/bundle-budget.mjs`、`scripts/perf/report-store-stats.mjs`(+test)、`scripts/check-docs-facts.mjs`、`perf/{budget,bundle-baseline,store-stats-baseline}.json`、`perf/README.md` | 脚本 + 3 份基线 JSON                       | `report-store-stats.test.mjs` 2 tests exit 0 · store-stats `--check` **exit 0（62/43，2026-10-29 重建）**                                                     |
+| S0-7 | ADR D1-D8 评审与归档            | **done（2026-10-29）**             | `docs/nbl/adr/`：README + 0001..0008（8/8）                                                                                                                                                 | 计划 8 个 ADR，实际 8                      | 0001/0005 **Accepted**；0002/0008 Proposed（**Deferred**）；0003/0004/0006/0007 Proposed                                                                      |
 
 ### 1.1 S0-1 处理 55 项未提交手势改动 — done
 
@@ -80,7 +80,7 @@
   - **悬空 ESLint coordinator 禁入已删除**：`.eslintrc.json` 的 `no-restricted-imports` 只指向已被 `1e7ffbc` 整体删除的 `src/store/coordinator`，规则空转；整条规则移除后 `npm run lint` 仍 0 error / 0 warning。
   - **worktree 19→9**：逐个 `git status --porcelain` 验证后删除 10 个 **clean** worktree（`arch-perf-s1-2a/s1-5/s1-6a/s1-7/s1-9/s2-1/s3-1/s4-1/s5-1`、`promo-video-pipeline`）；删除前先把指向主仓库的 `node_modules` junction 以 `rmdir` 摘除（避免递归删除主仓库依赖），删除后主仓库 `node_modules/next/package.json` 仍在；分支全部保留（`feature/arch-perf-*` 102 + `feature/promo-video-pipeline`）。保留 7 个 dirty worktree + 主仓库 + 本集成 worktree。
   - **根目录 33→26**：5 张 `daily_video_editing*.png` + `gemini-svg (3).svg` 以 `git mv` 归档到 `docs/nbl/archive/root-artifacts/`（无文档引用；`package-handover.mjs` 的 basename 排除规则仍生效）；删除生成的 `tsconfig.tsbuildinfo`（gitignored，tsc 会再生）。
-  - **未达成**：worktree 9 > 5、根文件 26 > 20。剩余 7 个 worktree 全部 dirty（属他人/其它会话工作，按"只删 clean"边界不删）；根目录余项为核心配置（`package.json`/`package-lock.json`/`tsconfig.json`/`next.config.js`/`vitest.config.ts`/`tailwind.config.ts`/`postcss.config.js`/`.eslintrc.json`/`.dependency-cruiser.cjs`/lint/format 配置/`Dockerfile`/`docker-compose.yml`/`.env.example`/`LICENSE`）与主文档（`README.md`/`AGENTS.md`/`DESIGN.md`/`PRODUCT.md`/`STARTUP_GUIDE.md`/`skills-lock.json`）及构建生成的 `next-env.d.ts`，继续删/移会破坏构建或文档事实 → 按任务约定记 **partial**。
+  - **2026-10-29 未达成（历史）**：worktree 9 > 5、根文件 26 > 20；剩余 7 个 worktree 均 dirty、根目录余项为核心配置与主文档。**2026-10-30 已收口**：worktree **4**、根文件 **20**（见 §10），E0-5 达标。
 
 ### 1.6 S0-6 测量基座 v1 — done（v1），基线 stale
 
@@ -150,17 +150,17 @@
 
 判定依据：S0-baseline.md §1 的出口指标 + 本次复核。
 
-| 出口            | 指标                                                      | 判定                 | 证据                                                                                              | 阻塞原因 / 缺口                                                                   | 需要谁做什么                                                                  |
-| --------------- | --------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| E0-1 基线可信   | 干净树 + 基线 commit + 4 命令复测                         | **达成（记录）**     | `2b99173`（祖先）、脏改清单、2026-10-27 四命令 exit 0                                             | 本 pass 未在 `2b99173` 重跑 4 命令（只验证 tsc@HEAD）                             | 无（如需强证据：在 `2b99173` 的 worktree 重跑 4 命令）                        |
-| E0-2 CI 真实    | PR/master 触发、required checks、3 连绿 ≤20min            | **partial**          | `deploy.yml` 触发已改；`verify:docs` ci-branch PASS                                               | 无 push、无 Actions 运行、无 required checks 配置、CI Node 20 ≠ 本地 Node 24      | **用户/仓库 owner**：授权 push + 配置 required checks（Q02）；决定 Q03        |
-| E0-3 发布止血   | out 缺失/过期 exit≠0；3024=0；3025 返回 200               | **partial**          | guard exit 1；verify-static-export exit 2；3024 grep 0；ports PASS                                | `next start -p 3025` 的 200 未直接取证（历史用 3026）                             | Lead：在空闲端口/停 dev 后补一次 3025 冒烟并留日志；D2 拍板后解冻             |
-| E0-4 文档事实   | docs-facts exit 0、违规 0                                 | **达成（工具口径）** | `verify:docs` exit 0 fail=0 warn=0；人工清单 2026-10-29 收口                                      | phase1 banner/PR 模板已补；ROADMAP:14 经最新构建核实为 28，无需改                 | 无（Q23 关闭）                                                                |
-| E0-5 死层与卫生 | coordinator 外部 0 + ESLint 禁入；worktree ≤5；根文件 ≤20 | **partial**          | 死文件已删、coordinator 层已删；**2026-10-29**：悬空 ESLint 禁入已删、worktree 19→9、根文件 33→26 | worktree **9 > 5**、根文件 **26 > 20**；剩余 7 个 worktree 均 dirty（不可静默删） | **用户**：授权清理 dirty worktree 或调整 E0-5 口径（≤5/≤20）                  |
-| E0-6 测量基座   | 一条命令出 JSON；2 次 diff=0；数字复现                    | **达成（工具口径）** | 3 个基线 JSON + 脚本；docs-facts exit 0；**store-stats 基线已重建（62/43，`--check` exit 0）**    | bundle 基线源 JSON 缺失；2 次 diff 未记录                                         | 补 `bundle-report.json` 或改 baseline 的 source 字段（不影响 `--check` 棘轮） |
-| E0-7 决策       | 8 ADR 状态明确；D1/D2/D7 有结论                           | **达成**             | **8/8 ADR**；D1/D7 Accepted、D2/D8 Deferred；0003/0004/0006/0007 Proposed                         | 无（D3/D4/D5/D6 非 S0 门内）                                                      | 无                                                                            |
+| 出口            | 指标                                                      | 判定                 | 证据                                                                                                                    | 阻塞原因 / 缺口                                                              | 需要谁做什么                                                                  |
+| --------------- | --------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| E0-1 基线可信   | 干净树 + 基线 commit + 4 命令复测                         | **达成（记录）**     | `2b99173`（祖先）、脏改清单、2026-10-27 四命令 exit 0                                                                   | 本 pass 未在 `2b99173` 重跑 4 命令（只验证 tsc@HEAD）                        | 无（如需强证据：在 `2b99173` 的 worktree 重跑 4 命令）                        |
+| E0-2 CI 真实    | PR/master 触发、required checks、3 连绿 ≤20min            | **partial**          | `deploy.yml` 触发已改；`verify:docs` ci-branch PASS                                                                     | 无 push、无 Actions 运行、无 required checks 配置、CI Node 20 ≠ 本地 Node 24 | **用户/仓库 owner**：授权 push + 配置 required checks（Q02）；决定 Q03        |
+| E0-3 发布止血   | out 缺失/过期 exit≠0；3024=0；3025 返回 200               | **partial**          | guard exit 1；verify-static-export exit 2；3024 grep 0；ports PASS                                                      | `next start -p 3025` 的 200 未直接取证（历史用 3026）                        | Lead：在空闲端口/停 dev 后补一次 3025 冒烟并留日志；D2 拍板后解冻             |
+| E0-4 文档事实   | docs-facts exit 0、违规 0                                 | **达成（工具口径）** | `verify:docs` exit 0 fail=0 warn=0；人工清单 2026-10-29 收口                                                            | phase1 banner/PR 模板已补；ROADMAP:14 经最新构建核实为 28，无需改            | 无（Q23 关闭）                                                                |
+| E0-5 死层与卫生 | coordinator 外部 0 + ESLint 禁入；worktree ≤5；根文件 ≤20 | **达成**             | 死文件已删、coordinator 层已删；**2026-10-29**：ESLint 禁入删除、19→9、33→26；**2026-10-30**：9→**4**、29→**20**（§10） | 无（worktree 4 ≤5、根文件 20 ≤20）                                           | 无（用户 2026-10-30 授权清理，patch+stash 可恢复）                            |
+| E0-6 测量基座   | 一条命令出 JSON；2 次 diff=0；数字复现                    | **达成（工具口径）** | 3 个基线 JSON + 脚本；docs-facts exit 0；**store-stats 基线已重建（62/43，`--check` exit 0）**                          | bundle 基线源 JSON 缺失；2 次 diff 未记录                                    | 补 `bundle-report.json` 或改 baseline 的 source 字段（不影响 `--check` 棘轮） |
+| E0-7 决策       | 8 ADR 状态明确；D1/D2/D7 有结论                           | **达成**             | **8/8 ADR**；D1/D7 Accepted、D2/D8 Deferred；0003/0004/0006/0007 Proposed                                               | 无（D3/D4/D5/D6 非 S0 门内）                                                 | 无                                                                            |
 
-**M0 出口门（2026-10-29 收口后）：仍未通过。** 达成：E0-1（记录）、E0-4（工具口径）、E0-6（工具口径，基线重建）、E0-7（决策）；partial：E0-2（待 push）、E0-3（3025 冒烟/解冻待 D2）、E0-5（worktree 9>5、根文件 26>20）。按 S0-baseline.md “未达标项写原因并降级为 S1 阻塞债务，不允许静默跳过”——本文件即该原因的正式记录。
+**M0 出口门（2026-10-30 02:10）：通过。** E0-1（记录）、E0-2（真实 CI 绿，§9）、E0-4（工具口径）、E0-5（worktree 4 / 根文件 20，§10）、E0-6（工具口径，基线重建）、E0-7（决策 8/8）达成；E0-3 的 3025 直证仍为历史缺口（已按偏差记录）。2026-10-29 的 partial 结论（E0-2 待 push、E0-5 9/26）已由 §9、§10 关闭。
 
 ---
 
@@ -177,7 +177,7 @@
 | 7   | D1/D2/D7/D8 签字结论                         | S0-7           | **已记录（2026-10-29）**          | —（D1/D7 Accepted；D2/D8 Deferred；见 00-decisions.md）        |
 | 8   | `next start -p 3025` HTTP 200 日志           | S0-3           | 缺失（历史为 3026）               | E0-3 的“3025 返回 200”只能算间接                               |
 | 9   | `store-stats-baseline.json` 的 43-key 口径   | S0-6 / S6-2    | **已重建为 43-key（2026-10-29）** | —（`--check` exit 0）                                          |
-| 10  | worktree ≤5 / 根文件 ≤20 的达成证据          | S0-5           | **部分达成（9 / 26）**            | E0-5 仍不关闭（7 个 worktree dirty、根目录余项必需）           |
+| 10  | worktree ≤5 / 根文件 ≤20 的达成证据          | S0-5           | **达成（4 / 20，2026-10-30）**    | E0-5 关闭（§10：5 个 dirty worktree patch+stash 后删除）       |
 | 11  | 2 次基线运行 diff=0 记录                     | S0-6           | 未记录                            | E0-6 的“可复现”仅部分成立                                      |
 | 12  | `scripts/assert-static-export.mjs`（计划名） | S0-3           | 实际为 `verify-static-export.mjs` | 计划文档命名不一致（文档债，非功能缺口）                       |
 
@@ -301,21 +301,21 @@ node scripts/perf/report-store-stats.mjs --check
 
 ### 8.5 任务口径变化（本次提交）
 
-| 任务 | 之前    | 现在        | 依据                                                                                        |
-| ---- | ------- | ----------- | ------------------------------------------------------------------------------------------- |
-| S0-7 | blocked | **done**    | 8/8 ADR；D1/D2/D7/D8 结论与日期入档（00-decisions.md「2026-10-29 用户批准记录」）           |
-| S4-7 | partial | **done**    | D1：保留 archive + legacy key；7b 已删 4 文件 / 571 行；E4-9「rg=0」按偏差豁免              |
-| S6-9 | 未勾选  | **done**    | 用户 2026-10-29 接受 M6 边 23>6；version / 整店持久化缺口另记、不在批准范围                 |
-| S7-1 | partial | **done**    | 用户接受模块大小偏差（platforms.ts 371、门面 1,133）；裸 fetch 16→0、插件注册表、熔断已达成 |
-| S0-5 | review  | **partial** | ESLint 禁入已删、worktree 19→9、根文件 33→26；≤5/≤20 未达                                   |
-| 合计 | 60/74   | **64/74**   | +S0-7 +S4-7 +S6-9 +S7-1                                                                     |
+| 任务 | 之前    | 现在                                                       | 依据                                                                                                   |
+| ---- | ------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| S0-7 | blocked | **done**                                                   | 8/8 ADR；D1/D2/D7/D8 结论与日期入档（00-decisions.md「2026-10-29 用户批准记录」）                      |
+| S4-7 | partial | **done**                                                   | D1：保留 archive + legacy key；7b 已删 4 文件 / 571 行；E4-9「rg=0」按偏差豁免                         |
+| S6-9 | 未勾选  | **done**                                                   | 用户 2026-10-29 接受 M6 边 23>6；version / 整店持久化缺口另记、不在批准范围                            |
+| S7-1 | partial | **done**                                                   | 用户接受模块大小偏差（platforms.ts 371、门面 1,133）；裸 fetch 16→0、插件注册表、熔断已达成            |
+| S0-5 | review  | **done（2026-10-30 追记）**                                | 2026-10-29：ESLint 禁入已删、worktree 19→9、根文件 33→26；**2026-10-30**：worktree 4、根文件 20（§10） |
+| 合计 | 60/74   | **64/74**（2026-10-30 追记：**68/74**，+S0-2 +S7-9 +S0-5） |
 
 ### 8.6 风险与回滚
 
 - 删除的 10 个 worktree 均 clean 且分支保留；恢复方式：`git worktree add <path> <branch>`。
 - 根目录图片归档后无文档引用；`scripts/package-handover.mjs` 的 basename 排除规则仍生效。
-- 未动 7 个 dirty worktree；S0-5 的 ≤5 / ≤20 需用户另行授权清理他人改动或调整口径。
-- `next-env.d.ts` 保留（Next/tsc 需要，gitignored），故根文件无法在本轮安全降到 ≤20。
+- ~~未动 7 个 dirty worktree~~ → **2026-10-30 已由用户授权**：5 个 dirty worktree 以 patch+`stash push -u` 归档后删除（`docs/nbl/archive/worktree-recovery/`），另 2 个（`arch-perf-s6-1`、`promo-video`）带 ignored 资产故保留。
+- `next-env.d.ts` 保留（Next/tsc 需要，gitignored）；**2026-10-30 根文件已到 20**（迁出 deploy/config/.husky/docs 共 6 项 + 删 3 个缓存/日志，见 §10）。
 - 未 push、未合并 master；S0-2 / S8-3 仍缺真实 CI 证据；bundle hardsMax 违规（maxAsyncChunk/publicMB）与真机测量不在本次批准范围。**（2026-10-30 追记：S0-2 已由 §9 的真实 run 收口；S8-3 仍缺 nightly 证据。）**
 
 ---
@@ -384,6 +384,66 @@ node scripts/perf/report-store-stats.mjs --check
 
 ---
 
+## 10. 2026-10-30 01:40–02:10 S0-5 收口（worktree ≤5 / 根文件 ≤20）
+
+> 触发：用户授权清理 dirty worktree 与根目录文件（约束：不 push、不动主仓库 tracked 文件、不允许数据丢失）。
+> 口径：命令均在本 worktree 根目录执行；`git worktree list` 前 **9** → 后 **4**；根目录文件（`Get-ChildItem -File`，不含 `.git`）**29** → **20**。
+> 主仓库 checkout 停在 `checkpoint/gesture-air-control-overhaul-20261027`（`11d661e`），与 `integration/s2-audio` 分叉：主仓库根目录仍是旧快照（32 文件，含 6 个已在集成分支归档的图片），**E0-5 以分支 of record（本 worktree）为准**，合并进主仓库后自然同步下降。
+
+### 10.1 worktree 9 → 4
+
+删除 5 个 dirty worktree，每个先做三步归档（可恢复），再 `git worktree remove --force`：
+
+1. `git add -A -N` → `git diff --binary --output=docs/nbl/archive/worktree-recovery/<name>-2026-10-30.patch`（**含 untracked 全文**）→ `git reset -q` 还原索引；
+2. `git status --porcelain > <name>-2026-10-30.status.txt`（删除前完整路径清单）；
+3. `git stash push -u -m "s0-5 archive <name> 2026-10-30"`（**stash 在 repo 内、含 untracked**）→ 工作树变干净。
+
+| #   | worktree（删除前）                                                             | 分支 / HEAD                                   | 改动             | recovery patch                                                          | stash 名                                           |
+| --- | ------------------------------------------------------------------------------ | --------------------------------------------- | ---------------- | ----------------------------------------------------------------------- | -------------------------------------------------- |
+| 1   | `C:/Users/Legion/.codex/worktrees/audio-source-switch-task4/music_source_code` | feature/audio-source-switch-task4 @ `ea43c0e` | 4（2M + 2??）    | `audio-switch-task4-2026-10-30.patch`（70KB / 1,805 insertions）        | `s0-5 archive audio-switch-task4 2026-10-30`       |
+| 2   | `C:/Users/Legion/.codex/worktrees/folia-webgl-mv-merge/music_source_code`      | feature/folia-webgl-mv-merge @ `c367699`      | 26（17M + 9??）  | `folia-webgl-mv-merge-2026-10-30.patch`（322KB / 6,239 insertions）     | `s0-5 archive folia-webgl-mv-merge 2026-10-30`     |
+| 3   | `D:/26project/music_source_code_V1.1_full/_codex_player_sync_verify`           | detached @ `06bccd8`                          | 47（25M + 22??） | `codex-player-sync-verify-2026-10-30.patch`（354KB / 5,647 insertions） | `s0-5 archive codex-player-sync-verify 2026-10-30` |
+| 4   | `.../.worktrees/ui-task8-discovery`                                            | codex/ui-discovery-settings @ `b7743ce`       | 2（1M + 1??）    | `ui-task8-discovery-2026-10-30.patch`（3.9KB）                          | `s0-5 archive ui-task8-discovery 2026-10-30`       |
+| 5   | `.../.worktrees/ui-task9-tools`                                                | codex/ui-tools-analysis @ `b7743ce`           | 2（2??）         | `ui-task9-tools-2026-10-30.patch`（6.1KB）                              | `s0-5 archive ui-task9-tools 2026-10-30`           |
+
+- 删除前逐个确认：`git status --porcelain` 非空（全 dirty）；`Get-CimInstance Win32_Process` 无 node/electron 指向该路径；无 1h 内新文件（最新改动 2026-10-17 及更早）。
+- `git worktree remove` 前先 `cmd /c rmdir` 摘除指向主仓库的 `node_modules` junction（避免递归删依赖），残留空目录与嵌套 `.worktrees` 逐个清理；`git worktree list` 删除后即为 4，分支引用全部保留（另可用 `git worktree add` 重建）。
+- **保留 2 个（≤5 的"另 2 个"）**：`arch-perf-s6-1`（feature/arch-perf-s7-9，2026-10-29 15:25 最新活动；`scratch/`、`.env.local`、`coverage/` 等 ignored 文件不入 stash，删除即不可恢复）与 `promo-video`（docs/promo-video；`promo/` 下约 187MB ignored 渲染资产 + `promo-final.mp4` 无法由 patch/stash 恢复）。
+- 恢复：`git worktree add <path> <branch>` 后 `git stash apply '<stash 名>'`；或 `git apply docs/nbl/archive/worktree-recovery/<name>-2026-10-30.patch`；清单见同目录 `README.md`。
+
+### 10.2 根文件 29 → 20
+
+| 项                                      | 动作                   | 说明                                                                                                     |
+| --------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------- |
+| `test-full.log`、`vitest-ci-output.log` | 删除                   | ignored 日志（`*.log`），非仓库内容                                                                      |
+| `tsconfig.tsbuildinfo`                  | 删除                   | ignored 构建缓存                                                                                         |
+| `Dockerfile`、`docker-compose.yml`      | `git mv` → `deploy/`   | compose 改 `context: ..` + `dockerfile: deploy/Dockerfile`；`check-docs-facts` 兼容根/`deploy/` 两处路径 |
+| `.dependency-cruiser.cjs`               | `git mv` → `config/`   | 同步 `package.json verify:layers`、`scripts/verify-layers.test.mjs`、`docs/nbl/CI.md`、config 头注释     |
+| `.lintstagedrc.json`                    | `git mv` → `.husky/`   | `.husky/pre-commit` 改为 `npx lint-staged --config .husky/lintstagedrc.json`                             |
+| `DESIGN.md`、`PRODUCT.md`               | `git mv` → `docs/nbl/` | `AGENTS.md` 快速定位表链接同步                                                                           |
+| `tsconfig.json`                         | 编辑                   | 增 `"tsBuildInfoFile": "node_modules/.cache/tsconfig.tsbuildinfo"`，`tsc --noEmit` 不再回写根目录        |
+
+保留 20 个：`.env.example`、`.env.local`(ignored)、`.eslintrc.json`、`.gitattributes`、`.gitignore`、`.prettierignore`、`.prettierrc`、`AGENTS.md`、`LICENSE`、`README.md`、`STARTUP_GUIDE.md`、`skills-lock.json`、`next.config.js`、`next-env.d.ts`(ignored)、`package.json`、`package-lock.json`、`postcss.config.js`、`tailwind.config.ts`、`tsconfig.json`、`vitest.config.ts`。
+
+### 10.3 门禁复跑（本 worktree）
+
+| 命令                                            | 结果                                                                   |
+| ----------------------------------------------- | ---------------------------------------------------------------------- |
+| `node scripts/check-docs-facts.mjs`             | **exit 0，fail=0 warn=0**；ports 从 `deploy/` 读到 3025/3025/3025 一致 |
+| `npx tsc --noEmit`                              | **exit 0**（缓存写 `node_modules/.cache`，根目录保持 20）              |
+| `npm run verify:layers`                         | **exit 0，0 error / 28 warning**（与基线一致）                         |
+| `npx vitest run scripts/verify-layers.test.mjs` | **3 passed**（新 config 路径生效）                                     |
+
+### 10.4 副作用、风险与回滚
+
+- Docker：改用 `docker compose -f deploy/docker-compose.yml up --build` 或 `docker build -f deploy/Dockerfile .`（build context 仍是仓库根）。
+- dependency-cruiser：`npm run verify:layers` 与单测均已指向 `config/`，CI 走 npm script 无需改 workflow；仓库内已无直接写死旧路径的调用。
+- `DESIGN.md`/`PRODUCT.md` 迁到 `docs/nbl/` 后，`skills/impeccable` 仍按"仓库根 DESIGN.md/PRODUCT.md"约定查找（`skills/impeccable/scripts/load-context.mjs`）：从根目录跑该 skill 需把两份文件拷回根或把 cwd 指向 `docs/nbl/`——已知偏差，不影响 npm build/test/CI。
+- 删除的 5 个 worktree 的 ignored 内容（`node_modules`、`.next`、`.cache`、`tsbuildinfo`）未归档：均可由 `npm install`/`npm run build` 再生；这些 worktree 均无 `.env.local`（有该文件的 `arch-perf-s6-1` 已保留）。
+- 回滚：`git revert <commit>` 恢复根目录迁移；worktree 用 `git worktree add` + `git stash apply` 或 patch 重建。
+
+---
+
 ## 附录 A：历史 checkpoint 日志（原文保留）
 
 > 以下为 2026-10-27 至 2026-10-29 期间本文件的历史内容，逐字保留；其中 “Branch: checkpoint/... @ 2b99173” 在 2026-10-29 已漂移为 `11d661e`（见 §2 #2）。
@@ -441,11 +501,12 @@ Environment: Windows 11, Node v24.16.0 (same as HANDOVER §2/§7).
 
 ## 附录 B：修订记录
 
-| 日期       | 变更                                                                                                                                                                                                                                  | 提交                                                                                    |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| 2026-10-27 | 记录 S0-1 checkpoint 与基线复测                                                                                                                                                                                                       | `7156f8b`                                                                               |
-| 2026-10-27 | 追加 S0-3/S0-5 复核证据                                                                                                                                                                                                               | `1be849f`                                                                               |
-| 2026-10-27 | 关闭 S0-3 并记录 worktree GC                                                                                                                                                                                                          | `6f7a3bc`                                                                               |
-| 2026-10-29 | 重构为 S0 阶段出口证据（任务表/基线/决策/M0/缺失/复现），原文保留于附录 A                                                                                                                                                             | 本次提交 `docs(s0): add stage exit evidence`                                            |
-| 2026-10-29 | **决策收口复核（§8）**：D1/D7 Accepted、D2/D8 Deferred；Q22 清理（worktree 19→9、根文件 33→26、ESLint 禁入删除）；store-stats 基线重建（`--check` exit 0）；S0-7/S4-7/S6-9/S7-1 done，合计 64/74；8 项门禁全绿                        | 本次提交 `docs(decisions): apply approved decisions and close accepted-deviation tasks` |
-| 2026-10-30 | **新增 §9 真实 CI 收口**：master 首绿 run [40910653833](https://github.com/NanQiaoMi/music_source_code/actions/runs/40910653833)（`098ad9c`，4/4 执行 job success、wall 5m16s）；S0-2 local-done → **done**；表头/§1 表/§1.2/结论同步 | 本次提交 `docs(ci): record first green master CI run and close S0-2`                    |
+| 日期       | 变更                                                                                                                                                                                                                                                      | 提交                                                                                    |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 2026-10-27 | 记录 S0-1 checkpoint 与基线复测                                                                                                                                                                                                                           | `7156f8b`                                                                               |
+| 2026-10-27 | 追加 S0-3/S0-5 复核证据                                                                                                                                                                                                                                   | `1be849f`                                                                               |
+| 2026-10-27 | 关闭 S0-3 并记录 worktree GC                                                                                                                                                                                                                              | `6f7a3bc`                                                                               |
+| 2026-10-29 | 重构为 S0 阶段出口证据（任务表/基线/决策/M0/缺失/复现），原文保留于附录 A                                                                                                                                                                                 | 本次提交 `docs(s0): add stage exit evidence`                                            |
+| 2026-10-29 | **决策收口复核（§8）**：D1/D7 Accepted、D2/D8 Deferred；Q22 清理（worktree 19→9、根文件 33→26、ESLint 禁入删除）；store-stats 基线重建（`--check` exit 0）；S0-7/S4-7/S6-9/S7-1 done，合计 64/74；8 项门禁全绿                                            | 本次提交 `docs(decisions): apply approved decisions and close accepted-deviation tasks` |
+| 2026-10-30 | **新增 §9 真实 CI 收口**：master 首绿 run [40910653833](https://github.com/NanQiaoMi/music_source_code/actions/runs/40910653833)（`098ad9c`，4/4 执行 job success、wall 5m16s）；S0-2 local-done → **done**；表头/§1 表/§1.2/结论同步                     | 本次提交 `docs(ci): record first green master CI run and close S0-2`                    |
+| 2026-10-30 | **新增 §10 S0-5 收口**：worktree 9→4、根文件 29→20（E0-5 达成）；5 个 dirty worktree 以 patch+stash 归档后删除；根目录迁出 deploy/config/.husky/docs 共 6 项 + 删 3 个缓存/日志；docs-facts/tsc/verify:layers/verify-layers.test 全绿；S0 6→7、合计 68/74 |
