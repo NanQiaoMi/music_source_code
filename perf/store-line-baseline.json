@@ -1,6 +1,6 @@
 {
   "maxLines": 400,
-  "generatedAt": "2026-10-29T03:08:56.359Z",
+  "generatedAt": "2026-10-29T03:18:05.462Z",
   "files": {
     "src/store/abLoopStore.ts": 109,
     "src/store/actions/emotionActions.ts": 9,
@@ -83,7 +83,11 @@
     "src/store/sourceConfigStore.ts": 338,
     "src/store/sourceConfig/helpers.ts": 289,
     "src/store/spectrumStore.ts": 206,
-    "src/store/statsAchievementsStore.ts": 1002,
+    "src/store/statsAchievementsStore.ts": 288,
+    "src/store/statsAchievements/achievements.ts": 230,
+    "src/store/statsAchievements/defaults.ts": 261,
+    "src/store/statsAchievements/statsHelpers.ts": 202,
+    "src/store/statsAchievements/types.ts": 105,
     "src/store/themeStore.ts": 89,
     "src/store/toastStore.ts": 90,
     "src/store/trackCuttingStore.ts": 293,
