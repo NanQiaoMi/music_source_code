@@ -3,7 +3,7 @@
 > 上级：[总计划](../2026-10-21-architecture-performance-optimization.md) · [执行计划包 README](./README.md)
 > 状态口径：pending（未开始）/ in_progress（实现中）/ review（待复核）/ done（已合并且验收通过）/ blocked（阻塞，需写原因）
 > 规则：每完成一个子 PR 勾选对应任务下的子项；任务 done 必须附证据（命令/退出码/指标/截图）；阶段出口全部满足才能把阶段标记 done。
-> 更新时间：2026-10-29（**S2 音频图栈 S2-1..S2-6 已并入 integration/s2-audio（← 95424c4 + 6a25e92，18 文件冲突按 S1/S6 语义解，S2 行 5/6（S2-6 探针部分交付）、合计 53→58，S3-2 截图后 59）**；**S1-2 备份 v5 已并入集成栈 integration/s1-batch**；S1-4 VibeMusicDB v3 并入 S1 栈；S1-10 集成矩阵并入 S1/S6 栈；S1-5/S1-6/S1-7/S1-8/S1-9 已并入；S1-10b 备份恢复/v1→v3 矩阵补齐（6 文件/21 用例）；S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3/S1-4/S1-5/S1-6/S1-7/S1-8/S1-9/S1-10 done）
+> 更新时间：2026-10-29（**S2 音频图栈 S2-1..S2-6 已并入 integration/s2-audio（← 95424c4 + 6a25e92，18 文件冲突按 S1/S6 语义解，S2 行 5/6（S2-6 探针部分交付）、合计 53→58，S3-2 截图后 59）**；**S1-2 备份 v5 已并入集成栈 integration/s1-batch**；S1-4 VibeMusicDB v3 并入 S1 栈；S1-10 集成矩阵并入 S1/S6 栈；S1-5/S1-6/S1-7/S1-8/S1-9 已并入；S1-10b 备份恢复/v1→v3 矩阵补齐（6 文件/21 用例）；S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3/S1-4/S1-5/S1-6/S1-7/S1-8/S1-9/S1-10 done；**S4-7 partial 2026-10-29：7b 死代码 4 文件/571 行已删，剩余 V8 归档仍待 D1**）
 
 ## 汇总
 
@@ -13,7 +13,7 @@
 | S1 数据与播放正确性 |     10 |     10 |                16 | 数据/备份/本地音源/队列/媒体桥闭环；集成测试绿             | in_progress（S1-1..S1-10 全部 done；M1 出口门待真机 smoke）                             |
 | S2 音频图与持久化   |      6 |      5 |                 6 | destination 入边=1；写盘 ≤1/s；节点不泄漏                  | in_progress（S2-1..S2-6 done；M2 出口门待真机 A/B 与 CDP/2h soak 采样）                 |
 | S3 外壳与订阅治理   |     10 |     10 |                12 | 组件整店订阅 0；idle rAF ≤1；面板可回收                    | in_progress（S3-1..S3-10 done；M3 出口门待 CDP/Profiler 证据）                          |
-| S4 包体与加载       |      7 |      6 |                10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置  | in_progress（S4-1..S4-6 done；S4-7 待）                                                 |
+| S4 包体与加载       |      7 |      6 |                10 | rootMain gzip ≤190KB（缺口见 Q10）；script ≤12；V8 已处置  | in_progress（S4-1..S4-6 done；S4-7 partial：7b 4 文件已删，归档/key/契约待 D1）         |
 | S5 渲染运行时       |      7 |      7 |                17 | rAF 调用点 ≤8；1080p ≥90fps 无 dropped                     | in_progress（S5-1..S5-7 done；M5 出口门待 rAF 收敛与真机 90fps 证据）                   |
 | S6 状态架构收敛     |     12 |     11 |                28 | 44/44 key 注册；store 无环；audioStore <400 行             | in_progress（S6-1/S6-2/S6-3/S6-4/S6-5/S6-6/S6-7/S6-8/S6-10/S6-11/S6-12 done；S6-9 待）  |
 | S7 服务与平台边界   |      9 |      1 |                19 | 桌面本地运行时闭环；插件隔离；2h soak 达标                 | in_progress（S7-2 done；S7-1/S7-3..S7-9 待）                                            |
@@ -89,7 +89,7 @@
 - [x] S4-4 CoverImage 统一组件（先 3 文件）— **done（2026-10-28，6a29535）**：新增 `src/components/shared/ui/CoverImage.tsx`（cachedSrc > src > default-cover；默认 lazy、priority eager、decoding async、size→sizes、data/blob unoptimized、错误一次性回退、referrerPolicy no-referrer、可选 blur；`NEXT_PUBLIC_COVER_IMAGE_V2=off` 退化 next/image 包装）；迁移 MusicCardStack 3 处、SearchPanel 1 处、VisualizationView 唯一裸 img；目标文件裸 img **1→0**、全仓非测试 34/18→33/17（其余白名单/S4-5）。验收：3 文件裸 img 归零。新增 CoverImage 6 用例 + 3 文件测试断言；全量 218 files/1370 tests passed；tsc/eslint（分片全量）0。缺口：flag-off 分支无单测、无 dev 截图 A/B、referrerPolicy 为有意请求头变化；QueuePanel 留 S4-5。分支 `feature/arch-perf-s4-4`（未合并）。
 - [x] S4-5 VirtualList 接入 QueuePanel — **done（2026-10-28，31f7b9f）**：Glass `VirtualList` 增强（handleRef scrollToIndex/scrollToTop、initialIndex、getItemKey、ResizeObserver 高度、onScrollEnd 单发、data-virtual-\* 测试钩子，向后兼容）；QueuePanel 行抽为 memo QueueRow，`VirtualList` 渲染（QUEUE_ROW_HEIGHT=72，行 66+6 gap 精确），当前曲 reveal 改 scrollToIndex(center,smooth)，行封面用 CoverImage；保留点击播放/移除/下一首/清空/搜索/ESC/当前指示/3D shelf/离线；flag `virtualListQueue`（NEXT_PUBLIC_VL_QUEUE=off）回退非虚拟化。实测 jsdom 500 首：DOM 行 **500→12–22**、mount **865.2→150.1ms**；VirtualList 5 + QueuePanel 5 新测试。全量 219 files/1380 tests passed；tsc/eslint 0。缺口：无真实浏览器 long-task trace（结构证据）；行高固定 66px；flag-off 路径无提交测试；smooth 路径 jsdom 未验；scrollToIndex 忽略 12px padding；TRACKING 已补。分支 `feature/arch-perf-s4-5`（未合并）。
 - [x] S4-6 VirtualList 接入 Search/批量工具 — **done（2026-10-28，2e7f3e4）**：SearchPanel 结果抽 memo `SearchResultRow`（48px 行 + 4px gap = 52px slot），VirtualList 虚拟区高度 min(420, 条数×52) 且 ≤44vh，query/page/source/results 变化 scrollToTop（防结果收缩后空窗），保留播放全部/点击播放/下一首/加队列/加载/空态/分页；`NEXT_PUBLIC_VL_SEARCH=off` 回退整批 map。批量工具：BatchMetadataEditor 源歌曲列表（72+8=80px）与 CrossfadeMixer BPM 列表（64+8=72px）改 memo 行 + VirtualList，源歌曲封面改 CoverImage；全选/清除/行选择/分析/混音队列与预览数据结构不变；`NEXT_PUBLIC_VL_BATCH=off` 回退。**DOM 行（jsdom，500 项）**：Search **500→15**、Batch **500→10**、Crossfade **500→9**（仅视口+overscan）；新增 10 用例（Search 3 / Batch 4 / Crossfade 3：500 项窗口、滚至尾部窗口、index 点击播放/选择、全选仍覆盖 500）。全量 **220 files/1390 tests passed**；tsc 0；eslint 0（src 全量 ts/tsx 分 6 片跑，单进程全量在 `src/data/lx_sources/*.js` 上超时；仓库 lint 脚本本身只含 ts,tsx）。**缺口**：无真实浏览器 long-task/首帧 <50ms trace（仅结构证据）；Crossfade 混音队列与 Batch 预览列表仍全量（高度可变/带退出动画）；行高固定（字体缩放未校准）；无 dev 截图。分支 `feature/arch-perf-s4-6`（未合并）。
-- [ ] S4-7 V8 处置执行（D1）— owner: — | PR: 2-4（删除不计行） | 依赖: S0-7、S5-4 契约 | 验收: rg=0；tsc/vitest 绿
+- [ ] S4-7 V8 处置执行（D1）— **partial（2026-10-29，refactor(s4-7)）**：7b 死代码清理完成，`git rm` 删除 4 文件（CinematicDirector.ts 113 / ThreeJSScene.ts 140 / presetStore.ts 196 / animationStore.ts 122 行，合计 **571 行**，非空 503 行）；src/scripts/config 全仓 grep **0 生产 importer、0 动态 import**；唯一引用者 `visualInteractionStores.test.ts` 只摘除 2 个死 store 用例（301→208 行，保留 emotion/visualization/lyric/gesture 4 组活用例）；新增守卫 `scripts/dead-v8-leftovers.test.mjs`（4 用例：路径不存在 / 引用为 0 / 保留 legacy key / 基线无残留）；store **64→62**，`perf/store-line-baseline.json` `--update`（113→111 文件、19,500→19,182 行）；AGENTS/ARCHITECTURE 计数同步。**仍 blocked on D1**：`archive/visualization-v8/` 去留、`visualization-v8-store` external key、§4.7a 契约移植均未处置（`rg visualization-v8 src` 仍 1 = registry key），故 E4-9 不判绿。owner: — | PR: 2-4（删除不计行） | 依赖: S0-7、S5-4 契约 | 验收: rg=0；tsc/vitest 绿
 
 ## S5 渲染运行时（M5，出口门）
 
@@ -147,20 +147,21 @@
 
 ## 阻塞与风险登记（滚动更新）
 
-| 日期       | 任务      | 阻塞原因                                                             | 解锁条件                                                    | owner |
-| ---------- | --------- | -------------------------------------------------------------------- | ----------------------------------------------------------- | ----- |
-| 2026-10-21 | S0-1      | 55 项手势改动未处理                                                  | **已解除 2026-10-27**：Q01-A checkpoint 2b99173，工作树干净 | Lead  |
-| 2026-10-21 | S4-7      | D1 V8 处置未拍板                                                     | 用户确认 D1                                                 | Lead  |
-| 2026-10-21 | S7-4      | D2 桌面运行时未拍板；静态导出已被 31 API routes 实测阻断（ADR 0002） | 用户确认 D2-B（本地 Next 运行时）                           | Lead  |
-| 2026-10-21 | S3-2/S5-2 | D7 受保护视图改写授权                                                | 用户确认 D7                                                 | Lead  |
+| 日期       | 任务      | 阻塞原因                                                                            | 解锁条件                                                    | owner |
+| ---------- | --------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------- | ----- |
+| 2026-10-21 | S0-1      | 55 项手势改动未处理                                                                 | **已解除 2026-10-27**：Q01-A checkpoint 2b99173，工作树干净 | Lead  |
+| 2026-10-21 | S4-7      | D1 V8 处置未拍板（2026-10-29 更新：7b 死代码 4 文件已删；剩余归档/key/契约仍待 D1） | 用户确认 D1                                                 | Lead  |
+| 2026-10-21 | S7-4      | D2 桌面运行时未拍板；静态导出已被 31 API routes 实测阻断（ADR 0002）                | 用户确认 D2-B（本地 Next 运行时）                           | Lead  |
+| 2026-10-21 | S3-2/S5-2 | D7 受保护视图改写授权                                                               | 用户确认 D7                                                 | Lead  |
 
 ## 变更记录
 
-| 日期       | 变更                | 说明                                                                                                                                                                                                                |
-| ---------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-21 | 创建看板            | 74 任务全部 pending；阶段出口门与阻塞项登记                                                                                                                                                                         |
-| 2026-10-27 | S0-1 done           | Q01-A checkpoint 分支/提交 2b99173；工作树干净；tsc/vitest/eslint/build 基线复测通过                                                                                                                                |
-| 2026-10-27 | S0-3 done / S0-5 GC | 84305f6（端口/门禁/测试）；隔离 worktree `next start -p 3026` 的 `/` 与 `/data-manager` 均 200；195d996 + Q22 后 worktrees 25→6（19 removed，5 dirty skipped）                                                      |
-| 2026-10-29 | S8-6 done           | 新增 docs/nbl/BACKLOG.md（L1-L12，触发条件可测量）+ scripts/docs-backlog.test.mjs 8 用例；ROADMAP/PROCESS/AGENTS 加入口链接                                                                                         |
-| 2026-10-27 | S1-2 done           | feature/arch-perf-s1-2a @ 825e109(2a)+5862795(2b)，已 rebase 到 1c3f1a1：v5 schema/v4 migration/atomic restore/rehydrate/leak fixes + 面板报告/unsupported/reload；204 files/1272 tests 绿；PR 待                   |
-| 2026-10-29 | S1-2 merged         | merge 'merge: integrate S1-2 backup into S1/S6 stack'（496186f + 5862795）：冲突 2 文件按 S6 栈语义解；17 用例通过；299 files/1866 tests；tsc/lint/store-budgets/docs-facts/verify:layers 全绿；E1-2 达成（自动化） |
+| 日期       | 变更                | 说明                                                                                                                                                                                                                                                                     |
+| ---------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-10-21 | 创建看板            | 74 任务全部 pending；阶段出口门与阻塞项登记                                                                                                                                                                                                                              |
+| 2026-10-27 | S0-1 done           | Q01-A checkpoint 分支/提交 2b99173；工作树干净；tsc/vitest/eslint/build 基线复测通过                                                                                                                                                                                     |
+| 2026-10-27 | S0-3 done / S0-5 GC | 84305f6（端口/门禁/测试）；隔离 worktree `next start -p 3026` 的 `/` 与 `/data-manager` 均 200；195d996 + Q22 后 worktrees 25→6（19 removed，5 dirty skipped）                                                                                                           |
+| 2026-10-29 | S8-6 done           | 新增 docs/nbl/BACKLOG.md（L1-L12，触发条件可测量）+ scripts/docs-backlog.test.mjs 8 用例；ROADMAP/PROCESS/AGENTS 加入口链接                                                                                                                                              |
+| 2026-10-27 | S1-2 done           | feature/arch-perf-s1-2a @ 825e109(2a)+5862795(2b)，已 rebase 到 1c3f1a1：v5 schema/v4 migration/atomic restore/rehydrate/leak fixes + 面板报告/unsupported/reload；204 files/1272 tests 绿；PR 待                                                                        |
+| 2026-10-29 | S1-2 merged         | merge 'merge: integrate S1-2 backup into S1/S6 stack'（496186f + 5862795）：冲突 2 文件按 S6 栈语义解；17 用例通过；299 files/1866 tests；tsc/lint/store-budgets/docs-facts/verify:layers 全绿；E1-2 达成（自动化）                                                      |
+| 2026-10-29 | S4-7 partial        | refactor(s4-7)：删除 4 个 0-importer V8 遗留文件（571 行）；store 64→62；AGENTS/ARCHITECTURE 计数与 `lib/three`、`visualization-v8` 目录行同步；新增 `dead-v8-leftovers` 守卫；store-line baseline --update；tsc/vitest/lint/store-budgets/docs-facts/verify:layers 复跑 |

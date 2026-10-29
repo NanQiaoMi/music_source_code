@@ -1,13 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AnimationPreset, AnimationTrack } from "@/lib/visualization/animationTypes";
-import type { EffectPreset } from "@/lib/visualization/types";
 import type { Song } from "@/types/song";
 import { setEmotionCallbacks, useEmotionStore } from "./emotionStore";
-import { useAnimationStore } from "./animationStore";
 import { useGestureSettingsStore } from "./gestureSettingsStore";
 import { useGestureStore } from "./gestureStore";
 import { lyricPresets, useLyricSettingsStore } from "./lyricSettingsStore";
-import { usePresetStore } from "./presetStore";
 import { useVisualizationStore } from "./visualizationStore";
 
 const saveSongEmotions = vi.fn();
@@ -36,11 +32,9 @@ function resetVisualStores() {
   });
 
   useEmotionStore.setState(useEmotionStore.getInitialState(), true);
-  useAnimationStore.setState(useAnimationStore.getInitialState(), true);
   useGestureStore.setState(useGestureStore.getInitialState(), true);
   useGestureSettingsStore.setState(useGestureSettingsStore.getInitialState(), true);
   useLyricSettingsStore.setState(useLyricSettingsStore.getInitialState(), true);
-  usePresetStore.setState(usePresetStore.getInitialState(), true);
   useVisualizationStore.setState(useVisualizationStore.getInitialState(), true);
 }
 
@@ -52,22 +46,6 @@ function createSong(id: string, title = `Song ${id}`): Song {
     duration: 180,
     source: "local",
     genre: "ambient",
-  };
-}
-
-function createEffectPreset(id = "preset-a"): EffectPreset {
-  return {
-    id,
-    name: "Preset A",
-    description: "A test preset",
-    effectId: "effect-a",
-    tags: ["test"],
-    author: "MIMI",
-    createdAt: 1,
-    updatedAt: 1,
-    isSystem: false,
-    isFavorite: false,
-    parameters: { speed: 1 },
   };
 }
 
@@ -226,76 +204,5 @@ describe("visual interaction stores", () => {
       bindings: { swipe_left: "volume_up" },
     });
     expect(localStorage.getItem("mimi-gesture-settings-v1")).not.toBeNull();
-  });
-
-  it("sorts animation keyframes, applies presets, and resets timeline state", () => {
-    const track: AnimationTrack = {
-      id: "track-1",
-      parameterId: "speed",
-      name: "Speed",
-      enabled: true,
-      interpolation: "linear",
-      keyframes: [],
-    };
-    const preset: AnimationPreset = {
-      id: "preset-1",
-      name: "Preset",
-      description: "Animation preset",
-      syncMode: "timeline",
-      tracks: [{ ...track, keyframes: [{ id: "preset-k", time: 1, value: 2 }] }],
-    };
-    const store = useAnimationStore.getState();
-
-    store.addTrack(track);
-    store.addKeyframe("track-1", { id: "late", time: 4, value: 4 });
-    store.addKeyframe("track-1", { id: "early", time: 1, value: 1 });
-    store.updateKeyframe("track-1", "late", { time: 0.5 });
-    store.setCurrentTime(7);
-    store.setIsPlaying(true);
-
-    expect(useAnimationStore.getState().tracks[0].keyframes.map((keyframe) => keyframe.id)).toEqual(
-      ["late", "early"]
-    );
-
-    store.applyPreset(preset);
-    expect(useAnimationStore.getState()).toMatchObject({
-      syncMode: "timeline",
-      currentTime: 0,
-      isPlaying: false,
-    });
-
-    store.reset();
-    expect(useAnimationStore.getState().tracks).toEqual([]);
-    expect(useAnimationStore.getState().syncMode).toBe("audio");
-  });
-
-  it("manages V8 preset CRUD, export payloads, and system preset loading", () => {
-    vi.spyOn(Date, "now").mockReturnValue(99);
-    const store = usePresetStore.getState();
-    const preset = createEffectPreset("preset-a");
-
-    store.addPreset(preset);
-    store.setCurrentPreset("preset-a");
-    store.toggleFavorite("preset-a");
-    store.updatePreset("preset-a", { name: "Renamed" });
-
-    const exported = JSON.parse(store.exportPreset("preset-a"));
-    expect(exported).toMatchObject({
-      version: "1.0",
-      type: "single",
-      metadata: { name: "Renamed", author: "MIMI" },
-    });
-    expect(usePresetStore.getState().presets[0]).toMatchObject({
-      name: "Renamed",
-      isFavorite: true,
-      updatedAt: 99,
-    });
-
-    expect(store.exportPreset("missing")).toBe("");
-    store.deletePreset("preset-a");
-    expect(usePresetStore.getState().currentPresetId).toBeNull();
-
-    store.loadSystemPresets();
-    expect(usePresetStore.getState().presets.every((item) => item.isSystem)).toBe(true);
   });
 });
