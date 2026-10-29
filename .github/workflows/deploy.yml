@@ -42,7 +42,7 @@ jobs:
       - name: Layering (dependency-cruiser, 0 errors)
         run: npm run verify:layers
       - name: Unit tests
-        run: npm run test -- --run
+        run: npm run test -- --run --reporter=github-actions --reporter=dot
 
   coverage:
     name: Coverage (domains)
