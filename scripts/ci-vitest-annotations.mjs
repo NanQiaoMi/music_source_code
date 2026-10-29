@@ -50,6 +50,11 @@ child.on("close", (code, signal) => {
       if (picked.length >= 8) break;
     }
     for (const value of picked) annotate(value);
+    const failIndex = lines.findIndex((line) => /^\s*FAIL\s/.test(clean(line)));
+    if (failIndex >= 0) {
+      const block = lines.slice(failIndex, failIndex + 26).map(clean).filter(Boolean);
+      for (const value of block.slice(0, 14)) annotate("block: " + value);
+    }
     if (picked.length === 0) {
       for (const value of lines.slice(-6).map(clean).filter(Boolean)) annotate("tail: " + value);
     }
