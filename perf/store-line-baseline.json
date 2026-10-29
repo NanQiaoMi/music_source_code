@@ -1,6 +1,6 @@
 {
   "maxLines": 400,
-  "generatedAt": "2026-10-29T02:08:14.231Z",
+  "generatedAt": "2026-10-29T02:15:19.145Z",
   "files": {
     "src/store/abLoopStore.ts": 109,
     "src/store/actions/emotionActions.ts": 9,
@@ -12,7 +12,8 @@
     "src/store/actions/sourceActions.ts": 17,
     "src/store/actions/uiActions.ts": 27,
     "src/store/actions/visualizationActions.ts": 6,
-    "src/store/aiStore.ts": 572,
+    "src/store/aiStore.ts": 342,
+    "src/store/ai/helpers.ts": 246,
     "src/store/animationStore.ts": 122,
     "src/store/audioEffectsStore.ts": 248,
     "src/store/audioEffects/helpers.ts": 321,
