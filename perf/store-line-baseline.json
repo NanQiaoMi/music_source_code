@@ -1,6 +1,6 @@
 {
   "maxLines": 400,
-  "generatedAt": "2026-10-29T01:57:59.336Z",
+  "generatedAt": "2026-10-29T02:02:49.258Z",
   "files": {
     "src/store/abLoopStore.ts": 109,
     "src/store/actions/emotionActions.ts": 9,
@@ -22,7 +22,8 @@
     "src/store/backup/helpers.ts": 189,
     "src/store/crossfadeStore.ts": 371,
     "src/store/dsdProcessingStore.ts": 250,
-    "src/store/emotionStore.ts": 534,
+    "src/store/emotionStore.ts": 394,
+    "src/store/emotion/helpers.ts": 171,
     "src/store/eqStore.ts": 80,
     "src/store/favoritesStore.ts": 59,
     "src/store/fingerprintStore.ts": 120,
