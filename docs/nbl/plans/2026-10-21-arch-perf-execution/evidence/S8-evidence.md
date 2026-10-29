@@ -62,16 +62,16 @@ c4ce42b 2026-10-29 test(s8-2): enforce per-domain coverage thresholds
 
 ### 2.1 任务表
 
-| ID   | 状态（诚实口径）                                                     | 提交（`--grep='s8-'`）           | 文件 / 行（numstat 汇总） | 定向测试（本轮实测）                                                                                                                   | exit | 证据 / 缺口                                                                                                                                                                              |
-| ---- | -------------------------------------------------------------------- | -------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| S8-1 | **done（本地门禁）/ 出口 E1 未运行（blocked：push 授权）**           | `da94769`、`f399eef`（+ docs 2） | 6 文件 / +392 −82         | `scripts/ci-required-checks.test.mjs` **9**、`scripts/perf/ci-perf-gates.test.mjs` **3** → 2 文件 / **12 passed**                      | 0    | CI 三并行 job + `quality-gate` 聚合、coverage 域接入、CI.md 到位；**无真实 wall 数据**（7-9/10-12min 为估算）、未跑 actionlint、无 branch protection 证据、无绿 run URL。                |
-| S8-2 | **done（本地 enforce）/ CI 未运行；缺 3 域与 PR delta**              | `c4ce42b`（+ docs `7e2acb2`）    | 6 文件 / +321 −4          | `scripts/perf/check-coverage-domains.test.mjs` **6 passed**；`npm run test:coverage:domains` **PASS 5/5 域**（311 files / 1933 tests） | 0    | 地板 = 实测 −5pp、只升不降、缺失 summary exit 2；**未做**：`lib-others/workers/global` 域、PR >0.5pp 历史对比、burn-in 周报、负向 fixture 的 CI 化。                                     |
-| S8-3 | **partial — 4 周回归历史 blocked（CI 运行 + commit-back）**          | `dba8e6e`、`3b7c9b8`（+ docs 2） | 12 文件 / +740 −57        | `bundle-diff` **4**、`perf-history` **4**、`soak` **4** → 3 文件 / **12 passed**；`scripts/perf` 全目录 **8 文件 / 34 passed**         | 0    | bundle-diff CLI **PASS**（rootMain −2.6KB、first-load +9.5KB ≤ +10KB）；nightly 工作流在；**4 周历史 0/28 行**、无 commit-back、无 runtime/FPS/heap 生产者、2h soak 未做、hardMax 未拦。 |
-| S8-4 | **done（本地）**                                                     | `6300fe8`、`86dc844`             | 4 文件 / +8 −7            | 无专属单测；门禁即 `npm run verify:docs` → **fail=0 warn=0（8/8 PASS）**                                                               | 0    | 8 项事实校验（store 数、4 类禁用词、CI 分支、端口、INDEX 链接、执行包文件）；**无** `doc-facts.config.json`、无 AUTO 块生成器、无负向 fixture 用例、季度对账仅流程约定。                 |
-| S8-5 | **partial（清单 + dry-run；无 release workflow / 14 项 preflight）** | `b33c8ce`（+ docs `a7da509`）    | 6 文件 / +415 −3          | `scripts/release-dry-run.test.mjs` **9 passed**；`npm run release:dry-run -- --skip-build` **3 PASS / 1 SKIP**                         | 0    | 清单 163 行（10 章）、dry-run 仅覆盖 R4（部分）与 R11；**缺** `release.yml`、`preflight.mjs`、`protected-paths.json`，R1-R3/R5-R10/R12-R14 人工。                                        |
-| S8-6 | **done（backlog 已排期）**                                           | `f508e4c`                        | 6 文件 / +190 −3          | `scripts/docs-backlog.test.mjs` **8 passed**                                                                                           | 0    | `docs/nbl/BACKLOG.md`（L1–L12，触发条件可测量、7 列、季度评审 6 步）；**缺** `docs/nbl/quality/` 目录与 `quarterly-YYYY-QN.md` 模板；L 项本身 0 启动。                                   |
+| ID   | 状态（诚实口径）                                            | 提交（`--grep='s8-'`）           | 文件 / 行（numstat 汇总） | 定向测试（本轮实测）                                                                                                                   | exit | 证据 / 缺口                                                                                                                                                                              |
+| ---- | ----------------------------------------------------------- | -------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S8-1 | **done（本地门禁）/ 出口 E1 未运行（blocked：push 授权）**  | `da94769`、`f399eef`（+ docs 2） | 6 文件 / +392 −82         | `scripts/ci-required-checks.test.mjs` **9**、`scripts/perf/ci-perf-gates.test.mjs` **3** → 2 文件 / **12 passed**                      | 0    | CI 三并行 job + `quality-gate` 聚合、coverage 域接入、CI.md 到位；**无真实 wall 数据**（7-9/10-12min 为估算）、未跑 actionlint、无 branch protection 证据、无绿 run URL。                |
+| S8-2 | **done（本地 enforce）/ CI 未运行；缺 3 域与 PR delta**     | `c4ce42b`（+ docs `7e2acb2`）    | 6 文件 / +321 −4          | `scripts/perf/check-coverage-domains.test.mjs` **6 passed**；`npm run test:coverage:domains` **PASS 5/5 域**（311 files / 1933 tests） | 0    | 地板 = 实测 −5pp、只升不降、缺失 summary exit 2；**未做**：`lib-others/workers/global` 域、PR >0.5pp 历史对比、burn-in 周报、负向 fixture 的 CI 化。                                     |
+| S8-3 | **partial — 4 周回归历史 blocked（CI 运行 + commit-back）** | `dba8e6e`、`3b7c9b8`（+ docs 2） | 12 文件 / +740 −57        | `bundle-diff` **4**、`perf-history` **4**、`soak` **4** → 3 文件 / **12 passed**；`scripts/perf` 全目录 **8 文件 / 34 passed**         | 0    | bundle-diff CLI **PASS**（rootMain −2.6KB、first-load +9.5KB ≤ +10KB）；nightly 工作流在；**4 周历史 0/28 行**、无 commit-back、无 runtime/FPS/heap 生产者、2h soak 未做、hardMax 未拦。 |
+| S8-4 | **done（本地）**                                            | `6300fe8`、`86dc844`             | 4 文件 / +8 −7            | 无专属单测；门禁即 `npm run verify:docs` → **fail=0 warn=0（8/8 PASS）**                                                               | 0    | 8 项事实校验（store 数、4 类禁用词、CI 分支、端口、INDEX 链接、执行包文件）；**无** `doc-facts.config.json`、无 AUTO 块生成器、无负向 fixture 用例、季度对账仅流程约定。                 |
+| S8-5 | **done（本地；release workflow 未实际运行）**               | `feat(s8-5)`（← `dda8e4e`）      | 12 文件 / +705 −307       | `scripts/release/preflight.test.mjs` **6 passed**；preflight `--tag v0.2.1` **8 PASS/0 FAIL**；`release:dry-run` PASS                  | 0    | preflight 8 行 + `release.yml`（manual/draft，不自动发布）+ 清单/CI 文档；**缺口**：R9/R10 未脚本化、桌面 job 待 S7-4/D2。                                                               |
+| S8-6 | **done（backlog 已排期）**                                  | `f508e4c`                        | 6 文件 / +190 −3          | `scripts/docs-backlog.test.mjs` **8 passed**                                                                                           | 0    | `docs/nbl/BACKLOG.md`（L1–L12，触发条件可测量、7 列、季度评审 6 步）；**缺** `docs/nbl/quality/` 目录与 `quarterly-YYYY-QN.md` 模板；L 项本身 0 启动。                                   |
 
-- 合计：**14 条 grep 命中 + 1 条补记提交，40 个文件触点，+2,066 −156 行**；定向测试 **8 文件 / 47 passed**（另有 `scripts/perf` 汇总 34 passed 作为交叉验证）。
+- 合计：**14 条 grep 命中 + 1 条补记提交，40 个文件触点，+2,066 −156 行**；定向测试 **8 文件 / 44 passed**（S8-5 由 9 改为 6 个 preflight 用例；另有 `scripts/perf` 汇总 34 passed 作为交叉验证）。
 - 状态判定：**done** = 计划验收项有可复跑本地证据且 TRACKING 勾选；**partial** = 有交付但验收门槛未达；**blocked** = 需外部授权/CI 才能产生证据。S8-1 列表里虽写 done，但**出口 E1 明确未运行**，不能据此判 M8 绿。
 
 ### 2.2 定向测试明细（本轮实测）
@@ -84,9 +84,9 @@ c4ce42b 2026-10-29 test(s8-2): enforce per-domain coverage thresholds
 | S8-3 | `scripts/perf/bundle-diff.test.mjs`            | 1 文件 / 4 passed        | 0    |
 | S8-3 | `scripts/perf/perf-history.test.mjs`           | 1 文件 / 4 passed        | 0    |
 | S8-3 | `scripts/perf/soak.test.mjs`                   | 1 文件 / 4 passed        | 0    |
-| S8-5 | `scripts/release-dry-run.test.mjs`             | 1 文件 / 9 passed        | 0    |
+| S8-5 | `scripts/release/preflight.test.mjs`           | 1 文件 / 6 passed        | 0    |
 | S8-6 | `scripts/docs-backlog.test.mjs`                | 1 文件 / 8 passed        | 0    |
-| 合计 | 8 文件                                         | **47 passed / 0 failed** | 0    |
+| 合计 | 8 文件                                         | **44 passed / 0 failed** | 0    |
 
 > 口径：全部为 Node/jsdom 单测与静态文件断言；**没有** GitHub Actions、branch protection、真实 nightly 调度、浏览器/FPS/heap 或 2h soak 执行。`npx vitest run a b` 传多个位置参数在本仓库会报 "No test files found"（vitest 4 只取单个过滤式），故逐文件运行。
 
@@ -100,7 +100,7 @@ c4ce42b 2026-10-29 test(s8-2): enforce per-domain coverage thresholds
 
 **S8-4（done）** — `scripts/check-docs-facts.mjs`（134 行）8 项检查全部 PASS：store 计数与文档一致（actual=62 documented=[62]）、`19,790` 清零、CI 注释步骤清零、`44 个 Zustand Store` 清零、CI 触发分支 master-only、端口矩阵 3025（package dev/start、Dockerfile EXPOSE/ENV、compose）、INDEX 链接无断链、执行包文件齐全。**缺口**：无 `docs/nbl/quality/doc-facts.config.json`（enforced 文件/禁用词写在脚本里）、无 AUTO 块 `gen-docs-baseline.mjs`、无负向 fixture 测试（计划要求注入 19,790 必须 exit 1，未执行）、季度对账无模板文件。
 
-**S8-5（partial）** — `docs/nbl/RELEASE-CHECKLIST.md`（163 行，§0 快速演练 → §8 门禁覆盖与缺口）+ `scripts/release-dry-run.mjs`（165 行：tsc/docs-facts/perf-gates + build 默认 SKIP，`--build/--skip-build/--json/--check-only`；失败 exit 1、非法参数 exit 2）。清单 §8 自认：R1/R2/R3/R5-R10/R12-R14 仍人工；R9 `src/test/persistence` 不存在、R10 无 `protected-paths.json`、R7/R8 无 `release.yml`。**未做**：S8-5b 的 `.github/workflows/release.yml`、S8-5a 的 `preflight.mjs` 14 项、tag dry-run 演练。
+**S8-5（done 本地）** — `scripts/release/preflight.mjs`（8 行：version/changelog/git-clean/build-id/build-output/perf-baselines/env-files/docs-facts；`--tag/--allow-dirty/--skip-build/--json`；exit 0/1/2）+ `.github/workflows/release.yml`（仅 `workflow_dispatch`；preflight → web archive → 可选 desktop → draft Release，不自动发布）+ `RELEASE-CHECKLIST`/`CI.md` 更新。**验证**：fixture **6 passed**；干净树 `--tag v0.2.1` **8 PASS**；负向 tag exit 1；全量 314 files/1976 tests、tsc/lint/docs-facts 0。**缺口**：R9/R10、桌面 job（D2/S7-4）与真实 GitHub run 未执行。
 
 **S8-6（done）** — `docs/nbl/BACKLOG.md`（46 行，L1–L12：L1–L10 来自计划 + L11 字体自托管 + L12 两路由 entry 拆分；7 列：id/事项/理由/触发条件/优先级/owner/计划链接；季度评审 6 步 + 连续 2 季度未触发归档）；`scripts/docs-backlog.test.mjs`（133 行，8 例：表头列数、L1-L10 覆盖与唯一、触发条件非占位含数字、理由/优先级/owner、12 个要素 token、计划链接存在、季度流程含归档、ROADMAP/PROCESS 反链）；ROADMAP/PROCESS/AGENTS 已加入口。**缺口**：不新增 CI 步骤（随全量 vitest 跑）；`docs/nbl/quality/quarterly-YYYY-QN.md` 仅约定路径，目录/模板未建。
 
@@ -114,7 +114,7 @@ c4ce42b 2026-10-29 test(s8-2): enforce per-domain coverage thresholds
 | 文档事实             | `scripts/check-docs-facts.mjs`（134 行）+ `npm run verify:docs`                                                                                                       | 8 项：store 计数、`19,790`、CI 注释步骤、`44 个 Zustand`、CI 分支、端口矩阵、INDEX 链接、执行包文件                                                                                                                                                          | **fail=0 warn=0（8/8 PASS）**                                        | `build` job 的 Docs facts 步骤；**未运行**                 |
 | 性能/包体门禁        | `package.json:38` `perf:gates`；`scripts/check-store-budgets.mjs`（166 行）、`scripts/perf/report-store-stats.mjs`（258 行）、`scripts/perf/check-bundle-markers.mjs` | store 行预算 ≤400/文件、SCC 0、whole-store 订阅 ≤10、初始 bundle 标记（jsmediatags/mediapipe）0 命中                                                                                                                                                         | **PASS**（111 files/19,182 行/SCC 0；62/43；whole 0；9 文件 0 标记） | `build` job；**未运行**                                    |
 | bundle 回归          | `scripts/perf/bundle-diff.mjs`（115 行）+ `perf/bundle-baseline.json` + `nightly.yml:38-39`                                                                           | rootMain gzip ≤ baseline+5KB、first-load gzip ≤ baseline+10KB；`--update` 仅显式                                                                                                                                                                             | **PASS，exit 0**（−2.6KB / +9.5KB）                                  | 仅 nightly（非 required）；**未运行**                      |
-| 发布演练             | `scripts/release-dry-run.mjs`（165 行）+ `docs/nbl/RELEASE-CHECKLIST.md`（163 行）                                                                                    | 4 项（tsc/docs-facts/build/perf-gates），PASS/FAIL/SKIP 表，失败 exit 1                                                                                                                                                                                      | **3 PASS / 1 SKIP，exit 0**                                          | 无 release workflow；**需人工/未来 CI**                    |
+| 发布预检             | `scripts/release/preflight.mjs`（309 行）+ `release.yml`（158 行）+ `RELEASE-CHECKLIST.md`                                                                            | 8 行 PASS/FAIL 表，失败 exit 1；`--tag/--allow-dirty/--skip-build/--json`                                                                                                                                                                                    | **8 PASS，exit 0**（干净树）                                         | workflow 已建但**未运行**；桌面 job 默认跳过               |
 | nightly 性能回归     | `.github/workflows/nightly.yml`（76 行）                                                                                                                              | cron 02:00 CST + dispatch：build→bundle report→全量 vitest→diff→history→dashboard→artifact                                                                                                                                                                   | 结构已核对；**未 dispatch**                                          | **需 CI**；**0 次运行**                                    |
 
 补充事实：
@@ -197,8 +197,8 @@ c4ce42b 2026-10-29 test(s8-2): enforce per-domain coverage thresholds
 | `scripts/quality/gen-docs-baseline.mjs` + AUTO 块 `--check/--write`                         | **不存在**                                                                                                         |
 | `docs/nbl/quality/quarterly-audit.md` / `quarterly-YYYY-QN.md`                              | **不存在**；仅 BACKLOG/PROCESS 写流程约定                                                                          |
 | `docs/nbl/quality/backlog.md`                                                               | **路径不同**：实际 `docs/nbl/BACKLOG.md`（46 行，L1–L12）                                                          |
-| `scripts/release/preflight.mjs`（14 项）+ `protected-paths.json`                            | **不存在**；替代为 `scripts/release-dry-run.mjs`（4 项，安全子集）                                                 |
-| `.github/workflows/release.yml`（tag 触发、workflow_call、draft release）                   | **不存在**（`git tag` 流程无自动化）                                                                               |
+| `scripts/release/preflight.mjs`（8 项）+ `protected-paths.json`                             | preflight **已存在**；`protected-paths.json` 仍不存在（R10）                                                       |
+| `.github/workflows/release.yml`（manual/draft release）                                     | **已存在**；仅 `workflow_dispatch`，不自动发布                                                                     |
 | `docs/nbl/checklists/release-checklist-2026q4.md`                                           | **不存在**；实际 `docs/nbl/RELEASE-CHECKLIST.md`                                                                   |
 | `docs/nbl/quality/evidence/s8-e1.md` … `s8-e6.md`                                           | **目录不存在**（本文件即 `evidence/S8-evidence.md`，未拆分 6 份）                                                  |
 | `docs/nbl/quality/CHANGELOG.md` + `waivers.json`（阈值调整/豁免）                           | **不存在**；阈值变更记录与豁免机制未落地                                                                           |
@@ -217,19 +217,19 @@ git log --all --oneline --grep='s8-' -i
 git show --numstat --format='COMMIT %h %s' da94769 f399eef 13ae6d3 da68c5e \
   c4ce42b 7e2acb2 dba8e6e 1f74dd9 3b7c9b8 f2104b0 6300fe8 86dc844 b33c8ce a7da509 f508e4c
 
-# 2) 定向测试（8 文件 / 47 passed，逐条 exit 0）
+# 2) 定向测试（8 文件 / 44 passed，逐条 exit 0）
 npx vitest run scripts/ci-required-checks.test.mjs --reporter=dot        # 9
 npx vitest run scripts/perf/ci-perf-gates.test.mjs --reporter=dot        # 3
 npx vitest run scripts/perf/check-coverage-domains.test.mjs --reporter=dot  # 6
 npx vitest run scripts/perf/bundle-diff.test.mjs --reporter=dot          # 4
 npx vitest run scripts/perf/perf-history.test.mjs --reporter=dot         # 4
 npx vitest run scripts/perf/soak.test.mjs --reporter=dot                 # 4
-npx vitest run scripts/release-dry-run.test.mjs --reporter=dot           # 9
+npx vitest run scripts/release/preflight.test.mjs --reporter=dot          # 6
 npx vitest run scripts/docs-backlog.test.mjs --reporter=dot              # 8
 npx vitest run scripts/perf --reporter=dot                               # 8 文件 / 34 passed（交叉验证）
 
 # 3) 全量门禁（本轮全部 exit 0）
-npx vitest run --reporter=dot                                            # 311 files / 1933 tests
+npx vitest run --reporter=dot                                            # 314 files / 1976 tests
 npx tsc --noEmit
 npm run lint
 npm run perf:gates                                                       # store 预算 + 统计 + bundle markers

@@ -1,8 +1,8 @@
 # CI 门禁（Required Checks）
 
-> 面向 PR 作者与 reviewer。工作流：`.github/workflows/deploy.yml`。
+> 面向 PR 作者与 reviewer。PR/主干工作流：`.github/workflows/deploy.yml`；发布工作流见 §8。
 > 触发：`push` / `pull_request` → `master`，以及手动 `workflow_dispatch`。
-> 最后核对：2026-10-29（S8-1b 并行拆分；S8-3a 追加 nightly）。
+> 最后核对：2026-10-29（S8-1b 并行拆分；S8-3a 追加 nightly；S8-5 追加 release preflight/draft release）。
 
 ## 1. Job 布局（并行，12min 预算）
 
@@ -11,12 +11,12 @@ job。三个 job 各自 checkout / setup-node / `npm ci`，**不跨 job 传产�
 需要 `.next`（`perf:gates` 的 bundle markers 依赖构建产物），所以生产构建与依赖它的门禁
 放在同一个 job 内，无需 artifact 依赖。
 
-| Job            | 必过步骤                                            | timeout | 预期耗时（暖 / 冷） |
-| -------------- | --------------------------------------------------- | ------: | ------------------: |
-| `quality`      | 类型检查 → Lint（0 警告）→ 分层依赖 → 单元测试       |      15 |      6-8 / 9-11min |
-| `coverage`     | 覆盖率分域（`test:coverage:domains`，见 §4）         |      15 |       4-5 / 5-7min |
-| `build`        | 生产构建 → `perf:gates` → bundle 报告 → 文档事实     |      15 |       3-5 / 5-7min |
-| `quality-gate` | 聚合断言：上面三个 job 全部 success                  |       5 |            ~15-30s |
+| Job            | 必过步骤                                         | timeout | 预期耗时（暖 / 冷） |
+| -------------- | ------------------------------------------------ | ------: | ------------------: |
+| `quality`      | 类型检查 → Lint（0 警告）→ 分层依赖 → 单元测试   |      15 |       6-8 / 9-11min |
+| `coverage`     | 覆盖率分域（`test:coverage:domains`，见 §4）     |      15 |        4-5 / 5-7min |
+| `build`        | 生产构建 → `perf:gates` → bundle 报告 → 文档事实 |      15 |        3-5 / 5-7min |
+| `quality-gate` | 聚合断言：上面三个 job 全部 success              |       5 |             ~15-30s |
 
 wall time = 三个并行 job 的最大值 + 排队/调度开销：暖缓存 ≈ 7-9min，冷缓存 ≈ 10-12min，
 目标是 **≤12min**。各 job 的 `timeout-minutes: 15`（聚合 job 为 5）只用于兜住挂死，
@@ -36,17 +36,17 @@ required，不能用"跳过某个 job"的方式过 CI。三个子 job 的 check 
 
 每个门禁步骤只在一个 job 里运行，对应关系如下：
 
-| 门禁                   | 所属 job  | 预期耗时 |
-| ---------------------- | --------- | -------: |
-| 类型检查（tsc）        | `quality` |  60-90s |
-| Lint（0 警告）         | `quality` |   2-4min |
-| 分层依赖（verify:layers） | `quality` |     ~5s |
-| 单元测试（test）       | `quality` |   2-3min |
-| 覆盖率分域             | `coverage` |    ~3min |
-| 生产构建（build）      | `build`   |   2-3min |
-| 性能门禁（perf:gates） | `build`   |     ~15s |
-| Bundle 报告            | `build`   |      ~5s |
-| 文档事实（docs facts） | `build`   |      ~5s |
+| 门禁                      | 所属 job   | 预期耗时 |
+| ------------------------- | ---------- | -------: |
+| 类型检查（tsc）           | `quality`  |   60-90s |
+| Lint（0 警告）            | `quality`  |   2-4min |
+| 分层依赖（verify:layers） | `quality`  |      ~5s |
+| 单元测试（test）          | `quality`  |   2-3min |
+| 覆盖率分域                | `coverage` |    ~3min |
+| 生产构建（build）         | `build`    |   2-3min |
+| 性能门禁（perf:gates）    | `build`    |     ~15s |
+| Bundle 报告               | `build`    |      ~5s |
+| 文档事实（docs facts）    | `build`    |      ~5s |
 
 逐条命令（与工作流一致）：
 
@@ -100,3 +100,24 @@ PR 必过检查仍是 `Quality gate (required)`。
 - error 规则：`no-circular`；`src/store` 禁 import `components|hooks`；`src/services` 禁 import `components`；`src/lib` 禁 import `components|hooks`；`src/domain` 禁 import react/next、`components|hooks`、`store`；`src` 生产代码禁 import devDependency。
 - warn 规则：`no-orphans`（排除 Next 路由/worker 入口、测试与 `.d.ts`），只暴露孤立模块，不阻塞 CI。
 - 唯一方向豁免：`src/domain/playback/ports.ts` 作为播放端口适配器可 import store；测试文件与 `import type` 不计入。规则、首跑 8 errors 清零过程与收缩棘轮见 `perf/README.md` §10。
+
+## 8. 发布预检与 draft Release（S8-5，手动）
+
+- 工作流 `.github/workflows/release.yml` **仅** `workflow_dispatch`，不监听 tag push，不自动发布。
+- 输入：`version`（无 `v`，必须等于 package.json）、`tag`（`vX.Y.Z`，必须等于 `v`+version）、`package_desktop`（默认 false）。
+- Job 布局：
+  - `preflight`：`npm ci` → `npm run build` → `node scripts/release/preflight.mjs --tag <tag>`；日志作为 `release-preflight` artifact 保留 30 天。
+  - `package-web`：重新构建并打包 `web-next-<tag>.tar.gz`（排除 `.next/cache`）+ `SHA256SUMS.txt`，artifact `release-web` 保留 90 天。
+  - `package-desktop`：仅 `package_desktop=true` 时运行（windows-latest，PyInstaller + electron-builder）；S7-4/D2 解锁前 guard 会失败，默认跳过。
+  - `draft-release`：下载 artifacts，用 `softprops/action-gh-release@v2` 创建 **draft** Release（`draft: true`、`make_latest: false`）；需要 `contents: write`，配置了 `production` environment 时走人工审批。**不会自动 publish**。
+- 本地同口径命令：
+
+```bash
+npm run release:preflight -- --tag v0.2.1              # 严格：干净树 + 构建产物
+npm run release:preflight -- --allow-dirty --skip-build # 本地无构建/脏树
+npm run release:dry-run                                 # 兼容别名，自动加上述安全参数
+npm run release:preflight -- --json                     # 机器可读
+```
+
+- 退出码：0 = 无 FAIL；1 = 有 FAIL；2 = 参数错误。8 个检查行（version/changelog/git-clean/build-id/build-output/perf-baselines/env-files/docs-facts）与 [RELEASE-CHECKLIST.md §8](./RELEASE-CHECKLIST.md) 一一对应。
+- R9（数据兼容 fixture）与 R10（V7 保护视图）仍是缺口；桌面 R7/R8 待 S7-4/D2。该工作流不参与 PR 分支保护，PR 必过检查仍是 `Quality gate (required)`。

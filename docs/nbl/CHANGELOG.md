@@ -1,3 +1,16 @@
+## v0.2.1 - 2026-10-29
+
+### Added
+
+- Added the S8-5 release preflight at `scripts/release/preflight.mjs`: version/tag and README consistency, CHANGELOG head entry, clean worktree (or `--allow-dirty`), `.next/BUILD_ID` plus static-export/standalone artifacts per `next.config.js`, perf baselines, required files and `.env.example` keys, and `check-docs-facts`; prints a PASS/FAIL table, supports `--tag`, `--skip-build`, `--json`, and exits nonzero on failures.
+- Added `.github/workflows/release.yml` (manual `workflow_dispatch` only): preflight, web archive with checksums, optional Windows desktop package (skipped until S7-4/D2), artifact upload, and a draft GitHub Release created with `softprops/action-gh-release`; it never publishes automatically.
+- Added `scripts/release/preflight.test.mjs` covering pass/fail fixture roots, `--allow-dirty`, `--skip-build`, JSON output, and argument parsing.
+
+### Changed
+
+- `npm run release:dry-run` now delegates to the preflight with safe local defaults (dirty allowed, build artifacts optional); added `npm run release:preflight`.
+- Updated `docs/nbl/RELEASE-CHECKLIST.md` and `docs/nbl/CI.md` for the preflight rows and the manual draft-release workflow.
+
 ## 2026-10-19
 
 ### Added

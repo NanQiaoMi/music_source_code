@@ -1,4 +1,4 @@
-# 🎵 MIMI Music Player (Vibe Player) V0.2
+# 🎵 MIMI Music Player (Vibe Player) V0.2.1
 
 > **不仅仅是播放器，更是音乐的数字舞台。**
 
