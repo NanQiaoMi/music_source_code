@@ -1,6 +1,6 @@
 {
   "maxLines": 400,
-  "generatedAt": "2026-10-29T01:42:00.538Z",
+  "generatedAt": "2026-10-29T01:48:31.947Z",
   "files": {
     "src/store/abLoopStore.ts": 109,
     "src/store/actions/emotionActions.ts": 9,
@@ -57,7 +57,8 @@
     "src/store/queue/helpers.ts": 59,
     "src/store/recommendationStore.ts": 294,
     "src/store/recordingStore.ts": 63,
-    "src/store/searchStore.ts": 500,
+    "src/store/searchStore.ts": 325,
+    "src/store/search/helpers.ts": 192,
     "src/store/selectors/playlistSelectors.ts": 32,
     "src/store/sleepTimerStore.ts": 158,
     "src/store/slices/deviceSlice.ts": 154,
