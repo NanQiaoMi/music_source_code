@@ -15,6 +15,8 @@
 | scripts/perf/perf-history-lib.mjs                       | S8-3b 历史行 schema/解析共享模块（上面两个 CLI 共用）                                                                                                                                                                                                                                                       |
 | scripts/perf/report-store-stats.mjs                     | Store 架构统计：store 数、persist key、整店订阅、store 依赖边/SCC、getState 分层；支持 --check、--json 与 --store                                                                                                                                                                                           |
 | scripts/perf/soak.mjs                                   | S7-9a node soak harness：每 tick 用真实 TtlLruCache/hydrationStatus 跑有界合成负载并采 heapUsed；输出 start/peak/end/delta（--json），写 perf/reports/soak-<ts>.json，超阈值 exit 1（见 §11）                                                                                                               |
+| scripts/perf/audio-metrics-cdp.mjs                      | S2-6 浏览器音频指标：Playwright + 本机 Chrome 跑 idle / play / track-switch 三场景，每 5s 采 `window.__audioMetrics`，输出 perf/audio-metrics/s2-6-<scenario>.json + s2-6-report.md；--quick 冒烟、--report-only 复用已有样本（见 §13）                                                                     |
+| perf/audio-metrics/                                     | S2-6 证据（2026-10-29 采集：3 场景 × 60s，Chrome 156 headless / 1440x900）：每场景 JSON + 合并报告 + 验收判定                                                                                                                                                                                               |
 | scripts/check-store-budgets.mjs                         | S6-12 Store 行数棘轮 + 环门禁：逐文件行数 ≤ baseline，未入基线的新文件 ≤400 行，运行时 store 图 SCC 必须为 0；支持 --update、--root、--baseline、--max-lines                                                                                                                                                |
 | scripts/report-audio-consumers.mjs                      | S6-4 audioStore 播放字段消费清单：9 字段的 selector / getState 链（含跨行与解构）/ 别名 / setState / `useAudioCurrentSong` 读写点，按层与字段汇总；支持 --json、--fields、--group（progress / playback / all 批次）、--check（components/hooks/lib/services/store 读点归零门禁；audioStore 自身定义点豁免） |
 | scripts/check-docs-facts.mjs                            | 文档事实校验：store 数、过期字样、CI 触发分支、端口一致性（warn）、INDEX 链接、执行计划包完整性                                                                                                                                                                                                             |
@@ -248,3 +250,28 @@
 - **pending 是显式技术债，不是豁免**：Player3D ×4（220 指针合帧、389 音频采样链、445 返回首页切换、588 进入可视化切换）与 AudioEffectsPanel ×1（78 拖动强度 rAF 合并）在 `reason` 中标注 `TODO(S5-3b)`；迁移后必须删条目并复跑，`verify:raf` 会以「白名单行失配」提醒清理。
 - 接线：`npm run verify:raf` 已并入 `npm run perf:gates`（CI 的 build job 在 `npm run build` 之后执行）。测试 `scripts/perf/check-raf-whitelist.test.mjs` 覆盖真实仓库、未登记调用、行号失配、非法类别/缺 reason/重复、ownership `match`、缺白名单与非法参数。
 - 已知限制：只做文本级调用点审计，不替代运行时单循环计数；E5-2「同一时刻 1 个循环」仍由 `visualRuntime` 单测覆盖，真实浏览器 DevTools 单 rAF 截图仍缺（见 S5-evidence §4/#1）。
+
+## 13. 浏览器音频指标（S2-6，2026-10-29）
+
+- 目的：用真实浏览器样本回答 S2 的三条验收问题——播放写盘是否 ≤1/s、切歌是否新增音频图节点、是否出现 >50ms 长任务；数据来自既有 dev-only 探针 `window.__audioMetrics`（`src/lib/perf/audioMetrics.ts`）与 `window.__audioGraphStats`（S2-5），不新增产品代码。
+- 场景（每场景 60s，每 5s 采样一次）：
+  1. `idle`：全新 profile、Home 视图、不播放；
+  2. `play`：player 视图 + display-only fixture（内联生成 100s 静音 WAV 的 blob: URL，`source=local` 不触网），点击播放控件后连续播放；
+  3. `track-switch`：同上 + 5 首队列，播放后 3 次 Ctrl+N 切歌 + 2 次进度条 seek，再采 60s。
+- fixture 关键点：片段时长 100s 必须 **>95s**，否则 `useAudioPlayer` 会判定为试听片段并触发全网抢救（额外网络与长任务）；每首歌各自一个 blob: URL，因为切歌时播放器会 revoke 上一首的 URL；`loopMode=single` 只是兜底（100s > 60s 窗口，不会 ended）。
+- 命令：
+
+      node node_modules/next/dist/bin/next dev --webpack -p 3038   # 起 dev（探针仅 development）
+      npm run perf:audio-metrics:s2-6                              # 3 场景 × 60s
+      node scripts/perf/audio-metrics-cdp.mjs --quick               # 冒烟：3 × 5s、1s 间隔
+      node scripts/perf/audio-metrics-cdp.mjs --scenario play --duration 60
+      npm run perf:audio-metrics:s2-6:report                        # 用已有 JSON 重生成报告
+
+  选项：`--base-url`、`--out`、`--chrome-path`、`--duration <秒>`、`--interval <ms>`、`--scenario <idle|play|track-switch>`、`--quick [秒]`、`--report-only`；未知参数/非法数值直接抛错。
+
+- 输出：`perf/audio-metrics/s2-6-<scenario>.json`（`{scenario, durationSec, samples, aggregates, pageErrors, consoleErrors, consoleWarnings, badResponses, burst, playbackEvidence, graphStats, meta}`）+ `s2-6-report.md`（环境/场景/聚合/按 key 写盘/验收判定/样本时间线/缺口/复现）。
+- 判定口径：E4 只统计两个播放持久化 key（`player-store` + `audio-store-v4`，S2-4 原文「两个 persist key 合计 ≤1/s」）；其他 key（首次播放的成就解锁、journal/liner-notes）单独列在 all-key 表里，不混入 E4。E7 用「reset → 播放/切歌 → 采样」的 created/active 增量对比 play 与 track-switch；E6 与 pageErrors 直接判 0。
+- 阻塞处理：探针未挂载、播放控件缺失、点击后未进入播放态、媒体 currentTime 不前进、seek 未生效 → 该场景写 `blocked` + 确切原因（含 probe/页面诊断），报告如实记录并 exit 2，**不伪造样本**。
+- 本机结果（2026-10-29，Chrome 156.0.8078.49 headless / Node 24.16.0 / Win11 / `integration/s2-audio` @ f2c3ae7）：idle 0 写 0 节点 0 长任务；play 与 track-switch 均为播放键 1.00/s（每 key 30 次/60s，2s 节流边界）、节点 85→85（切歌增量 0）、>50ms 长任务 0、page error 0；rAF 在 headless 下 ~165fps（无 vsync），p95 6.2ms。报告：`perf/audio-metrics/s2-6-report.md`。
+- 缺口：未覆盖计划原文的 effects-drag（100 次强度拖动）、soak-100-skip（100 次切歌）与 2h soak（S7-9）；静音片段 100s 与真实 3 分钟曲目不同；headless 无声卡/GPU；dev 下 `/api/ai/chat` 401 属环境噪声（记录在 `badResponses`）。
+- 测试：`scripts/perf/audio-metrics-cdp.test.mjs`（参数解析、聚合、三档验收判定、fixture 阈值），`npx vitest run scripts/perf/audio-metrics-cdp.test.mjs`。

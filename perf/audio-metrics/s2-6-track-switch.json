@@ -1,0 +1,482 @@
+{
+  "scenario": "track-switch",
+  "label": "track switch + seek burst, then continuous playback",
+  "dataSummary": "player view + 5-song queue, then 3 next + 2 progress seeks",
+  "durationSec": 60.02,
+  "blocked": false,
+  "samples": [
+    {
+      "atSec": 5.01,
+      "running": true,
+      "durationMs": 5009,
+      "frames": {
+        "count": 814,
+        "avgMs": 6.15,
+        "p95Ms": 6.2,
+        "maxMs": 66.5
+      },
+      "storeWrites": {
+        "total": 44,
+        "perSecond": 8.78,
+        "samples": [2.99, 2, 0, 37.5, 0]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 85,
+        "activeNodes": 85
+      }
+    },
+    {
+      "atSec": 10.02,
+      "running": true,
+      "durationMs": 10019,
+      "frames": {
+        "count": 1640,
+        "avgMs": 6.11,
+        "p95Ms": 6.2,
+        "maxMs": 66.5
+      },
+      "storeWrites": {
+        "total": 50,
+        "perSecond": 4.99,
+        "samples": [2.99, 2, 0, 37.5, 0, 2, 0, 2, 0, 2]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 85,
+        "activeNodes": 85
+      }
+    },
+    {
+      "atSec": 15.03,
+      "running": true,
+      "durationMs": 15023,
+      "frames": {
+        "count": 2466,
+        "avgMs": 6.09,
+        "p95Ms": 6.2,
+        "maxMs": 66.5
+      },
+      "storeWrites": {
+        "total": 54,
+        "perSecond": 3.59,
+        "samples": [2.99, 2, 0, 37.5, 0, 2, 0, 2, 0, 2, 0, 1.99, 0, 2, 0]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 85,
+        "activeNodes": 85
+      }
+    },
+    {
+      "atSec": 20.03,
+      "running": true,
+      "durationMs": 20028,
+      "frames": {
+        "count": 3292,
+        "avgMs": 6.08,
+        "p95Ms": 6.2,
+        "maxMs": 66.5
+      },
+      "storeWrites": {
+        "total": 60,
+        "perSecond": 3,
+        "samples": [2.99, 2, 0, 37.5, 0, 2, 0, 2, 0, 2, 0, 1.99, 0, 2, 0, 2, 0, 2, 0, 2]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 85,
+        "activeNodes": 85
+      }
+    },
+    {
+      "atSec": 25.04,
+      "running": true,
+      "durationMs": 25040,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.08,
+        "p95Ms": 6.2,
+        "maxMs": 66.5
+      },
+      "storeWrites": {
+        "total": 64,
+        "perSecond": 2.56,
+        "samples": [
+          2.99, 2, 0, 37.5, 0, 2, 0, 2, 0, 2, 0, 1.99, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 85,
+        "activeNodes": 85
+      }
+    },
+    {
+      "atSec": 30.05,
+      "running": true,
+      "durationMs": 30045,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.06,
+        "p95Ms": 6.2,
+        "maxMs": 12.1
+      },
+      "storeWrites": {
+        "total": 70,
+        "perSecond": 2.33,
+        "samples": [
+          2.99, 2, 0, 37.5, 0, 2, 0, 2, 0, 2, 0, 1.99, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0,
+          2, 0, 2
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 85,
+        "activeNodes": 85
+      }
+    },
+    {
+      "atSec": 35.05,
+      "running": true,
+      "durationMs": 35050,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.06,
+        "p95Ms": 6.2,
+        "maxMs": 7.8
+      },
+      "storeWrites": {
+        "total": 74,
+        "perSecond": 2.11,
+        "samples": [
+          2.99, 2, 0, 37.5, 0, 2, 0, 2, 0, 2, 0, 1.99, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0,
+          2, 0, 2, 0, 2, 0, 2, 0
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 85,
+        "activeNodes": 85
+      }
+    },
+    {
+      "atSec": 40.07,
+      "running": true,
+      "durationMs": 40066,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.06,
+        "p95Ms": 6.2,
+        "maxMs": 7.8
+      },
+      "storeWrites": {
+        "total": 80,
+        "perSecond": 2,
+        "samples": [
+          2.99, 2, 0, 37.5, 0, 2, 0, 2, 0, 2, 0, 1.99, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0,
+          2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 85,
+        "activeNodes": 85
+      }
+    },
+    {
+      "atSec": 45.08,
+      "running": true,
+      "durationMs": 45082,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.06,
+        "p95Ms": 6.2,
+        "maxMs": 8.9
+      },
+      "storeWrites": {
+        "total": 84,
+        "perSecond": 1.86,
+        "samples": [
+          2.99, 2, 0, 37.5, 0, 2, 0, 2, 0, 2, 0, 1.99, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0,
+          2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 85,
+        "activeNodes": 85
+      }
+    },
+    {
+      "atSec": 50.09,
+      "running": true,
+      "durationMs": 50089,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.06,
+        "p95Ms": 6.2,
+        "maxMs": 8.9
+      },
+      "storeWrites": {
+        "total": 90,
+        "perSecond": 1.8,
+        "samples": [
+          2.99, 2, 0, 37.5, 0, 2, 0, 2, 0, 2, 0, 1.99, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0,
+          2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 85,
+        "activeNodes": 85
+      }
+    },
+    {
+      "atSec": 55.11,
+      "running": true,
+      "durationMs": 55105,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.07,
+        "p95Ms": 6.2,
+        "maxMs": 24.2
+      },
+      "storeWrites": {
+        "total": 94,
+        "perSecond": 1.71,
+        "samples": [
+          2.99, 2, 0, 37.5, 0, 2, 0, 2, 0, 2, 0, 1.99, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0,
+          2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 85,
+        "activeNodes": 85
+      }
+    },
+    {
+      "atSec": 60.01,
+      "running": true,
+      "durationMs": 60008,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.07,
+        "p95Ms": 6.2,
+        "maxMs": 24.2
+      },
+      "storeWrites": {
+        "total": 100,
+        "perSecond": 1.67,
+        "samples": [
+          2.99, 2, 0, 37.5, 0, 2, 0, 2, 0, 2, 0, 1.99, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0,
+          2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0,
+          1.99, 0, 2
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 85,
+        "activeNodes": 85
+      }
+    }
+  ],
+  "aggregates": {
+    "storeWritesPerSec": 1.67,
+    "storeWritesTotal": 100,
+    "storeWritesMax1s": 37.5,
+    "storeWritesMean1s": 1.64,
+    "playbackStoreWrites": 60,
+    "playbackStoreWritesPerSec": 1,
+    "storeWritesByKey": {
+      "mimi-liner-notes-store": 2,
+      "performance-v8-store": 2,
+      "player-store": 30,
+      "audio-store-v4": 30,
+      "stats-achievements-store-v4": 34,
+      "journal-store-v1": 2
+    },
+    "rafAvgMs": 6.07,
+    "rafP95Ms": 6.2,
+    "rafMaxMs": 24.2,
+    "rafFrames": 3600,
+    "rafFps": 164.74,
+    "nodesCreated": 85,
+    "nodesActive": 85,
+    "longTasks50ms": 0,
+    "longTaskTotalMs": 0,
+    "longTaskMaxMs": 0,
+    "durationMs": 60012,
+    "sampleCount": 12
+  },
+  "burst": [
+    {
+      "action": "next-track",
+      "via": "keyboard",
+      "indexFrom": 0,
+      "indexTo": 1,
+      "ok": true
+    },
+    {
+      "action": "next-track",
+      "via": "keyboard",
+      "indexFrom": 1,
+      "indexTo": 2,
+      "ok": true
+    },
+    {
+      "action": "next-track",
+      "via": "keyboard",
+      "indexFrom": 2,
+      "indexTo": 3,
+      "ok": true
+    },
+    {
+      "action": "seek",
+      "percent": 0.6,
+      "targetTime": 60,
+      "before": 0.8,
+      "after": 60.08,
+      "ok": true
+    },
+    {
+      "action": "seek",
+      "percent": 0.25,
+      "targetTime": 25,
+      "before": 60.08,
+      "after": 25.08,
+      "ok": true
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "consoleWarnings": [
+    "Image with src \"/default-cover.svg\" was detected as the Largest Contentful Paint (LCP). Please add the `loading=\"eager\"` property if this image is above the fold.\nRead more: https://nextjs.org/docs/app/api-reference/components/image#loading",
+    "[linerNotesStore] All AI endpoints exhausted or failed",
+    "[linerNotesStore] All AI endpoints exhausted or failed",
+    "[linerNotesStore] All AI endpoints exhausted or failed"
+  ],
+  "badResponses": [
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:3038/api/ai/chat"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:3038/api/ai/chat"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:3038/api/ai/chat"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:3038/api/ai/chat"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:3038/api/ai/chat"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:3038/api/ai/chat"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:3038/api/ai/chat"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:3038/api/ai/chat"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:3038/api/ai/chat"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:3038/api/ai/chat"
+    }
+  ],
+  "playbackEvidence": {
+    "currentTimeBefore": 0,
+    "currentTimeAfter": 1.59,
+    "advanced": true
+  },
+  "graphStats": {
+    "createdNodes": 85,
+    "releasedNodes": 0,
+    "activeNodes": 85,
+    "mediaSourceNodes": 1,
+    "crossfadeGainNodes": 0,
+    "pendingCrossfadeTimers": 0
+  },
+  "meta": {
+    "startedAt": "2026-10-29T12:37:00.777Z",
+    "url": "http://127.0.0.1:3038/",
+    "fixtureSeconds": 100,
+    "intervalMs": 5000,
+    "baseUrl": "http://127.0.0.1:3038",
+    "chromeVersion": "156.0.8078.49"
+  }
+}

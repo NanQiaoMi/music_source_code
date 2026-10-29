@@ -1,0 +1,375 @@
+{
+  "scenario": "idle",
+  "label": "idle (no playback, Home view)",
+  "dataSummary": "fresh profile, no seed, no play click",
+  "durationSec": 60.02,
+  "blocked": false,
+  "samples": [
+    {
+      "atSec": 5.01,
+      "running": true,
+      "durationMs": 5011,
+      "frames": {
+        "count": 826,
+        "avgMs": 6.06,
+        "p95Ms": 6.2,
+        "maxMs": 7.5
+      },
+      "storeWrites": {
+        "total": 0,
+        "perSecond": 0,
+        "samples": [0, 0, 0, 0, 0]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 0,
+        "activeNodes": 0
+      }
+    },
+    {
+      "atSec": 10.03,
+      "running": true,
+      "durationMs": 10025,
+      "frames": {
+        "count": 1647,
+        "avgMs": 6.08,
+        "p95Ms": 6.2,
+        "maxMs": 42.5
+      },
+      "storeWrites": {
+        "total": 0,
+        "perSecond": 0,
+        "samples": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 0,
+        "activeNodes": 0
+      }
+    },
+    {
+      "atSec": 15.03,
+      "running": true,
+      "durationMs": 15029,
+      "frames": {
+        "count": 2473,
+        "avgMs": 6.08,
+        "p95Ms": 6.2,
+        "maxMs": 42.5
+      },
+      "storeWrites": {
+        "total": 0,
+        "perSecond": 0,
+        "samples": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 0,
+        "activeNodes": 0
+      }
+    },
+    {
+      "atSec": 20.04,
+      "running": true,
+      "durationMs": 20034,
+      "frames": {
+        "count": 3299,
+        "avgMs": 6.07,
+        "p95Ms": 6.2,
+        "maxMs": 42.5
+      },
+      "storeWrites": {
+        "total": 0,
+        "perSecond": 0,
+        "samples": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 0,
+        "activeNodes": 0
+      }
+    },
+    {
+      "atSec": 25.05,
+      "running": true,
+      "durationMs": 25043,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.07,
+        "p95Ms": 6.2,
+        "maxMs": 42.5
+      },
+      "storeWrites": {
+        "total": 0,
+        "perSecond": 0,
+        "samples": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 0,
+        "activeNodes": 0
+      }
+    },
+    {
+      "atSec": 30.06,
+      "running": true,
+      "durationMs": 30056,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.06,
+        "p95Ms": 6.2,
+        "maxMs": 8.5
+      },
+      "storeWrites": {
+        "total": 0,
+        "perSecond": 0,
+        "samples": [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 0,
+        "activeNodes": 0
+      }
+    },
+    {
+      "atSec": 35.08,
+      "running": true,
+      "durationMs": 35073,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.06,
+        "p95Ms": 6.2,
+        "maxMs": 8.5
+      },
+      "storeWrites": {
+        "total": 0,
+        "perSecond": 0,
+        "samples": [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 0,
+        "activeNodes": 0
+      }
+    },
+    {
+      "atSec": 40.09,
+      "running": true,
+      "durationMs": 40087,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.06,
+        "p95Ms": 6.2,
+        "maxMs": 8
+      },
+      "storeWrites": {
+        "total": 0,
+        "perSecond": 0,
+        "samples": [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 0,
+        "activeNodes": 0
+      }
+    },
+    {
+      "atSec": 45.11,
+      "running": true,
+      "durationMs": 45102,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.06,
+        "p95Ms": 6.2,
+        "maxMs": 9.3
+      },
+      "storeWrites": {
+        "total": 0,
+        "perSecond": 0,
+        "samples": [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 0,
+        "activeNodes": 0
+      }
+    },
+    {
+      "atSec": 50.12,
+      "running": true,
+      "durationMs": 50117,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.06,
+        "p95Ms": 6.2,
+        "maxMs": 9.3
+      },
+      "storeWrites": {
+        "total": 0,
+        "perSecond": 0,
+        "samples": [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 0,
+        "activeNodes": 0
+      }
+    },
+    {
+      "atSec": 55.13,
+      "running": true,
+      "durationMs": 55125,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.06,
+        "p95Ms": 6.2,
+        "maxMs": 9.3
+      },
+      "storeWrites": {
+        "total": 0,
+        "perSecond": 0,
+        "samples": [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 0,
+        "activeNodes": 0
+      }
+    },
+    {
+      "atSec": 60.01,
+      "running": true,
+      "durationMs": 60010,
+      "frames": {
+        "count": 3600,
+        "avgMs": 6.06,
+        "p95Ms": 6.2,
+        "maxMs": 9.3
+      },
+      "storeWrites": {
+        "total": 0,
+        "perSecond": 0,
+        "samples": [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ]
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "audioGraph": {
+        "createdNodes": 0,
+        "activeNodes": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "storeWritesPerSec": 0,
+    "storeWritesTotal": 0,
+    "storeWritesMax1s": 0,
+    "storeWritesMean1s": 0,
+    "playbackStoreWrites": 0,
+    "playbackStoreWritesPerSec": 0,
+    "storeWritesByKey": {},
+    "rafAvgMs": 6.06,
+    "rafP95Ms": 6.2,
+    "rafMaxMs": 9.3,
+    "rafFrames": 3600,
+    "rafFps": 165.02,
+    "nodesCreated": 0,
+    "nodesActive": 0,
+    "longTasks50ms": 0,
+    "longTaskTotalMs": 0,
+    "longTaskMaxMs": 0,
+    "durationMs": 60014,
+    "sampleCount": 12
+  },
+  "burst": [],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "consoleWarnings": [
+    "Image with src \"https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop\" was detected as the Largest Contentful Paint (LCP). Please add the `loading=\"eager\"` property if this image is above the fold.\nRead more: https://nextjs.org/docs/app/api-reference/components/image#loading",
+    "Image with src \"https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop\" was detected as the Largest Contentful Paint (LCP). Please add the `loading=\"eager\"` property if this image is above the fold.\nRead more: https://nextjs.org/docs/app/api-reference/components/image#loading"
+  ],
+  "badResponses": [],
+  "playbackEvidence": null,
+  "graphStats": {
+    "createdNodes": 0,
+    "releasedNodes": 0,
+    "activeNodes": 0,
+    "mediaSourceNodes": 0,
+    "crossfadeGainNodes": 0,
+    "pendingCrossfadeTimers": 0
+  },
+  "meta": {
+    "startedAt": "2026-10-29T12:34:36.366Z",
+    "url": "http://127.0.0.1:3038/",
+    "fixtureSeconds": 100,
+    "intervalMs": 5000,
+    "baseUrl": "http://127.0.0.1:3038",
+    "chromeVersion": "156.0.8078.49"
+  }
+}
