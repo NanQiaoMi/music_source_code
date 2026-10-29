@@ -7,7 +7,7 @@
 
 import { MultiSourceResolver } from "@/services/MultiSourceResolver";
 import { Song } from "@/types/song";
-import { useQueueStore } from "@/store/queueStore";
+import { patchQueueSongAudio } from "@/store/actions/queueActions";
 import { TtlLruCache, type TtlLruCacheStats } from "@/lib/cache/TtlLruCache";
 
 interface CachedAudioSource {
@@ -81,11 +81,7 @@ class AudioPrefetcher {
         });
 
         // Update queueStore with resolved audioUrl for instant switch
-        const queueState = useQueueStore.getState();
-        const updatedQueue = queueState.queue.map((s) =>
-          s.id === song.id ? { ...s, audioUrl: resolved.url, source: resolved.source } : s
-        );
-        queueState.setQueue(updatedQueue);
+        patchQueueSongAudio(song.id, { audioUrl: resolved.url, source: resolved.source });
 
         // Preheat HTML5 audio element
         this.preheatAudio(song.id, resolved.url);

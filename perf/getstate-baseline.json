@@ -1,6 +1,21 @@
 {
   "metric": "useXStore.getState() calls in non-test src files",
-  "generatedAt": "2026-10-29T06:40:00.000Z",
-  "targets": { "services": 0, "components": 0 },
-  "allowed": { "services": {}, "components": {} }
+  "generatedAt": "2026-10-29T01:05:00.375Z",
+  "targets": {
+    "services": 0,
+    "components": 0,
+    "lib": 5
+  },
+  "allowed": {
+    "services": {},
+    "components": {},
+    "lib": {
+      "src/lib/bootstrap.ts": 2,
+      "src/lib/gesture/actions.ts": 3
+    }
+  },
+  "allowedRationale": {
+    "src/lib/bootstrap.ts": "启动恢复序列（S6-9c 白名单）：模块级只跑一次，无 React 上下文；player 已走动作层快照，剩 1 处队列 restore 快照直读 + 1 处 playlist 初始化命令调用。",
+    "src/lib/gesture/actions.ts": "手势动作层 DI 默认值（S6-9c 白名单）：仅在未注入 deps 时惰性读取整店快照（模块顶层不读，SSR 安全），3 处对应 audio/ui/settings 三个兜底工厂。"
+  }
 }

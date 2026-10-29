@@ -1,6 +1,6 @@
 import type { AudioEffectType } from "@/store/audioEffectsStore";
 import { getAudioContext } from "@/lib/audio/audioEngineAccess";
-import { usePlayerStore } from "@/store/playerStore";
+import { getPlayerPlaybackRate } from "@/store/actions/playbackActions";
 
 export class AudioEffectsManager {
   private context: AudioContext | null = null;
@@ -380,7 +380,7 @@ export class AudioEffectsManager {
 
     if (!hasAnyEffect) {
       if (this.mediaElement) {
-        const targetRate = usePlayerStore.getState().playbackRate || 1.0;
+        const targetRate = getPlayerPlaybackRate();
         this.mediaElement.playbackRate = targetRate;
       }
       this.sourceNode.connect(this.destinationNode);
@@ -414,7 +414,7 @@ export class AudioEffectsManager {
       }
     } else {
       if (this.mediaElement) {
-        const targetRate = usePlayerStore.getState().playbackRate || 1.0;
+        const targetRate = getPlayerPlaybackRate();
         this.mediaElement.playbackRate = targetRate;
       }
     }

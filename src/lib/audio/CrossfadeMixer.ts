@@ -1,5 +1,5 @@
 import { AudioEngine } from "./AudioEngine";
-import { useEmotionStore } from "@/store/emotionStore";
+import { getEmotionSnapshot } from "@/store/actions/emotionActions";
 
 /**
  * CrossfadeMixer handles smooth transitions between songs.
@@ -100,7 +100,7 @@ export class CrossfadeMixer {
    * Calculates the dynamic crossfade duration.
    */
   public calculateDynamicDuration(songId1: string, songId2: string): number {
-    const emotionStore = useEmotionStore.getState();
+    const emotionStore = getEmotionSnapshot();
     const distance = emotionStore.calculateDistance(songId1, songId2);
     const minDuration = 1.5; // Reduced for better responsiveness
     const maxDuration = 5;

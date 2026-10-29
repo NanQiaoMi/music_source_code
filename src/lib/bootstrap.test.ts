@@ -17,10 +17,13 @@ vi.mock("@/store/audioStore", () => ({
   },
 }));
 
-vi.mock("@/store/playerStore", () => ({
-  usePlayerStore: {
-    getState: () => ({ ...mocks.playerState, setLoopMode: mocks.setLoopMode }),
-  },
+// S6-9c: bootstrap reads player/emotion through the action layer.
+vi.mock("@/store/actions/playbackActions", () => ({
+  getPlayerSnapshot: () => ({ ...mocks.playerState, setLoopMode: mocks.setLoopMode }),
+}));
+
+vi.mock("@/store/actions/emotionActions", () => ({
+  getEmotionSnapshot: () => ({ initializeEmotions: mocks.initializeEmotions }),
 }));
 
 vi.mock("@/store/queueStore", () => ({
@@ -29,10 +32,6 @@ vi.mock("@/store/queueStore", () => ({
 
 vi.mock("@/store/playlistStore", () => ({
   usePlaylistStore: { getState: () => ({ initializePlaylist: mocks.initializePlaylist }) },
-}));
-
-vi.mock("@/store/emotionStore", () => ({
-  useEmotionStore: { getState: () => ({ initializeEmotions: mocks.initializeEmotions }) },
 }));
 
 vi.mock("@/lib/audio/AudioContextWatchdog", () => ({

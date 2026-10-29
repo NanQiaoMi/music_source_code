@@ -5,7 +5,8 @@
  * 用法：node scripts/report-getstate.mjs [--json <path>] [--check]
  *  --json   写完整报告（byLayer / 逐文件计数）。
  *  --check  读 perf/getstate-baseline.json：按层校验 targets.<layer> 与 allowed.<layer>[file]。
- *           S6-10a 已收敛 services=0；S6-10b 收敛 components=0。hooks/lib/store 仍只报告不阻塞。
+ *           S6-10a 已收敛 services=0；S6-10b 收敛 components=0；S6-9c 收敛 lib=5
+ *           （bootstrap / gesture 白名单，理由见 baseline.allowedRationale）。hooks/store 仍只报告。
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -14,7 +15,7 @@ const ROOT = process.cwd();
 const SRC = path.join(ROOT, "src");
 const BASELINE_FILE = path.join(ROOT, "perf", "getstate-baseline.json");
 const LAYERS = ["app", "components", "hooks", "lib", "services", "store", "domain"];
-const RATCHET_LAYERS = ["services", "components"];
+const RATCHET_LAYERS = ["services", "components", "lib"];
 const GETSTATE_RE = /use[A-Z][A-Za-z0-9_]*Store\.getState\(/g;
 const args = process.argv.slice(2);
 const jsonIdx = args.indexOf("--json");

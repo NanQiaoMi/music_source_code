@@ -1,10 +1,10 @@
 import { useAudioStore } from "@/store/audioStore";
-import { useEmotionStore } from "@/store/emotionStore";
-import { usePlayerStore } from "@/store/playerStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useQueueStore } from "@/store/queueStore";
 import { AudioContextWatchdog } from "@/lib/audio/AudioContextWatchdog";
 import { hydrateStores } from "@/lib/bootstrapStores";
+import { getEmotionSnapshot } from "@/store/actions/emotionActions";
+import { getPlayerSnapshot } from "@/store/actions/playbackActions";
 
 let bootstrapPromise: Promise<boolean> | null = null;
 let hasRestoredPlaybackState = false;
@@ -46,17 +46,21 @@ async function runBootstrap(): Promise<boolean> {
 
     // 1. 只在本次应用生命周期开始时恢复一次，路由返回主页不能重置播放中状态。
     if (!hasRestoredPlaybackState) {
-      const restoredSong = usePlayerStore.getState().currentSong;
-      const restoredQueue = useQueueStore.getState().queue;
-      const restoredIndex = useQueueStore.getState().currentIndex;
+      // S6-9c 白名单：启动恢复只跑一次，player 走动作层快照；队列没有可注入的 ports，
+      // 这里保留一处直读（目标 restore 快照就取这一瞬间）。
+      const player = getPlayerSnapshot();
+      const restoredSong = player.currentSong;
+      const queueState = useQueueStore.getState();
+      const restoredQueue = queueState.queue;
+      const restoredIndex = queueState.currentIndex;
 
       if (restoredSong) {
         // S6-4: 身份字段 currentSong 归 playerStore（hydrate 已恢复）；audioStore 镜像由
         // playerStore 投影维护，这里只回填进度/就绪字段，不再重复写身份字段。
         useAudioStore.setState({
           isPlaying: false, // 启动时保持就绪状态，等待用户点击播放
-          currentTime: usePlayerStore.getState().currentTime || 0,
-          duration: usePlayerStore.getState().duration || restoredSong.duration || 0,
+          currentTime: player.currentTime || 0,
+          duration: player.duration || restoredSong.duration || 0,
         });
         console.log(
           `[Bootstrap] 🎵 已恢复上次播放歌曲: 《${restoredSong.title}》- ${restoredSong.artist}`
@@ -72,19 +76,20 @@ async function runBootstrap(): Promise<boolean> {
       }
 
       // S6-4: loopMode 归 playerStore；同名 setter 触发兼容投影，保持 audioStore 镜像一致
-      const restoredLoopMode = usePlayerStore.getState().loopMode;
+      const restoredLoopMode = player.loopMode;
       if (restoredLoopMode) {
-        usePlayerStore.getState().setLoopMode(restoredLoopMode);
+        player.setLoopMode(restoredLoopMode);
         console.log(`[Bootstrap] 🔁 已恢复播放循环模式: ${restoredLoopMode}`);
       }
 
       hasRestoredPlaybackState = true;
     }
 
+    // S6-9c 白名单：启动初始化命令（无 React 上下文，仅此处调用一次）。
     await usePlaylistStore.getState().initializePlaylist();
     console.log("[Bootstrap] Playlist initialized.");
 
-    useEmotionStore.getState().initializeEmotions();
+    getEmotionSnapshot().initializeEmotions();
     console.log("[Bootstrap] Emotion engine ready.");
 
     // 启动音频硬件自愈与系统健康巡检守卫

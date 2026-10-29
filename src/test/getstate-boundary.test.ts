@@ -8,12 +8,13 @@ import { describe, expect, it } from "vitest";
  * S6-10 getState 分层棘轮（E7）。
  * 口径与 scripts/report-getstate.mjs 一致，基线在 perf/getstate-baseline.json。
  * S6-10a 已收敛 service=0，S6-10b 收敛 component=0：allowed 必须为空；
+ * S6-9c 收敛 lib=5（bootstrap / gesture 白名单，理由见 baseline.allowedRationale）。
  * 若将来无法避免，登记「文件 + 数量」并同步抬 target。
  */
 const ROOT = process.cwd();
 const SCRIPT = path.join(ROOT, "scripts", "report-getstate.mjs");
 const BASELINE = path.join(ROOT, "perf", "getstate-baseline.json");
-const RATCHET_LAYERS = ["services", "components"] as const;
+const RATCHET_LAYERS = ["services", "components", "lib"] as const;
 
 type RatchetLayer = (typeof RATCHET_LAYERS)[number];
 
@@ -68,7 +69,7 @@ describe("S6-10 getState boundary", () => {
   });
 
   for (const layer of RATCHET_LAYERS) {
-    it(`keeps ${layer} within the frozen ratchet (currently 0)`, () => {
+    it(`keeps ${layer} within the frozen ratchet`, () => {
       const result = report();
       const frozen = baseline();
       const target = frozen.targets?.[layer] ?? 0;

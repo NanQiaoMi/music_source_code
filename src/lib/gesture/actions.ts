@@ -22,7 +22,7 @@ import {
   type GestureFeedbackTone,
 } from "./types";
 
-/** 动作层需要的音频 store 子集（useAudioStore.getState() 的返回值满足该结构）。 */
+/** 动作层需要的音频 store 子集（动作层 getState 快照的返回值满足该结构）。 */
 export interface GestureAudioStoreLike {
   isPlaying: boolean;
   isMuted: boolean;

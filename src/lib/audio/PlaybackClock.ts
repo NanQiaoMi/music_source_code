@@ -1,4 +1,5 @@
 import type { PlaybackMachineState, PlaybackPhase } from "@/lib/audio/playbackStateMachine";
+import { getPlaybackRuntimeSnapshot } from "@/store/actions/playbackRuntimeActions";
 import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 
 export interface PlaybackClockSnapshot {
@@ -118,7 +119,7 @@ export class PlaybackClock {
     source: string
   ): void {
     const nextSource = sourceIdentity(source);
-    const runtime = usePlaybackRuntimeStore.getState();
+    const runtime = getPlaybackRuntimeSnapshot();
     const requestedTargetSource =
       runtime.requestId === requestId ? runtime.targetSource : this.snapshot.targetSource;
     const isSameTrack =
@@ -333,4 +334,4 @@ export class PlaybackClock {
 export const playbackClock = new PlaybackClock();
 
 usePlaybackRuntimeStore.subscribe((runtime) => playbackClock.syncRuntime(runtime));
-playbackClock.syncRuntime(usePlaybackRuntimeStore.getState());
+playbackClock.syncRuntime(getPlaybackRuntimeSnapshot());
