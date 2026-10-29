@@ -1,29 +1,29 @@
 # S0 阶段出口证据（M0 出口门）
 
 > 阶段计划：[S0-baseline.md](../S0-baseline.md) · 决策：[00-decisions.md](../00-decisions.md) · 看板：[TRACKING.md](../TRACKING.md)
-> 采集：2026-10-29 19:21–19:35 +08:00（首轮）/ **2026-10-29 22:20–22:55（决策收口复核，见 §8）**（DSH 子 agent，docs-only；不 push、不动主仓库、不改产品代码）
+> 采集：2026-10-29 19:21–19:35 +08:00（首轮）/ **2026-10-29 22:20–22:55（决策收口复核，见 §8）** / **2026-10-30 00:26（真实 CI 收口，见 §9）**（DSH 子 agent，docs-only；不 push、不动主仓库、不改产品代码；§9 的 push 由用户授权后执行，本文只记录事实）
 > 工作树：`D:/26project/music_source_code_V1.1_full/_worktrees/arch-integration-s1-5`
-> 分支 / HEAD：`integration/s2-audio` @ `00ff8b2`（首轮）；决策收口复核基线 `a890604` — `docs: add goal status and handover`
+> 分支 / HEAD：`integration/s2-audio` @ `00ff8b2`（首轮）；决策收口复核基线 `a890604` — `docs: add goal status and handover`；**真实 CI 基线 `098ad9c`（= origin/master，master 首绿 run 40910653833）**
 > 基线 commit（不可变）：`2b991731a1e48d5b3ba8084cc2b18276fb5b1e7d`（2026-10-27 13:39:42），已核实是当前 HEAD 的祖先。
 > 本文只记录**可复核事实**；历史 checkpoint 日志原文见[附录 A](#附录-a历史-checkpoint-日志原文保留)，本次复核命令/退出码见 §7。
 
 **状态口径**：`done` 达成 · `partial` 部分达成（缺口逐条列出） · `blocked` 决策/授权阻塞 · `local-done` 本地完成但未 push · `stale` 基线过期 · `missing` 产物缺失。
 
-**结论（2026-10-29 22:55 更新）：M0 出口门仍未通过，但决策类阻塞已全部解除。** S0-1 done；S0-2 本地完成、阻塞于 push 授权；S0-3 partial；S0-4 工具口径 done；S0-5 **partial**（worktree 19→9、根文件 33→26，E0-5 的 ≤5/≤20 未达）；S0-6 v1 done + **基线已重建**（62/43，`--check` exit 0）；S0-7 **done**（8/8 ADR；D1/D7 Accepted、D2/D8 Deferred）。M0 剩余未关项：S0-2 push 验证、S0-5 ≤5/≤20。
+**结论（2026-10-30 00:26 更新）：M0 出口门仍未通过，唯一剩余未关项是 S0-5。** S0-1 done；**S0-2 done（真实 CI 绿：run 40910653833 @ `098ad9c`，Build/Quality/Coverage/Quality gate 4/4 success，wall 5m16s）**；S0-3 partial；S0-4 工具口径 done；S0-5 **partial**（worktree 9 > 5、根文件 26 > 20）；S0-6 v1 done + **基线已重建**（62/43，`--check` exit 0）；S0-7 **done**（8/8 ADR；D1/D7 Accepted、D2/D8 Deferred）。M0 剩余：S0-5 ≤5/≤20（S0-3 的 `npm start` 直证为历史缺口）。
 
 ---
 
 ## 1. 任务表（S0-1..S0-7）
 
-| ID   | 任务                            | 状态                              | 提交 / 关键文件                                                                                                                                                                             | 行数                                       | 测试 / 退出码                                                                                             |
-| ---- | ------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| S0-1 | 处理脏改，锁定干净基线          | **done**                          | `2b99173`（checkpoint 快照）；`evidence/S0-dirty-inventory.txt`                                                                                                                             | 123 files，+27,294 / −1,967；脏改 122 路径 | tsc 0 · vitest 208 files/1284 tests · eslint 0/0 · build 0（均记录于 2026-10-27，未在本 pass 重跑）       |
-| S0-2 | CI 复活（master 触发 + 四门禁） | **local-done**（阻塞 push/Q02）   | `.github/workflows/deploy.yml`（188 行）；无 `ci.yml`；无独立提交（随 `2b99173` 入库）                                                                                                      | YAML 重写（未单独计行）                    | YAML 可解析（prettier 仅格式告警）；`verify:docs` ci-branch PASS · 无 Actions 运行记录                    |
-| S0-3 | 构建产物与端口明确化            | **partial**                       | `84305f6`；`scripts/verify-static-export.mjs`、`scripts/verify-desktop-release-ready.mjs`、`package.json`、`scripts/build-static.mjs`、ARCHITECTURE                                         | 5 files，+163 / −46                        | 5 tests exit 0 · `verify-static-export` exit 2（out 缺失）· guard exit 1（冻结）· 3024 引用 0             |
-| S0-4 | 文档事实修正                    | **done（工具）/ partial（清单）** | `AGENTS.md`、`docs/nbl/ARCHITECTURE.md`、`docs/nbl/plans/INDEX.md`、`.github/pull_request_template.md`（随 `2b99173`）                                                                      | 文档不计行                                 | `npm run verify:docs` exit 0，fail=0 warn=0                                                               |
-| S0-5 | 死层标记与仓库卫生              | **partial（2026-10-29 收口）**    | `195d996`（删 2 死文件 + gc 脚本）；coordinator 层后由 `1e7ffbc` 整体删除                                                                                                                   | 3 files，+82 / −113（含删 113 行）         | 死文件 0 引用 · **worktree 19→9**（目标 ≤5）· **根文件 33→26**（目标 ≤20）· ESLint coordinator 禁入已删   |
-| S0-6 | 测量基座 v1                     | **done（v1）/ 基线已重建**        | `scripts/perf/bundle-budget.mjs`、`scripts/perf/report-store-stats.mjs`(+test)、`scripts/check-docs-facts.mjs`、`perf/{budget,bundle-baseline,store-stats-baseline}.json`、`perf/README.md` | 脚本 + 3 份基线 JSON                       | `report-store-stats.test.mjs` 2 tests exit 0 · store-stats `--check` **exit 0（62/43，2026-10-29 重建）** |
-| S0-7 | ADR D1-D8 评审与归档            | **done（2026-10-29）**            | `docs/nbl/adr/`：README + 0001..0008（8/8）                                                                                                                                                 | 计划 8 个 ADR，实际 8                      | 0001/0005 **Accepted**；0002/0008 Proposed（**Deferred**）；0003/0004/0006/0007 Proposed                  |
+| ID   | 任务                            | 状态                               | 提交 / 关键文件                                                                                                                                                                             | 行数                                       | 测试 / 退出码                                                                                                      |
+| ---- | ------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| S0-1 | 处理脏改，锁定干净基线          | **done**                           | `2b99173`（checkpoint 快照）；`evidence/S0-dirty-inventory.txt`                                                                                                                             | 123 files，+27,294 / −1,967；脏改 122 路径 | tsc 0 · vitest 208 files/1284 tests · eslint 0/0 · build 0（均记录于 2026-10-27，未在本 pass 重跑）                |
+| S0-2 | CI 复活（master 触发 + 四门禁） | **done（2026-10-30，真实 CI 绿）** | `.github/workflows/deploy.yml`（188 行）；无 `ci.yml`；S0 期间随 `2b99173` 入库，CI-only 修复见 §9                                                                                          | YAML 重写（未单独计行）                    | **run 40910653833**：Build/Quality/Coverage/Quality gate **4/4 success**，wall 5m16s；`verify:docs` ci-branch PASS |
+| S0-3 | 构建产物与端口明确化            | **partial**                        | `84305f6`；`scripts/verify-static-export.mjs`、`scripts/verify-desktop-release-ready.mjs`、`package.json`、`scripts/build-static.mjs`、ARCHITECTURE                                         | 5 files，+163 / −46                        | 5 tests exit 0 · `verify-static-export` exit 2（out 缺失）· guard exit 1（冻结）· 3024 引用 0                      |
+| S0-4 | 文档事实修正                    | **done（工具）/ partial（清单）**  | `AGENTS.md`、`docs/nbl/ARCHITECTURE.md`、`docs/nbl/plans/INDEX.md`、`.github/pull_request_template.md`（随 `2b99173`）                                                                      | 文档不计行                                 | `npm run verify:docs` exit 0，fail=0 warn=0                                                                        |
+| S0-5 | 死层标记与仓库卫生              | **partial（2026-10-29 收口）**     | `195d996`（删 2 死文件 + gc 脚本）；coordinator 层后由 `1e7ffbc` 整体删除                                                                                                                   | 3 files，+82 / −113（含删 113 行）         | 死文件 0 引用 · **worktree 19→9**（目标 ≤5）· **根文件 33→26**（目标 ≤20）· ESLint coordinator 禁入已删            |
+| S0-6 | 测量基座 v1                     | **done（v1）/ 基线已重建**         | `scripts/perf/bundle-budget.mjs`、`scripts/perf/report-store-stats.mjs`(+test)、`scripts/check-docs-facts.mjs`、`perf/{budget,bundle-baseline,store-stats-baseline}.json`、`perf/README.md` | 脚本 + 3 份基线 JSON                       | `report-store-stats.test.mjs` 2 tests exit 0 · store-stats `--check` **exit 0（62/43，2026-10-29 重建）**          |
+| S0-7 | ADR D1-D8 评审与归档            | **done（2026-10-29）**             | `docs/nbl/adr/`：README + 0001..0008（8/8）                                                                                                                                                 | 计划 8 个 ADR，实际 8                      | 0001/0005 **Accepted**；0002/0008 Proposed（**Deferred**）；0003/0004/0006/0007 Proposed                           |
 
 ### 1.1 S0-1 处理 55 项未提交手势改动 — done
 
@@ -33,7 +33,7 @@
 - 本 pass 复核：`git merge-base --is-ancestor 2b99173 HEAD` exit 0 → checkpoint 仍在集成线上；上述 4 条命令**未**在 `2b99173` 重跑（docs-only 任务，避免长时间 build）。当前 HEAD 的 `npx tsc --noEmit` exit 0 见 §7。
 - ⚠ 分支指针已漂移：`checkpoint/gesture-air-control-overhaul-20261027` 现指向 `11d661e`（2026-10-29 03:06，比 `2b99173` 多 15 个提交），主仓库工作区当前检出该分支。**基线只能引用不可变 commit `2b99173`，不能引用分支名**（详见 §2 #2）。
 
-### 1.2 S0-2 CI 复活 — local-done，阻塞于 push 授权
+### 1.2 S0-2 CI 复活 — done（2026-10-30 真实 CI 绿）
 
 - 落地：`.github/workflows/deploy.yml`（`name: CI`，188 行）。计划原拟新增 `ci.yml`，实际**改写 `deploy.yml`**，仓库内无 `ci.yml`。
 - 触发（已核实）：`push: branches [master]`、`pull_request: branches [master]`、`workflow_dispatch`；`concurrency` group `ci-<workflow>-<ref>`、`cancel-in-progress: true`；`permissions: contents: read`。
@@ -41,7 +41,8 @@
 - 版本：CI **Node '20'**（`deploy.yml:33`），而本机基线为 Node **v24.16.0** → 环境不一致，记入 §4 E0-2。
 - 提交归属：`git log --all -- .github/workflows/deploy.yml` 共 9 条，S0 期间唯一条目是 `2b99173`（checkpoint 快照）→ **S0-2 无独立提交**（当时改动在脏树里被 S0-1 一起快照）。
 - 已复核：YAML 可被解析（`npx prettier --check` exit 1 仅格式告警）；`npm run verify:docs` 的 `ci-branch` PASS（master=true、mainOnly=false）。
-- **未复核 / 阻塞**：没有任何 Actions 运行记录；4 个 required checks 未在 GitHub 配置（Q02 Pending，需仓库 owner 权限）；3 连绿与 ≤20min 无数据。**阻塞原因：push 授权 + 仓库 admin**（本任务未 push，遵守任务约束与 Q02）。
+- **未复核 / 阻塞（2026-10-29 时点）**：当时没有任何 Actions 运行记录；4 个 required checks 未在 GitHub 配置（Q02 Pending，需仓库 owner 权限）；3 连绿与 ≤20min 无数据。**阻塞原因：push 授权 + 仓库 admin**（当次任务未 push，遵守任务约束与 Q02）。
+- **2026-10-30 收口（真实 CI）**：用户授权 push，master 由 `6a211e1` fast-forward 到 `098ad9c`；run **40910653833** 在 master 上 **4/4 执行 job success**（Build 1m35s、Quality 4m35s、Coverage 2m58s、Quality gate 3s），wall **5m16s**，check suite success；`Deploy to Vercel`/`Desktop package` 按设计 skipped。此前 #1–#11 全 failure/cancelled（CI-only 失败逐条修复见 §9）。**仍未取证**：GitHub branch protection 的 required 列表（需仓库 admin）、连续多次绿的稳定性。
 
 ### 1.3 S0-3 构建产物与端口明确化 — partial
 
@@ -315,7 +316,71 @@ node scripts/perf/report-store-stats.mjs --check
 - 根目录图片归档后无文档引用；`scripts/package-handover.mjs` 的 basename 排除规则仍生效。
 - 未动 7 个 dirty worktree；S0-5 的 ≤5 / ≤20 需用户另行授权清理他人改动或调整口径。
 - `next-env.d.ts` 保留（Next/tsc 需要，gitignored），故根文件无法在本轮安全降到 ≤20。
-- 未 push、未合并 master；S0-2 / S8-3 仍缺真实 CI 证据；bundle hardsMax 违规（maxAsyncChunk/publicMB）与真机测量不在本次批准范围。
+- 未 push、未合并 master；S0-2 / S8-3 仍缺真实 CI 证据；bundle hardsMax 违规（maxAsyncChunk/publicMB）与真机测量不在本次批准范围。**（2026-10-30 追记：S0-2 已由 §9 的真实 run 收口；S8-3 仍缺 nightly 证据。）**
+
+---
+
+## 9. 2026-10-30 real CI closure（S0-2 / S8-1 真实 CI 收口）
+
+> 触发：用户授权 push（Q02 的 push 授权解除），master 由 `6a211e1` fast-forward 到 `098ad9c`，首次在真实 GitHub runner 上跑通 CI。
+> 口径：run/job 数据取自 GitHub REST API（`actions/runs/40910653833`、`.../jobs`、`check-suites/110897220785/check-runs`、`git/ref/heads/master`），只读；本 pass 未 push、未触发新 run、未改产品代码。
+
+### 9.1 run 事实
+
+| 项           | 值                                                                                                |
+| ------------ | ------------------------------------------------------------------------------------------------- |
+| workflow     | `CI`（`.github/workflows/deploy.yml`，workflow_id 269627549）                                     |
+| run id / url | **40910653833** / https://github.com/NanQiaoMi/music_source_code/actions/runs/40910653833         |
+| 触发         | `push`，`head_branch` = `master`                                                                  |
+| head sha     | `098ad9cecda46672d943892d5ac99189bd6ff785`（API `git/ref/heads/master` 同值 → master 就是该提交） |
+| 结论         | `status: completed`、`conclusion: success`；check suite `completed/success`                       |
+| wall         | **5m16s**（16:20:49Z → 16:26:05Z，API `created_at`/`updated_at`；+08:00 即 00:20:49–00:26:05）    |
+| run_number   | **12**（本 workflow 第 12 次 run；#1–#11 全 failure/cancelled → 首次绿）                          |
+
+### 9.2 job 结果（API `.../runs/40910653833/jobs`）
+
+| job                                 | 结果        | 起止（UTC）         | 耗时                        |
+| ----------------------------------- | ----------- | ------------------- | --------------------------- |
+| `Build (production/perf/docs)`      | **success** | 16:21:22 → 16:22:57 | 1m35s                       |
+| `Coverage (domains)`                | **success** | 16:21:21 → 16:24:19 | 2m58s                       |
+| `Quality (types/lint/unit)`         | **success** | 16:21:22 → 16:25:57 | 4m35s                       |
+| `Quality gate (required)`（聚合）   | **success** | 16:26:00 → 16:26:03 | 3s                          |
+| `Deploy to Vercel (manual only)`    | skipped     | —                   | 设计如此（manual only）     |
+| `Desktop package (manual/tag only)` | skipped     | —                   | 设计如此（manual/tag only） |
+
+- **4/4 执行 job success**；聚合门禁 `Quality gate (required)`（`needs: [quality, coverage, build]` 三 job 全 success 才绿）首次在真实 runner 上通过，check suite conclusion `success`。
+- wall **5m16s ≤ 12min**（S8-1 出口 E1 的 wall 目标）；此前 CI.md 的 7-9/10-12min 为估算，现被实测替换。
+
+### 9.3 push 与 master 快进
+
+- 授权：用户 2026-10-30 授权 push（Q02 解除；此前 S0-2 一直停在 local-done）。
+- 变更：`origin/master` `6a211e1`（2026-09-26）→ **`098ad9c`**，fast-forward，未 force push；本 worktree `integration/s2-audio` @ `098ad9c` 与 `origin/master` 差异为 0（`git rev-list --count origin/master..HEAD` = 0）。
+- 覆盖提交（seq）：`f0d90a3`（merge origin/master 进优化栈）, `9caca0d`, `a6d4db1`, `ce0f4a4`, `8b75943`, `bfdcea3`, `1aacb0e`, `e746c2e`, `0849f92`, `ce28d4a`, `5d0da80`, `098ad9c`；另有注解方案的试错与回滚对 `7454cc0` → `0b7061b`。
+
+### 9.4 run 之前的 CI-only 修复（commit 对应）
+
+`f0d90a3` 推上去后连续 10 次失败（#1–#10，另 #11 被新 push cancel），逐条修复如下（均在 master 上，构成 `6a211e1..098ad9c`）：
+
+| #   | 修复                                                 | commit                             | 变更 / 原因                                                                                                                                                                                                                                            |
+| --- | ---------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Node 20 → 22**（dependency-cruiser 要求）          | `a6d4db1`                          | `deploy.yml`/`nightly.yml` 的 `setup-node`；dependency-cruiser 18 要求 Node ≥22，Node 20 下 `verify:layers` 起不来                                                                                                                                     |
+| 2   | **Node 22 → 24**（coverage 需要 Node 24）            | `ce0f4a4`                          | 四个 `setup-node` 全部 22→24；vitest coverage 配置在 Node 22 下报错 → coverage job 红                                                                                                                                                                  |
+| 3   | **CI `maxWorkers` 上限**                             | `bfdcea3`                          | `vitest.config.ts`：`maxWorkers: process.env.GITHUB_ACTIONS ? 2 : undefined`，避免 runner 上全量 jsdom 套件 OOM 杀 worker                                                                                                                              |
+| 4   | **github-actions reporter**                          | `8b75943`                          | `vitest.config.ts` 在 CI 下追加 `github-actions` reporter（配合 wrapper 暴露失败用例名）；更早的 `7454cc0` 直接改 workflow 参数，被 `0b7061b` revert                                                                                                   |
+| 5   | **注解 wrapper**                                     | `1aacb0e`（+`e746c2e`、`ce28d4a`） | 新增 `scripts/ci-vitest-annotations.mjs`：spawn vitest、流式转发、非 0 时把真实失败行与 `FAIL` 栈块以 `::error::` 注解写进 check-run；`package.json` 的 `test`/`test:coverage:domains` 改走 wrapper；`check-coverage-domains.mjs` 对越界域补 `::error` |
+| 6   | **audio-metrics 入口守卫 + CI-only vitest 选项回退** | `0849f92`                          | `audio-metrics-cdp.mjs`：vitest 模块 runner 下 `import.meta.url` 可能不是 file URL → `isMain` 包 try/catch，测试中永不执行 main；同时回退 vitest 配置里 CI-only 的非法选项                                                                             |
+| 7   | **playwright 可选 import**                           | `5d0da80`                          | `await import(/* @vite-ignore */ playwrightPackage)`：CI 未装 playwright，静态可分析的字符串会被 vite 转换/解析而失败，改变量 + `@vite-ignore`                                                                                                         |
+| 8   | **去 shebang**                                       | `098ad9c`                          | `audio-metrics-cdp.mjs` 删除 `#!/usr/bin/env node`：vite 转换 `.mjs` 时 shebang 导致语法错误（脚本仍可 `node` 直接执行）                                                                                                                               |
+| 9   | 其他：visualRuntime p95 容差                         | `9caca0d`                          | `visualRuntime.test.ts` 放宽 p95 断言以适配 CI 负载（既有 flake）                                                                                                                                                                                      |
+
+> 1–2 与 6–8 是"只在 CI 复现"的失败（本机 Node 24 + 本机 playwright 缓存下全部看不出）；3–5 属 runner 资源与可观测性差异。
+
+### 9.5 仍未取证 / 不在本次范围
+
+- **branch protection 的 required 列表**：需仓库 admin 令牌，只读 API 取不到保护规则；能证明的是 `Quality gate (required)` job success + check suite `success`。
+- **连续绿**：目前仅 1 次绿 run（#12）；"3 连绿"稳定性无数据，后续 push 会自然积累。
+- nightly（S8-3 的 4 周历史 / commit-back）、真机 A/B、2h soak 不在本次范围。
+- actionlint 未跑；`bundle-budget --check` 的两条 hardMax 违规仍未进入阻断路径（与 S8-3/§5.1 一致）。
 
 ---
 
@@ -376,10 +441,11 @@ Environment: Windows 11, Node v24.16.0 (same as HANDOVER §2/§7).
 
 ## 附录 B：修订记录
 
-| 日期       | 变更                                                                                                                                                                                                           | 提交                                                                                    |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| 2026-10-27 | 记录 S0-1 checkpoint 与基线复测                                                                                                                                                                                | `7156f8b`                                                                               |
-| 2026-10-27 | 追加 S0-3/S0-5 复核证据                                                                                                                                                                                        | `1be849f`                                                                               |
-| 2026-10-27 | 关闭 S0-3 并记录 worktree GC                                                                                                                                                                                   | `6f7a3bc`                                                                               |
-| 2026-10-29 | 重构为 S0 阶段出口证据（任务表/基线/决策/M0/缺失/复现），原文保留于附录 A                                                                                                                                      | 本次提交 `docs(s0): add stage exit evidence`                                            |
-| 2026-10-29 | **决策收口复核（§8）**：D1/D7 Accepted、D2/D8 Deferred；Q22 清理（worktree 19→9、根文件 33→26、ESLint 禁入删除）；store-stats 基线重建（`--check` exit 0）；S0-7/S4-7/S6-9/S7-1 done，合计 64/74；8 项门禁全绿 | 本次提交 `docs(decisions): apply approved decisions and close accepted-deviation tasks` |
+| 日期       | 变更                                                                                                                                                                                                                                  | 提交                                                                                    |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 2026-10-27 | 记录 S0-1 checkpoint 与基线复测                                                                                                                                                                                                       | `7156f8b`                                                                               |
+| 2026-10-27 | 追加 S0-3/S0-5 复核证据                                                                                                                                                                                                               | `1be849f`                                                                               |
+| 2026-10-27 | 关闭 S0-3 并记录 worktree GC                                                                                                                                                                                                          | `6f7a3bc`                                                                               |
+| 2026-10-29 | 重构为 S0 阶段出口证据（任务表/基线/决策/M0/缺失/复现），原文保留于附录 A                                                                                                                                                             | 本次提交 `docs(s0): add stage exit evidence`                                            |
+| 2026-10-29 | **决策收口复核（§8）**：D1/D7 Accepted、D2/D8 Deferred；Q22 清理（worktree 19→9、根文件 33→26、ESLint 禁入删除）；store-stats 基线重建（`--check` exit 0）；S0-7/S4-7/S6-9/S7-1 done，合计 64/74；8 项门禁全绿                        | 本次提交 `docs(decisions): apply approved decisions and close accepted-deviation tasks` |
+| 2026-10-30 | **新增 §9 真实 CI 收口**：master 首绿 run [40910653833](https://github.com/NanQiaoMi/music_source_code/actions/runs/40910653833)（`098ad9c`，4/4 执行 job success、wall 5m16s）；S0-2 local-done → **done**；表头/§1 表/§1.2/结论同步 | 本次提交 `docs(ci): record first green master CI run and close S0-2`                    |
