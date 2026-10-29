@@ -1,0 +1,14 @@
+{
+  "version": "3.0.0",
+  "createdAt": 1600000000000,
+  "type": "full",
+  "settings": {
+    "audio": "{\"state\":{\"volume\":0.4},\"version\":1}"
+  },
+  "playlists": {
+    "queue": "{\"state\":{\"queue\":[]},\"version\":1}"
+  },
+  "library": {
+    "library": "{\"state\":{\"songs\":[]},\"version\":1}"
+  }
+}

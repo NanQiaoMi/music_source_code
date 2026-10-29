@@ -1,6 +1,12 @@
 // S6-12h: store-free backup types and pure helpers live here so
 // backupRestoreStore.ts stays inside the 400-line store budget (scripts/check-store-budgets.mjs).
 // The store re-exports the public backup types, so its public surface is unchanged.
+//
+// S1-2: the types below are schema-version agnostic. v4 bodies ({ version: "4.0.0", slots })
+// and v5 bodies ({ schemaVersion: 5, entries }) share the same BackupItem/BackupPreview shape,
+// which is what lets the panel render both. Payload parsing/preview live in ./preview.ts.
+
+import type { BackupPayloadV5, RestoreReport } from "@/lib/storage/backupSchema";
 
 export type BackupType = "full" | "settings" | "playlists" | "library" | "lyrics";
 
@@ -14,6 +20,7 @@ export interface BackupItem {
   description?: string;
 }
 
+/** Legacy v4 backup body shape. Kept so old downloaded backups stay readable. */
 export interface BackupData {
   version: string;
   createdAt: number;
@@ -28,11 +35,16 @@ export interface BackupData {
   themes?: unknown;
 }
 
+/** Anything the store can preview/import/export: a v5 payload or a legacy v4 body. */
+export type AnyBackupData = BackupData | BackupPayloadV5;
+
 export interface BackupPreview {
   schemaVersion: string;
   majorVersion: number;
   canRestore: boolean;
   includedStores: string[];
+  /** Legacy-only slots that will be reported as unsupported instead of being written. */
+  unsupportedStores?: string[];
   type: BackupType;
   createdAt: number;
   size: number;
@@ -76,6 +88,8 @@ export interface BackupRestoreState {
   backupProgress: number;
   restoreProgress: number;
   restoreError: string | null;
+  /** Per-key outcome of the last restore (S1-2: restored / skipped / failed). */
+  restoreReport: RestoreReport | null;
 
   schedules: BackupSchedule[];
 
@@ -85,11 +99,11 @@ export interface BackupRestoreState {
   downloadBackup: (backupId: string) => void;
   uploadBackup: (file: File) => Promise<BackupItem>;
 
-  getBackupData: (backupId: string) => BackupData | null;
+  getBackupData: (backupId: string) => AnyBackupData | null;
   getBackupPreview: (backupId: string) => BackupPreview | null;
-  previewBackupData: (backupData: BackupData) => BackupPreview;
-  exportBackup: (backupData: BackupData) => string;
-  importBackup: (jsonString: string) => BackupData;
+  previewBackupData: (backupData: AnyBackupData) => BackupPreview;
+  exportBackup: (backupData: AnyBackupData) => string;
+  importBackup: (jsonString: string) => AnyBackupData;
 
   addSchedule: (schedule: Omit<BackupSchedule, "id">) => void;
   updateSchedule: (id: string, updates: Partial<BackupSchedule>) => void;
@@ -98,6 +112,8 @@ export interface BackupRestoreState {
 
   clearOldBackups: () => void;
   clearAllBackups: () => void;
+  /** Drop `backup-data-*` bodies that no metadata item points at (S1-2 leak fix). */
+  pruneOrphanBackupBodies: () => void;
 
   setIsBackingUp: (backingUp: boolean) => void;
   setIsRestoring: (restoring: boolean) => void;
@@ -120,70 +136,10 @@ export function formatDate(timestamp: number): string {
   return `${year}-${month}-${day}_${hours}-${minutes}`;
 }
 
-export function estimateBackupSize(data: BackupData): number {
-  const jsonString = JSON.stringify(data);
-  return new Blob([jsonString]).size;
-}
-
-const CURRENT_BACKUP_MAJOR_VERSION = 4;
-
-function getMajorVersion(version: string): number {
-  return Number.parseInt(version.split(".")[0] || "0", 10);
-}
-
-export function assertSupportedBackupVersion(version: string): void {
-  const majorVersion = getMajorVersion(version);
-  if (!Number.isFinite(majorVersion) || majorVersion > CURRENT_BACKUP_MAJOR_VERSION) {
-    throw new Error(`Unsupported backup schema version: ${version}`);
-  }
-}
-
-function getIncludedStores(data: BackupData): string[] {
-  const stores: string[] = [];
-
-  if (data.settings) {
-    stores.push("audio-store-v4", "visual-settings-v4", "gesture-store", "sleep-timer-store");
-  }
-
-  if (data.playlists) {
-    stores.push("playlist-store", "playlist-group-store-v1", "queue-store", "recommendation-store");
-  }
-
-  if (data.library) {
-    stores.push("library-manager-store-v4");
-  }
-
-  if (data.lyrics) {
-    stores.push("lyrics-cover-store-v4");
-  }
-
-  if (data.covers) {
-    stores.push("covers");
-  }
-
-  if (data.eqPresets) {
-    stores.push("eq-presets");
-  }
-
-  if (data.themes) {
-    stores.push("themes");
-  }
-
-  return Array.from(new Set(stores));
-}
-
-export function createBackupPreview(data: BackupData): BackupPreview {
-  const majorVersion = getMajorVersion(data.version);
-  const canRestore = Number.isFinite(majorVersion) && majorVersion <= CURRENT_BACKUP_MAJOR_VERSION;
-
-  return {
-    schemaVersion: data.version,
-    majorVersion,
-    canRestore,
-    includedStores: getIncludedStores(data),
-    type: data.type,
-    createdAt: data.createdAt,
-    size: estimateBackupSize(data),
-    error: canRestore ? undefined : `Unsupported backup schema version: ${data.version}`,
-  };
+/**
+ * UTF-16 length of the serialized payload; matches what localStorage stores and what
+ * createBackup reports as BackupItem.size (v5 payloads included).
+ */
+export function estimateBackupSize(data: unknown): number {
+  return JSON.stringify(data).length;
 }

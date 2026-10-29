@@ -1,0 +1,21 @@
+{
+  "version": "4.0.0",
+  "createdAt": 1700000000000,
+  "type": "full",
+  "settings": {
+    "audio": "{\"state\":{\"volume\":0.8},\"version\":1}",
+    "visual": "{\"state\":{\"themeMode\":\"dark\"},\"version\":1}",
+    "gesture": null,
+    "sleep": null
+  },
+  "playlists": {
+    "playlist": null,
+    "playlistGroups": "{\"state\":{\"groups\":[{\"id\":\"g1\"}]},\"version\":1}",
+    "queue": "{\"state\":{\"queue\":[{\"id\":\"s1\",\"title\":\"A\"}]},\"version\":1}",
+    "recommendation": "{\"state\":{\"items\":[]},\"version\":1}"
+  },
+  "library": {
+    "library": "{\"state\":{\"songs\":[]},\"version\":1}"
+  },
+  "lyrics": "{\"state\":{\"covers\":{\"s1\":\"cover-1\"}},\"version\":1}"
+}

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 5,
+  "createdAt": 1710000000000,
+  "type": "full",
+  "entries": [
+    {
+      "key": "audio-store-v4",
+      "version": 1,
+      "group": "playback",
+      "payload": "{\"state\":{\"volume\":0.6},\"version\":1}"
+    },
+    {
+      "key": "visual-settings-v4",
+      "version": 1,
+      "group": "settings",
+      "payload": "{\"state\":{\"themeMode\":\"light\"},\"version\":1}"
+    },
+    {
+      "key": "queue-store-v5",
+      "version": 1,
+      "group": "playback",
+      "payload": "{\"state\":{\"queue\":[]},\"version\":1}"
+    }
+  ]
+}
