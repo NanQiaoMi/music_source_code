@@ -28,7 +28,7 @@
 
 次世代沉浸式音乐播放器，核心亮点：
 
-- **V7 可视化系统（当前挂载）**: 14 个 Canvas 2D 效果；V8 组件树未接线（dead code，待 S4 处置）
+- **V7 可视化系统（当前挂载）**: 14 个 Canvas 2D 效果；V8 组件树已归档到 `archive/visualization-v8/`（D1 2026-10-29：保留归档与 legacy key，不接线；4 个 dead code 文件 / 571 行已删）
 - **情感矩阵 AI**: 2D 坐标情感分析 + AI 歌词笔记
 - **玻璃拟态 UI**: Apple 风格 Glass 组件库
 - **62 个 Zustand Store**（需架构解耦优化；实际数量以 scripts/perf/report-store-stats.mjs 输出为准）
@@ -86,4 +86,4 @@ npm run clean            # 清理 .next 缓存
 参见 `docs/nbl/ROADMAP.md`
 架构与性能总计划: `docs/nbl/plans/2026-10-21-architecture-performance-optimization.md`
 执行计划包: `docs/nbl/plans/2026-10-21-arch-perf-execution/README.md`（进度看板 TRACKING.md）
-当前阶段: S0 止血与基线（S0-1 于 2026-10-27 完成 checkpoint；S0-4/S0-6 完成；S0-2 本地完成待 push；S0-3 待 D2/端口统一；S0-5/S0-7 部分）
+当前阶段: S0 止血与基线（S0-1 于 2026-10-27 完成 checkpoint；S0-4/S0-6 完成；S0-7 于 2026-10-29 完成（8/8 ADR，D1/D7 Accepted、D2/D8 Deferred）；S0-2 本地完成待 push；S0-3 待 D2/端口统一；S0-5 partial（worktree 9、根文件 26））

@@ -152,15 +152,15 @@ src/
 
 ## 5. 技术决策记录
 
-| 决策       | 选择                                                                  | 理由                                                         |
-| ---------- | --------------------------------------------------------------------- | ------------------------------------------------------------ |
-| 构建模式   | App Router 默认 server build；STATIC_EXPORT 条件导出（桌面链路待 S7） | 浏览器由 Next 服务承载；Windows 桌面计划捆绑本地 Next 运行时 |
-| 状态管理   | Zustand                                                               | 轻量、TypeScript 友好、无需 Provider                         |
-| 样式方案   | Tailwind + OKLCH                                                      | 设计系统一致性、Apple 风格玻璃拟态                           |
-| 动画引擎   | Framer Motion                                                         | React 集成度最高、Spring Physics 支持                        |
-| 音频引擎   | Web Audio API                                                         | 浏览器原生、低延迟、无需外部依赖                             |
-| 可视化渲染 | Canvas 2D（V7 当前挂载）/ WebGL（Shelf3D）                            | 当前 14 个 V7 效果；V8 组件树未接线                          |
-| 持久化     | localStorage (Zustand persist)                                        | 简单、无服务器依赖                                           |
+| 决策       | 选择                                                                  | 理由                                                                       |
+| ---------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 构建模式   | App Router 默认 server build；STATIC_EXPORT 条件导出（桌面链路待 S7） | 浏览器由 Next 服务承载；Windows 桌面计划捆绑本地 Next 运行时               |
+| 状态管理   | Zustand                                                               | 轻量、TypeScript 友好、无需 Provider                                       |
+| 样式方案   | Tailwind + OKLCH                                                      | 设计系统一致性、Apple 风格玻璃拟态                                         |
+| 动画引擎   | Framer Motion                                                         | React 集成度最高、Spring Physics 支持                                      |
+| 音频引擎   | Web Audio API                                                         | 浏览器原生、低延迟、无需外部依赖                                           |
+| 可视化渲染 | Canvas 2D（V7 当前挂载）/ WebGL（Shelf3D）                            | 当前 14 个 V7 效果；V8 已归档 archive/visualization-v8/（D1 保留，不接线） |
+| 持久化     | localStorage (Zustand persist)                                        | 简单、无服务器依赖                                                         |
 
 ---
 

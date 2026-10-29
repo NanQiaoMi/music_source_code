@@ -4,6 +4,7 @@
 - 日期: 2026-10-21
 - 关联: D4、Q05、Q07、S1-1/S1-2、S6-2
 - 决策人: 待用户
+- 2026-10-29 复核: **D4 仍 Pending**（不在 2026-10-29 批准范围）。口径校正：实际 persist key = **43**（历史"44"含非 key 标记 `Hi-Res标识` 与外部 key `visualization-v8-store`），registry 43/43；备份 v5 与 rehydrate 已由 S1-2/S6-2 落地。本 ADR 重写后再转 Accepted。
 
 ## 背景
 

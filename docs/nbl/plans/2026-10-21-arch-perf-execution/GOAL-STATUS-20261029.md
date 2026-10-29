@@ -5,6 +5,7 @@
 > 上级：[README.md](./README.md) · [TRACKING.md](./TRACKING.md) · [00-decisions.md](./00-decisions.md) · [总计划](../2026-10-21-architecture-performance-optimization.md)
 > 口径：**实测** = 本文作者在本 worktree 运行并记录退出码/计数；**TRACKING** = 看板记录（本轮未复跑）；**[未验证]** = 无执行证据，不作为结论。
 > 约束：docs-only 单提交；未 push；未合并 master；未修改产品代码；未触发真实 GitHub Actions。
+> **2026-10-29 22:55 追记**：本文件的 6 项待决策（§6.1–§6.6）已在同日收口——D1 Accepted/Decided（保留 archive + legacy key）、D7 Accepted（单分辨率 1440x900 基线）、D2/D8 Deferred、Q22 清理执行（worktree 19→9、根文件 33→26）、store-stats 基线重建（62/43，`--check` exit 0）、6 项验收偏差接受；S0-7/S4-7/S6-9/S7-1 已 done，合计 60→64。以下 §1–§6 保留为 **22:03 快照**，最新口径以 `00-decisions.md`、`TRACKING.md`、`evidence/S0-evidence.md` §8 为准。
 
 ## 0. 结论摘要
 
