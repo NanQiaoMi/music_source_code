@@ -19,9 +19,18 @@ jobs:
     name: Bundle regression
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # S8-3d: the history commit-back below needs to push one commit per run. Scope the write
+    # token to this job so the workflow default (and any future job) stays contents: read.
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Nightly always appends to the default branch, even when dispatched from a topic branch.
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: true
+          fetch-depth: 1
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -56,6 +65,20 @@ jobs:
       - name: Perf dashboard
         if: always()
         run: node scripts/perf/perf-dashboard.mjs --out perf/perf-dashboard.md
+      # S8-3d: commit-back so perf/perf-history.jsonl accrues across runs instead of living only
+      # in the run artifact. Runs even when an earlier regression step failed, so the failing
+      # measurement is still recorded. GITHUB_TOKEN pushes do not re-trigger workflows; the
+      # [skip ci] marker is belt-and-suspenders for forks/other tokens.
+      - name: Commit perf history
+        if: always()
+        run: |
+          if [ ! -f perf/perf-history.jsonl ]; then
+            echo "[nightly] perf/perf-history.jsonl missing (no bundle report); skip commit-back"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add perf/perf-history.jsonl perf/reports && git diff --cached --quiet || (git commit -m 'chore(perf): nightly history [skip ci]' && git push origin "HEAD:${{ github.event.repository.default_branch }}")
       - name: Job summary
         if: always()
         run: |

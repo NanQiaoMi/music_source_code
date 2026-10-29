@@ -168,7 +168,7 @@
 
 ## 9. 性能历史与看板（S8-3b，2026-10-29）
 
-- `scripts/perf/append-history.mjs` 把 `bundle-budget --json` 的 `result` 归一化为一行 JSONL，追加到 `perf/perf-history.jsonl`（生成物，随 nightly artifact 保存，不入库）。
+- `scripts/perf/append-history.mjs` 把 `bundle-budget --json` 的 `result` 归一化为一行 JSONL，追加到 `perf/perf-history.jsonl`。该文件**入库**：nightly 由 S8-3d commit-back 提交回默认分支（见 §9），本地实验产生的行不要提交。
 - 行 schema（固定；`--check` 逐行校验）：
 
       { "ts": "2026-10-29T00:00:00.000Z", "commit": "a7da509",
@@ -188,9 +188,9 @@
       node scripts/perf/perf-dashboard.mjs --limit 30 # 表格默认最近 14 行
 
 - 看板：最近 14 行表格（时间 UTC / commit / rootMain gzip / 首页 gzip / CSS / 最大 async / public），每个指标带相对上一行的箭头与 delta（↑ 增长、↓ 下降、→ 持平）；`### Regression highlights` 列出超过阈值的相邻增量（rootMain +5KB、首页 +10KB、CSS +5KB、async +10KB、public +1MB）；最新行有 `metrics` 时输出“Latest runtime metrics”（最多 8 键）。空历史输出占位说明而非报错。
-- nightly：`.github/workflows/nightly.yml` 在 bundle report 与 diff 之后，`if: always()` 追加历史（存在 `perf/audio-metrics.json` 时带 `--metrics`）→ 生成 dashboard 并写入 job summary；artifact `perf-bundle-<run_id>` 增加 `perf-history.jsonl` / `perf-dashboard.md`（及可选的 `audio-metrics.json`）。
+- nightly：`.github/workflows/nightly.yml` 在 bundle report 与 diff 之后，`if: always()` 追加历史（存在 `perf/audio-metrics.json` 时带 `--metrics`）→ 生成 dashboard 并写入 job summary → **commit-back**（`contents: write` 仅限该 job，bot 身份，`git add perf/perf-history.jsonl perf/reports`，有 diff 才 `chore(perf): nightly history [skip ci]` + push 默认分支）；artifact `perf-bundle-<run_id>` 保留 `perf-history.jsonl` / `perf-dashboard.md`（及可选 `audio-metrics.json`）。权限/失败模式见 `docs/nbl/CI.md` §6.1。
 - 测试：`scripts/perf/perf-history.test.mjs`（append schema + metrics / 重复与非单调 ts exit 1 / 3 行看板表格与回归高亮 / `--init` 与空历史看板）。
-- 已知缺口：nightly 使用干净 checkout，历史行不跨 run 累积（仅随 artifact 保存），E6 的“≥28 行”需 S8-3d 汇总或后续回填；`--metrics` 的生产者（audio-metrics 的 `--out`）尚未在当前分支落地，nightly 以文件存在为接入条件；看板阈值与 `bundle-diff` 的 gzip 阈值一致，绝对 hardMax 仍由 `bundle-budget --check` 负责（当前禁用）。
+- 已知缺口：S8-3d 之前的「历史不跨 run 累积」已由 commit-back 解决（2026-10-30 seed 第 1 行，`5b40fc2`；≥28 行约需到 2026-11-27）；`--metrics` 的生产者（audio-metrics 的 `--out`）尚未在当前分支落地，nightly 以文件存在为接入条件；2026-10-30 实测 first-load gzip 621.5KB vs 已提交 baseline 607.2KB（+14.3KB > +10KB），nightly 首次真实运行会据此判红，需评审后 `--update` 或先瘦身（见 TRACKING 风险登记）；看板阈值与 `bundle-diff` 的 gzip 阈值一致，绝对 hardMax 仍由 `bundle-budget --check` 负责（当前禁用）。
 
 ## 10. 分层依赖门禁（S6-12a，2026-10-29）
 

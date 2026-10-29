@@ -2,7 +2,7 @@
 
 > 面向 PR 作者与 reviewer。PR/主干工作流：`.github/workflows/deploy.yml`；发布工作流见 §8。
 > 触发：`push` / `pull_request` → `master`，以及手动 `workflow_dispatch`。
-> 最后核对：2026-10-29（S8-1b 并行拆分；S8-3a 追加 nightly；S8-5 追加 release preflight/draft release）。
+> 最后核对：2026-10-30（S8-3d 追加 nightly history commit-back；S8-1b 并行拆分；S8-3a 追加 nightly；S8-5 追加 release preflight/draft release）。
 
 ## 1. Job 布局（并行，12min 预算）
 
@@ -88,11 +88,45 @@ job、coverage 独立于 quality、perf:gates 归 build、预算与 required che
 
 `.github/workflows/nightly.yml` 每日 18:00 UTC（北京 02:00）与手动 `workflow_dispatch` 触发，
 跑生产构建 → `bundle-budget` 报告 → 全量测试 → `perf:bundle:diff` → 追加
-`perf/perf-history.jsonl` → 生成 `perf/perf-dashboard.md`；基线为
+`perf/perf-history.jsonl` → 生成 `perf/perf-dashboard.md` → **history commit-back**；基线为
 `perf/bundle-baseline.json`，回归（rootMain gzip > +5KB / 首页 gzip > +10KB）时 job 失败。
 报告、历史与看板作为 `perf-bundle-<run_id>` artifact 上传并写入 job summary；阈值、`--update`
 重设基线、历史 schema 与看板字段见 `perf/README.md` §8–§9。该工作流不参与分支保护，
 PR 必过检查仍是 `Quality gate (required)`。
+
+### 6.1 History commit-back（S8-3d，2026-10-30）
+
+nightly 每个 run 都在干净 checkout 上执行，历史若只进 artifact 就永远只有 1 行，无法判断
+「连续 4 周无回归」。因此把当次追加的 `perf/perf-history.jsonl` 直接提交回默认分支。
+
+- **权限最小化**：workflow 级仍是 `permissions: contents: read`；只有 `bundle-nightly` job 加
+  job 级 `permissions: contents: write`（其他 job/工作流不受影响）。
+- **checkout**：`actions/checkout@v4` + `ref: ${{ github.event.repository.default_branch }}` +
+  `persist-credentials: true` + `fetch-depth: 1`。这样即使从功能分支手动 `workflow_dispatch`，
+  历史也写回默认分支而不是该分支。
+- **身份**：`github-actions[bot]` / `41898282+github-actions[bot]@users.noreply.github.com`。
+- **步骤**（紧接 Perf dashboard，`if: always()`，保证回归 run 也留证据）：
+
+  ```bash
+  git add perf/perf-history.jsonl perf/reports && git diff --cached --quiet || \
+    (git commit -m 'chore(perf): nightly history [skip ci]' && \
+     git push origin "HEAD:${{ github.event.repository.default_branch }}")
+  ```
+
+- **语义**：每次 run 追加 1 行，`ts` 严格递增（`append-history.mjs --check` 校验）；没有变化
+  （例如 bundle report 缺失、append 提前返回）时`git diff --cached --quiet` 为真，不产生空提交。
+  nightly 目前只写 `perf/perf-history.jsonl`；`perf/reports` 一并 add 是为将来 nightly 报告
+  留槽，当前无新增时该路径不产生 diff。
+- **不会自我触发**：`GITHUB_TOKEN` 发起的 push 不触发 workflow；`[skip ci]` 是给其他 token /
+  fork / 分支保护场景的兜底标记。
+- **失败模式**：默认分支若启用「Require a pull request before merging」且不允许 bot bypass，
+  `git push` 会被拒 → 该 run 红、历史不增长（不会伪造数据）。处理：给 `github-actions[bot]`
+  开 bypass，或改 PAT/汇总 job。push 竞态（运行期间有人推 master）会导致 non-fast-forward，
+  同样红；重跑即可。
+- **当前历史**：`perf/perf-history.jsonl` 已入库，2026-10-30 seed **1 行**
+  （`5b40fc2`，rootMain 208.4KB / first load 621.5KB / CSS 29.2KB / async 675.9KB / public 89.2MB）。
+  4 周窗口自 2026-10-30 起算，达到 ≥28 行（约 2026-11-27）前，M8 的「nightly 连续 4 周无回归」
+  保持未达，期间按「累积中」记录。
 
 ## 7. 分层依赖门禁（S6-12a）
 

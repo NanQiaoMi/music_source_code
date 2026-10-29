@@ -354,3 +354,76 @@ RESULT: PASS - 8 passed, 0 failed, 0 skipped, 0 warned
 ---
 
 _本文件由 DSH 子 agent 生成；如需更新，请在看板 [TRACKING.md](./TRACKING.md) 与 [00-decisions.md](./00-decisions.md) 同步状态后重新生成本文件。_
+
+---
+
+## 9. 终局收口（2026-10-30 02:07 +08:00）— 74/74，带显式偏差
+
+> 本节为追加记录；§1–§8 仍是 2026-10-29 22:03 的快照（60/74）。触发：用户 2026-10-30 明确「继续完成所有」，并沿用此前批准（D2 deferred、性能偏差接受、允许带偏差收口）。
+
+### 9.1 基线提交与 CI（GitHub Actions API 实测）
+
+| 项           | 值                                                                                                                                                                          |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 代码基线     | `integration/s2-audio` @ `5b40fc2f85c30cbd8c23774da2dc5d7094baf408`（短 `5b40fc2`，= `origin/master`）                                                                      |
+| 本文所在提交 | docs-only 收口提交 `docs(goal): close remaining tasks with user-accepted deviations`，父提交 `5b40fc2`；哈希用 `git log -1 --format=%h` 查询；**不 push**、不改主仓库工作树 |
+| 进度         | **74/74（100%）**；S0 7/7、S1 10/10、S2 6/6、S3 10/10、S4 7/7、S5 7/7、S6 12/12、S7 9/9、S8 6/6                                                                             |
+
+CI（workflow `CI` = `deploy.yml`，push master，均为真实 run）：
+
+|   # |                                                                                 run id | commit    | 结论    |  wall | 关键 job                                               |
+| --: | -------------------------------------------------------------------------------------: | --------- | ------- | ----: | ------------------------------------------------------ |
+|  12 | [40910653833](https://github.com/NanQiaoMi/music_source_code/actions/runs/40910653833) | `098ad9c` | success | 5m16s | Quality 4m35s / Coverage 2m58s / Build 1m35s / gate 3s |
+|  13 | [40914041154](https://github.com/NanQiaoMi/music_source_code/actions/runs/40914041154) | `58b5274` | success | 4m47s | 四 job 全 success                                      |
+|  14 | [40923220019](https://github.com/NanQiaoMi/music_source_code/actions/runs/40923220019) | `54a5dd9` | success | 3m53s | 四 job 全 success                                      |
+|  15 | [40926256098](https://github.com/NanQiaoMi/music_source_code/actions/runs/40926256098) | `5b40fc2` | success | 3m52s | Build 1m25s / Quality 3m33s / Coverage 3m44s / gate 2s |
+
+全部 run 的聚合 `Quality gate (required)` 均为 success，wall 均 ≤ 12min；`Desktop package` / `Deploy to Vercel` 按设计 skipped。
+nightly 的首次真实运行尚未发生（下一次 cron `0 18 * * *` = 2026-10-30 18:00 UTC / 2026-10-31 02:00 +08），因此 commit-back 目前只有本地仿真证据（见 9.4）。
+
+### 9.2 本次落地
+
+1. **nightly history commit-back（S8-3d）**：`.github/workflows/nightly.yml` 新增 `Commit perf history` 步骤（`if: always()`，在 append-history/dashboard 之后）：job 级 `permissions: contents: write`（workflow 级仍 `contents: read`）、checkout `ref: ${{ github.event.repository.default_branch }}` + `persist-credentials: true`、bot 身份、`git add perf/perf-history.jsonl perf/reports && git diff --cached --quiet || (git commit -m 'chore(perf): nightly history [skip ci]' && git push origin "HEAD:${{ github.event.repository.default_branch }}")`。无 diff 不产生空提交；push 失败则该 run 红且不伪造数据。
+2. **历史 seed**：`perf/perf-history.jsonl` 入库（`append-history.mjs --init` 建 header-less JSONL，当前 **1 行**）：
+   `{"ts":"2026-10-30T02:02:00+08:00","commit":"5b40fc2","rootMainGzipKB":208.4,"firstLoadGzipKB":621.5,"cssGzipKB":29.2,"asyncMaxKB":675.9,"publicMB":89.2}`
+   `--check` exit 0（1 entry，schema valid，ts strictly increasing）；`perf-dashboard` 可渲染 1 行。
+3. **文档**：TRACKING 合计 68→74/74（S7 4→9、S8 5→6）、M7/M8 状态、阻塞登记与变更记录；`00-decisions.md` 追加「2026-10-30 用户授权收口记录」；`docs/nbl/CI.md` §6.1 记录权限/身份/失败模式；`perf/README.md` §8–§9 同步「历史入库」。
+4. **性能实测（HEAD `5b40fc2` 全新 build）**：rootMain 208.4KB gzip（baseline 211，**-2.6KB**）、first load 621.5KB（baseline 607.2，**+14.3KB > +10KB 阈值**）、CSS 29.2KB、async max 675.9KB、public 89.2MB（含自托管 ffmpeg-core/mediapipe）。
+
+### 9.3 剩余偏差（收口后仍存在，不得宣称全部达成）
+
+|   # | 项                                                                                 | 现状                                                                                                        | 状态 / 处理                                                                                                           |
+| --: | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+|   1 | S7-4..S7-8 桌面运行时（D2/D8）                                                     | **零代码交付**：无 standalone Next、app:// 桥接、BackendGateway、异步后端、utilityProcess 沙箱、safeStorage | **accepted-deferral 2026-10-30**（done-with-deviation）；M7 出口门不勾选；ADR 0002 仍 Proposed+Deferred；桌面发布冻结 |
+|   2 | S8-3 nightly 连续 4 周                                                             | 自动化全落地、CI 绿、history **1 行**；时间门自 2026-10-30 起                                               | **time-gate accepted**；≥28 行约 2026-11-27；M8 不勾选                                                                |
+|   3 | first-load gzip                                                                    | 621.5KB vs baseline 607.2KB（+14.3KB > +10KB）                                                              | **未接受的新偏差**；nightly 首跑预计在 diff 步骤判红；需评审后 `npm run perf:bundle:diff -- --update` 或先瘦身        |
+|   4 | M4 rootMain 190KB / S2-4 0.4 写/s / M5 rAF 8 / M6 边 6 / S3-2 4 档 / S7-1 模块大小 | 2026-10-29 实测值                                                                                           | 用户 **2026-10-29 已接受**（沿用，见 00-decisions.md）                                                                |
+|   5 | M6 40 store 无 version / 5 个整店持久化                                            | 未实现                                                                                                      | **未批准**，保持缺口；M6 不关闭                                                                                       |
+|   6 | 真机证据：听感 A/B、devicechange/合盖、1080p ≥90fps、播放级 2h soak                | 只有 jsdom/headless/node 合成                                                                               | 外部依赖，保持缺口                                                                                                    |
+|   7 | nightly commit-back 真机验证                                                       | 仅本地 bare-repo 仿真（push + no-op 两路径 exit 0）；GitHub 上首次运行待 2026-10-31 02:00 +08               | 观察首个 nightly run；若 push 被 branch protection 拒，按 CI.md §6.1 处理                                             |
+|   8 | R9 数据兼容 fixture / R10 保护视图清单                                             | 未脚本化                                                                                                    | S8-5 遗留缺口                                                                                                         |
+
+### 9.4 如何验证（本 worktree 根目录，2026-10-30 实测）
+
+| 命令                                                                                | 期望                                                                                                       |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `npx tsc --noEmit`                                                                  | exit 0，无输出                                                                                             |
+| `node scripts/check-docs-facts.mjs`                                                 | `fail=0 warn=0`，exit 0                                                                                    |
+| `npx vitest run scripts/ci-required-checks.test.mjs scripts/verify-layers.test.mjs` | 2 files / 12 tests passed，exit 0                                                                          |
+| `npm run perf:gates`                                                                | store budgets PASS（111 files / SCC 0）、whole 0、bundle markers PASS、rAF usages=14 PASS，exit 0          |
+| `node scripts/check-store-budgets.mjs`                                              | PASS：111 files / 19,182 lines / SCC 0，exit 0                                                             |
+| `node scripts/perf/append-history.mjs --check`                                      | `OK: 1 entry, schema valid, ts strictly increasing`，exit 0                                                |
+| `npm run perf:dashboard`                                                            | 1 行表格（5b40fc2，2026-10-29 18:02 UTC）                                                                  |
+| `npm run perf:bundle:diff`                                                          | **exit 1（已知）**：first-load +14.3KB > +10KB；rootMain -2.6KB PASS                                       |
+| `git log --oneline -1`                                                              | docs 收口提交（父 `5b40fc2`）                                                                              |
+| GitHub API                                                                          | `curl -s https://api.github.com/repos/NanQiaoMi/music_source_code/actions/runs?per_page=4` 查 #12–#15 结论 |
+
+nightly commit-back 的本地仿真（不 push 真实仓库）：在 `.cache/nightly-commit-sim` 建 bare remote + clone，执行同一段 shell —— 首次运行生成 `chore(perf): nightly history [skip ci]` 并推送成功（远端 2 行）、第二次运行 `git diff --cached --quiet` 为真且不产生空提交（exit 0、工作树干净）。
+
+### 9.5 风险
+
+1. **「done-with-deviation」最容易被误读为已完成**：S7-4..S7-8 完全没有代码，S8-3 的 4 周判据也未达成；任何对外汇报必须同时引用本表，不能只说 74/74。
+2. **first-load baseline 偏差会让 nightly 立刻红**：若不 rebaseline，4 周「无回归」永远无法开始；若 rebaseline，需按仓库规则评审并说明 +14.3KB 的来源（S7 功能 + ffmpeg/mediapipe 自托管）。
+3. **commit-back 依赖默认分支可被 bot 推送**：branch protection 开启「Require PR」且无 bypass 时 nightly 会红；push 竞态会 non-fast-forward。处理见 `docs/nbl/CI.md` §6.1。
+4. **M7/M8 出口门仍未关闭**：74/74 是看板口径（含 6 项 done-with-deviation），不是九个里程碑全部通过。
+5. **本次 docs 提交未 push**（按任务约束）；如需让 CI 记录本次文档变更，需另行授权 push。

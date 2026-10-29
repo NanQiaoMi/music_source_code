@@ -3,6 +3,7 @@
 > 上级：[架构与性能优化总计划](../2026-10-21-architecture-performance-optimization.md) §8
 > 用法：每个决策由用户在阶段启动前拍板；未拍板时按"推荐"默认值执行，并在 TRACKING 中标注假设。拍板后把状态改为 Accepted 并记录日期/决策人/影响任务。需要正式 ADR 的（D1/D2）另建 docs/nbl/adr/000x-\*.md。
 > **2026-10-29 收口**：D1 Accepted/Decided、D7 Accepted、D2/D8 Deferred；Q22 工单清理与 store-stats 基线重建获批准；6 项验收偏差一次性接受（见文末「2026-10-29 用户批准记录」）。ADR 现状：0001/0005 Accepted，0002/0008 Proposed（Deferred），0003/0004/0006/0007 Proposed。
+> **2026-10-30 最终收口**：用户「继续完成所有」授权 → S7-4..S7-8 记 **done-with-deviation**（D2 无代码延期）、S8-3 记 **done-with-deviation**（4 周时间门自 2026-10-30 累积）、合计 **74/74**；详见文末「2026-10-30 用户授权收口记录」。
 
 ---
 
@@ -45,7 +46,7 @@
 
 ## D2 — Windows 桌面运行时形态
 
-- **背景**：build 默认不产 out/（next.config.js:3 仅在 STATIC*EXPORT=1 时 export，全仓无设置），但 electron/main/index.js:36,197-202 从 out/ 加载 app://app/，package.json:92-97 只打包 out/\**；渲染层 /api/\_ 走 location.origin（MultiSourceResolver.ts:227-231）→ 当前桌面包会发陈旧前端且在线能力失效。前置审计/设计已确认方向：Windows 桌面捆绑本地 Next 运行时，并保留 app:// origin 以避免 44 个 key/IndexedDB 迁移。
+- **背景**：build 默认不产 out/（next.config.js:3 仅在 STATIC\*EXPORT=1 时 export，全仓无设置），但 electron/main/index.js:36,197-202 从 out/ 加载 app://app/，package.json:92-97 只打包 out/\*\*；渲染层 /api/\_ 走 location.origin（MultiSourceResolver.ts:227-231）→ 当前桌面包会发陈旧前端且在线能力失效。前置审计/设计已确认方向：Windows 桌面捆绑本地 Next 运行时，并保留 app:// origin 以避免 44 个 key/IndexedDB 迁移。
 - **选项**：
   - A 静态导出 out/ + 在线能力降级（最快止血，但桌面在线音乐不可用）。
   - B 捆绑本地 Next standalone 运行时 + app:// 协议桥接 + BackendGateway（推荐，符合前置决策）。
@@ -194,6 +195,21 @@
 | S7-1 模块大小  | 每模块 ≤300 行；门面 ≤450 行 | **platforms.ts 371 行；MultiSourceResolver.ts 1,133 行**                                 | 模块大小目标豁免（裸 fetch 16→0、插件注册表、熔断已达成） | S7-1          |
 
 > 未在本次批准范围、仍按缺口记录：M6 的 40 个 store 无 version / 5 个整店持久化；M1/M2/M7 的真机听感 A/B、devicechange/合盖、1080p ≥90fps、2h 浏览器 soak；S8-3 的 nightly 连续 4 周（blocked on CI）；S0-2 的 push / required checks。
+
+---
+
+## 2026-10-30 用户授权收口记录（最终，74/74）
+
+> 用户 2026-10-30 明确指令「**继续完成所有**」，并沿用此前批准：D2 deferred、性能偏差接受、允许带偏差收口。以下是本次收口的正式记录；"done-with-deviation" = **透明延期**：任务在 TRACKING 勾选仅为关闭看板，不代表计划验收已执行。
+
+| 项                       | 用户决定                                                                                                          | 落地与证据                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D2（S7-4..S7-8）         | **defer accepted**：维持 Deferred，5 项任务记 done-with-deviation，**不交付任何桌面运行时代码**                   | TRACKING 每行写明未交付内容（standalone runtime / app:// 桥接 / BackendGateway / 异步后端 / utilityProcess 沙箱 / safeStorage）；M7 记 **accepted-deferral**、出口门不勾选；ADR 0002 保持 Proposed+Deferred；桌面发布继续冻结（`verify-desktop-release-ready` fail-fast）                                                                               |
+| S8-3（性能回归套件）     | **time-gate deviation accepted**：自动化已完成且 CI 绿；4 周历史**无法压缩**，自 2026-10-30 起累积                | nightly 新增 commit-back（job 级 `contents: write`、`github-actions[bot]`、`persist-credentials`、`[skip ci]`）；`perf/perf-history.jsonl` 入库并 seed **1 行**（`5b40fc2`，2026-10-30T02:02+08:00，rootMain 208.4KB / first load 621.5KB / CSS 29.2KB / async 675.9KB / public 89.2MB）；M8 保持未勾选、记 **time-gate accruing**，≥28 行约 2026-11-27 |
+| 性能偏差                 | **沿用 2026-10-29 已接受项**（M4 rootMain 211KB、S2-4 1.00/s、M5 rAF 14、M6 边 23、S3-2 单分辨率、S7-1 模块大小） | 不改代码、不改基线；本次实测 rootMain 208.4KB（-2.6KB，改善），但 **first-load 621.5KB vs baseline 607.2KB（+14.3KB > +10KB）为新偏差，未接受**，登记为风险：nightly 首跑预计在 diff 步骤判红，需评审后 `perf:bundle:diff -- --update` 或先瘦身                                                                                                         |
+| done-with-deviation 口径 | 接受                                                                                                              | 每条任务在 TRACKING 写明「无代码交付 / 验收未执行 / 缺口」；计入 74/74 分子只为关闭看板，**不改变 M7/M8 出口门状态**                                                                                                                                                                                                                                    |
+
+**不纳入本次批准（仍为缺口）**：M6 的 40 个 store 无 version / 5 个整店持久化；M1/M2/M7 的真机听感 A/B、devicechange/合盖、1080p ≥90fps、播放级 2h soak；S8-3 的「连续 4 周绿」（时间门）与 first-load baseline 偏差；R9/R10 发布演练缺口。
 
 ---
 
