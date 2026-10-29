@@ -26,7 +26,7 @@
 │  src/store/coordinator: 4 files / 0 imports (dead shim)          │
 │  target: domain use-cases + typed events (see execution S6)       │
 ├──────────────────────────────────────────────────────────────────┤
-│                    State Layer (Zustand 63 stores)                │
+│                    State Layer (Zustand 64 stores)                │
 │  Core Audio: audioStore | playerStore | queueStore | eqStore     │
 │  AI/Emotion: emotionStore | aiStore | recommendationStore        │
 │  UI: uiStore | visualSettingsStore | visualizationV8Store        │
@@ -88,7 +88,7 @@ src/
 │   ├── social/                # 分享面板
 │   └── stats/                 # 统计数据可视化
 │
-├── store/                     # 63 个 Zustand Store（见下节）
+├── store/                     # 64 个 Zustand Store（见下节）
 ├── lib/
 │   ├── audio/                 # 音频引擎（AudioEngine/EffectsManager/CrossfadeMixer/PlaybackClock；DSP/GraphManager 未接线）
 │   ├── three/                 # Three.js 场景管理器
@@ -122,15 +122,15 @@ src/
 
 ### 关键组件交互
 
-| 组件                     | 职责                                      | 依赖                    |
-| ------------------------ | ----------------------------------------- | ----------------------- |
-| `AudioEngine`            | AudioContext 单例，管理主音频图           | 无                      |
-| `DSPProcessor`           | 模块化 DSP 链（**未接线，dead code ~452 行**） | — |
-| `AudioEffectsManager`    | 17 种创意效果，动态重连音频图             | AudioEngine             |
-| `CrossfadeMixer`         | 情感感知交叉淡入淡出                      | AudioEngine             |
-| `AudioGraphManager`      | 编程式节点图（**未接线，dead code ~300 行**） | — |
-| `useAudioPlayer`         | React hook 封装，事件监听                 | audioStore, AudioEngine |
-| `AudioVisualizerManager` | Analyser→可视化转发（S6-12a 已改为依赖 `lib/audio/audioEngineAccess`，不再反向依赖 hooks） | AudioEngine |
+| 组件                     | 职责                                                                                       | 依赖                    |
+| ------------------------ | ------------------------------------------------------------------------------------------ | ----------------------- |
+| `AudioEngine`            | AudioContext 单例，管理主音频图                                                            | 无                      |
+| `DSPProcessor`           | 模块化 DSP 链（**未接线，dead code ~452 行**）                                             | —                       |
+| `AudioEffectsManager`    | 17 种创意效果，动态重连音频图                                                              | AudioEngine             |
+| `CrossfadeMixer`         | 情感感知交叉淡入淡出                                                                       | AudioEngine             |
+| `AudioGraphManager`      | 编程式节点图（**未接线，dead code ~300 行**）                                              | —                       |
+| `useAudioPlayer`         | React hook 封装，事件监听                                                                  | audioStore, AudioEngine |
+| `AudioVisualizerManager` | Analyser→可视化转发（S6-12a 已改为依赖 `lib/audio/audioEngineAccess`，不再反向依赖 hooks） | AudioEngine             |
 
 ---
 
@@ -138,7 +138,7 @@ src/
 
 ### 4.1 Store 分类
 
-当前实际 **63 个 store**（43 处 persist）。数量、persist key 与依赖边以 `scripts/perf/report-store-stats.mjs` 输出为准；分类与目标所有权见总计划 §4.2。
+当前实际 **64 个 store**（43 处 persist）。数量、persist key 与依赖边以 `scripts/perf/report-store-stats.mjs` 输出为准；分类与目标所有权见总计划 §4.2。
 
 代表域：核心播放（playerStore/queueStore/audioStore/playbackRuntimeStore）、音频设置与效果、AI/情感、可视化、UI 壳、库/播放列表、数据与备份、账号/音源、统计/健康/预设等。迁移目标：playerStore（播放意图单一 owner）、queueStore（队列单一 owner）、playbackRuntimeStore（生命周期权威）、audioSettingsStore（原 audioStore 收缩）、uiShell/panel/toast/theme 拆分（S6）。
 
@@ -154,15 +154,15 @@ src/
 
 ## 5. 技术决策记录
 
-| 决策       | 选择                           | 理由                                  |
-| ---------- | ------------------------------ | ------------------------------------- |
+| 决策       | 选择                                                                  | 理由                                                         |
+| ---------- | --------------------------------------------------------------------- | ------------------------------------------------------------ |
 | 构建模式   | App Router 默认 server build；STATIC_EXPORT 条件导出（桌面链路待 S7） | 浏览器由 Next 服务承载；Windows 桌面计划捆绑本地 Next 运行时 |
-| 状态管理   | Zustand                        | 轻量、TypeScript 友好、无需 Provider  |
-| 样式方案   | Tailwind + OKLCH               | 设计系统一致性、Apple 风格玻璃拟态    |
-| 动画引擎   | Framer Motion                  | React 集成度最高、Spring Physics 支持 |
-| 音频引擎   | Web Audio API                  | 浏览器原生、低延迟、无需外部依赖      |
-| 可视化渲染 | Canvas 2D（V7 当前挂载）/ WebGL（Shelf3D） | 当前 14 个 V7 效果；V8 组件树未接线 |
-| 持久化     | localStorage (Zustand persist) | 简单、无服务器依赖                    |
+| 状态管理   | Zustand                                                               | 轻量、TypeScript 友好、无需 Provider                         |
+| 样式方案   | Tailwind + OKLCH                                                      | 设计系统一致性、Apple 风格玻璃拟态                           |
+| 动画引擎   | Framer Motion                                                         | React 集成度最高、Spring Physics 支持                        |
+| 音频引擎   | Web Audio API                                                         | 浏览器原生、低延迟、无需外部依赖                             |
+| 可视化渲染 | Canvas 2D（V7 当前挂载）/ WebGL（Shelf3D）                            | 当前 14 个 V7 效果；V8 组件树未接线                          |
+| 持久化     | localStorage (Zustand persist)                                        | 简单、无服务器依赖                                           |
 
 ---
 

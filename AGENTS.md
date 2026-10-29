@@ -6,21 +6,21 @@
 
 ## 快速定位
 
-| 你需要             | 查看                           |
-| ------------------ | ------------------------------ |
-| 当前要做什么       | `docs/nbl/ROADMAP.md`          |
-| 开发流程规范       | `docs/nbl/PROCESS.md`          |
-| 编码/测试规范      | `docs/nbl/CODING_STANDARDS.md` |
-| 系统架构           | `docs/nbl/ARCHITECTURE.md`     |
-| 项目交接文档       | `docs/nbl/HANDOVER.md`         |
-| 架构/性能优化计划  | `docs/nbl/plans/2026-10-21-architecture-performance-optimization.md` |
-| 长期 backlog（跨季度） | `docs/nbl/BACKLOG.md`      |
-| 当前迭代实施计划   | `docs/nbl/plans/` 目录         |
-| 技术设计方案       | `docs/nbl/specs/` 目录         |
-| 设计系统           | `DESIGN.md`                    |
-| 产品策略           | `PRODUCT.md`                   |
-| 启动指南           | `STARTUP_GUIDE.md`             |
-| 历史文档（已归档） | `docs/nbl/archive/` 目录       |
+| 你需要                 | 查看                                                                 |
+| ---------------------- | -------------------------------------------------------------------- |
+| 当前要做什么           | `docs/nbl/ROADMAP.md`                                                |
+| 开发流程规范           | `docs/nbl/PROCESS.md`                                                |
+| 编码/测试规范          | `docs/nbl/CODING_STANDARDS.md`                                       |
+| 系统架构               | `docs/nbl/ARCHITECTURE.md`                                           |
+| 项目交接文档           | `docs/nbl/HANDOVER.md`                                               |
+| 架构/性能优化计划      | `docs/nbl/plans/2026-10-21-architecture-performance-optimization.md` |
+| 长期 backlog（跨季度） | `docs/nbl/BACKLOG.md`                                                |
+| 当前迭代实施计划       | `docs/nbl/plans/` 目录                                               |
+| 技术设计方案           | `docs/nbl/specs/` 目录                                               |
+| 设计系统               | `DESIGN.md`                                                          |
+| 产品策略               | `PRODUCT.md`                                                         |
+| 启动指南               | `STARTUP_GUIDE.md`                                                   |
+| 历史文档（已归档）     | `docs/nbl/archive/` 目录                                             |
 
 ---
 
@@ -31,7 +31,7 @@
 - **V7 可视化系统（当前挂载）**: 14 个 Canvas 2D 效果；V8 组件树未接线（dead code，待 S4 处置）
 - **情感矩阵 AI**: 2D 坐标情感分析 + AI 歌词笔记
 - **玻璃拟态 UI**: Apple 风格 Glass 组件库
-- **63 个 Zustand Store**（需架构解耦优化；实际数量以 scripts/perf/report-store-stats.mjs 输出为准）
+- **64 个 Zustand Store**（需架构解耦优化；实际数量以 scripts/perf/report-store-stats.mjs 输出为准）
 
 ### 技术栈
 
