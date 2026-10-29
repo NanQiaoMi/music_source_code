@@ -1,6 +1,6 @@
 {
   "maxLines": 400,
-  "generatedAt": "2026-10-29T02:52:14.581Z",
+  "generatedAt": "2026-10-29T03:02:28.493Z",
   "files": {
     "src/store/abLoopStore.ts": 109,
     "src/store/actions/emotionActions.ts": 9,
@@ -90,7 +90,9 @@
     "src/store/useDataManagerStore.ts": 115,
     "src/store/useOfflineDownloadStore.ts": 717,
     "src/store/useStorageAnalyticsStore.ts": 292,
-    "src/store/userAccountStore.ts": 701,
+    "src/store/userAccountStore.ts": 377,
+    "src/store/userAccount/helpers.ts": 297,
+    "src/store/userAccount/types.ts": 123,
     "src/store/visualSettingsStore.ts": 171,
     "src/store/visualSettings/helpers.ts": 163,
     "src/store/visualSettings/themePresets.ts": 327,
