@@ -3,7 +3,7 @@
 > 上级：[总计划](../2026-10-21-architecture-performance-optimization.md) · [执行计划包 README](./README.md)
 > 状态口径：pending（未开始）/ in_progress（实现中）/ review（待复核）/ done（已合并且验收通过）/ blocked（阻塞，需写原因）
 > 规则：每完成一个子 PR 勾选对应任务下的子项；任务 done 必须附证据（命令/退出码/指标/截图）；阶段出口全部满足才能把阶段标记 done。
-> 更新时间：2026-10-29（**S2 音频图栈 S2-1..S2-6 已并入 integration/s2-audio（← 95424c4 + 6a25e92，18 文件冲突按 S1/S6 语义解，S2 行 6/6、合计 53→59）**；**S1-2 备份 v5 已并入集成栈 integration/s1-batch**；S1-4 VibeMusicDB v3 并入 S1 栈；S1-10 集成矩阵并入 S1/S6 栈；S1-5/S1-6/S1-7/S1-8/S1-9 已并入；S1-10b 备份恢复/v1→v3 矩阵补齐（6 文件/21 用例）；S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3/S1-4/S1-5/S1-6/S1-7/S1-8/S1-9/S1-10 done）
+> 更新时间：2026-10-29（**S2 音频图栈 S2-1..S2-6 已并入 integration/s2-audio（← 95424c4 + 6a25e92，18 文件冲突按 S1/S6 语义解，S2 行 5/6（S2-6 探针部分交付）、合计 53→58，S3-2 截图后 59）**；**S1-2 备份 v5 已并入集成栈 integration/s1-batch**；S1-4 VibeMusicDB v3 并入 S1 栈；S1-10 集成矩阵并入 S1/S6 栈；S1-5/S1-6/S1-7/S1-8/S1-9 已并入；S1-10b 备份恢复/v1→v3 矩阵补齐（6 文件/21 用例）；S0-1/S0-3 done；S0-4/S0-6 done；S0-2 本地完成待 push；S0-5 review；S0-7 待决策；S1-1/S1-2/S1-3/S1-4/S1-5/S1-6/S1-7/S1-8/S1-9/S1-10 done）
 
 ## 汇总
 
