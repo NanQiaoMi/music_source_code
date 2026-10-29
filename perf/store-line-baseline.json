@@ -1,6 +1,6 @@
 {
   "maxLines": 400,
-  "generatedAt": "2026-10-29T01:15:08.649Z",
+  "generatedAt": "2026-10-29T01:30:32.176Z",
   "files": {
     "src/store/abLoopStore.ts": 109,
     "src/store/actions/emotionActions.ts": 9,
@@ -39,7 +39,8 @@
     "src/store/linerNotesStore.ts": 248,
     "src/store/listeningJournalStore.ts": 169,
     "src/store/lyricSettingsStore.ts": 204,
-    "src/store/lyricsCoverStore.ts": 425,
+    "src/store/lyricsCoverStore.ts": 355,
+    "src/store/lyricsCover/helpers.ts": 82,
     "src/store/lyricsSearchStore.ts": 163,
     "src/store/metadataEditorStore.ts": 273,
     "src/store/panelStore.ts": 179,

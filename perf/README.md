@@ -101,7 +101,7 @@
 
 ## 6. Store 行数棘轮 + 环门禁（S6-12，2026-10-29）
 
-- 基线：`perf/store-line-baseline.json`，78 个非测试 store 文件 / 18,756 行；`maxLines=400`（S6-12c `--update` 补录 13 个 S6-6/S6-7 新增文件并新增 `libraryManager/helpers.ts`，over-cap 16→15）。
+- 基线：`perf/store-line-baseline.json`，79 个非测试 store 文件 / 18,768 行；`maxLines=400`（S6-12c `--update` 补录 13 个 S6-6/S6-7 新增文件并新增 `libraryManager/helpers.ts`，over-cap 16→15；S6-12d 新增 `lyricsCover/helpers.ts`，over-cap 15→14）。
 - 口径：统计 `src/store/**/*.{ts,tsx}` 物理行数（末尾换行不计），排除 `__tests__/`、`__contract__/`、`fixtures/`、`*.test.*`、`*.spec.*`。
 - 棘轮：已入基线文件只允许 ≤ 基线（减行通过、增行 FAIL）；未入基线的新文件 >400 行 FAIL；`--update` 显式执行且 shrink-only（首次建基线除外；拒绝存量增行与新增 >400 入档），并清理已删除文件。
 - 环：运行时 store→store import 的 SCC 必须为 0（type-only import 不构成运行时边；作用域与 `report-store-stats` 的顶层 store 模块一致）；FAIL 时逐条打印违规文件/环。
@@ -125,9 +125,8 @@
 | 500 | src/store/searchStore.ts |
 | 467 | src/store/slices/playbackSlice.ts |
 | 432 | src/store/queueStore.ts |
-| 425 | src/store/lyricsCoverStore.ts |
 
-- 已知缺口：S6-12a 分层规则已落地（末尾 §10；首跑 8 errors 已清零）；15 个存量 >400 文件待拆分后执行 `--update` 收紧。S6-12c 已把 `libraryManagerStore.ts` 419→313 行（类型/默认值/纯函数下沉到 `src/store/libraryManager/helpers.ts`，public API 与 persist name/partialize 不变），over-cap 由 16 降到 15。S6-12b 的 CI 接线见第 7 节。
+- 已知缺口：S6-12a 分层规则已落地（末尾 §10；首跑 8 errors 已清零）；14 个存量 >400 文件待拆分后执行 `--update` 收紧。S6-12c 已把 `libraryManagerStore.ts` 419→313 行（类型/默认值/纯函数下沉到 `src/store/libraryManager/helpers.ts`，public API 与 persist name/partialize 不变），over-cap 由 16 降到 15。S6-12d 已把 `lyricsCoverStore.ts` 425→355 行（歌词/封面类型与 LRC 编解码下沉到 `src/store/lyricsCover/helpers.ts`，public API 与 persist name/partialize 不变），over-cap 由 15 降到 14。S6-12b 的 CI 接线见第 7 节。
 
 ## 7. CI 接线（S6-12b，2026-10-29）
 
