@@ -128,6 +128,7 @@ for (const [name, count, pct, floor] of rows) {
 }
 
 if (offenders.length > 0) {
+  for (const offender of offenders) console.log("::error title=coverage-domains::" + offender);
   console.error("[coverage-domains] FAIL: " + offenders.length + " offender(s) below burn-in floor");
   for (const offender of offenders) console.error(" - " + offender);
   if (!reportOnly) process.exit(1);
