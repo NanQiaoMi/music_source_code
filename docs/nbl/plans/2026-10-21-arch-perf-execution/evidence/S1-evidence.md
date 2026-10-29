@@ -1,53 +1,276 @@
-# S1-2a evidence — backup v5 schema, v4 migration, rehydrate (2026-10-27)
+# S1 阶段退出证据（M1 出口门）
 
-- Worktree: D:/26project/music_source_code_V1.1_full/_worktrees/arch-perf-s1-2a
-- Branch/commit: feature/arch-perf-s1-2a @ 4f9325d (based on checkpoint 6f7a3bc)
-- Why isolated: main worktree still contains another session's uncommitted handwritten-MV changes; S1-2a was developed and verified in a separate worktree with a node_modules junction.
+> 计划依据：[S1-data-playback.md](../S1-data-playback.md) §5「阶段级验证命令与证据清单」
+> 看板：[TRACKING.md](../TRACKING.md)｜上游：[架构与性能优化总计划](../../../2026-10-21-architecture-performance-optimization.md)
+> 生成时间：2026-10-29（Asia/Shanghai）
+> worktree：`D:/26project/music_source_code_V1.1_full/_worktrees/arch-integration-s1-5`
+> 分支：`docs/s1-evidence`，创建自集成栈 HEAD `1268e9b`（S1-4 合并后）
+> 约束：未 push；未改动主工作区 `D:/26project/music_source_code_V1.1_full/music_source_code`；回滚演练的临时分支均已删除。
 
-## Delivered (8 files, +948/−456)
+## 0. 结论（先看这里）
 
-- src/lib/storage/backupSchema.ts (new): BACKUP_SCHEMA_VERSION=5; create/parse v5 payload; v4 slot migration (gesture/sleep/playlist dead slots reported unsupported); atomic restoreBackupV5 (validate all entries before first write; corrupt payload aborts with zero writes); rollback snapshot helper (mimi:restore-rollback).
-- src/lib/storage/rehydrateRegisteredStores.ts (new): registerRehydrateHandle + lazy store loaders for player/queue/audio/visual/gesture/recommendation/library/lyrics/ui; collects ok/failed instead of throwing.
-- src/store/backupRestoreStore.ts (rewrite): createBackup uses registry BACKUP_KEYS (8 real keys; no gesture-store/queue-store/recommendation-store); v5 body under backup-data-<id>; restore parses v5 or migrates v4, snapshots overwritten keys, validates/writes atomically, rehydrates restored stores, returns restoreReport (restored/skipped/failed); preview/get/download/upload/import/export handle v5 + legacy; delete/clearOld/clearAll remove bodies; pruneOrphanBackupBodies.
-- src/store/backupRestoreStore.test.ts (rewrite): 10 tests — v5 create, settings subset, preview, v4 migration (dead keys skipped), v3 rejection, v5 roundtrip, corrupt atomic abort, v5 fixture, orphan/clear pruning, export/import + legacy.
-- src/lib/storage/rehydrateRegisteredStores.test.ts (new): 4 tests.
-- src/store/__fixtures__/backup-v4-legacy.json, backup-v3-unknown-major.json, backup-v5.json (new).
+- **任务完成度**：TRACKING 记 S1-1..S1-10 全部 done（10/10）；本证据复核了每个任务的提交、变更规模与可运行的定向测试。
+- **自动化回归**：本 worktree 8 组定向测试合计 **153 passed / 0 failed，全部 exit 0**；S1-2 另在其分支上有 17 用例（本 worktree 不含 S1-2 代码，见 §2）。全量 suite：**297 files / 1861 passed + 1 skipped，exit 0**（§8.1）。
+- **M1 出口门未关闭**（按计划 §1「E1-1..E1-9 全部满足」判定）：
+  1. **S1-2 未合入集成栈**：`5862795` / `825e109` 不是 `1268e9b` 的祖先；当前 HEAD 仍是 pre-S1-2 的备份实现（12 个旧用例）。E1-2 在本分支不可验收。
+  2. **firstSound 未采样**：S1-9 的 `playbackMarks` 已就位并有单测，但 P50/P95 无真实样本（§4），E1-8 不能判定。
+  3. **真机 smoke 未执行**：devicechange/合盖、`local://` 导入→刷新→可播、真实网络源、听感 A/B 均未执行（§8）。
+  4. **S1-10 覆盖不足**：计划要求 6 文件 / ≥20 用例，实际 4 文件 / 13 用例；备份恢复矩阵与 v1→v3 的 `local://` 集成用例未交付。
+- **证据口径**：只有在本 worktree 实际执行并捕获 exit code 的数字标「实测」；来自 TRACKING/历史分支的标「历史」；不能核实的标「**未复核**」；真机/采样项标「**未执行/未采样**」。
 
-## Verification (inside isolated worktree)
+## 1. 环境与统计口径
 
-| Command | Result |
-| --- | --- |
-| npx vitest run src/store/backupRestoreStore.test.ts src/lib/storage/rehydrateRegisteredStores.test.ts | 14 tests passed |
-| npx vitest run (full suite) | 210 files / 1291 tests passed |
-| npx tsc --noEmit --incremental false --pretty false | exit 0 |
-| npx eslint <changed files> --max-warnings=0 | 0 errors / 0 warnings |
-| npx prettier --check <changed files> | all matched |
+| 项               | 值                                                                            |
+| ---------------- | ----------------------------------------------------------------------------- |
+| OS / shell       | Windows / PowerShell 7（pwsh）                                                |
+| Node / npm / git | v24.16.0 / 11.13.0 / 2.54.0                                                   |
+| 测试框架         | Vitest 4.1.5（jsdom）                                                         |
+| 变更行数来源     | `git show --numstat <commit>`、`git diff --numstat <merge>^1 <merge> -- src`  |
+| 测试命令         | `npx vitest run <files>`（CI=1，非 watch）                                    |
+| 测试计数         | 仅统计被点名文件；与 TRACKING 的「targeted/full suite」口径不同处已在备注说明 |
 
-## Remaining (S1-2b / merge)
+## 2. S1-1..S1-10 交付与验证
 
-- BackupRestorePanel UI: show restoreReport (restored/skipped/unsupported), "已恢复 N 项，M 项需刷新" + 立即刷新 button, and panel tests (<=180 lines).
-- Split S1-2a/2b commits into <=400-line PR(s); merge/PR to master after CI decisions (Q02).
-- Main worktree's other-session changes were not touched.
+> 本仓库没有 PR 编号（未 push），「分支/提交」列记录实际分支与提交；「变更」列优先取合并提交相对第一父的 `src/` 差集，其次取单提交 `--numstat`。
 
-## S1-2b + rebase onto latest checkpoint (2026-10-27 evening)
+| ID    | 交付摘要                                                             | 分支 / 提交（合入）                                                                       | 变更（文件/行）                                                                                                                                 | 测试（本 worktree 实测）                                                                                                              | exit   | 备注 / 缺口                                                                                                        |
+| ----- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------ |
+| S1-1  | storageRegistry v1：44 key + owner/version/group/backup + 一致性测试 | 无独立提交，随 checkpoint `2b99173` 落入基线                                              | 新增 2 文件（storageRegistry.ts 443 行 + test 119 行，checkpoint 时）；当前 442 + 138 行                                                        | `storageRegistry.test.ts` **6 passed**                                                                                                | 0      | TRACKING 记 5 用例，当前文件实测 6（后续有增补）；任务改动行数无法从 123 文件的 checkpoint 中单独归属 → **未复核** |
+| S1-2  | 备份 v5 schema、v4 迁移、rehydrate、body 清理、面板报告              | `feature/arch-perf-s1-2a` @ `5862795`（2a `825e109`，2b `5862795`）；**未合入** `1268e9b` | 2a：8 文件 +948/−456；2b：3 文件 +261/−2                                                                                                        | 分支静态计数 10 + 3 + 4 = **17 用例**；历史记录 17 passed / exit 0 → **未复核**（分支被 `arch-perf-s1-2a` worktree 占用，未在此运行） | 未复核 | `git merge-base --is-ancestor 5862795 HEAD` = false；HEAD 上仍是旧 12 用例备份实现；E1-2 不成立                    |
+| S1-3  | 启动压缩不截断、quotaPolicy 逐级降级、degradedNotifier               | 无独立提交，随 checkpoint `2b99173` 落入基线                                              | 新增 quotaPolicy.ts 46 行、degradedNotifier.ts 49 行（checkpoint 时；当前 46/34）；safeStorage/queue/recommendation/stats 的修改行数 **未复核** | quotaPolicy + safeStorage + queueStore + recommendation + stats：**51 passed**                                                        | 0      | TRACKING 记 40；本轮统计含 5 个文件全部用例                                                                        |
+| S1-4  | VibeMusicDB 统一 open v3、五类错误、v1/v2→v3 迁移                    | `2310b6d`，merge `1268e9b`                                                                | 10 文件 +518/−83（src 7 文件 +502/−79）                                                                                                         | vibeMusicDb 6 + localMusicService 3 + audioSource 8 = **17 passed**                                                                   | 0      | TRACKING 记 targeted 22（含其他 resolver 用例）；full suite 297 files/1861 tests 为历史记录，**未复核**            |
+| S1-5  | queueStore 唯一权威 + queueNavigator + selectors                     | `48e1319`（docs `1f909d7`），merge `2f4dcd6`                                              | merge：14 文件 +724/−162（src 13 文件 +689/−127）                                                                                               | queueNavigator 15 + queuePlaybackSync 8：**23 passed**                                                                                | 0      | TRACKING 记 targeted 45（含 queueStore 20）；本轮只点名导航/同步 2 文件                                            |
+| S1-6  | PlaybackMediaBridge 12 事件单订阅 + 引用计数                         | `0988bc2` + `72cb4f0`，merge `ef537b0`                                                    | merge：4 文件 +469/−71（src 3 文件 +465/−67）                                                                                                   | mediaBridge：**7 passed**                                                                                                             | 0      | 另有 S1-10 的播放权威/重挂载集成用例（4 用例）                                                                     |
+| S1-7  | Watchdog 懒 attach/detach + onContextCreated                         | `0861733`，merge `c164967`                                                                | merge：5 文件 +219/−20（src 4 文件 +215/−16）                                                                                                   | AudioContextWatchdog + AudioEngine：**15 passed**                                                                                     | 0      | 真机 devicechange/合盖仍未执行                                                                                     |
+| S1-8  | RequestCoordinator + AbortSignal 贯穿                                | `7ff38da`…`ec3f109`（docs `a84fac0`），merge `843e3a4`                                    | merge：15 文件 +864/−64（src 11 文件 +784/−60）                                                                                                 | coordinator 9 + resolvePlayableAbort 2 + cancellation 3 + audioSource 8 + prefetcher 4 = **26 passed**                                | 0      | TRACKING 记 290 files/1828 tests（历史，未复核）                                                                   |
+| S1-9  | sourceResolver 四路并发 + playbackMarks 接线                         | `a3b758a` + `e140c02`（docs `ee6de43` / `60c6b46`），merge `b7775a4`                      | merge：6 文件 +675/−145（src 5 文件 +671/−141）                                                                                                 | sourceResolver 7 + playbackMarks 5 = **12 passed**                                                                                    | 0      | P50/P95 未采样（§4）；顺序断言由 S1-10 覆盖                                                                        |
+| S1-10 | 正确性集成矩阵（队列/播放权威/首声/取消）                            | `86d9a50`，merge `ed628e1`                                                                | merge：4 文件 +494/−4（src 3 文件 +490）                                                                                                        | `src/test/integration`：4 文件 / **13 passed**                                                                                        | 0      | 计划 6 文件 ≥20 用例；实际 4 文件 13 用例，缺备份矩阵与 v1→v3 的 local:// 集成                                     |
 
-- Rebase: `feature/arch-perf-s1-2a` was rebased onto the latest checkpoint HEAD `1c3f1a1` (audioStore slices, V8 archive, coordinator removal). No conflicts; S1-2a tests/tsc re-verified after rebase.
-- S1-2b commit `5862795`: BackupRestorePanel now shows the restore report (restored / skipped / failed), warns "旧版本槽位不会恢复" for unsupported legacy slots, hides dead keys from preview chips, exposes "立即刷新" (`window.location.reload()`), and calls `pruneOrphanBackupBodies()` on mount. `BackupPreview.unsupportedStores` added to the store.
-- Panel tests (new `src/components/library/BackupRestorePanel.test.tsx`, 3 cases): unsupported legacy slots preview; v5 preview does not render dead keys; restore report + reload action.
+### 2.1 定向测试汇总（2026-10-29，本 worktree）
 
-## S1-2 verification (after rebase, inside isolated worktree)
+| 组       | 文件                                                                                 | 结果           | exit  |
+| -------- | ------------------------------------------------------------------------------------ | -------------- | ----- |
+| S1-1     | storageRegistry.test.ts                                                              | 6 passed       | 0     |
+| S1-3     | quotaPolicy/safeStorage/queueStore/recommendation/stats                              | 51 passed      | 0     |
+| S1-4     | vibeMusicDb/localMusicService/audioSource                                            | 17 passed      | 0     |
+| S1-5     | queueNavigator/queuePlaybackSync                                                     | 23 passed      | 0     |
+| S1-6     | mediaBridge                                                                          | 7 passed       | 0     |
+| S1-7     | AudioContextWatchdog/AudioEngine                                                     | 15 passed      | 0     |
+| S1-8     | requestCoordinator/resolvePlayableAbort/playback-cancellation/prefetcher/audioSource | 26 passed      | 0     |
+| S1-9     | sourceResolver/playbackMarks                                                         | 12 passed      | 0     |
+| S1-10    | src/test/integration（4 文件）                                                       | 13 passed      | 0     |
+| **合计** | —                                                                                    | **153 passed** | **0** |
 
-| Command | Result |
-| --- | --- |
-| npx vitest run src/store/backupRestoreStore.test.ts src/components/library/BackupRestorePanel.test.tsx src/lib/storage/rehydrateRegisteredStores.test.ts | 17 tests passed (10 + 3 + 4) |
-| npx vitest run (full suite) | 204 files / 1272 tests passed |
-| npx tsc --noEmit --incremental false --pretty false | exit 0 |
-| npx eslint <changed files> --max-warnings=0 | 0 errors / 0 warnings |
-| npx prettier --check <changed files> | all matched |
+> S1-2 的 17 用例不在本 worktree（代码未合入），合计不计入；全量 suite 结果见 §8.1。
 
-Note: the full-suite count changed from 210/1291 to 204/1272 after rebasing onto 1c3f1a1 because the audio/V8 refactor commits removed coordinator/v8-related test files.
+## 3. E1 九场景 before/after 矩阵
 
-## Remaining after S1-2
+> Before 取自计划 §1 的「现状（已核实证据）」；After 只写本分支能复核的证据。判定：达成 / 部分 / 未达成 / 未执行。
 
-- Split branch into S1-2a / S1-2b PRs (<=400 lines each incl. tests) and merge after CI/Q02 decisions.
-- Main worktree still has another session's uncommitted handwritten-MV changes; untouched.
+| 出口              | 指标                       | Before（计划 §1）                                                   | After（本分支证据）                                                                                                                                                                              | 判定                                      |
+| ----------------- | -------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
+| E1-1 数据不丢     | persist key 覆盖、启动压缩 | 44 key 无注册表；启动压缩 200→50、30→20（safeStorage.ts:105,110）   | 44/44 注册；S1-10「queue-store-v5 roundtrip keeps a 200-item queue, 30 history entries and the index」通过：queue=200、history=30、currentIndex=199、重载后仍 200/199/30；storageRegistry 6 用例 | **达成**（自动化）                        |
+| E1-2 备份可恢复   | 备份→恢复→重载闭环         | 10 槽位中 5 个 key 错配；恢复后不 rehydrate                         | 仅 S1-2 分支有 v5/8 key/rehydrate/17 用例；集成 HEAD 仍是旧 10 槽位实现（12 用例），无 v5                                                                                                        | **未达成**（未合入）                      |
+| E1-3 本地音源     | 同一 IDB 版本              | localMusicService v1、localMusicStorage v2 同库 → VersionError 被吞 | 统一 v3 opener；v1→v3/v2→v3 保数据、keyPath/index 不变、五类错误；17 用例通过                                                                                                                    | **部分**（结构证据；真机导入→刷新未执行） |
+| E1-4 队列唯一     | 队列写 owner               | audioStore.queue/currentIndex 与 queueStore 双权威                  | queueStore 唯一权威 + navigator；23 用例；S1-10 删除/重排/清空/ended 用例通过；audioStore 无 queue 字段投影                                                                                      | **达成**（自动化）                        |
+| E1-5 媒体事件单例 | 监听 owner                 | 每个 hook 实例 attach/detach 共享元素                               | mediaBridge 12 事件单订阅 + 引用计数；7 用例；S1-10 双实例单监听、面板重挂载 12 监听不重复通过                                                                                                   | **达成**（自动化）                        |
+| E1-6 设备恢复     | watchdog 生效              | start 先于懒创建 context → 不挂载；stop 不摘监听                    | 懒 attach + onContextCreated + stop 对称清理；15 用例（mock engine/context）                                                                                                                     | **部分**（真机合盖/devicechange 未执行）  |
+| E1-7 请求可取消   | AbortSignal 贯穿           | 无 AbortController，仅 requestId 丢弃                               | coordinator + signal 贯穿 resolver/cache/prefetch/播放；26 用例，含「5 连点仅 1 in-flight、前 4 aborted、stale 不写 store、abort 不污染缓存」                                                    | **达成**（自动化）                        |
+| E1-8 首声更快     | firstSound 缓存命中        | 串行 3 次 IDB + resolver，最坏 >5s                                  | sourceResolver 四路并发 + marks 接线；但 P50/P95 **未采样**（§4）                                                                                                                                | **未执行/未采样**                         |
+| E1-9 回归网       | 场景自动化                 | 总计划 §9.2 全人工                                                  | 4 文件 / 13 集成用例；覆盖队列、播放权威/重挂载、首声竞速、取消；缺备份恢复与 v1→v3 local:// 场景                                                                                                | **部分**（13 < 20，4 < 6 文件）           |
+
+## 4. firstSound P50/P95：未采样
+
+**状态：未采样（0 个真实样本）。** 本 worktree 没有可用浏览器/音频设备，jsdom 无法产生真实起播时延；不得用单测代替 E1-8。S1-9 的埋点已就位：
+
+| 件        | 位置                                                                                                     | 作用                                                                                                                                                                |
+| --------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 埋点 API  | `src/lib/perf/playbackMarks.ts`                                                                          | `markPlayback(kind)`、`getFirstSoundMs()`、`getPlaybackMarks()`；User Timing 名 `mimi:playback:<kind>`；`CustomEvent("mimi:playback-mark")`；每次 intent 只认第一声 |
+| hook 接线 | `src/hooks/useAudioPlayer.ts:1371`（intent）、`:1658`（source-ready）、`:708-709`（playing/first-sound） | 真实播放路径打点                                                                                                                                                    |
+| 保护      | `playbackMarks.ts:27`                                                                                    | `NODE_ENV === "production"` 时整体 no-op → **只能在 dev 构建采样**                                                                                                  |
+
+### 4.1 采集协议（按计划 §4 S1-9 Step 4）
+
+- 场景 A 缓存命中：固定本地 fixture，重复播放 **20 次**，目标 **P50 < 300ms、P95 < 800ms**。
+- 场景 B 冷启动：清缓存/新 profile，**10 次**，目标 **P95 < 2.5s**。
+- 同一设备、同一构建（dev）、同一网络条件；记录设备型号、场景、命令、样本数。
+- 指标：`intent` → `first-sound`（缺失时回落该次 `playing`）；`getFirstSoundMs()` 只取最近一次，批量采样需监听事件或读 `performance` marks。
+
+### 4.2 采集命令
+
+```powershell
+# 1) dev 构建（playbackMarks 只在非 production 生效）
+npm run dev            # 端口 3025
+```
+
+在浏览器 DevTools Console 注入采集器，然后播放 20 次（缓存命中）/10 次（冷启动）：
+
+```js
+window.__s1FirstSound = [];
+window.addEventListener("mimi:playback-mark", (e) => {
+  const d = e.detail;
+  if (d.kind === "intent") {
+    window.__s1FirstSound.push({ songId: d.songId, t0: d.at, ms: null });
+  } else if (d.kind === "first-sound") {
+    const cur = window.__s1FirstSound.at(-1);
+    if (cur && cur.ms == null) cur.ms = d.at - cur.t0;
+  }
+});
+// 采完后：
+const xs = window.__s1FirstSound
+  .map((x) => x.ms)
+  .filter(Number.isFinite)
+  .sort((a, b) => a - b);
+const pct = (p) => xs[Math.min(xs.length - 1, Math.floor(p * (xs.length - 1)))];
+({ n: xs.length, p50: pct(0.5), p95: pct(0.95), raw: xs });
+```
+
+> 也可用 Playwright/CDP 在真实页面执行同一段 `page.evaluate` 采集，循环点击播放并落盘 JSON；项目未内置该脚本，属后续 S2-6 工作。
+
+### 4.3 结果占位（必须补齐后才能关闭 E1-8）
+
+| 场景     | 样本数 |    P50 |    P95 | 目标                    | 状态       |
+| -------- | -----: | -----: | -----: | ----------------------- | ---------- |
+| 缓存命中 | 0 / 20 | 未采样 | 未采样 | P50 <300ms / P95 <800ms | **未采样** |
+| 冷启动   | 0 / 10 | 未采样 | 未采样 | P95 <2.5s               | **未采样** |
+
+建议落盘：`perf/s1-first-sound.json`（设备、构建、场景、原始样本、P50/P95），供 S2-6 消费。
+
+## 5. 迁移 fixture 清单与输出
+
+### 5.1 v1/v2 → v3（本分支已复核）
+
+| #   | fixture                           | 构造                                                                                                                                       | 断言                                                                                                                   | 结果                          |
+| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| 1   | v1 库 + musicFiles 记录           | raw `indexedDB.open("VibeMusicDB", 1)`，建 `musicFiles(id)`，写 `{id:"a", data:[1,2,3], type:"audio/mpeg"}`                                | 打开 v3 后 version=3、4 个 store 齐全、记录 type/data 原样                                                             | passed（vibeMusicDb.test.ts） |
+| 2   | v2 库 + localMusic/offline_audios | raw v2 建 `localMusic(id)`/`musicMetadata(id)`/`offline_audios(songId)+downloadedAt`，写 `{id:"l1",fileName}`、`{songId:"s1",fileSize:42}` | v3 保留两记录；store 集合与 v3 一致                                                                                    | passed                        |
+| 3   | keyPath / index 不变              | v3 空库逐 store 读 keyPath                                                                                                                 | `musicFiles:id / localMusic:id / musicMetadata:id / offline_audios:songId`；index `downloadedAt/isPinned/lastPlayedAt` | passed                        |
+| 4   | 版本冲突                          | 先以 raw v4 打开再调 `openVibeMusicDb()`                                                                                                   | 抛 `VibeMusicDbError.code="version-conflict"`；`classifyVibeMusicDbError` 覆盖 missing-store/quota/blocked/unknown     | passed                        |
+| 5   | 并发单连接                        | `Promise.all` 三次 open                                                                                                                    | 同一 `IDBDatabase` 引用                                                                                                | passed                        |
+| 6   | localMusicService 记录缺失        | v3 空库 `getFileFromStorage("missing")`                                                                                                    | 返回 null                                                                                                              | passed                        |
+| 7   | localMusicService v1 记录         | seed v1 musicFiles `{id:"a",type:"audio/flac",name:"demo.flac"}`                                                                           | 自动升级到 v3 后读出 type/name/data                                                                                    | passed                        |
+| 8   | localMusicService 版本冲突        | raw v4 库                                                                                                                                  | 拒绝并带 `code="version-conflict"`（不再静默 null）                                                                    | passed                        |
+
+命令与结果：
+
+```powershell
+npx vitest run src/lib/storage/vibeMusicDb.test.ts src/services/localMusicService.test.ts
+# -> 9 passed (6 + 3), exit 0
+npx vitest run src/lib/storage/vibeMusicDb.test.ts src/services/localMusicService.test.ts src/lib/audio/audioSource.test.ts
+# -> 17 passed, exit 0（audioSource 8 含 local:// 错误映射）
+```
+
+### 5.2 队列/持久化 fixture（本分支已复核）
+
+| #   | fixture                                   | 断言                                                                                                                        | 结果            |
+| --- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| 9   | 200 项队列 + 35 次历史 + currentIndex=199 | 持久化 queue=200、history=30、currentIndex=199；rehydrate 后仍 200/199/30，history[0]=h34；audioStore 无 queue/currentIndex | passed（S1-10） |
+| 10  | player/audio/eq 持久化往返                | player-store 不存进度；audio-store 无 queue/EQ key；eq-store v2 往返                                                        | passed（S1-10） |
+
+### 5.3 备份 fixture（仅 S1-2 分支，**未合入/未复核**）
+
+| fixture       | 分支路径                                              | 用途                      | 状态                          |
+| ------------- | ----------------------------------------------------- | ------------------------- | ----------------------------- |
+| v4 legacy     | `src/store/__fixtures__/backup-v4-legacy.json`        | v4 旧备份导入、死槽位跳过 | 分支存在，未合入 → **未复核** |
+| v3 未知大版本 | `src/store/__fixtures__/backup-v3-unknown-major.json` | 拒绝未知 major            | 同上                          |
+| v5 全量       | `src/store/__fixtures__/backup-v5.json`               | v5 往返、8 key            | 同上                          |
+
+## 6. 回滚演练（两次实际执行）
+
+> 两次演练均在**临时分支**上执行，未提交、未 push；演练后临时分支删除、工作树恢复干净。
+
+### 6.1 演练 A：revert S1-4（`2310b6d`）
+
+| 步骤                                 | 命令                                                                                              | 结果                                                                                                                                                                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 建临时分支                           | `git switch -c tmp/drill-s1-4 2310b6d`                                                            | HEAD=`2310b6d`                                                                                                                                                                                                            |
+| 反向应用                             | `git revert --no-commit 2310b6d`                                                                  | exit 0；10 个路径：3 删除（`vibeMusicDb.ts` / `vibeMusicDb.test.ts` / `localMusicService.test.ts`）+ 7 修改（TRACKING、package.json、package-lock.json、audioSource.ts/test、localMusicService.ts、localMusicStorage.ts） |
+| 计划指定测试                         | `npx vitest run src/lib/storage/vibeMusicDb.test.ts src/services/localMusicService.test.ts`       | **exit 1**；vitest 报 `No test files found`（两个测试文件随提交被删除，回滚后不再有 v3 覆盖）                                                                                                                             |
+| 行为探针（临时未跟踪文件，跑完即删） | 建 raw v2 库并写入 musicFiles 记录，调用回滚后的 `getFileFromStorage("a")`                        | **exit 0**；`PROBE getFileFromStorage -> null`，而 raw 记录仍可读（`{"id":"a","type":"audio/mpeg"}`）→ 复现「记录存在但 API 静默返回 null」的原缺陷                                                                       |
+| 清理                                 | `git reset --hard 2310b6d`；删探针；`git switch docs/s1-evidence`；`git branch -D tmp/drill-s1-4` | 分支已删，工作树干净                                                                                                                                                                                                      |
+
+**结论**：回滚 S1-4 会把 `local://` 读取打回 v1/v2 双版本 opener；在已升级的库上静默吞掉 VersionError，UI 表现为「文件不存在/不可播」。这不是可接受的生产回滚路径。
+
+### 6.2 演练 B：revert S1-2（`5862795` + `825e109`）
+
+| 步骤                                 | 命令                                                                                                                                                       | 结果                                                                                                                                                                                                      |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 建临时分支                           | `git switch -c tmp/drill-s1-2 5862795`                                                                                                                     | HEAD=`5862795`（S1-2 分支 tip）                                                                                                                                                                           |
+| 反向应用（先 2b 后 2a）              | `git revert --no-commit 5862795 825e109`                                                                                                                   | exit 0；10 个路径：7 删除（`backupSchema.ts`、`rehydrateRegisteredStores.ts`+test、`BackupRestorePanel.test.tsx`、3 个 backup fixture）+ 3 修改（`backupRestoreStore.ts`+test、`BackupRestorePanel.tsx`） |
+| 相关测试                             | `npx vitest run src/store/backupRestoreStore.test.ts src/components/library/BackupRestorePanel.test.tsx src/lib/storage/rehydrateRegisteredStores.test.ts` | **exit 0**，但只跑了回滚后残留的旧 `backupRestoreStore.test.ts`（**12 passed**）；两个已删除的测试文件被 vitest 静默忽略 → **绿灯但覆盖消失**，这是回滚演练里最危险的信号                                 |
+| 行为探针（临时未跟踪文件，跑完即删） | 用回滚后的 store 预览 `version:"5.0.0"` 的备份                                                                                                             | **exit 0**；`canRestore:false`、`error:"Unsupported backup schema version: 5.0.0"`，且 `includedStores` 仍列出死槽位 `gesture-store` / `sleep-timer-store` / `playlist-store`                             |
+| 清理                                 | `git reset --hard 5862795`；删探针；`git switch docs/s1-evidence`；`git branch -D tmp/drill-s1-2`                                                          | 分支已删，工作树干净                                                                                                                                                                                      |
+
+**结论**：S1-2 回滚后旧代码最高只认 major 4，**用户已创建的 v5 备份将无法恢复**，且旧 10 槽位清单仍会把死 key 当成可恢复项。回滚必须保留 2a 的 v5 读取器（或先提供 v5→v4 导出），不能简单 revert。
+
+## 7. v3 回滚注意（IndexedDB 版本不可回退）与缓解
+
+- **事实**：`VIBE_MUSIC_DB_VERSION = 3`，`onupgradeneeded` 只做 `contains → create`，不删除/不搬迁 store。IndexedDB 不能以低于磁盘版本的 version 打开：库一旦是 v3，旧代码 `open(..., 1)` 或 `open(..., 2)` 必得 `VersionError`；数据仍在，但旧 API 读不到（pre-S1-4 会 `catch` 成 null，见 6.1 探针）。
+- **缓解（按优先级）**：
+  1. **只回滚业务逻辑，保留 v3 opener**：发布回滚包时保留 `vibeMusicDb.ts` 与 `VIBE_MUSIC_DB_VERSION=3`，不要回退 `localMusicService/localMusicStorage` 的 open 版本。
+  2. 若必须整体回退旧代码：在补丁中把旧代码的 `indexedDB.open` 改为**不传 version**（打开当前版本）或传 3；禁止以 v1/v2 打开已升级的库。
+  3. 回滚前导出备份/记录清单；**禁止删除重建数据库**（会丢已下载音频）。
+  4. 回滚窗口内 `local://` 失败要显示可行动错误（「本地数据库版本异常，请升级/重启」），不能沿用「文件不存在」。
+- **S1-2 的同类注意**：v5 备份对 old code 是前向不兼容（major 4 上限）；回滚 2b（仅 UI）相对安全，但 2a 必须保留读取器。
+
+## 8. 未执行项 / 未复核项
+
+| 项                                         | 类别   | 原因 / 说明                                           | 建议                                              |
+| ------------------------------------------ | ------ | ----------------------------------------------------- | ------------------------------------------------- |
+| 真机 devicechange、合盖恢复、蓝牙切换      | 未执行 | 仅有 jsdom + mock engine/context 证据（S1-7 15 用例） | 在 Windows/macOS 真机做手工 smoke，记录设备与结果 |
+| `local://` 导入→刷新→真机可播              | 未执行 | 仅 fake-indexeddb + jsdom 结构证据（S1-4）            | 真机导入 mp3/flac + 刷新 + 播放                   |
+| 真实网络源、offline-first vs resolver 竞速 | 未执行 | 测试全 mock；产品决策未定（TRACKING S1-9 缺口）       | 真实源 smoke + 产品决策                           |
+| firstSound P50/P95                         | 未采样 | 无浏览器/音频设备；production 下 marks 关闭           | 按 §4.1 在 dev 采样 20+10 次                      |
+| 听感 A/B、gapless、切歌爆音                | 未执行 | 需人耳/真机                                           | 手工 smoke 清单                                   |
+| S1-2 v4/v5 备份恢复矩阵                    | 未复核 | 代码只在 `feature/arch-perf-s1-2a`，未合入 `1268e9b`  | 合入后跑 17 用例 + S1-10 备份场景                 |
+| S1-10 计划的备份/v1→v3 集成用例            | 未交付 | 实际 13 用例/4 文件，计划 ≥20/6 文件                  | 补 7 用例后再关 M1                                |
+| ESLint / build / dev 冒烟                  | 未执行 | 本次只按任务要求跑 tsc 与 docs-facts                  | S1 出口前按 I7 顺序补 eslint→vitest→tsc→build→dev |
+
+### 8.1 本次证据自身的验证
+
+| 命令                                | 预期                        | 结果                                                                      |
+| ----------------------------------- | --------------------------- | ------------------------------------------------------------------------- |
+| `npx tsc --noEmit`                  | exit 0                      | **exit 0，0 errors**（2026-10-29 实测）                                   |
+| `node scripts/check-docs-facts.mjs` | fail=0（ports WARN 可接受） | **fail=0 warn=0，exit 0**（8 项 PASS）                                    |
+| `npx vitest run`（全量）            | exit 0                      | **297 files passed / 1861 passed + 1 skipped，exit 0**（2026-10-29 实测） |
+| 文档提交                            | 仅 1 个文件（本文件）       | 已提交（301 行变更，+262/−39）；`git show --stat HEAD` 复核               |
+
+## 9. 复现命令
+
+```powershell
+# 定向测试（本文件 §2.1）
+npx vitest run src/lib/storage/storageRegistry.test.ts
+npx vitest run src/lib/storage/quotaPolicy.test.ts src/lib/storage/safeStorage.test.ts src/store/queueStore.test.ts src/store/recommendationStore.test.ts src/store/statsAchievementsStore.test.ts
+npx vitest run src/lib/storage/vibeMusicDb.test.ts src/services/localMusicService.test.ts src/lib/audio/audioSource.test.ts
+npx vitest run src/lib/playback/queueNavigator.test.ts src/store/queuePlaybackSync.test.ts
+npx vitest run src/lib/playback/mediaBridge.test.ts
+npx vitest run src/lib/audio/AudioContextWatchdog.test.ts src/lib/audio/AudioEngine.test.ts
+npx vitest run src/lib/playback/requestCoordinator.test.ts src/lib/playback/resolvePlayableAbort.test.ts src/test/integration/playback-cancellation.integration.test.ts src/lib/audio/audioPrefetcher.test.ts src/lib/audio/audioSource.test.ts
+npx vitest run src/lib/playback/sourceResolver.test.ts src/lib/perf/playbackMarks.test.ts
+npx vitest run src/test/integration
+
+# 门禁
+npx tsc --noEmit
+node scripts/check-docs-facts.mjs
+
+# 回滚演练（勿在 docs/s1-evidence 上直接执行）
+git switch -c tmp/drill-s1-4 2310b6d
+git revert --no-commit 2310b6d
+npx vitest run src/lib/storage/vibeMusicDb.test.ts src/services/localMusicService.test.ts   # 预期 exit 1（文件已随提交删除）
+git reset --hard 2310b6d; git switch docs/s1-evidence; git branch -D tmp/drill-s1-4
+
+git switch -c tmp/drill-s1-2 5862795
+git revert --no-commit 5862795 825e109
+npx vitest run src/store/backupRestoreStore.test.ts src/components/library/BackupRestorePanel.test.tsx src/lib/storage/rehydrateRegisteredStores.test.ts
+git reset --hard 5862795; git switch docs/s1-evidence; git branch -D tmp/drill-s1-2
+```
+
+## 10. 附：TRACKING 与本轮实测的差异
+
+| 任务  | TRACKING 记录                           | 本轮实测                      | 说明                              |
+| ----- | --------------------------------------- | ----------------------------- | --------------------------------- |
+| S1-1  | 5 用例                                  | 6 passed                      | 测试文件后续增补                  |
+| S1-3  | 40 用例                                 | 51 passed                     | 本轮含 5 个文件全部用例           |
+| S1-4  | targeted 22 / full 297 files 1861 tests | 17 passed（定向 3 文件）      | full 为历史记录，本轮另行全量复跑 |
+| S1-5  | targeted 45                             | 23 passed（导航/同步 2 文件） | 口径不同                          |
+| S1-10 | 3 文件 / 10 用例 + 既有 3 = 13          | 4 文件 / 13 passed            | 与本轮一致                        |
