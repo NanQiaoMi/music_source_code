@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "updatedAt": "2026-10-29",
+  "note": "S5-2d / E5-1 rAF 审计白名单：每条对应 src 下非测试文件的一行。新增直接 requestAnimationFrame 调用必须先登记，否则 npm run verify:raf 失败。player3d-pending / audio-panel-pending 是显式技术债（计划 S5-3b 处理），不是豁免。",
+  "entries": [
+    {
+      "file": "src/lib/perf/rafScheduler.ts",
+      "line": 35,
+      "category": "scheduler-owner",
+      "reason": "共享调度器的唯一原生 rAF 入口：同帧回调合并为一次 requestAnimationFrame（E5-2）。这是迁移目标本身，不是待办。"
+    },
+    {
+      "file": "src/runtime/visualRuntime.ts",
+      "line": 148,
+      "category": "visualRuntime",
+      "match": "rafScheduler",
+      "reason": "VisualRuntime 绑定共享 rafScheduler 单例作为唯一帧源（S5-1），不创建独立循环。"
+    },
+    {
+      "file": "src/lib/perf/audioMetrics.ts",
+      "line": 97,
+      "category": "scheduler-owner",
+      "reason": "性能采样器自持一条有界测量循环（start/stop 成对），测量语义不并入渲染帧循环；S8 指标生产者消费。"
+    },
+    {
+      "file": "src/lib/audio/PlaybackClock.ts",
+      "line": 47,
+      "category": "other",
+      "reason": "音频时钟以 rAF 作为时间源，不调度绘制；S6-4 起为 isPlaying/进度读点的统一入口。"
+    },
+    {
+      "file": "src/hooks/useGestureSession.ts",
+      "line": 443,
+      "category": "other",
+      "reason": "手势会话的检测帧循环，按 session 生命周期启停，不是渲染循环（S5-3c 未覆盖）。"
+    },
+    {
+      "file": "src/components/library/hub/PlaylistDetailDrawer.tsx",
+      "line": 83,
+      "category": "other",
+      "reason": "抽屉打开后一次性布局/滚动测量，单帧触发，无持续循环。"
+    },
+    {
+      "file": "src/components/ai-agent/AIAgentPanel.tsx",
+      "line": 79,
+      "category": "other",
+      "reason": "面板滚动/高度同步的事件节流，单帧后结束，不产生持续 rAF 链。"
+    },
+    {
+      "file": "src/store/useAIAgentStore.ts",
+      "line": 157,
+      "category": "other",
+      "reason": "store 外合并 setState 的微批：同一 tick 的多次写入合并到一帧，避免重复通知。"
+    },
+    {
+      "file": "src/components/player/floating/useFloatingDragPhysics.ts",
+      "line": 407,
+      "category": "other",
+      "reason": "拖拽惯性弹簧的单帧步进；S5-3 计划明确按总计划白名单保留，只登记不迁移。"
+    },
+    {
+      "file": "src/components/player/floating/useFloatingDragPhysics.ts",
+      "line": 410,
+      "category": "other",
+      "reason": "同上：步进函数在惯性动画进行中续排下一帧（惯性链，非渲染循环）。"
+    },
+    {
+      "file": "src/components/player/Player3D.tsx",
+      "line": 220,
+      "category": "player3d-pending",
+      "reason": "TODO(S5-3b): 指针移动的 setState 合帧仍用原生 rAF；待 S5-3b 迁到统一帧源。E5-1 显式记 pending。"
+    },
+    {
+      "file": "src/components/player/Player3D.tsx",
+      "line": 389,
+      "category": "player3d-pending",
+      "reason": "TODO(S5-3b): 音频电平采样自建持续 rAF 链（带 visibility 停表）；待 S5-3b 迁移。E5-1 显式记 pending。"
+    },
+    {
+      "file": "src/components/player/Player3D.tsx",
+      "line": 445,
+      "category": "player3d-pending",
+      "reason": "TODO(S5-3b): 返回首页的视图切换延后一帧仍用原生 rAF；待 S5-3b 统一。E5-1 显式记 pending。"
+    },
+    {
+      "file": "src/components/player/Player3D.tsx",
+      "line": 588,
+      "category": "player3d-pending",
+      "reason": "TODO(S5-3b): 进入可视化视图的切换延后一帧仍用原生 rAF；待 S5-3b 统一。E5-1 显式记 pending。"
+    },
+    {
+      "file": "src/components/features-v7/AudioEffectsPanel.tsx",
+      "line": 78,
+      "category": "audio-panel-pending",
+      "reason": "TODO(S5-3b): 拖动强度按 rAF 合并写入音频，仍是原生 rAF；待 S5-3b 迁移。E5-1 显式记 pending。"
+    }
+  ]
+}

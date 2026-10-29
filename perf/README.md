@@ -6,34 +6,36 @@
 
 ## 1. 文件
 
-| 文件 | 说明 |
-|---|---|
-| scripts/perf/bundle-budget.mjs | 包体预算：rootMainFiles / 首页 script / CSS / async chunk / public 体积；支持 --check 与 --json |
-| scripts/perf/bundle-diff.mjs | S8-3a 包体回归 diff：基线与当前报告逐指标对比，输出 markdown/JSON；rootMain gzip 与首页 gzip 的 delta 超阈值 exit 1；仅 --update 显式重设基线 |
-| scripts/perf/append-history.mjs | S8-3b 性能历史：把 bundle report（+ 可选 audio metrics）追加为 perf/perf-history.jsonl 一行；--init 建空文件、--check 校验 schema 与 ts 严格递增 |
-| scripts/perf/perf-dashboard.mjs | S8-3b 看板：最近 14 行表格 + 趋势箭头 + 回归高亮 + 最新 runtime metrics；stdout 或 --out |
-| scripts/perf/perf-history-lib.mjs | S8-3b 历史行 schema/解析共享模块（上面两个 CLI 共用） |
-| scripts/perf/report-store-stats.mjs | Store 架构统计：store 数、persist key、整店订阅、store 依赖边/SCC、getState 分层；支持 --check、--json 与 --store |
-| scripts/perf/soak.mjs | S7-9a node soak harness：每 tick 用真实 TtlLruCache/hydrationStatus 跑有界合成负载并采 heapUsed；输出 start/peak/end/delta（--json），写 perf/reports/soak-<ts>.json，超阈值 exit 1（见 §11） |
-| scripts/check-store-budgets.mjs | S6-12 Store 行数棘轮 + 环门禁：逐文件行数 ≤ baseline，未入基线的新文件 ≤400 行，运行时 store 图 SCC 必须为 0；支持 --update、--root、--baseline、--max-lines |
-| scripts/report-audio-consumers.mjs | S6-4 audioStore 播放字段消费清单：9 字段的 selector / getState 链（含跨行与解构）/ 别名 / setState / `useAudioCurrentSong` 读写点，按层与字段汇总；支持 --json、--fields、--group（progress / playback / all 批次）、--check（components/hooks/lib/services/store 读点归零门禁；audioStore 自身定义点豁免） |
-| scripts/check-docs-facts.mjs | 文档事实校验：store 数、过期字样、CI 触发分支、端口一致性（warn）、INDEX 链接、执行计划包完整性 |
-| .dependency-cruiser.cjs | S6-12a 分层规则：no-circular(error)、no-orphans(warn)、store/services/lib/domain 反向依赖、src 禁 devDependency；由 `npm run verify:layers` 执行 |
-| scripts/verify-layers.test.mjs | S6-12a 门禁测试：以同一 CLI 命令断言 exit 0，并校验 no-circular 与方向规则仍在配置中 |
-| perf/budget.json | 包体阈值（baseline / target / hardMax） |
-| perf/bundle-baseline.json | 包体回归基线（2026-10-29 重建；由 `bundle-diff --update` 从最新 report 维护） |
-| perf/store-stats-baseline.json | 2026-10-21 Store 架构基线快照 |
-| perf/store-line-baseline.json | 2026-10-29 Store 行数基线（64 文件 / 18,222 行；16 个 >400 行存量冻结） |
-| perf/reports/s6-audio-consumers.before.json | S6-4 迁移前播放字段消费快照（297 处 / 64 文件；混音字段 73）——PR2 修正脚本口径后重跑，原口径 300 |
-| perf/reports/s6-audio-consumers.json | S6-4 当前播放字段消费快照（PR5 后 91 处 / 28 文件；读点仅剩 audioStore 自身 18，服务/非 audioStore store 读点 0） |
-| perf/reports/s6-audio-consumers.currentSong.before.json | PR2 迁移前 currentSong 快照（68 处 / 52 文件：components 44、hooks 12、lib 3、services 5、store 4） |
-| perf/reports/s6-audio-consumers.currentSong.json | PR2 迁移后 currentSong 快照（9 处 / 4 文件，全部落在 services/store 层） |
-| perf/reports/s6-audio-consumers.progress.before.json | PR3 迁移前进度字段快照（87 处 / 26 文件，读点 50：components 30、hooks 11、services 1、store 8） |
-| perf/reports/s6-audio-consumers.progress.json | PR3 迁移后进度字段快照（46 处 / 17 文件；components/hooks/lib 读点 0，余 services 1 + store 8） |
-| perf/reports/s6-audio-consumers.isPlaying.before.json | PR4 迁移前 isPlaying 快照（68 处 / 40 文件，读点 36：components 26、hooks 3、lib 3、services 1、store 3） |
-| perf/reports/s6-audio-consumers.isPlaying.json | PR4 迁移后 isPlaying 快照（36 处 / 24 文件；components/hooks/lib 读点 0，余 services 1 + store 3 读点；写点 32 仍走 audioStore） |
-| perf/reports/s6-audio-consumers.services.before.json | PR5 迁移前全字段快照（107 处 / 29 文件；services 读点 12、非 audioStore store 读点 4） |
-| perf/reports/s6-audio-consumers.services.json | PR5 迁移后全字段快照（91 处 / 28 文件；services 读点 12→0、非 audioStore store 读点 4→0，余 audioStore 自身 18 读 + services/store 10 写） |
+| 文件                                                    | 说明                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| scripts/perf/bundle-budget.mjs                          | 包体预算：rootMainFiles / 首页 script / CSS / async chunk / public 体积；支持 --check 与 --json                                                                                                                                                                                                             |
+| scripts/perf/bundle-diff.mjs                            | S8-3a 包体回归 diff：基线与当前报告逐指标对比，输出 markdown/JSON；rootMain gzip 与首页 gzip 的 delta 超阈值 exit 1；仅 --update 显式重设基线                                                                                                                                                               |
+| scripts/perf/append-history.mjs                         | S8-3b 性能历史：把 bundle report（+ 可选 audio metrics）追加为 perf/perf-history.jsonl 一行；--init 建空文件、--check 校验 schema 与 ts 严格递增                                                                                                                                                            |
+| scripts/perf/perf-dashboard.mjs                         | S8-3b 看板：最近 14 行表格 + 趋势箭头 + 回归高亮 + 最新 runtime metrics；stdout 或 --out                                                                                                                                                                                                                    |
+| scripts/perf/perf-history-lib.mjs                       | S8-3b 历史行 schema/解析共享模块（上面两个 CLI 共用）                                                                                                                                                                                                                                                       |
+| scripts/perf/report-store-stats.mjs                     | Store 架构统计：store 数、persist key、整店订阅、store 依赖边/SCC、getState 分层；支持 --check、--json 与 --store                                                                                                                                                                                           |
+| scripts/perf/soak.mjs                                   | S7-9a node soak harness：每 tick 用真实 TtlLruCache/hydrationStatus 跑有界合成负载并采 heapUsed；输出 start/peak/end/delta（--json），写 perf/reports/soak-<ts>.json，超阈值 exit 1（见 §11）                                                                                                               |
+| scripts/check-store-budgets.mjs                         | S6-12 Store 行数棘轮 + 环门禁：逐文件行数 ≤ baseline，未入基线的新文件 ≤400 行，运行时 store 图 SCC 必须为 0；支持 --update、--root、--baseline、--max-lines                                                                                                                                                |
+| scripts/report-audio-consumers.mjs                      | S6-4 audioStore 播放字段消费清单：9 字段的 selector / getState 链（含跨行与解构）/ 别名 / setState / `useAudioCurrentSong` 读写点，按层与字段汇总；支持 --json、--fields、--group（progress / playback / all 批次）、--check（components/hooks/lib/services/store 读点归零门禁；audioStore 自身定义点豁免） |
+| scripts/check-docs-facts.mjs                            | 文档事实校验：store 数、过期字样、CI 触发分支、端口一致性（warn）、INDEX 链接、执行计划包完整性                                                                                                                                                                                                             |
+| scripts/check-raf-whitelist.mjs                         | S5-2d rAF 审计：扫描 `src/**/*.{ts,tsx}`（排除测试）的原生 `requestAnimationFrame` 调用并对照白名单；未登记或白名单行失配 exit 1，白名单缺失/非法 exit 2；`--root` 供 fixture 测试                                                                                                                          |
+| perf/rAF-whitelist.json                                 | S5-2d rAF 白名单（`{file,line,category,reason}`）；`player3d-pending`/`audio-panel-pending` 显式记录 S5-3b 迁移债                                                                                                                                                                                           |
+| .dependency-cruiser.cjs                                 | S6-12a 分层规则：no-circular(error)、no-orphans(warn)、store/services/lib/domain 反向依赖、src 禁 devDependency；由 `npm run verify:layers` 执行                                                                                                                                                            |
+| scripts/verify-layers.test.mjs                          | S6-12a 门禁测试：以同一 CLI 命令断言 exit 0，并校验 no-circular 与方向规则仍在配置中                                                                                                                                                                                                                        |
+| perf/budget.json                                        | 包体阈值（baseline / target / hardMax）                                                                                                                                                                                                                                                                     |
+| perf/bundle-baseline.json                               | 包体回归基线（2026-10-29 重建；由 `bundle-diff --update` 从最新 report 维护）                                                                                                                                                                                                                               |
+| perf/store-stats-baseline.json                          | 2026-10-21 Store 架构基线快照                                                                                                                                                                                                                                                                               |
+| perf/store-line-baseline.json                           | 2026-10-29 Store 行数基线（64 文件 / 18,222 行；16 个 >400 行存量冻结）                                                                                                                                                                                                                                     |
+| perf/reports/s6-audio-consumers.before.json             | S6-4 迁移前播放字段消费快照（297 处 / 64 文件；混音字段 73）——PR2 修正脚本口径后重跑，原口径 300                                                                                                                                                                                                            |
+| perf/reports/s6-audio-consumers.json                    | S6-4 当前播放字段消费快照（PR5 后 91 处 / 28 文件；读点仅剩 audioStore 自身 18，服务/非 audioStore store 读点 0）                                                                                                                                                                                           |
+| perf/reports/s6-audio-consumers.currentSong.before.json | PR2 迁移前 currentSong 快照（68 处 / 52 文件：components 44、hooks 12、lib 3、services 5、store 4）                                                                                                                                                                                                         |
+| perf/reports/s6-audio-consumers.currentSong.json        | PR2 迁移后 currentSong 快照（9 处 / 4 文件，全部落在 services/store 层）                                                                                                                                                                                                                                    |
+| perf/reports/s6-audio-consumers.progress.before.json    | PR3 迁移前进度字段快照（87 处 / 26 文件，读点 50：components 30、hooks 11、services 1、store 8）                                                                                                                                                                                                            |
+| perf/reports/s6-audio-consumers.progress.json           | PR3 迁移后进度字段快照（46 处 / 17 文件；components/hooks/lib 读点 0，余 services 1 + store 8）                                                                                                                                                                                                             |
+| perf/reports/s6-audio-consumers.isPlaying.before.json   | PR4 迁移前 isPlaying 快照（68 处 / 40 文件，读点 36：components 26、hooks 3、lib 3、services 1、store 3）                                                                                                                                                                                                   |
+| perf/reports/s6-audio-consumers.isPlaying.json          | PR4 迁移后 isPlaying 快照（36 处 / 24 文件；components/hooks/lib 读点 0，余 services 1 + store 3 读点；写点 32 仍走 audioStore）                                                                                                                                                                            |
+| perf/reports/s6-audio-consumers.services.before.json    | PR5 迁移前全字段快照（107 处 / 29 文件；services 读点 12、非 audioStore store 读点 4）                                                                                                                                                                                                                      |
+| perf/reports/s6-audio-consumers.services.json           | PR5 迁移后全字段快照（91 处 / 28 文件；services 读点 12→0、非 audioStore store 读点 4→0，余 audioStore 自身 18 读 + services/store 10 写）                                                                                                                                                                  |
 
 ## 2. 用法
 
@@ -71,21 +73,25 @@
     # 文档事实
     node scripts/check-docs-facts.mjs
 
+    # rAF 审计（S5-2d；已并入 npm run perf:gates）
+    npm run verify:raf
+    node scripts/check-raf-whitelist.mjs --root <fixture>   # 测试用
+
 ## 3. 2026-10-21 基线（读取 .next mtime 2026-10-21 01:22；当前脏树）
 
-| 指标 | 数值 |
-|---|---:|
-| rootMainFiles | 23 文件 / 969.3 KB raw / 296.8 KB gzip |
-| 首页 script | 37 个 / 1,996.7 KB raw / 615.7 KB gzip |
-| 全局 CSS | 1 文件 / 227.4 KB raw / 29.2 KB gzip |
-| 最大 async chunk | chunk-three 333.5 KB |
-| public 目录 | 58.4 MB |
-| Store 模块 | 60 |
-| persist key | 44 |
-| 整店订阅 | 161 / 645 calls（25.0%），whole-only 文件 59 |
-| store 依赖边 | 25（脚本口径；审计 A 的严格口径为 21，见第 5 节） |
-| SCC | 1（audioStore ↔ playlistStore） |
-| getState 调用 | 358（components 126 / hooks 83 / store 94 / services 29 / lib 25 / app 1） |
+| 指标             |                                                                       数值 |
+| ---------------- | -------------------------------------------------------------------------: |
+| rootMainFiles    |                                     23 文件 / 969.3 KB raw / 296.8 KB gzip |
+| 首页 script      |                                     37 个 / 1,996.7 KB raw / 615.7 KB gzip |
+| 全局 CSS         |                                       1 文件 / 227.4 KB raw / 29.2 KB gzip |
+| 最大 async chunk |                                                       chunk-three 333.5 KB |
+| public 目录      |                                                                    58.4 MB |
+| Store 模块       |                                                                         60 |
+| persist key      |                                                                         44 |
+| 整店订阅         |                               161 / 645 calls（25.0%），whole-only 文件 59 |
+| store 依赖边     |                          25（脚本口径；审计 A 的严格口径为 21，见第 5 节） |
+| SCC              |                                            1（audioStore ↔ playlistStore） |
+| getState 调用    | 358（components 126 / hooks 83 / store 94 / services 29 / lib 25 / app 1） |
 
 ## 4. 判定
 
@@ -102,7 +108,7 @@
 5. 性能 harness（FPS/LCP/INP/内存）对应 Q11：measure.py 与 dev-only 路由由 S5-1b 统一修改；S0-6 只固化数据脚本与阈值，不并行改同一文件。
 6. report-audio-consumers.mjs 口径修正（S6-4 PR2）：改为沿 `getState()` 逐段跟随链式成员（不再把参数里的 `activeAudio.duration` 误计为 store 字段）、支持跨行链与解构、剔除 `(state) => state.x` 箭头参数误报、纳入 `useAudioCurrentSong` 便捷钩子、`--check` 覆盖 lib 层；因此全字段基线由 300/242 重算为 297/240，历史对比请以本口径为准。
 7. isPlaying 批次（S6-4 PR4）：UI 读点统一走 PlaybackClock，`--group playback` 只校验读点，`setIsPlaying/togglePlaybackIntent/setState` 写点仍留在 audioStore（S6-5/S6-9 再收口）；迁移前后 isPlaying 68→36（读点 36→4，components/hooks/lib 读点 0）。
-8. services/store 收尾（S6-4 PR5）：`--check` 默认层扩为 components/hooks/lib/services/store，`src/store/audioStore.ts`（字段声明、双向镜像、useAudio* 原子 hook）按定义点豁免；新增 `--group all` 覆盖全部 9 字段读点。aiAgentTools/useAIAgentStore/songPurgeService 的身份与进度读点改 playerStore/PlaybackClock，写点保留以等待 S6-9 编排下沉；services 读点 12→0、store 非豁免读点 4→0，全字段 107→91（29→28 文件）。
+8. services/store 收尾（S6-4 PR5）：`--check` 默认层扩为 components/hooks/lib/services/store，`src/store/audioStore.ts`（字段声明、双向镜像、useAudio\* 原子 hook）按定义点豁免；新增 `--group all` 覆盖全部 9 字段读点。aiAgentTools/useAIAgentStore/songPurgeService 的身份与进度读点改 playerStore/PlaybackClock，写点保留以等待 S6-9 编排下沉；services 读点 12→0、store 非豁免读点 4→0，全字段 107→91（29→28 文件）。
 
 ## 6. Store 行数棘轮 + 环门禁（S6-12，2026-10-29）
 
@@ -114,31 +120,31 @@
 
 当前最大文件（baseline 2026-10-29，>400 行均按基线冻结）：
 
-| 行数 | 文件 |
-|---:|---|
-| 1012 | src/store/statsAchievementsStore.ts |
-| 717 | src/store/useOfflineDownloadStore.ts |
-| 701 | src/store/userAccountStore.ts |
-| 644 | src/store/useAIAgentStore.ts |
-| 638 | src/store/visualSettingsStore.ts |
-| 612 | src/store/sourceConfigStore.ts |
-| 604 | src/store/smartPlaylistStore.ts |
-| 572 | src/store/aiStore.ts |
-| 551 | src/store/audioEffectsStore.ts |
-| 534 | src/store/emotionStore.ts |
-| 529 | src/store/backupRestoreStore.ts |
-| 500 | src/store/searchStore.ts |
-| 467 | src/store/slices/playbackSlice.ts |
-| 432 | src/store/queueStore.ts |
+| 行数 | 文件                                 |
+| ---: | ------------------------------------ |
+| 1012 | src/store/statsAchievementsStore.ts  |
+|  717 | src/store/useOfflineDownloadStore.ts |
+|  701 | src/store/userAccountStore.ts        |
+|  644 | src/store/useAIAgentStore.ts         |
+|  638 | src/store/visualSettingsStore.ts     |
+|  612 | src/store/sourceConfigStore.ts       |
+|  604 | src/store/smartPlaylistStore.ts      |
+|  572 | src/store/aiStore.ts                 |
+|  551 | src/store/audioEffectsStore.ts       |
+|  534 | src/store/emotionStore.ts            |
+|  529 | src/store/backupRestoreStore.ts      |
+|  500 | src/store/searchStore.ts             |
+|  467 | src/store/slices/playbackSlice.ts    |
+|  432 | src/store/queueStore.ts              |
 
 - 已知缺口：S6-12a 分层规则已落地（末尾 §10；首跑 8 errors 已清零）；14 个存量 >400 文件待拆分后执行 `--update` 收紧。S6-12c 已把 `libraryManagerStore.ts` 419→313 行（类型/默认值/纯函数下沉到 `src/store/libraryManager/helpers.ts`，public API 与 persist name/partialize 不变），over-cap 由 16 降到 15。S6-12d 已把 `lyricsCoverStore.ts` 425→355 行（歌词/封面类型与 LRC 编解码下沉到 `src/store/lyricsCover/helpers.ts`，public API 与 persist name/partialize 不变），over-cap 由 15 降到 14。S6-12b 的 CI 接线见第 7 节。
 
 ## 7. CI 接线（S6-12b，2026-10-29）
 
-- `npm run perf:gates` = `check-store-budgets` → `report-store-stats --max-whole 10` → `check-bundle-markers --skip-if-missing`；任一失败即非 0 退出。
+- `npm run perf:gates` = `check-store-budgets` → `report-store-stats --max-whole 10` → `check-bundle-markers --skip-if-missing` → `verify:raf`；任一失败即非 0 退出。
 - `.github/workflows/deploy.yml` 的 `verify` 作业在 `Production build` 之后、同 job 内运行该脚本，保证 `.next` 存在；`--skip-if-missing` 只让 bundle markers 在无 build 产物时打印 skip 并放行（单独跑 `npm run perf:check-bundle` 仍为 exit 2）。
 - **`report-store-stats.mjs --check` 仍禁用**：`perf/store-stats-baseline.json` 是 2026-10-21 快照（60 stores / 44 persist keys），实测 59 / 43，`--check` 会报 `stores 59 != baseline 60; persistCount 43 < baseline 44` 直接失败。重建基线需 Lead 批准并单独 PR；重建前 CI 用 `--max-whole 10` 兜底 whole-store 订阅，旧 "Store stats baseline gate" 步骤已移除，避免常红。
-- 回归测试：`scripts/perf/ci-perf-gates.test.mjs` 以 YAML 文本断言 `perf:gates` 步骤存在、位于 verify job 且在 build 之后，断言 `--check` 未启用且 stale 说明仍在，并校验 npm 脚本三项顺序。
+- 回归测试：`scripts/perf/ci-perf-gates.test.mjs` 以 YAML 文本断言 `perf:gates` 步骤存在、位于 verify job 且在 build 之后，断言 `--check` 未启用且 stale 说明仍在，并校验 npm 脚本四项顺序。
 
 ## 8. Bundle 回归 diff 与 nightly（S8-3a，2026-10-29）
 
@@ -210,6 +216,7 @@
       node scripts/perf/soak.mjs --json                  # stdout 输出整份 JSON（同时仍写文件）
 
   选项：`--duration <分钟>`（默认 60）、`--quick [分钟]`（默认 1，也可写 `--quick 2`）、`--interval <秒>`、`--threshold-mb <n>`（默认 30）、`--json`；未知选项/非法数值 exit 2。
+
 - 输出：每次运行都写 `perf/reports/soak-<ISO 时间戳>.json`（生成物，**不提交**）；stdout 默认 markdown 摘要（ticks、heap start/peak/end、delta、result、负载计数、cache 命中率、报告路径）。`--json` 时 stdout 为纯 JSON（失败信息仍走 stderr）。
 - 实现要点：Node 20（CI 版本）没有原生 TS 类型剥离，脚本用现有 `typescript` devDependency 把两个真实模块 `transpileModule` 到 `.cache/soak/*.mjs` 后动态 import（只擦类型、不改逻辑；`TtlLruCache` 无外部依赖，`hydrationStatus` 只 import react，不触 DOM）。测试在 vitest 下走 Vite 的 TS 转换，CI Node 20 也能跑。
 - 本机 1 分钟结果（2026-10-29，Node 24.16.0 / Windows，`--quick 1`，exit 0）：
@@ -225,3 +232,19 @@
 
 - 测试：`scripts/perf/soak.test.mjs`（注入 fake sampler + no-op sleep，2 tick：报告 shape、delta/peak、阈值超限 FAIL、参数解析、真实模块负载计数）：`npx vitest run scripts/perf/soak.test.mjs`。
 - 缺口/边界：只测进程 heap；不含 `performance.memory`、`activeAudioNodes`/`mediaBridgeListeners`（S2-5 未落地，全仓 0 引用）、IndexedDB/OPFS、persist 写入速率、FPS；无 Chrome/CDP 与真机音画。CLI 未接 nightly（按 S7-9a 任务要求保持 CLI-only），10min PR 版/2h 结论待 S7-9b。heap 受 V8 GC 时机影响，短跑 delta 可能为负，应以长跑趋势与 peak 为准。
+
+## 12. rAF 白名单审计（S5-2d，2026-10-29）
+
+- 目的：E5-1「全仓 rAF 调用点 ≤8」需要可审计口径。`perf/rAF-whitelist.json` 逐行登记非测试 `src/**/*.{ts,tsx}` 中仍直接调用 `requestAnimationFrame(...)` 的位置，`scripts/check-raf-whitelist.mjs` 负责比对。
+- 命令：
+
+      npm run verify:raf
+      node scripts/check-raf-whitelist.mjs --root <fixture>   # 测试用
+
+- 判定：扫描 `src/**/*.{ts,tsx}`（排除 `*.test.*`、`*.spec.*`、`__tests__/`、`fixtures/`）里的原生 `requestAnimationFrame(` 调用。未登记的调用 exit 1；白名单条目的文件/行号失配（移动、删除、改成 cancel）同样 exit 1；白名单缺失或 JSON 非法 exit 2。`cancelAnimationFrame`、`typeof` 守卫、注释与 `rafScheduler` 导入不算调用点。
+- 条目 schema：`{ file, line, category, reason, match? }`；`match` 默认 `requestAnimationFrame`，仅 ownership 条目（`visualRuntime.ts` 绑定 `rafScheduler`）需要覆盖。
+- 类别：`scheduler-owner`（rafScheduler 唯一原生入口、audioMetrics 独立测量循环）、`visualRuntime`（runtime 绑定共享调度器）、`other`（时钟/手势/事件节流/拖拽惯性等非渲染循环）、`player3d-pending`、`audio-panel-pending`。
+- 当前基线（2026-10-29 实测）：**14 个调用点 / 15 条白名单**；`scheduler-owner=2`、`visualRuntime=1`、`other=7`、`player3d-pending=4`、`audio-panel-pending=1`。
+- **pending 是显式技术债，不是豁免**：Player3D ×4（220 指针合帧、389 音频采样链、445 返回首页切换、588 进入可视化切换）与 AudioEffectsPanel ×1（78 拖动强度 rAF 合并）在 `reason` 中标注 `TODO(S5-3b)`；迁移后必须删条目并复跑，`verify:raf` 会以「白名单行失配」提醒清理。
+- 接线：`npm run verify:raf` 已并入 `npm run perf:gates`（CI 的 build job 在 `npm run build` 之后执行）。测试 `scripts/perf/check-raf-whitelist.test.mjs` 覆盖真实仓库、未登记调用、行号失配、非法类别/缺 reason/重复、ownership `match`、缺白名单与非法参数。
+- 已知限制：只做文本级调用点审计，不替代运行时单循环计数；E5-2「同一时刻 1 个循环」仍由 `visualRuntime` 单测覆盖，真实浏览器 DevTools 单 rAF 截图仍缺（见 S5-evidence §4/#1）。

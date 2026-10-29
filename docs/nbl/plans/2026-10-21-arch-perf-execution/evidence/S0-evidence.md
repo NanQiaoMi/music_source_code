@@ -61,9 +61,9 @@
 - 已达成：`npm run verify:docs` → **exit 0，`fail=0 warn=0`**：`store-count actual=62 documented=[62]`；三条 stale token（`19,790`、`测试步骤被注释`、`44 个 Zustand Store`）0 hits；`ci-branch` PASS；`ports` PASS；`index-links` broken=[]；`execution-pack` missing=[]。
 - 复核到的具体项：`AGENTS.md:34` 写 **62 个 Store**；`ARCHITECTURE.md:157` 构建模式已改（server build + STATIC_EXPORT 条件导出，桌面待 S7）；`plans/INDEX.md:24-25` 已收录总计划与执行包；`.github/pull_request_template.md` 为合法 UTF-8（47 行）。
 - **缺口（partial，对照 S0-baseline.md §S0-4 的 13 项清单）**：
-  - `docs/nbl/plans/2026-05-10-phase1-store-decoupling.md` **无 Superseded banner**（`Select-String 'Superseded'` 无输出）。
-  - `docs/nbl/ROADMAP.md:14` 仍含 “28 static pages”（历史验证记录语境，未按计划改为“3 真实页面 + 31 API route”）。
-  - `pull_request_template.md` 缺计划要求的字段（任务 ID、写作用域、≤400 行声明、数据兼容/fixture、回滚方式）。
+  - ~~`docs/nbl/plans/2026-05-10-phase1-store-decoupling.md` 无 Superseded banner~~ → **2026-10-29 已补**（顶部 `Superseded（2026-10-21）` banner，指向总计划 S1/S6）。
+  - `docs/nbl/ROADMAP.md:14` 的 “28 static pages” **经 2026-10-29 最新生产构建核实为 28**（`Generating static pages (28/28)`），与该行历史验证记录的语境一致；计划中的 “3 真实页面 + 31 API route” 口径不适用于此句，**不改**。
+  - ~~`pull_request_template.md` 缺计划要求的字段~~ → **2026-10-29 已补**（变更摘要、任务 ID、测试执行记录、性能/门禁证据、回滚方式、写作用域、≤400 行声明、数据兼容）。
   - CHANGELOG 未动（TRACKING 已记“因脏改暂未动”）。
 
 ### 1.5 S0-5 死层标记与仓库卫生 — partial
@@ -144,7 +144,7 @@
 | E0-1 基线可信   | 干净树 + 基线 commit + 4 命令复测                         | **达成（记录）**     | `2b99173`（祖先）、脏改清单、2026-10-27 四命令 exit 0              | 本 pass 未在 `2b99173` 重跑 4 命令（只验证 tsc@HEAD）                                     | 无（如需强证据：在 `2b99173` 的 worktree 重跑 4 命令）                                                  |
 | E0-2 CI 真实    | PR/master 触发、required checks、3 连绿 ≤20min            | **partial**          | `deploy.yml` 触发已改；`verify:docs` ci-branch PASS                | 无 push、无 Actions 运行、无 required checks 配置、CI Node 20 ≠ 本地 Node 24              | **用户/仓库 owner**：授权 push + 配置 required checks（Q02）；决定 Q03                                  |
 | E0-3 发布止血   | out 缺失/过期 exit≠0；3024=0；3025 返回 200               | **partial**          | guard exit 1；verify-static-export exit 2；3024 grep 0；ports PASS | `next start -p 3025` 的 200 未直接取证（历史用 3026）                                     | Lead：在空闲端口/停 dev 后补一次 3025 冒烟并留日志；D2 拍板后解冻                                       |
-| E0-4 文档事实   | docs-facts exit 0、违规 0                                 | **达成（工具口径）** | `verify:docs` exit 0 fail=0 warn=0                                 | 人工清单 3 项未做（phase1 banner/ROADMAP:14/PR 模板字段）                                 | Lead：补 3 项或明确降级为 S1 文档债（Q23）                                                              |
+| E0-4 文档事实   | docs-facts exit 0、违规 0                                 | **达成（工具口径）** | `verify:docs` exit 0 fail=0 warn=0；人工清单 2026-10-29 收口       | phase1 banner/PR 模板已补；ROADMAP:14 经最新构建核实为 28，无需改                         | 无（Q23 关闭）                                                                                          |
 | E0-5 死层与卫生 | coordinator 外部 0 + ESLint 禁入；worktree ≤5；根文件 ≤20 | **partial**          | 死文件已删、coordinator 层已删、gc 脚本在库                        | worktree **19**、根文件 **33**；ESLint 规则指向已删目录                                   | **用户授权 Q22 剩余项**（只删 clean worktree）；Lead 清理规则空转                                       |
 | E0-6 测量基座   | 一条命令出 JSON；2 次 diff=0；数字复现                    | **partial**          | 3 个基线 JSON + 脚本；docs-facts exit 0                            | store-stats baseline stale（`--check` exit 1）；bundle 基线源 JSON 缺失；2 次 diff 未记录 | **Lead/用户批准**重建 `store-stats-baseline.json`；补 `bundle-report.json` 或改 baseline 的 source 字段 |
 | E0-7 决策       | 8 ADR 状态明确；D1/D2/D7 有结论                           | **blocked**          | 5 ADR 全 Proposed                                                  | D1/D2/D7/D8 Pending；缺 3 份 ADR                                                          | **用户**：拍板 D1/D2/D7/D8；Lead 转 Accepted 并补 0006-0008                                             |

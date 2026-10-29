@@ -13,7 +13,7 @@
 - **本轮实测**（2026-10-29，本 worktree）：S5 定向测试 **12 文件 / 71 passed，6 条命令 exit 0**；`npm run verify:docs` **fail=0 warn=0，exit 0**；`npx tsc --noEmit` **exit 0**。
 - **渲染结构已落地**：`visualRuntime` 单例成为唯一帧/画质权威，`visualization` / `shelf3d` / `floating-spectrum` / `floating-waveform` / `floating-hud` **5 个订阅者共享 1 条 rafScheduler 循环**；隐藏标签页停表；high/medium/low 三档（DPR 2/1.5/1、effectScale 1/0.75/0.5）由 FPS 窗口与 >50ms longtask 驱动；2 个试点效果（spatialMesh、nebulaField）走 EffectPlugin 契约（**2/14**）。
 - **M5 出口门未关闭**（按 TRACKING 行 96 与计划 §1.2 判定）：
-  1. **rAF ≤8 无法正式判定**：非测试文本命中 22 处/10 文件，可执行调用 14 行；计划白名单类别内 9 行，类别外 **5 行（Player3D ×4、AudioEffectsPanel ×1）**。但 `perf/rAF-whitelist.json` 不存在，E5-1 的口径不可审计。
+  1. **rAF 审计已可复现（2026-10-29 补齐）**：`perf/rAF-whitelist.json` + `npm run verify:raf` 覆盖非测试 `requestAnimationFrame` 调用 **14 行**（9 行允许 + **5 行 pending：Player3D ×4、AudioEffectsPanel ×1**，reason 标注 TODO(S5-3b)）。E5-1 的「调用点 ≤8」**仍不判达成**：pending 迁移完成前按 9 允许 + 5 待办计，不得把 pending 当豁免。
   2. **1080p dpr2 ≥90fps 无 dropped 完全未验证**：没有真实浏览器/生产构建测量；`visualRuntime.getStats()` **没有 droppedFrames 字段**，即使跑浏览器也无法给出 dropped 数字。
   3. **draw p95 仅有 jsdom 合成证据**：`visualRuntime.test.ts` 用 1.3/1.7ms 合成负载断言 p95 ≤ baseline×1.1；TRACKING 记迁移前后 1.7037–1.7042ms → 1.7075–1.7095ms（+0.21~0.31%），为 jsdom 同帧口径。真实 1920×1080 dpr2 未测。
   4. **4x CPU throttle 与 >200ms 长任务未验证**：只有「33.4ms/帧」的合成帧序列降档测试（2 个采样窗口内 high→low），不是 Chrome 4x throttle trace。
@@ -201,20 +201,20 @@ f83d2a0 perf(s5-1): add single VisualRuntime frame/quality authority
 
 ## 4. 性能目标与状态（计划 §1.2 / §5.3）
 
-| #   | 指标（计划阈值）                         | 证据                                                           | 状态                 |
-| --- | ---------------------------------------- | -------------------------------------------------------------- | -------------------- |
-| 1   | 同一时刻仅 1 个 rAF 循环（E5-2）         | 单测 3 订阅者 1 请求；Shelf+浮动 1 请求；浮动双消费者 1 请求   | **达成（合成）**     |
-| 2   | draw p95 劣化 ≤10%（E5-3）               | jsdom 合成 p95 守卫通过；历史 +0.21~0.31%；真实未测            | **部分（合成）**     |
-| 3   | dropped = 0（E5-3 硬门）                 | runtime 无 droppedFrames 字段；无浏览器测量                    | **未验证**           |
-| 4   | 1920×1080 dpr2 FPS 中位 ≥90（E5-3/M5）   | 无生产构建/真实浏览器数据                                      | **未验证**           |
-| 5   | 隐藏视图 5s 内 draw = 0（E5-4）          | hidden 停表：0 回调/0 clearRect；恢复 1 帧                     | **达成（合成）**     |
-| 6   | 4x CPU throttle 10s 内自动降档（E5-5）   | 33.4ms/帧合成序列 2 窗口 high→low                              | **部分（合成）**     |
-| 7   | 无 >200ms longtask（E5-5）               | 未采集 longtask 时长；只有 >50ms 降档逻辑                      | **未验证**           |
-| 8   | 3 重效果稳态分配 ≤1KB/帧（E5-8）         | jsdom 构造器计数/窗口有界；无 CDP heap                         | **部分（合成）**     |
-| 9   | 连续 resize 100 次对象不线性增长（E5-7） | 引用同一批粒子/同一 frame；计数 0/0/0                          | **达成（合成）**     |
-| 10  | 全仓 rAF ≤8（非测试非白名单，E5-1）      | 文本 22/10 文件；可执行 14 行；白名单类别外 5 行；无白名单文件 | **部分/未验证**      |
-| 11  | canvas 宿主 commit=0（E5-9）             | currentTime ×10 → 顶层 0 commit                                | **达成（等价口径）** |
-| 12  | 2 个试点同契约、切换无残留（E5-6）       | 调用序列一致、dispose 重置、LRU=2                              | **达成（合成）**     |
+| #   | 指标（计划阈值）                         | 证据                                                                       | 状态                             |
+| --- | ---------------------------------------- | -------------------------------------------------------------------------- | -------------------------------- |
+| 1   | 同一时刻仅 1 个 rAF 循环（E5-2）         | 单测 3 订阅者 1 请求；Shelf+浮动 1 请求；浮动双消费者 1 请求               | **达成（合成）**                 |
+| 2   | draw p95 劣化 ≤10%（E5-3）               | jsdom 合成 p95 守卫通过；历史 +0.21~0.31%；真实未测                        | **部分（合成）**                 |
+| 3   | dropped = 0（E5-3 硬门）                 | runtime 无 droppedFrames 字段；无浏览器测量                                | **未验证**                       |
+| 4   | 1920×1080 dpr2 FPS 中位 ≥90（E5-3/M5）   | 无生产构建/真实浏览器数据                                                  | **未验证**                       |
+| 5   | 隐藏视图 5s 内 draw = 0（E5-4）          | hidden 停表：0 回调/0 clearRect；恢复 1 帧                                 | **达成（合成）**                 |
+| 6   | 4x CPU throttle 10s 内自动降档（E5-5）   | 33.4ms/帧合成序列 2 窗口 high→low                                          | **部分（合成）**                 |
+| 7   | 无 >200ms longtask（E5-5）               | 未采集 longtask 时长；只有 >50ms 降档逻辑                                  | **未验证**                       |
+| 8   | 3 重效果稳态分配 ≤1KB/帧（E5-8）         | jsdom 构造器计数/窗口有界；无 CDP heap                                     | **部分（合成）**                 |
+| 9   | 连续 resize 100 次对象不线性增长（E5-7） | 引用同一批粒子/同一 frame；计数 0/0/0                                      | **达成（合成）**                 |
+| 10  | 全仓 rAF ≤8（非测试非白名单，E5-1）      | 14 可执行行全部入白名单（9 允许 + 5 pending）；`npm run verify:raf` exit 0 | **部分（审计可复现，迁移未完）** |
+| 11  | canvas 宿主 commit=0（E5-9）             | currentTime ×10 → 顶层 0 commit                                            | **达成（等价口径）**             |
+| 12  | 2 个试点同契约、切换无残留（E5-6）       | 调用序列一致、dispose 重置、LRU=2                                          | **达成（合成）**                 |
 
 > 判定规则按计划 §5.3：p95 劣化 >15% 或 dropped>0 阻塞；FPS 中位降 >10% 记软回归。**当前没有真实数字可套用这两条阈值**，所以不能宣布 E5-3 通过。
 
@@ -222,26 +222,26 @@ f83d2a0 perf(s5-1): add single VisualRuntime frame/quality authority
 
 TRACKING 行 96 的四项：
 
-| M5 项                        | 状态             | 证据 / 缺口                                                                                 |
-| ---------------------------- | ---------------- | ------------------------------------------------------------------------------------------- |
-| rAF 调用点 ≤8                | **未验证**       | 见 §4 #10：无 `perf/rAF-whitelist.json`；Player3D 4 处、AudioEffectsPanel 1 处未迁移/未登记 |
-| 1080p dpr2 ≥90fps 无 dropped | **未验证**       | 无真实浏览器；无 dropped 计数器；无 measure.py/harness/perf JSON                            |
-| 隐藏视图零绘制               | **达成（合成）** | runtime hidden 停表 + 浮动/Shelf 用例；无真实浏览器 5s 计数                                 |
-| 4x throttle 自动降档         | **部分（合成）** | 33.4ms 帧序列 2 窗口 high→low；无 Chrome CPU 4x trace                                       |
+| M5 项                        | 状态             | 证据 / 缺口                                                                              |
+| ---------------------------- | ---------------- | ---------------------------------------------------------------------------------------- |
+| rAF 调用点 ≤8                | **部分**         | 白名单已落地（14 处：9 允许 + 5 pending）；Player3D 4 处、AudioEffectsPanel 1 处待 S5-3b |
+| 1080p dpr2 ≥90fps 无 dropped | **未验证**       | 无真实浏览器；无 dropped 计数器；无 measure.py/harness/perf JSON                         |
+| 隐藏视图零绘制               | **达成（合成）** | runtime hidden 停表 + 浮动/Shelf 用例；无真实浏览器 5s 计数                              |
+| 4x throttle 自动降档         | **部分（合成）** | 33.4ms 帧序列 2 窗口 high→low；无 Chrome CPU 4x trace                                    |
 
 计划 E5-1..E5-9：
 
-| ID   | 出口                                       | 状态                     | 说明                                                                           |
-| ---- | ------------------------------------------ | ------------------------ | ------------------------------------------------------------------------------ |
-| E5-1 | rAF 调用点 ≤8                              | **部分/未验证**          | 22 文本命中/10 文件；14 可执行行；计划白名单外 5 行；缺 whitelist 文件         |
-| E5-2 | 同一时刻 1 个循环                          | **达成（合成）**         | 5 订阅者共享 rafScheduler；2 消费者组合 + 3 订阅者单测                         |
-| E5-3 | p95 劣化 ≤10%、dropped=0、FPS≥90           | **未验证**               | 仅合成 p95 守卫与历史 jsdom 数字；dropped/FPS 无数据                           |
-| E5-4 | 隐藏视图 0 绘制                            | **达成（合成）**         | hidden: 0 帧/0 clearRect；恢复 1 帧                                            |
-| E5-5 | 档位可判定/切换、4x 降档、无 >200ms 长任务 | **部分/未验证**          | 三档 + FPS/longtask 自适应；无 D5 设备档/?tier；无真实 throttle 与 >200ms 测量 |
-| E5-6 | 2 试点同契约、切换无残留                   | **达成（2/14）**         | 17 条插件/registry 用例；flag 默认 off；无端到端 20 轮切换                     |
-| E5-7 | resize 100 次不线性增长、p95 ≤10%          | **达成（合成，p95 缺）** | 对象复用成立；frame p95 对比未测                                               |
-| E5-8 | 3 重效果 ≤1KB/帧                           | **部分（合成）**         | jsdom 构造器/数组方法有界；无 CDP HeapProfiler                                 |
-| E5-9 | canvas 宿主 commit=0                       | **达成（等价）**         | 顶层 0 commit；物理拆包未做、无 Profiler trace                                 |
+| ID   | 出口                                       | 状态                     | 说明                                                                                                                                          |
+| ---- | ------------------------------------------ | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| E5-1 | rAF 调用点 ≤8                              | **部分（审计可复现）**   | 14 可执行行全部入 `perf/rAF-whitelist.json`（9 允许 + 5 pending：Player3D ×4、AudioEffectsPanel ×1，TODO S5-3b）；`npm run verify:raf` exit 0 |
+| E5-2 | 同一时刻 1 个循环                          | **达成（合成）**         | 5 订阅者共享 rafScheduler；2 消费者组合 + 3 订阅者单测                                                                                        |
+| E5-3 | p95 劣化 ≤10%、dropped=0、FPS≥90           | **未验证**               | 仅合成 p95 守卫与历史 jsdom 数字；dropped/FPS 无数据                                                                                          |
+| E5-4 | 隐藏视图 0 绘制                            | **达成（合成）**         | hidden: 0 帧/0 clearRect；恢复 1 帧                                                                                                           |
+| E5-5 | 档位可判定/切换、4x 降档、无 >200ms 长任务 | **部分/未验证**          | 三档 + FPS/longtask 自适应；无 D5 设备档/?tier；无真实 throttle 与 >200ms 测量                                                                |
+| E5-6 | 2 试点同契约、切换无残留                   | **达成（2/14）**         | 17 条插件/registry 用例；flag 默认 off；无端到端 20 轮切换                                                                                    |
+| E5-7 | resize 100 次不线性增长、p95 ≤10%          | **达成（合成，p95 缺）** | 对象复用成立；frame p95 对比未测                                                                                                              |
+| E5-8 | 3 重效果 ≤1KB/帧                           | **部分（合成）**         | jsdom 构造器/数组方法有界；无 CDP HeapProfiler                                                                                                |
+| E5-9 | canvas 宿主 commit=0                       | **达成（等价）**         | 顶层 0 commit；物理拆包未做、无 Profiler trace                                                                                                |
 
 ## 6. 缺失证据清单（计划 §5.2 对照）
 
@@ -252,7 +252,7 @@ TRACKING 行 96 的四项：
 | `src/app/dev/viz-harness/page.tsx`                            | **不存在**（`src/app/dev` 目录不存在）                                          |
 | `scripts/perf/allocation-probe.mjs`                           | **不存在**（`scripts/perf/` 无此文件）                                          |
 | `perf/allocation/*.json`（before/after）                      | **不存在**                                                                      |
-| `perf/rAF-whitelist.json`                                     | **不存在**                                                                      |
+| `perf/rAF-whitelist.json`                                     | **已补齐**（S5-2d，2026-10-29；15 条 = 14 调用点 + 1 runtime 绑定）             |
 | S5-1 DevTools 单 rAF 截图 + `getStats()` 输出                 | **无**                                                                          |
 | S5-2 14 效果 before/after 表 + 截图/接触表                    | **无**（只有 jsdom p95 记录）                                                   |
 | S5-2 React Profiler 宿主 commit 对比                          | **无 trace**（只有 jsdom Profiler 计数用例）                                    |
@@ -285,6 +285,7 @@ npx vitest run src/components/library/Shelf3DView.runtime.test.tsx src/component
 
 # 3) 文档与类型门禁
 npm run verify:docs
+npm run verify:raf
 npx tsc --noEmit
 
 # 4) rAF 文本统计（PowerShell；排除测试文件）
@@ -296,7 +297,6 @@ rg -n "requestAnimationFrame" src --glob '!*.test.*'
 ```text
 python scratch/perf/measure.py --base-url http://localhost:3025 --route /dev/viz-harness --label s5-before --out perf/s5-before.json
 node scripts/perf/allocation-probe.mjs --route /dev/viz-harness --effects cinematicLyricDrift,orientalLandscape,handwrittenPaper --out perf/allocation/s5-before
-node -e "JSON.parse(require('fs').readFileSync('perf/rAF-whitelist.json'))"
 ```
 
 > 本轮未执行 `npm run build; npm start` 的真实 perf 测量，也未执行 Chrome DevTools Performance/CPU 4x、CDP Allocation/HeapProfiler、React Profiler 录制。未 push，未触碰主工作区。
@@ -308,7 +308,7 @@ node -e "JSON.parse(require('fs').readFileSync('perf/rAF-whitelist.json'))"
 3. **React Profiler 录制**：只有 jsdom Profiler commit 计数；无宿主/控制层 trace 导出。
 4. **14 效果截图/接触表与视觉对照**：未做；「绘制体不动」目前只有调用序列/单元断言（2 个试点）。
 5. **3D 架 + 可视化同时激活 FPS ≥50**：未测；Shelf3D 画质窗口仍是自身 FPS 逻辑，未接 runtime 档位。
-6. **Player3D**：仍是原生 rAF（4 处），S5-3b 未做；E5-1 的「非白名单」计数因此仍有 4 行。
+6. **Player3D**：仍是原生 rAF（4 处），S5-3b 未做；已在白名单中记为 `player3d-pending`（TODO），不是豁免。
 7. **S5-2c 删除旧路径**：未做；`NEXT_PUBLIC_VISUAL_RUNTIME=off` 的 legacy 循环仍在生产代码中（这是 rAF 文本数偏高的主要原因），未满足「双跑一版后删除」。
 8. **S5-6 D5 档位**：无 `detectTier`（deviceMemory/hardwareConcurrency）、无 `?tier=`、无 `NEXT_PUBLIC_QUALITY_TIER`、无 low 档关闭 canvas filter / medium 降 blur。
 9. **S5-7 CDP 分配审计**：无 `allocKBPerSec`、无 Top 帧表、无 before/after JSON；结论基于 jsdom 构造器计数。
@@ -321,4 +321,4 @@ node -e "JSON.parse(require('fs').readFileSync('perf/rAF-whitelist.json'))"
 - **可以确认**：S5 的调度收敛在代码与 jsdom 结构测试层面成立——1 条 runtime 循环、5 个消费者、隐藏停表、三档自适应、2 个插件试点、resize/粒子复用均有可复跑用例（71 passed）。
 - **不能确认**：M5 的任何真实性能阈值（p95/FPS/dropped/4x throttle/>200ms longtask/分配速率）。计划 §5.2 要求的证据文件几乎全部缺失，measure harness 从未落地。**因此 M5 不能判绿**；TRACKING 的「S5-1..S5-7 done」只能理解为「实现完成」，不是「出口门通过」。
 - **回退**：`NEXT_PUBLIC_VISUAL_RUNTIME=off` → 组件回旧 rAF 路径（S5-2/S5-3 双跑分支仍在）；`NEXT_PUBLIC_EFFECT_PLUGINS=off`（当前默认）→ 全部效果走旧 switch；`visualRuntime.setQuality` 仅影响 DPR/effectScale，无持久化 key。
-- **建议的关闭顺序**：(1) 补 dropped-frame 采样与 `perf/rAF-whitelist.json`（E5-1/E5-3 前置）；(2) 落 `dev/viz-harness` + `measure.py --route`，采 before/after JSON 与 14 效果截图；(3) Chrome 4x/longtask/Allocation 三组 CDP 证据；(4) 处理 Player3D 与 S5-2c 后再复算 rAF 计数；(5) 最后再评审 E5-3/E5-5/E5-8。
+- **建议的关闭顺序**：(1) 补 dropped-frame 采样（E5-3 前置；rAF whitelist 已由 S5-2d 落地）；(2) 落 `dev/viz-harness` + `measure.py --route`，采 before/after JSON 与 14 效果截图；(3) Chrome 4x/longtask/Allocation 三组 CDP 证据；(4) 处理 Player3D 与 S5-2c 后再复算 rAF 计数；(5) 最后再评审 E5-3/E5-5/E5-8。

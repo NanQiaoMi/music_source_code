@@ -33,12 +33,13 @@ describe("CI perf gates wiring", () => {
     expect(workflow).toContain("stale");
   });
 
-  it("chains the three passing gates in order, skipping bundle markers without a build", () => {
+  it("chains the four passing gates in order, skipping bundle markers without a build", () => {
     const script = pkg.scripts["perf:gates"];
     const order = [
       "scripts/check-store-budgets.mjs",
       "report-store-stats.mjs --max-whole 10",
       "check-bundle-markers.mjs",
+      "npm run verify:raf",
     ];
     const positions = order.map((needle) => script.indexOf(needle));
     expect(positions.every((p) => p >= 0)).toBe(true);

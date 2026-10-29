@@ -1,5 +1,7 @@
 # Phase 1: Store 架构解耦 — 实施计划
 
+> **Superseded（2026-10-21）**：本计划不再执行；store 架构工作见 [2026-10-21 架构与性能优化总计划](./2026-10-21-architecture-performance-optimization.md) S1/S6，进度见 [执行包 TRACKING](./2026-10-21-arch-perf-execution/TRACKING.md)。本文件仅作历史参考。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `nbl.subagent-driven-development` or `nbl.executing-plans` to implement this plan task-by-task.
 
 **Goal:** 建立 Coordinator 协调层，消除 Store 间循环依赖，拆分过大的 audioStore
