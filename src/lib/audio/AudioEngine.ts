@@ -8,6 +8,8 @@ type AudioEngineWindow = Window & {
   webkitAudioContext?: AudioContextConstructor;
 };
 
+export type ContextCreatedListener = (context: AudioContext) => void;
+
 export class AudioEngine {
   private static instance: AudioEngine;
   private context: AudioContext | null = null;
@@ -17,6 +19,7 @@ export class AudioEngine {
   private eqNodes: BiquadFilterNode[] = [];
   private isInitialized = false;
   private isEQEnabled = false;
+  private contextCreatedListeners = new Set<ContextCreatedListener>();
 
   private static EQ_FREQUENCIES = [
     20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600,
@@ -67,11 +70,40 @@ export class AudioEngine {
     this.masterGain.connect(this.analyser);
     this.analyser.connect(this.context.destination);
 
-    return this.context;
+    // Notify lazy-attach subscribers exactly once per context creation. Listener
+    // failures must not break audio initialization.
+    const createdContext = this.context;
+    for (const listener of this.contextCreatedListeners) {
+      try {
+        listener(createdContext);
+      } catch {
+        // ignore subscriber errors
+      }
+    }
+    this.contextCreatedListeners.clear();
+
+    return createdContext;
   }
 
   public ensureContext(): AudioContext | null {
     return this.initContext();
+  }
+
+  /**
+   * Subscribe to lazy AudioContext creation. When the context already exists the
+   * listener runs synchronously; otherwise it runs once on creation. Returns an
+   * unsubscribe function.
+   */
+  public onContextCreated(listener: ContextCreatedListener): () => void {
+    if (this.context) {
+      listener(this.context);
+      return () => {};
+    }
+
+    this.contextCreatedListeners.add(listener);
+    return () => {
+      this.contextCreatedListeners.delete(listener);
+    };
   }
 
   private initEQNodes(): void {

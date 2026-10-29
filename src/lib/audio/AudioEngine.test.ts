@@ -176,4 +176,42 @@ describe("AudioEngine", () => {
     engine.setEQEnabled(true);
     expect(sourceNode.disconnect).toHaveBeenCalledTimes(1);
   });
+
+  it("notifies onContextCreated immediately when the context already exists", () => {
+    const engine = AudioEngine.getInstance();
+    engine.init(document.createElement("audio"));
+
+    const listener = vi.fn();
+    const unsubscribe = engine.onContextCreated(listener);
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith(engine.getAudioContext());
+    unsubscribe();
+  });
+
+  it("defers onContextCreated until lazy creation and notifies subscribers once", () => {
+    const engine = AudioEngine.getInstance();
+    const listener = vi.fn();
+    engine.onContextCreated(listener);
+
+    expect(listener).not.toHaveBeenCalled();
+
+    engine.ensureContext();
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    const lateListener = vi.fn();
+    engine.onContextCreated(lateListener);
+    expect(lateListener).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not notify a deferred listener after it unsubscribes", () => {
+    const engine = AudioEngine.getInstance();
+    const listener = vi.fn();
+
+    const unsubscribe = engine.onContextCreated(listener);
+    unsubscribe();
+
+    engine.ensureContext();
+    expect(listener).not.toHaveBeenCalled();
+  });
 });
