@@ -2,13 +2,11 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { createSafeStorage, sanitizeSongForStorage } from "@/lib/storage/safeStorage";
 import { usePlayerStore, registerAudioStoreSync } from "./playerStore";
-import { useQueueStore } from "./queueStore";
 import {
   AudioStoreState,
   LoopMode,
   AudioError,
   AudioDevice,
-  EQPreset,
   HeadphonePreset,
   Song,
 } from "./slices/types";
@@ -20,7 +18,7 @@ import {
 import { createDeviceSlice } from "./slices/deviceSlice";
 import { createSourceSlice } from "./slices/sourceSlice";
 
-export type { LoopMode, AudioError, AudioDevice, EQPreset, HeadphonePreset, Song };
+export type { LoopMode, AudioError, AudioDevice, HeadphonePreset, Song };
 export { registerAudioSeekHandler, getAudioSeekHandler };
 
 let audioPersistenceSuspended = false;
@@ -47,17 +45,6 @@ export const useAudioStore = create<AudioStoreState>()(
       ...createPlaybackSlice(set, get, api),
       ...createDeviceSlice(set, get, api),
       ...createSourceSlice(set, get, api),
-
-      // 队列兼容字段（S1-5）：owner=queueStore，这里只是单向只读投影。
-      // 写入一律委托 queueStore，由模块底部订阅回填镜像，禁止反写。
-      queue: useQueueStore.getState().queue ?? [],
-      currentIndex: useQueueStore.getState().currentIndex ?? 0,
-      setQueue: (songs: Song[]) => {
-        useQueueStore.getState().setQueue(songs);
-      },
-      setCurrentIndex: (index: number) => {
-        useQueueStore.getState().setCurrentIndex(index);
-      },
     }),
     {
       skipHydration: true,
@@ -73,10 +60,6 @@ export const useAudioStore = create<AudioStoreState>()(
         isMuted: state.isMuted,
         playbackRate: state.playbackRate,
         loopMode: state.loopMode,
-        eqBands: state.eqBands,
-        currentEQPreset: state.currentEQPreset,
-        isEQEnabled: state.isEQEnabled,
-        customEQPresets: state.customEQPresets,
         stereoEnhance: state.stereoEnhance,
         surroundSound: state.surroundSound,
         bassBoost: state.bassBoost,
@@ -177,16 +160,6 @@ useAudioStore.subscribe((state, prev) => {
   if (Object.keys(updates).length > 0) {
     usePlayerStore.setState(updates);
   }
-});
-
-// 单向投影（S1-5）：queueStore 是唯一 owner，audioStore 镜像不参与任何写路径。
-// 删除时机：S6-5；在此之前导航只读 queueStore，本投影仅服务遗留读点。
-useQueueStore.subscribe((state) => {
-  const currentAudio = useAudioStore.getState();
-  if (state.queue === currentAudio.queue && state.currentIndex === currentAudio.currentIndex) {
-    return;
-  }
-  useAudioStore.setState({ queue: state.queue, currentIndex: state.currentIndex });
 });
 
 // ============================================================================

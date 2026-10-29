@@ -9,6 +9,7 @@
  */
 
 import { useAudioStore } from "@/store/audioStore";
+import { getQueueSnapshot } from "@/store/actions/queueSnapshotActions";
 import { useGestureSettingsStore } from "@/store/gestureSettingsStore";
 import { useUiShellStore, type FullscreenSurface } from "@/store/uiShellStore";
 import { formatTime } from "@/utils/formatTime";
@@ -119,8 +120,10 @@ function readSettingsVolumeStep(deps: GestureActionDeps): number {
 }
 
 function resolveDeps(deps: GestureActionDeps): ResolvedGestureActionDeps {
-  // eslint-disable-next-line no-lib-service-getstate -- S6-9c 白名单：DI 兜底工厂（audio），未注入时才惰性读
-  const getAudioStore = deps.getAudioStore ?? (() => useAudioStore.getState());
+  const getAudioStore =
+    deps.getAudioStore ??
+    // eslint-disable-next-line no-lib-service-getstate -- S6-9c 白名单：DI 兜底工厂（audio + 队列投影），未注入时才惰性读
+    (() => ({ ...useAudioStore.getState(), queue: getQueueSnapshot() }));
   // eslint-disable-next-line no-lib-service-getstate -- S6-9c 白名单：DI 兜底工厂（ui），未注入时才惰性读
   const getUiStore = deps.getUiStore ?? (() => useUiShellStore.getState());
   return {

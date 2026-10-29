@@ -92,8 +92,6 @@ const resetStores = () => {
     isLoading: false,
     volume: 0.7,
     isMuted: false,
-    queue: [],
-    currentIndex: 0,
     error: null,
   });
 };
@@ -202,7 +200,7 @@ describe("playbackCommands", () => {
       .spyOn(usePlayerStore.getState(), "setCurrentSong")
       .mockImplementation(() => {});
     const setIndexSpy = vi
-      .spyOn(useAudioStore.getState(), "setCurrentIndex")
+      .spyOn(useQueueStore.getState(), "setCurrentIndex")
       .mockImplementation(() => {});
     const toggleSpy = vi
       .spyOn(useAudioStore.getState(), "togglePlaybackIntent")

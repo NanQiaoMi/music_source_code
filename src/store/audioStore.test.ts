@@ -42,8 +42,6 @@ describe("audioStore playback sync", () => {
 
     useAudioStore.setState({
       currentSong: null,
-      queue: [],
-      currentIndex: 0,
       currentTime: 0,
       isPlaying: false,
       isLoading: false,
@@ -84,7 +82,7 @@ describe("audioStore playback sync", () => {
       audioUrl: "",
     };
 
-    useAudioStore.setState({ currentSong, queue: [currentSong], currentIndex: 0 });
+    useAudioStore.setState({ currentSong });
     usePlayerStore.getState().setCurrentSong(currentSong);
     useQueueStore.getState().setQueue([currentSong]);
 
@@ -92,7 +90,6 @@ describe("audioStore playback sync", () => {
 
     expect(useAudioStore.getState().currentSong?.id).toBe("current");
     expect(usePlayerStore.getState().currentSong?.id).toBe("current");
-    expect(useAudioStore.getState().queue.map((song) => song.id)).toEqual(["current"]);
     expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual(["current"]);
     expect(useAudioStore.getState().isPlaying).toBe(false);
     expect(usePlayerStore.getState().isPlaying).toBe(false);
@@ -113,7 +110,6 @@ describe("audioStore playback sync", () => {
 
     expect(useAudioStore.getState().currentSong).toBeNull();
     expect(usePlayerStore.getState().currentSong).toBeNull();
-    expect(useAudioStore.getState().queue).toEqual([]);
     expect(useQueueStore.getState().queue).toEqual([]);
     expect(useAudioStore.getState().isPlaying).toBe(false);
     expect(usePlayerStore.getState().isPlaying).toBe(false);
@@ -131,7 +127,7 @@ describe("audioStore playback sync", () => {
       audioUrl: "",
     };
 
-    useAudioStore.setState({ currentSong, queue: [currentSong], currentIndex: 0 });
+    useAudioStore.setState({ currentSong });
     usePlayerStore.getState().setCurrentSong(currentSong);
     useQueueStore.getState().setQueue([currentSong]);
 
@@ -139,7 +135,6 @@ describe("audioStore playback sync", () => {
 
     expect(useAudioStore.getState().currentSong?.id).toBe("current");
     expect(usePlayerStore.getState().currentSong?.id).toBe("current");
-    expect(useAudioStore.getState().queue.map((song) => song.id)).toEqual(["current"]);
     expect(useQueueStore.getState().queue.map((song) => song.id)).toEqual(["current"]);
     expect(useAudioStore.getState().isPlaying).toBe(false);
     expect(usePlayerStore.getState().isPlaying).toBe(false);
@@ -265,17 +260,12 @@ describe("audioStore playback sync", () => {
     expect(useAudioStore.getState().persistedCurrentTime).toBe(30.0);
   });
 
-  it("delegates queue and currentIndex to queueStore as single authority", () => {
-    const song1 = createMockSong("q-1");
-    const song2 = createMockSong("q-2");
+  it("exposes no queue/currentIndex mirror or compatibility setters", () => {
+    const audioState = useAudioStore.getState() as unknown as Record<string, unknown>;
 
-    useQueueStore.getState().setQueue([song1, song2]);
-    useQueueStore.getState().setCurrentIndex(1);
-
-    expect(useAudioStore.getState().queue.map((s) => s.id)).toEqual(["q-1", "q-2"]);
-    expect(useAudioStore.getState().currentIndex).toBe(1);
-
-    useAudioStore.getState().setQueue([song1]);
-    expect(useQueueStore.getState().queue.map((s) => s.id)).toEqual(["q-1"]);
+    expect(Object.prototype.hasOwnProperty.call(audioState, "queue")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(audioState, "currentIndex")).toBe(false);
+    expect(audioState.setQueue).toBeUndefined();
+    expect(audioState.setCurrentIndex).toBeUndefined();
   });
 });

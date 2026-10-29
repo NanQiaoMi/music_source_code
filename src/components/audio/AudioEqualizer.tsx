@@ -1,14 +1,14 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
-import { useAudioStore, type EQPreset as AudioEQPreset } from "@/store/audioStore";
+import { useEQStore, type EQPresetId } from "@/store/eqStore";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
 import { Waves, X, RotateCcw } from "lucide-react";
 
 export interface EQPresetUI {
-  id: AudioEQPreset;
+  id: EQPresetId;
   name: string;
   nameEn: string;
   badge: string;
@@ -48,10 +48,10 @@ interface AudioEqualizerProps {
 
 export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose }) => {
   const { audioElement } = useAudioPlayer();
-  const setEQBands = useAudioStore((state) => state.setEQBands);
-  const currentEQPreset = useAudioStore((state) => state.currentEQPreset);
-  const eqBands = useAudioStore((state) => state.eqBands);
-  const loadEQPreset = useAudioStore((state) => state.loadEQPreset);
+  const setEQBands = useEQStore((state) => state.setEQBands);
+  const currentEQPreset = useEQStore((state) => state.currentEQPreset);
+  const eqBands = useEQStore((state) => state.eqBands);
+  const loadEQPreset = useEQStore((state) => state.loadEQPreset);
   const bands = eqBands.length === 30 ? eqBands : DEFAULT_EQ_BANDS_30;
   const selectedPreset = currentEQPreset;
 
@@ -79,7 +79,7 @@ export const AudioEqualizer: React.FC<AudioEqualizerProps> = ({ isOpen, onClose 
   );
 
   const handlePresetSelect = useCallback(
-    (presetId: AudioEQPreset) => {
+    (presetId: EQPresetId) => {
       loadEQPreset(presetId);
     },
     [loadEQPreset]

@@ -17,14 +17,16 @@ function song(id: string): Song {
   };
 }
 
-function expectMirrorMatchesQueueStore(): void {
-  const queueState = useQueueStore.getState();
-  const audioState = useAudioStore.getState();
-  expect(audioState.queue).toBe(queueState.queue);
-  expect(audioState.currentIndex).toBe(queueState.currentIndex);
+/** S6-5: audioStore no longer mirrors queue/currentIndex (queueStore is the only owner). */
+function expectNoQueueMirror(): void {
+  const audioState = useAudioStore.getState() as unknown as Record<string, unknown>;
+  expect(Object.prototype.hasOwnProperty.call(audioState, "queue")).toBe(false);
+  expect(Object.prototype.hasOwnProperty.call(audioState, "currentIndex")).toBe(false);
+  expect(audioState.setQueue).toBeUndefined();
+  expect(audioState.setCurrentIndex).toBeUndefined();
 }
 
-describe("queuePlaybackSync (S1-5)", () => {
+describe("queuePlaybackSync (S1-5 + S6-5 ownership)", () => {
   beforeEach(() => {
     localStorage.clear();
     usePlaybackRuntimeStore.getState().reset();
@@ -47,8 +49,6 @@ describe("queuePlaybackSync (S1-5)", () => {
     });
     useAudioStore.setState({
       currentSong: null,
-      queue: [],
-      currentIndex: 0,
       currentTime: 0,
       isPlaying: false,
       isLoading: false,
@@ -58,43 +58,34 @@ describe("queuePlaybackSync (S1-5)", () => {
     });
   });
 
-  it("audioStore mirror equals queueStore after setQueue/add/remove/reorder/clear", () => {
+  it("queue edits go to queueStore only and never create an audioStore mirror", () => {
     const queueStore = useQueueStore.getState();
     const [a, b, c] = [song("a"), song("b"), song("c")];
 
     queueStore.setQueue([a, b]);
-    expectMirrorMatchesQueueStore();
-
     queueStore.setCurrentIndex(1);
-    expectMirrorMatchesQueueStore();
-
     queueStore.addToQueue(c);
-    expectMirrorMatchesQueueStore();
-
     queueStore.removeFromQueue(0);
-    expectMirrorMatchesQueueStore();
-
     queueStore.reorderQueue(1, 0);
-    expectMirrorMatchesQueueStore();
-
     queueStore.clearQueue();
-    expectMirrorMatchesQueueStore();
-    expect(useAudioStore.getState().queue).toEqual([]);
-    expect(useAudioStore.getState().currentIndex).toBe(0);
+
+    expect(useQueueStore.getState().queue).toEqual([]);
+    expect(useQueueStore.getState().currentIndex).toBe(0);
+    expectNoQueueMirror();
   });
 
-  it("next advances queueStore, mirror, playerStore and the playback request together", () => {
+  it("next advances queueStore, playerStore and the playback request together", () => {
     const songs = [song("a"), song("b"), song("c")];
     useAudioStore.getState().playQueue(songs, 0);
 
     useAudioStore.getState().nextSong();
 
     expect(useQueueStore.getState().currentIndex).toBe(1);
-    expectMirrorMatchesQueueStore();
     expect(useAudioStore.getState().currentSong?.id).toBe("b");
     expect(usePlayerStore.getState().currentSong?.id).toBe("b");
     expect(usePlaybackRuntimeStore.getState().targetSongId).toBe("b");
     expect(usePlaybackRuntimeStore.getState().shouldPlay).toBe(true);
+    expectNoQueueMirror();
   });
 
   it("next uses the queueStore snapshot after the current song is removed", () => {
@@ -103,7 +94,6 @@ describe("queuePlaybackSync (S1-5)", () => {
     expect(useAudioStore.getState().currentSong?.id).toBe("b");
 
     useQueueStore.getState().removeFromQueue(1);
-    expectMirrorMatchesQueueStore();
     expect(useQueueStore.getState().currentIndex).toBe(1);
 
     // Simulates the ended/next path: the removed song is still the media owner,
@@ -112,7 +102,6 @@ describe("queuePlaybackSync (S1-5)", () => {
 
     expect(useAudioStore.getState().currentSong?.id).toBe("c");
     expect(useQueueStore.getState().currentIndex).toBe(1);
-    expectMirrorMatchesQueueStore();
     expect(usePlaybackRuntimeStore.getState().targetSongId).toBe("c");
   });
 
@@ -128,7 +117,6 @@ describe("queuePlaybackSync (S1-5)", () => {
 
     expect(useAudioStore.getState().currentSong?.id).toBe("b");
     expect(useQueueStore.getState().currentIndex).toBe(2);
-    expectMirrorMatchesQueueStore();
   });
 
   it("clearing the queue stops playback without toast or error", () => {
@@ -140,7 +128,6 @@ describe("queuePlaybackSync (S1-5)", () => {
     useAudioStore.getState().nextSong();
 
     expect(useQueueStore.getState().queue).toEqual([]);
-    expect(useAudioStore.getState().queue).toEqual([]);
     expect(useAudioStore.getState().isPlaying).toBe(false);
     expect(usePlayerStore.getState().isPlaying).toBe(false);
     expect(usePlaybackRuntimeStore.getState().shouldPlay).toBe(false);
@@ -157,7 +144,6 @@ describe("queuePlaybackSync (S1-5)", () => {
     useAudioStore.getState().nextSong();
 
     expect(useQueueStore.getState().currentIndex).toBe(1);
-    expectMirrorMatchesQueueStore();
     expect(useAudioStore.getState().isPlaying).toBe(false);
     expect(usePlaybackRuntimeStore.getState().shouldPlay).toBe(false);
     expect(usePlaybackRuntimeStore.getState().targetSongId).toBeNull();
@@ -183,29 +169,5 @@ describe("queuePlaybackSync (S1-5)", () => {
 
     expect(useAudioStore.getState().currentSong?.id).toBe("b");
     expect(useQueueStore.getState().currentIndex).toBe(1);
-  });
-
-  it("mirror writes never propagate back to queueStore", () => {
-    const [a, b] = [song("a"), song("b")];
-    useQueueStore.getState().setQueue([a]);
-    useQueueStore.getState().setCurrentIndex(0);
-    const queueBefore = useQueueStore.getState().queue;
-    const indexBefore = useQueueStore.getState().currentIndex;
-
-    useAudioStore.setState({ queue: [a, b], currentIndex: 1 });
-
-    expect(useQueueStore.getState().queue).toBe(queueBefore);
-    expect(useQueueStore.getState().currentIndex).toBe(indexBefore);
-  });
-
-  it("compatibility setters delegate to queueStore", () => {
-    const [a, b] = [song("a"), song("b")];
-
-    useAudioStore.getState().setQueue([a, b]);
-    useAudioStore.getState().setCurrentIndex(1);
-
-    expect(useQueueStore.getState().queue.map((item) => item.id)).toEqual(["a", "b"]);
-    expect(useQueueStore.getState().currentIndex).toBe(1);
-    expectMirrorMatchesQueueStore();
   });
 });

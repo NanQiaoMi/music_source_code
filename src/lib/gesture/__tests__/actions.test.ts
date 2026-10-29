@@ -298,7 +298,6 @@ describe("默认依赖（真实 store）", () => {
       currentSong: null,
       isPlaying: false,
       isMuted: false,
-      queue: [],
       duration: 180,
       currentTime: 0,
     });

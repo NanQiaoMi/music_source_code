@@ -28,7 +28,7 @@ describe("useKeyboardShortcuts isPlaying consumer", () => {
         audioUrl: "file:///shortcut.mp3",
       },
     });
-    useAudioStore.setState({ isPlaying: false, queue: [] });
+    useAudioStore.setState({ isPlaying: false });
     usePlaybackRuntimeStore.getState().reset();
 
     container = document.createElement("div");

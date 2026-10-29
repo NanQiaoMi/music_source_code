@@ -33,6 +33,7 @@ export function DataManagerPlayerDock() {
   const prevSong = useAudioStore((state) => state.prevSong);
   const queue = useQueueStore((state) => state.queue);
   const queueIndex = useQueueStore((state) => state.currentIndex);
+  const setQueueIndex = useQueueStore((state) => state.setCurrentIndex);
   const loopMode = usePlayerStore((state) => state.loopMode);
   const openPanel = usePanelStore((state) => state.openPanel);
 
@@ -51,10 +52,8 @@ export function DataManagerPlayerDock() {
       : -1;
 
     if (activeIndex >= 0 || loopMode === "shuffle") {
-      useAudioStore.setState({
-        queue: visibleQueue,
-        currentIndex: activeIndex >= 0 ? activeIndex : safeVisibleIndex,
-      });
+      // S6-5: align the owner's index; never write the removed audioStore queue mirror.
+      setQueueIndex(activeIndex >= 0 ? activeIndex : safeVisibleIndex);
       if (direction === "next") nextSong();
       else prevSong();
       return;

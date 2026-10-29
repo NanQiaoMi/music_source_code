@@ -1,47 +1,41 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import {
+  DEFAULT_BANDS,
+  EQ_DEFAULTS,
+  getDefaultEQPreset,
+  type EQPreset,
+  type EQState,
+} from "./eq/types";
+import { EQ_STORE_KEY, EQ_STORE_VERSION, migrateEQState } from "./eq/legacyEQMigration";
 
-export interface EQPreset {
-  id: string;
-  name: string;
-  bands: number[];
-}
-
-interface EQState {
-  isEQEnabled: boolean;
-  eqBands: number[];
-  eqPresets: EQPreset[];
-  selectedPresetId: string | null;
-
-  setEQEnabled: (enabled: boolean) => void;
-  toggleEQ: () => void;
-  setEQBands: (bands: number[]) => void;
-  setEQBand: (index: number, value: number) => void;
-  resetEQ: () => void;
-  savePreset: (name: string) => void;
-  loadPreset: (presetId: string) => void;
-  deletePreset: (presetId: string) => void;
-}
-
-const DEFAULT_BANDS = new Array(30).fill(0);
+export type { EQPreset, EQPresetId } from "./eq/types";
+export { DEFAULT_EQ_PRESETS, getDefaultEQPreset } from "./eq/types";
 
 export const useEQStore = create<EQState>()(
   persist(
     (set, get) => ({
-      isEQEnabled: true,
-      eqBands: [...DEFAULT_BANDS],
-      eqPresets: [],
-      selectedPresetId: null,
+      ...EQ_DEFAULTS,
 
       setEQEnabled: (enabled) => set({ isEQEnabled: enabled }),
       toggleEQ: () => set((state) => ({ isEQEnabled: !state.isEQEnabled })),
-      setEQBands: (bands) => set({ eqBands: bands }),
+      setEQBands: (bands) =>
+        set((state) => ({
+          eqBands: bands,
+          currentEQPreset:
+            bands === getDefaultEQPreset(state.currentEQPreset) ? state.currentEQPreset : "custom1",
+        })),
       setEQBand: (index, value) => {
         const bands = [...get().eqBands];
         bands[index] = value;
         set({ eqBands: bands });
       },
       resetEQ: () => set({ eqBands: [...DEFAULT_BANDS] }),
+      setCurrentEQPreset: (preset) => get().loadEQPreset(preset),
+      loadEQPreset: (preset) =>
+        set({ eqBands: getDefaultEQPreset(preset), currentEQPreset: preset }),
+      saveCustomEQPreset: (name, bands) =>
+        set((state) => ({ customEQPresets: { ...state.customEQPresets, [name]: bands } })),
       savePreset: (name) => {
         const preset: EQPreset = {
           id: `eq-${Date.now()}`,
@@ -68,10 +62,14 @@ export const useEQStore = create<EQState>()(
     }),
     {
       skipHydration: true,
-      name: "eq-store",
+      name: EQ_STORE_KEY,
+      version: EQ_STORE_VERSION,
+      migrate: migrateEQState,
       partialize: (state) => ({
         isEQEnabled: state.isEQEnabled,
         eqBands: state.eqBands,
+        currentEQPreset: state.currentEQPreset,
+        customEQPresets: state.customEQPresets,
         eqPresets: state.eqPresets,
         selectedPresetId: state.selectedPresetId,
       }),

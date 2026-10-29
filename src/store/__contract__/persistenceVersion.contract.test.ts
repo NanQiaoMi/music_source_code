@@ -1,5 +1,5 @@
-// S6-11 persistence-version contract: only 3 of the 43 persist configs declare a zustand
-// version today. The 40 unversioned owners are an explicit ratchet: adding (or dropping)
+// S6-11 persistence-version contract: 4 of the 43 persist configs declare a zustand version
+// today. The 39 unversioned owners are an explicit ratchet: adding (or dropping)
 // version/migrate must update this table, otherwise the v0->v1 fixture migration plan stays
 // impossible (no migrate hook runs without a declared version).
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -20,6 +20,7 @@ const bindings = STORE_BINDINGS as unknown as Record<string, VersionedStore>;
 /** Declared versions with their migration evidence. */
 const DECLARED_VERSIONS = {
   aiStore: { version: 1, hasMigrate: true }, // AI_STORE_VERSION + normalizePersistedAIState
+  eqStore: { version: 2, hasMigrate: true }, // S6-5 v2: legacy audio-store-v4 EQ fields
   gestureSettingsStore: { version: 1, hasMigrate: false }, // sanitize/merge handles old shape
   uiStore: { version: 2, hasMigrate: false }, // v2 partialize, unknown legacy keys dropped
 } as const;
@@ -33,8 +34,8 @@ afterEach(() => {
 });
 
 describe("persistence version contract (S6-11)", () => {
-  it("documents the 3 declared versions and ratchets the other 40", () => {
-    expect(UNWIRED_VERSIONS).toHaveLength(40);
+  it("documents the 4 declared versions and ratchets the other 39", () => {
+    expect(UNWIRED_VERSIONS).toHaveLength(39);
     expect(new Set([...Object.keys(DECLARED_VERSIONS), ...UNWIRED_VERSIONS]).size).toBe(
       STORAGE_REGISTRY.length
     );

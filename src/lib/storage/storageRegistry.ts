@@ -101,7 +101,8 @@ export const STORAGE_REGISTRY: readonly StorageEntry[] = [
   {
     key: "eq-store",
     owner: "eqStore",
-    version: 1,
+    // S6-5: v2 adds currentEQPreset/customEQPresets and migrates legacy audio-store-v4 EQ fields.
+    version: 2,
     group: "playback",
     backup: false,
     quotaPolicy: "prune-then-memory",

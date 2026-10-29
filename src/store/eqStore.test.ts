@@ -6,6 +6,8 @@ describe("eqStore", () => {
     useEQStore.setState({
       isEQEnabled: true,
       eqBands: new Array(30).fill(0),
+      currentEQPreset: "flat",
+      customEQPresets: {},
       eqPresets: [],
       selectedPresetId: null,
     });

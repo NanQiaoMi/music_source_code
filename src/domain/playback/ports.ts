@@ -69,7 +69,7 @@ export const defaultPlaybackPorts: PlaybackPorts = {
       const queue = useQueueStore.getState().queue;
       if (queue.length > 0) {
         usePlayerStore.getState().setCurrentSong(queue[0]);
-        useAudioStore.getState().setCurrentIndex(0);
+        useQueueStore.getState().setCurrentIndex(0);
       }
     }
     useAudioStore.getState().togglePlaybackIntent();

@@ -1,6 +1,5 @@
 import { StateCreator } from "zustand";
 import { Song } from "@/types/song";
-import type { LegacyQueueCompatibilityState } from "./legacyQueueCompatibility";
 
 export type { Song };
 
@@ -17,20 +16,6 @@ export interface AudioDevice {
   label: string;
   kind: "audiooutput" | "audioinput";
 }
-
-export type EQPreset =
-  | "flat"
-  | "pop"
-  | "rock"
-  | "classical"
-  | "jazz"
-  | "vocal"
-  | "light"
-  | "bass"
-  | "treble"
-  | "custom1"
-  | "custom2"
-  | "custom3";
 
 export type HeadphonePreset =
   | "default"
@@ -98,11 +83,6 @@ export interface DeviceSliceState {
   currentAudioDevice: string | null;
   isDeviceEnumerationSupported: boolean;
 
-  eqBands: number[];
-  currentEQPreset: EQPreset;
-  isEQEnabled: boolean;
-  customEQPresets: { [key: string]: number[] };
-
   stereoEnhance: number;
   surroundSound: number;
   bassBoost: number;
@@ -127,12 +107,6 @@ export interface DeviceSliceState {
   setCurrentAudioDevice: (deviceId: string | null) => void;
   setIsDeviceEnumerationSupported: (supported: boolean) => void;
 
-  setEQBands: (bands: number[]) => void;
-  setCurrentEQPreset: (preset: EQPreset) => void;
-  setIsEQEnabled: (enabled: boolean) => void;
-  saveCustomEQPreset: (name: string, bands: number[]) => void;
-  loadEQPreset: (preset: EQPreset) => void;
-
   setStereoEnhance: (value: number) => void;
   setSurroundSound: (value: number) => void;
   setBassBoost: (value: number) => void;
@@ -151,10 +125,7 @@ export interface SourceSliceState {
   handleSourceError: (song: Song, error: unknown) => void;
 }
 
-export type AudioStoreState = PlaybackSliceState &
-  DeviceSliceState &
-  SourceSliceState &
-  LegacyQueueCompatibilityState;
+export type AudioStoreState = PlaybackSliceState & DeviceSliceState & SourceSliceState;
 
 export type AudioSliceCreator<T> = StateCreator<
   AudioStoreState,

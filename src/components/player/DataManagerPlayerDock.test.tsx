@@ -78,8 +78,6 @@ const resetPlaybackStores = () => {
     isPlaying: false,
     isLoading: false,
     error: null,
-    queue: [],
-    currentIndex: 0,
   });
   usePlayerStore.setState({
     currentSong: null,
@@ -162,8 +160,6 @@ describe("DataManagerPlayerDock", () => {
       currentTime: 31,
       duration: firstSong.duration,
       isPlaying: true,
-      queue: [firstSong, secondSong],
-      currentIndex: 0,
     });
     useQueueStore.setState({ queue: [firstSong, secondSong], currentIndex: 0 });
     root = await renderDock(container);
@@ -200,8 +196,6 @@ describe("DataManagerPlayerDock", () => {
       currentTime: 31,
       duration: firstSong.duration,
       isPlaying: true,
-      queue: [firstSong, secondSong],
-      currentIndex: 0,
     });
     useQueueStore.setState({ queue: [firstSong, secondSong], currentIndex: 0 });
     root = await renderDock(container);
@@ -221,8 +215,6 @@ describe("DataManagerPlayerDock", () => {
       currentTime: 31,
       duration: firstSong.duration,
       isPlaying: true,
-      queue: [firstSong, secondSong],
-      currentIndex: 0,
     });
     useQueueStore.setState({ queue: [firstSong, secondSong], currentIndex: 0 });
     usePlaybackRuntimeStore.setState({ shouldPlay: true });
@@ -255,14 +247,12 @@ describe("DataManagerPlayerDock", () => {
     expect(usePanelStore.getState().panels.queue).toBe(true);
   });
 
-  it("advances through QueueStore's visible queue when AudioStore has an older queue", async () => {
+  it("advances through QueueStore's visible queue", async () => {
     useAudioStore.setState({
       currentSong: firstSong,
       currentTime: 14,
       duration: firstSong.duration,
       isPlaying: true,
-      queue: [firstSong, staleSong],
-      currentIndex: 0,
       loopMode: "all",
     });
     useQueueStore.setState({ queue: [firstSong, secondSong, thirdSong], currentIndex: 0 });
@@ -271,24 +261,16 @@ describe("DataManagerPlayerDock", () => {
     await clickButton(container.querySelector<HTMLButtonElement>('[aria-label="下一首"]'));
 
     expect(useAudioStore.getState().currentSong?.id).toBe(secondSong.id);
-    expect(useAudioStore.getState().queue.map((song) => song.id)).toEqual([
-      firstSong.id,
-      secondSong.id,
-      thirdSong.id,
-    ]);
-    expect(useAudioStore.getState().currentIndex).toBe(1);
     expect(useAudioStore.getState().loopMode).toBe("all");
     expect(useQueueStore.getState().currentIndex).toBe(1);
   });
 
-  it("moves back through QueueStore's visible queue when AudioStore has an older queue", async () => {
+  it("moves back through QueueStore's visible queue", async () => {
     useAudioStore.setState({
       currentSong: thirdSong,
       currentTime: 29,
       duration: thirdSong.duration,
       isPlaying: true,
-      queue: [firstSong, staleSong],
-      currentIndex: 0,
       loopMode: "all",
     });
     useQueueStore.setState({ queue: [firstSong, secondSong, thirdSong], currentIndex: 2 });
@@ -297,12 +279,6 @@ describe("DataManagerPlayerDock", () => {
     await clickButton(container.querySelector<HTMLButtonElement>('[aria-label="上一首"]'));
 
     expect(useAudioStore.getState().currentSong?.id).toBe(secondSong.id);
-    expect(useAudioStore.getState().queue.map((song) => song.id)).toEqual([
-      firstSong.id,
-      secondSong.id,
-      thirdSong.id,
-    ]);
-    expect(useAudioStore.getState().currentIndex).toBe(1);
     expect(useAudioStore.getState().loopMode).toBe("all");
     expect(useQueueStore.getState().currentIndex).toBe(1);
   });
@@ -313,8 +289,6 @@ describe("DataManagerPlayerDock", () => {
       currentTime: 14,
       duration: firstSong.duration,
       isPlaying: true,
-      queue: [firstSong, staleSong],
-      currentIndex: 1,
       loopMode: "all",
     });
     useQueueStore.setState({ queue: [firstSong, secondSong, thirdSong], currentIndex: 2 });
@@ -333,8 +307,6 @@ describe("DataManagerPlayerDock", () => {
       currentTime: 14,
       duration: firstSong.duration,
       isPlaying: true,
-      queue: [firstSong, secondSong, thirdSong],
-      currentIndex: 0,
       loopMode: "all",
     });
     useQueueStore.setState({ queue: repeatedQueue, currentIndex: 2 });
@@ -353,8 +325,6 @@ describe("DataManagerPlayerDock", () => {
       currentTime: 14,
       duration: firstSong.duration,
       isPlaying: true,
-      queue: [firstSong, secondSong, thirdSong],
-      currentIndex: 0,
       loopMode: "all",
     });
     useQueueStore.setState({ queue: repeatedQueue, currentIndex: 2 });
@@ -372,8 +342,6 @@ describe("DataManagerPlayerDock", () => {
       currentTime: 14,
       duration: staleSong.duration,
       isPlaying: true,
-      queue: [staleSong, secondSong],
-      currentIndex: 0,
       loopMode: "all",
     });
     useQueueStore.setState({ queue: [firstSong, secondSong], currentIndex: 0 });
@@ -391,8 +359,6 @@ describe("DataManagerPlayerDock", () => {
       currentTime: 14,
       duration: staleSong.duration,
       isPlaying: true,
-      queue: [staleSong, thirdSong],
-      currentIndex: 0,
       loopMode: "all",
     });
     useQueueStore.setState({ queue: [firstSong, secondSong, thirdSong], currentIndex: 1 });
@@ -410,8 +376,6 @@ describe("DataManagerPlayerDock", () => {
       currentTime: 14,
       duration: staleSong.duration,
       isPlaying: true,
-      queue: [staleSong],
-      currentIndex: 0,
       loopMode: "none",
     });
     useQueueStore.setState({ queue: [firstSong], currentIndex: 0 });
@@ -430,8 +394,6 @@ describe("DataManagerPlayerDock", () => {
       currentTime: 14,
       duration: firstSong.duration,
       isPlaying: true,
-      queue: [firstSong, staleSong],
-      currentIndex: 0,
       loopMode: "single",
     });
     useQueueStore.setState({ queue: [firstSong, secondSong], currentIndex: 0 });
@@ -449,8 +411,6 @@ describe("DataManagerPlayerDock", () => {
       currentTime: 14,
       duration: firstSong.duration,
       isPlaying: true,
-      queue: [firstSong, staleSong],
-      currentIndex: 1,
       loopMode: "shuffle",
     });
     useQueueStore.setState({ queue: [firstSong, secondSong, thirdSong], currentIndex: 2 });
@@ -470,8 +430,6 @@ describe("DataManagerPlayerDock", () => {
       currentTime: 14,
       duration: firstSong.duration,
       isPlaying: true,
-      queue: [firstSong],
-      currentIndex: 0,
     });
     useQueueStore.setState({ queue: [], currentIndex: 0 });
     root = await renderDock(container);

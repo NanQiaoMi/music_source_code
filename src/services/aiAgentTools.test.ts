@@ -90,7 +90,7 @@ vi.mock("@/store/queueStore", () => {
   return {
     useQueueStore: {
       getState: vi.fn(() => state),
-      // audioStore 模块级订阅 queueStore；mock 必须提供 subscribe 才能让 ports 适配器加载。
+      // S6-5: audioStore no longer subscribes to queueStore; keep subscribe for module-shape parity.
       subscribe: vi.fn(() => () => {}),
     },
   };

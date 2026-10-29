@@ -37,8 +37,8 @@ const MATRIX: ReadonlyArray<{ entry: StorageEntry; owner: StoreOwner }> = STORAG
   (entry) => ({ entry, owner: entry.owner as StoreOwner })
 );
 const HYDRATION_PLAN = buildHydrationPlan();
-/** Persist configs declaring `version`; S6-2 version/migrate wiring for the other 40 is pending. */
-const VERSIONED_OWNERS = ["aiStore", "gestureSettingsStore", "uiStore"];
+/** Persist configs declaring `version`; S6-2 version/migrate wiring for the other 39 is pending. */
+const VERSIONED_OWNERS = ["aiStore", "eqStore", "gestureSettingsStore", "uiStore"];
 /** Known gaps: unpartialized stores that still persist a runtime flag (S6-2 whole-store backlog). */
 const VOLATILE_FIELD_EXCEPTIONS: Readonly<Record<string, readonly string[]>> = {
   knowledgeStore: ["isLoading"],

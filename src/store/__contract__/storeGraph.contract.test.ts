@@ -8,16 +8,16 @@ import { describe, expect, it } from "vitest";
 
 const STORE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /**
- * 2026-10-29 snapshot: 28 runtime edges.
+ * 2026-10-29 snapshot: 27 runtime edges.
  * S1-5 并入 queueNavigation（导航状态入口）后 +2：queueNavigation -> playerStore / queueStore。
- * 其余 26 条来源：S6-6a toast、S6-6b panel、S6-6c shell、S6-7 theme、S6-8b achievements->toast。
+ * S6-5 删除 audioStore 队列镜像后 -1：audioStore -> queueStore（导航只由 queueStore/queueNavigation 承担）。
+ * 其余 25 条来源：S6-6a toast、S6-6b panel、S6-6c shell、S6-7 theme、S6-8b achievements->toast。
  */
-const EDGE_BUDGET = 28;
+const EDGE_BUDGET = 27;
 
 /** Documented reason for every runtime edge; a new edge must add an entry (and lower the budget). */
 const RUNTIME_EDGE_REASONS: Readonly<Record<string, string>> = {
   "audioStore -> playerStore": "播放状态/曲目单向投影到 player 运行时镜像",
-  "audioStore -> queueStore": "队列推进读取 queueStore 唯一事实源",
   "emotionStore -> aiStore": "情感分析结果写入 AI store",
   "healthCheckStore -> libraryHealthStore": "健康报告聚合 libraryHealth",
   "healthCheckStore -> playlistStore": "库扫描读取 playlist songs",
