@@ -1,4 +1,4 @@
-import { AudioSliceCreator, PlaybackSliceState, LoopMode, Song } from "./types";
+import { AudioSliceCreator, PlaybackSliceState, Song } from "./types";
 import { usePlayerStore } from "../playerStore";
 import { useQueueStore } from "../queueStore";
 import { useRecommendationStore } from "../recommendationStore";
@@ -8,9 +8,18 @@ import {
   hasPlayableAudioSource,
   createMissingAudioSourceError,
 } from "@/lib/audio/playableAudioSource";
+import {
+  alignQueueIndex,
+  createMissingSourceState,
+  createTrackStartState,
+  emitAudioSeek,
+  getNextLoopMode,
+  getPlaybackSongId,
+  withCurrentSongCover,
+  withCurrentSongLyrics,
+} from "./playback/helpers";
 
-const getPlaybackSongId = (song: Song | null): string | null =>
-  song ? String(song.id || song.title || "") || null : null;
+export { registerAudioSeekHandler, getAudioSeekHandler } from "./playback/helpers";
 
 const startPlaybackRequest = (song: Song): void => {
   usePlaybackRuntimeStore
@@ -21,15 +30,6 @@ const startPlaybackRequest = (song: Song): void => {
 const clearPlaybackRequest = (): void => {
   usePlaybackRuntimeStore.getState().requestPlayback(null, null, false, true);
 };
-
-type AudioSeekHandler = (time: number) => void;
-let globalSeekHandler: AudioSeekHandler | null = null;
-
-export const registerAudioSeekHandler = (handler: AudioSeekHandler | null) => {
-  globalSeekHandler = handler;
-};
-
-export const getAudioSeekHandler = () => globalSeekHandler;
 
 // 节流与生命周期状态
 let lastProgressSyncTime = 0;
@@ -144,11 +144,7 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
     },
 
     cycleLoopMode: () => {
-      const modes: LoopMode[] = ["none", "all", "single", "shuffle"];
-      const { loopMode } = get();
-      const currentIndex = modes.indexOf(loopMode);
-      const nextIndex = (currentIndex + 1) % modes.length;
-      const nextMode = modes[nextIndex];
+      const nextMode = getNextLoopMode(get().loopMode);
       usePlayerStore.getState().setLoopMode(nextMode);
       set({ loopMode: nextMode });
     },
@@ -165,13 +161,7 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
         useQueueStore.getState().updateSong(songId, { lyrics, translationLyrics });
       }
       set((state) => ({
-        currentSong: state.currentSong
-          ? {
-              ...state.currentSong,
-              lyrics,
-              translationLyrics: translationLyrics || state.currentSong.translationLyrics,
-            }
-          : null,
+        currentSong: withCurrentSongLyrics(state.currentSong, lyrics, translationLyrics),
       }));
     },
 
@@ -182,12 +172,7 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
         useQueueStore.getState().updateSong(songId, { cover });
       }
       set((state) => ({
-        currentSong: state.currentSong
-          ? {
-              ...state.currentSong,
-              cover,
-            }
-          : null,
+        currentSong: withCurrentSongCover(state.currentSong, cover),
       }));
     },
 
@@ -198,15 +183,8 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       const { loopMode, currentSong } = get();
 
       // 优先对齐当前队列与当前索引，防止跨组件直接调用 setState 时索引脱节
-      let currentIndex = queueStore.currentIndex;
-      if (get().currentIndex >= 0 && get().currentIndex < queue.length) {
-        currentIndex = get().currentIndex;
-      } else if (currentSong) {
-        const foundIndex = queue.findIndex((s) => s.id === currentSong.id);
-        if (foundIndex >= 0) {
-          currentIndex = foundIndex;
-        }
-      }
+      const { currentIndex: queueIndex } = queueStore;
+      const currentIndex = alignQueueIndex(queue, queueIndex, get().currentIndex, currentSong);
 
       if (queue.length === 0) {
         if (queueStore.playThroughMode === "play-through") {
@@ -223,14 +201,7 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
             queueStore.addToHistory(recs[0]);
             startPlaybackRequest(recs[0]);
             usePlayerStore.getState().setCurrentSong(recs[0]);
-            set({
-              currentSong: recs[0],
-              currentTime: 0,
-              persistedCurrentTime: 0,
-              isPlaying: false,
-              isLoading: true,
-              error: null,
-            });
+            set(createTrackStartState(recs[0]));
           } else {
             clearPlaybackRequest();
             usePlayerStore.getState().setCurrentSong(null);
@@ -263,14 +234,7 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       queueStore.setCurrentIndex(nextIndex);
       queueStore.addToHistory(nextSongItem);
 
-      set({
-        currentSong: nextSongItem,
-        currentTime: 0,
-        persistedCurrentTime: 0,
-        isPlaying: false,
-        isLoading: true,
-        error: null,
-      });
+      set(createTrackStartState(nextSongItem));
     },
 
     prevSong: () => {
@@ -280,15 +244,8 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       if (queue.length === 0) return;
 
       const { loopMode, currentSong } = get();
-      let currentIndex = queueStore.currentIndex;
-      if (get().currentIndex >= 0 && get().currentIndex < queue.length) {
-        currentIndex = get().currentIndex;
-      } else if (currentSong) {
-        const foundIndex = queue.findIndex((s) => s.id === currentSong.id);
-        if (foundIndex >= 0) {
-          currentIndex = foundIndex;
-        }
-      }
+      const { currentIndex: queueIndex } = queueStore;
+      const currentIndex = alignQueueIndex(queue, queueIndex, get().currentIndex, currentSong);
 
       let prevIndex: number;
       if (loopMode === "shuffle") {
@@ -303,14 +260,7 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       startPlaybackRequest(prevSongItem);
       usePlayerStore.getState().setCurrentSong(prevSongItem);
 
-      set({
-        currentSong: prevSongItem,
-        currentTime: 0,
-        persistedCurrentTime: 0,
-        isPlaying: false,
-        isLoading: true,
-        error: null,
-      });
+      set(createTrackStartState(prevSongItem));
     },
 
     setIsLoading: (loading) => {
@@ -326,11 +276,7 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       if (!hasPlayableAudioSource(song)) {
         usePlayerStore.getState().setIsPlaying(false);
         usePlayerStore.getState().setIsLoading(false);
-        set({
-          isPlaying: false,
-          isLoading: false,
-          error: createMissingAudioSourceError(),
-        });
+        set(createMissingSourceState());
         return;
       }
 
@@ -363,15 +309,7 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       startPlaybackRequest(song);
       usePlayerStore.getState().setCurrentSong(song);
 
-      set({
-        currentSong: song,
-        currentTime: 0,
-        persistedCurrentTime: 0,
-        isPlaying: false,
-        isLoading: true,
-        error: null,
-        isEmotionCurveMode: false,
-      });
+      set(createTrackStartState(song, { resetEmotionCurve: true }));
     },
 
     playQueue: (songs, startIndex = 0) => {
@@ -381,11 +319,7 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       if (!hasPlayableAudioSource(song)) {
         usePlayerStore.getState().setIsPlaying(false);
         usePlayerStore.getState().setIsLoading(false);
-        set({
-          isPlaying: false,
-          isLoading: false,
-          error: createMissingAudioSourceError(),
-        });
+        set(createMissingSourceState());
         return;
       }
 
@@ -397,15 +331,7 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       startPlaybackRequest(song);
       usePlayerStore.getState().setCurrentSong(song);
 
-      set({
-        currentSong: song,
-        currentTime: 0,
-        persistedCurrentTime: 0,
-        isPlaying: false,
-        isLoading: true,
-        error: null,
-        isEmotionCurveMode: false,
-      });
+      set(createTrackStartState(song, { resetEmotionCurve: true }));
     },
 
     appendSongsAndPlay: (songs: Song[]) => {
@@ -414,11 +340,7 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       if (!hasPlayableAudioSource(firstSong)) {
         usePlayerStore.getState().setIsPlaying(false);
         usePlayerStore.getState().setIsLoading(false);
-        set({
-          isPlaying: false,
-          isLoading: false,
-          error: createMissingAudioSourceError(),
-        });
+        set(createMissingSourceState());
         return;
       }
 
@@ -434,23 +356,14 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       startPlaybackRequest(firstSong);
       usePlayerStore.getState().setCurrentSong(firstSong);
 
-      set({
-        currentSong: firstSong,
-        currentTime: 0,
-        persistedCurrentTime: 0,
-        isPlaying: false,
-        isLoading: true,
-        error: null,
-      });
+      set(createTrackStartState(firstSong));
     },
 
     seekTo: (time) => {
       const clampedTime = Math.max(0, time);
       set({ currentTime: clampedTime, persistedCurrentTime: clampedTime });
       flushProgressToStorage();
-      if (globalSeekHandler) {
-        globalSeekHandler(clampedTime);
-      }
+      emitAudioSeek(clampedTime);
     },
 
     setFadeInDuration: (duration) => set({ fadeInDuration: Math.max(0.1, Math.min(3, duration)) }),
