@@ -54,7 +54,9 @@ interface RehydrateResult {
 }
 
 function readPersist(store: unknown): PersistLike["persist"] {
-  if (typeof store !== "object" || store === null) return undefined;
+  // Zustand stores are callable functions with a .persist property, not plain objects.
+  if (store === null || (typeof store !== "object" && typeof store !== "function"))
+    return undefined;
   const candidate = store as PersistLike;
   return candidate.persist;
 }
