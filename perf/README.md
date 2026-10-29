@@ -163,7 +163,7 @@
 - 阈值：相对基线 `rootMain.gzipKB` +5KB、`firstLoad.gzipKB` +10KB；`--max-root-gzip` / `--max-first-load-gzip` 覆盖。raw / CSS / script count 只展示不拦截；绝对 hardMax 仍由 `bundle-budget --check`（S4 后启用）负责。
 - nightly：`.github/workflows/nightly.yml`，`schedule` `0 18 * * *`（北京 02:00）+ `workflow_dispatch`；步骤 build → bundle report → 全量 `npm run test -- --run` → diff → 追加历史/看板（§9），失败即红；artifact `perf-bundle-<run_id>` 保留 `bundle-report.json` / `bundle-diff.json` / `bundle-diff.md` / `perf-history.jsonl` / `perf-dashboard.md`，diff 与看板写入 job summary。
 - 当前基线（**2026-10-30 复核重建**）：rootMain 3 files / 681.8KB raw / **208.4KB gzip**；首页 8 scripts / 1,990.6KB raw / **621.5KB gzip**；CSS 225.4KB raw / 29.2KB gzip；最大 async chunk 675.9KB；public **89.2MB**。重建原因：S7-1/2/3/9 合入后 first-load +14.3KB（超 +10KB 阈值），public 因自托管 ffmpeg-core（31MB）与 mediapipe 资源增至 89.2MB；rootMain gzip 未变（-2.6KB）。按 `--update` 评审流程重建并在此登记，nightly diff 恢复 PASS。
-- 已知缺口：diff 只覆盖静态包体；runtime FPS / 内存采集仍未接线（S8-3b 已接入历史/看板，见 §9；指标生产者待 S8-3c/d）；2h soak（S8-3c）未接线；bundle-budget 仍报 maxAsyncChunk 683.5 > 400 与 public 58.4MB > 45 两项绝对超限，待 S4 / 资源治理处理，本 diff 不拦截。
+- 已知缺口：diff 只覆盖静态包体；runtime FPS / 内存采集仍未接线（S8-3b 已接入历史/看板，见 §9；指标生产者待 S8-3c/d）；2h soak（S8-3c）未接线；bundle-budget 仍报 maxAsyncChunk 675.9 > 400 与 public 89.2MB > 45 两项绝对超限，待 S4 / 资源治理处理，本 diff 不拦截。
 - 测试：`scripts/perf/bundle-diff.test.mjs`（通过 / 超阈值 fail / 缺失文件 exit 2 / `--update` 棘轮）。
 
 ## 9. 性能历史与看板（S8-3b，2026-10-29）
@@ -190,7 +190,7 @@
 - 看板：最近 14 行表格（时间 UTC / commit / rootMain gzip / 首页 gzip / CSS / 最大 async / public），每个指标带相对上一行的箭头与 delta（↑ 增长、↓ 下降、→ 持平）；`### Regression highlights` 列出超过阈值的相邻增量（rootMain +5KB、首页 +10KB、CSS +5KB、async +10KB、public +1MB）；最新行有 `metrics` 时输出“Latest runtime metrics”（最多 8 键）。空历史输出占位说明而非报错。
 - nightly：`.github/workflows/nightly.yml` 在 bundle report 与 diff 之后，`if: always()` 追加历史（存在 `perf/audio-metrics.json` 时带 `--metrics`）→ 生成 dashboard 并写入 job summary → **commit-back**（`contents: write` 仅限该 job，bot 身份，`git add perf/perf-history.jsonl perf/reports`，有 diff 才 `chore(perf): nightly history [skip ci]` + push 默认分支）；artifact `perf-bundle-<run_id>` 保留 `perf-history.jsonl` / `perf-dashboard.md`（及可选 `audio-metrics.json`）。权限/失败模式见 `docs/nbl/CI.md` §6.1。
 - 测试：`scripts/perf/perf-history.test.mjs`（append schema + metrics / 重复与非单调 ts exit 1 / 3 行看板表格与回归高亮 / `--init` 与空历史看板）。
-- 已知缺口：S8-3d 之前的「历史不跨 run 累积」已由 commit-back 解决（2026-10-30 seed 第 1 行，`5b40fc2`；≥28 行约需到 2026-11-27）；`--metrics` 的生产者（audio-metrics 的 `--out`）尚未在当前分支落地，nightly 以文件存在为接入条件；2026-10-30 实测 first-load gzip 621.5KB vs 已提交 baseline 607.2KB（+14.3KB > +10KB），nightly 首次真实运行会据此判红，需评审后 `--update` 或先瘦身（见 TRACKING 风险登记）；看板阈值与 `bundle-diff` 的 gzip 阈值一致，绝对 hardMax 仍由 `bundle-budget --check` 负责（当前禁用）。
+- 已知缺口：S8-3d 之前的「历史不跨 run 累积」已由 commit-back 解决（2026-10-30 seed 第 1 行，`5b40fc2`；≥28 行约需到 2026-11-27）；`--metrics` 的生产者（audio-metrics 的 `--out`）尚未在当前分支落地，nightly 以文件存在为接入条件；2026-10-30 实测 first-load 621.5KB vs 旧 baseline 607.2KB（+14.3KB > +10KB）已按评审流程 rebaseline（`0819b1e`，见 §8），nightly diff 恢复 PASS，偏差留档；看板阈值与 `bundle-diff` 的 gzip 阈值一致，绝对 hardMax 仍由 `bundle-budget --check` 负责（当前禁用）。
 
 ## 10. 分层依赖门禁（S6-12a，2026-10-29）
 
