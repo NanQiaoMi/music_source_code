@@ -14,13 +14,13 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import {
-  useLibraryManagerStore,
-  type DuplicateGroup,
-  type LibraryStats,
-  type RenameRule,
-  type ScanFilter,
-} from "@/store/libraryManagerStore";
+import { useLibraryManagerStore } from "@/store/libraryManagerStore";
+import type {
+  DuplicateGroup,
+  LibraryStats,
+  RenameRule,
+  ScanFilter,
+} from "@/store/libraryManager/helpers";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistGroupStore, type PlaylistGroup } from "@/store/playlistGroupStore";
 import { usePlaylistStore } from "@/store/playlistStore";
