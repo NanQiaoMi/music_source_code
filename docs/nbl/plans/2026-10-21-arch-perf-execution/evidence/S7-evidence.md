@@ -11,13 +11,14 @@
 
 ## 0. 结论（先看这里）
 
-- **任务完成度**：S7 共 9 个任务，**2 done（S7-2、S7-3）、2 partial（S7-1、S7-9）、5 blocked（S7-4/S7-5/S7-6/S7-7/S7-8，均卡在 D2）**（S7-1 于 2026-10-29 21:40 由「未开始」改判 **partial**：S7-1a + 插件注册表已交付，见 §8；S7-3 于 2026-10-30 由 partial 改判 **done**：3a transferable/显式降级 + 3b 自托管 core/worker pool，见 §2.3/§3.4）。`git log --all --oneline --grep='s7-'` 在 2026-10-29 快照为 **9 条**；S7-3b 追加 1 条 `feat(s7-3)`（2026-10-30，本分支），故本轮 **10 条**（S7-3 占 3 条：S7-3a 代码 + 证据 + 本次 3b 代码/文档同提交）。
+- **任务完成度**：S7 共 9 个任务，**3 done（S7-2、S7-3、S7-9）、1 partial（S7-1）、5 blocked（S7-4/S7-5/S7-6/S7-7/S7-8，均卡在 D2）**（S7-1 于 2026-10-29 21:40 由「未开始」改判 **partial**：S7-1a + 插件注册表已交付，见 §8；S7-3 于 2026-10-30 由 partial 改判 **done**：3a transferable/显式降级 + 3b 自托管 core/worker pool，见 §2.3/§3.4；**S7-9 于 2026-10-30 由 partial 改判 done**：OPFS spike + 50MB WAV 基准，见 §10）。`git log --all --oneline --grep='s7-'` 在 2026-10-29 快照为 **9 条**；S7-3b 追加 1 条 `feat(s7-3)`（2026-10-30，本分支），故本轮 **10 条**（S7-3 占 3 条：S7-3a 代码 + 证据 + 本次 3b 代码/文档同提交）。
 - **S7-3b 实测（2026-10-30，分支 `feature/arch-perf-s7-3b`）**：S7-3 定向 **6 文件 / 30 passed**；全量 **318 文件 / 2,021 passed**（95.77s）；`npx tsc --noEmit`、`npm run lint`、`npm run verify:layers`（0 errors / 28 warnings）、`npm run verify:docs`（fail=0 warn=0）均 exit 0；`npm run fetch:ffmpeg-core` 实跑成功（114,673B + 32,129,114B，SHA256 校验通过；二次执行输出 skipping 验证幂等）。**未做** 50MB Performance、真实 Worker/FFmpeg wasm、浏览器/Electron 冒烟与 `--dir` 包体积测量。
 - **本轮实测（2026-10-29，本 worktree）**：3 组定向测试 **9 文件 / 45 passed，3/3 exit 0**；`npm run verify:docs` **fail=0 warn=0，exit 0**；`npx tsc --noEmit` **exit 0**；`node scripts/verify-desktop-release-ready.mjs` **exit 1**（桌面发布冻结，S7-4 未做，符合预期）。
 - **平台边界加固补记（2026-10-29，本 worktree）**：`/api/audio/proxy` 新增 `src/lib/audio/proxyGuard.ts` + `route.test.ts`；定向 **29 passed / exit 0**；全量 **312 files / 1962 passed / exit 0（95s）**；`npx tsc --noEmit`、`npm run lint`、`npm run verify:layers` 均 **exit 0**（layers 0 errors / 27 warnings）；`npm run build` **exit 0**（28 static pages，`/api/audio/proxy` 仍为动态路由）。这是安全加固，**不是 S7-1/S7-4c 验收**。
-- **2h soak**：历史报告 `perf/reports/soak-2h-20261029.json`（120 min / 120 ticks @60s）**PASS，heap delta −2.58 MB**（阈值 30 MB）；但负载是 **node-only 合成负载（TtlLruCache + hydrationStatus）**，不含浏览器/音频图/IDB/persist 写频，因此 **S7-9 只能判 partial，不能作为 M7 的 2h soak 达标证据**。50MB 起播延迟 **完全未测量**。
+- **2h soak**：历史报告 `perf/reports/soak-2h-20261029.json`（120 min / 120 ticks @60s）**PASS，heap delta −2.58 MB**（阈值 30 MB）；负载仍是 **node-only 合成负载（TtlLruCache + hydrationStatus）**，不含浏览器/音频图/IDB/persist 写频，因此它**不能作为 M7「播放级 2h soak」证据**（S7-9 的 done 以「工具 + 结论已记录」判定，缺口已写入 §10.5）。
+- **S7-9a OPFS 50MB 实测（2026-10-30，本分支 `feature/arch-perf-s7-9b` ← ccc821e）**：`src/lib/storage/opfsAudioStore.ts`（feature flag 默认关）+ `scripts/perf/bench-opfs.mjs`（Playwright + Chrome 156 headless，自起 dev server 3039 并 kill）；50MB（52,428,800B / 297.22s）**WAV PCM16** fixture：OPFS 写入 **77.7ms**、读取 **26.8 / 27.6 / 28.8ms**（中位 27.6）、`decodeAudioData` **441.3ms**；**read+decode 阶段 >50ms 长任务 0 个（<100ms PASS）**，写入阶段长任务 0；`create-audio-context` 单列 347.1ms/1 个 347ms 长任务。**FLAC 未测**（无 fixture、无页面内解码器，WAV 为代理），详见 §10。
 - **平台边界（本轮核实 + 2026-10-29 加固补记）**：仓库里 **不存在 `/api/media` 路由**（全仓 grep = 0）；实际代理是 `/api/audio/proxy`，**原实现只校验 URL 以 "http" 开头，没有 host allowlist / 私网拦截**；**2026-10-29 已补 SSRF 防护**（协议/凭据/本地主机名/回环私网/元数据 IPv4+IPv6/DNS 解析/重定向逐跳/15s 超时/100MB 上限 + 29 例 route 单测，见 §3.3），但这是**安全加固，不是 S7-1/S7-4c 验收**；FFmpeg **分块已 async 化（配置 + 构建产物双证）**，S7-3b 起 **core 优先同源 `/ffmpeg-core`（发布/离线构建前必须执行 `npm run fetch:ffmpeg-core`），资产缺失或离线才回退 pinned unpkg 并 warn**；Electron preload **20 个方法与 `electron.d.ts` 20 个签名手工一致，但无自动化 parity 测试**，S7-5 规划的 `getRuntimeInfo`/`onBackendStatus` 全部缺失。
-- **M7 不能判绿**：TRACKING 行 125 的 4 项出口 **0 项完整达成**（soak 仅 node 合成 partial，OPFS 无结论，插件隔离未做，桌面运行时闭环为 0）；计划 §2.2 的 E1–E10 中 **E9 部分、E10 partial，其余 8 项未达成/未验证**。
+- **M7 不能判绿**：TRACKING 行 125 的 4 项出口 **1 项达成（OPFS 有结论，2026-10-30）、1 项 partial（2h soak 仅 node 合成）、2 项未达成**（插件隔离未做、桌面运行时闭环为 0）；计划 §2.2 的 E1–E10 中 **E10 达成（记录口径）、E9 部分，其余 8 项未达成/未验证**。
 - **本轮新发现（诚实登记）**：
   1. ~~**S7-1 从未开工**~~ → **2026-10-29 21:40 已改判（partial）**：快照时点（19:05）确实目录不存在、`MultiSourceResolver.ts` 1,421 行 / 16 处裸 `fetch(`、熔断器只被调试组件引用；本轮已在 `feature/arch-perf-s7-1` 交付 S7-1a（`src/services/http/{client,circuitBreaker}.ts`）与插件注册表（`src/services/resolver/{types,plugin,platforms}.ts`），门面裸 fetch 清零、行数 1421→1133，详见 **§8**。仍未达成的部分（`platforms.ts` 371 行未拆、门面 1133 行、lxRunner 3 处裸 fetch、坏 host 实网冒烟）同样列在 §8.3。
   2. `/api/media` 是**误记的路由名**：全仓 0 命中；代理播放的真实入口是 `src/app/api/audio/proxy/route.ts`（加固前 112 行；加固后 185 行 + `src/lib/audio/proxyGuard.ts`），原 route **没有任何 route 级单测**；2026-10-29 已补 `src/app/api/audio/proxy/route.test.ts`（29 例，见 §3.3）。
@@ -27,16 +28,16 @@
 
 ## 1. 环境与统计口径
 
-| 项           | 值                                                                                                    |
-| ------------ | ----------------------------------------------------------------------------------------------------- |
-| OS / shell   | Windows / PowerShell 7（pwsh）                                                                        |
-| Node / npm   | v24.16.0 / 11.13.0（本轮 `node -v` / `npm -v`）                                                       |
-| 测试框架     | Vitest 4.1.5（jsdom，非 watch）                                                                       |
-| 分支 / 基点  | `docs/s7-evidence` ← `98f0da5`（`integration/s2-audio` HEAD）                                         |
-| S7 提交数    | `git log --all --grep='s7-' -i` = **9**（代码/工具 4 条、纯文档 4 条、文档+报告 1 条）                |
-| 变更行数来源 | `git show --numstat <commit>`（代码 + 测试合并计；文档单列）                                          |
-| 定向测试合计 | **9 文件次 / 45 passed / 0 failed，3 条命令全部 exit 0**                                              |
-| 构建产物     | `.next/BUILD_ID = 14Aloa_KTN-1GpcBiPK1R`（mtime 2026-10-29 18:30，**非本轮构建**）；`out/` **不存在** |
+| 项           | 值                                                                                                                                |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| OS / shell   | Windows / PowerShell 7（pwsh）                                                                                                    |
+| Node / npm   | v24.16.0 / 11.13.0（本轮 `node -v` / `npm -v`）                                                                                   |
+| 测试框架     | Vitest 4.1.5（jsdom，非 watch）                                                                                                   |
+| 分支 / 基点  | `docs/s7-evidence` ← `98f0da5`（`integration/s2-audio` HEAD）；S7-9 补记：`feature/arch-perf-s7-9b` ← `ccc821e`（未合并/未 push） |
+| S7 提交数    | `git log --all --grep='s7-' -i` = **9**（代码/工具 4 条、纯文档 4 条、文档+报告 1 条）                                            |
+| 变更行数来源 | `git show --numstat <commit>`（代码 + 测试合并计；文档单列）                                                                      |
+| 定向测试合计 | **9 文件次 / 45 passed / 0 failed，3 条命令全部 exit 0**                                                                          |
+| 构建产物     | `.next/BUILD_ID = 14Aloa_KTN-1GpcBiPK1R`（mtime 2026-10-29 18:30，**非本轮构建**）；`out/` **不存在**                             |
 
 ## 2. S7-1..S7-9 交付与验证
 
@@ -58,17 +59,17 @@ bc590b2 perf(s7-2b): bound search cache and expose cache stats
 
 ### 2.1 任务表
 
-| ID   | 状态                     | 代码提交               | 文档提交             | 文件 / 行                                           | 定向测试（本轮实测）                                                                                                     | exit | 证据 / 缺口                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ---- | ------------------------ | ---------------------- | -------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| S7-1 | **partial（1a+注册表）** | `feat(s7-1)`（本分支） | 本文件 §8            | 8 文件 / +1,227 −418（代码；测试 +590 −1 另计）     | `src/services/http` + `src/services/resolver` + resolver 相关回归 → 7 文件 / **61 passed**                               | 0    | `http/{client,circuitBreaker}.ts`（超时/取消/GET 重试退避/指标/可选去重 + closed-open-half-open 熔断）；`resolver/{types,plugin,platforms}.ts`（ResolverPlugin + Registry，五平台插件）；门面走注册表，`fetch(` 16→0、1,421→1,133 行；`getResolverMetrics()`。缺口：`platforms.ts` 371 行（>300）、门面 1,133 行（>450）、`lxRunner.ts:58/245/440` 三处裸 fetch、搜索/封面/歌词端点未插件化、坏 host 仅单测无实网冒烟 — 详见 §8 |
-| S7-2 | **done**                 | `00f52fd` + `bc590b2`  | `2df6a08`、`56576ab` | 9 文件 / +486 −32（docs 2 文件 +4 −4）              | `src/lib/cache` + `audioPrefetcher.test.ts` + `MultiSourceResolver.test.ts` → 4 文件 / **26 passed**                     | 0    | 3 处缓存全部迁 `TtlLruCache`（300/30min、100/20min、20/25min）；dev-only `window.__MIMI_CACHE_STATS__`；缺：probe 无浏览器手读、计数器不清零、S7-1c 拆分未做                                                                                                                                                                                                                                                                    |
-| S7-3 | **done**                 | `feat(s7-3)`（本分支） | 本文件 §2.3            | 12 文件 / +1,099 −291（代码+测试；docs 另计；非测试净 +386） | `workerCapabilities` + `workerPool` + `formatConversionWorker` + `conversion.worker` + `WorkerPoolManager` + `DSDConverter.test.tsx` → 6 文件 / **30 passed** | 0    | 3a transferable/显式降级 + 3b 自托管 core（`scripts/fetch-ffmpeg-core.mjs`，SHA256/幂等/`--force`/`--optional`/代理重执行）与 `AudioWorkerPool`（优先级队列/transfer/超时/重启/统计/降级回调），Format/DSD 均经池；50MB 主线程 <50ms **仍未测**，缺 core 时仍回退 CDN（无 `canUseFFmpeg` UI 预禁用）                                                                                                                                                                                                                                                |
-| S7-4 | **blocked（D2）**        | 无                     | 无                   | 0                                                   | 无                                                                                                                       | —    | `app://` 仍从 `out/` 读静态（`electron/main/index.js:36,38-47`）；`verify-next-runtime.mjs`/runtime.js/protocol.js 均不存在；发布 guard **实测 exit 1**                                                                                                                                                                                                                                                                         |
-| S7-5 | **blocked（D2）**        | 无                     | 无                   | 0                                                   | 无                                                                                                                       | —    | 无 `backendGateway.ts`/`capabilityStore.ts`；preload 仍 20 个 invoke 方法、无 `getRuntimeInfo`/`onBackendStatus`；12 处调用点未迁移                                                                                                                                                                                                                                                                                             |
-| S7-6 | **blocked（D2）**        | 无                     | 无                   | 0                                                   | 无                                                                                                                       | —    | `whenReady` 仍 `await startBackend()` 后才建窗（`index.js:370-374`）；无 `backend-status` 广播、无 `backend:restart`；`stopBackend` 只 `kill()`（`:149-157`）                                                                                                                                                                                                                                                                   |
-| S7-7 | **blocked（D2）**        | 无                     | 无                   | 0                                                   | 无                                                                                                                       | —    | 插件仍在主进程 `vm.Script` 执行（`pluginManager.js:4,37,90`）；无 pluginSandbox/pluginHost/fixtures；`utilityProcess` grep = 0                                                                                                                                                                                                                                                                                                  |
-| S7-8 | **blocked（D2、D8）**    | 无                     | 无                   | 0                                                   | 无                                                                                                                       | —    | 5 个 cookie 仍进 partialize（`userAccountStore.ts:340-352`）；无 credentials.js/credentialVault.ts；`safeStorage` 在 `electron/` grep = 0                                                                                                                                                                                                                                                                                       |
-| S7-9 | **partial（9a done）**   | `69bff7d`              | `1e499f5`、`26c2f38` | 6 文件 / +1,053 −0（含报告 759 行；TRACKING +1 −1） | `scripts/perf/soak.test.mjs` → 1 文件 / **4 passed**                                                                     | 0    | soak harness + 2h node 合成 PASS（−2.58 MB）；**OPFS spike 未做**（`src` opfs grep = 0）、50MB 起播未测、无 CDP/音频节点/FPS/persist 采样                                                                                                                                                                                                                                                                                       |
+| ID   | 状态                      | 代码提交                           | 文档提交                   | 文件 / 行                                                                                     | 定向测试（本轮实测）                                                                                                                                          | exit | 证据 / 缺口                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ---- | ------------------------- | ---------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S7-1 | **partial（1a+注册表）**  | `feat(s7-1)`（本分支）             | 本文件 §8                  | 8 文件 / +1,227 −418（代码；测试 +590 −1 另计）                                               | `src/services/http` + `src/services/resolver` + resolver 相关回归 → 7 文件 / **61 passed**                                                                    | 0    | `http/{client,circuitBreaker}.ts`（超时/取消/GET 重试退避/指标/可选去重 + closed-open-half-open 熔断）；`resolver/{types,plugin,platforms}.ts`（ResolverPlugin + Registry，五平台插件）；门面走注册表，`fetch(` 16→0、1,421→1,133 行；`getResolverMetrics()`。缺口：`platforms.ts` 371 行（>300）、门面 1,133 行（>450）、`lxRunner.ts:58/245/440` 三处裸 fetch、搜索/封面/歌词端点未插件化、坏 host 仅单测无实网冒烟 — 详见 §8 |
+| S7-2 | **done**                  | `00f52fd` + `bc590b2`              | `2df6a08`、`56576ab`       | 9 文件 / +486 −32（docs 2 文件 +4 −4）                                                        | `src/lib/cache` + `audioPrefetcher.test.ts` + `MultiSourceResolver.test.ts` → 4 文件 / **26 passed**                                                          | 0    | 3 处缓存全部迁 `TtlLruCache`（300/30min、100/20min、20/25min）；dev-only `window.__MIMI_CACHE_STATS__`；缺：probe 无浏览器手读、计数器不清零、S7-1c 拆分未做                                                                                                                                                                                                                                                                    |
+| S7-3 | **done**                  | `feat(s7-3)`（本分支）             | 本文件 §2.3                | 12 文件 / +1,099 −291（代码+测试；docs 另计；非测试净 +386）                                  | `workerCapabilities` + `workerPool` + `formatConversionWorker` + `conversion.worker` + `WorkerPoolManager` + `DSDConverter.test.tsx` → 6 文件 / **30 passed** | 0    | 3a transferable/显式降级 + 3b 自托管 core（`scripts/fetch-ffmpeg-core.mjs`，SHA256/幂等/`--force`/`--optional`/代理重执行）与 `AudioWorkerPool`（优先级队列/transfer/超时/重启/统计/降级回调），Format/DSD 均经池；50MB 主线程 <50ms **仍未测**，缺 core 时仍回退 CDN（无 `canUseFFmpeg` UI 预禁用）                                                                                                                            |
+| S7-4 | **blocked（D2）**         | 无                                 | 无                         | 0                                                                                             | 无                                                                                                                                                            | —    | `app://` 仍从 `out/` 读静态（`electron/main/index.js:36,38-47`）；`verify-next-runtime.mjs`/runtime.js/protocol.js 均不存在；发布 guard **实测 exit 1**                                                                                                                                                                                                                                                                         |
+| S7-5 | **blocked（D2）**         | 无                                 | 无                         | 0                                                                                             | 无                                                                                                                                                            | —    | 无 `backendGateway.ts`/`capabilityStore.ts`；preload 仍 20 个 invoke 方法、无 `getRuntimeInfo`/`onBackendStatus`；12 处调用点未迁移                                                                                                                                                                                                                                                                                             |
+| S7-6 | **blocked（D2）**         | 无                                 | 无                         | 0                                                                                             | 无                                                                                                                                                            | —    | `whenReady` 仍 `await startBackend()` 后才建窗（`index.js:370-374`）；无 `backend-status` 广播、无 `backend:restart`；`stopBackend` 只 `kill()`（`:149-157`）                                                                                                                                                                                                                                                                   |
+| S7-7 | **blocked（D2）**         | 无                                 | 无                         | 0                                                                                             | 无                                                                                                                                                            | —    | 插件仍在主进程 `vm.Script` 执行（`pluginManager.js:4,37,90`）；无 pluginSandbox/pluginHost/fixtures；`utilityProcess` grep = 0                                                                                                                                                                                                                                                                                                  |
+| S7-8 | **blocked（D2、D8）**     | 无                                 | 无                         | 0                                                                                             | 无                                                                                                                                                            | —    | 5 个 cookie 仍进 partialize（`userAccountStore.ts:340-352`）；无 credentials.js/credentialVault.ts；`safeStorage` 在 `electron/` grep = 0                                                                                                                                                                                                                                                                                       |
+| S7-9 | **done（9a+OPFS spike）** | `69bff7d` + `feat(s7-9)`（本分支） | `1e499f5`、`26c2f38` + §10 | 8 文件（代码 2 / 脚本 1 / 测试 1 / 文档 3 / 证据 1）；store 283 行、bench 602 行、测试 217 行 | `src/lib/storage/opfsAudioStore.test.ts` → 1 文件 / **8 passed**；`scripts/perf/soak.test.mjs` → 1 文件 / 4 passed                                            | 0    | soak harness + 2h node 合成 PASS（−2.58 MB）；**OPFS spike 已交付**（`opfsAudioStore.ts` + 8 例，flag 默认关、不支持回退 IDB）；**50MB WAV 实测**：写 77.7ms / 读中位 27.6ms / read+decode 长任务 0（<100ms PASS）；FLAC 未测（原因见 §10.5）；浏览器播放 soak 仍未做                                                                                                                                                           |
 
 - 行数为 `git show --numstat` 汇总（代码/测试合并；文档行数在括号或备注中单列）。
 - 「N passed」为当次 vitest 输出，包含点名文件内既有用例，不全部归本任务新增。
@@ -76,15 +77,16 @@ bc590b2 perf(s7-2b): bound search cache and expose cache stats
 
 ### 2.2 定向测试明细（2026-10-29，本 worktree 实测）
 
-| 任务     | 命令（`npx vitest run` 后跟文件/目录）                                                                                                                                    | 结果                        | exit |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ---- |
-| S7-2     | `src/lib/cache src/lib/audio/audioPrefetcher.test.ts src/services/MultiSourceResolver.test.ts`                                                                            | 4 文件 / 26 passed（8.55s） | 0    |
-| S7-3     | `src/lib/audio/workerCapabilities.test.ts src/lib/audio/workerPool.test.ts src/lib/audio/formatConversionWorker.test.ts src/workers/conversion.worker.test.ts src/services/WorkerPoolManager.test.ts src/components/audio/DSDConverter.test.tsx` | 6 文件 / 30 passed（1.87s） | 0    |
-| S7-9a    | `scripts/perf/soak.test.mjs`                                                                                                                                              | 1 文件 / 4 passed（1.40s）  | 0    |
-| 加固补记 | `src/app/api/audio/proxy/route.test.ts`                                                                                                                                   | 1 文件 / 29 passed（1.0s）  | 0    |
-| 合计     | 11 文件次（S7 任务；加固补记另计 1 文件）                                                                                                                                 | **60 passed + 29 passed**   | 0    |
+| 任务                         | 命令（`npx vitest run` 后跟文件/目录）                                                                                                                                                                                                           | 结果                            | exit |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- | ---- |
+| S7-2                         | `src/lib/cache src/lib/audio/audioPrefetcher.test.ts src/services/MultiSourceResolver.test.ts`                                                                                                                                                   | 4 文件 / 26 passed（8.55s）     | 0    |
+| S7-3                         | `src/lib/audio/workerCapabilities.test.ts src/lib/audio/workerPool.test.ts src/lib/audio/formatConversionWorker.test.ts src/workers/conversion.worker.test.ts src/services/WorkerPoolManager.test.ts src/components/audio/DSDConverter.test.tsx` | 6 文件 / 30 passed（1.87s）     | 0    |
+| S7-9a                        | `scripts/perf/soak.test.mjs`                                                                                                                                                                                                                     | 1 文件 / 4 passed（1.40s）      | 0    |
+| S7-9 OPFS（2026-10-30 补记） | `src/lib/storage/opfsAudioStore.test.ts src/lib/perf/featureFlags.test.ts`                                                                                                                                                                       | 2 文件 / **12 passed**（8 + 4） | 0    |
+| 加固补记                     | `src/app/api/audio/proxy/route.test.ts`                                                                                                                                                                                                          | 1 文件 / 29 passed（1.0s）      | 0    |
+| 合计                         | 11 文件次（S7 任务；加固补记另计 1 文件）                                                                                                                                                                                                        | **60 passed + 29 passed**       | 0    |
 
-> 口径：全部为 jsdom 单测 / 纯函数测试；**没有**浏览器、Electron、真实 Worker、FFmpeg wasm、50MB 文件或 2h 播放测量。加固补记的 route 单测使用 mock fetch / mock `dns.lookup`，不是 live 网络验证。
+> 口径：S7-9 OPFS 补记前的条目全部为 jsdom 单测 / 纯函数测试；**没有**浏览器、Electron、真实 Worker、FFmpeg wasm 或 2h 播放测量。S7-9 补记新增的 8 例仍是 jsdom（mock `navigator.storage.getDirectory`），但另有**真实 Chrome 50MB 基准**（§10，非单测）。加固补记的 route 单测使用 mock fetch / mock `dns.lookup`，不是 live 网络验证。
 
 ### 2.3 逐任务判定说明
 
@@ -109,22 +111,22 @@ bc590b2 perf(s7-2b): bound search cache and expose cache stats
 
 **S7-4 / S7-5 / S7-6 / S7-7 / S7-8（blocked，D2 未拍板）** — 见 §5.3。共同事实：D2（Windows 桌面运行时形态，推荐 B = 捆绑本地 Next standalone）仍是 `Pending`；ADR 0002 仍是 `Proposed`；桌面打包被 `scripts/verify-desktop-release-ready.mjs` 冻结（实测 exit 1）。这 5 个任务在代码层 **零改动**（对应文件/目录全部不存在），不是「做了一半」。依赖链：D2 → S7-4a/b/c → S7-5a（preload runtimeInfo）→ S7-6/7/8；S7-7/S7-8 另需 D8（第三方源与凭据边界，同样 Pending）。
 
-**S7-9（partial，9a done）** — soak harness 与 2h 结论见 §4；OPFS spike 完全未做（`src` 全仓 `opfs` grep = 0，`scripts/perf/bench-opfs.mjs` 不存在），50MB 起播延迟未测，CDP 播放 soak（`soak-playback.mjs`）未写。
+**S7-9（done，2026-10-30 补记）** — 9a soak harness 与 2h 结论见 §4；**OPFS spike 已交付**（`src/lib/storage/opfsAudioStore.ts` 283 行 + 8 例单测，flag 默认关、不支持回退 IndexedDB）与 **50MB WAV 基准**（`scripts/perf/bench-opfs.mjs`，实测写入 77.7ms / 读取中位 27.6ms / read+decode 长任务 0），详见 §10。**仍未做**：50MB FLAC（无 fixture/解码器）、CDP 播放 soak（`soak-playback.mjs` 未写）、把 OPFS 接入播放入口（留 S8-6）。
 
 ## 3. 平台边界证据（逐项）
 
 ### 3.1 汇总判定
 
-| #   | 边界声明                             | 判定                                                  | 证据                                                                                                                                    |
-| --- | ------------------------------------ | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | 存在 `/api/media` 代理路由           | **不存在（UNVERIFIED）**                              | 全仓 grep `api/media` = **0**；真实入口为 `/api/audio/proxy`                                                                            |
-| 2   | 代理 URL 有 allowlist                | **partial（SSRF 防护已加固；无显式 host allowlist）** | 协议/凭据/本地主机名/私网+元数据 IPv4+IPv6/DNS/重定向逐跳：`src/lib/audio/proxyGuard.ts`；29 例 route 单测（§3.3）。仍无 host 白名单    |
-| 3   | Range/206 与流式透传                 | **partial（route 单测覆盖，live 未测）**              | `route.test.ts` 覆盖缓存命中 206、上游 206 `Content-Range`、`X-Cache`；`proxyDiskCache.test.ts:30-57` 覆盖缓存 206；真实播放器/桌面未测 |
-| 4   | FFmpeg 走动态分块                    | **verified（配置 + 构建产物）**                       | `next.config.js:47-53`；`.next/static/chunks/chunk-ffmpeg.38b43ff0b2d7dca9.js`（6,451 B），不在 rootMainFiles、index.html 引用 0        |
+| #   | 边界声明                             | 判定                                                  | 证据                                                                                                                                                                   |
+| --- | ------------------------------------ | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 存在 `/api/media` 代理路由           | **不存在（UNVERIFIED）**                              | 全仓 grep `api/media` = **0**；真实入口为 `/api/audio/proxy`                                                                                                           |
+| 2   | 代理 URL 有 allowlist                | **partial（SSRF 防护已加固；无显式 host allowlist）** | 协议/凭据/本地主机名/私网+元数据 IPv4+IPv6/DNS/重定向逐跳：`src/lib/audio/proxyGuard.ts`；29 例 route 单测（§3.3）。仍无 host 白名单                                   |
+| 3   | Range/206 与流式透传                 | **partial（route 单测覆盖，live 未测）**              | `route.test.ts` 覆盖缓存命中 206、上游 206 `Content-Range`、`X-Cache`；`proxyDiskCache.test.ts:30-57` 覆盖缓存 206；真实播放器/桌面未测                                |
+| 4   | FFmpeg 走动态分块                    | **verified（配置 + 构建产物）**                       | `next.config.js:47-53`；`.next/static/chunks/chunk-ffmpeg.38b43ff0b2d7dca9.js`（6,451 B），不在 rootMainFiles、index.html 引用 0                                       |
 | 5   | FFmpeg 可离线（core 自托管）         | **partial（脚本+worker 就绪；资产不入库）**           | `scripts/fetch-ffmpeg-core.mjs`（SHA256/幂等/prebuild）+ `conversion.worker.ts` local-first；`/public/ffmpeg-core/` 已 gitignore，构建前需 `npm run fetch:ffmpeg-core` |
-| 6   | Electron preload 类型与实现一致      | **partial（手工 verified，无自动化）**                | preload 20 方法 vs `electron.d.ts:8-32` 20 签名；无 parity 测试                                                                         |
-| 7   | preload 暴露 runtimeInfo/diagnostics | **缺失（UNVERIFIED）**                                | `getRuntimeInfo`/`onBackendStatus`/`getRuntimeDiagnostics` 全仓 0 命中                                                                  |
-| 8   | `app://app` 桥接到本地 Next          | **未实现（UNVERIFIED）**                              | `protocol.handle("app")` 仍读 `out/`（`index.js:36,38-47`）                                                                             |
+| 6   | Electron preload 类型与实现一致      | **partial（手工 verified，无自动化）**                | preload 20 方法 vs `electron.d.ts:8-32` 20 签名；无 parity 测试                                                                                                        |
+| 7   | preload 暴露 runtimeInfo/diagnostics | **缺失（UNVERIFIED）**                                | `getRuntimeInfo`/`onBackendStatus`/`getRuntimeDiagnostics` 全仓 0 命中                                                                                                 |
+| 8   | `app://app` 桥接到本地 Next          | **未实现（UNVERIFIED）**                              | `protocol.handle("app")` 仍读 `out/`（`index.js:36,38-47`）                                                                                                            |
 
 ### 3.2 `/api/media` vs `/api/audio/proxy`
 
@@ -216,35 +218,35 @@ rg -n "assertProxyTarget|MIMI_PROXY_ALLOW_PRIVATE|MAX_PROXY_BYTES" src/lib/audio
 
 ### 4.2 这份 soak 覆盖了什么 / 没覆盖什么
 
-| 计划 E10 / S7-9b 要求                 | 当前证据                                                               | 状态                     |
-| ------------------------------------- | ---------------------------------------------------------------------- | ------------------------ |
-| heap 2h 增长 <30 MB                   | node 进程 `heapUsed`，delta −2.58 MB                                   | **达成（仅 node 合成）** |
-| `activeAudioNodes` 增量 0             | 无（脚本不加载浏览器/音频图；S2-5 计数器未在该 harness 使用）          | **未测**                 |
-| `mediaBridgeListeners` 恒 12          | 无                                                                     | **未测**                 |
-| `persistWritesPerSec ≤1`              | 无（不跑 renderer）                                                    | **未测**                 |
-| `idbBytes` 不单调增长                 | 无                                                                     | **未测**                 |
-| 20 首 fixture 循环播放/暂停/seek/切歌 | 无（合成 TtlLruCache + hydrationStatus 负载，`soak.mjs:30-36,39-85`）  | **未测**                 |
-| 报告 JSON 入库                        | 有（`perf/reports/soak-2h-20261029.json`）                             | **达成**                 |
-| OPFS 大文件 spike                     | 无（`opfsAudioStore.ts`/`bench-opfs.mjs` 不存在，`src` opfs grep = 0） | **未做**                 |
+| 计划 E10 / S7-9b 要求                 | 当前证据                                                                     | 状态                     |
+| ------------------------------------- | ---------------------------------------------------------------------------- | ------------------------ |
+| heap 2h 增长 <30 MB                   | node 进程 `heapUsed`，delta −2.58 MB                                         | **达成（仅 node 合成）** |
+| `activeAudioNodes` 增量 0             | 无（脚本不加载浏览器/音频图；S2-5 计数器未在该 harness 使用）                | **未测**                 |
+| `mediaBridgeListeners` 恒 12          | 无                                                                           | **未测**                 |
+| `persistWritesPerSec ≤1`              | 无（不跑 renderer）                                                          | **未测**                 |
+| `idbBytes` 不单调增长                 | 无                                                                           | **未测**                 |
+| 20 首 fixture 循环播放/暂停/seek/切歌 | 无（合成 TtlLruCache + hydrationStatus 负载，`soak.mjs:30-36,39-85`）        | **未测**                 |
+| 报告 JSON 入库                        | 有（`perf/reports/soak-2h-20261029.json`）                                   | **达成**                 |
+| OPFS 大文件 spike                     | `opfsAudioStore.ts`（283 行，8 例）+ `bench-opfs.mjs` + 50MB WAV 实测（§10） | **达成（WAV 代理）**     |
 
-> 结论：S7-9a「工具完成 + 一次 2h 长跑」成立；S7-9b「播放/浏览器泄漏上界」**不成立**。因此 S7-9 整体 partial，M7「2h soak 达标」不能勾。
+> 结论：S7-9a「工具完成 + 一次 2h 长跑」成立；S7-9a 的 OPFS 部分于 2026-10-30 补齐（§10）；S7-9b「播放/浏览器泄漏上界」**仍不成立**（无 CDP 播放 soak）。按 2026-10-30 用户口径（OPFS spike + pool/2h soak/heap 证据 + 50MB 测量或记录原因全部有文档）S7-9 判 **done**，但 M7「2h soak 达标」仍**不能勾**——node 合成 ≠ 播放级 soak。
 
-### 4.3 50MB 起播延迟：**未测量**
+### 4.3 50MB 起播延迟：**已测量（WAV 代理，2026-10-30 补记）**
 
 - 计划要求：S7-9a「50MB FLAC 起播长任务 <100ms 或记录原因」（`S7-platform-runtime.md:97,432`）；E9「50MB 转换主线程长任务 <50ms」（`:33`）。
-- 现状：**没有任何测量产物**——无 `bench-opfs.mjs`、无 `opfsAudioStore`、无 Performance 面板记录、无 `p50/p95/max` JSON；也没有「未达标原因」的实测数据，只有「未执行」这一事实。
-- 应如何补（供后续执行）：生成/复用 50MB FLAC fixture → 分别走 IDB 旧路径与 OPFS（feature flag）→ 记录起播前主线程 long task 与峰值内存，5 次样本出 p50/p95/max，写入 `evidence/S7-9-opfs.md`。在此之前**不得**声称该验收项达成。
+- 现状：`scripts/perf/bench-opfs.mjs` 在真实 Chrome 156 headless 上测 50MB **WAV PCM16**（非 FLAC）：OPFS 写入 **77.7ms**、读取 **26.8 / 27.6 / 28.8ms**、`decodeAudioData` **441.3ms**，read+decode 阶段 **>50ms 长任务 0 个**；`create-audio-context` 单独 347.1ms（1 个 347ms 长任务）。完整数据/判定/缺口见 **§10**。
+- **FLAC 仍未测**（无 50MB FLAC fixture、无页面内 FLAC 解码器；生产 FLAC 走 ffmpeg.wasm worker）：该缺口是**已记录原因**，不是「未执行」，也不得据此声称 FLAC 起播 <100ms。
 
 ## 5. M7 出口门 checklist 与 D2 决策表
 
 ### 5.1 TRACKING 行 125 的 M7 四项
 
-| #   | M7 项                                                                                         | 状态                           | 证据 / 阻塞原因                                                                                                                                                                                         |
-| --- | --------------------------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | 桌面本地运行时闭环（窗口 <3s、`/` 与 `/data-manager` 200、旧 origin 数据可见、在线能力/降级） | **未达成（blocked D2）**       | 运行时/协议/健康检查代码全缺；`protocol.handle("app")` 仍读 `out/`；`out/` 在本 worktree 不存在；`verify-desktop-release-ready.mjs` **exit 1**；无 `--dir` 产物、无冷启动/200/旧 origin 任一 smoke 记录 |
-| 2   | 插件隔离                                                                                      | **未达成（blocked D2→S7-5a）** | `pluginManager.js:4,37,90` 仍在主进程 `vm.Script` 执行插件；`utilityProcess` 0 引用；无恶意 fixture/权限白名单（E6 无证据）                                                                             |
-| 3   | 2h soak 达标                                                                                  | **partial**                    | node 合成 2h PASS（−2.58 MB），但无音频节点/监听/persist/IDB/浏览器指标（§4.2）；不能作为 M7 播放 soak 证据                                                                                             |
-| 4   | OPFS 有结论                                                                                   | **未达成**                     | OPFS 零代码、零 benchmark、零结论                                                                                                                                                                       |
+| #   | M7 项                                                                                         | 状态                             | 证据 / 阻塞原因                                                                                                                                                                                                    |
+| --- | --------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | 桌面本地运行时闭环（窗口 <3s、`/` 与 `/data-manager` 200、旧 origin 数据可见、在线能力/降级） | **未达成（blocked D2）**         | 运行时/协议/健康检查代码全缺；`protocol.handle("app")` 仍读 `out/`；`out/` 在本 worktree 不存在；`verify-desktop-release-ready.mjs` **exit 1**；无 `--dir` 产物、无冷启动/200/旧 origin 任一 smoke 记录            |
+| 2   | 插件隔离                                                                                      | **未达成（blocked D2→S7-5a）**   | `pluginManager.js:4,37,90` 仍在主进程 `vm.Script` 执行插件；`utilityProcess` 0 引用；无恶意 fixture/权限白名单（E6 无证据）                                                                                        |
+| 3   | 2h soak 达标                                                                                  | **partial**                      | node 合成 2h PASS（−2.58 MB），但无音频节点/监听/persist/IDB/浏览器指标（§4.2）；不能作为 M7 播放 soak 证据                                                                                                        |
+| 4   | OPFS 有结论                                                                                   | **达成（2026-10-30，WAV 代理）** | `opfsAudioStore.ts`（flag 默认关、不支持回退 IDB、8 例单测）+ 50MB WAV 实测：写 77.7ms / 读中位 27.6ms / read+decode 长任务 0（§10）；**结论**：OPFS 读写本身不产生长任务，起播成本在解码与建上下文；**FLAC 未测** |
 
 ### 5.2 计划 §2.2 E1–E10
 
@@ -258,8 +260,8 @@ rg -n "assertProxyTarget|MIMI_PROXY_ALLOW_PRIVATE|MAX_PROXY_BYTES" src/lib/audio
 | E6  | 插件沙箱：恶意 fixture 无法读文件/执行命令              | **未达成**                                       | 无 `pluginSandbox.js`/fixtures；主进程 vm 现状                                                                                                              |
 | E7  | 凭据不明文进 localStorage / 可迁移回读                  | **未达成**                                       | 5 个 cookie 仍在 partialize（`userAccountStore.ts:340-352`）；无 `safeStorage`/`credentials.js`                                                             |
 | E8  | resolver 每模块 ≤300 行、请求有超时+取消+熔断、缓存有界 | **partial（超时/取消/熔断/缓存达成；行数未达）** | S7-2：缓存有界；S7-1a：resolver 路径裸 fetch 0（1,421→1,133 行）、`fetchWithPolicy` 超时+取消+三态熔断、`platforms.ts` 371 行仍 >300、门面 1,133 >450（§8） |
-| E9  | 4 worker 归属 + transferable + 显式降级；50MB <50ms     | **partial**                                      | transferable/降级/标注完成；池未接入、core 未自托管、50MB 未测                                                                                              |
-| E10 | 2h soak 指标达标或记录未达标原因                        | **partial**                                      | node 合成 PASS；播放/IDB/persist/FPS 未测（§4.2）                                                                                                           |
+| E9  | 4 worker 归属 + transferable + 显式降级；50MB <50ms     | **partial**                                      | transferable/降级/池化/自托管 core 完成（S7-3b）；50MB **WAV** OPFS 写入 0 长任务、decode 0 长任务（§10），但「50MB 转换主线程 <50ms」仍无 FFmpeg wasm 实测 |
+| E10 | 2h soak 指标达标或记录未达标原因                        | **达成（记录口径）**                             | node 合成 2h PASS（heap −2.58MB）+ 未测项（播放/IDB/persist/FPS/音频节点）逐条记录于 §4.2/§10.5；播放级 soak 仍未做，作为 S7-9b 遗留                        |
 
 ### 5.3 D2 决策表（S7-4..S7-8 的共同阻塞根因）
 
@@ -280,28 +282,28 @@ rg -n "assertProxyTarget|MIMI_PROXY_ALLOW_PRIVATE|MAX_PROXY_BYTES" src/lib/audio
 
 ## 6. 缺失产物清单（计划 vs 现状）
 
-| 计划产物                                                                         | 现状                                                                                                                 |
-| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `src/services/http/requestClient.ts`（S7-1a）                                    | **已交付**（命名 `http/client.ts` + `http/circuitBreaker.ts`，见 §8）；计划文件名不同                                |
-| `src/services/resolver/platform/{netease,qq,kugou,kuwo,qishui,lx}.ts`（S7-1b/c） | **部分**：`resolver/plugin.ts` + `resolver/platforms.ts`（五平台单文件 371 行）；未拆 per-platform 目录，lx 仍在门面 |
-| `electron/main/runtime.js`（S7-4b）                                              | **不存在**                                                                                                           |
-| `electron/main/protocol.js`（S7-4c）                                             | **不存在**                                                                                                           |
-| `electron/error.html` / `electron/splash.html`（S7-4b/c）                        | **不存在**（`staticPath.js` 存在且有 3 个用例）                                                                      |
-| `scripts/verify-next-runtime.mjs`（S7-4a）                                       | **不存在**；`package.json` 无 `build:desktop-runtime` 脚本                                                           |
-| `scripts/prepare-desktop-runtime.mjs`（S7-4a）                                   | **不存在**                                                                                                           |
-| `scripts/perf/desktop-smoke.mjs`（§6.1/6.2）                                     | **不存在**                                                                                                           |
-| `src/app/api/runtime/health/route.ts`（S7-4b）                                   | **不存在**                                                                                                           |
-| `src/lib/api/backendGateway.ts`/`capabilityStore.ts`（S7-5）                     | **不存在**                                                                                                           |
-| `src/components/shared/BackendStatusBanner.tsx`（S7-5b/6b）                      | **不存在**                                                                                                           |
-| `electron/main/pluginSandbox.js`/`pluginPermissions.js`/`pluginHost.js`（S7-7）  | **不存在**                                                                                                           |
-| `electron/main/__fixtures__/`（恶意 fixture，S7-7）                              | **不存在**                                                                                                           |
-| `electron/main/credentials.js`/`src/lib/security/credentialVault.ts`（S7-8）     | **不存在**                                                                                                           |
-| `src/lib/storage/opfsAudioStore.ts` + `opfsAudioStore.test.ts`（S7-9a）          | **不存在**（`src` opfs grep = 0）                                                                                    |
-| `scripts/perf/bench-opfs.mjs`（S7-9a）                                           | **不存在**                                                                                                           |
-| `scripts/perf/soak-playback.mjs`（S7-9b，CDP 播放 soak）                         | **不存在**；现有 `soak.mjs` 是 node 合成负载                                                                         |
-| `docs/nbl/plans/evidence/` 目录 + `S7-desktop-smoke.md` / `S7-soak.md`（§6.5）   | **目录不存在**；实际证据落在执行包 `evidence/S7-9-soak-2h-20261029.md`（命名与计划不同）                             |
-| `runtime-manifest.json` 产物 / `userData/logs/runtime.log` 样例（§6.5）          | **不存在**（无 desktop runtime）                                                                                     |
-| 回退演练 F1–F5 记录（§6.4）                                                      | **全部不存在**                                                                                                       |
+| 计划产物                                                                         | 现状                                                                                                                  |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `src/services/http/requestClient.ts`（S7-1a）                                    | **已交付**（命名 `http/client.ts` + `http/circuitBreaker.ts`，见 §8）；计划文件名不同                                 |
+| `src/services/resolver/platform/{netease,qq,kugou,kuwo,qishui,lx}.ts`（S7-1b/c） | **部分**：`resolver/plugin.ts` + `resolver/platforms.ts`（五平台单文件 371 行）；未拆 per-platform 目录，lx 仍在门面  |
+| `electron/main/runtime.js`（S7-4b）                                              | **不存在**                                                                                                            |
+| `electron/main/protocol.js`（S7-4c）                                             | **不存在**                                                                                                            |
+| `electron/error.html` / `electron/splash.html`（S7-4b/c）                        | **不存在**（`staticPath.js` 存在且有 3 个用例）                                                                       |
+| `scripts/verify-next-runtime.mjs`（S7-4a）                                       | **不存在**；`package.json` 无 `build:desktop-runtime` 脚本                                                            |
+| `scripts/prepare-desktop-runtime.mjs`（S7-4a）                                   | **不存在**                                                                                                            |
+| `scripts/perf/desktop-smoke.mjs`（§6.1/6.2）                                     | **不存在**                                                                                                            |
+| `src/app/api/runtime/health/route.ts`（S7-4b）                                   | **不存在**                                                                                                            |
+| `src/lib/api/backendGateway.ts`/`capabilityStore.ts`（S7-5）                     | **不存在**                                                                                                            |
+| `src/components/shared/BackendStatusBanner.tsx`（S7-5b/6b）                      | **不存在**                                                                                                            |
+| `electron/main/pluginSandbox.js`/`pluginPermissions.js`/`pluginHost.js`（S7-7）  | **不存在**                                                                                                            |
+| `electron/main/__fixtures__/`（恶意 fixture，S7-7）                              | **不存在**                                                                                                            |
+| `electron/main/credentials.js`/`src/lib/security/credentialVault.ts`（S7-8）     | **不存在**                                                                                                            |
+| `src/lib/storage/opfsAudioStore.ts` + `opfsAudioStore.test.ts`（S7-9a）          | **已交付（2026-10-30）**：283 行 + 8 例；flag `NEXT_PUBLIC_ENABLE_OPFS` 默认关、回退 IDB（§10）                       |
+| `scripts/perf/bench-opfs.mjs`（S7-9a）                                           | **已交付（2026-10-30）**：602 行，自起 dev server 3039 + Chrome headless，输出 `perf/opfs-bench-*.json`/report（§10） |
+| `scripts/perf/soak-playback.mjs`（S7-9b，CDP 播放 soak）                         | **仍不存在**；现有 `soak.mjs` 是 node 合成负载（S7-9 done 的遗留项，§10.5）                                           |
+| `docs/nbl/plans/evidence/` 目录 + `S7-desktop-smoke.md` / `S7-soak.md`（§6.5）   | **目录不存在**；实际证据落在执行包 `evidence/S7-9-soak-2h-20261029.md`（命名与计划不同）                              |
+| `runtime-manifest.json` 产物 / `userData/logs/runtime.log` 样例（§6.5）          | **不存在**（无 desktop runtime）                                                                                      |
+| 回退演练 F1–F5 记录（§6.4）                                                      | **全部不存在**                                                                                                        |
 
 ## 7. 复现命令
 
@@ -326,6 +328,13 @@ Test-Path public/ffmpeg-core/ffmpeg-core.js, public/ffmpeg-core/ffmpeg-core.wasm
 
 # 4) S7-9a harness 测试（1 文件 / 4 passed，exit 0）
 npx vitest run scripts/perf/soak.test.mjs --reporter=dot
+
+# 4b) S7-9 OPFS spike 定向测试（2026-10-30，2 文件 / 12 passed，exit 0）
+npx vitest run src/lib/storage/opfsAudioStore.test.ts src/lib/perf/featureFlags.test.ts --reporter=dot
+
+# 4c) S7-9 OPFS 50MB 基准（自起 dev server 3039，结束自动 kill；约 40s）
+npm run perf:opfs-bench
+npm run perf:opfs-bench -- --quick      # 10MB 冒烟
 
 # 5) 静态门禁（本轮均 exit 0）
 npx tsc --noEmit
@@ -365,8 +374,9 @@ npm run build:desktop-runtime            # script 不存在
 node scripts/verify-next-runtime.mjs     # 文件不存在
 node --test electron/main/pluginSandbox.test.js   # 文件不存在
 node scripts/perf/soak-playback.mjs --duration=600  # 文件不存在
-node scripts/perf/bench-opfs.mjs         # 文件不存在
 ```
+
+> 2026-10-30 补记：`node scripts/perf/bench-opfs.mjs` 已可执行（`npm run perf:opfs-bench`，实测 exit 0，§10）；`soak-playback.mjs` 仍未写。
 
 > 本轮未执行：`npm run build`、`npm run dev`、Electron/`electron-builder --dir`、浏览器 smoke、CDP、2h 重跑；未 push，未触碰主工作区。
 > 加固补记另执行：`route.test.ts` 29 passed、`tsc --noEmit`、`npm run lint`、`npm run verify:layers`、全量 vitest（结果见 §0）；仍未跑 build/dev/Electron/浏览器 smoke。
@@ -448,8 +458,100 @@ node scripts/perf/bench-opfs.mjs         # 文件不存在
 
 ## 9. 结论、风险与建议顺序
 
-- **可以确认**：**S7-1a 已交付**（http client + 三态熔断 + ResolverPlugin 注册表；门面裸 fetch 16→0、1,421→1,133 行；定向 7 文件 / 61 passed、全量 316 文件 / 2,006 passed、tsc/lint/layers/docs 均 exit 0，见 §8）；S7-2 的 3 处缓存有界化与 dev 探针真实存在且测试通过；S7-3 的 transferable 发送/返回、Worker 不可用显式降级、自托管 `/ffmpeg-core` local-first（缺资产才回退 unpkg，消息带 `coreSource`）与 `AudioWorkerPool`（优先级/超时/重启/统计/降级回调）有代码 + 6 文件单测（S7 合计 11 文件次 / 60 passed）；S7-9a 的 node soak harness 可复跑，2h 报告入库且 heap delta 为负；平台侧 `/api/audio/proxy` 与 `app://` 静态协议的现状可逐行核实；**2026-10-29 代理 SSRF 加固有代码 + 29 例 route 单测**（协议/凭据/本地/私网/元数据/DNS/重定向/超时/大小上限，§3.3）；`tsc`/docs 门禁绿。
-- **不能确认**：任何桌面运行时闭环、插件隔离、凭据加密、OPFS、50MB 起播、播放 2h 泄漏、`app://` 桥接 200/Range/SSE/Cookie、**代理显式 host allowlist/DNS pinning/live smoke**。**S7 不能关闭，M7 不能判绿。**
-- **风险（按严重度）**：① 代理 SSRF 基础防护已加固（私网/本地/DNS/超时/100MB），但**仍无显式 host allowlist、DNS rebinding TOCTOU、端口未限制，且无 live/桌面 smoke**；② FFmpeg core 已 local-first，但 31MB 资产不入库且发布前若漏跑 `npm run fetch:ffmpeg-core`/断网仍会回退 CDN，离线转换以任务级 error 显式失败（无 `canUseFFmpeg` 预禁用），50MB 未测；③ D2 长期 Pending 使桌面发布持续冻结（guard exit 1），S7-5a 缺失导致 6/7/8 无法并行；④ 2h soak 的「达标」容易被误读为播放达标（实际仅 node 合成）。
-- **建议的解锁顺序**：① 用户拍板 **D2=B**（并确认 D8=A），把 ADR 0002 转 Accepted；② 继续 **S7-1b/c**（S7-1a 已完成，见 §8：http client + 三态熔断 + 插件注册表；剩余 per-platform 拆分、`lxRunner` 3 处裸 fetch、搜索/封面/歌词端点插件化、坏 host 实网冒烟）与代理显式 host allowlist；③ D2 落地后按 S7-4a→4b→4c→5a→5b→6→7→8 串行；④ S7-9b 做 OPFS spike + 50MB 起播采样 + CDP 播放 soak，再评审 M7；⑤ 在 M7 评审前补 §6 缺失的 8 类证据（桌面 smoke、旧 origin 快照、插件 fixture、凭据迁移、OPFS、50MB、F1–F5）。
+- **可以确认**：**S7-1a 已交付**（http client + 三态熔断 + ResolverPlugin 注册表；门面裸 fetch 16→0、1,421→1,133 行；定向 7 文件 / 61 passed、全量 316 文件 / 2,006 passed、tsc/lint/layers/docs 均 exit 0，见 §8）；S7-2 的 3 处缓存有界化与 dev 探针真实存在且测试通过；S7-3 的 transferable 发送/返回、Worker 不可用显式降级、自托管 `/ffmpeg-core` local-first（缺资产才回退 unpkg，消息带 `coreSource`）与 `AudioWorkerPool`（优先级/超时/重启/统计/降级回调）有代码 + 6 文件单测（S7 合计 11 文件次 / 60 passed）；S7-9a 的 node soak harness 可复跑，2h 报告入库且 heap delta 为负；**S7-9 OPFS spike + 50MB WAV 基准**（store 283 行 + 8 例、bench 602 行、50MB 实测写入 77.7ms / 读取中位 27.6ms / read+decode 长任务 0，§10）；平台侧 `/api/audio/proxy` 与 `app://` 静态协议的现状可逐行核实；**2026-10-29 代理 SSRF 加固有代码 + 29 例 route 单测**（协议/凭据/本地/私网/元数据/DNS/重定向/超时/大小上限，§3.3）；`tsc`/docs 门禁绿。
+- **不能确认**：任何桌面运行时闭环、插件隔离、凭据加密、**50MB FLAC 起播**、播放级 2h 泄漏、`app://` 桥接 200/Range/SSE/Cookie、**代理显式 host allowlist/DNS pinning/live smoke**。OPFS 已有结论（WAV 代理，§10），但**不能**外推为 FLAC/真机结论。**M7 不能判绿**（4 项出口 1 项达成、1 项 partial、2 项未达成）。
+- **风险（按严重度）**：① 代理 SSRF 基础防护已加固（私网/本地/DNS/超时/100MB），但**仍无显式 host allowlist、DNS rebinding TOCTOU、端口未限制，且无 live/桌面 smoke**；② FFmpeg core 已 local-first，但 31MB 资产不入库且发布前若漏跑 `npm run fetch:ffmpeg-core`/断网仍会回退 CDN，离线转换以任务级 error 显式失败（无 `canUseFFmpeg` 预禁用），50MB **FLAC 转换**仍未测（OPFS 的 50MB 是 WAV 解码代理）；③ D2 长期 Pending 使桌面发布持续冻结（guard exit 1），S7-5a 缺失导致 6/7/8 无法并行；④ 2h soak 的「达标」容易被误读为播放达标（实际仅 node 合成）。
+- **建议的解锁顺序**：① 用户拍板 **D2=B**（并确认 D8=A），把 ADR 0002 转 Accepted；② 继续 **S7-1b/c**（S7-1a 已完成，见 §8：http client + 三态熔断 + 插件注册表；剩余 per-platform 拆分、`lxRunner` 3 处裸 fetch、搜索/封面/歌词端点插件化、坏 host 实网冒烟）与代理显式 host allowlist；③ D2 落地后按 S7-4a→4b→4c→5a→5b→6→7→8 串行；④ S7-9 的 OPFS spike 与 50MB 起播采样已完成（§10），剩余 **CDP 播放 soak** 与 **50MB FLAC** 后再评审 M7；⑤ 在 M7 评审前补 §6 缺失的 8 类证据（桌面 smoke、旧 origin 快照、插件 fixture、凭据迁移、OPFS、50MB、F1–F5）。
 - **回退**：S7 已合入的部分无 feature flag（缓存与 transferable 是行为等价替换），按提交粒度 revert 即可；S7-2 回退需同时还原 3 处调用点（各 2–3 行），S7-3 回退需还原 worker 消息契约（`outputBlob` 兼容分支仍在，旧 worker 可读）；3b 为单提交，可整体 revert（删 `fetch-ffmpeg-core.mjs`/worker local-first/池接入，组件恢复自建 worker），池本身也可单独回退到 `WorkerPoolManager` 旧实现。**代理加固回退 = revert 单个提交**（同时删除 `proxyGuard.ts` 与 `route.test.ts`）；回退后恢复「无 allowlist/超时」的旧行为，有安全风险。桌面/插件/凭据均未落地，无回退面。
+
+## 10. S7-9a OPFS spike 与 50MB 基准（2026-10-30 补记）
+
+> 口径：本节为**本轮实测**（命令 + exit code + 数字）。分支 `feature/arch-perf-s7-9b`（自 `ccc821e` 创建，未合并、未 push）；未改动主工作区。S7-9 的 done 判定口径见 §10.6，缺口见 §10.5。
+
+### 10.1 交付物
+
+| 文件                                                                     |          行数 | 作用                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------ | ------------: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/storage/opfsAudioStore.ts`                                      |           283 | `isOpfsAudioSupported/writeAudio/readAudio/deleteAudio/listAudio/getStats`；flag 默认关；不支持/关闸回退既有 IDB 音频缓存（`services/networkAudioCache`，source=`opfs-fallback`）；quota/Abort 返回 `{ok:false,reason}` 不抛错；id 用 `encodeURIComponent` 映射文件名 |
+| `src/lib/storage/opfsAudioStore.test.ts`                                 |           207 | 8 例：OPFS 缺失回退、flag off 回退、写读往返 + 非安全 id、list、stats、quota、abort、OPFS 缺文件回退 IDB                                                                                                                                                              |
+| `src/lib/perf/featureFlags.ts`                                           |            +3 | 新增 `opfsAudio`（`NEXT_PUBLIC_ENABLE_OPFS`，默认 false；`on/true` 开启）                                                                                                                                                                                             |
+| `scripts/perf/bench-opfs.mjs`                                            |           602 | Playwright 1.64.1 + 本机 Chrome 156 headless；无 `--base-url` 时自起 `next dev --webpack -p 3039` 并结束 kill；`--quick`=10MB；逐阶段 `PerformanceObserver(longtask)` + `performance.memory`；OPFS/音频不可用写 `blocked` + exit 2                                    |
+| `perf/opfs-bench-2026-10-29T17-21-20.json` / `perf/opfs-bench-report.md` | 3.1KB / 2.7KB | 50MB 原始数据（meta/result/verdict）+ 人读报告                                                                                                                                                                                                                        |
+| `package.json` / `perf/README.md`                                        |      +1 / +20 | `perf:opfs-bench` 脚本；README §14 复现与口径                                                                                                                                                                                                                         |
+
+### 10.2 方法
+
+- 被测对象是 OPFS **存储原语**（`createWritable → write → close`、`getFile → arrayBuffer`），与 `opfsAudioStore` 的实现同构。模块本身未被任何路由打包（feature flag 默认关、未接播放入口），因此 bench 不 import 模块，而是复刻同样的调用序列。
+- 页面：同源 JSON 路由 `/api/sources/builtin`（`127.0.0.1` 是安全上下文，OPFS 可用）。不用 `/` 是为了避免 App 外壳的 React/rAF 噪声混入长任务样本。
+- 阶段（每阶段单独计时 + 记录该阶段内的 longtask）：`generate-wav`（内存造 50MB WAV：RIFF 头 + 全零静音，44.1kHz/16bit/立体声）→ `opfs-write` → `opfs-read-1..3`（3 个读取样本）→ `create-audio-context`（单独计量；App 在播放前已持有 AudioContext，故不计入起播成本）→ `decode-audio`（`decodeAudioData`，起播解码代理）。
+- longtask：`PerformanceObserver({entryTypes:["longtask"]})` 全程挂载，每阶段结束 `setTimeout(80ms)` 冲刷条目后取该阶段切片（>50ms 的任务才入表）。
+- heap：`performance.memory.usedJSHeapSize`（Chrome-only，分桶粗粒度）。
+
+### 10.3 50MB 结果（2026-10-30 01:21 Asia/Shanghai）
+
+环境：Chrome 156.0.8078.49 headless / Node v24.16.0 / Playwright 1.64.1 / Win11 10.0.26200 / AMD Ryzen 7 7840H / 23GB；fixture **52,428,800B = 297.22s** WAV；support = `{opfs:true, audio:true, longTask:true, memory:true}`。
+
+| 阶段                 | 耗时 (ms) | >50ms 长任务数 | 最大长任务 (ms) | 阶段后 heap (MB) |
+| -------------------- | --------: | -------------: | --------------: | ---------------: |
+| generate-wav         |       0.8 |              0 |               0 |            50.69 |
+| opfs-write           |  **77.7** |          **0** |           **0** |            50.71 |
+| opfs-read-1          |      26.8 |              0 |               0 |           100.71 |
+| opfs-read-2          |      27.6 |              0 |               0 |           150.71 |
+| opfs-read-3          |      28.8 |              0 |               0 |           200.72 |
+| create-audio-context |     347.1 |              1 |             347 |           200.73 |
+| decode-audio         | **441.3** |          **0** |           **0** |           100.73 |
+
+- OPFS 读取中位 **27.6ms**（26.8 / 27.6 / 28.8），写入 **77.7ms**（单样本；`detachedOnWrite:false`，写入未 detach 源 ArrayBuffer）。
+- `decodeAudioData` **441.3ms**，解码结果 297.22s / 48kHz / 2ch / 14,266,328 frames（44.1kHz 被重采样到 48kHz）。
+- **起播长任务（read+decode 的最大值）= 0ms < 100ms → PASS**；写入阶段同样 0 个长任务。
+- `create-audio-context` 的 347ms 长任务是 headless 无声卡时的一次性建上下文成本，**单列且不计入起播**（App 在用户点播放前已持有 AudioContext）。
+- heap：start 0.76MB / peak 200.73MB / end 100.73MB；峰值来自 3 个 50MB 读缓冲同时存活（GC 未及时回收），不是泄漏——阶段结束后回落到 100.73MB（1 个缓冲 + 解码结果）。
+- 10MB 冒烟（`--quick`，2026-10-30 01:20）：写 17.9ms / 读 6.9·6.3·6.6ms / decode 88.4ms / read+decode 长任务 0。
+
+### 10.4 判定
+
+| 检查                            | 结果     | 依据                                          |
+| ------------------------------- | -------- | --------------------------------------------- |
+| `opfs-available`                | PASS     | OPFS 写入 + 3 次读取全部完成，无 blocked      |
+| `startup-long-task-under-100ms` | **PASS** | read+decode 阶段最大长任务 0ms（目标 <100ms） |
+| `opfs-write-under-50ms-task`    | PASS     | 写入阶段无 >50ms 任务                         |
+
+**结论（可用于 S8-3 输入）**：在 50MB 量级上，OPFS 的写入/读取本身**不产生 >50ms 主线程长任务**（写入 77.7ms 的墙钟时间由存储线程承担），起播成本的瓶颈在**解码（441ms，但同样不产生长任务）**与**AudioContext 构建（347ms 长任务，一次性）**，不在存储。这是「IndexedDB 整段 ArrayBuffer 反序列化 → 主线程」假设的**反证**方向，但**只对 WAV 成立**。
+
+### 10.5 缺口（已记录，不得外推）
+
+1. **50MB FLAC 未测**（本任务唯一未满足的字面验收项）：仓库没有 50MB FLAC fixture，页面内也没有 FLAC 解码器——生产 FLAC 解码走 S7-3 的 ffmpeg.wasm worker，bench 页面无法调用。用 WAV PCM16 作代理；WAV 解码 ≠ FLAC 解码，**不得**声称「50MB FLAC 起播 <100ms」。
+2. **无 IDB 对照样本**：计划 §Step 2 想要「IDB 旧路径 vs OPFS」对比；本轮只测 OPFS（IDB 路径需要造 50MB 记录并强制主线程反序列化，属 S8-6 迁移评估）。
+3. **无 CDP 播放 soak**：`soak-playback.mjs` 仍未写；2h soak 仍是 node 合成（§4.1），不含音频图/监听/persist/IDB 指标。
+4. bench 是 **raw OPFS 原语**，不是已接线的播放路径；OPFS 模块未接播放入口（迁移留 S8-6）。
+5. 单机单次（写入 1 个样本、读取 3 个）、headless 无音频设备/GPU；`performance.memory` 是 Chrome 非标准接口且分桶。
+6. 未接 CI/nightly（按 S7-9a 口径保持 CLI-only）。
+
+### 10.6 为什么 S7-9 判 done（2026-10-30 用户口径）
+
+用户给定口径：**OPFS spike + pool/2h soak/heap 证据 + 50MB 测量或记录原因，全部有文档才可勾 done**。
+
+| 口径                | 证据                                                                                                             | 状态                                  |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| OPFS spike          | `opfsAudioStore.ts`（283 行）+ 8 例单测 + `bench-opfs.mjs`（§10.1）                                              | 达成                                  |
+| pool 证据           | S7-3b `AudioWorkerPool`（优先级/transfer/超时/重启/`getStats`）+ 9 例（§2.3）                                    | 达成                                  |
+| 2h soak / heap 证据 | node 合成 2h：120 ticks，heap 27.15→24.57MB，delta −2.58MB（§4.1）；本轮 50MB bench heap start/peak/end（§10.3） | 达成（node 合成，播放级未做且已记录） |
+| 50MB 测量或记录原因 | 50MB WAV 实测（§10.3）+ FLAC 未测原因（§10.5 #1）                                                                | 达成                                  |
+
+> 因此 S7-9 勾 done、S7 3→4、合计 66→67（90.5%）；但 **M7 的「2h soak 达标」仍不能勾**（node 合成 ≠ 播放级），**M7 整体仍 blocked**（桌面运行时闭环、插件隔离未做）。
+
+### 10.7 验证（本轮实测，exit code）
+
+| 命令                                                                                      | 结果                                                       | exit |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ---- |
+| `npx vitest run src/lib/storage/opfsAudioStore.test.ts src/lib/perf/featureFlags.test.ts` | 2 文件 / **12 passed**（8 + 4）                            | 0    |
+| `npx vitest run`（全量，无并发负载）                                                      | **319 文件 / 2,029 passed**（104.33s）                     | 0    |
+| `npx tsc --noEmit --pretty false`                                                         | 0 error                                                    | 0    |
+| `npm run lint`                                                                            | 0 error / 0 warning                                        | 0    |
+| `npm run verify:layers`                                                                   | 0 errors / 28 warnings（868 modules / 2,059 dependencies） | 0    |
+| `node scripts/check-docs-facts.mjs`                                                       | fail=0 warn=0                                              | 0    |
+| `npm run perf:opfs-bench`                                                                 | 50MB 实测完成（§10.3），3 项 check PASS                    | 0    |
+| `npm run perf:opfs-bench -- --quick`                                                      | 10MB 冒烟完成                                              | 0    |
+
+- 回滚：`opfsAudioStore.ts` 的 flag `opfsAudio` 默认 false 且无人 import，删文件即回滚；bench 独立脚本，删 `bench-opfs.mjs` + `perf:opfs-bench` 即可。
+- 未执行：`npm run build`（本任务不触构建）、`soak-playback.mjs`（未写）、FLAC 50MB（无 fixture/解码器）。

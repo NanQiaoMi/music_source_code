@@ -1,0 +1,134 @@
+{
+  "meta": {
+    "startedAt": "2026-10-29T17:21:20.063Z",
+    "command": "node scripts/perf/bench-opfs.mjs",
+    "baseUrl": "http://127.0.0.1:3039",
+    "page": "/api/sources/builtin",
+    "bytes": 52428800,
+    "reads": 3,
+    "git": {
+      "branch": "feature/arch-perf-s7-9b",
+      "commit": "ccc821e1c9c3954edaf00590decff412dfb38591"
+    },
+    "browser": "Chrome 156.0.8078.49",
+    "runtime": {
+      "node": "v24.16.0",
+      "playwright": "1.64.1",
+      "platform": "win32 10.0.26200 / AMD Ryzen 7 7840H w/ Radeon 780M Graphics       / 23GB"
+    }
+  },
+  "result": {
+    "support": {
+      "opfs": true,
+      "audio": true,
+      "longTask": true,
+      "memory": true
+    },
+    "blocked": null,
+    "wav": {
+      "bytes": 52428800,
+      "dataBytes": 52428756,
+      "durationSec": 297.22
+    },
+    "phases": [
+      {
+        "name": "generate-wav",
+        "durationMs": 0.8,
+        "error": null,
+        "longTaskCount": 0,
+        "longTaskMaxMs": 0,
+        "heapMB": 50.69
+      },
+      {
+        "name": "opfs-write",
+        "durationMs": 77.7,
+        "error": null,
+        "longTaskCount": 0,
+        "longTaskMaxMs": 0,
+        "heapMB": 50.71
+      },
+      {
+        "name": "opfs-read-1",
+        "durationMs": 26.8,
+        "error": null,
+        "longTaskCount": 0,
+        "longTaskMaxMs": 0,
+        "heapMB": 100.71
+      },
+      {
+        "name": "opfs-read-2",
+        "durationMs": 27.6,
+        "error": null,
+        "longTaskCount": 0,
+        "longTaskMaxMs": 0,
+        "heapMB": 150.71
+      },
+      {
+        "name": "opfs-read-3",
+        "durationMs": 28.8,
+        "error": null,
+        "longTaskCount": 0,
+        "longTaskMaxMs": 0,
+        "heapMB": 200.72
+      },
+      {
+        "name": "create-audio-context",
+        "durationMs": 347.1,
+        "error": null,
+        "longTaskCount": 1,
+        "longTaskMaxMs": 347,
+        "heapMB": 200.73
+      },
+      {
+        "name": "decode-audio",
+        "durationMs": 441.3,
+        "error": null,
+        "longTaskCount": 0,
+        "longTaskMaxMs": 0,
+        "heapMB": 100.73
+      }
+    ],
+    "decode": {
+      "durationSec": 297.22,
+      "sampleRate": 48000,
+      "channels": 2,
+      "frames": 14266328
+    },
+    "detachedOnWrite": false,
+    "heap": {
+      "startMB": 0.76,
+      "endMB": 100.73,
+      "peakMB": 200.73
+    },
+    "pageErrors": []
+  },
+  "verdict": {
+    "summary": {
+      "writeMs": 77.7,
+      "readMs": [26.8, 27.6, 28.8],
+      "readMedianMs": 27.6,
+      "decodeMs": 441.3,
+      "decodeLongTaskMaxMs": 0,
+      "startupLongTaskMs": 0,
+      "startupUnder100ms": true
+    },
+    "checks": [
+      {
+        "id": "opfs-available",
+        "pass": true,
+        "detail": "OPFS write/read completed"
+      },
+      {
+        "id": "startup-long-task-under-100ms",
+        "pass": true,
+        "detail": "max long task across read+decode = 0ms (target <100ms)"
+      },
+      {
+        "id": "opfs-write-under-50ms-task",
+        "pass": true,
+        "detail": "write max long task = 0ms"
+      }
+    ],
+    "met": true
+  }
+}

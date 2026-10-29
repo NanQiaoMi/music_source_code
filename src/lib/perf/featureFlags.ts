@@ -25,6 +25,8 @@ export const featureFlags = {
   visualRuntime: readFlag(process.env.NEXT_PUBLIC_VISUAL_RUNTIME, true),
   /** S5-4: effect plugin registry (legacy dispatch until rolled out). */
   effectPlugins: readFlag(process.env.NEXT_PUBLIC_EFFECT_PLUGINS, false),
+  /** S7-9a: OPFS audio blob store spike (IndexedDB stays the default path). */
+  opfsAudio: readFlag(process.env.NEXT_PUBLIC_ENABLE_OPFS, false),
 } as const;
 
 export type FeatureFlags = typeof featureFlags;

@@ -20,6 +20,7 @@ describe("featureFlags", () => {
       "NEXT_PUBLIC_COVER_IMAGE_V2",
       "NEXT_PUBLIC_VISUAL_RUNTIME",
       "NEXT_PUBLIC_EFFECT_PLUGINS",
+      "NEXT_PUBLIC_ENABLE_OPFS",
     ]) {
       vi.stubEnv(key, undefined);
     }
@@ -30,6 +31,7 @@ describe("featureFlags", () => {
       coverImageV2: true,
       visualRuntime: true,
       effectPlugins: false,
+      opfsAudio: false,
     });
   });
 

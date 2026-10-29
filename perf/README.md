@@ -275,3 +275,22 @@
 - 本机结果（2026-10-29，Chrome 156.0.8078.49 headless / Node 24.16.0 / Win11 / `integration/s2-audio` @ f2c3ae7）：idle 0 写 0 节点 0 长任务；play 与 track-switch 均为播放键 1.00/s（每 key 30 次/60s，2s 节流边界）、节点 85→85（切歌增量 0）、>50ms 长任务 0、page error 0；rAF 在 headless 下 ~165fps（无 vsync），p95 6.2ms。报告：`perf/audio-metrics/s2-6-report.md`。
 - 缺口：未覆盖计划原文的 effects-drag（100 次强度拖动）、soak-100-skip（100 次切歌）与 2h soak（S7-9）；静音片段 100s 与真实 3 分钟曲目不同；headless 无声卡/GPU；dev 下 `/api/ai/chat` 401 属环境噪声（记录在 `badResponses`）。
 - 测试：`scripts/perf/audio-metrics-cdp.test.mjs`（参数解析、聚合、三档验收判定、fixture 阈值），`npx vitest run scripts/perf/audio-metrics-cdp.test.mjs`。
+
+## 14. OPFS 大文件基准（S7-9a，2026-10-30）
+
+- 目的：回答 S7-9a「50MB 音频走 OPFS 的写入/读取耗时，以及起播（读 + 解码）主线程长任务是否 <100ms」。**fixture 是 WAV PCM16 44.1kHz 立体声（RIFF 头 + 静音）**，不是 FLAC——仓库没有 50MB FLAC fixture，页面内也没有 FLAC 解码器（FLAC 走 S7-3 的 ffmpeg.wasm worker），因此**不产生、也不声称任何 50MB FLAC 数字**。
+- 被测对象：`src/lib/storage/opfsAudioStore.ts`（S7-9a 新增，feature flag `NEXT_PUBLIC_ENABLE_OPFS` 默认关、未接播放入口）。bench 在页面内用与模块同构的 OPFS 原语（`createWritable/write/close`、`getFile/arrayBuffer`），因为该模块没有被任何路由打包；测的是存储原语而不是已接线的播放路径。
+- 页面选择：默认在同源 JSON 路由 `/api/sources/builtin` 上测量（`127.0.0.1` 属安全上下文，OPFS 可用），避免 App 外壳的 React/rAF 噪声污染长任务样本。
+- 阶段：`generate-wav`（内存里造 50MB WAV）→ `opfs-write` → `opfs-read-1..3`（3 次读取样本）→ `create-audio-context`（单独计量：App 在播放前已持有 AudioContext）→ `decode-audio`（`decodeAudioData`，起播解码代理）。每阶段用 `PerformanceObserver({entryTypes:["longtask"]})` 记录 >50ms 任务（count/max），阶段结束 `setTimeout(80ms)` 冲刷条目；heap 取 `performance.memory.usedJSHeapSize`（Chrome-only）。
+- 命令：
+
+      npm run perf:opfs-bench                 # 50MB；无 --base-url 时自起 dev server（3039）并在结束时 kill
+      npm run perf:opfs-bench -- --quick      # 10MB 冒烟
+      npm run perf:opfs-bench -- --base-url=http://127.0.0.1:3025
+
+  依赖：Playwright 1.64.1 + 本机 Chrome（`CHROME_PATH` 可覆盖），dev server 用 `node node_modules/next/dist/bin/next dev --webpack -p 3039`，结束时 `taskkill /T /F`（Windows）/ SIGTERM。
+
+- 输出：`perf/opfs-bench-<ISO 时间戳>.json`（`{meta, result:{support, wav, phases, decode, detachedOnWrite, heap, pageErrors}, verdict}`）+ `perf/opfs-bench-report.md`（环境/阶段表/判定/缺口/复现）。报告与 JSON 入库作为 S7-9a 证据。
+- 判定：`opfs-available`（OPFS 写入/读取跑通）、`startup-long-task-under-100ms`（read+decode 阶段最大长任务 <100ms）、`opfs-write-under-50ms-task`（写入阶段无 >50ms 任务）。OPFS/音频不可用时写 `blocked` + 确切原因并 **exit 2**，不伪造数据。
+- 本机结果（2026-10-30 01:21 Asia/Shanghai，Chrome 156.0.8078.49 headless / Node 24.16.0 / Win11 / 本分支 @ ccc821e）：**50MB（52,428,800B / 297.22s 音频）**——OPFS 写入 **77.7ms**、读取 **26.8 / 27.6 / 28.8ms**（中位 27.6ms）、`decodeAudioData` **441.3ms**（输出被重采样到 48kHz）；**read+decode 阶段 >50ms 长任务 0 个**（判定 <100ms PASS），写入阶段长任务 0；`create-audio-context` 单独 347.1ms / 1 个 347ms 长任务（headless 无声卡的一次性建上下文成本，已排除在起播成本外并单列）；heap start 0.76MB / peak 200.73MB / end 100.73MB（3 个 50MB 读缓冲同时存活所致，非泄漏）。
+- 缺口：只有 WAV 代理、无 FLAC；无 IDB 对照样本；headless 无音频设备/GPU；单机单次（写入仅 1 个样本，读取 3 个）；`performance.memory` 为 Chrome 非标准接口；未接 nightly/CI。
