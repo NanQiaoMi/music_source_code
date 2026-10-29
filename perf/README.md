@@ -162,7 +162,7 @@
 
 - 阈值：相对基线 `rootMain.gzipKB` +5KB、`firstLoad.gzipKB` +10KB；`--max-root-gzip` / `--max-first-load-gzip` 覆盖。raw / CSS / script count 只展示不拦截；绝对 hardMax 仍由 `bundle-budget --check`（S4 后启用）负责。
 - nightly：`.github/workflows/nightly.yml`，`schedule` `0 18 * * *`（北京 02:00）+ `workflow_dispatch`；步骤 build → bundle report → 全量 `npm run test -- --run` → diff → 追加历史/看板（§9），失败即红；artifact `perf-bundle-<run_id>` 保留 `bundle-report.json` / `bundle-diff.json` / `bundle-diff.md` / `perf-history.jsonl` / `perf-dashboard.md`，diff 与看板写入 job summary。
-- 当前基线（2026-10-29 本机 build）：rootMain 3 files / 689.3KB raw / 211KB gzip；首页 8 scripts / 1,959.8KB raw / 607.2KB gzip；CSS 225.4KB raw / 29KB gzip；最大 async chunk 683.5KB；public 58.4MB。
+- 当前基线（**2026-10-30 复核重建**）：rootMain 3 files / 681.8KB raw / **208.4KB gzip**；首页 8 scripts / 1,990.6KB raw / **621.5KB gzip**；CSS 225.4KB raw / 29.2KB gzip；最大 async chunk 675.9KB；public **89.2MB**。重建原因：S7-1/2/3/9 合入后 first-load +14.3KB（超 +10KB 阈值），public 因自托管 ffmpeg-core（31MB）与 mediapipe 资源增至 89.2MB；rootMain gzip 未变（-2.6KB）。按 `--update` 评审流程重建并在此登记，nightly diff 恢复 PASS。
 - 已知缺口：diff 只覆盖静态包体；runtime FPS / 内存采集仍未接线（S8-3b 已接入历史/看板，见 §9；指标生产者待 S8-3c/d）；2h soak（S8-3c）未接线；bundle-budget 仍报 maxAsyncChunk 683.5 > 400 与 public 58.4MB > 45 两项绝对超限，待 S4 / 资源治理处理，本 diff 不拦截。
 - 测试：`scripts/perf/bundle-diff.test.mjs`（通过 / 超阈值 fail / 缺失文件 exit 2 / `--update` 棘轮）。
 

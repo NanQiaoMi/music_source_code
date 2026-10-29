@@ -1,35 +1,35 @@
 {
   "version": 1,
-  "updatedAt": "2026-10-28T19:33:05.754Z",
+  "updatedAt": "2026-10-29T18:08:57.709Z",
   "source": "perf/bundle-report.json",
   "result": {
-    "generatedAt": "2026-10-28T19:32:58.142Z",
+    "generatedAt": "2026-10-29T18:01:19.667Z",
     "rootMain": {
       "files": 3,
-      "rawKB": 689.3,
-      "gzipKB": 211,
+      "rawKB": 681.8,
+      "gzipKB": 208.4,
       "missing": []
     },
     "firstLoad": {
       "scripts": 8,
-      "rawKB": 1959.8,
-      "gzipKB": 607.2,
+      "rawKB": 1990.6,
+      "gzipKB": 621.5,
       "missing": 0
     },
     "css": {
       "files": 1,
-      "rawKB": 225.4,
-      "gzipKB": 29
+      "rawKB": 226.1,
+      "gzipKB": 29.2
     },
     "dataManagerFirstLoad": {
       "scripts": 7,
-      "rawKB": 1628
+      "rawKB": 1665.3
     },
     "asyncChunks": {
-      "files": 122,
-      "maxFile": "static\\chunks\\vendor-core-b3eae9fcd88eb040.js",
-      "maxKB": 683.5
+      "files": 121,
+      "maxFile": "static\\chunks\\vendor-core-c65e0d94154c621c.js",
+      "maxKB": 675.9
     },
-    "publicMB": 58.4
+    "publicMB": 89.2
   }
 }
