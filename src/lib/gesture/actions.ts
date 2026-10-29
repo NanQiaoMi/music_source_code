@@ -113,12 +113,15 @@ function normalizeSeekStep(value: number | undefined): number {
 
 function readSettingsVolumeStep(deps: GestureActionDeps): number {
   if (deps.volumeStep !== undefined) return normalizeVolumeStep(deps.volumeStep);
+  // eslint-disable-next-line no-lib-service-getstate -- S6-9c 白名单：DI 兜底工厂，未注入时才惰性读
   const getSettingsStore = deps.getSettingsStore ?? (() => useGestureSettingsStore.getState());
   return normalizeVolumeStep(getSettingsStore().volumeStep);
 }
 
 function resolveDeps(deps: GestureActionDeps): ResolvedGestureActionDeps {
+  // eslint-disable-next-line no-lib-service-getstate -- S6-9c 白名单：DI 兜底工厂（audio），未注入时才惰性读
   const getAudioStore = deps.getAudioStore ?? (() => useAudioStore.getState());
+  // eslint-disable-next-line no-lib-service-getstate -- S6-9c 白名单：DI 兜底工厂（ui），未注入时才惰性读
   const getUiStore = deps.getUiStore ?? (() => useUiShellStore.getState());
   return {
     audio: getAudioStore(),

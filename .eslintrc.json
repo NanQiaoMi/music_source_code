@@ -45,5 +45,14 @@
         ]
       }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/lib/**/*.{ts,tsx}", "src/services/**/*.{ts,tsx}"],
+      "excludedFiles": ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/__tests__/**"],
+      "rules": {
+        "no-lib-service-getstate": "error"
+      }
+    }
+  ]
 }

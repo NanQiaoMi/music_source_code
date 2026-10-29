@@ -50,6 +50,7 @@ async function runBootstrap(): Promise<boolean> {
       // 这里保留一处直读（目标 restore 快照就取这一瞬间）。
       const player = getPlayerSnapshot();
       const restoredSong = player.currentSong;
+      // eslint-disable-next-line no-lib-service-getstate -- S6-9c 白名单：restore 只跑一次，队列无 ports
       const queueState = useQueueStore.getState();
       const restoredQueue = queueState.queue;
       const restoredIndex = queueState.currentIndex;
@@ -86,6 +87,7 @@ async function runBootstrap(): Promise<boolean> {
     }
 
     // S6-9c 白名单：启动初始化命令（无 React 上下文，仅此处调用一次）。
+    // eslint-disable-next-line no-lib-service-getstate -- S6-9c 白名单：启动仅一次，无 React 上下文
     await usePlaylistStore.getState().initializePlaylist();
     console.log("[Bootstrap] Playlist initialized.");
 
