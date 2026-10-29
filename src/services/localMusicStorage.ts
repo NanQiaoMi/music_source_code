@@ -1,13 +1,11 @@
 // Local Music & Offline Audio Storage Service using IndexedDB
 // This provides persistent storage for local music and offline downloaded network songs
 
+import { openVibeMusicDb, VIBE_MUSIC_STORES } from "@/lib/storage/vibeMusicDb";
 import { BlobUrlRegistry } from "./BlobUrlRegistry";
 
-const DB_NAME = "VibeMusicDB";
-const DB_VERSION = 2;
-const STORE_NAME = "localMusic";
-const METADATA_STORE = "musicMetadata";
-const OFFLINE_STORE = "offline_audios";
+const STORE_NAME = VIBE_MUSIC_STORES.localMusic.name;
+const OFFLINE_STORE = VIBE_MUSIC_STORES.offlineAudios.name;
 
 export interface StoredMusic {
   id: string;
@@ -50,33 +48,7 @@ const isIDBAvailable = typeof indexedDB !== "undefined";
 const inMemoryLocalMusic = new Map<string, StoredMusic>();
 const inMemoryOfflineAudios = new Map<string, OfflineAudioRecord>();
 
-const openDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    if (!isIDBAvailable) {
-      return reject(new Error("IndexedDB not available"));
-    }
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-      if (!db.objectStoreNames.contains(METADATA_STORE)) {
-        db.createObjectStore(METADATA_STORE, { keyPath: "id" });
-      }
-      if (!db.objectStoreNames.contains(OFFLINE_STORE)) {
-        const offlineStore = db.createObjectStore(OFFLINE_STORE, { keyPath: "songId" });
-        offlineStore.createIndex("downloadedAt", "downloadedAt", { unique: false });
-        offlineStore.createIndex("lastPlayedAt", "lastPlayedAt", { unique: false });
-        offlineStore.createIndex("isPinned", "isPinned", { unique: false });
-      }
-    };
-  });
-};
+// Schema/version/upgrade live in @/lib/storage/vibeMusicDb (single open path).
 
 // Save music file to IndexedDB
 export const saveMusicFile = async (music: StoredMusic): Promise<void> => {
@@ -84,7 +56,7 @@ export const saveMusicFile = async (music: StoredMusic): Promise<void> => {
     inMemoryLocalMusic.set(String(music.id), music);
     return;
   }
-  const db = await openDB();
+  const db = await openVibeMusicDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], "readwrite");
     const store = transaction.objectStore(STORE_NAME);
@@ -100,7 +72,7 @@ export const getAllStoredMusic = async (): Promise<StoredMusic[]> => {
   if (!isIDBAvailable) {
     return Array.from(inMemoryLocalMusic.values());
   }
-  const db = await openDB();
+  const db = await openVibeMusicDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], "readonly");
     const store = transaction.objectStore(STORE_NAME);
@@ -117,7 +89,7 @@ export const getStoredMusic = async (id: string | number): Promise<StoredMusic |
   if (!isIDBAvailable) {
     return inMemoryLocalMusic.get(strId) || null;
   }
-  const db = await openDB();
+  const db = await openVibeMusicDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], "readonly");
     const store = transaction.objectStore(STORE_NAME);
@@ -147,7 +119,7 @@ export const deleteStoredMusic = async (id: string): Promise<void> => {
     inMemoryLocalMusic.delete(String(id));
     return;
   }
-  const db = await openDB();
+  const db = await openVibeMusicDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], "readwrite");
     const store = transaction.objectStore(STORE_NAME);
@@ -164,7 +136,7 @@ export const clearAllStoredMusic = async (): Promise<void> => {
     inMemoryLocalMusic.clear();
     return;
   }
-  const db = await openDB();
+  const db = await openVibeMusicDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], "readwrite");
     const store = transaction.objectStore(STORE_NAME);
@@ -182,7 +154,7 @@ export const saveOfflineAudio = async (record: OfflineAudioRecord): Promise<void
     inMemoryOfflineAudios.set(String(record.songId), record);
     return;
   }
-  const db = await openDB();
+  const db = await openVibeMusicDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([OFFLINE_STORE], "readwrite");
     const store = transaction.objectStore(OFFLINE_STORE);
@@ -198,7 +170,7 @@ export const getOfflineAudio = async (songId: string): Promise<OfflineAudioRecor
   if (!isIDBAvailable) {
     return inMemoryOfflineAudios.get(key) || null;
   }
-  const db = await openDB();
+  const db = await openVibeMusicDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([OFFLINE_STORE], "readonly");
     const store = transaction.objectStore(OFFLINE_STORE);
@@ -213,7 +185,7 @@ export const getAllOfflineAudios = async (): Promise<OfflineAudioRecord[]> => {
   if (!isIDBAvailable) {
     return Array.from(inMemoryOfflineAudios.values());
   }
-  const db = await openDB();
+  const db = await openVibeMusicDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([OFFLINE_STORE], "readonly");
     const store = transaction.objectStore(OFFLINE_STORE);
@@ -230,7 +202,7 @@ export const deleteOfflineAudio = async (songId: string): Promise<void> => {
     inMemoryOfflineAudios.delete(key);
     return;
   }
-  const db = await openDB();
+  const db = await openVibeMusicDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([OFFLINE_STORE], "readwrite");
     const store = transaction.objectStore(OFFLINE_STORE);
@@ -246,7 +218,7 @@ export const clearAllOfflineAudios = async (): Promise<void> => {
     inMemoryOfflineAudios.clear();
     return;
   }
-  const db = await openDB();
+  const db = await openVibeMusicDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([OFFLINE_STORE], "readwrite");
     const store = transaction.objectStore(OFFLINE_STORE);

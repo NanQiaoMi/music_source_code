@@ -1,6 +1,7 @@
 import type { Song } from "@/types/song";
 import { getStoredMusic, getOfflineAudio } from "@/services/localMusicStorage";
-import { getFileFromStorage } from "@/services/localMusicService";
+import { getFileFromStorage, type LegacyStoredAudioFile } from "@/services/localMusicService";
+import { classifyVibeMusicDbError } from "@/lib/storage/vibeMusicDb";
 import { combineSignals, throwIfAborted } from "@/lib/playback/requestCoordinator";
 
 export interface AudioSourceBlob {
@@ -47,6 +48,19 @@ function assertReadableBlob(blob: Blob, songTitle: string): Blob {
     throw new Error(`Audio source file is empty for ${songTitle}`);
   }
   return blob;
+}
+
+/**
+ * A broken/blocked local-music database must not surface as "file not found":
+ * that text is reserved for a genuinely missing `local://` record.
+ */
+function toLocalSourceError(error: unknown, songTitle: string): Error {
+  const code = classifyVibeMusicDbError(error);
+  console.error(`[audioSource] local:// read failed (code=${code}) for ${songTitle}`, error);
+  if (code === "version-conflict" || code === "missing-store") {
+    return new Error(`本地音乐数据库版本异常，请重启应用或联系支持（${songTitle}）`);
+  }
+  return new Error(`本地音乐数据读取失败，请重启应用后重试（${songTitle}）`);
 }
 
 export interface ResolveAudioSourceOptions {
@@ -98,7 +112,12 @@ export async function resolveAudioSourceBlob(
 
   if (audioUrl.startsWith("local://")) {
     const id = stripProtocol(audioUrl, "local://") || song.id;
-    const file = await getFileFromStorage(id);
+    let file: LegacyStoredAudioFile | null;
+    try {
+      file = await getFileFromStorage(id);
+    } catch (error) {
+      throw toLocalSourceError(error, song.title);
+    }
     if (!file) {
       throw new Error(`Local audio file not found for ${song.title}`);
     }

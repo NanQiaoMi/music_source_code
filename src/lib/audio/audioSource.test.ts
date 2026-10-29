@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveAudioSourceBlob } from "./audioSource";
+import { VibeMusicDbError } from "@/lib/storage/vibeMusicDb";
 
 const mocks = vi.hoisted(() => ({
   getStoredMusic: vi.fn(),
@@ -125,6 +126,39 @@ describe("resolveAudioSourceBlob abort support (S1-8b)", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "https://example.com/b.mp3",
       expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+  });
+});
+
+describe("resolveAudioSourceBlob local:// database errors (S1-4)", () => {
+  beforeEach(() => {
+    mocks.getStoredMusic.mockReset();
+    mocks.getFileFromStorage.mockReset();
+    vi.stubGlobal("fetch", vi.fn());
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("surfaces a user-readable error instead of 'file not found' on a version conflict", async () => {
+    mocks.getFileFromStorage.mockRejectedValue(
+      new VibeMusicDbError("version-conflict", "VersionError")
+    );
+
+    const result = resolveAudioSourceBlob({ ...baseSong, audioUrl: "local://legacy-1" });
+
+    await expect(result).rejects.toThrow(/本地音乐数据库版本异常/);
+    await expect(result).rejects.not.toThrow(/Local audio file not found/);
+  });
+
+  it("keeps the not-found text when the record is genuinely absent", async () => {
+    mocks.getFileFromStorage.mockResolvedValue(null);
+
+    await expect(resolveAudioSourceBlob({ ...baseSong, audioUrl: "local://gone" })).rejects.toThrow(
+      "Local audio file not found for Audio Demo"
     );
   });
 });
