@@ -7,9 +7,6 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     testTimeout: 30000,
-    // Emit GitHub Actions annotations on CI so failing test names surface in the
-    // check-run API even when job logs are not downloadable.
-    reporters: process.env.GITHUB_ACTIONS ? ["default", "github-actions"] : undefined,
     // CI runners have less headroom than dev machines: cap the worker pool so the
     // full jsdom suite (and the coverage-instrumented run) does not OOM-kill a worker.
     maxWorkers: process.env.GITHUB_ACTIONS ? 2 : undefined,

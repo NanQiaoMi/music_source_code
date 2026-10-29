@@ -1347,7 +1347,13 @@ export async function main(argv = process.argv.slice(2)) {
   return 0;
 }
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+let isMain = false;
+try {
+  isMain = Boolean(process.argv[1]) && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+} catch {
+  // Vitest's module runner can expose a non-file import.meta.url; never run main from tests.
+  isMain = false;
+}
 if (isMain) {
   main()
     .then((code) => {
