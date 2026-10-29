@@ -7,8 +7,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const STORE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-/** 2026-10-29 snapshot: 26 runtime edges (S6-6a toast, S6-6b panel, S6-6c shell, S6-7 theme, S6-8b achievements->toast). */
-const EDGE_BUDGET = 26;
+/**
+ * 2026-10-29 snapshot: 28 runtime edges.
+ * S1-5 并入 queueNavigation（导航状态入口）后 +2：queueNavigation -> playerStore / queueStore。
+ * 其余 26 条来源：S6-6a toast、S6-6b panel、S6-6c shell、S6-7 theme、S6-8b achievements->toast。
+ */
+const EDGE_BUDGET = 28;
 
 /** Documented reason for every runtime edge; a new edge must add an entry (and lower the budget). */
 const RUNTIME_EDGE_REASONS: Readonly<Record<string, string>> = {
@@ -20,6 +24,9 @@ const RUNTIME_EDGE_REASONS: Readonly<Record<string, string>> = {
   "knowledgeStore -> aiStore": "知识卡片读取 AI 配置",
   "linerNotesStore -> aiStore": "AI 生成内页笔记",
   "playerStore -> playbackRuntimeStore": "播放请求写入 runtime",
+  "queueNavigation -> playerStore": "S1-5 QueueNavigator 读取 loopMode（play-through/single 策略）",
+  "queueNavigation -> queueStore":
+    "S1-5 QueueNavigator 是 currentIndex 的唯一写入口（队列单一权威）",
   "sleepTimerStore -> audioStore": "定时停止调用 audio 播放控制",
   "smartMixStore -> playlistGroupStore": "混音会话读取分组",
   "smartMixStore -> queueStore": "混音会话装载队列",

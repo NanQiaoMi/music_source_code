@@ -1,15 +1,14 @@
 import { AudioSliceCreator, PlaybackSliceState, Song } from "./types";
 import { usePlayerStore } from "../playerStore";
 import { useQueueStore } from "../queueStore";
-import { useRecommendationStore } from "../recommendationStore";
 import { usePlaylistStore } from "../playlistStore";
 import { usePlaybackRuntimeStore } from "../playbackRuntimeStore";
+import { advanceQueue } from "../queueNavigation";
 import {
   hasPlayableAudioSource,
   createMissingAudioSourceError,
 } from "@/lib/audio/playableAudioSource";
 import {
-  alignQueueIndex,
   createMissingSourceState,
   createTrackStartState,
   emitAudioSeek,
@@ -178,89 +177,42 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
 
     nextSong: () => {
       flushProgressToStorage();
-      const queueStore = useQueueStore.getState();
-      const queue = queueStore.queue;
-      const { loopMode, currentSong } = get();
+      const result = advanceQueue("next", { currentSong: get().currentSong });
 
-      // 优先对齐当前队列与当前索引，防止跨组件直接调用 setState 时索引脱节
-      const { currentIndex: queueIndex } = queueStore;
-      const currentIndex = alignQueueIndex(queue, queueIndex, get().currentIndex, currentSong);
-
-      if (queue.length === 0) {
-        if (queueStore.playThroughMode === "play-through") {
-          clearPlaybackRequest();
-          usePlayerStore.getState().setCurrentSong(null);
-          set({ currentSong: null, isPlaying: false });
-          return;
-        }
-        if (loopMode !== "single" && loopMode !== "all") {
-          const recs = useRecommendationStore.getState().getRecommendations();
-          if (recs.length > 0) {
-            queueStore.setQueue(recs);
-            queueStore.setCurrentIndex(0);
-            queueStore.addToHistory(recs[0]);
-            startPlaybackRequest(recs[0]);
-            usePlayerStore.getState().setCurrentSong(recs[0]);
-            set(createTrackStartState(recs[0]));
-          } else {
-            clearPlaybackRequest();
-            usePlayerStore.getState().setCurrentSong(null);
-            set({ currentSong: null, isPlaying: false });
-          }
-        } else {
-          clearPlaybackRequest();
-          usePlayerStore.getState().setCurrentSong(null);
-          set({ currentSong: null, isPlaying: false });
-        }
-        return;
-      }
-
-      let nextIndex: number;
-      if (loopMode === "shuffle") {
-        nextIndex = Math.floor(Math.random() * queue.length);
-      } else if (loopMode === "none" && currentIndex >= queue.length - 1) {
+      // S1-5: 队列唯一权威——导航统一走 QueueNavigator（现取 queueStore 快照，
+      // 删歌/重排/清空后仍与 queueStore.currentIndex 保持一致）。
+      if (!result.song) {
+        // S1-5 停止语义：清空队列/播到边界只停止，不回填推荐、不产生错误/toast。
         clearPlaybackRequest();
         usePlayerStore.getState().setCurrentSong(null);
-        queueStore.setCurrentIndex(0);
-        set({ currentSong: null, isPlaying: false, currentTime: 0, persistedCurrentTime: 0 });
+        set({ currentSong: null, isPlaying: false, isLoading: false });
         return;
-      } else {
-        nextIndex = (currentIndex + 1) % queue.length;
       }
 
-      const nextSongItem = queue[nextIndex];
-      startPlaybackRequest(nextSongItem);
-      usePlayerStore.getState().setCurrentSong(nextSongItem);
-      queueStore.setCurrentIndex(nextIndex);
-      queueStore.addToHistory(nextSongItem);
-
-      set(createTrackStartState(nextSongItem));
+      // S6: 切歌状态收敛到 createTrackStartState；导航切歌不重置情感曲线模式。
+      startPlaybackRequest(result.song);
+      usePlayerStore.getState().setCurrentSong(result.song);
+      useQueueStore.getState().addToHistory(result.song);
+      set(createTrackStartState(result.song));
     },
 
     prevSong: () => {
       flushProgressToStorage();
-      const queueStore = useQueueStore.getState();
-      const queue = queueStore.queue;
-      if (queue.length === 0) return;
+      const result = advanceQueue("prev", { currentSong: get().currentSong });
 
-      const { loopMode, currentSong } = get();
-      const { currentIndex: queueIndex } = queueStore;
-      const currentIndex = alignQueueIndex(queue, queueIndex, get().currentIndex, currentSong);
-
-      let prevIndex: number;
-      if (loopMode === "shuffle") {
-        prevIndex = Math.floor(Math.random() * queue.length);
-      } else {
-        prevIndex = (currentIndex - 1 + queue.length) % queue.length;
+      if (!result.song) {
+        // 与 nextSong 共用停止语义：边界只停止，不产生错误/toast。
+        clearPlaybackRequest();
+        usePlayerStore.getState().setCurrentSong(null);
+        set({ currentSong: null, isPlaying: false, isLoading: false });
+        return;
       }
 
-      const prevSongItem = queue[prevIndex];
-      queueStore.setCurrentIndex(prevIndex);
-      queueStore.addToHistory(prevSongItem);
-      startPlaybackRequest(prevSongItem);
-      usePlayerStore.getState().setCurrentSong(prevSongItem);
-
-      set(createTrackStartState(prevSongItem));
+      // S6: 与 nextSong 共用 createTrackStartState；导航切歌不重置情感曲线模式。
+      startPlaybackRequest(result.song);
+      usePlayerStore.getState().setCurrentSong(result.song);
+      useQueueStore.getState().addToHistory(result.song);
+      set(createTrackStartState(result.song));
     },
 
     setIsLoading: (loading) => {
@@ -283,7 +235,13 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
       flushProgressToStorage();
       const queueStore = useQueueStore.getState();
       const currentQueue = queueStore.queue;
-      const queueIdx = currentQueue.findIndex((s) => s.id === song.id);
+      // Position is authoritative (duplicate ids are distinct queue entries):
+      // when the navigator already moved currentIndex, keep that occurrence.
+      const indexedSong = currentQueue[queueStore.currentIndex];
+      const queueIdx =
+        indexedSong && indexedSong.id === song.id
+          ? queueStore.currentIndex
+          : currentQueue.findIndex((s) => s.id === song.id);
 
       let fullQueue: Song[];
       let startIdx: number;

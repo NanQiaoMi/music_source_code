@@ -409,6 +409,8 @@ const attachListeners = (
 ) => {
   detachListeners(audio);
 
+  // S6-9d: attachListeners 直接写一对投影值（useAudioStore/usePlayerStore.setState），
+  // 不再解构 audioStore 动作（避免闭包持有旧快照）。
   // timeupdate 在部分浏览器上可达每秒 10 次，而 audio-store / player-store 的 persist
   // 会在**每次 setState** 时同步展开整个 state、JSON.stringify 并写 localStorage，
   // 两个 store 叠加即每秒 20 次序列化 + 写盘 —— 这是"出声之后控件迟钝"的来源之一。
@@ -774,6 +776,8 @@ const attachListeners = (
       triggerBackgroundCache(endedSong, currentSrc).catch(() => {});
     }
 
+    // S1-5：结束策略与手动切歌共用 QueueNavigator，但单曲循环重播由这里决策
+    // （navigator 的 single-loop 语义留给 ended 调用方）。
     const currentLoopMode = getPlayerLoopMode();
 
     if (currentLoopMode === "single") {
@@ -795,6 +799,8 @@ const attachListeners = (
       );
       audio.play().catch((error) => handlePlayError(error, replayRequestId));
     } else {
+      // S1-5：与手动「下一首」共用 QueueNavigator（nextPlayback → playbackSlice.nextSong
+      // → advanceQueue），删歌/重排/清空后按 queueStore 最新快照推进。
       nextPlayback();
     }
   };

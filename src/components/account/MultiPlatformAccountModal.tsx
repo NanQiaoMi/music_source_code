@@ -171,8 +171,9 @@ export const MultiPlatformAccountModal: React.FC<MultiPlatformAccountModalProps>
             );
             if (!nextBatch || nextBatch.length === 0) break;
 
-            const updatedQueue = appendSongsToQueue(nextBatch);
-            useAudioStore.setState({ queue: updatedQueue });
+            // S6 保留 appendSongsToQueue helper（现取 queueStore 最新快照）；
+            // S1-5 保留 queueStore 单一权威，禁止反写 audioStore 队列镜像（投影由订阅回填）。
+            appendSongsToQueue(nextBatch);
             importSongs(nextBatch);
             currentOffset += nextBatch.length;
           }

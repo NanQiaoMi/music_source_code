@@ -1,6 +1,5 @@
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaylistStore } from "@/store/playlistStore";
-import { useQueueStore } from "@/store/queueStore";
 import { AudioContextWatchdog } from "@/lib/audio/AudioContextWatchdog";
 import { hydrateStores } from "@/lib/bootstrapStores";
 import { getEmotionSnapshot } from "@/store/actions/emotionActions";
@@ -46,14 +45,9 @@ async function runBootstrap(): Promise<boolean> {
 
     // 1. 只在本次应用生命周期开始时恢复一次，路由返回主页不能重置播放中状态。
     if (!hasRestoredPlaybackState) {
-      // S6-9c 白名单：启动恢复只跑一次，player 走动作层快照；队列没有可注入的 ports，
-      // 这里保留一处直读（目标 restore 快照就取这一瞬间）。
+      // S6-9c 白名单：启动恢复只跑一次，player 走动作层快照（无 React 上下文）。
       const player = getPlayerSnapshot();
       const restoredSong = player.currentSong;
-      // eslint-disable-next-line no-lib-service-getstate -- S6-9c 白名单：restore 只跑一次，队列无 ports
-      const queueState = useQueueStore.getState();
-      const restoredQueue = queueState.queue;
-      const restoredIndex = queueState.currentIndex;
 
       if (restoredSong) {
         // S6-4: 身份字段 currentSong 归 playerStore（hydrate 已恢复）；audioStore 镜像由
@@ -68,14 +62,8 @@ async function runBootstrap(): Promise<boolean> {
         );
       }
 
-      if (restoredQueue && restoredQueue.length > 0) {
-        useAudioStore.setState({
-          queue: restoredQueue,
-          currentIndex: restoredIndex || 0,
-        });
-        console.log(`[Bootstrap] 📋 已恢复上次播放队列: ${restoredQueue.length} 首歌曲`);
-      }
-
+      // S1-5: queue/currentIndex 已由 queueStore 自行持久化和恢复，
+      // 启动时不再复制到 audioStore（单向投影会处理镜像）。
       // S6-4: loopMode 归 playerStore；同名 setter 触发兼容投影，保持 audioStore 镜像一致
       const restoredLoopMode = player.loopMode;
       if (restoredLoopMode) {

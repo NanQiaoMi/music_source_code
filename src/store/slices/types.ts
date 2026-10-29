@@ -1,5 +1,6 @@
 import { StateCreator } from "zustand";
 import { Song } from "@/types/song";
+import type { LegacyQueueCompatibilityState } from "./legacyQueueCompatibility";
 
 export type { Song };
 
@@ -148,13 +149,6 @@ export interface DeviceSliceState {
 export interface SourceSliceState {
   verifyAndResolveSource: (song: Song, timeoutMs?: number) => Promise<boolean>;
   handleSourceError: (song: Song, error: unknown) => void;
-}
-
-export interface LegacyQueueCompatibilityState {
-  queue: Song[];
-  currentIndex: number;
-  setQueue: (songs: Song[]) => void;
-  setCurrentIndex: (index: number) => void;
 }
 
 export type AudioStoreState = PlaybackSliceState &
