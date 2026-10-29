@@ -13,8 +13,6 @@ import {
 } from "@/services/localMusicStorage";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { useListeningJournalStore } from "@/store/listeningJournalStore";
-import { useEmotionStore } from "@/store/emotionStore";
-import { useABLoopStore } from "@/store/abLoopStore";
 import { getAudioEffectsManager } from "@/lib/audio/AudioEffectsManager";
 import { AudioEngine } from "@/lib/audio/AudioEngine";
 import { CrossfadeMixer } from "@/lib/audio/CrossfadeMixer";
@@ -40,14 +38,42 @@ import {
 } from "@/lib/audio/backgroundCacheScheduler";
 import { audioPrefetcher } from "@/lib/audio/audioPrefetcher";
 import { BlobUrlRegistry } from "@/services/BlobUrlRegistry";
-import { useQueueStore } from "@/store/queueStore";
-import { useUIStore } from "@/store/uiStore";
-import { useUserAccountStore, isPlatformLoggedIn, PlatformType } from "@/store/userAccountStore";
+import { isPlatformLoggedIn, PlatformType } from "@/store/userAccountStore";
 import { usePlaybackRuntimeStore } from "@/store/playbackRuntimeStore";
 import type { PlaybackMachineEvent } from "@/lib/audio/playbackStateMachine";
 import { playbackClock } from "@/lib/audio/PlaybackClock";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { shouldAcceptPlaybackMediaEvent } from "@/lib/audio/playbackMediaEventGuard";
+import { getPlayerPlaybackRate, getPlayerSnapshot } from "@/store/actions/playbackActions";
+import { showToast } from "@/store/actions/uiActions";
+import { getPlaybackRuntimeSnapshot } from "@/store/actions/playbackRuntimeActions";
+import {
+  bindPlaybackDeck,
+  commitCurrentSongCover,
+  commitCurrentSongLyrics,
+  commitPlaybackDuration,
+  commitPlaybackLoading,
+  dispatchPlaybackMediaEvent,
+  dispatchPlaybackRequestError,
+  getABLoopSnapshot,
+  getCurrentPlayerSong,
+  getPlaybackPhase,
+  getPlaybackRequestId,
+  getPlaybackTargetSongId,
+  getPlayerCurrentTime,
+  getPlayerLoopMode,
+  getQueueSnapshot,
+  getSongEmotion,
+  incrementABLoopCount,
+  isPlaybackIntentActive,
+  nextPlayback,
+  promptPlatformLogin,
+  resetPlaybackPosition,
+  setAudioError,
+  setAudioLoading,
+  togglePlaybackIntent,
+  trimListeningJournal,
+} from "@/store/actions/playbackEngineActions";
 
 // Module-level shared state to persist across hook unmounts/remounts
 let audioInstance: HTMLAudioElement | null = null;
@@ -105,7 +131,7 @@ function getPlaybackSongIdentity(song: Song | null): string | null {
 }
 
 function isCurrentPlaybackRequest(requestId: number, songId?: string): boolean {
-  const state = usePlaybackRuntimeStore.getState();
+  const state = getPlaybackRuntimeSnapshot();
   return state.requestId === requestId && (songId === undefined || state.targetSongId === songId);
 }
 
@@ -118,16 +144,14 @@ function bindActivePlaybackDeck(
   if (!isCurrentPlaybackRequest(requestId, songId ?? undefined)) return;
   const sourceIdentity = getMediaSourceIdentity(source);
   audioRequestIds.set(audio, requestId);
-  usePlaybackRuntimeStore
-    .getState()
-    .bindActiveDeck(requestId, songId, getAudioDeckId(audio), sourceIdentity);
+  bindPlaybackDeck(requestId, songId, getAudioDeckId(audio), sourceIdentity);
   playbackClock.attach(audio, requestId, songId, getAudioDeckId(audio), sourceIdentity);
 }
 
 function getCurrentAudioOwner(
   audio: HTMLAudioElement
 ): { requestId: number; deckId: string; source: string } | null {
-  const state = usePlaybackRuntimeStore.getState();
+  const state = getPlaybackRuntimeSnapshot();
   const requestId = audioRequestIds.get(audio);
   const deckId = getAudioDeckId(audio);
   if (
@@ -158,18 +182,8 @@ function dispatchCurrentAudioEvent(
   const owner = getCurrentAudioOwner(audio);
   if (!owner) return null;
   const event = type === "error" ? { type, ...owner, message } : { type, ...owner };
-  usePlaybackRuntimeStore
-    .getState()
-    .dispatchMediaEvent(event as Exclude<PlaybackMachineEvent, { type: "request" }>);
+  dispatchPlaybackMediaEvent(event as Exclude<PlaybackMachineEvent, { type: "request" }>);
   return owner.requestId;
-}
-
-function dispatchPlaybackRequestError(requestId: number, message: string): void {
-  usePlaybackRuntimeStore.getState().dispatchMediaEvent({
-    type: "request-error",
-    requestId,
-    message,
-  });
 }
 
 // handlePlayError 抢救成功后会重试 play()，其失败要回到自身。
@@ -235,7 +249,7 @@ function ensureAudioElements(): HTMLAudioElement | null {
   if (!audioInstance) {
     audioInstance = new Audio();
     audioInstance.crossOrigin = "anonymous";
-    const initialRate = usePlayerStore.getState().playbackRate || 1.0;
+    const initialRate = getPlayerPlaybackRate();
     audioInstance.defaultPlaybackRate = initialRate;
     audioInstance.playbackRate = initialRate;
     audioElementRef.current = audioInstance;
@@ -303,8 +317,8 @@ function stopForMissingAudioSource(audio: HTMLAudioElement): void {
   audio.removeAttribute("src");
   audio.src = "";
 
-  const currentSong = usePlayerStore.getState().currentSong;
-  const runtimeState = usePlaybackRuntimeStore.getState();
+  const currentSong = getCurrentPlayerSong();
+  const runtimeState = getPlaybackRuntimeSnapshot();
   if (runtimeState.targetSongId === getPlaybackSongIdentity(currentSong)) {
     dispatchPlaybackRequestError(runtimeState.requestId, MISSING_AUDIO_SOURCE_MESSAGE);
   }
@@ -352,29 +366,24 @@ function stopForMissingAudioSource(audio: HTMLAudioElement): void {
         timestamp: Date.now(),
       },
     });
-    useUIStore
-      .getState()
-      .showToast(
-        `🔒 无法播放: 《${currentSong?.title || "此歌曲"}》来自【${platformLabel}】，未登录账号。请先登录以开启链路`,
-        "warning",
-        4000
-      );
+    showToast(
+      `🔒 无法播放: 《${currentSong?.title || "此歌曲"}》来自【${platformLabel}】，未登录账号。请先登录以开启链路`,
+      "warning",
+      4000
+    );
     // 自动定向激活并打开该平台账号登录弹窗
-    useUserAccountStore.getState().setActivePlatform(mappedPlatform);
-    useUserAccountStore.getState().setIsAccountModalOpen(true);
+    promptPlatformLogin(mappedPlatform);
   } else {
     useAudioStore.setState({
       isPlaying: false,
       isLoading: false,
       error: { type: "load", message: MISSING_AUDIO_SOURCE_MESSAGE, timestamp: Date.now() },
     });
-    useUIStore
-      .getState()
-      .showToast(
-        `⚠️ 无法播放: 《${currentSong?.title || "该歌曲"}》没有可用音频直链，请导入本地文件或切换音源`,
-        "warning",
-        4000
-      );
+    showToast(
+      `⚠️ 无法播放: 《${currentSong?.title || "该歌曲"}》没有可用音频直链，请导入本地文件或切换音源`,
+      "warning",
+      4000
+    );
   }
 }
 
@@ -400,16 +409,6 @@ const attachListeners = (
 ) => {
   detachListeners(audio);
 
-  const {
-    // 这两个只在组件外层的 effect deps 里用到，attachListeners 内部并未使用，_ 前缀标记
-    setCurrentTime: _setCurrentTime,
-    setDuration: _setDuration,
-    setIsLoading,
-    setError,
-    nextSong,
-    loopMode: _loopMode,
-  } = useAudioStore.getState();
-
   // timeupdate 在部分浏览器上可达每秒 10 次，而 audio-store / player-store 的 persist
   // 会在**每次 setState** 时同步展开整个 state、JSON.stringify 并写 localStorage，
   // 两个 store 叠加即每秒 20 次序列化 + 写盘 —— 这是"出声之后控件迟钝"的来源之一。
@@ -430,11 +429,11 @@ const attachListeners = (
       }
     }
 
-    const abState = useABLoopStore.getState();
+    const abState = getABLoopSnapshot();
     if (abState.isEnabled && abState.pointA !== null && abState.pointB !== null) {
       if (audio.currentTime >= abState.pointB) {
         audio.currentTime = abState.pointA;
-        useABLoopStore.getState().incrementLoopCount();
+        incrementABLoopCount();
       }
     }
 
@@ -443,7 +442,7 @@ const attachListeners = (
       audio.duration > 20 &&
       (audio.currentTime / audio.duration > 0.75 || audio.duration - audio.currentTime < 20)
     ) {
-      const qState = useQueueStore.getState();
+      const qState = getQueueSnapshot();
       if (qState.queue.length > 1) {
         const nextIdx = (qState.currentIndex + 1) % qState.queue.length;
         const nextSong = qState.queue[nextIdx];
@@ -463,15 +462,14 @@ const attachListeners = (
       usePlayerStore.setState({ duration: d });
     }
     // 播放速度恢复：确保流媒体元数据解析后精准恢复用户设置的目标倍速
-    const currentRate = usePlayerStore.getState().playbackRate || 1.0;
+    const currentRate = getPlayerPlaybackRate();
     audio.defaultPlaybackRate = currentRate;
     if (audio.playbackRate !== currentRate) {
       audio.playbackRate = currentRate;
     }
 
     // 断点续播恢复：如果本地持久化记录了上次播放秒数，且尚未开始播放，则安全恢复到该断点
-    const savedTime =
-      usePlayerStore.getState().currentTime || getPlaybackClockSnapshot().currentTime;
+    const savedTime = getPlayerCurrentTime() || getPlaybackClockSnapshot().currentTime;
     if (
       savedTime > 0 &&
       Math.abs(audio.currentTime - savedTime) > 1 &&
@@ -486,7 +484,7 @@ const attachListeners = (
 
     // 智能防试听截断：若加载出的流时长 <= 95s (如 30s/60s VIP试听)，自动抢救全网完整母带
     // 使用防重入标志与单曲抢救次数上限，避免抢救后 audio.load() 再次触发 onLoadedMetadata 形成死循环
-    const currentSong = usePlayerStore.getState().currentSong;
+    const currentSong = getCurrentPlayerSong();
     const songKey = String(currentSong?.id || currentSong?.title || "");
     const rescueAttempts = songKey ? songRescueAttemptsRef.current.get(songKey) || 0 : 0;
 
@@ -568,8 +566,7 @@ const attachListeners = (
     if (!getCurrentAudioOwner(audio)) return;
     const d = audio.duration;
     if (d && Number.isFinite(d) && d > 0) {
-      useAudioStore.getState().setDuration(d);
-      usePlayerStore.getState().setDuration(d);
+      commitPlaybackDuration(d);
     } else {
       useAudioStore.setState({ duration: 0 });
       usePlayerStore.setState({ duration: 0 });
@@ -581,8 +578,7 @@ const attachListeners = (
     // 每次新资源开始加载都重开启播缓冲保护窗口（设置 src 会隐式触发 load 算法，
     // 所以这里能覆盖主路径、试听抢救、onError 抢救与交叉淡入四条装载路径）
     beginInitialBufferingWindow();
-    useAudioStore.getState().setIsLoading(true);
-    usePlayerStore.getState().setIsLoading(true);
+    commitPlaybackLoading(true);
   };
   const onCanPlay = () => {
     const owner = getCurrentAudioOwner(audio);
@@ -592,10 +588,10 @@ const attachListeners = (
       clearTimeout(waitingTimeoutRef.current);
       waitingTimeoutRef.current = null;
     }
-    if (!usePlaybackRuntimeStore.getState().shouldPlay) {
+    if (!isPlaybackIntentActive()) {
       setConfirmedPlaybackState(false, false);
     }
-    const currentRate = usePlayerStore.getState().playbackRate || 1.0;
+    const currentRate = getPlayerPlaybackRate();
     if (audio.playbackRate !== currentRate) {
       audio.playbackRate = currentRate;
     }
@@ -612,12 +608,12 @@ const attachListeners = (
         ended: audio.ended,
         readyState: audio.readyState,
         hasError: Boolean(audio.error),
-        shouldPlay: usePlaybackRuntimeStore.getState().shouldPlay,
+        shouldPlay: isPlaybackIntentActive(),
       })
     ) {
       return;
     }
-    if (!usePlaybackRuntimeStore.getState().shouldPlay) return;
+    if (!isPlaybackIntentActive()) return;
     dispatchCurrentAudioEvent(audio, "waiting");
     setConfirmedPlaybackState(false, true);
 
@@ -636,7 +632,7 @@ const attachListeners = (
         !currentOwner ||
         currentOwner.requestId !== owner.requestId ||
         currentOwner.source !== owner.source ||
-        !usePlaybackRuntimeStore.getState().shouldPlay
+        !isPlaybackIntentActive()
       ) {
         return;
       }
@@ -671,13 +667,13 @@ const attachListeners = (
         ended: audio.ended,
         readyState: audio.readyState,
         hasError: Boolean(audio.error),
-        shouldPlay: usePlaybackRuntimeStore.getState().shouldPlay,
+        shouldPlay: isPlaybackIntentActive(),
       })
     ) {
       return;
     }
     const requestId = dispatchCurrentAudioEvent(audio, "playing");
-    if (requestId === null || usePlaybackRuntimeStore.getState().phase !== "playing") return;
+    if (requestId === null || getPlaybackPhase() !== "playing") return;
     if (waitingTimeoutRef.current) {
       clearTimeout(waitingTimeoutRef.current);
       waitingTimeoutRef.current = null;
@@ -687,18 +683,16 @@ const attachListeners = (
     setConfirmedPlaybackState(true, false);
     syncPersistedPlaybackProgress(audio);
     // 仅在切歌或新曲目初次播放成功时弹出 Toast 提示（杜绝快进/倒退/拖动进度条 seek 时重复刷屏）
-    const playingSong = usePlayerStore.getState().currentSong;
+    const playingSong = getCurrentPlayerSong();
     if (playingSong && playingSong.title) {
       const songKey = `${playingSong.id || playingSong.title}`;
       if (lastToastSongIdRef.current !== songKey) {
         lastToastSongIdRef.current = songKey;
-        useUIStore
-          .getState()
-          .showToast(
-            `▶ 正在播放: 《${playingSong.title}》· ${playingSong.artist || "未知歌手"}`,
-            "success",
-            2500
-          );
+        showToast(
+          `▶ 正在播放: 《${playingSong.title}》· ${playingSong.artist || "未知歌手"}`,
+          "success",
+          2500
+        );
       }
     }
     // 后台缓存延后到缓冲就绪再发起（见 backgroundCacheScheduler），避免和首段缓冲抢带宽
@@ -724,12 +718,12 @@ const attachListeners = (
         ended: audio.ended,
         readyState: audio.readyState,
         hasError: Boolean(audio.error),
-        shouldPlay: usePlaybackRuntimeStore.getState().shouldPlay,
+        shouldPlay: isPlaybackIntentActive(),
       })
     ) {
       return;
     }
-    const runtime = usePlaybackRuntimeStore.getState();
+    const runtime = getPlaybackRuntimeSnapshot();
     if (runtime.shouldPlay && (runtime.phase === "loading" || runtime.phase === "buffering")) {
       return;
     }
@@ -750,7 +744,7 @@ const attachListeners = (
         ended: audio.ended,
         readyState: audio.readyState,
         hasError: Boolean(audio.error),
-        shouldPlay: usePlaybackRuntimeStore.getState().shouldPlay,
+        shouldPlay: isPlaybackIntentActive(),
       })
     ) {
       return;
@@ -767,7 +761,7 @@ const attachListeners = (
     syncPersistedPlaybackProgress(audio);
 
     // 播放结束双重保险触发离线持久化缓存
-    const endedSong = usePlayerStore.getState().currentSong;
+    const endedSong = getCurrentPlayerSong();
     const currentSrc = audio.src;
     if (
       endedSong &&
@@ -780,14 +774,13 @@ const attachListeners = (
       triggerBackgroundCache(endedSong, currentSrc).catch(() => {});
     }
 
-    const currentLoopMode = usePlayerStore.getState().loopMode;
+    const currentLoopMode = getPlayerLoopMode();
 
     if (currentLoopMode === "single") {
       console.info("[useAudioPlayer] 🔁 触发单曲循环重播:", endedSong?.title);
-      useAudioStore.getState().setCurrentTime(0);
-      usePlayerStore.getState().setCurrentTime(0);
+      resetPlaybackPosition();
       audio.currentTime = 0;
-      const runtime = usePlaybackRuntimeStore.getState();
+      const runtime = getPlaybackRuntimeSnapshot();
       const replayRequestId = runtime.requestPlayback(
         runtime.targetSongId,
         runtime.targetSource,
@@ -802,7 +795,7 @@ const attachListeners = (
       );
       audio.play().catch((error) => handlePlayError(error, replayRequestId));
     } else {
-      nextSong();
+      nextPlayback();
     }
   };
   const onError = async (event: Event) => {
@@ -834,7 +827,7 @@ const attachListeners = (
       return;
     }
 
-    const currentSong = usePlayerStore.getState().currentSong;
+    const currentSong = getCurrentPlayerSong();
     const songKey = String(currentSong?.id || currentSong?.title || "");
     const rescueAttempts = songKey ? songRescueAttemptsRef.current.get(songKey) || 0 : 0;
 
@@ -876,12 +869,7 @@ const attachListeners = (
           const streamUrl = getPlayableStreamUrl(rescued.url);
           if (!failedUrlsRef.current.has(streamUrl)) {
             rescuedUrlsRef.current.add(streamUrl);
-            bindActivePlaybackDeck(
-              audioEl,
-              requestId,
-              usePlaybackRuntimeStore.getState().targetSongId,
-              streamUrl
-            );
+            bindActivePlaybackDeck(audioEl, requestId, getPlaybackTargetSongId(), streamUrl);
             audioEl.src = streamUrl;
             currentAudioUrlRef.current = streamUrl;
             // 直接修改属性而不创建新引用，避免触发 Playback Effect 级联重置
@@ -908,20 +896,18 @@ const attachListeners = (
     const loadError = createAudioElementLoadError(error);
     dispatchPlaybackRequestError(requestId, loadError.message);
     logHandledAudioWarning("Audio element load failed", loadError.message);
-    setError(loadError);
-    setIsLoading(false);
+    setAudioError(loadError);
+    setAudioLoading(false);
     isPlayingRef.current = false;
     setConfirmedPlaybackState(false, false);
 
     if (songKey && lastToastSongIdRef.current !== `error-${songKey}`) {
       lastToastSongIdRef.current = `error-${songKey}`;
-      useUIStore
-        .getState()
-        .showToast(
-          `❌ 播放失败: 无法解析《${currentSong?.title || "此歌曲"}》的音频流，请尝试更换音源`,
-          "error",
-          4000
-        );
+      showToast(
+        `❌ 播放失败: 无法解析《${currentSong?.title || "此歌曲"}》的音频流，请尝试更换音源`,
+        "error",
+        4000
+      );
     }
   };
 
@@ -930,7 +916,7 @@ const attachListeners = (
     const currentRate = audio.playbackRate;
     if (Number.isFinite(currentRate) && currentRate > 0) {
       const rounded = Math.round(currentRate * 100) / 100;
-      const storeRate = usePlayerStore.getState().playbackRate || 1.0;
+      const storeRate = getPlayerPlaybackRate();
       if (Math.abs(storeRate - rounded) > 0.01) {
         usePlayerStore.setState({ playbackRate: rounded });
       }
@@ -1032,8 +1018,8 @@ export const useAudioPlayer = () => {
   const recordJournalPlay = useListeningJournalStore((state) => state.recordPlay);
 
   const handlePlayError = useCallback(
-    async (error: PlaybackErrorLike, requestId = usePlaybackRuntimeStore.getState().requestId) => {
-      if (!isCurrentPlaybackRequest(requestId) || !usePlaybackRuntimeStore.getState().shouldPlay) {
+    async (error: PlaybackErrorLike, requestId = getPlaybackRequestId()) => {
+      if (!isCurrentPlaybackRequest(requestId) || !isPlaybackIntentActive()) {
         return;
       }
       const playbackError = getPlaybackError(error);
@@ -1061,7 +1047,7 @@ export const useAudioPlayer = () => {
         return;
       }
 
-      const currentSong = usePlayerStore.getState().currentSong;
+      const currentSong = getCurrentPlayerSong();
       if (
         !currentSong ||
         !isCurrentPlaybackRequest(requestId, getPlaybackSongIdentity(currentSong) ?? undefined)
@@ -1158,13 +1144,11 @@ export const useAudioPlayer = () => {
         });
         if (songKey && lastToastSongIdRef.current !== `error-${songKey}`) {
           lastToastSongIdRef.current = `error-${songKey}`;
-          useUIStore
-            .getState()
-            .showToast(
-              `⚠️ 无法播放: 《${currentSong?.title || "该歌曲"}》没有可用音频直链，请导入本地文件或切换音源`,
-              "warning",
-              4000
-            );
+          showToast(
+            `⚠️ 无法播放: 《${currentSong?.title || "该歌曲"}》没有可用音频直链，请导入本地文件或切换音源`,
+            "warning",
+            4000
+          );
         }
         return;
       }
@@ -1177,13 +1161,11 @@ export const useAudioPlayer = () => {
       });
       if (songKey && lastToastSongIdRef.current !== `error-${songKey}`) {
         lastToastSongIdRef.current = `error-${songKey}`;
-        useUIStore
-          .getState()
-          .showToast(
-            `❌ 播放失败: 无法解析《${currentSong?.title || "此歌曲"}》的音频流，请尝试更换音源`,
-            "error",
-            4000
-          );
+        showToast(
+          `❌ 播放失败: 无法解析《${currentSong?.title || "此歌曲"}》的音频流，请尝试更换音源`,
+          "error",
+          4000
+        );
       }
     },
     [setError, setIsLoading]
@@ -1222,7 +1204,7 @@ export const useAudioPlayer = () => {
             AudioEngine.getInstance()
               .resume()
               .catch(() => {});
-            const requestId = usePlaybackRuntimeStore.getState().requestId;
+            const requestId = getPlaybackRequestId();
             activeAudio.play().catch((error) => handlePlayError(error, requestId));
           }
         } catch {
@@ -1310,15 +1292,18 @@ export const useAudioPlayer = () => {
       }
 
       const songId = String(currentSong.id || currentSong.title || "");
-      const currentRuntime = usePlaybackRuntimeStore.getState();
+      const currentRuntime = getPlaybackRuntimeSnapshot();
       const requestId =
         currentRuntime.targetSongId === songId
           ? currentRuntime.requestId
-          : usePlaybackRuntimeStore
-              .getState()
-              .requestPlayback(songId || null, currentSong.audioUrl || null, isPlaying, true);
+          : getPlaybackRuntimeSnapshot().requestPlayback(
+              songId || null,
+              currentSong.audioUrl || null,
+              isPlaying,
+              true
+            );
       if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
-      const targetPlaying = usePlaybackRuntimeStore.getState().shouldPlay;
+      const targetPlaying = isPlaybackIntentActive();
       isPlayingRef.current = targetPlaying;
       const targetSourceKey = `${currentSong.source || ""}\u0000${currentSong.audioUrl || ""}`;
       const targetNeedsLoad =
@@ -1337,8 +1322,7 @@ export const useAudioPlayer = () => {
             // 仅当音频已播放至末尾且用户明确要求恢复播放时，才重置进度归零
             if (audio.ended) {
               audio.currentTime = 0;
-              useAudioStore.getState().setCurrentTime(0);
-              usePlayerStore.getState().setCurrentTime(0);
+              resetPlaybackPosition();
             }
             try {
               await initializeAudioGraph(audio);
@@ -1425,16 +1409,14 @@ export const useAudioPlayer = () => {
               if (offlineRecord.lyrics && !currentSong.lyrics) {
                 currentSong.lyrics = offlineRecord.lyrics;
                 currentSong.translationLyrics = offlineRecord.translationLyrics;
-                usePlayerStore
-                  .getState()
-                  .updateCurrentSongLyrics(offlineRecord.lyrics, offlineRecord.translationLyrics);
+                commitCurrentSongLyrics(offlineRecord.lyrics, offlineRecord.translationLyrics);
               }
               if (
                 offlineRecord.cover &&
                 (!currentSong.cover || currentSong.cover === "/default-cover.svg")
               ) {
                 currentSong.cover = offlineRecord.cover;
-                usePlayerStore.getState().updateCurrentSongCover(offlineRecord.cover);
+                commitCurrentSongCover(offlineRecord.cover);
               }
 
               console.info(
@@ -1523,9 +1505,7 @@ export const useAudioPlayer = () => {
               !audioUrl.startsWith("blob:") &&
               !audioUrl.startsWith("data:"));
           if ((isInvalidUrl || isRiskyOuterUrl) && currentSong) {
-            useUIStore
-              .getState()
-              .showToast(`⚡ 正在通过音源引擎嗅探直链: 《${currentSong.title}》...`, "info", 2000);
+            showToast(`⚡ 正在通过音源引擎嗅探直链: 《${currentSong.title}》...`, "info", 2000);
             try {
               const resolved = await multiSourceResolver.resolvePlayableAudio({
                 id: currentSong.id,
@@ -1565,9 +1545,7 @@ export const useAudioPlayer = () => {
               if (lrcData.lyrics && isCurrentPlaybackRequest(requestId, songId || undefined)) {
                 currentSong.lyrics = lrcData.lyrics;
                 currentSong.translationLyrics = lrcData.translationLyrics;
-                usePlayerStore
-                  .getState()
-                  .updateCurrentSongLyrics(lrcData.lyrics, lrcData.translationLyrics);
+                commitCurrentSongLyrics(lrcData.lyrics, lrcData.translationLyrics);
 
                 try {
                   const offlineRec = await getOfflineAudio(String(songId));
@@ -1598,7 +1576,7 @@ export const useAudioPlayer = () => {
             .then(async (coverUrl) => {
               if (coverUrl && isCurrentPlaybackRequest(requestId, songId || undefined)) {
                 currentSong.cover = coverUrl;
-                usePlayerStore.getState().updateCurrentSongCover(coverUrl);
+                commitCurrentSongCover(coverUrl);
 
                 try {
                   const offlineRec = await getOfflineAudio(String(songId));
@@ -1646,7 +1624,7 @@ export const useAudioPlayer = () => {
           const fromAudio = audio;
           const toAudio = secondaryElementRef.current;
 
-          const targetRate = usePlayerStore.getState().playbackRate || 1.0;
+          const targetRate = getPlayerPlaybackRate();
           bindActivePlaybackDeck(toAudio, requestId, songId || null, streamUrl);
           toAudio.src = streamUrl;
           currentAudioUrlRef.current = streamUrl;
@@ -1657,7 +1635,7 @@ export const useAudioPlayer = () => {
           const targetDeckId = getAudioDeckId(toAudio);
           const targetSource = getMediaSourceIdentity(streamUrl);
           const isCurrentCrossfade = () => {
-            const runtime = usePlaybackRuntimeStore.getState();
+            const runtime = getPlaybackRuntimeSnapshot();
             return (
               runtime.shouldPlay &&
               isCurrentPlaybackRequest(requestId, songId || undefined) &&
@@ -1685,7 +1663,7 @@ export const useAudioPlayer = () => {
           secondaryElementRef.current = fromAudio;
           setLocalAudioElement(toAudio);
         } else {
-          const targetRate = usePlayerStore.getState().playbackRate || 1.0;
+          const targetRate = getPlayerPlaybackRate();
           const mixer = CrossfadeMixer.getInstance();
           mixer.prepareForDirectPlayback(audio);
           if (secondaryElementRef.current && secondaryElementRef.current !== audio) {
@@ -1732,7 +1710,7 @@ export const useAudioPlayer = () => {
 
     const playedAt = Date.now();
     const timer = window.setTimeout(() => {
-      const playerState = usePlayerStore.getState();
+      const playerState = getPlayerSnapshot();
       if (!playerState.isPlaying || playerState.currentSong?.id !== songId) return;
 
       const audio = audioElementRef.current;
@@ -1742,12 +1720,12 @@ export const useAudioPlayer = () => {
         Math.max(CONFIRMED_PLAYBACK_SECONDS, elapsedSeconds),
         Math.max(CONFIRMED_PLAYBACK_SECONDS, songDuration)
       );
-      const mood = deriveJournalMood(useEmotionStore.getState().emotionMap[songId]);
+      const mood = deriveJournalMood(getSongEmotion(songId));
 
       lastRecordedSongIdRef.current = songId;
       recordStatsPlay(currentSong, listenSeconds, false, false, currentSong.format || "standard");
       recordJournalPlay({ songId, playedAt, listenSeconds, mood });
-      useListeningJournalStore.getState().trimToLast90Days();
+      trimListeningJournal();
     }, CONFIRMED_PLAYBACK_SECONDS * 1000);
 
     return () => window.clearTimeout(timer);
@@ -1783,7 +1761,7 @@ export const useAudioPlayer = () => {
   }, [eqBands, isEQEnabled]);
 
   const togglePlay = useCallback(() => {
-    useAudioStore.getState().togglePlaybackIntent();
+    togglePlaybackIntent();
   }, []);
 
   const seek = useCallback(

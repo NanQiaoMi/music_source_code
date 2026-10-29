@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { useGestureStore } from "@/store/gestureStore";
 import { useGestureSettingsStore } from "@/store/gestureSettingsStore";
+import {
+  getGestureBindings,
+  getGestureRuntimeSnapshot,
+  getGestureSettingsSnapshot,
+} from "@/store/actions/gestureActions";
 import {
   createGestureTuning,
   type GestureErrorState,
@@ -62,7 +66,7 @@ interface GestureDebugReplayFrame {
 interface GestureDebugApi {
   feed: (landmarks: GestureLandmarks | null, timestamp?: number) => GestureFrameResult | null;
   replay: (frames: GestureDebugReplayFrame[]) => void;
-  state: () => ReturnType<typeof useGestureStore.getState>;
+  state: () => ReturnType<typeof getGestureRuntimeSnapshot>;
 }
 
 declare global {
@@ -169,7 +173,7 @@ export function useGestureSession({
   // 灵敏度 / 平滑度 / 镜像变更只重建纯引擎（廉价），不重启摄像头。
   useEffect(() => {
     if (!enabled) return;
-    const settings = useGestureSettingsStore.getState();
+    const settings = getGestureSettingsSnapshot();
     engineRef.current = createGestureEngine(createGestureTuning(settings));
   }, [enabled, sensitivity, pointerSmoothing, mirror]);
 
@@ -194,9 +198,9 @@ export function useGestureSession({
     let debugOverrideUntil = 0;
     const videoTracks: MediaStreamTrack[] = [];
 
-    const runtime = useGestureStore.getState();
+    const runtime = getGestureRuntimeSnapshot();
     const isCancelled = () => cancelled;
-    const tuning = createGestureTuning(useGestureSettingsStore.getState());
+    const tuning = createGestureTuning(getGestureSettingsSnapshot());
     const state = {
       handPresent: false,
       posture: "none" as GesturePosture,
@@ -259,7 +263,7 @@ export function useGestureSession({
     };
 
     const applyCommand = (command: Parameters<typeof resolveGestureActionForCommand>[0]) => {
-      const bindings = useGestureSettingsStore.getState().bindings;
+      const bindings = getGestureBindings();
       const action = resolveGestureActionForCommand(command, bindings);
       const outcome = executeGestureAction(action);
       runtime.pushEvent({
@@ -272,7 +276,7 @@ export function useGestureSession({
     };
 
     const applyFrame = (result: GestureFrameResult) => {
-      const settings = useGestureSettingsStore.getState();
+      const settings = getGestureSettingsSnapshot();
 
       if (result.handPresent !== state.handPresent) {
         state.handPresent = result.handPresent;
@@ -391,7 +395,7 @@ export function useGestureSession({
       if (timestamp - lastDetectAt < 1000 / tuning.maxFps - 2) return;
       lastDetectAt = timestamp;
 
-      const settings = useGestureSettingsStore.getState();
+      const settings = getGestureSettingsSnapshot();
       let landmarks: GestureLandmarks | null = null;
       try {
         lastMediaTimestamp = Math.max(lastMediaTimestamp + 0.01, timestamp);
@@ -509,12 +513,12 @@ export function useGestureSession({
             applyFrame(result);
           }
         },
-        state: () => useGestureStore.getState(),
+        state: () => getGestureRuntimeSnapshot(),
       };
     };
 
     const init = async () => {
-      const settings = useGestureSettingsStore.getState();
+      const settings = getGestureSettingsSnapshot();
       runtime.setStatus("loading_assets");
       runtime.setError(null);
       runtime.setCameraActive(false);
@@ -691,7 +695,7 @@ export function useGestureSession({
         delete window.__gestureDebug;
       }
       engineRef.current?.reset();
-      const store = useGestureStore.getState();
+      const store = getGestureRuntimeSnapshot();
       store.resetRuntime();
       store.setModelReady(false);
       store.setBackend(null);

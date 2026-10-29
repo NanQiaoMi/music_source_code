@@ -1,0 +1,79 @@
+{
+  "metric": "useXStore.getState() calls in non-test src files",
+  "generatedAt": "2026-10-29T04:47:39.620Z",
+  "totals": {
+    "getState": 230,
+    "files": 37
+  },
+  "byLayer": {
+    "app": 0,
+    "components": 0,
+    "hooks": 0,
+    "lib": 5,
+    "services": 0,
+    "store": 210,
+    "domain": 15
+  },
+  "services": {
+    "total": 0,
+    "files": {},
+    "scanned": 18
+  },
+  "components": {
+    "total": 0,
+    "files": {},
+    "scanned": 235
+  },
+  "lib": {
+    "total": 5,
+    "files": {
+      "src/lib/bootstrap.ts": 2,
+      "src/lib/gesture/actions.ts": 3
+    },
+    "scanned": 79
+  },
+  "hooks": {
+    "total": 0,
+    "files": {},
+    "scanned": 23
+  },
+  "files": {
+    "src/domain/playback/ports.ts": 15,
+    "src/lib/bootstrap.ts": 2,
+    "src/lib/gesture/actions.ts": 3,
+    "src/store/actions/emotionActions.ts": 1,
+    "src/store/actions/gestureActions.ts": 3,
+    "src/store/actions/lyricsActions.ts": 1,
+    "src/store/actions/playbackActions.ts": 9,
+    "src/store/actions/playbackEngineActions.ts": 31,
+    "src/store/actions/playbackRuntimeActions.ts": 1,
+    "src/store/actions/queueActions.ts": 1,
+    "src/store/actions/recommendationActions.ts": 3,
+    "src/store/actions/serviceActions.ts": 17,
+    "src/store/actions/shellActions.ts": 5,
+    "src/store/actions/sourceActions.ts": 2,
+    "src/store/actions/uiActions.ts": 1,
+    "src/store/actions/visualizationActions.ts": 1,
+    "src/store/aiAgent/playbackContext.ts": 3,
+    "src/store/aiStore.ts": 1,
+    "src/store/audioStore.ts": 11,
+    "src/store/healthCheckStore.ts": 1,
+    "src/store/hiresStore.ts": 1,
+    "src/store/knowledgeStore.ts": 1,
+    "src/store/linerNotesStore.ts": 1,
+    "src/store/performanceV8Store.ts": 3,
+    "src/store/playerStore.ts": 1,
+    "src/store/sleepTimerStore.ts": 1,
+    "src/store/slices/deviceSlice.ts": 13,
+    "src/store/slices/playbackSlice.ts": 44,
+    "src/store/slices/sourceSlice.ts": 2,
+    "src/store/smartMixStore.ts": 1,
+    "src/store/smartPlaylistStore.ts": 1,
+    "src/store/sourceConfigStore.ts": 1,
+    "src/store/statsAchievementsStore.ts": 1,
+    "src/store/uiShellStore.ts": 1,
+    "src/store/uiStore.ts": 37,
+    "src/store/useAIAgentStore.ts": 7,
+    "src/store/userAccountStore.ts": 2
+  }
+}

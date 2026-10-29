@@ -10,7 +10,7 @@
  */
 import { useEffect } from "react";
 import { STORAGE_DEGRADED_EVENT, STORAGE_DEGRADED_TOAST } from "@/lib/storage/degradedNotifier";
-import { useToastStore } from "@/store/toastStore";
+import { showToast } from "@/store/actions/uiActions";
 
 const TOAST_THROTTLE_MS = 30_000;
 
@@ -21,7 +21,7 @@ export function useStorageDegradedToast(): void {
       const now = Date.now();
       if (now - lastToastAt < TOAST_THROTTLE_MS) return;
       lastToastAt = now;
-      useToastStore.getState().showToast(STORAGE_DEGRADED_TOAST, "warning", 5000);
+      showToast(STORAGE_DEGRADED_TOAST, "warning", 5000);
     };
     window.addEventListener(STORAGE_DEGRADED_EVENT, onDegraded);
     return () => window.removeEventListener(STORAGE_DEGRADED_EVENT, onDegraded);

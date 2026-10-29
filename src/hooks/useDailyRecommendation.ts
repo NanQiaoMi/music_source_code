@@ -6,7 +6,6 @@ import { usePlaylistStore } from "@/store/playlistStore";
 import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { useQueueStore } from "@/store/queueStore";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
-import { useFavoritesStore } from "@/store/favoritesStore";
 import {
   generateDailyRecommendationGroups,
   getDailyRecommendationMode,
@@ -14,10 +13,14 @@ import {
   type DailyRecommendationGroup,
   type DailyRecommendationMode,
 } from "@/utils/recommendationLogic";
-import { useAudioStore } from "@/store/audioStore";
-import { useRecommendationStore } from "@/store/recommendationStore";
 import { useEmotionStore } from "@/store/emotionStore";
 import { collectRecommendationInputs } from "@/lib/recommendation/inputs";
+import { playQueue } from "@/store/actions/playbackActions";
+import {
+  getFavoriteSongs,
+  getNegativeFeedback,
+  refreshRecommendations,
+} from "@/store/actions/recommendationActions";
 
 export interface DailyRecommendation {
   songIds: string[];
@@ -119,7 +122,7 @@ export const useDailyRecommendation = () => {
     ): string[] => {
       if (songs.length === 0) return [];
 
-      const { negativeFeedback } = useRecommendationStore.getState();
+      const negativeFeedback = getNegativeFeedback();
       const negSongIds = new Set(negativeFeedback.map((f) => f.songId));
       const negArtists = new Set(
         negativeFeedback.filter((f) => f.artist).map((f) => f.artist?.toLowerCase().trim())
@@ -161,7 +164,7 @@ export const useDailyRecommendation = () => {
       }));
 
       const activeMode = customMode || getDailyRecommendationMode();
-      const favorites = useFavoritesStore.getState().favorites || [];
+      const favorites = getFavoriteSongs();
       const favoriteSongIds = new Set<string>(favorites.map((f: Song) => f.id));
 
       const context = {
@@ -181,7 +184,7 @@ export const useDailyRecommendation = () => {
         offset
       );
 
-      useRecommendationStore.getState().refreshRecommendations(
+      refreshRecommendations(
         collectRecommendationInputs({
           getPlaylists: usePlaylistStore.getState,
           getEmotionTags: useEmotionStore.getState,
@@ -288,8 +291,7 @@ export const useDailyRecommendation = () => {
     (startIndex: number = 0) => {
       if (!recommendation || recommendation.length === 0) return;
 
-      const audioStore = useAudioStore.getState();
-      audioStore.playQueue(recommendation, startIndex);
+      playQueue(recommendation, startIndex);
     },
     [recommendation]
   );

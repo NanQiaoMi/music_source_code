@@ -8,13 +8,14 @@ import { describe, expect, it } from "vitest";
  * S6-10 getState 分层棘轮（E7）。
  * 口径与 scripts/report-getstate.mjs 一致，基线在 perf/getstate-baseline.json。
  * S6-10a 已收敛 service=0，S6-10b 收敛 component=0：allowed 必须为空；
- * S6-9c 收敛 lib=5（bootstrap / gesture 白名单，理由见 baseline.allowedRationale）。
+ * S6-9c 收敛 lib=5（bootstrap / gesture 白名单，理由见 baseline.allowedRationale）；
+ * S6-9d 收敛 hooks=0：渲染期读状态用 selector，事件回调的「此刻」快照走 store/actions。
  * 若将来无法避免，登记「文件 + 数量」并同步抬 target。
  */
 const ROOT = process.cwd();
 const SCRIPT = path.join(ROOT, "scripts", "report-getstate.mjs");
 const BASELINE = path.join(ROOT, "perf", "getstate-baseline.json");
-const RATCHET_LAYERS = ["services", "components", "lib"] as const;
+const RATCHET_LAYERS = ["services", "components", "lib", "hooks"] as const;
 
 type RatchetLayer = (typeof RATCHET_LAYERS)[number];
 
@@ -64,7 +65,8 @@ describe("S6-10 getState boundary", () => {
       expect(result.byLayer[layer]).toBe(result[layer].total);
     }
     // 非空证明扫描器没有退化为 0；test 文件（大量 getState）必须被排除。
-    expect(result.files["src/hooks/useAudioPlayer.ts"]).toBeGreaterThan(0);
+    // S6-9d 后 hooks 层已归零，用 store 层（仓库内最大调用面）作扫描器哨兵。
+    expect(result.files["src/store/audioStore.ts"]).toBeGreaterThan(0);
     expect(result.files["src/store/audioStore.test.ts"]).toBeUndefined();
   });
 

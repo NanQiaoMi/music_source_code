@@ -1,18 +1,24 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
+import {
+  getCurrentPlayerSong,
+  nextPlayback,
+  prevPlayback,
+  setPlaybackCurrentTime,
+  setPlaybackIsPlaying,
+} from "@/store/actions/playbackEngineActions";
 import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 
 export const useMediaSession = () => {
-  // Use getState() for all store access - this hook only needs state in callbacks
-  // and intervals, not during render. Prevents 60fps re-renders from currentTime.
+  // 回调/定时器只需要「此刻」快照（S6-9d：读取收口到 store/actions 动作层），
+  // 渲染期只订阅下面两个 selector，避免 currentTime 的 60fps 重渲染。
 
   const updateMediaSession = useCallback(() => {
     // S6-4: 身份字段读 playerStore；播放态读 PlaybackClock（audioStore 兼容投影之上）
-    const currentSong = usePlayerStore.getState().currentSong;
+    const currentSong = getCurrentPlayerSong();
     const isPlaying = getPlaybackClockSnapshot().isPlaying;
 
     if (!("mediaSession" in navigator)) {
@@ -40,47 +46,44 @@ export const useMediaSession = () => {
     }
 
     navigator.mediaSession.setActionHandler("play", () => {
-      useAudioStore.getState().setIsPlaying(true);
+      setPlaybackIsPlaying(true);
     });
 
     navigator.mediaSession.setActionHandler("pause", () => {
-      useAudioStore.getState().setIsPlaying(false);
+      setPlaybackIsPlaying(false);
     });
 
     navigator.mediaSession.setActionHandler("previoustrack", () => {
-      useAudioStore.getState().prevSong();
+      prevPlayback();
     });
 
     navigator.mediaSession.setActionHandler("nexttrack", () => {
-      useAudioStore.getState().nextSong();
+      nextPlayback();
     });
 
     navigator.mediaSession.setActionHandler("seekbackward", (details) => {
-      const state = useAudioStore.getState();
       const progress = getPlaybackClockSnapshot();
       const skipTime = details.seekOffset || 10;
       const newTime = Math.max(0, progress.currentTime - skipTime);
-      state.setCurrentTime(newTime);
+      setPlaybackCurrentTime(newTime);
     });
 
     navigator.mediaSession.setActionHandler("seekforward", (details) => {
-      const state = useAudioStore.getState();
       const progress = getPlaybackClockSnapshot();
       const skipTime = details.seekOffset || 10;
       const newTime = Math.min(progress.duration, progress.currentTime + skipTime);
-      state.setCurrentTime(newTime);
+      setPlaybackCurrentTime(newTime);
     });
 
     navigator.mediaSession.setActionHandler("seekto", (details) => {
       if (details.seekTime !== undefined) {
-        useAudioStore.getState().setCurrentTime(details.seekTime);
+        setPlaybackCurrentTime(details.seekTime);
       }
     });
 
     navigator.mediaSession.setActionHandler("stop", () => {
-      const state = useAudioStore.getState();
-      state.setIsPlaying(false);
-      state.setCurrentTime(0);
+      setPlaybackIsPlaying(false);
+      setPlaybackCurrentTime(0);
     });
   }, []);
 

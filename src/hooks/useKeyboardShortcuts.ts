@@ -1,11 +1,16 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { usePlayerStore } from "@/store/playerStore";
-import { usePanelStore } from "@/store/panelStore";
-import { useUIStore } from "@/store/uiStore";
-import { useUiShellStore } from "@/store/uiShellStore";
 import { useKeyboardShortcutsStore } from "@/store/keyboardShortcutsStore";
+import { getPlayerSnapshot } from "@/store/actions/playbackActions";
+import { showToast } from "@/store/actions/uiActions";
+import {
+  closeSettingsOverlays,
+  getUiShellSnapshot,
+  openAiSettingsPanel,
+  toggleAiSettingsPanel,
+  toggleShelf3DPanel,
+} from "@/store/actions/shellActions";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { playbackCommands } from "@/domain/playback/playbackCommands";
 
@@ -100,9 +105,8 @@ export const useKeyboardShortcuts = () => {
       const progress = getPlaybackClockSnapshot();
       // S6-4: 混音/循环/倍速读写 playerStore（audioStore 同名字段仅为兼容投影）
       // S6-9a: 播放/暂停、跳播、上下曲、音量、静音改走 playbackCommands，UI 不再直写 audioStore。
-      const playerStore = usePlayerStore.getState();
-      const uiStore = useUIStore.getState();
-      const uiShell = useUiShellStore.getState();
+      const playerStore = getPlayerSnapshot();
+      const uiShell = getUiShellSnapshot();
 
       const bind = (id: string) => getBinding(id);
 
@@ -163,7 +167,7 @@ export const useKeyboardShortcuts = () => {
       if (matchKeys(e, bind("favorite"))) {
         e.preventDefault();
         if (playerStore.currentSong) {
-          uiStore.showToast?.("收藏快捷键已触发", "success");
+          showToast("收藏快捷键已触发", "success");
         }
         return;
       }
@@ -179,28 +183,28 @@ export const useKeyboardShortcuts = () => {
           single: "单曲循环",
           shuffle: "随机播放",
         };
-        uiStore.showToast?.(`播放模式: ${modeNames[nextLoop]}`, "info");
+        showToast(`播放模式: ${modeNames[nextLoop]}`, "info");
         return;
       }
 
       if (matchKeys(e, bind("toggle-mute"))) {
         e.preventDefault();
         const { isMuted } = playbackCommands.toggleMute();
-        uiStore.showToast?.(isMuted ? "已静音" : "已取消静音", "info");
+        showToast(isMuted ? "已静音" : "已取消静音", "info");
         return;
       }
 
       if (matchKeys(e, bind("next-song"))) {
         e.preventDefault();
         playbackCommands.nextTrack();
-        uiStore.showToast?.("下一首", "info");
+        showToast("下一首", "info");
         return;
       }
 
       if (matchKeys(e, bind("prev-song"))) {
         e.preventDefault();
         playbackCommands.prevTrack();
-        uiStore.showToast?.("上一首", "info");
+        showToast("上一首", "info");
         return;
       }
 
@@ -209,8 +213,7 @@ export const useKeyboardShortcuts = () => {
         if (uiShell.currentView === "player") {
           uiShell.setCurrentView("home");
         }
-        if (uiStore.isSettingsOpen) uiStore.setIsSettingsOpen(false);
-        if (uiStore.isLyricSettingsOpen) uiStore.setIsLyricSettingsOpen(false);
+        closeSettingsOverlays();
         return;
       }
 
@@ -231,7 +234,7 @@ export const useKeyboardShortcuts = () => {
       // 「⌘L 唤出 3D 歌单架」重复，会让同一个键触发两个动作。
       if (matchKeys(e, bind("toggle-queue"))) {
         e.preventDefault();
-        usePanelStore.getState().togglePanel("shelf3D");
+        toggleShelf3DPanel();
         return;
       }
 
@@ -239,7 +242,7 @@ export const useKeyboardShortcuts = () => {
         e.preventDefault();
         const nextRate = Math.min(2.0, Math.round((playerStore.playbackRate + 0.25) * 100) / 100);
         playerStore.setPlaybackRate(nextRate);
-        uiStore.showToast?.(`播放速度: ${nextRate.toFixed(2)}x`, "info");
+        showToast(`播放速度: ${nextRate.toFixed(2)}x`, "info");
         return;
       }
 
@@ -247,7 +250,7 @@ export const useKeyboardShortcuts = () => {
         e.preventDefault();
         const nextRate = Math.max(0.5, Math.round((playerStore.playbackRate - 0.25) * 100) / 100);
         playerStore.setPlaybackRate(nextRate);
-        uiStore.showToast?.(`播放速度: ${nextRate.toFixed(2)}x`, "info");
+        showToast(`播放速度: ${nextRate.toFixed(2)}x`, "info");
         return;
       }
 
@@ -257,7 +260,7 @@ export const useKeyboardShortcuts = () => {
       ) {
         e.preventDefault();
         playerStore.resetPlaybackRate();
-        uiStore.showToast?.("播放速度已恢复: 1.00x (原速)", "info");
+        showToast("播放速度已恢复: 1.00x (原速)", "info");
         return;
       }
 
@@ -271,13 +274,13 @@ export const useKeyboardShortcuts = () => {
 
       if (matchKeys(e, bind("open-ai-settings"))) {
         e.preventDefault();
-        usePanelStore.getState().openPanel("aiSettings");
+        openAiSettingsPanel();
         return;
       }
 
       if (matchKeys(e, bind("toggle-ai-panel"))) {
         e.preventDefault();
-        usePanelStore.getState().togglePanel("aiSettings");
+        toggleAiSettingsPanel();
         return;
       }
     },
