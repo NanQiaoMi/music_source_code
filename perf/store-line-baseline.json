@@ -1,6 +1,6 @@
 {
   "maxLines": 400,
-  "generatedAt": "2026-10-29T01:30:32.176Z",
+  "generatedAt": "2026-10-29T01:35:48.611Z",
   "files": {
     "src/store/abLoopStore.ts": 109,
     "src/store/actions/emotionActions.ts": 9,
@@ -53,7 +53,8 @@
     "src/store/posterV2Store.ts": 108,
     "src/store/presetStore.ts": 196,
     "src/store/professionalModeStore.ts": 258,
-    "src/store/queueStore.ts": 432,
+    "src/store/queueStore.ts": 389,
+    "src/store/queue/helpers.ts": 59,
     "src/store/recommendationStore.ts": 294,
     "src/store/recordingStore.ts": 63,
     "src/store/searchStore.ts": 500,
