@@ -1263,7 +1263,8 @@ export async function main(argv = process.argv.slice(2)) {
   ensureChrome(options.chromePath);
   await preflight(options.baseUrl, Math.min(options.timeoutMs, 30000));
 
-  const { chromium } = await import("playwright");
+  const playwrightPackage = "playwright";
+  const { chromium } = await import(/* @vite-ignore */ playwrightPackage);
   const outDir = path.resolve(options.outDir);
   fs.mkdirSync(outDir, { recursive: true });
   const fixtures = createFixtures();
