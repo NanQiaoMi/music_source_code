@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * S2-6 browser audio-metrics capture (Playwright + local Chrome).
  *
