@@ -35,7 +35,7 @@ vi.mock("@/store/panelStore", () => {
 vi.mock("@/store/uiShellStore", () => {
   const state = {
     currentView: "home",
-    isFullscreen: false,
+    fullscreenSurface: "none",
     toggleFullscreen: mocks.toggleFullscreen,
     setCurrentView: mocks.setCurrentView,
     setIsNavMenuOpen: vi.fn(),

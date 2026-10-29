@@ -32,7 +32,7 @@ function createAudioMock(overrides: Partial<GestureAudioStoreLike> = {}): Gestur
 
 function createUiMock(overrides: Partial<GestureUIStoreLike> = {}): GestureUIStoreLike {
   return {
-    isFullscreenLyrics: false,
+    fullscreenSurface: "none",
     toggleFullscreenLyrics: vi.fn(),
     ...overrides,
   };
@@ -242,7 +242,7 @@ describe("executeGestureAction 进度与歌词", () => {
   });
 
   it("toggle_lyrics 切换全屏歌词并给出反馈", () => {
-    const entering = createUiMock({ isFullscreenLyrics: false });
+    const entering = createUiMock({ fullscreenSurface: "none" });
     const enterOutcome = executeGestureAction(
       "toggle_lyrics",
       createDeps(createAudioMock(), entering)
@@ -251,7 +251,7 @@ describe("executeGestureAction 进度与歌词", () => {
     expect(enterOutcome.detail).toBe("已进入全屏歌词");
     expect(entering.toggleFullscreenLyrics).toHaveBeenCalledTimes(1);
 
-    const leaving = createUiMock({ isFullscreenLyrics: true });
+    const leaving = createUiMock({ fullscreenSurface: "lyrics" });
     const leaveOutcome = executeGestureAction(
       "toggle_lyrics",
       createDeps(createAudioMock(), leaving)
@@ -302,7 +302,7 @@ describe("默认依赖（真实 store）", () => {
       duration: 180,
       currentTime: 0,
     });
-    useUiShellStore.setState({ isFullscreenLyrics: false });
+    useUiShellStore.setState({ fullscreenSurface: "none" });
   });
 
   it("不注入依赖时读取 useAudioStore 执行音量动作", () => {

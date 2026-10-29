@@ -96,7 +96,7 @@ export function AppleUnifiedNavIsland({
 }: AppleUnifiedNavIslandProps = {}) {
   const router = useRouter();
   const openPanel = usePanelStore((state) => state.openPanel);
-  const isFullscreen = useUiShellStore((state) => state.isFullscreen);
+  const isFullscreen = useUiShellStore((state) => state.fullscreenSurface === "panel");
   const toggleFullscreen = useUiShellStore((state) => state.toggleFullscreen);
   const setCurrentView = useUiShellStore((state) => state.setCurrentView);
   const setIsNavMenuOpen = useUiShellStore((state) => state.setIsNavMenuOpen);

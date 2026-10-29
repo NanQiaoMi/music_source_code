@@ -221,11 +221,13 @@ const ToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
 
 export const GlassToastContainer: React.FC = () => {
   const toasts = useToastStore((state) => state.toasts);
+  // S6-8b：成就 toast 由 AchievementToast 按 variant 渲染；同一队列只由一个宿主展示。
+  const regularToasts = toasts.filter((toast) => toast.variant !== "achievement");
 
   return (
     <div className="fixed top-3.5 left-1/2 -translate-x-1/2 z-[999999] space-y-2 pointer-events-none flex flex-col items-center">
       <AnimatePresence mode="popLayout">
-        {toasts.map((toast) => (
+        {regularToasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} />
         ))}
       </AnimatePresence>

@@ -9,10 +9,10 @@
  * 面板开合从不落盘（刷新即关闭）。本 store 因此不接 persist、不进 storageRegistry，
  * ui-store-v2 的 key/version/partialize 全部保持不变。
  *
- * 跨域副作用：旧 openPanel 打开全屏面板时会顺手把壳域的 isFullscreenLyrics 置 false。本文件
- * 不 import uiStore（否则 store 图出现 uiStore <-> panelStore 运行时环，S6-11c SCC=0 会红），
- * 改由 uiStore 在模块初始化时用 usePanelStore.subscribe 观察 panels 变化并落壳域状态；
- * S6-6c 起 isFullscreenLyrics 的 owner 是 uiShellStore，副作用写那里（uiStore 只做桥接）。
+ * 跨域副作用：旧 openPanel 打开全屏面板时会顺手退出全屏歌词。本文件不 import uiStore
+ * （否则 store 图出现 uiStore <-> panelStore 运行时环，S6-11c SCC=0 会红），改由 uiStore
+ * 在模块初始化时用 usePanelStore.subscribe 观察 panels 变化并落壳域状态；S6-6c 起壳域
+ * owner 是 uiShellStore（fullscreenSurface，S6-8a 收敛为枚举），副作用写那里。
  */
 import { create } from "zustand";
 

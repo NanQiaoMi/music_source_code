@@ -28,7 +28,6 @@ export interface VisualizationPreset {
 
 interface VisualizationState {
   currentEffect: VisualizationEffect;
-  isFullscreen: boolean;
   presets: VisualizationPreset[];
   currentPresetId: string | null;
   showSongInfo: boolean;
@@ -37,8 +36,6 @@ interface VisualizationState {
   effectSettings: EffectSettings;
 
   setCurrentEffect: (effect: VisualizationEffect) => void;
-  setIsFullscreen: (isFullscreen: boolean) => void;
-  toggleFullscreen: () => void;
   toggleSongInfo: () => void;
   toggleReactToMusic: () => void;
   savePreset: (name: string) => void;
@@ -201,7 +198,6 @@ const defaultPresets: VisualizationPreset[] = [
 
 export const useVisualizationStore = create<VisualizationState>((set, get) => ({
   currentEffect: "cinematicOrientalInk",
-  isFullscreen: false,
   presets: defaultPresets,
   currentPresetId: "preset-astro-blackhole",
   showSongInfo: true,
@@ -209,8 +205,6 @@ export const useVisualizationStore = create<VisualizationState>((set, get) => ({
   effectSettings: defaultEffectSettings,
 
   setCurrentEffect: (effect) => set({ currentEffect: effect }),
-  setIsFullscreen: (isFullscreen) => set({ isFullscreen }),
-  toggleFullscreen: () => set((state) => ({ isFullscreen: !state.isFullscreen })),
   toggleSongInfo: () => set((state) => ({ showSongInfo: !state.showSongInfo })),
   toggleReactToMusic: () => set((state) => ({ reactToMusic: !state.reactToMusic })),
 

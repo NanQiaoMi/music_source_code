@@ -65,11 +65,6 @@ interface UIState {
   toggleShelf3D: () => void;
   setIsShelf3DOpen: (isOpen: boolean) => void;
 
-  /** @deprecated since S6-6c. 用 useUiShellStore.getState().setIsFullscreenLyrics(value)。 */
-  setIsFullscreenLyrics: (isFullscreen: boolean) => void;
-  /** @deprecated since S6-6c. 用 useUiShellStore.getState().toggleFullscreenLyrics()。 */
-  toggleFullscreenLyrics: () => void;
-
   isSettingsOpen: boolean;
   setIsSettingsOpen: (isOpen: boolean) => void;
 
@@ -86,11 +81,6 @@ interface UIState {
 
   isEQOpen: boolean;
   setIsEQOpen: (isOpen: boolean) => void;
-
-  /** @deprecated since S6-6c. 用 useUiShellStore.getState().setIsFullscreen(value)。 */
-  setIsFullscreen: (isFullscreen: boolean) => void;
-  /** @deprecated since S6-6c. 用 useUiShellStore.getState().toggleFullscreen()。 */
-  toggleFullscreen: () => void;
 
   isKeyboardShortcutsOpen: boolean;
   setIsKeyboardShortcutsOpen: (isOpen: boolean) => void;
@@ -139,10 +129,6 @@ export const useUIStore = create<UIState>()(
       toggleShelf3D: () => usePanelStore.getState().toggleShelf3D(),
       setIsShelf3DOpen: (isOpen) => usePanelStore.getState().setIsShelf3DOpen(isOpen),
 
-      setIsFullscreenLyrics: (isFullscreen) =>
-        useUiShellStore.getState().setIsFullscreenLyrics(isFullscreen),
-      toggleFullscreenLyrics: () => useUiShellStore.getState().toggleFullscreenLyrics(),
-
       isSettingsOpen: false,
       setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
 
@@ -156,9 +142,6 @@ export const useUIStore = create<UIState>()(
 
       isEQOpen: false,
       setIsEQOpen: (isOpen) => set({ isEQOpen: isOpen }),
-
-      setIsFullscreen: (isFullscreen) => useUiShellStore.getState().setIsFullscreen(isFullscreen),
-      toggleFullscreen: () => useUiShellStore.getState().toggleFullscreen(),
 
       isKeyboardShortcutsOpen: false,
       setIsKeyboardShortcutsOpen: (isOpen) => set({ isKeyboardShortcutsOpen: isOpen }),
@@ -248,7 +231,7 @@ useUIStore.subscribe((state, prev) => {
 });
 
 // 兼容镜像 + 壳域副作用：旧 openPanel 打开全屏面板时会同时关闭全屏歌词。panels 已不在
-// uiStore，用 subscribe 保持"打开全屏面板 ⇒ isFullscreenLyrics=false"（写 uiShellStore）与
+// uiStore，用 subscribe 保持"打开全屏面板 ⇒ fullscreenSurface 离开 lyrics"（写 uiShellStore）与
 // isShelf3DOpen 镜像（只有真正变化时才 setState，避免面板点击白写 ui-store-v2）。方向固定为
 // uiStore → panelStore / uiShellStore，反向 import 会让 store 图出现环（S6-11c SCC=0）。
 usePanelStore.subscribe((state, prev) => {
@@ -256,7 +239,7 @@ usePanelStore.subscribe((state, prev) => {
   const fullscreenOpened = FULLSCREEN_PANELS.some(
     (name) => state.panels[name] && !prev.panels[name]
   );
-  if (fullscreenOpened) useUiShellStore.getState().setIsFullscreenLyrics(false);
+  if (fullscreenOpened) useUiShellStore.getState().setFullscreenLyrics(false);
   const isShelf3DOpen = state.panels.shelf3D;
   if (useUIStore.getState().isShelf3DOpen !== isShelf3DOpen) {
     useUIStore.setState({ isShelf3DOpen });

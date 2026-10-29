@@ -18,10 +18,11 @@ vi.mock("framer-motion", () => ({
 
 describe("VisualSettingsPanel", () => {
   it("renders performance preset controls and their current budget", async () => {
-    const { usePerformanceV8Store } = await import("@/store/performanceV8Store");
+    const { visualRuntime } = await import("@/runtime/visualRuntime");
     const { VisualSettingsPanel } = await import("./VisualSettings");
 
-    usePerformanceV8Store.getState().setPerformancePreset("balanced");
+    // S6-8c：性能档唯一 owner 是 runtime；面板读取其只读投影。
+    visualRuntime.setQuality("medium");
 
     const html = renderToStaticMarkup(
       <VisualSettingsPanel isOpen={true} onClose={() => undefined} />

@@ -5,7 +5,6 @@ import { usePlayerStore } from "@/store/playerStore";
 import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
 import { useUiShellStore } from "@/store/uiShellStore";
-import { useVisualizationStore } from "@/store/visualizationStore";
 import { useKeyboardShortcutsStore } from "@/store/keyboardShortcutsStore";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { playbackCommands } from "@/domain/playback/playbackCommands";
@@ -286,30 +285,9 @@ export const useKeyboardShortcuts = () => {
   );
 
   useEffect(() => {
-    const handleFSChange = () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const doc = document as any;
-      const isFs = !!(
-        doc.fullscreenElement ||
-        doc.webkitFullscreenElement ||
-        doc.mozFullScreenElement ||
-        doc.msFullscreenElement
-      );
-      useUiShellStore.getState().setIsFullscreen(isFs);
-      useVisualizationStore.setState({ isFullscreen: isFs });
-    };
-
-    const events = [
-      "fullscreenchange",
-      "webkitfullscreenchange",
-      "mozfullscreenchange",
-      "MSFullscreenChange",
-    ];
-    events.forEach((event) => document.addEventListener(event, handleFSChange));
+    // 原生全屏状态的 fullscreenchange 监听已收敛到 uiShellStore（S6-8a）；
+    // 快捷键只负责派发动作，不再写第二份全屏状态。
     window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      events.forEach((event) => document.removeEventListener(event, handleFSChange));
-      window.removeEventListener("keydown", handleKeyDown);
-    };
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 };

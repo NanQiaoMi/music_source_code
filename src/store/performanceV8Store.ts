@@ -1,15 +1,26 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { PerformanceLevel, PerformanceConfig } from "@/lib/visualization/types";
+import type { PerformanceConfig } from "@/lib/visualization/types";
+import { configForTier } from "@/lib/visualization/quality";
+import { visualRuntime, type VisualQuality } from "@/runtime/visualRuntime";
 
-export type { PerformanceLevel };
-
-export type VisualPerformancePreset = "cinematic" | "balanced" | "battery";
-export type ActiveVisualPerformancePreset = VisualPerformancePreset | "custom";
+/**
+ * S6-8c：渲染性能档位的唯一 owner 是 visualRuntime（S5-6：FPS/长任务自适应）。
+ * 本 store 从"第二套档位来源"降级为**只读投影**：
+ * - config 由 runtime 的 quality tier 派生（projectQuality 是唯一写入口，只被 runtime
+ *   档位订阅与持久化水合 seed 调用）；
+ * - 删除 activePreset / setPerformancePreset / setPerformanceLevel（旧档位写路径）；
+ * - 保留 FPS/CPU/内存 telemetry（S5-6 明确不回退的部分）。
+ * 用户点选预设走 @/lib/visualization/quality 的 applyVisualQualityPreset（写 runtime），
+ * 再由订阅回流成投影，保证"质量档事实一个写入方"。
+ *
+ * 持久化：key 仍是 performance-v8-store，partialize 只剩 { config }（旧 activePreset
+ * 是 config.level 的重复表示，已删除）；水合后把持久化的 level 作为 runtime 初始档位，
+ * 使用户上次选择的档位跨刷新保留。
+ */
 
 interface PerformanceState {
   config: PerformanceConfig;
-  activePreset: ActiveVisualPerformancePreset;
   fps: number;
   cpuUsage: number;
   memoryUsage: number;
@@ -19,8 +30,8 @@ interface PerformanceState {
   lowFpsStartedAt: number | null;
   needsRecovery: boolean;
 
-  setPerformanceLevel: (level: PerformanceLevel) => void;
-  setPerformancePreset: (preset: VisualPerformancePreset) => void;
+  /** 只读投影写入口：仅 runtime 档位订阅与水合 seed 调用。 */
+  projectQuality: (tier: VisualQuality) => void;
   updateStats: (stats: {
     fps: number;
     cpuUsage: number;
@@ -35,77 +46,10 @@ interface PerformanceState {
 const LOW_FPS_THRESHOLD = 20;
 const LOW_FPS_RECOVERY_MS = 5000;
 
-const PERFORMANCE_CONFIGS: Record<PerformanceLevel, PerformanceConfig> = {
-  low: {
-    level: "low",
-    targetFPS: 30,
-    maxParticles: 1000,
-    postProcessing: false,
-    webglQuality: "low",
-  },
-  medium: {
-    level: "medium",
-    targetFPS: 30,
-    maxParticles: 3000,
-    postProcessing: true,
-    webglQuality: "medium",
-  },
-  high: {
-    level: "high",
-    targetFPS: 60,
-    maxParticles: 8000,
-    postProcessing: true,
-    webglQuality: "high",
-  },
-  ultra: {
-    level: "ultra",
-    targetFPS: 60,
-    maxParticles: 20000,
-    postProcessing: true,
-    webglQuality: "ultra",
-  },
-};
-
-const PERFORMANCE_PRESETS: Record<VisualPerformancePreset, PerformanceConfig> = {
-  cinematic: PERFORMANCE_CONFIGS.high,
-  balanced: PERFORMANCE_CONFIGS.medium,
-  battery: PERFORMANCE_CONFIGS.low,
-};
-
-function presetFromPerformanceLevel(level: PerformanceLevel): ActiveVisualPerformancePreset {
-  if (level === "high") return "cinematic";
-  if (level === "medium") return "balanced";
-  if (level === "low") return "battery";
-  return "custom";
-}
-
-export const VISUAL_PERFORMANCE_PRESETS: Array<{
-  id: VisualPerformancePreset;
-  name: string;
-  description: string;
-}> = [
-  {
-    id: "cinematic",
-    name: "Cinematic",
-    description: "60 FPS, richer particles, post-processing on.",
-  },
-  {
-    id: "balanced",
-    name: "Balanced",
-    description: "Stable 30 FPS with a moderate particle budget.",
-  },
-  {
-    id: "battery",
-    name: "Battery",
-    description: "Lower particle count and no post-processing.",
-  },
-];
-
 export const usePerformanceV8Store = create<PerformanceState>()(
   persist(
-    (set) => ({
-      config: PERFORMANCE_CONFIGS.medium,
-      activePreset: "balanced",
+    (set, get) => ({
+      config: configForTier(visualRuntime.getQuality().tier),
       fps: 60,
       cpuUsage: 0,
       memoryUsage: 0,
@@ -115,21 +59,10 @@ export const usePerformanceV8Store = create<PerformanceState>()(
       lowFpsStartedAt: null,
       needsRecovery: false,
 
-      setPerformanceLevel: (level) =>
-        set({
-          config: PERFORMANCE_CONFIGS[level],
-          activePreset: presetFromPerformanceLevel(level),
-          lowFpsStartedAt: null,
-          needsRecovery: false,
-        }),
-
-      setPerformancePreset: (preset) =>
-        set({
-          config: PERFORMANCE_PRESETS[preset],
-          activePreset: preset,
-          lowFpsStartedAt: null,
-          needsRecovery: false,
-        }),
+      projectQuality: (tier) => {
+        if (get().config.level === tier) return;
+        set({ config: configForTier(tier) });
+      },
 
       updateStats: (stats) =>
         set((state) => {
@@ -156,10 +89,23 @@ export const usePerformanceV8Store = create<PerformanceState>()(
     {
       skipHydration: true,
       name: "performance-v8-store",
-      partialize: (state) => ({
-        config: state.config,
-        activePreset: state.activePreset,
-      }),
+      partialize: (state) => ({ config: state.config }),
+      // 水合后把持久化档位作为 runtime 初始档位（单一 owner 的 seed，不是第二写入方）。
+      onRehydrateStorage: () => (state) => {
+        const level = state?.config?.level;
+        if (!level) return;
+        const tier = level === "ultra" ? "high" : level;
+        visualRuntime.setQuality(tier);
+        // 历史数据的 ultra 不会触发 runtime 变化；显式对齐一次投影，避免 payload 里留下不可达档位。
+        usePerformanceV8Store.getState().projectQuality(tier);
+      },
     }
   )
 );
+
+// 唯一投影订阅：runtime 档位变化 -> store config（不反向写 runtime）。
+visualRuntime.onQualityChange((next) => {
+  usePerformanceV8Store.getState().projectQuality(next.tier);
+});
+// 模块加载时对齐一次，避免初始 config 与 runtime 当前档位不一致。
+usePerformanceV8Store.getState().projectQuality(visualRuntime.getQuality().tier);

@@ -171,7 +171,7 @@ export function VisualizationView() {
   const setCurrentView = useUiShellStore((state) => state.setCurrentView);
   const isTransitioning = useUiShellStore((state) => state.isTransitioning);
   const themeColors = useThemeStore((state) => state.themeColors);
-  const isFullscreen = useUiShellStore((state) => state.isFullscreen);
+  const isFullscreen = useUiShellStore((state) => state.fullscreenSurface === "panel");
   const toggleFullscreen = useUiShellStore((state) => state.toggleFullscreen);
   const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = usePlaybackClock((state) => state.isPlaying);
@@ -246,31 +246,8 @@ export function VisualizationView() {
     };
   }, [currentView]);
 
-  // Sync fullscreen state with browser events globally
-  useEffect(() => {
-    const handleFsChange = () => {
-      const isFs = !!(
-        document.fullscreenElement ||
-        (document as LegacyAny).webkitFullscreenElement ||
-        (document as LegacyAny).mozFullScreenElement ||
-        (document as LegacyAny).msFullscreenElement
-      );
-      useUiShellStore.setState({ isFullscreen: isFs });
-      useVisualizationStore.setState({ isFullscreen: isFs });
-    };
-
-    const events = [
-      "fullscreenchange",
-      "webkitfullscreenchange",
-      "mozfullscreenchange",
-      "MSFullscreenChange",
-    ];
-    events.forEach((event) => document.addEventListener(event, handleFsChange));
-
-    return () => {
-      events.forEach((event) => document.removeEventListener(event, handleFsChange));
-    };
-  }, []);
+  // S6-8a：原生全屏状态由 uiShellStore 的唯一 fullscreenchange 监听维护，
+  // 这里不再重复监听/写入（旧实现同时写 uiShellStore 与 useVisualizationStore 两份）。
 
   // Fallback to valid effect if current effect was removed
   useEffect(() => {

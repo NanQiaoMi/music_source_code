@@ -127,9 +127,9 @@ describe("uiStore panel facade (S6-6b)", () => {
     usePanelStore.getState().closePanel("shelf3D");
     expect(useUIStore.getState().isShelf3DOpen).toBe(false);
 
-    useUIStore.getState().setIsFullscreenLyrics(true);
+    useUiShellStore.getState().setFullscreenLyrics(true);
     usePanelStore.getState().openPanel("formatConverter");
-    expect(useUiShellStore.getState().isFullscreenLyrics).toBe(false);
+    expect(useUiShellStore.getState().fullscreenSurface).toBe("none");
   });
 
   it("keeps forwarder identities stable across unrelated uiStore updates", () => {
@@ -190,31 +190,26 @@ describe("uiStore shell facade (S6-6c)", () => {
     ui.setCurrentView("player");
     ui.setIsTransitioning(true);
     ui.setIsNavMenuOpen(true);
-    ui.setIsFullscreenLyrics(true);
-    ui.setIsFullscreen(true);
 
     expect(useUiShellStore.getState()).toMatchObject({
       currentView: "player",
       isTransitioning: true,
       isNavMenuOpen: true,
-      isFullscreenLyrics: true,
-      isFullscreen: true,
     });
-
-    ui.toggleFullscreenLyrics();
-    expect(useUiShellStore.getState().isFullscreenLyrics).toBe(false);
   });
 
-  it("no longer owns transient shell state (single owner = uiShellStore)", () => {
+  it("no longer owns transient shell state or fullscreen facts (single owners)", () => {
     for (const field of [
       "isTransitioning",
       "isNavMenuOpen",
       "isFullscreenLyrics",
       "isFullscreen",
+      "fullscreenSurface",
     ]) {
       expect(field in useUIStore.getState()).toBe(false);
     }
     expect("restorePersistedView" in useUIStore.getState()).toBe(false);
+    expect("fullscreenSurface" in useUiShellStore.getState()).toBe(true);
   });
 
   it("keeps currentView only as the ui-store-v2 persistence projection", () => {
@@ -228,13 +223,13 @@ describe("uiStore shell facade (S6-6c)", () => {
   });
 
   it("keeps forwarder identities stable across unrelated uiStore updates", () => {
-    const { setCurrentView, setIsFullscreen, toggleFullscreenLyrics } = useUIStore.getState();
+    const { setCurrentView, setIsTransitioning, setIsNavMenuOpen } = useUIStore.getState();
 
     useUIStore.getState().setThemeMode("light");
 
     expect(useUIStore.getState().setCurrentView).toBe(setCurrentView);
-    expect(useUIStore.getState().setIsFullscreen).toBe(setIsFullscreen);
-    expect(useUIStore.getState().toggleFullscreenLyrics).toBe(toggleFullscreenLyrics);
+    expect(useUIStore.getState().setIsTransitioning).toBe(setIsTransitioning);
+    expect(useUIStore.getState().setIsNavMenuOpen).toBe(setIsNavMenuOpen);
   });
 
   it("persists a shell view change with the unchanged payload shape", () => {
@@ -258,9 +253,9 @@ describe("uiStore shell facade (S6-6c)", () => {
   it("does not persist transient shell changes", () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem");
 
-    useUIStore.getState().setIsFullscreen(true);
-    useUIStore.getState().setIsNavMenuOpen(true);
-    useUIStore.getState().setIsTransitioning(true);
+    useUiShellStore.getState().setFullscreenSurface("panel");
+    useUiShellStore.getState().setIsNavMenuOpen(true);
+    useUiShellStore.getState().setIsTransitioning(true);
 
     expect(setItem.mock.calls.filter(([key]) => key === "ui-store-v2")).toEqual([]);
   });

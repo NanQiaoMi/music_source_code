@@ -10,7 +10,7 @@
 
 import { useAudioStore } from "@/store/audioStore";
 import { useGestureSettingsStore } from "@/store/gestureSettingsStore";
-import { useUiShellStore } from "@/store/uiShellStore";
+import { useUiShellStore, type FullscreenSurface } from "@/store/uiShellStore";
 import { formatTime } from "@/utils/formatTime";
 import {
   findGestureActionDefinition,
@@ -40,7 +40,7 @@ export interface GestureAudioStoreLike {
 }
 
 export interface GestureUIStoreLike {
-  isFullscreenLyrics: boolean;
+  fullscreenSurface: FullscreenSurface;
   toggleFullscreenLyrics: () => void;
 }
 
@@ -206,7 +206,7 @@ export function executeGestureAction(
       }
 
       case "toggle_lyrics": {
-        const wasFullscreen = ui.isFullscreenLyrics;
+        const wasFullscreen = ui.fullscreenSurface === "lyrics";
         ui.toggleFullscreenLyrics();
         return buildOutcome(
           actionId,

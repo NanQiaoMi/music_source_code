@@ -96,6 +96,28 @@ describe("toastStore (S6-6a)", () => {
     expect(useToastStore.getState().toasts).toEqual([]);
   });
 
+  it("carries the achievement variant payload without changing legacy toast shape", () => {
+    useToastStore.getState().showToast("成就", "success", 4000, {
+      variant: "achievement",
+      achievement: { id: "a1", name: "初听", description: "播放第一首歌", icon: "🎵" },
+    });
+    useToastStore.getState().showToast("Legacy");
+
+    const [achievementToast, legacyToast] = useToastStore.getState().toasts;
+    expect(achievementToast).toMatchObject({
+      variant: "achievement",
+      achievement: { id: "a1", name: "初听" },
+    });
+    // 旧调用不新增键，消息对象形状与拆前一致。
+    expect("variant" in legacyToast).toBe(false);
+    expect("achievement" in legacyToast).toBe(false);
+
+    vi.advanceTimersByTime(3000);
+    expect(useToastStore.getState().toasts.map((toast) => toast.message)).toEqual(["成就"]);
+    vi.advanceTimersByTime(1000);
+    expect(useToastStore.getState().toasts).toEqual([]);
+  });
+
   it("is transient: no persist middleware and no storage write", () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem");
 

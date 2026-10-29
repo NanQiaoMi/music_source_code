@@ -4,12 +4,10 @@ import { Song } from "@/types/song";
 import type { PersistCandidate } from "@/lib/storage/quotaPolicy";
 import { writeWithPolicy } from "@/lib/storage/quotaPolicy";
 import { reportStorageDegraded } from "@/lib/storage/degradedNotifier";
+import { useToastStore } from "@/store/toastStore";
 
-export interface AchievementToast {
-  id: string;
-  achievement: Achievement;
-  timestamp: number;
-}
+/** 成就 toast 的展示时长（=拆前 AchievementToastItem 的 4000ms 定时器）。 */
+const ACHIEVEMENT_TOAST_DURATION = 4000;
 
 export type TimeRange = "day" | "week" | "month" | "year" | "all";
 
@@ -76,7 +74,6 @@ interface StatsAchievementsState {
   currentPeriod: StatsPeriod;
   isCalculating: boolean;
   lastCalculated: number;
-  activeToasts: AchievementToast[];
 
   recordPlay: (
     song: Song,
@@ -99,8 +96,6 @@ interface StatsAchievementsState {
   setIsCalculating: (calculating: boolean) => void;
   resetStats: () => void;
   resetAchievements: () => void;
-
-  removeToast: (toastId: string) => void;
 
   // Query methods for stats dashboard
   getPlayTimeStats(): {
@@ -584,7 +579,6 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
       currentPeriod: DEFAULT_PERIOD,
       isCalculating: false,
       lastCalculated: 0,
-      activeToasts: [],
 
       recordPlay: (song, duration, completed, skipped, quality = "standard") => {
         const today = getTodayString();
@@ -749,44 +743,40 @@ export const useStatsAchievementsStore = create<StatsAchievementsState>()(
       },
 
       unlockAchievement: (achievementId) => {
+        // S6-8b：成就 toast 的唯一 owner 是 toastStore（variant="achievement"）；
+        // 本 store 只负责解锁事实，不再维护 activeToasts/自动消失定时器。
+        const unlocked: Achievement[] = [];
         set((state) => {
           const achievement = state.achievements.find((a) => a.id === achievementId);
           const alreadyUnlocked = achievement?.unlocked;
-
-          const newAchievements = state.achievements.map((a) =>
-            a.id === achievementId
-              ? {
-                  ...a,
-                  unlocked: true,
-                  unlockedAt: Date.now(),
-                  progress: a.total,
-                }
-              : a
-          );
-
-          let newToasts = state.activeToasts;
-          if (achievement && !alreadyUnlocked) {
-            newToasts = [
-              ...state.activeToasts,
-              {
-                id: `${achievementId}-${Date.now()}`,
-                achievement,
-                timestamp: Date.now(),
-              },
-            ];
-          }
+          if (achievement && !alreadyUnlocked) unlocked.push(achievement);
 
           return {
-            achievements: newAchievements,
-            activeToasts: newToasts,
+            achievements: state.achievements.map((a) =>
+              a.id === achievementId
+                ? {
+                    ...a,
+                    unlocked: true,
+                    unlockedAt: Date.now(),
+                    progress: a.total,
+                  }
+                : a
+            ),
           };
         });
-      },
 
-      removeToast: (toastId) => {
-        set((state) => ({
-          activeToasts: state.activeToasts.filter((t) => t.id !== toastId),
-        }));
+        const toast = unlocked[0];
+        if (toast) {
+          useToastStore.getState().showToast(toast.name, "success", ACHIEVEMENT_TOAST_DURATION, {
+            variant: "achievement",
+            achievement: {
+              id: toast.id,
+              name: toast.name,
+              description: toast.description,
+              icon: toast.icon,
+            },
+          });
+        }
       },
 
       checkAchievements: (stats) => {

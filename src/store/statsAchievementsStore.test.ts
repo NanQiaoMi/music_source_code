@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { useStatsAchievementsStore } from "./statsAchievementsStore";
+import { afterEach, describe, it, expect, beforeEach, vi } from "vitest";
+import { useStatsAchievementsStore, type Achievement } from "./statsAchievementsStore";
+import { useToastStore } from "./toastStore";
 import { Song } from "@/types/song";
 
 function createMockSong(id: string, title?: string, artist?: string): Song {
@@ -12,6 +13,58 @@ function createMockSong(id: string, title?: string, artist?: string): Song {
     source: "local",
   };
 }
+
+describe("achievement toast ownership (S6-8b)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    useToastStore.getState().clearToasts();
+  });
+
+  const achievement: Achievement = {
+    id: "first-song",
+    name: "初听",
+    nameEn: "First Song",
+    description: "播放第一首歌",
+    descriptionEn: "Play your first song",
+    icon: "🎵",
+    category: "milestone",
+    difficulty: "bronze",
+    unlocked: false,
+    progress: 0,
+    total: 1,
+  };
+
+  it("enqueues exactly one achievement-variant toast in toastStore (single owner)", () => {
+    vi.useFakeTimers();
+    useStatsAchievementsStore.setState({ achievements: [{ ...achievement }] });
+
+    useStatsAchievementsStore.getState().unlockAchievement(achievement.id);
+
+    const toasts = useToastStore.getState().toasts;
+    expect(toasts).toHaveLength(1);
+    expect(toasts[0]).toMatchObject({
+      type: "success",
+      duration: 4000,
+      variant: "achievement",
+      achievement: {
+        id: achievement.id,
+        name: achievement.name,
+        description: achievement.description,
+        icon: achievement.icon,
+      },
+    });
+    expect("activeToasts" in useStatsAchievementsStore.getState()).toBe(false);
+
+    // 已解锁成就不会重复入队。
+    useStatsAchievementsStore.getState().unlockAchievement(achievement.id);
+    expect(useToastStore.getState().toasts).toHaveLength(1);
+
+    // 自动消失由 toastStore 的 duration 定时器负责（拆前是组件内 4000ms 定时器）。
+    vi.advanceTimersByTime(4000);
+    expect(useToastStore.getState().toasts).toEqual([]);
+  });
+});
 
 describe("statsAchievementsStore - query methods", () => {
   beforeEach(() => {

@@ -198,7 +198,7 @@ const subscriptionCases: SubscriptionCase[] = [
   {
     name: "VisualizationSettingsPanel",
     make: () => <VisualizationSettingsPanel isOpen={false} onClose={() => undefined} />,
-    unrelated: () => useVisualizationStore.setState({ isFullscreen: true }),
+    unrelated: () => useVisualizationStore.setState({ showSongInfo: false }),
     related: () => useVisualizationStore.setState({ currentEffect: "cyberMatrix" }),
   },
   {

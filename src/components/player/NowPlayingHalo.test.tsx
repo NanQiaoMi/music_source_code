@@ -5,18 +5,11 @@ describe("NowPlayingHalo", () => {
   beforeEach(async () => {
     localStorage.clear();
     const { usePlayerSkinStore } = await import("@/store/playerSkinStore");
-    const { usePerformanceV8Store } = await import("@/store/performanceV8Store");
+    const { visualRuntime } = await import("@/runtime/visualRuntime");
 
     usePlayerSkinStore.setState({ activeHaloId: "vinyl" });
-    usePerformanceV8Store.setState({
-      config: {
-        level: "high",
-        targetFPS: 60,
-        maxParticles: 8000,
-        postProcessing: true,
-        webglQuality: "high",
-      },
-    });
+    // S6-8c：halo 读取 performanceV8Store 的 runtime 档位投影；high = 60 FPS。
+    visualRuntime.setQuality("high");
   });
 
   it("renders the persisted now-playing halo skin around cover art", async () => {

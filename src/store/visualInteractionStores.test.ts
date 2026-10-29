@@ -136,7 +136,6 @@ describe("visual interaction stores", () => {
     store.savePreset("Aurora custom");
     store.updateEffectSettings("auroraWave", { speed: 9 });
     store.loadPreset("preset-12345");
-    store.toggleFullscreen();
     store.toggleSongInfo();
     store.toggleReactToMusic();
 
@@ -145,7 +144,6 @@ describe("visual interaction stores", () => {
     expect(state.currentPresetId).toBe("preset-12345");
     expect(state.effectSettings.auroraWave).toMatchObject({ speed: 2, colorIntensity: 0.4 });
     expect(state.effectSettings.spatialMesh.blurIntensity).toBe(120);
-    expect(state.isFullscreen).toBe(true);
     expect(state.showSongInfo).toBe(false);
     expect(state.reactToMusic).toBe(false);
 

@@ -195,6 +195,17 @@ export class VisualRuntime {
     return VISUAL_QUALITY_PROFILES[this.qualityIndex].tier;
   }
 
+  /**
+   * S6-8c：用户显式选择档位（唯一外部写入口）。自动自适应仍按 FPS/长任务继续生效，
+   * 因此这里只重置升档计数，不锁定档位。
+   */
+  setQuality(tier: VisualQuality): void {
+    const index = VISUAL_QUALITY_PROFILES.findIndex((profile) => profile.tier === tier);
+    if (index < 0) return;
+    this.stableWindows = 0;
+    this.setQualityIndex(index);
+  }
+
   /** 订阅档位变化；返回解除订阅函数。 */
   onQualityChange(listener: VisualQualityListener): () => void {
     this.qualityListeners.add(listener);

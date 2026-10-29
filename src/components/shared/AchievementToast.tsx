@@ -1,21 +1,19 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  useStatsAchievementsStore,
-  AchievementToast as AchievementToastType,
-} from "@/store/statsAchievementsStore";
+import { useToastStore, type ToastMessage } from "@/store/toastStore";
 
-const AchievementToastItem: React.FC<{ toast: AchievementToastType }> = ({ toast }) => {
-  const removeToast = useStatsAchievementsStore((state) => state.removeToast);
+/**
+ * S6-8b：成就 toast 的数据/生命周期在 toastStore（variant="achievement"）。
+ * 本组件只负责成就专属视觉；自动消失由 toastStore 的 duration 定时器统一处理，
+ * 这里不再自建 4000ms 定时器，也不再持有第二份队列。
+ */
+const AchievementToastItem: React.FC<{ toast: ToastMessage }> = ({ toast }) => {
+  const dismissToast = useToastStore((state) => state.dismissToast);
+  const achievement = toast.achievement;
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      removeToast(toast.id);
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, [toast.id, removeToast]);
+  if (!achievement) return null;
 
   return (
     <motion.div
@@ -29,15 +27,15 @@ const AchievementToastItem: React.FC<{ toast: AchievementToastType }> = ({ toast
         WebkitBackdropFilter: "blur(20px)",
       }}
     >
-      <div className="flex-shrink-0 text-3xl">{toast.achievement.icon}</div>
+      <div className="flex-shrink-0 text-3xl">{achievement.icon}</div>
 
       <div className="flex-1 min-w-0">
-        <div className="text-white font-semibold text-lg">{toast.achievement.name}</div>
-        <div className="text-white/60 text-sm mt-0.5">{toast.achievement.description}</div>
+        <div className="text-white font-semibold text-lg">{achievement.name}</div>
+        <div className="text-white/60 text-sm mt-0.5">{achievement.description}</div>
       </div>
 
       <button
-        onClick={() => removeToast(toast.id)}
+        onClick={() => dismissToast(toast.id)}
         className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,12 +52,13 @@ const AchievementToastItem: React.FC<{ toast: AchievementToastType }> = ({ toast
 };
 
 export const AchievementToastContainer: React.FC = () => {
-  const activeToasts = useStatsAchievementsStore((state) => state.activeToasts);
+  const toasts = useToastStore((state) => state.toasts);
+  const achievements = toasts.filter((toast) => toast.variant === "achievement");
 
   return (
     <div className="fixed top-8 right-8 z-[9999] space-y-3 pointer-events-none">
       <AnimatePresence mode="popLayout">
-        {activeToasts.map((toast) => (
+        {achievements.map((toast) => (
           <div key={toast.id} className="pointer-events-auto">
             <AchievementToastItem toast={toast} />
           </div>

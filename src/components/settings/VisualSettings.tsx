@@ -1,13 +1,15 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, Gauge, RotateCcw, X, Check, Activity } from "lucide-react";
 import {
-  usePerformanceV8Store,
+  applyVisualQualityPreset,
+  presetForLevel,
   VISUAL_PERFORMANCE_PRESETS,
   type VisualPerformancePreset,
-} from "@/store/performanceV8Store";
+} from "@/lib/visualization/quality";
+import { usePerformanceV8Store } from "@/store/performanceV8Store";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
 
 interface VisualSettingsPanelProps {
@@ -126,9 +128,9 @@ export const VisualSettingsPanel: React.FC<VisualSettingsPanelProps> = ({ isOpen
   const setVisualMode = useVisualSettingsStore((state) => state.setVisualMode);
   const resetSettings = useVisualSettingsStore((state) => state.resetSettings);
 
-  const activePreset = usePerformanceV8Store((state) => state.activePreset);
+  // S6-8c：config 是 visualRuntime 档位的只读投影；activePreset 由 config.level 派生。
   const config = usePerformanceV8Store((state) => state.config);
-  const setPerformancePreset = usePerformanceV8Store((state) => state.setPerformancePreset);
+  const activePreset = presetForLevel(config.level);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -151,7 +153,7 @@ export const VisualSettingsPanel: React.FC<VisualSettingsPanelProps> = ({ isOpen
   };
 
   const handlePerformancePreset = (preset: VisualPerformancePreset) => {
-    setPerformancePreset(preset);
+    applyVisualQualityPreset(preset);
   };
 
   if (!isOpen) return null;

@@ -1,5 +1,6 @@
 // S6-6c: uiShellStore 是壳域（view/nav/transition/fullscreen）唯一 owner；uiStore 只保留
-// currentView 的 ui-store-v2 持久化投影与 deprecated 转发器。
+// currentView 的 ui-store-v2 持久化投影。
+// S6-8a: 全屏事实收敛为一个 fullscreenSurface 枚举（none | lyrics | panel）。
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { usePanelStore } from "./panelStore";
 import { useUIStore } from "./uiStore";
@@ -10,6 +11,7 @@ const initialPanelState = usePanelStore.getInitialState();
 const initialUIState = useUIStore.getInitialState();
 const uiStoreWrites = (setItem: { mock: { calls: unknown[][] } }) =>
   setItem.mock.calls.filter(([key]) => key === "ui-store-v2");
+const surface = () => useUiShellStore.getState().fullscreenSurface;
 
 beforeEach(() => {
   localStorage.clear();
@@ -47,13 +49,68 @@ describe("uiShellStore view/navigation (S6-6c)", () => {
 
   it("toggles fullscreen lyrics and lets a fullscreen panel clear them", () => {
     useUiShellStore.getState().toggleFullscreenLyrics();
-    expect(useUiShellStore.getState().isFullscreenLyrics).toBe(true);
+    expect(surface()).toBe("lyrics");
 
     usePanelStore.getState().openPanel("queue");
-    expect(useUiShellStore.getState().isFullscreenLyrics).toBe(true);
+    expect(surface()).toBe("lyrics");
 
     usePanelStore.getState().openPanel("formatConverter");
-    expect(useUiShellStore.getState().isFullscreenLyrics).toBe(false);
+    expect(surface()).toBe("none");
+  });
+});
+
+describe("fullscreenSurface enum (S6-8a)", () => {
+  it("transitions none -> lyrics -> none", () => {
+    expect(surface()).toBe("none");
+    useUiShellStore.getState().setFullscreenSurface("lyrics");
+    expect(surface()).toBe("lyrics");
+    useUiShellStore.getState().toggleFullscreenSurface("lyrics");
+    expect(surface()).toBe("none");
+  });
+
+  it("transitions none -> panel -> none and is mutually exclusive with lyrics", () => {
+    useUiShellStore.getState().toggleFullscreenSurface("panel");
+    expect(surface()).toBe("panel");
+
+    useUiShellStore.getState().setFullscreenSurface("lyrics");
+    expect(surface()).toBe("lyrics");
+
+    useUiShellStore.getState().setFullscreenSurface("panel");
+    expect(surface()).toBe("panel");
+  });
+
+  it("closing lyrics never clears a full-window panel surface", () => {
+    useUiShellStore.getState().setFullscreenSurface("panel");
+    useUiShellStore.getState().setFullscreenLyrics(false);
+    expect(surface()).toBe("panel");
+
+    useUiShellStore.getState().setFullscreenLyrics(true);
+    expect(surface()).toBe("lyrics");
+    useUiShellStore.getState().setFullscreenLyrics(false);
+    expect(surface()).toBe("none");
+  });
+
+  it("mirrors native fullscreen events without clobbering lyrics on exit", () => {
+    useUiShellStore.getState().syncNativeFullscreen(true);
+    expect(surface()).toBe("panel");
+
+    useUiShellStore.getState().syncNativeFullscreen(false);
+    expect(surface()).toBe("none");
+
+    useUiShellStore.getState().setFullscreenSurface("lyrics");
+    useUiShellStore.getState().syncNativeFullscreen(false);
+    expect(surface()).toBe("lyrics");
+  });
+
+  it("does not notify subscribers for a no-op surface write", () => {
+    const listener = vi.fn();
+    const unsubscribe = useUiShellStore.subscribe(listener);
+
+    useUiShellStore.getState().setFullscreenSurface("none");
+    useUiShellStore.getState().syncNativeFullscreen(false);
+    expect(listener).not.toHaveBeenCalled();
+
+    unsubscribe();
   });
 });
 
@@ -65,7 +122,7 @@ describe("uiShellStore fullscreen action", () => {
     await useUiShellStore.getState().toggleFullscreen();
 
     expect(toggleFullscreen).toHaveBeenCalledTimes(1);
-    expect(useUiShellStore.getState().isFullscreen).toBe(true);
+    expect(surface()).toBe("panel");
   });
 
   it("falls back to the document fullscreen API", async () => {
@@ -83,7 +140,7 @@ describe("uiShellStore fullscreen action", () => {
 
     await useUiShellStore.getState().toggleFullscreen();
     expect(requestFullscreen).toHaveBeenCalledTimes(1);
-    expect(useUiShellStore.getState().isFullscreen).toBe(true);
+    expect(surface()).toBe("panel");
 
     Object.defineProperty(document, "fullscreenElement", {
       configurable: true,
@@ -91,7 +148,7 @@ describe("uiShellStore fullscreen action", () => {
     });
     await useUiShellStore.getState().toggleFullscreen();
     expect(exitFullscreen).toHaveBeenCalledTimes(1);
-    expect(useUiShellStore.getState().isFullscreen).toBe(false);
+    expect(surface()).toBe("none");
   });
 });
 
@@ -119,12 +176,13 @@ describe("uiShellStore persistence projection (S6-6c)", () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     const shell = useUiShellStore.getState();
 
-    shell.setIsFullscreen(true);
+    shell.setFullscreenSurface("panel");
+    shell.setFullscreenSurface("lyrics");
     shell.setIsNavMenuOpen(true);
     shell.setIsTransitioning(true);
-    shell.setIsFullscreenLyrics(true);
 
     expect(uiStoreWrites(setItem)).toEqual([]);
+    expect(localStorage.getItem("ui-store-v2")).not.toContain("fullscreen");
   });
 
   it("does not write the legacy mimimusic_active_view channel any more", () => {
@@ -154,6 +212,7 @@ describe("uiShellStore persistence projection (S6-6c)", () => {
     expect(useUiShellStore.getState().currentView).toBe("visualization");
     expect(useUIStore.getState().themeMode).toBe("light");
     expect(useUIStore.getState().isDynamicTheme).toBe(false);
+    expect(surface()).toBe("none");
   });
 
   it("is transient: the shell store exposes no persist middleware", () => {
