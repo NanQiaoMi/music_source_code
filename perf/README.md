@@ -14,6 +14,7 @@
 | scripts/perf/perf-dashboard.mjs | S8-3b 看板：最近 14 行表格 + 趋势箭头 + 回归高亮 + 最新 runtime metrics；stdout 或 --out |
 | scripts/perf/perf-history-lib.mjs | S8-3b 历史行 schema/解析共享模块（上面两个 CLI 共用） |
 | scripts/perf/report-store-stats.mjs | Store 架构统计：store 数、persist key、整店订阅、store 依赖边/SCC、getState 分层；支持 --check、--json 与 --store |
+| scripts/perf/soak.mjs | S7-9a node soak harness：每 tick 用真实 TtlLruCache/hydrationStatus 跑有界合成负载并采 heapUsed；输出 start/peak/end/delta（--json），写 perf/reports/soak-<ts>.json，超阈值 exit 1（见 §11） |
 | scripts/check-store-budgets.mjs | S6-12 Store 行数棘轮 + 环门禁：逐文件行数 ≤ baseline，未入基线的新文件 ≤400 行，运行时 store 图 SCC 必须为 0；支持 --update、--root、--baseline、--max-lines |
 | scripts/report-audio-consumers.mjs | S6-4 audioStore 播放字段消费清单：9 字段的 selector / getState 链（含跨行与解构）/ 别名 / setState / `useAudioCurrentSong` 读写点，按层与字段汇总；支持 --json、--fields、--group（progress / playback / all 批次）、--check（components/hooks/lib/services/store 读点归零门禁；audioStore 自身定义点豁免） |
 | scripts/check-docs-facts.mjs | 文档事实校验：store 数、过期字样、CI 触发分支、端口一致性（warn）、INDEX 链接、执行计划包完整性 |
@@ -62,6 +63,10 @@
 
     # 分层依赖（S6-12a；CI 的 quality job 同命令）
     npm run verify:layers
+
+    # node soak（S7-9a；无浏览器，见 §11）
+    npm run perf:soak
+    node scripts/perf/soak.mjs --quick 1
 
     # 文档事实
     node scripts/check-docs-facts.mjs
@@ -189,3 +194,34 @@
   - 测试文件（`*.test.*` / `*.spec.*` / `src/test/**`）不参与分层与 devDependency 规则；`import type` 默认不构成运行时边（与 S6-11c store 图口径一致）。
 - 首跑（2026-10-29）8 errors / 26 warnings → **0 errors**。修复：store→GlassToast 3 处（toast 单例下沉 `src/store/actions/uiActions.ts`，GlassToast 仅 re-export）；lib→hooks 2 处（`src/lib/audio/audioEngineAccess.ts` 承接 getAudioContext/getAudioAnalyser）；`audioStore→playbackSlice→playlistStore→audioStore` 环（删除无消费者的 `playlistStore.playSelectedSongs`，`storeGraph.contract.test.ts` 边预算 22→21）；`degradedNotifier→uiStore→safeStorage→degradedNotifier` 环（toast 订阅上移 `src/hooks/useStorageDegradedToast.ts`）。
 - 26 条 no-orphans warning 是存量孤立模块（多为仅 type import 的 types 文件与动态加载的 lx_sources），保持 warn；新增 error 必须修复，或用 `pathNot` 精确豁免并在 PR 说明原因（不得整目录排除）。
+
+## 11. Node soak harness（S7-9a，2026-10-29）
+
+- 定位：**CLI-only** 的进程内 soak，用来长时间观察「真实模块 + 有界合成负载」下的 heapUsed 漂移；不依赖浏览器/jsdom/Chrome，因此与计划中的 CDP 播放 soak（`soak-playback.mjs`，依赖 S2-5 计数器与可用 Chrome）并行存在，**不能替代**真机播放/2h 结论。
+- 负载（每个 tick，全部有界、无跨 tick 累积数组）：
+  - 真实 `src/lib/cache/TtlLruCache.ts`（400 项 / 15s TTL / 每 tick 前进 10s 的虚拟时钟）：250 次 `set`（写满后触发 LRU 淘汰）+ 400 次 `get`（命中/未命中混合）+ 先 `prune()`（累计 TTL 过期数，保证 TTL 路径也被触发）。
+  - 真实 `src/lib/hydrationStatus.ts`：16 个监听者 `subscribe` → idle→hydrating→ready→idle 4 次状态切换 → 全部退订；运行结束恢复初始状态，不污染进程全局。
+- 采样：`process.memoryUsage().heapUsed`；start 在首个 tick 前，之后每 tick 采一次（样本含 `elapsedMs`）。报告 `memory.startMB/peakMB/endMB/deltaMB/peakDeltaMB`（2 位小数）；**exit 1 的判定只看 deltaMB = end − start > --threshold-mb**，peak 仅用于定位瞬时尖峰。
+- 命令：
+
+      npm run perf:soak                                  # 默认 60 分钟；间隔 = duration 切成约 60 份，夹 1–60s
+      node scripts/perf/soak.mjs --quick 1               # 1 分钟冒烟（60 tick × 1s）
+      node scripts/perf/soak.mjs --duration 120 --interval 30 --threshold-mb 30
+      node scripts/perf/soak.mjs --json                  # stdout 输出整份 JSON（同时仍写文件）
+
+  选项：`--duration <分钟>`（默认 60）、`--quick [分钟]`（默认 1，也可写 `--quick 2`）、`--interval <秒>`、`--threshold-mb <n>`（默认 30）、`--json`；未知选项/非法数值 exit 2。
+- 输出：每次运行都写 `perf/reports/soak-<ISO 时间戳>.json`（生成物，**不提交**）；stdout 默认 markdown 摘要（ticks、heap start/peak/end、delta、result、负载计数、cache 命中率、报告路径）。`--json` 时 stdout 为纯 JSON（失败信息仍走 stderr）。
+- 实现要点：Node 20（CI 版本）没有原生 TS 类型剥离，脚本用现有 `typescript` devDependency 把两个真实模块 `transpileModule` 到 `.cache/soak/*.mjs` 后动态 import（只擦类型、不改逻辑；`TtlLruCache` 无外部依赖，`hydrationStatus` 只 import react，不触 DOM）。测试在 vitest 下走 Vite 的 TS 转换，CI Node 20 也能跑。
+- 本机 1 分钟结果（2026-10-29，Node 24.16.0 / Windows，`--quick 1`，exit 0）：
+
+      ## Soak (node synthetic harness)
+      - ticks: 60 (1 min @ 1s)
+      - heap start/peak/end: 27.15 MB / 27.46 MB / 27.46 MB
+      - heap delta: +0.31 MB (peak +0.31 MB, threshold 30 MB)
+      - result: PASS
+      - operations: 15000 sets / 24000 gets / 8700 prunes / 240 transitions
+      - cache: 400/400, hitRate 28.8%
+      - report: perf/reports/soak-2026-10-29T05-17-08-562Z.json
+
+- 测试：`scripts/perf/soak.test.mjs`（注入 fake sampler + no-op sleep，2 tick：报告 shape、delta/peak、阈值超限 FAIL、参数解析、真实模块负载计数）：`npx vitest run scripts/perf/soak.test.mjs`。
+- 缺口/边界：只测进程 heap；不含 `performance.memory`、`activeAudioNodes`/`mediaBridgeListeners`（S2-5 未落地，全仓 0 引用）、IndexedDB/OPFS、persist 写入速率、FPS；无 Chrome/CDP 与真机音画。CLI 未接 nightly（按 S7-9a 任务要求保持 CLI-only），10min PR 版/2h 结论待 S7-9b。heap 受 V8 GC 时机影响，短跑 delta 可能为负，应以长跑趋势与 peak 为准。
