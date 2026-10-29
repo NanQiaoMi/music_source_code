@@ -128,7 +128,7 @@
 - [ ] S7-6 后端异步启动 + 状态事件 + 离线 UI — owner: — | PR: 1 | 依赖: S7-5 | 验收: 后端故障 <3s 可见窗口
 - [ ] S7-7 插件 utilityProcess 沙箱 + 权限 — owner: — | PR: 1 | 依赖: S7-5 | 验收: 恶意 fixture 无法读文件/执行命令
 - [ ] S7-8 凭据 safeStorage + Web 提示 — owner: — | PR: 1 | 依赖: S7-5 | 验收: 桌面 cookie 不明文；旧数据可读
-- [ ] S7-9 OPFS spike + 2h soak + 泄漏上界 — owner: — | PR: 1 | 依赖: S2-5 | 验收: 50MB 起播长任务 <100ms 或记录原因；heap <30MB
+- [ ] S7-9 OPFS spike + 2h soak + 泄漏上界 — **S7-9a 工具完成（2026-10-29，69bff7d）**：新增 `scripts/perf/soak.mjs`（DOM-free CLI：每 tick 对真实 TtlLruCache 250 set/400 get + prune、hydrationStatus 16 listener 全周期；采样 heapUsed，报告 start/peak/end/delta；`--duration/--quick/--interval/--threshold-mb 30/--json`；delta>阈值 exit 1，用法错误 exit 2；TS 模块用既有 typescript 转译，Node 20/24 可用）+ `perf:soak` 脚本 + 4 用例（注入 fake 采样器，形状/阈值/参数/真实模块计数）+ README §11。1min 实测（60 ticks）：heap 27.15→27.46MB，delta **+0.31MB**（阈值 30），15000 sets/24000 gets/8700 prunes，PASS；exit1 注入 120MB 增长已验证。全量 282 files/1765 tests；tsc/lint/docs 0。**未验收**：node-only 合成负载，无 OPFS spike、无 CDP playback soak（S7-9b）、无 performance.memory/音频节点/FPS/store 写频；未接 CI/nightly；50MB 起播延迟未测。分支 `feature/arch-perf-s7-9`（未合并）。
 
 ## S8 门禁与长期治理（M8，出口门）
 
