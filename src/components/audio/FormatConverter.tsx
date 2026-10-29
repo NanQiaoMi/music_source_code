@@ -4,7 +4,7 @@ import React, { useState, useCallback, useRef, useEffect } from "react";
 import { canExportConvertedAudio, detect } from "@/lib/audio/processingCapabilities";
 import { resolveAudioSourceBlob } from "@/lib/audio/audioSource";
 import { runFormatConversionWorkerTask } from "@/lib/audio/formatConversionWorker";
-import { createAudioWorker, WORKER_UNAVAILABLE_MESSAGE } from "@/lib/audio/workerCapabilities";
+import { AudioWorkerPool, createAudioWorkerPool } from "@/lib/audio/workerPool";
 import { useFormatConversionStore, ConversionTask } from "@/store/formatConversionStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { selectSongs } from "@/store/selectors/playlistSelectors";
@@ -45,20 +45,15 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
 
   const [selectedSongs, setSelectedSongs] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"select" | "queue" | "settings">("select");
-  const workerRef = useRef<Worker | null>(null);
+  const poolRef = useRef<AudioWorkerPool | null>(null);
   const convertingRef = useRef<Map<string, boolean>>(new Map());
   const capabilities = detect();
   const exportAvailable = canExportConvertedAudio(capabilities);
 
   useEffect(() => {
-    const conversionWorker = createAudioWorker(
-      new URL("../../workers/conversion.worker.ts", import.meta.url)
-    );
-    workerRef.current = conversionWorker;
-
     return () => {
-      workerRef.current = null;
-      conversionWorker?.terminate();
+      poolRef.current?.terminateAll();
+      poolRef.current = null;
     };
   }, []);
 
@@ -105,14 +100,13 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
     const pendingTasks = tasks.filter((t) => t.status === "pending");
     if (pendingTasks.length === 0) return;
 
-    const worker = workerRef.current;
-    if (!worker) {
-      for (const task of pendingTasks) {
-        updateTaskStatus(task.id, "error", WORKER_UNAVAILABLE_MESSAGE);
-        incrementFailed();
-      }
-      return;
-    }
+    // Bounded pool (queue + timeout + restart); unavailable workers reject per task.
+    const pool =
+      poolRef.current ??
+      createAudioWorkerPool(new URL("../../workers/conversion.worker.ts", import.meta.url), {
+        onWorkerUnavailable: (reason) => console.warn("[format-conversion] " + reason),
+      });
+    poolRef.current = pool;
 
     setIsConverting(true);
 
@@ -144,7 +138,7 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
         const fileBuffer = await source.blob.arrayBuffer();
 
         const outputBlob = await runFormatConversionWorkerTask({
-          worker,
+          pool,
           fileBuffer,
           sourceFormat: source.inferredFormat,
           targetFormat: task.targetFormat,
@@ -153,6 +147,8 @@ const FormatConverter: React.FC<FormatConverterProps> = ({ isOpen, onClose }) =>
           channels: settings.channels,
           preserveMetadata: settings.preserveMetadata,
           onProgress: (progress) => updateTaskProgress(task.id, progress),
+          onCoreSource: (coreSource) =>
+            console.info("[format-conversion] ffmpeg core:", coreSource),
         });
 
         updateTaskStatus(task.id, "completed", undefined, outputBlob);

@@ -209,6 +209,8 @@ export class LruTtlCache<K, V> {
 **Step 4（S7-3b）**：FFmpeg core 自托管：把 core 放 `public/ffmpeg-core/`（prebuild 脚本可选下载并校验 SHA256，`scripts/sync-ffmpeg-core.mjs` 新增），`conversion.worker.ts:25-33` 改为相对 `/ffmpeg-core/...`；失败时 `loadFFmpeg` 抛 `FFMPEG_UNAVAILABLE`。
 **Step 5（S7-3b）**：能力探测模块 `src/lib/audio/workerCapabilities.ts`：`canUseWorker()`、`canUseFFmpeg()`；UI 在不可用时显示「当前环境不支持在线转换/本地 core 缺失」并禁用按钮（复用现有错误展示，不新增面板）。
 
+**2026-10-30 落地记录（S7-3b，分支 `feature/arch-perf-s7-3b`）**：池实现落在新模块 `src/lib/audio/workerPool.ts`（`AudioWorkerPool`：默认 `maxWorkers=min(2,hardwareConcurrency-1)`、优先级队列、transfer in/out、任务超时、`maxRestarts` 重启、`onWorkerUnavailable`、`getStats {created,active,queued,completed,failed,restarts}`、45s 空闲回收）；`WorkerPoolManager` 保留原构造/静态 API 并委托，转换组件改 `createAudioWorkerPool(new URL(...))` + `execute`（未用 `getPool`）。Step 4 的脚本为 `scripts/fetch-ffmpeg-core.mjs`（非 `sync-*`），校验字节数+SHA256、幂等、`--force`/`--optional`/`--base`，并挂到 `prebuild`（`--optional`）；**发布/离线构建必须先执行 `npm run fetch:ffmpeg-core`**，`public/ffmpeg-core/` 不入库。worker 先 HEAD 同源两个文件，缺失/离线 warn 后回退 pinned unpkg，complete 带 `coreSource`。Step 5 的 `canUseFFmpeg` 未实现（缺口，UI 仍靠任务级错误）。50MB Performance 记录仍未取得。
+
 **测试**：`src/services/WorkerPoolManager.test.ts` 新增 `caps concurrency at maxWorkers` / `terminates idle workers after timeout` / `transfers ArrayBuffer without copy`（mock worker 断言 `postMessage` 第二参数为 transfer 列表）/ `terminateAll terminates active and idle`；`src/lib/audio/workerCapabilities.test.ts`：`reports unavailable when Worker constructor throws` / `reports ffmpeg unavailable when core 404`。
 
 **验证**：`npx vitest run src/services/WorkerPoolManager.test.ts src/lib/audio/workerCapabilities.test.ts` 全绿；手工 50MB 文件转换时 Performance 面板主线程长任务 <50ms（§6.1）；断网后转换入口显示明确错误（截图入证据）。

@@ -95,6 +95,9 @@ __pycache__/
 # Generated MediaPipe runtime assets (run: npm run sync:mediapipe)
 /public/mediapipe/
 
+# Generated FFmpeg wasm core (run: npm run fetch:ffmpeg-core before release/offline builds)
+/public/ffmpeg-core/
+
 # Local logs and temporary results
 *.log
 eslint-output.txt

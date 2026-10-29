@@ -6,6 +6,7 @@ import {
   runFormatConversionWorkerTask,
 } from "./formatConversionWorker";
 import { WORKER_UNAVAILABLE_MESSAGE } from "./workerCapabilities";
+import type { AudioWorkerPool } from "./workerPool";
 
 type WorkerListener = (event: MessageEvent<FormatConversionWorkerPayload>) => void;
 
@@ -94,6 +95,62 @@ describe("runFormatConversionWorkerTask", () => {
   it("rejects explicitly when workers are unavailable", async () => {
     const { promise } = runTask(null);
     await expect(promise).rejects.toThrow(WORKER_UNAVAILABLE_MESSAGE);
+  });
+
+  it("routes conversions through the pooled worker and reports the ffmpeg core source", async () => {
+    const execute = vi.fn().mockResolvedValue({
+      outputBuffer: new Uint8Array([5, 6]).buffer,
+      outputType: "audio/flac",
+      coreSource: "local",
+    });
+    const pool = { execute } as unknown as AudioWorkerPool;
+    const onProgress = vi.fn();
+    const onCoreSource = vi.fn();
+    const fileBuffer = new Uint8Array([1, 2, 3]).buffer;
+
+    const outputBlob = await runFormatConversionWorkerTask({
+      pool,
+      fileBuffer,
+      sourceFormat: "mp3",
+      targetFormat: "flac",
+      bitrate: 320,
+      sampleRate: 44100,
+      channels: 2,
+      preserveMetadata: true,
+      onProgress,
+      onCoreSource,
+    });
+
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "convert", data: expect.objectContaining({ fileBuffer }) }),
+      expect.objectContaining({ transfer: [fileBuffer] })
+    );
+    const poolOptions = execute.mock.calls[0][1] as { onProgress: (progress: number) => void };
+    poolOptions.onProgress(37);
+    expect(onProgress).toHaveBeenCalledWith(37);
+    expect(onCoreSource).toHaveBeenCalledWith("local");
+    expect(outputBlob.type).toBe("audio/flac");
+    expect(new Uint8Array(await outputBlob.arrayBuffer())).toEqual(new Uint8Array([5, 6]));
+  });
+
+  it("surfaces pooled worker unavailability to the caller", async () => {
+    const pool = {
+      execute: vi.fn().mockRejectedValue(new Error(WORKER_UNAVAILABLE_MESSAGE)),
+    } as unknown as AudioWorkerPool;
+
+    await expect(
+      runFormatConversionWorkerTask({
+        pool,
+        fileBuffer: new ArrayBuffer(2),
+        sourceFormat: "mp3",
+        targetFormat: "flac",
+        bitrate: 320,
+        sampleRate: 44100,
+        channels: 2,
+        preserveMetadata: false,
+        onProgress: vi.fn(),
+      })
+    ).rejects.toThrow(WORKER_UNAVAILABLE_MESSAGE);
   });
 
   it("documents transfer semantics: a transferred buffer is detached in the sender", () => {

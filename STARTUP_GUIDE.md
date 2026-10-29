@@ -73,6 +73,8 @@ npm run dev:electron
 npm run build
 ```
 
+> 离线音频转换依赖自托管的 FFmpeg core（约 31MB，不入库）：首次构建/发布前请执行 `npm run fetch:ffmpeg-core`（`npm run build` 的 prebuild 会以 `--optional` 自动尝试）。缺失时转换 worker 会回退 unpkg CDN，断网/桌面离线转换会显式失败。
+
 ### Windows x64 桌面构建（v0.2.1）
 
 在 Windows PowerShell 执行：

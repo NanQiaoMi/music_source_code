@@ -1,3 +1,4 @@
+import { AudioWorkerPool } from "./workerPool";
 import { WORKER_UNAVAILABLE_MESSAGE } from "./workerCapabilities";
 
 export interface FormatConversionWorkerPayload {
@@ -7,6 +8,8 @@ export interface FormatConversionWorkerPayload {
     /** Output bytes, transferred back from the worker (preferred reply). */
     outputBuffer?: ArrayBuffer;
     outputType?: string;
+    /** "local" when /ffmpeg-core was used, "cdn" for the unpkg fallback. */
+    coreSource?: string;
     /** Legacy reply from older worker bundles; structured-cloned, not transferred. */
     outputBlob?: Blob;
     error?: string;
@@ -46,8 +49,10 @@ export interface FormatConversionWorkerLike {
 }
 
 export interface RunFormatConversionWorkerTaskInput {
-  /** `null` when `createAudioWorker` reported that workers are unavailable. */
-  worker: FormatConversionWorkerLike | null;
+  /** Preferred path: bounded pool (queue, timeout, restart, transferables). */
+  pool?: AudioWorkerPool;
+  /** Legacy direct worker; `null` when `createAudioWorker` reported unavailability. */
+  worker?: FormatConversionWorkerLike | null;
   /** Raw audio bytes; ownership moves to the worker (detached after posting). */
   fileBuffer: ArrayBuffer;
   sourceFormat: string;
@@ -57,7 +62,11 @@ export interface RunFormatConversionWorkerTaskInput {
   channels: number;
   preserveMetadata: boolean;
   onProgress: (progress: number) => void;
+  /** Observability hook: "local" (/ffmpeg-core) or "cdn" (unpkg fallback). */
+  onCoreSource?: (source: string) => void;
 }
+
+const CONVERSION_TIMEOUT_MS = 180000;
 
 function normalizeProgress(progress: unknown): number | null {
   if (typeof progress !== "number" || !Number.isFinite(progress)) {
@@ -67,7 +76,42 @@ function normalizeProgress(progress: unknown): number | null {
   return Math.max(0, Math.min(100, progress));
 }
 
+function toOutputBlob(data: FormatConversionWorkerPayload["data"] = {}): Blob {
+  const outputBlob = data.outputBuffer
+    ? new Blob([data.outputBuffer], { type: data.outputType || "" })
+    : data.outputBlob;
+
+  if (!outputBlob) {
+    throw new Error("Conversion worker completed without output");
+  }
+  return outputBlob;
+}
+
+function buildMessage(
+  fileBuffer: ArrayBuffer,
+  sourceFormat: string,
+  targetFormat: string,
+  bitrate: number,
+  sampleRate: number,
+  channels: number,
+  preserveMetadata: boolean
+): FormatConversionWorkerMessage {
+  return {
+    type: "convert",
+    data: {
+      fileBuffer,
+      sourceFormat,
+      targetFormat,
+      bitrate,
+      sampleRate,
+      channels,
+      preserveMetadata,
+    },
+  };
+}
+
 export function runFormatConversionWorkerTask({
+  pool,
   worker,
   fileBuffer,
   sourceFormat,
@@ -77,7 +121,31 @@ export function runFormatConversionWorkerTask({
   channels,
   preserveMetadata,
   onProgress,
+  onCoreSource,
 }: RunFormatConversionWorkerTaskInput): Promise<Blob> {
+  const message = buildMessage(
+    fileBuffer,
+    sourceFormat,
+    targetFormat,
+    bitrate,
+    sampleRate,
+    channels,
+    preserveMetadata
+  );
+
+  if (pool) {
+    return pool
+      .execute<FormatConversionWorkerPayload["data"]>(message, {
+        transfer: [fileBuffer],
+        timeoutMs: CONVERSION_TIMEOUT_MS,
+        onProgress: (progress) => onProgress(progress),
+      })
+      .then((data) => {
+        if (data?.coreSource) onCoreSource?.(data.coreSource);
+        return toOutputBlob(data);
+      });
+  }
+
   if (!worker) {
     return Promise.reject(new Error(WORKER_UNAVAILABLE_MESSAGE));
   }
@@ -109,14 +177,11 @@ export function runFormatConversionWorkerTask({
 
       if (type === "complete") {
         settle(() => {
-          const outputBlob = data.outputBuffer
-            ? new Blob([data.outputBuffer], { type: data.outputType || "" })
-            : data.outputBlob;
-
-          if (outputBlob) {
-            resolve(outputBlob);
-          } else {
-            reject(new Error("Conversion worker completed without output"));
+          if (data.coreSource) onCoreSource?.(data.coreSource);
+          try {
+            resolve(toOutputBlob(data));
+          } catch (error) {
+            reject(error instanceof Error ? error : new Error("Conversion failed"));
           }
         });
         return;
@@ -131,19 +196,6 @@ export function runFormatConversionWorkerTask({
     };
 
     worker.addEventListener("message", workerHandler);
-
-    const message: FormatConversionWorkerMessage = {
-      type: "convert",
-      data: {
-        fileBuffer,
-        sourceFormat,
-        targetFormat,
-        bitrate,
-        sampleRate,
-        channels,
-        preserveMetadata,
-      },
-    };
 
     try {
       // Transfer (not clone) the potentially large input buffer; it is detached after this call.

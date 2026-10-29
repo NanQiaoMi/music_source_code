@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
@@ -12,7 +12,7 @@ import { usePlaylistStore } from "@/store/playlistStore";
 import { selectSongs } from "@/store/selectors/playlistSelectors";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { resolveDSDSourceBlob } from "@/lib/audio/dsdSource";
-import { createAudioWorker, WORKER_UNAVAILABLE_MESSAGE } from "@/lib/audio/workerCapabilities";
+import { AudioWorkerPool, createAudioWorkerPool } from "@/lib/audio/workerPool";
 import type { Song } from "@/types/song";
 import { motion, AnimatePresence } from "framer-motion";
 import { Cpu, Trash2, CheckCircle, XCircle, Loader2, Download, FileAudio, Zap } from "lucide-react";
@@ -27,17 +27,11 @@ type DSDSongOption = Pick<Song, "id" | "title" | "artist" | "audioUrl"> & {
   sourceRate: DSDRate;
 };
 
-type DSDWorkerPayload = {
-  type?: "progress" | "complete" | "error";
-  data?: {
-    progress?: number;
-    /** Output bytes, transferred back from the worker. */
-    outputBuffer?: ArrayBuffer;
-    outputType?: string;
-    /** Legacy reply from older worker bundles. */
-    outputBlob?: Blob;
-    error?: string;
-  };
+type DSDPoolResult = {
+  outputBuffer?: ArrayBuffer;
+  outputType?: string;
+  /** Legacy reply from older worker bundles. */
+  outputBlob?: Blob;
 };
 
 const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
@@ -60,7 +54,7 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
 
   const [selectedSongs, setSelectedSongs] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"select" | "queue" | "settings">("select");
-  const workerRef = useRef<Worker | null>(null);
+  const poolRef = useRef<AudioWorkerPool | null>(null);
   const processingRef = useRef<Map<string, boolean>>(new Map());
 
   const dsdSongs = useMemo<DSDSongOption[]>(() => {
@@ -99,8 +93,8 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
     const activeProcessing = processingRef.current;
 
     return () => {
-      workerRef.current?.terminate();
-      workerRef.current = null;
+      poolRef.current?.terminateAll();
+      poolRef.current = null;
       activeProcessing.clear();
     };
   }, [isOpen]);
@@ -143,21 +137,13 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
     const pendingTasks = tasks.filter((t) => t.status === "pending");
     if (pendingTasks.length === 0) return;
 
-    let activeWorker = workerRef.current;
-    if (!activeWorker) {
-      activeWorker = createAudioWorker(new URL("../../workers/dsd.worker.ts", import.meta.url));
-      workerRef.current = activeWorker;
-    }
-
-    if (!activeWorker) {
-      for (const task of pendingTasks) {
-        updateTaskStatus(task.id, "error", undefined, WORKER_UNAVAILABLE_MESSAGE);
-        incrementFailed();
-      }
-      return;
-    }
-
-    const worker = activeWorker;
+    // Bounded pool (queue + timeout + restart); unavailable workers reject per task.
+    const pool =
+      poolRef.current ??
+      createAudioWorkerPool(new URL("../../workers/dsd.worker.ts", import.meta.url), {
+        onWorkerUnavailable: (reason) => console.warn("[dsd-conversion] " + reason),
+      });
+    poolRef.current = pool;
 
     for (const task of pendingTasks) {
       if (processingRef.current.get(task.id)) continue;
@@ -180,66 +166,35 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
         const { blob } = await resolveDSDSourceBlob(sourceSong);
         const fileBuffer = await blob.arrayBuffer();
 
-        await new Promise<void>((resolve, reject) => {
-          const cleanup = () => {
-            processingRef.current.delete(task.id);
-            worker.removeEventListener("message", workerHandler);
-          };
-
-          const workerHandler = (event: MessageEvent<DSDWorkerPayload>) => {
-            const { type, data = {} } = event.data || {};
-
-            if (type === "progress") {
-              updateTaskProgress(task.id, data.progress ?? 0);
-              return;
-            }
-
-            cleanup();
-
-            const outputBlob = data.outputBuffer
-              ? new Blob([data.outputBuffer], { type: data.outputType ?? "audio/wav" })
-              : data.outputBlob;
-
-            if (type === "complete" && outputBlob) {
-              updateTaskStatus(task.id, "completed", outputBlob);
-              incrementProcessed();
-              reportUsage("dsd_conv");
-              resolve();
-              return;
-            }
-
-            const message =
-              type === "complete"
-                ? "DSD worker completed without output"
-                : data.error || "DSD conversion failed";
-            updateTaskStatus(task.id, "error", undefined, message);
-            incrementFailed();
-            resolve();
-          };
-
-          worker.addEventListener("message", workerHandler);
-
-          try {
-            worker.postMessage(
-              {
-                type: "convertDSD",
-                data: {
-                  fileBuffer,
-                  sourceRate: task.sourceRate,
-                  targetSampleRate: settings.targetSampleRate,
-                  outputMode: settings.outputMode,
-                  dsdQuality: settings.dsdQuality,
-                  filterType: settings.filterType,
-                  dithering: settings.dithering,
-                },
-              },
-              [fileBuffer]
-            );
-          } catch (error) {
-            cleanup();
-            reject(error);
+        const result = await pool.execute<DSDPoolResult>(
+          {
+            type: "convertDSD",
+            data: {
+              fileBuffer,
+              sourceRate: task.sourceRate,
+              targetSampleRate: settings.targetSampleRate,
+              outputMode: settings.outputMode,
+              dsdQuality: settings.dsdQuality,
+              filterType: settings.filterType,
+              dithering: settings.dithering,
+            },
+          },
+          {
+            transfer: [fileBuffer],
+            timeoutMs: 180000,
+            onProgress: (progress) => updateTaskProgress(task.id, progress),
           }
-        });
+        );
+
+        const outputBlob = result.outputBuffer
+          ? new Blob([result.outputBuffer], { type: result.outputType ?? "audio/wav" })
+          : result.outputBlob;
+        if (!outputBlob) {
+          throw new Error("DSD worker completed without output");
+        }
+        updateTaskStatus(task.id, "completed", outputBlob);
+        incrementProcessed();
+        reportUsage("dsd_conv");
       } catch (error) {
         updateTaskStatus(
           task.id,
@@ -248,6 +203,7 @@ const DSDConverter: React.FC<DSDConverterProps> = ({ isOpen, onClose }) => {
           error instanceof Error ? error.message : "Conversion failed"
         );
         incrementFailed();
+      } finally {
         processingRef.current.delete(task.id);
       }
     }

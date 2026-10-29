@@ -1,8 +1,14 @@
-﻿/// <reference lib="webworker" />
+/// <reference lib="webworker" />
 
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 
+export type FFmpegCoreSource = "local" | "cdn";
+
+export const LOCAL_FFMPEG_CORE_BASE_URL = "/ffmpeg-core";
+export const CDN_FFMPEG_CORE_BASE_URL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+
 let ffmpeg: FFmpeg | null = null;
+let coreSource: FFmpegCoreSource | null = null;
 
 interface ConversionMessage {
   type: "convert";
@@ -18,28 +24,81 @@ interface ConversionMessage {
   };
 }
 
-const loadFFmpeg = async () => {
-  if (!ffmpeg) {
-    ffmpeg = new FFmpeg();
+interface ConversionReply {
+  outputBuffer: ArrayBuffer;
+  outputType: string;
+  coreSource: FFmpegCoreSource;
+}
 
-    const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
-
-    ffmpeg.on("log", ({ message }) => {
-      console.log("[FFmpeg Worker Log]:", message);
-    });
-
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-    });
+const hasCoreAsset = async (url: string): Promise<boolean> => {
+  try {
+    const response = await fetch(url, { method: "HEAD" });
+    return response.ok;
+  } catch {
+    return false;
   }
-  return ffmpeg;
 };
 
-const toBlobURL = async (url: string, _mimeType: string) => {
+/**
+ * Prefers the app-hosted core (works offline / in Electron) and only falls back
+ * to unpkg when the assets are missing. Run `npm run fetch:ffmpeg-core` to
+ * populate `public/ffmpeg-core/` before a release build.
+ */
+export const resolveFFmpegCoreSource = async (): Promise<{
+  baseURL: string;
+  source: FFmpegCoreSource;
+}> => {
+  const localJs = `${LOCAL_FFMPEG_CORE_BASE_URL}/ffmpeg-core.js`;
+  const localWasm = `${LOCAL_FFMPEG_CORE_BASE_URL}/ffmpeg-core.wasm`;
+  if ((await hasCoreAsset(localJs)) && (await hasCoreAsset(localWasm))) {
+    return { baseURL: LOCAL_FFMPEG_CORE_BASE_URL, source: "local" };
+  }
+
+  console.warn(
+    `[Conversion Worker] self-hosted FFmpeg core missing under ${LOCAL_FFMPEG_CORE_BASE_URL}; ` +
+      "falling back to unpkg CDN (offline conversion unavailable). Run `npm run fetch:ffmpeg-core`."
+  );
+  return { baseURL: CDN_FFMPEG_CORE_BASE_URL, source: "cdn" };
+};
+
+const toBlobURL = async (url: string, mimeType: string) => {
   const resp = await fetch(url);
+  if (!resp.ok) {
+    throw new Error(`Failed to load ${url} (HTTP ${resp.status})`);
+  }
   const body = await resp.blob();
-  return URL.createObjectURL(body);
+  return URL.createObjectURL(new Blob([body], { type: mimeType }));
+};
+
+const loadCore = async (baseURL: string): Promise<FFmpeg> => {
+  const instance = new FFmpeg();
+  instance.on("log", ({ message }) => {
+    console.log("[FFmpeg Worker Log]:", message);
+  });
+  await instance.load({
+    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+  });
+  return instance;
+};
+
+const loadFFmpeg = async (): Promise<{ instance: FFmpeg; source: FFmpegCoreSource }> => {
+  if (ffmpeg && coreSource) {
+    return { instance: ffmpeg, source: coreSource };
+  }
+
+  const resolved = await resolveFFmpegCoreSource();
+  try {
+    ffmpeg = await loadCore(resolved.baseURL);
+    coreSource = resolved.source;
+  } catch (error) {
+    if (resolved.source !== "local") throw error;
+    console.warn("[Conversion Worker] self-hosted core failed to load; retrying unpkg CDN", error);
+    ffmpeg = await loadCore(CDN_FFMPEG_CORE_BASE_URL);
+    coreSource = "cdn";
+  }
+
+  return { instance: ffmpeg, source: coreSource };
 };
 
 /** Returns an ArrayBuffer that owns exactly `bytes` so it can be transferred. */
@@ -56,8 +115,8 @@ const convertAudio = async (
   sampleRate: number,
   channels: number,
   preserveMetadata: boolean
-) => {
-  const ffmpegInstance = await loadFFmpeg();
+): Promise<ConversionReply> => {
+  const { instance: ffmpegInstance, source } = await loadFFmpeg();
 
   const inputFileName = `input.${sourceFormat}`;
   const outputFileName = `output.${targetFormat}`;
@@ -90,7 +149,7 @@ const convertAudio = async (
   await ffmpegInstance.deleteFile(inputFileName);
   await ffmpegInstance.deleteFile(outputFileName);
 
-  return { outputBuffer, outputType: `audio/${targetFormat}` };
+  return { outputBuffer, outputType: `audio/${targetFormat}`, coreSource: source };
 };
 
 self.onmessage = async (event: MessageEvent<ConversionMessage>) => {
@@ -108,9 +167,13 @@ self.onmessage = async (event: MessageEvent<ConversionMessage>) => {
         preserveMetadata,
       } = data;
 
-      self.postMessage({ type: "progress", data: { progress: 10 } });
+      self.postMessage({ type: "progress", data: { progress: 10, coreSource } });
 
-      const { outputBuffer, outputType } = await convertAudio(
+      const {
+        outputBuffer,
+        outputType,
+        coreSource: usedCoreSource,
+      } = await convertAudio(
         fileBuffer,
         sourceFormat,
         targetFormat,
@@ -120,13 +183,14 @@ self.onmessage = async (event: MessageEvent<ConversionMessage>) => {
         preserveMetadata
       );
 
-      self.postMessage({ type: "progress", data: { progress: 100 } });
+      self.postMessage({ type: "progress", data: { progress: 100, coreSource: usedCoreSource } });
 
       // Transfer the output back instead of structured-cloning a large buffer.
       self.postMessage(
         {
           type: "complete",
-          data: { outputBuffer, outputType },
+          // coreSource is part of the contract so callers can observe local vs CDN.
+          data: { outputBuffer, outputType, coreSource: usedCoreSource },
         },
         [outputBuffer]
       );
@@ -134,7 +198,10 @@ self.onmessage = async (event: MessageEvent<ConversionMessage>) => {
       console.error("[Conversion Worker Error]:", error);
       self.postMessage({
         type: "error",
-        data: { error: error instanceof Error ? error.message : "Conversion failed" },
+        data: {
+          error: error instanceof Error ? error.message : "Conversion failed",
+          coreSource,
+        },
       });
     }
   }
