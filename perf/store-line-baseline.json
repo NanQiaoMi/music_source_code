@@ -1,6 +1,6 @@
 {
   "maxLines": 400,
-  "generatedAt": "2026-10-29T01:48:31.947Z",
+  "generatedAt": "2026-10-29T01:57:59.336Z",
   "files": {
     "src/store/abLoopStore.ts": 109,
     "src/store/actions/emotionActions.ts": 9,
@@ -18,7 +18,8 @@
     "src/store/audioProcessingStore.ts": 363,
     "src/store/audioSourceStore.ts": 99,
     "src/store/audioStore.ts": 223,
-    "src/store/backupRestoreStore.ts": 529,
+    "src/store/backupRestoreStore.ts": 366,
+    "src/store/backup/helpers.ts": 189,
     "src/store/crossfadeStore.ts": 371,
     "src/store/dsdProcessingStore.ts": 250,
     "src/store/emotionStore.ts": 534,
