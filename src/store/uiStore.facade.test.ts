@@ -4,15 +4,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { usePanelStore } from "./panelStore";
 import { useToastStore } from "./toastStore";
 import { useUIStore } from "./uiStore";
+import { useUiShellStore } from "./uiShellStore";
 
 const initialUIState = useUIStore.getInitialState();
 const initialToastState = useToastStore.getState();
 const initialPanelState = usePanelStore.getInitialState();
+const initialShellState = useUiShellStore.getInitialState();
 
 describe("uiStore toast facade (S6-6a)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     useUIStore.setState(initialUIState, true);
+    useUiShellStore.setState(initialShellState, true);
     useToastStore.setState(initialToastState, true);
   });
 
@@ -84,6 +87,7 @@ describe("uiStore panel facade (S6-6b)", () => {
   beforeEach(() => {
     useUIStore.setState(initialUIState, true);
     usePanelStore.setState(initialPanelState, true);
+    useUiShellStore.setState(initialShellState, true);
     localStorage.clear();
   });
 
@@ -122,7 +126,7 @@ describe("uiStore panel facade (S6-6b)", () => {
 
     useUIStore.getState().setIsFullscreenLyrics(true);
     usePanelStore.getState().openPanel("formatConverter");
-    expect(useUIStore.getState().isFullscreenLyrics).toBe(false);
+    expect(useUiShellStore.getState().isFullscreenLyrics).toBe(false);
   });
 
   it("keeps forwarder identities stable across unrelated uiStore updates", () => {
@@ -158,6 +162,101 @@ describe("uiStore panel facade (S6-6b)", () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem");
 
     usePanelStore.getState().openPanel("queue");
+
+    expect(setItem.mock.calls.filter(([key]) => key === "ui-store-v2")).toEqual([]);
+  });
+});
+// ─── S6-6c: 壳域兼容转发 + 持久化投影 ───────────────────────────────
+describe("uiStore shell facade (S6-6c)", () => {
+  beforeEach(() => {
+    useUIStore.setState(initialUIState, true);
+    usePanelStore.setState(initialPanelState, true);
+    useUiShellStore.setState(initialShellState, true);
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("forwards the legacy shell actions to uiShellStore", () => {
+    const ui = useUIStore.getState();
+
+    ui.setCurrentView("player");
+    ui.setIsTransitioning(true);
+    ui.setIsNavMenuOpen(true);
+    ui.setIsFullscreenLyrics(true);
+    ui.setIsFullscreen(true);
+
+    expect(useUiShellStore.getState()).toMatchObject({
+      currentView: "player",
+      isTransitioning: true,
+      isNavMenuOpen: true,
+      isFullscreenLyrics: true,
+      isFullscreen: true,
+    });
+
+    ui.toggleFullscreenLyrics();
+    expect(useUiShellStore.getState().isFullscreenLyrics).toBe(false);
+  });
+
+  it("no longer owns transient shell state (single owner = uiShellStore)", () => {
+    for (const field of [
+      "isTransitioning",
+      "isNavMenuOpen",
+      "isFullscreenLyrics",
+      "isFullscreen",
+    ]) {
+      expect(field in useUIStore.getState()).toBe(false);
+    }
+    expect("restorePersistedView" in useUIStore.getState()).toBe(false);
+  });
+
+  it("keeps currentView only as the ui-store-v2 persistence projection", () => {
+    // owner 仍是 uiShellStore；uiStore 的 currentView 只是持久化投影。
+    useUiShellStore.getState().setCurrentView("emotion");
+    expect(useUIStore.getState().currentView).toBe("emotion");
+
+    // 兼容旧调用：直接 setState 仍会驱动 owner。
+    useUIStore.setState({ currentView: "home" });
+    expect(useUiShellStore.getState().currentView).toBe("home");
+  });
+
+  it("keeps forwarder identities stable across unrelated uiStore updates", () => {
+    const { setCurrentView, setIsFullscreen, toggleFullscreenLyrics } = useUIStore.getState();
+
+    useUIStore.getState().setThemeMode("light");
+
+    expect(useUIStore.getState().setCurrentView).toBe(setCurrentView);
+    expect(useUIStore.getState().setIsFullscreen).toBe(setIsFullscreen);
+    expect(useUIStore.getState().toggleFullscreenLyrics).toBe(toggleFullscreenLyrics);
+  });
+
+  it("persists a shell view change with the unchanged payload shape", () => {
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+
+    useUIStore.getState().setCurrentView("player");
+
+    const writes = setItem.mock.calls.filter(([key]) => key === "ui-store-v2");
+    expect(writes).toHaveLength(1);
+    const saved = JSON.parse(String(writes[0][1]));
+    expect(saved.version).toBe(2);
+    expect(Object.keys(saved.state).sort()).toEqual([
+      "currentView",
+      "isDynamicTheme",
+      "themeColors",
+      "themeMode",
+    ]);
+    expect(saved.state.currentView).toBe("player");
+  });
+
+  it("does not persist transient shell changes", () => {
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+
+    useUIStore.getState().setIsFullscreen(true);
+    useUIStore.getState().setIsNavMenuOpen(true);
+    useUIStore.getState().setIsTransitioning(true);
 
     expect(setItem.mock.calls.filter(([key]) => key === "ui-store-v2")).toEqual([]);
   });

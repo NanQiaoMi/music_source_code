@@ -11,7 +11,7 @@ import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore, type LoopMode } from "@/store/playerStore";
 import { MISSING_AUDIO_SOURCE_HELP_TEXT } from "@/lib/audio/playableAudioSource";
 import { usePanelStore } from "@/store/panelStore";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useABLoopStore } from "@/store/abLoopStore";
 import { GlassProgressBar } from "@/components/shared/GlassProgressBar";
@@ -333,7 +333,7 @@ export const Player3D: React.FC = () => {
   // 这三个 store 必须逐字段订阅：无选择器的整店订阅
   // 会订阅整个 state，播放期间 timeupdate 每秒多次写 currentTime 就会
   // 把这个大组件整体重渲染一遍。动作是稳定引用，只有下面几个**值**会触发重渲染。
-  const currentView = useUIStore((state) => state.currentView);
+  const currentView = useUiShellStore((state) => state.currentView);
   // 视图门控：Player3D 常驻挂载（切视图只改 visibility），仅靠 phase 会让
   // Home 页在后台继续跑音频采样循环。只有播放页 + confirmed playing 才排帧。
   const isPlayerViewActive = currentView === "player";
@@ -342,8 +342,8 @@ export const Player3D: React.FC = () => {
     reducedMotion: shouldReduceMotion === true,
     isPlayerViewActive,
   });
-  const setCurrentView = useUIStore((state) => state.setCurrentView);
-  const setIsTransitioning = useUIStore((state) => state.setIsTransitioning);
+  const setCurrentView = useUiShellStore((state) => state.setCurrentView);
+  const setIsTransitioning = useUiShellStore((state) => state.setIsTransitioning);
   const panels = usePanelStore((state) => state.panels);
   const togglePanel = usePanelStore((state) => state.togglePanel);
   const isQueueOpen = Boolean(panels?.shelf3D || panels?.queue);

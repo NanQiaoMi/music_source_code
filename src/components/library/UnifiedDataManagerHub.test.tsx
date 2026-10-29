@@ -5,7 +5,7 @@ import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { UnifiedDataManagerHub } from "./UnifiedDataManagerHub";
 import { usePanelStore } from "@/store/panelStore";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useDataManagerStore } from "@/store/useDataManagerStore";
 
@@ -70,7 +70,7 @@ describe("UnifiedDataManagerHub", () => {
     document.body.appendChild(container);
     root = createRoot(container);
 
-    useUIStore.setState({ currentView: "home" });
+    useUiShellStore.setState({ currentView: "home" });
     usePanelStore.getState().closeAllPanels();
     usePanelStore.getState().openPanel("dataManager");
 

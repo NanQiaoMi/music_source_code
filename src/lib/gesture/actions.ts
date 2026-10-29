@@ -2,7 +2,7 @@
  * 手势动作执行层。
  *
  * 设计约束：
- * - 只通过 store 的公共状态/方法执行动作（默认 useAudioStore / useUIStore / useGestureSettingsStore 的 getState()），
+ * - 只通过 store 的公共状态/方法执行动作（默认 useAudioStore / useUiShellStore / useGestureSettingsStore 的 getState()），
  *   模块顶层不调用 getState，避免 Next.js 服务端导入阶段触碰浏览器状态；
  * - 依赖通过 GestureActionDeps 注入，便于单元测试与控制器复用；
  * - 只返回 GestureActionOutcome 供反馈 UI 展示，不在此处 pushEvent（是否反馈由控制器决定）。
@@ -10,7 +10,7 @@
 
 import { useAudioStore } from "@/store/audioStore";
 import { useGestureSettingsStore } from "@/store/gestureSettingsStore";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { formatTime } from "@/utils/formatTime";
 import {
   findGestureActionDefinition,
@@ -119,7 +119,7 @@ function readSettingsVolumeStep(deps: GestureActionDeps): number {
 
 function resolveDeps(deps: GestureActionDeps): ResolvedGestureActionDeps {
   const getAudioStore = deps.getAudioStore ?? (() => useAudioStore.getState());
-  const getUiStore = deps.getUiStore ?? (() => useUIStore.getState());
+  const getUiStore = deps.getUiStore ?? (() => useUiShellStore.getState());
   return {
     audio: getAudioStore(),
     ui: getUiStore(),

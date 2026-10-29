@@ -16,7 +16,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push }),
 }));
 
-// 面板事实在 panelStore（S6-6b），壳字段仍在 uiStore。
+// 面板事实在 panelStore（S6-6b），壳字段在 uiShellStore（S6-6c）。
 // 用 Object.assign 挂上 getState：SSR（renderToStaticMarkup）不跑 effect，只 mock 成
 // 普通函数时只有客户端渲染才会炸。
 vi.mock("@/store/panelStore", () => {
@@ -32,7 +32,7 @@ vi.mock("@/store/panelStore", () => {
   return { usePanelStore: Object.assign(usePanelStore, { getState: () => state }) };
 });
 
-vi.mock("@/store/uiStore", () => {
+vi.mock("@/store/uiShellStore", () => {
   const state = {
     currentView: "home",
     isFullscreen: false,
@@ -40,9 +40,9 @@ vi.mock("@/store/uiStore", () => {
     setCurrentView: mocks.setCurrentView,
     setIsNavMenuOpen: vi.fn(),
   };
-  const useUIStore = (selector?: (input: typeof state) => unknown) =>
+  const useUiShellStore = (selector?: (input: typeof state) => unknown) =>
     selector ? selector(state) : state;
-  return { useUIStore: Object.assign(useUIStore, { getState: () => state }) };
+  return { useUiShellStore: Object.assign(useUiShellStore, { getState: () => state }) };
 });
 
 vi.mock("@/store/playlistStore", () => {

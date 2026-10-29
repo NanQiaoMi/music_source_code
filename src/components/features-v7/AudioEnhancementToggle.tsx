@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { Zap } from "lucide-react";
 import { AudioEffectsPanel } from "./AudioEffectsPanel";
 
 export function AudioEnhancementToggle() {
-  const currentView = useUIStore((state) => state.currentView);
+  const currentView = useUiShellStore((state) => state.currentView);
   const [showEffects, setShowEffects] = useState(false);
 
   if (currentView !== "player") return null;

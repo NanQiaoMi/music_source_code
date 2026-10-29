@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { usePanelStore } from "@/store/panelStore";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { useStorageAnalyticsStore, formatStorageBytes } from "@/store/useStorageAnalyticsStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { usePlaylistStore } from "@/store/playlistStore";
@@ -45,7 +45,7 @@ export const UnifiedDataManagerHub: React.FC<UnifiedDataManagerHubProps> = ({
   isStandalonePage = false,
   onClose,
 }) => {
-  const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const setCurrentView = useUiShellStore((state) => state.setCurrentView);
   const closePanel = usePanelStore((state) => state.closePanel);
   const storageDetails = useStorageAnalyticsStore((state) => state.storageDetails);
   const usagePercent = useStorageAnalyticsStore((state) => state.usagePercent);

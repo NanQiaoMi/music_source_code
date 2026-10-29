@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 
 interface DateTimeSnapshot {
   time: {
@@ -39,7 +39,7 @@ const getDateTimeSnapshot = (): DateTimeSnapshot => {
 };
 
 export const AppleDateTime: React.FC = () => {
-  const isNavMenuOpen = useUIStore((state) => state.isNavMenuOpen);
+  const isNavMenuOpen = useUiShellStore((state) => state.isNavMenuOpen);
   const [dateTime, setDateTime] = useState<DateTimeSnapshot>(EMPTY_DATE_TIME);
 
   useEffect(() => {

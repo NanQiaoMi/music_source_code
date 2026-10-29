@@ -8,6 +8,7 @@ import { usePlaylistStore } from "@/store/playlistStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useQueueStore } from "@/store/queueStore";
 import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
@@ -41,7 +42,7 @@ export const MusicCardStack: React.FC = () => {
   const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const setIsPlaying = useAudioStore((state) => state.setIsPlaying);
   const playQueue = useAudioStore((state) => state.playQueue);
-  const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const setCurrentView = useUiShellStore((state) => state.setCurrentView);
   const showToast = useUIStore((state) => state.showToast);
   const updatePlaylistSong = usePlaylistStore((state) => state.updateSong);
   const updateQueueSong = useQueueStore((state) => state.updateSong);

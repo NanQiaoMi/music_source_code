@@ -2,12 +2,12 @@
 
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { useElectron } from "@/hooks/useElectron";
 import { MonitorPlay } from "lucide-react";
 
 export function DesktopLyricsToggle() {
-  const currentView = useUIStore((state) => state.currentView);
+  const currentView = useUiShellStore((state) => state.currentView);
   const { isElectron, isDesktopLyricsOpen, toggleDesktopLyrics, checkDesktopLyricsOpen } =
     useElectron();
 

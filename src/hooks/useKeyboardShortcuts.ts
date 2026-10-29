@@ -4,6 +4,7 @@ import { useEffect, useCallback } from "react";
 import { usePlayerStore } from "@/store/playerStore";
 import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { useVisualizationStore } from "@/store/visualizationStore";
 import { useKeyboardShortcutsStore } from "@/store/keyboardShortcutsStore";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
@@ -102,6 +103,7 @@ export const useKeyboardShortcuts = () => {
       // S6-9a: 播放/暂停、跳播、上下曲、音量、静音改走 playbackCommands，UI 不再直写 audioStore。
       const playerStore = usePlayerStore.getState();
       const uiStore = useUIStore.getState();
+      const uiShell = useUiShellStore.getState();
 
       const bind = (id: string) => getBinding(id);
 
@@ -205,8 +207,8 @@ export const useKeyboardShortcuts = () => {
 
       if (matchKeys(e, bind("escape"))) {
         e.preventDefault();
-        if (uiStore.currentView === "player") {
-          uiStore.setCurrentView("home");
+        if (uiShell.currentView === "player") {
+          uiShell.setCurrentView("home");
         }
         if (uiStore.isSettingsOpen) uiStore.setIsSettingsOpen(false);
         if (uiStore.isLyricSettingsOpen) uiStore.setIsLyricSettingsOpen(false);
@@ -215,13 +217,13 @@ export const useKeyboardShortcuts = () => {
 
       if (matchKeys(e, bind("fullscreen-lyrics"))) {
         e.preventDefault();
-        uiStore.toggleFullscreenLyrics?.();
+        uiShell.toggleFullscreenLyrics();
         return;
       }
 
       if (matchKeys(e, bind("fullscreen"))) {
         e.preventDefault();
-        uiStore.toggleFullscreen();
+        uiShell.toggleFullscreen();
         return;
       }
 
@@ -293,7 +295,7 @@ export const useKeyboardShortcuts = () => {
         doc.mozFullScreenElement ||
         doc.msFullscreenElement
       );
-      useUIStore.setState({ isFullscreen: isFs });
+      useUiShellStore.getState().setIsFullscreen(isFs);
       useVisualizationStore.setState({ isFullscreen: isFs });
     };
 

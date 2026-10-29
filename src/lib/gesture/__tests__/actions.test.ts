@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAudioStore } from "@/store/audioStore";
 import { useGestureSettingsStore } from "@/store/gestureSettingsStore";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { formatTime } from "@/utils/formatTime";
 import {
   executeGestureAction,
@@ -302,7 +302,7 @@ describe("默认依赖（真实 store）", () => {
       duration: 180,
       currentTime: 0,
     });
-    useUIStore.setState({ isFullscreenLyrics: false });
+    useUiShellStore.setState({ isFullscreenLyrics: false });
   });
 
   it("不注入依赖时读取 useAudioStore 执行音量动作", () => {

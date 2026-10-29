@@ -10,7 +10,7 @@ import { FloatingDebugHUD } from "./FloatingDebugHUD";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 
 type MockImageProps = ImgHTMLAttributes<HTMLImageElement> & {
   fill?: boolean;
@@ -256,7 +256,7 @@ describe("Floating Player Audio & Touch Modules", () => {
         expandBtn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       });
 
-      expect(useUIStore.getState().currentView).toBe("player");
+      expect(useUiShellStore.getState().currentView).toBe("player");
     });
 
     it("switches visualizer tab between waveform and spectrum", () => {

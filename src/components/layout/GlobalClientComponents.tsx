@@ -10,7 +10,7 @@ import { useElectron } from "@/hooks/useElectron";
 import { useStorageDegradedToast } from "@/hooks/useStorageDegradedToast";
 import { bootstrapApp } from "@/lib/bootstrap";
 import { compactExistingStorage } from "@/lib/storage/safeStorage";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 
 const FloatingPlayer = dynamic(
   () => import("@/components/player/FloatingPlayer").then((mod) => mod.FloatingPlayer),
@@ -37,7 +37,7 @@ export function GlobalClientComponents() {
   useElectron();
   useStorageDegradedToast();
   const pathname = usePathname();
-  const currentView = useUIStore((state) => state.currentView);
+  const currentView = useUiShellStore((state) => state.currentView);
   const isDataManagerRoute =
     pathname === "/data-manager" ||
     pathname === "/data-manager/" ||

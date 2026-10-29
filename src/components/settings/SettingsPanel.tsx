@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { usePanelStore } from "@/store/panelStore";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { GlassPanel } from "@/components/shared/Glass";
 import {
   Activity,
@@ -52,7 +52,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const setStereoEnhance = useAudioStore((state) => state.setStereoEnhance);
 
   const openPanel = usePanelStore((state) => state.openPanel);
-  const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const setCurrentView = useUiShellStore((state) => state.setCurrentView);
 
   const [fadeInOut, setFadeInOut] = useState(true);
   const [autoPause, setAutoPause] = useState(false);

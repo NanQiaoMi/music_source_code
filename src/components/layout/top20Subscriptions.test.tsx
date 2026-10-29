@@ -24,6 +24,7 @@ import { useQueueStore } from "@/store/queueStore";
 import { useSourceConfigStore } from "@/store/sourceConfigStore";
 import { usePanelStore } from "@/store/panelStore";
 import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { useOfflineDownloadStore } from "@/store/useOfflineDownloadStore";
 import { useVisualSettingsStore } from "@/store/visualSettingsStore";
 import { useVisualizationStore } from "@/store/visualizationStore";
@@ -204,7 +205,7 @@ const subscriptionCases: SubscriptionCase[] = [
     name: "QueuePanel",
     make: () => <QueuePanel isOpen onClose={() => undefined} />,
     unrelated: () => {
-      useUIStore.setState({ currentView: "player" });
+      useUiShellStore.setState({ currentView: "player" });
       useAudioStore.setState({ currentTime: 8 });
     },
     related: () => useQueueStore.setState({ queue: [nextSong] }),
@@ -212,7 +213,7 @@ const subscriptionCases: SubscriptionCase[] = [
   {
     name: "PlayerSkinsPanel",
     make: () => <PlayerSkinsPanel isOpen onClose={() => undefined} />,
-    unrelated: () => useUIStore.setState({ currentView: "player" }),
+    unrelated: () => useUiShellStore.setState({ currentView: "player" }),
     related: () =>
       useVisualSettingsStore.setState({
         customThemes: [...initialVisualSettingsState.customThemes],
@@ -249,6 +250,7 @@ describe("S3-10 narrow store subscriptions", () => {
   beforeEach(() => {
     localStorage.clear();
     useUIStore.setState(initialUIState, true);
+    useUiShellStore.setState(useUiShellStore.getInitialState(), true);
     useAudioStore.setState(initialAudioState, true);
     useQueueStore.setState(initialQueueState, true);
     useOfflineDownloadStore.setState(initialOfflineState, true);

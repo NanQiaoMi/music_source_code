@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { useDynamicTheme } from "@/hooks/useDynamicTheme";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useRestoreAfterHydration } from "@/hooks/useRestoreAfterHydration";
@@ -69,13 +69,13 @@ import { getHydrationStatus } from "@/lib/hydrationStatus";
  * layout skeleton and orchestration layer.
  *
  * Architecture:
- * - uiStore: Central source of truth for panel visibility and view navigation.
+ * - uiShellStore: Central source of truth for view navigation (S6-6c).
  * - PanelOrchestrator: Manages lazy-loading and error-isolation for all 32+ feature panels.
  * - HomeView / PlayerView: Decoupled UI modules for different application states.
  */
 export default function Home() {
-  const currentView = useUIStore((state) => state.currentView);
-  const isTransitioning = useUIStore((state) => state.isTransitioning);
+  const currentView = useUiShellStore((state) => state.currentView);
+  const isTransitioning = useUiShellStore((state) => state.isTransitioning);
 
   // Initialize Global Services & Hooks
   useDynamicTheme();
@@ -92,8 +92,9 @@ export default function Home() {
   }, []);
 
   useRestoreAfterHydration(() => {
-    useUIStore.getState().restorePersistedView();
-    // 重视图由上方 next/dynamic 声明按需加载；此处不再重复预取（S3-9）。
+    // S6-6c: currentView 由 ui-store-v2 persist hydrate 直接同步到 uiShellStore，
+    // 不再读 mimimusic_active_view 双通道。重视图由上方 next/dynamic 声明按需加载；
+    // 此处不再重复预取（S3-9）。
     void bootstrapApp();
   });
 

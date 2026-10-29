@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { useAudioStore } from "@/store/audioStore";
 import { usePlayerStore } from "@/store/playerStore";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { Volume2, VolumeX, Music2, Maximize2 } from "lucide-react";
 import { NowPlayingHalo } from "@/components/player/NowPlayingHalo";
 import { GlassRadarWidget } from "@/components/widgets/GlassRadarWidget";
@@ -50,7 +50,7 @@ export const GlobalPlayerBar: React.FC = () => {
   const setVolume = usePlayerStore((state) => state.setVolume);
   const toggleMute = usePlayerStore((state) => state.toggleMute);
 
-  const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const setCurrentView = useUiShellStore((state) => state.setCurrentView);
   const { isCached } = useNetworkAudioCache();
   const isSongCached = currentSong ? isCached(currentSong.id, currentSong.source) : false;
 

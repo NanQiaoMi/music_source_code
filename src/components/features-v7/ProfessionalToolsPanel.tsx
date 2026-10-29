@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePanelStore } from "@/store/panelStore";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { useProfessionalModeStore, PROFESSIONAL_FEATURE_INFO } from "@/store/professionalModeStore";
 import {
   X,
@@ -51,7 +51,7 @@ export function ProfessionalToolsPanel({
   onOpenCrossfadeMixer,
   onOpenLibraryHealth,
 }: ProfessionalToolsPanelProps) {
-  const _currentView = useUIStore((state) => state.currentView);
+  const _currentView = useUiShellStore((state) => state.currentView);
   const openUIPanel = usePanelStore((state) => state.openPanel);
   const isProfessionalMode = useProfessionalModeStore((state) => state.isProfessionalMode);
   const enabledFeatures = useProfessionalModeStore((state) => state.enabledFeatures);

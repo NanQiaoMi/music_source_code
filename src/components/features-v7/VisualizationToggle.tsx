@@ -1,12 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { Activity } from "lucide-react";
 
 export function VisualizationToggle() {
-  const currentView = useUIStore((state) => state.currentView);
-  const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const currentView = useUiShellStore((state) => state.currentView);
+  const setCurrentView = useUiShellStore((state) => state.setCurrentView);
 
   if (currentView !== "player") return null;
 

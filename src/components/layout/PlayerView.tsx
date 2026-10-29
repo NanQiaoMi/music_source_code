@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { Player3D } from "@/components/player/Player3D";
 
 const APPLE_SPRING_CONFIG = {
@@ -19,7 +19,7 @@ const APPLE_SPRING_CONFIG = {
  * Extracted from page.tsx to isolate player-specific layout and animation.
  */
 export function PlayerView() {
-  const currentView = useUIStore((state) => state.currentView);
+  const currentView = useUiShellStore((state) => state.currentView);
 
   return (
     <motion.div

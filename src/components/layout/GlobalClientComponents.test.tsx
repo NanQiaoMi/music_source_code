@@ -21,8 +21,8 @@ vi.mock("next/navigation", () => ({
   usePathname: () => mocks.pathname,
 }));
 
-vi.mock("@/store/uiStore", () => ({
-  useUIStore: (selector: (state: { currentView: string }) => unknown) =>
+vi.mock("@/store/uiShellStore", () => ({
+  useUiShellStore: (selector: (state: { currentView: string }) => unknown) =>
     selector({ currentView: mocks.currentView }),
 }));
 

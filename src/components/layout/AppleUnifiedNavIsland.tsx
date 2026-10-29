@@ -32,7 +32,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { usePanelStore, type PanelName } from "@/store/panelStore";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { useToastStore } from "@/store/toastStore";
 import { useGestureSettingsStore } from "@/store/gestureSettingsStore";
 import { useVisualizationStore } from "@/store/visualizationStore";
@@ -96,10 +96,10 @@ export function AppleUnifiedNavIsland({
 }: AppleUnifiedNavIslandProps = {}) {
   const router = useRouter();
   const openPanel = usePanelStore((state) => state.openPanel);
-  const isFullscreen = useUIStore((state) => state.isFullscreen);
-  const toggleFullscreen = useUIStore((state) => state.toggleFullscreen);
-  const setCurrentView = useUIStore((state) => state.setCurrentView);
-  const setIsNavMenuOpen = useUIStore((state) => state.setIsNavMenuOpen);
+  const isFullscreen = useUiShellStore((state) => state.isFullscreen);
+  const toggleFullscreen = useUiShellStore((state) => state.toggleFullscreen);
+  const setCurrentView = useUiShellStore((state) => state.setCurrentView);
+  const setIsNavMenuOpen = useUiShellStore((state) => state.setIsNavMenuOpen);
   const setVisualizationEffect = useVisualizationStore((state) => state.setCurrentEffect);
   const storeSearchOpen = usePanelStore((state) => Boolean(state.panels?.search));
   // S6-6a：toast 事实在 toastStore，导航岛只订阅长度而不随 uiStore 整店变化重渲染。

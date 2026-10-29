@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useAudioStore } from "@/store/audioStore";
 import { getVisualizationSnapshot } from "@/store/actions/visualizationActions";
@@ -166,12 +167,12 @@ export function VisualizationView() {
   // currentTime、duration、bufferedRanges 属于 4Hz 级高频刷新，已下沉到
   // VisualizationProgressContainer；它们若留在这里，一次 timeupdate 就会重渲染
   // 画布、14 个效果按钮与页眉页脚。
-  const currentView = useUIStore((state) => state.currentView);
-  const setCurrentView = useUIStore((state) => state.setCurrentView);
-  const isTransitioning = useUIStore((state) => state.isTransitioning);
+  const currentView = useUiShellStore((state) => state.currentView);
+  const setCurrentView = useUiShellStore((state) => state.setCurrentView);
+  const isTransitioning = useUiShellStore((state) => state.isTransitioning);
   const themeColors = useUIStore((state) => state.themeColors);
-  const isFullscreen = useUIStore((state) => state.isFullscreen);
-  const toggleFullscreen = useUIStore((state) => state.toggleFullscreen);
+  const isFullscreen = useUiShellStore((state) => state.isFullscreen);
+  const toggleFullscreen = useUiShellStore((state) => state.toggleFullscreen);
   const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = usePlaybackClock((state) => state.isPlaying);
   const prevSong = useAudioStore((state) => state.prevSong);
@@ -254,7 +255,7 @@ export function VisualizationView() {
         (document as LegacyAny).mozFullScreenElement ||
         (document as LegacyAny).msFullscreenElement
       );
-      useUIStore.setState({ isFullscreen: isFs });
+      useUiShellStore.setState({ isFullscreen: isFs });
       useVisualizationStore.setState({ isFullscreen: isFs });
     };
 

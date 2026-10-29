@@ -77,6 +77,7 @@ import { NebulaFieldPlugin } from "./effects/nebulaFieldPlugin";
 import { SpatialMeshPlugin } from "./effects/spatialMeshPlugin";
 import { useAudioStore } from "@/store/audioStore";
 import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { useToastStore } from "@/store/toastStore";
 import { useVisualizationStore } from "@/store/visualizationStore";
 import type { EffectSettings, VisualizationEffect } from "@/store/visualizationStore";
@@ -86,6 +87,7 @@ import { visualRuntime, type VisualQualityProfile } from "@/runtime/visualRuntim
 
 const initialAudioState = useAudioStore.getState();
 const initialUIState = useUIStore.getState();
+const initialShellState = useUiShellStore.getState();
 const initialToastState = useToastStore.getState();
 const initialVisualizationState = useVisualizationStore.getState();
 const initialVisualSettingsState = useVisualSettingsStore.getState();
@@ -93,6 +95,7 @@ const initialVisualSettingsState = useVisualSettingsStore.getState();
 function resetStores() {
   useAudioStore.setState(initialAudioState, true);
   useUIStore.setState(initialUIState, true);
+  useUiShellStore.setState(initialShellState, true);
   useToastStore.setState(initialToastState, true);
   useVisualizationStore.setState(initialVisualizationState, true);
   useVisualSettingsStore.setState(initialVisualSettingsState, true);
@@ -267,7 +270,7 @@ describe("VisualizationView selector 隔离", () => {
     });
 
     try {
-      useUIStore.setState({ currentView: "visualization" });
+      useUiShellStore.setState({ currentView: "visualization" });
       await mountView();
 
       expect(subscribe).toHaveBeenCalledWith("visualization", expect.any(Function));
@@ -286,7 +289,7 @@ describe("VisualizationView selector 隔离", () => {
     const requestFrame = vi.spyOn(window, "requestAnimationFrame");
 
     try {
-      useUIStore.setState({ currentView: "visualization" });
+      useUiShellStore.setState({ currentView: "visualization" });
       await mountView();
 
       expect(subscribe).toHaveBeenCalledTimes(1);
@@ -298,11 +301,11 @@ describe("VisualizationView selector 隔离", () => {
       expect(subscribe).toHaveBeenCalledTimes(1);
 
       // 切走：runtime 订阅被停掉，不残留第二套循环
-      await act(async () => useUIStore.setState({ currentView: "player" }));
+      await act(async () => useUiShellStore.setState({ currentView: "player" }));
       expect(stop).toHaveBeenCalledTimes(1);
 
       // 切回：重新订阅一次，整个过程中组件没有发起任何 rAF
-      await act(async () => useUIStore.setState({ currentView: "visualization" }));
+      await act(async () => useUiShellStore.setState({ currentView: "visualization" }));
       expect(subscribe).toHaveBeenCalledTimes(2);
       expect(requestFrame).not.toHaveBeenCalled();
     } finally {
@@ -328,7 +331,7 @@ describe("VisualizationView selector 隔离", () => {
     Object.defineProperty(window, "devicePixelRatio", { configurable: true, value: 2 });
 
     try {
-      useUIStore.setState({ currentView: "visualization" });
+      useUiShellStore.setState({ currentView: "visualization" });
       await mountView();
 
       const canvas = container.querySelector("canvas") as HTMLCanvasElement;
@@ -366,7 +369,7 @@ describe("VisualizationView selector 隔离", () => {
     const requestFrame = vi.spyOn(window, "requestAnimationFrame");
 
     try {
-      useUIStore.setState({ currentView: "visualization" });
+      useUiShellStore.setState({ currentView: "visualization" });
       await mountView();
 
       expect(subscribe).not.toHaveBeenCalled();
@@ -489,7 +492,7 @@ describe("VisualizationView effect plugins (S5-4)", () => {
   }
 
   async function mountEffect(effect: VisualizationEffect) {
-    useUIStore.setState({ currentView: "visualization" });
+    useUiShellStore.setState({ currentView: "visualization" });
     useVisualizationStore.getState().setCurrentEffect(effect);
     await act(async () => {
       root.render(<VisualizationView />);

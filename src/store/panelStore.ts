@@ -12,7 +12,7 @@
  * 跨域副作用：旧 openPanel 打开全屏面板时会顺手把壳域的 isFullscreenLyrics 置 false。本文件
  * 不 import uiStore（否则 store 图出现 uiStore <-> panelStore 运行时环，S6-11c SCC=0 会红），
  * 改由 uiStore 在模块初始化时用 usePanelStore.subscribe 观察 panels 变化并落壳域状态；
- * 该壳域副作用在 S6-6c 会随 isFullscreenLyrics 一起迁到 uiShellStore。
+ * S6-6c 起 isFullscreenLyrics 的 owner 是 uiShellStore，副作用写那里（uiStore 只做桥接）。
  */
 import { create } from "zustand";
 

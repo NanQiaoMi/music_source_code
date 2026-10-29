@@ -7,7 +7,7 @@ import { seekTo } from "@/store/actions/playbackActions";
 import { getPlaybackClockSnapshot } from "@/lib/playback/playbackClock";
 import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { FloatingCompactControlsState } from "./floating/FloatingCompactControlsState";
 
 export interface FloatingPlayerProps {
@@ -31,7 +31,7 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({
   const volume = usePlayerStore((state) => state.volume);
   const setVolume = usePlayerStore((state) => state.setVolume);
   const toggleMute = usePlayerStore((state) => state.toggleMute);
-  const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const setCurrentView = useUiShellStore((state) => state.setCurrentView);
 
   // 物理拖拽坐标管理 (默认停留在左侧中段舒适区 left: 28, top: 280)
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 28, y: 280 });

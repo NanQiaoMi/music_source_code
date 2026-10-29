@@ -5,7 +5,7 @@ import Image from "next/image";
 import { motion, type Variants } from "framer-motion";
 import { usePlaybackClock } from "@/hooks/usePlaybackClock";
 import { usePlayerStore } from "@/store/playerStore";
-import { useUIStore } from "@/store/uiStore";
+import { useUiShellStore } from "@/store/uiShellStore";
 import { useFloatingDebugStore } from "@/store/floatingDebugStore";
 import { FloatingOneLineLyricPreview } from "./FloatingOneLineLyricPreview";
 import { FloatingControls, HeartFavoriteButton } from "./FloatingControls";
@@ -71,7 +71,7 @@ export const FloatingExpandedState: React.FC<FloatingExpandedStateProps> = ({
 }) => {
   const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = usePlaybackClock((state) => state.isPlaying);
-  const setCurrentView = useUIStore((state) => state.setCurrentView);
+  const setCurrentView = useUiShellStore((state) => state.setCurrentView);
   const { isCached } = useNetworkAudioCache();
   const isSongCached = currentSong ? isCached(currentSong.id, currentSong.source) : false;
 
