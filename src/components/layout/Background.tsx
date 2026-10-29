@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { useUIStore } from "@/store/uiStore";
+import { useThemeStore } from "@/store/themeStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { extractColorsFromImage, ThemeColors, defaultColors } from "@/utils/colorExtractor";
 
@@ -139,8 +139,9 @@ const FluidBlobComponent: React.FC<{
 };
 
 export const Background: React.FC = () => {
-  const themeColors = useUIStore((state) => state.themeColors);
-  const isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
+  // S6-7：主题唯一 owner = themeStore（uiStore 字段只是 ui-store-v2 持久化投影）。
+  const themeColors = useThemeStore((state) => state.themeColors);
+  const isDynamicTheme = useThemeStore((state) => state.isDynamicTheme);
   const currentSong = usePlayerStore((state) => state.currentSong);
   const [extractedColors, setExtractedColors] = useState<ThemeColors | null>(null);
 

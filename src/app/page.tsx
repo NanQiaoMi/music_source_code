@@ -100,27 +100,8 @@ export default function Home() {
 
   return (
     <main className="relative w-full h-full overflow-hidden bg-black fixed inset-0">
-      {/* Design System Tokens */}
-      <style jsx global>{`
-        :root {
-          --theme-primary: rgb(147, 51, 234);
-          --theme-secondary: rgb(59, 130, 246);
-          --theme-accent: rgb(236, 72, 153);
-          --theme-complementary: rgb(72, 236, 153);
-          --theme-background: rgb(15, 15, 35);
-          --theme-surface: rgb(30, 30, 60);
-          --theme-gradient: linear-gradient(
-            135deg,
-            var(--theme-primary),
-            var(--theme-secondary),
-            var(--theme-accent)
-          );
-          --theme-border: rgba(255, 255, 255, 0.1);
-          --theme-text-primary: #ffffff;
-          --theme-text-secondary: rgba(255, 255, 255, 0.5);
-          --theme-accent-pink: #ec4899;
-        }
-      `}</style>
+      {/* Design System Tokens：主题色变量已迁到 globals.css（首帧默认）+ useThemeVars
+          （运行期唯一写入方），这里不再内联覆盖（S6-7）。 */}
       <VisualTokens />
 
       {/* ─── Global Dynamic Adaptive Ambient Background ───────────── */}

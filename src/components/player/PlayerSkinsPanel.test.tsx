@@ -75,6 +75,9 @@ beforeEach(async () => {
   }
   const { usePlayerSkinStore } = await import("@/store/playerSkinStore");
   usePlayerSkinStore.setState({ activeBaseSkinId: "default", activeHaloId: "aurora" });
+  // S6-7：主题 owner 是 themeStore，跨用例重置避免残留调色板污染断言。
+  const { defaultThemeState, useThemeStore } = await import("@/store/themeStore");
+  useThemeStore.setState(defaultThemeState);
 });
 
 afterEach(() => {
@@ -164,9 +167,9 @@ describe("PlayerSkinsPanel", () => {
       root.render(<PlayerSkinsPanel isOpen={true} onClose={() => undefined} />);
     });
 
-    expect(document.documentElement.style.getPropertyValue("--theme-primary")).toBe(
-      "rgb(14, 165, 233)"
-    );
+    // S6-7：面板只写 themeStore（owner），CSS 变量由 useThemeVars 单点派生。
+    const { useThemeStore } = await import("@/store/themeStore");
+    expect(useThemeStore.getState().themeColors.primary).toBe("rgb(14, 165, 233)");
 
     await act(async () => {
       root.unmount();

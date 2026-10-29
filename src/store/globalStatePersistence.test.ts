@@ -6,6 +6,7 @@ import { useQueueStore } from "./queueStore";
 import { useDataManagerStore } from "./useDataManagerStore";
 import { useAIAgentStore } from "./useAIAgentStore";
 import { useSourceConfigStore } from "./sourceConfigStore";
+import { defaultThemeState, useThemeStore } from "./themeStore";
 import { Song } from "@/types/song";
 
 const sampleSong: Song = {
@@ -23,6 +24,8 @@ describe("Global State Retention & Persistence Engine", () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+    // S6-7：主题 owner 是 themeStore，uiStore 只写 ui-store-v2 投影。
+    useThemeStore.setState(defaultThemeState);
   });
 
   it("1. UI Store persists currentView and theme settings in safe storage", () => {

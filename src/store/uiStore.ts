@@ -1,13 +1,15 @@
 /**
- * S6-6a/S6-6b/S6-6c：uiStore 只保留主题/弹窗等未拆分字段与 deprecated 兼容转发器。
+ * S6-6a/S6-6b/S6-6c/S6-7：uiStore 只保留弹窗字段与 deprecated 兼容转发器。
  * 各域唯一 owner：
  * - toast → ./toastStore（S6-6a）
  * - panel → ./panelStore（S6-6b）
  * - 壳（view/nav/transition/fullscreen）→ ./uiShellStore（S6-6c）
- * 既有的 showToast/removeToast / openPanel/closePanel/... / setCurrentView/... 调用点不需要改
- * import，但状态读取必须走 useToastStore / usePanelStore / useUiShellStore。唯一的例外是
- * currentView：ui-store-v2 的 key/version/partialize 必须与拆前逐字节一致，因此这里保留它
- * 作为持久化投影（真正 owner 仍是 uiShellStore），由文件末尾的 subscribe 单向同步。
+ * - 主题（themeMode/themeColors/isDynamicTheme）→ ./themeStore（S6-7）
+ * 既有的 showToast/removeToast / openPanel/closePanel/... / setCurrentView/... / setThemeMode
+ * 调用点不需要改 import，但状态读取必须走对应 owner store。唯二的例外是 currentView 与三个
+ * theme 字段：ui-store-v2 的 key/version/partialize 必须与拆前逐字节一致，因此这里保留它们
+ * 作为持久化投影（真正 owner 仍是 uiShellStore / themeStore），由文件末尾的 subscribe 单向
+ * 同步；hydrate 时再把持久化值一次性灌回 owner（legacy 迁移，不新增 key）。
  */
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
@@ -16,14 +18,14 @@ import { ThemeColors, defaultColors } from "@/utils/colorExtractor";
 import { useToastStore, type ToastMessage } from "@/store/toastStore";
 import { FULLSCREEN_PANELS, usePanelStore, type PanelName } from "@/store/panelStore";
 import { useUiShellStore, type ViewType } from "@/store/uiShellStore";
+import { useThemeStore, type ThemeMode } from "@/store/themeStore";
 
 export type { ToastMessage };
 export type { PanelName };
 export type { ViewType };
+export type { ThemeMode };
 /** @deprecated since S6-6b. 用 @/store/panelStore 的 PANEL_NAMES。 */
 export { PANEL_NAMES } from "@/store/panelStore";
-
-type ThemeMode = "light" | "dark" | "auto";
 
 interface UIState {
   /**
@@ -31,6 +33,10 @@ interface UIState {
    * uiStore 只保留 ui-store-v2 的持久化投影；读取当前视图请用 useUiShellStore。
    */
   currentView: ViewType;
+  /**
+   * @deprecated since S6-7. 主题唯一 owner 是 @/store/themeStore（useThemeStore）。
+   * 以下三个字段只作为 ui-store-v2 的持久化投影存在（文件末尾 subscribe 单向同步）。
+   */
   themeMode: ThemeMode;
   themeColors: ThemeColors;
   isDynamicTheme: boolean;
@@ -92,9 +98,13 @@ interface UIState {
 
   /** @deprecated since S6-6c. 用 useUiShellStore.getState().setCurrentView(view)。 */
   setCurrentView: (view: ViewType) => void;
+  /** @deprecated since S6-7. 用 useThemeStore.getState().setThemeMode(mode)。 */
   setThemeMode: (mode: ThemeMode) => void;
+  /** @deprecated since S6-7. 用 useThemeStore.getState().setThemeColors(colors)。 */
   setThemeColors: (colors: ThemeColors) => void;
+  /** @deprecated since S6-7. 用 useThemeStore.getState().setIsDynamicTheme(enabled)。 */
   setIsDynamicTheme: (enabled: boolean) => void;
+  /** @deprecated since S6-7. 用 useThemeStore.getState().toggleTheme()。 */
   toggleTheme: () => void;
   showModalComponent: (content: React.ReactNode) => void;
   hideModal: () => void;
@@ -154,13 +164,11 @@ export const useUIStore = create<UIState>()(
       setIsKeyboardShortcutsOpen: (isOpen) => set({ isKeyboardShortcutsOpen: isOpen }),
       showKeyboardShortcuts: () => set({ isKeyboardShortcutsOpen: true }),
       setCurrentView: (view) => useUiShellStore.getState().setCurrentView(view),
-      setThemeMode: (mode) => set({ themeMode: mode }),
-      setThemeColors: (colors) => set({ themeColors: colors }),
-      setIsDynamicTheme: (enabled) => set({ isDynamicTheme: enabled }),
-      toggleTheme: () =>
-        set((state) => ({
-          themeMode: state.themeMode === "light" ? "dark" : "light",
-        })),
+      // S6-7：主题动作只做转发（唯一实现与状态在 ./themeStore）。
+      setThemeMode: (mode) => useThemeStore.getState().setThemeMode(mode),
+      setThemeColors: (colors) => useThemeStore.getState().setThemeColors(colors),
+      setIsDynamicTheme: (enabled) => useThemeStore.getState().setIsDynamicTheme(enabled),
+      toggleTheme: () => useThemeStore.getState().toggleTheme(),
       showModalComponent: (content) =>
         set({
           showModal: true,
@@ -189,6 +197,14 @@ export const useUIStore = create<UIState>()(
       // 不再读写 mimimusic_active_view 双通道（ui-store-v2 是唯一持久化来源）。
       onRehydrateStorage: () => (state) => {
         if (state?.currentView) useUiShellStore.setState({ currentView: state.currentView });
+        // S6-7：主题持久化仍留在 ui-store-v2（payload 不变），hydrate 后一次性灌入唯一 owner。
+        if (state) {
+          useThemeStore.getState().adoptLegacyTheme({
+            themeMode: state.themeMode,
+            themeColors: state.themeColors,
+            isDynamicTheme: state.isDynamicTheme,
+          });
+        }
       },
     }
   )
@@ -202,6 +218,24 @@ useUiShellStore.subscribe((state, prev) => {
   if (useUIStore.getState().currentView !== state.currentView) {
     useUIStore.setState({ currentView: state.currentView });
   }
+});
+
+// S6-7：主题唯一 owner = themeStore。uiStore 侧只在主题真正变化时更新持久化投影，保证
+// ui-store-v2 的 {currentView, themeMode, themeColors, isDynamicTheme}/version 2 与拆前
+// 逐字节一致，同时一次主题切换只产生一次投影 setState（一次写盘）。
+useThemeStore.subscribe((state, prev) => {
+  if (
+    state.themeMode === prev.themeMode &&
+    state.themeColors === prev.themeColors &&
+    state.isDynamicTheme === prev.isDynamicTheme
+  ) {
+    return;
+  }
+  useUIStore.setState({
+    themeMode: state.themeMode,
+    themeColors: state.themeColors,
+    isDynamicTheme: state.isDynamicTheme,
+  });
 });
 
 // 兼容：旧代码（含测试）直接 useUIStore.setState({ currentView }) 时仍驱动壳域，避免

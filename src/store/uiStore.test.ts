@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { useUIStore } from "./uiStore";
+import { defaultThemeState, useThemeStore } from "./themeStore";
 import { validateShortcutMap } from "@/hooks/useKeyboardShortcuts";
 
 const initialState = useUIStore.getInitialState();
@@ -7,6 +8,8 @@ const initialState = useUIStore.getInitialState();
 describe("uiStore", () => {
   beforeEach(() => {
     useUIStore.setState(initialState, true);
+    // S6-7：主题 owner 是 themeStore；uiStore 只保留 ui-store-v2 投影。
+    useThemeStore.setState(defaultThemeState);
   });
 
   afterEach(() => {

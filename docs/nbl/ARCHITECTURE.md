@@ -26,7 +26,7 @@
 │  src/store/coordinator: 4 files / 0 imports (dead shim)          │
 │  target: domain use-cases + typed events (see execution S6)       │
 ├──────────────────────────────────────────────────────────────────┤
-│                    State Layer (Zustand 62 stores)                │
+│                    State Layer (Zustand 63 stores)                │
 │  Core Audio: audioStore | playerStore | queueStore | eqStore     │
 │  AI/Emotion: emotionStore | aiStore | recommendationStore        │
 │  UI: uiStore | visualSettingsStore | visualizationV8Store        │
@@ -88,7 +88,7 @@ src/
 │   ├── social/                # 分享面板
 │   └── stats/                 # 统计数据可视化
 │
-├── store/                     # 62 个 Zustand Store（见下节）
+├── store/                     # 63 个 Zustand Store（见下节）
 ├── lib/
 │   ├── audio/                 # 音频引擎（AudioEngine/EffectsManager/CrossfadeMixer/PlaybackClock；DSP/GraphManager 未接线）
 │   ├── three/                 # Three.js 场景管理器
@@ -138,7 +138,7 @@ src/
 
 ### 4.1 Store 分类
 
-当前实际 **62 个 store**（43 处 persist）。数量、persist key 与依赖边以 `scripts/perf/report-store-stats.mjs` 输出为准；分类与目标所有权见总计划 §4.2。
+当前实际 **63 个 store**（43 处 persist）。数量、persist key 与依赖边以 `scripts/perf/report-store-stats.mjs` 输出为准；分类与目标所有权见总计划 §4.2。
 
 代表域：核心播放（playerStore/queueStore/audioStore/playbackRuntimeStore）、音频设置与效果、AI/情感、可视化、UI 壳、库/播放列表、数据与备份、账号/音源、统计/健康/预设等。迁移目标：playerStore（播放意图单一 owner）、queueStore（队列单一 owner）、playbackRuntimeStore（生命周期权威）、audioSettingsStore（原 audioStore 收缩）、uiShell/panel/toast/theme 拆分（S6）。
 

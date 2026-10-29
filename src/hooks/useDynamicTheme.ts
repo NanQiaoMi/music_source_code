@@ -1,14 +1,8 @@
 import { useEffect, useCallback, useRef } from "react";
-import { useUIStore } from "@/store/uiStore";
 import { usePlayerStore } from "@/store/playerStore";
-import {
-  extractColorsFromImage,
-  ThemeColors,
-  defaultColors,
-  lightModeColors,
-} from "@/utils/colorExtractor";
-
-const TRANSITION_DURATION = 1000;
+import { useThemeStore } from "@/store/themeStore";
+import { THEME_TRANSITION_DURATION_MS, useThemeVars } from "@/hooks/useThemeVars";
+import { extractColorsFromImage, ThemeColors, defaultColors } from "@/utils/colorExtractor";
 
 function purifyDullColor(colorStr: string): string {
   const match = colorStr.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
@@ -135,31 +129,19 @@ function boostVibrantColors(colors: ThemeColors): ThemeColors {
 }
 
 export function useDynamicTheme() {
-  const themeColors = useUIStore((state) => state.themeColors);
-  const isDynamicTheme = useUIStore((state) => state.isDynamicTheme);
-  const setThemeColors = useUIStore((state) => state.setThemeColors);
-  const themeMode = useUIStore((state) => state.themeMode);
+  const themeColors = useThemeStore((state) => state.themeColors);
+  const isDynamicTheme = useThemeStore((state) => state.isDynamicTheme);
+  const setThemeColors = useThemeStore((state) => state.setThemeColors);
+  const themeMode = useThemeStore((state) => state.themeMode);
   const currentSong = usePlayerStore((state) => state.currentSong);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const applyColorsToDOM = useCallback(
+  // S6-7: html class 与 --theme-* CSS 变量只在 useThemeVars 里写入（唯一写入方）。
+  useThemeVars();
+
+  const applyColors = useCallback(
     (toColors: ThemeColors) => {
-      if (typeof document === "undefined") return;
-      const root = document.documentElement;
-
-      root.style.setProperty("--theme-primary", toColors.primary);
-      root.style.setProperty("--theme-secondary", toColors.secondary);
-      root.style.setProperty("--theme-accent", toColors.accent);
-      root.style.setProperty("--theme-complementary", toColors.complementary);
-      root.style.setProperty("--theme-background", toColors.background);
-      root.style.setProperty("--theme-surface", toColors.surface);
-      root.style.setProperty("--theme-text", toColors.text);
-      root.style.setProperty("--theme-text-muted", toColors.textMuted);
-      root.style.setProperty(
-        "--theme-gradient",
-        `linear-gradient(135deg, ${toColors.primary}, ${toColors.secondary}, ${toColors.accent})`
-      );
-
+      // 唯一状态写入：themeStore。uiStore 的 themeColors 只是 ui-store-v2 的持久化投影。
       setThemeColors(toColors);
     },
     [setThemeColors]
@@ -179,15 +161,14 @@ export function useDynamicTheme() {
       debounceTimerRef.current = setTimeout(async () => {
         try {
           const colors = await extractColorsFromImage(imageUrl);
-          const vibrantColors = boostVibrantColors(colors);
-          applyColorsToDOM(vibrantColors);
+          applyColors(boostVibrantColors(colors));
         } catch (error) {
           console.error("Failed to extract theme colors:", error);
-          applyColorsToDOM(defaultColors);
+          applyColors(defaultColors);
         }
       }, 350);
     },
-    [applyColorsToDOM, isDynamicTheme]
+    [applyColors, isDynamicTheme]
   );
 
   useEffect(() => {
@@ -199,97 +180,11 @@ export function useDynamicTheme() {
     };
   }, [currentSong?.cover, extractThemeColors]);
 
-  useEffect(() => {
-    const root = document.documentElement;
-
-    const applyThemeMode = (isDark: boolean) => {
-      if (isDark) {
-        root.classList.add("dark");
-        root.classList.remove("light");
-        root.style.setProperty("--theme-bg-primary", "#000000");
-        root.style.setProperty("--theme-bg-secondary", "#121212");
-        root.style.setProperty("--theme-bg-tertiary", "#1c1c1e");
-        root.style.setProperty("--theme-bg-elevated", "#2c2c2e");
-        root.style.setProperty("--theme-text-primary", "#ffffff");
-        root.style.setProperty("--theme-text-secondary", "rgba(255,255,255,0.6)");
-        root.style.setProperty("--theme-glass-bg", "rgba(28,28,30,0.7)");
-        root.style.setProperty("--theme-glass-border", "rgba(255,255,255,0.1)");
-      } else {
-        root.classList.remove("dark");
-        root.classList.add("light");
-        root.style.setProperty("--theme-bg-primary", "#f5f5f7");
-        root.style.setProperty("--theme-bg-secondary", "#ffffff");
-        root.style.setProperty("--theme-bg-tertiary", "#f2f2f7");
-        root.style.setProperty("--theme-bg-elevated", "#ffffff");
-        root.style.setProperty("--theme-text-primary", "#1c1c1e");
-        root.style.setProperty("--theme-text-secondary", "rgba(28,28,30,0.6)");
-        root.style.setProperty("--theme-glass-bg", "rgba(255,255,255,0.7)");
-        root.style.setProperty("--theme-glass-border", "rgba(0,0,0,0.1)");
-      }
-    };
-
-    if (themeMode === "auto") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      const handleChange = () => {
-        applyThemeMode(mediaQuery.matches);
-      };
-      handleChange();
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    } else {
-      applyThemeMode(themeMode === "dark");
-    }
-  }, [themeMode]);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty("--theme-transition-duration", `${TRANSITION_DURATION}ms`);
-
-    root.style.setProperty("--theme-primary", defaultColors.primary);
-    const isDark =
-      themeMode === "dark" ||
-      (themeMode === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    const defaultTheme = isDark ? defaultColors : lightModeColors;
-
-    root.style.setProperty("--theme-secondary", defaultTheme.secondary);
-    root.style.setProperty("--theme-accent", defaultTheme.accent);
-    root.style.setProperty(
-      "--theme-complementary",
-      defaultTheme.complementary || "rgb(72, 236, 153)"
-    );
-    root.style.setProperty("--theme-background", defaultTheme.background);
-    root.style.setProperty("--theme-surface", defaultTheme.surface);
-    root.style.setProperty("--theme-text", defaultTheme.text);
-    root.style.setProperty("--theme-text-muted", defaultTheme.textMuted);
-    root.style.setProperty(
-      "--theme-gradient",
-      `linear-gradient(135deg, ${defaultTheme.gradient.join(", ")})`
-    );
-  }, [themeMode]);
-
   return {
     themeColors,
     isDynamicTheme,
     themeMode,
     extractThemeColors,
-    transitionDuration: TRANSITION_DURATION,
+    transitionDuration: THEME_TRANSITION_DURATION_MS,
   };
-}
-
-export function useCSSVariables() {
-  const themeColors = useUIStore((state) => state.themeColors);
-
-  return {
-    "--theme-primary": themeColors.primary,
-    "--theme-secondary": themeColors.secondary,
-    "--theme-accent": themeColors.accent,
-    "--theme-background": themeColors.background,
-    "--theme-surface": themeColors.surface,
-    "--theme-text": themeColors.text,
-    "--theme-text-muted": themeColors.textMuted,
-    "--theme-gradient":
-      themeColors.gradient.length >= 2
-        ? `linear-gradient(135deg, ${themeColors.gradient.join(", ")})`
-        : themeColors.primary,
-  } as React.CSSProperties;
 }

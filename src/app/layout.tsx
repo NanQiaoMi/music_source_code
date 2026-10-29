@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { GlobalClientComponents } from "@/components/layout/GlobalClientComponents";
+import { ThemeBootScript } from "@/components/layout/ThemeBootScript";
 import { PanelErrorBoundary } from "@/components/shared/PanelErrorBoundary";
 
 export const metadata: Metadata = {
@@ -17,8 +18,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // S6-7: 服务端默认 dark（globals.css :root），首帧前由 ThemeBootScript 按持久化的
+    // themeMode 切到 light/auto，避免刷新时先深后浅的闪烁。
     <html lang="zh-CN" className="dark" suppressHydrationWarning>
       <head>
+        <ThemeBootScript />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>

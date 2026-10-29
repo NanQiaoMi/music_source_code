@@ -32,7 +32,7 @@ import {
 import { usePerformanceV8Store } from "@/store/performanceV8Store";
 import { usePlayerSkinStore } from "@/store/playerSkinStore";
 import { useVisualSettingsStore, type ThemeConfig } from "@/store/visualSettingsStore";
-import { useUIStore } from "@/store/uiStore";
+import { useThemeStore } from "@/store/themeStore";
 
 export interface PlayerSkin {
   id: string;
@@ -133,8 +133,8 @@ const SKINS_STORAGE_KEY = "player_custom_skins";
 export const usePlayerSkins = () => {
   const activeBaseSkinId = usePlayerSkinStore((state) => state.activeBaseSkinId);
   const setActiveBaseSkinId = usePlayerSkinStore((state) => state.setActiveBaseSkinId);
-  const setThemeColors = useUIStore((state) => state.setThemeColors);
-  const setIsDynamicTheme = useUIStore((state) => state.setIsDynamicTheme);
+  const setThemeColors = useThemeStore((state) => state.setThemeColors);
+  const setIsDynamicTheme = useThemeStore((state) => state.setIsDynamicTheme);
   const [customSkins, setCustomSkins] = useState<PlayerSkin[]>([]);
 
   const currentSkin = useMemo(
@@ -144,13 +144,9 @@ export const usePlayerSkins = () => {
     [activeBaseSkinId, customSkins]
   );
 
+  // S6-7：只写 themeStore，不直接写 DOM 变量 —— CSS 变量由 useThemeVars 单点派生。
   const applySkinVariables = useCallback(
     (skin: PlayerSkin) => {
-      document.documentElement.style.setProperty("--theme-primary", skin.primary);
-      document.documentElement.style.setProperty("--theme-secondary", skin.secondary);
-      document.documentElement.style.setProperty("--theme-accent", skin.accent);
-      document.documentElement.style.setProperty("--theme-background", skin.background);
-
       setThemeColors({
         primary: skin.primary,
         secondary: skin.secondary,

@@ -5,7 +5,7 @@ import type { CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { useUIStore } from "@/store/uiStore";
+import { useThemeStore } from "@/store/themeStore";
 import { useUiShellStore } from "@/store/uiShellStore";
 import { usePlayerStore } from "@/store/playerStore";
 import { useAudioStore } from "@/store/audioStore";
@@ -170,7 +170,7 @@ export function VisualizationView() {
   const currentView = useUiShellStore((state) => state.currentView);
   const setCurrentView = useUiShellStore((state) => state.setCurrentView);
   const isTransitioning = useUiShellStore((state) => state.isTransitioning);
-  const themeColors = useUIStore((state) => state.themeColors);
+  const themeColors = useThemeStore((state) => state.themeColors);
   const isFullscreen = useUiShellStore((state) => state.isFullscreen);
   const toggleFullscreen = useUiShellStore((state) => state.toggleFullscreen);
   const currentSong = usePlayerStore((state) => state.currentSong);

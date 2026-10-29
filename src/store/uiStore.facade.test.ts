@@ -5,6 +5,7 @@ import { usePanelStore } from "./panelStore";
 import { useToastStore } from "./toastStore";
 import { useUIStore } from "./uiStore";
 import { useUiShellStore } from "./uiShellStore";
+import { defaultThemeState, useThemeStore } from "./themeStore";
 
 const initialUIState = useUIStore.getInitialState();
 const initialToastState = useToastStore.getState();
@@ -17,6 +18,7 @@ describe("uiStore toast facade (S6-6a)", () => {
     useUIStore.setState(initialUIState, true);
     useUiShellStore.setState(initialShellState, true);
     useToastStore.setState(initialToastState, true);
+    useThemeStore.setState(defaultThemeState);
   });
 
   afterEach(() => {
@@ -88,6 +90,7 @@ describe("uiStore panel facade (S6-6b)", () => {
     useUIStore.setState(initialUIState, true);
     usePanelStore.setState(initialPanelState, true);
     useUiShellStore.setState(initialShellState, true);
+    useThemeStore.setState(defaultThemeState);
     localStorage.clear();
   });
 
@@ -172,6 +175,7 @@ describe("uiStore shell facade (S6-6c)", () => {
     useUIStore.setState(initialUIState, true);
     usePanelStore.setState(initialPanelState, true);
     useUiShellStore.setState(initialShellState, true);
+    useThemeStore.setState(defaultThemeState);
     localStorage.clear();
     sessionStorage.clear();
   });

@@ -82,6 +82,24 @@ textarea {
   --theme-border: rgba(255, 255, 255, 0.1);
   --theme-separator: rgba(255, 255, 255, 0.15);
 
+  /* S6-7: 动态主题调色板的深色默认值（= colorExtractor.defaultColors）。
+     首帧由这里提供，运行期只由 useThemeVars 单点覆盖；不要再在页面内联样式中重复定义。 */
+  --theme-primary: rgb(55, 65, 81);
+  --theme-secondary: rgb(31, 41, 55);
+  --theme-accent: rgb(75, 85, 99);
+  --theme-complementary: rgb(30, 41, 59);
+  --theme-background: rgb(8, 9, 12);
+  --theme-surface: rgb(15, 17, 23);
+  --theme-text: rgb(255, 255, 255);
+  --theme-text-muted: rgba(255, 255, 255, 0.6);
+  --theme-gradient: linear-gradient(
+    135deg,
+    rgb(55, 65, 81),
+    rgb(31, 41, 55),
+    rgb(75, 85, 99)
+  );
+  --theme-transition-duration: 1000ms;
+
   --theme-radius-sm: 6px;
   --theme-radius-md: 8px;
   --theme-radius-lg: 12px;
@@ -109,6 +127,22 @@ textarea {
 
   --theme-border: rgba(0, 0, 0, 0.1);
   --theme-separator: rgba(0, 0, 0, 0.1);
+
+  /* S6-7: 浅色默认调色板（= colorExtractor.lightModeColors），首帧无深色闪烁。 */
+  --theme-primary: rgb(147, 51, 234);
+  --theme-secondary: rgb(37, 99, 235);
+  --theme-accent: rgb(219, 39, 119);
+  --theme-complementary: rgb(16, 185, 129);
+  --theme-background: rgb(245, 245, 247);
+  --theme-surface: rgb(255, 255, 255);
+  --theme-text: rgb(28, 28, 30);
+  --theme-text-muted: rgba(28, 28, 30, 0.6);
+  --theme-gradient: linear-gradient(
+    135deg,
+    rgb(147, 51, 234),
+    rgb(37, 99, 235),
+    rgb(219, 39, 119)
+  );
 }
 
 @layer utilities {
