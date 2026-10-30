@@ -10,6 +10,7 @@ import {
   createBlobUrlFromStoredMusic,
   getOfflineAudio,
   saveOfflineAudio,
+  deleteOfflineAudio,
 } from "@/services/localMusicStorage";
 import { useStatsAchievementsStore } from "@/store/statsAchievementsStore";
 import { useListeningJournalStore } from "@/store/listeningJournalStore";
@@ -23,10 +24,12 @@ import {
   MISSING_AUDIO_SOURCE_MESSAGE,
   createAudioElementLoadError,
   logHandledAudioWarning,
+  isValidAudioData,
 } from "@/lib/audio/playableAudioSource";
 import { multiSourceResolver } from "@/services/MultiSourceResolver";
 import {
   getCachedAudio,
+  deleteCachedAudio,
   createBlobUrlFromCache,
   updateLastPlayed,
   makeCacheKey,
@@ -64,6 +67,8 @@ export const rescueInProgressRef: { current: boolean } = { current: false };
 export const rescuedUrlsRef: { current: Set<string> } = { current: new Set() };
 export const songRescueAttemptsRef: { current: Map<string, number> } = { current: new Map() };
 export const failedUrlsRef: { current: Set<string> } = { current: new Set() };
+export const failedOfflineSongIdsRef: { current: Set<string> } = { current: new Set() };
+export const failedCacheKeysRef: { current: Set<string> } = { current: new Set() };
 export const waitingTimeoutRef: { current: ReturnType<typeof setTimeout> | null } = {
   current: null,
 };
@@ -821,6 +826,27 @@ const attachListeners = (
     if (audioEl.src) failedUrlsRef.current.add(audioEl.src);
     if (audioEl.currentSrc) failedUrlsRef.current.add(audioEl.currentSrc);
 
+    const currentSong = usePlayerStore.getState().currentSong;
+
+    // 严防坏 blob 或损坏的 IndexedDB 离线/缓存数据导致持续 DEMUXER_ERROR
+    const failedSrc = audioEl.currentSrc || audioEl.src || "";
+    if (failedSrc.startsWith("blob:") || currentAudioUrlRef.current?.startsWith("blob:")) {
+      if (currentSong?.id) {
+        failedOfflineSongIdsRef.current.add(String(currentSong.id));
+        deleteOfflineAudio(String(currentSong.id)).catch(() => {});
+        const ck = makeCacheKey(String(currentSong.id), currentSong.source);
+        failedCacheKeysRef.current.add(ck);
+        deleteCachedAudio(ck).catch(() => {});
+      }
+      if (failedSrc.startsWith("blob:")) {
+        BlobUrlRegistry.getInstance().revoke(failedSrc);
+      }
+      if (currentAudioUrlRef.current?.startsWith("blob:")) {
+        BlobUrlRegistry.getInstance().revoke(currentAudioUrlRef.current);
+        currentAudioUrlRef.current = "";
+      }
+    }
+
     // 过滤中断与取消错误 (MEDIA_ERR_ABORTED = 1)
     if (!error || error.code === 1) {
       return;
@@ -834,7 +860,6 @@ const attachListeners = (
       return;
     }
 
-    const currentSong = usePlayerStore.getState().currentSong;
     const songKey = String(currentSong?.id || currentSong?.title || "");
     const rescueAttempts = songKey ? songRescueAttemptsRef.current.get(songKey) || 0 : 0;
 
@@ -862,6 +887,7 @@ const attachListeners = (
             title: currentSong.title,
             artist: currentSong.artist,
             album: currentSong.album,
+            source: currentSong.source,
           },
           true
         );
@@ -1052,6 +1078,18 @@ export const useAudioPlayer = () => {
       if (audio?.src) failedUrlsRef.current.add(audio.src);
       if (audio?.currentSrc) failedUrlsRef.current.add(audio.currentSrc);
 
+      const failedPlaySrc = audio?.currentSrc || audio?.src || "";
+      if (failedPlaySrc.startsWith("blob:") || currentAudioUrlRef.current?.startsWith("blob:")) {
+        const curSong = usePlayerStore.getState().currentSong;
+        if (curSong?.id) {
+          failedOfflineSongIdsRef.current.add(String(curSong.id));
+          deleteOfflineAudio(String(curSong.id)).catch(() => {});
+          const ck = makeCacheKey(String(curSong.id), curSong.source);
+          failedCacheKeysRef.current.add(ck);
+          deleteCachedAudio(ck).catch(() => {});
+        }
+      }
+
       if (waitingTimeoutRef.current) {
         clearTimeout(waitingTimeoutRef.current);
         waitingTimeoutRef.current = null;
@@ -1091,6 +1129,7 @@ export const useAudioPlayer = () => {
               title: currentSong.title,
               artist: currentSong.artist,
               album: currentSong.album,
+              source: currentSong.source,
             },
             true
           );
@@ -1402,7 +1441,7 @@ export const useAudioPlayer = () => {
         let isOfflineDirectHit = false;
 
         // 0. ===== 本地持久化离线下载文件沙盒 (最高优先级，零网络 0ms 本地直读) =====
-        if (currentSong.id) {
+        if (currentSong.id && !failedOfflineSongIdsRef.current.has(String(currentSong.id))) {
           try {
             const offlineRecord = await getOfflineAudio(String(currentSong.id));
             if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
@@ -1411,36 +1450,47 @@ export const useAudioPlayer = () => {
               offlineRecord.fileData &&
               offlineRecord.fileData.byteLength > 1000
             ) {
-              const blob = new Blob([offlineRecord.fileData], {
-                type: offlineRecord.mimeType || "audio/mpeg",
-              });
-              const blobUrl = BlobUrlRegistry.getInstance().register(
-                blob,
-                `offline_${currentSong.id}`
-              );
-              audioUrl = blobUrl;
-              currentAudioUrlRef.current = blobUrl;
-              isOfflineDirectHit = true;
+              if (!isValidAudioData(offlineRecord.fileData)) {
+                console.warn(
+                  `[useAudioPlayer] ⚠️ 离线母带文件损坏或非合法音频二进制，自动清理: 《${currentSong.title}》 (${offlineRecord.fileData.byteLength} bytes)`
+                );
+                failedOfflineSongIdsRef.current.add(String(currentSong.id));
+                deleteOfflineAudio(String(currentSong.id)).catch(() => {});
+              } else {
+                const cleanMime =
+                  (offlineRecord.mimeType || "audio/mpeg").split(";")[0].trim().toLowerCase() ||
+                  "audio/mpeg";
+                const blob = new Blob([offlineRecord.fileData], {
+                  type: cleanMime,
+                });
+                const blobUrl = BlobUrlRegistry.getInstance().register(
+                  blob,
+                  `offline_${currentSong.id}`
+                );
+                audioUrl = blobUrl;
+                currentAudioUrlRef.current = blobUrl;
+                isOfflineDirectHit = true;
 
-              // 同步恢复已下载的离线歌词与高清封面
-              if (offlineRecord.lyrics && !currentSong.lyrics) {
-                currentSong.lyrics = offlineRecord.lyrics;
-                currentSong.translationLyrics = offlineRecord.translationLyrics;
-                useAudioStore
-                  .getState()
-                  .updateCurrentSongLyrics(offlineRecord.lyrics, offlineRecord.translationLyrics);
-              }
-              if (
-                offlineRecord.cover &&
-                (!currentSong.cover || currentSong.cover === "/default-cover.svg")
-              ) {
-                currentSong.cover = offlineRecord.cover;
-                useAudioStore.getState().updateCurrentSongCover(offlineRecord.cover);
-              }
+                // 同步恢复已下载的离线歌词与高清封面
+                if (offlineRecord.lyrics && !currentSong.lyrics) {
+                  currentSong.lyrics = offlineRecord.lyrics;
+                  currentSong.translationLyrics = offlineRecord.translationLyrics;
+                  useAudioStore
+                    .getState()
+                    .updateCurrentSongLyrics(offlineRecord.lyrics, offlineRecord.translationLyrics);
+                }
+                if (
+                  offlineRecord.cover &&
+                  (!currentSong.cover || currentSong.cover === "/default-cover.svg")
+                ) {
+                  currentSong.cover = offlineRecord.cover;
+                  useAudioStore.getState().updateCurrentSongCover(offlineRecord.cover);
+                }
 
-              console.info(
-                `[useAudioPlayer] 🚀 命中本地离线母带文件 (0ms 纯本地直读秒播): 《${currentSong.title}》- ${(offlineRecord.fileSize / 1024 / 1024).toFixed(2)}MB`
-              );
+                console.info(
+                  `[useAudioPlayer] 🚀 命中本地离线母带文件 (0ms 纯本地直读秒播): 《${currentSong.title}》- ${(offlineRecord.fileSize / 1024 / 1024).toFixed(2)}MB`
+                );
+              }
             }
           } catch (e) {
             console.warn(
@@ -1466,20 +1516,26 @@ export const useAudioPlayer = () => {
           const storedMusic = await getStoredMusic(id);
           if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
           if (storedMusic && storedMusic.fileData) {
-            audioUrl = createBlobUrlFromStoredMusic(storedMusic);
-            currentAudioUrlRef.current = audioUrl;
-            isOfflineDirectHit = true;
-            console.info(
-              `[useAudioPlayer] 📁 命中本地导入音频 (0ms 直读): 《${currentSong.title}》`
-            );
+            if (!isValidAudioData(storedMusic.fileData)) {
+              console.warn(`[useAudioPlayer] ⚠️ 本地导入音频文件损坏: 《${currentSong.title}》`);
+            } else {
+              audioUrl = createBlobUrlFromStoredMusic(storedMusic);
+              currentAudioUrlRef.current = audioUrl;
+              isOfflineDirectHit = true;
+              console.info(
+                `[useAudioPlayer] 📁 命中本地导入音频 (0ms 直读): 《${currentSong.title}》`
+              );
+            }
           }
         }
 
         if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
 
         // 2. ===== 临时流媒体网络缓存 (cached://) =====
+        const currentCacheKey = makeCacheKey(String(currentSong.id), currentSong.source);
         if (
           !isOfflineDirectHit &&
+          !failedCacheKeysRef.current.has(currentCacheKey) &&
           (audioUrl?.startsWith("cached://") ||
             (currentSong.source !== "local" && currentSong.source !== "upload"))
         ) {
@@ -1487,23 +1543,34 @@ export const useAudioPlayer = () => {
             const cached = await getCachedAudio(currentSong.id, currentSong.source);
             if (!isCurrentPlaybackRequest(requestId, songId || undefined)) return;
             if (cached) {
-              const cachedBlobUrl = createBlobUrlFromCache(cached);
-              if (cachedBlobUrl) {
-                audioUrl = cachedBlobUrl;
-                currentAudioUrlRef.current = cachedBlobUrl;
-                isOfflineDirectHit = true;
-                if (!currentSong.lyrics && cached.lyrics) {
-                  currentSong.lyrics = cached.lyrics;
-                  currentSong.translationLyrics = cached.translationLyrics;
+              if (!isValidAudioData(cached.fileData)) {
+                console.warn(
+                  `[useAudioPlayer] ⚠️ 网络音频缓存损坏或非合法音频二进制，自动清理: 《${currentSong.title}》`
+                );
+                failedCacheKeysRef.current.add(currentCacheKey);
+                deleteCachedAudio(currentCacheKey).catch(() => {});
+              } else {
+                const cachedBlobUrl = createBlobUrlFromCache(cached);
+                if (cachedBlobUrl) {
+                  audioUrl = cachedBlobUrl;
+                  currentAudioUrlRef.current = cachedBlobUrl;
+                  isOfflineDirectHit = true;
+                  if (!currentSong.lyrics && cached.lyrics) {
+                    currentSong.lyrics = cached.lyrics;
+                    currentSong.translationLyrics = cached.translationLyrics;
+                  }
+                  if (
+                    (!currentSong.cover || currentSong.cover === "/default-cover.svg") &&
+                    cached.cover
+                  ) {
+                    currentSong.cover = cached.cover;
+                  }
+                  updateLastPlayed(currentCacheKey).catch(() => {});
+                  console.info(
+                    "[useAudioPlayer] 🎵 命中临时音频缓存，离线秒开:",
+                    currentSong.title
+                  );
                 }
-                if (
-                  (!currentSong.cover || currentSong.cover === "/default-cover.svg") &&
-                  cached.cover
-                ) {
-                  currentSong.cover = cached.cover;
-                }
-                updateLastPlayed(makeCacheKey(currentSong.id, currentSong.source)).catch(() => {});
-                console.info("[useAudioPlayer] 🎵 命中临时音频缓存，离线秒开:", currentSong.title);
               }
             }
           } catch {
@@ -1518,12 +1585,17 @@ export const useAudioPlayer = () => {
           const isRiskyOuterUrl = Boolean(
             audioUrl && audioUrl.includes("music.163.com/song/media/outer/url")
           );
+          const isFailedUrl = Boolean(
+            audioUrl &&
+            (failedUrlsRef.current.has(audioUrl) ||
+              failedUrlsRef.current.has(getPlayableStreamUrl(audioUrl)))
+          );
           const isInvalidUrl =
             !audioUrl ||
             (!audioUrl.startsWith("http") &&
               !audioUrl.startsWith("blob:") &&
               !audioUrl.startsWith("data:"));
-          if ((isInvalidUrl || isRiskyOuterUrl) && currentSong) {
+          if ((isInvalidUrl || isRiskyOuterUrl || isFailedUrl) && currentSong) {
             useUIStore
               .getState()
               .showToast(`⚡ 正在通过音源引擎嗅探直链: 《${currentSong.title}》...`, "info", 2000);

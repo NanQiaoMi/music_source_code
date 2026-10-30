@@ -9,6 +9,7 @@ import {
   OfflineAudioRecord,
 } from "@/services/localMusicStorage";
 import { multiSourceResolver } from "@/services/MultiSourceResolver";
+import { isValidAudioData } from "@/lib/audio/playableAudioSource";
 
 export type DownloadStatus =
   | "pending"
@@ -344,6 +345,14 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
   ) => {
     const songId = String(song.id);
 
+    // 严防将 HTML 错误页面或损坏二进制误保存为离线母带
+    if (!isValidAudioData(fileData)) {
+      throw new Error("下载的音频流格式异常或数据损坏，无法作为离线母带保存");
+    }
+
+    const cleanMimeType =
+      (mimeType || "audio/mpeg").split(";")[0].trim().toLowerCase() || "audio/mpeg";
+
     // 优先拉取并固化高品质 LRC 歌词与翻译歌词
     let lrc = song.lyrics;
     let transLrc = song.translationLyrics;
@@ -381,7 +390,7 @@ export const useOfflineDownloadStore = create<OfflineDownloadState>((set, get) =
       format: song.format,
       source: song.source || "online",
       quality: quality || "lossless",
-      mimeType: mimeType || "audio/mpeg",
+      mimeType: cleanMimeType,
       fileData,
       fileSize: fileData.byteLength,
       downloadedAt: Date.now(),

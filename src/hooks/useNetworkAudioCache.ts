@@ -14,6 +14,7 @@ import {
   CachedNetworkAudio,
 } from "@/services/networkAudioCache";
 import { Song } from "@/types/song";
+import { isValidAudioData } from "@/lib/audio/playableAudioSource";
 
 export type CacheStatus = "idle" | "caching" | "cached" | "error";
 
@@ -121,10 +122,20 @@ export async function triggerBackgroundCache(song: Song, audioUrl: string): Prom
     }
 
     const contentType = response.headers.get("content-type") || "audio/mpeg";
+    const cleanContentType = contentType.split(";")[0].trim().toLowerCase() || "audio/mpeg";
     const fileData = await response.arrayBuffer();
 
     if (!fileData || fileData.byteLength === 0) {
       console.warn("[NetworkAudioCache] Empty audio data, skipping cache for:", song.title);
+      cachingTasks.delete(key);
+      return;
+    }
+
+    if (!isValidAudioData(fileData)) {
+      console.warn(
+        "[NetworkAudioCache] Non-audio or corrupted binary data, skipping cache for:",
+        song.title
+      );
       cachingTasks.delete(key);
       return;
     }
@@ -151,7 +162,7 @@ export async function triggerBackgroundCache(song: Song, audioUrl: string): Prom
       translationLyrics: translationLyricsToSave,
       duration: song.duration ?? 0,
       fileData,
-      fileType: contentType.split(";")[0].trim(),
+      fileType: cleanContentType,
       originalUrl: audioUrl,
       cachedAt: Date.now(),
       lastPlayedAt: Date.now(),
