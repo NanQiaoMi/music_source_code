@@ -321,27 +321,27 @@ E4-2 不在守卫脚本的 `MARKERS` 表内（`scripts/perf/check-bundle-markers
 3. **E4-8 无真实浏览器证据**：500 项 longtask、滚动 60fps、首帧 <50ms 均未测（本轮只有 jsdom 窗口化断言）。
 4. **E4-9 / S4-7 剩余部分 blocked on D1**：7b 死代码已清理（§2.4）；归档去留、legacy key、契约移植仍无决策。
 5. **budget violations 2 条**（非 S4 作用域，需口径修订或预算重定基线）。
-6. **S4-3b 字体 `@import`→`<link>` 未做**（计划 Step 2 未落地；非 E4 验收项，但属计划内交付）。
+6. **S4-3b 字体外部 CDN 已移除（2026-10-30）**：删除 `globals.css` 的 Google Fonts `@import` 与 `layout.tsx` 的 preconnect，统一使用本地系统字体栈（方正小标宋/Songti/Source Han/Noto Serif SC/SimSun）；受限网络/离线零外部请求。因 Google Fonts 在当前网络被阻断（`net::ERR_CONNECTION_CLOSED`），未采用计划里的远程 `<link>` 方案，改为更严格的本地化替代。
 
 ## 6. 未验证 / 缺失证据（显式清单）
 
-| 项                                                      | 现状                                                                                                                   |
-| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **D1 决策**                                             | `00-decisions.md` 仍 Pending；7b 已执行，剩余归档/key/契约受阻                                                         |
-| **真实浏览器 long-task / 帧率（E4-8）**                 | 无 CDP Performance trace；Queue/Search/Batch/Crossfade 只有 jsdom 窗口化断言；无 60fps 曲线                            |
-| **首帧 <50ms（S4-6 验收）**                             | 未测（无 `performance.now` 打点证据）                                                                                  |
-| **dev 截图（S4-4 封面、S4-5 队列、S4-6 列表）**         | 全部缺失；无 normal/慢网/离线三态对照                                                                                  |
-| **V7 14 效果截图（S4-7 验收）**                         | 缺失（7b 仅删 0-importer 文件，未触及 V7；完整验收仍待 D1）                                                            |
-| **`document.fonts.check` / 字体实际加载（S4-3b 验收）** | 未测；且 `@import` 迁移本身未做                                                                                        |
-| **Electron `app://` 下的动态 chunk 相对路径**           | 未测（计划 S4-1 回滚条款的风险项）                                                                                     |
-| **LX 源 dev smoke（S4-2 手测）**                        | 未做；只有 8 条单测                                                                                                    |
-| **低端真机 LCP / 4K / Electron 打包后包体**             | 未测（计划 §5.2 明确归 S7/S8）                                                                                         |
-| **`perf/s4-final.json` / `s4-final.rerun.json`**        | 不存在；本轮实测写入临时目录（`%TEMP%\s4-evidence\s4-current.json`），**未提交**                                       |
-| **`perf/s4-after-s43b.json` 之后的正式终局快照**        | 不存在；最新提交态快照仍是 S4-3b（2026-10-28）                                                                         |
-| **`perf/bundle-report.json`**                           | 不存在（基线 `source` 指向它）；`bundle-diff` 需显式 `--report`，否则 exit 2                                           |
-| **全量测试套件**                                        | 本轮未复跑（TRACKING 集成栈 310 files / 1,930 passed 为**历史**）；只跑 S4 定向 15 文件                                |
-| **计划文档状态**                                        | `S4-bundle-loading.md` 头部仍写「状态：**未开始**」，与 TRACKING 6/7 done 不一致                                       |
-| **TRACKING 事实漂移**                                   | 行 16 写「rootMain gzip ≤190KB（缺口见 Q10）」；Q10 在 `00-decisions.md` 中是「16 个阻塞决策」而非包体缺口项，指代需修 |
+| 项                                               | 现状                                                                                                                                                    |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **D1 决策**                                      | `00-decisions.md` 仍 Pending；7b 已执行，剩余归档/key/契约受阻                                                                                          |
+| **真实浏览器 long-task / 帧率（E4-8）**          | 无 CDP Performance trace；Queue/Search/Batch/Crossfade 只有 jsdom 窗口化断言；无 60fps 曲线                                                             |
+| **首帧 <50ms（S4-6 验收）**                      | 未测（无 `performance.now` 打点证据）                                                                                                                   |
+| **dev 截图（S4-4 封面、S4-5 队列、S4-6 列表）**  | 全部缺失；无 normal/慢网/离线三态对照                                                                                                                   |
+| **V7 14 效果截图（S4-7 验收）**                  | 缺失（7b 仅删 0-importer 文件，未触及 V7；完整验收仍待 D1）                                                                                             |
+| **字体加载（S4-3b 验收）**                       | 2026-10-30 已移除远程 webfont，改本地系统字体栈；dev console 无字体请求、Next overlay issues 4→0。`document.fonts.check` 对系统字体语义不同，不作为门禁 |
+| **Electron `app://` 下的动态 chunk 相对路径**    | 未测（计划 S4-1 回滚条款的风险项）                                                                                                                      |
+| **LX 源 dev smoke（S4-2 手测）**                 | 未做；只有 8 条单测                                                                                                                                     |
+| **低端真机 LCP / 4K / Electron 打包后包体**      | 未测（计划 §5.2 明确归 S7/S8）                                                                                                                          |
+| **`perf/s4-final.json` / `s4-final.rerun.json`** | 不存在；本轮实测写入临时目录（`%TEMP%\s4-evidence\s4-current.json`），**未提交**                                                                        |
+| **`perf/s4-after-s43b.json` 之后的正式终局快照** | 不存在；最新提交态快照仍是 S4-3b（2026-10-28）                                                                                                          |
+| **`perf/bundle-report.json`**                    | 不存在（基线 `source` 指向它）；`bundle-diff` 需显式 `--report`，否则 exit 2                                                                            |
+| **全量测试套件**                                 | 本轮未复跑（TRACKING 集成栈 310 files / 1,930 passed 为**历史**）；只跑 S4 定向 15 文件                                                                 |
+| **计划文档状态**                                 | `S4-bundle-loading.md` 头部仍写「状态：**未开始**」，与 TRACKING 6/7 done 不一致                                                                        |
+| **TRACKING 事实漂移**                            | 行 16 写「rootMain gzip ≤190KB（缺口见 Q10）」；Q10 在 `00-decisions.md` 中是「16 个阻塞决策」而非包体缺口项，指代需修                                  |
 
 ## 7. 复现命令
 

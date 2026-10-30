@@ -1,4 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Long+Cang&family=Liu+Jian+Mao+Cao&family=Noto+Serif+SC:wght@300;400;600;900&family=ZCOOL+XiaoWei&display=swap");
+/* S4-3b（2026-10-30）：不再从 Google Fonts 拉取 webfont。
+   标题/正文统一使用下方本地系统字体栈（方正小标宋/Songti/Source Han/Noto Serif SC/SimSun），
+   离线与受限网络下零外部请求；若本机安装了同名字体则自动生效。 */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -92,12 +94,7 @@ textarea {
   --theme-surface: rgb(15, 17, 23);
   --theme-text: rgb(255, 255, 255);
   --theme-text-muted: rgba(255, 255, 255, 0.6);
-  --theme-gradient: linear-gradient(
-    135deg,
-    rgb(55, 65, 81),
-    rgb(31, 41, 55),
-    rgb(75, 85, 99)
-  );
+  --theme-gradient: linear-gradient(135deg, rgb(55, 65, 81), rgb(31, 41, 55), rgb(75, 85, 99));
   --theme-transition-duration: 1000ms;
 
   --theme-radius-sm: 6px;
@@ -137,12 +134,7 @@ textarea {
   --theme-surface: rgb(255, 255, 255);
   --theme-text: rgb(28, 28, 30);
   --theme-text-muted: rgba(28, 28, 30, 0.6);
-  --theme-gradient: linear-gradient(
-    135deg,
-    rgb(147, 51, 234),
-    rgb(37, 99, 235),
-    rgb(219, 39, 119)
-  );
+  --theme-gradient: linear-gradient(135deg, rgb(147, 51, 234), rgb(37, 99, 235), rgb(219, 39, 119));
 }
 
 @layer utilities {

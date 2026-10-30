@@ -37,10 +37,12 @@ export const saveCoverToCache = async (
   originalUrl: string,
   coverData: string
 ): Promise<void> => {
-  if (!coverData || coverData.startsWith("data:")) {
-    // Don't cache base64 data URIs or empty covers
+  if (!coverData || coverData.startsWith("data:") || coverData.startsWith("blob:")) {
+    // Don't cache base64/blob data URIs or empty covers
     return;
   }
+  // Only http(s) covers can be fetched; other schemes would throw synchronously.
+  if (!/^https?:\/\//i.test(coverData)) return;
 
   try {
     // Fetch and convert to base64
@@ -64,7 +66,11 @@ export const saveCoverToCache = async (
       request.onerror = () => reject(request.error);
     });
   } catch (error) {
-    console.error("Error caching cover:", error);
+    // Cover caching is best-effort (offline/blocked CDNs are expected). Keep the
+    // console clean so the dev overlay does not report an app "issue" for it.
+    if (process.env.NODE_ENV !== "production") {
+      console.debug("[coverCache] skip", error instanceof Error ? error.message : error);
+    }
   }
 };
 
@@ -84,7 +90,9 @@ export const getCoverFromCache = async (id: string): Promise<string | null> => {
       request.onerror = () => reject(request.error);
     });
   } catch (error) {
-    console.error("Error getting cached cover:", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.debug("[coverCache] read miss", error instanceof Error ? error.message : error);
+    }
     return null;
   }
 };

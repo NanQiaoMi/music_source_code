@@ -23,8 +23,6 @@ export default function RootLayout({
     <html lang="zh-CN" className="dark" suppressHydrationWarning>
       <head>
         <ThemeBootScript />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="w-screen h-screen overflow-hidden" suppressHydrationWarning>
         {/* 最后一道防线：任何未被面板级边界捕获的渲染错误都不再把整树卸载成白屏，
