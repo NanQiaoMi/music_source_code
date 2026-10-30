@@ -222,3 +222,15 @@
    - Google Fonts preconnect 不是死代码（globals.css:1 有 @import 真实加载 5 个字体族）；正确做法是迁到 link，而不是删除。
    - V8 不是"零引用"：VisualizationViewV8/组件树确实未接线，但 visualizationV8Store 被 AppleUnifiedNavIsland.tsx:36,151,168 与 aiAgentTools.ts:7,726 引用（当前为空操作）；performanceV8Store 被 V7 的 VisualSettings.tsx、NowPlayingHalo.tsx、PlayerSkinsPanel.tsx 使用。删除前必须重定向/保留。
 5. **PR 计数口径**：总计划 §10.2 的"60-65 PR"是**逻辑 PR**估计；执行计划按 ≤400 行拆成约 129 个子 PR（S0 10、S1 15、S2 6、S3 12、S4 10、S5 17、S6 28、S7 19、S8 ~12）。同一任务的子 PR 可在阶段收口时 squash 为逻辑 PR。
+
+## 2026-10-30 用户最终确认（全部按推荐）
+
+- D2 桌面运行时：接受延期，S7-4..S7-8 保持 done-with-deviation（零代码交付）。
+- S8-3：接受 4 周时间门（当前 2/28 行，约 2026-11-27 判定）。
+- M7/M8：接受“门未关闭但记偏差”作为最终交付口径。
+- 性能偏差清单：全部接受（M4 208.4KB、S2-4 1.00/s、M5 rAF 14、M6 store 边 23、S3-2 单分辨率、S7-1 模块大小）。
+- bundle-budget --check：维持禁用（async/public 绝对上限豁免）。
+- 主仓库工作区：不切换、不清洗既有脏文件（保持现状）。
+- worktree 恢复物（patch + stash）：保留。
+- 真机听感/合盖/50MB 起播延迟等未采样项：记为人工 smoke 待办。
+- 项目运行：2026-10-30 12:15 于集成 worktree 启动 dev server（端口 3030，HTTP 200），截图 screenshots/project-running-20261030.png；3025 端口仍被外部会话占用。
