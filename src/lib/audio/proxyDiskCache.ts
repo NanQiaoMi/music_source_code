@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { isValidAudioData } from "@/lib/audio/playableAudioSource";
 
 export interface CacheMeta {
   url: string;
@@ -74,6 +75,8 @@ export function serveCachedFile(
   rangeHeader: string | null
 ): Response {
   const totalSize = meta.contentLength;
+  const cleanContentType =
+    (meta.contentType || "audio/mpeg").split(";")[0].trim().toLowerCase() || "audio/mpeg";
 
   if (!rangeHeader) {
     const nodeStream = fs.createReadStream(filePath);
@@ -93,7 +96,7 @@ export function serveCachedFile(
     return new Response(webStream, {
       status: 200,
       headers: {
-        "Content-Type": meta.contentType || "audio/mpeg",
+        "Content-Type": cleanContentType,
         "Content-Length": String(totalSize),
         "Accept-Ranges": "bytes",
         "Access-Control-Allow-Origin": "*",
@@ -143,7 +146,7 @@ export function serveCachedFile(
   return new Response(webStream, {
     status: 206,
     headers: {
-      "Content-Type": meta.contentType || "audio/mpeg",
+      "Content-Type": cleanContentType,
       "Content-Length": String(chunkSize),
       "Content-Range": `bytes ${start}-${end}/${totalSize}`,
       "Accept-Ranges": "bytes",
@@ -177,6 +180,8 @@ export function cacheStreamAndTee(
   let totalWritten = 0;
   const [streamForClient, streamForDisk] = upstreamStream.tee();
 
+  const cleanContentType = contentType.split(";")[0].trim().toLowerCase() || "audio/mpeg";
+
   // Async disk saver
   (async () => {
     const reader = streamForDisk.getReader();
@@ -198,10 +203,22 @@ export function cacheStreamAndTee(
           if (isComplete) {
             try {
               if (fs.existsSync(partPath)) {
+                // 校验音频魔数，杜绝将 HTML/JSON 等文本流误存为本地音频磁盘缓存
+                const headerBuf = Buffer.alloc(64);
+                const fd = await fs.promises.open(partPath, "r");
+                await fd.read(headerBuf, 0, 64, 0);
+                await fd.close();
+
+                if (!isValidAudioData(headerBuf.buffer)) {
+                  console.warn("[proxyDiskCache] Dropping invalid audio stream payload:", url);
+                  fs.unlink(partPath, () => {});
+                  return;
+                }
+
                 await fs.promises.rename(partPath, finalPath);
                 const meta: CacheMeta = {
                   url,
-                  contentType,
+                  contentType: cleanContentType,
                   contentLength: totalWritten,
                   lastAccessed: Date.now(),
                   createdAt: Date.now(),

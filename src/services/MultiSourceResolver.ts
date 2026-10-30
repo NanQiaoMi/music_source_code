@@ -404,7 +404,7 @@ export class MultiSourceResolver {
       if (query.source) params.set("source", query.source);
 
       const res = await fetch(`${base}/api/song/url?${params.toString()}`, {
-        signal: AbortSignal.timeout(4000),
+        signal: AbortSignal.timeout(6000),
         headers: query.source ? getPlatformHeaders(query.source) : {},
       });
       if (!res.ok) return null;

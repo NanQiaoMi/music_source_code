@@ -66,6 +66,24 @@ export async function GET(request: NextRequest) {
       headers: upstreamHeaders,
     });
 
+    if (!upstreamRes.ok) {
+      return new Response(`Upstream audio fetch failed: ${upstreamRes.status}`, {
+        status: upstreamRes.status,
+      });
+    }
+
+    const rawContentType = upstreamRes.headers.get("content-type") || "audio/mpeg";
+    const contentType = rawContentType.split(";")[0].trim().toLowerCase() || "audio/mpeg";
+
+    // 严防上游将 HTML 错误页面或 JSON 响应冒充为音频
+    if (
+      contentType.includes("text/html") ||
+      contentType.includes("text/plain") ||
+      contentType.includes("application/json")
+    ) {
+      return new Response("Upstream returned non-audio payload", { status: 502 });
+    }
+
     const headers = new Headers();
     headers.set("Access-Control-Allow-Origin", "*");
     headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
@@ -76,8 +94,6 @@ export async function GET(request: NextRequest) {
     );
     headers.set("Accept-Ranges", "bytes");
     headers.set("X-Cache", "MISS");
-
-    const contentType = upstreamRes.headers.get("content-type") || "audio/mpeg";
     headers.set("Content-Type", contentType);
 
     const contentLength = upstreamRes.headers.get("content-length");
