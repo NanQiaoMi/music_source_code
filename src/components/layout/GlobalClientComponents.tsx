@@ -47,6 +47,42 @@ export function GlobalClientComponents() {
     void bootstrapApp();
   }, []);
 
+  // 持续拦截与清理来自外部浏览器扩展注入（如币安钱包/Web3扩展）的未捕获错误遮罩
+  useEffect(() => {
+    const cleanupExtensionOverlay = () => {
+      try {
+        const portals = document.querySelectorAll("nextjs-portal");
+        portals.forEach((portal) => {
+          const root = portal.shadowRoot;
+          if (root) {
+            const text = root.textContent || "";
+            if (
+              text.includes("sseError") ||
+              text.includes("cadiboklkpojfamcoggejbbdjcoiljjk") ||
+              text.includes("chrome-extension://") ||
+              text.includes("inpage.js")
+            ) {
+              (portal as HTMLElement).style.display = "none";
+              const closeBtn =
+                root.querySelector<HTMLButtonElement>('button[aria-label="Close"]') ||
+                root.querySelector<HTMLButtonElement>("button[data-nextjs-dialog-header-close]") ||
+                root.querySelector<HTMLButtonElement>("[data-nextjs-toast-close]");
+              if (closeBtn) closeBtn.click();
+              portal.remove();
+            }
+          }
+        });
+      } catch {
+        // 静默降级
+      }
+    };
+
+    cleanupExtensionOverlay();
+    const observer = new MutationObserver(cleanupExtensionOverlay);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <>
       <TopEdgeSearchTrigger />
