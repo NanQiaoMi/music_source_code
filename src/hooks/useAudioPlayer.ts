@@ -944,10 +944,17 @@ const attachListeners = (
       useUIStore
         .getState()
         .showToast(
-          `❌ 播放失败: 无法解析《${currentSong?.title || "此歌曲"}》的音频流，请尝试更换音源`,
+          `❌ 无法解析《${currentSong?.title || "此歌曲"}》的音频流，自动尝试下一首`,
           "error",
-          4000
+          3000
         );
+      if (typeof window !== "undefined") {
+        window.setTimeout(() => {
+          if (!usePlayerStore.getState().isPlaying) {
+            useAudioStore.getState().nextSong();
+          }
+        }, 1200);
+      }
     }
   };
 

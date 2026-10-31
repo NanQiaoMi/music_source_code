@@ -8,6 +8,7 @@ import {
   hasPlayableAudioSource,
   createMissingAudioSourceError,
 } from "@/lib/audio/playableAudioSource";
+import { AudioEngine } from "@/lib/audio/AudioEngine";
 
 const getPlaybackSongId = (song: Song | null): string | null =>
   song ? String(song.id || song.title || "") || null : null;
@@ -106,6 +107,22 @@ export const createPlaybackSlice: AudioSliceCreator<PlaybackSliceState> = (set, 
     },
 
     togglePlaybackIntent: () => {
+      // 1. 同步唤醒 Web Audio Context 硬件接口（处于用户真实交互手势调用栈中）
+      AudioEngine.getInstance()
+        .resume()
+        .catch(() => {});
+
+      // 2. 检查当前曲目，若为空或不可播放，自动从队列中获取首选有效曲目进行播放
+      const current = usePlayerStore.getState().currentSong ?? get().currentSong;
+      if (!current || !hasPlayableAudioSource(current) || current.id === "lab-song-01") {
+        const queue = useQueueStore.getState().queue;
+        const valid = queue.find((s) => hasPlayableAudioSource(s) && s.id !== "lab-song-01");
+        if (valid) {
+          get().playSong(valid);
+          return;
+        }
+      }
+
       get().setIsPlaying(!usePlaybackRuntimeStore.getState().shouldPlay);
     },
 

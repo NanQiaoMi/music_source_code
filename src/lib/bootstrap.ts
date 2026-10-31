@@ -83,6 +83,37 @@ async function runBootstrap(): Promise<boolean> {
     await usePlaylistStore.getState().initializePlaylist();
     console.log("[Bootstrap] Playlist initialized.");
 
+    // 2. 兜底保障：若当前全局歌曲为空或无效，自动从资料库装载可播放首曲并就绪
+    const curSong = usePlayerStore.getState().currentSong || useAudioStore.getState().currentSong;
+    const playlistSongs = usePlaylistStore.getState().songs;
+    if (
+      (!curSong || !hasPlayableAudioSource(curSong) || curSong.id === "lab-song-01") &&
+      playlistSongs.length > 0
+    ) {
+      const firstValidSong =
+        playlistSongs.find((s) => hasPlayableAudioSource(s) && s.id !== "lab-song-01") ||
+        playlistSongs[0];
+
+      if (firstValidSong) {
+        usePlayerStore.setState({ currentSong: firstValidSong, isPlaying: false });
+        useAudioStore.setState({ currentSong: firstValidSong, isPlaying: false });
+        console.log(
+          `[Bootstrap] 🔄 自动就绪首选可播放曲目: 《${firstValidSong.title}》- ${firstValidSong.artist}`
+        );
+      }
+    }
+
+    // 若当前播放队列为空，以播放列表为基准填充队列
+    const currentQueue = useQueueStore.getState().queue;
+    if (
+      !currentQueue ||
+      currentQueue.length === 0 ||
+      currentQueue.every((s) => s.id === "lab-song-01")
+    ) {
+      useQueueStore.setState({ queue: playlistSongs, currentIndex: 0 });
+      useAudioStore.setState({ queue: playlistSongs, currentIndex: 0 });
+    }
+
     useEmotionStore.getState().initializeEmotions();
     console.log("[Bootstrap] Emotion engine ready.");
 

@@ -9,6 +9,7 @@ import { useMediaSession } from "@/hooks/useMediaSession";
 import { useElectron } from "@/hooks/useElectron";
 import { bootstrapApp } from "@/lib/bootstrap";
 import { compactExistingStorage } from "@/lib/storage/safeStorage";
+import { AudioEngine } from "@/lib/audio/AudioEngine";
 import { useUIStore } from "@/store/uiStore";
 
 const FloatingPlayer = dynamic(
@@ -45,6 +46,23 @@ export function GlobalClientComponents() {
   useEffect(() => {
     compactExistingStorage();
     void bootstrapApp();
+  }, []);
+
+  // 浏览器原生手势解锁 AudioContext：在用户首次点击/交互时同步唤醒音频硬件，防止起播静音或被阻止
+  useEffect(() => {
+    const unlockAudio = () => {
+      AudioEngine.getInstance()
+        .resume()
+        .catch(() => {});
+      window.removeEventListener("pointerdown", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+    };
+    window.addEventListener("pointerdown", unlockAudio, { once: true, passive: true });
+    window.addEventListener("keydown", unlockAudio, { once: true, passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+    };
   }, []);
 
   // 持续拦截与清理来自外部浏览器扩展注入（如币安钱包/Web3扩展）的未捕获错误遮罩
