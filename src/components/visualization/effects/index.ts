@@ -13,3 +13,4 @@ export * from "./cinematicSilkAurora";
 export * from "./orientalLandscape";
 export * from "./cinematicOrientalInk";
 export * from "./cinematicLyricDrift";
+export * from "./animeHandwrittenMV";

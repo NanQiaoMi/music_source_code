@@ -14,7 +14,8 @@ export type VisualizationEffect =
   | "prismPulse"
   | "cinematicSilkAurora"
   | "orientalLandscape"
-  | "cinematicLyricDrift";
+  | "cinematicLyricDrift"
+  | "animeHandwrittenMV";
 
 export type NumericEffectSettings = Record<string, number>;
 export type EffectSettings = Record<VisualizationEffect, NumericEffectSettings>;
@@ -133,6 +134,13 @@ const defaultEffectSettings: EffectSettings = {
     ambientGlowIntensity: 0.9,
     filmGrain: 0.15,
     vignetteStrength: 0.65,
+  },
+  animeHandwrittenMV: {
+    zoomScale: 1.8,
+    frameRate: 12,
+    inkSplatter: 1.0,
+    colorScheme: 0,
+    ambientGlow: 0.8,
   },
 };
 
