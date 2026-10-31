@@ -4,6 +4,7 @@ import { usePlayerStore } from "@/store/playerStore";
 import { usePlaylistStore } from "@/store/playlistStore";
 import { useQueueStore } from "@/store/queueStore";
 import { AudioContextWatchdog } from "@/lib/audio/AudioContextWatchdog";
+import { hasPlayableAudioSource } from "@/lib/audio/playableAudioSource";
 
 let bootstrapPromise: Promise<boolean> | null = null;
 let hasRestoredPlaybackState = false;
@@ -34,24 +35,40 @@ async function runBootstrap(): Promise<boolean> {
       const restoredQueue = useQueueStore.getState().queue;
       const restoredIndex = useQueueStore.getState().currentIndex;
 
-      if (restoredSong) {
+      let activeSong = restoredSong;
+      if (activeSong && (!hasPlayableAudioSource(activeSong) || activeSong.id === "lab-song-01")) {
+        const playableInQueue = restoredQueue?.find(
+          (s) => hasPlayableAudioSource(s) && s.id !== "lab-song-01"
+        );
+        if (playableInQueue) {
+          activeSong = playableInQueue;
+          usePlayerStore.setState({ currentSong: playableInQueue });
+        } else {
+          activeSong = null;
+          usePlayerStore.setState({ currentSong: null });
+        }
+      }
+
+      if (activeSong) {
         useAudioStore.setState({
-          currentSong: restoredSong,
+          currentSong: activeSong,
           isPlaying: false, // 启动时保持就绪状态，等待用户点击播放
           currentTime: usePlayerStore.getState().currentTime || 0,
-          duration: usePlayerStore.getState().duration || restoredSong.duration || 0,
+          duration: usePlayerStore.getState().duration || activeSong.duration || 0,
         });
         console.log(
-          `[Bootstrap] 🎵 已恢复上次播放歌曲: 《${restoredSong.title}》- ${restoredSong.artist}`
+          `[Bootstrap] 🎵 已恢复上次播放歌曲: 《${activeSong.title}》- ${activeSong.artist}`
         );
       }
 
       if (restoredQueue && restoredQueue.length > 0) {
+        const sanitizedQueue = restoredQueue.filter((s) => s.id !== "lab-song-01");
+        useQueueStore.setState({ queue: sanitizedQueue });
         useAudioStore.setState({
-          queue: restoredQueue,
-          currentIndex: restoredIndex || 0,
+          queue: sanitizedQueue,
+          currentIndex: Math.min(restoredIndex || 0, Math.max(0, sanitizedQueue.length - 1)),
         });
-        console.log(`[Bootstrap] 📋 已恢复上次播放队列: ${restoredQueue.length} 首歌曲`);
+        console.log(`[Bootstrap] 📋 已恢复上次播放队列: ${sanitizedQueue.length} 首歌曲`);
       }
 
       const restoredLoopMode = usePlayerStore.getState().loopMode;

@@ -18,6 +18,8 @@ import { drawCinematicLyricDrift } from "@/components/visualization/effects/cine
 import type { EffectContext } from "@/components/visualization/effects/types";
 import { FloatingCompactControlsState } from "@/components/player/floating/FloatingCompactControlsState";
 import { useAudioStore } from "@/store/audioStore";
+import { usePlayerStore } from "@/store/playerStore";
+import { useQueueStore } from "@/store/queueStore";
 
 const MOCK_LYRICS = [
   "在无声的微光中悄然苏醒",
@@ -27,6 +29,20 @@ const MOCK_LYRICS = [
   "没有边界的画纸 自由舒展",
   "在暖光的照拂下 娓娓道来",
 ];
+
+const DEMO_LAB_SONG = {
+  id: "lab-song-01",
+  title: "动漫手书 MV // 新海诚暮色",
+  artist: "MIMI Cinematic Studio",
+  album: "Cinematic Odyssey Vol.1",
+  cover: "/default-cover.svg",
+  audioUrl: "",
+  duration: 240,
+  source: "demo",
+  lyrics: MOCK_LYRICS.map(
+    (line, idx) => `[00:${(idx * 4).toString().padStart(2, "0")}.00]${line}`
+  ).join("\n"),
+};
 
 export default function VisualizersLabPage() {
   const [selectedEffect, setSelectedEffect] = useState<
@@ -52,26 +68,18 @@ export default function VisualizersLabPage() {
   const frameCountRef = useRef<number>(0);
   const lastFpsUpdateRef = useRef<number>(0);
 
-  // Sync test song to audioStore so FloatingCompactControlsState displays properly
+  // 清理可能遗留的实验室演示歌曲，保证主播放器不受干扰
   useEffect(() => {
-    useAudioStore.setState({
-      isPlaying: isPlaying,
-      isLoading: false,
-      currentSong: {
-        id: "lab-song-01",
-        title: "Kimi Quantum Synthesis // 极核流光",
-        artist: "MIMI Quantum Lab & AI Acoustic",
-        album: "Neural Symphony Vol.1",
-        cover: "/default-cover.svg",
-        audioUrl: "",
-        duration: 240,
-        source: "local",
-        lyrics: MOCK_LYRICS.map(
-          (line, idx) => `[00:${(idx * 4).toString().padStart(2, "0")}.00]${line}`
-        ).join("\n"),
-      },
-    });
-  }, [isPlaying]);
+    const cur = useAudioStore.getState().currentSong;
+    if (cur?.id === "lab-song-01") {
+      const queue = useQueueStore.getState().queue;
+      const playable = queue.find((s) => s.id !== "lab-song-01");
+      if (playable) {
+        useAudioStore.setState({ currentSong: playable });
+        usePlayerStore.setState({ currentSong: playable });
+      }
+    }
+  }, []);
 
   // Audio energy & Beat generator simulation
   useEffect(() => {
@@ -263,7 +271,7 @@ export default function VisualizersLabPage() {
           <div className="mb-2 text-center text-[11px] font-medium text-white/40 tracking-wider">
             ↓ 鼠标悬浮查看自适应平滑展开 · 移开自动收缩折叠 ↓
           </div>
-          <FloatingCompactControlsState />
+          <FloatingCompactControlsState song={DEMO_LAB_SONG} />
         </div>
 
         {/* Control & Debug Drawer Panel */}

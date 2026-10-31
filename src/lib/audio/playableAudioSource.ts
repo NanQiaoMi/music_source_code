@@ -157,6 +157,9 @@ export function isValidAudioData(
   // DSD: 'DSD ' (0x44 0x53 0x44 0x20)
   if (bytes[0] === 0x44 && bytes[1] === 0x53 && bytes[2] === 0x44 && bytes[3] === 0x20) return true;
 
+  // WebM / Matroska: 0x1A 0x45 0xDF 0xA3
+  if (bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3) return true;
+
   // 未能识别为已知合法音频容器魔数，严格判定为非法或损坏音频
   return false;
 }

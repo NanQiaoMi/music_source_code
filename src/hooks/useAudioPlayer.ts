@@ -1074,6 +1074,18 @@ export const useAudioPlayer = () => {
 
       if (isAbortError) return;
 
+      const isAutoplayError =
+        playbackError.name === "NotAllowedError" ||
+        message.includes("user didn't interact") ||
+        message.includes("not allowed");
+
+      if (isAutoplayError) {
+        // 浏览器自动播放安全限制：需要用户手势交互才能恢复播放，绝不将合法音源封锁为 failedUrls
+        usePlayerStore.getState().setIsPlaying(false);
+        useAudioStore.getState().setIsPlaying(false);
+        return;
+      }
+
       const audio = audioElementRef.current;
       if (audio?.src) failedUrlsRef.current.add(audio.src);
       if (audio?.currentSrc) failedUrlsRef.current.add(audio.currentSrc);
@@ -1422,6 +1434,10 @@ export const useAudioPlayer = () => {
         lastToastSongIdRef.current = null;
         rescueInProgressRef.current = false;
         rescuedUrlsRef.current.clear();
+        if (currentSong.audioUrl) {
+          failedUrlsRef.current.delete(currentSong.audioUrl);
+          failedUrlsRef.current.delete(getPlayableStreamUrl(currentSong.audioUrl));
+        }
         // 上一首的后台缓存还没发起就换歌了 —— 取消，别给旧歌白拉几十 MB
         backgroundCacheScheduler.cancel();
         if (waitingTimeoutRef.current) {
