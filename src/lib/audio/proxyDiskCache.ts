@@ -209,7 +209,7 @@ export function cacheStreamAndTee(
                 await fd.read(headerBuf, 0, 64, 0);
                 await fd.close();
 
-                if (!isValidAudioData(headerBuf.buffer)) {
+                if (!isValidAudioData(headerBuf, 32)) {
                   console.warn("[proxyDiskCache] Dropping invalid audio stream payload:", url);
                   fs.unlink(partPath, () => {});
                   return;

@@ -32,6 +32,7 @@ export interface FloatingCompactControlsStateProps {
   dragHandlers?: DragHandlers;
   className?: string;
   showGlow?: boolean;
+  song?: Song | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -188,6 +189,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
   dragHandlers,
   className = "",
   showGlow = false,
+  song: songProp,
 }) => {
   const playbackPhase = usePlaybackRuntimeStore((state) => state.phase);
   const shouldPlay = usePlaybackRuntimeStore((state) => state.shouldPlay);
@@ -198,7 +200,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
 
   const audioSong = useAudioStore((state) => state.currentSong);
   const playerSong = usePlayerStore((state) => state.currentSong);
-  const currentSong = audioSong || playerSong;
+  const currentSong = songProp || audioSong || playerSong;
 
   const [showMiniLyricTooltip, setShowMiniLyricTooltip] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -292,9 +294,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
   }, []);
 
   const handleTogglePlay = React.useCallback(() => {
-    const nextPlaying = !usePlaybackRuntimeStore.getState().shouldPlay;
-    useAudioStore.getState().setIsPlaying(nextPlaying);
-    usePlayerStore.getState().setIsPlaying(nextPlaying);
+    useAudioStore.getState().togglePlaybackIntent();
   }, []);
 
   if (!currentSong) return null;
@@ -376,11 +376,11 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
         {/* 2. 中间歌名与独立细粒度歌词 (自适应双态：未悬停时完全 display:none 零缝隙卸载；悬停时全部完整显示) */}
         <motion.div
           data-testid="compact-capsule-text"
-          className="relative z-[1] min-w-0 flex flex-col justify-center text-left overflow-hidden pr-1"
+          className="relative z-[1] min-w-0 flex flex-col justify-center text-left overflow-hidden"
           animate={{
-            width: isHovered && !isDragging ? "auto" : 0,
-            maxWidth: isHovered && !isDragging ? 150 : 0,
+            width: isHovered && !isDragging ? 150 : 0,
             opacity: isHovered && !isDragging ? 1 : 0,
+            paddingRight: isHovered && !isDragging ? 4 : 0,
           }}
           transition={
             prefersReducedMotion
