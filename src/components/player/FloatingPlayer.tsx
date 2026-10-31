@@ -46,7 +46,7 @@ export const FloatingPlayer: React.FC<FloatingPlayerProps> = ({ className = "" }
         const dy = curY - dragStartPosRef.current.y;
 
         // 限制在屏幕可视范围内
-        const maxX = typeof window !== "undefined" ? window.innerWidth - 380 : 800;
+        const maxX = typeof window !== "undefined" ? window.innerWidth - 450 : 800;
         const maxY = typeof window !== "undefined" ? window.innerHeight - 70 : 600;
 
         const newX = Math.max(12, Math.min(maxX, elementStartPosRef.current.x + dx));

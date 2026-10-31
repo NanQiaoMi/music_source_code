@@ -318,11 +318,11 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
       }
       aria-busy={isLoading}
     >
-      {/* 纯 CSS 硬件加速暗黑毛玻璃胶囊 (自适应双态：紧凑 316px <-> 悬停舒展 450px) */}
+      {/* 纯 CSS 硬件加速暗黑毛玻璃胶囊 (自适应双态：舒展态 396px <-> 悬停拓展 440px) */}
       <motion.div
-        className="drag-handle relative flex items-center justify-between gap-3 px-3.5 py-2 rounded-full shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.25)] border border-white/[0.18] transition-colors"
+        className="drag-handle relative flex items-center justify-between gap-2.5 pl-3.5 pr-4.5 py-2 rounded-full shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.25)] border border-white/[0.18] transition-colors"
         animate={{
-          width: isHovered && !isDragging ? 450 : 316,
+          width: isHovered && !isDragging ? 440 : 396,
         }}
         transition={
           prefersReducedMotion
@@ -373,33 +373,18 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
           </motion.div>
         </div>
 
-        {/* 2. 中间歌名与独立细粒度歌词 (自适应双态：Hover 时舒展展现，非 Hover 时彻底折叠隐藏绝不留残缝) */}
-        <motion.div
+        {/* 2. 中间歌名与独立细粒度歌词 (常驻展示，智能截断与平滑过渡，彻底杜绝折叠残影与空洞) */}
+        <div
           data-testid="compact-capsule-text"
-          className="relative z-[1] min-w-0 flex flex-col justify-center text-left overflow-hidden"
-          animate={{
-            width: isHovered && !isDragging ? "auto" : 0,
-            maxWidth: isHovered && !isDragging ? 134 : 0,
-            opacity: isHovered && !isDragging ? 1 : 0,
-            paddingRight: isHovered && !isDragging ? 4 : 0,
-          }}
-          transition={
-            prefersReducedMotion
-              ? { duration: 0.01 }
-              : { type: "spring", stiffness: 420, damping: 28 }
-          }
-          style={{
-            pointerEvents: isHovered && !isDragging ? "auto" : "none",
-          }}
-          aria-hidden={!isHovered || isDragging}
+          className="relative z-[1] min-w-0 flex-1 flex flex-col justify-center text-left overflow-hidden pr-1"
           aria-busy={isLoading}
         >
           <AnimatePresence mode="sync" initial={false}>
             <motion.div
-              key={`${currentSong.id || currentSong.title}:${currentSong.title}`}
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 4, filter: "blur(2px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              exit={prefersReducedMotion ? undefined : { opacity: 0, y: -3, filter: "blur(1px)" }}
+              key={currentSong.id || currentSong.title}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 2 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={prefersReducedMotion ? undefined : { opacity: 0, y: -2 }}
               transition={
                 prefersReducedMotion
                   ? { duration: 0.01 }
@@ -408,7 +393,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
               className="min-w-0"
             >
               <h4
-                className="text-white font-semibold text-[13px] tracking-tight leading-tight truncate"
+                className="text-white font-semibold text-[13px] tracking-tight leading-tight truncate select-none"
                 title={currentSong.title}
               >
                 {currentSong.title}
@@ -416,7 +401,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
               <SyncedMiniLyric song={currentSong} />
             </motion.div>
           </AnimatePresence>
-        </motion.div>
+        </div>
 
         {/* 3. 右侧控制按钮组 (0ms 零延迟极速响应) */}
         <div
@@ -433,6 +418,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
                 : "text-white/60 hover:text-white hover:bg-white/10"
             }`}
             title="查看完整歌词"
+            aria-label="查看完整歌词"
           >
             <Mic2 className="w-3.5 h-3.5" />
           </button>
@@ -443,6 +429,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
             onClick={handlePrevTrack}
             className={`control-interactive w-7 h-7 rounded-full text-white/70 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all ${tapScaleClass}`}
             title="上一首"
+            aria-label="上一首"
           >
             <SkipBack className="w-3.5 h-3.5" />
           </button>
@@ -461,6 +448,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
             onClick={handleNextTrack}
             className={`control-interactive w-7 h-7 rounded-full text-white/70 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all ${tapScaleClass}`}
             title="下一首"
+            aria-label="下一首"
           >
             <SkipForward className="w-3.5 h-3.5" />
           </button>
@@ -471,15 +459,16 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
           {/* 收藏红心 */}
           <FastHeartButton songId={currentSong.id} />
 
-          {/* 展开全屏播放器按钮 */}
+          {/* 展开全屏播放器按钮 (统一 w-7 h-7 规范，消除边距错位与截断) */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onExpandFull?.();
             }}
-            className={`control-interactive w-6 h-6 rounded-full text-white/50 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all ml-0.5 ${tapScaleClass}`}
+            className={`control-interactive w-7 h-7 rounded-full text-white/50 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all ${tapScaleClass}`}
             title="展开为完整播放器"
+            aria-label="展开为完整播放器"
           >
             <ChevronUp className="w-3.5 h-3.5" />
           </button>
