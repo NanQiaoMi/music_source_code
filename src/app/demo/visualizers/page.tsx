@@ -42,6 +42,8 @@ export default function VisualizersLabPage() {
   const [zoomScale, setZoomScale] = useState(1.8);
   const [frameRate, setFrameRate] = useState<12 | 24>(12);
   const [animeColorScheme, setAnimeColorScheme] = useState(0);
+  const [cinemascope, setCinemascope] = useState(true);
+  const [ambientGlow, setAmbientGlow] = useState(0.9);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioDataRef = useRef<Uint8Array>(new Uint8Array(128));
@@ -153,7 +155,8 @@ export default function VisualizersLabPage() {
                 frameRate,
                 inkSplatter: 1.2,
                 colorScheme: animeColorScheme,
-                ambientGlow: 0.9,
+                ambientGlow,
+                cinemascope,
               }
             : {},
         time: time * 0.001,
@@ -191,7 +194,15 @@ export default function VisualizersLabPage() {
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [selectedEffect, zoomScale, frameRate, animeColorScheme, currentLineIndex]);
+  }, [
+    selectedEffect,
+    zoomScale,
+    frameRate,
+    animeColorScheme,
+    cinemascope,
+    ambientGlow,
+    currentLineIndex,
+  ]);
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#06070a] text-white flex flex-col font-sans select-none">
@@ -372,6 +383,36 @@ export default function VisualizersLabPage() {
                     onChange={(e) => setAnimeColorScheme(Number(e.target.value))}
                     className="w-full h-1 accent-amber-400 bg-white/10 rounded-full"
                   />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-white/70">
+                    <span>45°晨光体积光与光晕</span>
+                    <span className="font-mono text-amber-300">
+                      {Math.round(ambientGlow * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.2}
+                    max={1.8}
+                    step={0.1}
+                    value={ambientGlow}
+                    onChange={(e) => setAmbientGlow(Number(e.target.value))}
+                    className="w-full h-1 accent-amber-400 bg-white/10 rounded-full"
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-white/70 pt-1">
+                  <span>2.39:1 院线遮幅</span>
+                  <button
+                    onClick={() => setCinemascope((prev) => !prev)}
+                    className={`px-2.5 py-0.5 rounded text-[11px] font-mono transition-all ${
+                      cinemascope
+                        ? "bg-amber-500/25 text-amber-300 border border-amber-400/40"
+                        : "bg-white/5 text-white/40"
+                    }`}
+                  >
+                    {cinemascope ? "已开启" : "已关闭"}
+                  </button>
                 </div>
               </>
             )}
