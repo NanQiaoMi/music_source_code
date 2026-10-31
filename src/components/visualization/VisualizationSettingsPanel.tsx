@@ -103,7 +103,6 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
     prismPulse: "棱镜脉冲",
     cinematicLyricDrift: "温光浮字",
     animeHandwrittenMV: "动漫手书 MV",
-    kimiQuantumGlow: "极核流光 · Kimi 科技感",
   };
 
   return (
@@ -920,45 +919,6 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   max={1.5}
                   step={0.1}
                   onChange={(v) => updateEffectSettings("animeHandwrittenMV", { ambientGlow: v })}
-                />
-              </div>
-            )}
-
-            {currentEffect === "kimiQuantumGlow" && effectSettings.kimiQuantumGlow && (
-              <div className="space-y-4 pt-2 border-t border-white/5">
-                <SettingSlider
-                  label="量子粒子总量"
-                  value={effectSettings.kimiQuantumGlow.particleCount ?? 4500}
-                  min={3000}
-                  max={9000}
-                  step={500}
-                  onChange={(v) => updateEffectSettings("kimiQuantumGlow", { particleCount: v })}
-                />
-                <SettingSlider
-                  label="Bloom 泛光强度"
-                  value={effectSettings.kimiQuantumGlow.bloomIntensity ?? 0.8}
-                  min={0.1}
-                  max={1.5}
-                  step={0.05}
-                  onChange={(v) => updateEffectSettings("kimiQuantumGlow", { bloomIntensity: v })}
-                />
-                <SettingSlider
-                  label="镜头色散系数 (Aberration)"
-                  value={effectSettings.kimiQuantumGlow.chromaticAberration ?? 0.5}
-                  min={0.0}
-                  max={1.5}
-                  step={0.1}
-                  onChange={(v) =>
-                    updateEffectSettings("kimiQuantumGlow", { chromaticAberration: v })
-                  }
-                />
-                <SettingSlider
-                  label="凝结激光扫光速率"
-                  value={effectSettings.kimiQuantumGlow.sweepSpeed ?? 1.0}
-                  min={0.5}
-                  max={2.0}
-                  step={0.1}
-                  onChange={(v) => updateEffectSettings("kimiQuantumGlow", { sweepSpeed: v })}
                 />
               </div>
             )}

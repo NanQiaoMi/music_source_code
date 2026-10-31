@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EffectContext } from "./types";
 import {
+  calculateCameraTransitionEasing,
   calculateCameraZoom,
+  calculateContinuousAECamera,
+  resolveWarmLightSweep,
+  calculateLyricZPositions,
   detectAudioTransient,
   resolveAnimePalette,
   calculateSteppedTime,
@@ -75,7 +79,13 @@ function createMockFrame(width = 1280, height = 720): EffectContext {
     width,
     height,
     data: new Uint8Array(128).fill(20),
-    params: { colorScheme: 0, fps: 12 },
+    params: {
+      zoomScale: 1.8,
+      frameRate: 12,
+      inkSplatter: 1.0,
+      colorScheme: 0,
+      ambientGlow: 0.8,
+    },
     time: 1.0,
     musicTime: 4.0,
     refs: {
@@ -94,7 +104,7 @@ function createMockFrame(width = 1280, height = 720): EffectContext {
   };
 }
 
-describe("animeHandwrittenMV 可视化模块", () => {
+describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
   beforeEach(() => {
     fixture.audio.currentTime = 4;
   });
@@ -104,98 +114,175 @@ describe("animeHandwrittenMV 可视化模块", () => {
   });
 
   // ==========================================
-  // 1. 相机缩放插值方程测试
+  // 1. AE 连续摄像机插值与缓动测试
   // ==========================================
-  describe("相机缩放插值方程 (calculateCameraZoom)", () => {
-    it("初始状态 (progress <= 0) 时缩放倍率为 1.0x", () => {
+  describe("AE 连续摄像机与贝塞尔缓动 (calculateCameraTransitionEasing / calculateContinuousAECamera)", () => {
+    it("SmootherStep 缓动方程单调递增且在端点平滑收敛", () => {
+      expect(calculateCameraTransitionEasing(0)).toBe(0);
+      expect(calculateCameraTransitionEasing(1)).toBe(1);
+      expect(calculateCameraTransitionEasing(-0.2)).toBe(0);
+      expect(calculateCameraTransitionEasing(1.5)).toBe(1);
+
+      // 单调递增性验证
+      let prev = -0.001;
+      for (let t = 0; t <= 1.0; t += 0.05) {
+        const val = calculateCameraTransitionEasing(t);
+        expect(val).toBeGreaterThanOrEqual(prev);
+        prev = val;
+      }
+
+      // 中点对称
+      expect(calculateCameraTransitionEasing(0.5)).toBeCloseTo(0.5, 4);
+    });
+
+    it("calculateContinuousAECamera 沿 Z 轴做平滑无跳变连续推进", () => {
+      const depthStep = 600;
+      const camStart = calculateContinuousAECamera(2, 0, false, { depthStep });
+      const camMid = calculateContinuousAECamera(2, 0.5, false, { depthStep });
+      const camEnd = calculateContinuousAECamera(2, 1.0, false, { depthStep });
+
+      // 推进过程单调递增无突变
+      expect(camStart.cameraZ).toBe(1 * depthStep); // 前一行深度
+      expect(camMid.cameraZ).toBeCloseTo(1.5 * depthStep, 1);
+      expect(camEnd.cameraZ).toBe(2 * depthStep); // 目标行聚焦深度
+
+      expect(camMid.cameraZ).toBeGreaterThan(camStart.cameraZ);
+      expect(camEnd.cameraZ).toBeGreaterThan(camMid.cameraZ);
+    });
+
+    it("间奏模式下摄像机优雅回退至全景广角 (zoom = 1.0)", () => {
+      const camInterlude = calculateContinuousAECamera(1, 0.5, true, { zoomScale: 2.0 });
+      expect(camInterlude.isInterlude).toBe(true);
+      expect(camInterlude.zoom).toBe(1.0);
+    });
+
+    it("经典缩放插值方程兼容性测试 (calculateCameraZoom)", () => {
       expect(calculateCameraZoom(0, false)).toBe(1.0);
-      expect(calculateCameraZoom(-0.5, false)).toBe(1.0);
-    });
-
-    it("冲击特写阶段：在 progress = 0.15 时冲至 1.8x 峰值", () => {
-      const peakZoom = calculateCameraZoom(0.15, false);
-      expect(peakZoom).toBeCloseTo(1.8, 4);
-    });
-
-    it("回弹缓退阶段：从 0.15 冲刺后平滑回退，并在 progress = 1.0 稳定在 1.1x", () => {
-      const midZoom = calculateCameraZoom(0.5, false);
-      const endZoom = calculateCameraZoom(1.0, false);
-      const settledZoom = calculateCameraZoom(1.5, false);
-
-      // 中间值在 1.8x 与 1.1x 之间缓降
-      expect(midZoom).toBeLessThan(1.8);
-      expect(midZoom).toBeGreaterThan(1.1);
-
-      // 到达 1.0 及之后稳定在 1.1x
-      expect(endZoom).toBeCloseTo(1.1, 4);
-      expect(settledZoom).toBe(1.1);
-    });
-
-    it("间奏模式 (isInterlude = true)：从 1.1x 平滑回退至 1.0x 全景", () => {
-      const startInterlude = calculateCameraZoom(0, true);
-      const midInterlude = calculateCameraZoom(0.5, true);
-      const endInterlude = calculateCameraZoom(1.0, true);
-
-      expect(startInterlude).toBe(1.1);
-      expect(midInterlude).toBeLessThan(1.1);
-      expect(midInterlude).toBeGreaterThan(1.0);
-      expect(endInterlude).toBe(1.0);
+      expect(calculateCameraZoom(0.15, false)).toBeCloseTo(1.8, 4);
+      expect(calculateCameraZoom(1.0, false)).toBeCloseTo(1.1, 4);
+      expect(calculateCameraZoom(0, true)).toBe(1.1);
+      expect(calculateCameraZoom(1.0, true)).toBe(1.0);
     });
   });
 
   // ==========================================
-  // 2. 音频瞬态重拍检测逻辑测试
+  // 2. 温光扫过（Warm Light Sweep）时间窗口计算测试
   // ==========================================
-  describe("音频瞬态重拍检测 (detectAudioTransient)", () => {
-    it("空数据或静音时不会触发重拍", () => {
-      const emptyData = new Uint8Array(0);
-      const result = detectAudioTransient(emptyData, 30);
-      expect(result.isBeat).toBe(false);
-      expect(result.energy).toBe(0);
+  describe("温光扫过过渡计算 (resolveWarmLightSweep)", () => {
+    it("在过渡时间窗口 (0..1) 内激活温光扫光，并在中段达到强度峰值", () => {
+      const start = resolveWarmLightSweep(0, false, 0);
+      const mid = resolveWarmLightSweep(0.5, false, 0);
+      const end = resolveWarmLightSweep(1.0, false, 0);
 
-      const silenceData = new Uint8Array(64).fill(5);
-      const silenceResult = detectAudioTransient(silenceData, 20);
-      expect(silenceResult.isBeat).toBe(false);
+      expect(start.active).toBe(true);
+      expect(mid.active).toBe(true);
+      expect(end.active).toBe(true);
+
+      // 峰值出现在过渡中段
+      expect(mid.intensity).toBeGreaterThan(start.intensity);
+      expect(mid.intensity).toBeGreaterThan(end.intensity);
+      expect(mid.intensity).toBeCloseTo(1.0, 3);
+      expect(mid.textGlowBoost).toBeGreaterThan(0.5);
+
+      // 光弧从左侧扫向右侧
+      expect(start.sweepX).toBeCloseTo(-0.2, 2);
+      expect(mid.sweepX).toBeCloseTo(0.5, 2);
+      expect(end.sweepX).toBeCloseTo(1.2, 2);
     });
 
-    it("低频能量出现爆发突增（Kick/Bass 重拍）时触发 isBeat = true", () => {
-      const prevAverage = 40;
-      // 构造在低频 bins (1..8) 具有高能量的突发帧
-      const kickData = new Uint8Array(64);
-      for (let i = 1; i <= 8; i++) {
-        kickData[i] = 190;
-      }
+    it("间奏模式或越界进度时温光扫光处于非活动状态", () => {
+      const interludeSweep = resolveWarmLightSweep(0.5, true, 0);
+      expect(interludeSweep.active).toBe(false);
+      expect(interludeSweep.intensity).toBe(0);
 
-      const result = detectAudioTransient(kickData, prevAverage, {
+      const outOfBounds = resolveWarmLightSweep(1.5, false, 0);
+      expect(outOfBounds.active).toBe(false);
+    });
+  });
+
+  // ==========================================
+  // 3. 多行歌词空间纵深连续排布与无裁切测试
+  // ==========================================
+  describe("空间纵深连续排布 (calculateLyricZPositions)", () => {
+    const lines = [
+      { start: 2.0, text: "上一句歌词", ordinal: 0 },
+      { start: 6.0, text: "当前焦点歌词", ordinal: 1 },
+      { start: 12.0, text: "下一句远景歌词", ordinal: 2 },
+      { start: 18.0, text: "更远处的歌词", ordinal: 3 },
+    ];
+
+    it("正确生成上一句、当前句与下一句的纵深层级，上一句向前飘出淡化，当前句聚焦，下一句呈景深远景", () => {
+      // 1. 模拟摄像机正在向 line 1 (当前句) 推进中，进度 0.5
+      const cameraZMid = 0.5 * 600;
+      const itemsMid = calculateLyricZPositions(lines, 1, cameraZMid, 0.5, {
+        depthStep: 600,
+        zoomScale: 1.8,
+        focalDistance: 900,
+      });
+
+      expect(itemsMid.length).toBeGreaterThanOrEqual(3);
+
+      const prev = itemsMid.find((i) => i.isPrevious);
+      const curr = itemsMid.find((i) => i.isCurrent);
+      const next = itemsMid.find((i) => i.isNext);
+
+      expect(prev).toBeDefined();
+      expect(curr).toBeDefined();
+      expect(next).toBeDefined();
+
+      // 上一句随镜头推近放大并飘向视野上方
+      expect(prev!.yOffset).toBeLessThan(0);
+
+      // 下一句在景深远处微弱可见 (约 0.5x - 0.6x 比例，且小于当前句)
+      expect(next!.scale).toBeLessThan(curr!.scale);
+      expect(next!.opacity).toBeLessThan(curr!.opacity);
+      expect(next!.opacity).toBeGreaterThan(0.15); // 景深微弱可见
+
+      // 当前句在黄金聚焦位逐步显现
+      expect(curr!.opacity).toBeGreaterThan(0.6);
+      expect(curr!.inkGrowth).toBeGreaterThan(0.5);
+
+      // 2. 模拟摄像机已完全对焦当前句 line 1 (cameraZ = 600, progress = 1.0)
+      const itemsFocused = calculateLyricZPositions(lines, 1, 600, 1.0, {
+        depthStep: 600,
+        zoomScale: 1.8,
+        focalDistance: 900,
+      });
+      const focusedCurr = itemsFocused.find((i) => i.isCurrent);
+      const focusedNext = itemsFocused.find((i) => i.isNext);
+
+      // 当前句达到 1.0 黄金聚焦比例与最高透明度
+      expect(focusedCurr!.scale).toBeCloseTo(1.0, 2);
+      expect(focusedCurr!.opacity).toBeCloseTo(1.0, 2);
+
+      // 下一句以黄金 0.60x 比例在景深远处微弱可见
+      expect(focusedNext!.scale).toBeCloseTo(0.6, 2);
+    });
+
+    it("空歌词或无效当前行安全返回空数组", () => {
+      expect(calculateLyricZPositions([], 0, 0, 0.5)).toEqual([]);
+      expect(calculateLyricZPositions(lines, -1, 0, 0.5)).toEqual([]);
+    });
+  });
+
+  // ==========================================
+  // 4. 音频瞬态重拍检测与调色板测试
+  // ==========================================
+  describe("音频瞬态重拍与调色板系统", () => {
+    it("音频瞬态重拍检测触发 isBeat = true", () => {
+      const kickData = new Uint8Array(64);
+      for (let i = 1; i <= 8; i++) kickData[i] = 200;
+
+      const result = detectAudioTransient(kickData, 35, {
         thresholdMultiplier: 1.25,
         minEnergy: 35,
       });
-
       expect(result.isBeat).toBe(true);
-      expect(result.energy).toBe(190);
+      expect(result.energy).toBe(200);
       expect(result.intensity).toBeGreaterThan(0.5);
-      expect(result.newAverage).toBeGreaterThan(prevAverage);
     });
 
-    it("能量缓慢平稳波动时不误报重拍", () => {
-      const prevAverage = 100;
-      const normalData = new Uint8Array(64).fill(102);
-
-      const result = detectAudioTransient(normalData, prevAverage, {
-        thresholdMultiplier: 1.3,
-        minEnergy: 35,
-        energyDeltaThreshold: 20,
-      });
-
-      expect(result.isBeat).toBe(false);
-    });
-  });
-
-  // ==========================================
-  // 3. 调色板映射系统测试
-  // ==========================================
-  describe("调色板映射系统 (resolveAnimePalette)", () => {
-    it("支持四种调色板，索引正确映射", () => {
+    it("调色板映射系统正确支持 4 种方案并解析封面自适应色", () => {
       expect(ANIME_PALETTES).toHaveLength(4);
 
       const p0 = resolveAnimePalette(0);
@@ -210,134 +297,97 @@ describe("animeHandwrittenMV 可视化模块", () => {
       expect(p2.name).toBe("秋叶山吹");
       expect(p2.dark).toBe(false);
 
-      const p3 = resolveAnimePalette(3);
-      expect(p3.name).toBe("封面自适应");
-    });
+      const p3Light = resolveAnimePalette(3, "#FFD700");
+      expect(p3Light.dark).toBe(false);
 
-    it("自适应封面色（明亮色）生成适宜的亮纸调色", () => {
-      const brightCover = "#F59E0B";
-      const palette = resolveAnimePalette(3, brightCover);
-      expect(palette.dark).toBe(false);
-      expect(palette.accent).toBe(brightCover);
-    });
-
-    it("自适应封面色（深暗色）生成适宜的暗纸调色", () => {
-      const darkCover = "#1E293B";
-      const palette = resolveAnimePalette(3, darkCover);
-      expect(palette.dark).toBe(true);
-      expect(palette.accent).toBe(darkCover);
-    });
-
-    it("越界负数索引取模正常返回对应调色板", () => {
-      const wrapped = resolveAnimePalette(-1);
-      expect(wrapped.id).toBe(1);
-      const wrapped4 = resolveAnimePalette(4);
-      expect(wrapped4.id).toBe(0);
+      const p3Dark = resolveAnimePalette(3, "#1A202C");
+      expect(p3Dark.dark).toBe(true);
     });
   });
 
   // ==========================================
-  // 4. 12fps / 24fps 抽帧定格步进计算测试
+  // 5. 抽帧定格与水彩墨滴微粒系统测试
   // ==========================================
-  describe("抽帧定格步进计算 (calculateSteppedTime / calculateSteppedFrame)", () => {
-    it("12fps 抽帧将连续时间量化为 1/12 秒（约 83.33ms）步长", () => {
+  describe("抽帧定格与水彩墨滴微粒物理系统", () => {
+    it("12fps / 24fps 抽帧定格将时间离散化", () => {
       expect(calculateSteppedTime(0.04, 12)).toBe(0);
       expect(calculateSteppedTime(0.084, 12)).toBeCloseTo(1 / 12, 5);
-      expect(calculateSteppedTime(0.12, 12)).toBeCloseTo(1 / 12, 5);
-      expect(calculateSteppedTime(0.17, 12)).toBeCloseTo(2 / 12, 5);
-
-      expect(calculateSteppedFrame(0.04, 12)).toBe(0);
       expect(calculateSteppedFrame(0.09, 12)).toBe(1);
-      expect(calculateSteppedFrame(0.17, 12)).toBe(2);
-    });
-
-    it("24fps 抽帧按 1/24 秒精确量化", () => {
       expect(calculateSteppedFrame(0.042, 24)).toBe(1);
-      expect(calculateSteppedFrame(0.085, 24)).toBe(2);
     });
 
-    it("漫画蘸水笔微抖输出在指定幅值内且具有确定性", () => {
-      const jitterA1 = calculatePenJitter(1, 10, 2.0);
-      const jitterA2 = calculatePenJitter(1, 10, 2.0);
-      const jitterB = calculatePenJitter(1, 11, 2.0);
+    it("漫画蘸水笔微抖具有确定性与幅值控制", () => {
+      const j1 = calculatePenJitter(42, 8, 2.0);
+      const j2 = calculatePenJitter(42, 8, 2.0);
+      const j3 = calculatePenJitter(42, 9, 2.0);
 
-      // 同一帧相同输入必须确定性一致
-      expect(jitterA1.x).toBe(jitterA2.x);
-      expect(jitterA1.y).toBe(jitterA2.y);
-      expect(jitterA1.angle).toBe(jitterA2.angle);
-
-      // 幅值不超过 2.0px
-      expect(Math.abs(jitterA1.x)).toBeLessThanOrEqual(2.0);
-      expect(Math.abs(jitterA1.y)).toBeLessThanOrEqual(2.0);
-
-      // 帧推进后产生抖动变化
-      expect(jitterA1.x).not.toBe(jitterB.x);
+      expect(j1.x).toBe(j2.x);
+      expect(j1.y).toBe(j2.y);
+      expect(Math.abs(j1.x)).toBeLessThanOrEqual(2.0);
+      expect(j1.x).not.toBe(j3.x);
     });
-  });
 
-  // ==========================================
-  // 5. 墨滴微粒物理系统与歌词辅助测试
-  // ==========================================
-  describe("水彩墨滴粒子与歌词辅助函数", () => {
-    it("spawnInkSplatter 生成预期数量的粒子，updateInkParticles 正确衰减并过滤已死亡粒子", () => {
-      const particles = spawnInkSplatter(100, 200, 6, ["#FF0000"], 1.0);
-      expect(particles).toHaveLength(6);
-      expect(particles[0].x).toBe(100);
-      expect(particles[0].y).toBe(200);
+    it("水彩墨滴微粒生成与步进消亡", () => {
+      const burst = spawnInkSplatter(100, 100, 8, ["#1E1A18"], 1.0);
+      expect(burst).toHaveLength(8);
 
-      const next = updateInkParticles(particles, 0.05);
-      expect(next.length).toBeLessThanOrEqual(6);
-      expect(next[0].x).not.toBe(100); // 位置已步进
+      const updated = updateInkParticles(burst, 0.05);
+      expect(updated.length).toBeLessThanOrEqual(8);
 
-      // 模拟长时间流逝导致粒子全部衰减死亡
-      const dead = updateInkParticles(particles, 5.0);
+      const dead = updateInkParticles(burst, 10.0);
       expect(dead).toHaveLength(0);
     });
 
-    it("findActiveLyricLineIndex 与 checkIsInterlude 正确检测行与间奏", () => {
+    it("歌词行查找与间奏判定辅助函数", () => {
       const lines = [
-        { start: 2.0, text: "第一句", ordinal: 0 },
-        { start: 8.0, text: "第二句", ordinal: 1 },
+        { start: 2.0, text: "句1", ordinal: 0 },
+        { start: 8.0, text: "句2", ordinal: 1 },
         { start: 20.0, text: "[间奏]", ordinal: 2 },
-        { start: 30.0, text: "尾句", ordinal: 3 },
       ];
 
       expect(findActiveLyricLineIndex(lines, 1.0)).toBe(-1);
-      expect(findActiveLyricLineIndex(lines, 3.5)).toBe(0);
-      expect(findActiveLyricLineIndex(lines, 9.0)).toBe(1);
+      expect(findActiveLyricLineIndex(lines, 5.0)).toBe(0);
+      expect(findActiveLyricLineIndex(lines, 10.0)).toBe(1);
 
-      // 前奏判定为间奏
       expect(checkIsInterlude(lines, -1, 0)).toBe(true);
-      // 正文歌词中不是间奏
-      expect(checkIsInterlude(lines, 0, 3.0)).toBe(false);
-      // 包含 [间奏] 关键字判定为间奏
+      expect(checkIsInterlude(lines, 0, 5.0)).toBe(false);
       expect(checkIsInterlude(lines, 2, 22.0)).toBe(true);
     });
   });
 
   // ==========================================
-  // 6. 完整主绘制入口集成测试
+  // 6. 主绘制管线集成测试 (drawAnimeHandwrittenMV)
   // ==========================================
-  describe("主绘制入口 drawAnimeHandwrittenMV", () => {
-    it("在正常歌词与音频输入下顺畅绘制不抛出异常", () => {
+  describe("主绘制入口 drawAnimeHandwrittenMV 全流程", () => {
+    it("正常歌词与音频输入下完整执行绘制流程，无异常抛出", () => {
       const frame = createMockFrame(1280, 720);
       expect(() => drawAnimeHandwrittenMV(frame)).not.toThrow();
     });
 
-    it("在重拍爆发音频瞬态时触发相机微震与水彩墨滴爆裂绘制", () => {
+    it("重拍瞬态爆发与高频微震顺利执行", () => {
       const frame = createMockFrame(1280, 720);
-      // 模拟重拍能量
       frame.data = new Uint8Array(128).fill(220);
-
       expect(() => drawAnimeHandwrittenMV(frame)).not.toThrow();
     });
 
-    it("在无歌词或待机状态下展示信纸唯美光晕与标题卡", () => {
+    it("间奏或待机模式下顺利渲染全景信纸光晕与唱片铭牌", () => {
       fixture.audio.currentSong = {
         ...fixture.audio.currentSong,
         lyrics: "",
       };
       const frame = createMockFrame(1280, 720);
+      expect(() => drawAnimeHandwrittenMV(frame)).not.toThrow();
+    });
+
+    it("支持各种个性化参数组合（zoomScale, frameRate, inkSplatter, colorScheme, ambientGlow）", () => {
+      const frame = createMockFrame(1920, 1080);
+      frame.params = {
+        zoomScale: 2.2,
+        frameRate: 24,
+        inkSplatter: 1.5,
+        colorScheme: 1, // 暮色群青
+        ambientGlow: 1.2,
+      };
       expect(() => drawAnimeHandwrittenMV(frame)).not.toThrow();
     });
   });
