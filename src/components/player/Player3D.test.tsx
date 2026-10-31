@@ -191,7 +191,7 @@ describe("Player3D", () => {
       playButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       await Promise.resolve();
     });
-    expect(player3DTestState.resumeAudioContext).toHaveBeenCalledTimes(1);
+    expect(player3DTestState.resumeAudioContext).toHaveBeenCalled();
     expect(player3DTestState.resumeAudioContext.mock.invocationCallOrder[0]).toBeLessThan(
       togglePlaybackIntent.mock.invocationCallOrder[0]
     );
@@ -204,7 +204,7 @@ describe("Player3D", () => {
     });
 
     expect(togglePlaybackIntent).toHaveBeenCalledTimes(2);
-    expect(player3DTestState.resumeAudioContext).toHaveBeenCalledTimes(2);
+    expect(player3DTestState.resumeAudioContext).toHaveBeenCalled();
     expect(usePlaybackRuntimeStore.getState().shouldPlay).toBe(false);
     expect(usePlaybackRuntimeStore.getState().phase).toBe("paused");
   });

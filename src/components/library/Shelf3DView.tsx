@@ -230,15 +230,22 @@ function getOrCreateCardTexture(
   ctx.fillStyle = bgGrad;
   ctx.fill();
 
-  // 2. 暖中性细边，保持封面成为卡片最强色源
+  // 2. 高级液态玻璃双层内发光边缘 (彻底杜绝直角外挂白框，自然贴合 36px 倒角)
   ctx.save();
   drawRoundedRect(ctx, 14, 14, w - 28, h - 28, 36);
   if (isActive) {
-    ctx.strokeStyle = "rgba(238, 226, 208, 0.22)";
+    // 外层微透光边
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
     ctx.lineWidth = 2.5;
     ctx.stroke();
+
+    // 内层温润香槟金微发光晕圈，呼应封面色彩
+    drawRoundedRect(ctx, 16.5, 16.5, w - 33, h - 33, 34);
+    ctx.strokeStyle = "rgba(238, 226, 208, 0.18)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
   } else {
-    ctx.strokeStyle = "rgba(220, 210, 194, 0.10)";
+    ctx.strokeStyle = "rgba(220, 210, 194, 0.12)";
     ctx.lineWidth = 1.4;
     ctx.stroke();
   }
@@ -847,7 +854,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     mesh: THREE.Mesh;
     currentItemId: string | null;
     isActive: boolean;
-    edgeMaterial: THREE.MeshBasicMaterial;
   }
   const cardSlotsRef = useRef<CardSlot[]>([]);
 
@@ -905,7 +911,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
     let particleGeo: THREE.BufferGeometry | null = null;
     let particleMat: THREE.PointsMaterial | null = null;
     let cardGeo: THREE.PlaneGeometry | null = null;
-    let edgeGeo: THREE.ShapeGeometry | null = null;
     let slots: CardSlot[] = [];
     const sceneTextureCache = new Map<string, THREE.CanvasTexture>();
     let frameRequestId: number | null = null;
@@ -948,15 +953,13 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         clearTimeout(reactUpdateTimerRef.current);
         reactUpdateTimerRef.current = null;
       }
-      slots.forEach(({ mesh, edgeMaterial }) => {
+      slots.forEach(({ mesh }) => {
         scene?.remove(mesh);
         (mesh.material as THREE.Material).dispose();
-        edgeMaterial.dispose();
       });
       sceneTextureCache.forEach((texture) => texture.dispose());
       sceneTextureCache.clear();
       cardGeo?.dispose();
-      edgeGeo?.dispose();
       particleGeo?.dispose();
       particleMat?.dispose();
       floorGeo?.dispose();
@@ -1137,20 +1140,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       sceneInstance.add(particles);
 
       cardGeo = new THREE.PlaneGeometry(1.95, 2.45);
-      const edgeShape = new THREE.Shape();
-      edgeShape.moveTo(-0.955, -1.205);
-      edgeShape.lineTo(0.955, -1.205);
-      edgeShape.lineTo(0.955, 1.205);
-      edgeShape.lineTo(-0.955, 1.205);
-      edgeShape.closePath();
-      const edgeHole = new THREE.Path();
-      edgeHole.moveTo(-0.935, -1.185);
-      edgeHole.lineTo(-0.935, 1.185);
-      edgeHole.lineTo(0.935, 1.185);
-      edgeHole.lineTo(0.935, -1.185);
-      edgeHole.closePath();
-      edgeShape.holes.push(edgeHole);
-      edgeGeo = new THREE.ShapeGeometry(edgeShape);
       slots = [];
       for (let i = 0; i < SHELF_MAX_RENDER; i += 1) {
         const cardMat = new THREE.MeshStandardMaterial({
@@ -1161,19 +1150,8 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         });
         const mesh = new THREE.Mesh(cardGeo, cardMat);
         mesh.userData = { slotIndex: i };
-        const edgeMaterial = new THREE.MeshBasicMaterial({
-          color: 0xe8d4b8,
-          transparent: true,
-          opacity: 0,
-          depthWrite: false,
-          side: THREE.DoubleSide,
-        });
-        const edgeLight = new THREE.Mesh(edgeGeo, edgeMaterial);
-        edgeLight.position.z = 0.012;
-        edgeLight.renderOrder = 2;
-        mesh.add(edgeLight);
         cardsGroup.add(mesh);
-        slots.push({ mesh, currentItemId: null, isActive: false, edgeMaterial });
+        slots.push({ mesh, currentItemId: null, isActive: false });
       }
       cardSlotsRef.current = slots;
       targetModeBlendRef.current = displayModeRef.current === "side" ? 1 : 0;
@@ -1428,7 +1406,6 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
             const farFade = THREE.MathUtils.smoothstep(absOffset, 2, 5.5);
             const material = slot.mesh.material as THREE.MeshStandardMaterial;
             material.opacity = 1 - farFade * 0.7;
-            slot.edgeMaterial.opacity = isSlotActive ? highEnvelope * 0.65 : 0;
             slot.mesh.visible = material.opacity > 0.01;
           }
           if (textureCacheNeedsTrim) trimSceneTextureCache();
@@ -2081,7 +2058,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
       )}
 
       {/* ── 顶部暗色剧场控制栏 ── */}
-      <div className="relative z-30 mx-auto flex max-h-[32dvh] w-full max-w-7xl flex-wrap items-center justify-between gap-2 overflow-y-auto rounded-3xl border border-white/[0.11] bg-black/50 px-2 py-2 shadow-[0_16px_42px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.08)] backdrop-blur-2xl shelf-hud-interactive select-none sm:gap-3 sm:px-4 xl:flex-nowrap">
+      <div
+        className="relative z-30 mx-auto flex max-h-[32dvh] w-full max-w-7xl flex-wrap items-center justify-between gap-2 overflow-y-auto rounded-3xl border border-white/[0.11] bg-black/50 px-2 py-2 shadow-[0_16px_42px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.08)] backdrop-blur-2xl shelf-hud-interactive select-none sm:gap-3 sm:px-4 xl:flex-nowrap no-scrollbar scrollbar-hide"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
         {/* 左侧标题与模式 */}
         <div className="flex max-w-full shrink-0 items-center gap-2.5 sm:gap-3">
           <div className="flex items-center gap-2 text-white shrink-0">
@@ -2117,7 +2097,15 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
         </div>
 
         {/* 中间主分类与歌单切换器 (Playlists vs Tracks vs Favorites vs Recent vs Daily) */}
-        <div className="order-3 flex w-full min-w-0 shrink-0 items-center gap-0.5 overflow-x-auto rounded-2xl border border-white/10 bg-black/40 p-1 sm:gap-1 xl:order-none xl:w-auto">
+        <div
+          className="order-3 flex w-full min-w-0 shrink-0 items-center gap-0.5 overflow-x-auto rounded-2xl border border-white/10 bg-black/40 p-1 sm:gap-1 xl:order-none xl:w-auto no-scrollbar scrollbar-hide"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          onWheel={(e) => {
+            if (e.deltaY !== 0) {
+              e.currentTarget.scrollLeft += e.deltaY;
+            }
+          }}
+        >
           <button
             type="button"
             onClick={() => handleBrowseTypeChange("playlists")}
@@ -2239,7 +2227,10 @@ export const Shelf3DView: React.FC<Shelf3DViewProps> = ({
 
       {/* ── 3D 二级曲目详情瀑布流面板 (Mineradio 3D Tracklist Billboard) ── */}
       {showDetailPanel && selectedShelfItem && (
-        <div className="relative z-40 my-auto max-h-[78dvh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-white/[0.22] bg-black/75 p-4 shadow-[0_32px_90px_rgba(0,0,0,0.95),inset_0_1.5px_2px_rgba(255,255,255,0.35)] backdrop-blur-[64px] backdrop-saturate-[190%] animate-in fade-in zoom-in-95 duration-200 shelf-hud-interactive sm:rounded-[36px] sm:p-6">
+        <div
+          className="relative z-40 my-auto max-h-[78dvh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-white/[0.22] bg-black/75 p-4 shadow-[0_32px_90px_rgba(0,0,0,0.95),inset_0_1.5px_2px_rgba(255,255,255,0.35)] backdrop-blur-[64px] backdrop-saturate-[190%] animate-in fade-in zoom-in-95 duration-200 shelf-hud-interactive sm:rounded-[36px] sm:p-6 no-scrollbar scrollbar-hide"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
           {/* 面板头部 */}
           <div className="flex items-start justify-between border-b border-white/10 pb-5 mb-4">
             <div className="flex items-center gap-5">
