@@ -1,18 +1,21 @@
 /**
- * 「动漫手书 MV」（Anime Handwritten MV）—— 次世代手绘动漫画风独立可视化特效。
+ * 「动漫手书 MV」（Anime Handwritten MV）—— 次世代电影级手绘动漫画风独立可视化特效。
  *
- * 核心设计升级：
- * 1. 温光浮字过渡（Warm Light Sweep & Cross-Dissolve Transition）：
- *    换行与换段落时绝不硬切，在 0.8s-1.2s 的过渡窗口期内，新旧两行平滑共存双向融合；
- *    柔和金色/琥珀色温光光弧以 screen 滤色模式扫过全屏，下句笔尖墨迹生长浮现，上句字形自然淡化掠出。
- * 2. 连续空间 AE 摄像机推镜（Zero-Clipping Continuous 3D AE Dolly Camera）：
- *    彻底摒弃任何有边界的纸张卡片矩形裁剪，背景为全屏无缝铺展的透气宣纸光晕；
- *    每一句歌词拥有连续纵深坐标（Z 轴）；镜头沿 Z 轴做 SmootherStep 三次/五次贝塞尔连续推进；
- *    上句歌词随镜头推近自然放大并向前飘出视野（透明度淡出，掠过镜头两侧，绝不硬切）；
- *    当前句推进至黄金聚焦位并点亮高光；下句歌词以 ~0.6x 比例在景深远处微弱可见；
- *    间奏时镜头优雅缓慢拉远至全景广角，屏幕中央展示手书水彩唱片铭牌与唯美呼吸光晕。
- * 3. 音频瞬态重拍检测与 12fps/24fps 抽帧定格：
- *    重拍（Kick Drum）时触发微秒级镜头微震与水彩墨渍扩散，视锥全覆盖，边缘无缝柔和。
+ * 核心升级（v2.0-Cinematic · 电影级 AE 3D 景深拉镜全案重构）：
+ * 1. 真正的四层电影多平面 3D 摄像机视差系统（Multiplane 3D Camera System）：
+ *    - Layer 1 (远景背景): 暮色青蓝与琥珀金新海诚调色底色，2~3 道 45° 晨曦丁达尔体积光柱（God Rays），随低音频谱柔和呼吸。
+ *    - Layer 2 (中远景金尘): 200+ 颗微米级悬浮金色微粒（Z 轴分布在 200~1200），具有慢速布朗运动与焦外散景。
+ *    - Layer 3 (黄金手书主体层):
+ *      - 35mm 虚拟广角镜头透视公式：scale = f / (f + relZ)，其中 f = 480。
+ *      - 镜头推拉运动动力学：入场时以极大初速度从 Z=800px 冲刺进入，通过 Quartic Ease Out (1 - (1-p)^4) 平稳阻尼减速刹车至焦点 Z=0；
+ *        唱完时通过 Cubic Ease In (p^3) 加速穿过近裁剪面 (Z -> -400px) 飞掠出镜头。
+ *      - 黄金焦点驻留时保持微小的空气呼吸浮动（±1.8px 正弦轻浮）。
+ *      - 排版与视觉质感：日系电影原画排版（大字手书主歌词「」+ 顶部微注毫秒级时间戳如 01:42.80 + 歌曲原名小注）；
+ *        字符笔触带有温润金色外发光（Gold Ink Diffusion）与墨水微渗。
+ *    - Layer 4 (前景掠镜与光学后期层):
+ *      - 前景高速贴镜掠过的大散景光斑（Z = -100 ~ -350）。
+ *      - 鼓点重低音（Kick/Bass）触发的 1.5% 镜头呼吸微缩放（Lens Breathing）与 1~2px 红蓝色散微脉冲（Chromatic Aberration）。
+ *      - 2.39:1 院线宽银幕遮幅（Cinemascope Letterbox）与电影暗角（Film Vignette），支持自适应安全区。
  */
 
 import type { EffectContext } from "./types";
@@ -68,6 +71,30 @@ export interface InkParticle {
   stainSize: number;
 }
 
+export interface GoldDustParticle {
+  x: number;
+  y: number;
+  z: number; // 200..1200
+  vx: number;
+  vy: number;
+  vz: number;
+  size: number;
+  baseAlpha: number;
+  seed: number;
+  color: string;
+}
+
+export interface ForegroundBokehDisc {
+  x: number;
+  y: number;
+  z: number; // -100..-350
+  vx: number;
+  vy: number;
+  radius: number;
+  color: string;
+  alpha: number;
+}
+
 export interface VirtualCameraState {
   zoom: number;
   targetZoom: number;
@@ -119,6 +146,15 @@ export interface LyricDepthItem {
   inkGrowth: number;
 }
 
+export interface CinemascopeBars {
+  barHeight: number;
+  safeTop: number;
+  safeBottom: number;
+  safeHeight: number;
+  active: boolean;
+  aspectRatio: number;
+}
+
 interface AnimeMVRuntimeState {
   prevLineIndex: number;
   targetLineIndex: number;
@@ -130,12 +166,14 @@ interface AnimeMVRuntimeState {
   camera: VirtualCameraState;
   continuousCameraZ: number;
   particles: InkParticle[];
+  goldDust: GoldDustParticle[];
+  foregroundBokeh: ForegroundBokehDisc[];
   cachedLyricsText: string;
   parsedLines: ParsedLyricLine[];
 }
 
 // ==========================================
-// 2. 调色板系统
+// 2. 调色板系统（新海诚黄昏与温光金辉基准）
 // ==========================================
 
 export const ANIME_PALETTES: readonly AnimePalette[] = [
@@ -261,7 +299,154 @@ export function resolveAnimePalette(schemeIndex: number, coverColor?: string | n
 }
 
 // ==========================================
-// 3. AE 连续摄像机与贝塞尔数学计算
+// 3. 35mm 虚拟广角透视投影与 3D 摄像机动力学
+// ==========================================
+
+/**
+ * 35mm 虚拟广角镜头透视比例公式：
+ * S = f / (f + relZ)，其中 f 默认为 480。
+ * 设定有效深度下界保护以防止除零或奇异透视反向。
+ */
+export function calculatePerspectiveScale(relZ: number, focalLength = 480): number {
+  const safeFocal = Math.max(10, focalLength);
+  const effectiveDepth = Math.max(safeFocal * 0.15, safeFocal + relZ);
+  return safeFocal / effectiveDepth;
+}
+
+/**
+ * 镜头推拉运动动力学 (Dolly Physics)：
+ * 设一句话在时间轴上的归一化时间为 u in [0, 1]：
+ * 1. 入场推镜阶段 (u in [0, 0.35]):
+ *    以极大初速度冲刺进入，通过 Quartic Ease Out (1 - (1-p)^4) 平稳阻尼减速刹车至焦点 Z = 0。
+ * 2. 黄金焦点呼吸驻留阶段 (u in [0.35, 0.85]):
+ *    Z(u) 在 0 附近保持微小正弦空气呼吸浮动 (±1.5px)。
+ * 3. 穿透飞掠离场阶段 (u in [0.85, 1.0]):
+ *    通过 Cubic Ease In (p^3) 加速穿透近裁剪面 (Z -> -400px) 掠出镜头。
+ */
+export function calculateDollyZ(u: number, zStart = 800, zFlyout = 400): number {
+  const clampedU = Math.max(0, Math.min(1, u));
+
+  if (clampedU <= 0.35) {
+    const pIn = Math.min(1, clampedU / 0.35);
+    const easeOut = 1 - Math.pow(1 - pIn, 4);
+    return zStart * (1 - easeOut);
+  }
+
+  if (clampedU <= 0.85) {
+    const pDwell = (clampedU - 0.35) / 0.5;
+    return Math.sin(pDwell * Math.PI * 2) * 1.5;
+  }
+
+  if (clampedU >= 1.0) {
+    return -zFlyout;
+  }
+
+  const pOut = Math.min(1, (clampedU - 0.85) / 0.15);
+  const easeIn = Math.pow(pOut, 3);
+  return -zFlyout * easeIn;
+}
+
+/**
+ * 光学焦外虚化量模型 (DoF Blur Radius)：
+ * Blur(Z) =
+ *   min(14, Z / 50), if Z > 0 (远景失焦)
+ *   0, if Z = 0 (焦点锐利)
+ *   min(24, -Z / 15), if Z < 0 (近景大散景爆开)
+ */
+export function calculateDoFBlur(z: number): number {
+  if (z > 0) {
+    return Math.min(14, z / 50);
+  }
+  if (z < 0) {
+    return Math.min(24, -z / 15);
+  }
+  return 0;
+}
+
+/**
+ * 2.39:1 院线宽银幕遮幅 (Cinemascope Letterbox) 与自适应安全区计算：
+ * 当视口比例低于 2.39:1 时，计算上下遮幅黑条高度及内容安全区域。
+ */
+export function calculateCinemascopeBars(
+  width: number,
+  height: number,
+  targetAspect = 2.39
+): CinemascopeBars {
+  if (height <= 0 || width <= 0) {
+    return {
+      barHeight: 0,
+      safeTop: 0,
+      safeBottom: Math.max(0, height),
+      safeHeight: Math.max(0, height),
+      active: false,
+      aspectRatio: 1,
+    };
+  }
+
+  const currentAspect = width / height;
+  if (currentAspect < targetAspect) {
+    const targetHeight = width / targetAspect;
+    const barHeight = Math.max(0, (height - targetHeight) / 2);
+    return {
+      barHeight,
+      safeTop: barHeight,
+      safeBottom: height - barHeight,
+      safeHeight: height - barHeight * 2,
+      active: barHeight > 1,
+      aspectRatio: targetAspect,
+    };
+  }
+
+  return {
+    barHeight: 0,
+    safeTop: 0,
+    safeBottom: height,
+    safeHeight: height,
+    active: false,
+    aspectRatio: currentAspect,
+  };
+}
+
+/**
+ * 毫秒级时间戳格式化：如 01:42.80 (分:秒.毫秒百分位)
+ */
+export function formatLyricTimestamp(seconds: number): string {
+  if (typeof seconds !== "number" || Number.isNaN(seconds) || seconds < 0) {
+    return "00:00.00";
+  }
+  const totalCentiSeconds = Math.round(seconds * 100);
+  const mins = Math.floor(totalCentiSeconds / 6000);
+  const remCenti = totalCentiSeconds % 6000;
+  const wholeSecs = Math.floor(remCenti / 100);
+  const millis = remCenti % 100;
+
+  const mStr = String(mins).padStart(2, "0");
+  const sStr = String(wholeSecs).padStart(2, "0");
+  const msStr = String(millis).padStart(2, "0");
+  return `${mStr}:${sStr}.${msStr}`;
+}
+
+/**
+ * 日系原画排版主歌词包装：大字手书「」
+ */
+export function formatJapaneseAnimeLyric(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+  if (
+    trimmed.startsWith("「") ||
+    trimmed.startsWith("『") ||
+    trimmed.startsWith("【") ||
+    trimmed.startsWith("（") ||
+    trimmed.startsWith("(") ||
+    trimmed.startsWith("[")
+  ) {
+    return trimmed;
+  }
+  return `「${trimmed}」`;
+}
+
+// ==========================================
+// 4. AE 连续摄像机与贝塞尔数学计算（兼容保留与增强）
 // ==========================================
 
 /**
@@ -300,9 +485,6 @@ export function calculateCameraZoom(progress: number, isInterlude = false): numb
 
 /**
  * 计算 AE 连续 3D 摄像机推镜状态 (Continuous 3D AE Dolly Camera)
- * - 镜头沿 Z 轴和空间轨迹平滑连续推进；
- * - 换行期间根据 transitionProgress 步进摄像机深度；
- * - 间奏时镜头优雅缓退至全景广角。
  */
 export function calculateContinuousAECamera(
   lineIndex: number,
@@ -325,18 +507,13 @@ export function calculateContinuousAECamera(
   const effectiveProgress = Math.max(0, Math.min(1, transitionProgress));
   const eased = calculateCameraTransitionEasing(effectiveProgress);
 
-  // 摄像机连续世界 Z 深度
   const baseIndex = Math.max(0, lineIndex);
-  // 当处于换行过渡期 (effectiveProgress < 1.0) 时，摄像机从前一行深度向目标行深度推近
   const cameraZ = (baseIndex - (1 - eased)) * depthStep;
 
-  // 基础缩放与镜头脉冲
   let zoom = 1.0;
   if (isInterlude) {
-    // 间奏模式：优雅缓退至全景广角
     zoom = 1.0;
   } else {
-    // 正常播放：应用推镜倍率，并在换行脉冲期叠加微妙的推镜透视呼吸感
     const punch = Math.sin(effectiveProgress * Math.PI) * 0.12;
     zoom = 1.0 + (zoomScale - 1.0) * 0.45 + punch;
   }
@@ -356,13 +533,9 @@ export function calculateContinuousAECamera(
 }
 
 // ==========================================
-// 4. 温光扫过（Warm Light Sweep）计算
+// 5. 温光扫过（Warm Light Sweep）计算
 // ==========================================
 
-/**
- * 计算换行温光扫光状态
- * 在 0.8s - 1.2s 的过渡窗口期内，温润金黄/琥珀色光弧平滑掠过全屏
- */
 export function resolveWarmLightSweep(
   transitionProgress: number,
   isInterlude: boolean,
@@ -383,11 +556,8 @@ export function resolveWarmLightSweep(
   }
 
   const p = Math.max(0, Math.min(1, transitionProgress));
-  // 钟形强度曲线：在过渡中段 (p ~ 0.5) 达到峰值
   const intensity = Math.sin(p * Math.PI);
-  // 光弧掠过屏幕坐标：从左侧 -0.2 扫向右侧 1.2
   const sweepX = -0.2 + 1.4 * p;
-  // 文字高光提升：伴随光弧掠过点亮新句墨迹
   const textGlowBoost = intensity * 0.85;
 
   const palette = resolveAnimePalette(colorScheme);
@@ -397,7 +567,7 @@ export function resolveWarmLightSweep(
     progress: p,
     intensity,
     sweepX,
-    sweepAngle: 0.42, // 约 24 度倾角光弧
+    sweepAngle: 0.42,
     beamWidth: 280,
     colorInner: palette.warmLightInner,
     colorOuter: palette.warmLightOuter,
@@ -406,16 +576,9 @@ export function resolveWarmLightSweep(
 }
 
 // ==========================================
-// 5. 多行歌词空间纵深连续排布 (Zero-Clipping Depth Layout)
+// 6. 多行歌词空间纵深连续排布 (Zero-Clipping Depth Layout)
 // ==========================================
 
-/**
- * 计算多行歌词在 3D 摄像机视锥中的纵深坐标与投影参数
- * - 彻底摒弃任何硬卡片裁剪；
- * - 上一句随镜头推近自然放大并向前掠出（淡出）；
- * - 当前句在黄金聚焦位；
- * - 下一句在景深远处（~0.6x 比例微弱可见）。
- */
 export function calculateLyricZPositions(
   lines: ParsedLyricLine[],
   currentLineIndex: number,
@@ -432,13 +595,11 @@ export function calculateLyricZPositions(
   }
 
   const depthStep = options?.depthStep ?? 600;
-  const _zoomScale = options?.zoomScale ?? 1.8;
   const focalDistance = options?.focalDistance ?? 900;
 
   const items: LyricDepthItem[] = [];
   const p = Math.max(0, Math.min(1, transitionProgress));
 
-  // 选取关注的行范围：上一行 (k-1)、当前行 (k)、下一行 (k+1)、下下一行 (k+2)
   const minIndex = Math.max(0, currentLineIndex - 1);
   const maxIndex = Math.min(lines.length - 1, currentLineIndex + 2);
 
@@ -447,15 +608,14 @@ export function calculateLyricZPositions(
     if (!line || !line.text.trim()) continue;
 
     const worldZ = i * depthStep;
-    const relZ = worldZ - cameraZ; // 相对摄像机距离
+    const relZ = worldZ - cameraZ;
 
-    // 透视比例 projection: F / (F + relZ)
     const effectiveDepth = Math.max(focalDistance * 0.25, focalDistance + relZ);
     const perspectiveScale = focalDistance / effectiveDepth;
 
     let opacity = 0;
     let yOffset = 0;
-    let blur = 0;
+    let blur = calculateDoFBlur(relZ);
     let inkGrowth = 1.0;
 
     const isCurrent = i === currentLineIndex;
@@ -463,31 +623,26 @@ export function calculateLyricZPositions(
     const isNext = i === currentLineIndex + 1;
 
     if (isCurrent) {
-      // 当前句：随着推进进入聚焦位
       opacity = 0.35 + 0.65 * calculateCameraTransitionEasing(p);
       yOffset = (1 - calculateCameraTransitionEasing(p)) * 24;
       blur = Math.max(0, (1 - p) * 2.5);
       inkGrowth = Math.min(1.0, 0.3 + 0.7 * p);
     } else if (isPrevious) {
-      // 上一句：镜头推近向前掠出视野，自然淡化
       const fadeProgress = calculateCameraTransitionEasing(p);
       opacity = Math.max(0, 1.0 - fadeProgress * 1.25);
-      // 随着镜头推过，上一句向上漂移并扩大
       yOffset = -fadeProgress * 80;
-      blur = fadeProgress * 3.5;
+      blur = Math.max(blur, fadeProgress * 3.5);
       inkGrowth = 1.0;
     } else if (isNext) {
-      // 下一句：在景深远处（约 0.6x 比例微弱可见）
       const appearProgress = calculateCameraTransitionEasing(p);
       opacity = 0.22 + 0.16 * appearProgress;
       yOffset = 64 - appearProgress * 14;
-      blur = 1.8;
+      blur = Math.max(1.8, blur);
       inkGrowth = 0.4;
     } else {
-      // 远景预告行 (k+2)
       opacity = 0.1;
       yOffset = 110;
-      blur = 3.0;
+      blur = Math.max(3.0, blur);
       inkGrowth = 0.2;
     }
 
@@ -511,7 +666,7 @@ export function calculateLyricZPositions(
 }
 
 // ==========================================
-// 6. 音频瞬态重拍检测（Kick / Bass Transients）
+// 7. 音频瞬态重拍检测（Kick / Bass Transients）
 // ==========================================
 
 export function detectAudioTransient(
@@ -556,7 +711,7 @@ export function detectAudioTransient(
 }
 
 // ==========================================
-// 7. 抽帧定格（Stepped Frames）与线稿抖动
+// 8. 抽帧定格与线稿抖动
 // ==========================================
 
 export function calculateSteppedTime(time: number, fps = 12): number {
@@ -587,7 +742,7 @@ export function calculatePenJitter(
 }
 
 // ==========================================
-// 8. 物理水彩墨滴粒子系统（Ink Splatter）
+// 9. 物理水彩墨滴粒子系统
 // ==========================================
 
 export function spawnInkSplatter(
@@ -646,7 +801,283 @@ export function updateInkParticles(particles: InkParticle[], dt: number): InkPar
 }
 
 // ==========================================
-// 9. 歌词时间线与间奏检测
+// 10. 中远景金尘与前景大散景物理系统（Layer 2 & Layer 4）
+// ==========================================
+
+export function spawnGoldDust(
+  count = 240,
+  viewportWidth = 1920,
+  viewportHeight = 1080
+): GoldDustParticle[] {
+  const particles: GoldDustParticle[] = [];
+  const colors = ["#ffe8a3", "#ffd280", "#ffaa40", "#ffffff", "#fff3cc"];
+  const halfW = viewportWidth * 0.85;
+  const halfH = viewportHeight * 0.85;
+
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: (Math.random() - 0.5) * halfW * 2,
+      y: (Math.random() - 0.5) * halfH * 2,
+      z: 200 + Math.random() * 1000,
+      vx: (Math.random() - 0.5) * 14,
+      vy: -12 - Math.random() * 16, // 缓速向上漂浮微风
+      vz: (Math.random() - 0.5) * 8,
+      size: 1.2 + Math.random() * 2.8,
+      baseAlpha: 0.35 + Math.random() * 0.5,
+      seed: Math.random() * 1000,
+      color: colors[i % colors.length] ?? colors[0],
+    });
+  }
+  return particles;
+}
+
+export function updateGoldDust(
+  particles: GoldDustParticle[],
+  dt: number,
+  viewportWidth = 1920,
+  viewportHeight = 1080,
+  audioEnergy = 0
+): GoldDustParticle[] {
+  const safeDt = Math.min(Math.max(dt, 0.001), 0.1);
+  const halfW = viewportWidth * 0.9;
+  const halfH = viewportHeight * 0.9;
+  const energyBoost = 1.0 + (audioEnergy / 255) * 0.5;
+
+  for (const p of particles) {
+    p.x += (p.vx + Math.sin(p.seed + p.y * 0.02) * 8) * safeDt * energyBoost;
+    p.y += (p.vy + Math.cos(p.seed + p.x * 0.02) * 6) * safeDt * energyBoost;
+    p.z += p.vz * safeDt;
+
+    // 空间无缝回环
+    if (p.y < -halfH) {
+      p.y = halfH;
+      p.x = (Math.random() - 0.5) * halfW * 2;
+    } else if (p.y > halfH) {
+      p.y = -halfH;
+    }
+
+    if (p.x < -halfW) {
+      p.x = halfW;
+    } else if (p.x > halfW) {
+      p.x = -halfW;
+    }
+
+    if (p.z < 200) {
+      p.z = 1200;
+    } else if (p.z > 1200) {
+      p.z = 200;
+    }
+  }
+
+  return particles;
+}
+
+export function spawnForegroundBokeh(
+  count = 7,
+  viewportWidth = 1920,
+  viewportHeight = 1080
+): ForegroundBokehDisc[] {
+  const discs: ForegroundBokehDisc[] = [];
+  const colors = [
+    "rgba(255, 215, 130, 0.18)",
+    "rgba(255, 185, 80, 0.15)",
+    "rgba(255, 235, 180, 0.20)",
+    "rgba(255, 170, 60, 0.14)",
+  ];
+  const halfW = viewportWidth * 0.75;
+  const halfH = viewportHeight * 0.65;
+
+  for (let i = 0; i < count; i++) {
+    discs.push({
+      x: (Math.random() - 0.5) * halfW * 2,
+      y: (Math.random() - 0.5) * halfH * 2,
+      z: -100 - Math.random() * 250, // -100 ~ -350
+      vx: (Math.random() > 0.5 ? 1 : -1) * (24 + Math.random() * 38), // 高速贴镜掠过
+      vy: (Math.random() - 0.5) * 18,
+      radius: 36 + Math.random() * 46,
+      color: colors[i % colors.length] ?? colors[0],
+      alpha: 0.14 + Math.random() * 0.14,
+    });
+  }
+  return discs;
+}
+
+export function updateForegroundBokeh(
+  discs: ForegroundBokehDisc[],
+  dt: number,
+  viewportWidth = 1920,
+  viewportHeight = 1080
+): ForegroundBokehDisc[] {
+  const safeDt = Math.min(Math.max(dt, 0.001), 0.1);
+  const halfW = viewportWidth * 0.85;
+  const halfH = viewportHeight * 0.75;
+
+  for (const d of discs) {
+    d.x += d.vx * safeDt;
+    d.y += d.vy * safeDt;
+
+    if (d.vx > 0 && d.x > halfW) {
+      d.x = -halfW;
+      d.y = (Math.random() - 0.5) * halfH * 2;
+    } else if (d.vx < 0 && d.x < -halfW) {
+      d.x = halfW;
+      d.y = (Math.random() - 0.5) * halfH * 2;
+    }
+
+    if (d.y > halfH) {
+      d.y = -halfH;
+    } else if (d.y < -halfH) {
+      d.y = halfH;
+    }
+  }
+
+  return discs;
+}
+
+// ==========================================
+// 11. 4 层多平面特效渲染绘制管线
+// ==========================================
+
+/**
+ * Layer 1: 45° 晨曦丁达尔体积光柱 (God Rays)
+ */
+export function drawTyndallGodRays(
+  c: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  time: number,
+  bassEnergy: number,
+  palette: AnimePalette
+): void {
+  c.save();
+  c.globalCompositeOperation = "screen";
+
+  const rayCount = 3;
+  const bassNorm = Math.min(1.0, bassEnergy / 255);
+  const breath = 1.0 + Math.sin(time * 0.85) * 0.18 + bassNorm * 0.35;
+
+  const originX = -width * 0.05;
+  const originY = -height * 0.1;
+
+  for (let i = 0; i < rayCount; i++) {
+    const angleOffset = (i - 1) * 0.16 + Math.sin(time * 0.4 + i * 1.8) * 0.04;
+    const angle = Math.PI / 4 + angleOffset;
+    const rayLength = Math.hypot(width, height) * 1.4;
+
+    const endX1 = originX + Math.cos(angle - 0.08) * rayLength;
+    const endY1 = originY + Math.sin(angle - 0.08) * rayLength;
+    const endX2 = originX + Math.cos(angle + 0.08) * rayLength;
+    const endY2 = originY + Math.sin(angle + 0.08) * rayLength;
+
+    const grad = c.createLinearGradient(
+      originX,
+      originY,
+      originX + Math.cos(angle) * rayLength,
+      originY + Math.sin(angle) * rayLength
+    );
+
+    const baseColor = palette.dark
+      ? `rgba(255, 195, 110, ${0.08 * breath})`
+      : `rgba(255, 220, 150, ${0.1 * breath})`;
+    const midColor = palette.dark
+      ? `rgba(255, 170, 70, ${0.04 * breath})`
+      : `rgba(255, 200, 110, ${0.05 * breath})`;
+
+    grad.addColorStop(0, baseColor);
+    grad.addColorStop(0.35, midColor);
+    grad.addColorStop(0.8, "rgba(255, 180, 80, 0)");
+    grad.addColorStop(1, "rgba(255, 180, 80, 0)");
+
+    c.fillStyle = grad;
+    c.beginPath();
+    c.moveTo(originX, originY);
+    c.lineTo(endX1, endY1);
+    c.lineTo(endX2, endY2);
+    c.closePath();
+    c.fill();
+  }
+
+  c.restore();
+}
+
+/**
+ * Layer 2: 中远景浮动金尘 (Gold Dust)
+ */
+export function drawGoldDustLayer(
+  c: CanvasRenderingContext2D,
+  particles: GoldDustParticle[],
+  centerX: number,
+  centerY: number,
+  focalLength = 480
+): void {
+  c.save();
+  c.globalCompositeOperation = "screen";
+
+  for (const p of particles) {
+    const scale = calculatePerspectiveScale(p.z, focalLength);
+    const screenX = centerX + p.x * scale;
+    const screenY = centerY + p.y * scale;
+
+    const blur = calculateDoFBlur(p.z);
+    const radius = Math.max(0.6, p.size * scale * (1.0 + blur * 0.28));
+    const alpha = Math.min(1.0, Math.max(0.04, p.baseAlpha * scale * 1.5));
+
+    c.save();
+    c.globalAlpha = alpha;
+    c.fillStyle = p.color;
+
+    if (blur > 3.0) {
+      c.shadowColor = p.color;
+      c.shadowBlur = blur * 1.5;
+    }
+
+    c.beginPath();
+    c.arc(screenX, screenY, radius, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  }
+
+  c.restore();
+}
+
+/**
+ * Layer 4: 前景掠镜超大散景 (Foreground Bokeh Discs)
+ */
+export function drawForegroundBokehLayer(
+  c: CanvasRenderingContext2D,
+  discs: ForegroundBokehDisc[],
+  centerX: number,
+  centerY: number,
+  focalLength = 480
+): void {
+  c.save();
+  c.globalCompositeOperation = "screen";
+
+  for (const d of discs) {
+    const scale = calculatePerspectiveScale(d.z, focalLength);
+    const screenX = centerX + d.x * scale;
+    const screenY = centerY + d.y * scale;
+
+    const blur = calculateDoFBlur(d.z);
+    const radius = Math.max(14, d.radius * (1 + blur * 0.12));
+
+    const grad = c.createRadialGradient(screenX, screenY, radius * 0.15, screenX, screenY, radius);
+    grad.addColorStop(0, "rgba(255, 235, 170, 0)");
+    grad.addColorStop(0.65, "rgba(255, 210, 120, 0.12)");
+    grad.addColorStop(0.9, "rgba(255, 190, 80, 0.22)");
+    grad.addColorStop(1, "rgba(255, 180, 60, 0)");
+
+    c.fillStyle = grad;
+    c.beginPath();
+    c.arc(screenX, screenY, radius, 0, Math.PI * 2);
+    c.fill();
+  }
+
+  c.restore();
+}
+
+// ==========================================
+// 12. 歌词时间线与间奏检测
 // ==========================================
 
 export function findActiveLyricLineIndex(lines: ParsedLyricLine[], time: number): number {
@@ -694,7 +1125,7 @@ export function checkIsInterlude(
 }
 
 // ==========================================
-// 10. 运行时状态管理
+// 13. 运行时状态管理
 // ==========================================
 
 const runtimeCache = new WeakMap<CanvasRenderingContext2D, AnimeMVRuntimeState>();
@@ -726,6 +1157,8 @@ function getOrCreateRuntimeState(
       },
       continuousCameraZ: 0,
       particles: [],
+      goldDust: spawnGoldDust(240, 1920, 1080),
+      foregroundBokeh: spawnForegroundBokeh(7, 1920, 1080),
       cachedLyricsText: "",
       parsedLines: [],
     };
@@ -735,11 +1168,11 @@ function getOrCreateRuntimeState(
 }
 
 // ==========================================
-// 11. 主绘制入口：drawAnimeHandwrittenMV
+// 14. 主绘制入口：drawAnimeHandwrittenMV
 // ==========================================
 
 /**
- * 绘制「动漫手书 MV」主特效
+ * 绘制「动漫手书 MV」主特效（四层电影多平面 3D 摄像机视差系统）
  */
 export function drawAnimeHandwrittenMV(ctx: EffectContext): void {
   const { ctx: c, width, height, data, time, musicTime, params } = ctx;
@@ -773,6 +1206,7 @@ export function drawAnimeHandwrittenMV(ctx: EffectContext): void {
         : 12;
   const inkSplatterMult = typeof params?.inkSplatter === "number" ? params.inkSplatter : 1.0;
   const ambientGlowMult = typeof params?.ambientGlow === "number" ? params.ambientGlow : 0.8;
+  const cinemascopeEnabled = params?.cinemascope !== false;
 
   // 3. 调色板映射
   const coverColor = currentSong?.cover ?? null;
@@ -795,7 +1229,7 @@ export function drawAnimeHandwrittenMV(ctx: EffectContext): void {
   const activeLineIndex = findActiveLyricLineIndex(state.parsedLines, effectiveMusicTime);
   const isInterlude = checkIsInterlude(state.parsedLines, activeLineIndex, effectiveMusicTime);
 
-  // 7. 检测歌词行切换，启动温光扫光与 AE 摄像机推镜过渡 (持续约 1.0s)
+  // 7. 检测歌词行切换
   const TRANSITION_DURATION_SEC = 1.0;
   if (activeLineIndex !== state.targetLineIndex && activeLineIndex !== -1) {
     state.prevLineIndex = state.targetLineIndex;
@@ -803,7 +1237,6 @@ export function drawAnimeHandwrittenMV(ctx: EffectContext): void {
     state.lineTransitionProgress = 0;
     state.lineTransitionStartTime = nowMs;
 
-    // 换行特征水彩墨滴爆裂
     if (inkSplatterMult > 0.1) {
       const burst = spawnInkSplatter(
         width / 2 + (Math.random() - 0.5) * 80,
@@ -822,7 +1255,7 @@ export function drawAnimeHandwrittenMV(ctx: EffectContext): void {
     state.lineTransitionProgress = Math.min(elapsed / TRANSITION_DURATION_SEC, 1.0);
   }
 
-  // 8. 重拍微震响应与墨滴爆裂
+  // 8. 重拍微震与墨滴响应
   if (transientResult.isBeat) {
     const shakeImpulse = 2.0 + 2.0 * transientResult.intensity;
     state.camera.shakeIntensity = Math.min(state.camera.shakeIntensity + shakeImpulse, 4.0);
@@ -850,7 +1283,7 @@ export function drawAnimeHandwrittenMV(ctx: EffectContext): void {
     state.camera.shakeY = 0;
   }
 
-  // 9. 计算 AE 连续 3D 摄像机状态
+  // 9. 计算 3D 摄像机状态与 1.5% 鼓点镜头呼吸微缩放 (Lens Breathing)
   const cameraState = calculateContinuousAECamera(
     state.targetLineIndex,
     state.lineTransitionProgress,
@@ -864,47 +1297,72 @@ export function drawAnimeHandwrittenMV(ctx: EffectContext): void {
     }
   );
   state.continuousCameraZ = cameraState.cameraZ;
-  state.camera.zoom = cameraState.zoom;
 
-  // 10. 计算温光浮字扫光 (Warm Light Sweep)
+  const lensBreathing = 1.0 + (transientResult.isBeat ? transientResult.intensity * 0.015 : 0);
+  state.camera.zoom = cameraState.zoom * lensBreathing;
+
+  // 10. 温光浮字扫光 (Warm Light Sweep)
   const warmLightSweep = resolveWarmLightSweep(
     state.lineTransitionProgress,
     isInterlude,
     schemeIndex
   );
 
-  // 11. 更新水彩墨滴微粒
+  // 11. 更新粒子物理系统 (水彩墨滴、浮动金尘、前景掠镜散景)
   state.particles = updateInkParticles(state.particles, dtSeconds);
   if (state.particles.length > 80) {
     state.particles = state.particles.slice(-80);
   }
 
+  state.goldDust = updateGoldDust(state.goldDust, dtSeconds, width, height, transientResult.energy);
+  state.foregroundBokeh = updateForegroundBokeh(state.foregroundBokeh, dtSeconds, width, height);
+
+  // 12. 院线 2.39:1 宽银幕遮幅安全区
+  const bars = calculateCinemascopeBars(width, height, 2.39);
+  const centerX = width / 2;
+  const safeCenterY = bars.active ? bars.safeTop + bars.safeHeight / 2 : height / 2;
+
   // ==========================================
-  // 开始渲染管线（完全零裁剪，全屏无缝铺展）
+  // 开始电影级四层多平面渲染管线
   // ==========================================
 
   c.save();
 
-  const centerX = width / 2;
-  const centerY = height / 2;
-
   // ------------------------------------------
-  // A. 全屏无缝透气纸张光晕底色（绝无硬边矩形裁剪）
+  // LAYER 1: 远景宇宙与 45° 晨曦丁达尔体积光 (Z = 1200 ~ 1600)
   // ------------------------------------------
-  const paperGrad = c.createRadialGradient(
-    centerX,
-    centerY,
-    Math.min(width, height) * 0.15,
-    centerX,
-    centerY,
-    Math.max(width, height) * 0.85
-  );
-  paperGrad.addColorStop(0, palette.paper);
-  paperGrad.addColorStop(1, palette.paperDeep);
-  c.fillStyle = paperGrad;
-  c.fillRect(0, 0, width, height);
+  if (palette.dark) {
+    // 新海诚暮色群青深空渐变
+    const skyGrad = c.createRadialGradient(
+      centerX,
+      safeCenterY - height * 0.15,
+      Math.min(width, height) * 0.1,
+      centerX,
+      safeCenterY,
+      Math.max(width, height) * 0.95
+    );
+    skyGrad.addColorStop(0, "#101c2e");
+    skyGrad.addColorStop(0.5, "#0b1118");
+    skyGrad.addColorStop(1, "#05080f");
+    c.fillStyle = skyGrad;
+    c.fillRect(0, 0, width, height);
+  } else {
+    // 温暖日光和纸底色
+    const paperGrad = c.createRadialGradient(
+      centerX,
+      safeCenterY,
+      Math.min(width, height) * 0.15,
+      centerX,
+      safeCenterY,
+      Math.max(width, height) * 0.85
+    );
+    paperGrad.addColorStop(0, palette.paper);
+    paperGrad.addColorStop(1, palette.paperDeep);
+    c.fillStyle = paperGrad;
+    c.fillRect(0, 0, width, height);
+  }
 
-  // 模拟透气和纸质微纤维（12fps 阶梯手绘质感）
+  // 12fps 手绘纸质微纤维质感
   const fiberAlpha = palette.dark ? 0.04 : 0.035;
   c.fillStyle = palette.ink;
   c.globalAlpha = fiberAlpha;
@@ -915,9 +1373,10 @@ export function drawAnimeHandwrittenMV(ctx: EffectContext): void {
   }
   c.globalAlpha = 1.0;
 
-  // ------------------------------------------
-  // B. 温光扫过（Warm Light Sweep / 柔和金色或琥珀色光弧，screen 模式）
-  // ------------------------------------------
+  // 45° 晨曦丁达尔体积光柱 (God Rays)，随低音频谱柔和呼吸
+  drawTyndallGodRays(c, width, height, time, transientResult.energy, palette);
+
+  // 换行温光扫光 (Warm Light Sweep，柔和金色/琥珀色光弧，screen 模式)
   if (warmLightSweep.active && warmLightSweep.intensity > 0.02) {
     c.save();
     c.globalCompositeOperation = "screen";
@@ -927,9 +1386,9 @@ export function drawAnimeHandwrittenMV(ctx: EffectContext): void {
 
     const lightGrad = c.createLinearGradient(
       sweepScreenX - beamW,
-      centerY - height * 0.6,
+      safeCenterY - height * 0.6,
       sweepScreenX + beamW,
-      centerY + height * 0.6
+      safeCenterY + height * 0.6
     );
     lightGrad.addColorStop(0, "transparent");
     lightGrad.addColorStop(0.35, warmLightSweep.colorOuter);
@@ -944,31 +1403,11 @@ export function drawAnimeHandwrittenMV(ctx: EffectContext): void {
   }
 
   // ------------------------------------------
-  // C. 连续 AE 摄像机空间变换（中心对齐 + 镜头推拉 + 重拍微震）
+  // LAYER 2: 中远景浮动金尘 (Z = 200 ~ 1200)
   // ------------------------------------------
-  c.save();
-  c.translate(centerX + cameraState.shakeX, centerY + cameraState.shakeY);
-  c.scale(cameraState.zoom, cameraState.zoom);
-  c.translate(-centerX, -centerY);
+  drawGoldDustLayer(c, state.goldDust, centerX, safeCenterY, 480);
 
-  // ------------------------------------------
-  // D. 唯美全景呼吸光晕（间奏模式）
-  // ------------------------------------------
-  if (isInterlude) {
-    const breath = 0.5 + 0.5 * Math.sin(steppedTime * 2.2);
-    const glowRadius = Math.min(width, height) * (0.36 + 0.1 * breath) * ambientGlowMult;
-    const glowGrad = c.createRadialGradient(centerX, centerY, 8, centerX, centerY, glowRadius);
-    glowGrad.addColorStop(0, palette.glow);
-    glowGrad.addColorStop(1, "transparent");
-    c.fillStyle = glowGrad;
-    c.beginPath();
-    c.arc(centerX, centerY, glowRadius, 0, Math.PI * 2);
-    c.fill();
-  }
-
-  // ------------------------------------------
-  // E. 物理水彩墨滴微粒
-  // ------------------------------------------
+  // 物理水彩墨滴微粒
   for (const p of state.particles) {
     c.save();
     c.globalAlpha = Math.min(Math.max(p.alpha * p.life, 0), 1);
@@ -980,8 +1419,12 @@ export function drawAnimeHandwrittenMV(ctx: EffectContext): void {
   }
 
   // ------------------------------------------
-  // F. 漫画蘸水笔手绘线稿与歌词文字（多行连续纵深排布，双向融合交叉过渡）
+  // LAYER 3: 黄金手书主体层 (Z: 800 -> 0 -> -400)
   // ------------------------------------------
+  c.save();
+  c.translate(centerX + cameraState.shakeX, safeCenterY + cameraState.shakeY);
+  c.scale(state.camera.zoom, state.camera.zoom);
+
   const penJitter = calculatePenJitter(
     state.targetLineIndex >= 0 ? state.targetLineIndex : 7,
     steppedFrame,
@@ -989,121 +1432,229 @@ export function drawAnimeHandwrittenMV(ctx: EffectContext): void {
   );
 
   if (!isInterlude && state.parsedLines.length > 0 && state.targetLineIndex >= 0) {
-    const depthItems = calculateLyricZPositions(
-      state.parsedLines,
-      state.targetLineIndex,
-      state.continuousCameraZ,
-      state.lineTransitionProgress,
-      {
-        zoomScale,
-        depthStep: 600,
-        focalDistance: 900,
-      }
-    );
+    const currentLine = state.parsedLines[state.targetLineIndex];
+    const nextLine = state.parsedLines[state.targetLineIndex + 1];
 
-    // 基础字号与字体配置
-    const baseFontSize = Math.max(26, Math.min(width * 0.046, 52));
-    const fontPrimary = `600 ${baseFontSize}px "Yuji Boku", "Klee One", "Noto Serif SC", "Songti SC", "STSong", serif`;
-    const fontSub = `400 ${baseFontSize}px "Yuji Boku", "Klee One", "Noto Serif SC", serif`;
+    // 计算当前行在时间轴上的持续时长与归一化推进度 u in [0, 1]
+    const lineDuration = nextLine
+      ? Math.max(1.8, Math.min(8.0, nextLine.start - currentLine.start))
+      : 5.0;
+    const rawU = (effectiveMusicTime - currentLine.start) / lineDuration;
+    const lineU = Math.max(0, Math.min(1.0, rawU));
+
+    // 镜头推拉运动动力学 Z 轴位置
+    const dollyZ = calculateDollyZ(lineU, 800, 400);
+
+    // 35mm 虚拟广角透视投影比例 (f = 480)
+    const perspectiveScale = calculatePerspectiveScale(dollyZ, 480);
+    const dofBlur = calculateDoFBlur(dollyZ);
+
+    // 黄金焦点驻留阶段空气呼吸微起伏 (±1.8px)
+    const airBreathY = lineU > 0.35 && lineU <= 0.85 ? Math.sin(steppedTime * 1.2) * 1.8 : 0;
+
+    // 当前句透明度淡入淡出（飞出阶段平滑消散）
+    let lineOpacity = 1.0;
+    if (lineU < 0.2) {
+      lineOpacity = Math.min(1.0, 0.35 + 0.65 * (lineU / 0.2));
+    } else if (lineU > 0.85) {
+      lineOpacity = Math.max(0, 1.0 - (lineU - 0.85) / 0.15);
+    }
+
+    // 基础字号与日系字体
+    const baseFontSize = Math.max(30, Math.min(width * 0.048, 56));
+    const fontHeadline = `600 ${baseFontSize * perspectiveScale}px "Yuji Boku", "Klee One", "Noto Serif SC", "Songti SC", "STSong", serif`;
+    const fontMeta = `500 ${Math.max(12, baseFontSize * 0.32 * perspectiveScale)}px "SF Mono", "Consolas", "Courier New", monospace`;
+    const fontSub = `400 ${Math.max(13, baseFontSize * 0.36 * perspectiveScale)}px "Yuji Boku", "Klee One", "Noto Serif SC", serif`;
 
     c.textAlign = "center";
     c.textBaseline = "middle";
 
-    for (const item of depthItems) {
-      if (item.opacity <= 0.005) continue;
+    // A. 远景下句微弱预告 (Z ≈ 750, 景深模糊)
+    if (nextLine && nextLine.text.trim()) {
+      const nextZ = 750;
+      const nextScale = calculatePerspectiveScale(nextZ, 480);
+      const nextBlur = calculateDoFBlur(nextZ);
 
       c.save();
-      c.globalAlpha = item.opacity;
+      c.globalAlpha = Math.min(0.28, 0.12 + 0.16 * lineU);
+      c.font = `400 ${baseFontSize * nextScale}px "Yuji Boku", "Klee One", "Noto Serif SC", serif`;
+      c.fillStyle = palette.inkSoft;
+      c.shadowColor = palette.glow;
+      c.shadowBlur = nextBlur * 1.2;
+      c.fillText(nextLine.text.trim(), penJitter.x, 85 * nextScale + penJitter.y);
+      c.restore();
+    }
 
-      const posX = centerX + penJitter.x;
-      const posY = centerY + item.yOffset + penJitter.y;
+    // B. 当前句主体渲染（日系电影原画排版 + 毫秒级时间戳 + 歌曲小注 + 金色外发光）
+    if (lineOpacity > 0.01) {
+      c.save();
+      c.globalAlpha = lineOpacity;
 
-      c.translate(posX, posY);
-      c.scale(item.scale, item.scale);
+      const posX = penJitter.x;
+      const posY = airBreathY + penJitter.y;
 
-      if (item.isCurrent) {
-        c.font = fontPrimary;
+      const mainLyricText = formatJapaneseAnimeLyric(currentLine.text);
+      const timestampText = formatLyricTimestamp(effectiveMusicTime);
+      const songInfoText = `${currentSong?.title ?? "MIMI PLAYER"} · ${currentSong?.artist ?? "Anime MV"}`;
 
-        // 1. 漫画蘸水笔打稿微影（Pencil Under-Sketch）
+      // 1. 顶部毫秒级时间戳微注 (如 01:42.80)
+      c.save();
+      c.font = fontMeta;
+      c.fillStyle = palette.dark ? "rgba(255, 215, 140, 0.72)" : "rgba(80, 60, 45, 0.65)";
+      c.letterSpacing = "2px";
+      c.fillText(timestampText, posX, posY - (baseFontSize * 0.85 + 16) * perspectiveScale);
+      c.restore();
+
+      // 2. 鼓点微脉冲红蓝色散 (1~2px Chromatic Aberration)
+      if (transientResult.isBeat && transientResult.intensity > 0.25) {
+        const caOffset = (1.0 + transientResult.intensity * 1.5) * perspectiveScale;
         c.save();
-        c.fillStyle = palette.inkSoft;
-        c.globalAlpha = item.opacity * 0.24;
-        c.fillText(item.text, 1.2, 1.4);
+        c.font = fontHeadline;
+
+        // 青色分量偏移
+        c.fillStyle = "rgba(75, 200, 255, 0.45)";
+        c.fillText(mainLyricText, posX - caOffset, posY);
+
+        // 暖红金分量偏移
+        c.fillStyle = "rgba(255, 110, 80, 0.45)";
+        c.fillText(mainLyricText, posX + caOffset, posY);
         c.restore();
-
-        // 2. 温光扫光增强（文字局部金辉）
-        if (warmLightSweep.active && warmLightSweep.textGlowBoost > 0.05) {
-          c.save();
-          c.fillStyle = palette.accent;
-          c.globalAlpha = item.opacity * warmLightSweep.textGlowBoost * 0.6;
-          c.shadowColor = palette.accent;
-          c.shadowBlur = 12 * warmLightSweep.textGlowBoost;
-          c.fillText(item.text, 0, 0);
-          c.restore();
-        }
-
-        // 3. 蘸水笔正文墨迹
-        c.fillStyle = palette.ink;
-        c.fillText(item.text, 0, 0);
-      } else {
-        // 前后景深伴随行（自然弱化景深）
-        c.font = fontSub;
-        c.fillStyle = palette.inkSoft;
-        c.fillText(item.text, 0, 0);
       }
+
+      // 3. 黄金手书外发光漫溢 (Gold Ink Diffusion)
+      c.save();
+      c.font = fontHeadline;
+      c.fillStyle = palette.accent;
+      c.shadowColor = palette.glow;
+      const glowBlur = (8 + 12 * (transientResult.energy / 255) + dofBlur) * perspectiveScale;
+      c.shadowBlur = Math.min(32, glowBlur);
+      c.fillText(mainLyricText, posX, posY);
+      c.restore();
+
+      // 4. 漫画蘸水笔打稿微影 (Pencil Under-Sketch)
+      c.save();
+      c.font = fontHeadline;
+      c.fillStyle = palette.inkSoft;
+      c.globalAlpha = lineOpacity * 0.28;
+      c.fillText(mainLyricText, posX + 1.4 * perspectiveScale, posY + 1.6 * perspectiveScale);
+      c.restore();
+
+      // 5. 正文字符笔触墨迹核心
+      c.save();
+      c.font = fontHeadline;
+      c.fillStyle = palette.dark ? "#FFFFFF" : palette.ink;
+      c.fillText(mainLyricText, posX, posY);
+      c.restore();
+
+      // 6. 底部歌曲原名与演唱者电影小注
+      c.save();
+      c.font = fontSub;
+      c.fillStyle = palette.inkSoft;
+      c.globalAlpha = lineOpacity * 0.65;
+      c.fillText(songInfoText, posX, posY + (baseFontSize * 0.85 + 18) * perspectiveScale);
+      c.restore();
 
       c.restore();
     }
   } else {
-    // 待机或纯间奏：展示手书水彩唱片铭牌与唯美呼吸铭文
+    // 待机或纯间奏：展示手书水彩唱片铭牌与全景呼吸光晕
     const title = currentSong?.title || "MIMI PLAYER";
     const artist = currentSong?.artist || "Anime Handwritten MV";
 
-    const titleSize = Math.max(28, Math.min(width * 0.048, 54));
+    const titleSize = Math.max(30, Math.min(width * 0.05, 56));
     c.font = `600 ${titleSize}px "Yuji Boku", "Klee One", "Noto Serif SC", serif`;
     c.textAlign = "center";
     c.textBaseline = "middle";
 
-    const titleX = centerX + penJitter.x;
-    const titleY = centerY + penJitter.y;
+    const titleX = penJitter.x;
+    const titleY = penJitter.y;
+
+    // 唯美全景呼吸光晕
+    const breath = 0.5 + 0.5 * Math.sin(steppedTime * 2.2);
+    const glowRadius = Math.min(width, height) * (0.36 + 0.1 * breath) * ambientGlowMult;
+    const glowGrad = c.createRadialGradient(0, 0, 8, 0, 0, glowRadius);
+    glowGrad.addColorStop(0, palette.glow);
+    glowGrad.addColorStop(1, "transparent");
+    c.fillStyle = glowGrad;
+    c.beginPath();
+    c.arc(0, 0, glowRadius, 0, Math.PI * 2);
+    c.fill();
 
     // 手书水彩唱片外圈光环
     const ringRadius = titleSize * 2.2;
     c.save();
     c.strokeStyle = palette.inkSoft;
-    c.globalAlpha = 0.22;
-    c.lineWidth = 1.2;
+    c.globalAlpha = 0.26;
+    c.lineWidth = 1.4;
     c.beginPath();
-    c.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
+    c.arc(0, 0, ringRadius, 0, Math.PI * 2);
     c.stroke();
     c.restore();
 
-    // 标题墨迹
+    // 标题墨迹与外发光
     c.save();
-    c.fillStyle = palette.ink;
-    c.fillText(title, titleX, titleY - 14);
+    c.shadowColor = palette.glow;
+    c.shadowBlur = 14;
+    c.fillStyle = palette.dark ? "#FFFFFF" : palette.ink;
+    c.fillText(title, titleX, titleY - 16);
     c.restore();
 
-    // 艺术家标注
+    // 艺术家标注与时间码
     c.save();
     c.font = `400 ${titleSize * 0.44}px "Yuji Boku", "Klee One", "Noto Serif SC", serif`;
     c.fillStyle = palette.inkSoft;
-    c.fillText(artist, centerX, titleY + titleSize * 0.68);
+    c.fillText(artist, 0, titleY + titleSize * 0.65);
+
+    c.font = `500 ${titleSize * 0.3}px "SF Mono", "Consolas", monospace`;
+    c.fillStyle = palette.dark ? "rgba(255, 215, 140, 0.65)" : "rgba(80, 60, 45, 0.55)";
+    c.fillText(formatLyricTimestamp(effectiveMusicTime), 0, titleY + titleSize * 1.15);
     c.restore();
   }
 
-  c.restore(); // 恢复摄像机空间变换
+  c.restore(); // 恢复 Layer 3 空间变换
 
   // ------------------------------------------
-  // G. 透气画面暗角（Vignette Overlay，无硬切边界）
+  // LAYER 4: 前景大散景掠镜与光学后期层 (Z = -100 ~ -350)
   // ------------------------------------------
+  drawForegroundBokehLayer(c, state.foregroundBokeh, centerX, safeCenterY, 480);
+
+  // 2.39:1 院线宽银幕遮幅 (Cinemascope Letterbox)
+  if (cinemascopeEnabled && bars.active) {
+    c.save();
+    c.fillStyle = "#040609";
+
+    // 顶部黑边
+    c.fillRect(0, 0, width, bars.safeTop);
+
+    // 顶部黑边羽化渐变
+    const topFeather = c.createLinearGradient(0, bars.safeTop, 0, bars.safeTop + 4);
+    topFeather.addColorStop(0, "#040609");
+    topFeather.addColorStop(1, "rgba(4, 6, 9, 0)");
+    c.fillStyle = topFeather;
+    c.fillRect(0, bars.safeTop, width, 4);
+
+    // 底部黑边
+    c.fillStyle = "#040609";
+    c.fillRect(0, bars.safeBottom, width, bars.barHeight);
+
+    // 底部黑边羽化渐变
+    const bottomFeather = c.createLinearGradient(0, bars.safeBottom - 4, 0, bars.safeBottom);
+    bottomFeather.addColorStop(0, "rgba(4, 6, 9, 0)");
+    bottomFeather.addColorStop(1, "#040609");
+    c.fillStyle = bottomFeather;
+    c.fillRect(0, bars.safeBottom - 4, width, 4);
+
+    c.restore();
+  }
+
+  // 电影级柔和暗角 (Film Vignette)
   const vignetteGrad = c.createRadialGradient(
     centerX,
-    centerY,
+    safeCenterY,
     Math.min(width, height) * 0.42,
     centerX,
-    centerY,
-    Math.max(width, height) * 0.78
+    safeCenterY,
+    Math.max(width, height) * 0.82
   );
   vignetteGrad.addColorStop(0, "transparent");
   vignetteGrad.addColorStop(1, palette.vignette);

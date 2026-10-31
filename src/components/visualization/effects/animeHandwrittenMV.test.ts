@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EffectContext } from "./types";
 import {
+  calculatePerspectiveScale,
+  calculateDollyZ,
+  calculateDoFBlur,
+  calculateCinemascopeBars,
+  formatLyricTimestamp,
+  formatJapaneseAnimeLyric,
   calculateCameraTransitionEasing,
   calculateCameraZoom,
   calculateContinuousAECamera,
@@ -13,6 +19,13 @@ import {
   calculatePenJitter,
   spawnInkSplatter,
   updateInkParticles,
+  spawnGoldDust,
+  updateGoldDust,
+  spawnForegroundBokeh,
+  updateForegroundBokeh,
+  drawTyndallGodRays,
+  drawGoldDustLayer,
+  drawForegroundBokehLayer,
   findActiveLyricLineIndex,
   checkIsInterlude,
   drawAnimeHandwrittenMV,
@@ -104,7 +117,7 @@ function createMockFrame(width = 1280, height = 720): EffectContext {
   };
 }
 
-describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
+describe("animeHandwrittenMV 次世代电影级动漫手书 MV 模块", () => {
   beforeEach(() => {
     fixture.audio.currentTime = 4;
   });
@@ -114,7 +127,155 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
   });
 
   // ==========================================
-  // 1. AE 连续摄像机插值与缓动测试
+  // 1. 35mm 虚拟广角镜头透视投影测试
+  // ==========================================
+  describe("35mm 虚拟广角透视投影模型 (calculatePerspectiveScale)", () => {
+    it("焦点处 (relZ = 0) 比例恒为 1.0", () => {
+      expect(calculatePerspectiveScale(0, 480)).toBeCloseTo(1.0, 5);
+      expect(calculatePerspectiveScale(0, 900)).toBeCloseTo(1.0, 5);
+    });
+
+    it("远景处 (relZ = 800) 透视收缩至 0.375", () => {
+      // 480 / (480 + 800) = 480 / 1280 = 0.375
+      expect(calculatePerspectiveScale(800, 480)).toBeCloseTo(0.375, 4);
+    });
+
+    it("近景飞掠处 (relZ = -400) 透视放大至 6.0", () => {
+      // 480 / (480 - 400) = 480 / 80 = 6.0
+      expect(calculatePerspectiveScale(-400, 480)).toBeCloseTo(6.0, 4);
+    });
+
+    it("近裁剪边界与负无穷深度具有安全下界保护，不发生除以零", () => {
+      const nearZero = calculatePerspectiveScale(-480, 480);
+      expect(nearZero).toBeGreaterThan(0);
+      expect(Number.isFinite(nearZero)).toBe(true);
+
+      const deepNegative = calculatePerspectiveScale(-2000, 480);
+      expect(deepNegative).toBeGreaterThan(0);
+      expect(Number.isFinite(deepNegative)).toBe(true);
+    });
+  });
+
+  // ==========================================
+  // 2. 镜头推拉运动动力学与缓动曲线测试
+  // ==========================================
+  describe("镜头推拉运动动力学 (calculateDollyZ)", () => {
+    it("入场阶段 (u in [0, 0.35]) 从 Z = 800px 经由 Quartic Ease Out 平稳刹车至 Z = 0", () => {
+      expect(calculateDollyZ(0)).toBe(800);
+      expect(calculateDollyZ(0.35)).toBeCloseTo(0, 5);
+
+      // Quartic Ease Out 强阻尼特性验证：前 50% 时间消耗了绝大部分深度距离
+      const zEarly = calculateDollyZ(0.175); // u = 0.175 (pIn = 0.5)
+      // 1 - (1 - 0.5)^4 = 1 - 0.0625 = 0.9375 => Z = 800 * 0.0625 = 50
+      expect(zEarly).toBeCloseTo(50, 1);
+      expect(zEarly).toBeLessThan(800);
+      expect(zEarly).toBeGreaterThan(0);
+    });
+
+    it("黄金焦点呼吸驻留阶段 (u in [0.35, 0.85]) 保持微小正弦起伏 (|Z| <= 1.5px)", () => {
+      const zMid1 = calculateDollyZ(0.475);
+      const zMid2 = calculateDollyZ(0.6);
+      const zMid3 = calculateDollyZ(0.725);
+      const zDwellEnd = calculateDollyZ(0.85);
+
+      expect(Math.abs(zMid1)).toBeLessThanOrEqual(1.51);
+      expect(Math.abs(zMid2)).toBeLessThanOrEqual(1.51);
+      expect(Math.abs(zMid3)).toBeLessThanOrEqual(1.51);
+      expect(zDwellEnd).toBeCloseTo(0, 4);
+    });
+
+    it("离场阶段 (u in [0.85, 1.0]) 经由 Cubic Ease In 加速穿透近裁剪面至 Z = -400px", () => {
+      expect(calculateDollyZ(0.85)).toBeCloseTo(0, 4);
+
+      const zExitMid = calculateDollyZ(0.925); // pOut = 0.5 => 0.5^3 = 0.125 => Z = -400 * 0.125 = -50
+      expect(zExitMid).toBeCloseTo(-50, 1);
+
+      expect(calculateDollyZ(1.0)).toBeCloseTo(-400, 4);
+    });
+
+    it("边界越界值安全钳制", () => {
+      expect(calculateDollyZ(-0.5)).toBe(800);
+      expect(calculateDollyZ(1.5)).toBe(-400);
+    });
+  });
+
+  // ==========================================
+  // 3. 光学焦外虚化量模型测试
+  // ==========================================
+  describe("光学焦外虚化量模型 (calculateDoFBlur)", () => {
+    it("黄金焦点处 (Z = 0) 虚化量为 0（绝对锐利）", () => {
+      expect(calculateDoFBlur(0)).toBe(0);
+    });
+
+    it("远景失焦 (Z > 0) 线性软化并封顶 14px", () => {
+      expect(calculateDoFBlur(100)).toBeCloseTo(2.0, 3);
+      expect(calculateDoFBlur(500)).toBeCloseTo(10.0, 3);
+      expect(calculateDoFBlur(800)).toBe(14); // min(14, 800/50=16) => 14
+      expect(calculateDoFBlur(1500)).toBe(14);
+    });
+
+    it("近景飞出散景爆开 (Z < 0) 快速扩散并封顶 24px", () => {
+      expect(calculateDoFBlur(-150)).toBeCloseTo(10.0, 3);
+      expect(calculateDoFBlur(-300)).toBeCloseTo(20.0, 3);
+      expect(calculateDoFBlur(-400)).toBe(24); // min(24, 400/15=26.67) => 24
+    });
+  });
+
+  // ==========================================
+  // 4. 2.39:1 院线宽银幕遮幅与安全区测试
+  // ==========================================
+  describe("2.39:1 宽银幕遮幅与安全区计算 (calculateCinemascopeBars)", () => {
+    it("16:9 标准视口计算出精确的上下黑边与安全区高度", () => {
+      const bars = calculateCinemascopeBars(1280, 720, 2.39);
+      expect(bars.active).toBe(true);
+      expect(bars.aspectRatio).toBe(2.39);
+
+      // targetHeight = 1280 / 2.39 ≈ 535.56
+      // barHeight = (720 - 535.56) / 2 ≈ 92.22
+      expect(bars.barHeight).toBeCloseTo(92.22, 1);
+      expect(bars.safeTop).toBeCloseTo(92.22, 1);
+      expect(bars.safeBottom).toBeCloseTo(720 - 92.22, 1);
+      expect(bars.safeHeight).toBeCloseTo(535.56, 1);
+      expect(bars.safeTop + bars.safeHeight + bars.barHeight).toBeCloseTo(720, 1);
+    });
+
+    it("原生 2.39:1 超宽屏视口无需黑边 (active = false)", () => {
+      const bars = calculateCinemascopeBars(2390, 1000, 2.39);
+      expect(bars.active).toBe(false);
+      expect(bars.barHeight).toBe(0);
+      expect(bars.safeHeight).toBe(1000);
+    });
+
+    it("异常尺寸（0 或负数）安全兜底无异常抛出", () => {
+      const zero = calculateCinemascopeBars(0, 0, 2.39);
+      expect(zero.active).toBe(false);
+      expect(zero.barHeight).toBe(0);
+    });
+  });
+
+  // ==========================================
+  // 5. 时间戳与日系排版辅助函数测试
+  // ==========================================
+  describe("排版与元数据格式化 (formatLyricTimestamp / formatJapaneseAnimeLyric)", () => {
+    it("正确生成毫秒级分秒时间戳 (如 01:42.80)", () => {
+      expect(formatLyricTimestamp(0)).toBe("00:00.00");
+      expect(formatLyricTimestamp(102.8)).toBe("01:42.80");
+      expect(formatLyricTimestamp(65.12)).toBe("01:05.12");
+      expect(formatLyricTimestamp(245.05)).toBe("04:05.05");
+      expect(formatLyricTimestamp(-1)).toBe("00:00.00");
+    });
+
+    it("日系手书排版智能包裹「」主歌词且不重复", () => {
+      expect(formatJapaneseAnimeLyric("白纸上飞舞的墨迹")).toBe("「白纸上飞舞的墨迹」");
+      expect(formatJapaneseAnimeLyric("「已经有括号」")).toBe("「已经有括号」");
+      expect(formatJapaneseAnimeLyric("『双书名号』")).toBe("『双书名号』");
+      expect(formatJapaneseAnimeLyric("【间奏】")).toBe("【间奏】");
+      expect(formatJapaneseAnimeLyric("   ")).toBe("");
+    });
+  });
+
+  // ==========================================
+  // 6. AE 连续摄像机插值与缓动测试
   // ==========================================
   describe("AE 连续摄像机与贝塞尔缓动 (calculateCameraTransitionEasing / calculateContinuousAECamera)", () => {
     it("SmootherStep 缓动方程单调递增且在端点平滑收敛", () => {
@@ -123,7 +284,6 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
       expect(calculateCameraTransitionEasing(-0.2)).toBe(0);
       expect(calculateCameraTransitionEasing(1.5)).toBe(1);
 
-      // 单调递增性验证
       let prev = -0.001;
       for (let t = 0; t <= 1.0; t += 0.05) {
         const val = calculateCameraTransitionEasing(t);
@@ -131,7 +291,6 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
         prev = val;
       }
 
-      // 中点对称
       expect(calculateCameraTransitionEasing(0.5)).toBeCloseTo(0.5, 4);
     });
 
@@ -141,10 +300,9 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
       const camMid = calculateContinuousAECamera(2, 0.5, false, { depthStep });
       const camEnd = calculateContinuousAECamera(2, 1.0, false, { depthStep });
 
-      // 推进过程单调递增无突变
-      expect(camStart.cameraZ).toBe(1 * depthStep); // 前一行深度
+      expect(camStart.cameraZ).toBe(1 * depthStep);
       expect(camMid.cameraZ).toBeCloseTo(1.5 * depthStep, 1);
-      expect(camEnd.cameraZ).toBe(2 * depthStep); // 目标行聚焦深度
+      expect(camEnd.cameraZ).toBe(2 * depthStep);
 
       expect(camMid.cameraZ).toBeGreaterThan(camStart.cameraZ);
       expect(camEnd.cameraZ).toBeGreaterThan(camMid.cameraZ);
@@ -166,7 +324,7 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
   });
 
   // ==========================================
-  // 2. 温光扫过（Warm Light Sweep）时间窗口计算测试
+  // 7. 温光扫过（Warm Light Sweep）时间窗口计算测试
   // ==========================================
   describe("温光扫过过渡计算 (resolveWarmLightSweep)", () => {
     it("在过渡时间窗口 (0..1) 内激活温光扫光，并在中段达到强度峰值", () => {
@@ -178,13 +336,11 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
       expect(mid.active).toBe(true);
       expect(end.active).toBe(true);
 
-      // 峰值出现在过渡中段
       expect(mid.intensity).toBeGreaterThan(start.intensity);
       expect(mid.intensity).toBeGreaterThan(end.intensity);
       expect(mid.intensity).toBeCloseTo(1.0, 3);
       expect(mid.textGlowBoost).toBeGreaterThan(0.5);
 
-      // 光弧从左侧扫向右侧
       expect(start.sweepX).toBeCloseTo(-0.2, 2);
       expect(mid.sweepX).toBeCloseTo(0.5, 2);
       expect(end.sweepX).toBeCloseTo(1.2, 2);
@@ -201,7 +357,7 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
   });
 
   // ==========================================
-  // 3. 多行歌词空间纵深连续排布与无裁切测试
+  // 8. 多行歌词空间纵深连续排布测试
   // ==========================================
   describe("空间纵深连续排布 (calculateLyricZPositions)", () => {
     const lines = [
@@ -212,7 +368,6 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
     ];
 
     it("正确生成上一句、当前句与下一句的纵深层级，上一句向前飘出淡化，当前句聚焦，下一句呈景深远景", () => {
-      // 1. 模拟摄像机正在向 line 1 (当前句) 推进中，进度 0.5
       const cameraZMid = 0.5 * 600;
       const itemsMid = calculateLyricZPositions(lines, 1, cameraZMid, 0.5, {
         depthStep: 600,
@@ -230,19 +385,14 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
       expect(curr).toBeDefined();
       expect(next).toBeDefined();
 
-      // 上一句随镜头推近放大并飘向视野上方
       expect(prev!.yOffset).toBeLessThan(0);
-
-      // 下一句在景深远处微弱可见 (约 0.5x - 0.6x 比例，且小于当前句)
       expect(next!.scale).toBeLessThan(curr!.scale);
       expect(next!.opacity).toBeLessThan(curr!.opacity);
-      expect(next!.opacity).toBeGreaterThan(0.15); // 景深微弱可见
+      expect(next!.opacity).toBeGreaterThan(0.15);
 
-      // 当前句在黄金聚焦位逐步显现
       expect(curr!.opacity).toBeGreaterThan(0.6);
       expect(curr!.inkGrowth).toBeGreaterThan(0.5);
 
-      // 2. 模拟摄像机已完全对焦当前句 line 1 (cameraZ = 600, progress = 1.0)
       const itemsFocused = calculateLyricZPositions(lines, 1, 600, 1.0, {
         depthStep: 600,
         zoomScale: 1.8,
@@ -251,11 +401,8 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
       const focusedCurr = itemsFocused.find((i) => i.isCurrent);
       const focusedNext = itemsFocused.find((i) => i.isNext);
 
-      // 当前句达到 1.0 黄金聚焦比例与最高透明度
       expect(focusedCurr!.scale).toBeCloseTo(1.0, 2);
       expect(focusedCurr!.opacity).toBeCloseTo(1.0, 2);
-
-      // 下一句以黄金 0.60x 比例在景深远处微弱可见
       expect(focusedNext!.scale).toBeCloseTo(0.6, 2);
     });
 
@@ -266,7 +413,75 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
   });
 
   // ==========================================
-  // 4. 音频瞬态重拍检测与调色板测试
+  // 9. 中远景金尘与前景大散景粒子系统
+  // ==========================================
+  describe("四层多平面金尘与散景系统 (GoldDust & ForegroundBokeh)", () => {
+    it("spawnGoldDust 生成 200+ 颗微粒且 Z 轴分布在 200~1200", () => {
+      const dust = spawnGoldDust(240, 1920, 1080);
+      expect(dust.length).toBe(240);
+
+      for (const p of dust) {
+        expect(p.z).toBeGreaterThanOrEqual(200);
+        expect(p.z).toBeLessThanOrEqual(1200);
+        expect(p.size).toBeGreaterThan(0);
+      }
+    });
+
+    it("updateGoldDust 正确模拟布朗运动与空间回环", () => {
+      const dust = spawnGoldDust(50, 1920, 1080);
+      const updated = updateGoldDust(dust, 0.05, 1920, 1080, 100);
+      expect(updated.length).toBe(50);
+      expect(Number.isFinite(updated[0].x)).toBe(true);
+      expect(Number.isFinite(updated[0].y)).toBe(true);
+    });
+
+    it("spawnForegroundBokeh 生成近景大散景且 Z 轴分布在 -100~-350", () => {
+      const bokeh = spawnForegroundBokeh(7, 1920, 1080);
+      expect(bokeh.length).toBe(7);
+
+      for (const d of bokeh) {
+        expect(d.z).toBeLessThanOrEqual(-100);
+        expect(d.z).toBeGreaterThanOrEqual(-350);
+        expect(d.radius).toBeGreaterThanOrEqual(30);
+      }
+    });
+
+    it("updateForegroundBokeh 高速掠镜推进无异常", () => {
+      const bokeh = spawnForegroundBokeh(5, 1920, 1080);
+      const updated = updateForegroundBokeh(bokeh, 0.05, 1920, 1080);
+      expect(updated.length).toBe(5);
+    });
+  });
+
+  // ==========================================
+  // 10. 45° 丁达尔光柱与层绘制执行测试
+  // ==========================================
+  describe("45° 晨曦丁达尔光柱与各图层独立绘制", () => {
+    it("drawTyndallGodRays 成功调用渐变并绘制多道体积光", () => {
+      const frame = createMockFrame(1280, 720);
+      const palette = resolveAnimePalette(1);
+      expect(() =>
+        drawTyndallGodRays(frame.ctx, frame.width, frame.height, 1.0, 150, palette)
+      ).not.toThrow();
+    });
+
+    it("drawGoldDustLayer 与 drawForegroundBokehLayer 顺利执行", () => {
+      const frame = createMockFrame(1280, 720);
+      const dust = spawnGoldDust(20, 1280, 720);
+      const bokeh = spawnForegroundBokeh(4, 1280, 720);
+
+      expect(() =>
+        drawGoldDustLayer(frame.ctx, dust, frame.width / 2, frame.height / 2, 480)
+      ).not.toThrow();
+
+      expect(() =>
+        drawForegroundBokehLayer(frame.ctx, bokeh, frame.width / 2, frame.height / 2, 480)
+      ).not.toThrow();
+    });
+  });
+
+  // ==========================================
+  // 11. 音频瞬态重拍与调色板系统测试
   // ==========================================
   describe("音频瞬态重拍与调色板系统", () => {
     it("音频瞬态重拍检测触发 isBeat = true", () => {
@@ -306,7 +521,7 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
   });
 
   // ==========================================
-  // 5. 抽帧定格与水彩墨滴微粒系统测试
+  // 12. 抽帧定格与水彩墨滴微粒系统测试
   // ==========================================
   describe("抽帧定格与水彩墨滴微粒物理系统", () => {
     it("12fps / 24fps 抽帧定格将时间离散化", () => {
@@ -356,7 +571,7 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
   });
 
   // ==========================================
-  // 6. 主绘制管线集成测试 (drawAnimeHandwrittenMV)
+  // 13. 主绘制管线集成测试 (drawAnimeHandwrittenMV)
   // ==========================================
   describe("主绘制入口 drawAnimeHandwrittenMV 全流程", () => {
     it("正常歌词与音频输入下完整执行绘制流程，无异常抛出", () => {
@@ -364,7 +579,7 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
       expect(() => drawAnimeHandwrittenMV(frame)).not.toThrow();
     });
 
-    it("重拍瞬态爆发与高频微震顺利执行", () => {
+    it("重拍瞬态爆发与高频微震顺利执行（含鼓点红蓝色散与镜头呼吸）", () => {
       const frame = createMockFrame(1280, 720);
       frame.data = new Uint8Array(128).fill(220);
       expect(() => drawAnimeHandwrittenMV(frame)).not.toThrow();
@@ -379,7 +594,7 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
       expect(() => drawAnimeHandwrittenMV(frame)).not.toThrow();
     });
 
-    it("支持各种个性化参数组合（zoomScale, frameRate, inkSplatter, colorScheme, ambientGlow）", () => {
+    it("支持各种个性化参数组合（zoomScale, frameRate, inkSplatter, colorScheme, ambientGlow, cinemascope）", () => {
       const frame = createMockFrame(1920, 1080);
       frame.params = {
         zoomScale: 2.2,
@@ -387,6 +602,7 @@ describe("animeHandwrittenMV 次世代动漫手书 MV 模块", () => {
         inkSplatter: 1.5,
         colorScheme: 1, // 暮色群青
         ambientGlow: 1.2,
+        cinemascope: true,
       };
       expect(() => drawAnimeHandwrittenMV(frame)).not.toThrow();
     });
