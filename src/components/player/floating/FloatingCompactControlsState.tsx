@@ -318,11 +318,11 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
       }
       aria-busy={isLoading}
     >
-      {/* 纯 CSS 硬件加速暗黑毛玻璃胶囊 (自适应双态：舒展态 396px <-> 悬停拓展 440px) */}
+      {/* 纯 CSS 硬件加速暗黑毛玻璃胶囊 (自适应双态：紧凑纯控 320px <-> 悬停舒展 480px) */}
       <motion.div
         className="drag-handle relative flex items-center justify-between gap-2.5 pl-3.5 pr-4.5 py-2 rounded-full shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.25)] border border-white/[0.18] transition-colors"
         animate={{
-          width: isHovered && !isDragging ? 440 : 396,
+          width: isHovered && !isDragging ? 480 : 320,
         }}
         transition={
           prefersReducedMotion
@@ -373,10 +373,25 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
           </motion.div>
         </div>
 
-        {/* 2. 中间歌名与独立细粒度歌词 (常驻展示，智能截断与平滑过渡，彻底杜绝折叠残影与空洞) */}
-        <div
+        {/* 2. 中间歌名与独立细粒度歌词 (自适应双态：未悬停时完全 display:none 零缝隙卸载；悬停时全部完整显示) */}
+        <motion.div
           data-testid="compact-capsule-text"
-          className="relative z-[1] min-w-0 flex-1 flex flex-col justify-center text-left overflow-hidden pr-1"
+          className="relative z-[1] min-w-0 flex flex-col justify-center text-left overflow-hidden pr-1"
+          animate={{
+            width: isHovered && !isDragging ? "auto" : 0,
+            maxWidth: isHovered && !isDragging ? 150 : 0,
+            opacity: isHovered && !isDragging ? 1 : 0,
+          }}
+          transition={
+            prefersReducedMotion
+              ? { duration: 0.01 }
+              : { type: "spring", stiffness: 420, damping: 28 }
+          }
+          style={{
+            display: isHovered && !isDragging ? "flex" : "none",
+            pointerEvents: isHovered && !isDragging ? "auto" : "none",
+          }}
+          aria-hidden={!isHovered || isDragging}
           aria-busy={isLoading}
         >
           <AnimatePresence mode="sync" initial={false}>
@@ -401,7 +416,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
               <SyncedMiniLyric song={currentSong} />
             </motion.div>
           </AnimatePresence>
-        </div>
+        </motion.div>
 
         {/* 3. 右侧控制按钮组 (0ms 零延迟极速响应) */}
         <div
