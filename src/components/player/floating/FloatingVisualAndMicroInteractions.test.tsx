@@ -438,4 +438,43 @@ describe("FloatingCompactControlsState (Level 2 Island Controls)", () => {
     });
     container.remove();
   });
+
+  it("handles adaptive hover expand and collapse without squishing text", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root: Root = createRoot(container);
+
+    await act(async () => {
+      root.render(<FloatingCompactControlsState />);
+    });
+
+    const card = container.querySelector('[data-floating-state="compact"]') as HTMLDivElement;
+    expect(card).toBeDefined();
+
+    // Default state: not expanded (collapsed width: 316)
+    expect(card.getAttribute("data-capsule-expanded")).toBe("false");
+
+    // Mouse enter: triggers expansion
+    await act(async () => {
+      card.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, cancelable: true }));
+      card.dispatchEvent(new MouseEvent("mouseenter", { bubbles: false, cancelable: true }));
+    });
+    expect(card.getAttribute("data-capsule-expanded")).toBe("true");
+
+    // Mouse leave: collapses back
+    await act(async () => {
+      card.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, cancelable: true }));
+      card.dispatchEvent(new MouseEvent("mouseleave", { bubbles: false, cancelable: true }));
+    });
+    // Fast forward debounce timer
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
+    expect(card.getAttribute("data-capsule-expanded")).toBe("false");
+
+    await act(async () => {
+      root.unmount();
+    });
+    container.remove();
+  });
 });

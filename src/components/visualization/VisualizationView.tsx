@@ -64,7 +64,9 @@ const MAX_RENDER_DPR = 2;
 const EFFECT_SWITCH_FADE_MS = 450;
 
 const EFFECTS_LIST: { id: VisualizationEffect; name: string }[] = [
+  { id: "kimiQuantumGlow", name: "极核流光 · Kimi 科技感" },
   { id: "cinematicLyricDrift", name: "温光浮字" },
+  { id: "animeHandwrittenMV", name: "动漫手书 MV" },
   { id: "orientalLandscape", name: "青绿千里" },
   { id: "cinematicOrientalInk", name: "千里江山" },
   { id: "cinematicSilkAurora", name: "流金丝绸" },
@@ -495,6 +497,12 @@ export function VisualizationView() {
             break;
           case "cinematicLyricDrift":
             Effects.drawCinematicLyricDrift(effectCtx);
+            break;
+          case "animeHandwrittenMV":
+            Effects.drawAnimeHandwrittenMV(effectCtx);
+            break;
+          case "kimiQuantumGlow":
+            Effects.drawKimiQuantumGlow(effectCtx);
             break;
 
           default:

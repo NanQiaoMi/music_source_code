@@ -102,6 +102,8 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
     cyberMatrix: "赛博矩阵",
     prismPulse: "棱镜脉冲",
     cinematicLyricDrift: "温光浮字",
+    animeHandwrittenMV: "动漫手书 MV",
+    kimiQuantumGlow: "极核流光 · Kimi 科技感",
   };
 
   return (
@@ -842,6 +844,121 @@ export function VisualizationSettingsPanel({ isOpen, onClose }: VisualizationSet
                   onChange={(v) =>
                     updateEffectSettings("cinematicLyricDrift", { vignetteStrength: v })
                   }
+                />
+              </div>
+            )}
+
+            {currentEffect === "animeHandwrittenMV" && effectSettings.animeHandwrittenMV && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-white/80">手绘调色盘</label>
+                    <span className="text-xs text-amber-300/80 font-mono bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                      {["日光暖纸", "暮色群青", "秋叶山吹", "封面自适应"][
+                        Math.round(effectSettings.animeHandwrittenMV.colorScheme || 0)
+                      ] || "日光暖纸"}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={3}
+                    step={1}
+                    value={effectSettings.animeHandwrittenMV.colorScheme || 0}
+                    onChange={(e) =>
+                      updateEffectSettings("animeHandwrittenMV", {
+                        colorScheme: parseInt(e.target.value, 10),
+                      })
+                    }
+                    className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-white/10"
+                  />
+                </div>
+
+                <SettingSlider
+                  label="AE 镜头俯冲推近倍率"
+                  value={effectSettings.animeHandwrittenMV.zoomScale ?? 1.8}
+                  min={1.2}
+                  max={2.5}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("animeHandwrittenMV", { zoomScale: v })}
+                />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-white/80">动漫作画抽帧模式</label>
+                    <span className="text-xs text-cyan-300/80 font-mono bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
+                      {Math.round(effectSettings.animeHandwrittenMV.frameRate || 12) === 24
+                        ? "24fps (丝滑电影)"
+                        : "12fps (动漫作画手书)"}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={12}
+                    max={24}
+                    step={12}
+                    value={effectSettings.animeHandwrittenMV.frameRate || 12}
+                    onChange={(e) =>
+                      updateEffectSettings("animeHandwrittenMV", {
+                        frameRate: parseInt(e.target.value, 10),
+                      })
+                    }
+                    className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-white/10"
+                  />
+                </div>
+                <SettingSlider
+                  label="重拍墨渍爆裂强度"
+                  value={effectSettings.animeHandwrittenMV.inkSplatter ?? 1.0}
+                  min={0.0}
+                  max={2.0}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("animeHandwrittenMV", { inkSplatter: v })}
+                />
+                <SettingSlider
+                  label="纸面微光与氛围"
+                  value={effectSettings.animeHandwrittenMV.ambientGlow ?? 0.8}
+                  min={0.2}
+                  max={1.5}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("animeHandwrittenMV", { ambientGlow: v })}
+                />
+              </div>
+            )}
+
+            {currentEffect === "kimiQuantumGlow" && effectSettings.kimiQuantumGlow && (
+              <div className="space-y-4 pt-2 border-t border-white/5">
+                <SettingSlider
+                  label="量子粒子总量"
+                  value={effectSettings.kimiQuantumGlow.particleCount ?? 4500}
+                  min={3000}
+                  max={9000}
+                  step={500}
+                  onChange={(v) => updateEffectSettings("kimiQuantumGlow", { particleCount: v })}
+                />
+                <SettingSlider
+                  label="Bloom 泛光强度"
+                  value={effectSettings.kimiQuantumGlow.bloomIntensity ?? 0.8}
+                  min={0.1}
+                  max={1.5}
+                  step={0.05}
+                  onChange={(v) => updateEffectSettings("kimiQuantumGlow", { bloomIntensity: v })}
+                />
+                <SettingSlider
+                  label="镜头色散系数 (Aberration)"
+                  value={effectSettings.kimiQuantumGlow.chromaticAberration ?? 0.5}
+                  min={0.0}
+                  max={1.5}
+                  step={0.1}
+                  onChange={(v) =>
+                    updateEffectSettings("kimiQuantumGlow", { chromaticAberration: v })
+                  }
+                />
+                <SettingSlider
+                  label="凝结激光扫光速率"
+                  value={effectSettings.kimiQuantumGlow.sweepSpeed ?? 1.0}
+                  min={0.5}
+                  max={2.0}
+                  step={0.1}
+                  onChange={(v) => updateEffectSettings("kimiQuantumGlow", { sweepSpeed: v })}
                 />
               </div>
             )}

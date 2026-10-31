@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, memo } from "react";
+import React, { useRef, useState, memo, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useAudioStore } from "@/store/audioStore";
@@ -201,10 +201,57 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
   const currentSong = audioSong || playerSong;
 
   const [showMiniLyricTooltip, setShowMiniLyricTooltip] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pointerDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleMouseEnter = useCallback(() => {
+    if (isDragging) return;
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setIsHovered(true);
+  }, [isDragging]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleGlobalPointerUp = () => {
+      if (isDragging) {
+        setTimeout(() => setIsDragging(false), 200);
+      }
+    };
+    window.addEventListener("pointerup", handleGlobalPointerUp);
+    window.addEventListener("mouseup", handleGlobalPointerUp);
+    window.addEventListener("touchend", handleGlobalPointerUp);
+    return () => {
+      window.removeEventListener("pointerup", handleGlobalPointerUp);
+      window.removeEventListener("mouseup", handleGlobalPointerUp);
+      window.removeEventListener("touchend", handleGlobalPointerUp);
+    };
+  }, [isDragging]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
+    setIsDragging(true);
+    setIsHovered(false);
     dragHandlers?.onMouseDown(e);
   };
 
@@ -212,6 +259,8 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
     if (e.touches.length > 0) {
       pointerDownPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
+    setIsDragging(true);
+    setIsHovered(false);
     dragHandlers?.onTouchStart(e);
   };
 
@@ -254,8 +303,11 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
     <motion.div
       className={`relative select-none group cursor-pointer ${className}`}
       data-floating-state="compact"
+      data-capsule-expanded={isHovered && !isDragging}
       onClick={handleCardClick}
       onDoubleClick={handleDoubleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
       style={{ touchAction: "none", willChange: "transform" }}
@@ -266,11 +318,18 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
       }
       aria-busy={isLoading}
     >
-      {/* 纯 CSS 硬件加速暗黑毛玻璃胶囊 (360px x 56px) */}
-      <div
-        className="drag-handle relative flex items-center justify-between gap-3 px-3.5 py-2 rounded-full shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.25)] border border-white/[0.18] transition-all"
+      {/* 纯 CSS 硬件加速暗黑毛玻璃胶囊 (自适应双态：紧凑 316px <-> 悬停舒展 450px) */}
+      <motion.div
+        className="drag-handle relative flex items-center justify-between gap-3 px-3.5 py-2 rounded-full shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_1.5px_rgba(255,255,255,0.25)] border border-white/[0.18] transition-colors"
+        animate={{
+          width: isHovered && !isDragging ? 450 : 316,
+        }}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0.01 }
+            : { type: "spring", stiffness: 420, damping: 28, mass: 0.8 }
+        }
         style={{
-          width: 404,
           height: 56,
           background:
             "linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(20, 20, 26, 0.88) 100%)",
@@ -314,9 +373,25 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
           </motion.div>
         </div>
 
-        {/* 2. 中间歌名与独立细粒度歌词 */}
-        <div
-          className="relative z-[1] flex-1 min-w-0 flex flex-col justify-center pr-1 text-left"
+        {/* 2. 中间歌名与独立细粒度歌词 (自适应双态：Hover 时舒展展现，非 Hover 时彻底折叠隐藏绝不留残缝) */}
+        <motion.div
+          data-testid="compact-capsule-text"
+          className="relative z-[1] min-w-0 flex flex-col justify-center text-left overflow-hidden"
+          animate={{
+            width: isHovered && !isDragging ? "auto" : 0,
+            maxWidth: isHovered && !isDragging ? 134 : 0,
+            opacity: isHovered && !isDragging ? 1 : 0,
+            paddingRight: isHovered && !isDragging ? 4 : 0,
+          }}
+          transition={
+            prefersReducedMotion
+              ? { duration: 0.01 }
+              : { type: "spring", stiffness: 420, damping: 28 }
+          }
+          style={{
+            pointerEvents: isHovered && !isDragging ? "auto" : "none",
+          }}
+          aria-hidden={!isHovered || isDragging}
           aria-busy={isLoading}
         >
           <AnimatePresence mode="sync" initial={false}>
@@ -341,7 +416,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
               <SyncedMiniLyric song={currentSong} />
             </motion.div>
           </AnimatePresence>
-        </div>
+        </motion.div>
 
         {/* 3. 右侧控制按钮组 (0ms 零延迟极速响应) */}
         <div
@@ -409,7 +484,7 @@ export const FloatingCompactControlsState: React.FC<FloatingCompactControlsState
             <ChevronUp className="w-3.5 h-3.5" />
           </button>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 };
