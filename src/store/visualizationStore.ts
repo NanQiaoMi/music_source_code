@@ -15,8 +15,7 @@ export type VisualizationEffect =
   | "cinematicSilkAurora"
   | "orientalLandscape"
   | "cinematicLyricDrift"
-  | "animeHandwrittenMV"
-  | "kimiQuantumGlow";
+  | "animeHandwrittenMV";
 
 export type NumericEffectSettings = Record<string, number>;
 export type EffectSettings = Record<VisualizationEffect, NumericEffectSettings>;
@@ -142,12 +141,6 @@ const defaultEffectSettings: EffectSettings = {
     inkSplatter: 1.0,
     colorScheme: 0,
     ambientGlow: 0.8,
-  },
-  kimiQuantumGlow: {
-    particleCount: 4500,
-    bloomIntensity: 0.8,
-    sweepSpeed: 1.0,
-    chromaticAberration: 0.5,
   },
 };
 

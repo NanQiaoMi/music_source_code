@@ -14,7 +14,6 @@ import {
   Radio,
 } from "lucide-react";
 import { drawAnimeHandwrittenMV } from "@/components/visualization/effects/animeHandwrittenMV";
-import { drawKimiQuantumGlow } from "@/components/visualization/effects/kimiQuantumGlow";
 import { drawCinematicLyricDrift } from "@/components/visualization/effects/cinematicLyricDrift";
 import type { EffectContext } from "@/components/visualization/effects/types";
 import { FloatingCompactControlsState } from "@/components/player/floating/FloatingCompactControlsState";
@@ -23,26 +22,21 @@ import { useAudioStore } from "@/store/audioStore";
 const MOCK_LYRICS = [
   "在无声的微光中悄然苏醒",
   "万千星尘随声浪奔涌成字",
-  "穿过幽暗深空 触碰量子余温",
-  "呼吸间 跃迁至下一个光年",
-  "以科技之名 重构音画边界",
-  "静默的引力透镜 倒映着未完的独白",
+  "穿过幽暗深空 触碰纸面余温",
+  "呼吸间 镜头如行云流水般掠过",
+  "没有边界的画纸 自由舒展",
+  "在暖光的照拂下 娓娓道来",
 ];
 
 export default function VisualizersLabPage() {
   const [selectedEffect, setSelectedEffect] = useState<
-    "animeHandwrittenMV" | "kimiQuantumGlow" | "cinematicLyricDrift"
-  >("kimiQuantumGlow");
+    "animeHandwrittenMV" | "cinematicLyricDrift"
+  >("animeHandwrittenMV");
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [bpm, setBpm] = useState(120);
   const [isInterlude, setIsInterlude] = useState(false);
   const [fps, setFps] = useState(60);
-
-  // Kimi Glow Params
-  const [particleCount, setParticleCount] = useState(4500);
-  const [bloomIntensity, setBloomIntensity] = useState(0.8);
-  const [chromaticAberration, setChromaticAberration] = useState(0.5);
 
   // Anime MV Params
   const [zoomScale, setZoomScale] = useState(1.8);
@@ -153,22 +147,15 @@ export default function VisualizersLabPage() {
         height,
         data,
         params:
-          selectedEffect === "kimiQuantumGlow"
+          selectedEffect === "animeHandwrittenMV"
             ? {
-                particleCount,
-                bloomIntensity,
-                chromaticAberration,
-                sweepSpeed: 1.0,
+                zoomScale,
+                frameRate,
+                inkSplatter: 1.2,
+                colorScheme: animeColorScheme,
+                ambientGlow: 0.9,
               }
-            : selectedEffect === "animeHandwrittenMV"
-              ? {
-                  zoomScale,
-                  frameRate,
-                  inkSplatter: 1.2,
-                  colorScheme: animeColorScheme,
-                  ambientGlow: 0.9,
-                }
-              : {},
+            : {},
         time: time * 0.001,
         musicTime: currentLineIndex * 4.5 + ((time * 0.001) % 4.5),
         refs: {
@@ -192,9 +179,7 @@ export default function VisualizersLabPage() {
         },
       };
 
-      if (selectedEffect === "kimiQuantumGlow") {
-        drawKimiQuantumGlow(effectCtx);
-      } else if (selectedEffect === "animeHandwrittenMV") {
+      if (selectedEffect === "animeHandwrittenMV") {
         drawAnimeHandwrittenMV(effectCtx);
       } else {
         drawCinematicLyricDrift(effectCtx);
@@ -206,16 +191,7 @@ export default function VisualizersLabPage() {
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [
-    selectedEffect,
-    particleCount,
-    bloomIntensity,
-    chromaticAberration,
-    zoomScale,
-    frameRate,
-    animeColorScheme,
-    currentLineIndex,
-  ]);
+  }, [selectedEffect, zoomScale, frameRate, animeColorScheme, currentLineIndex]);
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#06070a] text-white flex flex-col font-sans select-none">
@@ -239,8 +215,7 @@ export default function VisualizersLabPage() {
         {/* Effect Selector Tabs */}
         <div className="flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/10">
           {[
-            { id: "kimiQuantumGlow", label: "极核流光 · Kimi" },
-            { id: "animeHandwrittenMV", label: "动漫手书 MV" },
+            { id: "animeHandwrittenMV", label: "动漫手书 MV (AE无裁切拉镜)" },
             { id: "cinematicLyricDrift", label: "温光浮字" },
           ].map((tab) => (
             <button
@@ -248,7 +223,7 @@ export default function VisualizersLabPage() {
               onClick={() => setSelectedEffect(tab.id as typeof selectedEffect)}
               className={`px-3.5 py-1 text-xs font-medium rounded-full transition-all ${
                 selectedEffect === tab.id
-                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.3)]"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-400/40 shadow-[0_0_12px_rgba(245,158,11,0.3)]"
                   : "text-white/60 hover:text-white"
               }`}
             >
@@ -348,56 +323,6 @@ export default function VisualizersLabPage() {
 
           {/* Effect-Specific Tuning */}
           <div className="space-y-3 pt-1 border-t border-white/10">
-            {selectedEffect === "kimiQuantumGlow" && (
-              <>
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-white/70">
-                    <span>量子粒子数</span>
-                    <span className="font-mono text-cyan-300">{particleCount}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={3000}
-                    max={8000}
-                    step={500}
-                    value={particleCount}
-                    onChange={(e) => setParticleCount(Number(e.target.value))}
-                    className="w-full h-1 accent-cyan-400 bg-white/10 rounded-full"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-white/70">
-                    <span>Bloom 泛光强度</span>
-                    <span className="font-mono text-cyan-300">{bloomIntensity}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.1}
-                    max={1.5}
-                    step={0.05}
-                    value={bloomIntensity}
-                    onChange={(e) => setBloomIntensity(Number(e.target.value))}
-                    className="w-full h-1 accent-cyan-400 bg-white/10 rounded-full"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-white/70">
-                    <span>镜头色散系数</span>
-                    <span className="font-mono text-cyan-300">{chromaticAberration}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.0}
-                    max={1.5}
-                    step={0.1}
-                    value={chromaticAberration}
-                    onChange={(e) => setChromaticAberration(Number(e.target.value))}
-                    className="w-full h-1 accent-cyan-400 bg-white/10 rounded-full"
-                  />
-                </div>
-              </>
-            )}
-
             {selectedEffect === "animeHandwrittenMV" && (
               <>
                 <div className="space-y-1">
