@@ -6,6 +6,18 @@
 
 ---
 
+## 🖥️ 界面预览
+
+|                     主舞台与 3D 歌单架                     |                    沉浸式播放与 AI 情感洞察                    |
+| :--------------------------------------------------------: | :------------------------------------------------------------: |
+| ![MIMI Music Player 主舞台](docs/images/home-1440x900.png) | ![MIMI Music Player 播放界面](docs/images/player-1440x900.png) |
+
+|                               全屏歌词舞台                                |                      全屏沉浸可视化舞台 (Visual Suite)                      |
+| :-----------------------------------------------------------------------: | :-------------------------------------------------------------------------: |
+| ![MIMI Music Player 全屏歌词](docs/images/lyrics-fullscreen-1440x900.png) | ![MIMI Music Player 全屏沉浸可视化](docs/images/visualization-1440x900.png) |
+
+---
+
 ## ✨ 核心亮点
 
 ### 🎨 电影级可视化系统 (Visual Suite V8.0)
@@ -46,6 +58,16 @@
 | **渲染引擎** | Three.js (WebGL) / Canvas API            |
 | **音频处理** | Web Audio API / AudioEngine Singleton    |
 | **人工智能** | MediaPipe / Transformers.js / Gemini API |
+
+```mermaid
+flowchart LR
+    UI["🎨 视图与交互层<br/>HomeView / PlayerView / Fullscreen Lyrics"] --> Shell["🧭 壳域导航<br/>uiShellStore & PanelOrchestrator"]
+    Shell --> Panels["🧩 懒加载功能面板<br/>Emotion Matrix / DNA Journal / AI Toolbox"]
+    UI --> Audio["🔊 单例音频引擎<br/>Web Audio API + AudioEngine"]
+    Audio --> Visual["🌌 电影级可视化<br/>Three.js WebGL / Canvas 2D (25+ 引擎)"]
+    Audio --> Backend["🐍 FastAPI 音频特征后端<br/>Valence / Energy / 频谱分析"]
+    Shell --> Electron["💻 Electron 桌面壳<br/>Windows / macOS / Linux"]
+```
 
 ---
 
